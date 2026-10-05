@@ -297,7 +297,16 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                             "evidence": {"metadata_fingerprint": metadata_fingerprint},
                         },
                     },
-                }
+                },
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
             ],
         }
         capability = OneCCapabilities(
@@ -420,6 +429,62 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        purchase_mapping_file = tmp_path / "purchase-mapping.json"
+        purchase_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "Document_ПоступлениеТоваровУслуг",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "document_ref": "Ref_Key",
+                        "document_number": "Number",
+                        "date": "Date",
+                        "counterparty": "Контрагент_Key",
+                        "amount": "СуммаДокумента",
+                        "currency": "ВалютаДокумента_Key",
+                        "posted": "Posted",
+                    },
+                    "order_by": "Date",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="purchases",
+                mapping_file=str(purchase_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        inventory_mapping_file = tmp_path / "inventory-mapping.json"
+        inventory_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "method": "Balance",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "item_ref": "Номенклатура_Key",
+                        "warehouse_ref": "Склад_Key",
+                        "quantity": "КоличествоBalance",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="inventory.balance",
+                mapping_file=str(inventory_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
         mapping_confirmation_file = tmp_path / "mapping-confirmation.json"
         mapping_confirmation_file.write_text(
             json.dumps(
@@ -459,7 +524,13 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                 ),
                 conn,
             )
-        for concept in ("receivable", "account.balance_and_turnovers", "sales"):
+        for concept in (
+            "receivable",
+            "account.balance_and_turnovers",
+            "sales",
+            "purchases",
+            "inventory.balance",
+        ):
             await confirm_mapping(
                 Namespace(
                     profile_id=str(profile_id),
@@ -490,6 +561,18 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ConnectionDatabase(conn), production=False
         ).require_semantic_mapping(source_id, company_id, "sales")
         assert loaded_sales_mapping["mapping"]["entity_set"] == "Document_РеализацияТоваровУслуг"
+        loaded_purchase_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "purchases")
+        assert loaded_purchase_mapping["mapping"]["entity_set"] == (
+            "Document_ПоступлениеТоваровУслуг"
+        )
+        loaded_inventory_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "inventory.balance")
+        assert loaded_inventory_mapping["mapping"]["entity_set"] == (
+            "AccumulationRegister_ТоварыНаСкладах"
+        )
         with pytest.raises(SemanticProfileUnavailable):
             await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
                 source_id, uuid.uuid4()
@@ -507,12 +590,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 9
+        ) == 13
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 9
+        ) == 13
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )

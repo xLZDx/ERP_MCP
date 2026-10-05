@@ -9,18 +9,22 @@ from business_ai_gateway.semantic import (
     ACCOUNT_TURNOVERS_METHOD,
     APROVODKA_SHA,
     CONFIGURATION_PRESETS,
+    INVENTORY_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
     build_company_filter,
+    build_inventory_balance_arguments,
     find_configuration_preset,
     normalize_account_turnovers,
     normalize_document_rows,
+    normalize_inventory_balance_rows,
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
     validate_document_mapping,
+    validate_inventory_balance_mapping,
     validate_native_reconciliation_evidence,
 )
 from scripts.semantic_profiles import (
@@ -320,6 +324,24 @@ def test_semantic_cli_exposes_operator_mapping_confirmation():
     assert args.command == "confirm-mapping"
 
 
+@pytest.mark.parametrize("concept", ["sales", "purchases", "inventory.balance"])
+def test_semantic_cli_exposes_only_named_supported_read_concepts(concept):
+    args = semantic_admin_parser().parse_args(
+        [
+            "add-mapping",
+            "--profile-id",
+            "f3727523-9689-4b73-973e-9754360fd0a0",
+            "--concept",
+            concept,
+            "--mapping-file",
+            "mapping.json",
+            "--actor",
+            "operator",
+        ]
+    )
+    assert args.concept == concept
+
+
 def test_sales_and_purchase_document_maps_are_company_scoped_and_profile_projected():
     fields = {
         "document_ref": "Ref_Key",
@@ -379,6 +401,94 @@ def test_document_map_restricts_entity_kind_and_rejects_unreviewed_filter():
         )
     with pytest.raises(SemanticMappingUnconfirmed):
         validate_document_mapping("sales", {**mapping, "filter": "true"})
+
+
+def test_inventory_balance_requires_confirmed_accumulation_balance_mapping():
+    mapping = {
+        "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+        "method": "Balance",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "item_ref": "Номенклатура_Key",
+            "warehouse_ref": "Склад_Key",
+            "quantity": "КоличествоBalance",
+        },
+        "required_register_capabilities": [
+            {"entity_set": "AccumulationRegister_ТоварыНаСкладах", "method": "Balance"}
+        ],
+    }
+    assert INVENTORY_BALANCE_CONCEPT == "inventory.balance"
+    assert validate_inventory_balance_mapping(mapping) == (
+        "AccumulationRegister_ТоварыНаСкладах",
+        "Balance",
+    )
+    assert build_inventory_balance_arguments(
+        mapping,
+        company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        period="2026-10-01T00:00:00Z",
+    ) == (
+        "AccumulationRegister_ТоварыНаСкладах",
+        "Balance",
+        {
+            "Period": "2026-10-01T00:00:00+00:00",
+            "Condition": "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+        },
+    )
+    assert normalize_inventory_balance_rows(
+        [{"Номенклатура_Key": "item-1", "Склад_Key": "warehouse-1", "КоличествоBalance": "4"}],
+        mapping,
+    ) == [{"item_ref": "item-1", "warehouse_ref": "warehouse-1", "quantity": "4"}]
+    for invalid in (
+        {**mapping, "entity_set": "AccountingRegister_Хозрасчетный"},
+        {**mapping, "method": "BalanceAndTurnovers"},
+        {**mapping, "required_register_capabilities": []},
+        {**mapping, "company_scope": {"field": "Организация_Key or true", "value_type": "guid"}},
+    ):
+        with pytest.raises(SemanticMappingUnconfirmed):
+            validate_inventory_balance_mapping(invalid)
+    with pytest.raises(ValueError, match="explicit timezone"):
+        build_inventory_balance_arguments(
+            mapping,
+            company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+            period="2026-10-01T00:00:00",
+        )
+
+
+def test_inventory_balance_capability_is_bound_to_exact_live_source_and_metadata():
+    required = [
+        {"entity_set": "AccumulationRegister_ТоварыНаСкладах", "method": "Balance"}
+    ]
+    live = {
+        "evidence_source": "live-metadata",
+        "source_id": SOURCE_ID,
+        "metadata_fingerprint": METADATA_FINGERPRINT,
+        "registers": [
+            {
+                "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                "methods": {
+                    "Balance": {
+                        "available": True,
+                        "evidence": {"metadata_fingerprint": METADATA_FINGERPRINT},
+                    }
+                },
+            }
+        ],
+    }
+    require_profile_capabilities(
+        required, live, source_id=SOURCE_ID, metadata_fingerprint=METADATA_FINGERPRINT
+    )
+    for bad_profile in (
+        {**live, "source_id": "another-base"},
+        {**live, "metadata_fingerprint": "sha256:old"},
+        {**live, "registers": []},
+    ):
+        with pytest.raises(CapabilityUnsupported):
+            require_profile_capabilities(
+                required,
+                bad_profile,
+                source_id=SOURCE_ID,
+                metadata_fingerprint=METADATA_FINGERPRINT,
+            )
 
 
 def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping():

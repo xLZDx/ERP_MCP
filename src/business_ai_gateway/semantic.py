@@ -15,6 +15,8 @@ APROVODKA_REPOSITORY = "https://github.com/theYahia/WWmcp"
 APROVODKA_SHA = "7b62c90e1fe74324605dc28d76f195200bb97252"
 ACCOUNT_TURNOVERS_CONCEPT = "account.balance_and_turnovers"
 ACCOUNT_TURNOVERS_METHOD = "balanceAndTurnovers"
+INVENTORY_BALANCE_CONCEPT = "inventory.balance"
+INVENTORY_BALANCE_METHOD = "Balance"
 _ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
 _PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
 ACCOUNT_TURNOVERS_FIELDS = (
@@ -46,6 +48,7 @@ DOCUMENT_CONCEPT_FIELDS = {
         "posted",
     ),
 }
+INVENTORY_BALANCE_FIELDS = ("item_ref", "warehouse_ref", "quantity")
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,6 +281,72 @@ def validate_document_mapping(concept: str, mapping: dict[str, Any]) -> None:
         or mapping["order_by"] != output_fields.get("date")
     ):
         raise SemanticMappingUnconfirmed("document mapping is incomplete or unsupported")
+
+
+def validate_inventory_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("inventory mapping must be a JSON object")
+    register_set = mapping.get("entity_set")
+    company_scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    if (
+        set(mapping) - {"entity_set", "method", "company_scope", "output_fields", "required_register_capabilities"}
+        or not isinstance(register_set, str)
+        or not register_set.startswith("AccumulationRegister_")
+        or not _ENTITY_SET_PATTERN.fullmatch(register_set.replace("AccumulationRegister_", "AccountingRegister_", 1))
+        or mapping.get("method") != INVENTORY_BALANCE_METHOD
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(INVENTORY_BALANCE_FIELDS)
+        or any(not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field) for field in output_fields.values())
+        or len(set(output_fields.values())) != len(INVENTORY_BALANCE_FIELDS)
+    ):
+        raise SemanticMappingUnconfirmed("inventory balance mapping is incomplete or unsupported")
+    required = mapping.get("required_register_capabilities")
+    if required is not None and required != [
+        {"entity_set": register_set, "method": INVENTORY_BALANCE_METHOD}
+    ]:
+        raise SemanticMappingUnconfirmed("inventory capability dependency does not match its operation")
+    return register_set, INVENTORY_BALANCE_METHOD
+
+
+def build_inventory_balance_arguments(
+    mapping: dict[str, Any], *, company_external_ref: str, period: str
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_inventory_balance_mapping(mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return register_set, method, {
+        "Period": point.isoformat(),
+        "Condition": build_company_filter(mapping, company_external_ref),
+    }
+
+
+def normalize_inventory_balance_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_inventory_balance_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("inventory balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("inventory balance response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed(
+                "inventory balance response is missing a mapped field"
+            )
+        normalized.append(
+            {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
 
 
 def build_company_filter(mapping: dict[str, Any], company_external_ref: str) -> str:

@@ -9,6 +9,7 @@ from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
 from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
+    INVENTORY_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
@@ -17,6 +18,7 @@ from .semantic import (
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
     validate_document_mapping,
+    validate_inventory_balance_mapping,
 )
 
 
@@ -291,6 +293,12 @@ class Registry:
             if required:
                 raise SemanticMappingUnconfirmed(
                     "document-list mapping must not declare register capabilities"
+                )
+        elif concept == INVENTORY_BALANCE_CONCEPT:
+            entity_set, method = validate_inventory_balance_mapping(mapping)
+            if required != [{"entity_set": entity_set, "method": method}]:
+                raise SemanticMappingUnconfirmed(
+                    "inventory mapping capability dependency is missing or mismatched"
                 )
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")

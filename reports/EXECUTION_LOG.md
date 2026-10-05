@@ -125,7 +125,7 @@
 
 ## Step 26 — company-scoped sales and purchase document reads
 
-**Status:** implemented locally; verification and publication in progress.
+**Status:** implemented; local and hosted CI PASS.
 **Date:** 2026-10-06
 
 - Extended the evidence-backed semantic mapping lifecycle to sales and purchases. Each mapping
@@ -140,4 +140,25 @@
   tax/VAT and posting trace) and real native-report reconciliation remain open.
 - Verification: Python `83 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009, DB
   privilege policy and PostgreSQL integration `6 passed`; Ruff, compileall, Bandit, pip-audit and
-  diff check PASS. Hosted CI follows the next push.
+  diff check PASS. Hosted CI run `37380789434` passed both `test` and `odata-upstream` jobs on
+  commit `b212790`.
+
+## Step 27 — source-capability-gated inventory balance snapshot
+
+**Status:** implemented and locally verified; hosted CI pending.
+**Date:** 2026-10-06
+
+- Reused pinned Aprovodka `getAccumulationBalance` semantics and its `Balance(Period, Condition)`
+  shape, plus UT11/ERP2 candidate descriptions for `AccumulationRegister_ТоварыНаСкладах`; the
+  preset entity name remains advisory and is never selected automatically. Reused pinned OData
+  `RegisterHelper.balance` and the existing sidecar's live metadata capability gate.
+- Added `inventory.balance` profile mapping with exact accumulation-register entity, `Balance`
+  dependency, required company dimension, and reviewed item/warehouse/quantity projection.
+  `inventory_balance` requires an explicit timezone-qualified point-in-time period and exact
+  source/company authorization. It does not infer quantity by summing documents or switch methods.
+- Positive semantic/capability/normalization/runtime fixtures and negative tests prove unconfirmed,
+  cross-source, stale, or unavailable capability evidence cannot dispatch a register request.
+  PostgreSQL lifecycle coverage includes inventory and purchase mapping confirmation/profile load.
+- Local full suite at implementation: Python `90 passed, 7 skipped`; Ruff, compileall, Bandit,
+  pip-audit and diff check PASS. Disposable PostgreSQL 16 migrations 001–009 and DB privilege
+  policy PASS; integration `6 passed`. Hosted CI follows publication.

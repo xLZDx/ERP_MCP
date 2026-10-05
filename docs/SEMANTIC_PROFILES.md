@@ -51,6 +51,11 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    company dimension/value type, date order field, and canonical output-field projection. Runtime
    applies only the reviewed company equality and bounded paging; callers cannot supply filters or
    entity names.
+   For `inventory.balance`, the mapping must name an exact source-confirmed
+   `AccumulationRegister_*` EntitySet, the `Balance` method, company dimension/value type, and
+   reviewed item/warehouse/quantity field projection. The CLI pins that exact EntitySet/method as a
+   live register-capability dependency. Runtime requires a timezone-qualified point-in-time period;
+   it does not infer stock by summing documents or fall back to turnover queries.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -93,6 +98,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   Each result is projected to document reference/number/date, counterparty, amount, currency and
   posted state using the validated source mapping. OData execution remains in the existing pinned
   adapter path; callers cannot supply an EntitySet or filter.
-- Other canonical accounting tools (cash/bank, inventory, AR/AP aging, tax/VAT and posting trace)
+- `inventory_balance` reuses the pinned `Balance(Period, Condition)` semantics for accumulation
+  registers. It requires exact source metadata confirmation for the mapped register's `Balance`
+  operation and profile-projected item reference, warehouse reference and quantity. Preset names
+  remain candidate hints only; company scoping must be explicitly mapped and confirmed.
+- Other canonical accounting tools (cash/bank, inventory movements, AR/AP aging, tax/VAT and posting trace)
   remain unimplemented; no customer preset is promoted based on
   upstream names or confidence labels.
