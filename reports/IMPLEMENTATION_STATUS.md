@@ -48,13 +48,17 @@ Last updated: 2026-10-05
   (`4 passed`); the full hosted CI result is recorded below.
 - CI run `37359877826` on `3c5cb6a` passed all workflow steps, including PostgreSQL migrations and
   privilege checks, Ruff, Bandit, compileall, pytest (`51 passed, 1 skipped`) and pip-audit.
+- Added MCP-handler audit tests for success, ACL denial, Redis/rate-limit failure and adapter
+  failure. All four pass locally; the suite verifies an ACL/Redis denial is persisted before any
+  call reaches the 1C adapter. Hosted CI is pending for this batch.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
 - First unresolved gates: P1 / D3, D11, D14 — end-to-end company-filtered data access, complete
   persisted audit contract across all request outcomes, and Redis failure behavior in integration
   remain open.
-- Local checks before the route-selection tests: 45 passed, 5 skipped; after them: 47 passed, 5 skipped
+- Local checks before the route-selection tests: 45 passed, 5 skipped; after route tests: 47 passed,
+  5 skipped; current local suite after handler tests: 51 passed, 5 skipped
   (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
