@@ -1,8 +1,8 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`
-(the following status-report commit is documentation-only).
+Core implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`;
+additional compatibility-route tests are present locally and await hosted CI.
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
@@ -39,7 +39,7 @@ contract is documented.
 |---|---|---|---|---|
 | P0 Documentation freeze | PARTIAL | Normative v1.0 package, index, six ADRs, traceability, package test; root command center now copied | Reconcile the supplied copy with the in-repo generated command center; documentation test suite and current HEAD CI evidence | D0, D1 |
 | P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–004; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; CI 37357432914 green; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip passed | company-aware business query adapter; audit success/denial-path provenance tests; production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
-| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; lifecycle/read gate passed CI 37358947196 | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; broader unsupported/fallback/drift tests | D7 |
+| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; lifecycle/read gate passed CI 37358947196; local tests confirm unsupported status without safe route and explicit-only fallback selection | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; hosted CI for the new route tests and broader drift tests | D7 |
 | P3 Modern OData data plane | NOT STARTED | Lightweight Python GET/HEAD client and bounded generic read | Integrate pinned `hacker-cb/1c-odata` sidecar; typed query, get/count/register contract; response shaping/cancellation/concurrency/circuit breaker; locks, upstream parity and container integration tests | D1, D5–D8, D13–D14, D16 |
 | P4 Semantic accounting | NOT STARTED | Documentation and candidate upstream inventory only | Company/adapter/semantic/reconciliation schema; profile lifecycle; transport-neutral semantic tools and provenance; deterministic synthetic business cases | D8–D9, D11 |
 | P5 Real 1C and reconciliation | PARTIAL | L1 Fake1C, optional integration-test stub, seed/snapshot specs and 10 scenario definitions | Executable deterministic seed/snapshot workflow and captured results; no actual L2/L3 connection or native-report reconciliation evidence recorded | D7–D10, D18 |
@@ -61,7 +61,7 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | D4 Secrets | PARTIAL | ENV/FILE/GCP provider abstraction; production disallows ENV mode | Secret access/rotation/leak evidence and safer source onboarding/runtime secret handling tests |
 | D5 Read-only | PARTIAL | Read client implements GET/HEAD only; one structural test exists | Verify all adapter/tool inventories and fallback boundary with negative mutation tests |
 | D6 SSRF/transport | PARTIAL | Registered-source routing, URL/path checks, redirects disabled, production HTTPS settings | DNS/IP rebinding and egress policy proof; redirect and oversized request tests; endpoint validation parity for admin paths |
-| D7 Compatibility | PARTIAL | JSON/Atom metadata probe; persisted fingerprint, sticky DRIFTED lifecycle/admin acknowledgement and read fail-closed gate passed CI 37358947196 | Configured fallback route lifecycle, normalized bindings and adapter provenance |
+| D7 Compatibility | PARTIAL | JSON/Atom metadata probe; persisted fingerprint, sticky DRIFTED lifecycle/admin acknowledgement and read fail-closed gate passed CI 37358947196; local unsupported/explicit-fallback selection tests pass | Configured fallback route lifecycle, normalized bindings and adapter provenance |
 | D8 Data-plane correctness | PARTIAL | Basic entity read and Fake1C metadata/entities | Upstream OData engine operations, typed validation, get/count/register, paging/cancel/parity/real-source tests |
 | D9 Accounting correctness | NOT STARTED | Scenario catalog and target protocol documented | Implement semantic layer, then reconcile >=10 cases against a real synthetic 1C instance |
 | D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; PostgreSQL ACL integration passed CI 37355876333 | Three-source isolation and bounded fan-out evidence; company-filtered business adapter |

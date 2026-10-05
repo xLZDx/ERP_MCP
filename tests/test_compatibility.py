@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import httpx
 import pytest
 
@@ -69,3 +71,35 @@ async def test_capability_detector_falls_back_to_atom_profile():
         assert caps.atom_supported is True
     finally:
         await client.close()
+
+
+class UnavailableMetadataClient:
+    async def get_bytes(self, *_args, **_kwargs):
+        raise httpx.ConnectError("metadata endpoint unavailable")
+
+
+@pytest.mark.asyncio
+async def test_capability_detector_reports_unsupported_without_safe_route():
+    detector = OneCCapabilityDetector(client=UnavailableMetadataClient(), secrets=NoSecrets())
+
+    capabilities, index = await detector.detect(source())
+
+    assert capabilities.compatibility_status == CompatibilityStatus.UNSUPPORTED
+    assert capabilities.adapter_profile == AdapterProfile.UNSUPPORTED
+    assert index is None
+
+
+@pytest.mark.asyncio
+async def test_capability_detector_selects_only_explicitly_configured_fallback():
+    candidate = replace(
+        source(),
+        fallback_kind="onec_http_query",
+        fallback_base_url="https://bridge.example.test/onec",
+    )
+    detector = OneCCapabilityDetector(client=UnavailableMetadataClient(), secrets=NoSecrets())
+
+    capabilities, index = await detector.detect(candidate)
+
+    assert capabilities.compatibility_status == CompatibilityStatus.SUPPORTED_WITH_FALLBACK
+    assert capabilities.adapter_profile == AdapterProfile.HTTP_QUERY_FALLBACK
+    assert index is None

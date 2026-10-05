@@ -15,7 +15,7 @@ STARTED` is used where implementation is still required before external evidence
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | GET/HEAD-only client; mutation/sidecar inventory evidence incomplete. |
 | D6 SSRF/transport | PARTIAL | Registered source, HTTPS production and redirect/path checks exist; DNS rebinding/egress proof incomplete. |
-| D7 Compatibility | PARTIAL | JSON/Atom probe and persisted fingerprint exist; sticky drift/ack lifecycle and read fail-closed gate passed CI 37358947196; fallback bindings incomplete. |
+| D7 Compatibility | PARTIAL | JSON/Atom probe and persisted fingerprint exist; sticky drift/ack lifecycle and read fail-closed gate passed CI 37358947196; local tests now prove unsupported behavior without a configured route and selection only of an explicitly configured fallback. Fallback bindings remain incomplete. |
 | D8 Data plane | PARTIAL | Basic read path only; approved upstream sidecar operations and parity tests remain. |
 | D9 Accounting | NOT STARTED | Semantic layer not implemented; native 1C reconciliation not applicable yet. |
 | D10 Multi-company | PARTIAL | Company table and scoped grants/list/resolve exist; transaction-isolated PostgreSQL ACL integration test passed in CI; three-source tests and bounded fan-out remain. |

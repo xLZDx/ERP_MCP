@@ -43,13 +43,17 @@ Last updated: 2026-10-05
 - The pinned `hacker-cb/1c-odata` reference submodule is now initialized read-only at
   `cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5` for the upcoming P3 reuse/integration work; no
   upstream code has been copied or modified.
+- Added deterministic compatibility tests for both unsupported metadata discovery and explicit
+  fallback selection. Targeted verification: Ruff passed; `tests/test_compatibility.py` passed
+  (`4 passed`). This change is not yet covered by hosted CI.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
 - First unresolved gates: P1 / D3, D11, D14 — end-to-end company-filtered data access, complete
   persisted audit contract across all request outcomes, and Redis failure behavior in integration
   remain open.
-- Local checks for the latest implementation changes: 45 passed, 5 skipped (PostgreSQL-only tests skip
+- Local checks before the route-selection tests: 45 passed, 5 skipped; after them: 47 passed, 5 skipped
+  (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
 - Previous CI collection failure `37355290036` on `3acd006` is superseded by green import-path fix
