@@ -1,8 +1,8 @@
 import json
-from pathlib import Path
+import pathlib
 
 
-MANIFEST = Path("vendor/intake.json")
+MANIFEST = pathlib.Path("vendor/intake.json")
 
 
 def test_vendor_intake_is_pinned_and_unique():
