@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import time
 import uuid
 
 import asyncpg
 import pytest
 
+from business_ai_gateway.audit import Audit, query_fingerprint
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
 
@@ -100,7 +102,8 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
     tx = conn.transaction()
     await tx.start()
     source_id = f"role-test-{uuid.uuid4()}"
-    event_id = uuid.uuid4()
+    request_id = uuid.uuid4()
+    company_id = uuid.uuid4()
     try:
         await conn.execute(
             """
@@ -108,6 +111,14 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
             VALUES($1, 'onec', 'onec_auto', 'Role integration source',
                    'https://onec.example.test/odata')
             """,
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, 'audit-test', 'Audit integration company')
+            """,
+            company_id,
             source_id,
         )
         await conn.execute("SET LOCAL ROLE business_ai_app")
@@ -127,25 +138,63 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
         assert await conn.fetchval(
             "SELECT EXISTS(SELECT 1 FROM bag.sources WHERE source_id=$1)", source_id
         )
-        await conn.execute(
-            """
-            INSERT INTO bag.audit_events(
-              event_id, principal_subject, client_id, tool_name, outcome, duration_ms
-            ) VALUES($1, 'role-test', 'role-test', 'system_status', 'success', 0)
-            """,
-            event_id,
+        principal = Principal(
+            subject="role-test",
+            client_id="role-test-client",
+            scopes=frozenset({"onec:read"}),
+            groups=frozenset(),
+            claims={},
         )
+        await Audit(ConnectionDatabase(conn), include_query=True).write(
+            principal=principal,
+            tool="onec_read",
+            source_id=source_id,
+            outcome="error",
+            started_at=time.monotonic(),
+            query={"entity_set": "Invoices", "top": 10},
+            request_id=request_id,
+            company_id=company_id,
+            adapter_kind="ODATA_JSON_V3",
+            adapter_version="test-1",
+            upstream_sha="a" * 40,
+            policy_version="acl-test-v1",
+            metadata_fingerprint="b" * 64,
+            returned_items=0,
+            response_bytes=0,
+            truncated=False,
+            detail_code="IntegrationTestError",
+        )
+        audit_row = await conn.fetchrow(
+            "SELECT * FROM bag.audit_events WHERE request_id=$1", request_id
+        )
+        assert audit_row["company_id"] == company_id
+        assert audit_row["source_id"] == source_id
+        assert audit_row["request_id"] == request_id
+        assert audit_row["query_fingerprint"] == query_fingerprint(
+            {"entity_set": "Invoices", "top": 10}
+        )
+        assert audit_row["returned_items"] == 0
+        assert audit_row["duration_ms"] >= 0
+        assert audit_row["adapter_kind"] == "ODATA_JSON_V3"
+        assert audit_row["adapter_version"] == "test-1"
+        assert audit_row["upstream_sha"] == "a" * 40
+        assert audit_row["policy_version"] == "acl-test-v1"
+        assert audit_row["metadata_fingerprint"] == "b" * 64
+        assert audit_row["response_bytes"] == 0
+        assert audit_row["truncated"] is False
+        assert audit_row["outcome"] == "error"
+        assert audit_row["detail_code"] == "IntegrationTestError"
 
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with conn.transaction():
                 await conn.execute(
-                    "UPDATE bag.audit_events SET detail_code='tampered' WHERE event_id=$1",
-                    event_id,
+                    "UPDATE bag.audit_events SET detail_code='tampered' WHERE request_id=$1",
+                    request_id,
                 )
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with conn.transaction():
                 await conn.execute(
-                    "DELETE FROM bag.audit_events WHERE event_id=$1", event_id
+                    "DELETE FROM bag.audit_events WHERE request_id=$1", request_id
                 )
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with conn.transaction():
