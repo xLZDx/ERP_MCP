@@ -84,6 +84,62 @@
         "1c-7.7"
       ],
       "priority": 99
+    },
+    {
+      "repo": "infaton/MCP35",
+      "sha": "09e54b08381db4090c02b41f9e2d30bf51676db3",
+      "license": "MIT",
+      "mode": "reference-read-patterns",
+      "roles": [
+        "1c-erp",
+        "http-jsonrpc",
+        "large-tool-catalog"
+      ],
+      "priority": 7
+    },
+    {
+      "repo": "andromanpro/1c-ai-connector",
+      "sha": "76e35fb775eccb01831774d44964d89390a16e0b",
+      "license": "MIT",
+      "mode": "reference-read-patterns",
+      "roles": [
+        "native-1c-extension",
+        "mcp-http",
+        "8.3.24-plus"
+      ],
+      "priority": 8
+    },
+    {
+      "repo": "1c-neurofish/onec-client-mcp-devkit",
+      "sha": "3f6a066913057c2d6f2d61c0b429fd0707ab271b",
+      "license": "LGPL-3.0",
+      "mode": "reference-only",
+      "roles": [
+        "client-session-mcp",
+        "webtransport"
+      ],
+      "priority": 90
+    },
+    {
+      "repo": "1c-neurofish/v8-session-manager",
+      "sha": "bb50f9fbd9a6a07d08e6e75a25db25e802083d1e",
+      "license": "AGPL-3.0",
+      "mode": "reference-only",
+      "roles": [
+        "multi-session-router",
+        "websocket"
+      ],
+      "priority": 91
+    },
+    {
+      "repo": "tarasov46/1c-accounting-mcp",
+      "sha": "e0765929e8a88e18139d47bc89ac886c6bff2c16",
+      "license": "UNVERIFIED",
+      "mode": "reference-only",
+      "roles": [
+        "historical-accounting-mcp"
+      ],
+      "priority": 99
     }
   ]
 }
