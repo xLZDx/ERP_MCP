@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class SecretProviderKind(StrEnum):
+    ENV = "env"
+    FILE = "file"
+    GCP = "gcp"
 
 
 class Settings(BaseSettings):
@@ -29,7 +36,7 @@ class Settings(BaseSettings):
     migration_database_url: str | None = None
     redis_url: str = "redis://localhost:6379/0"
 
-    secret_provider: Literal["env", "file", "gcp"] = "env"
+    secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
     gcp_project_id: str | None = None
 
@@ -73,8 +80,8 @@ class Settings(BaseSettings):
             raise ValueError("production requires PostgreSQL BAG_DATABASE_URL")
         if not self.redis_url.startswith(("redis://", "rediss://")):
             raise ValueError("production requires Redis BAG_REDIS_URL")
-        if self.secret_provider == "env":
+        if self.secret_provider == SecretProviderKind.ENV:
             raise ValueError("production forbids BAG_SECRET_PROVIDER=env")
-        if self.secret_provider == "gcp" and not self.gcp_project_id:
+        if self.secret_provider == SecretProviderKind.GCP and not self.gcp_project_id:
             raise ValueError("gcp secret provider requires BAG_GCP_PROJECT_ID")
         return self
