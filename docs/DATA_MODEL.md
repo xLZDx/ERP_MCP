@@ -137,6 +137,12 @@ Existing `source_capabilities` stores:
 - entity count;
 - evidence JSON.
 
+Migration 005 adds `register_capabilities_json`, a per-source profile of register EntitySets and
+operation evidence. A capability entry records availability, the evidence source, exact function
+import/entity-set binding, HTTP method, discovery time and metadata fingerprint. Negative evidence
+is retained too; a runtime/API method list alone never grants availability. Any metadata fingerprint
+change replaces the evidence profile and retains the existing sticky drift gate.
+
 Migration 004 additionally stores:
 - previous metadata fingerprint;
 - drift status (`UNKNOWN`, `STABLE`, `DRIFTED`);

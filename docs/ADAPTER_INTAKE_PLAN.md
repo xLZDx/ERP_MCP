@@ -71,6 +71,16 @@ License: MIT.
 Do not manually add a register virtual table or OData literal rule until the corresponding upstream
 implementation/test has been checked.
 
+### Mandatory source capability rule
+
+An operation existing in `@1c-odata/client` is not evidence that a concrete 1C base publishes or
+supports it. Configuration/platform-sensitive virtual tables (including `DrCrTurnovers`) are
+available only when confirmed for the exact source by live metadata, a safe capability probe, or a
+validated semantic/configuration profile. Never guess the function-import name or try alternate
+names. Without positive source evidence, return `CAPABILITY_UNSUPPORTED` and record the positive or
+negative evidence, source ID, metadata fingerprint and discovery time in that source's capability
+profile. The sidecar rechecks the exact GET binding before dispatch as a second fail-closed gate.
+
 ## Intake B — accounting semantics
 
 Upstream: `theYahia/WWmcp/servers/aprovodka`  

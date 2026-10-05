@@ -91,6 +91,19 @@ Last updated: 2026-10-05
   APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
   and GPL toolkit isolation boundary. The unsupported/unconfirmed `DrCrTurnover(s)` path is rejected;
   no second COM bridge or GPL-derived code is introduced.
+- Capability-rule implementation batch (local evidence, not yet hosted-CI tested): migration 005
+  persists a per-source register capability profile; both Python adapter and Node sidecar fail
+  closed unless the exact source/register/method is confirmed by current metadata evidence. The
+  sidecar revalidates its short-lived live-metadata profile immediately before invocation and
+  returns `CAPABILITY_UNSUPPORTED` without guessing alternate names. Positive and negative
+  DrCrTurnovers fixtures, internal request/response contract tests, and migration persistence tests
+  are in place. Local verification: Python `67 passed, 5 skipped`; sidecar `11/11`; pinned upstream
+  client `428 passed, 1 skipped`; pinned metadata `53 passed`; PostgreSQL integration `4 passed`;
+  Ruff, compileall, Bandit and diff checks pass. Fresh image rebuild and runtime smoke pass at UID
+  10001 with no published ports (`/healthz` 200). Upstream protocol implementation remains
+  unchanged.
+- Current batch is not yet on the remote branch. Previous hosted run `37369006566` has gateway
+  PASS but the upstream job was queued; fresh hosted results are required for this capability batch.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

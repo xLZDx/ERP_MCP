@@ -7,6 +7,10 @@
 
 Interactive view: [ERP_MCP Engineering Command Center](ERP_MCP_ENGINEERING_COMMAND_CENTER.html).
 
+Current implementation evidence: [execution log](../reports/EXECUTION_LOG.md),
+[status](../reports/IMPLEMENTATION_STATUS.md), [gap analysis](../reports/IMPLEMENTATION_GAP_ANALYSIS.md),
+[DoD status](../reports/DOD_STATUS.md), and [risk status](../reports/RISK_STATUS.md).
+
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
 change first.
@@ -39,6 +43,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Definition of Done](DEFINITION_OF_DONE.md) | Product, security, accounting and operations release gates |
 | [Architecture](ARCHITECTURE.md) | Context, containers, components, trust boundaries and deployment |
 | [Integration](INTEGRATION.md) | Internal adapter contract and external integration rules |
+| [Pinned OData sidecar contract](ADAPTER_CONTRACT_ODATA_SIDECAR.md) | Private ERP_MCP ↔ pinned OData sidecar API and source-capability rules |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Observability & SRE](OBSERVABILITY_SRE.md) | Signals, SLO objectives, alerts, runbooks and rollback |
 | [Risk Register](RISK_REGISTER.md) | Principal technical, accounting, security, licensing and operational risks |

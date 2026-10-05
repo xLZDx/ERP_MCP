@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -32,6 +32,12 @@ class MetadataDriftUnacknowledged(RuntimeError):
     """Raised when a read is attempted against an unacknowledged metadata change."""
 
 
+class CapabilityUnsupported(RuntimeError):
+    """A source-scoped operation lacks positive capability evidence."""
+
+    code = "CAPABILITY_UNSUPPORTED"
+
+
 def require_acknowledged_metadata(drift_state: dict[str, Any]) -> None:
     if drift_state.get("drift_status") == "DRIFTED":
         raise MetadataDriftUnacknowledged(
@@ -52,6 +58,7 @@ class OneCCapabilities:
     adapter_profile: AdapterProfile
     compatibility_status: CompatibilityStatus
     evidence: dict[str, Any]
+    register_capabilities: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)

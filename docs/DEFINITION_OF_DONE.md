@@ -73,6 +73,9 @@ Mandatory:
 
 For each pilot source:
 - capability handshake recorded;
+- configuration-sensitive register operations have source-specific positive evidence (live metadata,
+  safe probe or validated semantic profile); unsupported operations fail with
+  `CAPABILITY_UNSUPPORTED` and persist negative evidence;
 - metadata fingerprint recorded;
 - adapter profile selected deterministically;
 - unsupported capabilities fail explicitly;

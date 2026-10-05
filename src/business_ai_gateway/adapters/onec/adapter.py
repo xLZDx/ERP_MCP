@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
-from ...compatibility import AdapterProfile, OneCCapabilities, OneCCapabilityDetector
+from ...compatibility import (
+    AdapterProfile,
+    CapabilityUnsupported,
+    OneCCapabilities,
+    OneCCapabilityDetector,
+)
 from ...models import Source
 from ...secrets import SecretProvider
 from ...settings import Settings
@@ -66,6 +72,35 @@ class OneCAdapter:
         if not refresh and source.id in self._capabilities:
             return self._capabilities[source.id]
         capabilities, index = await self._detector.detect(source)
+        if capabilities.adapter_profile == AdapterProfile.ODATA_JSON_V3 and self.sidecar is not None:
+            username, password = await self.credentials(source)
+            if username is not None and password is not None:
+                try:
+                    register_profile = await self.sidecar.register_capabilities(
+                        source, username=username, password=password
+                    )
+                    if register_profile.get("metadata_fingerprint") != capabilities.metadata_fingerprint:
+                        register_profile = {
+                            "schema_version": 1,
+                            "source_id": source.id,
+                            "evidence_source": "live-metadata",
+                            "status": "stale-metadata-fingerprint",
+                            "metadata_fingerprint": register_profile.get("metadata_fingerprint"),
+                            "registers": [],
+                        }
+                    capabilities = replace(capabilities, register_capabilities=register_profile)
+                except Exception as exc:  # noqa: BLE001
+                    capabilities = replace(
+                        capabilities,
+                        register_capabilities={
+                            "schema_version": 1,
+                            "source_id": source.id,
+                            "evidence_source": "live-metadata",
+                            "status": f"discovery-failed:{type(exc).__name__}",
+                            "metadata_fingerprint": capabilities.metadata_fingerprint,
+                            "registers": [],
+                        },
+                    )
         self._capabilities[source.id] = capabilities
         if index is not None:
             self._metadata[source.id] = index
@@ -279,6 +314,29 @@ class OneCAdapter:
         capabilities = await self.capabilities(source)
         if capabilities.adapter_profile != AdapterProfile.ODATA_JSON_V3 or self.sidecar is None:
             raise NotImplementedError("register reads require the pinned OData JSON sidecar")
+        profile = capabilities.register_capabilities
+        matched_register = next(
+            (
+                item
+                for item in profile.get("registers", [])
+                if item.get("entity_set") == register_set
+            ),
+            None,
+        )
+        method_evidence = (
+            matched_register.get("methods", {}).get(method)
+            if isinstance(matched_register, dict)
+            else None
+        )
+        if (
+            profile.get("evidence_source") != "live-metadata"
+            or profile.get("metadata_fingerprint") != capabilities.metadata_fingerprint
+            or not isinstance(method_evidence, dict)
+            or method_evidence.get("available") is not True
+        ):
+            raise CapabilityUnsupported(
+                f"CAPABILITY_UNSUPPORTED: {register_set}/{method} has no source capability evidence"
+            )
         username, password = await self.credentials(source)
         if username is None or password is None:
             raise RuntimeError("pinned OData sidecar requires paired username/password credentials")

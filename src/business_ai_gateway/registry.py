@@ -189,10 +189,10 @@ class Registry:
                 source_id, discovered_at, metadata_fingerprint, platform_version,
                 compatibility_status, adapter_profile, metadata_supported,
                 json_supported, atom_supported, expand_supported,
-                entity_set_count, evidence_json, drift_status
+                entity_set_count, evidence_json, register_capabilities_json, drift_status
             )
             VALUES(
-                $1, now(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, 'STABLE'
+                $1, now(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, 'STABLE'
             )
             ON CONFLICT(source_id) DO UPDATE SET
                 discovered_at=EXCLUDED.discovered_at,
@@ -227,7 +227,8 @@ class Registry:
                 atom_supported=EXCLUDED.atom_supported,
                 expand_supported=EXCLUDED.expand_supported,
                 entity_set_count=EXCLUDED.entity_set_count,
-                evidence_json=EXCLUDED.evidence_json
+                evidence_json=EXCLUDED.evidence_json,
+                register_capabilities_json=EXCLUDED.register_capabilities_json
             RETURNING drift_status, previous_metadata_fingerprint,
                       drift_detected_at, drift_acknowledged_at
             """,
@@ -242,6 +243,7 @@ class Registry:
             capabilities.expand_supported,
             capabilities.entity_set_count,
             json.dumps(capabilities.evidence, ensure_ascii=False),
+            json.dumps(capabilities.register_capabilities, ensure_ascii=False),
         )
         return {
             "drift_status": row["drift_status"],

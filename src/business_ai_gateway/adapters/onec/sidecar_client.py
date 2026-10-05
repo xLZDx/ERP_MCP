@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from ...compatibility import AdapterProfile
+from ...compatibility import AdapterProfile, CapabilityUnsupported
 from ...models import Source
 
 UPSTREAM_SHA = "cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5"
@@ -166,6 +166,38 @@ class ODataSidecarClient:
         )
         return {"value": envelope["data"], "page": envelope["page"]}
 
+    async def register_capabilities(
+        self,
+        source: Source,
+        *,
+        username: str,
+        password: str,
+    ) -> dict[str, Any]:
+        envelope = await self._request(
+            source,
+            operation="register_capabilities",
+            username=username,
+            password=password,
+            entity_set="",
+            select=[],
+            filter_expr=None,
+            orderby=[],
+            expand=[],
+            top=1,
+            skip=0,
+        )
+        profile = envelope.get("capability_profile")
+        if (
+            not isinstance(profile, dict)
+            or profile.get("schema_version") != 1
+            or profile.get("source_id") != source.id
+            or profile.get("evidence_source") != "live-metadata"
+            or not isinstance(profile.get("metadata_fingerprint"), str)
+            or not isinstance(profile.get("registers"), list)
+        ):
+            raise ODataSidecarError("OData sidecar returned invalid register capability profile")
+        return profile
+
     async def _request(
         self,
         source: Source,
@@ -183,28 +215,37 @@ class ODataSidecarClient:
         key: str | dict[str, str] | None = None,
         extra_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = {
-            "operation": operation,
-            "source_id": source.id,
-            "base_url": source.base_url,
-            "username": username,
-            "password": password,
-            "entity_set": entity_set,
-            "select": select,
-            "filter": filter_expr,
-            "orderby": orderby,
-            "expand": expand,
-            "top": top,
-            "skip": skip,
-        }
+        capability_request = operation == "register_capabilities"
+        payload = (
+            {
+                "source_id": source.id,
+                "base_url": source.base_url,
+                "username": username,
+                "password": password,
+            }
+            if capability_request
+            else {
+                "operation": operation,
+                "source_id": source.id,
+                "base_url": source.base_url,
+                "username": username,
+                "password": password,
+                "entity_set": entity_set,
+                "select": select,
+                "filter": filter_expr,
+                "orderby": orderby,
+                "expand": expand,
+                "top": top,
+                "skip": skip,
+            }
+        )
         if operation == "entity_get":
             payload["key"] = key
         if extra_payload:
             payload.update(extra_payload)
         try:
-            async with self._client.stream("POST", "v1/read", json=payload) as response:
-                if response.status_code != 200:
-                    raise ODataSidecarError(f"OData sidecar returned HTTP {response.status_code}")
+            endpoint = "v1/capabilities/registers" if capability_request else "v1/read"
+            async with self._client.stream("POST", endpoint, json=payload) as response:
                 declared = response.headers.get("content-length")
                 if declared and declared.isdigit() and int(declared) > self.max_response_bytes:
                     raise ODataSidecarError("OData sidecar response exceeded configured limit")
@@ -218,7 +259,17 @@ class ODataSidecarClient:
         try:
             envelope = json.loads(body)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            if response.status_code != 200:
+                raise ODataSidecarError(
+                    f"OData sidecar returned HTTP {response.status_code}"
+                ) from exc
             raise ODataSidecarError("OData sidecar returned invalid JSON") from exc
+        if response.status_code != 200:
+            error = envelope.get("error") if isinstance(envelope, dict) else None
+            code = error.get("code") if isinstance(error, dict) else None
+            if response.status_code == 422 and code == CapabilityUnsupported.code:
+                raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
+            raise ODataSidecarError(f"OData sidecar returned HTTP {response.status_code}")
         if not isinstance(envelope, dict) or envelope.get("source_id") != source.id:
             raise ODataSidecarError("OData sidecar source provenance mismatch")
         adapter = envelope.get("adapter")

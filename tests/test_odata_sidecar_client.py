@@ -9,7 +9,12 @@ from business_ai_gateway.adapters.onec.sidecar_client import (
     ODataSidecarClient,
     ODataSidecarError,
 )
-from business_ai_gateway.compatibility import AdapterProfile, CompatibilityStatus, OneCCapabilities
+from business_ai_gateway.compatibility import (
+    AdapterProfile,
+    CapabilityUnsupported,
+    CompatibilityStatus,
+    OneCCapabilities,
+)
 from business_ai_gateway.models import Source
 from business_ai_gateway.settings import Settings
 
@@ -180,6 +185,168 @@ async def test_sidecar_client_normalizes_count_and_keyed_read():
         assert transport.requests[2]["register_method"] == "turnovers"
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_sidecar_client_fetches_source_scoped_register_capability_profile():
+    requests = []
+    profile = {
+        "schema_version": 1,
+        "source_id": "source-1",
+        "evidence_source": "live-metadata",
+        "metadata_fingerprint": "a" * 64,
+        "registers": [{
+            "entity_set": "AccountingRegister_Хозрасчетный",
+            "register_kind": "Accounting",
+            "methods": {
+                "drCrTurnovers": {
+                    "available": True,
+                    "evidence": {
+                        "kind": "metadata-get-function-import",
+                        "function_import": "DrCrTurnovers",
+                    },
+                }
+            },
+        }],
+    }
+
+    async def respond(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                **envelope(),
+                "operation": "register_capabilities",
+                "data": [],
+                "capability_profile": profile,
+                "page": {"returned": 0, "has_more": False, "truncated": False},
+            },
+        )
+
+    client = ODataSidecarClient(
+        base_url="http://odata-sidecar:8765",
+        token="t" * 48,
+        timeout_seconds=2,
+        max_response_bytes=10000,
+        max_rows=200,
+        transport=httpx.MockTransport(respond),
+    )
+    try:
+        result = await client.register_capabilities(
+            source(), username="readonly", password="secret"
+        )
+        assert result == profile
+        assert str(requests[0].url) == "http://odata-sidecar:8765/v1/capabilities/registers"
+        assert json.loads(requests[0].content) == {
+            "source_id": "source-1",
+            "base_url": source().base_url,
+            "username": "readonly",
+            "password": "secret",
+        }
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_sidecar_client_returns_stable_capability_unsupported_error():
+    client = ODataSidecarClient(
+        base_url="http://sidecar",
+        token="s" * 48,
+        timeout_seconds=2,
+        max_response_bytes=10000,
+        max_rows=200,
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(422, json={"error": {"code": "CAPABILITY_UNSUPPORTED"}})
+        ),
+    )
+    try:
+        with pytest.raises(CapabilityUnsupported, match="CAPABILITY_UNSUPPORTED"):
+            await client.register_read(
+                source(),
+                username="readonly",
+                password="secret",
+                register_set="AccountingRegister_Хозрасчетный",
+                method="drCrTurnovers",
+                arguments={"Period": {"from": "2025-01-01T00:00:00Z"}},
+                top=10,
+            )
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_adapter_requires_source_capability_evidence_before_register_call():
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+
+    register_source = replace(
+        source(), entity_allow_patterns=("AccountingRegister_*",)
+    )
+
+    class Secrets:
+        async def get(self, ref):
+            return "service-user" if ref == "onec-user" else "service-password"
+
+    sidecar = type("Sidecar", (), {"register_read": AsyncMock(return_value={"value": []})})()
+    adapter = OneCAdapter(
+        Settings(require_metadata_entity=False),
+        Secrets(),
+        object(),
+        sidecar,
+    )
+
+    def capabilities(register_capabilities):
+        return OneCCapabilities(
+            source_id=register_source.id,
+            platform_version=None,
+            metadata_fingerprint="a" * 64,
+            metadata_supported=True,
+            json_supported=True,
+            atom_supported=False,
+            expand_supported=None,
+            entity_set_count=1,
+            adapter_profile=AdapterProfile.ODATA_JSON_V3,
+            compatibility_status=CompatibilityStatus.SUPPORTED,
+            evidence={"metadata": "ok"},
+            register_capabilities=register_capabilities,
+        )
+
+    missing = {
+        "evidence_source": "live-metadata",
+        "metadata_fingerprint": "a" * 64,
+        "registers": [{
+            "entity_set": "AccountingRegister_Хозрасчетный",
+            "methods": {"drCrTurnovers": {"available": False}},
+        }],
+    }
+    adapter._capabilities[register_source.id] = capabilities(missing)
+    with pytest.raises(CapabilityUnsupported, match="CAPABILITY_UNSUPPORTED"):
+        await adapter.register_read(
+            register_source,
+            register_set="AccountingRegister_Хозрасчетный",
+            method="drCrTurnovers",
+            arguments={"Period": {"from": "2025-01-01T00:00:00Z"}},
+            top=10,
+        )
+    sidecar.register_read.assert_not_awaited()
+
+    confirmed = {
+        **missing,
+        "registers": [{
+            "entity_set": "AccountingRegister_Хозрасчетный",
+            "methods": {"drCrTurnovers": {"available": True}},
+        }],
+    }
+    adapter._capabilities[register_source.id] = capabilities(confirmed)
+    result = await adapter.register_read(
+        register_source,
+        register_set="AccountingRegister_Хозрасчетный",
+        method="drCrTurnovers",
+        arguments={"Period": {"from": "2025-01-01T00:00:00Z"}},
+        top=10,
+    )
+    assert result == {"value": []}
+    sidecar.register_read.assert_awaited_once()
 
 
 @pytest.mark.asyncio

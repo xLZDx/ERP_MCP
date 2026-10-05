@@ -99,6 +99,8 @@ Rule: do not reimplement the protocol.
 Deliver:
 - pin/integrate approved `@1c-odata/client` + metadata engine or equivalent pinned sidecar;
 - read-only wrapper/contract;
+- per-source register virtual-table capability profile from live metadata/probe/profile evidence;
+- deny unconfirmed operations with stable `CAPABILITY_UNSUPPORTED` and persist evidence;
 - bounded query/entity/count/register operations;
 - output shaping/truncation;
 - timeout/cancellation;

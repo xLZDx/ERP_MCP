@@ -149,7 +149,9 @@ test('register reads use only an allowlisted pinned read method with bounded arg
 <edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" Version="1.0">
   <edmx:DataServices m:DataServiceVersion="3.0" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
     <Schema Namespace="StandardODATA" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+      <EntityType Name="AccumulationRegister_Inventory"><Key><PropertyRef Name="Ref_Key"/></Key><Property Name="Ref_Key" Type="Edm.Guid" Nullable="false"/></EntityType>
       <EntityContainer Name="StandardODATA">
+        <EntitySet Name="AccumulationRegister_Inventory" EntityType="StandardODATA.AccumulationRegister_Inventory"/>
         <FunctionImport Name="Turnovers" IsBindable="true" m:HttpMethod="GET">
           <Parameter Name="bindingParameter" Type="StandardODATA.AccumulationRegister_Inventory"/>
         </FunctionImport>
@@ -192,8 +194,8 @@ test('register reads use only an allowlisted pinned read method with bounded arg
       register_method: 'drCrTurnovers', register_args: {},
       select: [], filter: null, orderby: [], expand: [],
     }));
-    assert.equal(mutation.status, 400);
-    assert.deepEqual(await mutation.json(), { error: { code: 'REGISTER_METHOD_NOT_ALLOWED' } });
+    assert.equal(mutation.status, 422);
+    assert.deepEqual(await mutation.json(), { error: { code: 'CAPABILITY_UNSUPPORTED' } });
 
     const unbounded = await post(base, requestBody({
       operation: 'register_read', register_set: 'AccumulationRegister_Inventory',
@@ -377,8 +379,163 @@ test('the pinned client performs a real read-only OData register request through
         select: [], filter: null, orderby: [], expand: [],
       }));
       assert.equal(unsupported.status, 422);
-      assert.deepEqual(await unsupported.json(), { error: { code: 'REGISTER_CAPABILITY_UNCONFIRMED' } });
+      assert.deepEqual(await unsupported.json(), { error: { code: 'CAPABILITY_UNSUPPORTED' } });
       assert.equal(seen.length, 2, 'unpublished function must not reach the OData data endpoint');
+      const drCrWrongRegister = await post(base, requestBody({
+        operation: 'register_read',
+        base_url: `http://${authority}/odata/standard.odata`,
+        register_set: 'AccumulationRegister_Inventory',
+        register_method: 'drCrTurnovers',
+        register_args: { Period: { from: '2025-01-01T00:00:00Z' } },
+        select: [], filter: null, orderby: [], expand: [],
+      }));
+      assert.equal(drCrWrongRegister.status, 422);
+      assert.deepEqual(await drCrWrongRegister.json(), { error: { code: 'CAPABILITY_UNSUPPORTED' } });
+      assert.equal(seen.length, 2, 'type-inapplicable virtual table must not reach the data endpoint');
+    });
+  } finally {
+    upstream.close();
+    await once(upstream, 'close');
+  }
+});
+
+test('DrCrTurnovers is advertised and invoked only when the exact live binding is present', async () => {
+  const seen = [];
+  const metadata = `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" Version="1.0">
+  <edmx:DataServices m:DataServiceVersion="3.0" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+    <Schema Namespace="StandardODATA" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+      <EntityType Name="AccountingRegister_Хозрасчетный"><Key><PropertyRef Name="Ref_Key"/></Key><Property Name="Ref_Key" Type="Edm.Guid" Nullable="false"/></EntityType>
+      <EntityContainer Name="StandardODATA" m:IsDefaultEntityContainer="true">
+        <EntitySet Name="AccountingRegister_Хозрасчетный" EntityType="StandardODATA.AccountingRegister_Хозрасчетный"/>
+        <FunctionImport Name="DrCrTurnovers" IsBindable="true" m:HttpMethod="GET" ReturnType="Collection(StandardODATA.AccountingRegister_Хозрасчетный)">
+          <Parameter Name="bindingParameter" Type="StandardODATA.AccountingRegister_Хозрасчетный"/>
+        </FunctionImport>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`;
+  const upstream = createServer((req, res) => {
+    seen.push(req.url);
+    if (req.url === '/odata/standard.odata/$metadata') {
+      res.writeHead(200, { 'content-type': 'application/xml' });
+      res.end(metadata);
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ value: [{ Turnover: '8' }] }));
+  });
+  upstream.listen(0, '127.0.0.1');
+  await once(upstream, 'listening');
+  const authority = `127.0.0.1:${upstream.address().port}`;
+  const handler = createHandler({ token: TOKEN, allowedHosts: [authority] });
+  try {
+    await withServer(handler, async (base) => {
+      const capabilityResponse = await fetch(`${base}/v1/capabilities/registers`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          source_id: 'source-1',
+          base_url: `http://${authority}/odata/standard.odata`,
+          username: 'readonly',
+          password: 'secret-value',
+        }),
+      });
+      assert.equal(capabilityResponse.status, 200);
+      const capabilityEnvelope = await capabilityResponse.json();
+      const profile = capabilityEnvelope.capability_profile;
+      assert.equal(profile.evidence_source, 'live-metadata');
+      assert.match(profile.metadata_fingerprint, /^[0-9a-f]{64}$/u);
+      assert.equal(profile.registers[0].entity_set, 'AccountingRegister_Хозрасчетный');
+      assert.equal(profile.registers[0].methods.drCrTurnovers.available, true);
+      assert.equal(profile.registers[0].methods.drCrTurnovers.evidence.function_import, 'DrCrTurnovers');
+
+      const readResponse = await post(base, requestBody({
+        operation: 'register_read',
+        base_url: `http://${authority}/odata/standard.odata`,
+        entity_set: 'AccountingRegister_Хозрасчетный',
+        register_set: 'AccountingRegister_Хозрасчетный',
+        register_method: 'drCrTurnovers',
+        register_args: {
+          Period: { from: '2025-01-01T00:00:00Z', to: '2025-01-31T23:59:59Z' },
+        },
+        select: [], filter: null, orderby: [], expand: [],
+      }));
+      const readEnvelope = await readResponse.json();
+      assert.equal(readResponse.status, 200, JSON.stringify(readEnvelope));
+      assert.deepEqual(readEnvelope.data, [{ Turnover: '8' }]);
+      assert.equal(seen.length, 2, 'metadata then one pinned-client GET; no speculative alternatives');
+      assert.equal(seen[0], '/odata/standard.odata/$metadata');
+      assert.match(decodeURIComponent(seen[1]), /AccountingRegister_Хозрасчетный\/DrCrTurnovers\(/u);
+    });
+  } finally {
+    upstream.close();
+    await once(upstream, 'close');
+  }
+});
+
+test('missing DrCrTurnovers produces negative source evidence and no speculative OData call', async () => {
+  const seen = [];
+  const metadata = `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" Version="1.0">
+  <edmx:DataServices m:DataServiceVersion="3.0" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+    <Schema Namespace="StandardODATA" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+      <EntityType Name="AccountingRegister_Ledger"><Key><PropertyRef Name="Ref_Key"/></Key><Property Name="Ref_Key" Type="Edm.Guid" Nullable="false"/></EntityType>
+      <EntityContainer Name="StandardODATA" m:IsDefaultEntityContainer="true">
+        <EntitySet Name="AccountingRegister_Ledger" EntityType="StandardODATA.AccountingRegister_Ledger"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`;
+  const upstream = createServer((req, res) => {
+    seen.push(req.url);
+    if (req.url === '/odata/standard.odata/$metadata') {
+      res.writeHead(200, { 'content-type': 'application/xml' });
+      res.end(metadata);
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ value: [{ ShouldNotBeRead: true }] }));
+  });
+  upstream.listen(0, '127.0.0.1');
+  await once(upstream, 'listening');
+  const authority = `127.0.0.1:${upstream.address().port}`;
+  const handler = createHandler({ token: TOKEN, allowedHosts: [authority] });
+  try {
+    await withServer(handler, async (base) => {
+      const capabilitiesResponse = await fetch(`${base}/v1/capabilities/registers`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          source_id: 'source-1',
+          base_url: `http://${authority}/odata/standard.odata`,
+          username: 'readonly',
+          password: 'secret-value',
+        }),
+      });
+      const capabilityEnvelope = await capabilitiesResponse.json();
+      assert.equal(capabilitiesResponse.status, 200);
+      assert.equal(
+        capabilityEnvelope.capability_profile.registers[0].methods.drCrTurnovers.available,
+        false,
+      );
+      assert.equal(
+        capabilityEnvelope.capability_profile.registers[0].methods.drCrTurnovers.evidence.kind,
+        'metadata-function-import-absent-or-not-read-only',
+      );
+
+      const response = await post(base, requestBody({
+        operation: 'register_read',
+        base_url: `http://${authority}/odata/standard.odata`,
+        entity_set: 'AccountingRegister_Ledger',
+        register_set: 'AccountingRegister_Ledger',
+        register_method: 'drCrTurnovers',
+        register_args: { Period: { from: '2025-01-01T00:00:00Z' } },
+        select: [], filter: null, orderby: [], expand: [],
+      }));
+      assert.equal(response.status, 422);
+      assert.deepEqual(await response.json(), { error: { code: 'CAPABILITY_UNSUPPORTED' } });
+      assert.deepEqual(seen, ['/odata/standard.odata/$metadata']);
     });
   } finally {
     upstream.close();

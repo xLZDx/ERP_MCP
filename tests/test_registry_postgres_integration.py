@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import time
 import uuid
@@ -321,6 +322,24 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
                 adapter_profile=AdapterProfile.ODATA_JSON_V3,
                 compatibility_status=CompatibilityStatus.SUPPORTED,
                 evidence={"metadata": "ok"},
+                register_capabilities={
+                    "schema_version": 1,
+                    "source_id": source_id,
+                    "evidence_source": "live-metadata",
+                    "metadata_fingerprint": fingerprint,
+                    "registers": [{
+                        "entity_set": "AccountingRegister_Хозрасчетный",
+                        "methods": {
+                            "drCrTurnovers": {
+                                "available": True,
+                                "evidence": {
+                                    "kind": "metadata-get-function-import",
+                                    "function_import": "DrCrTurnovers",
+                                },
+                            }
+                        },
+                    }],
+                },
             )
 
         initial = await registry.save_capabilities(capability("a" * 64))
@@ -348,6 +367,12 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
         )
         assert acknowledged["metadata_fingerprint"] == "b" * 64
         assert acknowledged["drift_acknowledged_at"] is not None
+        register_profile = acknowledged["register_capabilities_json"]
+        if isinstance(register_profile, str):
+            register_profile = json.loads(register_profile)
+        assert register_profile["evidence_source"] == "live-metadata"
+        assert register_profile["metadata_fingerprint"] == "b" * 64
+        assert register_profile["registers"][0]["methods"]["drCrTurnovers"]["available"] is True
 
         await conn.execute("RESET ROLE")
         stable = await registry.save_capabilities(capability("b" * 64))
