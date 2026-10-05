@@ -137,14 +137,14 @@ Last updated: 2026-10-06
   integration `6/6`, Ruff, compileall and Bandit pass. A/R and A/P tools expose point-in-time mapped
   balances only, not aging. Inventory movement rows are now source/company profile-mapped, timezone
   normalized, signed using confirmed Receipt/Expense literals, and denied if live metadata lacks the
-  exact EntitySet. Cash movements, AR/AP aging,
-  tax,
-  posting trace,
-  and real native-report reconciliation remain open.
+  exact EntitySet. The profile-gated `accounting_posting_rows` listing checks the exact register and
+  all selected/company fields against live metadata; it is not a complete trace or native report.
+  Cash movements, AR/AP aging, tax, posting amount semantics/full trace, and real native-report
+  reconciliation remain open.
 - P5 L1 testbed work is on `phase/p5-real1c-testbed`, stacked on P4 in draft PR #3. Fake1C loads a
   versioned deterministic seed including inventory movement records and exposes semantic read
   fixture EntitySets; eleven scenario invariants are machine-checked, and synthetic results are
-  explicitly barred from native-1C reconciliation evidence. Latest local suite: 119 passed, 7
+  explicitly barred from native-1C reconciliation evidence. Latest local suite: 121 passed, 7
   skipped; hosted CI run `37383877277` passed
   both jobs. Real L2/L3 seed import, snapshots and native reports remain external integration work.
 - P6 is in progress on `phase/p6-rsv-bridge-boundary`, stacked on P5 in draft PR #4. The pinned

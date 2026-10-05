@@ -14,6 +14,7 @@ import asyncpg
 
 from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
@@ -24,6 +25,7 @@ from business_ai_gateway.semantic import (
     find_configuration_preset,
     require_profile_capabilities,
     validate_account_turnovers_mapping,
+    validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
@@ -43,6 +45,7 @@ CONCEPTS = (
     "inventory",
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -250,6 +253,16 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         if required is not None and required != expected:
             raise ValueError("inventory capability dependency must match the exact mapping")
         mapping["required_register_capabilities"] = expected
+    elif args.concept == INVENTORY_MOVEMENTS_CONCEPT:
+        validate_inventory_movements_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError("movement record-set mapping cannot claim virtual-table methods")
+    elif args.concept == ACCOUNTING_POSTING_ROWS_CONCEPT:
+        validate_accounting_posting_rows_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError(
+                "accounting posting record-set mapping cannot claim virtual-table methods"
+            )
     elif args.concept == BANK_BALANCE_CONCEPT:
         entity_set, method = validate_bank_balance_mapping(mapping)
         required = mapping.get("required_register_capabilities")
@@ -358,6 +371,12 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
             validate_inventory_movements_mapping(mapping)
             if mapping.get("required_register_capabilities", []) != []:
                 raise ValueError("movement record-set mapping cannot claim virtual-table methods")
+        elif args.concept == ACCOUNTING_POSTING_ROWS_CONCEPT:
+            validate_accounting_posting_rows_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError(
+                    "accounting posting record-set mapping cannot claim virtual-table methods"
+                )
         elif args.concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)
             if mapping.get("required_register_capabilities") != [
@@ -372,9 +391,11 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
                 raise ValueError("settlement capability dependency does not match its operation")
         previous_evidence = _json_value(mapping_row["evidence_json"])
         combined_evidence = {
-            "evidence_refs": list(dict.fromkeys(
-                [*previous_evidence.get("evidence_refs", []), *evidence["evidence_refs"]]
-            )),
+            "evidence_refs": list(
+                dict.fromkeys(
+                    [*previous_evidence.get("evidence_refs", []), *evidence["evidence_refs"]]
+                )
+            ),
             "notes": evidence["notes"] or previous_evidence.get("notes", ""),
         }
         await conn.execute(
@@ -416,9 +437,7 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
     evidence_input = _read_object(args.evidence_file)
     cases = validate_native_reconciliation_evidence(evidence_input)
     validation_evidence = {
-        "native_reconciliation_cases": [
-            {**case, "status": "PASS"} for case in cases
-        ],
+        "native_reconciliation_cases": [{**case, "status": "PASS"} for case in cases],
         "evidence_manifest_fingerprint": canonical_fingerprint(evidence_input),
     }
     async with conn.transaction():
@@ -524,7 +543,9 @@ async def _run(args: argparse.Namespace) -> None:
     settings = Settings()
     dsn = settings.admin_database_url
     if settings.environment == "production" and not dsn:
-        raise RuntimeError("production semantic profile administration requires BAG_ADMIN_DATABASE_URL")
+        raise RuntimeError(
+            "production semantic profile administration requires BAG_ADMIN_DATABASE_URL"
+        )
     conn = await asyncpg.connect(dsn or settings.database_url)
     try:
         if args.command == "create":

@@ -9,6 +9,7 @@ from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
 from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
@@ -21,6 +22,7 @@ from .semantic import (
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
+    validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
@@ -113,9 +115,7 @@ class Registry:
         source.validate_runtime(production=self.production)
         return source
 
-    async def list_allowed_companies(
-        self, principal: Principal, source_id: str
-    ) -> list[Company]:
+    async def list_allowed_companies(self, principal: Principal, source_id: str) -> list[Company]:
         """List only enabled companies covered by an active source/company grant."""
         rows = await self.db.require_pool().fetch(
             """
@@ -274,17 +274,22 @@ class Registry:
             raise SemanticProfileUnavailable(
                 f"no validated {concept} profile exists for this exact source/company"
             )
-        if row["drift_status"] != "STABLE" or row["metadata_fingerprint"] != row[
-            "current_metadata_fingerprint"
-        ]:
-            raise SemanticProfileStale("account-turnover profile is stale or source drift is unacknowledged")
+        if (
+            row["drift_status"] != "STABLE"
+            or row["metadata_fingerprint"] != row["current_metadata_fingerprint"]
+        ):
+            raise SemanticProfileStale(
+                "account-turnover profile is stale or source drift is unacknowledged"
+            )
         capability_profile = row["register_capabilities_json"]
         if isinstance(capability_profile, str):
             capability_profile = json.loads(capability_profile)
         if canonical_fingerprint(capability_profile) != row["capability_fingerprint"]:
             raise SemanticProfileStale("account-turnover capability evidence changed")
         if row["mapping_status"] != "CONFIRMED" or row["confidence"] != "HIGH":
-            raise SemanticMappingUnconfirmed("account-turnover mapping has not been operator-confirmed")
+            raise SemanticMappingUnconfirmed(
+                "account-turnover mapping has not been operator-confirmed"
+            )
         mapping = row["mapping_json"]
         if isinstance(mapping, str):
             mapping = json.loads(mapping)
@@ -312,6 +317,12 @@ class Registry:
             if required:
                 raise SemanticMappingUnconfirmed(
                     "inventory movement record-set mapping cannot claim virtual-table methods"
+                )
+        elif concept == ACCOUNTING_POSTING_ROWS_CONCEPT:
+            validate_accounting_posting_rows_mapping(mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "accounting posting record-set mapping cannot claim virtual-table methods"
                 )
         elif concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)
@@ -358,12 +369,8 @@ class Registry:
             "register_capabilities": capability_profile,
         }
 
-    async def require_account_turnovers_mapping(
-        self, source_id: str, company_id: UUID
-    ) -> dict:
-        return await self.require_semantic_mapping(
-            source_id, company_id, ACCOUNT_TURNOVERS_CONCEPT
-        )
+    async def require_account_turnovers_mapping(self, source_id: str, company_id: UUID) -> dict:
+        return await self.require_semantic_mapping(source_id, company_id, ACCOUNT_TURNOVERS_CONCEPT)
 
     async def save_capabilities(self, capabilities: OneCCapabilities):
         row = await self.db.require_pool().fetchrow(
@@ -435,8 +442,6 @@ class Registry:
                 row["drift_detected_at"].isoformat() if row["drift_detected_at"] else None
             ),
             "drift_acknowledged_at": (
-                row["drift_acknowledged_at"].isoformat()
-                if row["drift_acknowledged_at"]
-                else None
+                row["drift_acknowledged_at"].isoformat() if row["drift_acknowledged_at"] else None
             ),
         }

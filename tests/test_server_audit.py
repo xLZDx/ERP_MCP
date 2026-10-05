@@ -85,9 +85,7 @@ async def test_source_acl_denial_is_audited_and_stops_before_rate_limit():
 
 @pytest.mark.asyncio
 async def test_redis_outage_is_audited_as_denial_and_never_calls_source():
-    mcp, audit, rate_limit, onec = create_mcp(
-        rate_limit_error=ConnectionError("redis unavailable")
-    )
+    mcp, audit, rate_limit, onec = create_mcp(rate_limit_error=ConnectionError("redis unavailable"))
 
     with pytest.raises(UnexpectedToolError):
         await mcp.call_tool("source_health", {"source_id": "source-1"})
@@ -141,9 +139,7 @@ async def test_account_turnovers_uses_confirmed_mapping_and_enforces_company_sco
             "profile_fingerprint": "sha256:profile",
         }
     )
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     audit = RecordingAudit()
     onec = SimpleNamespace(
@@ -245,9 +241,7 @@ async def test_account_turnovers_company_denial_stops_before_1c():
 async def test_account_turnovers_unconfirmed_mapping_is_audited_and_not_dispatched():
     company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_account_turnovers_mapping = AsyncMock(
         side_effect=SemanticMappingUnconfirmed("mapping is only a candidate")
@@ -304,9 +298,7 @@ async def test_sales_documents_uses_only_confirmed_profile_entity_and_company_fi
         "order_by": "Date",
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": "sha256:sales-profile"}
@@ -385,9 +377,7 @@ async def test_inventory_balance_uses_exact_profile_and_point_in_time_company_co
         ],
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": "sha256:inventory-profile"}
@@ -466,9 +456,7 @@ async def test_inventory_movements_uses_live_entity_and_company_timezone_profile
         "order_by": "Period",
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": "sha256:movement-profile"}
@@ -553,9 +541,7 @@ async def test_inventory_movements_denies_entity_absent_from_live_metadata():
         "order_by": "Period",
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": "sha256:profile"}
@@ -596,12 +582,108 @@ async def test_inventory_movements_denies_entity_absent_from_live_metadata():
 
 
 @pytest.mark.asyncio
+async def test_accounting_posting_rows_requires_live_entity_and_uses_profile_projection():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    entity_set = "AccountingRegister_Хозрасчетный"
+    mapping = {
+        "entity_set": entity_set,
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period",
+            "recorder_ref": "Recorder",
+            "line_number": "LineNumber",
+            "active": "Active",
+            "account_dr_ref": "AccountDr_Key",
+            "account_cr_ref": "AccountCr_Key",
+        },
+        "source_timezone": "Europe/Chisinau",
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:posting-profile"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    row = {field: f"value:{field}" for field in mapping["output_fields"].values()}
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        metadata=AsyncMock(
+            return_value=SimpleNamespace(
+                names={entity_set},
+                entities=[
+                    SimpleNamespace(
+                        name=entity_set,
+                        properties=tuple(mapping["output_fields"].values()) + ("Организация_Key",),
+                    )
+                ],
+            )
+        ),
+        read=AsyncMock(return_value={"value": [row], "page": {"has_more": False}}),
+    )
+    mcp = build_mcp(
+        Settings(),
+        SimpleNamespace(
+            audit=audit, registry=registry, rate_limit=SimpleNamespace(check=AsyncMock()), onec=onec
+        ),
+    )
+    result = await mcp.call_tool(
+        "accounting_posting_rows",
+        {
+            "source_id": "source-1",
+            "company_id": str(company_id),
+            "start_period": "2026-04-01T00:00:00Z",
+            "end_period": "2026-04-02T00:00:00Z",
+        },
+    )
+    assert not result.is_error
+    payload = json.loads(result.content[0].text)
+    assert payload["value"][0]["account_dr_ref"] == "value:AccountDr_Key"
+    assert "not a native accounting report reconciliation" in payload["warnings"][0]
+    assert onec.read.await_args.kwargs["entity_set"] == entity_set
+    assert onec.read.await_args.kwargs["orderby"] == "Period asc,Recorder asc,LineNumber asc"
+    assert audit.events[-1]["outcome"] == "success"
+
+    onec.read.reset_mock()
+    onec.metadata = AsyncMock(
+        return_value=SimpleNamespace(
+            names={entity_set},
+            entities=[
+                SimpleNamespace(
+                    name=entity_set,
+                    properties=tuple(
+                        field
+                        for field in mapping["output_fields"].values()
+                        if field != "AccountCr_Key"
+                    )
+                    + ("Организация_Key",),
+                )
+            ],
+        )
+    )
+    with pytest.raises(UnexpectedToolError):
+        await mcp.call_tool(
+            "accounting_posting_rows",
+            {
+                "source_id": "source-1",
+                "company_id": str(company_id),
+                "start_period": "2026-04-01T00:00:00Z",
+                "end_period": "2026-04-02T00:00:00Z",
+            },
+        )
+    assert audit.events[-1]["detail_code"] == "CAPABILITY_UNSUPPORTED"
+    onec.read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unconfirmed_inventory_profile_is_audited_without_register_dispatch():
     company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         side_effect=SemanticMappingUnconfirmed("not confirmed")
@@ -659,9 +741,7 @@ async def test_bank_balance_uses_only_confirmed_profile_and_exact_source_registe
         ],
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": "sha256:bank-profile"}
@@ -675,7 +755,9 @@ async def test_bank_balance_uses_only_confirmed_profile_and_exact_source_registe
         capabilities=AsyncMock(return_value=capabilities),
         register_read=AsyncMock(
             return_value={
-                "value": [{"БанковскийСчет_Key": "bank-1", "Валюта_Key": "MDL", "СуммаBalance": "5"}],
+                "value": [
+                    {"БанковскийСчет_Key": "bank-1", "Валюта_Key": "MDL", "СуммаBalance": "5"}
+                ],
                 "page": {"has_more": False},
             }
         ),
@@ -741,9 +823,7 @@ async def test_settlement_balance_uses_company_scoped_confirmed_mapping(tool, co
         "required_register_capabilities": [{"entity_set": register, "method": "Balance"}],
     }
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         return_value={"mapping": mapping, "profile_fingerprint": f"sha256:{concept}"}
@@ -757,7 +837,9 @@ async def test_settlement_balance_uses_company_scoped_confirmed_mapping(tool, co
         capabilities=AsyncMock(return_value=capabilities),
         register_read=AsyncMock(
             return_value={
-                "value": [{"Контрагент_Key": "party-1", "Договор_Key": "deal-1", "СуммаBalance": "9"}]
+                "value": [
+                    {"Контрагент_Key": "party-1", "Договор_Key": "deal-1", "СуммаBalance": "9"}
+                ]
             }
         ),
     )
@@ -807,9 +889,7 @@ async def test_settlement_balance_uses_company_scoped_confirmed_mapping(tool, co
 async def test_unconfirmed_settlement_mapping_is_denied_before_register_read(tool, concept):
     company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
     registry = TestRegistry()
-    registry.require_company = AsyncMock(
-        return_value=SimpleNamespace(external_ref=str(company_id))
-    )
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
         side_effect=SemanticMappingUnconfirmed("mapping is not confirmed")

@@ -307,3 +307,12 @@
   for receipt/expense sign reconciliation. Latest synthetic seed fingerprint:
   `sha256:e3dada8693b85ce7fd4571a9823873b84caaef536938b961c5e2b2885f0450d8`; it remains synthetic,
   not source capability or native-report evidence.
+- Added a profile-gated `accounting.posting_rows` read slice after reviewing pinned
+  `evilbruce666/1c-odata-mcp` at `dc6b6a1358c7e65e3cfb45c22e8157d1479ab71e`. Upstream postings code
+  itself labels entity/field/filter assumptions LIVE-UNVERIFIED and its unit fixtures do not prove
+  native compatibility. ERP_MCP therefore accepts no inferred register name: the exact configured
+  EntitySet and every selected/company property must exist in current live metadata; missing fields
+  are audited as `CAPABILITY_UNSUPPORTED` before dispatch. The tool returns only the six reviewed
+  mapped fields and explicitly is not a full trace/report. Local full suite: 121 passed, 7 skipped;
+  Ruff, Bandit, compileall, pip-audit, scenario validation and diff-check pass. Native reconciliation
+  remains NOT RUN and P9 decision remains NOT_READY.

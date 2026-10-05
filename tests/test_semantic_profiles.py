@@ -7,6 +7,7 @@ from business_ai_gateway.semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     ACCOUNT_TURNOVERS_FIELDS,
     ACCOUNT_TURNOVERS_METHOD,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
     APROVODKA_SHA,
     BANK_BALANCE_CONCEPT,
     CONFIGURATION_PRESETS,
@@ -18,6 +19,7 @@ from business_ai_gateway.semantic import (
     SemanticProfileStale,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
+    build_accounting_posting_rows_query,
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
@@ -25,6 +27,7 @@ from business_ai_gateway.semantic import (
     build_settlement_balance_arguments,
     find_configuration_preset,
     normalize_account_turnovers,
+    normalize_accounting_posting_rows,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
@@ -33,6 +36,7 @@ from business_ai_gateway.semantic import (
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
+    validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
@@ -50,6 +54,44 @@ from scripts.semantic_profiles import (
 SOURCE_ID = "base-bp-001"
 COMPANY_ID = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
 METADATA_FINGERPRINT = "sha256:test-current"
+
+
+def test_accounting_posting_rows_are_exact_source_profile_driven():
+    mapping = {
+        "entity_set": "AccountingRegister_Хозрасчетный",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period",
+            "recorder_ref": "Recorder",
+            "line_number": "LineNumber",
+            "active": "Active",
+            "account_dr_ref": "AccountDr_Key",
+            "account_cr_ref": "AccountCr_Key",
+        },
+        "source_timezone": "Europe/Chisinau",
+    }
+    assert ACCOUNTING_POSTING_ROWS_CONCEPT == "accounting.posting_rows"
+    validate_accounting_posting_rows_mapping(mapping)
+    entity_set, select, filter_expr = build_accounting_posting_rows_query(
+        mapping,
+        company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        start_period="2026-04-01T23:00:00-04:00",
+        end_period="2026-04-02T02:00:00-04:00",
+    )
+    assert entity_set == mapping["entity_set"]
+    assert select == list(mapping["output_fields"].values())
+    assert "Period ge datetime'2026-04-02T06:00:00'" in filter_expr
+    assert "Period lt datetime'2026-04-02T09:00:00'" in filter_expr
+    raw = {field: f"value:{field}" for field in select}
+    assert normalize_accounting_posting_rows([raw], mapping) == [
+        {canonical: raw[field] for canonical, field in mapping["output_fields"].items()}
+    ]
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_accounting_posting_rows_mapping(
+            {**mapping, "entity_set": "AccountingRegister_*/Turnovers"}
+        )
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_accounting_posting_rows_mapping({**mapping, "source_timezone": "not/a-zone"})
 
 
 def test_preset_catalog_is_pinned_and_advisory_only():
@@ -198,7 +240,10 @@ def test_semantic_mapping_cannot_claim_an_unconfirmed_register_operation():
     capabilities["registers"][0]["methods"]["drCrTurnovers"].update(
         {
             "available": True,
-            "evidence": {"kind": "metadata-get-function-import", "metadata_fingerprint": METADATA_FINGERPRINT},
+            "evidence": {
+                "kind": "metadata-get-function-import",
+                "metadata_fingerprint": METADATA_FINGERPRINT,
+            },
         }
     )
     require_profile_capabilities(
@@ -217,7 +262,15 @@ def test_account_turnovers_mapping_is_explicit_and_company_scoped():
         "output_fields": dict(
             zip(
                 ACCOUNT_TURNOVERS_FIELDS,
-                ("Счет_Key", "НачальныйДт", "НачальныйКт", "ОборотДт", "ОборотКт", "КонечныйДт", "КонечныйКт"),
+                (
+                    "Счет_Key",
+                    "НачальныйДт",
+                    "НачальныйКт",
+                    "ОборотДт",
+                    "ОборотКт",
+                    "КонечныйДт",
+                    "КонечныйКт",
+                ),
                 strict=True,
             )
         ),
@@ -266,7 +319,10 @@ def test_account_turnovers_mapping_is_explicit_and_company_scoped():
             "closing_credit": 6,
         }
     ]
-    string_scope = {**mapping, "company_scope": {"field": "Организация_Code", "value_type": "string"}}
+    string_scope = {
+        **mapping,
+        "company_scope": {"field": "Организация_Code", "value_type": "string"},
+    }
     _, _, string_arguments = build_account_turnovers_arguments(
         string_scope,
         company_external_ref="O'Brien",
@@ -401,9 +457,7 @@ def test_settlement_balance_uses_validated_period_company_and_field_mapping(conc
         [{"Контрагент_Key": "party-1", "Договор_Key": "contract-1", "СуммаBalance": "8"}],
         mapping,
         concept,
-    ) == [
-        {"counterparty_ref": "party-1", "contract_ref": "contract-1", "amount": "8"}
-    ]
+    ) == [{"counterparty_ref": "party-1", "contract_ref": "contract-1", "amount": "8"}]
     with pytest.raises(SemanticMappingUnconfirmed):
         validate_settlement_balance_mapping("receivable", mapping)
 
@@ -426,24 +480,28 @@ def test_sales_and_purchase_document_maps_are_company_scoped_and_profile_project
             "order_by": "Date",
         }
         validate_document_mapping(concept, mapping)
-        assert build_company_filter(
-            mapping, "f3727523-9689-4b73-973e-9754360fd0a0"
-        ) == "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'"
-        assert normalize_document_rows(
-            [
-                {
-                    "Ref_Key": "doc-1",
-                    "Number": "0001",
-                    "Date": "2026-01-01T00:00:00",
-                    "Контрагент_Key": "party-1",
-                    "СуммаДокумента": "125.50",
-                    "ВалютаДокумента_Key": "currency-1",
-                    "Posted": True,
-                }
-            ],
-            mapping,
-            concept,
-        )[0]["amount"] == "125.50"
+        assert (
+            build_company_filter(mapping, "f3727523-9689-4b73-973e-9754360fd0a0")
+            == "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'"
+        )
+        assert (
+            normalize_document_rows(
+                [
+                    {
+                        "Ref_Key": "doc-1",
+                        "Number": "0001",
+                        "Date": "2026-01-01T00:00:00",
+                        "Контрагент_Key": "party-1",
+                        "СуммаДокумента": "125.50",
+                        "ВалютаДокумента_Key": "currency-1",
+                        "Posted": True,
+                    }
+                ],
+                mapping,
+                concept,
+            )[0]["amount"]
+            == "125.50"
+        )
 
 
 def test_document_map_restricts_entity_kind_and_rejects_unreviewed_filter():
@@ -462,9 +520,7 @@ def test_document_map_restricts_entity_kind_and_rejects_unreviewed_filter():
         "order_by": "Date",
     }
     with pytest.raises(SemanticMappingUnconfirmed):
-        validate_document_mapping(
-            "sales", {**mapping, "entity_set": "Catalog_Номенклатура"}
-        )
+        validate_document_mapping("sales", {**mapping, "entity_set": "Catalog_Номенклатура"})
     with pytest.raises(SemanticMappingUnconfirmed):
         validate_document_mapping("sales", {**mapping, "filter": "true"})
 
@@ -521,9 +577,7 @@ def test_inventory_balance_requires_confirmed_accumulation_balance_mapping():
 
 
 def test_inventory_balance_capability_is_bound_to_exact_live_source_and_metadata():
-    required = [
-        {"entity_set": "AccumulationRegister_ТоварыНаСкладах", "method": "Balance"}
-    ]
+    required = [{"entity_set": "AccumulationRegister_ТоварыНаСкладах", "method": "Balance"}]
     live = {
         "evidence_source": "live-metadata",
         "source_id": SOURCE_ID,
@@ -711,7 +765,11 @@ def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping
     with pytest.raises(CapabilityUnsupported):
         require_profile_capabilities(
             [{"entity_set": "AccountingRegister_Хозрасчетный", "method": "drCrTurnovers"}],
-            {"source_id": "other-base", "metadata_fingerprint": METADATA_FINGERPRINT, "registers": []},
+            {
+                "source_id": "other-base",
+                "metadata_fingerprint": METADATA_FINGERPRINT,
+                "registers": [],
+            },
             source_id=SOURCE_ID,
             metadata_fingerprint=METADATA_FINGERPRINT,
         )
@@ -722,7 +780,9 @@ def test_native_evidence_and_operator_cli_require_reconciliation_and_actor():
         {"case_id": f"case-{i}", "status": "PASS", "native_report_ref": f"reports/{i}"}
         for i in range(10)
     ]
-    assert len(validate_native_reconciliation_evidence({"native_reconciliation_cases": cases})) == 10
+    assert (
+        len(validate_native_reconciliation_evidence({"native_reconciliation_cases": cases})) == 10
+    )
     with pytest.raises(ValueError, match="status PASS"):
         validate_native_reconciliation_evidence(
             {"native_reconciliation_cases": [*cases[:-1], {**cases[-1], "status": "FAIL"}]}

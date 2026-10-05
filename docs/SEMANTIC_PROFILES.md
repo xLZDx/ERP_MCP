@@ -71,6 +71,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    offset and are converted into the mapped source timezone before building the bounded GET filter.
    Unknown record types or negative magnitudes fail closed; a preset candidate never selects the
    EntitySet, field names, timezone or direction values automatically.
+   For `accounting.posting_rows`, configure one exact live `AccountingRegister_*` record EntitySet,
+   company dimension, IANA source timezone and reviewed projection of period,
+   recorder, line number, active state and debit/credit account references. These values are never
+   inferred from upstream examples; no virtual-table operation is claimed.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -125,5 +129,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   net position.
 - `inventory_movements` reads register rows through the existing pinned OData adapter, applies the
   validated company/time filter, and normalizes receipt/expense to signed quantity deltas. This is
-  a data-plane slice, not native-report reconciliation. Cash movement, AR/AP aging, tax/VAT and
-  posting trace remain unavailable without their own source/company semantics.
+  a data-plane slice, not native-report reconciliation. Cash movement, AR/AP aging and tax/VAT
+  remain unavailable without their own source/company semantics.
+- `accounting_posting_rows` reads only profile-selected fields from an exact accounting register via
+  the existing read-only adapter. Both its EntitySet and all selected/company fields must exist in
+  live metadata. It is a bounded company/time listing, not a complete posting trace, accounting
+  report or native reconciliation; amount/resource semantics remain unavailable until separately
+  mapped and validated for that source/company.

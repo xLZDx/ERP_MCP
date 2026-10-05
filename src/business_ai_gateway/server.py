@@ -21,6 +21,7 @@ from .principal import current_principal
 from .runtime import Runtime
 from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
@@ -28,12 +29,14 @@ from .semantic import (
     RECEIVABLE_BALANCE_CONCEPT,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
+    build_accounting_posting_rows_query,
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
     build_settlement_balance_arguments,
     normalize_account_turnovers,
+    normalize_accounting_posting_rows,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
@@ -49,6 +52,13 @@ def _count_items(payload: Any) -> int | None:
     if isinstance(payload, dict) and isinstance(payload.get("value"), list):
         return len(payload["value"])
     return None
+
+
+def _metadata_entity_fields(metadata: Any, entity_set: str) -> set[str]:
+    for entity in getattr(metadata, "entities", ()):
+        if getattr(entity, "name", None) == entity_set:
+            return set(getattr(entity, "properties", ()))
+    return set()
 
 
 def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
@@ -79,9 +89,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise PermissionError("required scope missing")
         return principal
 
-    async def resolve_source(
-        principal, source_id, tool, started, query=None, company_id=None
-    ):
+    async def resolve_source(principal, source_id, tool, started, query=None, company_id=None):
         try:
             if company_id is None:
                 source = await runtime.registry.require_source(principal, source_id)
@@ -204,9 +212,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         """Check one authorized registered 1C OData source."""
         started = time.monotonic()
         principal = await ctx()
-        source = await resolve_source(
-            principal, source_id, "source_health", started
-        )
+        source = await resolve_source(principal, source_id, "source_health", started)
         try:
             result = await runtime.onec.health(source)
             await runtime.audit.write(
@@ -301,9 +307,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 query={"refresh": refresh},
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
-                detail_code=(
-                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
-                ),
+                detail_code=("METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None),
             )
             return result
         except Exception as exc:
@@ -366,9 +370,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         started = time.monotonic()
         principal = await ctx()
         query = {"contains": contains, "limit": limit}
-        source = await resolve_source(
-            principal, source_id, "onec_find_entities", started, query
-        )
+        source = await resolve_source(principal, source_id, "onec_find_entities", started, query)
         try:
             result = await runtime.onec.find(source, contains, limit)
             await runtime.audit.write(
@@ -730,6 +732,148 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             await runtime.audit.write(
                 principal=principal,
                 tool="inventory_movements",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def accounting_posting_rows(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read profile-mapped accounting register rows; this is not a reconciliation report."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": ACCOUNTING_POSTING_ROWS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "accounting_posting_rows",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, ACCOUNTING_POSTING_ROWS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_accounting_posting_rows_query(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            if entity_set not in metadata.names:
+                raise CapabilityUnsupported(
+                    "configured accounting register EntitySet is absent from live source metadata"
+                )
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            if (
+                not live_fields
+                or not set(select).issubset(live_fields)
+                or mapping["company_scope"]["field"] not in live_fields
+            ):
+                raise CapabilityUnsupported(
+                    "configured accounting posting fields are not confirmed by live source metadata"
+                )
+            result = await runtime.onec.read(
+                source,
+                entity_set=entity_set,
+                select=select,
+                filter_expr=filter_expr,
+                orderby=(
+                    f"{mapping['output_fields']['period']} asc,"
+                    f"{mapping['output_fields']['recorder_ref']} asc,"
+                    f"{mapping['output_fields']['line_number']} asc"
+                ),
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            value = normalize_accounting_posting_rows(raw_rows, mapping)
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(value),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ACCOUNTING_POSTING_ROWS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": value,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": ["Rows are not a native accounting report reconciliation."],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -1152,9 +1296,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "top": top,
             "skip": skip,
         }
-        source = await resolve_source(
-            principal, source_id, "onec_read", started, query
-        )
+        source = await resolve_source(principal, source_id, "onec_read", started, query)
         try:
             capabilities = await runtime.onec.capabilities(source)
             drift = await runtime.registry.save_capabilities(capabilities)
@@ -1183,9 +1325,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 response_bytes=response_bytes,
-                detail_code=(
-                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
-                ),
+                detail_code=("METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None),
             )
             return result
         except Exception as exc:
