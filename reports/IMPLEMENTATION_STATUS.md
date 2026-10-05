@@ -148,6 +148,9 @@ Last updated: 2026-10-06
   tool inventory, ping-only health/restart semantics and sanitized failures. Windows ACL/runbook
   added. No generic native query is proxied; company-scoped data routing and a real Windows/COM
   smoke remain open gates.
+- P7 legacy 8.2 is deliberately deferred in draft PR #5: repository review found no named 8.2
+  target or customer requirement. The GPL toolkit remains isolated-only; do not deploy it or
+  copy/link it into core without a concrete target and a fresh license/security review.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

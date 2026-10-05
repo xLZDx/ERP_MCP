@@ -186,7 +186,10 @@ Exit:
 
 ## P7 — 8.2 legacy route
 
-This phase is demand-driven.
+This phase is demand-driven. No concrete 1C 8.2 target or customer requirement is currently recorded,
+so P7 is explicitly deferred for the modern MVP; there is no GPL adapter deployment in this phase.
+Reopen only when onboarding identifies a real 8.2.13+ target and owner. Then perform license and
+isolation review before integration.
 
 If required:
 - keep GPL implementation/service isolated;

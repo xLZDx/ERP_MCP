@@ -235,3 +235,14 @@
   `CAPABILITY_UNSUPPORTED`.
 - Initial targeted tests: 9 passed; Ruff reported import/style findings, corrected before final
   verification. Full suite, hosted CI and Windows/COM smoke remain pending.
+
+## Step 32 — P7 legacy demand gate
+
+**Status:** deferred for modern MVP; no 8.2 target evidence exists.
+**Date:** 2026-10-06
+
+- Kept the GPL-3.0 1c-mcp-toolkit on the isolated-service-only path. No source or dependency from it
+  is added to ERP_MCP core.
+- Formalized the demand gate: reopen only for a named 1C 8.2.13+ target and accountable owner, then
+  do license/isolation/read-only review before deployment. This avoids shipping an unused legacy
+  route or claiming platform compatibility without a test target.
