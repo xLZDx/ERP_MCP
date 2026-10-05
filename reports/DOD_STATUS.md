@@ -10,7 +10,7 @@ STARTED` is used where implementation is still required before external evidence
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
 | D1 Build/dependencies | PARTIAL | At HEAD, local Ruff, compileall, Bandit, pip-audit pass; 42 tests pass/2 skip locally (PostgreSQL test needs CI DB). CI 37355876333 passed all workflow steps on current HEAD; pytest reports 43 passed/1 skipped. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
-| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL test covering enumeration, unscoped denial, deny precedence and live revocation passed in run 37355876333. End-to-end company data reads intentionally not exposed. |
+| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL test covering enumeration, unscoped denial, deny precedence and live revocation passed in run 37355876333. Runtime-role DML enforcement test is added and awaiting CI. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | GET/HEAD-only client; mutation/sidecar inventory evidence incomplete. |
 | D6 SSRF/transport | PARTIAL | Registered source, HTTPS production and redirect/path checks exist; DNS rebinding/egress proof incomplete. |
@@ -18,7 +18,7 @@ STARTED` is used where implementation is still required before external evidence
 | D8 Data plane | PARTIAL | Basic read path only; approved upstream sidecar operations and parity tests remain. |
 | D9 Accounting | NOT STARTED | Semantic layer not implemented; native 1C reconciliation not applicable yet. |
 | D10 Multi-company | PARTIAL | Company table and scoped grants/list/resolve exist; transaction-isolated PostgreSQL ACL integration test passed in CI; three-source tests and bounded fan-out remain. |
-| D11 Audit/provenance | PARTIAL | Append-only schema extended for request/company/adapter/policy/fingerprint/bytes/truncation; end-to-end field persistence and DB immutability tests remain. |
+| D11 Audit/provenance | PARTIAL | Append-only schema extended for request/company/adapter/policy/fingerprint/bytes/truncation; role-level append-only assertions added and awaiting CI; end-to-end field persistence across all paths remains. |
 | D12 Observability | NOT STARTED | Normative contract only. |
 | D13 Performance | PARTIAL | Basic response/row/timeout/rate bounds exist; load and capacity evidence absent. |
 | D14 Resilience | PARTIAL | Readiness and idempotent GET retries exist; Redis semantics, circuit breaking and failure injection remain. |

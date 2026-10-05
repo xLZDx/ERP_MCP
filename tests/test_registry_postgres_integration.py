@@ -92,3 +92,67 @@ async def test_postgres_company_grants_deny_precedence_and_live_revocation():
     finally:
         await tx.rollback()
         await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"role-test-{uuid.uuid4()}"
+    event_id = uuid.uuid4()
+    try:
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Role integration source',
+                   'https://onec.example.test/odata')
+            """,
+            source_id,
+        )
+        await conn.execute("SET LOCAL ROLE business_ai_app")
+
+        assert await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.sources', 'SELECT')"
+        )
+        assert await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.audit_events', 'INSERT')"
+        )
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.sources', 'UPDATE')"
+        )
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.audit_events', 'UPDATE')"
+        )
+        assert await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM bag.sources WHERE source_id=$1)", source_id
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.audit_events(
+              event_id, principal_subject, client_id, tool_name, outcome, duration_ms
+            ) VALUES($1, 'role-test', 'role-test', 'system_status', 'success', 0)
+            """,
+            event_id,
+        )
+
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE bag.audit_events SET detail_code='tampered' WHERE event_id=$1",
+                    event_id,
+                )
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute(
+                    "DELETE FROM bag.audit_events WHERE event_id=$1", event_id
+                )
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE bag.sources SET display_name='tampered' WHERE source_id=$1",
+                    source_id,
+                )
+    finally:
+        await tx.rollback()
+        await conn.close()

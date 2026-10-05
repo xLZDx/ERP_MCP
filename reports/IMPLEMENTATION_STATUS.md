@@ -28,8 +28,12 @@ Last updated: 2026-10-05
   including fresh PostgreSQL migrations, actual role privilege checker, pytest and pip-audit.
 - CI run `37355876333` passed on HEAD `3be80d981da03820e0b5bdc38dfd18fc7d26b070`, including the
   new PostgreSQL-backed registry ACL test: `43 passed, 1 skipped`.
-- Next: close remaining P1 evidence, especially runtime-role connection-level tests, audit
-  immutability/provenance integration, and scoped enforcement in an actual business-data adapter.
+- Current branch includes the later `main` README update; both resulting CI runs passed
+  (`37356469102`, `37356471488`). A second PostgreSQL integration case has now been added to exercise
+  `business_ai_app` permissions with `SET LOCAL ROLE`, including append-only audit enforcement; its
+  CI run is pending.
+- Next: verify the runtime-role integration test, add persistent audit provenance/error-path proof,
+  and continue toward scoped enforcement in a business-data adapter.
 - First unresolved gates: P1 / D3, D11 — runtime-role behavior, end-to-end company-filtered data
   access, and persisted audit contract are not fully proven against the normative model.
 - Local checks at HEAD: 42 passed, 2 skipped (PostgreSQL-only test skips without the CI DB URL);
