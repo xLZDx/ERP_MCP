@@ -11,6 +11,9 @@ secrets, audit or observability.
 Before implementation or architectural changes, read
 [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md).
 
+Interactive dashboard:
+[ERP_MCP Engineering Command Center](docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html).
+
 The v1.0 baseline freezes:
 - TDD;
 - Master Plan;
