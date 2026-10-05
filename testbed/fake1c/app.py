@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -11,7 +11,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 
-FIXTURE_PATH = Path(__file__).with_name("fixtures") / "seed.json"
+FIXTURE_PATH = pathlib.Path(__file__).with_name("fixtures") / "seed.json"
 
 METADATA = b"""<?xml version="1.0" encoding="utf-8"?>
 <edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
