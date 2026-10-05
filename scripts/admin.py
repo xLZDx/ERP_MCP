@@ -14,7 +14,7 @@ async def source_upsert(args, conn, *, production: bool):
     candidate = Source(
         id=args.source_id,
         project="onec",
-        kind="onec_odata",
+        kind="onec_auto",
         display_name=args.display_name,
         base_url=args.base_url,
         username_secret_ref=args.username_secret,
@@ -39,7 +39,7 @@ async def source_upsert(args, conn, *, production: bool):
           platform_version_hint, fallback_kind, fallback_base_url
         )
         VALUES(
-          $1,'onec','onec_odata',$2,$3,$4,$5,true,true,$6,$7,$8,$9,$10,$11
+          $1,'onec','onec_auto',$2,$3,$4,$5,true,true,$6,$7,$8,$9,$10,$11
         )
         ON CONFLICT(source_id) DO UPDATE SET
           display_name=EXCLUDED.display_name,
