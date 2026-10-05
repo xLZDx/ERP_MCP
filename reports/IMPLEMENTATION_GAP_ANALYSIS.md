@@ -1,7 +1,7 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Repository HEAD assessed: `3be80d981da03820e0b5bdc38dfd18fc7d26b070`
+Repository HEAD assessed: `e60ce7c73fb2474b672e020e17d5d88e4f86bf35`
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
@@ -14,13 +14,13 @@ contract is documented.
 
 ## Bootstrap snapshot
 
-- `origin/main`: `a6bb75294578067fb23792f4dd2ceb8f17ddf673` (local fetched ref; PR #1 reports base
-  SHA `0a52b9f771171db15e671f5d4a269e8ec93c2a30`, so verify base-ref synchronization before merge).
-- Working HEAD: `d7d058ae8d12b54670c084488afc1e200ca42c4c`.
+- `origin/main`: `a6bb75294578067fb23792f4dd2ceb8f17ddf673`; this commit has been merged into the
+  implementation branch to resolve the README conflict before merge.
+- Working HEAD: `e60ce7c73fb2474b672e020e17d5d88e4f86bf35`.
 - PR #1: OPEN, `bootstrap/1c-day1-production` → `main`.
-- CI: run `37355521467` passed on `1912314c055c4253bca38424f08393178f25c774`; current HEAD
+- CI: run `37355521467` passed on `1912314c055c4253bca38424f08393178f25c774`; code at parent
   `3be80d981da03820e0b5bdc38dfd18fc7d26b070` passed run `37355876333` (`43 passed, 1 skipped`),
-  including PostgreSQL ACL integration.
+  including PostgreSQL ACL integration. CI is pending on the merge commit.
 - No additional worktrees were listed. Existing workspace instruction files were preserved.
 - Local source and migration files show a small FastAPI/MCP control-plane prototype, PostgreSQL
   registry/grants/audit, Redis rate limits, file/env/GCP secrets, Fake1C, and a JSON/Atom OData probe

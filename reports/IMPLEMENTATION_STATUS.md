@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Working HEAD: `3be80d981da03820e0b5bdc38dfd18fc7d26b070`
+- Working HEAD: `e60ce7c73fb2474b672e020e17d5d88e4f86bf35` (includes current `origin/main`)
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
 - Existing local additions from workspace setup: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`,
@@ -40,7 +40,8 @@ Last updated: 2026-10-05
   available. Existing containers/databases were left untouched.
 - Real 1C evidence: none recorded. L2/L3 availability not yet determined.
 - External blockers: production IdP/secrets/deployment and real 1C pilot evidence remain unverified.
-- PR #1 base tracking: PR API reports base SHA `0a52b9f771171db15e671f5d4a269e8ec93c2a30`, while
-  current `origin/main` is `a6bb75294578067fb23792f4dd2ceb8f17ddf673`; investigate/update the PR
-  base before merge (do not merge automatically).
+- PR #1 had diverged from the updated `origin/main` by its README change; the latest main commit
+  `a6bb75294578067fb23792f4dd2ceb8f17ddf673` has now been merged locally into the branch to resolve
+  the PR conflict. The merge commit is pushed after report synchronization; merge itself remains
+  intentionally unperformed.
 - Readiness: `DEV READY` for the implemented bootstrap/control-plane scope only; no production claim.
