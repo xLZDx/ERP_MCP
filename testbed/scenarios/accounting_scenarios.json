@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {"id": "ar-overdue-30d", "question": "Receivables overdue more than 30 days", "expected_class": "receivables"},
+    {"id": "partial-payment", "question": "Invoice with partial payment remains open", "expected_class": "settlement"},
+    {"id": "overpayment", "question": "Customer overpayment is separated from receivable", "expected_class": "settlement"},
+    {"id": "unposted-document", "question": "Unposted document does not create accounting movement", "expected_class": "posting"},
+    {"id": "return", "question": "Return reduces the relevant movement", "expected_class": "inventory"},
+    {"id": "vat-mixed", "question": "Different VAT treatments remain distinguishable", "expected_class": "tax"},
+    {"id": "backdated-document", "question": "Backdated document appears in the correct accounting period", "expected_class": "period"},
+    {"id": "duplicate-counterparty", "question": "Potential duplicate counterparties can be identified", "expected_class": "anomaly"},
+    {"id": "cash-bank", "question": "Cash and bank movements remain separable", "expected_class": "cash"},
+    {"id": "account-turnover", "question": "Opening, turnover and closing values reconcile", "expected_class": "accounting"}
+  ]
+}
