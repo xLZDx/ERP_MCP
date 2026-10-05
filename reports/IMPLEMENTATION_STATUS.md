@@ -76,6 +76,10 @@ Last updated: 2026-10-05
   published port. Hosted CI with the new image smoke step is pending. This closes substantial P3
   implementation but not real-source parity, accounting semantics, company-scoped data reads, or
   production readiness.
+- P3 batch is committed locally as `df492e2` on `bootstrap/1c-day1-production`. A fresh local
+  CI-equivalent image smoke passed: health endpoint healthy, UID 10001, and no published ports.
+  Publishing was attempted but the environment could not resolve `github.com`; hosted CI remains
+  pending and the commit is not yet present on the remote PR branch.
 - Mandatory reuse audit re-read `docs/ADAPTER_CENSUS.md`, `docs/ADAPTER_INTAKE_PLAN.md`,
   `vendor/UPSTREAMS.md`, `vendor/intake.json`, ADR-0003 and inspected exact pinned OData register/key
   APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
