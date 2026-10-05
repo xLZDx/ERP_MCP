@@ -83,6 +83,7 @@ jobs:
       - run: ruff check .
       - run: bandit -q -r src
       - run: python -m compileall -q src scripts testbed
+      - run: python scripts/validate_scenarios.py
       - run: >-
           psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
           -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"

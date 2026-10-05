@@ -1,8 +1,8 @@
 # Definition of Done status
 
-Assessed 2026-10-06 against merged PR #1 (`8481c0e`) and P4 work on
-`phase/p4-semantic-accounting`. P4 is in draft PR #2; latest published inventory commit `90cd70c`
-has green hosted CI (run `37381909454`). Bank balance is not yet published.
+Assessed 2026-10-06 against merged PR #1 (`8481c0e`), P4 draft PR #2 and stacked P5 draft PR #3.
+Latest P4 settlement commit `17571de` passed hosted CI run `37383219137`; local P5 L1 work is pending
+its own hosted CI.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
@@ -10,13 +10,13 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Current local Python suite: 101 passed/7 skipped; disposable PostgreSQL 16 migrations 001–009, DB privilege policy and integration 6/6 pass; Ruff, compileall, Bandit, pip-audit and diff check pass. Pinned OData client 428 passed/1 skipped and metadata 53/53 from prior upstream verification. Hosted CI runs 37381909454 (inventory) and 37382615109 (bank) passed both jobs. Settlement extension CI is pending. |
+| D1 Build/dependencies | PARTIAL | Current local Python suite: 104 passed/7 skipped; disposable PostgreSQL 16 migrations 001–009, DB privilege policy and integration 6/6 pass; Ruff, compileall, Bandit, pip-audit and diff check pass. Pinned OData client 428 passed/1 skipped and metadata 53/53 from prior upstream verification. P4 hosted CI run 37383219137 passed both jobs. P5 CI is pending. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
-| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. Account, document and inventory reads now enforce exact source/company grants; multi-source and production IdP evidence remain. |
+| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. Account, document, inventory, bank and settlement reads enforce exact source/company grants; multi-source and production IdP evidence remain. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | Python transport remains GET/HEAD-only; sidecar exposes only upstream GET-backed query/key/count/register methods; mutation-shaped operation/method rejection covered by sidecar tests. Other adapter inventory and external zero-write proof remain. |
 | D6 SSRF/transport | PARTIAL | Registered source, exact host:port allowlist in sidecar, production HTTPS, bearer hop and redirect/path checks; DNS rebinding/egress proof incomplete. |
-| D7 Compatibility | PARTIAL | Existing JSON/Atom fingerprint/drift controls remain; migration 005 persists per-source register capability evidence. Exact-source metadata evidence gates method use; stale/missing confirmation denies. Hosted CI for inventory and bank passed; settlement extension pending. |
+| D7 Compatibility | PARTIAL | Existing JSON/Atom fingerprint/drift controls remain; migration 005 persists per-source register capability evidence. Exact-source metadata evidence gates method use; stale/missing confirmation denies. P4 hosted CI is green; real-source behavior remains. |
 | D8 Data plane | PARTIAL | Internal sidecar contract is documented and tested; pinned upstream routing implements query/key/count/constrained register reads; live register capability is revalidated before operation; DrCr unsupported negative and confirmed positive fixtures pass. All current account/document/inventory/bank/settlement reads use the existing pinned adapter path. Real-source behavior remains. |
 | D9 Accounting | PARTIAL | Source/company profile lifecycle requires explicit `CONFIRMED`/`HIGH` mapping, current capability/schema fingerprints and ten passing native-report cases; migration 008 stales a validated profile after mapping edits; migration 009 adds profile fingerprint to audit. Company-scoped account balance/turnovers, sales/purchase documents, inventory/bank balances and AR/AP point-in-time balances normalize reviewed fields and require exact live register `Balance` evidence where applicable. Cash movements, AR/AP aging, inventory movements, tax, posting trace, deterministic scenarios and real native reconciliation remain. |
 | D10 Multi-company | PARTIAL | Company table and scoped grants/list/resolve exist; transaction-isolated PostgreSQL ACL integration test passed in CI; three-source tests and bounded fan-out remain. |

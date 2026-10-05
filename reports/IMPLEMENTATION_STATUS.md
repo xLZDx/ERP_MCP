@@ -138,6 +138,11 @@ Last updated: 2026-10-06
   tax,
   posting trace,
   and real native-report reconciliation remain open.
+- P5 L1 testbed work is on `phase/p5-real1c-testbed`, stacked on P4 in draft PR #3. Fake1C loads a
+  versioned deterministic seed and exposes current semantic read fixture entity sets; ten scenario
+  invariants are machine-checked, and synthetic results are explicitly barred from native-1C
+  reconciliation evidence. Local suite: `104 passed, 7 skipped`; hosted CI is pending. Real L2/L3
+  seed import, snapshots and native reports remain external integration work.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

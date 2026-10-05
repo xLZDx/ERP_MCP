@@ -200,3 +200,19 @@
 - Local full suite: Python `101 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009,
   privilege policy and integration `6 passed`; Ruff, compileall, Bandit pass. Hosted CI and final
   pip-audit/diff-check for this batch follow publication.
+
+## Step 30 — P5 deterministic L1 seed and accounting scenario contract
+
+**Status:** implemented locally; publication/hosted CI pending.
+**Date:** 2026-10-06
+
+- Fake1C now loads the versioned `erp-mcp-synthetic-v1` JSON seed as its single source of truth and
+  exposes sales/purchase plus inventory, bank, receivable and payable fixture EntitySets in metadata
+  and GET responses. All fixture routes remain read-only.
+- Upgraded the ten accounting scenarios to schema v2 with stable fixture IDs, executable expected
+  invariants, and explicit `NOT_RUN` native 1C reconciliation status. The validator computes a
+  canonical seed SHA-256 and rejects broken invariants or synthetic evidence falsely marked as
+  native. Added a real-L2 snapshot manifest template whose required values are clearly unfilled.
+- CI now runs `scripts/validate_scenarios.py`. Verification: Python `104 passed, 7 skipped`; Ruff,
+  compileall, Bandit, pip-audit and scenario validator pass. These L1 artifacts are not L2/L3
+  environment evidence and do not unblock native report validation.

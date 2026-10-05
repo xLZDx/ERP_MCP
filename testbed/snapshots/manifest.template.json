@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "REQUIRED_OPERATOR_VALUE",
+  "platform_version": "REQUIRED_EXACT_1C_VERSION",
+  "configuration_name": "REQUIRED_EXACT_CONFIGURATION",
+  "configuration_version": "REQUIRED_EXACT_CONFIGURATION_VERSION",
+  "extensions": [],
+  "extension_fingerprint": "REQUIRED_SHA256_OR_NONE",
+  "seed_id": "erp-mcp-synthetic-v1",
+  "created_at_utc": "REQUIRED_ISO8601_TIMESTAMP",
+  "database_mode": "file_or_server",
+  "restore_artifact_sha256": "REQUIRED_SHA256",
+  "scenario_suite_version": 2,
+  "native_reconciliation_status": "NOT_RUN"
+}
