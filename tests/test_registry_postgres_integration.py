@@ -205,3 +205,80 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
     finally:
         await tx.rollback()
         await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_admin_role_can_manage_registry_but_not_audit_or_delete():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"admin-role-test-{uuid.uuid4()}"
+    company_id = uuid.uuid4()
+    grant_id = uuid.uuid4()
+    try:
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Admin role integration source',
+                   'https://onec.example.test/odata')
+            """,
+            source_id,
+        )
+        await conn.execute("SET LOCAL ROLE business_ai_admin")
+
+        assert await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.sources', 'UPDATE')"
+        )
+        assert await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.access_grants', 'INSERT')"
+        )
+        assert await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.companies', 'INSERT')"
+        )
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.audit_events', 'INSERT')"
+        )
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.sources', 'DELETE')"
+        )
+
+        await conn.execute(
+            "UPDATE bag.sources SET display_name='Admin-updated source' WHERE source_id=$1",
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, 'admin-company', 'Admin company')
+            """,
+            company_id,
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.access_grants(grant_id, principal_kind, principal_id, source_id)
+            VALUES($1, 'subject', 'admin-test-subject', $2)
+            """,
+            grant_id,
+            source_id,
+        )
+        await conn.execute(
+            "UPDATE bag.access_grants SET revoked_at=now() WHERE grant_id=$1", grant_id
+        )
+
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO bag.audit_events(
+                      event_id, principal_subject, client_id, tool_name, outcome, duration_ms
+                    ) VALUES($1, 'admin-test', 'admin-test', 'system_status', 'success', 0)
+                    """,
+                    uuid.uuid4(),
+                )
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute("DELETE FROM bag.sources WHERE source_id=$1", source_id)
+    finally:
+        await tx.rollback()
+        await conn.close()

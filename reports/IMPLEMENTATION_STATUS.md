@@ -34,12 +34,14 @@ Last updated: 2026-10-05
   integration test and the full workflow: `44 passed, 1 skipped`.
 - CI run `37357024926` on `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed the real
   `Audit.write` → PostgreSQL provenance round-trip under `business_ai_app`: `44 passed, 1 skipped`.
+- A PostgreSQL transaction integration test for `business_ai_admin` has been added to exercise
+  allowed source/company/grant management and denied audit insertion/source deletion; CI pending.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
 - First unresolved gates: P1 / D3, D11 — end-to-end company-filtered data access and complete
   persisted audit contract across all request outcomes are not yet proven.
-- Local checks at tested implementation commit: 42 passed, 3 skipped (PostgreSQL-only tests skip
+- Local checks for the latest implementation changes: 42 passed, 4 skipped (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
 - Previous CI collection failure `37355290036` on `3acd006` is superseded by green import-path fix
