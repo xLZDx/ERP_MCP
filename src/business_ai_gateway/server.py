@@ -93,7 +93,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "subject": principal.subject,
             "accessible_sources": len(sources),
             "max_rows": settings.max_rows,
-            "capability_negotiation": true,
+            "capability_negotiation": True,
             "adapter_profiles": [
                 "ODATA_JSON_V3",
                 "ODATA_ATOM_V3",
