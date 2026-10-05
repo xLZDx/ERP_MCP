@@ -27,7 +27,7 @@ async def readyz(_: Request):
             {"status": "ready" if ready else "not-ready"},
             status_code=200 if ready else 503,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - readiness must degrade to 503
         return JSONResponse(
             {"status": "not-ready", "error": type(exc).__name__},
             status_code=503,
