@@ -25,8 +25,8 @@ class Source:
     fallback_base_url: str | None = None
 
     def validate_runtime(self, *, production: bool):
-        if self.project != "onec" or self.kind != "onec_odata":
-            raise ValueError("1C MVP supports only onec/onec_odata")
+        if self.project != "onec" or self.kind not in {"onec_odata", "onec_auto"}:
+            raise ValueError("1C MVP supports only onec/onec_odata or onec/onec_auto")
         if not self.read_only:
             raise ValueError("writable source is forbidden")
         parsed = urlparse(self.base_url)
