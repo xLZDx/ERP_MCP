@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import xml.etree.ElementTree as ET
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 from starlette.applications import Starlette
 from starlette.requests import Request
