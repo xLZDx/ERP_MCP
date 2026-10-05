@@ -34,6 +34,17 @@ CREATE TABLE IF NOT EXISTS bag.source_capabilities (
     evidence_json jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_ai_app') THEN
+    GRANT SELECT, INSERT, UPDATE ON bag.source_capabilities TO business_ai_app;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_ai_admin') THEN
+    GRANT SELECT ON bag.source_capabilities TO business_ai_admin;
+  END IF;
+END;
+$$;
+
 INSERT INTO bag.schema_migrations(version)
 VALUES (2)
 ON CONFLICT (version) DO NOTHING;

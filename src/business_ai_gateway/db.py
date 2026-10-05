@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncpg
 
 
+SCHEMA_VERSION = 2
+
+
 class Database:
     def __init__(self, url: str):
         self.url = url
@@ -35,5 +38,8 @@ class Database:
         version = await self.require_pool().fetchval(
             "SELECT max(version) FROM bag.schema_migrations"
         )
-        if version != 1:
-            raise RuntimeError(f"unsupported or missing schema version: {version!r}")
+        if version != SCHEMA_VERSION:
+            raise RuntimeError(
+                f"unsupported or missing schema version: {version!r}; "
+                f"expected {SCHEMA_VERSION}"
+            )

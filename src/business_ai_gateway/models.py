@@ -20,6 +20,9 @@ class Source:
     tags: tuple[str, ...]
     entity_allow_patterns: tuple[str, ...]
     entity_deny_patterns: tuple[str, ...]
+    platform_version_hint: str | None = None
+    fallback_kind: str | None = None
+    fallback_base_url: str | None = None
 
     def validate_runtime(self, *, production: bool):
         if self.project != "onec" or self.kind != "onec_odata":
@@ -36,6 +39,17 @@ class Source:
         if production and parsed.scheme != "https":
             raise ValueError("production 1C source must use HTTPS")
 
+        if self.fallback_kind is not None and self.fallback_kind != "onec_http_query":
+            raise ValueError("unsupported 1C fallback kind")
+        if self.fallback_base_url:
+            fallback = urlparse(self.fallback_base_url)
+            if fallback.scheme not in {"http", "https"} or not fallback.hostname:
+                raise ValueError("fallback_base_url must be absolute HTTP(S)")
+            if fallback.username or fallback.password or fallback.query or fallback.fragment:
+                raise ValueError("credentials/query/fragment in fallback URL are forbidden")
+            if production and fallback.scheme != "https":
+                raise ValueError("production 1C fallback must use HTTPS")
+
     def entity_allowed(self, entity: str) -> bool:
         if self.entity_deny_patterns and any(
             fnmatch(entity, pattern) for pattern in self.entity_deny_patterns
@@ -51,6 +65,7 @@ class MetadataEntity:
     name: str
     entity_type: str
     properties: tuple[str, ...]
+    navigation_properties: tuple[str, ...] = ()
 
 
 def source_from_record(row: Any) -> Source:
@@ -67,4 +82,7 @@ def source_from_record(row: Any) -> Source:
         tags=tuple(row["tags"] or []),
         entity_allow_patterns=tuple(row["entity_allow_patterns"] or []),
         entity_deny_patterns=tuple(row["entity_deny_patterns"] or []),
+        platform_version_hint=row["platform_version_hint"],
+        fallback_kind=row["fallback_kind"],
+        fallback_base_url=row["fallback_base_url"],
     )

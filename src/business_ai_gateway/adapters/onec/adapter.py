@@ -2,11 +2,23 @@ from __future__ import annotations
 
 import json
 
+from ...compatibility import AdapterProfile, OneCCapabilities, OneCCapabilityDetector
 from ...models import Source
 from ...secrets import SecretProvider
 from ...settings import Settings
+from .atom import parse_atom_payload
 from .client import OneCReadClient
 from .metadata import MetadataIndex, parse_metadata
+
+
+def normalize_json_payload(payload):
+    if isinstance(payload, dict) and "d" in payload:
+        data = payload["d"]
+        if isinstance(data, dict) and isinstance(data.get("results"), list):
+            return {"value": data["results"]}
+        if isinstance(data, dict):
+            return {"value": [data]}
+    return payload
 
 
 class OneCAdapter:
@@ -15,6 +27,8 @@ class OneCAdapter:
         self.secrets = secrets
         self.client = client
         self._metadata: dict[str, MetadataIndex] = {}
+        self._capabilities: dict[str, OneCCapabilities] = {}
+        self._detector = OneCCapabilityDetector(client=client, secrets=secrets)
 
     async def credentials(self, source: Source) -> tuple[str | None, str | None]:
         username = (
@@ -36,6 +50,20 @@ class OneCAdapter:
         return await self.client.head_metadata(
             source, username=username, password=password
         )
+
+    async def capabilities(
+        self,
+        source: Source,
+        *,
+        refresh: bool = False,
+    ) -> OneCCapabilities:
+        if not refresh and source.id in self._capabilities:
+            return self._capabilities[source.id]
+        capabilities, index = await self._detector.detect(source)
+        self._capabilities[source.id] = capabilities
+        if index is not None:
+            self._metadata[source.id] = index
+        return capabilities
 
     async def metadata(self, source: Source, *, refresh: bool = False) -> MetadataIndex:
         if not refresh and source.id in self._metadata:
@@ -75,6 +103,7 @@ class OneCAdapter:
                 "name": x.name,
                 "entity_type": x.entity_type,
                 "properties": list(x.properties),
+                "navigation_properties": list(x.navigation_properties),
             }
             for x in found
         ]
@@ -109,6 +138,10 @@ class OneCAdapter:
             if entity_set not in index.names:
                 raise ValueError(f"EntitySet not present in live metadata: {entity_set}")
 
+        capabilities = await self.capabilities(source)
+        if expand and capabilities.expand_supported is False:
+            raise ValueError("$expand is not supported by this 1C capability profile")
+
         params = {
             "$top": max(1, min(top, self.settings.max_rows)),
             "$skip": max(0, skip),
@@ -123,15 +156,36 @@ class OneCAdapter:
             params["$expand"] = ",".join(expand)
 
         username, password = await self.credentials(source)
-        raw = await self.client.get_bytes(
-            source,
-            entity_set,
-            username=username,
-            password=password,
-            params=params,
-            accept="application/json",
-        )
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("1C returned invalid JSON") from exc
+
+        if capabilities.adapter_profile == AdapterProfile.ODATA_JSON_V3:
+            raw = await self.client.get_bytes(
+                source,
+                entity_set,
+                username=username,
+                password=password,
+                params=params,
+                accept="application/json",
+            )
+            try:
+                return normalize_json_payload(json.loads(raw))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("1C returned invalid JSON") from exc
+
+        if capabilities.adapter_profile == AdapterProfile.ODATA_ATOM_V3:
+            raw = await self.client.get_bytes(
+                source,
+                entity_set,
+                username=username,
+                password=password,
+                params=params,
+                accept="application/atom+xml",
+            )
+            return parse_atom_payload(raw)
+
+        if capabilities.adapter_profile == AdapterProfile.HTTP_QUERY_FALLBACK:
+            raise NotImplementedError(
+                "source requires the read-only HTTP/query fallback; "
+                "generic OData entity reads are unavailable for this source"
+            )
+
+        raise RuntimeError("no supported safe 1C read transport detected")

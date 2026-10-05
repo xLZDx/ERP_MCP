@@ -24,6 +24,9 @@ async def source_upsert(args, conn, *, production: bool):
         tags=tuple(args.tags),
         entity_allow_patterns=tuple(args.allow),
         entity_deny_patterns=tuple(args.deny),
+        platform_version_hint=args.platform_version_hint,
+        fallback_kind=args.fallback_kind,
+        fallback_base_url=args.fallback_base_url,
     )
     candidate.validate_runtime(production=production)
 
@@ -32,9 +35,12 @@ async def source_upsert(args, conn, *, production: bool):
         INSERT INTO bag.sources(
           source_id, project, kind, display_name, base_url,
           username_secret_ref, password_secret_ref, read_only, enabled,
-          tags, entity_allow_patterns, entity_deny_patterns
+          tags, entity_allow_patterns, entity_deny_patterns,
+          platform_version_hint, fallback_kind, fallback_base_url
         )
-        VALUES($1,'onec','onec_odata',$2,$3,$4,$5,true,true,$6,$7,$8)
+        VALUES(
+          $1,'onec','onec_odata',$2,$3,$4,$5,true,true,$6,$7,$8,$9,$10,$11
+        )
         ON CONFLICT(source_id) DO UPDATE SET
           display_name=EXCLUDED.display_name,
           base_url=EXCLUDED.base_url,
@@ -43,6 +49,9 @@ async def source_upsert(args, conn, *, production: bool):
           tags=EXCLUDED.tags,
           entity_allow_patterns=EXCLUDED.entity_allow_patterns,
           entity_deny_patterns=EXCLUDED.entity_deny_patterns,
+          platform_version_hint=EXCLUDED.platform_version_hint,
+          fallback_kind=EXCLUDED.fallback_kind,
+          fallback_base_url=EXCLUDED.fallback_base_url,
           updated_at=now()
         """,
         args.source_id,
@@ -53,6 +62,9 @@ async def source_upsert(args, conn, *, production: bool):
         args.tags,
         args.allow,
         args.deny,
+        args.platform_version_hint,
+        args.fallback_kind,
+        args.fallback_base_url,
     )
 
 
@@ -126,6 +138,12 @@ def parser():
     source.add_argument("--tags", nargs="*", default=[])
     source.add_argument("--allow", nargs="*", default=[])
     source.add_argument("--deny", nargs="*", default=[])
+    source.add_argument("--platform-version-hint")
+    source.add_argument(
+        "--fallback-kind",
+        choices=["onec_http_query"],
+    )
+    source.add_argument("--fallback-base-url")
 
     for name in ("grant-add", "grant-revoke"):
         grant = sub.add_parser(name)

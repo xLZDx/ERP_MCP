@@ -18,7 +18,13 @@ class OneCReadClient:
 
     RETRYABLE = {429, 502, 503, 504}
 
-    def __init__(self, *, timeout_seconds: float, max_response_bytes: int):
+    def __init__(
+        self,
+        *,
+        timeout_seconds: float,
+        max_response_bytes: int,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ):
         self.max_response_bytes = max_response_bytes
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout_seconds),
@@ -30,6 +36,7 @@ class OneCReadClient:
                 keepalive_expiry=30,
             ),
             headers={"User-Agent": "erp-mcp/0.1"},
+            transport=transport,
         )
 
     async def close(self):

@@ -15,12 +15,17 @@ async def main():
         )
     dsn = dsn or settings.database_url
 
-    sql = Path("db/migrations/001_init.sql").read_text(encoding="utf-8")
+    migrations = sorted(Path("db/migrations").glob("*.sql"))
+    if not migrations:
+        raise RuntimeError("no SQL migrations found")
+
     conn = await asyncpg.connect(dsn)
     try:
         await conn.execute("SELECT pg_advisory_lock(812347912341)")
         try:
-            await conn.execute(sql)
+            for path in migrations:
+                await conn.execute(path.read_text(encoding="utf-8"))
+                print(f"applied {path}")
         finally:
             await conn.execute("SELECT pg_advisory_unlock(812347912341)")
     finally:
