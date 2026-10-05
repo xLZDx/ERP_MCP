@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Protocol
 
-from .settings import Settings
+from .settings import SecretProviderKind, Settings
 
 
 class SecretProvider(Protocol):
@@ -49,11 +49,12 @@ class GCPSecrets:
 
 
 def build_secret_provider(settings: Settings) -> SecretProvider:
-    if settings.secret_provider == "env":
+    if settings.secret_provider == SecretProviderKind.ENV:
         return EnvSecrets()
-    if settings.secret_provider == "file":
+    if settings.secret_provider == SecretProviderKind.FILE:
         return FileSecrets(settings.secret_file_root)
-    if settings.secret_provider == "gcp":
-        assert settings.gcp_project_id
+    if settings.secret_provider == SecretProviderKind.GCP:
+        if not settings.gcp_project_id:
+            raise RuntimeError("GCP secret provider requires a project id")
         return GCPSecrets(settings.gcp_project_id)
     raise ValueError(f"unsupported secret provider: {settings.secret_provider}")
