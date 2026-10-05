@@ -9,7 +9,7 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 53 passed/5 skipped (PostgreSQL tests need CI DB). CI 37361430688 passed all workflow steps; pytest reports 57 passed/1 skipped. |
+| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 53 passed/5 skipped (PostgreSQL tests need CI DB). CI 37361430688 passed all workflow steps; exact pinned OData upstream also built and passed 428 client tests (1 skipped) and 53 metadata tests locally. New repeatable upstream CI job awaits result. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
 | D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |

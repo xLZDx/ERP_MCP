@@ -9,6 +9,24 @@ permissions:
   contents: read
 
 jobs:
+  odata-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize the exact pinned OData upstream
+        run: git submodule update --init vendor/reference/1c-odata-v3
+      - name: Build and test the pinned client and metadata packages
+        run: >-
+          docker run --rm --tmpfs /work:exec,size=4g
+          -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
+          -w /work node:24.18.0-alpine
+          sh -lc "cp -a /src/. /work/ && corepack enable &&
+          corepack pnpm install --frozen-lockfile &&
+          corepack pnpm --filter @1c-odata/client build &&
+          corepack pnpm --filter @1c-odata/client test:unit &&
+          corepack pnpm --filter @1c-odata/metadata build &&
+          corepack pnpm --filter @1c-odata/metadata test:unit"
+
   test:
     runs-on: ubuntu-latest
     services:

@@ -17,7 +17,7 @@ Last updated: 2026-10-05
 
 ## Delivery status
 
-- Current implementation phase: P2 capability-router drift lifecycle; P1 residual gates remain open.
+- Current implementation phase: P2 capability-router drift lifecycle and P3 pinned OData engine intake; P1 residual gates remain open.
 - Completed: repository state recovered; origin fetched; local branch fast-forwarded; supplied
   engineering command center copied to repository root; normative package rechecked; P0–P9 and
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work
@@ -60,6 +60,9 @@ Last updated: 2026-10-05
   Redis connection/timeout errors rather than granting unmetered access. Local full suite: Ruff
   passed; `53 passed, 5 skipped`. CI run `37361430688` passed on `133f640`, including PostgreSQL
   checks, and pytest reported `57 passed, 1 skipped`.
+- Validated the exact `hacker-cb/1c-odata` pin in an ephemeral Node 24.18.0 container: client and
+  metadata packages built; client unit tests `428 passed, 1 skipped`; metadata unit tests `53 passed`.
+  Added a dedicated CI job for this upstream preflight; its result is pending on the current change.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
