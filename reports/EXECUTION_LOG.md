@@ -48,3 +48,25 @@
   The prior capability batch CI Python job passed on `e964e32`; pinned OData job remains queued.
 - Still not implemented: validated accounting mappings/tools, administrator workflows/audit, and
   actual native 1C reconciliation. No preset is promoted from candidate based solely on its name.
+
+## Step 23 — operator profile lifecycle and audit
+
+**Status:** implemented and verified locally; hosted CI pending.
+**Date:** 2026-10-06
+
+- Added operator-only CLI commands to create a source/company-scoped draft, add candidate mappings,
+  validate, and retire profile versions. Creation requires supported live metadata and acknowledged
+  stable drift state; validation compares the stored live source capability/metadata fingerprints
+  and checks every mapping's exact register dependency before promotion.
+- Validation normalizes evidence to ten or more distinct passing case IDs and controlled native
+  report references; raw reports are not copied into PostgreSQL. Database checks enforce case count,
+  uniqueness, PASS state and non-empty report references.
+- Migration 007 adds an append-only profile lifecycle event table. Runtime role can only read it;
+  admin can append but cannot update/delete event history. Profile administration itself is restricted
+  to the admin connection.
+- Added [operator workflow documentation](../docs/SEMANTIC_PROFILES.md), lifecycle and privilege
+  integration coverage. Verification: Python `74 passed, 7 skipped`; disposable PostgreSQL applied
+  migrations 001–007, privilege checker passed, PostgreSQL integration `6 passed`; Ruff, compileall,
+  Bandit, pip-audit (`no known vulnerabilities`) and diff checks pass.
+- Preset mappings remain candidate-only until a real source has been inspected and native reports
+  reconciled. Canonical MCP accounting tools are still not exposed.

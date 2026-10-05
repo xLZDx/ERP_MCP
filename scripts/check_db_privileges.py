@@ -36,6 +36,12 @@ EXPECTED = {
             "UPDATE": False,
             "DELETE": False,
         },
+        "bag.semantic_profile_events": {
+            "SELECT": True,
+            "INSERT": False,
+            "UPDATE": False,
+            "DELETE": False,
+        },
     },
     "business_ai_admin": {
         "bag.sources": {"SELECT": True, "INSERT": True, "UPDATE": True, "DELETE": False},
@@ -62,6 +68,12 @@ EXPECTED = {
             "SELECT": True,
             "INSERT": True,
             "UPDATE": True,
+            "DELETE": False,
+        },
+        "bag.semantic_profile_events": {
+            "SELECT": True,
+            "INSERT": True,
+            "UPDATE": False,
             "DELETE": False,
         },
     },

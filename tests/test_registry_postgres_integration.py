@@ -19,6 +19,7 @@ from business_ai_gateway.compatibility import (
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
 from scripts.admin import capability_ack_drift
+from scripts.semantic_profiles import add_mapping, create_profile, validate_profile
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(
@@ -235,6 +236,151 @@ async def test_semantic_profile_validation_is_scoped_and_requires_ten_native_cas
             current_capability, metadata_fingerprint="metadata-" + "d" * 64
         )
         await registry.save_capabilities(changed_capability)
+        assert await conn.fetchval(
+            "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == "STALE"
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path):
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"semantic-admin-{uuid.uuid4()}"
+    company_id = uuid.uuid4()
+    try:
+        await conn.execute("SET LOCAL ROLE business_ai_admin")
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Semantic admin source',
+                   'https://onec.example.test/odata')
+            """,
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, 'semantic-admin-company', 'Semantic admin company')
+            """,
+            company_id,
+            source_id,
+        )
+        await conn.execute("RESET ROLE")
+
+        metadata_fingerprint = "semantic-metadata-" + "e" * 64
+        register_capabilities = {
+            "source_id": source_id,
+            "metadata_fingerprint": metadata_fingerprint,
+            "registers": [
+                {
+                    "entity_set": "AccountingRegister_Хозрасчетный",
+                    "methods": {
+                        "drCrTurnovers": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                }
+            ],
+        }
+        capability = OneCCapabilities(
+            source_id=source_id,
+            platform_version=None,
+            metadata_fingerprint=metadata_fingerprint,
+            metadata_supported=True,
+            json_supported=True,
+            atom_supported=False,
+            expand_supported=True,
+            entity_set_count=1,
+            adapter_profile=AdapterProfile.ODATA_JSON_V3,
+            compatibility_status=CompatibilityStatus.SUPPORTED,
+            evidence={"metadata": "ok"},
+            register_capabilities=register_capabilities,
+        )
+        await Registry(ConnectionDatabase(conn), production=False).save_capabilities(capability)
+        await conn.execute("SET LOCAL ROLE business_ai_admin")
+        profile_id = await create_profile(
+            Namespace(
+                preset_id="bp30",
+                source_id=source_id,
+                company_id=str(company_id),
+                profile_name="BP candidate",
+                profile_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        mapping_file = tmp_path / "mapping.json"
+        mapping_file.write_text(
+            json.dumps(
+                {
+                    "description": "integration candidate",
+                    "required_register_capabilities": [
+                        {
+                            "entity_set": "AccountingRegister_Хозрасчетный",
+                            "method": "drCrTurnovers",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="receivable",
+                mapping_file=str(mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        evidence_file = tmp_path / "native-evidence.json"
+        evidence_file.write_text(
+            json.dumps(
+                {
+                    "native_reconciliation_cases": [
+                        {
+                            "case_id": f"case-{i}",
+                            "status": "PASS",
+                            "native_report_ref": f"native-reports/{i}",
+                        }
+                        for i in range(10)
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        await validate_profile(
+            Namespace(
+                profile_id=str(profile_id),
+                evidence_file=str(evidence_file),
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        assert await conn.fetchval(
+            "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == "VALIDATED"
+        assert await conn.fetchval(
+            "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
+        ) == 3
+
+        await conn.execute("SET LOCAL ROLE business_ai_app")
+        assert await conn.fetchval(
+            "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
+        ) == 3
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
+        )
+        await conn.execute("RESET ROLE")
+
+        changed = replace(capability, metadata_fingerprint="semantic-metadata-" + "f" * 64)
+        await Registry(ConnectionDatabase(conn), production=False).save_capabilities(changed)
         assert await conn.fetchval(
             "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
         ) == "STALE"

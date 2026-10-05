@@ -11,6 +11,13 @@ from business_ai_gateway.semantic import (
     find_configuration_preset,
     require_profile_capabilities,
     require_usable_semantic_profile,
+    validate_native_reconciliation_evidence,
+)
+from scripts.semantic_profiles import (
+    _validate_mapping_evidence,
+)
+from scripts.semantic_profiles import (
+    parser as semantic_admin_parser,
 )
 
 SOURCE_ID = "base-bp-001"
@@ -169,6 +176,42 @@ def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping
         )
 
 
+def test_native_evidence_and_operator_cli_require_reconciliation_and_actor():
+    cases = [
+        {"case_id": f"case-{i}", "status": "PASS", "native_report_ref": f"reports/{i}"}
+        for i in range(10)
+    ]
+    assert len(validate_native_reconciliation_evidence({"native_reconciliation_cases": cases})) == 10
+    with pytest.raises(ValueError, match="status PASS"):
+        validate_native_reconciliation_evidence(
+            {"native_reconciliation_cases": [*cases[:-1], {**cases[-1], "status": "FAIL"}]}
+        )
+    with pytest.raises(ValueError, match="unique"):
+        validate_native_reconciliation_evidence(
+            {"native_reconciliation_cases": [*cases[:-1], {**cases[-1], "case_id": "case-0"}]}
+        )
+    parsed = semantic_admin_parser().parse_args(
+        [
+            "create",
+            "--source-id",
+            SOURCE_ID,
+            "--preset-id",
+            "bp30",
+            "--profile-name",
+            "draft",
+            "--actor",
+            "operator-1",
+        ]
+    )
+    assert parsed.command == "create"
+    assert parsed.actor == "operator-1"
+    assert _validate_mapping_evidence(
+        {"evidence_refs": ["controlled://mapping-source/1"], "notes": "Reviewed"}
+    )["evidence_refs"] == ["controlled://mapping-source/1"]
+    with pytest.raises(ValueError, match="only evidence_refs and notes"):
+        _validate_mapping_evidence({"rows": [{"amount": 42}]})
+
+
 def test_semantic_profile_migration_persists_versioned_pinned_preset_and_requires_reconciliation():
     from pathlib import Path
 
@@ -184,3 +227,9 @@ def test_semantic_profile_migration_persists_versioned_pinned_preset_and_require
     assert "SECURITY DEFINER" in sql
     assert "source_capabilities_invalidate_semantic_profiles" in sql
     assert "VALUES (6)" in sql
+
+    events = (root / "db/migrations/007_semantic_profile_events.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE IF NOT EXISTS bag.semantic_profile_events" in events
+    assert "BEFORE UPDATE OR DELETE" in events
+    assert "GRANT SELECT, INSERT ON bag.semantic_profile_events TO business_ai_admin" in events
+    assert "VALUES (7)" in events

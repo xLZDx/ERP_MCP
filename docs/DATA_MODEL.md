@@ -225,6 +225,12 @@ Mappings are versioned through their owning profile. They remain `CANDIDATE` unt
 metadata and semantic evidence confirms them; a preset name or upstream `verified` label alone does
 not enable a 1C operation.
 
+### `semantic_profile_events`
+
+Migration 007 adds an append-only operator lifecycle log for profile creation, mapping additions,
+validation and retirement. Runtime can read events; the admin role may append but cannot update or
+delete them.
+
 Never assume account 62/60/51/etc. globally. Those may be preset candidates only.
 
 ## 10. Reconciliation model

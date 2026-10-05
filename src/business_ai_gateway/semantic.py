@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -54,6 +56,37 @@ CONFIGURATION_PRESETS = (
 PRESETS_BY_ID = {preset.preset_id: preset for preset in CONFIGURATION_PRESETS}
 
 
+def canonical_fingerprint(value: Any) -> str:
+    encoded = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def validate_native_reconciliation_evidence(evidence: Any) -> list[dict[str, str]]:
+    cases = evidence.get("native_reconciliation_cases") if isinstance(evidence, dict) else None
+    if not isinstance(cases, list) or len(cases) < 10:
+        raise ValueError("at least ten native reconciliation cases are required")
+    normalized: list[dict[str, str]] = []
+    for case in cases:
+        if not isinstance(case, dict) or case.get("status") != "PASS":
+            raise ValueError("every native reconciliation case must have status PASS")
+        case_id = case.get("case_id")
+        report_ref = case.get("native_report_ref")
+        if not isinstance(case_id, str) or not case_id.strip():
+            raise ValueError("every reconciliation case requires a non-empty case_id")
+        if not isinstance(report_ref, str) or not report_ref.strip():
+            raise ValueError("every reconciliation case requires a native_report_ref")
+        normalized.append({"case_id": case_id, "native_report_ref": report_ref})
+    case_ids = [case["case_id"] for case in normalized]
+    if len(case_ids) != len(set(case_ids)):
+        raise ValueError("native reconciliation case IDs must be unique")
+    return normalized
+
+
 class SemanticProfileUnavailable(RuntimeError):
     code = "SEMANTIC_PROFILE_UNVALIDATED"
 
@@ -100,21 +133,10 @@ def require_usable_semantic_profile(
         raise SemanticProfileStale("semantic profile does not match the current metadata")
     if drift_status != "STABLE":
         raise SemanticProfileUnavailable("source metadata stability is not acknowledged")
-    evidence = profile.get("validation_evidence")
-    cases = evidence.get("native_reconciliation_cases") if isinstance(evidence, dict) else None
-    if not isinstance(cases, list) or len(cases) < 10 or any(
-        not isinstance(case, dict)
-        or case.get("status") != "PASS"
-        or not isinstance(case.get("case_id"), str)
-        or not case.get("case_id", "").strip()
-        or not isinstance(case.get("native_report_ref"), str)
-        or not case.get("native_report_ref", "").strip()
-        for case in cases
-    ):
-        raise SemanticProfileUnavailable("semantic profile has no validation evidence")
-    case_ids = [case["case_id"] for case in cases]
-    if len(case_ids) != len(set(case_ids)):
-        raise SemanticProfileUnavailable("semantic reconciliation case IDs must be unique")
+    try:
+        validate_native_reconciliation_evidence(profile.get("validation_evidence"))
+    except ValueError as exc:
+        raise SemanticProfileUnavailable(str(exc)) from exc
 
 
 def require_profile_capabilities(
