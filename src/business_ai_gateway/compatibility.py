@@ -101,7 +101,7 @@ class OneCCapabilityDetector:
             metadata_supported = True
             metadata_fingerprint = hashlib.sha256(metadata_raw).hexdigest()
             evidence["metadata"] = "ok"
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - probe failures become capability evidence
             index = None
             metadata_supported = False
             metadata_fingerprint = hashlib.sha256(
@@ -131,7 +131,7 @@ class OneCCapabilityDetector:
                     json.loads(raw)
                     json_supported = True
                     evidence["json_probe"] = f"ok:{probe.name}"
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - probe failures become capability evidence
                     evidence["json_probe"] = type(exc).__name__
 
                 try:
@@ -146,7 +146,7 @@ class OneCCapabilityDetector:
                     parse_atom_payload(raw)
                     atom_supported = True
                     evidence["atom_probe"] = f"ok:{probe.name}"
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - probe failures become capability evidence
                     evidence["atom_probe"] = type(exc).__name__
 
                 if json_supported and probe.navigation_properties:
@@ -169,7 +169,7 @@ class OneCCapabilityDetector:
                         evidence["expand_probe"] = (
                             f"http-{exc.response.status_code}:{probe.name}.{nav}"
                         )
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 - probe failures become capability evidence
                         evidence["expand_probe"] = type(exc).__name__
                 elif json_supported:
                     evidence["expand_probe"] = "unknown:no-navigation-property"
