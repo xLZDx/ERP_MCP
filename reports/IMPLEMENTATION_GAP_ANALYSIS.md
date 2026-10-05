@@ -1,8 +1,8 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-06
-Implementation assessed through local candidate commit work after CI-tested commit `5f7061d`;
-the candidate preset-data batch is not yet hosted-CI verified.
+Implementation assessed through CI-tested commit `de035247d61a6f166434d449dd69cb2a9dfe418e`;
+hosted CI run `37375751454` passed gateway/database and pinned OData jobs.
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.

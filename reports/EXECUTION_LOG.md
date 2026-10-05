@@ -76,7 +76,7 @@
 
 ## Step 24 — pinned semantic preset candidate data
 
-**Status:** implemented and verified locally; hosted CI pending for this commit.
+**Status:** implemented and verified locally and in hosted CI.
 **Date:** 2026-10-06
 
 - Re-read the exact pinned Aprovodka preset files/types/tests at SHA
@@ -92,6 +92,8 @@
 - Verification: Python `74 passed, 7 skipped`; migrations 001–007 and DB privilege policy pass;
   PostgreSQL integration `6 passed`; Ruff, compileall, Bandit, pip-audit (no known vulnerabilities)
   and `git diff --check` pass. The pinned upstream source remains unchanged.
+- Hosted CI run `37375751454` on `de03524` passed both gateway/database tests and the pinned upstream
+  OData build, contract tests, and non-root image smoke.
 - Next software work: executable company-filtered business reads, canonical accounting tools,
   completed audit/operations proof and remaining deployment/security gates. Promoting a candidate
   or validating accounting semantics still requires a real target 1C source and native reports.
