@@ -58,7 +58,8 @@ Last updated: 2026-10-05
   (`56 passed, 1 skipped`) and the full workflow.
 - Added a real Redis-client TCP outage test using a reserved local port; the rate limiter surfaces
   Redis connection/timeout errors rather than granting unmetered access. Local full suite: Ruff
-  passed; `53 passed, 5 skipped`. Hosted CI is pending for this batch.
+  passed; `53 passed, 5 skipped`. CI run `37361430688` passed on `133f640`, including PostgreSQL
+  checks, and pytest reported `57 passed, 1 skipped`.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

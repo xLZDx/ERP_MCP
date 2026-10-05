@@ -1,7 +1,7 @@
 # Definition of Done status
 
-Assessed against implementation commit `e3b1a17d026d15d0b4fe147d27649fef2c396912` and CI run
-`37360919808` (`56 passed, 1 skipped`).
+Assessed against implementation commit `133f640b565e2032748125d58cd65e30d75e52ec` and CI run
+`37361430688` (`57 passed, 1 skipped`).
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
@@ -9,7 +9,7 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 53 passed/5 skipped (PostgreSQL tests need CI DB). CI 37360919808 passed all workflow steps for the preceding batch; Redis TCP outage test awaits hosted CI. |
+| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 53 passed/5 skipped (PostgreSQL tests need CI DB). CI 37361430688 passed all workflow steps; pytest reports 57 passed/1 skipped. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
 | D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
@@ -22,7 +22,7 @@ STARTED` is used where implementation is still required before external evidence
 | D11 Audit/provenance | PARTIAL | Append-only schema extended for request/company/adapter/policy/fingerprint/bytes/truncation; runtime-role `Audit.write` round-trip and update/delete denials passed CI 37357024926; MCP handler tests for success, ACL denial, Redis outage denial and adapter failure passed CI 37360482223. Company/request correlation and complete production provenance remain. |
 | D12 Observability | NOT STARTED | Normative contract only. |
 | D13 Performance | PARTIAL | Basic response/row/timeout/rate bounds exist; load and capacity evidence absent. |
-| D14 Resilience | PARTIAL | Readiness and idempotent GET retries exist; fake Redis failure plus real Redis-client TCP outage both fail closed locally. Hosted CI verification, server-level Redis outage injection, circuit breaking and broader failure injection remain. |
+| D14 Resilience | PARTIAL | Readiness and idempotent GET retries exist; fake Redis failure plus real Redis-client TCP outage both fail closed and passed CI 37361430688. Server-level Redis outage injection, circuit breaking and broader failure injection remain. |
 | D15 Backup/restore | PARTIAL | Contract documented; automation and restore drill remain. |
 | D16 Deployment | PARTIAL | Dockerfile and production contract exist; hardened production deployment evidence absent. |
 | D17 Operations | NOT STARTED | Runbooks and ownership remain. |

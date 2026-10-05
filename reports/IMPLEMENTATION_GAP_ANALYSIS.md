@@ -1,7 +1,7 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Implementation assessed through CI-tested commit `e3b1a17d026d15d0b4fe147d27649fef2c396912`.
+Implementation assessed through CI-tested commit `133f640b565e2032748125d58cd65e30d75e52ec`.
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
@@ -16,7 +16,7 @@ contract is documented.
 
 - `origin/main`: `a6bb75294578067fb23792f4dd2ceb8f17ddf673`; this commit has been merged into the
   implementation branch to resolve the README conflict before merge.
-- Working HEAD at latest verified implementation: `e3b1a17d026d15d0b4fe147d27649fef2c396912`.
+- Working HEAD at latest verified implementation: `133f640b565e2032748125d58cd65e30d75e52ec`.
 - PR #1: OPEN, `bootstrap/1c-day1-production` → `main`.
 - CI: runs `37356469102` and `37356471488` passed after main synchronization; commit `1590b89` passed
   run `37356701516`; implementation `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed run
@@ -37,7 +37,7 @@ contract is documented.
 | Phase | Status | Existing implementation/evidence | Missing work, tests, or evidence | DoD |
 |---|---|---|---|---|
 | P0 Documentation freeze | PARTIAL | Normative v1.0 package, index, six ADRs, traceability, package test; root command center now copied | Reconcile the supplied copy with the in-repo generated command center; documentation test suite and current HEAD CI evidence | D0, D1 |
-| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–004; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative tests; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip; MCP handler audit tests cover success, ACL denial, Redis outage denial and adapter failure in CI 37360482223; Redis client TCP outage fails closed locally | company-aware business query adapter; transport request/company correlation; production role/runbook evidence; hosted CI and server-level Redis failure injection | D2–D6, D10–D11, D14 |
+| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–004; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative tests; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip; MCP handler audit tests cover success, ACL denial, Redis outage denial and adapter failure in CI 37360482223; Redis client TCP outage fails closed in CI 37361430688 | company-aware business query adapter; transport request/company correlation; production role/runbook evidence; server-level Redis failure injection | D2–D6, D10–D11, D14 |
 | P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; unsupported/explicit-only fallback tests passed CI 37359877826; configured-but-unimplemented fallback fails without network I/O in CI 37360919808 | Normalized adapter bindings; actual read-only fallback/COM/legacy routes; adapter SHA; full route lifecycle tests | D7 |
 | P3 Modern OData data plane | NOT STARTED | Lightweight Python GET/HEAD client and bounded generic read | Integrate pinned `hacker-cb/1c-odata` sidecar; typed query, get/count/register contract; response shaping/cancellation/concurrency/circuit breaker; locks, upstream parity and container integration tests | D1, D5–D8, D13–D14, D16 |
 | P4 Semantic accounting | NOT STARTED | Documentation and candidate upstream inventory only | Company/adapter/semantic/reconciliation schema; profile lifecycle; transport-neutral semantic tools and provenance; deterministic synthetic business cases | D8–D9, D11 |
