@@ -9,6 +9,10 @@ tool inventory allowlist, ping-only health handshake, sanitized failure behavior
 operations/ACL runbook. No business-data operation is routed through COM: validated company scope,
 source capability persistence and cross-adapter semantic parity are still required.
 
+P6 hosted run `37384482140` and P7 hosted run `37384584340` passed both CI jobs. P8 now has an
+opt-in `/metrics` endpoint with bearer protection and bounded HTTP labels; it is process-local and
+does not close the broader observability/operations gate.
+
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
 

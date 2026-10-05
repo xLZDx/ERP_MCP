@@ -201,6 +201,10 @@ No business requirement -> phase remains not started and does not block modern M
 
 ## P8 — Production hardening
 
+Current implementation status: protected aggregate HTTP metrics are implemented as an initial
+slice. Full structured logs/traces, saturation and source metrics, backup/restore drill, image/SBOM
+scans, and real deployment evidence remain open.
+
 Deliver:
 - OTel logs/metrics/traces or approved equivalent;
 - dashboards/alerts;

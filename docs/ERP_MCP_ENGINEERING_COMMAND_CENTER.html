@@ -677,6 +677,10 @@ never copy/link it into ERP_MCP core.</p>
 </ul>
 <p>No business requirement -&gt; phase remains not started and does not block modern MVP.</p>
 <h2>P8 — Production hardening</h2>
+<p>Initial slice: optional bearer-protected <code>/metrics</code> reports bounded-cardinality HTTP
+request counts, active requests and latency. It emits no source/company/subject or URL/query labels;
+the endpoint is disabled unless a 32-byte secret is configured. Full telemetry, load, restore and
+deployment evidence remain required.</p>
 <p>Deliver:</p>
 <ul>
 <li>OTel logs/metrics/traces or approved equivalent;</li>

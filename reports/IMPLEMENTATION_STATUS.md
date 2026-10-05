@@ -147,10 +147,15 @@ Last updated: 2026-10-06
   MIT bridge is launched via the MCP SDK stdio client with one source-ID-bound config, a reviewed
   tool inventory, ping-only health/restart semantics and sanitized failures. Windows ACL/runbook
   added. No generic native query is proxied; company-scoped data routing and a real Windows/COM
-  smoke remain open gates.
+  smoke remain open gates. Hosted CI run `37384482140` passed both jobs.
 - P7 legacy 8.2 is deliberately deferred in draft PR #5: repository review found no named 8.2
   target or customer requirement. The GPL toolkit remains isolated-only; do not deploy it or
-  copy/link it into core without a concrete target and a fresh license/security review.
+  copy/link it into core without a concrete target and a fresh license/security review. Hosted CI
+  run `37384584340` passed both jobs.
+- P8 protected HTTP metrics is in progress on `phase/p8-protected-http-metrics`, stacked on P7.
+  It adds optional bearer-protected request counters, in-flight gauge and latency histograms with
+  bounded labels. Full logs/traces/source telemetry, load tests, SBOM/deployment evidence and
+  restore drills remain open.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

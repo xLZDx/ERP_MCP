@@ -60,3 +60,8 @@ def test_rsv_bridge_settings_require_paired_absolute_paths(tmp_path):
         Settings(
             rsv_bridge_executable=str(tmp_path / "bridge.exe"), rsv_bridge_config_root="configs"
         )
+
+
+def test_metrics_endpoint_token_must_be_long_enough():
+    with pytest.raises(ValidationError, match="at least 32 bytes"):
+        Settings(metrics_token="short")

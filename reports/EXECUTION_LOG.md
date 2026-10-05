@@ -246,3 +246,17 @@
 - Formalized the demand gate: reopen only for a named 1C 8.2.13+ target and accountable owner, then
   do license/isolation/read-only review before deployment. This avoids shipping an unused legacy
   route or claiming platform compatibility without a test target.
+
+## Step 33 — P8 protected aggregate HTTP metrics
+
+**Status:** implementation in progress.
+**Date:** 2026-10-06
+
+- Added dependency-free HTTP request count, in-flight and latency histogram metrics. Labels have
+  fixed route/method/status cardinality and never contain source/company/subject, URL IDs, or query
+  data. `/metrics` is not found unless a 32-byte bearer token is explicitly configured.
+- Added endpoint authorization, settings and middleware tests; documented per-process/reset behavior
+  and secret-store handling. This is a narrow observability slice; it does not close D12 or replace
+  audit, source-health, database, or distributed telemetry.
+- Full local verification: Python `112 passed, 7 skipped`; Ruff, Bandit, compileall, pip-audit,
+  scenario validator and diff-check pass. Hosted CI remains pending.

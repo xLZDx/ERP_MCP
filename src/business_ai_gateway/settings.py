@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
+    metrics_token: SecretStr | None = None
     rsv_bridge_executable: str | None = None
     rsv_bridge_config_root: str | None = None
 
@@ -61,6 +62,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if self.metrics_token and len(self.metrics_token.get_secret_value().encode()) < 32:
+            raise ValueError("BAG_METRICS_TOKEN must contain at least 32 bytes")
         if (self.rsv_bridge_executable is None) != (self.rsv_bridge_config_root is None):
             raise ValueError(
                 "BAG_RSV_BRIDGE_EXECUTABLE and BAG_RSV_BRIDGE_CONFIG_ROOT "
