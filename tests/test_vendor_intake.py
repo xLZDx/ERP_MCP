@@ -31,7 +31,7 @@ def test_restrictive_licenses_cannot_be_ported_into_core():
 
         if license_name == "GPL-3.0":
             assert mode == "isolated-service-only"
-        elif license_name == "UNVERIFIED":
+        elif license_name in {"LGPL-3.0", "AGPL-3.0", "UNVERIFIED"}:
             assert mode == "reference-only"
 
 
