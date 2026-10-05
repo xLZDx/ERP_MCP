@@ -303,3 +303,7 @@
   compileall, pip-audit, scenario/P9 validators and diff-check pass. P8 CI run `37384949997` and P9
   run `37385454985` passed both jobs. P4 movement follow-up CI and native report reconciliation
   remain pending.
+- Extended L1 Fake1C metadata/GET with deterministic movement rows and added an eleventh scenario
+  for receipt/expense sign reconciliation. Latest synthetic seed fingerprint:
+  `sha256:e3dada8693b85ce7fd4571a9823873b84caaef536938b961c5e2b2885f0450d8`; it remains synthetic,
+  not source capability or native-report evidence.

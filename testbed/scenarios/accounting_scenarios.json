@@ -82,6 +82,18 @@
       "fixture_id": "account-turnover",
       "checks": [{"op": "opening_plus_debit_minus_credit_equals_closing", "opening": "opening_debit", "debit": "debit_turnover", "credit": "credit_turnover", "closing": "closing_debit"}],
       "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "inventory-receipt-expense",
+      "question": "Inventory movement direction signs reconcile to net quantity change",
+      "expected_class": "inventory",
+      "fixture_id": "inventory-receipt-expense",
+      "checks": [
+        {"op": "equals", "path": "expense_delta", "value": -2},
+        {"op": "subtract_equals", "left": "receipt_quantity", "right": "expense_quantity", "expected": "net_quantity"},
+        {"op": "greater_than", "path": "net_quantity", "value": 0}
+      ],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
     }
   ]
 }

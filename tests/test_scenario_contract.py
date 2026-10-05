@@ -7,7 +7,7 @@ from scripts.validate_scenarios import SCENARIO_PATH, SEED_PATH, validate_scenar
 
 def test_accounting_scenario_pack_is_deterministic_and_does_not_claim_native_evidence():
     count, fingerprint = validate_scenario_suite()
-    assert count == 10
+    assert count == 11
     assert fingerprint.startswith("sha256:")
     assert validate_scenario_suite() == (count, fingerprint)
 
