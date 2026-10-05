@@ -48,6 +48,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Semantic profiles and presets](SEMANTIC_PROFILES.md) | Candidate preset, source/company profile lifecycle, validation evidence and operator CLI |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Observability & SRE](OBSERVABILITY_SRE.md) | Signals, SLO objectives, alerts, runbooks and rollback |
+| [Pilot evidence gate](PILOT_EVIDENCE_GATE.md) | P9 evidence manifest, validation contract and production GO conditions |
 | [Risk Register](RISK_REGISTER.md) | Principal technical, accounting, security, licensing and operational risks |
 | [Threat Model](THREAT_MODEL.md) | Assets, trust threats, STRIDE controls and residual risk |
 | [Requirements Traceability](REQUIREMENTS_TRACEABILITY.md) | Requirement → design → DoD/evidence mapping |

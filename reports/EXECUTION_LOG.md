@@ -260,3 +260,22 @@
   audit, source-health, database, or distributed telemetry.
 - Full local verification: Python `112 passed, 7 skipped`; Ruff, Bandit, compileall, pip-audit,
   scenario validator and diff-check pass. Hosted CI remains pending.
+
+## Step 34 — P9 fail-closed pilot evidence gate
+
+**Status:** implementation in progress; production GO remains blocked by absent external evidence.
+**Date:** 2026-10-06
+
+- Added a privacy-safe manifest template bound to an exact 40-character release SHA and positive
+  pilot scope counts. Fixed gate names cover CI/config/auth/secrets/isolation/capabilities, ten
+  native reconciliations, zero-write/audit, load/resilience, backup/restore/rollback, operations,
+  privacy, user acceptance, and release approval.
+- Added strict schema/evidence metadata validation and a `--require-go` mode. Unknown/freeform
+  fields are rejected to discourage PII/secret collection. CI validates the template and asserts
+  that an empty template cannot pass GO. Evidence artifacts remain in an approved external store;
+  a human reviewer must verify their contents and hashes.
+- No real pilot/native report/IdP/restore evidence is available, so current disposition is
+  explicitly `NOT_READY` rather than inferred or synthesized.
+- Verification: Python `116 passed, 7 skipped`; Ruff, Bandit, compileall, pip-audit, scenario
+  validator and diff-check pass. The template validates; `--require-go` fails as intended. Positive
+  and negative evidence fixtures pass. Hosted CI remains pending.

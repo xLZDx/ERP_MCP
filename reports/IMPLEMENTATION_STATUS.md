@@ -156,6 +156,11 @@ Last updated: 2026-10-06
   It adds optional bearer-protected request counters, in-flight gauge and latency histograms with
   bounded labels. Full logs/traces/source telemetry, load tests, SBOM/deployment evidence and
   restore drills remain open.
+- P9 is in progress on `phase/p9-pilot-evidence-gate`, stacked on P8. A strict privacy-safe
+  evidence manifest and CI validator are added; the committed template is `NOT_READY` and the
+  `--require-go` gate fails until exact-release artifacts and human approvals are verified.
+  Production IdP, live 1C/native reports, target load/restore drills, real pilot users and release
+  authority are not present in this environment.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

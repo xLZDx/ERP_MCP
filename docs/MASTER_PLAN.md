@@ -223,6 +223,10 @@ Exit:
 
 ## P9 — Pilot & GO
 
+Current implementation status: privacy-safe pilot evidence template and fail-closed validator are
+implemented. The checked-in template is `NOT_READY`; no live pilot evidence is claimed. Real
+environment evidence and accountable release approval remain external gates.
+
 Pilot:
 - small controlled source set;
 - real accounting users/questions;

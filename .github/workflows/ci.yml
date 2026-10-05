@@ -84,6 +84,13 @@ jobs:
       - run: bandit -q -r src
       - run: python -m compileall -q src scripts testbed
       - run: python scripts/validate_scenarios.py
+      - name: Validate the fail-closed P9 pilot evidence template
+        run: |
+          python scripts/validate_pilot_evidence.py
+          if python scripts/validate_pilot_evidence.py --require-go; then
+            echo "empty pilot template unexpectedly passed production GO" >&2
+            exit 1
+          fi
       - run: >-
           psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
           -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"

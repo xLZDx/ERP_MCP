@@ -700,6 +700,10 @@ deployment evidence remain required.</p>
 <li>no unresolved blocker/high risk without explicit owner acceptance.</li>
 </ul>
 <h2>P9 — Pilot &amp; GO</h2>
+<p>A fail-closed evidence manifest and validator are implemented. The checked-in manifest template
+is explicitly <code>NOT_READY</code>; it cannot support production GO without exact-release CI,
+native reconciliation, zero-write/audit review, operational drills, pilot acceptance and named
+release approval. See <a href="PILOT_EVIDENCE_GATE.md">P9 evidence gate</a>.</p>
 <p>Pilot:</p>
 <ul>
 <li>small controlled source set;</li>
