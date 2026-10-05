@@ -1,6 +1,6 @@
 from starlette.testclient import TestClient
 
-from testbed.fake1c.app import create_app
+from business_ai_gateway.testbed.fake1c import create_app
 
 
 def test_fake1c_is_read_only_and_serves_metadata():
