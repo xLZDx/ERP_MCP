@@ -8,10 +8,10 @@ Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
 | R-03 write path exposure | MITIGATED IN CORE / OPEN FOR FUTURE ADAPTERS | Current Python client only GET/HEAD; structural test | Recheck every upstream/sidecar and mutation-negative tests |
 | R-04 SSRF | OPEN — critical | Registry IDs, URL/path validation, redirects off | DNS/egress and real deployment checks |
 | R-05 secret leakage | OPEN — critical | Secret references/providers; production env provider rejected | End-to-end leak and rotation evidence |
-| R-06 company authorization leak | PARTIALLY MITIGATED | Company FK and scoped allow/deny grants; company-only grants blocked from unscoped reads; deny wins in company query | PostgreSQL CI grants, adversarial ACL tests, then company-filtered adapter contract |
-| R-07 runtime DB policy escalation | PARTIALLY MITIGATED | CI created roles and verified table privileges after migrations | Add connection-level runtime-role tests and production provisioning runbook |
+| R-06 company authorization leak | PARTIALLY MITIGATED | Company FK and scoped allow/deny grants; company-only grants blocked from unscoped reads; deny precedence, inaccessible enumeration and immediate revocation passed PostgreSQL CI run 37355876333 | Enforce company filter in business-data adapter; add cross-source isolation |
+| R-07 runtime DB policy escalation | PARTIALLY MITIGATED | CI created roles and verified table privileges after migrations | Exercise actual connections as runtime/admin roles; production provisioning runbook |
 | R-19 IdP/JWKS outage blocks valid users | PARTIALLY MITIGATED | JWT verifier fails closed on JWKS error; negative test added | Add bounded network timeout/cache behavior and live IdP failure test |
-| R-08 audit tampering | PARTIALLY MITIGATED | Append-only trigger and runtime grant policy retained | PostgreSQL update/delete denial test and role evidence |
+| R-08 audit tampering | PARTIALLY MITIGATED | Append-only trigger and runtime grant policy retained; privilege checker verifies update/delete are denied to app role | PostgreSQL connection-level UPDATE/DELETE denial and immutable-trigger integration tests |
 | R-09 unstable upstream API | OPEN — high | Exact SHA/license intake documented | Integrate exact pin, lock and parity tests |
 | R-10 license contamination | MITIGATED BY POLICY | Copyleft isolation docs and vendor tests | Preserve policy on future adapter intake |
 | R-13 slow 1C query overload | OPEN — high | Basic timeout/row/response/rate settings | Sidecar limits, per-source concurrency, load evidence |

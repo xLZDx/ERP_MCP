@@ -1,7 +1,7 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Repository HEAD assessed: `d7d058ae8d12b54670c084488afc1e200ca42c4c`  
+Repository HEAD assessed: `3be80d981da03820e0b5bdc38dfd18fc7d26b070`
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
@@ -18,8 +18,9 @@ contract is documented.
   SHA `0a52b9f771171db15e671f5d4a269e8ec93c2a30`, so verify base-ref synchronization before merge).
 - Working HEAD: `d7d058ae8d12b54670c084488afc1e200ca42c4c`.
 - PR #1: OPEN, `bootstrap/1c-day1-production` → `main`.
-- CI: no status checks are published for current HEAD. Latest observed success is run
-  `37349236860` at `c4d5a0e7173c208a4103b9feebe2ab8b26898d68`; older failures also exist.
+- CI: run `37355521467` passed on `1912314c055c4253bca38424f08393178f25c774`; current HEAD
+  `3be80d981da03820e0b5bdc38dfd18fc7d26b070` passed run `37355876333` (`43 passed, 1 skipped`),
+  including PostgreSQL ACL integration.
 - No additional worktrees were listed. Existing workspace instruction files were preserved.
 - Local source and migration files show a small FastAPI/MCP control-plane prototype, PostgreSQL
   registry/grants/audit, Redis rate limits, file/env/GCP secrets, Fake1C, and a JSON/Atom OData probe
@@ -33,7 +34,7 @@ contract is documented.
 | Phase | Status | Existing implementation/evidence | Missing work, tests, or evidence | DoD |
 |---|---|---|---|---|
 | P0 Documentation freeze | PARTIAL | Normative v1.0 package, index, six ADRs, traceability, package test; root command center now copied | Reconcile the supplied copy with the in-repo generated command center; documentation test suite and current HEAD CI evidence | D0, D1 |
-| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–003; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; PostgreSQL migration and grants passed CI run 37355290036 | Company-aware business query adapter; complete Linux test rerun; remaining auth middleware and production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
+| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–003; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; CI 37355521467 and 37355876333 green; PostgreSQL ACL integration passed | Company-aware business query adapter; connection-level runtime-role tests; audit immutability/provenance DB tests; production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
 | P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; Fake1C JSON/Atom | Normalized adapter bindings; fallback/COM/legacy routes; drift lifecycle and adapter SHA; deterministic unsupported/fallback/drift tests | D7 |
 | P3 Modern OData data plane | NOT STARTED | Lightweight Python GET/HEAD client and bounded generic read | Integrate pinned `hacker-cb/1c-odata` sidecar; typed query, get/count/register contract; response shaping/cancellation/concurrency/circuit breaker; locks, upstream parity and container integration tests | D1, D5–D8, D13–D14, D16 |
 | P4 Semantic accounting | NOT STARTED | Documentation and candidate upstream inventory only | Company/adapter/semantic/reconciliation schema; profile lifecycle; transport-neutral semantic tools and provenance; deterministic synthetic business cases | D8–D9, D11 |
@@ -50,17 +51,17 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | Gate | Status | Evidence present | Remaining closure |
 |---|---|---|---|
 | D0 Documentation/traceability | PARTIAL | Baseline/index/traceability plus this initial gap report | Keep report and command center synchronized; close drift and attach evidence to exact release |
-| D1 Build/dependency integrity | PARTIAL | `pyproject.toml`, GitHub CI workflow, prior successful CI runs | Reproduce on current HEAD; install locked/reproducible dependencies; vulnerability/license/container evidence; no dependency lock currently established |
-| D2 Authentication | PARTIAL | JWT verifier checks signature, issuer, audience, exp/iat/sub/scope | Comprehensive negative/positive verifier tests and JWKS failure/cache behavior proof |
-| D3 Authorization/isolation | PARTIAL | Per-source subject/group grants, revoke/expiry SQL filters, enabled-source checks | Company scopes; immediate revocation/inaccessible enumeration integration tests; prove DB privilege split |
+| D1 Build/dependency integrity | PARTIAL | `pyproject.toml`, GitHub CI; CI 37355876333 passed all steps on current HEAD; local Ruff/compileall/Bandit/pip-audit pass | Install locked/reproducible dependencies; license/container evidence; no dependency lock currently established |
+| D2 Authentication | PARTIAL | JWT verifier checks signature, issuer, audience, exp/iat/sub/scope; positive/negative RSA tests and JWKS failure test | Framework-level resource-server behavior, bounded cache/network behavior and live IdP evidence |
+| D3 Authorization/isolation | PARTIAL | Per-source subject/group and company grants, deny precedence, expiry/revocation filters; company-only grants cannot authorize unscoped source reads; PostgreSQL ACL integration passed CI 37355876333; DB role grants checked in CI | Runtime-role connection tests; company-filtered business-data adapter; three-source isolation |
 | D4 Secrets | PARTIAL | ENV/FILE/GCP provider abstraction; production disallows ENV mode | Secret access/rotation/leak evidence and safer source onboarding/runtime secret handling tests |
 | D5 Read-only | PARTIAL | Read client implements GET/HEAD only; one structural test exists | Verify all adapter/tool inventories and fallback boundary with negative mutation tests |
 | D6 SSRF/transport | PARTIAL | Registered-source routing, URL/path checks, redirects disabled, production HTTPS settings | DNS/IP rebinding and egress policy proof; redirect and oversized request tests; endpoint validation parity for admin paths |
 | D7 Compatibility | PARTIAL | JSON/Atom metadata probe and persisted fingerprint/profile | Drift detection and invalidation; configured fallback route lifecycle and adapter provenance |
 | D8 Data-plane correctness | PARTIAL | Basic entity read and Fake1C metadata/entities | Upstream OData engine operations, typed validation, get/count/register, paging/cancel/parity/real-source tests |
 | D9 Accounting correctness | NOT STARTED | Scenario catalog and target protocol documented | Implement semantic layer, then reconcile >=10 cases against a real synthetic 1C instance |
-| D10 Multi-company | PARTIAL | Multiple source registry and source grants | Distinguish company from source, company ACL, three-source isolation and bounded fan-out evidence |
-| D11 Audit/provenance | PARTIAL | Append-only trigger, query fingerprint, principal/client/tool/source/outcome/rows/duration | Request/correlation, company, adapter and profile fingerprints, bytes/truncation, all-path database tests |
+| D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; PostgreSQL ACL integration passed CI 37355876333 | Three-source isolation and bounded fan-out evidence; company-filtered business adapter |
+| D11 Audit/provenance | PARTIAL | Append-only trigger; schema fields for request/correlation, company, adapter/profile/policy fingerprints, bytes/truncation; request path populates core provenance | DB immutability/field persistence tests and prove population across all success/error paths |
 | D12 Observability | NOT STARTED | Contract in docs only | Structured telemetry, metrics/traces/alerts, source health and leakage tests |
 | D13 Performance/limits | PARTIAL | Basic HTTP timeout, response byte cap, rows/filter and Redis per-tool rate limit settings | Load test, p50/p95/p99, per-source/principal concurrency, fan-out, pool saturation and memory evidence |
 | D14 Resilience | PARTIAL | DB/Redis readiness, selected HTTP retries | Defined Redis outage semantics, source isolation/circuit breaker, secret/IdP/adapter failure injection |

@@ -1,6 +1,6 @@
 # ERP_MCP
 
-**Production-grade Business AI / MCP gateway — 1C first.**
+Production-grade Business AI / MCP gateway with **1C-first priority** and reserved adapter boundaries.
 
 Current priority is a production read-only connection from AI clients to many 1C databases.
 The same control plane later accepts ERP and Ferma adapters without redesigning identity, ACL,
