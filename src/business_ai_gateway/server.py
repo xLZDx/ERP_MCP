@@ -93,6 +93,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "subject": principal.subject,
             "accessible_sources": len(sources),
             "max_rows": settings.max_rows,
+            "capability_negotiation": true,
+            "adapter_profiles": [
+                "ODATA_JSON_V3",
+                "ODATA_ATOM_V3",
+                "HTTP_QUERY_FALLBACK",
+            ],
             "future_adapters": {"erp": "reserved", "ferma": "reserved"},
         }
 
@@ -159,6 +165,46 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source_id=source_id,
                 outcome="error",
                 started_at=started,
+                detail_code=type(exc).__name__,
+            )
+            raise
+
+    @mcp.tool()
+    async def onec_capabilities(
+        source_id: str,
+        refresh: bool = False,
+    ) -> dict[str, Any]:
+        """Detect and persist the safest compatible transport profile for a 1C source."""
+        started = time.monotonic()
+        principal = await ctx()
+        source = await resolve_source(
+            principal,
+            source_id,
+            "onec_capabilities",
+            started,
+            {"refresh": refresh},
+        )
+        try:
+            capabilities = await runtime.onec.capabilities(source, refresh=refresh)
+            await runtime.registry.save_capabilities(capabilities)
+            result = capabilities.as_dict()
+            await runtime.audit.write(
+                principal=principal,
+                tool="onec_capabilities",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query={"refresh": refresh},
+            )
+            return result
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="onec_capabilities",
+                source_id=source_id,
+                outcome="error",
+                started_at=started,
+                query={"refresh": refresh},
                 detail_code=type(exc).__name__,
             )
             raise
@@ -265,6 +311,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             principal, source_id, "onec_read", started, query
         )
         try:
+            capabilities = await runtime.onec.capabilities(source)
+            await runtime.registry.save_capabilities(capabilities)
             result = await runtime.onec.read(
                 source,
                 entity_set=entity_set,
