@@ -115,10 +115,11 @@ Exit:
 ## P4 — Semantic accounting
 
 Initial profile/preset foundation is implemented: Aprovodka's pinned preset inventory is exposed as
-`CANDIDATE_ONLY` references; migrations 006–007 store source/company-scoped versioned profiles,
-mappings and append-only operator lifecycle events. The admin CLI rechecks current metadata and
-capabilities and requires ten passing native-report cases. This does not yet implement or enable
-canonical accounting tools.
+`CANDIDATE_ONLY` references; migrations 006–009 store source/company-scoped versioned profiles,
+mappings, append-only operator lifecycle events, confirmed-mapping state and profile provenance in
+audit. The admin CLI rechecks current metadata/capabilities, requires explicit mapping confirmation
+and ten passing native-report cases. The first canonical `accounting_balance_and_turnovers` tool is
+implemented behind these gates; the remaining canonical domain tools are not yet implemented.
 
 Deliver canonical tools:
 - organization/company discovery;
@@ -135,6 +136,8 @@ Introduce:
 - mapping provenance;
 - profile/version fingerprint;
 - explicit confidence/warnings.
+- source/company ACL before any data request;
+- auditable mapping confirmation and canonical field projection.
 
 Exit:
 - no semantic tool depends directly on a configuration-specific name outside a profile;

@@ -224,6 +224,12 @@ Maps canonical concepts to source-specific implementation:
 Mappings are versioned through their owning profile. They remain `CANDIDATE` until source-specific
 metadata and semantic evidence confirms them; a preset name or upstream `verified` label alone does
 not enable a 1C operation.
+Migration 008 adds an operator-confirmed `CONFIRMED`/`HIGH` state with evidence refs and an
+append-only `MAPPING_CONFIRMED` event. Profile validation fails while any mapping remains a candidate.
+The first canonical account-turnover mapping binds one exact `AccountingRegister_*` method, an
+operator-reviewed company dimension/type, and seven source property names projected to canonical
+output keys. Runtime use still requires matching source/company, current acknowledged metadata,
+validated profile evidence and a positive live capability for that exact register method.
 
 ### `semantic_profile_events`
 
@@ -272,6 +278,9 @@ Migration 003 adds the initial request/correlation and adapter provenance fields
 - adapter kind/version and upstream SHA;
 - policy and metadata fingerprints;
 - response bytes and truncation.
+
+Migration 009 adds the semantic profile fingerprint so canonical-tool audit events identify the
+exact mapping profile used for a read.
 
 Target fields:
 - event ID/time;

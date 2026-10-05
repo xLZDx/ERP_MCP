@@ -97,3 +97,28 @@
 - Next software work: executable company-filtered business reads, canonical accounting tools,
   completed audit/operations proof and remaining deployment/security gates. Promoting a candidate
   or validating accounting semantics still requires a real target 1C source and native reports.
+
+## Step 25 — company-scoped account-turnover semantic vertical slice
+
+**Status:** implemented and verified locally; phase PR / hosted CI pending.
+**Date:** 2026-10-06
+
+- Reused the pinned Aprovodka accounting contract at `7b62c90e1fe74324605dc28d76f195200bb97252`
+  (`tools/accounting.ts`): BalanceAndTurnovers is period-bounded; company/account selection is an
+  explicit condition. OData request construction and register execution remain in the pinned
+  `hacker-cb/1c-odata` sidecar (`cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5`).
+- Added `accounting_balance_and_turnovers`: it authorizes the exact source/company before metadata
+  or data access, accepts no caller-selected EntitySet/filter/register args, and requires a
+  validated exact-company profile plus explicitly `CONFIRMED`/`HIGH` mapping, current fingerprints
+  and live `balanceAndTurnovers` capability. Company conditions are built only from operator-mapped
+  field/type and the registry external reference. Seven source fields map to canonical output keys;
+  missing fields fail closed and numeric/currency values are not silently converted.
+- Migration 008 adds explicit mapping confirmation and invalidates/audits direct post-validation
+  mapping changes. Migration 009 adds semantic profile fingerprint to audit events. Operator CLI
+  records controlled evidence references and append-only lifecycle events.
+- Added source/company deny-before-1C, unconfirmed-mapping no-dispatch, profile scope/drift,
+  condition escaping, output normalization, audit provenance and PostgreSQL trigger tests.
+- Verification: full Python suite `80 passed, 7 skipped`; disposable PostgreSQL migrations 001–009,
+  privilege checker PASS and integration `6 passed`; Ruff, compileall, Bandit pass. A real 1C base
+  and native reports remain necessary to promote any customer mapping; remaining canonical P4 tools
+  are not yet implemented.

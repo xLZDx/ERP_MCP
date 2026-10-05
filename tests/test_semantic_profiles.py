@@ -4,13 +4,20 @@ import pytest
 
 from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
+    ACCOUNT_TURNOVERS_CONCEPT,
+    ACCOUNT_TURNOVERS_FIELDS,
+    ACCOUNT_TURNOVERS_METHOD,
     APROVODKA_SHA,
     CONFIGURATION_PRESETS,
+    SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
+    build_account_turnovers_arguments,
     find_configuration_preset,
+    normalize_account_turnovers,
     require_profile_capabilities,
     require_usable_semantic_profile,
+    validate_account_turnovers_mapping,
     validate_native_reconciliation_evidence,
 )
 from scripts.semantic_profiles import (
@@ -180,6 +187,134 @@ def test_semantic_mapping_cannot_claim_an_unconfirmed_register_operation():
         source_id=SOURCE_ID,
         metadata_fingerprint=METADATA_FINGERPRINT,
     )
+
+
+def test_account_turnovers_mapping_is_explicit_and_company_scoped():
+    mapping = {
+        "entity_set": "AccountingRegister_Хозрасчетный",
+        "method": ACCOUNT_TURNOVERS_METHOD,
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": dict(
+            zip(
+                ACCOUNT_TURNOVERS_FIELDS,
+                ("Счет_Key", "НачальныйДт", "НачальныйКт", "ОборотДт", "ОборотКт", "КонечныйДт", "КонечныйКт"),
+                strict=True,
+            )
+        ),
+    }
+    assert ACCOUNT_TURNOVERS_CONCEPT == "account.balance_and_turnovers"
+    assert validate_account_turnovers_mapping(mapping) == (
+        "AccountingRegister_Хозрасчетный",
+        "balanceAndTurnovers",
+    )
+    entity_set, method, arguments = build_account_turnovers_arguments(
+        mapping,
+        company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        start_period="2026-01-01T00:00:00Z",
+        end_period="2026-01-31T23:59:59Z",
+    )
+    assert entity_set == "AccountingRegister_Хозрасчетный"
+    assert method == "balanceAndTurnovers"
+    assert arguments == {
+        "Period": {
+            "from": "2026-01-01T00:00:00+00:00",
+            "to": "2026-01-31T23:59:59+00:00",
+        },
+        "Condition": "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+    }
+    assert normalize_account_turnovers(
+        [
+            {
+                "Счет_Key": "acc-1",
+                "НачальныйДт": 1,
+                "НачальныйКт": 2,
+                "ОборотДт": 3,
+                "ОборотКт": 4,
+                "КонечныйДт": 5,
+                "КонечныйКт": 6,
+            }
+        ],
+        mapping,
+    ) == [
+        {
+            "account": "acc-1",
+            "opening_debit": 1,
+            "opening_credit": 2,
+            "debit_turnover": 3,
+            "credit_turnover": 4,
+            "closing_debit": 5,
+            "closing_credit": 6,
+        }
+    ]
+    string_scope = {**mapping, "company_scope": {"field": "Организация_Code", "value_type": "string"}}
+    _, _, string_arguments = build_account_turnovers_arguments(
+        string_scope,
+        company_external_ref="O'Brien",
+        start_period="2026-01-01T00:00:00+03:00",
+        end_period="2026-01-31T23:59:59+03:00",
+    )
+    assert string_arguments["Condition"] == "Организация_Code eq 'O''Brien'"
+
+
+def test_account_turnovers_mapping_refuses_guessed_entity_or_unscoped_call():
+    base = {
+        "entity_set": "AccountingRegister_Хозрасчетный",
+        "method": "balanceAndTurnovers",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": dict(zip(ACCOUNT_TURNOVERS_FIELDS, ACCOUNT_TURNOVERS_FIELDS, strict=True)),
+    }
+    for mapping in (
+        {**base, "entity_set": "AccountingRegister_Хозрасчетный/DrCrTurnovers"},
+        {**base, "method": "drCrTurnovers"},
+        {**base, "company_scope": {"field": "Организация_Key) or true", "value_type": "guid"}},
+    ):
+        with pytest.raises(SemanticMappingUnconfirmed):
+            validate_account_turnovers_mapping(mapping)
+    with pytest.raises(SemanticMappingUnconfirmed):
+        build_account_turnovers_arguments(
+            base,
+            company_external_ref="not-a-guid",
+            start_period="2026-01-01T00:00:00Z",
+            end_period="2026-01-31T23:59:59Z",
+        )
+    with pytest.raises(ValueError, match="start <= end"):
+        build_account_turnovers_arguments(
+            base,
+            company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+            start_period="2026-02-01T00:00:00Z",
+            end_period="2026-01-01T00:00:00Z",
+        )
+    with pytest.raises(SemanticMappingUnconfirmed, match="missing a field"):
+        normalize_account_turnovers(
+            [{"Account": "a"}],
+            {
+                **base,
+                "output_fields": dict(
+                    zip(
+                        ACCOUNT_TURNOVERS_FIELDS,
+                        (f"Field{i}" for i in range(7)),
+                        strict=True,
+                    )
+                ),
+            },
+        )
+
+
+def test_semantic_cli_exposes_operator_mapping_confirmation():
+    args = semantic_admin_parser().parse_args(
+        [
+            "confirm-mapping",
+            "--profile-id",
+            "f3727523-9689-4b73-973e-9754360fd0a0",
+            "--concept",
+            "account.balance_and_turnovers",
+            "--evidence-file",
+            "mapping-review.json",
+            "--actor",
+            "operator",
+        ]
+    )
+    assert args.command == "confirm-mapping"
 
 
 def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping():

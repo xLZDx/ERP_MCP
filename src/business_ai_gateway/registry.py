@@ -7,6 +7,16 @@ from .compatibility import OneCCapabilities
 from .db import Database
 from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
+from .semantic import (
+    ACCOUNT_TURNOVERS_CONCEPT,
+    SemanticMappingUnconfirmed,
+    SemanticProfileStale,
+    SemanticProfileUnavailable,
+    canonical_fingerprint,
+    require_profile_capabilities,
+    require_usable_semantic_profile,
+    validate_account_turnovers_mapping,
+)
 
 
 class AccessDenied(PermissionError):
@@ -181,6 +191,127 @@ class Registry:
         if row is None:
             raise AccessDenied("no access to company")
         return company_from_record(row)
+
+    async def require_source_for_company(
+        self, principal: Principal, source_id: str, company_id: UUID
+    ) -> Source:
+        """Resolve a source using only a source-wide or exact-company grant."""
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT DISTINCT s.*
+            FROM bag.sources s
+            JOIN bag.companies c ON c.source_id=s.source_id
+            JOIN bag.access_grants g
+              ON (g.source_id=s.source_id OR g.all_sources=TRUE)
+             AND (g.company_id IS NULL OR g.company_id=c.company_id)
+            WHERE s.source_id=$1 AND c.company_id=$2
+              AND s.enabled=TRUE AND c.enabled=TRUE
+              AND g.effect='allow' AND g.revoked_at IS NULL
+              AND (g.expires_at IS NULL OR g.expires_at>now())
+              AND (
+                    (g.principal_kind='subject' AND g.principal_id=$3)
+                 OR (g.principal_kind='group' AND g.principal_id=ANY($4::text[]))
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM bag.access_grants denied
+                WHERE denied.effect='deny' AND denied.revoked_at IS NULL
+                  AND (denied.expires_at IS NULL OR denied.expires_at>now())
+                  AND (denied.source_id=s.source_id OR denied.all_sources=TRUE)
+                  AND (denied.company_id IS NULL OR denied.company_id=c.company_id)
+                  AND (
+                        (denied.principal_kind='subject' AND denied.principal_id=$3)
+                     OR (denied.principal_kind='group' AND denied.principal_id=ANY($4::text[]))
+                  )
+              )
+            """,
+            source_id,
+            company_id,
+            principal.subject,
+            list(principal.groups),
+        )
+        if row is None:
+            raise AccessDenied("no access to source/company scope")
+        source = source_from_record(row)
+        source.validate_runtime(production=self.production)
+        return source
+
+    async def require_account_turnovers_mapping(
+        self, source_id: str, company_id: UUID
+    ) -> dict:
+        """Load only an exact-company validated and explicitly confirmed mapping."""
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT p.source_id, p.company_id, p.status AS profile_status,
+                   p.metadata_fingerprint, p.capability_fingerprint,
+                   p.profile_fingerprint,
+                   p.validation_evidence_json, m.mapping_json, m.mapping_status,
+                   m.confidence, c.metadata_fingerprint AS current_metadata_fingerprint,
+                   c.register_capabilities_json, c.drift_status
+            FROM bag.semantic_profiles p
+            JOIN bag.semantic_mappings m ON m.profile_id=p.profile_id
+            JOIN bag.source_capabilities c ON c.source_id=p.source_id
+            WHERE p.source_id=$1 AND p.company_id=$2
+              AND p.status='VALIDATED'
+              AND m.canonical_concept=$3
+            ORDER BY p.profile_version DESC
+            LIMIT 1
+            """,
+            source_id,
+            company_id,
+            ACCOUNT_TURNOVERS_CONCEPT,
+        )
+        if row is None:
+            raise SemanticProfileUnavailable(
+                "no validated account-turnover profile exists for this exact source/company"
+            )
+        if row["drift_status"] != "STABLE" or row["metadata_fingerprint"] != row[
+            "current_metadata_fingerprint"
+        ]:
+            raise SemanticProfileStale("account-turnover profile is stale or source drift is unacknowledged")
+        capability_profile = row["register_capabilities_json"]
+        if isinstance(capability_profile, str):
+            capability_profile = json.loads(capability_profile)
+        if canonical_fingerprint(capability_profile) != row["capability_fingerprint"]:
+            raise SemanticProfileStale("account-turnover capability evidence changed")
+        if row["mapping_status"] != "CONFIRMED" or row["confidence"] != "HIGH":
+            raise SemanticMappingUnconfirmed("account-turnover mapping has not been operator-confirmed")
+        mapping = row["mapping_json"]
+        if isinstance(mapping, str):
+            mapping = json.loads(mapping)
+        entity_set, method = validate_account_turnovers_mapping(mapping)
+        required = mapping.get("required_register_capabilities")
+        if required != [{"entity_set": entity_set, "method": method}]:
+            raise SemanticMappingUnconfirmed("mapping capability dependency is missing or mismatched")
+        validation_evidence = row["validation_evidence_json"]
+        if isinstance(validation_evidence, str):
+            validation_evidence = json.loads(validation_evidence)
+        require_usable_semantic_profile(
+            {
+                "source_id": row["source_id"],
+                "company_id": row["company_id"],
+                "status": row["profile_status"],
+                "metadata_fingerprint": row["metadata_fingerprint"],
+                "validation_evidence": validation_evidence,
+            },
+            source_id=source_id,
+            company_id=company_id,
+            metadata_fingerprint=row["current_metadata_fingerprint"],
+            drift_status=row["drift_status"],
+        )
+        require_profile_capabilities(
+            required,
+            capability_profile,
+            source_id=source_id,
+            metadata_fingerprint=row["current_metadata_fingerprint"],
+        )
+        return {
+            "source_id": row["source_id"],
+            "company_id": row["company_id"],
+            "metadata_fingerprint": row["metadata_fingerprint"],
+            "profile_fingerprint": row["profile_fingerprint"],
+            "mapping": mapping,
+            "register_capabilities": capability_profile,
+        }
 
     async def save_capabilities(self, capabilities: OneCCapabilities):
         row = await self.db.require_pool().fetchrow(

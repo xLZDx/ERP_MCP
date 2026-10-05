@@ -54,6 +54,7 @@ class Audit:
         upstream_sha: str | None = None,
         policy_version: str | None = None,
         metadata_fingerprint: str | None = None,
+        profile_fingerprint: str | None = None,
         returned_items: int | None = None,
         response_bytes: int | None = None,
         truncated: bool = False,
@@ -67,10 +68,10 @@ class Audit:
                 outcome, query_fingerprint, query_json, returned_items,
                 duration_ms, detail_code, request_id, company_id, adapter_kind,
                 adapter_version, upstream_sha, policy_version, metadata_fingerprint,
-                response_bytes, truncated
+                profile_fingerprint, response_bytes, truncated
             )
             VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,
-                   $16,$17,$18,$19,$20)
+                   $16,$17,$18,$19,$20,$21)
             """,
             uuid.uuid4(),
             principal.subject,
@@ -92,6 +93,7 @@ class Audit:
             upstream_sha,
             policy_version,
             metadata_fingerprint,
+            profile_fingerprint,
             response_bytes,
             truncated,
         )

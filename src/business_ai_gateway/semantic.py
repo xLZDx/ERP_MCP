@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -11,6 +13,19 @@ from .compatibility import CapabilityUnsupported
 
 APROVODKA_REPOSITORY = "https://github.com/theYahia/WWmcp"
 APROVODKA_SHA = "7b62c90e1fe74324605dc28d76f195200bb97252"
+ACCOUNT_TURNOVERS_CONCEPT = "account.balance_and_turnovers"
+ACCOUNT_TURNOVERS_METHOD = "balanceAndTurnovers"
+_ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
+_PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
+ACCOUNT_TURNOVERS_FIELDS = (
+    "account",
+    "opening_debit",
+    "opening_credit",
+    "debit_turnover",
+    "credit_turnover",
+    "closing_debit",
+    "closing_credit",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +165,105 @@ class SemanticProfileUnavailable(RuntimeError):
 
 class SemanticProfileStale(SemanticProfileUnavailable):
     code = "SCHEMA_DRIFT"
+
+
+class SemanticMappingUnconfirmed(SemanticProfileUnavailable):
+    code = "SEMANTIC_MAPPING_UNCONFIRMED"
+
+
+def validate_account_turnovers_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("account-turnover mapping must be a JSON object")
+    register_set = mapping.get("entity_set")
+    method = mapping.get("method")
+    company_scope = mapping.get("company_scope")
+    if (
+        set(mapping)
+        - {
+            "entity_set",
+            "method",
+            "company_scope",
+            "output_fields",
+            "required_register_capabilities",
+        }
+        or
+        not isinstance(register_set, str)
+        or not _ENTITY_SET_PATTERN.fullmatch(register_set)
+        or method != ACCOUNT_TURNOVERS_METHOD
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(mapping.get("output_fields"), dict)
+        or set(mapping["output_fields"]) != set(ACCOUNT_TURNOVERS_FIELDS)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in mapping["output_fields"].values()
+        )
+        or len(set(mapping["output_fields"].values())) != len(ACCOUNT_TURNOVERS_FIELDS)
+    ):
+        raise SemanticMappingUnconfirmed("account-turnover mapping is incomplete or unsupported")
+    return register_set, method
+
+
+def normalize_account_turnovers(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    """Project source-native rows into a profile-defined canonical shape."""
+    validate_account_turnovers_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("register response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("register response contains a non-object row")
+        field_map = mapping["output_fields"]
+        missing = [source_field for source_field in field_map.values() if source_field not in row]
+        if missing:
+            raise SemanticMappingUnconfirmed(
+                "register response is missing a field required by the validated semantic mapping"
+            )
+        normalized.append(
+            {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
+
+
+def build_account_turnovers_arguments(
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    start_period: str,
+    end_period: str,
+) -> tuple[str, str, dict[str, Any]]:
+    """Build bounded inputs from an operator-confirmed source/company mapping."""
+    register_set, method = validate_account_turnovers_mapping(mapping)
+    company_scope = mapping.get("company_scope")
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start > end:
+        raise ValueError("period boundaries must include a timezone and start <= end")
+
+    if company_scope["value_type"] == "guid":
+        try:
+            company_ref = str(UUID(company_external_ref))
+        except ValueError as exc:
+            raise SemanticMappingUnconfirmed(
+                "company reference is not a GUID as required by the validated mapping"
+            ) from exc
+        literal = f"guid'{company_ref}'"
+    else:
+        if not company_external_ref or len(company_external_ref) > 256:
+            raise SemanticMappingUnconfirmed("company reference is empty or too long")
+        literal = "'" + company_external_ref.replace("'", "''") + "'"
+
+    condition = f"{company_scope['field']} eq {literal}"
+    return register_set, method, {
+        "Period": {"from": start.isoformat(), "to": end.isoformat()},
+        "Condition": condition,
+    }
 
 
 class SemanticProfileStatus(StrEnum):

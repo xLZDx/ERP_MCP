@@ -33,7 +33,21 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    Never put raw accounting result rows, credentials, or customer documents in profile/evidence JSON.
    Mapping evidence is restricted to controlled `evidence_refs` and short `notes`; CLI JSON inputs
    are capped at 256 KB.
-4. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
+4. Review and explicitly confirm every mapping before profile validation. Confirmation requires
+   controlled evidence references, raises the mapping to `CONFIRMED`/`HIGH`, updates the profile
+   fingerprint and appends a `MAPPING_CONFIRMED` lifecycle event:
+
+   ```text
+   python scripts/semantic_profiles.py confirm-mapping --profile-id PROFILE_UUID \
+     --concept account.balance_and_turnovers --evidence-file mapping-review.json \
+     --actor OPERATOR_ID
+   ```
+
+   For `account.balance_and_turnovers`, the mapping must specify the exact source-confirmed
+   `AccountingRegister_*` EntitySet, `balanceAndTurnovers` method, a company-scope field/value type,
+   and property names for all seven canonical output fields. The CLI adds the matching exact
+   register capability dependency; it rejects guessed virtual-table names.
+5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
 
@@ -43,7 +57,7 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    ```
 
    Validation rechecks source metadata/capability fingerprints, acknowledged drift, exact scope,
-   every mapping capability dependency and the ten-case evidence set. Failure leaves the profile
+   every mapping's explicit confirmation and capability dependency, and the ten-case evidence set. Failure leaves the profile
    unvalidated. The service stores only case IDs/report references plus an evidence-manifest hash,
    not report contents. JSON inputs are capped at 256 KB, and mapping evidence accepts only
    controlled references and short notes.
@@ -60,6 +74,16 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   revalidate accounting semantics; reconciliation and a new profile version are required.
 - Runtime DB role can read profiles/events but cannot edit them. Admin role can create/update
   profile content and append events but cannot delete profiles/events or mutate event history.
-- These commands prepare a profile; they do not expose canonical accounting MCP tools. Such tools
-  remain unavailable until company-filtered reads and source-specific validated mappings are wired
-  end to end.
+- `accounting_balance_and_turnovers` is the first profile-driven canonical MCP tool. It requires an
+  exact source/company grant, a `VALIDATED` profile, a `CONFIRMED`/`HIGH` mapping, stable matching
+  metadata/capability fingerprints and a current positive `balanceAndTurnovers` capability. It
+  builds the company condition only from the profile's reviewed field and the registered company's
+  external reference, then dispatches through the pinned OData sidecar. The result is projected to
+  the seven canonical keys in `output_fields`; if any source field is missing, the call fails rather
+  than silently substituting a value. Amount representations are preserved as supplied by 1C (no
+  implicit currency or decimal conversion).
+- The tool does not accept caller-supplied EntitySets, OData filters, or register arguments. Missing,
+  unconfirmed or stale profiles/capabilities are audited and denied before register data dispatch.
+  A company-specific grant cannot be widened into a source-wide read by this tool.
+- Other canonical accounting tools remain unimplemented; no customer preset is promoted based on
+  upstream names or confidence labels.

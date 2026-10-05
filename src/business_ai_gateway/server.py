@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -11,9 +12,19 @@ from pydantic import AnyHttpUrl
 
 from .audit import AuditCorrelationMiddleware
 from .auth import JWTTokenVerifier
-from .compatibility import MetadataDriftUnacknowledged, require_acknowledged_metadata
+from .compatibility import (
+    CapabilityUnsupported,
+    MetadataDriftUnacknowledged,
+    require_acknowledged_metadata,
+)
 from .principal import current_principal
 from .runtime import Runtime
+from .semantic import (
+    ACCOUNT_TURNOVERS_CONCEPT,
+    SemanticProfileUnavailable,
+    build_account_turnovers_arguments,
+    normalize_account_turnovers,
+)
 from .settings import Settings
 
 
@@ -53,9 +64,16 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise PermissionError("required scope missing")
         return principal
 
-    async def resolve_source(principal, source_id, tool, started, query=None):
+    async def resolve_source(
+        principal, source_id, tool, started, query=None, company_id=None
+    ):
         try:
-            source = await runtime.registry.require_source(principal, source_id)
+            if company_id is None:
+                source = await runtime.registry.require_source(principal, source_id)
+            else:
+                source = await runtime.registry.require_source_for_company(
+                    principal, source_id, company_id
+                )
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
@@ -64,6 +82,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="denied",
                 started_at=started,
                 query=query,
+                company_id=company_id,
                 detail_code=type(exc).__name__,
             )
             raise
@@ -81,6 +100,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="denied",
                 started_at=started,
                 query=query,
+                company_id=company_id,
                 detail_code=type(exc).__name__,
             )
             raise
@@ -355,6 +375,124 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 started_at=started,
                 query=query,
                 detail_code=type(exc).__name__,
+            )
+            raise
+
+    @mcp.tool()
+    async def accounting_balance_and_turnovers(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+    ) -> dict[str, Any]:
+        """Read company-filtered account balances/turnovers via its validated semantic profile."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                company_id=None,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": ACCOUNT_TURNOVERS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "accounting_balance_and_turnovers",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_account_turnovers_mapping(
+                source_id, parsed_company_id
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_account_turnovers_arguments(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_account_turnovers(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ACCOUNT_TURNOVERS_CONCEPT,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
 
