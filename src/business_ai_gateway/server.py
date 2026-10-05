@@ -10,6 +10,7 @@ from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl
 
 from .auth import JWTTokenVerifier
+from .compatibility import MetadataDriftUnacknowledged, require_acknowledged_metadata
 from .principal import current_principal
 from .runtime import Runtime
 from .settings import Settings
@@ -384,6 +385,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         try:
             capabilities = await runtime.onec.capabilities(source)
             drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
             result = await runtime.onec.read(
                 source,
                 entity_set=entity_set,
@@ -421,7 +423,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="error",
                 started_at=started,
                 query=query,
-                detail_code=type(exc).__name__,
+                detail_code=(
+                    "METADATA_DRIFTED"
+                    if isinstance(exc, MetadataDriftUnacknowledged)
+                    else type(exc).__name__
+                ),
             )
             raise
 

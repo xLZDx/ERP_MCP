@@ -28,6 +28,17 @@ class CompatibilityStatus(StrEnum):
     UNSUPPORTED = "UNSUPPORTED"
 
 
+class MetadataDriftUnacknowledged(RuntimeError):
+    """Raised when a read is attempted against an unacknowledged metadata change."""
+
+
+def require_acknowledged_metadata(drift_state: dict[str, Any]) -> None:
+    if drift_state.get("drift_status") == "DRIFTED":
+        raise MetadataDriftUnacknowledged(
+            "metadata fingerprint changed; an administrator must acknowledge the current profile"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class OneCCapabilities:
     source_id: str

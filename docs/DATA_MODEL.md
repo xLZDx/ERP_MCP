@@ -145,8 +145,9 @@ Migration 004 additionally stores:
 The first observation establishes a stable baseline. A changed fingerprint sets a sticky `DRIFTED`
 state and retains the prior fingerprint; identical subsequent probes do not silently clear it.
 An operator may acknowledge only the current fingerprint through the admin command. A new change
-invalidates that acknowledgement. Capability responses expose the drift state, and successful
-capability/read audit events record `METADATA_DRIFTED` while the state is active.
+invalidates that acknowledgement. Capability responses expose the drift state; `onec_read` fails
+closed until acknowledgement, and capability/read audit events record `METADATA_DRIFTED` while the
+drift is active.
 
 Remaining target extensions:
 - capability schema version;

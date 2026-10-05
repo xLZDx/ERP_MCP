@@ -21,7 +21,8 @@ The result is persisted as a capability profile with a metadata SHA-256 fingerpr
 When a refreshed metadata fingerprint changes, the gateway preserves the prior fingerprint and
 marks the source `DRIFTED`. This state is sticky across identical probes so an operator cannot miss
 the change; a later metadata change invalidates any acknowledgement. `onec_capabilities` reports
-the drift state. Capability/read audit records use `METADATA_DRIFTED` while the drift is active.
+the drift state. `onec_read` fails closed until the current fingerprint is explicitly acknowledged.
+Capability/read audit records use `METADATA_DRIFTED` while the drift is active.
 Acknowledgement is an explicit administrative action bound to the observed fingerprint:
 
 ```bash

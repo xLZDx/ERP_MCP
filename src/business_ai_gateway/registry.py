@@ -255,20 +255,3 @@ class Registry:
                 else None
             ),
         }
-
-    async def acknowledge_capability_drift(self, source_id: str, expected_fingerprint: str):
-        row = await self.db.require_pool().fetchrow(
-            """
-            UPDATE bag.source_capabilities
-            SET drift_status='STABLE', drift_acknowledged_at=now()
-            WHERE source_id=$1
-              AND metadata_fingerprint=$2
-              AND drift_status='DRIFTED'
-            RETURNING source_id, metadata_fingerprint, drift_acknowledged_at
-            """,
-            source_id,
-            expected_fingerprint,
-        )
-        if row is None:
-            raise ValueError("source has no unacknowledged drift at the expected fingerprint")
-        return row

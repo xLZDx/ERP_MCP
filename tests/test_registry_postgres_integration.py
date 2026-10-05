@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from argparse import Namespace
 
 import asyncpg
 import pytest
@@ -15,6 +16,7 @@ from business_ai_gateway.compatibility import (
 )
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
+from scripts.admin import capability_ack_drift
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(
@@ -333,10 +335,17 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
         repeated = await registry.save_capabilities(capability("b" * 64))
         assert repeated["drift_status"] == "DRIFTED"
         with pytest.raises(ValueError, match="expected fingerprint"):
-            await registry.acknowledge_capability_drift(source_id, "c" * 64)
+            await capability_ack_drift(
+                Namespace(source_id=source_id, expected_fingerprint="c" * 64), conn
+            )
 
         await conn.execute("SET LOCAL ROLE business_ai_admin")
-        acknowledged = await registry.acknowledge_capability_drift(source_id, "b" * 64)
+        await capability_ack_drift(
+            Namespace(source_id=source_id, expected_fingerprint="b" * 64), conn
+        )
+        acknowledged = await conn.fetchrow(
+            "SELECT * FROM bag.source_capabilities WHERE source_id=$1", source_id
+        )
         assert acknowledged["metadata_fingerprint"] == "b" * 64
         assert acknowledged["drift_acknowledged_at"] is not None
 

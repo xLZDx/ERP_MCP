@@ -37,13 +37,16 @@ Last updated: 2026-10-05
 - CI run `37357432914` passed for the PostgreSQL `business_ai_admin` transaction test, proving
   allowed source/company/grant management and denied audit insertion/source deletion:
   `45 passed, 1 skipped` across the workflow.
+- CI run `37358444084` passed migration 004 and the PostgreSQL sticky-drift/admin-ack lifecycle:
+  `47 passed, 1 skipped`. The additional `onec_read` fail-closed gate is implemented locally and
+  its CI run is pending.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
 - First unresolved gates: P1 / D3, D11, D14 — end-to-end company-filtered data access, complete
   persisted audit contract across all request outcomes, and Redis failure behavior in integration
   remain open.
-- Local checks for the latest implementation changes: 42 passed, 4 skipped (PostgreSQL-only tests skip
+- Local checks for the latest implementation changes: 45 passed, 5 skipped (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
 - Previous CI collection failure `37355290036` on `3acd006` is superseded by green import-path fix
