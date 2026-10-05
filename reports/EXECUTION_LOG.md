@@ -2,7 +2,7 @@
 
 ## Step 21 — source-specific register capability rule
 
-**Status:** implemented and verified locally; hosted CI pending.
+**Status:** implemented and verified locally; hosted CI pass.
 **Date:** 2026-10-05
 
 - Added migration 005 to persist register capability evidence per source.
@@ -26,7 +26,7 @@
 
 ## Step 22 — semantic profile/preset foundation
 
-**Status:** implemented and verified locally; hosted CI pending.
+**Status:** implemented and verified locally; hosted CI pass.
 **Date:** 2026-10-06
 
 - Rechecked the pinned Aprovodka SHA `7b62c90e1fe74324605dc28d76f195200bb97252`: preset types,
@@ -51,7 +51,7 @@
 
 ## Step 23 — operator profile lifecycle and audit
 
-**Status:** implemented and verified locally; hosted CI pending.
+**Status:** implemented and verified locally; hosted CI pass.
 **Date:** 2026-10-06
 
 - Added operator-only CLI commands to create a source/company-scoped draft, add candidate mappings,
@@ -70,3 +70,6 @@
   Bandit, pip-audit (`no known vulnerabilities`) and diff checks pass.
 - Preset mappings remain candidate-only until a real source has been inspected and native reports
   reconciled. Canonical MCP accounting tools are still not exposed.
+- Hosted CI run `37375030150` on `5f7061d` passed both the gateway/database test job and pinned
+  `odata-upstream` job. A duplicate same-SHA run remains queued and is not used as acceptance
+  evidence.

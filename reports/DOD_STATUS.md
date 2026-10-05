@@ -1,9 +1,8 @@
 # Definition of Done status
 
-Assessed 2026-10-06 against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb`, branch commit
-`5d8172e`, and the local P4 admin lifecycle batch. Hosted run `37373981422` passed both `test` and
-`odata-upstream` on `5d8172e`. The uncommitted migration-007/operator-lifecycle batch still needs
-hosted CI.
+Assessed 2026-10-06 against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` and branch
+commit `5f7061d`. Hosted run `37375030150` passed both `test` and `odata-upstream`. A duplicate
+same-SHA run remains queued but is not needed as acceptance evidence.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.

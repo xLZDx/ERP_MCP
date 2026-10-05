@@ -116,12 +116,12 @@ Last updated: 2026-10-06
 - Hosted run `37373981422` on `5d8172e` passed both `test` and `odata-upstream`, including the
   capability-rule and migration-006/profile-foundation code in its tested ancestry. Earlier
   duplicate runs were superseded/cancelled by the newer same-branch workflow.
-- P4 operator lifecycle continues locally: `scripts/semantic_profiles.py` creates candidate profile
+- P4 operator lifecycle is published in `5f7061d`: `scripts/semantic_profiles.py` creates candidate profile
   versions, adds mappings, validates or retires them; each action is append-only logged by migration
   007. Validation checks exact metadata/capability fingerprints and current register dependencies,
   plus >=10 distinct passing native-report references. Local suite `74 passed, 7 skipped`;
   disposable PostgreSQL 001–007/privilege checker/integration `6 passed`; Ruff/compileall/Bandit pass.
-  Pip-audit reports no known vulnerabilities. The changes are not yet committed/pushed. Real
+  Pip-audit reports no known vulnerabilities. Hosted run `37375030150` passed both CI jobs. Real
   configuration-specific semantics remain unvalidated.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
