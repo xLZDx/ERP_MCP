@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 from .runtime import Runtime
 from .server import build_mcp
@@ -16,10 +15,12 @@ runtime = Runtime(settings)
 mcp = build_mcp(settings, runtime)
 
 
+@mcp.custom_route("/healthz", methods=["GET"])
 async def healthz(_: Request):
     return JSONResponse({"status": "ok"})
 
 
+@mcp.custom_route("/readyz", methods=["GET"])
 async def readyz(_: Request):
     try:
         ready = await runtime.ready()
@@ -55,8 +56,4 @@ app = mcp.streamable_http_app(
     session_idle_timeout=300,
     max_sessions=1000,
     transport_security=transport_security,
-    custom_starlette_routes=[
-        Route("/healthz", healthz),
-        Route("/readyz", readyz),
-    ],
 )
