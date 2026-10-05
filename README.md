@@ -35,9 +35,18 @@ See [SECURITY.md](SECURITY.md) and [deploy/PRODUCTION.md](deploy/PRODUCTION.md).
 - `system_status`
 - `sources_list`
 - `source_health`
+- `onec_capabilities` — behavior-first version/capability negotiation
 - `onec_metadata_summary`
 - `onec_find_entities`
 - `onec_read`
+
+Compatibility is not hard-coded to a configuration name. The gateway probes live capabilities and
+selects `ODATA_JSON_V3`, `ODATA_ATOM_V3`, a configured fallback profile, or reports
+`UNSUPPORTED`. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+The repository also contains a three-level test strategy:
+**Fake1C CI → real file-mode 1C test instance → server-mode production-parity 1C**.
+See [testbed/README.md](testbed/README.md).
 
 The first semantic accounting tools (AR/AP, sales, purchases, cash, inventory, VAT,
 account turnover and document postings) are added only after profiling the actual client
