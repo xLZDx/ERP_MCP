@@ -563,3 +563,136 @@ async def test_bank_balance_uses_only_confirmed_profile_and_exact_source_registe
         top=Settings().max_rows,
     )
     assert audit.events[-1]["profile_fingerprint"] == "sha256:bank-profile"
+
+
+@pytest.mark.parametrize(
+    ("tool", "concept", "register"),
+    [
+        (
+            "receivable_balance",
+            "receivable.balance",
+            "AccumulationRegister_TestReceivables",
+        ),
+        ("payable_balance", "payable.balance", "AccumulationRegister_TestPayables"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_settlement_balance_uses_company_scoped_confirmed_mapping(tool, concept, register):
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    source = SimpleNamespace(id="source-1")
+    mapping = {
+        "entity_set": register,
+        "method": "Balance",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "counterparty_ref": "Контрагент_Key",
+            "contract_ref": "Договор_Key",
+            "amount": "СуммаBalance",
+        },
+        "required_register_capabilities": [{"entity_set": register, "method": "Balance"}],
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": f"sha256:{concept}"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        register_read=AsyncMock(
+            return_value={
+                "value": [{"Контрагент_Key": "party-1", "Договор_Key": "deal-1", "СуммаBalance": "9"}]
+            }
+        ),
+    )
+    mcp = build_mcp(
+        Settings(),
+        SimpleNamespace(
+            audit=audit,
+            registry=registry,
+            rate_limit=SimpleNamespace(check=AsyncMock()),
+            onec=onec,
+        ),
+    )
+    result = await mcp.call_tool(
+        tool,
+        {
+            "source_id": "source-1",
+            "company_id": str(company_id),
+            "period": "2026-10-01T00:00:00Z",
+        },
+    )
+    assert not result.is_error
+    payload = json.loads(result.content[0].text)
+    assert payload["concept"] == concept
+    assert payload["value"] == [
+        {"counterparty_ref": "party-1", "contract_ref": "deal-1", "amount": "9"}
+    ]
+    onec.register_read.assert_awaited_once_with(
+        source,
+        register_set=register,
+        method="Balance",
+        arguments={
+            "Period": "2026-10-01T00:00:00+00:00",
+            "Condition": "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+        },
+        top=Settings().max_rows,
+    )
+
+
+@pytest.mark.parametrize(
+    ("tool", "concept"),
+    [
+        ("receivable_balance", "receivable.balance"),
+        ("payable_balance", "payable.balance"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_unconfirmed_settlement_mapping_is_denied_before_register_read(tool, concept):
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        side_effect=SemanticMappingUnconfirmed("mapping is not confirmed")
+    )
+    audit = RecordingAudit()
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(
+            return_value=SimpleNamespace(
+                adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+                metadata_fingerprint="sha256:metadata",
+            )
+        ),
+        register_read=AsyncMock(),
+    )
+    mcp = build_mcp(
+        Settings(),
+        SimpleNamespace(
+            audit=audit,
+            registry=registry,
+            rate_limit=SimpleNamespace(check=AsyncMock()),
+            onec=onec,
+        ),
+    )
+    with pytest.raises(UnexpectedToolError):
+        await mcp.call_tool(
+            tool,
+            {
+                "source_id": "source-1",
+                "company_id": str(company_id),
+                "period": "2026-10-01T00:00:00Z",
+            },
+        )
+    assert audit.events[-1]["outcome"] == "denied"
+    assert audit.events[-1]["detail_code"] == "SEMANTIC_MAPPING_UNCONFIRMED"
+    onec.register_read.assert_not_awaited()

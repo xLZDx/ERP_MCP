@@ -60,6 +60,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    scope requirements, with reviewed bank-account/currency/amount field projection. Common preset
    candidates such as `AccumulationRegister_ДенежныеСредстваБезналичные` are hints only; no account
    or amount field name is inferred from the preset.
+   For `receivable.balance` and `payable.balance`, each mapping independently selects the exact
+   accumulation register and projects counterparty, contract and amount. These snapshots do not
+   calculate aging or infer overdue status; aging remains unavailable until a source-specific due
+   date/settlement semantic mapping and native-report reconciliation are approved.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -109,6 +113,9 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
 - `bank_balance` uses the same pinned point-in-time `Balance` operation with a separate confirmed
   source mapping for bank-account reference, currency reference and amount. Preset confidence does
   not authorize a register call or determine the output-field names.
+- `receivable_balance` and `payable_balance` return only point-in-time counterparty/contract amounts
+  from distinct validated mappings. They do not return aging buckets, overdue days or a combined
+  net position.
 - Other canonical accounting tools (cash/bank, inventory movements, AR/AP aging, tax/VAT and posting trace)
   remain unimplemented; no customer preset is promoted based on
   upstream names or confidence labels.

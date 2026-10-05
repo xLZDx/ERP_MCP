@@ -18,6 +18,8 @@ ACCOUNT_TURNOVERS_METHOD = "balanceAndTurnovers"
 INVENTORY_BALANCE_CONCEPT = "inventory.balance"
 INVENTORY_BALANCE_METHOD = "Balance"
 BANK_BALANCE_CONCEPT = "bank.balance"
+RECEIVABLE_BALANCE_CONCEPT = "receivable.balance"
+PAYABLE_BALANCE_CONCEPT = "payable.balance"
 _ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
 _PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
 ACCOUNT_TURNOVERS_FIELDS = (
@@ -51,6 +53,7 @@ DOCUMENT_CONCEPT_FIELDS = {
 }
 INVENTORY_BALANCE_FIELDS = ("item_ref", "warehouse_ref", "quantity")
 BANK_BALANCE_FIELDS = ("bank_account_ref", "currency_ref", "amount")
+SETTLEMENT_BALANCE_FIELDS = ("counterparty_ref", "contract_ref", "amount")
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,6 +329,19 @@ def validate_bank_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
     return _validate_accumulation_balance_mapping(mapping, BANK_BALANCE_FIELDS, "bank")
 
 
+def validate_settlement_balance_mapping(
+    concept: str, mapping: dict[str, Any]
+) -> tuple[str, str]:
+    labels = {
+        RECEIVABLE_BALANCE_CONCEPT: "receivable",
+        PAYABLE_BALANCE_CONCEPT: "payable",
+    }
+    label = labels.get(concept)
+    if label is None:
+        raise SemanticMappingUnconfirmed("settlement balance concept is unsupported")
+    return _validate_accumulation_balance_mapping(mapping, SETTLEMENT_BALANCE_FIELDS, label)
+
+
 def build_inventory_balance_arguments(
     mapping: dict[str, Any], *, company_external_ref: str, period: str
 ) -> tuple[str, str, dict[str, str]]:
@@ -346,6 +362,26 @@ def build_bank_balance_arguments(
     mapping: dict[str, Any], *, company_external_ref: str, period: str
 ) -> tuple[str, str, dict[str, str]]:
     register_set, method = validate_bank_balance_mapping(mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return register_set, method, {
+        "Period": point.isoformat(),
+        "Condition": build_company_filter(mapping, company_external_ref),
+    }
+
+
+def build_settlement_balance_arguments(
+    concept: str,
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    period: str,
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_settlement_balance_mapping(concept, mapping)
     try:
         point = datetime.fromisoformat(period)
     except (TypeError, ValueError) as exc:
@@ -388,6 +424,25 @@ def normalize_bank_balance_rows(rows: Any, mapping: dict[str, Any]) -> list[dict
         field_map = mapping["output_fields"]
         if any(source_field not in row for source_field in field_map.values()):
             raise SemanticMappingUnconfirmed("bank balance response is missing a mapped field")
+        normalized.append(
+            {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
+
+
+def normalize_settlement_balance_rows(
+    rows: Any, mapping: dict[str, Any], concept: str
+) -> list[dict[str, Any]]:
+    validate_settlement_balance_mapping(concept, mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("settlement balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("settlement balance response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed("settlement balance response is missing a mapped field")
         normalized.append(
             {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
         )

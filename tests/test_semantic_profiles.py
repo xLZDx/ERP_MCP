@@ -11,6 +11,8 @@ from business_ai_gateway.semantic import (
     BANK_BALANCE_CONCEPT,
     CONFIGURATION_PRESETS,
     INVENTORY_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
@@ -18,11 +20,13 @@ from business_ai_gateway.semantic import (
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
+    build_settlement_balance_arguments,
     find_configuration_preset,
     normalize_account_turnovers,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
+    normalize_settlement_balance_rows,
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
@@ -30,6 +34,7 @@ from business_ai_gateway.semantic import (
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_native_reconciliation_evidence,
+    validate_settlement_balance_mapping,
 )
 from scripts.semantic_profiles import (
     _validate_mapping_evidence,
@@ -329,7 +334,15 @@ def test_semantic_cli_exposes_operator_mapping_confirmation():
 
 
 @pytest.mark.parametrize(
-    "concept", ["sales", "purchases", "inventory.balance", "bank.balance"]
+    "concept",
+    [
+        "sales",
+        "purchases",
+        "inventory.balance",
+        "bank.balance",
+        "receivable.balance",
+        "payable.balance",
+    ],
 )
 def test_semantic_cli_exposes_only_named_supported_read_concepts(concept):
     args = semantic_admin_parser().parse_args(
@@ -346,6 +359,49 @@ def test_semantic_cli_exposes_only_named_supported_read_concepts(concept):
         ]
     )
     assert args.concept == concept
+
+
+@pytest.mark.parametrize(
+    ("concept", "entity_set"),
+    [
+        (RECEIVABLE_BALANCE_CONCEPT, "AccumulationRegister_TestReceivables"),
+        (PAYABLE_BALANCE_CONCEPT, "AccumulationRegister_TestPayables"),
+    ],
+)
+def test_settlement_balance_uses_validated_period_company_and_field_mapping(concept, entity_set):
+    mapping = {
+        "entity_set": entity_set,
+        "method": "Balance",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "counterparty_ref": "Контрагент_Key",
+            "contract_ref": "Договор_Key",
+            "amount": "СуммаBalance",
+        },
+    }
+    assert validate_settlement_balance_mapping(concept, mapping) == (entity_set, "Balance")
+    assert build_settlement_balance_arguments(
+        concept,
+        mapping,
+        company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        period="2026-10-01T00:00:00Z",
+    ) == (
+        entity_set,
+        "Balance",
+        {
+            "Period": "2026-10-01T00:00:00+00:00",
+            "Condition": "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+        },
+    )
+    assert normalize_settlement_balance_rows(
+        [{"Контрагент_Key": "party-1", "Договор_Key": "contract-1", "СуммаBalance": "8"}],
+        mapping,
+        concept,
+    ) == [
+        {"counterparty_ref": "party-1", "contract_ref": "contract-1", "amount": "8"}
+    ]
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_settlement_balance_mapping("receivable", mapping)
 
 
 def test_sales_and_purchase_document_maps_are_company_scoped_and_profile_projected():

@@ -165,7 +165,7 @@
 
 ## Step 28 — source-capability-gated bank balance snapshot
 
-**Status:** implemented and locally verified; hosted CI pending.
+**Status:** implemented; local and hosted CI PASS.
 **Date:** 2026-10-06
 
 - Reused Aprovodka's pinned `getAccumulationBalance` implementation/tests and UT11's
@@ -180,4 +180,23 @@
   OData protocol code were added.
 - Local full suite: Python `93 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009,
   privilege policy and integration `6 passed`; Ruff, compileall, Bandit, pip-audit and diff check
-  PASS. Hosted CI follows publication.
+  PASS. Hosted CI run `37382615109` passed both jobs on `c6605b8`.
+
+## Step 29 — company-scoped receivable/payable balance snapshots
+
+**Status:** implemented locally; verification and publication in progress.
+**Date:** 2026-10-06
+
+- Reused Aprovodka's pinned UT11 candidate inventory for customer/supplier settlement accumulation
+  registers and its existing point-in-time accumulation `Balance(Period, Condition)` implementation
+  and tests. The candidate names are explicitly tagged `common` and never selected automatically.
+- Added distinct `receivable.balance` / `payable.balance` mapping contracts and MCP tools. Each
+  requires exact source/company authorization, a validated profile and exact live source
+  `AccumulationRegister_*/Balance` capability; canonical projection is counterparty, contract and
+  amount. Caller input cannot choose a register or filter.
+- These tools deliberately return balances only: they do not calculate aging, overdue days, net
+  positions, or infer due dates. Such semantics need a separate reviewed profile and native report
+  reconciliation.
+- Local full suite: Python `101 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009,
+  privilege policy and integration `6 passed`; Ruff, compileall, Bandit pass. Hosted CI and final
+  pip-audit/diff-check for this batch follow publication.

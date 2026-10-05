@@ -316,6 +316,24 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                         }
                     },
                 },
+                {
+                    "entity_set": "AccumulationRegister_РасчетыСКлиентами",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
+                {
+                    "entity_set": "AccumulationRegister_РасчетыСПоставщиками",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
             ],
         }
         capability = OneCCapabilities(
@@ -520,6 +538,47 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        for concept, entity_set, mapping_file_name in (
+            (
+                "receivable.balance",
+                "AccumulationRegister_РасчетыСКлиентами",
+                "receivable-mapping.json",
+            ),
+            (
+                "payable.balance",
+                "AccumulationRegister_РасчетыСПоставщиками",
+                "payable-mapping.json",
+            ),
+        ):
+            settlement_mapping_file = tmp_path / mapping_file_name
+            settlement_mapping_file.write_text(
+                json.dumps(
+                    {
+                        "entity_set": entity_set,
+                        "method": "Balance",
+                        "company_scope": {
+                            "field": "Организация_Key",
+                            "value_type": "string",
+                        },
+                        "output_fields": {
+                            "counterparty_ref": "CounterpartyRef",
+                            "contract_ref": "ContractRef",
+                            "amount": "AmountBalance",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            await add_mapping(
+                Namespace(
+                    profile_id=str(profile_id),
+                    concept=concept,
+                    mapping_file=str(settlement_mapping_file),
+                    evidence_file=None,
+                    actor="integration-operator",
+                ),
+                conn,
+            )
         mapping_confirmation_file = tmp_path / "mapping-confirmation.json"
         mapping_confirmation_file.write_text(
             json.dumps(
@@ -566,6 +625,8 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             "purchases",
             "inventory.balance",
             "bank.balance",
+            "receivable.balance",
+            "payable.balance",
         ):
             await confirm_mapping(
                 Namespace(
@@ -615,6 +676,14 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         assert loaded_bank_mapping["mapping"]["entity_set"] == (
             "AccumulationRegister_ДенежныеСредстваБезналичные"
         )
+        for concept, entity_set in (
+            ("receivable.balance", "AccumulationRegister_РасчетыСКлиентами"),
+            ("payable.balance", "AccumulationRegister_РасчетыСПоставщиками"),
+        ):
+            loaded_settlement_mapping = await Registry(
+                ConnectionDatabase(conn), production=False
+            ).require_semantic_mapping(source_id, company_id, concept)
+            assert loaded_settlement_mapping["mapping"]["entity_set"] == entity_set
         with pytest.raises(SemanticProfileUnavailable):
             await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
                 source_id, uuid.uuid4()
@@ -632,12 +701,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 15
+        ) == 19
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 15
+        ) == 19
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )

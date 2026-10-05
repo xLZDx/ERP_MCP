@@ -11,6 +11,8 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
@@ -21,6 +23,7 @@ from .semantic import (
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
+    validate_settlement_balance_mapping,
 )
 
 
@@ -307,6 +310,12 @@ class Registry:
             if required != [{"entity_set": entity_set, "method": method}]:
                 raise SemanticMappingUnconfirmed(
                     "bank mapping capability dependency is missing or mismatched"
+                )
+        elif concept in {RECEIVABLE_BALANCE_CONCEPT, PAYABLE_BALANCE_CONCEPT}:
+            entity_set, method = validate_settlement_balance_mapping(concept, mapping)
+            if required != [{"entity_set": entity_set, "method": method}]:
+                raise SemanticMappingUnconfirmed(
+                    "settlement mapping capability dependency is missing or mismatched"
                 )
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")

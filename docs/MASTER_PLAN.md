@@ -121,7 +121,8 @@ audit. The admin CLI rechecks current metadata/capabilities, requires explicit m
 and ten passing native-report cases. Canonical `accounting_balance_and_turnovers`,
 `sales_documents`, `purchase_documents` and point-in-time `inventory_balance` tools are implemented
 behind these gates; `bank_balance` is also available only with the same exact-source capability and
-mapping gates. Other canonical domain tools are not yet implemented.
+mapping gates. `receivable_balance` and `payable_balance` expose point-in-time mapped balances, not
+aging. Remaining canonical domain tools are not yet implemented.
 
 Deliver canonical tools:
 - organization/company discovery;

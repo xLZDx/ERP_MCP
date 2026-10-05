@@ -127,15 +127,15 @@ Last updated: 2026-10-06
   adds auditable explicit mapping confirmation and stales validated profiles after direct mapping
   edits; migration 009 records the semantic profile fingerprint in audit events. The new
   `accounting_balance_and_turnovers`, `sales_documents`, `purchase_documents`, `inventory_balance`
-  and `bank_balance` authorize the exact
+  `bank_balance`, `receivable_balance` and `payable_balance` authorize the exact
   company first, load only validated company-scoped mappings, check current capabilities, compose
   company filters from reviewed mappings plus registry external references, and normalize canonical
-  fields. Sales/purchase document support passed locally at `83 passed, 7 skipped` and hosted CI run
-  `37380789434`. Inventory balance reuses pinned `Balance(Period, Condition)` semantics and requires
-  exact-source live register capability evidence; local suite is `93 passed, 7 skipped`, disposable
-  PostgreSQL 16 migrations 001–009/privilege policy pass, integration `6/6`, Ruff, compileall and
-  Bandit pass. Hosted CI for inventory is green at run `37381909454`; bank balance CI is pending.
-  Cash movements, inventory movements, AR/AP, tax,
+  fields. Sales/purchase document support passed hosted CI `37380789434`; inventory passed
+  `37381909454`; bank passed `37382615109`. The current settlement balance extension has local suite
+  `101 passed, 7 skipped`, disposable PostgreSQL 16 migrations 001–009/privilege policy pass,
+  integration `6/6`, Ruff, compileall and Bandit pass. A/R and A/P tools expose point-in-time mapped
+  balances only, not aging. Hosted CI is pending. Cash movements, inventory movements, AR/AP aging,
+  tax,
   posting trace,
   and real native-report reconciliation remain open.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises

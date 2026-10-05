@@ -23,15 +23,19 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
+    build_settlement_balance_arguments,
     normalize_account_turnovers,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
+    normalize_settlement_balance_rows,
 )
 from .settings import Settings
 
@@ -716,6 +720,131 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    async def read_settlement_balance(
+        source_id: str,
+        company_id: str,
+        period: str,
+        *,
+        concept: str,
+        tool_name: str,
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {"company_id": str(parsed_company_id), "concept": concept, "period": period}
+        source = await resolve_source(
+            principal, source_id, tool_name, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_settlement_balance_arguments(
+                concept, mapping, company_external_ref=company.external_ref, period=period
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            rows = normalize_settlement_balance_rows(raw_rows, mapping, concept)
+            response_bytes = len(json.dumps(rows, ensure_ascii=False, default=str).encode("utf-8"))
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": concept,
+                "period": period,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def receivable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read point-in-time receivable balances; this tool does not compute aging buckets."""
+        return await read_settlement_balance(
+            source_id,
+            company_id,
+            period,
+            concept=RECEIVABLE_BALANCE_CONCEPT,
+            tool_name="receivable_balance",
+        )
+
+    @mcp.tool()
+    async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read point-in-time payable balances; this tool does not compute aging buckets."""
+        return await read_settlement_balance(
+            source_id,
+            company_id,
+            period,
+            concept=PAYABLE_BALANCE_CONCEPT,
+            tool_name="payable_balance",
+        )
 
     async def read_company_documents(
         source_id: str,

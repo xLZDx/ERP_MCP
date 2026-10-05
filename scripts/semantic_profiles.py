@@ -16,7 +16,9 @@ from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
     PRESETS_BY_ID,
+    RECEIVABLE_BALANCE_CONCEPT,
     canonical_fingerprint,
     find_configuration_preset,
     require_profile_capabilities,
@@ -25,6 +27,7 @@ from business_ai_gateway.semantic import (
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_native_reconciliation_evidence,
+    validate_settlement_balance_mapping,
 )
 from business_ai_gateway.settings import Settings
 
@@ -38,6 +41,8 @@ CONCEPTS = (
     "inventory",
     INVENTORY_BALANCE_CONCEPT,
     BANK_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
     "vat",
 )
 
@@ -249,6 +254,13 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         if required is not None and required != expected:
             raise ValueError("bank capability dependency must match the exact mapping")
         mapping["required_register_capabilities"] = expected
+    elif args.concept in {RECEIVABLE_BALANCE_CONCEPT, PAYABLE_BALANCE_CONCEPT}:
+        entity_set, method = validate_settlement_balance_mapping(args.concept, mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": entity_set, "method": method}]
+        if required is not None and required != expected:
+            raise ValueError("settlement capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
     evidence = _read_object(args.evidence_file) if args.evidence_file else {}
     evidence = _validate_mapping_evidence(evidence)
     if "required_register_capabilities" in mapping:
@@ -345,6 +357,12 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
                 {"entity_set": entity_set, "method": method}
             ]:
                 raise ValueError("bank capability dependency does not match its operation")
+        elif args.concept in {RECEIVABLE_BALANCE_CONCEPT, PAYABLE_BALANCE_CONCEPT}:
+            entity_set, method = validate_settlement_balance_mapping(args.concept, mapping)
+            if mapping.get("required_register_capabilities") != [
+                {"entity_set": entity_set, "method": method}
+            ]:
+                raise ValueError("settlement capability dependency does not match its operation")
         previous_evidence = _json_value(mapping_row["evidence_json"])
         combined_evidence = {
             "evidence_refs": list(dict.fromkeys(
