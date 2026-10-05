@@ -116,3 +116,22 @@ Before writing any new 1C transport/query feature:
 5. Add a regression fixture proving why the upstream implementation was insufficient.
 
 This is a project rule, not a suggestion.
+
+
+## Other catalogued adapters
+
+The current `Untru/1c-mcp` catalog was also checked for adapters that do not become primary data
+transports:
+
+- `infaton/MCP35` — MIT, large 1C:ERP MCP surface (90+ tools). Useful as a read-tool and ERP
+  business-operation reference, but its broad write/execute surface is not imported wholesale.
+- `andromanpro/1c-ai-connector` — MIT, native 1C extension/MCP platform for 8.3.24+; useful for
+  extension-side MCP patterns rather than our default external read path.
+- `1c-neurofish/onec-client-mcp-devkit` — LGPL-3.0; client-session/WebTransport concept only.
+- `1c-neurofish/v8-session-manager` — AGPL-3.0; multi-session routing concept only.
+- `tarasov46/1c-accounting-mcp` — historical prototype with no verified license; reference only.
+- `http1c` is listed by the catalog through MCP Market, but a source repository/license was not
+  verified in this audit. It is therefore not an intake dependency.
+
+These entries close the obvious gaps in the current public 1C MCP catalog, but the project still
+does not claim that every private/proprietary adapter ever written is publicly discoverable.
