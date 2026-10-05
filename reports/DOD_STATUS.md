@@ -1,7 +1,7 @@
 # Definition of Done status
 
-Assessed against implementation commit `7b29ab0b53a973a9e681992b770ddbae678c7142` and CI run
-`37360482223` (`55 passed, 1 skipped`).
+Assessed against implementation commit `e3b1a17d026d15d0b4fe147d27649fef2c396912` and CI run
+`37360919808` (`56 passed, 1 skipped`).
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
@@ -9,13 +9,13 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 52 passed/5 skipped (PostgreSQL tests need CI DB). CI 37360482223 passed the preceding code batch (55 passed/1 skipped); fallback fail-closed regression test awaits hosted CI. |
+| D1 Build/dependencies | PARTIAL | Local Ruff and pytest pass; current local suite is 52 passed/5 skipped (PostgreSQL tests need CI DB). CI 37360919808 passed all workflow steps; pytest reports 56 passed/1 skipped. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
 | D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | GET/HEAD-only client; mutation/sidecar inventory evidence incomplete. |
 | D6 SSRF/transport | PARTIAL | Registered source, HTTPS production and redirect/path checks exist; DNS rebinding/egress proof incomplete. |
-| D7 Compatibility | PARTIAL | JSON/Atom probe and persisted fingerprint exist; sticky drift/ack lifecycle and read fail-closed gate passed CI 37358947196; route tests cover unsupported behavior, explicit-only fallback selection and fail-closed no-network behavior for the unimplemented fallback locally. Fallback bindings remain incomplete. |
+| D7 Compatibility | PARTIAL | JSON/Atom probe and persisted fingerprint exist; sticky drift/ack lifecycle and read fail-closed gate passed CI 37358947196; unsupported behavior, explicit-only fallback selection and fail-closed no-network behavior for the unimplemented fallback passed CI 37360919808. Fallback bindings remain incomplete. |
 | D8 Data plane | PARTIAL | Basic read path only; approved upstream sidecar operations and parity tests remain. |
 | D9 Accounting | NOT STARTED | Semantic layer not implemented; native 1C reconciliation not applicable yet. |
 | D10 Multi-company | PARTIAL | Company table and scoped grants/list/resolve exist; transaction-isolated PostgreSQL ACL integration test passed in CI; three-source tests and bounded fan-out remain. |

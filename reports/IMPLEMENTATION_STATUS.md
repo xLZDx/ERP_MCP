@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Implementation assessed through CI-tested commit `7b29ab0b53a973a9e681992b770ddbae678c7142`
+- Implementation assessed through CI-tested commit `e3b1a17d026d15d0b4fe147d27649fef2c396912`
   (includes current `origin/main`).
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
@@ -54,7 +54,8 @@ Last updated: 2026-10-05
   (`55 passed, 1 skipped`) and every security/database workflow step.
 - Added a P2 negative route test proving the configured-but-unimplemented HTTP/query fallback
   raises explicitly without making any network call. Full local checks: Ruff passed; pytest
-  `52 passed, 5 skipped`; hosted CI pending.
+  `52 passed, 5 skipped`; CI run `37360919808` passed on `e3b1a17`, including pytest
+  (`56 passed, 1 skipped`) and the full workflow.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
