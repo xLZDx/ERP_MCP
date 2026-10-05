@@ -6,6 +6,25 @@ Current priority is a production read-only connection from AI clients to many 1C
 The same control plane later accepts ERP and Ferma adapters without redesigning identity, ACL,
 secrets, audit or observability.
 
+## Normative engineering baseline
+
+Before implementation or architectural changes, read
+[docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md).
+
+The v1.0 baseline freezes:
+- TDD;
+- Master Plan;
+- control-plane and semantic data model;
+- governance/change control;
+- Definition of Done;
+- architecture and adapter boundaries;
+- integration contract;
+- testing/SRE/threat/risk model;
+- ADRs and requirements traceability.
+
+Implementation must not silently override these documents. Architecture/security boundary changes
+require the governance/ADR process first.
+
 ## Day-1 production contract
 
 Production is fail-closed:
