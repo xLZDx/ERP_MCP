@@ -8,8 +8,8 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`
-  (includes current `origin/main`; subsequent status-report commit is documentation-only)
+- Implementation assessed through CI-tested commit `3c5cb6a6f56514d59b02e51bf01761cf724ff12b`
+  (includes current `origin/main`).
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
 - Existing local additions from workspace setup: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`,
@@ -45,7 +45,9 @@ Last updated: 2026-10-05
   upstream code has been copied or modified.
 - Added deterministic compatibility tests for both unsupported metadata discovery and explicit
   fallback selection. Targeted verification: Ruff passed; `tests/test_compatibility.py` passed
-  (`4 passed`). This change is not yet covered by hosted CI.
+  (`4 passed`); the full hosted CI result is recorded below.
+- CI run `37359877826` on `3c5cb6a` passed all workflow steps, including PostgreSQL migrations and
+  privilege checks, Ruff, Bandit, compileall, pytest (`51 passed, 1 skipped`) and pip-audit.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

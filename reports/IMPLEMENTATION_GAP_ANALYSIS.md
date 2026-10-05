@@ -1,8 +1,7 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Core implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`;
-additional compatibility-route tests are present locally and await hosted CI.
+Implementation assessed through CI-tested commit `3c5cb6a6f56514d59b02e51bf01761cf724ff12b`.
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
@@ -17,7 +16,7 @@ contract is documented.
 
 - `origin/main`: `a6bb75294578067fb23792f4dd2ceb8f17ddf673`; this commit has been merged into the
   implementation branch to resolve the README conflict before merge.
-- Working HEAD at latest verified implementation: `6af970d13c082dd98315146c4bea77e917f21d21`.
+- Working HEAD at latest verified implementation: `3c5cb6a6f56514d59b02e51bf01761cf724ff12b`.
 - PR #1: OPEN, `bootstrap/1c-day1-production` → `main`.
 - CI: runs `37356469102` and `37356471488` passed after main synchronization; commit `1590b89` passed
   run `37356701516`; implementation `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed run
@@ -39,7 +38,7 @@ contract is documented.
 |---|---|---|---|---|
 | P0 Documentation freeze | PARTIAL | Normative v1.0 package, index, six ADRs, traceability, package test; root command center now copied | Reconcile the supplied copy with the in-repo generated command center; documentation test suite and current HEAD CI evidence | D0, D1 |
 | P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–004; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; CI 37357432914 green; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip passed | company-aware business query adapter; audit success/denial-path provenance tests; production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
-| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; lifecycle/read gate passed CI 37358947196; local tests confirm unsupported status without safe route and explicit-only fallback selection | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; hosted CI for the new route tests and broader drift tests | D7 |
+| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; lifecycle/read gate passed CI 37358947196; unsupported/explicit-only fallback tests passed full CI 37359877826 | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; full route lifecycle tests | D7 |
 | P3 Modern OData data plane | NOT STARTED | Lightweight Python GET/HEAD client and bounded generic read | Integrate pinned `hacker-cb/1c-odata` sidecar; typed query, get/count/register contract; response shaping/cancellation/concurrency/circuit breaker; locks, upstream parity and container integration tests | D1, D5–D8, D13–D14, D16 |
 | P4 Semantic accounting | NOT STARTED | Documentation and candidate upstream inventory only | Company/adapter/semantic/reconciliation schema; profile lifecycle; transport-neutral semantic tools and provenance; deterministic synthetic business cases | D8–D9, D11 |
 | P5 Real 1C and reconciliation | PARTIAL | L1 Fake1C, optional integration-test stub, seed/snapshot specs and 10 scenario definitions | Executable deterministic seed/snapshot workflow and captured results; no actual L2/L3 connection or native-report reconciliation evidence recorded | D7–D10, D18 |
