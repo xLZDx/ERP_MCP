@@ -34,6 +34,22 @@ def test_preset_catalog_is_pinned_and_advisory_only():
     }
     assert all(preset.upstream_sha == APROVODKA_SHA for preset in CONFIGURATION_PRESETS)
     assert all(preset.status == "CANDIDATE_ONLY" for preset in CONFIGURATION_PRESETS)
+    prefix_by_kind = {
+        "catalog": "Catalog_",
+        "document": "Document_",
+        "accumulation_register": "AccumulationRegister_",
+        "information_register": "InformationRegister_",
+        "accounting_register": "AccountingRegister_",
+        "calculation_register": "CalculationRegister_",
+        "chart_of_accounts": "ChartOfAccounts_",
+    }
+    for preset in CONFIGURATION_PRESETS:
+        names = [candidate.entity_set for candidate in preset.candidates]
+        assert names and len(names) == len(set(names))
+        assert all(candidate.status == "CANDIDATE_ONLY" for candidate in preset.candidates)
+        for candidate in preset.candidates:
+            assert candidate.entity_set.startswith(prefix_by_kind[candidate.kind])
+            assert candidate.upstream_confidence in {"verified", "common"}
     keys = [
         key.casefold()
         for preset in CONFIGURATION_PRESETS

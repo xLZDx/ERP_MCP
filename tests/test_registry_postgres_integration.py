@@ -314,6 +314,14 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        stored_profile_json = await conn.fetchval(
+            "SELECT profile_json FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        )
+        if isinstance(stored_profile_json, str):
+            stored_profile_json = json.loads(stored_profile_json)
+        candidate_entities = stored_profile_json["candidate_entities"]
+        assert candidate_entities
+        assert all(item["status"] == "CANDIDATE_ONLY" for item in candidate_entities)
         mapping_file = tmp_path / "mapping.json"
         mapping_file.write_text(
             json.dumps(

@@ -14,6 +14,14 @@ APROVODKA_SHA = "7b62c90e1fe74324605dc28d76f195200bb97252"
 
 
 @dataclass(frozen=True, slots=True)
+class PresetEntityCandidate:
+    entity_set: str
+    kind: str
+    upstream_confidence: str
+    status: str = "CANDIDATE_ONLY"
+
+
+@dataclass(frozen=True, slots=True)
 class ConfigurationPreset:
     """An upstream-derived discovery hint, never a source-validated mapping."""
 
@@ -24,6 +32,7 @@ class ConfigurationPreset:
     upstream_repository: str = APROVODKA_REPOSITORY
     upstream_sha: str = APROVODKA_SHA
     status: str = "CANDIDATE_ONLY"
+    candidates: tuple[PresetEntityCandidate, ...] = ()
 
 
 CONFIGURATION_PRESETS = (
@@ -32,24 +41,72 @@ CONFIGURATION_PRESETS = (
         "1С:Бухгалтерия предприятия 3.0",
         ("бп", "бп3", "бухгалтерия", "accounting"),
         "servers/aprovodka/src/presets/bp30.ts",
+        candidates=(
+            PresetEntityCandidate("AccountingRegister_Хозрасчетный", "accounting_register", "verified"),
+            PresetEntityCandidate("ChartOfAccounts_Хозрасчетный", "chart_of_accounts", "common"),
+            PresetEntityCandidate("Catalog_Организации", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_Контрагенты", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_ДоговорыКонтрагентов", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_Номенклатура", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_Склады", "catalog", "common"),
+            PresetEntityCandidate("Document_ПоступлениеТоваровУслуг", "document", "verified"),
+            PresetEntityCandidate("Document_РеализацияТоваровУслуг", "document", "verified"),
+            PresetEntityCandidate("InformationRegister_КурсыВалют", "information_register", "common"),
+        ),
     ),
     ConfigurationPreset(
         "ut11",
         "1С:Управление торговлей 11",
         ("ут", "торговля", "trade"),
         "servers/aprovodka/src/presets/ut11.ts",
+        candidates=(
+            PresetEntityCandidate("AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"),
+            PresetEntityCandidate("InformationRegister_РаспределениеЗапасов", "information_register", "verified"),
+            PresetEntityCandidate("AccumulationRegister_ТоварыОрганизаций", "accumulation_register", "common"),
+            PresetEntityCandidate("AccumulationRegister_РасчетыСКлиентами", "accumulation_register", "common"),
+            PresetEntityCandidate("AccumulationRegister_РасчетыСПоставщиками", "accumulation_register", "common"),
+            PresetEntityCandidate("AccumulationRegister_ДенежныеСредстваБезналичные", "accumulation_register", "common"),
+            PresetEntityCandidate("Catalog_Партнеры", "catalog", "common"),
+            PresetEntityCandidate("Catalog_Контрагенты", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_Номенклатура", "catalog", "verified"),
+            PresetEntityCandidate("Catalog_Организации", "catalog", "verified"),
+            PresetEntityCandidate("Document_РеализацияТоваровУслуг", "document", "verified"),
+            PresetEntityCandidate("InformationRegister_ЦеныНоменклатуры", "information_register", "common"),
+        ),
     ),
     ConfigurationPreset(
         "zup31",
         "1С:Зарплата и управление персоналом 3.1",
         ("зуп", "зарплата", "payroll"),
         "servers/aprovodka/src/presets/zup31.ts",
+        candidates=(
+            PresetEntityCandidate("Catalog_ФизическиеЛица", "catalog", "common"),
+            PresetEntityCandidate("Catalog_Сотрудники", "catalog", "common"),
+            PresetEntityCandidate("Catalog_Организации", "catalog", "common"),
+            PresetEntityCandidate("Document_ПриемНаРаботу", "document", "common"),
+            PresetEntityCandidate("Document_КадровыйПеревод", "document", "common"),
+            PresetEntityCandidate("Document_НачислениеЗарплатыИВзносов", "document", "common"),
+            PresetEntityCandidate("CalculationRegister_Начисления", "calculation_register", "common"),
+            PresetEntityCandidate("CalculationRegister_Удержания", "calculation_register", "common"),
+            PresetEntityCandidate("InformationRegister_КадроваяИсторияСотрудников", "information_register", "common"),
+        ),
     ),
     ConfigurationPreset(
         "erp2",
         "1С:ERP Управление предприятием 2",
         ("erp", "ерп", "1c:erp"),
         "servers/aprovodka/src/presets/erp2.ts",
+        candidates=(
+            PresetEntityCandidate("AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"),
+            PresetEntityCandidate("InformationRegister_РаспределениеЗапасов", "information_register", "verified"),
+            PresetEntityCandidate("AccountingRegister_Хозрасчетный", "accounting_register", "common"),
+            PresetEntityCandidate("ChartOfAccounts_Хозрасчетный", "chart_of_accounts", "common"),
+            PresetEntityCandidate("Document_ЗаказНаПроизводство2_2", "document", "common"),
+            PresetEntityCandidate("Document_ЭтапПроизводства2_2", "document", "common"),
+            PresetEntityCandidate("Catalog_РесурсныеСпецификации", "catalog", "common"),
+            PresetEntityCandidate("AccumulationRegister_ЗатратыНаВыпуск", "accumulation_register", "common"),
+            PresetEntityCandidate("AccumulationRegister_ДенежныеСредстваБезналичные", "accumulation_register", "common"),
+        ),
     ),
 )
 

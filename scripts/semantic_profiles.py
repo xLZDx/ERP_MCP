@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import uuid
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -126,7 +127,17 @@ async def create_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> 
         if not company_exists:
             raise ValueError("company does not belong to the selected source")
 
-    definition = _read_object(args.profile_file) if args.profile_file else {}
+    operator_definition = _read_object(args.profile_file) if args.profile_file else {}
+    definition = {
+        "preset_source": {
+            "repository": preset.upstream_repository,
+            "sha": preset.upstream_sha,
+            "path": preset.upstream_path,
+            "status": preset.status,
+        },
+        "candidate_entities": [asdict(candidate) for candidate in preset.candidates],
+        "operator_definition": operator_definition,
+    }
     capability_profile = _json_value(capability_row["register_capabilities_json"])
     if not isinstance(capability_profile, dict):
         raise TypeError("stored register capability profile is invalid")

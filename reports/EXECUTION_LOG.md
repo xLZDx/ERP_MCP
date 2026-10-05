@@ -73,3 +73,25 @@
 - Hosted CI run `37375030150` on `5f7061d` passed both the gateway/database test job and pinned
   `odata-upstream` job. A duplicate same-SHA run remains queued and is not used as acceptance
   evidence.
+
+## Step 24 — pinned semantic preset candidate data
+
+**Status:** implemented and verified locally; hosted CI pending for this commit.
+**Date:** 2026-10-06
+
+- Re-read the exact pinned Aprovodka preset files/types/tests at SHA
+  `7b62c90e1fe74324605dc28d76f195200bb97252`; imported a selected, explicitly documented subset
+  of entity-set hints for BP 3.0, UT 11, ZUP 3.1 and ERP 2. The source's `verified`/`common` labels
+  are retained only as upstream confidence metadata, not as evidence about an installed base.
+- Semantic profile creation persists candidate entity names, kinds, upstream confidence, exact
+  repository/SHA/path provenance, and `CANDIDATE_ONLY` status. Candidate names are never sent to
+  OData or used to promote a profile. The per-source capability check remains the only operation
+  gate; unconfirmed register calls return `CAPABILITY_UNSUPPORTED`.
+- Updated third-party attribution with the Aprovodka MIT notice. Added catalog invariants and a
+  PostgreSQL lifecycle assertion that candidate records remain candidate-only.
+- Verification: Python `74 passed, 7 skipped`; migrations 001–007 and DB privilege policy pass;
+  PostgreSQL integration `6 passed`; Ruff, compileall, Bandit, pip-audit (no known vulnerabilities)
+  and `git diff --check` pass. The pinned upstream source remains unchanged.
+- Next software work: executable company-filtered business reads, canonical accounting tools,
+  completed audit/operations proof and remaining deployment/security gates. Promoting a candidate
+  or validating accounting semantics still requires a real target 1C source and native reports.

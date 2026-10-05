@@ -18,7 +18,9 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    ```
 
    Omit `--company-id` only for an intentionally source-wide profile. Creation fails unless live
-   metadata is supported and the source drift state is acknowledged `STABLE`.
+   metadata is supported and the source drift state is acknowledged `STABLE`. The profile JSON
+   carries the pinned Aprovodka candidate entity names/confidence and their original source path;
+   every entry remains `CANDIDATE_ONLY` and is not sent to OData.
 3. Add each concept mapping from a JSON object. Mapping rows always start as `CANDIDATE`/`LOW`:
 
    ```text
