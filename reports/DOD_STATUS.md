@@ -1,8 +1,8 @@
 # Definition of Done status
 
-Assessed against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` plus local branch commits
-`df492e2` (P3 sidecar) and `8cb1da9` (P1 audit correlation). They are not yet pushed because this
-environment cannot resolve `github.com`; hosted CI is pending.
+Assessed against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` plus branch commits
+`df492e2` (P3 sidecar) and `8cb1da9` (P1 audit correlation), pushed at `11337fe`. Hosted run
+`37369006566` gateway job passed; its `odata-upstream` job and a duplicate same-SHA run are queued.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
@@ -10,7 +10,7 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Current Python suite: 61 passed/5 skipped; Ruff/compileall/Bandit pass. Exact pinned OData client passed 428/1 skipped; metadata 53/53; sidecar tests 9/9; Docker health smoke passed. Hosted CI pending. |
+| D1 Build/dependencies | PARTIAL | Python suite: 63 passed/5 skipped; Ruff/compileall/Bandit pass. Exact pinned OData client passed 428/1 skipped; metadata 53/53; sidecar tests 9/9; Docker health smoke passed. Hosted gateway CI job passed; OData job queued. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
 | D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |

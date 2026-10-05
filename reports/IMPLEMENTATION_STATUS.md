@@ -78,13 +78,14 @@ Last updated: 2026-10-05
   production readiness.
 - P3 batch is committed locally as `df492e2` on `bootstrap/1c-day1-production`. A fresh local
   CI-equivalent image smoke passed: health endpoint healthy, UID 10001, and no published ports.
-  Publishing was attempted but the environment could not resolve `github.com`; hosted CI remains
-  pending and the commit is not yet present on the remote PR branch.
+  Push initially failed during a transient DNS outage, then succeeded; branch head `11337fe` is on
+  the remote PR. Hosted CI run `37369006566`: gateway test job passed including migrations,
+  privileges, pytest and pip-audit; `odata-upstream` remains queued on GitHub runners.
 - P1 audit correlation: MCP server middleware now creates one context-local UUID per inbound
   message; `Audit.write` reuses it unless a caller explicitly supplies an ID. A regression test
   verifies same-request sharing and cross-request isolation, and confirms middleware registration.
-  Local suite: `63 passed, 5 skipped`; Ruff, compileall and Bandit pass. Committed locally as
-  `8cb1da9`; not pushed because DNS resolution for GitHub is still failing.
+  Local suite: `63 passed, 5 skipped`; Ruff, compileall and Bandit pass. Committed as `8cb1da9`
+  and pushed with branch head `11337fe`; hosted `odata-upstream` CI is queued.
 - Mandatory reuse audit re-read `docs/ADAPTER_CENSUS.md`, `docs/ADAPTER_INTAKE_PLAN.md`,
   `vendor/UPSTREAMS.md`, `vendor/intake.json`, ADR-0003 and inspected exact pinned OData register/key
   APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
