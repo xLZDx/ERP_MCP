@@ -55,4 +55,6 @@ jobs:
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: pytest
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: pip-audit
