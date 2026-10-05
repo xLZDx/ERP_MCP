@@ -154,8 +154,8 @@ Last updated: 2026-10-06
   run `37384584340` passed both jobs.
 - P8 protected HTTP metrics is in progress on `phase/p8-protected-http-metrics`, stacked on P7.
   It adds optional bearer-protected request counters, in-flight gauge and latency histograms with
-  bounded labels. Full logs/traces/source telemetry, load tests, SBOM/deployment evidence and
-  restore drills remain open.
+  bounded labels. Hosted CI run `37384949997` passed both jobs. Full logs/traces/source telemetry,
+  load tests, SBOM/deployment evidence and restore drills remain open.
 - P9 is in progress on `phase/p9-pilot-evidence-gate`, stacked on P8. A strict privacy-safe
   evidence manifest and CI validator are added; the committed template is `NOT_READY` and the
   `--require-go` gate fails until exact-release artifacts and human approvals are verified.

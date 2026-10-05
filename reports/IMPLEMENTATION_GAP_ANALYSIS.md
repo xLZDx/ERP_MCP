@@ -66,13 +66,13 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | D9 Accounting correctness | PARTIAL | Fail-closed semantic profile lifecycle; account turnovers, sales/purchase documents, inventory/bank and AR/AP balances are mapping-driven with canonical output and negative dispatch tests | Implement remaining canonical accounting tools and reconcile >=10 cases against a real synthetic 1C instance; candidate hints are not validated semantics |
 | D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; PostgreSQL ACL integration passed CI 37355876333 | Three-source isolation and bounded fan-out evidence; company-filtered business adapter |
 | D11 Audit/provenance | PARTIAL | Append-only trigger; schema fields for request/correlation, company, adapter/profile/policy fingerprints, bytes/truncation; `Audit.write` field persistence and runtime-role append-only assertions passed CI 37357024926 for one error event | Verify success/denied-path field population and all values emitted by tool handlers |
-| D12 Observability | NOT STARTED | Contract in docs only | Structured telemetry, metrics/traces/alerts, source health and leakage tests |
+| D12 Observability | PARTIAL | Optional bearer-protected process HTTP metrics with bounded-cardinality labels and no user/source/company fields | Hosted CI, distributed structured telemetry/traces, source/DB/Redis/audit metrics, alerts and leakage drills |
 | D13 Performance/limits | PARTIAL | Basic HTTP timeout, response byte cap, rows/filter and Redis per-tool rate limit settings | Load test, p50/p95/p99, per-source/principal concurrency, fan-out, pool saturation and memory evidence |
 | D14 Resilience | PARTIAL | DB/Redis readiness, selected HTTP retries | Defined Redis outage semantics, source isolation/circuit breaker, secret/IdP/adapter failure injection |
 | D15 Backup/restore/rollback | PARTIAL | PostgreSQL backup/PITR and rollback contract in docs | Implement operator automation and run a restore drill in an available DB/deployment environment |
 | D16 Production deployment | PARTIAL | Sidecar Docker image builds and passes local health smoke as UID 10001 without published port; production HTTPS/token/host allowlist documented | Hosted CI image smoke, image scan/SBOM, deploy-network/TLS, actual role/secret setup and full gateway deploy smoke |
-| D17 Operations/support | NOT STARTED | Operational expectations listed in SRE docs | Actionable runbooks, ownership/on-call and onboarding/offboarding/rotation/drift procedures |
-| D18 Pilot closure | NOT STARTED | No pilot artifacts found | Exact release pilot, real users/sources, reconciliation, zero-write and audit review |
+| D17 Operations/support | PARTIAL | Actionable P6 Windows/COM and P9 evidence-gate runbooks | Named ownership/on-call, full incident/rotation/drift procedures and restore drills |
+| D18 Pilot closure | PARTIAL | Privacy-safe evidence manifest and negative CI GO gate; current state explicitly NOT_READY | Exact release pilot, real users/sources, native reconciliation, zero-write/audit review and release approval |
 
 ## Requirements traceability summary
 

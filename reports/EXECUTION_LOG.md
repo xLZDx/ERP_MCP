@@ -259,7 +259,7 @@
   and secret-store handling. This is a narrow observability slice; it does not close D12 or replace
   audit, source-health, database, or distributed telemetry.
 - Full local verification: Python `112 passed, 7 skipped`; Ruff, Bandit, compileall, pip-audit,
-  scenario validator and diff-check pass. Hosted CI remains pending.
+  scenario validator and diff-check pass. Hosted CI run `37384949997` passed both jobs.
 
 ## Step 34 — P9 fail-closed pilot evidence gate
 
@@ -278,4 +278,5 @@
   explicitly `NOT_READY` rather than inferred or synthesized.
 - Verification: Python `116 passed, 7 skipped`; Ruff, Bandit, compileall, pip-audit, scenario
   validator and diff-check pass. The template validates; `--require-go` fails as intended. Positive
-  and negative evidence fixtures pass. Hosted CI remains pending.
+  and negative evidence fixtures pass. P9 test job passed in run `37385325901`; upstream image
+  job is pending completion.

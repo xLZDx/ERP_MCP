@@ -3,7 +3,8 @@
 Assessed 2026-10-06 against merged PR #1 (`8481c0e`), P4 draft PR #2, stacked P5 draft PR #3 and
 P6 draft PR #4, P7 draft PR #5, P8 draft PR #6 and P9 draft PR #7. P4 settlement commit
 `17571de` passed hosted CI run `37383219137`; P5 `7b9b31e` passed `37383877277`; P6 passed
-`37384482140`; P7 passed `37384584340`. P8/P9 CI is in progress.
+`37384482140`; P7 passed `37384584340`; P8 passed `37384949997`. P9 test job passed in run
+`37385325901`; upstream image job is still running.
 
 P6 evidence so far: isolated pinned bridge process client, strict source-specific config lookup,
 tool inventory allowlist, ping-only health handshake, sanitized failure behavior and Windows
