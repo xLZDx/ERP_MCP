@@ -1,6 +1,6 @@
 # ERP_MCP implementation status
 
-Last updated: 2026-10-05
+Last updated: 2026-10-06
 
 ## Bootstrap
 
@@ -91,7 +91,8 @@ Last updated: 2026-10-05
   APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
   and GPL toolkit isolation boundary. The unsupported/unconfirmed `DrCrTurnover(s)` path is rejected;
   no second COM bridge or GPL-derived code is introduced.
-- Capability-rule implementation batch (local evidence, not yet hosted-CI tested): migration 005
+- Capability-rule implementation batch (published as `e964e32`; hosted Python/database job passed,
+  OData upstream job queued): migration 005
   persists a per-source register capability profile; both Python adapter and Node sidecar fail
   closed unless the exact source/register/method is confirmed by current metadata evidence. The
   sidecar revalidates its short-lived live-metadata profile immediately before invocation and
@@ -102,8 +103,18 @@ Last updated: 2026-10-05
   Ruff, compileall, Bandit and diff checks pass. Fresh image rebuild and runtime smoke pass at UID
   10001 with no published ports (`/healthz` 200). Upstream protocol implementation remains
   unchanged.
-- Current batch is not yet on the remote branch. Previous hosted run `37369006566` has gateway
-  PASS but the upstream job was queued; fresh hosted results are required for this capability batch.
+- Hosted run `37372360593` on `e964e32` has its Python/database/security job PASS and
+  `odata-upstream` queued; duplicate run `37372364831` is still queued. The upstream job remains a
+  gate.
+- P4 semantic profile foundation is implemented locally: pinned Aprovodka preset identities are
+  advisory only; migration 006 stores source/company-scoped profiles and mappings with upstream and
+  metadata/capability/profile fingerprints. Runtime role is read-only. Only ten passing native
+  distinct passing native-report reconciliation records permit `VALIDATED`; metadata fingerprint drift atomically marks validated
+  profiles `STALE`. Local full suite `73 passed, 6 skipped`; disposable PostgreSQL migrations 001–006,
+  privilege checker and integration suite `5 passed`; Ruff/compileall/Bandit pass. No canonical
+  semantic tools or real native reconciliation are claimed.
+- Hosted CI run `37372360593` on `e964e32`: Python/security/database test job passed; its
+  `odata-upstream` job remains queued at last check. Duplicate run `37372364831` remains queued.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

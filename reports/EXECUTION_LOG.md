@@ -2,7 +2,7 @@
 
 ## Step 21 — source-specific register capability rule
 
-**Status:** implemented and verified locally; hosted CI pending.  
+**Status:** implemented and verified locally; hosted CI pending.
 **Date:** 2026-10-05
 
 - Added migration 005 to persist register capability evidence per source.
@@ -23,3 +23,28 @@
   10001 with no published ports.
 - Next: publish this batch and wait for hosted CI; then continue with semantic profile/preset
   lifecycle and deterministic tests. Real-source semantic validation still requires a real 1C base.
+
+## Step 22 — semantic profile/preset foundation
+
+**Status:** implemented and verified locally; hosted CI pending.
+**Date:** 2026-10-06
+
+- Rechecked the pinned Aprovodka SHA `7b62c90e1fe74324605dc28d76f195200bb97252`: preset types,
+  BP 3.0/UT 11/ZUP 3.1/ERP 2 data, accounting/register read-side tools, and `tests/presets.test.ts`.
+  Its `verified` label refers to upstream documentation, not a concrete customer source; ERP_MCP
+  therefore imports only the four preset identities as `CANDIDATE_ONLY` references.
+- Added migration 006 for source/company-scoped, versioned semantic profiles and canonical mappings,
+  preserving upstream repository/SHA and metadata/capability/profile fingerprints. Runtime role is
+  read-only; admin role can maintain profiles/mappings but cannot delete them.
+- A profile can be used only when explicitly `VALIDATED`, exact source/company and metadata match,
+  metadata drift is acknowledged, and ten passing native-report reconciliation cases are present.
+  Capability dependencies still require current positive source evidence and deny with
+  `CAPABILITY_UNSUPPORTED` otherwise.
+- Metadata-fingerprint changes automatically stale previously validated profiles via a narrow
+  `SECURITY DEFINER` trigger on source capability updates; no broad runtime UPDATE privilege is
+  granted.
+- Verification: full Python suite `73 passed, 6 skipped`; Ruff, compileall, Bandit pass; disposable
+  PostgreSQL applied migrations 001–006, privilege checker passed, PostgreSQL integration `5/5`.
+  The prior capability batch CI Python job passed on `e964e32`; pinned OData job remains queued.
+- Still not implemented: validated accounting mappings/tools, administrator workflows/audit, and
+  actual native 1C reconciliation. No preset is promoted from candidate based solely on its name.

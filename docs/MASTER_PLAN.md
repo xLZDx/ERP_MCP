@@ -114,6 +114,11 @@ Exit:
 
 ## P4 — Semantic accounting
 
+Initial profile/preset foundation is in progress: Aprovodka's pinned preset inventory is exposed as
+`CANDIDATE_ONLY` references; migration 006 stores source/company-scoped versioned profiles and
+mappings, and validation is gated on current metadata plus ten passing native-report cases. This
+does not yet implement or enable canonical accounting tools.
+
 Deliver canonical tools:
 - organization/company discovery;
 - sales/purchases;

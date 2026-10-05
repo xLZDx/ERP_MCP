@@ -24,6 +24,18 @@ EXPECTED = {
             "UPDATE": True,
             "DELETE": False,
         },
+        "bag.semantic_profiles": {
+            "SELECT": True,
+            "INSERT": False,
+            "UPDATE": False,
+            "DELETE": False,
+        },
+        "bag.semantic_mappings": {
+            "SELECT": True,
+            "INSERT": False,
+            "UPDATE": False,
+            "DELETE": False,
+        },
     },
     "business_ai_admin": {
         "bag.sources": {"SELECT": True, "INSERT": True, "UPDATE": True, "DELETE": False},
@@ -38,6 +50,18 @@ EXPECTED = {
             "SELECT": True,
             "INSERT": False,
             "UPDATE": False,
+            "DELETE": False,
+        },
+        "bag.semantic_profiles": {
+            "SELECT": True,
+            "INSERT": True,
+            "UPDATE": True,
+            "DELETE": False,
+        },
+        "bag.semantic_mappings": {
+            "SELECT": True,
+            "INSERT": True,
+            "UPDATE": True,
             "DELETE": False,
         },
     },

@@ -5,6 +5,7 @@ import os
 import time
 import uuid
 from argparse import Namespace
+from dataclasses import replace
 
 import asyncpg
 import pytest
@@ -99,6 +100,144 @@ async def test_postgres_company_grants_deny_precedence_and_live_revocation():
         )
         with pytest.raises(AccessDenied):
             await registry.require_company(principal, source_id, company_a)
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_semantic_profile_validation_is_scoped_and_requires_ten_native_cases():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"semantic-test-{uuid.uuid4()}"
+    company_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    try:
+        await conn.execute("SET LOCAL ROLE business_ai_admin")
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Semantic test source',
+                   'https://onec.example.test/odata')
+            """,
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, 'semantic-company', 'Semantic test company')
+            """,
+            company_id,
+            source_id,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.semantic_profiles(
+                profile_id, source_id, company_id, preset_id, profile_name, profile_version,
+                status, metadata_fingerprint, capability_fingerprint, profile_fingerprint,
+                preset_repository, preset_upstream_sha, created_by
+            ) VALUES($1, $2, $3, 'bp30', 'BP 3.0 candidate', 1, 'DRAFT', $4, $5, $6, $7, $8, $9)
+            """,
+            profile_id,
+            source_id,
+            company_id,
+            "metadata-" + "a" * 64,
+            "capability-" + "b" * 64,
+            "profile-" + "c" * 64,
+            "https://github.com/theYahia/WWmcp",
+            "7b62c90e1fe74324605dc28d76f195200bb97252",
+            "integration-test",
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.semantic_mappings(
+                mapping_id, profile_id, canonical_concept, mapping_json
+            ) VALUES($1, $2, 'receivable', '{"status":"candidate"}'::jsonb)
+            """,
+            uuid.uuid4(),
+            profile_id,
+        )
+
+        await conn.execute("SET LOCAL ROLE business_ai_app")
+        assert await conn.fetchval(
+            "SELECT count(*) FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == 1
+        assert not await conn.fetchval(
+            "SELECT has_table_privilege(current_user, 'bag.semantic_profiles', 'UPDATE')"
+        )
+        await conn.execute("RESET ROLE")
+
+        evidence = {
+            "native_reconciliation_cases": [
+                {"case_id": f"case-{i}", "status": "PASS", "native_report_ref": f"native/{i}"}
+                for i in range(9)
+            ]
+        }
+        with pytest.raises(asyncpg.CheckViolationError):
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE bag.semantic_profiles
+                    SET status='VALIDATED', validated_by='tester', validated_at=now(),
+                        validation_evidence_json=$2::jsonb
+                    WHERE profile_id=$1
+                    """,
+                    profile_id,
+                    json.dumps(evidence),
+                )
+        evidence["native_reconciliation_cases"].append(
+            {"case_id": "case-9", "status": "FAIL", "native_report_ref": "native/9"}
+        )
+        with pytest.raises(asyncpg.CheckViolationError):
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE bag.semantic_profiles
+                    SET status='VALIDATED', validated_by='tester', validated_at=now(),
+                        validation_evidence_json=$2::jsonb
+                    WHERE profile_id=$1
+                    """,
+                    profile_id,
+                    json.dumps(evidence),
+                )
+        evidence["native_reconciliation_cases"][-1]["status"] = "PASS"
+        await conn.execute(
+            """
+            UPDATE bag.semantic_profiles
+            SET status='VALIDATED', validated_by='tester', validated_at=now(),
+                validation_evidence_json=$2::jsonb
+            WHERE profile_id=$1
+            """,
+            profile_id,
+            json.dumps(evidence),
+        )
+        assert await conn.fetchval(
+            "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == "VALIDATED"
+
+        current_capability = OneCCapabilities(
+            source_id=source_id,
+            platform_version=None,
+            metadata_fingerprint="metadata-" + "a" * 64,
+            metadata_supported=True,
+            json_supported=True,
+            atom_supported=False,
+            expand_supported=True,
+            entity_set_count=1,
+            adapter_profile=AdapterProfile.ODATA_JSON_V3,
+            compatibility_status=CompatibilityStatus.SUPPORTED,
+            evidence={"metadata": "ok"},
+        )
+        registry = Registry(ConnectionDatabase(conn), production=False)
+        await registry.save_capabilities(current_capability)
+        changed_capability = replace(
+            current_capability, metadata_fingerprint="metadata-" + "d" * 64
+        )
+        await registry.save_capabilities(changed_capability)
+        assert await conn.fetchval(
+            "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == "STALE"
     finally:
         await tx.rollback()
         await conn.close()

@@ -191,6 +191,16 @@ Cache is disposable; source remains authoritative.
 
 Defines configuration-aware accounting meaning.
 
+Migration 006 implements per-source and optional per-company profiles with pinned preset
+provenance, schema/capability/profile fingerprints, version, lifecycle state, JSON profile content,
+and validation evidence. A profile is usable only for its exact source/company and unchanged,
+acknowledged metadata. `VALIDATED` requires at least ten recorded passing native-report
+reconciliation cases with unique case IDs and report references (database constraint plus runtime
+eligibility check). Runtime role may read profiles/mappings; only the admin role may create or
+update them. A narrow database trigger marks validated profiles stale when their source metadata
+fingerprint changes. Preset catalog entries from Aprovodka are candidate hints, not validated
+mappings.
+
 Fields:
 - `profile_id UUID`;
 - source/configuration selector;
@@ -210,6 +220,10 @@ Maps canonical concepts to source-specific implementation:
 - applicability predicates;
 - provenance/upstream/reference;
 - confidence/status.
+
+Mappings are versioned through their owning profile. They remain `CANDIDATE` until source-specific
+metadata and semantic evidence confirms them; a preset name or upstream `verified` label alone does
+not enable a 1C operation.
 
 Never assume account 62/60/51/etc. globally. Those may be preset candidates only.
 
