@@ -42,3 +42,10 @@ def test_production_accepts_required_security_shape():
         redis_url="redis://redis/0",
     )
     assert settings.environment == "production"
+
+
+def test_sidecar_settings_require_paired_url_and_long_secret():
+    with pytest.raises(ValidationError, match="configured together"):
+        Settings(odata_sidecar_url="http://odata-sidecar:8765")
+    with pytest.raises(ValidationError, match="at least 32 bytes"):
+        Settings(odata_sidecar_url="http://odata-sidecar:8765", odata_sidecar_token="short")

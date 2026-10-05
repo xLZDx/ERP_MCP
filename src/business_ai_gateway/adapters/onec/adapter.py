@@ -9,6 +9,7 @@ from ...settings import Settings
 from .atom import parse_atom_payload
 from .client import OneCReadClient
 from .metadata import MetadataIndex, parse_metadata
+from .sidecar_client import ODataSidecarClient
 
 
 def normalize_json_payload(payload):
@@ -22,10 +23,17 @@ def normalize_json_payload(payload):
 
 
 class OneCAdapter:
-    def __init__(self, settings: Settings, secrets: SecretProvider, client: OneCReadClient):
+    def __init__(
+        self,
+        settings: Settings,
+        secrets: SecretProvider,
+        client: OneCReadClient,
+        sidecar: ODataSidecarClient | None = None,
+    ):
         self.settings = settings
         self.secrets = secrets
         self.client = client
+        self.sidecar = sidecar
         self._metadata: dict[str, MetadataIndex] = {}
         self._capabilities: dict[str, OneCCapabilities] = {}
         self._detector = OneCCapabilityDetector(client=client, secrets=secrets)
@@ -47,9 +55,7 @@ class OneCAdapter:
 
     async def health(self, source: Source):
         username, password = await self.credentials(source)
-        return await self.client.head_metadata(
-            source, username=username, password=password
-        )
+        return await self.client.head_metadata(source, username=username, password=password)
 
     async def capabilities(
         self,
@@ -95,7 +101,8 @@ class OneCAdapter:
     async def find(self, source: Source, contains: str, limit: int):
         index = await self.metadata(source)
         found = [
-            x for x in index.find(contains, max(1, min(limit, 200)))
+            x
+            for x in index.find(contains, max(1, min(limit, 200)))
             if source.entity_allowed(x.name)
         ]
         return [
@@ -158,6 +165,19 @@ class OneCAdapter:
         username, password = await self.credentials(source)
 
         if capabilities.adapter_profile == AdapterProfile.ODATA_JSON_V3:
+            if self.sidecar is not None and username is not None and password is not None:
+                return await self.sidecar.read(
+                    source,
+                    username=username,
+                    password=password,
+                    entity_set=entity_set,
+                    select=select,
+                    filter_expr=filter_expr,
+                    orderby=orderby,
+                    expand=expand,
+                    top=params["$top"],
+                    skip=params["$skip"],
+                )
             raw = await self.client.get_bytes(
                 source,
                 entity_set,
@@ -189,3 +209,86 @@ class OneCAdapter:
             )
 
         raise RuntimeError("no supported safe 1C read transport detected")
+
+    async def count(
+        self, source: Source, *, entity_set: str, filter_expr: str | None = None
+    ) -> int:
+        if "/" in entity_set or "\\" in entity_set or entity_set.startswith("$"):
+            raise ValueError("invalid EntitySet")
+        if not source.entity_allowed(entity_set):
+            raise PermissionError("EntitySet denied by source policy")
+        if filter_expr and len(filter_expr) > self.settings.max_filter_chars:
+            raise ValueError("filter expression too long")
+        if self.settings.require_metadata_entity:
+            index = await self.metadata(source)
+            if entity_set not in index.names:
+                raise ValueError(f"EntitySet not present in live metadata: {entity_set}")
+        capabilities = await self.capabilities(source)
+        if capabilities.adapter_profile != AdapterProfile.ODATA_JSON_V3 or self.sidecar is None:
+            raise NotImplementedError("entity count requires the pinned OData JSON sidecar")
+        username, password = await self.credentials(source)
+        if username is None or password is None:
+            raise RuntimeError("pinned OData sidecar requires paired username/password credentials")
+        return await self.sidecar.count(
+            source,
+            username=username,
+            password=password,
+            entity_set=entity_set,
+            filter_expr=filter_expr,
+        )
+
+    async def get(self, source: Source, *, entity_set: str, key: str | dict[str, str]):
+        if "/" in entity_set or "\\" in entity_set or entity_set.startswith("$"):
+            raise ValueError("invalid EntitySet")
+        if not source.entity_allowed(entity_set):
+            raise PermissionError("EntitySet denied by source policy")
+        if self.settings.require_metadata_entity:
+            index = await self.metadata(source)
+            if entity_set not in index.names:
+                raise ValueError(f"EntitySet not present in live metadata: {entity_set}")
+        capabilities = await self.capabilities(source)
+        if capabilities.adapter_profile != AdapterProfile.ODATA_JSON_V3 or self.sidecar is None:
+            raise NotImplementedError("entity get requires the pinned OData JSON sidecar")
+        username, password = await self.credentials(source)
+        if username is None or password is None:
+            raise RuntimeError("pinned OData sidecar requires paired username/password credentials")
+        return await self.sidecar.get(
+            source, username=username, password=password, entity_set=entity_set, key=key
+        )
+
+    async def register_read(
+        self,
+        source: Source,
+        *,
+        register_set: str,
+        method: str,
+        arguments: dict,
+        top: int,
+        skip: int = 0,
+    ):
+        if not source.entity_allowed(register_set):
+            raise PermissionError("register denied by source policy")
+        if not register_set.startswith(
+            ("AccumulationRegister_", "InformationRegister_", "AccountingRegister_")
+        ):
+            raise ValueError("invalid register EntitySet")
+        if self.settings.require_metadata_entity:
+            index = await self.metadata(source)
+            if register_set not in index.names:
+                raise ValueError(f"register not present in live metadata: {register_set}")
+        capabilities = await self.capabilities(source)
+        if capabilities.adapter_profile != AdapterProfile.ODATA_JSON_V3 or self.sidecar is None:
+            raise NotImplementedError("register reads require the pinned OData JSON sidecar")
+        username, password = await self.credentials(source)
+        if username is None or password is None:
+            raise RuntimeError("pinned OData sidecar requires paired username/password credentials")
+        return await self.sidecar.register_read(
+            source,
+            username=username,
+            password=password,
+            register_set=register_set,
+            method=method,
+            arguments=arguments,
+            top=max(1, min(top, self.settings.max_rows)),
+            skip=max(0, skip),
+        )

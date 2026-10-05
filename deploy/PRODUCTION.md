@@ -19,10 +19,19 @@ ERP_MCP gateway (private subnet)
    +-- PostgreSQL
    +-- Redis
    +-- Secret Manager
-   +-- HTTPS --> 1C OData
+   +-- private HTTPS + bearer --> pinned read-only OData sidecar
+                                      +-- allowlisted HTTPS --> 1C OData
 ```
 
 Do not expose 1C OData directly to AI clients.
+
+When `BAG_ODATA_SIDECAR_URL` is configured, also inject `BAG_ODATA_SIDECAR_TOKEN` from the
+secret manager (at least 32 random bytes) and configure `ONEC_ALLOWED_HOSTS` on the sidecar as an
+exact comma-separated allowlist of 1C host authorities (`host` or `host:port`, never `*`). The
+gateway sends registered-source URLs and resolved credentials only over the authenticated internal
+hop. Production requires HTTPS on that hop. Do not publish the sidecar port outside its private
+service network. The sidecar only exposes bounded OData query/count operations; all other routes and
+verbs fail closed. A sidecar response is rejected unless its source id and upstream SHA match.
 
 ## JWT claims
 

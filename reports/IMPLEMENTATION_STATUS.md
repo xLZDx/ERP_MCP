@@ -17,7 +17,7 @@ Last updated: 2026-10-05
 
 ## Delivery status
 
-- Current implementation phase: P2 capability-router drift lifecycle and P3 pinned OData engine intake; P1 residual gates remain open.
+- Current implementation phase: P3 pinned OData sidecar integration; P1 residual gates remain open.
 - Completed: repository state recovered; origin fetched; local branch fast-forwarded; supplied
   engineering command center copied to repository root; normative package rechecked; P0–P9 and
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work
@@ -63,6 +63,24 @@ Last updated: 2026-10-05
 - Validated the exact `hacker-cb/1c-odata` pin in an ephemeral Node 24.18.0 container: client and
   metadata packages built; client unit tests `428 passed, 1 skipped`; metadata unit tests `53 passed`.
   Added a dedicated CI job for this upstream preflight; its result is pending on the current change.
+- P3 sidecar batch: added an isolated Node 24.18 sidecar built directly from pinned OData client
+  SHA `cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5`, with query/keyed-get/count and constrained
+  register reads, source host:port allowlisting, bearer authentication, request/response and row
+  limits, timeout, per-source concurrency/circuit breaker, abort-on-disconnect and provenance.
+  Python Settings/Runtime route detected JSON OData reads to it when paired source credentials are
+  available; Atom/anonymous reads stay on the existing GET-only Python path. Register methods are
+  checked against live per-EntitySet GET FunctionImports using the pinned metadata parser, and
+  unconfirmed methods fail before the data request. Python suite: `61 passed, 5 skipped`; Ruff,
+  compileall, Bandit and diff check pass. Sidecar tests: `9/9`, pinned client suite: `428 passed, 1
+  skipped`, metadata suite: `53 passed`; Docker image builds and starts healthy as UID 10001 with no
+  published port. Hosted CI with the new image smoke step is pending. This closes substantial P3
+  implementation but not real-source parity, accounting semantics, company-scoped data reads, or
+  production readiness.
+- Mandatory reuse audit re-read `docs/ADAPTER_CENSUS.md`, `docs/ADAPTER_INTAKE_PLAN.md`,
+  `vendor/UPSTREAMS.md`, `vendor/intake.json`, ADR-0003 and inspected exact pinned OData register/key
+  APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
+  and GPL toolkit isolation boundary. The unsupported/unconfirmed `DrCrTurnover(s)` path is rejected;
+  no second COM bridge or GPL-derived code is introduced.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

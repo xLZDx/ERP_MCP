@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +37,9 @@ class Settings(BaseSettings):
     migration_database_url: str | None = None
     redis_url: str = "redis://localhost:6379/0"
 
+    odata_sidecar_url: str | None = None
+    odata_sidecar_token: SecretStr | None = None
+
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
     gcp_project_id: str | None = None
@@ -54,6 +58,22 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if (self.odata_sidecar_url is None) != (self.odata_sidecar_token is None):
+            raise ValueError(
+                "BAG_ODATA_SIDECAR_URL and BAG_ODATA_SIDECAR_TOKEN must be configured together"
+            )
+        if self.odata_sidecar_url:
+            parsed = urlparse(self.odata_sidecar_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                raise ValueError("BAG_ODATA_SIDECAR_URL must be an absolute HTTP(S) URL")
+            if parsed.username or parsed.password or parsed.query or parsed.fragment:
+                raise ValueError(
+                    "BAG_ODATA_SIDECAR_URL must not contain credentials/query/fragment"
+                )
+            if len(self.odata_sidecar_token.get_secret_value().encode()) < 32:
+                raise ValueError("BAG_ODATA_SIDECAR_TOKEN must contain at least 32 bytes")
+            if self.environment == "production" and parsed.scheme != "https":
+                raise ValueError("production BAG_ODATA_SIDECAR_URL must use https://")
         if self.environment != "production":
             return self
         if not self.oauth_enabled:
@@ -73,9 +93,7 @@ class Settings(BaseSettings):
         if self.oauth_jwks_url and not self.oauth_jwks_url.startswith("https://"):
             raise ValueError("production BAG_OAUTH_JWKS_URL must use https://")
         if self.oauth_audience != self.public_mcp_url:
-            raise ValueError(
-                "production requires BAG_OAUTH_AUDIENCE == BAG_PUBLIC_MCP_URL"
-            )
+            raise ValueError("production requires BAG_OAUTH_AUDIENCE == BAG_PUBLIC_MCP_URL")
         if not self.database_url.startswith(("postgresql://", "postgres://")):
             raise ValueError("production requires PostgreSQL BAG_DATABASE_URL")
         if not self.redis_url.startswith(("redis://", "rediss://")):

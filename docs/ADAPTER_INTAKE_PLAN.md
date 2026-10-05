@@ -157,6 +157,23 @@ Only the parts that are unique to this product:
 6. reconciliation/evidence against the actual customer's reports;
 7. ERP/Ferma adapters.
 
+### Current implementation evidence (2026-10-05)
+
+The repository now contains an isolated Node sidecar built from the exact pinned MIT
+`hacker-cb/1c-odata` submodule. Its wrapper exposes bounded read-only entity query, keyed entity get,
+count, and type/method-allowlisted register reads through the upstream API. It validates exact
+host:port allowlists and an internal bearer token, caps request/response bytes, rows, concurrency and
+time, and returns source/upstream provenance. Register operations are gated against live
+per-EntitySet GET FunctionImports parsed by the pinned metadata package; absent or unconfirmed
+methods fail closed before a data request. Python routes detected JSON OData calls to it when paired
+credentials are configured and verifies the returned source id and exact upstream SHA; Atom and
+anonymous OData retain the existing GET-only Python transport. The accounting-upstream audit removed
+unconfirmed Dr/Cr turnover names and requires bounded, explicitly zoned periods. Sidecar tests
+(9/9), pinned client tests (428/1 skipped), metadata tests (53/53), and image smoke checks pass
+locally; hosted CI, Aprovodka preset semantics, image/dependency
+security evidence, deployment wiring, and real-source compatibility remain open. This is partial P3,
+not a production-ready adapter release.
+
 ## Definition of “reuse checked”
 
 A new 1C adapter feature may be implemented only after its PR states:

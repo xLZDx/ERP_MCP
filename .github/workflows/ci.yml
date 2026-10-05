@@ -19,13 +19,35 @@ jobs:
         run: >-
           docker run --rm --tmpfs /work:exec,size=4g
           -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
+          -v "$GITHUB_WORKSPACE/adapters/odata-sidecar:/sidecar:ro"
           -w /work node:24.18.0-alpine
-          sh -lc "cp -a /src/. /work/ && corepack enable &&
+          sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
+          cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
           corepack pnpm install --frozen-lockfile &&
           corepack pnpm --filter @1c-odata/client build &&
+          node --test packages/client/sidecar/server.test.mjs &&
           corepack pnpm --filter @1c-odata/client test:unit &&
           corepack pnpm --filter @1c-odata/metadata build &&
           corepack pnpm --filter @1c-odata/metadata test:unit"
+      - name: Build and smoke-test the non-root sidecar image
+        run: |
+          docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
+          token="$(openssl rand -hex 32)"
+          docker run -d --name erp-mcp-sidecar-ci \
+            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
+            erp-mcp-odata-sidecar:ci
+          cleanup() { docker rm -f erp-mcp-sidecar-ci >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            state="$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)"
+            [ "$state" = healthy ] && break
+            [ "$state" = unhealthy ] && { docker logs erp-mcp-sidecar-ci; exit 1; }
+            sleep 1
+          done
+          [ "$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)" = healthy ]
+          [ "$(docker exec erp-mcp-sidecar-ci id -u)" = 10001 ]
+          docker exec erp-mcp-sidecar-ci node -e \
+            "fetch('http://127.0.0.1:8765/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
   test:
     runs-on: ubuntu-latest
