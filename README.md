@@ -54,7 +54,7 @@ configuration and reconciling numbers with 1C reports.
 
 ## Open-source intake
 
-Pinned upstreams and license rules are in [vendor/UPSTREAMS.md](vendor/UPSTREAMS.md).
+Pinned upstreams and license rules are in [vendor/UPSTREAMS.md](vendor/UPSTREAMS.md).\nThe adapter survey and concrete reuse plan are in [docs/ADAPTER_CENSUS.md](docs/ADAPTER_CENSUS.md) and [docs/ADAPTER_INTAKE_PLAN.md](docs/ADAPTER_INTAKE_PLAN.md).
 
 Primary sources:
 - `evilbruce666/1c-odata-mcp` — MIT, primary 1C read/analytics engine reference;
