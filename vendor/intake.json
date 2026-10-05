@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "policy": "reuse-before-rewrite",
+  "generated_at": "2026-10-05",
+  "sources": [
+    {
+      "repo": "hacker-cb/1c-odata",
+      "sha": "cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5",
+      "license": "MIT",
+      "mode": "port-or-sidecar",
+      "roles": [
+        "odata-v3",
+        "metadata",
+        "register-virtual-tables",
+        "query-builder"
+      ],
+      "priority": 1
+    },
+    {
+      "repo": "theYahia/WWmcp",
+      "subpath": "servers/aprovodka",
+      "sha": "7b62c90e1fe74324605dc28d76f195200bb97252",
+      "license": "MIT",
+      "mode": "port-read-only",
+      "roles": [
+        "accounting",
+        "registers",
+        "presets"
+      ],
+      "priority": 2
+    },
+    {
+      "repo": "prepod2003/mcp-rsv-data",
+      "sha": "76fed8e6e16833fee1514969841b8d9a61c7c152",
+      "license": "MIT",
+      "mode": "isolated-adapter",
+      "roles": [
+        "http-extension",
+        "com-bridge",
+        "native-query"
+      ],
+      "priority": 3
+    },
+    {
+      "repo": "evilbruce666/1c-odata-mcp",
+      "sha": "dc6b6a1358c7e65e3cfb45c22e8157d1479ab71e",
+      "license": "MIT",
+      "mode": "port-read-only",
+      "roles": [
+        "analytics",
+        "multi-base",
+        "business-tools"
+      ],
+      "priority": 4
+    },
+    {
+      "repo": "feenlace/mcp-1c",
+      "sha": "71b8ca4e3036cd35444ee93db5bd66f29718243b",
+      "license": "MIT",
+      "mode": "reference-or-fallback",
+      "roles": [
+        "native-query",
+        "metadata",
+        "http-extension"
+      ],
+      "priority": 5
+    },
+    {
+      "repo": "ROCTUP/1c-mcp-toolkit",
+      "sha": "fe12903af7a367a9d67dd055c13f4b59bb59d83c",
+      "license": "GPL-3.0",
+      "mode": "isolated-service-only",
+      "roles": [
+        "1c-8.2.13-plus"
+      ],
+      "priority": 6
+    },
+    {
+      "repo": "umanets/1c77-rest-api",
+      "sha": "6bad0859b35128cd706355211d23581edbba53aa",
+      "license": "UNVERIFIED",
+      "mode": "reference-only",
+      "roles": [
+        "1c-7.7"
+      ],
+      "priority": 99
+    },
+    {
+      "repo": "infaton/MCP35",
+      "sha": "09e54b08381db4090c02b41f9e2d30bf51676db3",
+      "license": "MIT",
+      "mode": "reference-read-patterns",
+      "roles": [
+        "1c-erp",
+        "http-jsonrpc",
+        "large-tool-catalog"
+      ],
+      "priority": 7
+    },
+    {
+      "repo": "andromanpro/1c-ai-connector",
+      "sha": "76e35fb775eccb01831774d44964d89390a16e0b",
+      "license": "MIT",
+      "mode": "reference-read-patterns",
+      "roles": [
+        "native-1c-extension",
+        "mcp-http",
+        "8.3.24-plus"
+      ],
+      "priority": 8
+    },
+    {
+      "repo": "1c-neurofish/onec-client-mcp-devkit",
+      "sha": "3f6a066913057c2d6f2d61c0b429fd0707ab271b",
+      "license": "LGPL-3.0",
+      "mode": "reference-only",
+      "roles": [
+        "client-session-mcp",
+        "webtransport"
+      ],
+      "priority": 90
+    },
+    {
+      "repo": "1c-neurofish/v8-session-manager",
+      "sha": "bb50f9fbd9a6a07d08e6e75a25db25e802083d1e",
+      "license": "AGPL-3.0",
+      "mode": "reference-only",
+      "roles": [
+        "multi-session-router",
+        "websocket"
+      ],
+      "priority": 91
+    },
+    {
+      "repo": "tarasov46/1c-accounting-mcp",
+      "sha": "e0765929e8a88e18139d47bc89ac886c6bff2c16",
+      "license": "UNVERIFIED",
+      "mode": "reference-only",
+      "roles": [
+        "historical-accounting-mcp"
+      ],
+      "priority": 99
+    }
+  ]
+}

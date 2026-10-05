@@ -1,0 +1,9 @@
+[submodule "vendor/reference/1c-odata-mcp"]
+	path = vendor/reference/1c-odata-mcp
+	url = https://github.com/evilbruce666/1c-odata-mcp.git
+[submodule "vendor/reference/1c-odata-v3"]
+	path = vendor/reference/1c-odata-v3
+	url = https://github.com/hacker-cb/1c-odata.git
+[submodule "vendor/reference/mcp-rsv-data"]
+	path = vendor/reference/mcp-rsv-data
+	url = https://github.com/prepod2003/mcp-rsv-data.git

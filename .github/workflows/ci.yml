@@ -1,0 +1,100 @@
+name: ci
+
+on:
+  push:
+    branches: [main, bootstrap/1c-day1-production]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  odata-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize the exact pinned OData upstream
+        run: git submodule update --init vendor/reference/1c-odata-v3
+      - name: Build and test the pinned client and metadata packages
+        run: >-
+          docker run --rm --tmpfs /work:exec,size=4g
+          -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
+          -v "$GITHUB_WORKSPACE/adapters/odata-sidecar:/sidecar:ro"
+          -w /work node:24.18.0-alpine
+          sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
+          cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
+          corepack pnpm install --frozen-lockfile &&
+          corepack pnpm --filter @1c-odata/client build &&
+          node --test packages/client/sidecar/server.test.mjs &&
+          corepack pnpm --filter @1c-odata/client test:unit &&
+          corepack pnpm --filter @1c-odata/metadata build &&
+          corepack pnpm --filter @1c-odata/metadata test:unit"
+      - name: Build and smoke-test the non-root sidecar image
+        run: |
+          docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
+          token="$(openssl rand -hex 32)"
+          docker run -d --name erp-mcp-sidecar-ci \
+            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
+            erp-mcp-odata-sidecar:ci
+          cleanup() { docker rm -f erp-mcp-sidecar-ci >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            state="$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)"
+            [ "$state" = healthy ] && break
+            [ "$state" = unhealthy ] && { docker logs erp-mcp-sidecar-ci; exit 1; }
+            sleep 1
+          done
+          [ "$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)" = healthy ]
+          [ "$(docker exec erp-mcp-sidecar-ci id -u)" = 10001 ]
+          docker exec erp-mcp-sidecar-ci node -e \
+            "fetch('http://127.0.0.1:8765/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: business_ai
+          POSTGRES_USER: business_ai
+          POSTGRES_PASSWORD: business_ai
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U business_ai"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: bandit -q -r src
+      - run: python -m compileall -q src scripts testbed
+      - run: >-
+          psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
+          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: python scripts/migrate.py
+        env:
+          BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: python scripts/check_db_privileges.py
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: pytest
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: pip-audit

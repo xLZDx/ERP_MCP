@@ -1,0 +1,24 @@
+# Risk status
+
+Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
+
+| Risk | Status | Current control/evidence | Remaining action |
+|---|---|---|---|
+| R-01 / R-23 accounting meaning and universal presets | OPEN — critical | Reconciliation/profile gates documented | Implement semantic profiles and reconcile real 1C cases before approval |
+| R-02 configuration/schema drift invalidates mappings | PARTIALLY MITIGATED | Sticky metadata fingerprint drift state, expected-fingerprint admin acknowledgement and `onec_read` fail-closed gate passed CI 37358947196; validated semantic profiles auto-stale on fingerprint change and operator lifecycle events are append-only | Reconcile affected native-report cases before revalidation; record operator identity for metadata-drift acknowledgement |
+| R-03 write path exposure | MITIGATED IN CORE / OPEN FOR FUTURE ADAPTERS | Python transport only GET/HEAD; pinned sidecar routes only upstream query/key/count/register read methods and rejects mutation-shaped operations/method names in tests | Continue adapter inventory/static checks; zero-write proof against actual 1C |
+| R-04 SSRF | OPEN — critical | Registry IDs, URL/path validation, redirects off | DNS/egress and real deployment checks |
+| R-05 secret leakage | OPEN — critical | Secret references/providers; production env provider rejected | End-to-end leak and rotation evidence |
+| R-06 company authorization leak | PARTIALLY MITIGATED | Company FK and scoped allow/deny grants; company-only grants blocked from unscoped reads; deny precedence, inaccessible enumeration and immediate revocation passed PostgreSQL CI run 37355876333 | Enforce company filter in business-data adapter; add cross-source isolation |
+| R-07 runtime DB policy escalation | PARTIALLY MITIGATED | CI created roles, verified table privileges, and passed registry/audit DML checks using `SET LOCAL ROLE business_ai_app` (run 37356701516); admin-role positive/negative DML passed PostgreSQL CI run 37357432914 | production provisioning runbook |
+| R-19 IdP/JWKS outage blocks valid users | PARTIALLY MITIGATED | JWT verifier fails closed on JWKS error; negative test added | Add bounded network timeout/cache behavior and live IdP failure test |
+| R-08 audit tampering | PARTIALLY MITIGATED | Append-only trigger, table grants and CI privilege checker; `Audit.write` inserted an error event as runtime role and UPDATE/DELETE were denied in PostgreSQL CI run 37357024926 | Exercise remaining audit paths and ensure all request outcomes persist complete provenance |
+| R-09 unstable upstream API | PARTIALLY MITIGATED | Runtime sidecar builds exact MIT upstream SHA; client suite and wrapper contract pass locally; response checks exact SHA | Hosted CI, metadata/register parity and monitor/upstream upgrade procedure |
+| R-10 license contamination | MITIGATED BY POLICY | Copyleft isolation docs and vendor tests | Preserve policy on future adapter intake |
+| R-13 slow 1C query overload | PARTIALLY MITIGATED | Sidecar timeout, pre-parser response cap, output bytes/rows, per-source concurrency and circuit breaker | Load/capacity test and telemetry |
+| R-17 Redis failure removes rate protection | OPEN — high | Readiness pings Redis at startup | Explicit outage behavior and fault-injection tests |
+| R-18 DB failure prevents safe auth/audit | PARTIALLY MITIGATED | Readiness and request dependencies fail closed by design | DB outage integration/failure-injection proof |
+| R-22 partial fan-out corruption | NOT STARTED | No cross-company aggregate exposed | Preserve partial failures when semantic fan-out is introduced |
+| R-25 unsupported production claim | MITIGATED IN STATUS REPORTING | This work uses DEV READY and explicit gate matrix | Keep exact evidence and readiness label updated |
+
+Critical/high risks remain open; production readiness is not claimed.

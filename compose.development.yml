@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: business_ai
+      POSTGRES_USER: business_ai
+      POSTGRES_PASSWORD: business_ai
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U business_ai"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  odata-sidecar:
+    profiles: ["odata"]
+    build:
+      context: .
+      dockerfile: adapters/odata-sidecar/Dockerfile
+      args:
+        ODATA_UPSTREAM_SHA: cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5
+    environment:
+      SIDECAR_TOKEN: ${BAG_ODATA_SIDECAR_TOKEN:-}
+      ONEC_ALLOWED_HOSTS: ${ONEC_ALLOWED_HOSTS:-}
+    expose: ["8765"]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
