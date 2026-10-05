@@ -307,6 +307,15 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                         }
                     },
                 },
+                {
+                    "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
             ],
         }
         capability = OneCCapabilities(
@@ -485,6 +494,32 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        bank_mapping_file = tmp_path / "bank-mapping.json"
+        bank_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+                    "method": "Balance",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "bank_account_ref": "БанковскийСчет_Key",
+                        "currency_ref": "Валюта_Key",
+                        "amount": "СуммаBalance",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="bank.balance",
+                mapping_file=str(bank_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
         mapping_confirmation_file = tmp_path / "mapping-confirmation.json"
         mapping_confirmation_file.write_text(
             json.dumps(
@@ -530,6 +565,7 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             "sales",
             "purchases",
             "inventory.balance",
+            "bank.balance",
         ):
             await confirm_mapping(
                 Namespace(
@@ -573,6 +609,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         assert loaded_inventory_mapping["mapping"]["entity_set"] == (
             "AccumulationRegister_ТоварыНаСкладах"
         )
+        loaded_bank_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "bank.balance")
+        assert loaded_bank_mapping["mapping"]["entity_set"] == (
+            "AccumulationRegister_ДенежныеСредстваБезналичные"
+        )
         with pytest.raises(SemanticProfileUnavailable):
             await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
                 source_id, uuid.uuid4()
@@ -590,12 +632,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 13
+        ) == 15
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 13
+        ) == 15
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )

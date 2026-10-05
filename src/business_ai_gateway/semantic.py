@@ -17,6 +17,7 @@ ACCOUNT_TURNOVERS_CONCEPT = "account.balance_and_turnovers"
 ACCOUNT_TURNOVERS_METHOD = "balanceAndTurnovers"
 INVENTORY_BALANCE_CONCEPT = "inventory.balance"
 INVENTORY_BALANCE_METHOD = "Balance"
+BANK_BALANCE_CONCEPT = "bank.balance"
 _ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
 _PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
 ACCOUNT_TURNOVERS_FIELDS = (
@@ -49,6 +50,7 @@ DOCUMENT_CONCEPT_FIELDS = {
     ),
 }
 INVENTORY_BALANCE_FIELDS = ("item_ref", "warehouse_ref", "quantity")
+BANK_BALANCE_FIELDS = ("bank_account_ref", "currency_ref", "amount")
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,7 +285,9 @@ def validate_document_mapping(concept: str, mapping: dict[str, Any]) -> None:
         raise SemanticMappingUnconfirmed("document mapping is incomplete or unsupported")
 
 
-def validate_inventory_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+def _validate_accumulation_balance_mapping(
+    mapping: dict[str, Any], fields: tuple[str, ...], label: str
+) -> tuple[str, str]:
     if not isinstance(mapping, dict):
         raise SemanticMappingUnconfirmed("inventory mapping must be a JSON object")
     register_set = mapping.get("entity_set")
@@ -301,23 +305,47 @@ def validate_inventory_balance_mapping(mapping: dict[str, Any]) -> tuple[str, st
         or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
         or company_scope.get("value_type") not in {"guid", "string"}
         or not isinstance(output_fields, dict)
-        or set(output_fields) != set(INVENTORY_BALANCE_FIELDS)
+        or set(output_fields) != set(fields)
         or any(not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field) for field in output_fields.values())
-        or len(set(output_fields.values())) != len(INVENTORY_BALANCE_FIELDS)
+        or len(set(output_fields.values())) != len(fields)
     ):
-        raise SemanticMappingUnconfirmed("inventory balance mapping is incomplete or unsupported")
+        raise SemanticMappingUnconfirmed(f"{label} balance mapping is incomplete or unsupported")
     required = mapping.get("required_register_capabilities")
     if required is not None and required != [
         {"entity_set": register_set, "method": INVENTORY_BALANCE_METHOD}
     ]:
-        raise SemanticMappingUnconfirmed("inventory capability dependency does not match its operation")
+        raise SemanticMappingUnconfirmed(f"{label} capability dependency does not match its operation")
     return register_set, INVENTORY_BALANCE_METHOD
+
+
+def validate_inventory_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    return _validate_accumulation_balance_mapping(mapping, INVENTORY_BALANCE_FIELDS, "inventory")
+
+
+def validate_bank_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    return _validate_accumulation_balance_mapping(mapping, BANK_BALANCE_FIELDS, "bank")
 
 
 def build_inventory_balance_arguments(
     mapping: dict[str, Any], *, company_external_ref: str, period: str
 ) -> tuple[str, str, dict[str, str]]:
     register_set, method = validate_inventory_balance_mapping(mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return register_set, method, {
+        "Period": point.isoformat(),
+        "Condition": build_company_filter(mapping, company_external_ref),
+    }
+
+
+def build_bank_balance_arguments(
+    mapping: dict[str, Any], *, company_external_ref: str, period: str
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_bank_balance_mapping(mapping)
     try:
         point = datetime.fromisoformat(period)
     except (TypeError, ValueError) as exc:
@@ -343,6 +371,23 @@ def normalize_inventory_balance_rows(rows: Any, mapping: dict[str, Any]) -> list
             raise SemanticMappingUnconfirmed(
                 "inventory balance response is missing a mapped field"
             )
+        normalized.append(
+            {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
+
+
+def normalize_bank_balance_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_bank_balance_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("bank balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("bank balance response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed("bank balance response is missing a mapped field")
         normalized.append(
             {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
         )

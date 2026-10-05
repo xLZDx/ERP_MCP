@@ -145,7 +145,7 @@
 
 ## Step 27 — source-capability-gated inventory balance snapshot
 
-**Status:** implemented and locally verified; hosted CI pending.
+**Status:** implemented; local and hosted CI PASS.
 **Date:** 2026-10-06
 
 - Reused pinned Aprovodka `getAccumulationBalance` semantics and its `Balance(Period, Condition)`
@@ -161,4 +161,23 @@
   PostgreSQL lifecycle coverage includes inventory and purchase mapping confirmation/profile load.
 - Local full suite at implementation: Python `90 passed, 7 skipped`; Ruff, compileall, Bandit,
   pip-audit and diff check PASS. Disposable PostgreSQL 16 migrations 001–009 and DB privilege
-  policy PASS; integration `6 passed`. Hosted CI follows publication.
+  policy PASS; integration `6 passed`. Hosted CI run `37381909454` passed both jobs on `90cd70c`.
+
+## Step 28 — source-capability-gated bank balance snapshot
+
+**Status:** implemented and locally verified; hosted CI pending.
+**Date:** 2026-10-06
+
+- Reused Aprovodka's pinned `getAccumulationBalance` implementation/tests and UT11's
+  `AccumulationRegister_ДенежныеСредстваБезналичные` preset description. The upstream preset marks
+  this candidate `common`; it is not treated as source evidence. Reused pinned OData `Balance` and
+  the sidecar's exact live metadata recheck.
+- Added `bank.balance` with a source/company-scoped `Balance` mapping for bank-account reference,
+  currency and amount, plus the `bank_balance` tool. EntitySet and all projection/filter fields must
+  be operator-confirmed; monetary values are preserved without conversion.
+- Tests cover typed company filtering, explicit timezone period, canonical output, exact live
+  capability evidence, and PostgreSQL profile lifecycle. No caller-supplied register/filter and no
+  OData protocol code were added.
+- Local full suite: Python `93 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009,
+  privilege policy and integration `6 passed`; Ruff, compileall, Bandit, pip-audit and diff check
+  PASS. Hosted CI follows publication.

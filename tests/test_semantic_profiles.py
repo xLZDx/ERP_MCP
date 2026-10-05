@@ -8,21 +8,25 @@ from business_ai_gateway.semantic import (
     ACCOUNT_TURNOVERS_FIELDS,
     ACCOUNT_TURNOVERS_METHOD,
     APROVODKA_SHA,
+    BANK_BALANCE_CONCEPT,
     CONFIGURATION_PRESETS,
     INVENTORY_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
     SemanticProfileStale,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
+    build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
     find_configuration_preset,
     normalize_account_turnovers,
+    normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
+    validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_native_reconciliation_evidence,
@@ -324,7 +328,9 @@ def test_semantic_cli_exposes_operator_mapping_confirmation():
     assert args.command == "confirm-mapping"
 
 
-@pytest.mark.parametrize("concept", ["sales", "purchases", "inventory.balance"])
+@pytest.mark.parametrize(
+    "concept", ["sales", "purchases", "inventory.balance", "bank.balance"]
+)
 def test_semantic_cli_exposes_only_named_supported_read_concepts(concept):
     args = semantic_admin_parser().parse_args(
         [
@@ -489,6 +495,39 @@ def test_inventory_balance_capability_is_bound_to_exact_live_source_and_metadata
                 source_id=SOURCE_ID,
                 metadata_fingerprint=METADATA_FINGERPRINT,
             )
+
+
+def test_bank_balance_uses_profile_fields_and_exact_balance_capability():
+    mapping = {
+        "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+        "method": "Balance",
+        "company_scope": {"field": "Организация_Key", "value_type": "string"},
+        "output_fields": {
+            "bank_account_ref": "БанковскийСчет_Key",
+            "currency_ref": "Валюта_Key",
+            "amount": "СуммаBalance",
+        },
+    }
+    assert BANK_BALANCE_CONCEPT == "bank.balance"
+    assert validate_bank_balance_mapping(mapping) == (
+        "AccumulationRegister_ДенежныеСредстваБезналичные",
+        "Balance",
+    )
+    register_set, method, arguments = build_bank_balance_arguments(
+        mapping, company_external_ref="ORG-1", period="2026-10-01T00:00:00+03:00"
+    )
+    assert register_set == "AccumulationRegister_ДенежныеСредстваБезналичные"
+    assert method == "Balance"
+    assert arguments == {
+        "Period": "2026-10-01T00:00:00+03:00",
+        "Condition": "Организация_Key eq 'ORG-1'",
+    }
+    assert normalize_bank_balance_rows(
+        [{"БанковскийСчет_Key": "bank-1", "Валюта_Key": "MDL", "СуммаBalance": "10.50"}],
+        mapping,
+    ) == [{"bank_account_ref": "bank-1", "currency_ref": "MDL", "amount": "10.50"}]
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_bank_balance_mapping({**mapping, "entity_set": "Catalog_БанковскиеСчета"})
 
 
 def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping():

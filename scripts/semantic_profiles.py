@@ -14,12 +14,14 @@ import asyncpg
 
 from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
+    BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     PRESETS_BY_ID,
     canonical_fingerprint,
     find_configuration_preset,
     require_profile_capabilities,
     validate_account_turnovers_mapping,
+    validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_native_reconciliation_evidence,
@@ -35,6 +37,7 @@ CONCEPTS = (
     "cash",
     "inventory",
     INVENTORY_BALANCE_CONCEPT,
+    BANK_BALANCE_CONCEPT,
     "vat",
 )
 
@@ -239,6 +242,13 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         if required is not None and required != expected:
             raise ValueError("inventory capability dependency must match the exact mapping")
         mapping["required_register_capabilities"] = expected
+    elif args.concept == BANK_BALANCE_CONCEPT:
+        entity_set, method = validate_bank_balance_mapping(mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": entity_set, "method": method}]
+        if required is not None and required != expected:
+            raise ValueError("bank capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
     evidence = _read_object(args.evidence_file) if args.evidence_file else {}
     evidence = _validate_mapping_evidence(evidence)
     if "required_register_capabilities" in mapping:
@@ -329,6 +339,12 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
                 {"entity_set": entity_set, "method": method}
             ]:
                 raise ValueError("inventory capability dependency does not match its operation")
+        elif args.concept == BANK_BALANCE_CONCEPT:
+            entity_set, method = validate_bank_balance_mapping(mapping)
+            if mapping.get("required_register_capabilities") != [
+                {"entity_set": entity_set, "method": method}
+            ]:
+                raise ValueError("bank capability dependency does not match its operation")
         previous_evidence = _json_value(mapping_row["evidence_json"])
         combined_evidence = {
             "evidence_refs": list(dict.fromkeys(

@@ -56,6 +56,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    reviewed item/warehouse/quantity field projection. The CLI pins that exact EntitySet/method as a
    live register-capability dependency. Runtime requires a timezone-qualified point-in-time period;
    it does not infer stock by summing documents or fall back to turnover queries.
+   For `bank.balance`, use the same exact accumulation-register `Balance` capability and company
+   scope requirements, with reviewed bank-account/currency/amount field projection. Common preset
+   candidates such as `AccumulationRegister_ДенежныеСредстваБезналичные` are hints only; no account
+   or amount field name is inferred from the preset.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -102,6 +106,9 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   registers. It requires exact source metadata confirmation for the mapped register's `Balance`
   operation and profile-projected item reference, warehouse reference and quantity. Preset names
   remain candidate hints only; company scoping must be explicitly mapped and confirmed.
+- `bank_balance` uses the same pinned point-in-time `Balance` operation with a separate confirmed
+  source mapping for bank-account reference, currency reference and amount. Preset confidence does
+  not authorize a register call or determine the output-field names.
 - Other canonical accounting tools (cash/bank, inventory movements, AR/AP aging, tax/VAT and posting trace)
   remain unimplemented; no customer preset is promoted based on
   upstream names or confidence labels.

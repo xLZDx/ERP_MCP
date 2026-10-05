@@ -487,3 +487,79 @@ async def test_unconfirmed_inventory_profile_is_audited_without_register_dispatc
     assert audit.events[-1]["outcome"] == "denied"
     assert audit.events[-1]["detail_code"] == "SEMANTIC_MAPPING_UNCONFIRMED"
     onec.register_read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_bank_balance_uses_only_confirmed_profile_and_exact_source_register():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    source = SimpleNamespace(id="source-1")
+    mapping = {
+        "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+        "method": "Balance",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "bank_account_ref": "БанковскийСчет_Key",
+            "currency_ref": "Валюта_Key",
+            "amount": "СуммаBalance",
+        },
+        "required_register_capabilities": [
+            {
+                "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+                "method": "Balance",
+            }
+        ],
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:bank-profile"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        register_read=AsyncMock(
+            return_value={
+                "value": [{"БанковскийСчет_Key": "bank-1", "Валюта_Key": "MDL", "СуммаBalance": "5"}],
+                "page": {"has_more": False},
+            }
+        ),
+    )
+    runtime = SimpleNamespace(
+        audit=audit,
+        registry=registry,
+        rate_limit=SimpleNamespace(check=AsyncMock()),
+        onec=onec,
+    )
+    mcp = build_mcp(Settings(), runtime)
+    result = await mcp.call_tool(
+        "bank_balance",
+        {
+            "source_id": "source-1",
+            "company_id": str(company_id),
+            "period": "2026-10-01T00:00:00Z",
+        },
+    )
+
+    assert not result.is_error
+    payload = json.loads(result.content[0].text)
+    assert payload["value"] == [
+        {"bank_account_ref": "bank-1", "currency_ref": "MDL", "amount": "5"}
+    ]
+    onec.register_read.assert_awaited_once_with(
+        source,
+        register_set="AccumulationRegister_ДенежныеСредстваБезналичные",
+        method="Balance",
+        arguments={
+            "Period": "2026-10-01T00:00:00+00:00",
+            "Condition": "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+        },
+        top=Settings().max_rows,
+    )
+    assert audit.events[-1]["profile_fingerprint"] == "sha256:bank-profile"
