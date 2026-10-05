@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
+from business_ai_gateway.audit import AuditCorrelationMiddleware
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
 
@@ -36,6 +37,12 @@ def create_mcp(*, rate_limit_error=None):
         onec=onec,
     )
     return build_mcp(Settings(), runtime), audit, rate_limit, onec
+
+
+def test_mcp_registers_audit_correlation_middleware():
+    mcp, _audit, _rate_limit, _onec = create_mcp()
+
+    assert any(isinstance(item, AuditCorrelationMiddleware) for item in mcp.middleware)
 
 
 @pytest.mark.asyncio

@@ -4,10 +4,26 @@ import hashlib
 import json
 import time
 import uuid
+from contextvars import ContextVar
 from typing import Any
 
 from .db import Database
 from .principal import Principal
+
+_request_correlation_id: ContextVar[uuid.UUID | None] = ContextVar(
+    "audit_request_correlation_id", default=None
+)
+
+
+class AuditCorrelationMiddleware:
+    """Give every inbound MCP message one isolated audit correlation ID."""
+
+    async def __call__(self, ctx, call_next):
+        token = _request_correlation_id.set(uuid.uuid4())
+        try:
+            return await call_next(ctx)
+        finally:
+            _request_correlation_id.reset(token)
 
 
 def query_fingerprint(query: dict[str, Any] | None) -> str | None:
@@ -69,7 +85,7 @@ class Audit:
             returned_items,
             elapsed_ms,
             detail_code,
-            request_id or uuid.uuid4(),
+            request_id or _request_correlation_id.get() or uuid.uuid4(),
             company_id,
             adapter_kind,
             adapter_version,

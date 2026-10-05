@@ -9,6 +9,7 @@ from mcp.server import MCPServer
 from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl
 
+from .audit import AuditCorrelationMiddleware
 from .auth import JWTTokenVerifier
 from .compatibility import MetadataDriftUnacknowledged, require_acknowledged_metadata
 from .principal import current_principal
@@ -43,6 +44,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             validate_token_resource=True,
         )
 
+    kwargs["middleware"] = [AuditCorrelationMiddleware()]
     mcp = MCPServer("ERP_MCP — 1C Production", **kwargs)
 
     async def ctx():

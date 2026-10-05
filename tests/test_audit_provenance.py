@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from business_ai_gateway.audit import Audit
+from business_ai_gateway.audit import Audit, AuditCorrelationMiddleware
 from business_ai_gateway.principal import Principal
 
 
@@ -85,3 +85,37 @@ async def test_audit_generates_request_id_when_caller_does_not_supply_one():
     )
 
     assert isinstance(pool.args[11], uuid.UUID)
+
+
+@pytest.mark.asyncio
+async def test_audit_middleware_shares_one_correlation_id_and_isolates_requests():
+    captured = []
+    middleware = AuditCorrelationMiddleware()
+    principal = Principal("subject", "client", frozenset(), frozenset(), {})
+
+    async def invoke(_ctx):
+        for tool_name in ("onec_capabilities", "onec_read"):
+            pool = FakePool()
+            await Audit(FakeDatabase(pool), include_query=False).write(
+                principal=principal,
+                tool=tool_name,
+                source_id="source-1",
+                outcome="success",
+                started_at=0,
+            )
+            captured.append(pool.args[11])
+        return "ok"
+
+    assert await middleware(None, invoke) == "ok"
+    assert captured[0] == captured[1]
+    first_request_id = captured[0]
+
+    pool = FakePool()
+    await Audit(FakeDatabase(pool), include_query=False).write(
+        principal=principal,
+        tool="sources_list",
+        source_id=None,
+        outcome="success",
+        started_at=0,
+    )
+    assert pool.args[11] != first_request_id

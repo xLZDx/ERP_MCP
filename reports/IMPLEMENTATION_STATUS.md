@@ -80,6 +80,10 @@ Last updated: 2026-10-05
   CI-equivalent image smoke passed: health endpoint healthy, UID 10001, and no published ports.
   Publishing was attempted but the environment could not resolve `github.com`; hosted CI remains
   pending and the commit is not yet present on the remote PR branch.
+- P1 audit correlation: MCP server middleware now creates one context-local UUID per inbound
+  message; `Audit.write` reuses it unless a caller explicitly supplies an ID. A regression test
+  verifies same-request sharing and cross-request isolation, and confirms middleware registration.
+  Local suite: `63 passed, 5 skipped`; Ruff and Bandit pass. This work is not yet committed or pushed.
 - Mandatory reuse audit re-read `docs/ADAPTER_CENSUS.md`, `docs/ADAPTER_INTAKE_PLAN.md`,
   `vendor/UPSTREAMS.md`, `vendor/intake.json`, ADR-0003 and inspected exact pinned OData register/key
   APIs and tests, Aprovodka read-side register/accounting sources, mcp-rsv-data COM/serve boundary,
