@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Implementation assessed through CI-tested commit `3c5cb6a6f56514d59b02e51bf01761cf724ff12b`
+- Implementation assessed through CI-tested commit `7b29ab0b53a973a9e681992b770ddbae678c7142`
   (includes current `origin/main`).
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
@@ -50,7 +50,8 @@ Last updated: 2026-10-05
   privilege checks, Ruff, Bandit, compileall, pytest (`51 passed, 1 skipped`) and pip-audit.
 - Added MCP-handler audit tests for success, ACL denial, Redis/rate-limit failure and adapter
   failure. All four pass locally; the suite verifies an ACL/Redis denial is persisted before any
-  call reaches the 1C adapter. Hosted CI is pending for this batch.
+  call reaches the 1C adapter. CI run `37360482223` passed on `7b29ab0`, including pytest
+  (`55 passed, 1 skipped`) and every security/database workflow step.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
