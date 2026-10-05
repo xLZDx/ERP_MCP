@@ -132,9 +132,10 @@ Last updated: 2026-10-06
   company first, load only validated company-scoped mappings, check current capabilities, compose
   company filters from reviewed mappings plus registry external references, and normalize canonical
   fields. Sales/purchase document support passed hosted CI `37380789434`; inventory passed
-  `37381909454`; bank passed `37382615109`. The current settlement balance extension has local suite
-  `101 passed, 7 skipped`, disposable PostgreSQL 16 migrations 001–009/privilege policy pass,
-  integration `6/6`, Ruff, compileall and Bandit pass. A/R and A/P tools expose point-in-time mapped
+  `37381909454`; bank passed `37382615109`. Current local full suite is 121 passed / 7 skipped;
+  disposable PostgreSQL 16 migrations 001–009/privilege policy pass, integration 6/6, Ruff,
+  compileall, Bandit and pip-audit pass. P4 follow-up PR #8 head `63d97d3` passed both hosted CI jobs
+  in run `37387649827`. A/R and A/P tools expose point-in-time mapped
   balances only, not aging. Inventory movement rows are now source/company profile-mapped, timezone
   normalized, signed using confirmed Receipt/Expense literals, and denied if live metadata lacks the
   exact EntitySet. The profile-gated `accounting_posting_rows` listing checks the exact register and

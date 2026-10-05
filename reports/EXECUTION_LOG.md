@@ -316,3 +316,5 @@
   mapped fields and explicitly is not a full trace/report. Local full suite: 121 passed, 7 skipped;
   Ruff, Bandit, compileall, pip-audit, scenario validation and diff-check pass. Native reconciliation
   remains NOT RUN and P9 decision remains NOT_READY.
+- Hosted CI for P4 follow-up PR #8 head `63d97d3` passed both `test` and `odata-upstream` jobs in
+  run `37387649827`. PR #8 remains open and Draft; no merge/approval was performed.
