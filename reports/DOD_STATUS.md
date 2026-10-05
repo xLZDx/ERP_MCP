@@ -1,8 +1,13 @@
 # Definition of Done status
 
-Assessed 2026-10-06 against merged PR #1 (`8481c0e`), P4 draft PR #2 and stacked P5 draft PR #3.
-Latest P4 settlement commit `17571de` passed hosted CI run `37383219137`; local P5 L1 work is pending
-its own hosted CI.
+Assessed 2026-10-06 against merged PR #1 (`8481c0e`), P4 draft PR #2, stacked P5 draft PR #3 and
+P6 draft PR #4. P4 settlement commit `17571de` passed hosted CI run `37383219137`; P5 commit
+`7b9b31e` passed both jobs in hosted CI run `37383877277`; P6 implementation checks are in progress.
+
+P6 evidence so far: isolated pinned bridge process client, strict source-specific config lookup,
+tool inventory allowlist, ping-only health handshake, sanitized failure behavior and Windows
+operations/ACL runbook. No business-data operation is routed through COM: validated company scope,
+source capability persistence and cross-adapter semantic parity are still required.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.

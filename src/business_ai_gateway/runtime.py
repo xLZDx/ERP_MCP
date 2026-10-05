@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 
 from .adapters.onec.adapter import OneCAdapter
 from .adapters.onec.client import OneCReadClient
+from .adapters.onec.rsv_bridge import RSVDataBridgeClient
 from .adapters.onec.sidecar_client import ODataSidecarClient
 from .audit import Audit
 from .db import Database
@@ -39,7 +40,17 @@ class Runtime:
             if settings.odata_sidecar_url and settings.odata_sidecar_token
             else None
         )
-        self.onec = OneCAdapter(settings, self.secrets, self.onec_client, self.odata_sidecar)
+        self.rsv_bridge = (
+            RSVDataBridgeClient(
+                executable=settings.rsv_bridge_executable,
+                config_root=settings.rsv_bridge_config_root,
+            )
+            if settings.rsv_bridge_executable and settings.rsv_bridge_config_root
+            else None
+        )
+        self.onec = OneCAdapter(
+            settings, self.secrets, self.onec_client, self.odata_sidecar, self.rsv_bridge
+        )
         self._started = False
         self._lock = asyncio.Lock()
 

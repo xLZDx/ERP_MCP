@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -39,6 +40,8 @@ class Settings(BaseSettings):
 
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
+    rsv_bridge_executable: str | None = None
+    rsv_bridge_config_root: str | None = None
 
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
@@ -58,6 +61,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if (self.rsv_bridge_executable is None) != (self.rsv_bridge_config_root is None):
+            raise ValueError(
+                "BAG_RSV_BRIDGE_EXECUTABLE and BAG_RSV_BRIDGE_CONFIG_ROOT "
+                "must be configured together"
+            )
+        if self.rsv_bridge_executable:
+            executable = Path(self.rsv_bridge_executable)
+            config_root = Path(self.rsv_bridge_config_root)
+            if not executable.is_absolute() or not config_root.is_absolute():
+                raise ValueError("RSV bridge executable and config root must be absolute paths")
         if (self.odata_sidecar_url is None) != (self.odata_sidecar_token is None):
             raise ValueError(
                 "BAG_ODATA_SIDECAR_URL and BAG_ODATA_SIDECAR_TOKEN must be configured together"

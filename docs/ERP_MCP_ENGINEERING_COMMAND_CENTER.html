@@ -645,6 +645,11 @@ L3: server-mode production-parity environment.</p>
 </ul>
 <h2>P6 — Local/extension/COM fallback</h2>
 <p>Use approved MIT bridge patterns, preferably <code>mcp-rsv-data</code>.</p>
+<p>Current status: partial process/health boundary. ERP_MCP launches only the pinned upstream bridge,
+binds config by source ID, checks the upstream tool inventory and calls <code>ping</code>. It does
+not forward generic native queries; health is not business-data capability or company isolation.
+Business reads remain fail-closed until a validated source/company mapping exists. See
+<a href="runbooks/RSV_DATA_BRIDGE.md">the Windows/COM runbook</a>.</p>
 <p>Deliver:</p>
 <ul>
 <li>isolated process/service integration;</li>

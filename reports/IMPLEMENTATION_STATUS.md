@@ -17,7 +17,7 @@ Last updated: 2026-10-06
 
 ## Delivery status
 
-- Current implementation phase: P3 pinned OData sidecar integration; P1 residual gates remain open.
+- Current implementation phase: P6 isolated RSV bridge boundary; P1/P4/P5 residual gates remain open.
 - Completed: repository state recovered; origin fetched; local branch fast-forwarded; supplied
   engineering command center copied to repository root; normative package rechecked; P0–P9 and
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work
@@ -141,8 +141,13 @@ Last updated: 2026-10-06
 - P5 L1 testbed work is on `phase/p5-real1c-testbed`, stacked on P4 in draft PR #3. Fake1C loads a
   versioned deterministic seed and exposes current semantic read fixture entity sets; ten scenario
   invariants are machine-checked, and synthetic results are explicitly barred from native-1C
-  reconciliation evidence. Local suite: `104 passed, 7 skipped`; hosted CI is pending. Real L2/L3
-  seed import, snapshots and native reports remain external integration work.
+  reconciliation evidence. Local suite: `104 passed, 7 skipped`; hosted CI run `37383877277` passed
+  both jobs. Real L2/L3 seed import, snapshots and native reports remain external integration work.
+- P6 is in progress on `phase/p6-rsv-bridge-boundary`, stacked on P5 in draft PR #4. The pinned
+  MIT bridge is launched via the MCP SDK stdio client with one source-ID-bound config, a reviewed
+  tool inventory, ping-only health/restart semantics and sanitized failures. Windows ACL/runbook
+  added. No generic native query is proxied; company-scoped data routing and a real Windows/COM
+  smoke remain open gates.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

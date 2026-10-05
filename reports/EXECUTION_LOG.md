@@ -214,5 +214,24 @@
   canonical seed SHA-256 and rejects broken invariants or synthetic evidence falsely marked as
   native. Added a real-L2 snapshot manifest template whose required values are clearly unfilled.
 - CI now runs `scripts/validate_scenarios.py`. Verification: Python `104 passed, 7 skipped`; Ruff,
-  compileall, Bandit, pip-audit and scenario validator pass. These L1 artifacts are not L2/L3
+  compileall, Bandit, pip-audit and scenario validator pass. Hosted CI run `37383877277` passed both
+  jobs. These L1 artifacts are not L2/L3
   environment evidence and do not unblock native report validation.
+
+## Step 31 — P6 isolated RSV bridge process and health boundary
+
+**Status:** implementation in progress; data route intentionally fail-closed.
+**Date:** 2026-10-06
+
+- Re-read the pinned MIT `mcp-rsv-data` bridge contract (`serve.go`, `onec.go`, `config.go`) and
+  product guide. Reuse is via the existing MCP stdio process; no COM/native-query/stdio protocol
+  implementation was added to ERP_MCP.
+- Added an MCP SDK process client with strict source-ID-to-config mapping, minimal child environment,
+  exact upstream tool inventory check, ping-only health, restart-per-check recovery and sanitized
+  errors. Added runtime wiring, paired absolute-path settings, negative tool-inventory/path tests,
+  and a Windows installation/ACL/recovery runbook.
+- Generic `query`/`execute_query` are not forwarded. Bridge health is not source capability evidence;
+  until per-source/company query mapping can enforce company scope, business reads remain
+  `CAPABILITY_UNSUPPORTED`.
+- Initial targeted tests: 9 passed; Ruff reported import/style findings, corrected before final
+  verification. Full suite, hosted CI and Windows/COM smoke remain pending.

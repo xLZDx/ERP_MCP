@@ -167,6 +167,12 @@ Exit:
 
 Use approved MIT bridge patterns, preferably `mcp-rsv-data`.
 
+Current implementation status: P6 process/health foundation is partial. The ERP-side stdio client
+launches only the pinned bridge, binds one config path to one source ID, validates the upstream tool
+inventory and calls `ping` only. It never proxies generic `query`/`execute_query`. Health does not
+establish data capability or company isolation; semantic reads remain unavailable until a
+source/company profile can enforce those boundaries.
+
 Deliver:
 - isolated process/service integration;
 - no secret leakage;

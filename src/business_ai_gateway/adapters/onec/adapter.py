@@ -15,6 +15,7 @@ from ...settings import Settings
 from .atom import parse_atom_payload
 from .client import OneCReadClient
 from .metadata import MetadataIndex, parse_metadata
+from .rsv_bridge import RSVDataBridgeClient
 from .sidecar_client import ODataSidecarClient
 
 
@@ -35,11 +36,13 @@ class OneCAdapter:
         secrets: SecretProvider,
         client: OneCReadClient,
         sidecar: ODataSidecarClient | None = None,
+        rsv_bridge: RSVDataBridgeClient | None = None,
     ):
         self.settings = settings
         self.secrets = secrets
         self.client = client
         self.sidecar = sidecar
+        self.rsv_bridge = rsv_bridge
         self._metadata: dict[str, MetadataIndex] = {}
         self._capabilities: dict[str, OneCCapabilities] = {}
         self._detector = OneCCapabilityDetector(client=client, secrets=secrets)
