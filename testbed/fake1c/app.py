@@ -1,4 +1,4 @@
-import os
+import os  # noqa: I001
 
 from business_ai_gateway.testbed.fake1c import create_app
 
