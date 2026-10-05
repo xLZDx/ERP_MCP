@@ -8,7 +8,8 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Working HEAD: `e60ce7c73fb2474b672e020e17d5d88e4f86bf35` (includes current `origin/main`)
+- Implementation assessed through CI-tested commit `1590b89d6b50257b94847a46515bd6dcb7fdd813`
+  (includes current `origin/main`; subsequent status-report commit is documentation-only)
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
 - Existing local additions from workspace setup: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`,
@@ -29,14 +30,17 @@ Last updated: 2026-10-05
 - CI run `37355876333` passed on HEAD `3be80d981da03820e0b5bdc38dfd18fc7d26b070`, including the
   new PostgreSQL-backed registry ACL test: `43 passed, 1 skipped`.
 - Current branch includes the later `main` README update; both resulting CI runs passed
-  (`37356469102`, `37356471488`). A second PostgreSQL integration case has now been added to exercise
-  `business_ai_app` permissions with `SET LOCAL ROLE`, including append-only audit enforcement; its
-  CI run is pending.
-- Next: verify the runtime-role integration test, add persistent audit provenance/error-path proof,
-  and continue toward scoped enforcement in a business-data adapter.
-- First unresolved gates: P1 / D3, D11 — runtime-role behavior, end-to-end company-filtered data
-  access, and persisted audit contract are not fully proven against the normative model.
-- Local checks at HEAD: 42 passed, 2 skipped (PostgreSQL-only test skips without the CI DB URL);
+  (`37356469102`, `37356471488`). CI run `37356701516` on `1590b89` passed the runtime-role SQL
+  integration test and the full workflow: `44 passed, 1 skipped`.
+- CI run `37357024926` on `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed the real
+  `Audit.write` → PostgreSQL provenance round-trip under `business_ai_app`: `44 passed, 1 skipped`.
+- Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
+  one error event), and implement company-scoped authorization through an actual business-data
+  adapter without weakening existing fail-closed behavior.
+- First unresolved gates: P1 / D3, D11 — end-to-end company-filtered data access and complete
+  persisted audit contract across all request outcomes are not yet proven.
+- Local checks at tested implementation commit: 42 passed, 3 skipped (PostgreSQL-only tests skip
+  without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
 - Previous CI collection failure `37355290036` on `3acd006` is superseded by green import-path fix
   run `37355521467`; latest earlier success remains `37349236860`.
