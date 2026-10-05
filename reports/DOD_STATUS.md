@@ -1,8 +1,8 @@
 # Definition of Done status
 
-Assessed against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` plus local commit `df492e2`
-(P3 sidecar batch). The commit is not yet pushed because this environment cannot resolve
-`github.com`; hosted CI for the batch is pending.
+Assessed against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` plus local branch commits
+`df492e2` (P3 sidecar) and `8cb1da9` (P1 audit correlation). They are not yet pushed because this
+environment cannot resolve `github.com`; hosted CI is pending.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
