@@ -5,9 +5,11 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .compatibility import CapabilityUnsupported
 
@@ -20,6 +22,7 @@ INVENTORY_BALANCE_METHOD = "Balance"
 BANK_BALANCE_CONCEPT = "bank.balance"
 RECEIVABLE_BALANCE_CONCEPT = "receivable.balance"
 PAYABLE_BALANCE_CONCEPT = "payable.balance"
+INVENTORY_MOVEMENTS_CONCEPT = "inventory.movements"
 _ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
 _PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
 ACCOUNT_TURNOVERS_FIELDS = (
@@ -54,6 +57,14 @@ DOCUMENT_CONCEPT_FIELDS = {
 INVENTORY_BALANCE_FIELDS = ("item_ref", "warehouse_ref", "quantity")
 BANK_BALANCE_FIELDS = ("bank_account_ref", "currency_ref", "amount")
 SETTLEMENT_BALANCE_FIELDS = ("counterparty_ref", "contract_ref", "amount")
+INVENTORY_MOVEMENT_FIELDS = (
+    "period",
+    "item_ref",
+    "warehouse_ref",
+    "quantity",
+    "record_type",
+    "recorder_ref",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -488,6 +499,140 @@ def normalize_document_rows(rows: Any, mapping: dict[str, Any], concept: str) ->
             )
         normalized.append(
             {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
+
+
+def validate_inventory_movements_mapping(mapping: dict[str, Any]) -> None:
+    """Validate an operator-confirmed record-set mapping; presets are never promoted here."""
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("inventory movement mapping must be a JSON object")
+    allowed = {
+        "entity_set",
+        "company_scope",
+        "output_fields",
+        "record_type_values",
+        "quantity_encoding",
+        "source_timezone",
+        "order_by",
+        "required_register_capabilities",
+    }
+    entity_set = mapping.get("entity_set")
+    scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    record_values = mapping.get("record_type_values")
+    if (
+        set(mapping) - allowed
+        or not isinstance(entity_set, str)
+        or not entity_set.startswith("AccumulationRegister_")
+        or not _ENTITY_SET_PATTERN.fullmatch(
+            entity_set.replace("AccumulationRegister_", "AccountingRegister_", 1)
+        )
+        or not isinstance(scope, dict)
+        or set(scope) != {"field", "value_type"}
+        or not isinstance(scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(scope["field"])
+        or scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(INVENTORY_MOVEMENT_FIELDS)
+        or any(not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+               for field in output_fields.values())
+        or len(set(output_fields.values())) != len(INVENTORY_MOVEMENT_FIELDS)
+        or not isinstance(mapping.get("order_by"), str)
+        or mapping.get("order_by") != output_fields.get("period")
+        or not isinstance(record_values, dict)
+        or set(record_values) != {"receipt", "expense"}
+        or any(
+            not isinstance(values, list)
+            or not values
+            or any(not isinstance(value, str) or not value.strip() for value in values)
+            for values in record_values.values()
+        )
+        or set(record_values.get("receipt", [])) & set(record_values.get("expense", []))
+        or mapping.get("quantity_encoding") != "positive_magnitude_by_record_type"
+        or mapping.get("required_register_capabilities", []) != []
+    ):
+        raise SemanticMappingUnconfirmed("inventory movement mapping is incomplete or unsupported")
+    timezone_name = mapping.get("source_timezone")
+    if not isinstance(timezone_name, str) or not timezone_name:
+        raise SemanticMappingUnconfirmed("source timezone must be confirmed in the semantic profile")
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise SemanticMappingUnconfirmed("source timezone is not a valid IANA timezone") from exc
+
+
+def build_inventory_movement_query(
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    start_period: str,
+    end_period: str,
+) -> tuple[str, list[str], str]:
+    validate_inventory_movements_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start >= end:
+        raise ValueError("period boundaries must include a timezone and start < end")
+    source_zone = ZoneInfo(mapping["source_timezone"])
+    start_local = start.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    end_local = end.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    fields = mapping["output_fields"]
+    company_filter = build_company_filter(mapping, company_external_ref)
+    period_field = fields["period"]
+    filter_expr = (
+        f"{company_filter} and {period_field} ge datetime'{start_local}' "
+        f"and {period_field} lt datetime'{end_local}'"
+    )
+    return (
+        mapping["entity_set"],
+        list(fields.values()),
+        filter_expr,
+    )
+
+
+def normalize_inventory_movement_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_inventory_movements_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("inventory movement response is not a row list")
+    field_map = mapping["output_fields"]
+    directions = {
+        value: direction
+        for direction, values in mapping["record_type_values"].items()
+        for value in values
+    }
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict) or any(field not in row for field in field_map.values()):
+            raise SemanticMappingUnconfirmed("inventory movement row is missing mapped fields")
+        source_type = row[field_map["record_type"]]
+        direction = directions.get(source_type) if isinstance(source_type, str) else None
+        if direction is None:
+            raise SemanticMappingUnconfirmed("register record type is not mapped by this source profile")
+        raw_quantity = row[field_map["quantity"]]
+        if isinstance(raw_quantity, bool):
+            raise SemanticMappingUnconfirmed("movement quantity is not numeric")
+        try:
+            quantity = Decimal(str(raw_quantity))
+        except (InvalidOperation, ValueError) as exc:
+            raise SemanticMappingUnconfirmed("movement quantity is not numeric") from exc
+        if not quantity.is_finite() or quantity < 0:
+            raise SemanticMappingUnconfirmed(
+                "movement quantity must be a non-negative magnitude per the confirmed profile"
+            )
+        delta = quantity if direction == "receipt" else -quantity
+        normalized.append(
+            {
+                "period": row[field_map["period"]],
+                "item_ref": row[field_map["item_ref"]],
+                "warehouse_ref": row[field_map["warehouse_ref"]],
+                "quantity_delta": str(delta),
+                "direction": direction,
+                "recorder_ref": row[field_map["recorder_ref"]],
+            }
         )
     return normalized
 

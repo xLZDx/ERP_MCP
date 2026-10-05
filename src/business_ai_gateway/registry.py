@@ -11,6 +11,7 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
@@ -23,6 +24,7 @@ from .semantic import (
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
+    validate_inventory_movements_mapping,
     validate_settlement_balance_mapping,
 )
 
@@ -304,6 +306,12 @@ class Registry:
             if required != [{"entity_set": entity_set, "method": method}]:
                 raise SemanticMappingUnconfirmed(
                     "inventory mapping capability dependency is missing or mismatched"
+                )
+        elif concept == INVENTORY_MOVEMENTS_CONCEPT:
+            validate_inventory_movements_mapping(mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "inventory movement record-set mapping cannot claim virtual-table methods"
                 )
         elif concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)

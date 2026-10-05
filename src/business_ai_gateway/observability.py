@@ -15,7 +15,7 @@ def metrics_response(
     if token is None:
         return JSONResponse({"status": "not-found"}, status_code=404)
     expected = f"Bearer {token.get_secret_value()}"
-    if not hmac.compare_digest(authorization, expected):
+    if not hmac.compare_digest(authorization.encode("utf-8"), expected.encode("utf-8")):
         return JSONResponse(
             {"status": "unauthorized"},
             status_code=401,

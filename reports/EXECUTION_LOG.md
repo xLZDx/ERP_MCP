@@ -280,3 +280,26 @@
   validator and diff-check pass. The template validates; `--require-go` fails as intended. Positive
   and negative evidence fixtures pass. P9 test job passed in run `37385325901`; upstream image
   job is pending completion.
+
+## Step 35 — source-profile-gated inventory register movements
+
+**Status:** implementation in progress; native reconciliation is still required.
+**Date:** 2026-10-06
+
+- Rechecked pinned Aprovodka `registers.ts`, `accounting.ts`, UT11 preset, `common.ts`,
+  `presets.test.ts` and `tools.test.ts` at `7b62c90e1fe74324605dc28d76f195200bb97252`. Reused its
+  record-set `get_register` shape and candidate `ТоварыНаСкладах`/`RecordType` receipt-expense hint;
+  upstream tests verify preset inventory but do not directly exercise this read handler. The hint
+  remains `CANDIDATE_ONLY`; no register name or field is auto-selected.
+- Added `inventory_movements` under the existing pinned OData GET path. A confirmed profile must
+  define exact company dimension, fields, source IANA timezone, receipt/expense literal sets,
+  positive-magnitude encoding and order field. Runtime converts offset-qualified boundaries into
+  the confirmed source timezone, checks exact live metadata presence, builds only company/time
+  predicates, and fails closed for absent EntitySet, unknown record type, invalid quantity or stale
+  profile. Receipts are positive and expenses negative in canonical `quantity_delta`.
+- Added profile CLI/registry validation, Windows-compatible `tzdata` dependency, positive/negative
+  semantic, tool/audit and PostgreSQL lifecycle fixtures. No new OData protocol implementation or
+  guessed alternative-name probing was added. Full suite: `119 passed, 7 skipped`; Ruff, Bandit,
+  compileall, pip-audit, scenario/P9 validators and diff-check pass. P8 CI run `37384949997` and P9
+  run `37385454985` passed both jobs. P4 movement follow-up CI and native report reconciliation
+  remain pending.

@@ -11,6 +11,7 @@ from business_ai_gateway.semantic import (
     BANK_BALANCE_CONCEPT,
     CONFIGURATION_PRESETS,
     INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     SemanticMappingUnconfirmed,
@@ -20,12 +21,14 @@ from business_ai_gateway.semantic import (
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
+    build_inventory_movement_query,
     build_settlement_balance_arguments,
     find_configuration_preset,
     normalize_account_turnovers,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
+    normalize_inventory_movement_rows,
     normalize_settlement_balance_rows,
     require_profile_capabilities,
     require_usable_semantic_profile,
@@ -33,6 +36,7 @@ from business_ai_gateway.semantic import (
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
+    validate_inventory_movements_mapping,
     validate_native_reconciliation_evidence,
     validate_settlement_balance_mapping,
 )
@@ -551,6 +555,123 @@ def test_inventory_balance_capability_is_bound_to_exact_live_source_and_metadata
                 source_id=SOURCE_ID,
                 metadata_fingerprint=METADATA_FINGERPRINT,
             )
+
+
+def test_inventory_movements_require_confirmed_register_scope_timezone_and_record_types():
+    mapping = {
+        "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period",
+            "item_ref": "Номенклатура_Key",
+            "warehouse_ref": "Склад_Key",
+            "quantity": "Количество",
+            "record_type": "RecordType",
+            "recorder_ref": "Recorder_Key",
+        },
+        "record_type_values": {"receipt": ["Receipt"], "expense": ["Expense"]},
+        "quantity_encoding": "positive_magnitude_by_record_type",
+        "source_timezone": "Europe/Chisinau",
+        "order_by": "Period",
+    }
+    assert INVENTORY_MOVEMENTS_CONCEPT == "inventory.movements"
+    validate_inventory_movements_mapping(mapping)
+    entity, select, filter_expr = build_inventory_movement_query(
+        mapping,
+        company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        start_period="2026-04-01T23:00:00-04:00",
+        end_period="2026-04-02T02:00:00-04:00",
+    )
+    assert entity == "AccumulationRegister_ТоварыНаСкладах"
+    assert select == list(mapping["output_fields"].values())
+    assert "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'" in filter_expr
+    assert "Period ge datetime'2026-04-02T06:00:00'" in filter_expr
+    assert "Period lt datetime'2026-04-02T09:00:00'" in filter_expr
+
+    assert normalize_inventory_movement_rows(
+        [
+            {
+                "Period": "2026-04-02T06:30:00",
+                "Номенклатура_Key": "item-1",
+                "Склад_Key": "warehouse-1",
+                "Количество": "2.50",
+                "RecordType": "Receipt",
+                "Recorder_Key": "doc-1",
+            },
+            {
+                "Period": "2026-04-02T07:30:00",
+                "Номенклатура_Key": "item-1",
+                "Склад_Key": "warehouse-1",
+                "Количество": 1,
+                "RecordType": "Expense",
+                "Recorder_Key": "doc-2",
+            },
+        ],
+        mapping,
+    ) == [
+        {
+            "period": "2026-04-02T06:30:00",
+            "item_ref": "item-1",
+            "warehouse_ref": "warehouse-1",
+            "quantity_delta": "2.50",
+            "direction": "receipt",
+            "recorder_ref": "doc-1",
+        },
+        {
+            "period": "2026-04-02T07:30:00",
+            "item_ref": "item-1",
+            "warehouse_ref": "warehouse-1",
+            "quantity_delta": "-1",
+            "direction": "expense",
+            "recorder_ref": "doc-2",
+        },
+    ]
+
+    with pytest.raises(SemanticMappingUnconfirmed, match="not mapped"):
+        normalize_inventory_movement_rows(
+            [
+                {
+                    "Period": "2026-04-02T06:30:00",
+                    "Номенклатура_Key": "item-1",
+                    "Склад_Key": "warehouse-1",
+                    "Количество": 1,
+                    "RecordType": "Unknown",
+                    "Recorder_Key": "doc-3",
+                }
+            ],
+            mapping,
+        )
+    with pytest.raises(SemanticMappingUnconfirmed, match="non-negative"):
+        normalize_inventory_movement_rows(
+            [
+                {
+                    "Period": "2026-04-02T06:30:00",
+                    "Номенклатура_Key": "item-1",
+                    "Склад_Key": "warehouse-1",
+                    "Количество": -1,
+                    "RecordType": "Expense",
+                    "Recorder_Key": "doc-3",
+                }
+            ],
+            mapping,
+        )
+
+    for invalid in (
+        {**mapping, "entity_set": "AccumulationRegister_Toys/Balance"},
+        {**mapping, "source_timezone": "unknown/region"},
+        {**mapping, "record_type_values": {"receipt": ["Same"], "expense": ["Same"]}},
+        {**mapping, "order_by": "Period desc"},
+        {**mapping, "quantity_encoding": "signed"},
+    ):
+        with pytest.raises(SemanticMappingUnconfirmed):
+            validate_inventory_movements_mapping(invalid)
+    with pytest.raises(ValueError, match="timezone"):
+        build_inventory_movement_query(
+            mapping,
+            company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+            start_period="2026-04-01T00:00:00",
+            end_period="2026-04-02T00:00:00Z",
+        )
 
 
 def test_bank_balance_uses_profile_fields_and_exact_balance_capability():

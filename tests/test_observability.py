@@ -39,6 +39,7 @@ def test_metrics_endpoint_is_hidden_without_token_and_constant_time_guarded():
     metrics = HTTPMetrics()
     assert metrics_response(metrics, None, "").status_code == 404
     assert metrics_response(metrics, SecretStr("a" * 32), "Bearer wrong").status_code == 401
+    assert metrics_response(metrics, SecretStr("é" * 32), "Bearer invalid").status_code == 401
 
     allowed = metrics_response(metrics, SecretStr("a" * 32), f"Bearer {'a' * 32}")
     assert allowed.status_code == 200

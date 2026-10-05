@@ -600,6 +600,11 @@ reconcilable with native 1C reports.</p>
 <li>no write operation exposed through internal adapter contract.</li>
 </ul>
 <h2>P4 — Semantic accounting</h2>
+<p>Implemented slices: company-scoped account turnovers, sales/purchase documents, inventory and
+bank/AR/AP point-in-time balances, plus profile-gated <code>inventory_movements</code>. Movement
+reads require an exact live EntitySet and operator-confirmed company field, timezone, RecordType
+values and quantity encoding. Aging, tax, cash movements and posting trace remain unavailable until
+their own source profiles and native-report evidence exist.</p>
 <p>Deliver canonical tools:</p>
 <ul>
 <li>organization/company discovery;</li>

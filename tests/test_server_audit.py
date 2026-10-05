@@ -447,6 +447,155 @@ async def test_inventory_balance_uses_exact_profile_and_point_in_time_company_co
 
 
 @pytest.mark.asyncio
+async def test_inventory_movements_uses_live_entity_and_company_timezone_profile():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    mapping = {
+        "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period",
+            "item_ref": "Номенклатура_Key",
+            "warehouse_ref": "Склад_Key",
+            "quantity": "Количество",
+            "record_type": "RecordType",
+            "recorder_ref": "Recorder_Key",
+        },
+        "record_type_values": {"receipt": ["Receipt"], "expense": ["Expense"]},
+        "quantity_encoding": "positive_magnitude_by_record_type",
+        "source_timezone": "Europe/Chisinau",
+        "order_by": "Period",
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:movement-profile"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        metadata=AsyncMock(
+            return_value=SimpleNamespace(names={"AccumulationRegister_ТоварыНаСкладах"})
+        ),
+        read=AsyncMock(
+            return_value={
+                "value": [
+                    {
+                        "Period": "2026-04-02T06:30:00",
+                        "Номенклатура_Key": "item-1",
+                        "Склад_Key": "warehouse-1",
+                        "Количество": "2.5",
+                        "RecordType": "Expense",
+                        "Recorder_Key": "doc-1",
+                    }
+                ],
+                "page": {"has_more": False},
+            }
+        ),
+    )
+    runtime = SimpleNamespace(
+        audit=audit,
+        registry=registry,
+        rate_limit=SimpleNamespace(check=AsyncMock()),
+        onec=onec,
+    )
+    mcp = build_mcp(Settings(), runtime)
+    result = await mcp.call_tool(
+        "inventory_movements",
+        {
+            "source_id": "source-1",
+            "company_id": str(company_id),
+            "start_period": "2026-04-01T23:00:00-04:00",
+            "end_period": "2026-04-02T02:00:00-04:00",
+            "top": 10,
+        },
+    )
+
+    assert not result.is_error
+    payload = json.loads(result.content[0].text)
+    assert payload["value"][0]["quantity_delta"] == "-2.5"
+    assert payload["value"][0]["direction"] == "expense"
+    assert payload["profile_fingerprint"] == "sha256:movement-profile"
+    onec.read.assert_awaited_once()
+    call = onec.read.await_args.kwargs
+    assert call["entity_set"] == "AccumulationRegister_ТоварыНаСкладах"
+    assert call["filter_expr"] == (
+        "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0' and "
+        "Period ge datetime'2026-04-02T06:00:00' and "
+        "Period lt datetime'2026-04-02T09:00:00'"
+    )
+    assert audit.events[-1]["outcome"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_inventory_movements_denies_entity_absent_from_live_metadata():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    mapping = {
+        "entity_set": "AccumulationRegister_OnlyInPreset",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period",
+            "item_ref": "Номенклатура_Key",
+            "warehouse_ref": "Склад_Key",
+            "quantity": "Количество",
+            "record_type": "RecordType",
+            "recorder_ref": "Recorder_Key",
+        },
+        "record_type_values": {"receipt": ["Receipt"], "expense": ["Expense"]},
+        "quantity_encoding": "positive_magnitude_by_record_type",
+        "source_timezone": "Europe/Chisinau",
+        "order_by": "Period",
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:profile"}
+    )
+    audit = RecordingAudit()
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(
+            return_value=SimpleNamespace(
+                adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+                metadata_fingerprint="sha256:metadata",
+            )
+        ),
+        metadata=AsyncMock(return_value=SimpleNamespace(names={"AccumulationRegister_Other"})),
+        read=AsyncMock(),
+    )
+    mcp = build_mcp(
+        Settings(),
+        SimpleNamespace(
+            audit=audit,
+            registry=registry,
+            rate_limit=SimpleNamespace(check=AsyncMock()),
+            onec=onec,
+        ),
+    )
+
+    with pytest.raises(UnexpectedToolError):
+        await mcp.call_tool(
+            "inventory_movements",
+            {
+                "source_id": "source-1",
+                "company_id": str(company_id),
+                "start_period": "2026-04-01T00:00:00Z",
+                "end_period": "2026-04-02T00:00:00Z",
+            },
+        )
+    assert audit.events[-1]["detail_code"] == "CAPABILITY_UNSUPPORTED"
+    onec.read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unconfirmed_inventory_profile_is_audited_without_register_dispatch():
     company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
     registry = TestRegistry()

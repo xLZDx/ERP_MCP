@@ -16,6 +16,7 @@ from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
     PRESETS_BY_ID,
     RECEIVABLE_BALANCE_CONCEPT,
@@ -26,6 +27,7 @@ from business_ai_gateway.semantic import (
     validate_bank_balance_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
+    validate_inventory_movements_mapping,
     validate_native_reconciliation_evidence,
     validate_settlement_balance_mapping,
 )
@@ -40,6 +42,7 @@ CONCEPTS = (
     "cash",
     "inventory",
     INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -351,6 +354,10 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
                 {"entity_set": entity_set, "method": method}
             ]:
                 raise ValueError("inventory capability dependency does not match its operation")
+        elif args.concept == INVENTORY_MOVEMENTS_CONCEPT:
+            validate_inventory_movements_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError("movement record-set mapping cannot claim virtual-table methods")
         elif args.concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)
             if mapping.get("required_register_capabilities") != [

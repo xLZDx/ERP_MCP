@@ -123,18 +123,21 @@ Last updated: 2026-10-06
   disposable PostgreSQL 001–007/privilege checker/integration `6 passed`; Ruff/compileall/Bandit pass.
   Pip-audit reports no known vulnerabilities. Hosted run `37375030150` passed both CI jobs. Real
   configuration-specific semantics remain unvalidated.
-- P4 semantic read tools are in progress on `phase/p4-semantic-accounting` in draft PR #2: migration 008
+- P4 semantic read tools are in draft PR #2; inventory movements are in follow-up draft PR #8,
+  stacked on P9 because real native reconciliation remains an external gate. Migration 008
   adds auditable explicit mapping confirmation and stales validated profiles after direct mapping
   edits; migration 009 records the semantic profile fingerprint in audit events. The new
-  `accounting_balance_and_turnovers`, `sales_documents`, `purchase_documents`, `inventory_balance`
-  `bank_balance`, `receivable_balance` and `payable_balance` authorize the exact
+  `accounting_balance_and_turnovers`, `sales_documents`, `purchase_documents`, `inventory_balance`,
+  `bank_balance`, `receivable_balance`, `payable_balance` and `inventory_movements` authorize the exact
   company first, load only validated company-scoped mappings, check current capabilities, compose
   company filters from reviewed mappings plus registry external references, and normalize canonical
   fields. Sales/purchase document support passed hosted CI `37380789434`; inventory passed
   `37381909454`; bank passed `37382615109`. The current settlement balance extension has local suite
   `101 passed, 7 skipped`, disposable PostgreSQL 16 migrations 001–009/privilege policy pass,
   integration `6/6`, Ruff, compileall and Bandit pass. A/R and A/P tools expose point-in-time mapped
-  balances only, not aging. Hosted CI is pending. Cash movements, inventory movements, AR/AP aging,
+  balances only, not aging. Inventory movement rows are now source/company profile-mapped, timezone
+  normalized, signed using confirmed Receipt/Expense literals, and denied if live metadata lacks the
+  exact EntitySet. Cash movements, AR/AP aging,
   tax,
   posting trace,
   and real native-report reconciliation remain open.

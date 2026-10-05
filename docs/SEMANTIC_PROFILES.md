@@ -64,6 +64,13 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    accumulation register and projects counterparty, contract and amount. These snapshots do not
    calculate aging or infer overdue status; aging remains unavailable until a source-specific due
    date/settlement semantic mapping and native-report reconciliation are approved.
+   For `inventory.movements`, the exact register record EntitySet must exist in this source's live
+   metadata. The confirmed mapping specifies company dimension, period/item/warehouse/quantity/
+   record-type/recorder fields, source IANA timezone, exact source-specific receipt/expense values,
+   and `quantity_encoding: positive_magnitude_by_record_type`. Caller timestamps must include an
+   offset and are converted into the mapped source timezone before building the bounded GET filter.
+   Unknown record types or negative magnitudes fail closed; a preset candidate never selects the
+   EntitySet, field names, timezone or direction values automatically.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -116,6 +123,7 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
 - `receivable_balance` and `payable_balance` return only point-in-time counterparty/contract amounts
   from distinct validated mappings. They do not return aging buckets, overdue days or a combined
   net position.
-- Other canonical accounting tools (cash/bank, inventory movements, AR/AP aging, tax/VAT and posting trace)
-  remain unimplemented; no customer preset is promoted based on
-  upstream names or confidence labels.
+- `inventory_movements` reads register rows through the existing pinned OData adapter, applies the
+  validated company/time filter, and normalizes receipt/expense to signed quantity deltas. This is
+  a data-plane slice, not native-report reconciliation. Cash movement, AR/AP aging, tax/VAT and
+  posting trace remain unavailable without their own source/company semantics.

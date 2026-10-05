@@ -538,6 +538,38 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        movement_mapping_file = tmp_path / "inventory-movement-mapping.json"
+        movement_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "period": "Period",
+                        "item_ref": "Номенклатура_Key",
+                        "warehouse_ref": "Склад_Key",
+                        "quantity": "Количество",
+                        "record_type": "RecordType",
+                        "recorder_ref": "Recorder_Key",
+                    },
+                    "record_type_values": {"receipt": ["Receipt"], "expense": ["Expense"]},
+                    "quantity_encoding": "positive_magnitude_by_record_type",
+                    "source_timezone": "Europe/Chisinau",
+                    "order_by": "Period",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="inventory.movements",
+                mapping_file=str(movement_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
         for concept, entity_set, mapping_file_name in (
             (
                 "receivable.balance",
@@ -624,6 +656,7 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             "sales",
             "purchases",
             "inventory.balance",
+            "inventory.movements",
             "bank.balance",
             "receivable.balance",
             "payable.balance",
@@ -670,6 +703,10 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         assert loaded_inventory_mapping["mapping"]["entity_set"] == (
             "AccumulationRegister_ТоварыНаСкладах"
         )
+        loaded_inventory_movement_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "inventory.movements")
+        assert loaded_inventory_movement_mapping["mapping"]["source_timezone"] == "Europe/Chisinau"
         loaded_bank_mapping = await Registry(
             ConnectionDatabase(conn), production=False
         ).require_semantic_mapping(source_id, company_id, "bank.balance")
@@ -701,12 +738,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 19
+        ) == 21
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 19
+        ) == 21
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )

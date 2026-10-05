@@ -23,6 +23,7 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     SemanticProfileUnavailable,
@@ -30,11 +31,13 @@ from .semantic import (
     build_bank_balance_arguments,
     build_company_filter,
     build_inventory_balance_arguments,
+    build_inventory_movement_query,
     build_settlement_balance_arguments,
     normalize_account_turnovers,
     normalize_bank_balance_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
+    normalize_inventory_movement_rows,
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
@@ -594,6 +597,139 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             await runtime.audit.write(
                 principal=principal,
                 tool="inventory_balance",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def inventory_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped inventory register records; quantity sign follows mapped record type."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": INVENTORY_MOVEMENTS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "inventory_movements",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, INVENTORY_MOVEMENTS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_inventory_movement_query(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            if entity_set not in metadata.names:
+                raise CapabilityUnsupported(
+                    "configured inventory movement EntitySet is absent from this source's live metadata"
+                )
+            result = await runtime.onec.read(
+                source,
+                entity_set=entity_set,
+                select=select,
+                filter_expr=filter_expr,
+                orderby=f"{mapping['order_by']} asc",
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_inventory_movement_rows(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": INVENTORY_MOVEMENTS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
                 source_id=source_id,
                 outcome=(
                     "denied"
