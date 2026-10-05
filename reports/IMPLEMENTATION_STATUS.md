@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Working HEAD: `d7d058ae8d12b54670c084488afc1e200ca42c4c`
+- Working HEAD: `bb5f556d0710065e81da04a88c0946a120a610f7` (local auth/CI follow-up changes in progress)
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
 - Existing local additions from workspace setup: `AGENTS.md`, `CLAUDE.md`, `CODEX.md`,
@@ -22,13 +22,14 @@ Last updated: 2026-10-05
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work
   implemented with admin commands, scoped list/resolve methods, migration-history guard and CI DB
   privilege checker.
-- In progress: publish the P1 batch and verify migration SQL/privileges on clean PostgreSQL CI.
-- Next: continue P1 negative tests, auth/secret and runtime-role proof; then proceed to P2/P3.
+- In progress: P1 security-negative tests and CI feedback path. CI workflow now listens to pushes on
+  the implementation branch; the pushed batch has not yet produced a run.
+- Next: verify fresh-PostgreSQL migrations/role grants, then continue the remaining P1 closure.
 - First unresolved gate: P1 / D3, D11 — company-scoped authorization, runtime privileges and audit
   contract are not yet proven against the normative data model.
-- Local checks: 32 passed, 1 skipped; Ruff, compileall, Bandit and pip-audit pass. PostgreSQL
+- Local checks: 42 passed, 1 skipped; Ruff, compileall, Bandit and pip-audit pass. PostgreSQL
   migration/role integration is delegated to CI for this batch.
-- CI: no current check result is published for working HEAD. Latest observed successful run is
+- CI: no run is published for commit `bb5f556` yet. Latest observed successful run is
   `37349236860` on `c4d5a0e7173c208a4103b9feebe2ab8b26898d68`; later runs on this branch include
   failures before that success.
 - Local environment: isolated `.venv` installed from `.[dev]`; Python, GitHub CLI and Docker engine

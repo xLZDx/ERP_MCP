@@ -49,6 +49,9 @@ class JWTTokenVerifier(TokenVerifier):
         except jwt.PyJWTError:
             return None
 
+        subject = claims.get("sub")
+        if not isinstance(subject, str) or not subject.strip():
+            return None
         scopes = self._scopes(claims)
         if self.settings.oauth_required_scope not in scopes:
             return None
@@ -64,7 +67,7 @@ class JWTTokenVerifier(TokenVerifier):
             scopes=scopes,
             expires_at=int(claims["exp"]),
             resource=self.settings.public_mcp_url,
-            subject=str(claims["sub"]),
+            subject=subject,
             claims=claims,
         )
 

@@ -86,22 +86,42 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     @mcp.tool()
     async def system_status() -> dict[str, Any]:
         """Return safe, non-secret gateway status."""
+        started = time.monotonic()
         principal = await ctx()
-        sources = await runtime.registry.list_allowed(principal)
-        return {
-            "mode": "1c-production",
-            "read_only": True,
-            "subject": principal.subject,
-            "accessible_sources": len(sources),
-            "max_rows": settings.max_rows,
-            "capability_negotiation": True,
-            "adapter_profiles": [
-                "ODATA_JSON_V3",
-                "ODATA_ATOM_V3",
-                "HTTP_QUERY_FALLBACK",
-            ],
-            "future_adapters": {"erp": "reserved", "ferma": "reserved"},
-        }
+        try:
+            sources = await runtime.registry.list_allowed(principal)
+            result = {
+                "mode": "1c-production",
+                "read_only": True,
+                "subject": principal.subject,
+                "accessible_sources": len(sources),
+                "max_rows": settings.max_rows,
+                "capability_negotiation": True,
+                "adapter_profiles": [
+                    "ODATA_JSON_V3",
+                    "ODATA_ATOM_V3",
+                    "HTTP_QUERY_FALLBACK",
+                ],
+                "future_adapters": {"erp": "reserved", "ferma": "reserved"},
+            }
+            await runtime.audit.write(
+                principal=principal,
+                tool="system_status",
+                source_id=None,
+                outcome="success",
+                started_at=started,
+            )
+            return result
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="system_status",
+                source_id=None,
+                outcome="error",
+                started_at=started,
+                detail_code=type(exc).__name__,
+            )
+            raise
 
     @mcp.tool()
     async def sources_list() -> list[dict[str, Any]]:

@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, bootstrap/1c-day1-production]
   pull_request:
 
 permissions:

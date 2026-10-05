@@ -8,8 +8,8 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Local Ruff, compileall, Bandit, pip-audit pass; 32 tests pass/1 skip. CI for this batch and PostgreSQL migration/role verification pending. |
-| D2 Authentication | PARTIAL | JWT verifier exists; broader signature/issuer/audience/expiry/scope/JWKS negative tests remain. |
+| D1 Build/dependencies | PARTIAL | Local Ruff, compileall, Bandit, pip-audit pass; 42 tests pass/1 skip. CI for this batch and PostgreSQL migration/role verification pending. |
+| D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
 | D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; runtime privilege result pending PostgreSQL CI; end-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | GET/HEAD-only client; mutation/sidecar inventory evidence incomplete. |
