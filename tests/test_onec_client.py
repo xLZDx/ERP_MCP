@@ -1,6 +1,6 @@
 import pytest
 
-from business_ai_gateway.adapters.onec.client import OneCReadClient
+from business_ai_gateway.adapters.onec.client import OneCReadClient, OneCTransportError
 from business_ai_gateway.models import Source
 
 
@@ -41,7 +41,7 @@ async def test_url_is_pinned_to_registered_host():
             client._url(source(), "$metadata")
             == "https://1c.example.com/base/odata/standard.odata/$metadata"
         )
-        with pytest.raises(Exception):
+        with pytest.raises(OneCTransportError):
             client._url(source(), "https://evil.example/x")
     finally:
         await client.close()
