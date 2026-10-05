@@ -72,14 +72,16 @@ async def grant_add(args, conn):
     await conn.execute(
         """
         INSERT INTO bag.access_grants(
-          grant_id, principal_kind, principal_id, source_id, all_sources
+          grant_id, principal_kind, principal_id, source_id, all_sources, company_id, effect
         )
-        VALUES($1,$2,$3,$4,false)
+        VALUES($1,$2,$3,$4,false,$5,$6)
         """,
         uuid.uuid4(),
         args.kind,
         args.principal,
         args.source_id,
+        uuid.UUID(args.company_id) if args.company_id else None,
+        args.effect,
     )
 
 
@@ -91,13 +93,43 @@ async def grant_revoke(args, conn):
         WHERE principal_kind=$1
           AND principal_id=$2
           AND source_id=$3
+          AND company_id IS NOT DISTINCT FROM $4::uuid
           AND revoked_at IS NULL
         """,
         args.kind,
         args.principal,
         args.source_id,
+        uuid.UUID(args.company_id) if args.company_id else None,
     )
     print(result)
+
+
+async def company_upsert(args, conn):
+    requested_id = uuid.UUID(args.company_id)
+    company_id = await conn.fetchval(
+        """
+        INSERT INTO bag.companies(
+          company_id, source_id, external_ref, display_name, legal_name,
+          country_code, is_default
+        )
+        VALUES($1,$2,$3,$4,$5,$6,$7)
+        ON CONFLICT(source_id, external_ref) DO UPDATE SET
+          display_name=EXCLUDED.display_name,
+          legal_name=EXCLUDED.legal_name,
+          country_code=EXCLUDED.country_code,
+          is_default=EXCLUDED.is_default,
+          updated_at=now()
+        RETURNING company_id
+        """,
+        requested_id,
+        args.source_id,
+        args.external_ref,
+        args.display_name,
+        args.legal_name,
+        args.country_code,
+        args.default,
+    )
+    print(company_id)
 
 
 async def run(args):
@@ -121,6 +153,8 @@ async def run(args):
             await grant_add(args, conn)
         elif args.command == "grant-revoke":
             await grant_revoke(args, conn)
+        elif args.command == "company-upsert":
+            await company_upsert(args, conn)
     finally:
         await conn.close()
 
@@ -154,6 +188,17 @@ def parser():
         )
         grant.add_argument("--principal", required=True)
         grant.add_argument("--source-id", required=True)
+        grant.add_argument("--company-id")
+        grant.add_argument("--effect", choices=["allow", "deny"], default="allow")
+
+    company = sub.add_parser("company-upsert")
+    company.add_argument("--company-id", required=True)
+    company.add_argument("--source-id", required=True)
+    company.add_argument("--external-ref", required=True)
+    company.add_argument("--display-name", required=True)
+    company.add_argument("--legal-name")
+    company.add_argument("--country-code")
+    company.add_argument("--default", action="store_true")
 
     return p
 

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from uuid import UUID
 
 from .compatibility import OneCCapabilities
 from .db import Database
-from .models import Source, source_from_record
+from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
 
 
@@ -25,11 +26,23 @@ class Registry:
             JOIN bag.access_grants g
               ON (g.source_id = s.source_id OR g.all_sources = TRUE)
             WHERE s.enabled = TRUE
+              AND g.effect = 'allow'
               AND g.revoked_at IS NULL
               AND (g.expires_at IS NULL OR g.expires_at > now())
               AND (
                     (g.principal_kind = 'subject' AND g.principal_id = $1)
                  OR (g.principal_kind = 'group' AND g.principal_id = ANY($2::text[]))
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM bag.access_grants denied
+                  WHERE denied.effect = 'deny'
+                    AND denied.revoked_at IS NULL
+                    AND (denied.expires_at IS NULL OR denied.expires_at > now())
+                    AND (denied.source_id = s.source_id OR denied.all_sources = TRUE)
+                    AND (
+                          (denied.principal_kind = 'subject' AND denied.principal_id = $1)
+                       OR (denied.principal_kind = 'group' AND denied.principal_id = ANY($2::text[]))
+                    )
               )
             ORDER BY s.source_id
             """,
@@ -50,11 +63,24 @@ class Registry:
               ON (g.source_id = s.source_id OR g.all_sources = TRUE)
             WHERE s.source_id = $1
               AND s.enabled = TRUE
+              AND g.effect = 'allow'
+              AND g.company_id IS NULL
               AND g.revoked_at IS NULL
               AND (g.expires_at IS NULL OR g.expires_at > now())
               AND (
                     (g.principal_kind = 'subject' AND g.principal_id = $2)
                  OR (g.principal_kind = 'group' AND g.principal_id = ANY($3::text[]))
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM bag.access_grants denied
+                  WHERE denied.effect = 'deny'
+                    AND denied.revoked_at IS NULL
+                    AND (denied.expires_at IS NULL OR denied.expires_at > now())
+                    AND (denied.source_id = s.source_id OR denied.all_sources = TRUE)
+                    AND (
+                          (denied.principal_kind = 'subject' AND denied.principal_id = $2)
+                       OR (denied.principal_kind = 'group' AND denied.principal_id = ANY($3::text[]))
+                    )
               )
             """,
             source_id,
@@ -66,6 +92,95 @@ class Registry:
         source = source_from_record(row)
         source.validate_runtime(production=self.production)
         return source
+
+    async def list_allowed_companies(
+        self, principal: Principal, source_id: str
+    ) -> list[Company]:
+        """List only enabled companies covered by an active source/company grant."""
+        rows = await self.db.require_pool().fetch(
+            """
+            SELECT DISTINCT c.*
+            FROM bag.companies c
+            JOIN bag.sources s ON s.source_id = c.source_id
+            JOIN bag.access_grants g
+              ON (g.source_id = c.source_id OR g.all_sources = TRUE)
+             AND (g.company_id IS NULL OR g.company_id = c.company_id)
+            WHERE c.source_id = $1
+              AND c.enabled = TRUE
+              AND s.enabled = TRUE
+              -- Source-wide grants and global grants both include all companies.
+              AND g.effect = 'allow'
+              AND g.revoked_at IS NULL
+              AND (g.expires_at IS NULL OR g.expires_at > now())
+              AND (
+                    (g.principal_kind = 'subject' AND g.principal_id = $2)
+                 OR (g.principal_kind = 'group' AND g.principal_id = ANY($3::text[]))
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM bag.access_grants denied
+                  WHERE denied.effect = 'deny'
+                    AND denied.revoked_at IS NULL
+                    AND (denied.expires_at IS NULL OR denied.expires_at > now())
+                    AND (denied.source_id = c.source_id OR denied.all_sources = TRUE)
+                    AND (denied.company_id IS NULL OR denied.company_id = c.company_id)
+                    AND (
+                          (denied.principal_kind = 'subject' AND denied.principal_id = $2)
+                       OR (denied.principal_kind = 'group' AND denied.principal_id = ANY($3::text[]))
+                    )
+              )
+            ORDER BY c.display_name, c.company_id
+            """,
+            source_id,
+            principal.subject,
+            list(principal.groups),
+        )
+        return [company_from_record(row) for row in rows]
+
+    async def require_company(
+        self, principal: Principal, source_id: str, company_id: UUID
+    ) -> Company:
+        """Resolve an enabled company only when a source-wide or matching company grant exists."""
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT DISTINCT c.*
+            FROM bag.companies c
+            JOIN bag.sources s ON s.source_id = c.source_id
+            JOIN bag.access_grants g
+              ON (g.source_id = c.source_id OR g.all_sources = TRUE)
+             AND (g.company_id IS NULL OR g.company_id = c.company_id)
+            WHERE c.source_id = $1
+              AND c.company_id = $2
+              AND c.enabled = TRUE
+              AND s.enabled = TRUE
+              -- Source-wide grants and global grants both include all companies.
+              AND g.effect = 'allow'
+              AND g.revoked_at IS NULL
+              AND (g.expires_at IS NULL OR g.expires_at > now())
+              AND (
+                    (g.principal_kind = 'subject' AND g.principal_id = $3)
+                 OR (g.principal_kind = 'group' AND g.principal_id = ANY($4::text[]))
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM bag.access_grants denied
+                  WHERE denied.effect = 'deny'
+                    AND denied.revoked_at IS NULL
+                    AND (denied.expires_at IS NULL OR denied.expires_at > now())
+                    AND (denied.source_id = c.source_id OR denied.all_sources = TRUE)
+                    AND (denied.company_id IS NULL OR denied.company_id = c.company_id)
+                    AND (
+                          (denied.principal_kind = 'subject' AND denied.principal_id = $3)
+                       OR (denied.principal_kind = 'group' AND denied.principal_id = ANY($4::text[]))
+                    )
+              )
+            """,
+            source_id,
+            company_id,
+            principal.subject,
+            list(principal.groups),
+        )
+        if row is None:
+            raise AccessDenied("no access to company")
+        return company_from_record(row)
 
     async def save_capabilities(self, capabilities: OneCCapabilities):
         await self.db.require_pool().execute(

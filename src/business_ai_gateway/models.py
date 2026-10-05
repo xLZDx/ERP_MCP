@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import Any
 from urllib.parse import urlparse
+from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,18 @@ class MetadataEntity:
     navigation_properties: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class Company:
+    id: UUID
+    source_id: str
+    external_ref: str
+    display_name: str
+    legal_name: str | None
+    country_code: str | None
+    enabled: bool
+    is_default: bool
+
+
 def source_from_record(row: Any) -> Source:
     return Source(
         id=row["source_id"],
@@ -85,4 +98,17 @@ def source_from_record(row: Any) -> Source:
         platform_version_hint=row["platform_version_hint"],
         fallback_kind=row["fallback_kind"],
         fallback_base_url=row["fallback_base_url"],
+    )
+
+
+def company_from_record(row: Any) -> Company:
+    return Company(
+        id=row["company_id"],
+        source_id=row["source_id"],
+        external_ref=row["external_ref"],
+        display_name=row["display_name"],
+        legal_name=row["legal_name"],
+        country_code=row["country_code"],
+        enabled=row["enabled"],
+        is_default=row["is_default"],
     )

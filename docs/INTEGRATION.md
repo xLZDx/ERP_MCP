@@ -21,6 +21,7 @@ Initial system/source tools:
 - `system_status`;
 - `sources_list`;
 - `source_health`;
+- `companies_list` (returns only organizations covered by the caller's active grants);
 - `onec_capabilities`;
 - `onec_metadata_summary`;
 - `onec_find_entities`.

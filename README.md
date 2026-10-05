@@ -56,6 +56,7 @@ See [SECURITY.md](SECURITY.md) and [deploy/PRODUCTION.md](deploy/PRODUCTION.md).
 
 - `system_status`
 - `sources_list`
+- `companies_list` — organizations covered by the caller's grants
 - `source_health`
 - `onec_capabilities` — behavior-first version/capability negotiation
 - `onec_metadata_summary`

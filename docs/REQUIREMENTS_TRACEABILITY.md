@@ -8,7 +8,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | Req | Requirement | Primary design | Evidence / DoD |
 |---|---|---|---|
 | FR-A1 | OAuth identity validated | TDD §6, Architecture TB-1 | D2 |
-| FR-A2 | Subject/group source authorization | Data Model §5, Integration §9 | D3 |
+| FR-A2 | Subject/group source and company authorization; deny takes precedence | Data Model §5, Integration §9 | D3, D10 |
 | FR-A3 | Revocation without restart | PostgreSQL grants/runtime lookup | D3, D10 |
 | FR-B1 | Server-side source registry | Data Model §3 | D3, D10 |
 | FR-B2 | Secrets are references only | Data Model §3, Security | D4 |
@@ -19,7 +19,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | FR-D3 | Native query fallback read-only | Integration §3.3 | D5, D8 |
 | FR-E1 | Semantic tools are transport-independent | Architecture §7 | D9 |
 | FR-E2 | No universal chart-of-accounts assumption | Data Model §9 | D9 |
-| FR-F1 | Append-only audit | Data Model §11, Security | D11 |
+| FR-F1 | Append-only audit with request/company/adapter provenance | Data Model §11, Security | D11 |
 | NFR-S1 | Production fail-closed | TDD §5 | D2–D6, D16 |
 | NFR-S2 | No arbitrary target URL | ADR-0001/Architecture TB-1/5 | D6 |
 | NFR-S3 | No 1C mutations | ADR-0001 | D5 |

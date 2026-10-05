@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -170,6 +171,50 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool()
+    async def companies_list(source_id: str) -> list[dict[str, Any]]:
+        """List enabled 1C organizations covered by this principal's grants."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            await runtime.rate_limit.check(
+                subject=principal.subject,
+                source_id=source_id,
+                tool="companies_list",
+            )
+            companies = await runtime.registry.list_allowed_companies(principal, source_id)
+            result = [
+                {
+                    "company_id": str(company.id),
+                    "source_id": company.source_id,
+                    "external_ref": company.external_ref,
+                    "display_name": company.display_name,
+                    "legal_name": company.legal_name,
+                    "country_code": company.country_code,
+                    "default": company.is_default,
+                }
+                for company in companies
+            ]
+            await runtime.audit.write(
+                principal=principal,
+                tool="companies_list",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                returned_items=len(result),
+            )
+            return result
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="companies_list",
+                source_id=source_id,
+                outcome="error",
+                started_at=started,
+                detail_code=type(exc).__name__,
+            )
+            raise
+
+    @mcp.tool()
     async def onec_capabilities(
         source_id: str,
         refresh: bool = False,
@@ -195,6 +240,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="success",
                 started_at=started,
                 query={"refresh": refresh},
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
             )
             return result
         except Exception as exc:
@@ -323,6 +370,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 top=top,
                 skip=skip,
             )
+            response_bytes = len(
+                json.dumps(result, ensure_ascii=False, default=str).encode("utf-8")
+            )
             await runtime.audit.write(
                 principal=principal,
                 tool="onec_read",
@@ -331,6 +381,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 started_at=started,
                 query=query,
                 returned_items=_count_items(result),
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                response_bytes=response_bytes,
             )
             return result
         except Exception as exc:

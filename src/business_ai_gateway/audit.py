@@ -31,7 +31,16 @@ class Audit:
         outcome: str,
         started_at: float,
         query: dict[str, Any] | None = None,
+        request_id: uuid.UUID | None = None,
+        company_id: uuid.UUID | None = None,
+        adapter_kind: str | None = None,
+        adapter_version: str | None = None,
+        upstream_sha: str | None = None,
+        policy_version: str | None = None,
+        metadata_fingerprint: str | None = None,
         returned_items: int | None = None,
+        response_bytes: int | None = None,
+        truncated: bool = False,
         detail_code: str | None = None,
     ):
         elapsed_ms = int((time.monotonic() - started_at) * 1000)
@@ -40,9 +49,12 @@ class Audit:
             INSERT INTO bag.audit_events(
                 event_id, principal_subject, client_id, tool_name, source_id,
                 outcome, query_fingerprint, query_json, returned_items,
-                duration_ms, detail_code
+                duration_ms, detail_code, request_id, company_id, adapter_kind,
+                adapter_version, upstream_sha, policy_version, metadata_fingerprint,
+                response_bytes, truncated
             )
-            VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,
+                   $16,$17,$18,$19,$20)
             """,
             uuid.uuid4(),
             principal.subject,
@@ -57,4 +69,13 @@ class Audit:
             returned_items,
             elapsed_ms,
             detail_code,
+            request_id or uuid.uuid4(),
+            company_id,
+            adapter_kind,
+            adapter_version,
+            upstream_sha,
+            policy_version,
+            metadata_fingerprint,
+            response_bytes,
+            truncated,
         )

@@ -58,10 +58,10 @@ Current baseline includes much of:
 - CI/security scanning.
 
 Remaining closure:
-- align runtime schema with normative data model through explicit migrations;
-- add company/semantic/reconciliation entities when their implementing phase begins;
+- continue aligning runtime schema with normative data model through explicit migrations;
+- add semantic and reconciliation entities when their implementing phase begins;
 - prove least-privilege DB roles in integration CI/deployment;
-- add correlation/policy-version fields to audit contract.
+- complete end-to-end correlation/policy-version and adapter provenance in the audit contract.
 
 Exit evidence:
 - unauthorized/wrong audience/scope denied;

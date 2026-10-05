@@ -13,6 +13,9 @@ ERP_MCP is **read-only by construction** for the 1C Day-1 production MVP.
 - 1C redirects are disabled.
 - The 1C transport implements GET/HEAD only; POST/PUT/PATCH/DELETE do not exist.
 - EntitySet access is validated against live `$metadata` and source allow/deny policy.
+- Company-scoped grants cannot authorize unscoped OData reads; company data operations require an
+  adapter path that enforces the selected organization end-to-end.
+- Active deny grants override matching allows.
 - PostgreSQL audit events are append-only.
 - Raw OData filters are not stored in audit by default.
 - Runtime DB credentials cannot modify source registry or grants.

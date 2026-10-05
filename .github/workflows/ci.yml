@@ -43,8 +43,16 @@ jobs:
       - run: ruff check .
       - run: bandit -q -r src
       - run: python -m compileall -q src scripts testbed
+      - run: >-
+          psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
+          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: python scripts/migrate.py
         env:
           BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: python scripts/check_db_privileges.py
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: pytest
       - run: pip-audit

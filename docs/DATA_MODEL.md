@@ -59,7 +59,7 @@ contain one or many organizations. They must not be conflated.
 
 ## 4. Company model
 
-Planned table: `companies`.
+Implemented in schema migration 003 as `bag.companies`.
 
 Recommended fields:
 - `company_id UUID PK`;
@@ -81,9 +81,11 @@ The gateway returns business data only within authorized source/company scope.
 
 ## 5. Access model
 
-Current `access_grants` supports source scope.
+`access_grants` supports source scope and optional company scope. Schema migration 003 adds
+`company_id` and an `effect` (`allow` or `deny`). Company rows are keyed independently from the
+technical source and constrained to that source by a composite foreign key.
 
-Target scope model should support:
+The model supports:
 - principal kind: subject/group;
 - principal ID;
 - source ID;
@@ -91,6 +93,7 @@ Target scope model should support:
 - capability/tool scope;
 - expiry;
 - revocation;
+- allow/deny effect, with matching active deny taking precedence;
 - grant provenance/actor.
 
 Semantics:
@@ -98,6 +101,10 @@ Semantics:
 - company-specific grant is narrower than source-wide grant;
 - deny policy overrides allow;
 - revoked/expired grant is immediately ineffective.
+
+Company-scoped grants are not accepted as authorization for generic unscoped OData reads. Those
+operations require an active source-wide grant. Company-scoped data operations remain unavailable
+until an adapter operation can enforce and test the company boundary end-to-end.
 
 ## 6. Adapter binding
 
@@ -221,6 +228,13 @@ This is the correctness evidence for production accounting semantics.
 ## 11. Audit model
 
 Existing `audit_events` is append-only.
+
+Migration 003 adds the initial request/correlation and adapter provenance fields:
+- request ID;
+- company ID;
+- adapter kind/version and upstream SHA;
+- policy and metadata fingerprints;
+- response bytes and truncation.
 
 Target fields:
 - event ID/time;
