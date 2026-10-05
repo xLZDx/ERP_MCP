@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import json  # noqa: I001
 import os
 import pathlib
 import xml.etree.ElementTree as ET
