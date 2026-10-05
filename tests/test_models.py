@@ -4,20 +4,20 @@ from business_ai_gateway.models import Source
 
 
 def make_source(**overrides):
-    data = dict(
-        id="s1",
-        project="onec",
-        kind="onec_odata",
-        display_name="Company",
-        base_url="https://1c.example.com/base/odata/standard.odata",
-        username_secret_ref="u",
-        password_secret_ref="p",
-        read_only=True,
-        enabled=True,
-        tags=(),
-        entity_allow_patterns=("Catalog_*", "Document_*"),
-        entity_deny_patterns=("Document_Secret*",),
-    )
+    data = {
+        "id": "s1",
+        "project": "onec",
+        "kind": "onec_odata",
+        "display_name": "Company",
+        "base_url": "https://1c.example.com/base/odata/standard.odata",
+        "username_secret_ref": "u",
+        "password_secret_ref": "p",
+        "read_only": True,
+        "enabled": True,
+        "tags": (),
+        "entity_allow_patterns": ("Catalog_*", "Document_*"),
+        "entity_deny_patterns": ("Document_Secret*",),
+    }
     data.update(overrides)
     return Source(**data)
 
