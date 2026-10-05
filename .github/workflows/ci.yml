@@ -41,6 +41,9 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: bandit -q -r src
-      - run: python -m compileall -q src scripts
+      - run: python -m compileall -q src scripts testbed
+      - run: python scripts/migrate.py
+        env:
+          BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: pytest
       - run: pip-audit
