@@ -6,6 +6,13 @@ ALTER TABLE bag.sources
   ADD COLUMN IF NOT EXISTS fallback_base_url text;
 
 ALTER TABLE bag.sources
+  DROP CONSTRAINT IF EXISTS sources_kind_check;
+
+ALTER TABLE bag.sources
+  ADD CONSTRAINT sources_kind_check
+  CHECK (kind IN ('onec_odata','onec_auto','erp_api','ferma_api'));
+
+ALTER TABLE bag.sources
   DROP CONSTRAINT IF EXISTS sources_fallback_kind_check;
 
 ALTER TABLE bag.sources
