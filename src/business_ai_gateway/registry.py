@@ -183,19 +183,41 @@ class Registry:
         return company_from_record(row)
 
     async def save_capabilities(self, capabilities: OneCCapabilities):
-        await self.db.require_pool().execute(
+        row = await self.db.require_pool().fetchrow(
             """
             INSERT INTO bag.source_capabilities(
                 source_id, discovered_at, metadata_fingerprint, platform_version,
                 compatibility_status, adapter_profile, metadata_supported,
                 json_supported, atom_supported, expand_supported,
-                entity_set_count, evidence_json
+                entity_set_count, evidence_json, drift_status
             )
             VALUES(
-                $1, now(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb
+                $1, now(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, 'STABLE'
             )
             ON CONFLICT(source_id) DO UPDATE SET
                 discovered_at=EXCLUDED.discovered_at,
+                previous_metadata_fingerprint=CASE
+                    WHEN bag.source_capabilities.metadata_fingerprint
+                         IS DISTINCT FROM EXCLUDED.metadata_fingerprint
+                    THEN bag.source_capabilities.metadata_fingerprint
+                    ELSE bag.source_capabilities.previous_metadata_fingerprint
+                END,
+                drift_status=CASE
+                    WHEN bag.source_capabilities.metadata_fingerprint
+                         IS DISTINCT FROM EXCLUDED.metadata_fingerprint THEN 'DRIFTED'
+                    WHEN bag.source_capabilities.drift_status = 'DRIFTED' THEN 'DRIFTED'
+                    ELSE 'STABLE'
+                END,
+                drift_detected_at=CASE
+                    WHEN bag.source_capabilities.metadata_fingerprint
+                         IS DISTINCT FROM EXCLUDED.metadata_fingerprint THEN now()
+                    ELSE bag.source_capabilities.drift_detected_at
+                END,
+                drift_acknowledged_at=CASE
+                    WHEN bag.source_capabilities.metadata_fingerprint
+                         IS DISTINCT FROM EXCLUDED.metadata_fingerprint THEN NULL
+                    ELSE bag.source_capabilities.drift_acknowledged_at
+                END,
                 metadata_fingerprint=EXCLUDED.metadata_fingerprint,
                 platform_version=EXCLUDED.platform_version,
                 compatibility_status=EXCLUDED.compatibility_status,
@@ -206,6 +228,8 @@ class Registry:
                 expand_supported=EXCLUDED.expand_supported,
                 entity_set_count=EXCLUDED.entity_set_count,
                 evidence_json=EXCLUDED.evidence_json
+            RETURNING drift_status, previous_metadata_fingerprint,
+                      drift_detected_at, drift_acknowledged_at
             """,
             capabilities.source_id,
             capabilities.metadata_fingerprint,
@@ -219,3 +243,32 @@ class Registry:
             capabilities.entity_set_count,
             json.dumps(capabilities.evidence, ensure_ascii=False),
         )
+        return {
+            "drift_status": row["drift_status"],
+            "previous_metadata_fingerprint": row["previous_metadata_fingerprint"],
+            "drift_detected_at": (
+                row["drift_detected_at"].isoformat() if row["drift_detected_at"] else None
+            ),
+            "drift_acknowledged_at": (
+                row["drift_acknowledged_at"].isoformat()
+                if row["drift_acknowledged_at"]
+                else None
+            ),
+        }
+
+    async def acknowledge_capability_drift(self, source_id: str, expected_fingerprint: str):
+        row = await self.db.require_pool().fetchrow(
+            """
+            UPDATE bag.source_capabilities
+            SET drift_status='STABLE', drift_acknowledged_at=now()
+            WHERE source_id=$1
+              AND metadata_fingerprint=$2
+              AND drift_status='DRIFTED'
+            RETURNING source_id, metadata_fingerprint, drift_acknowledged_at
+            """,
+            source_id,
+            expected_fingerprint,
+        )
+        if row is None:
+            raise ValueError("source has no unacknowledged drift at the expected fingerprint")
+        return row

@@ -251,8 +251,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
         try:
             capabilities = await runtime.onec.capabilities(source, refresh=refresh)
-            await runtime.registry.save_capabilities(capabilities)
+            drift = await runtime.registry.save_capabilities(capabilities)
             result = capabilities.as_dict()
+            result.update(drift)
             await runtime.audit.write(
                 principal=principal,
                 tool="onec_capabilities",
@@ -262,6 +263,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 query={"refresh": refresh},
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
+                detail_code=(
+                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
+                ),
             )
             return result
         except Exception as exc:
@@ -379,7 +383,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
         try:
             capabilities = await runtime.onec.capabilities(source)
-            await runtime.registry.save_capabilities(capabilities)
+            drift = await runtime.registry.save_capabilities(capabilities)
             result = await runtime.onec.read(
                 source,
                 entity_set=entity_set,
@@ -404,6 +408,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 response_bytes=response_bytes,
+                detail_code=(
+                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
+                ),
             )
             return result
         except Exception as exc:

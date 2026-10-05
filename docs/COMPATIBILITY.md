@@ -18,6 +18,21 @@ For every source the gateway can probe:
 
 The result is persisted as a capability profile with a metadata SHA-256 fingerprint.
 
+When a refreshed metadata fingerprint changes, the gateway preserves the prior fingerprint and
+marks the source `DRIFTED`. This state is sticky across identical probes so an operator cannot miss
+the change; a later metadata change invalidates any acknowledgement. `onec_capabilities` reports
+the drift state. Capability/read audit records use `METADATA_DRIFTED` while the drift is active.
+Acknowledgement is an explicit administrative action bound to the observed fingerprint:
+
+```bash
+python scripts/admin.py capability-ack-drift \
+  --source-id company-001 \
+  --expected-fingerprint <current-sha256>
+```
+
+An outdated fingerprint is rejected. Acknowledging a fingerprint records operator acceptance; it
+does not imply that business semantics or accounting results have been reconciled.
+
 ## Adapter profiles
 
 | Profile | Meaning |

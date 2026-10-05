@@ -8,6 +8,11 @@ import asyncpg
 import pytest
 
 from business_ai_gateway.audit import Audit, query_fingerprint
+from business_ai_gateway.compatibility import (
+    AdapterProfile,
+    CompatibilityStatus,
+    OneCCapabilities,
+)
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
 
@@ -279,6 +284,67 @@ async def test_postgres_admin_role_can_manage_registry_but_not_audit_or_delete()
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with conn.transaction():
                 await conn.execute("DELETE FROM bag.sources WHERE source_id=$1", source_id)
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"drift-test-{uuid.uuid4()}"
+    try:
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Drift integration source',
+                   'https://onec.example.test/odata')
+            """,
+            source_id,
+        )
+        registry = Registry(ConnectionDatabase(conn), production=True)
+
+        def capability(fingerprint):
+            return OneCCapabilities(
+                source_id=source_id,
+                platform_version="8.3.test",
+                metadata_fingerprint=fingerprint,
+                metadata_supported=True,
+                json_supported=True,
+                atom_supported=False,
+                expand_supported=True,
+                entity_set_count=3,
+                adapter_profile=AdapterProfile.ODATA_JSON_V3,
+                compatibility_status=CompatibilityStatus.SUPPORTED,
+                evidence={"metadata": "ok"},
+            )
+
+        initial = await registry.save_capabilities(capability("a" * 64))
+        assert initial["drift_status"] == "STABLE"
+        assert initial["previous_metadata_fingerprint"] is None
+
+        changed = await registry.save_capabilities(capability("b" * 64))
+        assert changed["drift_status"] == "DRIFTED"
+        assert changed["previous_metadata_fingerprint"] == "a" * 64
+        assert changed["drift_detected_at"] is not None
+
+        repeated = await registry.save_capabilities(capability("b" * 64))
+        assert repeated["drift_status"] == "DRIFTED"
+        with pytest.raises(ValueError, match="expected fingerprint"):
+            await registry.acknowledge_capability_drift(source_id, "c" * 64)
+
+        await conn.execute("SET LOCAL ROLE business_ai_admin")
+        acknowledged = await registry.acknowledge_capability_drift(source_id, "b" * 64)
+        assert acknowledged["metadata_fingerprint"] == "b" * 64
+        assert acknowledged["drift_acknowledged_at"] is not None
+
+        await conn.execute("RESET ROLE")
+        stable = await registry.save_capabilities(capability("b" * 64))
+        assert stable["drift_status"] == "STABLE"
+        assert stable["previous_metadata_fingerprint"] == "a" * 64
+        assert stable["drift_acknowledged_at"] is not None
     finally:
         await tx.rollback()
         await conn.close()

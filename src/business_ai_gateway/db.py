@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncpg
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 class Database:

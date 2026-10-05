@@ -17,7 +17,7 @@ Last updated: 2026-10-05
 
 ## Delivery status
 
-- Current phase: P1 control-plane closure.
+- Current implementation phase: P2 capability-router drift lifecycle; P1 residual gates remain open.
 - Completed: repository state recovered; origin fetched; local branch fast-forwarded; supplied
   engineering command center copied to repository root; normative package rechecked; P0–P9 and
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work

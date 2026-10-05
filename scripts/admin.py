@@ -132,6 +132,24 @@ async def company_upsert(args, conn):
     print(company_id)
 
 
+async def capability_ack_drift(args, conn):
+    row = await conn.fetchrow(
+        """
+        UPDATE bag.source_capabilities
+        SET drift_status='STABLE', drift_acknowledged_at=now()
+        WHERE source_id=$1
+          AND metadata_fingerprint=$2
+          AND drift_status='DRIFTED'
+        RETURNING source_id, metadata_fingerprint, drift_acknowledged_at
+        """,
+        args.source_id,
+        args.expected_fingerprint,
+    )
+    if row is None:
+        raise ValueError("source has no unacknowledged drift at the expected fingerprint")
+    print(f"acknowledged metadata drift for {row['source_id']}: {row['metadata_fingerprint']}")
+
+
 async def run(args):
     settings = Settings()
     dsn = settings.admin_database_url
@@ -155,6 +173,8 @@ async def run(args):
             await grant_revoke(args, conn)
         elif args.command == "company-upsert":
             await company_upsert(args, conn)
+        elif args.command == "capability-ack-drift":
+            await capability_ack_drift(args, conn)
     finally:
         await conn.close()
 
@@ -199,6 +219,10 @@ def parser():
     company.add_argument("--legal-name")
     company.add_argument("--country-code")
     company.add_argument("--default", action="store_true")
+
+    drift = sub.add_parser("capability-ack-drift")
+    drift.add_argument("--source-id", required=True)
+    drift.add_argument("--expected-fingerprint", required=True)
 
     return p
 

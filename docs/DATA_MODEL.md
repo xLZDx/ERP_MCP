@@ -137,14 +137,24 @@ Existing `source_capabilities` stores:
 - entity count;
 - evidence JSON.
 
-Target extensions:
+Migration 004 additionally stores:
+- previous metadata fingerprint;
+- drift status (`UNKNOWN`, `STABLE`, `DRIFTED`);
+- drift detection and acknowledgement timestamps.
+
+The first observation establishes a stable baseline. A changed fingerprint sets a sticky `DRIFTED`
+state and retains the prior fingerprint; identical subsequent probes do not silently clear it.
+An operator may acknowledge only the current fingerprint through the admin command. A new change
+invalidates that acknowledgement. Capability responses expose the drift state, and successful
+capability/read audit events record `METADATA_DRIFTED` while the state is active.
+
+Remaining target extensions:
 - capability schema version;
 - adapter version/SHA;
 - service-document fingerprint;
 - supported register virtual-table set;
 - max verified URL/query behavior;
 - last-success and last-failure timestamps;
-- drift status.
 
 A capability record is evidence, not a static promise.
 
