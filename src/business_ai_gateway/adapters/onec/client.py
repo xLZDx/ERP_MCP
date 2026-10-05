@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -16,7 +16,7 @@ class OneCTransportError(RuntimeError):
 class OneCReadClient:
     """1C OData transport with only GET/HEAD. Write verbs intentionally do not exist."""
 
-    RETRYABLE = {429, 502, 503, 504}
+    RETRYABLE: ClassVar[set[int]] = {429, 502, 503, 504}
 
     def __init__(
         self,
