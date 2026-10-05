@@ -1,7 +1,6 @@
-# ruff: noqa: I001
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+import html
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -96,21 +95,21 @@ def _atom(rows) -> bytes:
     atom = "http://www.w3.org/2005/Atom"
     metadata_ns = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
     data_ns = "http://schemas.microsoft.com/ado/2007/08/dataservices"
-    ET.register_namespace("", atom)
-    ET.register_namespace("m", metadata_ns)
-    ET.register_namespace("d", data_ns)
-    feed = ET.Element(f"{{{atom}}}feed")
+    parts = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        f'<feed xmlns="{atom}" xmlns:m="{metadata_ns}" xmlns:d="{data_ns}">',
+    ]
     for row in rows:
-        entry = ET.SubElement(feed, f"{{{atom}}}entry")
-        content = ET.SubElement(entry, f"{{{atom}}}content")
-        properties = ET.SubElement(content, f"{{{metadata_ns}}}properties")
+        parts.append("<entry><content><m:properties>")
         for key, value in row.items():
-            element = ET.SubElement(properties, f"{{{data_ns}}}{key}")
             if value is None:
-                element.set(f"{{{metadata_ns}}}null", "true")
+                parts.append(f"<d:{key} m:null=\"true\" />")
             else:
-                element.text = str(value).lower() if isinstance(value, bool) else str(value)
-    return ET.tostring(feed, encoding="utf-8", xml_declaration=True)
+                text = str(value).lower() if isinstance(value, bool) else str(value)
+                parts.append(f"<d:{key}>{html.escape(text)}</d:{key}>")
+        parts.append("</m:properties></content></entry>")
+    parts.append("</feed>")
+    return "".join(parts).encode("utf-8")
 
 
 def create_app(profile: str = "json") -> Starlette:
