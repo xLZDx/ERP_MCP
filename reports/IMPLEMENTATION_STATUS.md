@@ -106,15 +106,15 @@ Last updated: 2026-10-06
 - Hosted run `37372360593` on `e964e32` has its Python/database/security job PASS and
   `odata-upstream` queued; duplicate run `37372364831` is still queued. The upstream job remains a
   gate.
-- P4 semantic profile foundation is implemented locally: pinned Aprovodka preset identities are
-  advisory only; migration 006 stores source/company-scoped profiles and mappings with upstream and
-  metadata/capability/profile fingerprints. Runtime role is read-only. Only ten passing native
-  distinct passing native-report reconciliation records permit `VALIDATED`; metadata fingerprint drift atomically marks validated
-  profiles `STALE`. Local full suite `73 passed, 6 skipped`; disposable PostgreSQL migrations 001–006,
-  privilege checker and integration suite `5 passed`; Ruff/compileall/Bandit pass. No canonical
-  semantic tools or real native reconciliation are claimed.
-- Hosted CI run `37372360593` on `e964e32`: Python/security/database test job passed; its
-  `odata-upstream` job remains queued at last check. Duplicate run `37372364831` remains queued.
+- P4 semantic profile foundation is published in commit `25228d6`: pinned Aprovodka preset
+  identities are advisory only; migration 006 stores source/company-scoped profiles and mappings
+  with upstream and metadata/capability/profile fingerprints. Runtime role is read-only. Ten
+  distinct passing native-report reconciliation cases permit `VALIDATED`; metadata fingerprint
+  drift atomically marks validated profiles `STALE`. Local full suite `73 passed, 6 skipped`;
+  disposable PostgreSQL migrations 001–006, privilege checker and integration suite `5 passed`;
+  Ruff/compileall/Bandit pass. No canonical semantic tools or real native reconciliation are claimed.
+- Hosted runs `37373826977` and `37373834268` were created for `25228d6`; both Python and OData jobs
+  remain queued at last check.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

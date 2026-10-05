@@ -1,9 +1,8 @@
 # Definition of Done status
 
 Assessed 2026-10-06 against CI baseline `79e4fe881ff751d6ab42756f861f0ff0378b90bb` and branch
-commits through `e964e32`, plus the current local P4 semantic-profile batch. Hosted run `37372360593`
-Python/database/security job passed; its OData job was queued at last observation. P4 batch still
-requires hosted CI.
+commits through `25228d6`. Hosted run `37372360593` Python/database/security job passed; its OData
+job remained queued. Both jobs for `25228d6` are queued and P4 still requires hosted CI.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
