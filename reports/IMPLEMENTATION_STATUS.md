@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Implementation assessed through CI-tested commit `1590b89d6b50257b94847a46515bd6dcb7fdd813`
+- Implementation assessed through CI-tested commit `77a12389dd3e437ef54c173d6581232bcad8cff8`
   (includes current `origin/main`; subsequent status-report commit is documentation-only)
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
@@ -34,13 +34,15 @@ Last updated: 2026-10-05
   integration test and the full workflow: `44 passed, 1 skipped`.
 - CI run `37357024926` on `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed the real
   `Audit.write` → PostgreSQL provenance round-trip under `business_ai_app`: `44 passed, 1 skipped`.
-- A PostgreSQL transaction integration test for `business_ai_admin` has been added to exercise
-  allowed source/company/grant management and denied audit insertion/source deletion; CI pending.
+- CI run `37357432914` passed for the PostgreSQL `business_ai_admin` transaction test, proving
+  allowed source/company/grant management and denied audit insertion/source deletion:
+  `45 passed, 1 skipped` across the workflow.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
-- First unresolved gates: P1 / D3, D11 — end-to-end company-filtered data access and complete
-  persisted audit contract across all request outcomes are not yet proven.
+- First unresolved gates: P1 / D3, D11, D14 — end-to-end company-filtered data access, complete
+  persisted audit contract across all request outcomes, and Redis failure behavior in integration
+  remain open.
 - Local checks for the latest implementation changes: 42 passed, 4 skipped (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.

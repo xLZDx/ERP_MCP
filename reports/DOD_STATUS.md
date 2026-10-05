@@ -1,7 +1,7 @@
 # Definition of Done status
 
-Assessed against implementation commit `da7a25ea453e776d5f46cdefee9673e244ca2d94` and CI run
-`37357024926`.
+Assessed against implementation commit `77a12389dd3e437ef54c173d6581232bcad8cff8` and CI run
+`37357432914`.
 
 `PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
 STARTED` is used where implementation is still required before external evidence is relevant.
@@ -9,9 +9,9 @@ STARTED` is used where implementation is still required before external evidence
 | Gate | Status | Current evidence / open work |
 |---|---|---|
 | D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Local Ruff, pytest, compileall, Bandit, pip-audit pass; 42 tests pass/3 skip locally (PostgreSQL tests need CI DB). CI 37357024926 passed all workflow steps; pytest reports 44 passed/1 skipped. |
+| D1 Build/dependencies | PARTIAL | Local Ruff, pytest, compileall, Bandit, pip-audit pass; 42 tests pass/4 skip locally (PostgreSQL tests need CI DB). CI 37357432914 passed all workflow steps; pytest reports 45 passed/1 skipped. |
 | D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
-| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test is added and awaits CI. End-to-end company data reads intentionally not exposed. |
+| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. End-to-end company data reads intentionally not exposed. |
 | D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
 | D5 Read-only | PARTIAL | GET/HEAD-only client; mutation/sidecar inventory evidence incomplete. |
 | D6 SSRF/transport | PARTIAL | Registered source, HTTPS production and redirect/path checks exist; DNS rebinding/egress proof incomplete. |
