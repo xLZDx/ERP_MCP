@@ -8,7 +8,7 @@ from business_ai_gateway.compatibility import (
     OneCCapabilityDetector,
 )
 from business_ai_gateway.models import Source
-from testbed.fake1c.app import create_app
+from business_ai_gateway.testbed.fake1c import create_app
 
 
 class NoSecrets:
