@@ -5,6 +5,8 @@
 **Status:** FROZEN FOR IMPLEMENTATION  
 **Scope:** 1C-first production MVP with future ERP/Ferma adapter boundaries
 
+Interactive view: [ERP_MCP Engineering Command Center](ERP_MCP_ENGINEERING_COMMAND_CENTER.html).
+
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
 change first.
