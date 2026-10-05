@@ -8,7 +8,7 @@ Last updated: 2026-10-05
 - Local path: `D:\Repo\ERP_MCP`
 - Active branch: `bootstrap/1c-day1-production`
 - Base: `origin/main` at `a6bb75294578067fb23792f4dd2ceb8f17ddf673`
-- Implementation assessed through CI-tested commit `77a12389dd3e437ef54c173d6581232bcad8cff8`
+- Implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`
   (includes current `origin/main`; subsequent status-report commit is documentation-only)
 - PR: [#1 — Bootstrap 1C Day-1 production MCP gateway](https://github.com/xLZDx/ERP_MCP/pull/1), OPEN
 - Worktrees: only `D:/Repo/ERP_MCP`
@@ -39,7 +39,10 @@ Last updated: 2026-10-05
   `45 passed, 1 skipped` across the workflow.
 - CI run `37358444084` passed migration 004 and the PostgreSQL sticky-drift/admin-ack lifecycle:
   `47 passed, 1 skipped`. The additional `onec_read` fail-closed gate is implemented locally and
-  its CI run is pending.
+  passed in CI run `37358947196` on `6af970d`: `49 passed, 1 skipped` across the full workflow.
+- The pinned `hacker-cb/1c-odata` reference submodule is now initialized read-only at
+  `cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5` for the upcoming P3 reuse/integration work; no
+  upstream code has been copied or modified.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

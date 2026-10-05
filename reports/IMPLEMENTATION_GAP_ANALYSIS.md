@@ -1,7 +1,7 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-05  
-Implementation assessed through CI-tested commit `77a12389dd3e437ef54c173d6581232bcad8cff8`
+Implementation assessed through CI-tested commit `6af970d13c082dd98315146c4bea77e917f21d21`
 (the following status-report commit is documentation-only).
 Branch: `bootstrap/1c-day1-production`  
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
@@ -17,7 +17,7 @@ contract is documented.
 
 - `origin/main`: `a6bb75294578067fb23792f4dd2ceb8f17ddf673`; this commit has been merged into the
   implementation branch to resolve the README conflict before merge.
-- Working HEAD at latest verified implementation: `77a12389dd3e437ef54c173d6581232bcad8cff8`.
+- Working HEAD at latest verified implementation: `6af970d13c082dd98315146c4bea77e917f21d21`.
 - PR #1: OPEN, `bootstrap/1c-day1-production` → `main`.
 - CI: runs `37356469102` and `37356471488` passed after main synchronization; commit `1590b89` passed
   run `37356701516`; implementation `da7a25ea453e776d5f46cdefee9673e244ca2d94` passed run
@@ -29,16 +29,17 @@ contract is documented.
   registry/grants/audit, Redis rate limits, file/env/GCP secrets, Fake1C, and a JSON/Atom OData probe
   and basic read client. `onec_http_query` currently fails explicitly; ERP/Ferma adapters are
   placeholders.
-- Local Python dependencies, DB/Redis runtime state, and real 1C availability have not yet been
-  established.
+- Local `.venv`, Python, GitHub CLI and Docker are available; local service/database state was not
+  modified. Pinned `hacker-cb/1c-odata` source is initialized at the exact intake SHA for P3 review.
+  No actual 1C endpoint/pilot evidence is available.
 
 ## Master Plan P0–P9
 
 | Phase | Status | Existing implementation/evidence | Missing work, tests, or evidence | DoD |
 |---|---|---|---|---|
 | P0 Documentation freeze | PARTIAL | Normative v1.0 package, index, six ADRs, traceability, package test; root command center now copied | Reconcile the supplied copy with the in-repo generated command center; documentation test suite and current HEAD CI evidence | D0, D1 |
-| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–003; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; CI 37357432914 green; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip passed | company-aware business query adapter; audit success/denial-path provenance tests; production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
-| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; Fake1C JSON/Atom; migration/DB lifecycle passed CI 37358444084 | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; read fail-closed on unacknowledged drift (local implementation, CI pending); broader unsupported/fallback/drift tests | D7 |
+| P1 Control plane | PARTIAL | Auth, registry, audit, rate-limit and secret-provider modules; migrations 001–004; company upsert/scoped allow-deny grants; company list/resolve; audit provenance fields; versioned migration runner; CI DB privilege checker; RSA JWT positive/negative and Redis fail-closed tests; CI 37357432914 green; PostgreSQL company ACL, runtime/admin-role DML and audit writer provenance round-trip passed | company-aware business query adapter; audit success/denial-path provenance tests; production role/runbook evidence; Redis outage integration proof | D2–D6, D10–D11, D14 |
+| P2 Capability router | PARTIAL | `compatibility.py`, live metadata probe, JSON/Atom detection, SHA fingerprint and persistence; migration 004 drift lifecycle; sticky drift detection/ack; admin acknowledgement by expected fingerprint; `onec_read` fail-closed until ack; Fake1C JSON/Atom; lifecycle/read gate passed CI 37358947196 | Normalized adapter bindings; fallback/COM/legacy routes; adapter SHA; broader unsupported/fallback/drift tests | D7 |
 | P3 Modern OData data plane | NOT STARTED | Lightweight Python GET/HEAD client and bounded generic read | Integrate pinned `hacker-cb/1c-odata` sidecar; typed query, get/count/register contract; response shaping/cancellation/concurrency/circuit breaker; locks, upstream parity and container integration tests | D1, D5–D8, D13–D14, D16 |
 | P4 Semantic accounting | NOT STARTED | Documentation and candidate upstream inventory only | Company/adapter/semantic/reconciliation schema; profile lifecycle; transport-neutral semantic tools and provenance; deterministic synthetic business cases | D8–D9, D11 |
 | P5 Real 1C and reconciliation | PARTIAL | L1 Fake1C, optional integration-test stub, seed/snapshot specs and 10 scenario definitions | Executable deterministic seed/snapshot workflow and captured results; no actual L2/L3 connection or native-report reconciliation evidence recorded | D7–D10, D18 |
@@ -54,13 +55,13 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | Gate | Status | Evidence present | Remaining closure |
 |---|---|---|---|
 | D0 Documentation/traceability | PARTIAL | Baseline/index/traceability plus this initial gap report | Keep report and command center synchronized; close drift and attach evidence to exact release |
-| D1 Build/dependency integrity | PARTIAL | `pyproject.toml`, GitHub CI; CI 37358444084 passed migrations, privilege checker, 47 pytest checks and pip-audit; local Ruff/pytest/compileall/Bandit/pip-audit pass | Re-run CI after local read-policy change; install locked/reproducible dependencies; license/container evidence; no dependency lock currently established |
+| D1 Build/dependency integrity | PARTIAL | `pyproject.toml`, GitHub CI; CI 37358947196 passed migrations, privilege checker, 49 pytest checks and pip-audit; local Ruff/pytest/compileall/Bandit/pip-audit pass | Install locked/reproducible dependencies; license/container evidence; no dependency lock currently established |
 | D2 Authentication | PARTIAL | JWT verifier checks signature, issuer, audience, exp/iat/sub/scope; positive/negative RSA tests and JWKS failure test | Framework-level resource-server behavior, bounded cache/network behavior and live IdP evidence |
 | D3 Authorization/isolation | PARTIAL | Per-source subject/group and company grants, deny precedence, expiry/revocation filters; company-only grants cannot authorize unscoped source reads; runtime/admin-role DML integration passed CI 37357432914; DB role grants checked in CI | company-filtered business-data adapter; three-source isolation |
 | D4 Secrets | PARTIAL | ENV/FILE/GCP provider abstraction; production disallows ENV mode | Secret access/rotation/leak evidence and safer source onboarding/runtime secret handling tests |
 | D5 Read-only | PARTIAL | Read client implements GET/HEAD only; one structural test exists | Verify all adapter/tool inventories and fallback boundary with negative mutation tests |
 | D6 SSRF/transport | PARTIAL | Registered-source routing, URL/path checks, redirects disabled, production HTTPS settings | DNS/IP rebinding and egress policy proof; redirect and oversized request tests; endpoint validation parity for admin paths |
-| D7 Compatibility | PARTIAL | JSON/Atom metadata probe; persisted fingerprint and sticky DRIFTED lifecycle/admin acknowledgement passed CI 37358444084; read fail-closed policy implemented locally | Confirm read gate in CI; configured fallback route lifecycle, normalized bindings and adapter provenance |
+| D7 Compatibility | PARTIAL | JSON/Atom metadata probe; persisted fingerprint, sticky DRIFTED lifecycle/admin acknowledgement and read fail-closed gate passed CI 37358947196 | Configured fallback route lifecycle, normalized bindings and adapter provenance |
 | D8 Data-plane correctness | PARTIAL | Basic entity read and Fake1C metadata/entities | Upstream OData engine operations, typed validation, get/count/register, paging/cancel/parity/real-source tests |
 | D9 Accounting correctness | NOT STARTED | Scenario catalog and target protocol documented | Implement semantic layer, then reconcile >=10 cases against a real synthetic 1C instance |
 | D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; PostgreSQL ACL integration passed CI 37355876333 | Three-source isolation and bounded fan-out evidence; company-filtered business adapter |

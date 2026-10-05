@@ -5,7 +5,7 @@ Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
 | Risk | Status | Current control/evidence | Remaining action |
 |---|---|---|---|
 | R-01 / R-23 accounting meaning and universal presets | OPEN — critical | Reconciliation/profile gates documented | Implement semantic profiles and reconcile real 1C cases before approval |
-| R-02 configuration/schema drift invalidates mappings | PARTIALLY MITIGATED | Sticky metadata fingerprint drift state and explicit expected-fingerprint acknowledgement migration/DB lifecycle test passed CI 37358444084; `onec_read` fail-closed on pending drift is implemented locally | Confirm read gate in CI; add profile invalidation/retest and auditable operator identity |
+| R-02 configuration/schema drift invalidates mappings | PARTIALLY MITIGATED | Sticky metadata fingerprint drift state, expected-fingerprint admin acknowledgement and `onec_read` fail-closed gate passed CI 37358947196 | Add profile invalidation/retest and auditable operator identity |
 | R-03 write path exposure | MITIGATED IN CORE / OPEN FOR FUTURE ADAPTERS | Current Python client only GET/HEAD; structural test | Recheck every upstream/sidecar and mutation-negative tests |
 | R-04 SSRF | OPEN — critical | Registry IDs, URL/path validation, redirects off | DNS/egress and real deployment checks |
 | R-05 secret leakage | OPEN — critical | Secret references/providers; production env provider rejected | End-to-end leak and rotation evidence |
