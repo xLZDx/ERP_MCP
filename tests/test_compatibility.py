@@ -3,13 +3,16 @@ from dataclasses import replace
 import httpx
 import pytest
 
+from business_ai_gateway.adapters.onec.adapter import OneCAdapter
 from business_ai_gateway.adapters.onec.client import OneCReadClient
 from business_ai_gateway.compatibility import (
     AdapterProfile,
     CompatibilityStatus,
+    OneCCapabilities,
     OneCCapabilityDetector,
 )
 from business_ai_gateway.models import Source
+from business_ai_gateway.settings import Settings
 from business_ai_gateway.testbed.fake1c import create_app
 
 
@@ -103,3 +106,50 @@ async def test_capability_detector_selects_only_explicitly_configured_fallback()
     assert capabilities.compatibility_status == CompatibilityStatus.SUPPORTED_WITH_FALLBACK
     assert capabilities.adapter_profile == AdapterProfile.HTTP_QUERY_FALLBACK
     assert index is None
+
+
+@pytest.mark.asyncio
+async def test_unimplemented_fallback_fails_closed_without_network_call():
+    candidate = replace(
+        source(),
+        fallback_kind="onec_http_query",
+        fallback_base_url="https://bridge.example.test/onec",
+    )
+
+    class NoRequestsClient:
+        def __init__(self):
+            self.calls = []
+
+        async def get_bytes(self, *args, **kwargs):
+            self.calls.append((args, kwargs))
+            raise AssertionError("fallback route must not be used before it is implemented")
+
+    client = NoRequestsClient()
+    adapter = OneCAdapter(Settings(require_metadata_entity=False), NoSecrets(), client)
+    adapter._capabilities[candidate.id] = OneCCapabilities(
+        source_id=candidate.id,
+        platform_version=None,
+        metadata_fingerprint="a" * 64,
+        metadata_supported=False,
+        json_supported=False,
+        atom_supported=False,
+        expand_supported=None,
+        entity_set_count=0,
+        adapter_profile=AdapterProfile.HTTP_QUERY_FALLBACK,
+        compatibility_status=CompatibilityStatus.SUPPORTED_WITH_FALLBACK,
+        evidence={"metadata": "ConnectError"},
+    )
+
+    with pytest.raises(NotImplementedError, match="read-only HTTP/query fallback"):
+        await adapter.read(
+            candidate,
+            entity_set="Invoices",
+            select=None,
+            filter_expr=None,
+            orderby=None,
+            expand=None,
+            top=10,
+            skip=0,
+        )
+
+    assert client.calls == []

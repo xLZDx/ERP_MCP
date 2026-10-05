@@ -52,6 +52,9 @@ Last updated: 2026-10-05
   failure. All four pass locally; the suite verifies an ACL/Redis denial is persisted before any
   call reaches the 1C adapter. CI run `37360482223` passed on `7b29ab0`, including pytest
   (`55 passed, 1 skipped`) and every security/database workflow step.
+- Added a P2 negative route test proving the configured-but-unimplemented HTTP/query fallback
+  raises explicitly without making any network call. Full local checks: Ruff passed; pytest
+  `52 passed, 5 skipped`; hosted CI pending.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.
@@ -59,7 +62,7 @@ Last updated: 2026-10-05
   persisted audit contract across all request outcomes, and Redis failure behavior in integration
   remain open.
 - Local checks before the route-selection tests: 45 passed, 5 skipped; after route tests: 47 passed,
-  5 skipped; current local suite after handler tests: 51 passed, 5 skipped
+  5 skipped; after audit-handler tests: 51 passed, 5 skipped; latest local suite: 52 passed, 5 skipped
   (PostgreSQL-only tests skip
   without the CI DB URL);
   Ruff, compileall, Bandit, pip-audit and `git diff --check` pass.
