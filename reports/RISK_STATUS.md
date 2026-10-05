@@ -9,7 +9,7 @@ Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
 | R-04 SSRF | OPEN — critical | Registry IDs, URL/path validation, redirects off | DNS/egress and real deployment checks |
 | R-05 secret leakage | OPEN — critical | Secret references/providers; production env provider rejected | End-to-end leak and rotation evidence |
 | R-06 company authorization leak | PARTIALLY MITIGATED | Company FK and scoped allow/deny grants; company-only grants blocked from unscoped reads; deny wins in company query | PostgreSQL CI grants, adversarial ACL tests, then company-filtered adapter contract |
-| R-07 runtime DB policy escalation | OPEN — critical pending CI | CI creates least-privilege roles and checks grants | Observe new CI run; test runtime against actual role |
+| R-07 runtime DB policy escalation | PARTIALLY MITIGATED | CI created roles and verified table privileges after migrations | Add connection-level runtime-role tests and production provisioning runbook |
 | R-19 IdP/JWKS outage blocks valid users | PARTIALLY MITIGATED | JWT verifier fails closed on JWKS error; negative test added | Add bounded network timeout/cache behavior and live IdP failure test |
 | R-08 audit tampering | PARTIALLY MITIGATED | Append-only trigger and runtime grant policy retained | PostgreSQL update/delete denial test and role evidence |
 | R-09 unstable upstream API | OPEN — high | Exact SHA/license intake documented | Integrate exact pin, lock and parity tests |
