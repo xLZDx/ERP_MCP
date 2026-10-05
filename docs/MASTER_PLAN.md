@@ -118,8 +118,9 @@ Initial profile/preset foundation is implemented: Aprovodka's pinned preset inve
 `CANDIDATE_ONLY` references; migrations 006–009 store source/company-scoped versioned profiles,
 mappings, append-only operator lifecycle events, confirmed-mapping state and profile provenance in
 audit. The admin CLI rechecks current metadata/capabilities, requires explicit mapping confirmation
-and ten passing native-report cases. The first canonical `accounting_balance_and_turnovers` tool is
-implemented behind these gates; the remaining canonical domain tools are not yet implemented.
+and ten passing native-report cases. The first canonical `accounting_balance_and_turnovers`,
+`sales_documents` and `purchase_documents` tools are implemented behind these gates; other canonical
+domain tools are not yet implemented.
 
 Deliver canonical tools:
 - organization/company discovery;

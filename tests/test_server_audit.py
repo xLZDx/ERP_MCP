@@ -283,3 +283,85 @@ async def test_account_turnovers_unconfirmed_mapping_is_audited_and_not_dispatch
     assert audit.events[-1]["outcome"] == "denied"
     assert audit.events[-1]["detail_code"] == "SEMANTIC_MAPPING_UNCONFIRMED"
     onec.register_read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sales_documents_uses_only_confirmed_profile_entity_and_company_filter():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    source = SimpleNamespace(id="source-1")
+    mapping = {
+        "entity_set": "Document_РеализацияТоваровУслуг",
+        "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+        "output_fields": {
+            "document_ref": "Ref_Key",
+            "document_number": "Number",
+            "date": "Date",
+            "counterparty": "Контрагент_Key",
+            "amount": "СуммаДокумента",
+            "currency": "ВалютаДокумента_Key",
+            "posted": "Posted",
+        },
+        "order_by": "Date",
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:sales-profile"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    row = {
+        "Ref_Key": "doc-1",
+        "Number": "0001",
+        "Date": "2026-01-01T00:00:00",
+        "Контрагент_Key": "party-1",
+        "СуммаДокумента": "100.00",
+        "ВалютаДокумента_Key": "currency-1",
+        "Posted": True,
+    }
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        read=AsyncMock(return_value={"value": [row], "page": {"has_more": False}}),
+    )
+    runtime = SimpleNamespace(
+        audit=audit,
+        registry=registry,
+        rate_limit=SimpleNamespace(check=AsyncMock()),
+        onec=onec,
+    )
+    mcp = build_mcp(Settings(), runtime)
+    result = await mcp.call_tool(
+        "sales_documents",
+        {"source_id": "source-1", "company_id": str(company_id), "top": 10},
+    )
+
+    assert not result.is_error
+    payload = json.loads(result.content[0].text)
+    assert payload["value"] == [
+        {
+            "document_ref": "doc-1",
+            "document_number": "0001",
+            "date": "2026-01-01T00:00:00",
+            "counterparty": "party-1",
+            "amount": "100.00",
+            "currency": "currency-1",
+            "posted": True,
+        }
+    ]
+    onec.read.assert_awaited_once_with(
+        source,
+        entity_set="Document_РеализацияТоваровУслуг",
+        select=list(mapping["output_fields"].values()),
+        filter_expr="Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'",
+        orderby="Date desc",
+        expand=None,
+        top=10,
+        skip=0,
+    )
+    assert audit.events[-1]["profile_fingerprint"] == "sha256:sales-profile"

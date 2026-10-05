@@ -13,11 +13,14 @@ from business_ai_gateway.semantic import (
     SemanticProfileStale,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
+    build_company_filter,
     find_configuration_preset,
     normalize_account_turnovers,
+    normalize_document_rows,
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
+    validate_document_mapping,
     validate_native_reconciliation_evidence,
 )
 from scripts.semantic_profiles import (
@@ -315,6 +318,67 @@ def test_semantic_cli_exposes_operator_mapping_confirmation():
         ]
     )
     assert args.command == "confirm-mapping"
+
+
+def test_sales_and_purchase_document_maps_are_company_scoped_and_profile_projected():
+    fields = {
+        "document_ref": "Ref_Key",
+        "document_number": "Number",
+        "date": "Date",
+        "counterparty": "Контрагент_Key",
+        "amount": "СуммаДокумента",
+        "currency": "ВалютаДокумента_Key",
+        "posted": "Posted",
+    }
+    for concept in ("sales", "purchases"):
+        mapping = {
+            "entity_set": "Document_РеализацияТоваровУслуг",
+            "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+            "output_fields": fields,
+            "order_by": "Date",
+        }
+        validate_document_mapping(concept, mapping)
+        assert build_company_filter(
+            mapping, "f3727523-9689-4b73-973e-9754360fd0a0"
+        ) == "Организация_Key eq guid'f3727523-9689-4b73-973e-9754360fd0a0'"
+        assert normalize_document_rows(
+            [
+                {
+                    "Ref_Key": "doc-1",
+                    "Number": "0001",
+                    "Date": "2026-01-01T00:00:00",
+                    "Контрагент_Key": "party-1",
+                    "СуммаДокумента": "125.50",
+                    "ВалютаДокумента_Key": "currency-1",
+                    "Posted": True,
+                }
+            ],
+            mapping,
+            concept,
+        )[0]["amount"] == "125.50"
+
+
+def test_document_map_restricts_entity_kind_and_rejects_unreviewed_filter():
+    mapping = {
+        "entity_set": "Document_РеализацияТоваровУслуг",
+        "company_scope": {"field": "Организация_Key", "value_type": "string"},
+        "output_fields": {
+            "document_ref": "Ref_Key",
+            "document_number": "Number",
+            "date": "Date",
+            "counterparty": "Контрагент_Key",
+            "amount": "СуммаДокумента",
+            "currency": "ВалютаДокумента_Key",
+            "posted": "Posted",
+        },
+        "order_by": "Date",
+    }
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_document_mapping(
+            "sales", {**mapping, "entity_set": "Catalog_Номенклатура"}
+        )
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_document_mapping("sales", {**mapping, "filter": "true"})
 
 
 def test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping():

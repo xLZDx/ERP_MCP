@@ -47,6 +47,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    `AccountingRegister_*` EntitySet, `balanceAndTurnovers` method, a company-scope field/value type,
    and property names for all seven canonical output fields. The CLI adds the matching exact
    register capability dependency; it rejects guessed virtual-table names.
+   For `sales` and `purchases`, the mapping must specify a source-confirmed `Document_*` EntitySet,
+   company dimension/value type, date order field, and canonical output-field projection. Runtime
+   applies only the reviewed company equality and bounded paging; callers cannot supply filters or
+   entity names.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -85,5 +89,10 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
 - The tool does not accept caller-supplied EntitySets, OData filters, or register arguments. Missing,
   unconfirmed or stale profiles/capabilities are audited and denied before register data dispatch.
   A company-specific grant cannot be widened into a source-wide read by this tool.
-- Other canonical accounting tools remain unimplemented; no customer preset is promoted based on
+- `sales_documents` and `purchase_documents` use the same exact source/company and profile gates.
+  Each result is projected to document reference/number/date, counterparty, amount, currency and
+  posted state using the validated source mapping. OData execution remains in the existing pinned
+  adapter path; callers cannot supply an EntitySet or filter.
+- Other canonical accounting tools (cash/bank, inventory, AR/AP aging, tax/VAT and posting trace)
+  remain unimplemented; no customer preset is promoted based on
   upstream names or confidence labels.

@@ -16,6 +16,7 @@ from .semantic import (
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
+    validate_document_mapping,
 )
 
 
@@ -235,8 +236,8 @@ class Registry:
         source.validate_runtime(production=self.production)
         return source
 
-    async def require_account_turnovers_mapping(
-        self, source_id: str, company_id: UUID
+    async def require_semantic_mapping(
+        self, source_id: str, company_id: UUID, concept: str
     ) -> dict:
         """Load only an exact-company validated and explicitly confirmed mapping."""
         row = await self.db.require_pool().fetchrow(
@@ -258,11 +259,11 @@ class Registry:
             """,
             source_id,
             company_id,
-            ACCOUNT_TURNOVERS_CONCEPT,
+            concept,
         )
         if row is None:
             raise SemanticProfileUnavailable(
-                "no validated account-turnover profile exists for this exact source/company"
+                f"no validated {concept} profile exists for this exact source/company"
             )
         if row["drift_status"] != "STABLE" or row["metadata_fingerprint"] != row[
             "current_metadata_fingerprint"
@@ -278,10 +279,21 @@ class Registry:
         mapping = row["mapping_json"]
         if isinstance(mapping, str):
             mapping = json.loads(mapping)
-        entity_set, method = validate_account_turnovers_mapping(mapping)
-        required = mapping.get("required_register_capabilities")
-        if required != [{"entity_set": entity_set, "method": method}]:
-            raise SemanticMappingUnconfirmed("mapping capability dependency is missing or mismatched")
+        required = mapping.get("required_register_capabilities", [])
+        if concept == ACCOUNT_TURNOVERS_CONCEPT:
+            entity_set, method = validate_account_turnovers_mapping(mapping)
+            if required != [{"entity_set": entity_set, "method": method}]:
+                raise SemanticMappingUnconfirmed(
+                    "mapping capability dependency is missing or mismatched"
+                )
+        elif concept in {"sales", "purchases"}:
+            validate_document_mapping(concept, mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "document-list mapping must not declare register capabilities"
+                )
+        else:
+            raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")
         validation_evidence = row["validation_evidence_json"]
         if isinstance(validation_evidence, str):
             validation_evidence = json.loads(validation_evidence)
@@ -312,6 +324,13 @@ class Registry:
             "mapping": mapping,
             "register_capabilities": capability_profile,
         }
+
+    async def require_account_turnovers_mapping(
+        self, source_id: str, company_id: UUID
+    ) -> dict:
+        return await self.require_semantic_mapping(
+            source_id, company_id, ACCOUNT_TURNOVERS_CONCEPT
+        )
 
     async def save_capabilities(self, capabilities: OneCCapabilities):
         row = await self.db.require_pool().fetchrow(

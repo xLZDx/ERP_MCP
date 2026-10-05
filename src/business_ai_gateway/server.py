@@ -23,7 +23,9 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     SemanticProfileUnavailable,
     build_account_turnovers_arguments,
+    build_company_filter,
     normalize_account_turnovers,
+    normalize_document_rows,
 )
 from .settings import Settings
 
@@ -495,6 +497,153 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    async def read_company_documents(
+        source_id: str,
+        company_id: str,
+        *,
+        concept: str,
+        tool_name: str,
+        top: int,
+        skip: int,
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": concept,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            tool_name,
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            company_filter = build_company_filter(mapping, company.external_ref)
+            result = await runtime.onec.read(
+                source,
+                entity_set=mapping["entity_set"],
+                select=list(mapping["output_fields"].values()),
+                filter_expr=company_filter,
+                orderby=f"{mapping['order_by']} desc",
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_document_rows(raw_rows, mapping, concept)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": concept,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def sales_documents(
+        source_id: str, company_id: str, top: int = 50, skip: int = 0
+    ) -> dict[str, Any]:
+        """List company-scoped sales documents using a validated semantic mapping."""
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="sales",
+            tool_name="sales_documents",
+            top=top,
+            skip=skip,
+        )
+
+    @mcp.tool()
+    async def purchase_documents(
+        source_id: str, company_id: str, top: int = 50, skip: int = 0
+    ) -> dict[str, Any]:
+        """List company-scoped purchase documents using a validated semantic mapping."""
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="purchases",
+            tool_name="purchase_documents",
+            top=top,
+            skip=skip,
+        )
 
     @mcp.tool()
     async def onec_read(

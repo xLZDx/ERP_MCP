@@ -122,3 +122,22 @@
   privilege checker PASS and integration `6 passed`; Ruff, compileall, Bandit pass. A real 1C base
   and native reports remain necessary to promote any customer mapping; remaining canonical P4 tools
   are not yet implemented.
+
+## Step 26 — company-scoped sales and purchase document reads
+
+**Status:** implemented locally; verification and publication in progress.
+**Date:** 2026-10-06
+
+- Extended the evidence-backed semantic mapping lifecycle to sales and purchases. Each mapping
+  requires a confirmed `Document_*` EntitySet, company equality field/type, canonical field mapping,
+  and a date order field; caller input cannot select an EntitySet, filter, or projection.
+- Added `sales_documents` and `purchase_documents`. Both authorize the exact source/company before
+  metadata or business data, require a current validated source/company profile, derive the company
+  predicate only from the mapping and registered external reference, bound page size, normalize
+  seven canonical document fields, and record profile/metadata fingerprints in audit.
+- Protocol and transport continue through the existing pinned OData adapter/sidecar; no new OData
+  protocol implementation was introduced. Other P4 domains (cash/bank, inventory, AR/AP aging,
+  tax/VAT and posting trace) and real native-report reconciliation remain open.
+- Verification: Python `83 passed, 7 skipped`; disposable PostgreSQL 16 migrations 001–009, DB
+  privilege policy and PostgreSQL integration `6 passed`; Ruff, compileall, Bandit, pip-audit and
+  diff check PASS. Hosted CI follows the next push.

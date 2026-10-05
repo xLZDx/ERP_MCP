@@ -123,15 +123,18 @@ Last updated: 2026-10-06
   disposable PostgreSQL 001–007/privilege checker/integration `6 passed`; Ruff/compileall/Bandit pass.
   Pip-audit reports no known vulnerabilities. Hosted run `37375030150` passed both CI jobs. Real
   configuration-specific semantics remain unvalidated.
-- P4 account-turnover vertical slice is in progress on `phase/p4-semantic-accounting`: migration 008
+- P4 semantic read tools are in progress on `phase/p4-semantic-accounting` in draft PR #2: migration 008
   adds auditable explicit mapping confirmation and stales validated profiles after direct mapping
   edits; migration 009 records the semantic profile fingerprint in audit events. The new
-  `accounting_balance_and_turnovers` tool authorizes the exact company first, loads only a validated
-  company-scoped mapping, checks current capabilities, composes the company filter from reviewed
-  mapping plus registry external reference, and normalizes seven mapped fields. Local unit/full suite:
-  `80 passed, 7 skipped`; migrations 001–009, DB privilege checker and PostgreSQL integration `6/6`
-  pass. Hosted CI is pending. This is a vertical slice; the remaining canonical P4 domains and real
-  report reconciliation are still open.
+  `accounting_balance_and_turnovers`, `sales_documents`, and `purchase_documents` authorize the exact
+  company first, load only validated company-scoped mappings, check current capabilities, compose
+  company filters from reviewed mappings plus registry external references, and normalize canonical
+  fields. The account-turnover slice passed locally at `80 passed, 7 skipped`; PostgreSQL migrations
+  001–009, DB privilege checker and integration `6/6` passed. The current sales/purchase extension
+  has passed a fresh local run at `83 passed, 7 skipped`, plus disposable PostgreSQL 16 migrations
+  001–009, DB privilege policy, integration `6/6`, Ruff, compileall, Bandit and pip-audit. Hosted CI is
+  pending. Cash/bank, inventory, AR/AP, tax, posting trace,
+  and real native-report reconciliation remain open.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

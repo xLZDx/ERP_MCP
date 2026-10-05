@@ -26,6 +26,26 @@ ACCOUNT_TURNOVERS_FIELDS = (
     "closing_debit",
     "closing_credit",
 )
+DOCUMENT_CONCEPT_FIELDS = {
+    "sales": (
+        "document_ref",
+        "document_number",
+        "date",
+        "counterparty",
+        "amount",
+        "currency",
+        "posted",
+    ),
+    "purchases": (
+        "document_ref",
+        "document_number",
+        "date",
+        "counterparty",
+        "amount",
+        "currency",
+        "posted",
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +248,81 @@ def normalize_account_turnovers(rows: Any, mapping: dict[str, Any]) -> list[dict
     return normalized
 
 
+def validate_document_mapping(concept: str, mapping: dict[str, Any]) -> None:
+    fields = DOCUMENT_CONCEPT_FIELDS.get(concept)
+    if not isinstance(mapping, dict) or fields is None:
+        raise SemanticMappingUnconfirmed("document mapping concept/object is unsupported")
+    company_scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    if (
+        set(mapping) - {"entity_set", "company_scope", "output_fields", "order_by"}
+        or not isinstance(mapping.get("entity_set"), str)
+        or not mapping["entity_set"].startswith("Document_")
+        or not _ENTITY_SET_PATTERN.fullmatch(
+            mapping["entity_set"].replace("Document_", "AccountingRegister_", 1)
+        )
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(fields)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in output_fields.values()
+        )
+        or len(set(output_fields.values())) != len(fields)
+        or not isinstance(mapping.get("order_by"), str)
+        or not _PROPERTY_PATTERN.fullmatch(mapping["order_by"])
+        or mapping["order_by"] != output_fields.get("date")
+    ):
+        raise SemanticMappingUnconfirmed("document mapping is incomplete or unsupported")
+
+
+def build_company_filter(mapping: dict[str, Any], company_external_ref: str) -> str:
+    company_scope = mapping.get("company_scope")
+    if not isinstance(company_scope, dict):
+        raise SemanticMappingUnconfirmed("company scope mapping is absent")
+    if company_scope.get("value_type") == "guid":
+        try:
+            company_ref = str(UUID(company_external_ref))
+        except (TypeError, ValueError) as exc:
+            raise SemanticMappingUnconfirmed(
+                "company reference is not a GUID as required by the validated mapping"
+            ) from exc
+        literal = f"guid'{company_ref}'"
+    elif company_scope.get("value_type") == "string":
+        if not company_external_ref or len(company_external_ref) > 256:
+            raise SemanticMappingUnconfirmed("company reference is empty or too long")
+        literal = "'" + company_external_ref.replace("'", "''") + "'"
+    else:
+        raise SemanticMappingUnconfirmed("company value type is unsupported")
+    field = company_scope.get("field")
+    if not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field):
+        raise SemanticMappingUnconfirmed("company dimension field is invalid")
+    return f"{field} eq {literal}"
+
+
+def normalize_document_rows(rows: Any, mapping: dict[str, Any], concept: str) -> list[dict[str, Any]]:
+    validate_document_mapping(concept, mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("document response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("document response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed(
+                "document response is missing a field required by the validated semantic mapping"
+            )
+        normalized.append(
+            {canonical_field: row[source_field] for canonical_field, source_field in field_map.items()}
+        )
+    return normalized
+
+
 def build_account_turnovers_arguments(
     mapping: dict[str, Any],
     *,
@@ -237,7 +332,6 @@ def build_account_turnovers_arguments(
 ) -> tuple[str, str, dict[str, Any]]:
     """Build bounded inputs from an operator-confirmed source/company mapping."""
     register_set, method = validate_account_turnovers_mapping(mapping)
-    company_scope = mapping.get("company_scope")
     try:
         start = datetime.fromisoformat(start_period)
         end = datetime.fromisoformat(end_period)
@@ -246,20 +340,7 @@ def build_account_turnovers_arguments(
     if start.tzinfo is None or end.tzinfo is None or start > end:
         raise ValueError("period boundaries must include a timezone and start <= end")
 
-    if company_scope["value_type"] == "guid":
-        try:
-            company_ref = str(UUID(company_external_ref))
-        except ValueError as exc:
-            raise SemanticMappingUnconfirmed(
-                "company reference is not a GUID as required by the validated mapping"
-            ) from exc
-        literal = f"guid'{company_ref}'"
-    else:
-        if not company_external_ref or len(company_external_ref) > 256:
-            raise SemanticMappingUnconfirmed("company reference is empty or too long")
-        literal = "'" + company_external_ref.replace("'", "''") + "'"
-
-    condition = f"{company_scope['field']} eq {literal}"
+    condition = build_company_filter(mapping, company_external_ref)
     return register_set, method, {
         "Period": {"from": start.isoformat(), "to": end.isoformat()},
         "Condition": condition,

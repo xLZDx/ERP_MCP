@@ -390,6 +390,36 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        sales_mapping_file = tmp_path / "sales-mapping.json"
+        sales_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "Document_РеализацияТоваровУслуг",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "document_ref": "Ref_Key",
+                        "document_number": "Number",
+                        "date": "Date",
+                        "counterparty": "Контрагент_Key",
+                        "amount": "СуммаДокумента",
+                        "currency": "ВалютаДокумента_Key",
+                        "posted": "Posted",
+                    },
+                    "order_by": "Date",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="sales",
+                mapping_file=str(sales_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
         mapping_confirmation_file = tmp_path / "mapping-confirmation.json"
         mapping_confirmation_file.write_text(
             json.dumps(
@@ -429,7 +459,7 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                 ),
                 conn,
             )
-        for concept in ("receivable", "account.balance_and_turnovers"):
+        for concept in ("receivable", "account.balance_and_turnovers", "sales"):
             await confirm_mapping(
                 Namespace(
                     profile_id=str(profile_id),
@@ -456,6 +486,10 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         assert loaded_account_mapping["mapping"]["entity_set"] == "AccountingRegister_Хозрасчетный"
         assert loaded_account_mapping["mapping"]["method"] == "balanceAndTurnovers"
         assert loaded_account_mapping["profile_fingerprint"]
+        loaded_sales_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "sales")
+        assert loaded_sales_mapping["mapping"]["entity_set"] == "Document_РеализацияТоваровУслуг"
         with pytest.raises(SemanticProfileUnavailable):
             await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
                 source_id, uuid.uuid4()
@@ -473,12 +507,12 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 7
+        ) == 9
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 7
+        ) == 9
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )

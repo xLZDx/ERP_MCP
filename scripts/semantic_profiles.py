@@ -19,6 +19,7 @@ from business_ai_gateway.semantic import (
     find_configuration_preset,
     require_profile_capabilities,
     validate_account_turnovers_mapping,
+    validate_document_mapping,
     validate_native_reconciliation_evidence,
 )
 from business_ai_gateway.settings import Settings
@@ -225,6 +226,8 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         if required is not None and required != expected:
             raise ValueError("account-turnover capability dependency must match the exact mapping")
         mapping["required_register_capabilities"] = expected
+    elif args.concept in {"sales", "purchases"}:
+        validate_document_mapping(args.concept, mapping)
     evidence = _read_object(args.evidence_file) if args.evidence_file else {}
     evidence = _validate_mapping_evidence(evidence)
     if "required_register_capabilities" in mapping:
@@ -307,6 +310,8 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
             required = mapping.get("required_register_capabilities")
             if required != [{"entity_set": entity_set, "method": method}]:
                 raise ValueError("mapping capability dependency does not match its operation")
+        elif args.concept in {"sales", "purchases"}:
+            validate_document_mapping(args.concept, mapping)
         previous_evidence = _json_value(mapping_row["evidence_json"])
         combined_evidence = {
             "evidence_refs": list(dict.fromkeys(
