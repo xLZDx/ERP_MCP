@@ -32,6 +32,13 @@ class MetadataIndex:
 
 def parse_metadata(xml_bytes: bytes) -> MetadataIndex:
     root = ET.fromstring(xml_bytes)
+    # Well-formed XML is not OData metadata: an HTML error page or a proxy banner parses fine
+    # but must never be fingerprinted as service metadata.
+    if root.tag.rsplit("}", 1)[-1] != "Edmx" or not any(
+        element.tag.rsplit("}", 1)[-1] in {"Schema", "EntityType", "EntitySet"}
+        for element in root.iter()
+    ):
+        raise ValueError("response is not OData $metadata")
 
     type_props: dict[str, tuple[str, ...]] = {}
     type_nav: dict[str, tuple[str, ...]] = {}
