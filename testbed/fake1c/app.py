@@ -11,7 +11,7 @@ The wrapper does not change what Fake1C answers. The log is process-local: it re
 process (outage tests take a fresh mark after restarting Fake1C).
 """
 
-import os  # noqa: I001
+import os
 import threading
 import time
 from urllib.parse import unquote
