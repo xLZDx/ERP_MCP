@@ -144,3 +144,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Admin defect fix P4 (branch fix/admin-defects)
 
 - Decision: `parse_metadata` rejects well-formed XML that is not OData `$metadata` (root must be Edmx with Schema/EntityType/EntitySet). An HTML 200 for `$metadata` therefore yields metadata_supported=false and no fingerprint, so the admin refresh fails with an audited error and the previous STABLE evidence is untouched (A39). Regression: tests/test_metadata.py, tests/test_compatibility.py.
+
+## 2026-10-07 - Admin defect fix P8 (branch fix/admin-defects)
+
+- Decision: server-side fix, UI keeps its key (scripts/verify_admin_ui.py already requires key retention on retry). A prior idempotency outcome of `error` (domain write rolled back; only reservation and audit row persisted) with the same actor+command+payload fingerprint is re-armed to `pending` and re-executed; success still replays, different payload/command still 409 (A29/A30), concurrent callers serialize on the row lock. Regression: tests/test_admin_mutations_postgres.py::test_failed_attempt_is_retryable_with_the_same_key_and_payload. No migration.

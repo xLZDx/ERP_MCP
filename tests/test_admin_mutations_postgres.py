@@ -483,3 +483,34 @@ async def test_real_http_cross_source_exact_target_mutations_have_no_write_side_
         ) == 0
     finally:
         await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_failed_attempt_is_retryable_with_the_same_key_and_payload(service):
+    """P8: a transient failure must not poison the idempotency key (A29/A30 stay intact)."""
+    svc, owner, source, _company = service
+    actor, key = AdminActor(str(uuid4()), "client"), str(uuid4())
+    calls = []
+
+    async def flaky():
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("source down")
+        return {"metadata_fingerprint": "fp-1"}
+
+    args = {"actor": actor, "source_id": source, "reason": "refresh", "request_id": uuid4(),
+            "idempotency_key": key, "refresh": flaky}
+    with pytest.raises(RuntimeError):
+        await svc.refresh_capabilities(**args)
+    again = await svc.refresh_capabilities(**{**args, "request_id": uuid4()})
+    assert again == {"metadata_fingerprint": "fp-1"}
+    # Replay of the now-successful attempt does not execute again.
+    assert await svc.refresh_capabilities(**{**args, "request_id": uuid4()}) == again
+    assert len(calls) == 2
+    # Same key, different payload is still a conflict.
+    with pytest.raises(AdminConflict):
+        await svc.refresh_capabilities(**{**args, "source_id": source + "-other"})
+    outcomes = [r["outcome"] for r in await owner.fetch(
+        "SELECT outcome FROM bag.admin_audit_events WHERE actor_subject=$1 ORDER BY occurred_at",
+        actor.subject)]
+    assert outcomes[:2] == ["error", "success"]
