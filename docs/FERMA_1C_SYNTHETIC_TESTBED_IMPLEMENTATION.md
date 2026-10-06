@@ -219,6 +219,19 @@ The long-term preferred boundary is a versioned scenario package.
 
 ## 5. Scenario package contract
 
+Current isolated exporter implementation: `testbed/ferma_onec/exporter.py`, documented in the
+testbed README. It uses the actual pinned Ferma generator + independent OracleProjector and checks
+the pinned transitive oracle boundary, not observed runtime positions. Two existing Ferma scenarios
+are supported at L1; full frozen matrix/seeding/native and gateway observations remain separate gates.
+Packages and source snapshots are INTERNAL_TEST_ONLY/private, not copied into production or public CI.
+
+The manifest explicitly distinguishes `ERP_MCP_EXPORT_SHA256_JSON_V1` package serialization hashes
+from Ferma's native 32-hex truncated BLAKE2b `SEMANTIC_V3` dataset/event/profile identities. Original
+Ferma identities and oracle rule version are preserved in separate `ferma_*` fields; no algorithm
+is relabeled/reimplemented. Ferma naive clock values use declared synthetic UTC mapping
+`NAIVE_LOGICAL_AS_UTC_V1`, never inferred native-company timezone. Existing minimal contract fixtures
+may omit these exporter-specific fields; omission is not native provenance/approval evidence.
+
 Create a stable artifact format, for example:
 
 ```text

@@ -36,6 +36,14 @@ def test_checkpoint_rejects_source_drift(tmp_path):
         check_checkpoint(tmp_path)
 
 
+def test_checkpoint_also_binds_test_plane_implementation(tmp_path):
+    prepare(tmp_path)
+    (tmp_path / 'testbed').mkdir()
+    (tmp_path / 'testbed/exporter.py').write_text('changed test-only implementation\n')
+    with pytest.raises(ValueError, match='implementation content changed'):
+        check_checkpoint(tmp_path)
+
+
 def test_platform_specific_generated_metadata_is_not_implementation(tmp_path):
     prepare(tmp_path)
     generated = tmp_path / "src/fixture.egg-info"

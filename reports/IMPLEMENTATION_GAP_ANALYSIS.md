@@ -2,6 +2,19 @@
 
 # ERP_MCP implementation gap analysis
 
+## Actual isolated Ferma package exporter — 2026-10-06
+
+The exporter gap is implemented for two existing pinned Ferma scenarios, not the full frozen matrix.
+Direct committed generator + independent oracle + actual policy/integrity/transitive boundary;
+source digest checked twice, cache poisoning/unknown code refused. 47 executed contracts PASS,
+zero skips; private scanner-safe evidence SHA-256
+`cd0c2ab633f97c358a8b9baf9b748a20661ad5dc0e39ca715c0c9b10765e5c8a`.
+Actual 4/9-event packages retained privately; no source/artifacts published. Ferma source changes
+left untouched. Native source identities/time-axis policy remain distinct from package hashing.
+Current test-plane code is bound by report fingerprint; Phase map now distinguishes latest verified
+HEAD/CI from historical freeze anchors. Full matrix, exact mappings/seeder/native/gateway observers,
+L2, complete DAD/evidence storage/ACL/parser/fault/deployment work remain locally actionable/OPEN.
+
 ## Real audit signal and fixed label/trace boundaries — 2026-10-06
 
 NFR-O1/D12/D11: arbitrary alphanumeric tool identifiers no longer create metric series; fixed

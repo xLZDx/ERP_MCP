@@ -62,6 +62,8 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=FERMA_PINNED_EXPORT_20261006 ENGINEERING_IMPLEMENTATION=939f780dd1f7cb3b77f394eece05b3586bbc60fec8097be8287511300b6881bf -->
+<p><strong>Pinned Ferma export — 2026-10-06:</strong> TEST-FERMA-1/D5/D9/SCOPE-1: private pinned Ferma package exporter directly reuses committed generator, integrity/usage-policy gate, transitive oracle boundary and independent OracleProjector for two existing scenarios. Source snapshot SHA verified before/after; cached bytecode/symlinks/changed/oversized sources refused, no runtime production import/source copy, output outside Git/new directory only. 47 executed exporter/intake/comparator/checkpoint contracts PASS, zero skips; actual bakery 4 events/8 master records and chain 9 events/321 records exported privately. ActualProjector corruption cannot alter expected; unavailable oracle creates no package; wall clock cannot alter economic outputs. Native Ferma 128-bit BLAKE2b SEMANTIC_V3 identities retained separately from named package SHA-256; naive logical UTC mapping explicit, no native timezone inferred. Testbed implementation now included in content fingerprint. Parent fc61b1c CI 37476481866 four jobs PASS; full local exporter batch 465 passed/16 skipped; actual private harness 47/47 separately, Ruff/Bandit(src+testbed)/compileall/checkpoint/document gates PASS. Exporter batch awaits its own hosted run. Full matrix/native seeder/observers/L2, DAD/evidence storage/ACL/parsers/fault/deployment/stdout bounds remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=AUDIT_METRIC_PRIVACY_20261006 ENGINEERING_IMPLEMENTATION=ae442eba2e20d75cd4dce0ee81aabf3f98f07de82e58e135437db2183e44e6e6 -->
 <p><strong>Audit/metric privacy — 2026-10-06:</strong> NFR-O1/D12/D11: fixed MCP-tool metric allowlist (plus reserved audit), bounded HTTP status and trace attribute/name allowlists prevent alphanumeric private identifiers becoming series/log data. Audit outcome now recorded only after INSERT; real append failure/cancellation emits existing audit alert selector and original-tool error, never false success. Dependency duration sum/count rejects non-measurements and bounds overflow. 26 focused tests PASS against actual disposable PostgreSQL runtime role; one successful append retained, readonly INSERT failure verified; pinned promtool format/lint/firing/resolution and evidence scanner PASS. Parent bebc223 CI 37475685751 ALL FOUR jobs PASS. Full current local suite 455 passed/13 skipped; real DB focused 26 PASS separately, Ruff/Bandit/compileall/document gates PASS. Audit batch awaits its own hosted run. Alert delivery, full fault/deployment/DAD/Ferma/native evidence storage/ACL/parsers/stdout bound remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=EVIDENCE_PROFILE_BINDING_20261006 ENGINEERING_IMPLEMENTATION=465da0053ae2d5029224389141cc23c1217265e0cb96af329ac031f6c9c1abf8 -->
@@ -512,7 +514,7 @@ transport safely.</li>
 30–150+ companies, tolerate heterogeneous 1C deployments, and produce accounting answers that are
 reconcilable with native 1C reports.</p>
 <h2>Phase map</h2>
-<p><strong>Статус на 2026-10-06.</strong> SCOPE FROZEN. PR #11 Draft/mergeable, HEAD <code>65883a5</code>, hosted CI <code>37446049853</code> PASS. Phase closure still requires native/config/deployment evidence; no new scope is admitted.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>fc61b1c17281ea6586be8e4e2dafc370855ed306</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37476481866">37476481866</a>: FOUR jobs PASS. Текущий Ferma exporter batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -537,15 +539,15 @@ reconcilable with native 1C reports.</p>
   <td>P1</td>
   <td>Control-plane baseline</td>
   <td>OAuth, ACL, registry, secrets, audit, limits, migrations</td>
-  <td><strong>Реализовано; интеграционные проверки PASS</strong><br>PR #1 merged; <a href="https://github.com/xLZDx/ERP_MCP/pull/9">#9</a> multi-source ACL и <a href="https://github.com/xLZDx/ERP_MCP/pull/10">#10</a> audit outcomes — Draft, CI PASS.</td>
-  <td>Объединить и проверить follow-ups; подтвердить live IdP, secret rotation/leakage, production trace propagation и работу нескольких баз.</td>
-  <td>Не подтверждены production IdP/secret provider и целевая среда. PR #9/#10 ещё не объединены.</td>
+  <td><strong>Integration candidate: проверено локально/CI</strong><br>ACL lifecycle; HTTP JWKS outage/recovery; actual audit success/readonly failure; protected secret configs.</td>
+  <td>Завершить все provider/fault scenarios; production trace propagation и multi-base operator rehearsal.</td>
+  <td>Локальная инженерия остаётся actionable. Production IdP/secret-provider target evidence отсутствует; PR #11 остаётся Draft.</td>
 </tr>
 <tr>
   <td>P2</td>
   <td>Capability router</td>
   <td>Source fingerprinting and deterministic adapter selection</td>
-  <td><strong>OData capability rule реализован</strong><br>Per-source evidence, deny неподтверждённых методов, drift и cache invalidation проверены.</td>
+  <td><strong>OData rule + actual DB registry CLI PASS</strong><br>Per-base evidence; DrCr deny/confirm; freshness/drift; five readonly diagnostics; никакого угадывания имён.</td>
   <td>Проверить routing на реальных heterogeneous sources; закончить fallback capability contract и негативные проверки смены платформы/конфигурации.</td>
   <td>Нужны live metadata/probes конкретных баз; fallback data route зависит от P6.</td>
 </tr>
@@ -553,7 +555,7 @@ reconcilable with native 1C reports.</p>
   <td>P3</td>
   <td>Modern OData data-plane</td>
   <td>Mature upstream OData v3 engine integrated read-only</td>
-  <td><strong>Sidecar интегрирован; CI PASS</strong><br>Код в merged PR #1; pinned client/metadata, contract tests и non-root image smoke проходят.</td>
+  <td><strong>Pinned sidecar/upstream contracts: CI PASS</strong><br>Client 429 cases/1 skip, metadata 53, wrapper 14; socket-time Python/Node egress; SBOM/digest evidence.</td>
   <td>Подтвердить live query/key/count/register parity, transport/egress и zero-write evidence на целевой базе.</td>
   <td>Не записаны результаты реального OData source. Требуются endpoint, read-only identity и source-specific capabilities.</td>
 </tr>
@@ -561,20 +563,20 @@ reconcilable with native 1C reports.</p>
   <td>P4</td>
   <td>Semantic accounting layer</td>
   <td>Stable transport-independent business tools</td>
-  <td><strong>Частично реализовано; CI PASS</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/2">PR #2</a> и <a href="https://github.com/xLZDx/ERP_MCP/pull/8">#8</a> Draft: profiles, documents, balances, inventory/cash movements и posting follow-up.</td>
+  <td><strong>Semantic foundations + normalized DAD comparisons: PARTIAL</strong><br>Profiles, balances/documents/movements; versioned scope-bound comparisons; parser-class binding and minimized findings.</td>
   <td>Закончить оставшуюся AR/AP aging и tax/VAT семантику; сверить заявленный scope, подтвердить mappings и ≥10 native-report cases на конкретной конфигурации.</td>
   <td>Нет validated customer profiles/native reports; upstream presets остаются candidates. Семантическая валидация зависит от P5.</td>
 </tr>
 <tr>
 <td>P5</td><td>Dual 1C assurance</td><td>Real Reference + Ferma Controlled Synthetic</td>
-<td><strong>L1 PASS; L2 strategy frozen</strong><br>P5-A private real reference + P5-B Ferma independent oracle.</td>
-<td>Restore/fingerprint reference clone; native-report semantic validation; implement Ferma scenario/seeder/observer.</td>
-<td>Real native evidence remains NOT_RUN until reference restore; pilot remains separate.</td>
+<td><strong>P5-B actual Ferma exporter: L1 PASS</strong><br>Pinned generator + independent oracle, 2 reused scenarios; 47 executed exporter/intake/comparator/checkpoint tests PASS. P5-A reference remains separate.</td>
+<td>Full frozen scenario matrix; exact native mappings; seeder; native/gateway observers; L2 comparisons. Restore/fingerprint supplied private reference when available.</td>
+<td>Missing private reference/native accounting configuration and external documents block their evidence, not independent engineering. Ferma source/packages stay private INTERNAL_TEST_ONLY.</td>
 </tr>
 <tr>
 <td>P6</td><td>Local/extension/COM fallback</td><td>Audited metadata fallback</td>
-<td><strong>Real Windows/COM metadata smoke PASS</strong><br>1C 8.3.27.2342 + V83.COMConnector; RSV v1.3.0 exported/audited.</td>
-<td>Secret-ref lifecycle/reconnect/timeout/crash and normalized metadata closure.</td>
+<td><strong>Real bridge crash + fresh COM reconnect PASS</strong><br>1 native opt-in test executed; SDK timeout/malformed/rotation; Windows protected config DACL/privacy.</td>
+<td>Stdout pre-parser memory bound; native engine crash/zero-write snapshot proof; complete deployed recovery evidence.</td>
 <td>query default DENY; execute_query DENY; reveal HARD DENY until separate proof/rebaseline.</td>
 </tr>
 <tr>
@@ -589,9 +591,9 @@ reconcilable with native 1C reports.</p>
   <td>P8</td>
   <td>Production hardening</td>
   <td>load, observability, backup/restore, incident/rollback</td>
-  <td><strong>Частично реализовано</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/6">PR #6</a> Draft: protected bounded HTTP metrics, CI PASS.</td>
-  <td>Закончить logs/traces/source telemetry, load/fault injection, SBOM/scans, deployment checks, backup/restore drill и incident/rollback evidence.</td>
-  <td>Не подтверждены production infrastructure, load target и backup/restore среда; необходимы реальные sources для эксплуатационных проверок.</td>
+  <td><strong>Measured local hardening: PARTIAL</strong><br>30/50/100/150 actual executor/pool measurements; PostgreSQL/Redis recovery; promtool alerts; real audit alert signal; two-image assembled SBOM/digests.</td>
+  <td>Complete provider/sidecar/audit fault matrix, deployed egress/receiver, process RSS, production-like stack and all incident/rollback rehearsals.</td>
+  <td>Independent local engineering remains OPEN. Production infrastructure, pilot load/SLO and provider PITR/receiver evidence remain external gates.</td>
 </tr>
 <tr>
   <td>P9</td>

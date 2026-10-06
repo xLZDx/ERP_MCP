@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-ROOTS = ("src", "tests", "scripts", "adapters", "deploy", ".github")
+ROOTS = ("src", "tests", "scripts", "testbed", "adapters", "deploy", ".github")
 DEPENDENCIES = ("pyproject.toml", "uv.lock", "requirements-runtime.lock", "vendor/intake.json")
 REPORTS = ("reports/IMPLEMENTATION_STATUS.md", "reports/DOD_STATUS.md", "reports/RISK_STATUS.md",
            "reports/EXECUTION_LOG.md", "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",

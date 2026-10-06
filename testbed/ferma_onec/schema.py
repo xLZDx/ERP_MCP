@@ -21,6 +21,14 @@ class ScenarioManifest(BaseModel):
     mapping_contract_version: Literal["1"]
     created_at_wall_clock: str
     semantic_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    semantic_digest_scheme: Literal['ERP_MCP_EXPORT_SHA256_JSON_V1'] | None = None
+    ferma_digest_scheme: Literal['SEMANTIC_V3'] | None = None
+    ferma_event_stream_digest: str | None = Field(default=None, pattern=r'^[0-9a-f]{32}$')
+    ferma_dataset_digest: str | None = Field(default=None, pattern=r'^[0-9a-f]{32}$')
+    ferma_profile_digest: str | None = Field(default=None, pattern=r'^[0-9a-f]{32}$')
+    oracle_rules_version: str | None = Field(default=None, min_length=1, max_length=128)
+    output_class: Literal['INTERNAL_TEST_ONLY'] = 'INTERNAL_TEST_ONLY'
+    ferma_clock_timezone_policy: Literal['NAIVE_LOGICAL_AS_UTC_V1'] | None = None
 
     @field_validator("logical_clock_epoch", "created_at_wall_clock")
     @classmethod

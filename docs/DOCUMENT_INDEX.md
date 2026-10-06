@@ -15,6 +15,9 @@ Machine-readable current snapshot: [engineering checkpoint](../reports/CURRENT_E
 CI checks its implementation-content fingerprint against all six report/dashboard markers;
 historical freeze/CI references remain historical, not automatic proof for changed code.
 
+The implementation fingerprint also includes the isolated `testbed/` code; changing an exporter,
+target guard or comparator without refreshing status evidence fails the same consistency gate.
+
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
 change first.

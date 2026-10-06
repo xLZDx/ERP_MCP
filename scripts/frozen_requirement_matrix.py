@@ -38,7 +38,8 @@ IMPLEMENTATION = {
                 "scripts/engineering_checkpoint.py", "tests/test_engineering_checkpoint.py"],
     "TEST-FERMA-1": ["testbed/ferma_onec/package_loader.py", "testbed/ferma_onec/target_guard.py",
                      "testbed/ferma_onec/reconcile.py", "tests/test_ferma_package_boundary.py",
-                     "tests/test_ferma_reconcile.py"],
+                     "tests/test_ferma_reconcile.py", "testbed/ferma_onec/exporter.py",
+                     "tests/test_ferma_exporter.py"],
 }
 
 
