@@ -108,3 +108,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Dispositions and token default
 
 - SC10 args now timezone-qualified (tester bug). SC06 encoded EXTERNAL-GATE (VAT only when validated), SC08 NOT IMPLEMENTED (outside frozen scope; needs operator rebaseline). FT_BEARER_TOKEN is now the default identity for every call.
+
+## 2026-10-07 - Suite moved onto the fixture-profile stack
+
+- Stack now BAG_ENVIRONMENT=test with the reviewed synthetic fixture profile file (SHA-256 pinned at setup), source tag synthetic-fixture, test-only fake sidecar behind a recording wrapper (:28767). SC01-SC05, SC07, SC09-SC12 evaluate real tool output (PASS, L1 synthetic only); SC06 EXTERNAL-GATE, SC08 NOT IMPLEMENTED by decision. Final run 73 passed, 3 skipped (needs-oidc-identity), 2 xfailed (SC06, SC08).

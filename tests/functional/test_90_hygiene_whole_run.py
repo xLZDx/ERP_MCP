@@ -17,6 +17,9 @@ def _secrets() -> list[str]:
     vals = [v for v in (h.env("FT_BEARER_TOKEN"), h.env("FT_BEARER_TOKEN_NO_ACCESS"),
                         h.env("FT_BEARER_TOKEN_COMPANY_TWO")) if v]
     for var in ("FT_ADMIN_DATABASE_URL", "BAG_DATABASE_URL", "BAG_REDIS_URL"):
+        tok = h.env("BAG_ODATA_SIDECAR_TOKEN")
+        if tok and tok not in vals:
+            vals.append(tok)
         url = h.env(var)
         m = re.match(r"^[a-z]+://[^:]+:([^@]+)@", url or "")
         if m:
@@ -30,6 +33,16 @@ def test_only_get_head_reached_1c_during_whole_run(suite_start):
     methods = sorted({r["method"] for r in reqs})
     assert set(methods) <= {"GET", "HEAD"}, methods
     record("ALL", upstream_methods=methods, upstream_request_count=len(reqs))
+
+
+def test_sidecar_saw_only_read_only_protocol_requests_during_whole_run(suite_start):
+    if not h.env("FT_SIDECAR_URL"):
+        pytest.skip("FT_SIDECAR_URL not provided (no sidecar in this stack)")
+    reqs = h.sidecar_requests(suite_start["sidecar_seq"])["requests"]
+    assert reqs, "no sidecar traffic - data-bearing scenarios would be vacuous"
+    assert {r["method"] for r in reqs} == {"POST"}, "the sidecar protocol is POST /v1/read only"
+    assert {r["path"] for r in reqs} <= h.SIDECAR_READ_PATHS, {r["path"] for r in reqs}
+    record("ALL", sidecar_paths=sorted({r["path"] for r in reqs}), sidecar_request_count=len(reqs))
 
 
 async def test_audit_rows_contain_no_tokens_credentials_or_raw_accounting_rows(suite_start):

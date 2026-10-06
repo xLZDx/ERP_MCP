@@ -29,4 +29,5 @@ def suite_start():
 
     if not harness.stack_configured():
         pytest.skip(harness.MISSING)
-    return {"db": asyncio.run(harness.db_now()), "fake_seq": harness.fake_mark()}
+    return {"db": asyncio.run(harness.db_now()), "fake_seq": harness.fake_mark(),
+            "sidecar_seq": harness.sidecar_requests(10**9)["last_seq"]}
