@@ -54,7 +54,7 @@ async def test_capability_detector_prefers_json_profile():
         assert caps.json_supported is True
         assert caps.atom_supported is True
         assert index is not None
-        assert caps.entity_set_count == 11
+        assert caps.entity_set_count == 12
     finally:
         await client.close()
 

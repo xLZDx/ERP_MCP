@@ -103,6 +103,17 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <Property Name="AccountCr_Key" Type="Edm.Guid"/>
         <Property Name="Организация_Key" Type="Edm.Guid"/>
       </EntityType>
+      <EntityType Name="AccumulationRegister_SettlementItems">
+        <Property Name="Period" Type="Edm.DateTime"/>
+        <Property Name="Counterparty_Key" Type="Edm.Guid"/>
+        <Property Name="Contract_Key" Type="Edm.Guid"/>
+        <Property Name="DocumentRef" Type="Edm.Guid"/>
+        <Property Name="DueDate" Type="Edm.DateTime"/>
+        <Property Name="Amount" Type="Edm.Decimal"/>
+        <Property Name="RecordType" Type="Edm.String"/>
+        <Property Name="SettledDocumentRef" Type="Edm.Guid"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="Catalog_Organizations" EntityType="Fake1C.Catalog_Organizations"/>
         <EntitySet Name="Catalog_Counterparties" EntityType="Fake1C.Catalog_Counterparties"/>
@@ -115,6 +126,7 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <EntitySet Name="AccumulationRegister_ReceivableBalances" EntityType="Fake1C.AccumulationRegister_ReceivableBalances"/>
         <EntitySet Name="AccumulationRegister_PayableBalances" EntityType="Fake1C.AccumulationRegister_PayableBalances"/>
         <EntitySet Name="AccountingRegister_Ledger" EntityType="Fake1C.AccountingRegister_Ledger"/>
+        <EntitySet Name="AccumulationRegister_SettlementItems" EntityType="Fake1C.AccumulationRegister_SettlementItems"/>
       </EntityContainer>
     </Schema>
   </edmx:DataServices>
@@ -134,6 +146,7 @@ def _rows(entity: str):
         "AccumulationRegister_ReceivableBalances": SEED["receivable_balances"],
         "AccumulationRegister_PayableBalances": SEED["payable_balances"],
         "AccountingRegister_Ledger": SEED["accounting_postings"],
+        "AccumulationRegister_SettlementItems": SEED["settlement_items"],
     }
     if entity not in mapping:
         raise KeyError(entity)

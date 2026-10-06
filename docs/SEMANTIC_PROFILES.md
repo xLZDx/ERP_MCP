@@ -146,3 +146,8 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   normalizes only operator-confirmed receipt/expense literals into signed amount deltas. The exact
   selected fields and company scope must be present in live metadata. It does not convert currencies
   or claim cash-flow-report reconciliation; upstream presets provide no universal cash register.
+
+## Synthetic fixture profiles and open-item aging (2026-10-07)
+
+- `receivable_aging` / `payable_aging` read a profile-confirmed settlement record set (concepts `receivable.open_items` / `payable.open_items`: charge and payment rows with due date and settled-document reference, reviewed currency and `opening_items_known`). The collector builds a `SettlementObservation` and reuses `settlement_aging.evaluate_aging`; truncation, unconfirmed opening items, scope mismatch or invalid facts are `INCONCLUSIVE`, a missing profile is denied (`SEMANTIC_PROFILE_UNVALIDATED`). Responses add per-counterparty `summary` (charged, applied, open, unapplied credit).
+- A test-only reviewed synthetic fixture profile (`BAG_ENVIRONMENT=test`, `BAG_SYNTHETIC_FIXTURE_PROFILES_FILE` + `_SHA256`, source tag `synthetic-fixture`) lets the Fake1C testbed answer these tools. Responses are labelled `profile_kind=SYNTHETIC_FIXTURE`, `evidence_level=L1`, `native_reconciliation=NOT_RUN` with warning `SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE`; it is never a `bag.semantic_profiles` row, never satisfies the ten-native-reports rule and is hard-denied in production. Regenerate/re-pin with `scripts/synthetic_fixture_profiles.py --write`.

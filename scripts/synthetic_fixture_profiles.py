@@ -39,6 +39,27 @@ def _balance(entity_set: str, fields: dict) -> dict:
     }
 
 
+def _open_items() -> dict:
+    return {
+        "entity_set": "AccumulationRegister_SettlementItems",
+        "company_scope": GUID_SCOPE,
+        "output_fields": {
+            "counterparty_ref": "Counterparty_Key",
+            "contract_ref": "Contract_Key",
+            "document_ref": "DocumentRef",
+            "date": "Period",
+            "due_date": "DueDate",
+            "amount": "Amount",
+            "record_type": "RecordType",
+            "settled_document_ref": "SettledDocumentRef",
+        },
+        "record_type_values": {"charge": ["Charge"], "payment": ["Payment"]},
+        "currency": "MDL",
+        "opening_items_known": True,
+        "required_register_capabilities": [],
+    }
+
+
 def concept_mappings() -> dict[str, dict]:
     return {
         "inventory.movements": {
@@ -120,6 +141,7 @@ def concept_mappings() -> dict[str, dict]:
                 {"entity_set": "AccountingRegister_Ledger", "method": "balanceAndTurnovers"}
             ],
         },
+        "receivable.open_items": _open_items(),
         "inventory.balance": _balance(
             "AccumulationRegister_InventoryBalances",
             {

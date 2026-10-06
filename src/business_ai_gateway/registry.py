@@ -39,6 +39,7 @@ from .semantic import (
     validate_inventory_movements_mapping,
     validate_settlement_balance_mapping,
 )
+from .settlement_collector import OPEN_ITEMS_CONCEPTS, validate_open_items_mapping
 
 
 class AccessDenied(PermissionError):
@@ -323,6 +324,12 @@ class Registry:
             if required != [{"entity_set": entity_set, "method": method}]:
                 raise SemanticMappingUnconfirmed(
                     "settlement mapping capability dependency is missing or mismatched"
+                )
+        elif concept in OPEN_ITEMS_CONCEPTS:
+            validate_open_items_mapping(concept, mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "open-item record-set mapping cannot claim virtual-table methods"
                 )
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")

@@ -142,6 +142,34 @@
               "required_register_capabilities": [],
               "source_timezone": "UTC"
             },
+            "receivable.open_items": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "currency": "MDL",
+              "entity_set": "AccumulationRegister_SettlementItems",
+              "opening_items_known": true,
+              "output_fields": {
+                "amount": "Amount",
+                "contract_ref": "Contract_Key",
+                "counterparty_ref": "Counterparty_Key",
+                "date": "Period",
+                "document_ref": "DocumentRef",
+                "due_date": "DueDate",
+                "record_type": "RecordType",
+                "settled_document_ref": "SettledDocumentRef"
+              },
+              "record_type_values": {
+                "charge": [
+                  "Charge"
+                ],
+                "payment": [
+                  "Payment"
+                ]
+              },
+              "required_register_capabilities": []
+            },
             "sales": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -295,6 +323,34 @@
               "required_register_capabilities": [],
               "source_timezone": "UTC"
             },
+            "receivable.open_items": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "currency": "MDL",
+              "entity_set": "AccumulationRegister_SettlementItems",
+              "opening_items_known": true,
+              "output_fields": {
+                "amount": "Amount",
+                "contract_ref": "Contract_Key",
+                "counterparty_ref": "Counterparty_Key",
+                "date": "Period",
+                "document_ref": "DocumentRef",
+                "due_date": "DueDate",
+                "record_type": "RecordType",
+                "settled_document_ref": "SettledDocumentRef"
+              },
+              "record_type_values": {
+                "charge": [
+                  "Charge"
+                ],
+                "payment": [
+                  "Payment"
+                ]
+              },
+              "required_register_capabilities": []
+            },
             "sales": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -315,7 +371,7 @@
           }
         }
       },
-      "metadata_fingerprint": "b229f62720567e1e267f76b82a89849399c9f6ab65b5694bebc0a4e0c03aad77"
+      "metadata_fingerprint": "3db5dc1df7497bad4ebc0eefe85830c26f4d6eb9bcceae9d2a432d2cd4fbdb52"
     }
   }
 }

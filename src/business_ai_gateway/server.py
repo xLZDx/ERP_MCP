@@ -20,7 +20,7 @@ from .compatibility import (
     require_acknowledged_metadata,
 )
 from .external_evidence import EvidenceRejected
-from .fixture_profiles import profile_provenance
+from .fixture_profiles import SYNTHETIC_PROFILE_KIND, profile_provenance
 from .principal import current_principal
 from .runtime import Runtime
 from .semantic import (
@@ -51,6 +51,14 @@ from .semantic import (
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
+from .settlement_collector import (
+    MAX_OPEN_ITEM_ROWS,
+    PAYABLE_OPEN_ITEMS_CONCEPT,
+    RECEIVABLE_OPEN_ITEMS_CONCEPT,
+    build_open_items_query,
+    evaluate_open_items,
+    parse_as_of,
+)
 
 BUSINESS_CAPABILITY_BY_TOOL = {
     "source_health": "source.status.read",
@@ -67,6 +75,8 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "bank_balance": "bank.read",
     "receivable_balance": "ar.read",
     "payable_balance": "ap.read",
+    "receivable_aging": "ar.read",
+    "payable_aging": "ap.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
@@ -1475,6 +1485,125 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             period,
             concept=PAYABLE_BALANCE_CONCEPT,
             tool_name="payable_balance",
+        )
+
+    async def read_open_items_aging(
+        source_id: str, company_id: str, as_of: str, *, concept: str, tool_name: str, top: int
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id, outcome="denied",
+                started_at=started, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1:
+            raise ValueError("top must be positive")
+        as_of_date = parse_as_of(as_of)
+        row_limit = min(top, settings.max_rows, MAX_OPEN_ITEM_ROWS)
+        query = {
+            "company_id": str(parsed_company_id), "concept": concept,
+            "as_of": as_of_date.isoformat(), "top": row_limit,
+        }
+        source = await resolve_source(
+            principal, source_id, tool_name, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr, orderby = build_open_items_query(
+                concept, mapping, company_external_ref=company.external_ref
+            )
+            metadata = await runtime.onec.metadata(source)
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            if entity_set not in metadata.names or set(select) - live_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=concept,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT" if entity_set not in metadata.names
+                    else "PROPERTY_ABSENT",
+                    expected_properties=sorted(select),
+                    missing_properties=sorted(set(select) - live_fields),
+                    message="configured open-item record set is absent from live metadata",
+                )
+            result = await runtime.onec.read(
+                source, entity_set=entity_set, select=select, filter_expr=filter_expr,
+                orderby=orderby, expand=None, top=row_limit, skip=0,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            payload = evaluate_open_items(
+                concept, mapping, raw_rows, source_id=source_id,
+                company_id=str(parsed_company_id), company_external_ref=company.external_ref,
+                as_of=as_of_date, row_limit=row_limit,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                synthetic=profile.get("profile_kind") == SYNTHETIC_PROFILE_KIND,
+            )
+            conclusive = payload["status"] in {"PASS", "FINDING"}
+            response_bytes = len(
+                json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id, outcome="success",
+                started_at=started, query=query, returned_items=len(payload["rows"]),
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=(profile.get("audit_detail_code") if conclusive else payload["reason"]),
+                response_bytes=response_bytes, truncated=bool(payload["truncated"]),
+            )
+            return {
+                "source_id": source_id, "company_id": str(parsed_company_id),
+                "concept": concept, "as_of": as_of_date.isoformat(),
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **payload,
+                **profile_provenance(profile),
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id,
+                outcome=("denied" if isinstance(exc, (
+                    PermissionError, CapabilityUnsupported, MetadataDriftUnacknowledged,
+                    SemanticProfileUnavailable,
+                )) else "error"),
+                started_at=started, query=query, company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def receivable_aging(
+        source_id: str, company_id: str, as_of: str, top: int = 2000
+    ) -> dict[str, Any]:
+        """Aging of open receivable items from a confirmed settlement record set (read-only)."""
+        return await read_open_items_aging(
+            source_id, company_id, as_of, concept=RECEIVABLE_OPEN_ITEMS_CONCEPT,
+            tool_name="receivable_aging", top=top,
+        )
+
+    @mcp.tool()
+    async def payable_aging(
+        source_id: str, company_id: str, as_of: str, top: int = 2000
+    ) -> dict[str, Any]:
+        """Aging of open payable items from a confirmed settlement record set (read-only)."""
+        return await read_open_items_aging(
+            source_id, company_id, as_of, concept=PAYABLE_OPEN_ITEMS_CONCEPT,
+            tool_name="payable_aging", top=top,
         )
 
     async def read_company_documents(
