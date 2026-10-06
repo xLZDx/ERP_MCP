@@ -53,3 +53,11 @@ Additional local automation:
   traversal, redirect, envelope and mutation-negative regression matrix.
 - `deploy/runbooks/ONBOARDING_OFFBOARDING.md`, `CREDENTIAL_ROTATION_AND_DRIFT.md` and
   `ADAPTER_CRASH_RECOVERY.md` are mandatory operator references for lifecycle changes.
+- `uv run --locked python scripts/rsv_process_harness.py` executes the lifecycle cases against a
+  real local fake subprocess; it never connects to 1C.
+- `uv run --locked python scripts/docker_fault_runner.py` validates the Compose fault plan; use
+  `--execute` only in an isolated Docker environment approved for disposable dependencies.
+- `uv run --locked python scripts/scan_sensitive_artifacts.py <files...>` rejects credentials,
+  authorization headers, DSNs and transport secrets in logs/evidence.
+- `uv run --locked python scripts/ssrf_fuzz_matrix.py` and `mutation_negative_pack.py` run the
+  deterministic SSRF/traversal/redirect and fail-closed mutation-negative matrices.

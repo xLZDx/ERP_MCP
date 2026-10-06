@@ -1,10 +1,15 @@
 from pathlib import Path
 
 from scripts.capability_report import diff_reports, evidence_manifest
+from scripts.docker_fault_runner import run as run_docker_plan
 from scripts.fault_injection_runner import run as run_faults
+from scripts.mutation_negative_pack import run as run_mutations
 from scripts.performance_benchmark import run as run_benchmark
 from scripts.rsv_lifecycle_harness import run as run_rsv
+from scripts.rsv_process_harness import run as run_real_rsv
+from scripts.scan_sensitive_artifacts import scan
 from scripts.security_regression_pack import run as run_security
+from scripts.ssrf_fuzz_matrix import run as run_ssrf
 from scripts.validate_metrics import validate_rules, validate_text_format
 
 ROOT = Path(__file__).parents[1]
@@ -14,6 +19,8 @@ def test_fault_and_rsv_harnesses_cover_recovery_without_1c():
     assert run_faults()["passed"] is True
     assert run_rsv()["passed"] is True
     assert run_faults()["real_1c_called"] is False
+    assert run_docker_plan(ROOT, execute=False)["passed"] is True
+    assert run_real_rsv()["passed"] is True
 
 
 def test_performance_evidence_covers_all_required_sizes():
@@ -33,6 +40,17 @@ def test_security_pack_is_fail_closed():
     evidence = run_security()
     assert evidence["passed"] is True
     assert all(item["passed"] for item in evidence["cases"])
+    assert run_ssrf()["passed"] is True
+    assert run_mutations()["passed"] is True
+
+
+def test_sensitive_artifact_scanner_rejects_secret_and_accepts_safe_file(tmp_path: Path):
+    safe = tmp_path / "safe.json"
+    safe.write_text('{"status":"sanitized_failure"}', encoding="utf-8")
+    assert scan([safe]) == []
+    secret = tmp_path / "secret.log"
+    secret.write_text("Authorization: Bearer abcdefghijklmnop", encoding="utf-8")
+    assert scan([secret]) == [str(secret)]
 
 
 def test_capability_cli_helpers(tmp_path: Path):

@@ -142,8 +142,32 @@ jobs:
           uv run --locked python scripts/validate_performance_evidence.py "$RUNNER_TEMP/performance.json"
           uv run --locked python scripts/validate_metrics.py deploy/alerts/prometheus.rules.yml
           uv run --locked python scripts/security_regression_pack.py --output "$RUNNER_TEMP/security.json"
+          uv run --locked python scripts/rsv_process_harness.py --output "$RUNNER_TEMP/rsv-process.json"
+          uv run --locked python scripts/docker_fault_runner.py --output "$RUNNER_TEMP/docker-fault-plan.json"
+          uv run --locked python scripts/ssrf_fuzz_matrix.py --output "$RUNNER_TEMP/ssrf.json"
+          uv run --locked python scripts/mutation_negative_pack.py --output "$RUNNER_TEMP/mutations.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py \
+            "$RUNNER_TEMP/fault-injection.json" "$RUNNER_TEMP/rsv-lifecycle.json" \
+            "$RUNNER_TEMP/performance.json" "$RUNNER_TEMP/security.json" \
+            "$RUNNER_TEMP/rsv-process.json" "$RUNNER_TEMP/docker-fault-plan.json" \
+            "$RUNNER_TEMP/ssrf.json" "$RUNNER_TEMP/mutations.json"
           uv run --locked python scripts/release_evidence_bundle.py --output "$RUNNER_TEMP/release-evidence.json"
           uv run --locked python scripts/check_document_consistency.py
+      - name: Upload autonomous evidence bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: autonomous-closure-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/fault-injection.json
+            ${{ runner.temp }}/rsv-lifecycle.json
+            ${{ runner.temp }}/rsv-process.json
+            ${{ runner.temp }}/performance.json
+            ${{ runner.temp }}/security.json
+            ${{ runner.temp }}/docker-fault-plan.json
+            ${{ runner.temp }}/ssrf.json
+            ${{ runner.temp }}/mutations.json
+            ${{ runner.temp }}/release-evidence.json
+          if-no-files-found: error
       - name: Validate the fail-closed P9 pilot evidence template
         run: |
           uv run --locked python scripts/validate_pilot_evidence.py
