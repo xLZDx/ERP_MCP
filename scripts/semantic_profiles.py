@@ -16,6 +16,7 @@ from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -27,6 +28,7 @@ from business_ai_gateway.semantic import (
     validate_account_turnovers_mapping,
     validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
+    validate_cash_movements_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_inventory_movements_mapping,
@@ -46,6 +48,7 @@ CONCEPTS = (
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
     ACCOUNTING_POSTING_ROWS_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
     BANK_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -263,6 +266,10 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
             raise ValueError(
                 "accounting posting record-set mapping cannot claim virtual-table methods"
             )
+    elif args.concept == CASH_MOVEMENTS_CONCEPT:
+        validate_cash_movements_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError("cash movement record-set mapping cannot claim virtual-table methods")
     elif args.concept == BANK_BALANCE_CONCEPT:
         entity_set, method = validate_bank_balance_mapping(mapping)
         required = mapping.get("required_register_capabilities")
@@ -376,6 +383,12 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
             if mapping.get("required_register_capabilities", []) != []:
                 raise ValueError(
                     "accounting posting record-set mapping cannot claim virtual-table methods"
+                )
+        elif args.concept == CASH_MOVEMENTS_CONCEPT:
+            validate_cash_movements_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError(
+                    "cash movement record-set mapping cannot claim virtual-table methods"
                 )
         elif args.concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)

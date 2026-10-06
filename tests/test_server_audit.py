@@ -23,6 +23,9 @@ class RecordingAudit:
 
 
 class TestRegistry:
+    async def record_semantic_capability_evidence(self, **evidence):
+        self.last_capability_evidence = evidence
+
     async def require_source(self, _principal, source_id):
         if source_id == "forbidden":
             raise PermissionError("source access denied")
@@ -469,7 +472,16 @@ async def test_inventory_movements_uses_live_entity_and_company_timezone_profile
     onec = SimpleNamespace(
         capabilities=AsyncMock(return_value=capabilities),
         metadata=AsyncMock(
-            return_value=SimpleNamespace(names={"AccumulationRegister_ТоварыНаСкладах"})
+            return_value=SimpleNamespace(
+                names={"AccumulationRegister_ТоварыНаСкладах"},
+                entities=[
+                    SimpleNamespace(
+                        name="AccumulationRegister_ТоварыНаСкладах",
+                        properties=tuple(mapping["output_fields"].values())
+                        + ("Организация_Key",),
+                    )
+                ],
+            )
         ),
         read=AsyncMock(
             return_value={
@@ -519,6 +531,7 @@ async def test_inventory_movements_uses_live_entity_and_company_timezone_profile
         "Period lt datetime'2026-04-02T09:00:00'"
     )
     assert audit.events[-1]["outcome"] == "success"
+    assert not hasattr(registry, "last_capability_evidence")
 
 
 @pytest.mark.asyncio
@@ -579,6 +592,8 @@ async def test_inventory_movements_denies_entity_absent_from_live_metadata():
         )
     assert audit.events[-1]["detail_code"] == "CAPABILITY_UNSUPPORTED"
     onec.read.assert_not_awaited()
+    assert registry.last_capability_evidence["reason"] == "ENTITY_SET_ABSENT"
+    assert registry.last_capability_evidence["concept"] == "inventory.movements"
 
 
 @pytest.mark.asyncio
@@ -677,6 +692,9 @@ async def test_accounting_posting_rows_requires_live_entity_and_uses_profile_pro
         )
     assert audit.events[-1]["detail_code"] == "CAPABILITY_UNSUPPORTED"
     onec.read.assert_not_awaited()
+    assert registry.last_capability_evidence["reason"] == "PROPERTY_ABSENT"
+    assert registry.last_capability_evidence["missing_properties"] == ["AccountCr_Key"]
+    assert registry.last_capability_evidence["concept"] == "accounting.posting_rows"
 
 
 @pytest.mark.asyncio
@@ -718,6 +736,76 @@ async def test_unconfirmed_inventory_profile_is_audited_without_register_dispatc
     assert audit.events[-1]["outcome"] == "denied"
     assert audit.events[-1]["detail_code"] == "SEMANTIC_MAPPING_UNCONFIRMED"
     onec.register_read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cash_movements_uses_exact_profile_and_live_metadata():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    entity_set = "AccumulationRegister_SourceConfirmedCashMoves"
+    fields = {
+        "period": "Period", "line_number": "LineNumber",
+        "cash_account_ref": "CashAccount_Key", "currency_ref": "Currency_Key",
+        "amount": "Amount", "record_type": "RecordType", "recorder_ref": "Recorder",
+    }
+    mapping = {
+        "entity_set": entity_set,
+        "company_scope": {"field": "Organization_Key", "value_type": "guid"},
+        "output_fields": fields,
+        "record_type_values": {"receipt": ["In"], "expense": ["Out"]},
+        "amount_encoding": "positive_magnitude_by_record_type",
+        "source_timezone": "Europe/Chisinau",
+    }
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_semantic_mapping = AsyncMock(
+        return_value={"mapping": mapping, "profile_fingerprint": "sha256:cash-profile"}
+    )
+    audit = RecordingAudit()
+    capabilities = SimpleNamespace(
+        adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+        metadata_fingerprint="sha256:metadata",
+    )
+    row = {
+        "Period": "2026-04-02T06:30:00", "LineNumber": 1, "CashAccount_Key": "cash-1",
+        "Currency_Key": "MDL", "Amount": "10.25", "RecordType": "In", "Recorder": "doc-1",
+    }
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(return_value=capabilities),
+        metadata=AsyncMock(
+            return_value=SimpleNamespace(
+                names={entity_set},
+                entities=[SimpleNamespace(name=entity_set, properties=tuple(fields.values()) + ("Organization_Key",))],
+            )
+        ),
+        read=AsyncMock(return_value={"value": [row], "page": {"has_more": False}}),
+    )
+    mcp = build_mcp(
+        Settings(),
+        SimpleNamespace(audit=audit, registry=registry,
+                        rate_limit=SimpleNamespace(check=AsyncMock()), onec=onec),
+    )
+    args = {
+        "source_id": "source-1", "company_id": str(company_id),
+        "start_period": "2026-04-01T23:00:00-04:00",
+        "end_period": "2026-04-02T02:00:00-04:00", "top": 10,
+    }
+    result = await mcp.call_tool("cash_movements", args)
+    payload = json.loads(result.content[0].text)
+    assert not result.is_error
+    assert payload["value"][0]["amount_delta"] == "10.25"
+    assert payload["concept"] == "cash.movements"
+    assert onec.read.await_args.kwargs["entity_set"] == entity_set
+    assert audit.events[-1]["outcome"] == "success"
+
+    onec.read.reset_mock()
+    onec.metadata = AsyncMock(return_value=SimpleNamespace(names={"AccumulationRegister_Other"}))
+    with pytest.raises(UnexpectedToolError):
+        await mcp.call_tool("cash_movements", args)
+    assert audit.events[-1]["detail_code"] == "CAPABILITY_UNSUPPORTED"
+    onec.read.assert_not_awaited()
+    assert registry.last_capability_evidence["reason"] == "ENTITY_SET_ABSENT"
+    assert registry.last_capability_evidence["concept"] == "cash.movements"
 
 
 @pytest.mark.asyncio

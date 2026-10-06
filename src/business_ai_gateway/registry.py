@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from uuid import UUID
 
 from .compatibility import OneCCapabilities
@@ -11,6 +12,7 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -24,6 +26,7 @@ from .semantic import (
     validate_account_turnovers_mapping,
     validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
+    validate_cash_movements_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_inventory_movements_mapping,
@@ -324,6 +327,12 @@ class Registry:
                 raise SemanticMappingUnconfirmed(
                     "accounting posting record-set mapping cannot claim virtual-table methods"
                 )
+        elif concept == CASH_MOVEMENTS_CONCEPT:
+            validate_cash_movements_mapping(mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "cash movement record-set mapping cannot claim virtual-table methods"
+                )
         elif concept == BANK_BALANCE_CONCEPT:
             entity_set, method = validate_bank_balance_mapping(mapping)
             if required != [{"entity_set": entity_set, "method": method}]:
@@ -417,10 +426,16 @@ class Registry:
                 atom_supported=EXCLUDED.atom_supported,
                 expand_supported=EXCLUDED.expand_supported,
                 entity_set_count=EXCLUDED.entity_set_count,
-                evidence_json=EXCLUDED.evidence_json,
+                evidence_json=EXCLUDED.evidence_json || jsonb_build_object(
+                    'semantic_capabilities',
+                    COALESCE(
+                        bag.source_capabilities.evidence_json->'semantic_capabilities',
+                        '{}'::jsonb
+                    )
+                ),
                 register_capabilities_json=EXCLUDED.register_capabilities_json
             RETURNING drift_status, previous_metadata_fingerprint,
-                      drift_detected_at, drift_acknowledged_at
+                      drift_detected_at, drift_acknowledged_at, evidence_json
             """,
             capabilities.source_id,
             capabilities.metadata_fingerprint,
@@ -435,6 +450,9 @@ class Registry:
             json.dumps(capabilities.evidence, ensure_ascii=False),
             json.dumps(capabilities.register_capabilities, ensure_ascii=False),
         )
+        evidence = row["evidence_json"]
+        if isinstance(evidence, str):
+            evidence = json.loads(evidence)
         return {
             "drift_status": row["drift_status"],
             "previous_metadata_fingerprint": row["previous_metadata_fingerprint"],
@@ -444,4 +462,65 @@ class Registry:
             "drift_acknowledged_at": (
                 row["drift_acknowledged_at"].isoformat() if row["drift_acknowledged_at"] else None
             ),
+            "source_capability_evidence": evidence.get("semantic_capabilities", {}),
         }
+
+    async def record_semantic_capability_evidence(
+        self,
+        *,
+        source_id: str,
+        concept: str,
+        entity_set: str,
+        metadata_fingerprint: str,
+        reason: str,
+        expected_properties: list[str] | None = None,
+        missing_properties: list[str] | None = None,
+    ) -> dict:
+        """Persist source-specific negative evidence without mutating sidecar register evidence."""
+        if reason not in {"ENTITY_SET_ABSENT", "PROPERTY_ABSENT", "PROPERTIES_UNCONFIRMED"}:
+            raise ValueError("unsupported capability evidence reason")
+        evidence_key = canonical_fingerprint(
+            {
+                "source_id": source_id,
+                "concept": concept,
+                "entity_set": entity_set,
+                "expected_properties": sorted(set(expected_properties or [])),
+            }
+        )
+        item = {
+            "source_id": source_id,
+            "concept": concept,
+            "entity_set": entity_set,
+            "metadata_fingerprint": metadata_fingerprint,
+            "checked_at": datetime.now(UTC).isoformat(),
+            "status": "UNSUPPORTED",
+            "reason": reason,
+            "expected_properties": sorted(set(expected_properties or [])),
+            "missing_properties": sorted(set(missing_properties or [])),
+        }
+        row = await self.db.require_pool().fetchrow(
+            """
+            UPDATE bag.source_capabilities
+            SET evidence_json=jsonb_set(
+                COALESCE(evidence_json, '{}'::jsonb),
+                '{semantic_capabilities}',
+                COALESCE(evidence_json->'semantic_capabilities', '{}'::jsonb)
+                  || jsonb_build_object($2, $3::jsonb),
+                true
+            )
+            WHERE source_id=$1 AND metadata_fingerprint=$4 AND drift_status='STABLE'
+            RETURNING evidence_json
+            """,
+            source_id,
+            evidence_key,
+            json.dumps(item, ensure_ascii=False),
+            metadata_fingerprint,
+        )
+        if row is None:
+            raise SemanticProfileStale(
+                "cannot persist capability evidence for stale/unacknowledged source metadata"
+            )
+        evidence = row["evidence_json"]
+        if isinstance(evidence, str):
+            evidence = json.loads(evidence)
+        return evidence.get("semantic_capabilities", {})

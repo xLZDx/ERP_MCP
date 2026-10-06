@@ -14,7 +14,7 @@ The project uses three verification levels.
 - `$metadata`;
 - catalogs;
 - documents;
-- accounting/accumulation register-shaped fixtures, including source-profile-mapped inventory
+- accounting/accumulation register-shaped fixtures, including synthetic inventory and cash
   receipt/expense records;
 - both JSON and Atom response profiles.
 

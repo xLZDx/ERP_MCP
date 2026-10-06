@@ -141,7 +141,11 @@ Migration 005 adds `register_capabilities_json`, a per-source profile of registe
 operation evidence. A capability entry records availability, the evidence source, exact function
 import/entity-set binding, HTTP method, discovery time and metadata fingerprint. Negative evidence
 is retained too; a runtime/API method list alone never grants availability. Any metadata fingerprint
-change replaces the evidence profile and retains the existing sticky drift gate.
+change replaces the register-operation profile and retains the existing sticky drift gate. The
+`evidence_json.semantic_capabilities` object separately records negative evidence for exact
+semantic concept/EntitySet/expected-property mappings (absent EntitySet or properties); entries are
+metadata-fingerprint-scoped, contain schema names only, and are preserved by capability refreshes.
+Entries from an older metadata fingerprint are historical and cannot authorize a read.
 
 Migration 004 additionally stores:
 - previous metadata fingerprint;

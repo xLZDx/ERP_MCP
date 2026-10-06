@@ -26,12 +26,14 @@ def test_fake1c_serves_the_versioned_seed_for_documents_and_semantic_balance_fix
     assert b"Document_Purchases" in metadata
     assert b"AccumulationRegister_InventoryBalances" in metadata
     assert b"AccumulationRegister_InventoryMovements" in metadata
+    assert b"AccumulationRegister_CashMovements" in metadata
     assert b"AccumulationRegister_BankBalances" in metadata
 
     expected = {
         "Document_Purchases": "purchases",
         "AccumulationRegister_InventoryBalances": "inventory_balances",
         "AccumulationRegister_InventoryMovements": "inventory_movements",
+        "AccumulationRegister_CashMovements": "cash_movements",
         "AccumulationRegister_BankBalances": "bank_balances",
         "AccumulationRegister_ReceivableBalances": "receivable_balances",
         "AccumulationRegister_PayableBalances": "payable_balances",

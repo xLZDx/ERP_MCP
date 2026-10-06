@@ -131,8 +131,10 @@ Last updated: 2026-10-06
   `bank_balance`, `receivable_balance`, `payable_balance` and `inventory_movements` authorize the exact
   company first, load only validated company-scoped mappings, check current capabilities, compose
   company filters from reviewed mappings plus registry external references, and normalize canonical
-  fields. Sales/purchase document support passed hosted CI `37380789434`; inventory passed
-  `37381909454`; bank passed `37382615109`. Current local full suite is 121 passed / 7 skipped;
+  fields. Cash movement reads also require an exact source/company profile, live metadata and
+  operator-confirmed direction literals. Sales/purchase document support passed hosted CI
+  `37380789434`; inventory passed `37381909454`; bank passed `37382615109`. Current local full suite
+  is 123 passed / 7 skipped;
   disposable PostgreSQL 16 migrations 001–009/privilege policy pass, integration 6/6, Ruff,
   compileall, Bandit and pip-audit pass. P4 follow-up PR #8 head `63d97d3` passed both hosted CI jobs
   in run `37387649827`. A/R and A/P tools expose point-in-time mapped
@@ -140,11 +142,12 @@ Last updated: 2026-10-06
   normalized, signed using confirmed Receipt/Expense literals, and denied if live metadata lacks the
   exact EntitySet. The profile-gated `accounting_posting_rows` listing checks the exact register and
   all selected/company fields against live metadata; it is not a complete trace or native report.
-  Cash movements, AR/AP aging, tax, posting amount semantics/full trace, and real native-report
-  reconciliation remain open.
+  Cash movement support and source-profile persistence of semantic capability denials are implemented
+  locally but have not yet passed hosted CI. AR/AP aging,
+  tax, posting amount semantics/full trace, and real native-report reconciliation remain open.
 - P5 L1 testbed work is on `phase/p5-real1c-testbed`, stacked on P4 in draft PR #3. Fake1C loads a
-  versioned deterministic seed including inventory movement records and exposes semantic read
-  fixture EntitySets; eleven scenario invariants are machine-checked, and synthetic results are
+  versioned deterministic seed including inventory and cash movement records and exposes semantic
+  read fixture EntitySets; twelve scenario invariants are machine-checked, and synthetic results are
   explicitly barred from native-1C reconciliation evidence. Latest local suite: 121 passed, 7
   skipped; hosted CI run `37383877277` passed
   both jobs. Real L2/L3 seed import, snapshots and native reports remain external integration work.

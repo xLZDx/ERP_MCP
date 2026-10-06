@@ -10,6 +10,7 @@ from business_ai_gateway.semantic import (
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     APROVODKA_SHA,
     BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
     CONFIGURATION_PRESETS,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
@@ -21,6 +22,7 @@ from business_ai_gateway.semantic import (
     build_account_turnovers_arguments,
     build_accounting_posting_rows_query,
     build_bank_balance_arguments,
+    build_cash_movements_query,
     build_company_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
@@ -29,6 +31,7 @@ from business_ai_gateway.semantic import (
     normalize_account_turnovers,
     normalize_accounting_posting_rows,
     normalize_bank_balance_rows,
+    normalize_cash_movement_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
     normalize_inventory_movement_rows,
@@ -38,6 +41,7 @@ from business_ai_gateway.semantic import (
     validate_account_turnovers_mapping,
     validate_accounting_posting_rows_mapping,
     validate_bank_balance_mapping,
+    validate_cash_movements_mapping,
     validate_document_mapping,
     validate_inventory_balance_mapping,
     validate_inventory_movements_mapping,
@@ -54,6 +58,49 @@ from scripts.semantic_profiles import (
 SOURCE_ID = "base-bp-001"
 COMPANY_ID = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
 METADATA_FINGERPRINT = "sha256:test-current"
+
+
+def test_cash_movements_require_exact_source_mapping_and_sign_evidence():
+    mapping = {
+        "entity_set": "AccumulationRegister_SourceConfirmedCashMoves",
+        "company_scope": {"field": "Organization_Key", "value_type": "guid"},
+        "output_fields": {
+            "period": "Period", "line_number": "LineNumber",
+            "cash_account_ref": "CashAccount_Key", "currency_ref": "Currency_Key",
+            "amount": "Amount", "record_type": "RecordType", "recorder_ref": "Recorder",
+        },
+        "record_type_values": {"receipt": ["In"], "expense": ["Out"]},
+        "amount_encoding": "positive_magnitude_by_record_type",
+        "source_timezone": "Europe/Chisinau",
+    }
+    assert CASH_MOVEMENTS_CONCEPT == "cash.movements"
+    validate_cash_movements_mapping(mapping)
+    entity, select, filter_expr = build_cash_movements_query(
+        mapping, company_external_ref="f3727523-9689-4b73-973e-9754360fd0a0",
+        start_period="2026-04-01T23:00:00-04:00", end_period="2026-04-02T02:00:00-04:00",
+    )
+    assert entity == mapping["entity_set"]
+    assert select == list(mapping["output_fields"].values())
+    assert "Period ge datetime'2026-04-02T06:00:00'" in filter_expr
+    rows = [
+        {"Period": "2026-04-02T06:30:00", "LineNumber": 1, "CashAccount_Key": "cash-1",
+         "Currency_Key": "MDL", "Amount": "10.25", "RecordType": "In", "Recorder": "doc-1"},
+        {"Period": "2026-04-02T07:30:00", "LineNumber": 2, "CashAccount_Key": "cash-1",
+         "Currency_Key": "MDL", "Amount": 3, "RecordType": "Out", "Recorder": "doc-2"},
+    ]
+    result = normalize_cash_movement_rows(rows, mapping)
+    assert [row["amount_delta"] for row in result] == ["10.25", "-3"]
+    assert [row["direction"] for row in result] == ["receipt", "expense"]
+    with pytest.raises(SemanticMappingUnconfirmed, match="not mapped"):
+        normalize_cash_movement_rows([{**rows[0], "RecordType": "Unknown"}], mapping)
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_cash_movements_mapping(
+            {**mapping, "entity_set": "AccumulationRegister_Guessed/Balance"}
+        )
+    with pytest.raises(SemanticMappingUnconfirmed):
+        validate_cash_movements_mapping(
+            {**mapping, "record_type_values": {"receipt": ["same"], "expense": ["same"]}}
+        )
 
 
 def test_accounting_posting_rows_are_exact_source_profile_driven():

@@ -23,6 +23,7 @@ from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
     INVENTORY_BALANCE_CONCEPT,
     INVENTORY_MOVEMENTS_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
@@ -31,6 +32,7 @@ from .semantic import (
     build_account_turnovers_arguments,
     build_accounting_posting_rows_query,
     build_bank_balance_arguments,
+    build_cash_movements_query,
     build_company_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
@@ -38,6 +40,7 @@ from .semantic import (
     normalize_account_turnovers,
     normalize_accounting_posting_rows,
     normalize_bank_balance_rows,
+    normalize_cash_movement_rows,
     normalize_document_rows,
     normalize_inventory_balance_rows,
     normalize_inventory_movement_rows,
@@ -128,6 +131,28 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
         return source
+
+    async def deny_unconfirmed_semantic_capability(
+        *,
+        source_id: str,
+        metadata_fingerprint: str,
+        concept: str,
+        entity_set: str,
+        reason: str,
+        expected_properties: list[str],
+        missing_properties: list[str] | None = None,
+        message: str,
+    ) -> None:
+        await runtime.registry.record_semantic_capability_evidence(
+            source_id=source_id,
+            concept=concept,
+            entity_set=entity_set,
+            metadata_fingerprint=metadata_fingerprint,
+            reason=reason,
+            expected_properties=expected_properties,
+            missing_properties=missing_properties,
+        )
+        raise CapabilityUnsupported(message)
 
     @mcp.tool()
     async def system_status() -> dict[str, Any]:
@@ -685,8 +710,30 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             metadata = await runtime.onec.metadata(source)
             if entity_set not in metadata.names:
-                raise CapabilityUnsupported(
-                    "configured inventory movement EntitySet is absent from this source's live metadata"
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=INVENTORY_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured inventory movement EntitySet is absent from live metadata",
+                )
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=INVENTORY_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured inventory movement fields are absent from live metadata",
                 )
             result = await runtime.onec.read(
                 source,
@@ -818,17 +865,30 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             metadata = await runtime.onec.metadata(source)
             if entity_set not in metadata.names:
-                raise CapabilityUnsupported(
-                    "configured accounting register EntitySet is absent from live source metadata"
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=ACCOUNTING_POSTING_ROWS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured accounting register EntitySet is absent from live metadata",
                 )
             live_fields = _metadata_entity_fields(metadata, entity_set)
-            if (
-                not live_fields
-                or not set(select).issubset(live_fields)
-                or mapping["company_scope"]["field"] not in live_fields
-            ):
-                raise CapabilityUnsupported(
-                    "configured accounting posting fields are not confirmed by live source metadata"
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=ACCOUNTING_POSTING_ROWS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured accounting posting fields are absent from live metadata",
                 )
             result = await runtime.onec.read(
                 source,
@@ -891,6 +951,120 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 started_at=started,
                 query=query,
                 company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def cash_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read profile-confirmed company cash movements; signs follow mapped record types."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome="denied", started_at=started, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id), "concept": CASH_MOVEMENTS_CONCEPT,
+            "start_period": start_period, "end_period": end_period,
+            "top": bounded_top, "skip": skip,
+        }
+        source = await resolve_source(
+            principal, source_id, "cash_movements", started, query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, CASH_MOVEMENTS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_cash_movements_query(
+                mapping, company_external_ref=company.external_ref,
+                start_period=start_period, end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            if entity_set not in metadata.names:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=CASH_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured cash movement EntitySet is absent from live metadata",
+                )
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=CASH_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured cash movement fields are absent from live metadata",
+                )
+            fields = mapping["output_fields"]
+            result = await runtime.onec.read(
+                source, entity_set=entity_set, select=select, filter_expr=filter_expr,
+                orderby=(
+                    f"{fields['period']} asc,{fields['recorder_ref']} asc,"
+                    f"{fields['line_number']} asc"
+                ),
+                expand=None, top=bounded_top, skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            value = normalize_cash_movement_rows(raw_rows, mapping)
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome="success", started_at=started, query=query, returned_items=len(value),
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+            )
+            return {
+                "source_id": source_id, "company_id": str(parsed_company_id),
+                "concept": CASH_MOVEMENTS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": value, "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome=("denied" if isinstance(exc, (
+                    PermissionError, CapabilityUnsupported, MetadataDriftUnacknowledged,
+                    SemanticProfileUnavailable,
+                )) else "error"),
+                started_at=started, query=query, company_id=parsed_company_id,
                 adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
                 metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
                 detail_code=getattr(exc, "code", type(exc).__name__),

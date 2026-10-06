@@ -94,6 +94,18 @@
         {"op": "greater_than", "path": "net_quantity", "value": 0}
       ],
       "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "cash-receipt-expense",
+      "question": "Cash movement direction signs reconcile to net amount change",
+      "expected_class": "cash_flow",
+      "fixture_id": "cash-receipt-expense",
+      "checks": [
+        {"op": "equals", "path": "expense_delta", "value": -3},
+        {"op": "subtract_equals", "left": "receipt_amount", "right": "expense_amount", "expected": "net_amount"},
+        {"op": "greater_than", "path": "net_amount", "value": 0}
+      ],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
     }
   ]
 }

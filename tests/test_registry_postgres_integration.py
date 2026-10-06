@@ -1036,6 +1036,27 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
         assert stable["drift_status"] == "STABLE"
         assert stable["previous_metadata_fingerprint"] == "a" * 64
         assert stable["drift_acknowledged_at"] is not None
+
+        await conn.execute("SET LOCAL ROLE business_ai_app")
+        evidence_profile = await registry.record_semantic_capability_evidence(
+            source_id=source_id,
+            concept="cash.movements",
+            entity_set="AccumulationRegister_NotPublished",
+            metadata_fingerprint="b" * 64,
+            reason="ENTITY_SET_ABSENT",
+            expected_properties=["Period", "Amount", "Organization_Key"],
+        )
+        assert len(evidence_profile) == 1
+        entry = next(iter(evidence_profile.values()))
+        assert entry["source_id"] == source_id
+        assert entry["concept"] == "cash.movements"
+        assert entry["status"] == "UNSUPPORTED"
+        assert entry["reason"] == "ENTITY_SET_ABSENT"
+        assert entry["expected_properties"] == ["Amount", "Organization_Key", "Period"]
+        assert entry["metadata_fingerprint"] == "b" * 64
+
+        refreshed = await registry.save_capabilities(capability("b" * 64))
+        assert refreshed["source_capability_evidence"] == evidence_profile
     finally:
         await tx.rollback()
         await conn.close()

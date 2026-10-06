@@ -318,3 +318,19 @@
   remains NOT RUN and P9 decision remains NOT_READY.
 - Hosted CI for P4 follow-up PR #8 head `63d97d3` passed both `test` and `odata-upstream` jobs in
   run `37387649827`. PR #8 remains open and Draft; no merge/approval was performed.
+- Added the profile-gated `cash.movements` slice. Pinned Aprovodka generic register GET/paging is
+  reused through the existing ERP_MCP adapter; its pinned UT11/ERP2 presets and tests contain no
+  universal cash-register candidate/semantics. Exact source/company mapping, receipt/expense values,
+  timezone and live EntitySet/property checks are mandatory; no currency conversion is performed.
+  Fake1C now includes cash receipt/expense rows and a twelfth deterministic scenario, with native
+  reconciliation still `NOT_RUN`. Seed fingerprint: `sha256:8322c0db8742603c71ac5a7cfe1fda845ba627ddf08d1a14f136c3623f33469b`.
+  Local full suite: 123 passed, 7 skipped; Ruff, compileall, Bandit and pip-audit pass. Pilot evidence
+  remains `NOT_READY`; `--require-go` correctly exits nonzero on the empty evidence template. This
+  cash slice is local-only pending PR update and hosted CI.
+- Closed the capability-evidence persistence gap: semantic EntitySet/property denials are now kept
+  in `source_capabilities.evidence_json.semantic_capabilities`, keyed to source/concept/exact set and
+  expected property mapping, tagged with metadata fingerprint and timestamp. Capability refresh
+  preserves the nested evidence; older-fingerprint entries are historical and cannot authorize
+  calls. Runtime denial still audits `CAPABILITY_UNSUPPORTED`; no business rows are stored. Added a
+  PostgreSQL runtime-role integration check for persistence across refresh. The integration test is
+  skipped locally without its disposable PG URL; hosted PR CI must exercise it.

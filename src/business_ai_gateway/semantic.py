@@ -24,7 +24,11 @@ RECEIVABLE_BALANCE_CONCEPT = "receivable.balance"
 PAYABLE_BALANCE_CONCEPT = "payable.balance"
 INVENTORY_MOVEMENTS_CONCEPT = "inventory.movements"
 ACCOUNTING_POSTING_ROWS_CONCEPT = "accounting.posting_rows"
+CASH_MOVEMENTS_CONCEPT = "cash.movements"
 _ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
+_RECORD_REGISTER_PATTERN = re.compile(
+    r"^(?:Accumulation|Accounting)Register_[\w\u0080-\uffff]+$", re.UNICODE
+)
 _PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
 ACCOUNT_TURNOVERS_FIELDS = (
     "account",
@@ -73,6 +77,15 @@ ACCOUNTING_POSTING_ROW_FIELDS = (
     "active",
     "account_dr_ref",
     "account_cr_ref",
+)
+CASH_MOVEMENT_FIELDS = (
+    "period",
+    "line_number",
+    "cash_account_ref",
+    "currency_ref",
+    "amount",
+    "record_type",
+    "recorder_ref",
 )
 
 
@@ -727,6 +740,121 @@ def normalize_inventory_movement_rows(rows: Any, mapping: dict[str, Any]) -> lis
                 "quantity_delta": str(delta),
                 "direction": direction,
                 "recorder_ref": row[field_map["recorder_ref"]],
+            }
+        )
+    return normalized
+
+
+def validate_cash_movements_mapping(mapping: dict[str, Any]) -> None:
+    """Require a source-confirmed record set and exact cash direction semantics."""
+    allowed = {
+        "entity_set", "company_scope", "output_fields", "record_type_values",
+        "amount_encoding", "source_timezone", "required_register_capabilities",
+    }
+    entity_set = mapping.get("entity_set") if isinstance(mapping, dict) else None
+    scope = mapping.get("company_scope") if isinstance(mapping, dict) else None
+    fields = mapping.get("output_fields") if isinstance(mapping, dict) else None
+    directions = mapping.get("record_type_values") if isinstance(mapping, dict) else None
+    timezone_name = mapping.get("source_timezone") if isinstance(mapping, dict) else None
+    if (
+        not isinstance(mapping, dict)
+        or set(mapping) - allowed
+        or not isinstance(entity_set, str)
+        or not _RECORD_REGISTER_PATTERN.fullmatch(entity_set)
+        or not isinstance(scope, dict)
+        or set(scope) != {"field", "value_type"}
+        or not isinstance(scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(scope["field"])
+        or scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(fields, dict)
+        or set(fields) != set(CASH_MOVEMENT_FIELDS)
+        or any(not isinstance(value, str) or not _PROPERTY_PATTERN.fullmatch(value)
+               for value in fields.values())
+        or len(set(fields.values())) != len(CASH_MOVEMENT_FIELDS)
+        or not isinstance(directions, dict)
+        or set(directions) != {"receipt", "expense"}
+        or any(
+            not isinstance(values, list)
+            or not values
+            or any(not isinstance(value, str) or not value.strip() for value in values)
+            for values in directions.values()
+        )
+        or set(directions.get("receipt", [])) & set(directions.get("expense", []))
+        or mapping.get("amount_encoding") != "positive_magnitude_by_record_type"
+        or mapping.get("required_register_capabilities", []) != []
+        or not isinstance(timezone_name, str)
+        or not timezone_name
+    ):
+        raise SemanticMappingUnconfirmed("cash movement mapping is incomplete or unsupported")
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise SemanticMappingUnconfirmed("source timezone is not a valid IANA timezone") from exc
+
+
+def build_cash_movements_query(
+    mapping: dict[str, Any], *, company_external_ref: str, start_period: str, end_period: str
+) -> tuple[str, list[str], str]:
+    validate_cash_movements_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start >= end:
+        raise ValueError("period boundaries must include a timezone and start < end")
+    source_zone = ZoneInfo(mapping["source_timezone"])
+    start_local = start.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    end_local = end.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    fields = mapping["output_fields"]
+    period_field = fields["period"]
+    filter_expr = (
+        f"{build_company_filter(mapping, company_external_ref)} and "
+        f"{period_field} ge datetime'{start_local}' and "
+        f"{period_field} lt datetime'{end_local}'"
+    )
+    return mapping["entity_set"], list(fields.values()), filter_expr
+
+
+def normalize_cash_movement_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_cash_movements_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("cash movement response is not a row list")
+    fields = mapping["output_fields"]
+    directions = {
+        value: direction
+        for direction, values in mapping["record_type_values"].items()
+        for value in values
+    }
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict) or any(field not in row for field in fields.values()):
+            raise SemanticMappingUnconfirmed("cash movement row is missing mapped fields")
+        source_type = row[fields["record_type"]]
+        direction = directions.get(source_type) if isinstance(source_type, str) else None
+        if direction is None:
+            raise SemanticMappingUnconfirmed("cash record type is not mapped by this source profile")
+        raw_amount = row[fields["amount"]]
+        if isinstance(raw_amount, bool):
+            raise SemanticMappingUnconfirmed("cash movement amount is not numeric")
+        try:
+            amount = Decimal(str(raw_amount))
+        except (InvalidOperation, ValueError) as exc:
+            raise SemanticMappingUnconfirmed("cash movement amount is not numeric") from exc
+        if not amount.is_finite() or amount < 0:
+            raise SemanticMappingUnconfirmed(
+                "cash movement amount must be a non-negative magnitude per the confirmed profile"
+            )
+        delta = amount if direction == "receipt" else -amount
+        normalized.append(
+            {
+                "period": row[fields["period"]],
+                "line_number": row[fields["line_number"]],
+                "cash_account_ref": row[fields["cash_account_ref"]],
+                "currency_ref": row[fields["currency_ref"]],
+                "amount_delta": str(delta),
+                "direction": direction,
+                "recorder_ref": row[fields["recorder_ref"]],
             }
         )
     return normalized

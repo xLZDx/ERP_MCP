@@ -75,6 +75,12 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
    company dimension, IANA source timezone and reviewed projection of period,
    recorder, line number, active state and debit/credit account references. These values are never
    inferred from upstream examples; no virtual-table operation is claimed.
+   For `cash.movements`, configure one exact source-confirmed accumulation/accounting-register
+   record EntitySet, company dimension, period/line/cash-account/currency/amount/record-type/recorder
+   projection, source IANA timezone and exact receipt/expense literals. `amount_encoding` must be
+   `positive_magnitude_by_record_type`; no preset name, field, sign or currency interpretation is
+   inferred. The exact EntitySet and every selected/company property are rechecked against live
+   metadata before GET.
 5. Validate only after at least ten distinct native 1C report reconciliations passed. The evidence
    file contains `native_reconciliation_cases`, each with `case_id`, `status: "PASS"`, and a
    `native_report_ref` to controlled external evidence:
@@ -136,3 +142,7 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
   live metadata. It is a bounded company/time listing, not a complete posting trace, accounting
   report or native reconciliation; amount/resource semantics remain unavailable until separately
   mapped and validated for that source/company.
+- `cash_movements` reads profile-mapped register rows through the existing pinned OData adapter and
+  normalizes only operator-confirmed receipt/expense literals into signed amount deltas. The exact
+  selected fields and company scope must be present in live metadata. It does not convert currencies
+  or claim cash-flow-report reconciliation; upstream presets provide no universal cash register.

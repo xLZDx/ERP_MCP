@@ -58,6 +58,16 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <Property Name="Recorder_Key" Type="Edm.Guid"/>
         <Property Name="Организация_Key" Type="Edm.Guid"/>
       </EntityType>
+      <EntityType Name="AccumulationRegister_CashMovements">
+        <Property Name="Period" Type="Edm.DateTime"/>
+        <Property Name="LineNumber" Type="Edm.Int32"/>
+        <Property Name="СчетДенежныхСредств_Key" Type="Edm.Guid"/>
+        <Property Name="Валюта_Key" Type="Edm.String"/>
+        <Property Name="Сумма" Type="Edm.Decimal"/>
+        <Property Name="RecordType" Type="Edm.String"/>
+        <Property Name="Recorder" Type="Edm.Guid"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
       <EntityType Name="AccumulationRegister_BankBalances">
         <Property Name="БанковскийСчет_Key" Type="Edm.Guid"/>
         <Property Name="Валюта_Key" Type="Edm.String"/>
@@ -83,6 +93,7 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <EntitySet Name="Document_Purchases" EntityType="Fake1C.Document_Purchases"/>
         <EntitySet Name="AccumulationRegister_InventoryBalances" EntityType="Fake1C.AccumulationRegister_InventoryBalances"/>
         <EntitySet Name="AccumulationRegister_InventoryMovements" EntityType="Fake1C.AccumulationRegister_InventoryMovements"/>
+        <EntitySet Name="AccumulationRegister_CashMovements" EntityType="Fake1C.AccumulationRegister_CashMovements"/>
         <EntitySet Name="AccumulationRegister_BankBalances" EntityType="Fake1C.AccumulationRegister_BankBalances"/>
         <EntitySet Name="AccumulationRegister_ReceivableBalances" EntityType="Fake1C.AccumulationRegister_ReceivableBalances"/>
         <EntitySet Name="AccumulationRegister_PayableBalances" EntityType="Fake1C.AccumulationRegister_PayableBalances"/>
@@ -100,6 +111,7 @@ def _rows(entity: str):
         "Document_Purchases": SEED["purchases"],
         "AccumulationRegister_InventoryBalances": SEED["inventory_balances"],
         "AccumulationRegister_InventoryMovements": SEED["inventory_movements"],
+        "AccumulationRegister_CashMovements": SEED["cash_movements"],
         "AccumulationRegister_BankBalances": SEED["bank_balances"],
         "AccumulationRegister_ReceivableBalances": SEED["receivable_balances"],
         "AccumulationRegister_PayableBalances": SEED["payable_balances"],

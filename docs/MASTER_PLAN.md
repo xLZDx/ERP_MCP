@@ -124,8 +124,11 @@ behind these gates; `bank_balance` is also available only with the same exact-so
 mapping gates. `receivable_balance` and `payable_balance` expose point-in-time mapped balances, not
 aging. `inventory_movements` now reads exact live-metadata register record sets through the pinned
 OData sidecar only after a validated source/company profile maps timezone, company field, record
-types and positive quantity encoding. Cash movements, AR/AP aging, tax and posting trace remain
-unimplemented pending their own configuration-specific semantics and reconciliation evidence.
+types and positive quantity encoding. `cash_movements` uses the same read-only path only after a
+validated source/company profile confirms the exact register, fields, timezone and receipt/expense
+literals; upstream presets provide no universal cash-register candidate. `accounting_posting_rows`
+is a bounded listing, not a full trace. AR/AP aging, cash-flow reconciliation, tax and complete
+posting semantics remain unavailable pending configuration-specific profiles and native reports.
 
 Deliver canonical tools:
 - organization/company discovery;
