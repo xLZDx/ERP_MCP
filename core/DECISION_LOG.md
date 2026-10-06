@@ -140,3 +140,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 - Finding (live run 1, 62 passed / 20 failed): Admin UI inline onclick handlers are blocked by the page CSP script-src self, so Create grant, Sign out, dialog Submit/Cancel and Retry do nothing in a real browser; tests isolate this in test_A45_ui_actions_are_not_blocked_by_the_page_csp and open dialogs programmatically for other rows.
 - Finding: profile validation cannot succeed locally without register-capability evidence (no sidecar): CAPABILITY_UNSUPPORTED; validation-success tests report this as an environment limitation.
 - Evidence (live, seed bootstrap-only, two consecutive full runs from a reset environment): 76 passed / 12 failed / 12 deselected(smoke) in 459s and 528s with an identical failure set; every failure is a strict product-defect or environment-limitation test (audit gaps A01/A03/A16, broken metadata accepted A39, inline onclick blocked by CSP A45/A49, focus loss A46, same-dialog retry 409 A50, no register-capability evidence A06/A40).
+
+## 2026-10-07 - Admin defect fix P4 (branch fix/admin-defects)
+
+- Decision: `parse_metadata` rejects well-formed XML that is not OData `$metadata` (root must be Edmx with Schema/EntityType/EntitySet). An HTML 200 for `$metadata` therefore yields metadata_supported=false and no fingerprint, so the admin refresh fails with an audited error and the previous STABLE evidence is untouched (A39). Regression: tests/test_metadata.py, tests/test_compatibility.py.
