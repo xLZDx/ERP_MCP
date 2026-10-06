@@ -35,3 +35,7 @@ Additional local automation:
   exact commit/branch and evidence file set without including secret values;
 - `deploy/alerts/prometheus.rules.yml` contains bounded-cardinality alert rules for server errors,
   dependency failures, audit errors and MCP latency.
+- `uv run --locked python scripts/validate_performance_evidence.py <evidence.json>` validates load
+  artifacts while explicitly keeping the result as evidence, not capacity sign-off;
+- `uv run --locked python scripts/check_report_references.py` prevents a release with missing or
+  contradictory authoritative report artifacts.

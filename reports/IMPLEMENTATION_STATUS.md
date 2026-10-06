@@ -6,6 +6,15 @@ Last updated: 2026-10-06
 
 ### Batch 1–8 checkpoint — 2026-10-06
 
+### Batch 1–10 continuation checkpoint — 2026-10-06
+
+Added an isolated dependency fault-injection compose fixture and response runbooks, RSV
+invalid/oversized secret-config lifecycle tests, performance-evidence validation, alert and
+report-reference CI gates, and operational artifact coverage tests. Local verification is now
+`194 passed, 9 skipped`; production-like dependency rehearsal, deployed alert delivery, live 1C
+semantic profiles, native-report reconciliation, and operator approval remain external gates.
+Production GO remains NO-GO; PR #11 remains OPEN/Draft.
+
 Follow-up unblocked batch hosted verification: run `37439573762` PASS on `4e63412` for both
 required jobs.
 

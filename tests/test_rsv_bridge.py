@@ -308,3 +308,66 @@ async def test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it(tmp_
     assert '"kind":"file"' in observed_config["content"]
     assert not observed_config["path"].exists()
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "secret_config",
+    ["not-json", "[]"],
+    ids=["malformed-json", "non-object"],
+)
+async def test_rsv_bridge_rejects_invalid_secret_config_before_process_launch(
+    tmp_path: Path, secret_config: str
+):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    launches = []
+
+    async def loader(_ref: str) -> str:
+        return secret_config
+
+    @asynccontextmanager
+    async def fake_stdio(parameters):
+        launches.append(parameters)
+        yield object(), object()
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(tmp_path),
+        config_secret_loader=loader,
+        config_secret_ref="rsv-config",
+        session_factory=lambda *_streams: FakeSession(["ping"]),
+        stdio_factory=fake_stdio,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="secret-bound bridge config is invalid"):
+        await client.health(_source())
+    assert launches == []
+
+
+@pytest.mark.asyncio
+async def test_rsv_bridge_rejects_oversized_secret_config_before_process_launch(
+    tmp_path: Path,
+):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    launches = []
+
+    async def loader(_ref: str) -> str:
+        return '{"x":"' + ("x" * 70_000) + '"}'
+
+    @asynccontextmanager
+    async def fake_stdio(parameters):
+        launches.append(parameters)
+        yield object(), object()
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(tmp_path),
+        config_secret_loader=loader,
+        config_secret_ref="rsv-config",
+        session_factory=lambda *_streams: FakeSession(["ping"]),
+        stdio_factory=fake_stdio,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="secret-bound bridge config is invalid"):
+        await client.health(_source())
+    assert launches == []
+

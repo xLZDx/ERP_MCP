@@ -4,6 +4,14 @@
 
 ### Batch 1–8 checkpoint
 
+### Batch 1–10 continuation checkpoint — 2026-10-06
+
+The local suite is `194 passed, 9 skipped`. New evidence covers isolated dependency failure
+fixtures/runbooks, RSV secret-config lifecycle rejection, performance evidence validation,
+alert/report-reference CI gates, and operational artifact tests. This does not substitute for a
+production-like rehearsal, live 1C semantic validation, native-report reconciliation, or release
+approval. DoD remains PARTIAL and production GO remains NO-GO.
+
 Follow-up artifacts hosted verification: run `37439573762` PASS on `4e63412` for both required jobs.
 
 The current local suite is `184 passed, 9 skipped`; hosted run `37437328906` passed both required
