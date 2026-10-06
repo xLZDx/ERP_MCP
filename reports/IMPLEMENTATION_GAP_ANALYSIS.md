@@ -1,6 +1,11 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-06
+Current delivery is tracked in Draft PRs #2–#9 (PR #1 merged). Latest implementation heads:
+P4 follow-up `f4340b3` passed hosted run `37415523392`; D10 multi-source ACL follow-up
+`6356005` passed hosted run `37415897249`. Report rows below are phase-level status, not a claim that
+the stacked draft PRs are already in `main`. Bootstrap snapshot below is historical context.
+
 Implementation assessed through CI-tested commit `de035247d61a6f166434d449dd69cb2a9dfe418e`;
 hosted CI run `37375751454` passed gateway/database and pinned OData jobs.
 Branch: `bootstrap/1c-day1-production`  
@@ -63,10 +68,10 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | D6 SSRF/transport | PARTIAL | Registered-source routing, URL/path checks, redirects disabled, production HTTPS settings | DNS/IP rebinding and egress policy proof; redirect and oversized request tests; endpoint validation parity for admin paths |
 | D7 Compatibility | PARTIAL | JSON/Atom metadata probe; persisted fingerprint, sticky DRIFTED lifecycle/admin acknowledgement and read fail-closed gate passed CI 37358947196; local unsupported/explicit-fallback selection tests pass | Configured fallback route lifecycle, normalized bindings and adapter provenance |
 | D8 Data-plane correctness | PARTIAL | Pinned upstream sidecar supports bounded reads; per-source register capability profile is persisted; exact operation rechecked against live metadata before call; DrCr unsupported negative and confirmed positive fixtures; sidecar 11/11, upstream client 428/1 skipped, metadata 53/53, PostgreSQL 4/4 | Hosted CI, company scoping and real-source compatibility |
-| D9 Accounting correctness | PARTIAL | Fail-closed semantic profile lifecycle, candidate-only pinned preset hints and evidence schema/operator workflow implemented | Implement canonical accounting tools and reconcile >=10 cases against a real synthetic 1C instance; candidate hints are not validated semantics |
+| D9 Accounting correctness | PARTIAL | Fail-closed profile lifecycle and canonical account-turnover, sales/purchase, inventory/bank/settlement balance, inventory/cash movement and bounded posting-row tools are implemented in draft PRs #2/#8; current P4 hosted tests pass in run 37415523392 | Reconcile >=10 representative cases against native reports on the target synthetic/test 1C base; complete aging/tax/full posting-trace semantics only from confirmed source profiles |
 | D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; hosted PostgreSQL ACL integration passed CI 37355876333 and multi-source subject/group isolation + live source-add/revoke contract passed CI 37415897249 in draft PR #9 | Bounded fan-out evidence; company-filtered business adapter; deployed heterogeneous-source pilot |
 | D11 Audit/provenance | PARTIAL | Append-only trigger; schema fields for request/correlation, company, adapter/profile/policy fingerprints, bytes/truncation; `Audit.write` field persistence and runtime-role append-only assertions passed CI 37357024926 for one error event | Verify success/denied-path field population and all values emitted by tool handlers |
-| D12 Observability | NOT STARTED | Contract in docs only | Structured telemetry, metrics/traces/alerts, source health and leakage tests |
+| D12 Observability | PARTIAL | Protected aggregate HTTP counters, in-flight gauge and latency histogram with bounded labels are implemented in draft PR #6; hosted CI run 37384949997 passed | Structured logs/traces, source/DB/Redis/audit metrics, dashboards/alerts and leakage/load evidence |
 | D13 Performance/limits | PARTIAL | Basic HTTP timeout, response byte cap, rows/filter and Redis per-tool rate limit settings | Load test, p50/p95/p99, per-source/principal concurrency, fan-out, pool saturation and memory evidence |
 | D14 Resilience | PARTIAL | DB/Redis readiness, selected HTTP retries | Defined Redis outage semantics, source isolation/circuit breaker, secret/IdP/adapter failure injection |
 | D15 Backup/restore/rollback | PARTIAL | PostgreSQL backup/PITR and rollback contract in docs | Implement operator automation and run a restore drill in an available DB/deployment environment |

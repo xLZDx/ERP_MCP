@@ -2,6 +2,20 @@
 
 Last updated: 2026-10-06
 
+## Current authoritative state
+
+- PR #1 is merged. Draft implementation PRs #2–#9 remain open for user review; no PR has been
+  self-approved or merged.
+- P4 follow-up PR #8 code head `f4340b3` passed hosted CI `37415523392`, including metadata cache
+  expiry/drift regression, PostgreSQL capability evidence persistence, pinned upstream tests and
+  non-root image smoke.
+- D10 ACL follow-up PR #9 code head `6356005` passed hosted CI `37415897249`, including three-source
+  company/group isolation and same-process source add/revoke PostgreSQL integration. A later
+  documentation-only commit updates the report and is undergoing normal branch CI.
+- Pilot validator remains `NOT_READY`; native 1C accounting reconciliation and target deployment
+  evidence are unavailable. No production readiness claim is made.
+- Bootstrap chronology below is retained as historical execution log, not current branch/PR status.
+
 ## Bootstrap
 
 - Repository: `https://github.com/xLZDx/ERP_MCP`
