@@ -351,3 +351,16 @@
   Hosted run `37415523392` passed both jobs on `f4340b3`: Python/PostgreSQL `125 passed, 1 skipped`,
   pinned upstream client `428 passed, 1 skipped`, metadata `53 passed`, and non-root sidecar image
   smoke passed.
+- D10 multi-source integration follow-up on `phase/p1-multisource-contract`: added a PostgreSQL
+  contract test for three differently configured OData sources with separate subject/group company
+  grants, plus a fourth source onboarded during the same live Registry instance and immediate access
+  denial after revocation. This exercises registry/ACL control-plane behavior only; no 1C endpoint
+  is contacted and no fan-out/performance claim is made. Local suite on the main-based branch:
+  `74 passed, 8 skipped` (PostgreSQL integration requires CI DB); Ruff/compileall/diff-check pass.
+  Draft PR #9 created at https://github.com/xLZDx/ERP_MCP/pull/9.
+- First PR #9 hosted run `37415768895` showed the standalone `main` base predates the later
+  `require_source_for_company` helper. The test now asserts only APIs present on `main`:
+  `require_company` permits the granted company while `require_source` still denies a company-only
+  grant. Local regression suite remains `74 passed, 8 skipped`. Corrected PR head `6356005` passed
+  hosted CI run `37415897249`: `81 passed, 1 skipped`, pip-audit clean, and pinned upstream
+  client/metadata tests plus non-root sidecar image smoke passed.
