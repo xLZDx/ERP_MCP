@@ -343,7 +343,7 @@ async def test_semantic_profile_validation_is_scoped_and_requires_ten_native_cas
         current_capability = OneCCapabilities(
             source_id=source_id,
             platform_version=None,
-            metadata_fingerprint="metadata-" + "a" * 64,
+            metadata_fingerprint="a" * 64,
             metadata_supported=True,
             json_supported=True,
             atom_supported=False,
@@ -356,7 +356,7 @@ async def test_semantic_profile_validation_is_scoped_and_requires_ten_native_cas
         registry = Registry(ConnectionDatabase(conn), production=False)
         await registry.save_capabilities(current_capability)
         changed_capability = replace(
-            current_capability, metadata_fingerprint="metadata-" + "d" * 64
+            current_capability, metadata_fingerprint="d" * 64
         )
         await registry.save_capabilities(changed_capability)
         assert await conn.fetchval(
@@ -863,7 +863,7 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         )
         await conn.execute("RESET ROLE")
 
-        changed = replace(capability, metadata_fingerprint="semantic-metadata-" + "f" * 64)
+        changed = replace(capability, metadata_fingerprint="f" * 64)
         await Registry(ConnectionDatabase(conn), production=False).save_capabilities(changed)
         assert await conn.fetchval(
             "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
