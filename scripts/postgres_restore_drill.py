@@ -64,7 +64,7 @@ async def new_postgres(name: str, *, host_port: int | None = None) -> str:
         f"127.0.0.1:{host_port or ''}:5432",
         "postgres:16-alpine",
     )
-    deadline = time.monotonic() + 60
+    deadline = time.monotonic() + 180
     while True:
         try:
             command(
@@ -79,7 +79,7 @@ async def new_postgres(name: str, *, host_port: int | None = None) -> str:
                 timeout=5,
             )
             break
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except (subprocess.CalledProcessError, RuntimeError, subprocess.TimeoutExpired):
             if time.monotonic() >= deadline:
                 raise RuntimeError("Disposable PostgreSQL startup timed out") from None
             await asyncio.sleep(0.5)
