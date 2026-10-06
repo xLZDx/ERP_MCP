@@ -115,8 +115,4 @@ BEGIN
 END;
 $$;
 
-INSERT INTO bag.schema_migrations(version)
-VALUES (14)
-ON CONFLICT (version) DO NOTHING;
-
 COMMIT;

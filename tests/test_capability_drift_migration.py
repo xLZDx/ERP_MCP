@@ -27,5 +27,5 @@ def test_capability_observation_boundary_has_no_fake_fingerprint_or_runtime_ack(
     assert "REVOKE INSERT, UPDATE ON bag.source_capabilities FROM business_ai_app" in sql
     assert "GRANT UPDATE (evidence_json) ON bag.source_capabilities TO business_ai_app" in sql
     assert "GRANT EXECUTE ON FUNCTION bag.record_capability_observation" in sql
-    assert "VALUES (14)" in sql
+    assert "schema_migrations" not in sql
     assert "metadata-error" not in sql
