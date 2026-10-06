@@ -2,6 +2,10 @@
 
 # ERP_MCP implementation status
 
+## Executed RSV lifecycle and transport matrix — 2026-10-06
+
+RSV/transport security batch (P6-SEC-1, D4/D11/D13): production RSV client now bounds secret resolution; official SDK stdio fixture verifies crash, timeout, malformed response, new-process recovery, between-call config rotation and temporary-config cleanup. No native 1C/COM calls occur in this harness. Replaced the parallel SSRF classifier with production path/DNS/connect/redirect tests; encoded traversal, controls and 3xx-as-data are denied. Local full suite: 278 passed, 9 skipped; Ruff/Bandit PASS. Node 24 wrapper contracts: 14/14, pinned metadata upstream: 53/53. Hosted run 37458293638 at e767b1d failed on build-environment dispatcher/import wiring; corrected locally, next hosted run must verify the correction. Native COM recovery, Windows secret DACL, deployment firewall and durable recovery audit remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL.
+
 ## Connect-time egress verification — 2026-10-06
 
 Connect-time egress batch (D4/D11): Python HTTPcore and pinned sidecar dispatcher validate DNS at socket creation, dial an approved numeric IP and retain TLS SNI. Redirects and ambient proxies cannot bypass the policy. Local Python suite: 245 passed, 9 skipped; baked sidecar: 14/14; exact runtime npm audit: 0 advisories. Dispatcher MIT undici 8.10.2 has its own lock/provenance; upstream engine SHA is unchanged. P5 foundation commit 0e3e038bfcf84d14446eb8d3592066db05060ddb passed both CI jobs in run 37457016876. Deployment firewall proof and real RSV lifecycle remain open; Production GO is NO-GO.

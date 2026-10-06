@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, ClassVar
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import httpx
 
@@ -49,8 +49,21 @@ class OneCReadClient:
     @staticmethod
     def _url(source: Source, relative: str) -> str:
         base = source.base_url.rstrip("/") + "/"
-        clean = relative.lstrip("/")
-        if "://" in clean or clean.startswith("//") or ".." in clean.split("/"):
+        clean = relative
+        decoded = relative
+        for _ in range(8):
+            if (
+                not decoded or decoded.startswith("/") or "\\" in decoded
+                or any(ord(character) < 32 or ord(character) == 127 for character in decoded)
+                or any(segment in {".", ".."} for segment in decoded.split("/"))
+                or urlparse(decoded).scheme or "?" in decoded or "#" in decoded
+            ):
+                raise OneCTransportError("unsafe relative OData path")
+            next_decoded = unquote(decoded)
+            if next_decoded == decoded:
+                break
+            decoded = next_decoded
+        else:
             raise OneCTransportError("unsafe relative OData path")
         target = urljoin(base, clean)
         if urlparse(base).hostname != urlparse(target).hostname:
@@ -97,7 +110,7 @@ class OneCReadClient:
                     await response.aclose()
                     await asyncio.sleep(delay)
                     continue
-                if response.is_error:
+                if response.is_error or 300 <= response.status_code < 400:
                     raise OneCTransportError(f"1C_UPSTREAM_HTTP_{response.status_code}")
                 data = bytearray()
                 async for chunk in response.aiter_bytes():

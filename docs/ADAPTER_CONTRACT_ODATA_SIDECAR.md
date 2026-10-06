@@ -79,5 +79,9 @@ Python hop, and production requires TLS between gateway and sidecar.
 Production gateway source registration additionally requires an exact-host
 `BAG_SOURCE_HOST_ALLOWLIST`; synchronize it with `ONEC_ALLOWED_HOSTS`. Neither
 hostname allowlist prevents DNS rebinding by itself. Production network policy
-must constrain egress to approved 1C address ranges, and DNS-to-connect pinning
-remains a release gate for both Python and sidecar clients.
+must constrain egress to approved 1C address ranges. Python HTTPcore and the MIT
+`undici@8.10.2` sidecar dispatcher now validate all DNS answers at socket creation,
+dial an approved numeric address and preserve the original TLS SNI/Host. The sidecar
+uses the matching dispatcher fetch implementation on both Node 24 build tests and
+the pinned runtime; engine code/SHA remain unchanged. Upstream redirects are denied.
+Deployment firewall/egress enforcement is still a release gate, not proven by unit tests.

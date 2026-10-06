@@ -15,7 +15,8 @@ except ImportError:
 def run() -> dict[str, object]:
     result = execute(["tests/test_rsv_bridge.py"])
     result["real_1c_called"] = False
-    result["not_covered"] = ["real_COM_crash_reconnect","real_subprocess_rotation"]
+    result["not_covered"] = ["real_COM_crash_reconnect"]
+    result["subprocess_evidence_runner"] = "scripts/rsv_process_harness.py"
     result["cases"] = [{"test_path": "tests/test_rsv_bridge.py", "passed": result["passed"]}]
     return result
 

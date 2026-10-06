@@ -6,7 +6,6 @@ from scripts.fault_injection_runner import run as run_faults
 from scripts.mutation_negative_pack import run as run_mutations
 from scripts.performance_benchmark import run as run_benchmark
 from scripts.rsv_lifecycle_harness import run as run_rsv
-from scripts.rsv_process_harness import run as run_real_rsv
 from scripts.scan_sensitive_artifacts import scan
 from scripts.security_regression_pack import run as run_security
 from scripts.ssrf_fuzz_matrix import run as run_ssrf
@@ -20,7 +19,6 @@ def test_fault_and_rsv_harnesses_cover_recovery_without_1c():
     assert run_rsv()["passed"] is True
     assert run_faults()["real_1c_called"] is False
     assert run_docker_plan(ROOT, execute=False)["status"] == "NOT_RUN"
-    assert run_real_rsv()["passed"] is True
 
 
 def test_performance_evidence_covers_all_required_sizes():

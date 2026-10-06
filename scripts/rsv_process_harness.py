@@ -1,50 +1,22 @@
-"""Execute lifecycle cases against a real local fake RSV subprocess."""
-
+"""Executed production-client subprocess evidence, not declared recovery flags."""
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
-MODES = ("crash", "timeout", "malformed", "rotation")
-
-
-def run_case(mode: str) -> dict[str, object]:
-    environment = os.environ.copy()
-    environment["FAKE_RSV_MODE"] = "healthy" if mode == "rotation" else mode
-    process = subprocess.Popen(
-        [sys.executable, str(Path(__file__).with_name("fake_rsv_process.py"))],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=environment,
-    )
-    assert process.stdin is not None and process.stdout is not None
-    process.stdin.write('{"method":"ping"}\n')
-    process.stdin.flush()
-    if mode == "timeout":
-        process.kill()
-        recovered = True
-        response = "timeout"
-    else:
-        response = process.stdout.readline().strip()
-        recovered = mode in {"crash", "malformed", "rotation"}
-    process.kill()
-    process.wait(timeout=5)
-    if mode == "crash":
-        response = "crash"
-    if mode == "malformed":
-        recovered = response == "not-json"
-    return {"mode": mode, "response": response, "recovered": recovered, "query_or_write": False}
+try:
+    from .execute_evidence_tests import execute
+except ImportError:
+    from execute_evidence_tests import execute
 
 
 def run() -> dict[str, object]:
-    results = [run_case(mode) for mode in MODES]
-    return {"mode": "real_local_fake_subprocess", "real_1c_called": False, "results": results, "passed": all(item["recovered"] for item in results)}
+    result = execute(["tests/test_rsv_process_lifecycle.py"], timeout_seconds=240)
+    result.update(real_1c_called=False, transport="official_sdk_stdio",
+                  operations=["ping", "config"],
+                  not_covered=["native_COM_crash", "native_1C_restart", "Windows_secret_DACL"])
+    return result
 
 
 def main() -> None:

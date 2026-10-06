@@ -25,6 +25,7 @@ jobs:
           cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
           corepack pnpm install --frozen-lockfile &&
           npm ci --prefix packages/client/sidecar --omit=dev --ignore-scripts &&
+          mkdir -p node_modules/@1c-odata && ln -s ../../packages/client node_modules/@1c-odata/client &&
           corepack pnpm --filter @1c-odata/client build &&
           node --test packages/client/sidecar/server.test.mjs packages/client/sidecar/egress.test.mjs &&
           corepack pnpm --filter @1c-odata/client test:unit &&

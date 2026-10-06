@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
+import { fetch as dispatcherFetch } from 'undici';
 import { pinnedAgent } from './egress.mjs';
 import { ODataV3Client, BasicAuth } from '@1c-odata/client';
 import { raw } from '@1c-odata/client/filter';
@@ -32,7 +33,7 @@ if (!globalThis[FETCH_BUDGET]) {
     if (!budget) return nativeFetch(...args);
     const target = new URL(typeof args[0] === 'string' || args[0] instanceof URL ? args[0] : args[0].url);
     if (target.origin !== budget.allowedOrigin) throw new SidecarError(403, 'UPSTREAM_ORIGIN_DENIED');
-    const response = await nativeFetch(args[0], { ...args[1], redirect: 'error',
+    const response = await dispatcherFetch(args[0], { ...args[1], redirect: 'error',
       ...(budget.dispatcher ? { dispatcher: budget.dispatcher } : {}) });
     const declaredLength = Number(response.headers.get('content-length'));
     if (Number.isFinite(declaredLength) && declaredLength > budget.maxBytes - budget.usedBytes) {

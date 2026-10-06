@@ -150,8 +150,10 @@ class RSVDataBridgeClient:
         return parameters, executable_sha256, temporary
 
     async def health(self, source: Source) -> dict[str, Any]:
-        parameters, _executable_sha256, temporary = await self._parameters(source)
+        temporary = None
         try:
+            async with asyncio.timeout(self.timeout_seconds):
+                parameters, _executable_sha256, temporary = await self._parameters(source)
             async with (
                 asyncio.timeout(self.timeout_seconds),
                 self._stdio_factory(parameters) as (read_stream, write_stream),
@@ -192,9 +194,10 @@ class RSVDataBridgeClient:
         max_response_bytes: int = 1_000_000,
     ) -> dict[str, Any]:
         args = self._metadata_arguments(operation, arguments)
-        parameters, executable_sha256, temporary = await self._parameters(source)
+        temporary = None
         try:
             async with asyncio.timeout(self.timeout_seconds):
+                parameters, executable_sha256, temporary = await self._parameters(source)
                 async with (
                     self._stdio_factory(parameters) as (read_stream, write_stream),
                     self._session_factory(read_stream, write_stream) as session,

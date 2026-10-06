@@ -65,6 +65,25 @@ class FakeSession:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["health", "metadata"])
+async def test_secret_resolution_is_deadline_bounded_before_process_launch(tmp_path, operation):
+    executable = tmp_path / "fixture.exe"
+    executable.touch()
+
+    async def hung_loader(_ref):
+        await asyncio.Event().wait()
+
+    client = RSVDataBridgeClient(executable=str(executable), config_root=str(tmp_path),
+                                config_secret_loader=hung_loader, config_secret_ref="synthetic",
+                                timeout_seconds=0.01)
+    with pytest.raises(RSVBridgeUnavailable, match="timed out"):
+        if operation == "health":
+            await client.health(_source())
+        else:
+            await client.metadata(_source(), operation="config")
+
+
+@pytest.mark.asyncio
 async def test_rsv_bridge_health_uses_pinned_process_and_only_calls_ping(tmp_path: Path):
     executable = tmp_path / "rsvdata-bridge.exe"
     executable.touch()

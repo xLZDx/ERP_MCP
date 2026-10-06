@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import test from 'node:test';
+import { fetch } from 'undici';
 import { guardedLookup, pinnedAgent } from './egress.mjs';
 
 function resolve(fn, host) {
