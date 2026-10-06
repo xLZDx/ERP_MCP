@@ -148,3 +148,9 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Admin defect fix P8 (branch fix/admin-defects)
 
 - Decision: server-side fix, UI keeps its key (scripts/verify_admin_ui.py already requires key retention on retry). A prior idempotency outcome of `error` (domain write rolled back; only reservation and audit row persisted) with the same actor+command+payload fingerprint is re-armed to `pending` and re-executed; success still replays, different payload/command still 409 (A29/A30), concurrent callers serialize on the row lock. Regression: tests/test_admin_mutations_postgres.py::test_failed_attempt_is_retryable_with_the_same_key_and_payload. No migration.
+
+## 2026-10-07 - Admin defect fix P1/P2/P3 audit gaps (branch fix/admin-defects)
+
+- Decision: no CHECK constraint exists on bag.admin_audit_events.action (only outcome IN success/error/denied/conflict), so no migration. New action values: `session.login`, `session.logout` (A01, verified subject/client from the session; client_id stored in the Redis session record), `auth.denied` (A03/A04), `source.probe` (A16; actor, target host only, outcome, no URL or secrets).
+- Decision (flood control): a rejected bearer is audited only when it is JWT-shaped (3 base64url segments, <=8 KiB) and at most 30 rows/minute/process; the row uses actor `unverified` and carries no token material or unverified claims. Plain garbage, scanners and missing credentials leave no row. Audit write failures never change the 401/probe response.
+- Regression: tests/test_admin_session.py (login/logout audit, bounded denial audit).
