@@ -46,6 +46,7 @@ pythonpath = [".", "src"]
 asyncio_mode = "auto"
 markers = [
   "integration: tests that require a real external 1C test instance",
+  "functional: black-box MCP scenario tests against a running stack (tests/functional; skipped without FT_* env)",
 ]
 
 [tool.ruff]
