@@ -317,3 +317,18 @@ def wait_until(predicate, *, timeout: float, interval: float = 1.0, what: str = 
 
 def gateway_ready(env) -> bool:
     return httpx.get(env.gateway + "/readyz", trust_env=False, timeout=5).status_code == 200
+
+
+async def await_until(factory, *, timeout: float, interval: float = 1.0, what: str = "condition"):
+    """Async twin of wait_until: poll `await factory()` until truthy (observable condition)."""
+    import asyncio
+
+    deadline = time.monotonic() + timeout
+    attempts, last = 0, None
+    while time.monotonic() < deadline:
+        attempts += 1
+        last = await factory()
+        if last:
+            return last
+        await asyncio.sleep(interval)
+    raise AssertionError(f"timed out after {timeout}s ({attempts} attempts) waiting for {what}")
