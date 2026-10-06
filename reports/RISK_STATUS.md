@@ -2,7 +2,11 @@
 
 # Risk status
 
-<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=b11eb91b74050fd9739a7dc28296a89ff71765c1811ea8188528319dde1bafc5 -->
+<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=45eba7318055a58ccb400336aaad2a54bee54ec8d842f39c46b9c81d6f3f4459 -->
+
+## Fault-injection runner — 2026-10-06
+
+Risk reduced: the runner cannot silently convert a dry-run Compose plan into outage evidence; every unexecuted dependency case is marked `NOT_RUN`. Remaining risk is unchanged for real deployed secret-provider/OData/RSV/audit recovery, retention/DR, native parsers and live 1C reconciliation. Production remains NO-GO.
 
 ## Internal settlement aging — 2026-10-06
 

@@ -1,7 +1,11 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=b11eb91b74050fd9739a7dc28296a89ff71765c1811ea8188528319dde1bafc5 -->
+<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=45eba7318055a58ccb400336aaad2a54bee54ec8d842f39c46b9c81d6f3f4459 -->
+
+## Fault-injection runner — 2026-10-06
+
+The runner now validates the isolated Compose fixture and emits five explicit dependency cases (PostgreSQL, Redis, JWKS, OData, RSV) with expected failure/recovery statuses. Local readiness/JWKS recovery remains executed evidence; unexecuted container, secret-provider, OData and audit-recovery outages remain `NOT_RUN`, never implied PASS. Hosted CI for `4b6f488` run `37504902497` passed all four jobs; tested merge `fb05698785f0a464913420044ecc3e302c42e7d9`. Production remains NO-GO; DoD remains PARTIAL.
 
 ## Internal settlement aging — 2026-10-06
 

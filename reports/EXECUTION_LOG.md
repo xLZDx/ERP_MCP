@@ -1,6 +1,10 @@
 # Autonomous engineering execution log
 
-<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=b11eb91b74050fd9739a7dc28296a89ff71765c1811ea8188528319dde1bafc5 -->
+<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=45eba7318055a58ccb400336aaad2a54bee54ec8d842f39c46b9c81d6f3f4459 -->
+
+## Fault-injection runner — 2026-10-06
+
+Implemented Compose config validation and a bounded five-dependency outage plan. The runner records the existing local readiness/JWKS regression coverage separately from cases not executed in the current environment; no outage PASS is synthesized. Focused tests: 8 passed; Ruff passed. Hosted CI `37504902497`: four jobs passed; tested merge `fb05698785f0a464913420044ecc3e302c42e7d9`. Production NO-GO; DoD PARTIAL.
 
 ## Internal settlement aging — 2026-10-06
 
