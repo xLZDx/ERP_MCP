@@ -10,6 +10,29 @@
       "companies": {
         "00000000-0000-0000-0000-000000000001": {
           "concepts": {
+            "account.balance_and_turnovers": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Ledger",
+              "method": "balanceAndTurnovers",
+              "output_fields": {
+                "account": "Account_Key",
+                "closing_credit": "ClosingCredit",
+                "closing_debit": "ClosingDebit",
+                "credit_turnover": "CreditTurnover",
+                "debit_turnover": "DebitTurnover",
+                "opening_credit": "OpeningCredit",
+                "opening_debit": "OpeningDebit"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccountingRegister_Ledger",
+                  "method": "balanceAndTurnovers"
+                }
+              ]
+            },
             "accounting.posting_rows": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -140,6 +163,29 @@
         },
         "00000000-0000-0000-0000-000000000002": {
           "concepts": {
+            "account.balance_and_turnovers": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Ledger",
+              "method": "balanceAndTurnovers",
+              "output_fields": {
+                "account": "Account_Key",
+                "closing_credit": "ClosingCredit",
+                "closing_debit": "ClosingDebit",
+                "credit_turnover": "CreditTurnover",
+                "debit_turnover": "DebitTurnover",
+                "opening_credit": "OpeningCredit",
+                "opening_debit": "OpeningDebit"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccountingRegister_Ledger",
+                  "method": "balanceAndTurnovers"
+                }
+              ]
+            },
             "accounting.posting_rows": {
               "company_scope": {
                 "field": "Организация_Key",

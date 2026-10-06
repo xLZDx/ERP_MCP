@@ -103,6 +103,23 @@ def concept_mappings() -> dict[str, dict]:
             "source_timezone": "UTC",
             "required_register_capabilities": [],
         },
+        "account.balance_and_turnovers": {
+            "entity_set": "AccountingRegister_Ledger",
+            "method": "balanceAndTurnovers",
+            "company_scope": GUID_SCOPE,
+            "output_fields": {
+                "account": "Account_Key",
+                "opening_debit": "OpeningDebit",
+                "opening_credit": "OpeningCredit",
+                "debit_turnover": "DebitTurnover",
+                "credit_turnover": "CreditTurnover",
+                "closing_debit": "ClosingDebit",
+                "closing_credit": "ClosingCredit",
+            },
+            "required_register_capabilities": [
+                {"entity_set": "AccountingRegister_Ledger", "method": "balanceAndTurnovers"}
+            ],
+        },
         "inventory.balance": _balance(
             "AccumulationRegister_InventoryBalances",
             {

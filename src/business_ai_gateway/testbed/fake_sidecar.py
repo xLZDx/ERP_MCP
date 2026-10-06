@@ -28,10 +28,13 @@ def metadata_fingerprint() -> str:
     return hashlib.sha256(METADATA).hexdigest()
 
 
-def _capability_profile(source_id: str) -> dict[str, Any]:
+def _capability_profile(
+    source_id: str, virtual_tables: dict[str, list[str]] | None = None
+) -> dict[str, Any]:
     fingerprint = metadata_fingerprint()
     registers = []
-    for entity_set, methods_available in sorted(VIRTUAL_TABLES.items()):
+    tables = VIRTUAL_TABLES if virtual_tables is None else virtual_tables
+    for entity_set, methods_available in sorted(tables.items()):
         kind = entity_set.split("Register_", 1)[0]
         methods: dict[str, Any] = {}
         for method in ("records", "recordsets"):
@@ -76,13 +79,15 @@ def _virtual_read(entity_set: str, method: str, args: dict[str, Any]) -> list[di
     return virtual_table_rows(entity_set, method, args)
 
 
-def create_sidecar_app(token: str | None = None) -> Starlette:
+def create_sidecar_app(
+    token: str | None = None, virtual_tables: dict[str, list[str]] | None = None
+) -> Starlette:
     async def capabilities(request: Request):
         if token and request.headers.get("authorization") != f"Bearer {token}":
             return _error(401, "UNAUTHORIZED")
         body = await request.json()
         source_id = body.get("source_id")
-        profile = _capability_profile(source_id)
+        profile = _capability_profile(source_id, virtual_tables)
         return JSONResponse(
             _envelope(source_id, "register_capabilities", [], capability_profile=profile)
         )

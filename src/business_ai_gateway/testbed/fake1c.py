@@ -276,6 +276,7 @@ VIRTUAL_TABLES: dict[str, list[str]] = {
     "AccumulationRegister_BankBalances": ["Balance"],
     "AccumulationRegister_ReceivableBalances": ["Balance"],
     "AccumulationRegister_PayableBalances": ["Balance"],
+    "AccountingRegister_Ledger": ["balanceAndTurnovers"],
 }
 _BALANCE_SOURCES = {
     "AccumulationRegister_InventoryBalances": "inventory_balances",
@@ -289,4 +290,15 @@ def virtual_table_rows(entity_set: str, method: str, args: dict) -> list[dict]:
     """Read-only virtual-table results from the seed; LookupError => CAPABILITY_UNSUPPORTED."""
     if method == "Balance" and entity_set in _BALANCE_SOURCES:
         return apply_filter(SEED[_BALANCE_SOURCES[entity_set]], args.get("Condition"))
+    if method == "balanceAndTurnovers" and entity_set == "AccountingRegister_Ledger":
+        window = args.get("Period") or {}
+        start = datetime.fromisoformat(window["from"])
+        end = datetime.fromisoformat(window["to"])
+        rows = [
+            r for r in apply_filter(SEED["account_turnovers"], args.get("Condition"))
+            if start <= datetime.fromisoformat(r["PeriodFrom"])
+            and datetime.fromisoformat(r["PeriodTo"]) <= end
+        ]
+        hidden = {"PeriodFrom", "PeriodTo"}
+        return [{k: v for k, v in r.items() if k not in hidden} for r in rows]
     raise LookupError(f"{entity_set}/{method}")
