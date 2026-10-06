@@ -2,6 +2,28 @@
 
 # ERP_MCP implementation status
 
+## Execution recovery and evidence correction — 2026-10-06
+
+Recovered branch/PR HEAD: `e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`; hosted run
+`37447721792` PASS. This is the last verified baseline; the current repair batch is under test.
+Freeze baseline remains `57eb5b0696063237a43f5d1baf0a646278f5d832`.
+
+The earlier blanket claim that items 1–10 were closed is withdrawn. The previous benchmark used
+formula-generated timings/memory and several evidence scripts hard-coded PASS. Those artifacts
+cannot close D13/D14 or justify production readiness. The repair uses measured production
+FanoutExecutor calls, executed pytest/JUnit evidence, actual bounded fan-out mutation tests, and
+secret-scanner adversarial cases. RSV health now has a deadline and rejects a wrong executable
+before resolving/materializing secrets. Full local suite: `218 passed, 9 skipped`.
+
+Actual Docker PostgreSQL/Redis outage/restart passed: each dependency returned sanitized 503 then
+200 from the production readiness handler. New disposable containers are retained for inspection.
+
+Locally actionable work remains: complete dependency/adapter lifecycle drills, SSRF connect-time
+protection, real MCP process recovery/rotation, promtool firing tests, DB capability CLI integration,
+release assembly, DAD/external evidence and Ferma P5-B. Real reference acquisition/native
+reconciliation must be pursued using the available local 1C/COM environment. Production GO remains
+NO-GO. PR #11 remains Draft. Older closure statements below are superseded by this correction.
+
 Last updated: 2026-10-06
 
 ## Scope freeze checkpoint — 2026-10-06

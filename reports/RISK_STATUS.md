@@ -4,6 +4,16 @@
 
 # Risk status
 
+## Current evidence integrity assessment — 2026-10-06
+
+Baseline `e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`, CI `37447721792` PASS.
+R-25 remains OPEN: prior benchmark and harness closure claims included formula-generated numbers
+and constant PASS values. They are withdrawn. R-05 is advanced by JSON/header scanner regression
+coverage; R-12 by health timeout and pre-secret executable verification; R-13/R-28 by measured
+production executor latency/memory/concurrency and four executed guard mutations. Actual Docker
+PostgreSQL/Redis outages returned sanitized 503 then 200 after restart. No production risk
+acceptance or complete mitigation is inferred.
+
 ## Scope freeze checkpoint — 2026-10-06
 
 Operator scope freeze is active. Code checkpoint at freeze: PR #11 Draft/mergeable,

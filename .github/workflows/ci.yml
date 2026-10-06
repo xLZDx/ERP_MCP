@@ -144,6 +144,8 @@ jobs:
           uv run --locked python scripts/security_regression_pack.py --output "$RUNNER_TEMP/security.json"
           uv run --locked python scripts/rsv_process_harness.py --output "$RUNNER_TEMP/rsv-process.json"
           uv run --locked python scripts/docker_fault_runner.py --output "$RUNNER_TEMP/docker-fault-plan.json"
+          uv run --locked python scripts/docker_fault_runner.py --execute --output "$RUNNER_TEMP/docker-fault-actual.json"
+          uv run --locked python scripts/frozen_requirement_matrix.py --output "$RUNNER_TEMP/frozen-requirements.json"
           uv run --locked python scripts/ssrf_fuzz_matrix.py --output "$RUNNER_TEMP/ssrf.json"
           uv run --locked python scripts/mutation_negative_pack.py --output "$RUNNER_TEMP/mutations.json"
           uv run --locked python scripts/scan_sensitive_artifacts.py \
@@ -164,6 +166,8 @@ jobs:
             ${{ runner.temp }}/performance.json
             ${{ runner.temp }}/security.json
             ${{ runner.temp }}/docker-fault-plan.json
+            ${{ runner.temp }}/docker-fault-actual.json
+            ${{ runner.temp }}/frozen-requirements.json
             ${{ runner.temp }}/ssrf.json
             ${{ runner.temp }}/mutations.json
             ${{ runner.temp }}/release-evidence.json

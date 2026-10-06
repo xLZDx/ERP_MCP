@@ -2,6 +2,18 @@
 
 # Definition of Done status
 
+## Evidence correction — 2026-10-06
+
+DoD remains PARTIAL; Production GO remains NO-GO. Last verified recovery baseline:
+`e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`, CI `37447721792` PASS.
+Previous deterministic benchmark/fault/mutation PASS constants do not close D13/D14. Current
+repair batch replaces benchmark numbers with measurements, verifies executed test counts, kills
+four real fan-out mutations and fixes RSV deadlines/config cleanup. Local pytest: `218 passed,
+9 skipped`. Actual Docker PostgreSQL/Redis outages returned sanitized 503 then 200 after restart.
+JWKS/secrets/OData/RSV/audit recovery coverage remains open. Frozen business,
+evidence, Ferma, deployment and native-accounting gates remain open. Historical blanket closure
+claims below are withdrawn where they relied on declared rather than executed results.
+
 ## Scope freeze checkpoint — 2026-10-06
 
 Operator froze further scope additions until the current committed scope is implemented and mandatory

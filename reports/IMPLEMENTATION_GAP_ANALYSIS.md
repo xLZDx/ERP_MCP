@@ -2,6 +2,18 @@
 
 # ERP_MCP implementation gap analysis
 
+## Current recovery assessment — 2026-10-06
+
+Baseline `e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`, CI `37447721792` PASS;
+freeze `57eb5b0696063237a43f5d1baf0a646278f5d832`. Forty-four traceability rows are
+inventoried by `scripts/frozen_requirement_matrix.py` with explicit open/deferred status.
+Formula-generated benchmarks and hard-coded harness PASS values were discovered and are invalid
+closure evidence. Replacement measurements, executable contracts/mutations and scanner tests
+advance D0/D4/D13/D14; they do not close the complete gates. Actual Docker DB/Redis outage and
+recovery passed (503 then 200, sanitized). Remaining engineering includes DAD/external evidence,
+Ferma test integration, semantics, transport hardening, real adapter lifecycle and deployment
+rehearsals. These are locally actionable gaps, not operator-only blockers. Production GO: NO-GO.
+
 Assessment date: 2026-10-06
 
 ## Scope freeze checkpoint — 2026-10-06

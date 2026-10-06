@@ -1,4 +1,4 @@
-"""Offline RSV process lifecycle contract harness."""
+"""Executed regression evidence with explicit unverified coverage."""
 
 from __future__ import annotations
 
@@ -6,28 +6,18 @@ import argparse
 import json
 from pathlib import Path
 
-EVENTS = ("crash", "timeout", "malformed_response", "restart", "secret_rotation")
+try:
+    from .execute_evidence_tests import execute
+except ImportError:
+    from execute_evidence_tests import execute
 
 
 def run() -> dict[str, object]:
-    results = []
-    for event in EVENTS:
-        results.append(
-            {
-                "event": event,
-                "first_call": "sanitized_failure" if event != "restart" else "healthy",
-                "reconnect": event in {"crash", "timeout", "malformed_response", "restart"},
-                "secret_version": 2 if event == "secret_rotation" else 1,
-                "recovered": True,
-                "query_or_write_called": False,
-            }
-        )
-    return {
-        "mode": "offline_rsv_lifecycle_harness",
-        "real_1c_called": False,
-        "results": results,
-        "passed": all(item["recovered"] and not item["query_or_write_called"] for item in results),
-    }
+    result = execute(["tests/test_rsv_bridge.py"])
+    result["real_1c_called"] = False
+    result["not_covered"] = ["real_COM_crash_reconnect","real_subprocess_rotation"]
+    result["cases"] = [{"test_path": "tests/test_rsv_bridge.py", "passed": result["passed"]}]
+    return result
 
 
 def main() -> None:

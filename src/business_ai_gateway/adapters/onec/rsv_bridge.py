@@ -111,6 +111,7 @@ class RSVDataBridgeClient:
     ) -> tuple[StdioServerParameters, str, tempfile.TemporaryDirectory[str] | None]:
         if not self._SOURCE_ID.fullmatch(source.id):
             raise RSVBridgeUnavailable("source id is not safe for bridge config lookup")
+        executable_sha256 = self._verify_executable()
         temporary: tempfile.TemporaryDirectory[str] | None = None
         if self._config_secret_loader is not None or self._config_secret_ref is not None:
             if self._config_secret_loader is None or not self._config_secret_ref:
@@ -138,7 +139,6 @@ class RSVDataBridgeClient:
                 raise RSVBridgeUnavailable("bridge config path escaped its configured root")
             if not config.is_file():
                 raise RSVBridgeUnavailable("source bridge config is not installed")
-        executable_sha256 = self._verify_executable()
         inherited = {key: os.environ[key] for key in ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP") if key in os.environ}
         parameters = StdioServerParameters(
             command=self.executable,
@@ -153,6 +153,7 @@ class RSVDataBridgeClient:
         parameters, _executable_sha256, temporary = await self._parameters(source)
         try:
             async with (
+                asyncio.timeout(self.timeout_seconds),
                 self._stdio_factory(parameters) as (read_stream, write_stream),
                 self._session_factory(read_stream, write_stream) as session,
             ):
@@ -171,6 +172,8 @@ class RSVDataBridgeClient:
             }
         except RSVBridgeUnavailable:
             raise
+        except TimeoutError:
+            raise RSVBridgeUnavailable("upstream bridge health check timed out") from None
         except Exception as exc:  # noqa: BLE001
             # Do not forward subprocess stderr, connection strings, or upstream payloads.
             raise RSVBridgeUnavailable(

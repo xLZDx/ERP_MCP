@@ -1,48 +1,25 @@
-"""Deterministic dependency fault-injection evidence runner.
-
-This is an offline control-plane harness. It models the externally observable
-contract (sanitized failure, audit event, and recovery) without pretending to
-exercise a production network or a real 1C base.
-"""
+"""Executed regression evidence with explicit unverified coverage."""
 
 from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
 from pathlib import Path
+
+try:
+    from .execute_evidence_tests import execute
+except ImportError:
+    from execute_evidence_tests import execute
 
 DEPENDENCIES = ("postgres", "redis", "jwks", "odata", "rsv")
 
 
-@dataclass(frozen=True)
-class FaultResult:
-    dependency: str
-    failure_status: int
-    sanitized: bool
-    audit_event: str
-    recovered_status: int
-    recovered: bool
-
-
 def run() -> dict[str, object]:
-    results = [
-        FaultResult(dep, 503, True, "dependency_failure", 200, True)
-        for dep in DEPENDENCIES
-    ]
-    return {
-        "mode": "offline_contract_harness",
-        "real_1c_called": False,
-        "results": [result.__dict__ for result in results],
-        "passed": all(
-            result.failure_status == 503
-            and result.sanitized
-            and result.audit_event == "dependency_failure"
-            and result.recovered_status == 200
-            and result.recovered
-            for result in results
-        ),
-    }
+    result = execute(["tests/test_health_routes.py"])
+    result["real_1c_called"] = False
+    result["not_covered"] = ["container_stop_restart","dependency_specific_faults","audit_event_recovery"]
+    result["cases"] = [{"test_path": "tests/test_health_routes.py", "passed": result["passed"]}]
+    return result
 
 
 def main() -> None:

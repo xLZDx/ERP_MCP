@@ -33,7 +33,7 @@ def command(*args: str, env=None, timeout=120) -> str:
     ).stdout.strip()
 
 
-async def new_postgres(name: str) -> str:
+async def new_postgres(name: str, *, host_port: int | None = None) -> str:
     command(
         "docker",
         "run",
@@ -47,7 +47,7 @@ async def new_postgres(name: str) -> str:
         "-e",
         "POSTGRES_PASSWORD=synthetic-drill-only",
         "-p",
-        "127.0.0.1::5432",
+        f"127.0.0.1:{host_port or ''}:5432",
         "postgres:16-alpine",
     )
     deadline = time.monotonic() + 60
@@ -65,7 +65,7 @@ async def new_postgres(name: str) -> str:
                 timeout=5,
             )
             break
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             if time.monotonic() >= deadline:
                 raise RuntimeError("Disposable PostgreSQL startup timed out") from None
             await asyncio.sleep(0.5)

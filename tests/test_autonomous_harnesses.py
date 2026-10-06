@@ -19,7 +19,7 @@ def test_fault_and_rsv_harnesses_cover_recovery_without_1c():
     assert run_faults()["passed"] is True
     assert run_rsv()["passed"] is True
     assert run_faults()["real_1c_called"] is False
-    assert run_docker_plan(ROOT, execute=False)["passed"] is True
+    assert run_docker_plan(ROOT, execute=False)["status"] == "NOT_RUN"
     assert run_real_rsv()["passed"] is True
 
 

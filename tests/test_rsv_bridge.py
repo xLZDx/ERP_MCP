@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -270,6 +271,60 @@ async def test_rsv_bridge_checks_configured_executable_digest_before_launch(tmp_
     with pytest.raises(RSVBridgeUnavailable, match="digest mismatch"):
         await client.metadata(_source(), operation="config")
     assert launches == []
+
+
+@pytest.mark.asyncio
+async def test_health_timeout_closes_session_and_ephemeral_config(tmp_path: Path):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    configs = []
+    closed = []
+
+    async def loader(_ref):
+        return '{}'
+
+    class HangingSession(FakeSession):
+        async def initialize(self):
+            await asyncio.sleep(60)
+
+    @asynccontextmanager
+    async def stdio(parameters):
+        configs.append(Path(parameters.args[-1]))
+        try:
+            yield object(), object()
+        finally:
+            closed.append(True)
+
+    client = RSVDataBridgeClient(
+        executable=str(executable), config_root=str(tmp_path),
+        config_secret_loader=loader, config_secret_ref="fixture",
+        session_factory=lambda *_: HangingSession(["ping"]),
+        stdio_factory=stdio, timeout_seconds=0.01,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="health check timed out"):
+        await client.health(_source())
+    assert closed == [True]
+    assert configs and not configs[0].exists()
+
+
+@pytest.mark.asyncio
+async def test_digest_mismatch_does_not_resolve_secret_or_create_config(tmp_path: Path):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    resolved = []
+
+    async def loader(_ref):
+        resolved.append(True)
+        return '{}'
+
+    client = RSVDataBridgeClient(
+        executable=str(executable), config_root=str(tmp_path),
+        config_secret_loader=loader, config_secret_ref="fixture",
+        expected_executable_sha256="f" * 64,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="digest mismatch"):
+        await client.health(_source())
+    assert not resolved
 
 
 @pytest.mark.asyncio

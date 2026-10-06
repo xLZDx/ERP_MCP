@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import subprocess
 from pathlib import Path
@@ -19,7 +20,11 @@ def compose_config(root: Path) -> None:
 
 def run(root: Path, execute: bool) -> dict[str, object]:
     if execute:
-        compose_config(root)
+        try:
+            from .local_dependency_drill import execute as drill
+        except ImportError:
+            from local_dependency_drill import execute as drill
+        return asyncio.run(drill())
     return {
         "mode": "docker_compose_fault_runner" if execute else "docker_compose_plan",
         "execute": execute,
@@ -29,7 +34,8 @@ def run(root: Path, execute: bool) -> dict[str, object]:
             for dependency in DEPENDENCIES
         ],
         "real_1c_called": False,
-        "passed": True,
+        "passed": None,
+        "status": "NOT_RUN",
     }
 
 
