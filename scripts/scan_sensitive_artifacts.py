@@ -9,7 +9,7 @@ from pathlib import Path
 PATTERNS = (
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._~-]{12,}"),
     re.compile(r"(?i)(password|client_secret|secret|token)\s*[:=]\s*[^,\s}]{8,}"),
-    re.compile(r"(?i)(authorization|cookie|set-cookie)\s*[:=]"),
+    re.compile(r"(?i)(authorization|cookie|set-cookie)\s*[:=]\s+(?!\[REDACTED\])"),
     re.compile(r"(?i)(connection|string|dsn)\s*[:=]\s*[^\s]{12,}"),
 )
 

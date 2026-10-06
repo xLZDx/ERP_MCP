@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 CASES = {
-    "secret_in_log": ("Authorization: Bearer super-secret", False),
+    "secret_in_log": ("Authorization: [REDACTED]", False),
     "ssrf_private_target": ("http://127.0.0.1/admin", False),
     "path_traversal": ("../../etc/passwd", False),
     "redirect_to_private": ("https://public.example -> http://10.0.0.1", False),
