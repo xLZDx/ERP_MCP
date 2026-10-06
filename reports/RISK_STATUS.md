@@ -1,11 +1,13 @@
+[Reading 72 lines from start (total: 72 lines, 0 remaining)]
+
 [Reading 68 lines from start (total: 68 lines, 0 remaining)]
 
 # Risk status
 
 ## Scope freeze checkpoint — 2026-10-06
 
-Operator scope freeze is active. Current candidate: PR #11 Draft/mergeable,
-HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; CI `37446049853` SUCCESS; Production GO NO-GO.
+Operator scope freeze is active. Code checkpoint at freeze: PR #11 Draft/mergeable,
+HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; CI `37446049853` SUCCESS; exact scope baseline commit `57eb5b0696063237a43f5d1baf0a646278f5d832`; Production GO NO-GO. Later scope-preserving commits may advance PR HEAD without changing frozen scope.
 
 New frozen-scope risk rows are R-31–R-35:
 - scope creep;
@@ -68,5 +70,7 @@ deployment rollback remain open.
 | R-25 unsupported production claim | MITIGATED IN STATUS REPORTING | This work uses DEV READY and explicit gate matrix | Keep exact evidence and readiness label updated |
 
 Critical/high risks remain open; production readiness is not claimed.
+
+[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]
 
 [executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]

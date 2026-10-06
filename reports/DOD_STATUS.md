@@ -7,11 +7,15 @@
 Operator froze further scope additions until the current committed scope is implemented and mandatory
 evidence closes. Authoritative scope: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md`.
 
-Current candidate:
+Code checkpoint at freeze (before the documentation commits):
 - PR #11 Draft / mergeable;
-- HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`;
+- code HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`;
 - hosted CI `37446049853`: SUCCESS;
+- exact scope baseline commit: `57eb5b0696063237a43f5d1baf0a646278f5d832`;
 - Production GO: NO-GO.
+
+Later scope-preserving defect/evidence/documentation commits may advance PR #11 HEAD without changing
+the frozen requirement set.
 
 No new feature/scenario/adapter/integration family may enter execution without explicit operator
 rebaseline. Existing deferred write/legacy/production ERP-Ferma lanes remain deferred.

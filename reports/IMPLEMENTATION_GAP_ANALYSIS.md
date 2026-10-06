@@ -10,8 +10,8 @@ Further product-scope additions are frozen. Gap analysis is now measured only ag
 `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md`; new feature/scenario/adapter/integration families are
 not accepted without explicit operator rebaseline.
 
-Current PR #11: Draft/mergeable, HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; hosted CI
-`37446049853` SUCCESS. Production GO remains NO-GO.
+Code checkpoint at freeze: PR #11 Draft/mergeable, code HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; hosted CI
+`37446049853` SUCCESS; exact scope baseline commit `57eb5b0696063237a43f5d1baf0a646278f5d832`. Later scope-preserving commits may advance PR HEAD without changing frozen scope. Production GO remains NO-GO.
 
 Newly frozen implementation gaps now include the already accepted DAD read-only scope:
 - private real-reference restore/fingerprint/native reconciliation;

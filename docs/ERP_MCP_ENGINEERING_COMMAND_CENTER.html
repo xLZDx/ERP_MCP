@@ -10,7 +10,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.1 · SCOPE FROZEN 2026-10-06 · candidate 65883a5 · CI 37446049853 PASS</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.1 · SCOPE FROZEN 2026-10-06 · freeze code 65883a5 · baseline 57eb5b0 · CI 37446049853 PASS</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -46,7 +46,7 @@
   <div class="phase-code">P10</div><div class="phase-name">Production ERP / Ferma</div>
   <div class="phase-desc">recorded deferred production adapters</div><div class="phase-stat">не продвигаются при freeze · Ferma test/oracle role активен только внутри P5-B</div>
   </div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>реализация / проверка</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>опционально</span></div>
-<div class="status-note"><strong>SCOPE FREEZE ACTIVE.</strong> PR #11 Draft/mergeable, candidate <code>65883a5</code>; hosted CI <code>37446049853</code> PASS. Новые feature/scenario/adapter/integration families запрещены до закрытия текущего committed scope или явного operator rebaseline. CI PASS не означает Production GO.</div></section><section class="panel" id="scope-freeze" style="margin-top:18px;border:2px solid #57a8ff">
+<div class="status-note"><strong>SCOPE FREEZE ACTIVE.</strong> PR #11 Draft/mergeable, freeze code checkpoint <code>65883a5</code>; baseline <code>57eb5b0</code>; hosted CI <code>37446049853</code> PASS. Новые feature/scenario/adapter/integration families запрещены до закрытия текущего committed scope или явного operator rebaseline. CI PASS не означает Production GO.</div></section><section class="panel" id="scope-freeze" style="margin-top:18px;border:2px solid #57a8ff">
 <h3>Scope Freeze · baseline 2026-10-06 · commit <code>57eb5b0</code></h3>
 <p><strong>Решение оператора:</strong> новые product additions заморожены. Работаем только по уже принятому scope, defect/security/compliance fixes и evidence/ops задачам, нужным для его закрытия. Новая задача обязана сослаться на существующий frozen requirement/gate.</p>
 <div class="summary-grid"><div><h4>Committed/current</h4><ul>
@@ -63,7 +63,7 @@
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
 <h2>Актуальный frozen status · 2026-10-06</h2>
-<p><strong>Production GO: NO-GO.</strong> PR #11 OPEN/Draft/mergeable; HEAD <code>65883a5a83fbb369cbd32e5e31af3041f9d7c515</code>; hosted CI <code>37446049853</code> SUCCESS. Последний autonomous closure status сообщает до <code>199 passed, 9 skipped</code>; skipped/live gates не являются PASS.</p>
+<p><strong>Production GO: NO-GO.</strong> PR #11 OPEN/Draft/mergeable; freeze code HEAD <code>65883a5a83fbb369cbd32e5e31af3041f9d7c515</code>; hosted CI <code>37446049853</code> SUCCESS. Последний autonomous closure status сообщает до <code>199 passed, 9 skipped</code>; skipped/live gates не являются PASS.</p>
 <div class="table-wrap"><table><thead><tr><th>Тема</th><th>Состояние</th><th>Осталось</th></tr></thead><tbody>
 <tr><td>Control plane / hardening</td><td>ACL/audit/OData/capability, SBOM/scans, bounded fan-out/load evidence, failure harnesses, release/rollback artifacts and runbooks имеют CI/offline evidence</td><td>Production rehearsal/IdP/network/secrets/PITR/pilot evidence</td></tr>
 <tr><td>Local 1C / COM</td><td>1C 8.3.27.2342 + Community License + V83.COMConnector; RSV v1.3.0 installed/exported/audited; metadata allowlist smoke PASS</td><td>P6 lifecycle/secret-ref closure; business query stays denied</td></tr>
