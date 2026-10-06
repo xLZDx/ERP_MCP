@@ -15,6 +15,7 @@ coverage.xml
 reports
 tests
 testbed
+**/testbed
 docs
 var
 vendor/reference/1c-odata-mcp
