@@ -384,6 +384,42 @@ async def test_sidecar_client_bounds_response_and_sanitizes_upstream_error():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error_type", [httpx.ConnectError, httpx.ReadTimeout]
+)
+async def test_sidecar_network_outage_is_sanitized_and_fails_closed(error_type):
+    async def fail(request):
+        raise error_type("PRIVATE-SIDECAR-DETAIL", request=request)
+
+    client = ODataSidecarClient(
+        base_url="http://sidecar",
+        token="s" * 48,
+        timeout_seconds=0.1,
+        max_response_bytes=1000,
+        max_rows=10,
+        transport=httpx.MockTransport(fail),
+    )
+    try:
+        with pytest.raises(ODataSidecarError, match="sidecar is unavailable") as error:
+            await client.read(
+                source(),
+                username="u",
+                password="p",
+                entity_set="Document_Invoice",
+                select=None,
+                filter_expr=None,
+                orderby=None,
+                expand=None,
+                top=5,
+                skip=0,
+            )
+        assert "PRIVATE-SIDECAR-DETAIL" not in str(error.value)
+        assert error.value.__cause__ is None
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_sidecar_client_rejects_more_rows_than_gateway_limit():
     payload = envelope()
     payload["data"] = [{"n": 1}, {"n": 2}]
