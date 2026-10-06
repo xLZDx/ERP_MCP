@@ -1,6 +1,6 @@
 # Admin Control Center — Operations Runbook
 
-Status: implementation runbook for the feature branch. Production enablement still requires target IdP, secret-store, network and pilot evidence.
+Status: implemented Admin Control Center operations contract. Production enablement still requires target IdP, secret-store, network and pilot evidence.
 
 ## 1. Safety model
 
@@ -24,12 +24,9 @@ Create these PostgreSQL roles before migrations in the target environment:
 - business_ai_admin
 - business_ai_control_api
 
-Run migrations through the migration-owner DSN. Schema 11 is expected after this feature:
-
-- 008 platform role bindings
-- 009 admin mutation audit/idempotency/provenance
-- 010 business capability policy
-- 011 company-scope mappings
+Run migrations through the migration-owner DSN. The combined candidate schema is
+version 14: Admin lineage occupies migrations 010–013 and migration 014 records the
+capability observation/trust boundary. Verify the exact migration set in the candidate.
 
 Run:
 
