@@ -320,6 +320,7 @@ async def test_adapter_requires_source_capability_evidence_before_register_call(
         }],
     }
     adapter._capabilities[register_source.id] = capabilities(missing)
+    adapter._capabilities_expires_at[register_source.id] = 10**9
     with pytest.raises(CapabilityUnsupported, match="CAPABILITY_UNSUPPORTED"):
         await adapter.register_read(
             register_source,
@@ -338,6 +339,7 @@ async def test_adapter_requires_source_capability_evidence_before_register_call(
         }],
     }
     adapter._capabilities[register_source.id] = capabilities(confirmed)
+    adapter._capabilities_expires_at[register_source.id] = 10**9
     result = await adapter.register_read(
         register_source,
         register_set="AccountingRegister_Хозрасчетный",
@@ -447,6 +449,7 @@ async def test_adapter_routes_only_detected_json_profile_to_sidecar():
         compatibility_status=CompatibilityStatus.SUPPORTED,
         evidence={"json_probe": "ok"},
     )
+    adapter._capabilities_expires_at[candidate.id] = 10**9
 
     result = await adapter.read(
         candidate,

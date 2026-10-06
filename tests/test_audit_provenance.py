@@ -51,14 +51,15 @@ async def test_audit_writes_correlation_scope_and_adapter_provenance():
         upstream_sha="abc123",
         policy_version="policy-7",
         metadata_fingerprint="sha256:metadata",
+        profile_fingerprint="sha256:profile",
         returned_items=4,
         response_bytes=512,
         truncated=True,
     )
 
     assert "request_id, company_id, adapter_kind" in pool.sql
-    assert "response_bytes, truncated" in pool.sql
-    assert pool.args[11:20] == (
+    assert "profile_fingerprint, response_bytes, truncated" in pool.sql
+    assert pool.args[11:21] == (
         request_id,
         company_id,
         "ODATA_V3",
@@ -66,6 +67,7 @@ async def test_audit_writes_correlation_scope_and_adapter_provenance():
         "abc123",
         "policy-7",
         "sha256:metadata",
+        "sha256:profile",
         512,
         True,
     )

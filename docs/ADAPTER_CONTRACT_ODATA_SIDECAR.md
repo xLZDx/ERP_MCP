@@ -37,6 +37,20 @@ handshake, returns it from `onec_capabilities`, and persists it in
 evidence source; safe probes or validated semantic profiles may be added later with their own
 provenance and validation rules.
 
+For semantic record-set reads (not virtual methods), ERP_MCP also stores exact-source negative
+evidence in `bag.source_capabilities.evidence_json.semantic_capabilities`. Entries are scoped to the
+source, concept, exact EntitySet and expected property set, carry the current metadata fingerprint,
+and state `UNSUPPORTED` plus a bounded reason such as `ENTITY_SET_ABSENT` or `PROPERTY_ABSENT`.
+Only property names are recorded; no business rows are stored. A normal capability refresh preserves
+these semantic entries, while a changed metadata fingerprint makes old evidence historical/stale.
+The `onec_capabilities` result exposes the persisted semantic evidence separately from the pinned
+sidecar register profile.
+
+The gateway caches source metadata and the associated capability fingerprint only for
+`BAG_METADATA_CACHE_TTL_SECONDS` (default 60 seconds, maximum one hour). Expiry reruns the existing
+metadata detector/parser; fetching fresh metadata invalidates its prior capability snapshot so
+configuration drift reaches the persisted gate without requiring a process restart.
+
 ## Register read
 
 `POST /v1/read` uses `operation: "register_read"`, exact `register_set`, `register_method`, bounded

@@ -141,7 +141,11 @@ Migration 005 adds `register_capabilities_json`, a per-source profile of registe
 operation evidence. A capability entry records availability, the evidence source, exact function
 import/entity-set binding, HTTP method, discovery time and metadata fingerprint. Negative evidence
 is retained too; a runtime/API method list alone never grants availability. Any metadata fingerprint
-change replaces the evidence profile and retains the existing sticky drift gate.
+change replaces the register-operation profile and retains the existing sticky drift gate. The
+`evidence_json.semantic_capabilities` object separately records negative evidence for exact
+semantic concept/EntitySet/expected-property mappings (absent EntitySet or properties); entries are
+metadata-fingerprint-scoped, contain schema names only, and are preserved by capability refreshes.
+Entries from an older metadata fingerprint are historical and cannot authorize a read.
 
 Migration 004 additionally stores:
 - previous metadata fingerprint;
@@ -224,6 +228,12 @@ Maps canonical concepts to source-specific implementation:
 Mappings are versioned through their owning profile. They remain `CANDIDATE` until source-specific
 metadata and semantic evidence confirms them; a preset name or upstream `verified` label alone does
 not enable a 1C operation.
+Migration 008 adds an operator-confirmed `CONFIRMED`/`HIGH` state with evidence refs and an
+append-only `MAPPING_CONFIRMED` event. Profile validation fails while any mapping remains a candidate.
+The first canonical account-turnover mapping binds one exact `AccountingRegister_*` method, an
+operator-reviewed company dimension/type, and seven source property names projected to canonical
+output keys. Runtime use still requires matching source/company, current acknowledged metadata,
+validated profile evidence and a positive live capability for that exact register method.
 
 ### `semantic_profile_events`
 
@@ -272,6 +282,9 @@ Migration 003 adds the initial request/correlation and adapter provenance fields
 - adapter kind/version and upstream SHA;
 - policy and metadata fingerprints;
 - response bytes and truncation.
+
+Migration 009 adds the semantic profile fingerprint so canonical-tool audit events identify the
+exact mapping profile used for a read.
 
 Target fields:
 - event ID/time;

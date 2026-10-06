@@ -109,6 +109,15 @@ A single customer 1C source being down must not make the whole service unready.
 
 Separate source-specific diagnostic state.
 
+### Initial HTTP metrics implementation
+
+P8 exposes bounded-cardinality HTTP request counters, in-flight gauge and latency histogram at
+`/metrics`. Labels are limited to method, status and a fixed route class; source, company, subject,
+tool arguments, URLs, and query values are never labels. The endpoint is disabled (404) unless
+`BAG_METRICS_TOKEN` is configured with at least 32 bytes; scrapers send it as a bearer token. The
+token must be held in the deployment secret store and rotated independently. Metrics are per-process
+and reset on restart; they are not a durable audit or a substitute for database/audit monitoring.
+
 ## 6. Service objectives
 
 Initial production objectives must be set from measured pilot data. Before measurements, use

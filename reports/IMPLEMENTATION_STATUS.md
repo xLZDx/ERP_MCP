@@ -2,6 +2,28 @@
 
 Last updated: 2026-10-06
 
+## Current authoritative state
+
+- Active delivery branch: `phase/p4-inventory-movements` at `f4340b38945c783a357ce19caa3f34c49d7fdcd0`.
+- PR #1 is merged. Draft PRs #2–#8 remain open; PR #8 carries the current P4 follow-up and is
+  stacked on the P9 evidence-gate branch. No PR has been self-approved or merged by this agent.
+- Hosted run `37415224776` on this head passed both jobs: PostgreSQL migrations, privilege checker,
+  full pytest and pip-audit; pinned OData upstream tests and non-root sidecar image smoke. The
+  preceding run `37415093193` exposed the SQL key-parameter type bug and its OData job passed.
+- Latest local checks on `f85b716`: pytest `123 passed, 7 skipped`; Ruff, Bandit, compileall,
+  pip-audit, scenario validation (12 synthetic scenarios), and `git diff --check` passed. The seven
+  skipped checks require the hosted PostgreSQL privilege-test database.
+- P4 now includes inventory movements, bounded accounting posting rows, cash movements, and
+  persistent source-specific negative capability evidence. No unconfirmed EntitySet/property name
+  is guessed; missing evidence denies with `CAPABILITY_UNSUPPORTED`.
+- New local D7 hardening adds bounded metadata/capability cache freshness and invalidates cached
+  fingerprints on source endpoint/credential-reference changes. Hosted run `37415523392` passed on
+  this head: Python/PostgreSQL `125 passed, 1 skipped`; upstream client `428 passed, 1 skipped`,
+  metadata `53 passed`, sidecar image smoke and pip-audit passed.
+- Pilot validator remains `NOT_READY`; native 1C reconciliation has not been run. This is not a
+  production-ready declaration. The historical bootstrap chronology below is retained as a log,
+  not as the current branch/PR status.
+
 ## Bootstrap
 
 - Repository: `https://github.com/xLZDx/ERP_MCP`
@@ -17,7 +39,7 @@ Last updated: 2026-10-06
 
 ## Delivery status
 
-- Current implementation phase: P3 pinned OData sidecar integration; P1 residual gates remain open.
+- Current implementation phase: P6 isolated RSV bridge boundary; P1/P4/P5 residual gates remain open.
 - Completed: repository state recovered; origin fetched; local branch fast-forwarded; supplied
   engineering command center copied to repository root; normative package rechecked; P0–P9 and
   D0–D18 initial gap analysis written; additive company-scope/audit schema and control-plane work
@@ -123,6 +145,52 @@ Last updated: 2026-10-06
   disposable PostgreSQL 001–007/privilege checker/integration `6 passed`; Ruff/compileall/Bandit pass.
   Pip-audit reports no known vulnerabilities. Hosted run `37375030150` passed both CI jobs. Real
   configuration-specific semantics remain unvalidated.
+- P4 semantic read tools are in draft PR #2; inventory movements are in follow-up draft PR #8,
+  stacked on P9 because real native reconciliation remains an external gate. Migration 008
+  adds auditable explicit mapping confirmation and stales validated profiles after direct mapping
+  edits; migration 009 records the semantic profile fingerprint in audit events. The new
+  `accounting_balance_and_turnovers`, `sales_documents`, `purchase_documents`, `inventory_balance`,
+  `bank_balance`, `receivable_balance`, `payable_balance` and `inventory_movements` authorize the exact
+  company first, load only validated company-scoped mappings, check current capabilities, compose
+  company filters from reviewed mappings plus registry external references, and normalize canonical
+  fields. Cash movement reads also require an exact source/company profile, live metadata and
+  operator-confirmed direction literals. Sales/purchase document support passed hosted CI
+  `37380789434`; inventory passed `37381909454`; bank passed `37382615109`. Current local full suite
+  is 123 passed / 7 skipped;
+  disposable PostgreSQL 16 migrations 001–009/privilege policy pass, integration 6/6, Ruff,
+  compileall, Bandit and pip-audit pass. P4 follow-up PR #8 head `63d97d3` passed both hosted CI jobs
+  in run `37387649827`. A/R and A/P tools expose point-in-time mapped
+  balances only, not aging. Inventory movement rows are now source/company profile-mapped, timezone
+  normalized, signed using confirmed Receipt/Expense literals, and denied if live metadata lacks the
+  exact EntitySet. The profile-gated `accounting_posting_rows` listing checks the exact register and
+  all selected/company fields against live metadata; it is not a complete trace or native report.
+  Cash movement support and source-profile persistence of semantic capability denials are implemented
+  locally but have not yet passed hosted CI. AR/AP aging,
+  tax, posting amount semantics/full trace, and real native-report reconciliation remain open.
+- P5 L1 testbed work is on `phase/p5-real1c-testbed`, stacked on P4 in draft PR #3. Fake1C loads a
+  versioned deterministic seed including inventory and cash movement records and exposes semantic
+  read fixture EntitySets; twelve scenario invariants are machine-checked, and synthetic results are
+  explicitly barred from native-1C reconciliation evidence. Latest local suite: 121 passed, 7
+  skipped; hosted CI run `37383877277` passed
+  both jobs. Real L2/L3 seed import, snapshots and native reports remain external integration work.
+- P6 is in progress on `phase/p6-rsv-bridge-boundary`, stacked on P5 in draft PR #4. The pinned
+  MIT bridge is launched via the MCP SDK stdio client with one source-ID-bound config, a reviewed
+  tool inventory, ping-only health/restart semantics and sanitized failures. Windows ACL/runbook
+  added. No generic native query is proxied; company-scoped data routing and a real Windows/COM
+  smoke remain open gates. Hosted CI run `37384482140` passed both jobs.
+- P7 legacy 8.2 is deliberately deferred in draft PR #5: repository review found no named 8.2
+  target or customer requirement. The GPL toolkit remains isolated-only; do not deploy it or
+  copy/link it into core without a concrete target and a fresh license/security review. Hosted CI
+  run `37384584340` passed both jobs.
+- P8 protected HTTP metrics is in progress on `phase/p8-protected-http-metrics`, stacked on P7.
+  It adds optional bearer-protected request counters, in-flight gauge and latency histograms with
+  bounded labels. Hosted CI run `37384949997` passed both jobs. Full logs/traces/source telemetry,
+  load tests, SBOM/deployment evidence and restore drills remain open.
+- P9 is in progress on `phase/p9-pilot-evidence-gate`, stacked on P8. A strict privacy-safe
+  evidence manifest and CI validator are added; the committed template is `NOT_READY` and the
+  `--require-go` gate fails until exact-release artifacts and human approvals are verified.
+  Production IdP, live 1C/native reports, target load/restore drills, real pilot users and release
+  authority are not present in this environment.
 - Next: verify full audit provenance on success/denial paths (the CI round-trip currently exercises
   one error event), and implement company-scoped authorization through an actual business-data
   adapter without weakening existing fail-closed behavior.

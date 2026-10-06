@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import html
+import json
+from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -9,48 +11,10 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 
-SEED = {
-    "organizations": [
-        {
-            "Ref_Key": "00000000-0000-0000-0000-000000000001",
-            "Code": "ORG1",
-            "Description": "MCP TEST SRL",
-        },
-        {
-            "Ref_Key": "00000000-0000-0000-0000-000000000002",
-            "Code": "ORG2",
-            "Description": "MCP TEST TWO SRL",
-        },
-    ],
-    "counterparties": [
-        {
-            "Ref_Key": "10000000-0000-0000-0000-000000000001",
-            "Code": "C001",
-            "Description": "Customer Alpha",
-        },
-        {
-            "Ref_Key": "10000000-0000-0000-0000-000000000002",
-            "Code": "S001",
-            "Description": "Supplier Beta",
-        },
-    ],
-    "sales": [
-        {
-            "Ref_Key": "20000000-0000-0000-0000-000000000001",
-            "Number": "SALE-001",
-            "Posted": True,
-            "Amount": 1200.0,
-        },
-        {
-            "Ref_Key": "20000000-0000-0000-0000-000000000002",
-            "Number": "SALE-002",
-            "Posted": False,
-            "Amount": 500.0,
-        },
-    ],
-}
+SEED_PATH = Path(__file__).resolve().parents[3] / "testbed" / "fake1c" / "fixtures" / "seed.json"
+SEED = json.loads(SEED_PATH.read_text(encoding="utf-8"))
 
-METADATA = b"""<?xml version="1.0" encoding="utf-8"?>
+METADATA = """<?xml version="1.0" encoding="utf-8"?>
 <edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
   <edmx:DataServices>
     <Schema xmlns="http://schemas.microsoft.com/ado/2008/09/edm" Namespace="Fake1C">
@@ -70,15 +34,73 @@ METADATA = b"""<?xml version="1.0" encoding="utf-8"?>
         <Property Name="Number" Type="Edm.String"/>
         <Property Name="Posted" Type="Edm.Boolean"/>
         <Property Name="Amount" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="Document_Purchases">
+        <Property Name="Ref_Key" Type="Edm.Guid"/>
+        <Property Name="Number" Type="Edm.String"/>
+        <Property Name="Posted" Type="Edm.Boolean"/>
+        <Property Name="Amount" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_InventoryBalances">
+        <Property Name="Номенклатура_Key" Type="Edm.Guid"/>
+        <Property Name="Склад_Key" Type="Edm.Guid"/>
+        <Property Name="КоличествоBalance" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_InventoryMovements">
+        <Property Name="Period" Type="Edm.DateTime"/>
+        <Property Name="Номенклатура_Key" Type="Edm.Guid"/>
+        <Property Name="Склад_Key" Type="Edm.Guid"/>
+        <Property Name="Количество" Type="Edm.Decimal"/>
+        <Property Name="RecordType" Type="Edm.String"/>
+        <Property Name="Recorder_Key" Type="Edm.Guid"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_CashMovements">
+        <Property Name="Period" Type="Edm.DateTime"/>
+        <Property Name="LineNumber" Type="Edm.Int32"/>
+        <Property Name="СчетДенежныхСредств_Key" Type="Edm.Guid"/>
+        <Property Name="Валюта_Key" Type="Edm.String"/>
+        <Property Name="Сумма" Type="Edm.Decimal"/>
+        <Property Name="RecordType" Type="Edm.String"/>
+        <Property Name="Recorder" Type="Edm.Guid"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_BankBalances">
+        <Property Name="БанковскийСчет_Key" Type="Edm.Guid"/>
+        <Property Name="Валюта_Key" Type="Edm.String"/>
+        <Property Name="СуммаBalance" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_ReceivableBalances">
+        <Property Name="Контрагент_Key" Type="Edm.Guid"/>
+        <Property Name="Договор_Key" Type="Edm.Guid"/>
+        <Property Name="СуммаBalance" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
+      <EntityType Name="AccumulationRegister_PayableBalances">
+        <Property Name="Контрагент_Key" Type="Edm.Guid"/>
+        <Property Name="Договор_Key" Type="Edm.Guid"/>
+        <Property Name="СуммаBalance" Type="Edm.Decimal"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
       </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="Catalog_Organizations" EntityType="Fake1C.Catalog_Organizations"/>
         <EntitySet Name="Catalog_Counterparties" EntityType="Fake1C.Catalog_Counterparties"/>
         <EntitySet Name="Document_Sales" EntityType="Fake1C.Document_Sales"/>
+        <EntitySet Name="Document_Purchases" EntityType="Fake1C.Document_Purchases"/>
+        <EntitySet Name="AccumulationRegister_InventoryBalances" EntityType="Fake1C.AccumulationRegister_InventoryBalances"/>
+        <EntitySet Name="AccumulationRegister_InventoryMovements" EntityType="Fake1C.AccumulationRegister_InventoryMovements"/>
+        <EntitySet Name="AccumulationRegister_CashMovements" EntityType="Fake1C.AccumulationRegister_CashMovements"/>
+        <EntitySet Name="AccumulationRegister_BankBalances" EntityType="Fake1C.AccumulationRegister_BankBalances"/>
+        <EntitySet Name="AccumulationRegister_ReceivableBalances" EntityType="Fake1C.AccumulationRegister_ReceivableBalances"/>
+        <EntitySet Name="AccumulationRegister_PayableBalances" EntityType="Fake1C.AccumulationRegister_PayableBalances"/>
       </EntityContainer>
     </Schema>
   </edmx:DataServices>
-</edmx:Edmx>"""
+</edmx:Edmx>""".encode()
 
 
 def _rows(entity: str):
@@ -86,6 +108,13 @@ def _rows(entity: str):
         "Catalog_Organizations": SEED["organizations"],
         "Catalog_Counterparties": SEED["counterparties"],
         "Document_Sales": SEED["sales"],
+        "Document_Purchases": SEED["purchases"],
+        "AccumulationRegister_InventoryBalances": SEED["inventory_balances"],
+        "AccumulationRegister_InventoryMovements": SEED["inventory_movements"],
+        "AccumulationRegister_CashMovements": SEED["cash_movements"],
+        "AccumulationRegister_BankBalances": SEED["bank_balances"],
+        "AccumulationRegister_ReceivableBalances": SEED["receivable_balances"],
+        "AccumulationRegister_PayableBalances": SEED["payable_balances"],
     }
     if entity not in mapping:
         raise KeyError(entity)

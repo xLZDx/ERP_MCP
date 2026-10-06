@@ -18,8 +18,14 @@ from business_ai_gateway.compatibility import (
 )
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
+from business_ai_gateway.semantic import SemanticProfileUnavailable
 from scripts.admin import capability_ack_drift
-from scripts.semantic_profiles import add_mapping, create_profile, validate_profile
+from scripts.semantic_profiles import (
+    add_mapping,
+    confirm_mapping,
+    create_profile,
+    validate_profile,
+)
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(
@@ -91,8 +97,11 @@ async def test_postgres_company_grants_deny_precedence_and_live_revocation():
             company_a
         ]
         assert (await registry.require_company(principal, source_id, company_a)).id == company_a
+        assert (await registry.require_source_for_company(principal, source_id, company_a)).id == source_id
         with pytest.raises(AccessDenied):
             await registry.require_company(principal, source_id, company_b)
+        with pytest.raises(AccessDenied):
+            await registry.require_source_for_company(principal, source_id, company_b)
         with pytest.raises(AccessDenied):
             await registry.require_source(principal, source_id)
 
@@ -282,9 +291,49 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
                         "drCrTurnovers": {
                             "available": True,
                             "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        },
+                        "balanceAndTurnovers": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        },
+                    },
+                },
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
                         }
                     },
-                }
+                },
+                {
+                    "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
+                {
+                    "entity_set": "AccumulationRegister_РасчетыСКлиентами",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
+                {
+                    "entity_set": "AccumulationRegister_РасчетыСПоставщиками",
+                    "methods": {
+                        "Balance": {
+                            "available": True,
+                            "evidence": {"metadata_fingerprint": metadata_fingerprint},
+                        }
+                    },
+                },
             ],
         }
         capability = OneCCapabilities(
@@ -347,6 +396,231 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             conn,
         )
+        account_mapping_file = tmp_path / "account-mapping.json"
+        account_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccountingRegister_Хозрасчетный",
+                    "method": "balanceAndTurnovers",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "account": "Account",
+                        "opening_debit": "OpeningDebit",
+                        "opening_credit": "OpeningCredit",
+                        "debit_turnover": "DebitTurnover",
+                        "credit_turnover": "CreditTurnover",
+                        "closing_debit": "ClosingDebit",
+                        "closing_credit": "ClosingCredit",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="account.balance_and_turnovers",
+                mapping_file=str(account_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        sales_mapping_file = tmp_path / "sales-mapping.json"
+        sales_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "Document_РеализацияТоваровУслуг",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "document_ref": "Ref_Key",
+                        "document_number": "Number",
+                        "date": "Date",
+                        "counterparty": "Контрагент_Key",
+                        "amount": "СуммаДокумента",
+                        "currency": "ВалютаДокумента_Key",
+                        "posted": "Posted",
+                    },
+                    "order_by": "Date",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="sales",
+                mapping_file=str(sales_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        purchase_mapping_file = tmp_path / "purchase-mapping.json"
+        purchase_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "Document_ПоступлениеТоваровУслуг",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "document_ref": "Ref_Key",
+                        "document_number": "Number",
+                        "date": "Date",
+                        "counterparty": "Контрагент_Key",
+                        "amount": "СуммаДокумента",
+                        "currency": "ВалютаДокумента_Key",
+                        "posted": "Posted",
+                    },
+                    "order_by": "Date",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="purchases",
+                mapping_file=str(purchase_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        inventory_mapping_file = tmp_path / "inventory-mapping.json"
+        inventory_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "method": "Balance",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "item_ref": "Номенклатура_Key",
+                        "warehouse_ref": "Склад_Key",
+                        "quantity": "КоличествоBalance",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="inventory.balance",
+                mapping_file=str(inventory_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        bank_mapping_file = tmp_path / "bank-mapping.json"
+        bank_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ДенежныеСредстваБезналичные",
+                    "method": "Balance",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "bank_account_ref": "БанковскийСчет_Key",
+                        "currency_ref": "Валюта_Key",
+                        "amount": "СуммаBalance",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="bank.balance",
+                mapping_file=str(bank_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        movement_mapping_file = tmp_path / "inventory-movement-mapping.json"
+        movement_mapping_file.write_text(
+            json.dumps(
+                {
+                    "entity_set": "AccumulationRegister_ТоварыНаСкладах",
+                    "company_scope": {"field": "Организация_Key", "value_type": "string"},
+                    "output_fields": {
+                        "period": "Period",
+                        "item_ref": "Номенклатура_Key",
+                        "warehouse_ref": "Склад_Key",
+                        "quantity": "Количество",
+                        "record_type": "RecordType",
+                        "recorder_ref": "Recorder_Key",
+                    },
+                    "record_type_values": {"receipt": ["Receipt"], "expense": ["Expense"]},
+                    "quantity_encoding": "positive_magnitude_by_record_type",
+                    "source_timezone": "Europe/Chisinau",
+                    "order_by": "Period",
+                }
+            ),
+            encoding="utf-8",
+        )
+        await add_mapping(
+            Namespace(
+                profile_id=str(profile_id),
+                concept="inventory.movements",
+                mapping_file=str(movement_mapping_file),
+                evidence_file=None,
+                actor="integration-operator",
+            ),
+            conn,
+        )
+        for concept, entity_set, mapping_file_name in (
+            (
+                "receivable.balance",
+                "AccumulationRegister_РасчетыСКлиентами",
+                "receivable-mapping.json",
+            ),
+            (
+                "payable.balance",
+                "AccumulationRegister_РасчетыСПоставщиками",
+                "payable-mapping.json",
+            ),
+        ):
+            settlement_mapping_file = tmp_path / mapping_file_name
+            settlement_mapping_file.write_text(
+                json.dumps(
+                    {
+                        "entity_set": entity_set,
+                        "method": "Balance",
+                        "company_scope": {
+                            "field": "Организация_Key",
+                            "value_type": "string",
+                        },
+                        "output_fields": {
+                            "counterparty_ref": "CounterpartyRef",
+                            "contract_ref": "ContractRef",
+                            "amount": "AmountBalance",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            await add_mapping(
+                Namespace(
+                    profile_id=str(profile_id),
+                    concept=concept,
+                    mapping_file=str(settlement_mapping_file),
+                    evidence_file=None,
+                    actor="integration-operator",
+                ),
+                conn,
+            )
+        mapping_confirmation_file = tmp_path / "mapping-confirmation.json"
+        mapping_confirmation_file.write_text(
+            json.dumps(
+                {
+                    "evidence_refs": ["operator-review/account-scope"],
+                    "notes": "Verified against the fixture metadata and mapping definition",
+                }
+            ),
+            encoding="utf-8",
+        )
         evidence_file = tmp_path / "native-evidence.json"
         evidence_file.write_text(
             json.dumps(
@@ -363,6 +637,39 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
             ),
             encoding="utf-8",
         )
+        with pytest.raises(SemanticProfileUnavailable):
+            await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
+                source_id, company_id
+            )
+        with pytest.raises(ValueError, match="explicitly confirmed"):
+            await validate_profile(
+                Namespace(
+                    profile_id=str(profile_id),
+                    evidence_file=str(evidence_file),
+                    actor="integration-operator",
+                ),
+                conn,
+            )
+        for concept in (
+            "receivable",
+            "account.balance_and_turnovers",
+            "sales",
+            "purchases",
+            "inventory.balance",
+            "inventory.movements",
+            "bank.balance",
+            "receivable.balance",
+            "payable.balance",
+        ):
+            await confirm_mapping(
+                Namespace(
+                    profile_id=str(profile_id),
+                    concept=concept,
+                    evidence_file=str(mapping_confirmation_file),
+                    actor="integration-operator",
+                ),
+                conn,
+            )
         await validate_profile(
             Namespace(
                 profile_id=str(profile_id),
@@ -374,14 +681,69 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         assert await conn.fetchval(
             "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
         ) == "VALIDATED"
+        loaded_account_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_account_turnovers_mapping(source_id, company_id)
+        assert loaded_account_mapping["mapping"]["entity_set"] == "AccountingRegister_Хозрасчетный"
+        assert loaded_account_mapping["mapping"]["method"] == "balanceAndTurnovers"
+        assert loaded_account_mapping["profile_fingerprint"]
+        loaded_sales_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "sales")
+        assert loaded_sales_mapping["mapping"]["entity_set"] == "Document_РеализацияТоваровУслуг"
+        loaded_purchase_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "purchases")
+        assert loaded_purchase_mapping["mapping"]["entity_set"] == (
+            "Document_ПоступлениеТоваровУслуг"
+        )
+        loaded_inventory_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "inventory.balance")
+        assert loaded_inventory_mapping["mapping"]["entity_set"] == (
+            "AccumulationRegister_ТоварыНаСкладах"
+        )
+        loaded_inventory_movement_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "inventory.movements")
+        assert loaded_inventory_movement_mapping["mapping"]["source_timezone"] == "Europe/Chisinau"
+        loaded_bank_mapping = await Registry(
+            ConnectionDatabase(conn), production=False
+        ).require_semantic_mapping(source_id, company_id, "bank.balance")
+        assert loaded_bank_mapping["mapping"]["entity_set"] == (
+            "AccumulationRegister_ДенежныеСредстваБезналичные"
+        )
+        for concept, entity_set in (
+            ("receivable.balance", "AccumulationRegister_РасчетыСКлиентами"),
+            ("payable.balance", "AccumulationRegister_РасчетыСПоставщиками"),
+        ):
+            loaded_settlement_mapping = await Registry(
+                ConnectionDatabase(conn), production=False
+            ).require_semantic_mapping(source_id, company_id, concept)
+            assert loaded_settlement_mapping["mapping"]["entity_set"] == entity_set
+        with pytest.raises(SemanticProfileUnavailable):
+            await Registry(ConnectionDatabase(conn), production=False).require_account_turnovers_mapping(
+                source_id, uuid.uuid4()
+            )
+        await conn.execute(
+            """
+            UPDATE bag.semantic_mappings
+            SET evidence_json=jsonb_set(evidence_json, '{notes}', '"post-validation-edit"')
+            WHERE profile_id=$1 AND canonical_concept='account.balance_and_turnovers'
+            """,
+            profile_id,
+        )
+        assert await conn.fetchval(
+            "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        ) == "STALE"
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 3
+        ) == 21
 
         await conn.execute("SET LOCAL ROLE business_ai_app")
         assert await conn.fetchval(
             "SELECT count(*) FROM bag.semantic_profile_events WHERE profile_id=$1", profile_id
-        ) == 3
+        ) == 21
         assert not await conn.fetchval(
             "SELECT has_table_privilege(current_user, 'bag.semantic_profile_events', 'INSERT')"
         )
@@ -460,6 +822,7 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
             upstream_sha="a" * 40,
             policy_version="acl-test-v1",
             metadata_fingerprint="b" * 64,
+            profile_fingerprint="c" * 64,
             returned_items=0,
             response_bytes=0,
             truncated=False,
@@ -481,6 +844,7 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
         assert audit_row["upstream_sha"] == "a" * 40
         assert audit_row["policy_version"] == "acl-test-v1"
         assert audit_row["metadata_fingerprint"] == "b" * 64
+        assert audit_row["profile_fingerprint"] == "c" * 64
         assert audit_row["response_bytes"] == 0
         assert audit_row["truncated"] is False
         assert audit_row["outcome"] == "error"
@@ -672,6 +1036,27 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
         assert stable["drift_status"] == "STABLE"
         assert stable["previous_metadata_fingerprint"] == "a" * 64
         assert stable["drift_acknowledged_at"] is not None
+
+        await conn.execute("SET LOCAL ROLE business_ai_app")
+        evidence_profile = await registry.record_semantic_capability_evidence(
+            source_id=source_id,
+            concept="cash.movements",
+            entity_set="AccumulationRegister_NotPublished",
+            metadata_fingerprint="b" * 64,
+            reason="ENTITY_SET_ABSENT",
+            expected_properties=["Period", "Amount", "Organization_Key"],
+        )
+        assert len(evidence_profile) == 1
+        entry = next(iter(evidence_profile.values()))
+        assert entry["source_id"] == source_id
+        assert entry["concept"] == "cash.movements"
+        assert entry["status"] == "UNSUPPORTED"
+        assert entry["reason"] == "ENTITY_SET_ABSENT"
+        assert entry["expected_properties"] == ["Amount", "Organization_Key", "Period"]
+        assert entry["metadata_fingerprint"] == "b" * 64
+
+        refreshed = await registry.save_capabilities(capability("b" * 64))
+        assert refreshed["source_capability_evidence"] == evidence_profile
     finally:
         await tx.rollback()
         await conn.close()

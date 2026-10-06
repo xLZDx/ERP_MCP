@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -11,9 +12,40 @@ from pydantic import AnyHttpUrl
 
 from .audit import AuditCorrelationMiddleware
 from .auth import JWTTokenVerifier
-from .compatibility import MetadataDriftUnacknowledged, require_acknowledged_metadata
+from .compatibility import (
+    CapabilityUnsupported,
+    MetadataDriftUnacknowledged,
+    require_acknowledged_metadata,
+)
 from .principal import current_principal
 from .runtime import Runtime
+from .semantic import (
+    ACCOUNT_TURNOVERS_CONCEPT,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
+    BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
+    INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
+    SemanticProfileUnavailable,
+    build_account_turnovers_arguments,
+    build_accounting_posting_rows_query,
+    build_bank_balance_arguments,
+    build_cash_movements_query,
+    build_company_filter,
+    build_inventory_balance_arguments,
+    build_inventory_movement_query,
+    build_settlement_balance_arguments,
+    normalize_account_turnovers,
+    normalize_accounting_posting_rows,
+    normalize_bank_balance_rows,
+    normalize_cash_movement_rows,
+    normalize_document_rows,
+    normalize_inventory_balance_rows,
+    normalize_inventory_movement_rows,
+    normalize_settlement_balance_rows,
+)
 from .settings import Settings
 
 
@@ -23,6 +55,13 @@ def _count_items(payload: Any) -> int | None:
     if isinstance(payload, dict) and isinstance(payload.get("value"), list):
         return len(payload["value"])
     return None
+
+
+def _metadata_entity_fields(metadata: Any, entity_set: str) -> set[str]:
+    for entity in getattr(metadata, "entities", ()):
+        if getattr(entity, "name", None) == entity_set:
+            return set(getattr(entity, "properties", ()))
+    return set()
 
 
 def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
@@ -53,9 +92,14 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise PermissionError("required scope missing")
         return principal
 
-    async def resolve_source(principal, source_id, tool, started, query=None):
+    async def resolve_source(principal, source_id, tool, started, query=None, company_id=None):
         try:
-            source = await runtime.registry.require_source(principal, source_id)
+            if company_id is None:
+                source = await runtime.registry.require_source(principal, source_id)
+            else:
+                source = await runtime.registry.require_source_for_company(
+                    principal, source_id, company_id
+                )
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
@@ -64,6 +108,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="denied",
                 started_at=started,
                 query=query,
+                company_id=company_id,
                 detail_code=type(exc).__name__,
             )
             raise
@@ -81,10 +126,33 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="denied",
                 started_at=started,
                 query=query,
+                company_id=company_id,
                 detail_code=type(exc).__name__,
             )
             raise
         return source
+
+    async def deny_unconfirmed_semantic_capability(
+        *,
+        source_id: str,
+        metadata_fingerprint: str,
+        concept: str,
+        entity_set: str,
+        reason: str,
+        expected_properties: list[str],
+        missing_properties: list[str] | None = None,
+        message: str,
+    ) -> None:
+        await runtime.registry.record_semantic_capability_evidence(
+            source_id=source_id,
+            concept=concept,
+            entity_set=entity_set,
+            metadata_fingerprint=metadata_fingerprint,
+            reason=reason,
+            expected_properties=expected_properties,
+            missing_properties=missing_properties,
+        )
+        raise CapabilityUnsupported(message)
 
     @mcp.tool()
     async def system_status() -> dict[str, Any]:
@@ -169,9 +237,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         """Check one authorized registered 1C OData source."""
         started = time.monotonic()
         principal = await ctx()
-        source = await resolve_source(
-            principal, source_id, "source_health", started
-        )
+        source = await resolve_source(principal, source_id, "source_health", started)
         try:
             result = await runtime.onec.health(source)
             await runtime.audit.write(
@@ -266,9 +332,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 query={"refresh": refresh},
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
-                detail_code=(
-                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
-                ),
+                detail_code=("METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None),
             )
             return result
         except Exception as exc:
@@ -331,9 +395,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         started = time.monotonic()
         principal = await ctx()
         query = {"contains": contains, "limit": limit}
-        source = await resolve_source(
-            principal, source_id, "onec_find_entities", started, query
-        )
+        source = await resolve_source(principal, source_id, "onec_find_entities", started, query)
         try:
             result = await runtime.onec.find(source, contains, limit)
             await runtime.audit.write(
@@ -359,6 +421,1033 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool()
+    async def accounting_balance_and_turnovers(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+    ) -> dict[str, Any]:
+        """Read company-filtered account balances/turnovers via its validated semantic profile."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                company_id=None,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": ACCOUNT_TURNOVERS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "accounting_balance_and_turnovers",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_account_turnovers_mapping(
+                source_id, parsed_company_id
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_account_turnovers_arguments(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_account_turnovers(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ACCOUNT_TURNOVERS_CONCEPT,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_balance_and_turnovers",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def inventory_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read a point-in-time, company-scoped inventory balance via a validated profile."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_balance",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": INVENTORY_BALANCE_CONCEPT,
+            "period": period,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "inventory_balance",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, INVENTORY_BALANCE_CONCEPT
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_inventory_balance_arguments(
+                mapping, company_external_ref=company.external_ref, period=period
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_inventory_balance_rows(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_balance",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": INVENTORY_BALANCE_CONCEPT,
+                "period": period,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_balance",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def inventory_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped inventory register records; quantity sign follows mapped record type."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": INVENTORY_MOVEMENTS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "inventory_movements",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, INVENTORY_MOVEMENTS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_inventory_movement_query(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            if entity_set not in metadata.names:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=INVENTORY_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured inventory movement EntitySet is absent from live metadata",
+                )
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=INVENTORY_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured inventory movement fields are absent from live metadata",
+                )
+            result = await runtime.onec.read(
+                source,
+                entity_set=entity_set,
+                select=select,
+                filter_expr=filter_expr,
+                orderby=f"{mapping['order_by']} asc",
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_inventory_movement_rows(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": INVENTORY_MOVEMENTS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="inventory_movements",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def accounting_posting_rows(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read profile-mapped accounting register rows; this is not a reconciliation report."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": ACCOUNTING_POSTING_ROWS_CONCEPT,
+            "start_period": start_period,
+            "end_period": end_period,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            "accounting_posting_rows",
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, ACCOUNTING_POSTING_ROWS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_accounting_posting_rows_query(
+                mapping,
+                company_external_ref=company.external_ref,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            if entity_set not in metadata.names:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=ACCOUNTING_POSTING_ROWS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured accounting register EntitySet is absent from live metadata",
+                )
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=ACCOUNTING_POSTING_ROWS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured accounting posting fields are absent from live metadata",
+                )
+            result = await runtime.onec.read(
+                source,
+                entity_set=entity_set,
+                select=select,
+                filter_expr=filter_expr,
+                orderby=(
+                    f"{mapping['output_fields']['period']} asc,"
+                    f"{mapping['output_fields']['recorder_ref']} asc,"
+                    f"{mapping['output_fields']['line_number']} asc"
+                ),
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            value = normalize_accounting_posting_rows(raw_rows, mapping)
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(value),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ACCOUNTING_POSTING_ROWS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": value,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": ["Rows are not a native accounting report reconciliation."],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="accounting_posting_rows",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def cash_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read profile-confirmed company cash movements; signs follow mapped record types."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome="denied", started_at=started, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id), "concept": CASH_MOVEMENTS_CONCEPT,
+            "start_period": start_period, "end_period": end_period,
+            "top": bounded_top, "skip": skip,
+        }
+        source = await resolve_source(
+            principal, source_id, "cash_movements", started, query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, CASH_MOVEMENTS_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr = build_cash_movements_query(
+                mapping, company_external_ref=company.external_ref,
+                start_period=start_period, end_period=end_period,
+            )
+            metadata = await runtime.onec.metadata(source)
+            live_fields = _metadata_entity_fields(metadata, entity_set)
+            if entity_set not in metadata.names:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=CASH_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="ENTITY_SET_ABSENT",
+                    expected_properties=sorted(
+                        set(select) | {mapping["company_scope"]["field"]}
+                    ),
+                    message="configured cash movement EntitySet is absent from live metadata",
+                )
+            required_fields = set(select) | {mapping["company_scope"]["field"]}
+            missing_fields = sorted(required_fields - live_fields)
+            if missing_fields:
+                await deny_unconfirmed_semantic_capability(
+                    source_id=source_id,
+                    metadata_fingerprint=capabilities.metadata_fingerprint,
+                    concept=CASH_MOVEMENTS_CONCEPT,
+                    entity_set=entity_set,
+                    reason="PROPERTY_ABSENT" if live_fields else "PROPERTIES_UNCONFIRMED",
+                    expected_properties=sorted(required_fields),
+                    missing_properties=missing_fields,
+                    message="configured cash movement fields are absent from live metadata",
+                )
+            fields = mapping["output_fields"]
+            result = await runtime.onec.read(
+                source, entity_set=entity_set, select=select, filter_expr=filter_expr,
+                orderby=(
+                    f"{fields['period']} asc,{fields['recorder_ref']} asc,"
+                    f"{fields['line_number']} asc"
+                ),
+                expand=None, top=bounded_top, skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            value = normalize_cash_movement_rows(raw_rows, mapping)
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome="success", started_at=started, query=query, returned_items=len(value),
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+            )
+            return {
+                "source_id": source_id, "company_id": str(parsed_company_id),
+                "concept": CASH_MOVEMENTS_CONCEPT,
+                "period": {"from": start_period, "to_exclusive": end_period},
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": value, "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool="cash_movements", source_id=source_id,
+                outcome=("denied" if isinstance(exc, (
+                    PermissionError, CapabilityUnsupported, MetadataDriftUnacknowledged,
+                    SemanticProfileUnavailable,
+                )) else "error"),
+                started_at=started, query=query, company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def bank_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read a point-in-time bank balance via an exact, validated source profile."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="bank_balance",
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": BANK_BALANCE_CONCEPT,
+            "period": period,
+        }
+        source = await resolve_source(
+            principal, source_id, "bank_balance", started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, BANK_BALANCE_CONCEPT
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_bank_balance_arguments(
+                mapping, company_external_ref=company.external_ref, period=period
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_bank_balance_rows(raw_rows, mapping)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="bank_balance",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": BANK_BALANCE_CONCEPT,
+                "period": period,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool="bank_balance",
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    async def read_settlement_balance(
+        source_id: str,
+        company_id: str,
+        period: str,
+        *,
+        concept: str,
+        tool_name: str,
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {"company_id": str(parsed_company_id), "concept": concept, "period": period}
+        source = await resolve_source(
+            principal, source_id, tool_name, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_settlement_balance_arguments(
+                concept, mapping, company_external_ref=company.external_ref, period=period
+            )
+            result = await runtime.onec.register_read(
+                source,
+                register_set=register_set,
+                method=method,
+                arguments=arguments,
+                top=settings.max_rows,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            rows = normalize_settlement_balance_rows(raw_rows, mapping, concept)
+            response_bytes = len(json.dumps(rows, ensure_ascii=False, default=str).encode("utf-8"))
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": concept,
+                "period": period,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def receivable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read point-in-time receivable balances; this tool does not compute aging buckets."""
+        return await read_settlement_balance(
+            source_id,
+            company_id,
+            period,
+            concept=RECEIVABLE_BALANCE_CONCEPT,
+            tool_name="receivable_balance",
+        )
+
+    @mcp.tool()
+    async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read point-in-time payable balances; this tool does not compute aging buckets."""
+        return await read_settlement_balance(
+            source_id,
+            company_id,
+            period,
+            concept=PAYABLE_BALANCE_CONCEPT,
+            tool_name="payable_balance",
+        )
+
+    async def read_company_documents(
+        source_id: str,
+        company_id: str,
+        *,
+        concept: str,
+        tool_name: str,
+        top: int,
+        skip: int,
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="denied",
+                started_at=started,
+                detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1 or skip < 0:
+            raise ValueError("top must be positive and skip cannot be negative")
+        bounded_top = min(top, settings.max_rows)
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": concept,
+            "top": bounded_top,
+            "skip": skip,
+        }
+        source = await resolve_source(
+            principal,
+            source_id,
+            tool_name,
+            started,
+            query,
+            company_id=parsed_company_id,
+        )
+        capabilities = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            company_filter = build_company_filter(mapping, company.external_ref)
+            result = await runtime.onec.read(
+                source,
+                entity_set=mapping["entity_set"],
+                select=list(mapping["output_fields"].values()),
+                filter_expr=company_filter,
+                orderby=f"{mapping['order_by']} desc",
+                expand=None,
+                top=bounded_top,
+                skip=skip,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            normalized_rows = normalize_document_rows(raw_rows, mapping, concept)
+            response_bytes = len(
+                json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(normalized_rows),
+                company_id=parsed_company_id,
+                adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                response_bytes=response_bytes,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": concept,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": result.get("page") if isinstance(result, dict) else None,
+                "warnings": [],
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool_name,
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def sales_documents(
+        source_id: str, company_id: str, top: int = 50, skip: int = 0
+    ) -> dict[str, Any]:
+        """List company-scoped sales documents using a validated semantic mapping."""
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="sales",
+            tool_name="sales_documents",
+            top=top,
+            skip=skip,
+        )
+
+    @mcp.tool()
+    async def purchase_documents(
+        source_id: str, company_id: str, top: int = 50, skip: int = 0
+    ) -> dict[str, Any]:
+        """List company-scoped purchase documents using a validated semantic mapping."""
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="purchases",
+            tool_name="purchase_documents",
+            top=top,
+            skip=skip,
+        )
+
+    @mcp.tool()
     async def onec_read(
         source_id: str,
         entity_set: str,
@@ -381,9 +1470,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "top": top,
             "skip": skip,
         }
-        source = await resolve_source(
-            principal, source_id, "onec_read", started, query
-        )
+        source = await resolve_source(principal, source_id, "onec_read", started, query)
         try:
             capabilities = await runtime.onec.capabilities(source)
             drift = await runtime.registry.save_capabilities(capabilities)
@@ -412,9 +1499,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 response_bytes=response_bytes,
-                detail_code=(
-                    "METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None
-                ),
+                detail_code=("METADATA_DRIFTED" if drift["drift_status"] == "DRIFTED" else None),
             )
             return result
         except Exception as exc:

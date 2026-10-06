@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import replace
 
 from ...compatibility import (
@@ -15,6 +16,7 @@ from ...settings import Settings
 from .atom import parse_atom_payload
 from .client import OneCReadClient
 from .metadata import MetadataIndex, parse_metadata
+from .rsv_bridge import RSVDataBridgeClient
 from .sidecar_client import ODataSidecarClient
 
 
@@ -35,14 +37,30 @@ class OneCAdapter:
         secrets: SecretProvider,
         client: OneCReadClient,
         sidecar: ODataSidecarClient | None = None,
+        rsv_bridge: RSVDataBridgeClient | None = None,
     ):
         self.settings = settings
         self.secrets = secrets
         self.client = client
         self.sidecar = sidecar
+        self.rsv_bridge = rsv_bridge
         self._metadata: dict[str, MetadataIndex] = {}
         self._capabilities: dict[str, OneCCapabilities] = {}
+        self._metadata_expires_at: dict[str, float] = {}
+        self._capabilities_expires_at: dict[str, float] = {}
+        self._source_cache_identity: dict[str, tuple[str, str | None, str | None]] = {}
+        self._clock = time.monotonic
         self._detector = OneCCapabilityDetector(client=client, secrets=secrets)
+
+    def _invalidate_changed_source(self, source: Source) -> None:
+        identity = (source.base_url, source.username_secret_ref, source.password_secret_ref)
+        previous = self._source_cache_identity.get(source.id)
+        if previous is not None and previous != identity:
+            self._metadata.pop(source.id, None)
+            self._metadata_expires_at.pop(source.id, None)
+            self._capabilities.pop(source.id, None)
+            self._capabilities_expires_at.pop(source.id, None)
+        self._source_cache_identity[source.id] = identity
 
     async def credentials(self, source: Source) -> tuple[str | None, str | None]:
         username = (
@@ -69,7 +87,14 @@ class OneCAdapter:
         *,
         refresh: bool = False,
     ) -> OneCCapabilities:
-        if not refresh and source.id in self._capabilities:
+        self._invalidate_changed_source(source)
+        now = self._clock()
+        capability_fresh = self._capabilities_expires_at.get(source.id, 0) > now
+        metadata_fresh = (
+            source.id not in self._metadata
+            or self._metadata_expires_at.get(source.id, 0) > now
+        )
+        if not refresh and source.id in self._capabilities and capability_fresh and metadata_fresh:
             return self._capabilities[source.id]
         capabilities, index = await self._detector.detect(source)
         if capabilities.adapter_profile == AdapterProfile.ODATA_JSON_V3 and self.sidecar is not None:
@@ -102,12 +127,26 @@ class OneCAdapter:
                         },
                     )
         self._capabilities[source.id] = capabilities
+        self._capabilities_expires_at[source.id] = (
+            self._clock() + self.settings.metadata_cache_ttl_seconds
+        )
         if index is not None:
             self._metadata[source.id] = index
+            self._metadata_expires_at[source.id] = (
+                self._clock() + self.settings.metadata_cache_ttl_seconds
+            )
+        else:
+            self._metadata.pop(source.id, None)
+            self._metadata_expires_at.pop(source.id, None)
         return capabilities
 
     async def metadata(self, source: Source, *, refresh: bool = False) -> MetadataIndex:
-        if not refresh and source.id in self._metadata:
+        self._invalidate_changed_source(source)
+        if (
+            not refresh
+            and source.id in self._metadata
+            and self._metadata_expires_at.get(source.id, 0) > self._clock()
+        ):
             return self._metadata[source.id]
         username, password = await self.credentials(source)
         raw = await self.client.get_bytes(
@@ -119,6 +158,12 @@ class OneCAdapter:
         )
         index = parse_metadata(raw)
         self._metadata[source.id] = index
+        self._metadata_expires_at[source.id] = (
+            self._clock() + self.settings.metadata_cache_ttl_seconds
+        )
+        # A newly fetched schema must be paired with a newly computed fingerprint.
+        self._capabilities.pop(source.id, None)
+        self._capabilities_expires_at.pop(source.id, None)
         return index
 
     async def summary(self, source: Source):

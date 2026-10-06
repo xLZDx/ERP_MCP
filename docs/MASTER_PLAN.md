@@ -115,10 +115,20 @@ Exit:
 ## P4 — Semantic accounting
 
 Initial profile/preset foundation is implemented: Aprovodka's pinned preset inventory is exposed as
-`CANDIDATE_ONLY` references; migrations 006–007 store source/company-scoped versioned profiles,
-mappings and append-only operator lifecycle events. The admin CLI rechecks current metadata and
-capabilities and requires ten passing native-report cases. This does not yet implement or enable
-canonical accounting tools.
+`CANDIDATE_ONLY` references; migrations 006–009 store source/company-scoped versioned profiles,
+mappings, append-only operator lifecycle events, confirmed-mapping state and profile provenance in
+audit. The admin CLI rechecks current metadata/capabilities, requires explicit mapping confirmation
+and ten passing native-report cases. Canonical `accounting_balance_and_turnovers`,
+`sales_documents`, `purchase_documents` and point-in-time `inventory_balance` tools are implemented
+behind these gates; `bank_balance` is also available only with the same exact-source capability and
+mapping gates. `receivable_balance` and `payable_balance` expose point-in-time mapped balances, not
+aging. `inventory_movements` now reads exact live-metadata register record sets through the pinned
+OData sidecar only after a validated source/company profile maps timezone, company field, record
+types and positive quantity encoding. `cash_movements` uses the same read-only path only after a
+validated source/company profile confirms the exact register, fields, timezone and receipt/expense
+literals; upstream presets provide no universal cash-register candidate. `accounting_posting_rows`
+is a bounded listing, not a full trace. AR/AP aging, cash-flow reconciliation, tax and complete
+posting semantics remain unavailable pending configuration-specific profiles and native reports.
 
 Deliver canonical tools:
 - organization/company discovery;
@@ -135,6 +145,8 @@ Introduce:
 - mapping provenance;
 - profile/version fingerprint;
 - explicit confidence/warnings.
+- source/company ACL before any data request;
+- auditable mapping confirmation and canonical field projection.
 
 Exit:
 - no semantic tool depends directly on a configuration-specific name outside a profile;
@@ -161,6 +173,12 @@ Exit:
 
 Use approved MIT bridge patterns, preferably `mcp-rsv-data`.
 
+Current implementation status: P6 process/health foundation is partial. The ERP-side stdio client
+launches only the pinned bridge, binds one config path to one source ID, validates the upstream tool
+inventory and calls `ping` only. It never proxies generic `query`/`execute_query`. Health does not
+establish data capability or company isolation; semantic reads remain unavailable until a
+source/company profile can enforce those boundaries.
+
 Deliver:
 - isolated process/service integration;
 - no secret leakage;
@@ -174,7 +192,10 @@ Exit:
 
 ## P7 — 8.2 legacy route
 
-This phase is demand-driven.
+This phase is demand-driven. No concrete 1C 8.2 target or customer requirement is currently recorded,
+so P7 is explicitly deferred for the modern MVP; there is no GPL adapter deployment in this phase.
+Reopen only when onboarding identifies a real 8.2.13+ target and owner. Then perform license and
+isolation review before integration.
 
 If required:
 - keep GPL implementation/service isolated;
@@ -185,6 +206,10 @@ If required:
 No business requirement -> phase remains not started and does not block modern MVP.
 
 ## P8 — Production hardening
+
+Current implementation status: protected aggregate HTTP metrics are implemented as an initial
+slice. Full structured logs/traces, saturation and source metrics, backup/restore drill, image/SBOM
+scans, and real deployment evidence remain open.
 
 Deliver:
 - OTel logs/metrics/traces or approved equivalent;
@@ -203,6 +228,10 @@ Exit:
 - no unresolved blocker/high risk without explicit owner acceptance.
 
 ## P9 — Pilot & GO
+
+Current implementation status: privacy-safe pilot evidence template and fail-closed validator are
+implemented. The checked-in template is `NOT_READY`; no live pilot evidence is claimed. Real
+environment evidence and accountable release approval remain external gates.
 
 Pilot:
 - small controlled source set;

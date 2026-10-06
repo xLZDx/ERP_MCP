@@ -14,15 +14,46 @@ import asyncpg
 
 from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.semantic import (
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
+    BANK_BALANCE_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
+    INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
     PRESETS_BY_ID,
+    RECEIVABLE_BALANCE_CONCEPT,
     canonical_fingerprint,
     find_configuration_preset,
     require_profile_capabilities,
+    validate_account_turnovers_mapping,
+    validate_accounting_posting_rows_mapping,
+    validate_bank_balance_mapping,
+    validate_cash_movements_mapping,
+    validate_document_mapping,
+    validate_inventory_balance_mapping,
+    validate_inventory_movements_mapping,
     validate_native_reconciliation_evidence,
+    validate_settlement_balance_mapping,
 )
 from business_ai_gateway.settings import Settings
 
-CONCEPTS = ("receivable", "payable", "sales", "cash", "inventory", "vat")
+CONCEPTS = (
+    "account.balance_and_turnovers",
+    "receivable",
+    "payable",
+    "sales",
+    "purchases",
+    "cash",
+    "inventory",
+    INVENTORY_BALANCE_CONCEPT,
+    INVENTORY_MOVEMENTS_CONCEPT,
+    ACCOUNTING_POSTING_ROWS_CONCEPT,
+    CASH_MOVEMENTS_CONCEPT,
+    BANK_BALANCE_CONCEPT,
+    RECEIVABLE_BALANCE_CONCEPT,
+    PAYABLE_BALANCE_CONCEPT,
+    "vat",
+)
 
 
 def _json_value(value: Any) -> Any:
@@ -209,6 +240,50 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
     if profile is None or profile["status"] not in {"DRAFT", "NEEDS_VALIDATION"}:
         raise ValueError("mappings can be added only to a draft profile")
     mapping = _read_object(args.mapping_file)
+    if args.concept == "account.balance_and_turnovers":
+        validate_account_turnovers_mapping(mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": mapping["entity_set"], "method": mapping["method"]}]
+        if required is not None and required != expected:
+            raise ValueError("account-turnover capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
+    elif args.concept in {"sales", "purchases"}:
+        validate_document_mapping(args.concept, mapping)
+    elif args.concept == INVENTORY_BALANCE_CONCEPT:
+        entity_set, method = validate_inventory_balance_mapping(mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": entity_set, "method": method}]
+        if required is not None and required != expected:
+            raise ValueError("inventory capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
+    elif args.concept == INVENTORY_MOVEMENTS_CONCEPT:
+        validate_inventory_movements_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError("movement record-set mapping cannot claim virtual-table methods")
+    elif args.concept == ACCOUNTING_POSTING_ROWS_CONCEPT:
+        validate_accounting_posting_rows_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError(
+                "accounting posting record-set mapping cannot claim virtual-table methods"
+            )
+    elif args.concept == CASH_MOVEMENTS_CONCEPT:
+        validate_cash_movements_mapping(mapping)
+        if mapping.get("required_register_capabilities", []) != []:
+            raise ValueError("cash movement record-set mapping cannot claim virtual-table methods")
+    elif args.concept == BANK_BALANCE_CONCEPT:
+        entity_set, method = validate_bank_balance_mapping(mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": entity_set, "method": method}]
+        if required is not None and required != expected:
+            raise ValueError("bank capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
+    elif args.concept in {RECEIVABLE_BALANCE_CONCEPT, PAYABLE_BALANCE_CONCEPT}:
+        entity_set, method = validate_settlement_balance_mapping(args.concept, mapping)
+        required = mapping.get("required_register_capabilities")
+        expected = [{"entity_set": entity_set, "method": method}]
+        if required is not None and required != expected:
+            raise ValueError("settlement capability dependency must match the exact mapping")
+        mapping["required_register_capabilities"] = expected
     evidence = _read_object(args.evidence_file) if args.evidence_file else {}
     evidence = _validate_mapping_evidence(evidence)
     if "required_register_capabilities" in mapping:
@@ -264,14 +339,118 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         )
 
 
+async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> None:
+    profile_id = uuid.UUID(args.profile_id)
+    evidence = _validate_mapping_evidence(_read_object(args.evidence_file))
+    if not evidence["evidence_refs"]:
+        raise ValueError("mapping confirmation requires at least one controlled evidence reference")
+    async with conn.transaction():
+        profile = await conn.fetchrow(
+            "SELECT * FROM bag.semantic_profiles WHERE profile_id=$1 FOR UPDATE", profile_id
+        )
+        if profile is None or profile["status"] not in {"DRAFT", "NEEDS_VALIDATION"}:
+            raise ValueError("mappings can be confirmed only before profile validation")
+        mapping_row = await conn.fetchrow(
+            """
+            SELECT * FROM bag.semantic_mappings
+            WHERE profile_id=$1 AND canonical_concept=$2 FOR UPDATE
+            """,
+            profile_id,
+            args.concept,
+        )
+        if mapping_row is None or mapping_row["mapping_status"] != "CANDIDATE":
+            raise ValueError("candidate mapping not found or is no longer confirmable")
+        mapping = _json_value(mapping_row["mapping_json"])
+        if args.concept == "account.balance_and_turnovers":
+            entity_set, method = validate_account_turnovers_mapping(mapping)
+            required = mapping.get("required_register_capabilities")
+            if required != [{"entity_set": entity_set, "method": method}]:
+                raise ValueError("mapping capability dependency does not match its operation")
+        elif args.concept in {"sales", "purchases"}:
+            validate_document_mapping(args.concept, mapping)
+        elif args.concept == INVENTORY_BALANCE_CONCEPT:
+            entity_set, method = validate_inventory_balance_mapping(mapping)
+            if mapping.get("required_register_capabilities") != [
+                {"entity_set": entity_set, "method": method}
+            ]:
+                raise ValueError("inventory capability dependency does not match its operation")
+        elif args.concept == INVENTORY_MOVEMENTS_CONCEPT:
+            validate_inventory_movements_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError("movement record-set mapping cannot claim virtual-table methods")
+        elif args.concept == ACCOUNTING_POSTING_ROWS_CONCEPT:
+            validate_accounting_posting_rows_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError(
+                    "accounting posting record-set mapping cannot claim virtual-table methods"
+                )
+        elif args.concept == CASH_MOVEMENTS_CONCEPT:
+            validate_cash_movements_mapping(mapping)
+            if mapping.get("required_register_capabilities", []) != []:
+                raise ValueError(
+                    "cash movement record-set mapping cannot claim virtual-table methods"
+                )
+        elif args.concept == BANK_BALANCE_CONCEPT:
+            entity_set, method = validate_bank_balance_mapping(mapping)
+            if mapping.get("required_register_capabilities") != [
+                {"entity_set": entity_set, "method": method}
+            ]:
+                raise ValueError("bank capability dependency does not match its operation")
+        elif args.concept in {RECEIVABLE_BALANCE_CONCEPT, PAYABLE_BALANCE_CONCEPT}:
+            entity_set, method = validate_settlement_balance_mapping(args.concept, mapping)
+            if mapping.get("required_register_capabilities") != [
+                {"entity_set": entity_set, "method": method}
+            ]:
+                raise ValueError("settlement capability dependency does not match its operation")
+        previous_evidence = _json_value(mapping_row["evidence_json"])
+        combined_evidence = {
+            "evidence_refs": list(
+                dict.fromkeys(
+                    [*previous_evidence.get("evidence_refs", []), *evidence["evidence_refs"]]
+                )
+            ),
+            "notes": evidence["notes"] or previous_evidence.get("notes", ""),
+        }
+        await conn.execute(
+            """
+            UPDATE bag.semantic_mappings
+            SET mapping_status='CONFIRMED', confidence='HIGH', evidence_json=$3::jsonb
+            WHERE mapping_id=$1 AND profile_id=$2
+            """,
+            mapping_row["mapping_id"],
+            profile_id,
+            json.dumps(combined_evidence, ensure_ascii=False),
+        )
+        mappings = await conn.fetch(
+            "SELECT * FROM bag.semantic_mappings WHERE profile_id=$1 ORDER BY canonical_concept",
+            profile_id,
+        )
+        profile_fingerprint = _profile_fingerprint(profile, mappings)
+        await conn.execute(
+            "UPDATE bag.semantic_profiles SET profile_fingerprint=$2 WHERE profile_id=$1",
+            profile_id,
+            profile_fingerprint,
+        )
+        await _record_event(
+            conn,
+            profile_id=profile_id,
+            actor=args.actor,
+            action="MAPPING_CONFIRMED",
+            details={
+                "mapping_id": str(mapping_row["mapping_id"]),
+                "canonical_concept": args.concept,
+                "evidence_fingerprint": canonical_fingerprint(evidence),
+                "profile_fingerprint": profile_fingerprint,
+            },
+        )
+
+
 async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> None:
     profile_id = uuid.UUID(args.profile_id)
     evidence_input = _read_object(args.evidence_file)
     cases = validate_native_reconciliation_evidence(evidence_input)
     validation_evidence = {
-        "native_reconciliation_cases": [
-            {**case, "status": "PASS"} for case in cases
-        ],
+        "native_reconciliation_cases": [{**case, "status": "PASS"} for case in cases],
         "evidence_manifest_fingerprint": canonical_fingerprint(evidence_input),
     }
     async with conn.transaction():
@@ -303,6 +482,10 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
             profile_id,
         )
         for mapping_row in mappings:
+            if mapping_row["mapping_status"] != "CONFIRMED" or mapping_row["confidence"] != "HIGH":
+                raise ValueError(
+                    f"mapping {mapping_row['canonical_concept']} must be explicitly confirmed before validation"
+                )
             mapping = _json_value(mapping_row["mapping_json"])
             required = mapping.get("required_register_capabilities", [])
             if not isinstance(required, list):
@@ -373,13 +556,17 @@ async def _run(args: argparse.Namespace) -> None:
     settings = Settings()
     dsn = settings.admin_database_url
     if settings.environment == "production" and not dsn:
-        raise RuntimeError("production semantic profile administration requires BAG_ADMIN_DATABASE_URL")
+        raise RuntimeError(
+            "production semantic profile administration requires BAG_ADMIN_DATABASE_URL"
+        )
     conn = await asyncpg.connect(dsn or settings.database_url)
     try:
         if args.command == "create":
             print(await create_profile(args, conn))
         elif args.command == "add-mapping":
             await add_mapping(args, conn)
+        elif args.command == "confirm-mapping":
+            await confirm_mapping(args, conn)
         elif args.command == "validate":
             await validate_profile(args, conn)
         elif args.command == "retire":
@@ -407,6 +594,12 @@ def parser() -> argparse.ArgumentParser:
     mapping.add_argument("--mapping-file", required=True)
     mapping.add_argument("--evidence-file")
     mapping.add_argument("--actor", required=True)
+
+    confirm = commands.add_parser("confirm-mapping")
+    confirm.add_argument("--profile-id", required=True)
+    confirm.add_argument("--concept", choices=CONCEPTS, required=True)
+    confirm.add_argument("--evidence-file", required=True)
+    confirm.add_argument("--actor", required=True)
 
     validate = commands.add_parser("validate")
     validate.add_argument("--profile-id", required=True)

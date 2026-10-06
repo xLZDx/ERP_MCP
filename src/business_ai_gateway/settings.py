@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -39,6 +40,9 @@ class Settings(BaseSettings):
 
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
+    metrics_token: SecretStr | None = None
+    rsv_bridge_executable: str | None = None
+    rsv_bridge_config_root: str | None = None
 
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
@@ -47,6 +51,7 @@ class Settings(BaseSettings):
     max_rows: int = Field(default=200, ge=1, le=10_000)
     max_response_bytes: int = Field(default=5_000_000, ge=10_000, le=100_000_000)
     http_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    metadata_cache_ttl_seconds: float = Field(default=60.0, gt=0, le=3600)
     max_filter_chars: int = Field(default=4000, ge=64, le=20_000)
     require_metadata_entity: bool = True
     rate_limit_per_minute: int = Field(default=120, ge=1, le=10_000)
@@ -58,6 +63,18 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if self.metrics_token and len(self.metrics_token.get_secret_value().encode()) < 32:
+            raise ValueError("BAG_METRICS_TOKEN must contain at least 32 bytes")
+        if (self.rsv_bridge_executable is None) != (self.rsv_bridge_config_root is None):
+            raise ValueError(
+                "BAG_RSV_BRIDGE_EXECUTABLE and BAG_RSV_BRIDGE_CONFIG_ROOT "
+                "must be configured together"
+            )
+        if self.rsv_bridge_executable:
+            executable = Path(self.rsv_bridge_executable)
+            config_root = Path(self.rsv_bridge_config_root)
+            if not executable.is_absolute() or not config_root.is_absolute():
+                raise ValueError("RSV bridge executable and config root must be absolute paths")
         if (self.odata_sidecar_url is None) != (self.odata_sidecar_token is None):
             raise ValueError(
                 "BAG_ODATA_SIDECAR_URL and BAG_ODATA_SIDECAR_TOKEN must be configured together"

@@ -49,3 +49,27 @@ def test_sidecar_settings_require_paired_url_and_long_secret():
         Settings(odata_sidecar_url="http://odata-sidecar:8765")
     with pytest.raises(ValidationError, match="at least 32 bytes"):
         Settings(odata_sidecar_url="http://odata-sidecar:8765", odata_sidecar_token="short")
+
+
+def test_rsv_bridge_settings_require_paired_absolute_paths(tmp_path):
+    with pytest.raises(ValidationError, match="configured together"):
+        Settings(rsv_bridge_executable=str(tmp_path / "bridge.exe"))
+    with pytest.raises(ValidationError, match="absolute paths"):
+        Settings(rsv_bridge_executable="bridge.exe", rsv_bridge_config_root=str(tmp_path))
+    with pytest.raises(ValidationError, match="absolute paths"):
+        Settings(
+            rsv_bridge_executable=str(tmp_path / "bridge.exe"), rsv_bridge_config_root="configs"
+        )
+
+
+def test_metrics_endpoint_token_must_be_long_enough():
+    with pytest.raises(ValidationError, match="at least 32 bytes"):
+        Settings(metrics_token="short")
+
+
+def test_metadata_cache_ttl_is_bounded_and_positive():
+    assert Settings().metadata_cache_ttl_seconds == 60
+    with pytest.raises(ValidationError):
+        Settings(metadata_cache_ttl_seconds=0)
+    with pytest.raises(ValidationError):
+        Settings(metadata_cache_ttl_seconds=3601)

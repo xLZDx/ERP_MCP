@@ -600,6 +600,11 @@ reconcilable with native 1C reports.</p>
 <li>no write operation exposed through internal adapter contract.</li>
 </ul>
 <h2>P4 — Semantic accounting</h2>
+<p>Implemented slices: company-scoped account turnovers, sales/purchase documents, inventory and
+bank/AR/AP point-in-time balances, plus profile-gated <code>inventory_movements</code>. Movement
+reads require an exact live EntitySet and operator-confirmed company field, timezone, RecordType
+values and quantity encoding. Aging, tax, cash movements and posting trace remain unavailable until
+their own source profiles and native-report evidence exist.</p>
 <p>Deliver canonical tools:</p>
 <ul>
 <li>organization/company discovery;</li>
@@ -645,6 +650,11 @@ L3: server-mode production-parity environment.</p>
 </ul>
 <h2>P6 — Local/extension/COM fallback</h2>
 <p>Use approved MIT bridge patterns, preferably <code>mcp-rsv-data</code>.</p>
+<p>Current status: partial process/health boundary. ERP_MCP launches only the pinned upstream bridge,
+binds config by source ID, checks the upstream tool inventory and calls <code>ping</code>. It does
+not forward generic native queries; health is not business-data capability or company isolation.
+Business reads remain fail-closed until a validated source/company mapping exists. See
+<a href="runbooks/RSV_DATA_BRIDGE.md">the Windows/COM runbook</a>.</p>
 <p>Deliver:</p>
 <ul>
 <li>isolated process/service integration;</li>
@@ -660,6 +670,9 @@ L3: server-mode production-parity environment.</p>
 </ul>
 <h2>P7 — 8.2 legacy route</h2>
 <p>This phase is demand-driven.</p>
+<p>Current decision: deferred for the modern MVP because no named 8.2 target or customer requirement
+is recorded. Reopen for a concrete 8.2.13+ target and owner; retain GPL-3.0 service isolation and
+never copy/link it into ERP_MCP core.</p>
 <p>If required:</p>
 <ul>
 <li>keep GPL implementation/service isolated;</li>
@@ -669,6 +682,10 @@ L3: server-mode production-parity environment.</p>
 </ul>
 <p>No business requirement -&gt; phase remains not started and does not block modern MVP.</p>
 <h2>P8 — Production hardening</h2>
+<p>Initial slice: optional bearer-protected <code>/metrics</code> reports bounded-cardinality HTTP
+request counts, active requests and latency. It emits no source/company/subject or URL/query labels;
+the endpoint is disabled unless a 32-byte secret is configured. Full telemetry, load, restore and
+deployment evidence remain required.</p>
 <p>Deliver:</p>
 <ul>
 <li>OTel logs/metrics/traces or approved equivalent;</li>
@@ -688,6 +705,10 @@ L3: server-mode production-parity environment.</p>
 <li>no unresolved blocker/high risk without explicit owner acceptance.</li>
 </ul>
 <h2>P9 — Pilot &amp; GO</h2>
+<p>A fail-closed evidence manifest and validator are implemented. The checked-in manifest template
+is explicitly <code>NOT_READY</code>; it cannot support production GO without exact-release CI,
+native reconciliation, zero-write/audit review, operational drills, pilot acceptance and named
+release approval. See <a href="PILOT_EVIDENCE_GATE.md">P9 evidence gate</a>.</p>
 <p>Pilot:</p>
 <ul>
 <li>small controlled source set;</li>
