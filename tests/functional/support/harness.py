@@ -66,6 +66,8 @@ class Outcome:
     fake_seq: int = 0
     audit: list[dict] = field(default_factory=list)
     upstream: list[dict] = field(default_factory=list)
+    sidecar: list[dict] = field(default_factory=list)
+    sidecar_seq: int = 0
 
     @property
     def ok(self) -> bool:
@@ -127,10 +129,24 @@ async def db_now():
     return (await db_fetch("SELECT clock_timestamp() AS now"))[0]["now"]
 
 
-def fake_requests(since: int = 0) -> dict:
-    r = httpx.get(env("FT_FAKE1C_URL").rstrip("/") + "/__ft__/requests", params={"since": since}, timeout=10)
+def _requests_of(url: str | None, since: int) -> dict:
+    if not url:
+        return {"last_seq": 0, "requests": []}
+    r = httpx.get(url.rstrip("/") + "/__ft__/requests", params={"since": since}, timeout=10)
     r.raise_for_status()
     return r.json()
+
+
+def fake_requests(since: int = 0) -> dict:
+    return _requests_of(env("FT_FAKE1C_URL"), since)
+
+
+def sidecar_requests(since: int = 0) -> dict:
+    """Requests seen by the recording fake-sidecar wrapper (empty when FT_SIDECAR_URL is unset)."""
+    return _requests_of(env("FT_SIDECAR_URL"), since)
+
+
+SIDECAR_READ_PATHS = {"/v1/read", "/v1/capabilities/registers"}
 
 
 def fake_mark() -> int:
@@ -142,8 +158,9 @@ async def call(tool: str, args: dict | None = None, *, token: str | None = None)
     args = args or {}
     started = await db_now()
     seq = fake_mark()
+    sc_seq = sidecar_requests(10**9)["last_seq"]
     out = await _raw_call(tool, args, token)
-    out.started_db, out.fake_seq = started, seq
+    out.started_db, out.fake_seq, out.sidecar_seq = started, seq, sc_seq
     # Audit append is awaited before the response, but poll briefly for visibility.
     for _ in range(20):
         out.audit = await db_fetch(
@@ -156,7 +173,20 @@ async def call(tool: str, args: dict | None = None, *, token: str | None = None)
             break
         await asyncio.sleep(0.25)
     out.upstream = fake_requests(seq)["requests"]
+    out.sidecar = sidecar_requests(sc_seq)["requests"]
     return out
+
+
+def no_write_reached_1c(out: Outcome) -> bool:
+    """Fake1C saw only GET/HEAD; the read-only sidecar protocol saw only POST /v1/read|capabilities."""
+    return ({r["method"] for r in out.upstream} <= {"GET", "HEAD"}
+            and all(r["method"] == "POST" and r["path"] in SIDECAR_READ_PATHS for r in out.sidecar))
+
+
+def business_reads(out: Outcome) -> list[dict]:
+    """Requests that could carry business data: Fake1C filtered GETs or any sidecar read."""
+    return ([r for r in out.upstream if "$filter" in r["query_keys"]]
+            + [r for r in out.sidecar if r["path"] == "/v1/read"])
 
 
 def entity_gets(out: Outcome) -> list[dict]:
@@ -198,7 +228,7 @@ def admin_cli(*cli_args: str) -> subprocess.CompletedProcess:
     e = dict(os.environ)
     e["BAG_ADMIN_DATABASE_URL"] = env("FT_ADMIN_DATABASE_URL")
     e["BAG_DATABASE_URL"] = env("FT_ADMIN_DATABASE_URL")
-    e["BAG_ENVIRONMENT"] = "development"
+    e["BAG_ENVIRONMENT"] = env("BAG_ENVIRONMENT", "development")
     e["PYTHONPATH"] = str(REPO_ROOT / "src")
     return subprocess.run(
         [sys.executable, str(REPO_ROOT / "scripts" / "admin.py"), *cli_args],

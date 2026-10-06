@@ -58,11 +58,12 @@ async def test_company_scoped_grant_isolates_company_two_from_company_one():
         assert one.is_error and h.final_audit(one)["detail_code"] == "AccessDenied"
         assert str(h.final_audit(one)["company_id"]) == h.COMPANY_ONE and one.upstream == []
         two = await h.call("sales_documents", {**SALES, "company_id": h.COMPANY_TWO})
-        # ACL passes for company two; the semantic-profile gate (not ACL) must be what stops it.
-        assert two.is_error
+        # ACL passes for company two and returns ONLY company two's documents.
+        assert two.ok
         codes = [r["detail_code"] for r in two.audit]
         assert "ACCESS_AUTHORIZED" in codes and "AccessDenied" not in codes
-        assert [r for r in two.upstream if "$filter" in r["query_keys"]] == []
+        numbers = {r["document_number"] for r in two.data["value"]}
+        assert numbers.isdisjoint({"SALE-001", "SALE-003", "SALE-004"}), numbers
         record("SC04", negative_company_scope="company-two-only grant: company one AccessDenied, company two passes ACL")
         record("SC09", negative_company_scope="company-two-only grant: company one AccessDenied")
     finally:
@@ -103,7 +104,7 @@ async def test_mutation_surface_absent_and_no_write_reaches_1c():
     # Injection attempt inside a read filter must still be a GET with the string only in query.
     inj = await h.call("onec_read", {"source_id": h.SOURCE_ID, "entity_set": "Document_Sales",
                                      "filter_expr": "Posted eq true; DELETE", "top": 1})
-    assert {r["method"] for r in inj.upstream} <= {"GET", "HEAD"}
+    assert h.no_write_reached_1c(inj)
     record("SC08", no_write="no mutation tool exists; probe + injected filter produced GET/HEAD only")
 
 

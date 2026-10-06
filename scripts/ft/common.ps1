@@ -10,6 +10,7 @@ $script:RedisName = 'erpmcp-ft-redis'
 $script:PgPort = 25432
 $script:RedisPort = 26379
 $script:FakePort = 28766
+$script:SidecarPort = 28767
 $script:GwPort = 28000
 
 function New-Secret {

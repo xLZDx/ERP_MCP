@@ -10,6 +10,7 @@ EXPECTED_TOOLS = {
     "accounting_balance_and_turnovers", "inventory_balance", "inventory_movements",
     "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
     "payable_balance", "sales_documents", "purchase_documents", "onec_read",
+    "receivable_aging", "payable_aging",
 }
 
 
@@ -31,13 +32,15 @@ async def test_discovery_lists_fake1c_source_and_both_companies():
 
 async def test_live_metadata_lists_only_synthetic_entities():
     summ = await h.call("onec_metadata_summary", {"source_id": h.SOURCE_ID, "refresh": True})
-    assert summ.ok and summ.data["entity_set_count"] == 10
-    assert summ.data["groups"] == {"AccumulationRegister": 6, "Catalog": 2, "Document": 2}
+    assert summ.ok and summ.data["entity_set_count"] == 12
+    assert summ.data["groups"] == {"AccountingRegister": 1, "AccumulationRegister": 7, "Catalog": 2, "Document": 2}
     cap = await h.call("onec_capabilities", {"source_id": h.SOURCE_ID})
     assert cap.ok and cap.data["compatibility_status"] == "SUPPORTED"
     found = await h.call("onec_find_entities", {"source_id": h.SOURCE_ID, "contains": "AccountingRegister"})
-    assert found.ok and found.data == [], "Fake1C must not advertise AccountingRegister_* entities"
-    assert {r["method"] for r in found.upstream + cap.upstream + summ.upstream} <= {"GET", "HEAD"}
+    assert found.ok and [e["name"] for e in found.data] == ["AccountingRegister_Ledger"]
+    ghost = await h.call("onec_find_entities", {"source_id": h.SOURCE_ID, "contains": "VAT"})
+    assert ghost.ok and ghost.data == [], "no VAT entity may be advertised (SC06 stays gated)"
+    assert h.no_write_reached_1c(found) and h.no_write_reached_1c(cap) and h.no_write_reached_1c(summ)
 
 
 async def test_result_bounds_top_and_row_cap():

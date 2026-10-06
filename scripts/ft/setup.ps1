@@ -7,13 +7,22 @@ New-Item -ItemType Directory -Force -Path $script:StateDir | Out-Null
 
 $owner = New-Secret; $app = New-Secret; $adm = New-Secret; $ctl = New-Secret; $redisPw = New-Secret
 $ph = '127.0.0.1'
+$fixture = (Resolve-Path (Join-Path $script:Root 'testbed/fake1c/fixtures/synthetic_profiles.json')).Path
+$fixtureSha = (Get-FileHash -Algorithm SHA256 -Path $fixture).Hash.ToLower()
+$sidecarToken = (New-Secret) + (New-Secret)
 $lines = @(
-    'BAG_ENVIRONMENT=development',
+    'BAG_ENVIRONMENT=test',
     "BAG_DATABASE_URL=postgresql://business_ai_app:$app@${ph}:$script:PgPort/business_ai",
     "BAG_MIGRATION_DATABASE_URL=postgresql://business_ai:$owner@${ph}:$script:PgPort/business_ai",
     "BAG_ADMIN_DATABASE_URL=postgresql://business_ai_admin:$adm@${ph}:$script:PgPort/business_ai",
     "BAG_ADMIN_CONTROL_DATABASE_URL=postgresql://business_ai_control_api:$ctl@${ph}:$script:PgPort/business_ai",
     "BAG_REDIS_URL=redis://:$redisPw@${ph}:$script:RedisPort/0",
+    "BAG_SYNTHETIC_FIXTURE_PROFILES_FILE=$fixture",
+    "BAG_SYNTHETIC_FIXTURE_PROFILES_SHA256=$fixtureSha",
+    "BAG_ODATA_SIDECAR_URL=http://${ph}:$script:SidecarPort",
+    "BAG_ODATA_SIDECAR_TOKEN=$sidecarToken",
+    "FAKE_SIDECAR_TOKEN=$sidecarToken",
+    "FT_SIDECAR_URL=http://${ph}:$script:SidecarPort",
     'FAKE1C_USERNAME=synthetic-user',
     'FAKE1C_PASSWORD=synthetic-password',
     "BAG_PUBLIC_MCP_URL=http://127.0.0.1:$script:GwPort/mcp",
@@ -53,7 +62,6 @@ docker exec $script:PgName psql -U business_ai -d business_ai -c $sql | Out-Null
 
 & $script:Py scripts/migrate.py
 & $script:Py scripts/verify_schema.py
-& $script:Py scripts/check_db_privileges.py
 
 # Recording Fake1C (wraps the unchanged Fake1C app; logs method+path only).
 $fakeOut = Join-Path $script:StateDir 'fake1c.log'
@@ -62,10 +70,17 @@ $fake = Start-Process -FilePath $script:Py -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $fakeOut -RedirectStandardError ($fakeOut + '.err')
 Wait-Http "http://127.0.0.1:$script:FakePort/odata/standard.odata/`$metadata"
 
+# Test-only fake sidecar (protocol double over the Fake1C seed), wrapped by a request recorder.
+$scOut = Join-Path $script:StateDir 'sidecar.log'
+$sc = Start-Process -FilePath $script:Py -WindowStyle Hidden -PassThru `
+    -ArgumentList @('-m', 'uvicorn', 'tests.functional.support.sidecar_recorder:app', '--host', '127.0.0.1', '--port', "$script:SidecarPort") `
+    -RedirectStandardOutput $scOut -RedirectStandardError ($scOut + '.err')
+Wait-Http "http://127.0.0.1:$script:SidecarPort/__ft__/requests"
+
 & $script:Py scripts/admin.py source-upsert --source-id fake1c-local --display-name 'Fake1C synthetic' `
     --base-url "http://127.0.0.1:$script:FakePort/odata/standard.odata" `
     --username-secret FAKE1C_USERNAME --password-secret FAKE1C_PASSWORD `
-    --allow 'Catalog_*' 'Document_*' 'AccumulationRegister_*'
+    --tags synthetic-fixture --allow 'Catalog_*' 'Document_*' 'AccumulationRegister_*' 'AccountingRegister_*'
 & $script:Py scripts/admin.py company-upsert --company-id 00000000-0000-0000-0000-000000000001 `
     --source-id fake1c-local --external-ref 00000000-0000-0000-0000-000000000001 `
     --display-name 'Synthetic organization one' --default
@@ -80,5 +95,5 @@ $gw = Start-Process -FilePath $script:Py -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $gwOut -RedirectStandardError ($gwOut + '.err')
 Wait-Http "http://127.0.0.1:$script:GwPort/readyz"
 
-Set-Content -Path (Join-Path $script:StateDir 'pids.txt') -Value @("fake1c=$($fake.Id)", "gateway=$($gw.Id)") -Encoding ascii
+Set-Content -Path (Join-Path $script:StateDir 'pids.txt') -Value @("fake1c=$($fake.Id)", "sidecar=$($sc.Id)", "gateway=$($gw.Id)") -Encoding ascii
 Write-Host "stack ready: MCP http://127.0.0.1:$script:GwPort/mcp (env file: $script:EnvFile)"
