@@ -91,3 +91,20 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 - Decision: two new read-only tools reuse capability keys ar.read/ap.read (no policy migration) and the existing aging engine; new concepts receivable.open_items / payable.open_items validated by `settlement_collector.py` (deviation: validator lives there, not semantic.py, to keep semantic.py unchanged) and wired into the shared registry validator chain and scripts/semantic_profiles.py. Fixture covers receivable only; payable has no fixture profile and is fail-closed. validated_profiles is derived server-side, never from tool input; evidence level is L1 for fixtures, mapping-declared for native profiles. Fake1C gains AccumulationRegister_SettlementItems (additive wiring); company-two item proves scope isolation.
 - SC06 stays EXTERNAL-GATE and SC08 NOT IMPLEMENTED (out of freeze), unchanged.
 - Executed against the live environment (up.ps1 -Seed baseline, then test.ps1 -Suite user): 41 passed, 3 skipped (U05/U06 row-content `BLOCKED-no-validated-semantic-profile` x2, U18 `FT-suite-not-merged`), 0 failed. One test defect fixed: U12 expected CamelCase exception names but the audit detail_code is `SEMANTIC_PROFILE_UNVALIDATED`. Observation: the MCP client sees only the generic text "Error executing tool <name>" for every failure; specific codes are visible only in audit rows. The pre-existing lane-A PostgreSQL volume `erpmcp-e2e-pgdata` (old secrets) was removed with `down.ps1 -Purge` to initialise this worktree's own secrets.
+# Decision log (functional-tester branch qa/functional-tester-sc01-sc12)
+
+## 2026-10-07 - Black-box functional suite for SC01-SC12
+
+- Decision: author tests/functional (real MCP Streamable-HTTP client, env-parametrised FT_*) and a
+  private disposable stack (scripts/ft, ports 25432/26379/28766/28000). No src/, migration or
+  security-boundary change.
+- Decision: statuses are observed at run time. A scenario is PASS only if a public tool answered and
+  the invariant held; otherwise EXTERNAL-GATE (tool fails closed: no VALIDATED semantic profile, and
+  bag.semantic_profiles requires ten native-report cases by DB check constraint) or NOT IMPLEMENTED
+  (no public tool/data). No synthetic profile or native evidence was fabricated.
+- Evidence: Fake1C is synthetic L1 only; never native 1C reconciliation.
+- Commit: see git log on this branch.
+
+## 2026-10-07 - Dispositions and token default
+
+- SC10 args now timezone-qualified (tester bug). SC06 encoded EXTERNAL-GATE (VAT only when validated), SC08 NOT IMPLEMENTED (outside frozen scope; needs operator rebaseline). FT_BEARER_TOKEN is now the default identity for every call.

@@ -50,6 +50,7 @@ markers = [
   "smoke: fast environment smoke checks",
   "user: data-plane user E2E suite",
   "admin: Admin control center E2E suite",
+  "functional: black-box MCP scenario tests against a running stack (tests/functional; skipped without FT_* env)",
 ]
 
 [tool.ruff]
