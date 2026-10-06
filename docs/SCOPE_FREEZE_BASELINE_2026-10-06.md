@@ -6,7 +6,7 @@
 **Operator decision:** no new product scope is added until the currently committed scope is implemented and its mandatory evidence is closed.
 **Code checkpoint at freeze:** PR #11 branch `integration/1c-mvp-production-candidate`, remote HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`.
 **Documentation baseline:** this freeze includes the current normative package plus `DAD_1C_MCP_REQUIREMENTS_COVERAGE.md` and `FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md`.
-**Exact freeze commit:** pending documentation commit; until then this file and the referenced working-tree documents define the operator-approved baseline.
+**Exact freeze baseline commit:** `57eb5b0696063237a43f5d1baf0a646278f5d832`. Later scope-preserving implementation/evidence commits do not change the frozen requirement set unless an explicit operator rebaseline updates this document.
 
 ## 1. Freeze rule
 
