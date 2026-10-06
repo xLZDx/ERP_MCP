@@ -338,3 +338,6 @@
   asyncpg parameter-type error in `jsonb_build_object` for the evidence key. Added an explicit
   `::text` cast; local suite remains 123 passed / 7 PostgreSQL-only skips and Ruff passes. Awaiting
   hosted rerun to verify the SQL correction and role permissions.
+- Corrected head `02eab2d` passed hosted run `37415224776`: PostgreSQL migrations, privilege checker,
+  all pytest tests (including runtime-role capability evidence persistence/refresh), pip-audit,
+  exact pinned upstream client/metadata tests, and non-root sidecar build/smoke all passed.
