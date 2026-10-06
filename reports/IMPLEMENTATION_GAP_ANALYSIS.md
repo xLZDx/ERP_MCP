@@ -1,9 +1,12 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-06
-Current implementation is tracked as Draft PRs #2–#8 after PR #1 merged. P4 follow-up head
-`bdbc3a3` passed hosted `test` and `odata-upstream` checks; the working branch is
-`phase/p4-inventory-movements`. This report is being incrementally reconciled with current P4/P5 work.
+Current implementation is tracked as Draft PRs #2–#8 after PR #1 merged. Working branch
+`phase/p4-inventory-movements` is at `f85b7160c363f7eaa081b578f4e1206cda1d7297`; its hosted run
+`37415093193` is queued. Previous head `bdbc3a3` passed both `test` and `odata-upstream` in run
+`37387796057`. P4 now includes profile-gated inventory movements, posting rows, cash movements, and
+persistent negative capability evidence. The report below retains historical phase evidence and is
+being progressively reconciled; the current implementation status is authoritative for latest P4.
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
 

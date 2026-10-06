@@ -334,3 +334,7 @@
   calls. Runtime denial still audits `CAPABILITY_UNSUPPORTED`; no business rows are stored. Added a
   PostgreSQL runtime-role integration check for persistence across refresh. The integration test is
   skipped locally without its disposable PG URL; hosted PR CI must exercise it.
+- First hosted run on `f85b716` (`37415093193`) passed `odata-upstream`, but PostgreSQL CI exposed an
+  asyncpg parameter-type error in `jsonb_build_object` for the evidence key. Added an explicit
+  `::text` cast; local suite remains 123 passed / 7 PostgreSQL-only skips and Ruff passes. Awaiting
+  hosted rerun to verify the SQL correction and role permissions.

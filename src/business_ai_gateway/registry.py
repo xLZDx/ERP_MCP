@@ -505,7 +505,7 @@ class Registry:
                 COALESCE(evidence_json, '{}'::jsonb),
                 '{semantic_capabilities}',
                 COALESCE(evidence_json->'semantic_capabilities', '{}'::jsonb)
-                  || jsonb_build_object($2, $3::jsonb),
+                  || jsonb_build_object($2::text, $3::jsonb),
                 true
             )
             WHERE source_id=$1 AND metadata_fingerprint=$4 AND drift_status='STABLE'

@@ -2,6 +2,23 @@
 
 Last updated: 2026-10-06
 
+## Current authoritative state
+
+- Active delivery branch: `phase/p4-inventory-movements` at `f85b7160c363f7eaa081b578f4e1206cda1d7297`.
+- PR #1 is merged. Draft PRs #2–#8 remain open; PR #8 carries the current P4 follow-up and is
+  stacked on the P9 evidence-gate branch. No PR has been self-approved or merged by this agent.
+- Latest hosted run for this head: `37415093193`, queued at the time of this update. Previous P4
+  head `bdbc3a3` passed both CI jobs in run `37387796057`.
+- Latest local checks on `f85b716`: pytest `123 passed, 7 skipped`; Ruff, Bandit, compileall,
+  pip-audit, scenario validation (12 synthetic scenarios), and `git diff --check` passed. The seven
+  skipped checks require the hosted PostgreSQL privilege-test database.
+- P4 now includes inventory movements, bounded accounting posting rows, cash movements, and
+  persistent source-specific negative capability evidence. No unconfirmed EntitySet/property name
+  is guessed; missing evidence denies with `CAPABILITY_UNSUPPORTED`.
+- Pilot validator remains `NOT_READY`; native 1C reconciliation has not been run. This is not a
+  production-ready declaration. The historical bootstrap chronology below is retained as a log,
+  not as the current branch/PR status.
+
 ## Bootstrap
 
 - Repository: `https://github.com/xLZDx/ERP_MCP`
