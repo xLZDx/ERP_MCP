@@ -75,7 +75,15 @@ BEGIN
       atom_supported = EXCLUDED.atom_supported,
       expand_supported = EXCLUDED.expand_supported,
       entity_set_count = EXCLUDED.entity_set_count,
-      evidence_json = EXCLUDED.evidence_json,
+      -- Runtime metadata observations must not erase source-specific negative
+      -- evidence recorded by the least-privileged application role.
+      evidence_json = jsonb_set(
+        COALESCE(EXCLUDED.evidence_json, '{}'::jsonb),
+        '{semantic_capabilities}',
+        COALESCE(bag.source_capabilities.evidence_json->'semantic_capabilities', '{}'::jsonb)
+          || COALESCE(EXCLUDED.evidence_json->'semantic_capabilities', '{}'::jsonb),
+        true
+      ),
       register_capabilities_json = EXCLUDED.register_capabilities_json,
       drift_status = CASE
         WHEN NOT EXCLUDED.metadata_supported THEN 'NEEDS_VALIDATION'
