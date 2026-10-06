@@ -33,6 +33,14 @@ hop. Production requires HTTPS on that hop. Do not publish the sidecar port outs
 service network. The sidecar only exposes bounded OData query/count operations; all other routes and
 verbs fail closed. A sidecar response is rejected unless its source id and upstream SHA match.
 
+Configure `BAG_SOURCE_HOST_ALLOWLIST` on the gateway as a comma-separated list of exact source
+hostnames (no scheme, port, wildcard, or path), synchronized with `ONEC_ALLOWED_HOSTS`. Production
+source registration/lookups fail closed for any hostname not on this list. This hostname check does
+not prevent DNS rebinding: the production network must separately restrict gateway and sidecar
+egress to approved 1C address ranges, and release evidence must demonstrate that DNS resolution
+cannot redirect an approved hostname to an unapproved destination at connect time. On-premises
+private addresses are supported only when explicitly allowlisted and permitted by network policy.
+
 ## JWT claims
 
 Required: `iss`, `aud`, `sub`, `iat`, `exp`, and scope `onec:read`.
@@ -71,5 +79,10 @@ Before first production enablement:
 - revoked grants effective without restart;
 - writable source rejected;
 - arbitrary URL target impossible;
+- exact source host allowlist enforced and DNS-rebinding/egress controls evidenced;
 - response-size/rate limits verified;
 - ten representative accounting questions reconciled with 1C UI/reports.
+
+Recovery must follow [the rollback and restore runbook](ROLLBACK.md). No in-place database restore
+or destructive recovery is authorized by this document; production rehearsals and named operator
+approval remain required evidence.
