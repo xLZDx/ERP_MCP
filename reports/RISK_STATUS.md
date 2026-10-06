@@ -2,6 +2,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=RSV_WIRE_BOUNDS_20261006 ENGINEERING_IMPLEMENTATION=a886933286d4662657d4e7391da15d1d5b28987b32b27976defd92891e481cb5 -->
+
+## Scoped pre-parser RSV wire resource guard — 2026-10-06
+
+P6-SEC-1/NFR-R2/D4/D8/D14: locked SDK TextReceiveStream is wrapped once with per-stream RSV ContextVar activation; 5 MB line/10 MB session/64 frames enforced after UTF-8 decode BEFORE JSON parsing. Only owned receive pipe closes on excess; fixed code, no raw stdout/cleanup details; SDK retains spawning/framing/teardown, upstream COM bridge unchanged. Fragmented/multibyte/boundary/reset/flood/cleanup/idempotency/concurrent non-RSV contracts PASS. 36 focused privacy/bridge/wire tests, executed 19-case lifecycle harness and actual native bridge 1 PASS (zero skips); default 6 MB attacks actually rejected before parser, fresh sessions/rotation recover. Initial flood was a fixture failure: SDK diverted handler stdout to stderr; corrected with test-only saved wire descriptor. Malformed case now proves SDK validation received it, not just timeout. SDK seam coupling documented; Windows job includes wire contracts. Parent 2c86e51 CI 37484138607 four jobs PASS. Full current local suite 510 passed/16 skipped; Ruff/Bandit(runtime+testbed)/compileall/checkpoint/source-render/report gates PASS. Wire batch awaits its own hosted run. Native engine crash/zero-write/accounting, DAD/Ferma/full fault/deployment/evidence storage/ACL/parsers remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=SCRIPT_EVIDENCE_HARDENING_20261006 ENGINEERING_IMPLEMENTATION=44c37233b715dda3413d94fd58fb1ff0ee16dd8b8f72bd6880fc57f6c3c6e6d5 -->
 
 ## Hardened actual-case evidence and optimization-proof ACL guard — 2026-10-06

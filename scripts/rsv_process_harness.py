@@ -13,9 +13,11 @@ except ImportError:
 
 def run() -> dict[str, object]:
     result = execute(["tests/test_rsv_process_lifecycle.py", "tests/test_rsv_secret_privacy.py",
+                      "tests/test_rsv_wire_limits.py",
                       "-k", "not secret_file_inherits_only_the_three_trusted_directory_aces"], timeout_seconds=240)
     result.update(real_1c_called=False, transport="official_sdk_stdio",
                   operations=["ping", "config"],
+                  wire_policy="scoped_preparser_line_session_frame_limits",
                   not_covered=["native_COM_crash", "native_1C_restart"],
                   platform_specific_coverage="native_file_inheritance_proof_requires_windows-rsv-privacy_job")
     return result

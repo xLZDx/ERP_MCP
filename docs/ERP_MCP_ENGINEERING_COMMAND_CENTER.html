@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 0eb66fd9 · CI 37481295210: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: script evidence hardening · local 501 PASS / 16 SKIP · hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 2c86e514 · CI 37484138607: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: scoped RSV wire bounds · local 510 PASS / 16 SKIP · hosted CI pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,8 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=RSV_WIRE_BOUNDS_20261006 ENGINEERING_IMPLEMENTATION=a886933286d4662657d4e7391da15d1d5b28987b32b27976defd92891e481cb5 -->
+<p><strong>Scoped RSV wire bounds — 2026-10-06:</strong> P6-SEC-1/NFR-R2/D4/D8/D14: locked SDK TextReceiveStream is wrapped once with per-stream RSV ContextVar activation; 5 MB line/10 MB session/64 frames enforced after UTF-8 decode BEFORE JSON parsing. Only owned receive pipe closes on excess; fixed code, no raw stdout/cleanup details; SDK retains spawning/framing/teardown, upstream COM bridge unchanged. Fragmented/multibyte/boundary/reset/flood/cleanup/idempotency/concurrent non-RSV contracts PASS. 36 focused privacy/bridge/wire tests, executed 19-case lifecycle harness and actual native bridge 1 PASS (zero skips); default 6 MB attacks actually rejected before parser, fresh sessions/rotation recover. Initial flood was a fixture failure: SDK diverted handler stdout to stderr; corrected with test-only saved wire descriptor. Malformed case now proves SDK validation received it, not just timeout. SDK seam coupling documented; Windows job includes wire contracts. Parent 2c86e51 CI 37484138607 four jobs PASS. Full current local suite 510 passed/16 skipped; Ruff/Bandit(runtime+testbed)/compileall/checkpoint/source-render/report gates PASS. Wire batch awaits its own hosted run. Native engine crash/zero-write/accounting, DAD/Ferma/full fault/deployment/evidence storage/ACL/parsers remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=SCRIPT_EVIDENCE_HARDENING_20261006 ENGINEERING_IMPLEMENTATION=44c37233b715dda3413d94fd58fb1ff0ee16dd8b8f72bd6880fc57f6c3c6e6d5 -->
 <p><strong>Actual-case evidence hardening — 2026-10-06:</strong> SCOPE-1/NFR-P2/D0/D1/D14-D18: execution harnesses now share bounded defusedxml JUnit parsing with release summaries; DTD/malformed/oversized/missing reports fail sanitized, suite totals cannot manufacture actual cases, declared failure/skip signals stay blocking. Spawn errors sanitized; summary CLI refuses overwrite. ACL measurement guard survives actual python -O; five SQL identifier-injection cases denied before dispatch. 49 focused tests PASS. Hardened reader reruns: fault/JWKS 11, SDK RSV 10, pinned private Ferma 47, actual native bridge 1 PASS (zero skips); four actual fanout mutations killed; five artifacts scanner PASS. Expanded scan reduced 38 to 35 findings; remaining 5 medium contexts documented with controls/tests, not suppressed or production approval. Parent 0eb66fd CI 37481295210 four jobs PASS. Full current local suite 501 passed/16 skipped; Ruff/Bandit(runtime+testbed)/compileall/checkpoint/source-render/report gates PASS. Script batch awaits its own hosted run. Remaining frozen DAD/Ferma/native storage/parsers/ACL/full fault/deployment/stdout gates OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=DASHBOARD_SOURCE_SYNC_20261006 ENGINEERING_IMPLEMENTATION=b0c9ec58d9d448e9425d9dbc8e224c34c2ad1926a8e86323c0c1055057fcf572 -->
@@ -602,7 +604,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>0eb66fd98ff1f52c810870e34005ff7dd20030b5</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37481295210">37481295210</a>: FOUR jobs PASS. Текущий script-evidence batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>2c86e514bc94800814c0b6310c0fca9c4b2cb21c</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37484138607">37484138607</a>: FOUR jobs PASS. Текущий RSV wire-bound batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -664,7 +666,7 @@ before new product scope is admitted.</p>
 <tr>
 <td>P6</td><td>Local/extension/COM fallback</td><td>Audited metadata fallback</td>
 <td><strong>Real bridge crash + fresh COM reconnect PASS</strong><br>1 native opt-in test executed; SDK timeout/malformed/rotation; Windows protected config DACL/privacy.</td>
-<td>Stdout pre-parser memory bound; native engine crash/zero-write snapshot proof; complete deployed recovery evidence.</td>
+<td>Wire pre-parser bounds implemented; native engine crash/zero-write snapshot proof and complete deployed recovery evidence remain OPEN.</td>
 <td>query default DENY; execute_query DENY; reveal HARD DENY until separate proof/rebaseline.</td>
 </tr>
 <tr>
@@ -7959,7 +7961,7 @@ the external-evidence plane.</p>
 <p>Full source mapping, gaps and acceptance criteria are maintained in
 <code>docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md</code>.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
-<article class="doc-card searchable" id="doc-rsv-runbook" data-cat="core" data-title="RSV DATA BRIDGE"><div class="doc-head"><h2>RSV DATA BRIDGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/runbooks/RSV_DATA_BRIDGE.md DOC_SOURCE_SHA256=67a09153031d7339a7bce44b605831d7f17df168a224ab4667ce18bfb2fb03ff DOC_RENDER_SHA256=7506c2fd57b49cd27370b9e5f1a89a740b04ea1e82e9785057f9dae68d12cf93 -->
+<article class="doc-card searchable" id="doc-rsv-runbook" data-cat="core" data-title="RSV DATA BRIDGE"><div class="doc-head"><h2>RSV DATA BRIDGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/runbooks/RSV_DATA_BRIDGE.md DOC_SOURCE_SHA256=584291eec1bb89ecc121d0c40f8ec0f984a9f53c4bf21fae2ed55ebead0ab320 DOC_RENDER_SHA256=815a405fc54cfa2772f92dc307e67742c9897d51335a292c3efa20ca246eec44 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>RSV Data bridge operations (P6)</h1>
 <p>The bridge is the pinned <code>prepod2003/mcp-rsv-data</code> upstream process. ERP_MCP does not
@@ -8025,6 +8027,22 @@ No process-name search, arbitrary PID kill, native engine kill, database mutatio
 metadata artifact is used. This proves bridge crash + fresh COM connection, not native engine crash,
 zero-write snapshot comparison, binary/source build parity or native accounting reconciliation.
 The native test is explicit opt-in and is NOT inferred from hosted Windows unit privacy evidence.</p>
+<h2>Scoped SDK stdout resource policy</h2>
+<p><code>rsv_privacy.py</code> installs an idempotent thin wrapper around the locked SDK's TextReceiveStream
+constructor. Activation is captured per stream from the private RSV ContextVar; simultaneous
+non-RSV SDK sessions are unchanged. The upstream bridge, SDK spawning/framing/JSON parser and
+teardown remain reused, not forked. Limits apply after UTF-8 decoding but BEFORE SDK JSON parsing:
+5,000,000 bytes per newline-delimited wire message, 10,000,000 bytes per session and 64 frames.
+These are fixed server policy, not model arguments. Existing normalized response limits still apply.</p>
+<p>Excess closes only that SDK-owned receive pipe and raises a fixed code without untrusted stdout
+or cleanup diagnostics. Closing the pipe unblocks the SDK's shielded drain; the SDK then owns
+process teardown. Contract tests cover fragmented/multibyte input, exact boundary/newline reset,
+session total/frame flood, cleanup failure, repeated install and concurrent unrelated sessions.
+Actual disposable SDK child tests send both undelimited and valid 6 MB private responses; a parser
+spy must see neither, and fresh sessions/reconfigured secrets must recover. Native metadata drill
+must still pass. This SDK namespace seam is intentionally coupled to the exact lock: dependency
+updates require these contract tests, never a silent unsupported fallback. No generic query/reveal
+or production writes are enabled by the resource policy.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
 <article class="doc-card searchable" id="doc-pilot-evidence" data-cat="core" data-title="PILOT EVIDENCE GATE"><div class="doc-head"><h2>PILOT EVIDENCE GATE</h2></div><div class="md"><!-- DOC_SOURCE=docs/PILOT_EVIDENCE_GATE.md DOC_SOURCE_SHA256=d14d9f3134cd3f55514e545db21d628736f3e4d5792eca89cfea33fa213d006d DOC_RENDER_SHA256=4cfe912c92188a4dec20eb674fd08e4b056cd6805edf15fd70ecaca5b14611d4 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->

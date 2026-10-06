@@ -66,3 +66,22 @@ No process-name search, arbitrary PID kill, native engine kill, database mutatio
 metadata artifact is used. This proves bridge crash + fresh COM connection, not native engine crash,
 zero-write snapshot comparison, binary/source build parity or native accounting reconciliation.
 The native test is explicit opt-in and is NOT inferred from hosted Windows unit privacy evidence.
+
+## Scoped SDK stdout resource policy
+
+`rsv_privacy.py` installs an idempotent thin wrapper around the locked SDK's TextReceiveStream
+constructor. Activation is captured per stream from the private RSV ContextVar; simultaneous
+non-RSV SDK sessions are unchanged. The upstream bridge, SDK spawning/framing/JSON parser and
+teardown remain reused, not forked. Limits apply after UTF-8 decoding but BEFORE SDK JSON parsing:
+5,000,000 bytes per newline-delimited wire message, 10,000,000 bytes per session and 64 frames.
+These are fixed server policy, not model arguments. Existing normalized response limits still apply.
+
+Excess closes only that SDK-owned receive pipe and raises a fixed code without untrusted stdout
+or cleanup diagnostics. Closing the pipe unblocks the SDK's shielded drain; the SDK then owns
+process teardown. Contract tests cover fragmented/multibyte input, exact boundary/newline reset,
+session total/frame flood, cleanup failure, repeated install and concurrent unrelated sessions.
+Actual disposable SDK child tests send both undelimited and valid 6 MB private responses; a parser
+spy must see neither, and fresh sessions/reconfigured secrets must recover. Native metadata drill
+must still pass. This SDK namespace seam is intentionally coupled to the exact lock: dependency
+updates require these contract tests, never a silent unsupported fallback. No generic query/reveal
+or production writes are enabled by the resource policy.

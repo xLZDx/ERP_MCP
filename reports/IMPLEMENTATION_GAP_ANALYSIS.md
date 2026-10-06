@@ -1,6 +1,18 @@
 
 # ERP_MCP implementation gap analysis
 
+## Actual default-budget RSV stdout proof — 2026-10-06
+
+Pre-parser wire bounds now implemented without another bridge/framing/parser: per-stream private
+SDK wrapper, 5 MB line/10 MB total/64 frames, owned receive pipe closes, fixed sanitized error.
+Concurrent non-RSV sessions unchanged. 36 focused contracts and 19 executed lifecycle harness
+cases PASS, zero skips; actual native metadata lifecycle 1 PASS. Saved descriptor fixes SDK handler
+stdout diversion in adversarial fixture; default 6 MB floods/valid oversized JSON prove guard
+rejection and parser-spy exclusion, not timeout-only evidence. Malformed injection now actually
+reaches SDK validation. Coupling to locked SDK seam is documented/tested in both platforms.
+Native engine crash/zero-write snapshots/native accounting, full DAD/Ferma/fault/deployment and
+external evidence storage/ACL/parsers remain open; whole P6/production scope not inferred closed.
+
 ## Shared hardened actual-case evidence reader — 2026-10-06
 
 JUnit helper no longer trusts suite-declared positive totals and no longer uses unsafe XML parsing.
