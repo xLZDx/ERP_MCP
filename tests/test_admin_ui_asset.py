@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -46,3 +47,24 @@ def test_live_admin_ui_keeps_source_and_company_management_separate():
     assert "Company scope" in javascript and "Expires" in javascript
     assert "Conflict:" in javascript
     assert "/admin/v1/principals/resolve" in app
+
+
+INLINE_HANDLER = re.compile(r"(?<![\w.])on[a-z]{3,}\s*=\s*\\?[\"']")
+
+
+def test_no_inline_event_handler_attributes_in_served_html_or_js():
+    """The CSP has no 'unsafe-inline' for scripts, so on* attributes silently do nothing."""
+    html = Path("src/business_ai_gateway/static/admin.html").read_text(encoding="utf-8")
+    javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
+    assert INLINE_HANDLER.findall(html) == []
+    assert INLINE_HANDLER.findall(javascript) == []
+    assert "javascript:" not in html + javascript
+
+
+def test_every_data_act_target_is_registered_in_the_delegated_dispatcher():
+    javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
+    block = javascript.split("const ACTIONS={", 1)[1].split("};", 1)[0]
+    registered = set(re.findall(r"(\w+):", block))
+    used = set(re.findall(r"data-act=\"(\w+)\"", javascript))
+    used |= set(re.findall(r"modal\([^\n]*?,'(\w+)'\)", javascript))
+    assert used and used <= registered, sorted(used - registered)
