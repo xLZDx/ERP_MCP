@@ -387,7 +387,14 @@ The extractor preserves inconsistent totals for the rule engine rather than repa
 document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
 Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
 lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
-original archive verification and the 11-case invoice rule/real-corpus acceptance remain OPEN.
+original archive verification, live invoice delivery and real-corpus acceptance remain OPEN.
+
+The internal eleven-case rule pack now consumes these immutable fingerprinted facts plus an exact
+approved source observation/rule profile and independently confirmed primary archive proof. It
+never invokes source protocols or writes 1C. Rules compare data, not legal tax eligibility; period,
+service allocation and profile-selected overhead are human-review findings. Nonapplicable checks
+are labelled explicitly, not counted as completed native acceptance. Full live/public invoice tool
+and real native/corpus delivery remain OPEN despite synthetic logical rule coverage.
 
 ## 15. Test-only 1C seeder boundary
 

@@ -2,6 +2,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=INVOICE_RULE_PACK_20261006 ENGINEERING_IMPLEMENTATION=39ee0ad1433f488681518a0f30441874123164387f37eb197d7ccf56404dc32e -->
+
+## Invoice normalized rule pack / CI fix — 2026-10-06
+
+DAD-2/D9/D11: internal versioned eleven-case invoice comparison pack implemented with exact source/company/config/metadata/buyer/item/native-report/amount-encoding profiles, bounded typed independent observations, parser snapshot and detached-facts fingerprints. Source-specific service/overhead applicability; no universal 821, tax/VAT deductibility inference or 1C mutation. Verified primary archive proof binds scope+invoice/supplier+original digest; normalized carrier/source digest cannot masquerade as original, absent proof EVIDENCE_REQUIRED. Missing receipt never manufactures other PASS checks. Quantity/price/discount/net/VAT/total/header math discrepancies remain findings; profile line-VAT rounding requires EXACT header totals and cannot waive total mismatch. Hashed findings preserve L1/native/legal approval false. 106 focused rule/parser/CSV tests PASS: all eleven frozen logical aliases are SYNTHETIC, not real private corpus. Parent 160e3c9 CI 37496725289 FAILED only in setup-python post-step: unused pip cache directory absent while uv installs dependencies; tests/security/build gates successful, OData+Windows PASS, release assembly skipped. Removed unused cache: pip, no test/security suppression. Last fully verified bda7e34 CI 37494671262 retained. Current full suite 709 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/scenario/release gates PASS. Own hosted remediation pending. Public/live invoice delivery, native extraction/original archive/private corpus, full month-close/statements/tax/aging/Ferma/native/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=5d379650bceed8faa9f12159d0dd7dfeed20945b8e981c73c20a889885106548 -->
 
 ## Structured normalized invoice input — 2026-10-06

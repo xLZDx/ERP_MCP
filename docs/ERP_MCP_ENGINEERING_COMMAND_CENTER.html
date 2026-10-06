@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD bda7e34e · CI 37494671262: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: structured normalized invoice input · 121 focused PASS · full suite / hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Last fully verified HEAD bda7e34e · CI 37494671262: FOUR PASS · Latest committed 160e3c9 CI 37496725289: FAILED unused pip cache post-step · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: eleven internal invoice rules + CI cache fix · 106 focused PASS · full suite / hosted remediation pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,9 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=INVOICE_RULE_PACK_20261006 ENGINEERING_IMPLEMENTATION=39ee0ad1433f488681518a0f30441874123164387f37eb197d7ccf56404dc32e -->
+<p><strong>Invoice normalized rule pack / CI fix — 2026-10-06:</strong> DAD-2/D9/D11: internal versioned eleven-case invoice comparison pack implemented with exact source/company/config/metadata/buyer/item/native-report/amount-encoding profiles, bounded typed independent observations, parser snapshot and detached-facts fingerprints. Source-specific service/overhead applicability; no universal 821, tax/VAT deductibility inference or 1C mutation. Verified primary archive proof binds scope+invoice/supplier+original digest; normalized carrier/source digest cannot masquerade as original, absent proof EVIDENCE_REQUIRED. Missing receipt never manufactures other PASS checks. Quantity/price/discount/net/VAT/total/header math discrepancies remain findings; profile line-VAT rounding requires EXACT header totals and cannot waive total mismatch. Hashed findings preserve L1/native/legal approval false. 106 focused rule/parser/CSV tests PASS: all eleven frozen logical aliases are SYNTHETIC, not real private corpus. Parent 160e3c9 CI 37496725289 FAILED only in setup-python post-step: unused pip cache directory absent while uv installs dependencies; tests/security/build gates successful, OData+Windows PASS, release assembly skipped. Removed unused cache: pip, no test/security suppression. Last fully verified bda7e34 CI 37494671262 retained. Current full suite 709 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/scenario/release gates PASS. Own hosted remediation pending. Public/live invoice delivery, native extraction/original archive/private corpus, full month-close/statements/tax/aging/Ferma/native/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+
 <!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=5d379650bceed8faa9f12159d0dd7dfeed20945b8e981c73c20a889885106548 -->
 <p><strong>Structured normalized invoice input — 2026-10-06:</strong> DAD-2/EVID-1/D4/D11: explicitly approved INVOICE-only normalized JSON codec supports scoped header/line supplier-buyer identity, invoice number/date, currency, quantity/price/discount/net/VAT/total, item-quality-UOM and service dates. Shared exact source/profile/retention/digest gate reused; strict UTF-8/exact schema/duplicate/size/row/decimal/date validation. No content sniffing, native PDF/XML/UTF16 fallback, policy overrides or class relabelling. Private store/index/runtime safe manifest support exact approved JSON MIME; operator CLI requires explicit --mime application/json. Immutable facts preserve arithmetic discrepancies for future rules, never auto-repair/legal VAT approval. Carrier fingerprint explicitly NORMALIZED_CARRIER; original PDF/archive fingerprint never inferred. Generic scalar DAD comparator rejects invoice line type. 121 focused invoice/existing CSV/store/operator tests PASS, including 29 structured invoice contracts; backward compatibility unaffected. Parent bda7e34 CI 37494671262 FOUR jobs PASS (tested merge 38d36f99bc96f6f2fd2e28c610f25a5a656603b6). Current full suite 670 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Downloaded parent release exact head/merge, four image/SBOM and five JUnit summary hashes verified; SHA256 8289372cf43a40879915ca4b25807404ceb8a5832d9738350fa4bb1b82db4fb0, scanner PASS. Own hosted CI pending. Eleven invoice business rules, native extraction/original archive/live collectors/real corpus, month-close/statements/tax/aging/Ferma/native/full fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
@@ -618,7 +621,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>bda7e34ebcba422eb57e804334940e7dbfac89ff</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37494671262">37494671262</a>: FOUR jobs PASS. Текущий structured invoice input batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний полностью проверенный HEAD <code>bda7e34ebcba422eb57e804334940e7dbfac89ff</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37494671262">37494671262</a>: FOUR PASS. Latest committed <code>160e3c9</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37496725289">37496725289</a>: FAILED only unused pip cache post-step; tests/OData/Windows successful, release assembly skipped. Current invoice-rule/cache-fix batch and fingerprint above; hosted remediation pending. Freeze <code>65883a5</code>/<code>57eb5b0</code> are historical, NOT current HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -2181,7 +2184,7 @@ production Ferma adapter.</p>
     </article>
 <article class="doc-card searchable" id="doc-integration" data-cat="architecture" data-title="Integration Contract">
       <div class="doc-head"><div><span class="eyebrow">Интеграция</span><h2>Integration Contract</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=f877056cba8c48753d53abeebb774a1d1ff3a124d8e4b7bfa239f7dd00603399 DOC_RENDER_SHA256=23369b14f4e2cd18808bc3d78a45181a6e5d45ab84b34b0b3fafc30ee3cb80e3 -->
+      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=297c9c392f2f5518c1ba6c511a162a47a28b5243bfa1cd51167737f4c34b0094 DOC_RENDER_SHA256=a62e4935520716eda78b38c56403f6a544b3ffa5b62def2f062170866d1da3ab -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Integration Contract</h1>
 <p><strong>Version:</strong> 1.1
@@ -2484,7 +2487,13 @@ The extractor preserves inconsistent totals for the rule engine rather than repa
 document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
 Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
 lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
-original archive verification and the 11-case invoice rule/real-corpus acceptance remain OPEN.</p>
+original archive verification, live invoice delivery and real-corpus acceptance remain OPEN.</p>
+<p>The internal eleven-case rule pack now consumes these immutable fingerprinted facts plus an exact
+approved source observation/rule profile and independently confirmed primary archive proof. It
+never invokes source protocols or writes 1C. Rules compare data, not legal tax eligibility; period,
+service allocation and profile-selected overhead are human-review findings. Nonapplicable checks
+are labelled explicitly, not counted as completed native acceptance. Full live/public invoice tool
+and real native/corpus delivery remain OPEN despite synthetic logical rule coverage.</p>
 <h2>15. Test-only 1C seeder boundary</h2>
 <p>The Ferma→1C seeder is WRITE-CAPABLE <strong>only in the test plane</strong>.</p>
 <p>It must:
@@ -5001,7 +5010,7 @@ one of them into committed scope.</p>
 </blockquote>
 <p>If there is no answer, the work is scope expansion and must wait for explicit rebaseline.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
-<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=ec1057fbaf782377969fcccb8e19d8697ab96df492fe9c41cfb7c2dae404f4c2 DOC_RENDER_SHA256=7a33b013368137ca6c72665b7b021feed2faa38f7c18493ad81370cf0793496a -->
+<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=ff8d7a43229eb3e28f104e25501360461390f6480a63c0740e364f02147f3e52 DOC_RENDER_SHA256=5e6954ef320b5c2c0a1cb4425275dd065d069b426d092c07bc0dd6219efa65e9 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>DAD 1C MCP — Source Requirements &amp; Scenario Coverage</h1>
 <p><strong>Status:</strong> REVIEWED SOURCE-OF-PROBLEM + IMPLEMENTATION/TEST COVERAGE
@@ -5689,57 +5698,57 @@ distinct scenarios.</p>
 <tr>
 <td>DAD-INV-01</td>
 <td>payment exists but purchase/receipt is missing</td>
-<td>PARTIAL primitives; correlation rule missing</td>
+<td>PARTIAL: normalized correlation rule; live/native OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-02</td>
 <td>one PDF has two qualities/items but 1C collapsed them into one line</td>
-<td>NOT IMPLEMENTED external document comparison</td>
+<td>PARTIAL: normalized quality/line comparison; native extraction OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-03</td>
 <td>supplier/company ID differs between PDF and 1C master data</td>
-<td>NOT IMPLEMENTED</td>
+<td>PARTIAL: scoped identity comparison; live/native OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-04</td>
 <td>wrong product mapping / two product types represented as one item</td>
-<td>NOT IMPLEMENTED</td>
+<td>PARTIAL: exact approved item mapping; live/native OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-05</td>
 <td>invoice date and 1C registration period differ; VAT deduction period requires review</td>
-<td>NOT IMPLEMENTED tax rule</td>
+<td>PARTIAL: period human-review finding; no legal tax approval</td>
 </tr>
 <tr>
 <td>DAD-INV-06</td>
 <td>service covers multiple periods; accrual/period allocation required</td>
-<td>NOT IMPLEMENTED</td>
+<td>PARTIAL: scoped allocation-review rule; native proof OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-07</td>
 <td>production overhead account 821 remains unresolved after invoice review</td>
-<td>PARTIAL month-close primitive</td>
+<td>PARTIAL: profile-only overhead rule; native proof OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-08</td>
 <td>1C receipt exists but primary document is absent from archive</td>
-<td>NOT IMPLEMENTED external evidence completeness</td>
+<td>PARTIAL: exact archive-proof contract; original verification OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-09</td>
 <td>amount/VAT exact match across invoice vs 1C</td>
-<td>NOT IMPLEMENTED document reconciliation service</td>
+<td>PARTIAL: normalized totals comparison; native/public delivery OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-10</td>
 <td>line-level quantity/price/amount/VAT comparison</td>
-<td>NOT IMPLEMENTED document reconciliation service</td>
+<td>PARTIAL: normalized line comparison; native/public delivery OPEN</td>
 </tr>
 <tr>
 <td>DAD-INV-11</td>
 <td>1-cent line VAT differences but correct invoice VAT total</td>
-<td>NOT IMPLEMENTED tolerance policy</td>
+<td>PARTIAL: explicit versioned exact-header tolerance; native acceptance OPEN</td>
 </tr>
 </tbody>
 </table>
@@ -5751,8 +5760,27 @@ the complete quantity/price/VAT/item/quality/header facts in §11. Private stora
 index/manifest route support its exact MIME/profile; no content sniffing, class relabelling or raw
 identity/value exposure. Duplicate/extra/schema/precision/scope inputs fail closed. Carrier SHA is
 not an original PDF fingerprint; extraction never fixes invoice arithmetic or approves tax law.
-This closes the structured normalized input gap ONLY. The coverage table's business rules, native
-PDF/XML extraction, original archive, live source collectors and REAL-INV-001..011 remain OPEN.</p>
+Structured input was implemented before the internal rule pack below. Native PDF/XML extraction,
+original archive, live source collectors and real REAL-INV-001..011 corpus acceptance remain OPEN.</p>
+<p><code>invoice_rules.py</code> now implements an INTERNAL versioned normalized comparison pack for all eleven
+logical cases. Synthetic acceptance fixtures use the frozen REAL-INV-001..011 IDs but are NOT the
+private real corpus. Scope/metadata/item/buyer/native-report mapping and amount encoding are exact
+profile-bound; missing/stale/unapproved/cross-company/incomplete or same-plane facts cannot PASS.
+Private identities/values are not emitted in findings. Original archive proof binds exact scope,
+invoice/supplier identity and verified private blob digest; a normalized carrier/source-result
+digest cannot be relabelled as the original PDF. Without confirmed archive proof the receipt case
+is <code>EVIDENCE_REQUIRED</code>, including when normalized JSON exists.</p>
+<p>Invoice fact snapshots are separately fingerprinted so detached/altered parsed header/lines fail
+before comparison. Missing receipt never manufactures ten other PASS results; service/overhead
+checks carry explicit applicability. There is no global 821 or legal VAT-period conclusion.
+Registration/service periods produce human-review findings, not a tax deductibility decision.
+Quantity/price/discount/net/VAT/total comparisons use explicit versioned tolerances. Line VAT
+rounding is allowed ONLY by profile and when all invoice header totals match EXACTLY; it cannot
+waive a total mismatch. Mathematical line/header inconsistencies remain findings, not corrections.
+All results preserve the supplied evidence level and deny native/legal approval inference.</p>
+<p>Internal logical rules are implemented; public invoice tool/live source collection, verified raw
+archive/native PDF/XML extraction, approved real profiles and private real-corpus/native acceptance
+remain OPEN. The table above describes native/business-delivery gaps, not a full engineering GO.</p>
 <p>The source also proves historical test capability to:</p>
 <ul>
 <li>create/edit a purchase document;</li>

@@ -1,9 +1,10 @@
 """Explicit normalized invoice JSON exchange; NOT PDF/XML extraction or legal VAT validation."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from decimal import Decimal
 
@@ -96,6 +97,7 @@ class InvoiceEvidence:
     header: InvoiceHeader
     lines: tuple[InvoiceLine, ...]
     parser_profile: EvidenceParserProfile
+    normalized_facts_sha256: str  # detect accidental detached/altered parsed facts before rules
 
     @property
     def evidence_class(self):
@@ -112,6 +114,12 @@ class InvoiceEvidence:
                 'raw_document_retained_by_parser': False, 'native_format_validation': 'NOT_PROVEN',
                 'fingerprint_plane': 'NORMALIZED_CARRIER',
                 'original_document_fingerprint_inferred': False, 'human_review_required': True}
+
+
+def invoice_facts_fingerprint(scope, profile_fingerprint, header, lines):
+    value = {'scope': scope.fingerprint(), 'profile': profile_fingerprint,
+             'header': asdict(header), 'lines': [asdict(line) for line in lines]}
+    return hashlib.sha256(json.dumps(value, default=str, sort_keys=True).encode()).hexdigest()
 
 
 def parse_normalized_invoice(payload: bytes, **approved_inputs) -> InvoiceEvidence:
@@ -158,4 +166,5 @@ def parse_normalized_invoice(payload: bytes, **approved_inputs) -> InvoiceEviden
         raise EvidenceRejected('EVIDENCE_SCHEMA_INVALID') from None
     # Arithmetic/rounding/period/legal conclusions belong to approved rules, not extraction.
     return InvoiceEvidence(scope, digest, fingerprint, profile.parser_version, approved_inputs['private_blob_ref'],
-        approved_inputs['retention_policy_id'], parsed_header, tuple(lines), profile)
+        approved_inputs['retention_policy_id'], parsed_header, tuple(lines), profile,
+        invoice_facts_fingerprint(scope, fingerprint, parsed_header, tuple(lines)))
