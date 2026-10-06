@@ -47,8 +47,9 @@ all capabilities dropped, no-new-privileges, no published ports.
 Exact deployed Node dependency audit PASS: 9 package identities, zero advisories.
 Whole upstream workspace audit reports 33 vulnerabilities in unused MCP/CLI dependency trees;
 those packages are not included in the deployed sidecar. See SUPPLY_CHAIN_REPORT.md.
-Hosted integrated candidate checks PASS on head `4683586` (run `37423947922`): Python/PostgreSQL
-suite and pinned upstream OData build/test. Individual PR checks were not treated as integration proof.
+Hosted integrated candidate checks PASS on head `fa863986b16d9aed39b27f2a6d4c6c1e85de90f1`
+(run `37424817213`): Python/PostgreSQL suite, ACL load drill, fresh-instance restore drill, and pinned
+upstream OData build/test. Individual PR checks were not treated as integration proof.
 
 ## PostgreSQL restore drill
 

@@ -1,12 +1,13 @@
 # Definition of Done status
 
-Assessed 2026-10-06 on integration candidate before this drill follow-up, combining main `8481c0e`,
-the #2–#8 stack and independent #9/#10 follow-ups. PR #11 remains Draft; hosted candidate checks pass.
+Assessed 2026-10-06 on candidate `fa863986b16d9aed39b27f2a6d4c6c1e85de90f1`, combining main `8481c0e`,
+the #2–#8 stack and independent #9/#10 follow-ups. PR #11 remains Draft; hosted candidate run
+`37424817213` passed both `test` and `odata-upstream`.
 Local Python/PostgreSQL: 138 passed, 1 skipped (real 1C). Migrations 001–009,
 role checker, Ruff, compileall, Bandit, 12 synthetic scenarios and pip-audit pass.
 Pinned client: 428 passed/1 skipped; metadata: 53 passed; wrapper/image build pass.
 Container runtime smoke PASS (non-root, read-only, no capabilities); hosted `test` and `odata-upstream`
-checks PASS on prior candidate head; current follow-up triggers a new hosted run after push.
+checks PASS on candidate `fa86398`, including ACL load and fresh-instance restore drills.
 
 PARTIAL means remaining implementation or target-environment evidence prevents gate closure.
 No production gate is promoted solely by synthetic tests.

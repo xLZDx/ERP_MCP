@@ -10,7 +10,8 @@ role checks, static/security/dependency checks, 12 synthetic scenarios, pinned c
 metadata 53 and wrapper/image build/smoke pass. Exact installed Node runtime audit: zero advisories.
 Fixed the runtime schema guard (7 → 9) and added schema mismatch regression tests.
 Whole upstream workspace findings in unused MCP/CLI trees are recorded in SUPPLY_CHAIN_REPORT.md.
-Hosted integrated Python/PostgreSQL and pinned OData checks passed on `4683586` (run `37423947922`).
+Hosted integrated Python/PostgreSQL and pinned OData checks passed on `fa86398` (run `37424817213`),
+including the ACL load and PostgreSQL restore drills.
 
 PostgreSQL restore drill on PostgreSQL 16.15: empty→v7→v9 plus synthetic source/company/grant/
 capability/profile/audit seed; backup restored into a separate fresh instance; all 9 table row
