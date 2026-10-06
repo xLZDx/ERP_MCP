@@ -14,6 +14,11 @@ from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import Registry
 
 
+def require_authorization_count(actual: int, expected: int) -> None:
+    if type(actual) is not int or type(expected) is not int or actual != expected or expected <= 0:
+        raise RuntimeError('ACL_LOAD_AUTHORIZATION_COUNT_MISMATCH')
+
+
 async def run() -> dict:
     database_url = os.environ["BAG_PRIVILEGE_TEST_DATABASE_URL"]
     token = uuid.uuid4().hex
@@ -77,9 +82,7 @@ async def run() -> dict:
             async def request(expected_sources: int = size) -> float:
                 started = time.perf_counter()
                 allowed = await registry.list_allowed(principal)
-                assert len(allowed) == expected_sources, (
-                    f"expected {expected_sources} sources, got {len(allowed)}"
-                )
+                require_authorization_count(len(allowed), expected_sources)
                 return (time.perf_counter() - started) * 1000
 
             await asyncio.gather(*(registry.list_allowed(principal) for _ in range(3)))

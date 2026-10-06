@@ -1,6 +1,16 @@
 
 # ERP_MCP implementation gap analysis
 
+## Shared hardened actual-case evidence reader — 2026-10-06
+
+JUnit helper no longer trusts suite-declared positive totals and no longer uses unsafe XML parsing.
+Shared bounded defused reader, actual testcase outcomes, blocking negative signals, sanitized
+malformed/spawn paths and no-overwrite summary output implemented. ACL proof survives real -O;
+SQL identifier guard tested. 49 focused PASS; real harness reruns 11/10/47/1 zero skips, four
+mutants killed, five artifacts scanned. Script scan 38→35 findings; 5 medium contexts classified
+with controls in SCRIPT_SECURITY_TRIAGE.md, not suppressed. Parent 0eb66fd CI 37481295210 four jobs
+PASS; fresh batch full/hosted verification pending. Whole frozen scope is NOT closed.
+
 ## Offline normative document synchronization — 2026-10-06
 
 All 31 required normative + 3 supporting documents now embed from current registered source files
