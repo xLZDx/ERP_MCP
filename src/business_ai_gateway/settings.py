@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     evidence_approval_index: str | None = Field(default=None, repr=False, max_length=1024)
     evidence_approval_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
 
+    # Test-only reviewed synthetic fixture profiles (hard-denied in production; see
+    # fixture_profiles.py). Never a native reconciliation substitute.
+    synthetic_fixture_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
+    synthetic_fixture_profiles_sha256: str | None = Field(
+        default=None, pattern=r'^[a-f0-9]{64}$'
+    )
+
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
     gcp_project_id: str | None = None
@@ -116,6 +123,17 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if self.synthetic_fixture_profiles_file or self.synthetic_fixture_profiles_sha256:
+            if self.environment == "production":
+                raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+            if not (
+                self.synthetic_fixture_profiles_file and self.synthetic_fixture_profiles_sha256
+            ):
+                raise ValueError("SYNTHETIC_FIXTURE_PROFILES_SETTINGS_INCOMPLETE")
+            if self.environment != "test":
+                raise ValueError("SYNTHETIC_FIXTURE_PROFILES_REQUIRE_TEST_ENVIRONMENT")
+            if not Path(self.synthetic_fixture_profiles_file).is_absolute():
+                raise ValueError("SYNTHETIC_FIXTURE_PROFILES_SETTINGS_INVALID")
         evidence_settings = (self.evidence_store_root, self.evidence_approval_index, self.evidence_approval_sha256)
         if any(evidence_settings) and not all(evidence_settings):
             raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INCOMPLETE')

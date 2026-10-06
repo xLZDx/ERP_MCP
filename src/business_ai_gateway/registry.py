@@ -6,6 +6,13 @@ from uuid import UUID
 
 from .compatibility import OneCCapabilities
 from .db import Database
+from .fixture_profiles import (
+    SYNTHETIC_AUDIT_CODE,
+    SYNTHETIC_PROFILE_KIND,
+    SYNTHETIC_SOURCE_TAG,
+    SyntheticFixtureProfiles,
+    SyntheticFixtureUnavailable,
+)
 from .models import Company, Source, company_from_record, source_from_record
 from .principal import Principal
 from .semantic import (
@@ -32,6 +39,7 @@ from .semantic import (
     validate_inventory_movements_mapping,
     validate_settlement_balance_mapping,
 )
+from .settlement_collector import OPEN_ITEMS_CONCEPTS, validate_open_items_mapping
 
 
 class AccessDenied(PermissionError):
@@ -45,7 +53,11 @@ class Registry:
         *,
         production: bool,
         allowed_source_hosts: tuple[str, ...] = (),
+        synthetic_profiles: SyntheticFixtureProfiles | None = None,
     ):
+        if production and synthetic_profiles is not None:
+            raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+        self.synthetic_profiles = synthetic_profiles
         self.db = db
         self.production = production
         self.allowed_source_hosts = allowed_source_hosts
@@ -261,54 +273,9 @@ class Registry:
         )
         return source
 
-    async def require_semantic_mapping(
-        self, source_id: str, company_id: UUID, concept: str
-    ) -> dict:
-        """Load only an exact-company validated and explicitly confirmed mapping."""
-        row = await self.db.require_pool().fetchrow(
-            """
-            SELECT p.source_id, p.company_id, p.status AS profile_status,
-                   p.metadata_fingerprint, p.capability_fingerprint,
-                   p.profile_fingerprint,
-                   p.validation_evidence_json, m.mapping_json, m.mapping_status,
-                   m.confidence, c.metadata_fingerprint AS current_metadata_fingerprint,
-                   c.register_capabilities_json, c.drift_status
-            FROM bag.semantic_profiles p
-            JOIN bag.semantic_mappings m ON m.profile_id=p.profile_id
-            JOIN bag.source_capabilities c ON c.source_id=p.source_id
-            WHERE p.source_id=$1 AND p.company_id=$2
-              AND p.status='VALIDATED'
-              AND m.canonical_concept=$3
-            ORDER BY p.profile_version DESC
-            LIMIT 1
-            """,
-            source_id,
-            company_id,
-            concept,
-        )
-        if row is None:
-            raise SemanticProfileUnavailable(
-                f"no validated {concept} profile exists for this exact source/company"
-            )
-        if (
-            row["drift_status"] != "STABLE"
-            or row["metadata_fingerprint"] != row["current_metadata_fingerprint"]
-        ):
-            raise SemanticProfileStale(
-                "account-turnover profile is stale or source drift is unacknowledged"
-            )
-        capability_profile = row["register_capabilities_json"]
-        if isinstance(capability_profile, str):
-            capability_profile = json.loads(capability_profile)
-        if canonical_fingerprint(capability_profile) != row["capability_fingerprint"]:
-            raise SemanticProfileStale("account-turnover capability evidence changed")
-        if row["mapping_status"] != "CONFIRMED" or row["confidence"] != "HIGH":
-            raise SemanticMappingUnconfirmed(
-                "account-turnover mapping has not been operator-confirmed"
-            )
-        mapping = row["mapping_json"]
-        if isinstance(mapping, str):
-            mapping = json.loads(mapping)
+    @staticmethod
+    def check_concept_mapping(concept: str, mapping: dict) -> list:
+        """Single validator chain shared by DB-validated and fixture profiles."""
         required = mapping.get("required_register_capabilities", [])
         if concept == ACCOUNT_TURNOVERS_CONCEPT:
             entity_set, method = validate_account_turnovers_mapping(mapping)
@@ -358,8 +325,63 @@ class Registry:
                 raise SemanticMappingUnconfirmed(
                     "settlement mapping capability dependency is missing or mismatched"
                 )
+        elif concept in OPEN_ITEMS_CONCEPTS:
+            validate_open_items_mapping(concept, mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "open-item record-set mapping cannot claim virtual-table methods"
+                )
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")
+        return required
+
+    async def require_semantic_mapping(
+        self, source_id: str, company_id: UUID, concept: str
+    ) -> dict:
+        """Load only an exact-company validated and explicitly confirmed mapping."""
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT p.source_id, p.company_id, p.status AS profile_status,
+                   p.metadata_fingerprint, p.capability_fingerprint,
+                   p.profile_fingerprint,
+                   p.validation_evidence_json, m.mapping_json, m.mapping_status,
+                   m.confidence, c.metadata_fingerprint AS current_metadata_fingerprint,
+                   c.register_capabilities_json, c.drift_status
+            FROM bag.semantic_profiles p
+            JOIN bag.semantic_mappings m ON m.profile_id=p.profile_id
+            JOIN bag.source_capabilities c ON c.source_id=p.source_id
+            WHERE p.source_id=$1 AND p.company_id=$2
+              AND p.status='VALIDATED'
+              AND m.canonical_concept=$3
+            ORDER BY p.profile_version DESC
+            LIMIT 1
+            """,
+            source_id,
+            company_id,
+            concept,
+        )
+        if row is None:
+            return await self._synthetic_mapping(source_id, company_id, concept)
+        if (
+            row["drift_status"] != "STABLE"
+            or row["metadata_fingerprint"] != row["current_metadata_fingerprint"]
+        ):
+            raise SemanticProfileStale(
+                "account-turnover profile is stale or source drift is unacknowledged"
+            )
+        capability_profile = row["register_capabilities_json"]
+        if isinstance(capability_profile, str):
+            capability_profile = json.loads(capability_profile)
+        if canonical_fingerprint(capability_profile) != row["capability_fingerprint"]:
+            raise SemanticProfileStale("account-turnover capability evidence changed")
+        if row["mapping_status"] != "CONFIRMED" or row["confidence"] != "HIGH":
+            raise SemanticMappingUnconfirmed(
+                "account-turnover mapping has not been operator-confirmed"
+            )
+        mapping = row["mapping_json"]
+        if isinstance(mapping, str):
+            mapping = json.loads(mapping)
+        required = self.check_concept_mapping(concept, mapping)
         validation_evidence = row["validation_evidence_json"]
         if isinstance(validation_evidence, str):
             validation_evidence = json.loads(validation_evidence)
@@ -383,10 +405,79 @@ class Registry:
             metadata_fingerprint=row["current_metadata_fingerprint"],
         )
         return {
+            "profile_kind": "VALIDATED_NATIVE",
+            "audit_detail_code": None,
             "source_id": row["source_id"],
             "company_id": row["company_id"],
             "metadata_fingerprint": row["metadata_fingerprint"],
             "profile_fingerprint": row["profile_fingerprint"],
+            "mapping": mapping,
+            "register_capabilities": capability_profile,
+        }
+
+    async def _synthetic_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
+        """Test-only reviewed fixture profile; consulted only when no VALIDATED DB row exists."""
+        unavailable = f"no validated {concept} profile exists for this exact source/company"
+        provider = self.synthetic_profiles
+        if self.production or provider is None:
+            raise SemanticProfileUnavailable(unavailable)
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT s.tags, s.enabled, c.metadata_fingerprint AS current_metadata_fingerprint,
+                   c.register_capabilities_json, c.drift_status
+            FROM bag.sources s
+            JOIN bag.source_capabilities c ON c.source_id=s.source_id
+            WHERE s.source_id=$1
+            """,
+            source_id,
+        )
+        if row is None or not row["enabled"] or SYNTHETIC_SOURCE_TAG not in (row["tags"] or []):
+            raise SemanticProfileUnavailable(unavailable)
+        # Any live (non-retired) DB profile for this scope/concept means the DB is authoritative:
+        # a stale/invalid/unvalidated row must never silently fall through to a fixture.
+        shadowed = await self.db.require_pool().fetchval(
+            """
+            SELECT EXISTS (
+              SELECT 1 FROM bag.semantic_profiles p
+              JOIN bag.semantic_mappings m ON m.profile_id=p.profile_id
+              WHERE p.source_id=$1 AND p.company_id=$2 AND m.canonical_concept=$3
+                AND p.status <> 'RETIRED'
+            )
+            """,
+            source_id,
+            company_id,
+            concept,
+        )
+        if shadowed:
+            raise SemanticProfileUnavailable(unavailable)
+        try:
+            if source_id not in provider.listed_sources():
+                raise SemanticProfileUnavailable(unavailable)
+            mapping = provider.lookup(source_id, company_id, concept)
+            pinned = provider.pinned_metadata_fingerprint(source_id)
+        except SyntheticFixtureUnavailable:
+            raise SemanticProfileUnavailable(unavailable) from None
+        if row["drift_status"] != "STABLE" or pinned != row["current_metadata_fingerprint"]:
+            raise SemanticProfileStale("fixture profile does not match the live source metadata")
+        required = self.check_concept_mapping(concept, mapping)
+        capability_profile = row["register_capabilities_json"]
+        if isinstance(capability_profile, str):
+            capability_profile = json.loads(capability_profile)
+        require_profile_capabilities(
+            required,
+            capability_profile,
+            source_id=source_id,
+            metadata_fingerprint=row["current_metadata_fingerprint"],
+        )
+        return {
+            "profile_kind": SYNTHETIC_PROFILE_KIND,
+            "audit_detail_code": SYNTHETIC_AUDIT_CODE,
+            "source_id": source_id,
+            "company_id": company_id,
+            "metadata_fingerprint": pinned,
+            "profile_fingerprint": provider.profile_fingerprint(
+                source_id, company_id, concept, mapping
+            ),
             "mapping": mapping,
             "register_capabilities": capability_profile,
         }

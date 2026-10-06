@@ -31,7 +31,7 @@ class OperationalMetrics:
         "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
         "accounting_balance_and_turnovers", "inventory_balance", "inventory_movements",
         "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
-        "payable_balance", "sales_documents", "purchase_documents", "onec_read", "audit",
+        "payable_balance", "receivable_aging", "payable_aging", "sales_documents", "purchase_documents", "onec_read", "audit",
         "external_evidence_manifest",
     })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(

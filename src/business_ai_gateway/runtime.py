@@ -15,6 +15,7 @@ from .company_scope import CompanyScopeResolver
 from .db import Database
 from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
+from .fixture_profiles import SyntheticFixtureProfiles
 from .observability import OperationalMetrics
 from .rate_limit import RateLimiter
 from .registry import Registry
@@ -33,10 +34,20 @@ class Runtime:
             else None
         )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        self.synthetic_profiles = (
+            SyntheticFixtureProfiles(
+                settings.synthetic_fixture_profiles_file,
+                settings.synthetic_fixture_profiles_sha256,
+                environment=settings.environment,
+            )
+            if settings.synthetic_fixture_profiles_file
+            else None
+        )
         self.registry = Registry(
             self.db,
             production=settings.environment == "production",
             allowed_source_hosts=settings.source_host_allowlist_items,
+            synthetic_profiles=self.synthetic_profiles,
         )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(

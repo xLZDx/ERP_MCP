@@ -36,9 +36,15 @@ from business_ai_gateway.semantic import (
     validate_settlement_balance_mapping,
 )
 from business_ai_gateway.settings import Settings
+from business_ai_gateway.settlement_collector import (
+    OPEN_ITEMS_CONCEPTS,
+    validate_open_items_mapping,
+)
 
 CONCEPTS = (
     "account.balance_and_turnovers",
+    "receivable.open_items",
+    "payable.open_items",
     "receivable",
     "payable",
     "sales",
@@ -270,6 +276,8 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         validate_cash_movements_mapping(mapping)
         if mapping.get("required_register_capabilities", []) != []:
             raise ValueError("cash movement record-set mapping cannot claim virtual-table methods")
+    elif args.concept in OPEN_ITEMS_CONCEPTS:
+        validate_open_items_mapping(args.concept, mapping)
     elif args.concept == BANK_BALANCE_CONCEPT:
         entity_set, method = validate_bank_balance_mapping(mapping)
         required = mapping.get("required_register_capabilities")
