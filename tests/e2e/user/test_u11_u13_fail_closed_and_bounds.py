@@ -20,7 +20,8 @@ from user_support import (
 pytestmark = [pytest.mark.user]
 
 REGISTER_WORDS = ("Balance", "Movements")
-UNSUPPORTED_CODES = re.compile(r"^(Semantic\w+|Capability\w+|MetadataDrift\w+)$")
+UNSUPPORTED_CODES = re.compile(
+    r"^(SEMANTIC_\w+|CAPABILITY_\w+|METADATA_\w+|Semantic\w+|Capability\w+|MetadataDrift\w+)$")
 
 
 # ------------------------------------------------------------------------------------- U11
