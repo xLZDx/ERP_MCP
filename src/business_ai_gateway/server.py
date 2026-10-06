@@ -10,6 +10,8 @@ from mcp.server import MCPServer
 from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl
 
+from .adapters.onec.rsv_bridge import METADATA_TOOLS
+from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
 from .audit import AuditCorrelationMiddleware
 from .auth import JWTTokenVerifier
 from .compatibility import (
@@ -256,6 +258,62 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 outcome="error",
                 started_at=started,
                 detail_code=type(exc).__name__,
+            )
+            raise
+
+    @mcp.tool()
+    async def rsv_metadata(
+        source_id: str,
+        operation: str,
+        arguments: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Read allowlisted RSV metadata only; business data/query tools are never proxied."""
+        started = time.monotonic()
+        principal = await ctx()
+        source = await resolve_source(principal, source_id, "rsv_metadata", started)
+        try:
+            if source.kind != "onec_auto" or getattr(runtime, "rsv_bridge", None) is None:
+                raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
+            if operation not in METADATA_TOOLS:
+                raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
+            # Current pinned bridge configs are plaintext files. Do not permit that
+            # credential path in production until secret-ref-bound ephemeral config
+            # handling is implemented and independently verified.
+            if settings.environment == "production":
+                raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
+            result = await runtime.onec.rsv_metadata(
+                source,
+                operation=operation,
+                arguments=arguments,
+                max_response_bytes=settings.max_response_bytes,
+            )
+            response_bytes = len(
+                json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            )
+            await runtime.audit.write(
+                principal=principal,
+                tool="rsv_metadata",
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                adapter_kind="RSV_DATA_METADATA",
+                upstream_sha=RSV_UPSTREAM_SHA,
+                adapter_version=f"sha256:{result['adapter']['executable_sha256']}",
+                response_bytes=response_bytes,
+                returned_items=_count_items(result.get("data")),
+            )
+            return result
+        except Exception as exc:
+            denied = isinstance(exc, (CapabilityUnsupported, PermissionError, ValueError))
+            await runtime.audit.write(
+                principal=principal,
+                tool="rsv_metadata",
+                source_id=source_id,
+                outcome="denied" if denied else "error",
+                started_at=started,
+                adapter_kind="RSV_DATA_METADATA",
+                upstream_sha=RSV_UPSTREAM_SHA,
+                detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
 

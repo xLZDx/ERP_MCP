@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal
@@ -46,6 +47,7 @@ class Settings(BaseSettings):
     source_host_allowlist: str | None = None
     metrics_token: SecretStr | None = None
     rsv_bridge_executable: str | None = None
+    rsv_bridge_executable_sha256: str | None = None
     rsv_bridge_config_root: str | None = None
 
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
@@ -84,11 +86,19 @@ class Settings(BaseSettings):
                 "BAG_RSV_BRIDGE_EXECUTABLE and BAG_RSV_BRIDGE_CONFIG_ROOT "
                 "must be configured together"
             )
+        if self.rsv_bridge_executable_sha256 and self.rsv_bridge_executable is None:
+            raise ValueError("BAG_RSV_BRIDGE_EXECUTABLE_SHA256 requires the bridge executable")
+        if self.rsv_bridge_executable_sha256 and not re.fullmatch(
+            r"[0-9a-fA-F]{64}", self.rsv_bridge_executable_sha256
+        ):
+            raise ValueError("BAG_RSV_BRIDGE_EXECUTABLE_SHA256 must be a SHA-256 hex digest")
         if self.rsv_bridge_executable:
             executable = Path(self.rsv_bridge_executable)
             config_root = Path(self.rsv_bridge_config_root)
             if not executable.is_absolute() or not config_root.is_absolute():
                 raise ValueError("RSV bridge executable and config root must be absolute paths")
+            if self.environment == "production" and not self.rsv_bridge_executable_sha256:
+                raise ValueError("production requires BAG_RSV_BRIDGE_EXECUTABLE_SHA256")
         if (self.odata_sidecar_url is None) != (self.odata_sidecar_token is None):
             raise ValueError(
                 "BAG_ODATA_SIDECAR_URL and BAG_ODATA_SIDECAR_TOKEN must be configured together"

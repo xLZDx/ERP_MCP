@@ -48,6 +48,8 @@ class Runtime:
             RSVDataBridgeClient(
                 executable=settings.rsv_bridge_executable,
                 config_root=settings.rsv_bridge_config_root,
+                timeout_seconds=settings.http_timeout_seconds,
+                expected_executable_sha256=settings.rsv_bridge_executable_sha256,
             )
             if settings.rsv_bridge_executable and settings.rsv_bridge_config_root
             else None

@@ -81,6 +81,23 @@ class OneCAdapter:
         username, password = await self.credentials(source)
         return await self.client.head_metadata(source, username=username, password=password)
 
+    async def rsv_metadata(
+        self,
+        source: Source,
+        *,
+        operation: str,
+        arguments: dict | None,
+        max_response_bytes: int,
+    ) -> dict:
+        if source.kind != "onec_auto" or self.rsv_bridge is None:
+            raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
+        return await self.rsv_bridge.metadata(
+            source,
+            operation=operation,
+            arguments=arguments,
+            max_response_bytes=max_response_bytes,
+        )
+
     async def capabilities(
         self,
         source: Source,

@@ -41,6 +41,12 @@ egress to approved 1C address ranges, and release evidence must demonstrate that
 cannot redirect an approved hostname to an unapproved destination at connect time. On-premises
 private addresses are supported only when explicitly allowlisted and permitted by network policy.
 
+The optional local/test RSV metadata route uses the pinned MIT bridge but is disabled in
+`BAG_ENVIRONMENT=production` until ERP_MCP secret references can be bound without its persistent
+plaintext credential configuration. Never use the upstream wizard's persisted customer credentials
+as production secret management. If/when production operation is enabled, pin the bridge executable
+with `BAG_RSV_BRIDGE_EXECUTABLE_SHA256`; source SHA and executable digest are distinct provenance.
+
 ## JWT claims
 
 Required: `iss`, `aud`, `sub`, `iat`, `exp`, and scope `onec:read`.

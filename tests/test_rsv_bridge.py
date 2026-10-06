@@ -31,9 +31,16 @@ def _source(source_id: str = "source-a") -> Source:
 
 
 class FakeSession:
-    def __init__(self, tools: list[str], *, is_error: bool = False):
+    def __init__(
+        self,
+        tools: list[str],
+        *,
+        is_error: bool = False,
+        result_text: str = '{"status":"ok"}',
+    ):
         self.tools = [SimpleNamespace(name=name) for name in tools]
         self.is_error = is_error
+        self.result_text = result_text
         self.calls: list[tuple[str, dict]] = []
 
     async def __aenter__(self):
@@ -50,7 +57,10 @@ class FakeSession:
 
     async def call_tool(self, name: str, arguments: dict):
         self.calls.append((name, arguments))
-        return SimpleNamespace(isError=self.is_error)
+        return SimpleNamespace(
+            is_error=self.is_error,
+            content=[SimpleNamespace(type="text", text=self.result_text)],
+        )
 
 
 @pytest.mark.asyncio
@@ -147,4 +157,117 @@ async def test_rsv_bridge_sanitizes_ping_failure(tmp_path: Path):
     with pytest.raises(RSVBridgeUnavailable, match="ping failed") as exc:
         await client.health(_source())
     assert "arguments" not in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_rsv_bridge_metadata_calls_only_allowlisted_tool_and_normalizes_envelope(
+    tmp_path: Path,
+):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    config_root = tmp_path / "configs"
+    config_root.mkdir()
+    (config_root / "source-a.json").touch()
+    session = FakeSession(
+        ["ping", "config", "describe", "get_structure", "query", "execute_query", "reveal", "help"],
+        result_text='{"synthetic":true}',
+    )
+
+    @asynccontextmanager
+    async def fake_stdio(_parameters):
+        yield object(), object()
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(config_root),
+        session_factory=lambda *_streams: session,
+        stdio_factory=fake_stdio,
+    )
+    result = await client.metadata(
+        _source(),
+        operation="get_structure",
+        arguments={"object": "Справочник.Тест"},
+    )
+
+    assert result["source_id"] == "source-a"
+    assert result["adapter"]["upstream_source_sha"] == "76fed8e6e16833fee1514969841b8d9a61c7c152"
+    assert len(result["adapter"]["executable_sha256"]) == 64
+    assert result["operation"] == "get_structure"
+    assert result["data"] == {"synthetic": True}
+    assert session.calls == [("get_structure", {"object": "Справочник.Тест"})]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation", "arguments"),
+    [
+        ("query", {"table": "Справочник.Тест"}),
+        ("execute_query", {"query": "ВЫБРАТЬ 1"}),
+        ("reveal", {"text": "[ОРГ-00001]"}),
+        ("describe", {"type": "Документ", "query": "SELECT 1"}),
+        ("get_structure", {}),
+        ("help", {"topic": "execute_query"}),
+    ],
+)
+async def test_rsv_bridge_metadata_rejects_business_tools_and_unreviewed_arguments(
+    tmp_path: Path, operation, arguments
+):
+    client = RSVDataBridgeClient(executable="bridge.exe", config_root=str(tmp_path))
+    with pytest.raises(RSVBridgeUnavailable, match="allowlisted|unsupported|requires"):
+        await client.metadata(_source(), operation=operation, arguments=arguments)
+
+
+@pytest.mark.asyncio
+async def test_rsv_bridge_metadata_response_is_bounded(tmp_path: Path):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    config_root = tmp_path / "configs"
+    config_root.mkdir()
+    (config_root / "source-a.json").touch()
+    session = FakeSession(
+        ["ping", "config", "describe", "get_structure", "query", "execute_query", "reveal", "help"],
+        result_text='{"large":"' + "x" * 200 + '"}',
+    )
+
+    @asynccontextmanager
+    async def fake_stdio(_parameters):
+        yield object(), object()
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(config_root),
+        session_factory=lambda *_streams: session,
+        stdio_factory=fake_stdio,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="exceeded configured limit"):
+        await client.metadata(
+            _source(), operation="config", max_response_bytes=64
+        )
+
+
+@pytest.mark.asyncio
+async def test_rsv_bridge_checks_configured_executable_digest_before_launch(tmp_path: Path):
+    executable = tmp_path / "bridge.exe"
+    executable.write_bytes(b"not-the-approved-bridge")
+    config_root = tmp_path / "configs"
+    config_root.mkdir()
+    (config_root / "source-a.json").touch()
+    session = FakeSession(["ping", "config", "describe", "get_structure", "help"])
+    launches = []
+
+    @asynccontextmanager
+    async def fake_stdio(parameters):
+        launches.append(parameters)
+        yield object(), object()
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(config_root),
+        expected_executable_sha256="0" * 64,
+        session_factory=lambda *_streams: session,
+        stdio_factory=fake_stdio,
+    )
+    with pytest.raises(RSVBridgeUnavailable, match="digest mismatch"):
+        await client.metadata(_source(), operation="config")
+    assert launches == []
 

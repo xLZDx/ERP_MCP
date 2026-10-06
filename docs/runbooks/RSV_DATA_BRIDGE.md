@@ -1,29 +1,34 @@
 # RSV Data bridge operations (P6)
 
 The bridge is the pinned `prepod2003/mcp-rsv-data` upstream process. ERP_MCP does not
-implement COM, 1C native queries, or MCP stdio framing. Its current integration boundary launches
-the configured executable for a source-specific health handshake, verifies the known upstream
-tool inventory, calls only `ping`, then exits. Process-per-check provides crash isolation and a
-fresh COM connection on the next check.
+implement COM, 1C native queries, or MCP stdio framing. The integration verifies the reviewed
+upstream tool inventory and supports the source-ACL-protected metadata-only operations `ping`,
+`config`, `describe`, `get_structure`, and `help`. Each call runs in a fresh process/COM connection
+and returns a bounded normalized envelope. It never proxies `query`, `execute_query`, or `reveal`.
+The metadata operation is disabled in production until credential references can be safely bound
+without the upstream's persistent plaintext JSON credential config.
 
 ## Install and bind a source (Windows)
 
 1. Install the pinned upstream `rsvdata-bridge.exe` and 1C platform on a dedicated Windows host
    with the required COM registration. Verify the release against the approved upstream release
    process before deployment; do not build or patch another bridge in ERP_MCP.
-2. Run the upstream `rsvdata-bridge.exe setup` under the dedicated service identity. Use the exact
-   ERP_MCP source ID as the connection name so the resulting `<source-id>.json` is unambiguous.
-   Configure a read-only 1C user and verify with the upstream `ping`/`diag` commands.
-3. Place per-source config files in a dedicated directory outside the repository. The upstream
-   config contains the 1C username/password as plaintext JSON. Restrict the directory and files to
-   the service identity using Windows ACLs; do not rely on POSIX `0600` semantics on Windows.
+2. Run the upstream setup under the dedicated service identity. Use the exact ERP_MCP source ID as
+   the connection name so the `<source-id>.json` target descriptor is unambiguous. Do not place
+   customer credentials in a test config. The upstream format persists credentials as plaintext;
+   until secret-ref binding is implemented, metadata calls are allowed only in local/test with a
+   disposable base.
+3. Place per-source config files in a dedicated directory outside the repository. Restrict the
+   directory and files to the service identity using Windows ACLs; do not rely on POSIX `0600`
+   semantics on Windows. If production bridge operation is later approved, set
+   `BAG_RSV_BRIDGE_EXECUTABLE_SHA256` to the separately approved executable digest.
 4. Configure `BAG_RSV_BRIDGE_EXECUTABLE` to the absolute bridge executable path and
    `BAG_RSV_BRIDGE_CONFIG_ROOT` to the absolute config directory. They must be set together. Never
    put a connection string, password, or config contents in environment variables, source records,
    MCP arguments, logs, or audit events.
-5. Restart ERP_MCP and perform the source-specific bridge health check from an administrative
-   operational context. The health result is operational evidence only; it is not a business-data
-   capability profile.
+5. Restart ERP_MCP and run `rsv_metadata` only for an ACL-authorized source. The safe initial
+   sequence is `ping`, `config`, `describe`, `get_structure`, `help`. The result is structural
+   metadata, not a business-data capability or accounting semantic profile.
 
 ## Failure and recovery
 
@@ -31,8 +36,8 @@ fresh COM connection on the next check.
   fails closed. Errors returned by ERP_MCP are sanitized; inspect Windows service and upstream
   stderr logs under restricted access for diagnosis.
 - To recover a disconnected COM session, verify 1C availability and the service identity's
-  platform/COM registration, then run the upstream `ping` and `diag`. The next ERP_MCP health
-  attempt starts a fresh process/session; no credential or connection string is replayed by ERP_MCP.
+  platform/COM registration, then run the upstream `ping` and `diag`. The next metadata call starts
+  a fresh process/session; no bridge process is reused across calls.
 - Rotate credentials in the upstream source config through the approved secret-handling procedure,
   restrict access, and rerun `ping`. Do not copy config contents into incident tickets.
 - Disable the source route in ERP_MCP while the bridge is unhealthy. A healthy process alone does
