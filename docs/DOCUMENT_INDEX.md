@@ -72,6 +72,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Semantic profiles and presets](SEMANTIC_PROFILES.md) | Candidate preset, source/company profile lifecycle, validation evidence and operator CLI |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Manual QA environment and acceptance guide](QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md) | Windows L1 setup and separate manual data-plane user/Admin suites, with all 12 synthetic scenario IDs |
+| [E2E acceptance contract (frozen)](E2E_ACCEPTANCE_CONTRACT.md) | Frozen U01-U18 data-plane and A01-A54 Admin automated/manual acceptance matrix with actor, expected, negative, evidence and external gates |
 | [Functional Tester autonomous assignment](FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md) | Task prompt and deliverable contract for executable black-box tests of the scenario pack |
 | [Branch and merge readiness](../reports/BRANCH_MERGE_READINESS.md) | Branch/PR inventory and post-acceptance merge sequence |
 | [Observability & SRE](OBSERVABILITY_SRE.md) | Signals, SLO objectives, alerts, runbooks and rollback |
