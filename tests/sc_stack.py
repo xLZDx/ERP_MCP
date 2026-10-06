@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import socket
 import threading
 import time
@@ -14,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
 import uvicorn
 
 from business_ai_gateway.adapters.onec.adapter import OneCAdapter
@@ -27,6 +29,23 @@ from business_ai_gateway.secrets import EnvSecrets
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
 from scripts import synthetic_fixture_profiles as fixture_gen
+
+# ERP_MCP_REQUIRE_DB_TESTS=1 (set in CI) turns a missing database into a failure, never a skip.
+REQUIRE_DB_TESTS = os.getenv("ERP_MCP_REQUIRE_DB_TESTS") == "1"
+PG_MARKS = [
+    pytest.mark.skipif(
+        not os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL") and not REQUIRE_DB_TESTS,
+        reason="requires disposable PostgreSQL",
+    ),
+    pytest.mark.usefixtures("require_pg_database"),
+]
+
+
+def needs_pg(function):
+    for mark in reversed(PG_MARKS):
+        function = mark(function)
+    return function
+
 
 ORG_ONE = "00000000-0000-0000-0000-000000000001"
 ORG_TWO = "00000000-0000-0000-0000-000000000002"

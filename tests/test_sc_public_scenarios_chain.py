@@ -11,11 +11,11 @@ from decimal import Decimal
 
 import pytest
 
-from tests.sc_stack import ORG_ONE, ORG_TWO
+from tests.sc_stack import ORG_ONE, ORG_TWO, PG_MARKS
 from tests.test_synthetic_fixture_profiles import _stack
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
+pytestmark = PG_MARKS
 ITEM_1 = "30000000-0000-0000-0000-000000000001"
 ITEM_2 = "30000000-0000-0000-0000-000000000002"
 
@@ -47,7 +47,15 @@ async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar
         by_number = {r["document_number"]: r["document_ref"] for r in sales}
         assert by_number["SALE-001"] in recorders
         assert by_number["SALE-003"] not in recorders
-        assert len(await stack.audit_rows("accounting_posting_rows")) >= 2
+        posting = await stack.audit_rows("accounting_posting_rows")
+        assert [(r["outcome"], r["detail_code"]) for r in posting] == [
+            ("success", "ACCESS_AUTHORIZED"), ("success", "SYNTHETIC_FIXTURE_PROFILE"),
+        ]
+        assert {r["company_id"] for r in posting} == {stack.companies[ORG_ONE]}
+        sales_audit = await stack.audit_rows("sales_documents")
+        assert [r["detail_code"] for r in sales_audit] == [
+            "ACCESS_AUTHORIZED", "SYNTHETIC_FIXTURE_PROFILE",
+        ]
     finally:
         await stack.db.close()
 

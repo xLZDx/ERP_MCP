@@ -6,15 +6,16 @@ import json
 import os
 import uuid
 from decimal import Decimal
+from unittest.mock import AsyncMock
 
 import pytest
 from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
-from tests.sc_stack import ORG_ONE, ORG_TWO
+from tests.sc_stack import ORG_ONE, ORG_TWO, PG_MARKS
 from tests.test_synthetic_fixture_profiles import _stack
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
+pytestmark = PG_MARKS
 AS_OF = "2026-04-30T00:00:00+00:00"
 OVERDUE = "10000000-0000-0000-0000-000000000001"
 PARTIAL = "10000000-0000-0000-0000-000000000004"
@@ -101,7 +102,8 @@ async def test_truncation_is_inconclusive_and_never_a_partial_answer(
         assert body["status"] == "INCONCLUSIVE" and body["reason"] == "AGING_ROWS_TRUNCATED"
         assert body["rows"] == [] and body["summary"] == [] and body["truncated"] is True
         audit = await stack.audit_rows("receivable_aging")
-        assert audit[-1]["detail_code"] == "AGING_ROWS_TRUNCATED"
+        assert audit[-1]["detail_code"] == "SYNTHETIC_FIXTURE_PROFILE:AGING_ROWS_TRUNCATED"
+        assert audit[-1]["outcome"] == "error"
     finally:
         await stack.db.close()
 
@@ -126,10 +128,15 @@ async def test_unconfirmed_opening_items_and_missing_payable_profile_fail_closed
             )
         rows = await stack.audit_rows("payable_aging")
         assert rows[-1]["detail_code"] == "SEMANTIC_PROFILE_UNVALIDATED"
+        before = len(await stack.audit_rows("receivable_aging"))
+        stack.runtime.onec.read = AsyncMock()
         with pytest.raises(UnexpectedToolError):
             await stack.call(
                 "receivable_aging", source_id=stack.source_id,
                 company_id=str(stack.companies[ORG_ONE]), as_of="2026-04-30",
             )
+        # a naive as_of is rejected at input validation: no upstream read, no new audit row
+        stack.runtime.onec.read.assert_not_awaited()
+        assert len(await stack.audit_rows("receivable_aging")) == before
     finally:
         await stack.db.close()
