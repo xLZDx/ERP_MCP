@@ -182,6 +182,21 @@ class Registry:
             raise AccessDenied("no access to company")
         return company_from_record(row)
 
+    async def require_company_source(
+        self, principal: Principal, source_id: str, company_id: UUID
+    ) -> tuple[Source, Company]:
+        """Authorize the company first, then load its registered read-only source."""
+        company = await self.require_company(principal, source_id, company_id)
+        row = await self.db.require_pool().fetchrow(
+            "SELECT * FROM bag.sources WHERE source_id=$1 AND enabled=true",
+            source_id,
+        )
+        if row is None:
+            raise AccessDenied("company source is unavailable")
+        source = source_from_record(row)
+        source.validate_runtime(production=self.production)
+        return source, company
+
     async def save_capabilities(self, capabilities: OneCCapabilities):
         row = await self.db.require_pool().fetchrow(
             """

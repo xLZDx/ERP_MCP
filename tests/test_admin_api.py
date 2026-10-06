@@ -73,7 +73,7 @@ async def test_source_scoped_admin_reads_only_delegated_sources():
     assert [row["source_id"] for row in rows] == ["source-a"]
     sql, args = db.pool.calls[-1]
     assert "source_id=ANY" in sql
-    assert args == (["source-a"],)
+    assert args == (["source-a"], 500)
 
 
 def test_global_auditor_is_global_read_context():

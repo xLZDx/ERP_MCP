@@ -33,8 +33,13 @@ class Settings(BaseSettings):
     oauth_algorithms: str = "RS256"
 
     admin_api_enabled: bool = False
+    admin_mutations_enabled: bool = False
     admin_oauth_audience: str | None = None
     admin_oauth_required_scope: str = "erp_mcp:admin"
+    admin_control_database_url: str | None = None
+    admin_source_allowed_hosts: str = ""
+    admin_source_allowed_cidrs: str = ""
+    business_capability_enforcement_enabled: bool = False
 
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None
@@ -88,6 +93,13 @@ class Settings(BaseSettings):
                 raise ValueError("admin API audience must differ from MCP OAuth audience")
             if self.admin_oauth_required_scope == self.oauth_required_scope:
                 raise ValueError("admin API scope must differ from MCP OAuth scope")
+        if self.admin_mutations_enabled:
+            if not self.admin_api_enabled:
+                raise ValueError("admin mutations require BAG_ADMIN_API_ENABLED=true")
+            if not self.admin_control_database_url:
+                raise ValueError("admin mutations require BAG_ADMIN_CONTROL_DATABASE_URL")
+            if self.environment == "production" and not self.admin_source_allowed_hosts.strip():
+                raise ValueError("production admin mutations require BAG_ADMIN_SOURCE_ALLOWED_HOSTS")
 
         if self.environment != "production":
             return self
