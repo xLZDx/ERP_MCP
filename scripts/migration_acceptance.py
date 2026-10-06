@@ -95,7 +95,7 @@ async def _verify_future_version_refusal(base_url: str) -> None:
             )
             await conn.execute(
                 "INSERT INTO bag.schema_migrations(version,name,checksum) VALUES($1,$2,$3)",
-                14,
+                15,
                 "future",
                 "0" * 64,
             )
@@ -129,7 +129,7 @@ async def main() -> None:
     await _with_database(base_url, upgrade_from_integration_v9=False)
     print("fresh PostgreSQL migration schema: PASS")
     await _with_database(base_url, upgrade_from_integration_v9=True)
-    print("integration v9 -> Admin v13 PostgreSQL upgrade: PASS")
+    print("integration v9 -> Admin v14 PostgreSQL upgrade: PASS")
     await _verify_legacy_admin_refusal(base_url)
     print("ambiguous legacy Admin v11 refusal without DB changes: PASS")
     await _verify_future_version_refusal(base_url)

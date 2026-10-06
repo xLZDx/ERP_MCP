@@ -286,7 +286,7 @@ async def run(artifact_dir: Path):
         "postgres_version": command("docker", "exec", target, "postgres", "--version"),
         "source_container": source,
         "restored_container": target,
-        "migration_path": "empty -> legacy v1-v7 -> seed -> identity-aware v1-v13 -> backup -> fresh instance restore",
+        "migration_path": "empty -> legacy v1-v7 -> seed -> identity-aware v1-v14 -> backup -> fresh instance restore",
         "backup_sha256": hashlib.sha256(backup.read_bytes()).hexdigest(),
         "tables": after,
         "privileges": privileges,

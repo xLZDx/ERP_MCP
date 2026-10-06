@@ -10,7 +10,7 @@ Hosted CI run `37510077711` passed all four jobs (test, Windows privacy, OData u
 ## Verified Admin scope
 
 - Migration lineage preserves integration migrations 001–009 and adds Admin migrations 010–013 with immutable name/checksum identity and pre-DDL rejection of unknown, ahead-of-code, gapped, and ambiguous legacy histories.
-- Disposable PostgreSQL acceptance covered fresh 001–013, integration v9 upgrade, legacy Admin v11 refusal without mutation, v14 refusal without mutation, and old Admin v8/v9 refusal without ledger mutation. Privilege policy passed.
+- Disposable PostgreSQL acceptance covered fresh 001–014, integration v9 upgrade, legacy Admin v11 refusal without mutation, future v15 refusal without mutation, and old Admin v8/v9 refusal without ledger mutation. Privilege policy passed for the pre-observation-boundary Admin branch; the combined v14 privilege rerun is part of the current closure CI.
 - Real ASGI/PostgreSQL/Redis B2 exercised all seven required cross-source mutation routes; each returned 403 with unchanged target/policy state and no successful mutation audit.
 - All eight required security mutants were killed by targeted tests.
 - OAuth scope validation, explicit platform/source role scope, expiry API/CLI handling, exact-ID authorization, and company deny policy have regression coverage.
