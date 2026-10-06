@@ -4,7 +4,7 @@
 
 ## Fault-injection runner — 2026-10-06
 
-Implemented Compose config validation and a bounded five-dependency outage plan. The runner records the existing local readiness/JWKS regression coverage separately from cases not executed in the current environment; no outage PASS is synthesized. Focused tests: 8 passed; Ruff passed. Hosted CI `37504902497`: four jobs passed; tested merge `fb05698785f0a464913420044ecc3e302c42e7d9`. Production NO-GO; DoD PARTIAL.
+Implemented Compose config validation and a bounded five-dependency outage plan. The runner records the existing local readiness/JWKS regression coverage separately from cases not executed in the current environment; no outage PASS is synthesized. Focused tests: 8 passed; full suite: 769 passed/18 skipped; Ruff passed. Hosted CI `37508235079`: four jobs passed; tested merge `30a3c4a93137729b7a6de0ad5e26890e6a4c7a76`. Production NO-GO; DoD PARTIAL.
 
 ## Internal settlement aging — 2026-10-06
 
