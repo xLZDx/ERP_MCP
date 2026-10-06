@@ -24,6 +24,8 @@ import asyncpg
 from business_ai_gateway.db import Database
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
 ROLES = (
     "CREATE ROLE business_ai_app NOLOGIN; "
     "CREATE ROLE business_ai_admin NOLOGIN; "
@@ -91,13 +93,6 @@ async def new_postgres(name: str, *, host_port: int | None = None) -> str:
     if not port.isdigit():
         raise RuntimeError("Unexpected loopback port binding")
     return f"postgresql://business_ai:synthetic-drill-only@127.0.0.1:{port}/business_ai"
-
-
-async def migrate(conn, *, start=1, stop=999):
-    for path in sorted((REPO / "db/migrations").glob("*.sql")):
-        version = int(path.name.split("_", 1)[0])
-        if start <= version <= stop:
-            await conn.execute(path.read_text(encoding="utf-8"))
 
 
 async def seed_prior_schema(conn):
@@ -198,6 +193,8 @@ async def fingerprint(conn) -> dict:
 
 
 async def run(artifact_dir: Path):
+    from scripts.migrate import load_migrations, migrate
+
     started = time.monotonic()
     run_id = uuid.uuid4().hex[:12]
     source = f"erpmcp-restore-source-{run_id}"
@@ -206,9 +203,14 @@ async def run(artifact_dir: Path):
     source_url = await new_postgres(source)
     source_conn = await asyncpg.connect(source_url)
     try:
-        await migrate(source_conn, stop=7)
+        for migration in load_migrations():
+            if migration.version > 7:
+                break
+            await source_conn.execute(migration.sql)
         await seed_prior_schema(source_conn)
-        await migrate(source_conn, start=8)
+        # Use the real identity-aware runner for integration v8/v9 plus Admin 010-013.
+        # Raw SQL execution would create schema objects without the immutable ledger columns.
+        await migrate(source_conn, load_migrations())
         before = await fingerprint(source_conn)
     finally:
         await source_conn.close()
@@ -276,7 +278,7 @@ async def run(artifact_dir: Path):
         "postgres_version": command("docker", "exec", target, "postgres", "--version"),
         "source_container": source,
         "restored_container": target,
-        "migration_path": "empty -> 7 -> seed -> 9 -> backup -> fresh instance restore",
+        "migration_path": "empty -> legacy v1-v7 -> seed -> identity-aware v1-v13 -> backup -> fresh instance restore",
         "backup_sha256": hashlib.sha256(backup.read_bytes()).hexdigest(),
         "tables": after,
         "privileges": privileges,
