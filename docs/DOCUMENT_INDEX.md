@@ -11,6 +11,10 @@ Current implementation evidence: [execution log](../reports/EXECUTION_LOG.md),
 [status](../reports/IMPLEMENTATION_STATUS.md), [gap analysis](../reports/IMPLEMENTATION_GAP_ANALYSIS.md),
 [DoD status](../reports/DOD_STATUS.md), and [risk status](../reports/RISK_STATUS.md).
 
+Machine-readable current snapshot: [engineering checkpoint](../reports/CURRENT_ENGINEERING_CHECKPOINT.json).
+CI checks its implementation-content fingerprint against all six report/dashboard markers;
+historical freeze/CI references remain historical, not automatic proof for changed code.
+
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
 change first.

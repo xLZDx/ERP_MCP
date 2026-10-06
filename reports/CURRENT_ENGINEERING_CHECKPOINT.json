@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "batch_id": "DOC_CHECKPOINT_20261006",
+  "implementation_sha256": "8cacf624874a4cb7eae41a0a9df8874557a842a1e422eb269855df2d4e055d55",
+  "production_decision": "NO-GO",
+  "dod_status": "PARTIAL",
+  "pr_number": 11,
+  "pr_state": "DRAFT",
+  "implementation_parent_commit": "c59f07096a1b08c27c33554c29638d4922fe8621",
+  "hosted_run": 37459728181,
+  "hosted_status_at_snapshot": "PARENT_BOTH_JOBS_PASS_NEW_GATE_AWAITING_CI",
+  "last_local_full_suite": {
+    "passed": 288,
+    "skipped": 9
+  },
+  "checkpoint_focused_tests": 10
+}

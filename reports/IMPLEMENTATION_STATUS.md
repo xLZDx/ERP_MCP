@@ -2,6 +2,12 @@
 
 # ERP_MCP implementation status
 
+<!-- ENGINEERING_CHECKPOINT=DOC_CHECKPOINT_20261006 ENGINEERING_IMPLEMENTATION=8cacf624874a4cb7eae41a0a9df8874557a842a1e422eb269855df2d4e055d55 -->
+
+## Content-bound documentation checkpoint — 2026-10-06
+
+Documentation gate (SCOPE-1, D0/D18): current snapshot is bound to implementation content, not old PASS strings. Source drift, a stale report marker, refreshed JSON without refreshed reports and unequal HTML copies fail CI. Ten focused tests and full local suite 288 passed, 9 skipped. Parent implementation c59f07096a1b08c27c33554c29638d4922fe8621 passed BOTH hosted jobs in run 37459728181; the new checkpoint gate awaits its own hosted run. Native accounting/Ferma/DAD/deployment gates remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 ## Executed RSV lifecycle and transport matrix — 2026-10-06
 
 RSV/transport security batch (P6-SEC-1, D4/D11/D13): production RSV client now bounds secret resolution; official SDK stdio fixture verifies crash, timeout, malformed response, new-process recovery, between-call config rotation and temporary-config cleanup. No native 1C/COM calls occur in this harness. Replaced the parallel SSRF classifier with production path/DNS/connect/redirect tests; encoded traversal, controls and 3xx-as-data are denied. Local full suite: 278 passed, 9 skipped; Ruff/Bandit PASS. Node 24 wrapper contracts: 14/14, pinned metadata upstream: 53/53. Hosted run 37458293638 at e767b1d failed on build-environment dispatcher/import wiring; corrected locally, next hosted run must verify the correction. Native COM recovery, Windows secret DACL, deployment firewall and durable recovery audit remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL.

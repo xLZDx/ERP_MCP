@@ -2,6 +2,16 @@
 
 # ERP_MCP implementation gap analysis
 
+## Verified recovery checkpoint — 2026-10-06
+
+Documentation gate (SCOPE-1, D0/D18): current snapshot is bound to implementation content, not old PASS strings. Source drift, a stale report marker, refreshed JSON without refreshed reports and unequal HTML copies fail CI. Ten focused tests and full local suite 288 passed, 9 skipped. Parent implementation c59f07096a1b08c27c33554c29638d4922fe8621 passed BOTH hosted jobs in run 37459728181; the new checkpoint gate awaits its own hosted run. Native accounting/Ferma/DAD/deployment gates remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
+Socket-time egress pinning, production path/redirect regressions and actual SDK subprocess
+recovery/rotation are implemented. Still locally actionable: remaining dependency/audit drills,
+DB-backed capability CLI integration, release assembly, external evidence/DAD rules, Ferma
+export/seeder/native observer integration. Native COM lifecycle/Windows DACL and deployed firewall
+proof have separate unclosed gates; none is closed by the 288-test local result.
+
 ## Current recovery assessment — 2026-10-06
 
 P5 intake, exact synthetic-target guard and independent observation comparator now exist under

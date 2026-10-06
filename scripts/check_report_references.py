@@ -5,6 +5,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+try:
+    from .engineering_checkpoint import check_checkpoint
+except ImportError:
+    from engineering_checkpoint import check_checkpoint
+
 REQUIRED = (
     Path("ERP_MCP_ENGINEERING_COMMAND_CENTER.html"),
     Path("reports/IMPLEMENTATION_STATUS.md"),
@@ -15,6 +20,7 @@ REQUIRED = (
 
 
 def check(root: Path) -> None:
+    check_checkpoint(root)
     missing = [str(path) for path in REQUIRED if not (root / path).is_file()]
     if missing:
         raise ValueError(f"report artifacts missing: {', '.join(missing)}")

@@ -5,6 +5,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+try:
+    from .engineering_checkpoint import check_checkpoint
+except ImportError:
+    from engineering_checkpoint import check_checkpoint
+
 REQUIRED_LINKS = (
     "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
     "IMPLEMENTATION_STATUS.md",
@@ -14,6 +19,7 @@ REQUIRED_LINKS = (
 
 
 def check(root: Path) -> None:
+    check_checkpoint(root)
     index = (root / "docs/DOCUMENT_INDEX.md").read_text(encoding="utf-8")
     status = (root / "reports/IMPLEMENTATION_STATUS.md").read_text(encoding="utf-8")
     dod = (root / "reports/DOD_STATUS.md").read_text(encoding="utf-8")
@@ -23,8 +29,6 @@ def check(root: Path) -> None:
         raise ValueError(f"document index/dashboard missing references: {', '.join(missing)}")
     if "Production GO remains NO-GO" not in status or "DoD remains PARTIAL" not in dod:
         raise ValueError("authoritative status decision is not synchronized")
-    if "Batch 1–10" not in dashboard or "Batch 1–10" not in status:
-        raise ValueError("latest batch status is missing from dashboard/status")
 
 
 def main() -> None:
