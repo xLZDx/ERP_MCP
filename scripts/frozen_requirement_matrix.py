@@ -17,6 +17,9 @@ IMPLEMENTATION = {
     "NFR-P2": ["scripts/performance_benchmark.py", "tests/test_measured_performance.py"],
     "P6-SEC-1": ["src/business_ai_gateway/adapters/onec/rsv_bridge.py", "tests/test_rsv_bridge.py"],
     "SCOPE-1": ["docs/SCOPE_FREEZE_BASELINE_2026-10-06.md", "tests/test_documentation_package.py"],
+    "TEST-FERMA-1": ["testbed/ferma_onec/package_loader.py", "testbed/ferma_onec/target_guard.py",
+                     "testbed/ferma_onec/reconcile.py", "tests/test_ferma_package_boundary.py",
+                     "tests/test_ferma_reconcile.py"],
 }
 
 

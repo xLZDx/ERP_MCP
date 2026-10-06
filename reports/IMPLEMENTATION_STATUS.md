@@ -4,6 +4,12 @@
 
 ## Execution recovery and evidence correction — 2026-10-06
 
+P5 foundation follow-up (TEST-FERMA-1, D5/D9): test-only bounded scenario intake, immutable
+seed inputs without expected results, exact synthetic-target guard and independent three-plane
+comparator are implemented. Twenty-two contract tests pass; full local suite is `240 passed,
+9 skipped`. Native seeding/report capture and real Ferma export/L2 remain open. Alert batch
+`e661e7d77397da9dae252bcaf264e5a9204dabec` passed hosted CI `37456483154` (both jobs).
+
 Last verified implementation: `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`; hosted run
 `37455962411` PASS, both required jobs. Recovery began at `e7b98ac`; the repair batch is verified.
 Freeze baseline remains `57eb5b0696063237a43f5d1baf0a646278f5d832`.

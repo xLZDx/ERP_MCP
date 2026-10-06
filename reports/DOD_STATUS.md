@@ -4,6 +4,10 @@
 
 ## Evidence correction — 2026-10-06
 
+P5 TEST-FERMA-1 intake/target/oracle-isolation/comparator foundation: 22 new contract tests;
+full local suite `240 passed, 9 skipped`. This does not close native seeding/report/L2 gates.
+D12 alert batch `e661e7d` passed both jobs in hosted run `37456483154`.
+
 DoD remains PARTIAL; Production GO remains NO-GO. Last verified recovery baseline:
 `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`, CI `37455962411` PASS (both jobs).
 Previous deterministic benchmark/fault/mutation PASS constants do not close D13/D14. Current

@@ -6,6 +6,11 @@
 
 ## Current evidence integrity assessment — 2026-10-06
 
+R-34/R-35: test-only scenario intake exposes immutable seed facts without expected values;
+production package excludes testbed; target guard refuses production IDs, scope/fingerprint drift
+and shared write/read identity; comparator rejects same-origin/missing/truncated/cross-scope data.
+22 contract tests pass. Actual native seeder/observers and Ferma exporter independence remain open.
+
 Verified implementation `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`, CI `37455962411` PASS.
 R-25 remains OPEN: prior benchmark and harness closure claims included formula-generated numbers
 and constant PASS values. They are withdrawn. R-05 is advanced by JSON/header scanner regression

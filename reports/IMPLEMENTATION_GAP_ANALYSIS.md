@@ -4,6 +4,11 @@
 
 ## Current recovery assessment — 2026-10-06
 
+P5 intake, exact synthetic-target guard and independent observation comparator now exist under
+testbed/ferma_onec, excluded from production. 22 contract tests pass. Remaining P5 work is actual
+Ferma artifact production, exact 1C document/report mappings, seeding, native/gateway observations
+and L2 execution. These are not closed by fixture agreement.
+
 Verified implementation `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`, CI `37455962411` PASS;
 freeze `57eb5b0696063237a43f5d1baf0a646278f5d832`. Forty-four traceability rows are
 inventoried by `scripts/frozen_requirement_matrix.py` with explicit open/deferred status.
