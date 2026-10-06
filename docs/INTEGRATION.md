@@ -369,6 +369,26 @@ destructive cleanup. Real-data ingestion remains gated on the approved storage r
 Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
 reconciliation, deployed volume identity, retention and backup/restore remain OPEN.
 
+#### Structured normalized invoice exchange
+
+An INVOICE-only profile may explicitly select `external-normalized-invoice-json-v1` with MIME
+`application/json` (operator CLI requires `--mime application/json`). No sniffing or alternate
+parser fallback exists; CSV profiles remain CSV. Other evidence classes cannot claim this codec.
+
+The versioned `invoice-normalized-v1` envelope has exact header/line schemas: source evidence ID,
+supplier/buyer identity, invoice number/date, scoped currency, quantity/unit price/discount/net,
+VAT rate/amount, total, UOM/item/quality/canonical line refs and optional explicit service dates.
+All decimal values are strings, finite/bounded with at most six fractional digits; duplicate keys/
+line refs, unknown fields (including policy/scope overrides), cross-period/currency data and excess
+size/line count are rejected. Dates/field names are not guessed from document text.
+
+This is NOT PDF/XML/e-factura extraction, legal VAT rate approval or business arithmetic validation.
+The extractor preserves inconsistent totals for the rule engine rather than repairing them. Its
+document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
+Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
+lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
+original archive verification and the 11-case invoice rule/real-corpus acceptance remain OPEN.
+
 ## 15. Test-only 1C seeder boundary
 
 The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.

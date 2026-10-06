@@ -363,6 +363,14 @@ provided through the evidence plane.
 
 ### Historical write pilot
 
+Current normalized intake now supports an explicitly approved INVOICE-only JSON codec containing
+the complete quantity/price/VAT/item/quality/header facts in §11. Private storage/operator intake/
+index/manifest route support its exact MIME/profile; no content sniffing, class relabelling or raw
+identity/value exposure. Duplicate/extra/schema/precision/scope inputs fail closed. Carrier SHA is
+not an original PDF fingerprint; extraction never fixes invoice arithmetic or approves tax law.
+This closes the structured normalized input gap ONLY. The coverage table's business rules, native
+PDF/XML extraction, original archive, live source collectors and REAL-INV-001..011 remain OPEN.
+
 The source also proves historical test capability to:
 
 - create/edit a purchase document;

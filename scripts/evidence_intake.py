@@ -28,7 +28,7 @@ from business_ai_gateway.secret_files import SecretDirectoryUnavailable
 def intake(*, store_root: Path, input_path: Path, input_sha256: str, profile_path: Path,
            profile_sha256: str, retention_policy_id: str, approved_from: datetime,
            approved_until: datetime, approval_output: Path, existing_index: Path | None = None,
-           existing_index_sha256: str | None = None) -> dict:
+           existing_index_sha256: str | None = None, mime: str = 'text/csv') -> dict:
     """Pins/profile/window are explicit operator approval. This never approves native semantics."""
     if (not isinstance(approved_from, datetime) or approved_from.tzinfo is None
             or not isinstance(approved_until, datetime) or approved_until.tzinfo is None
@@ -53,7 +53,8 @@ def intake(*, store_root: Path, input_path: Path, input_sha256: str, profile_pat
     # Existing index and caller-pinned document/profile all checked before persisting new bytes.
     receipt = store.ingest_normalized(payload, profile=profile, expected_scope=profile.scope,
         validated_profiles=frozenset({profile.fingerprint()}), retention_policy_id=retention_policy_id,
-        approved_retention_policies=frozenset({retention_policy_id}), expected_document_sha256=input_sha256)
+        approved_retention_policies=frozenset({retention_policy_id}), expected_document_sha256=input_sha256,
+        mime=mime)
     approval = EvidenceApproval(receipt.private_blob_ref.removeprefix('private:'), receipt, profile,
                                 retention_policy_id, approved_from, approved_until)
     entries = [item.as_record() for item in previous] + [approval.as_record()]
@@ -79,13 +80,14 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--existing-index', type=Path)
     parser.add_argument('--existing-index-sha256')
+    parser.add_argument('--mime', choices=('text/csv', 'application/json'), default='text/csv')
     args = parser.parse_args()
     try:
         result = intake(store_root=args.store_root, input_path=args.input, input_sha256=args.input_sha256,
             profile_path=args.profile, profile_sha256=args.profile_sha256,
             retention_policy_id=args.retention_policy_id, approved_from=_instant(args.approved_from),
             approved_until=_instant(args.approved_until), approval_output=args.approval_output,
-            existing_index=args.existing_index, existing_index_sha256=args.existing_index_sha256)
+            existing_index=args.existing_index, existing_index_sha256=args.existing_index_sha256, mime=args.mime)
     except (OSError, ValueError, TypeError, AttributeError, RecursionError, SecretDirectoryUnavailable):
         raise SystemExit('EVIDENCE_OPERATOR_INTAKE_REJECTED') from None
     print(json.dumps(result, sort_keys=True))  # hashes/counts only, never paths/identity/raw facts

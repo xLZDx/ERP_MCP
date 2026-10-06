@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 908d7ac6 · CI 37491887628: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: approved private evidence runtime · 117 focused PASS with actual PostgreSQL · full suite / hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD bda7e34e · CI 37494671262: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: structured normalized invoice input · 121 focused PASS · full suite / hosted CI pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,9 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=5d379650bceed8faa9f12159d0dd7dfeed20945b8e981c73c20a889885106548 -->
+<p><strong>Structured normalized invoice input — 2026-10-06:</strong> DAD-2/EVID-1/D4/D11: explicitly approved INVOICE-only normalized JSON codec supports scoped header/line supplier-buyer identity, invoice number/date, currency, quantity/price/discount/net/VAT/total, item-quality-UOM and service dates. Shared exact source/profile/retention/digest gate reused; strict UTF-8/exact schema/duplicate/size/row/decimal/date validation. No content sniffing, native PDF/XML/UTF16 fallback, policy overrides or class relabelling. Private store/index/runtime safe manifest support exact approved JSON MIME; operator CLI requires explicit --mime application/json. Immutable facts preserve arithmetic discrepancies for future rules, never auto-repair/legal VAT approval. Carrier fingerprint explicitly NORMALIZED_CARRIER; original PDF/archive fingerprint never inferred. Generic scalar DAD comparator rejects invoice line type. 121 focused invoice/existing CSV/store/operator tests PASS, including 29 structured invoice contracts; backward compatibility unaffected. Parent bda7e34 CI 37494671262 FOUR jobs PASS (tested merge 38d36f99bc96f6f2fd2e28c610f25a5a656603b6). Current full suite 670 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Downloaded parent release exact head/merge, four image/SBOM and five JUnit summary hashes verified; SHA256 8289372cf43a40879915ca4b25807404ceb8a5832d9738350fa4bb1b82db4fb0, scanner PASS. Own hosted CI pending. Eleven invoice business rules, native extraction/original archive/live collectors/real corpus, month-close/statements/tax/aging/Ferma/native/full fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+
 <!-- ENGINEERING_CHECKPOINT=APPROVED_EVIDENCE_RUNTIME_20261006 ENGINEERING_IMPLEMENTATION=6f14065bc3613f0e4b370fe11fa60585f58704c6afbb2c5efb069513bb6852d5 -->
 <p><strong>Approved private evidence runtime — 2026-10-06:</strong> EVID-1/FR-F1/D11/D4: optional runtime provider and read-only external_evidence_manifest wired behind normal gateway scope/source-company ACL/rate/durable access receipt. Model inputs are bounded IDs only, never path/hash/profile/policy approval. Private operator-pinned static index (512 KB/64 entries) binds actual receipts, parser fingerprints, exact scopes and UTC READ-approval windows; strict duplicate/schema validation, file permissions and SHA checked before AND after blob reading, no stale approval cache. Only safe manifest returned: business_acceptance NOT_EVALUATED/native NOT_PROVEN; timeout/tamper never PASS. Operator-only CLI persists approved normalized CSV into private store and publishes a NEW pinned index, preserving previous records; actual subprocess repeat rejects overwrite without raw diagnostics. 117 focused tests PASS/zero skips with actual app-role PostgreSQL: receipt visible before actual SDK/provider FS read, correlated completion/no raw query; readonly append failure prevents provider call. ACL contracts are stubs, not live/native acceptance. Settings paired/absolute/hash-pinned, validation inputs hidden; metric tool allowlist matches new endpoint. Source docs/env examples/34 offline render synchronized. Parent 908d7ac CI 37491887628 FOUR jobs PASS (tested merge 9ae4efde9debe89a82152d62d1e2ac9db2d1e4e4). Full current suite 641 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted CI pending. READ approval expiry is NOT physical/legal retention; deployment/retention/DR/native parsers, invoice/month-close/statements/tax/aging/Ferma/native/fault/deployment remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
@@ -615,7 +618,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>908d7ac63e6a75feb6be79c10b2ce589fc1687cf</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37491887628">37491887628</a>: FOUR jobs PASS. Текущий approved evidence runtime batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>bda7e34ebcba422eb57e804334940e7dbfac89ff</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37494671262">37494671262</a>: FOUR jobs PASS. Текущий structured invoice input batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -2178,7 +2181,7 @@ production Ferma adapter.</p>
     </article>
 <article class="doc-card searchable" id="doc-integration" data-cat="architecture" data-title="Integration Contract">
       <div class="doc-head"><div><span class="eyebrow">Интеграция</span><h2>Integration Contract</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=db34347516c81211450fa30f6a8326790f35b4a3533aa83d8917db3793258fd6 DOC_RENDER_SHA256=ce477bb7141f3cffd9c2c4f109425ec875e2d2264f9f818a4bb45bdeed7b54d6 -->
+      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=f877056cba8c48753d53abeebb774a1d1ff3a124d8e4b7bfa239f7dd00603399 DOC_RENDER_SHA256=23369b14f4e2cd18808bc3d78a45181a6e5d45ab84b34b0b3fafc30ee3cb80e3 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Integration Contract</h1>
 <p><strong>Version:</strong> 1.1
@@ -2466,6 +2469,22 @@ or retention scheduler exists; expired/orphan data needs approved operator handl
 destructive cleanup. Real-data ingestion remains gated on the approved storage retention policy.
 Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
 reconciliation, deployed volume identity, retention and backup/restore remain OPEN.</p>
+<h4>Structured normalized invoice exchange</h4>
+<p>An INVOICE-only profile may explicitly select <code>external-normalized-invoice-json-v1</code> with MIME
+<code>application/json</code> (operator CLI requires <code>--mime application/json</code>). No sniffing or alternate
+parser fallback exists; CSV profiles remain CSV. Other evidence classes cannot claim this codec.</p>
+<p>The versioned <code>invoice-normalized-v1</code> envelope has exact header/line schemas: source evidence ID,
+supplier/buyer identity, invoice number/date, scoped currency, quantity/unit price/discount/net,
+VAT rate/amount, total, UOM/item/quality/canonical line refs and optional explicit service dates.
+All decimal values are strings, finite/bounded with at most six fractional digits; duplicate keys/
+line refs, unknown fields (including policy/scope overrides), cross-period/currency data and excess
+size/line count are rejected. Dates/field names are not guessed from document text.</p>
+<p>This is NOT PDF/XML/e-factura extraction, legal VAT rate approval or business arithmetic validation.
+The extractor preserves inconsistent totals for the rule engine rather than repairing them. Its
+document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
+Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
+lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
+original archive verification and the 11-case invoice rule/real-corpus acceptance remain OPEN.</p>
 <h2>15. Test-only 1C seeder boundary</h2>
 <p>The Ferma→1C seeder is WRITE-CAPABLE <strong>only in the test plane</strong>.</p>
 <p>It must:
@@ -4982,7 +5001,7 @@ one of them into committed scope.</p>
 </blockquote>
 <p>If there is no answer, the work is scope expansion and must wait for explicit rebaseline.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
-<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=27fe6ccb413cb3b070949d602bc40324b0d9713308fb3fcd82dd54bd55f13e7c DOC_RENDER_SHA256=79f2fe350e20686db5b36bb6abe6cc271dbbe657a424bce06cd05e6e7122e8ec -->
+<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=ec1057fbaf782377969fcccb8e19d8697ab96df492fe9c41cfb7c2dae404f4c2 DOC_RENDER_SHA256=7a33b013368137ca6c72665b7b021feed2faa38f7c18493ad81370cf0793496a -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>DAD 1C MCP — Source Requirements &amp; Scenario Coverage</h1>
 <p><strong>Status:</strong> REVIEWED SOURCE-OF-PROBLEM + IMPLEMENTATION/TEST COVERAGE
@@ -5727,6 +5746,13 @@ distinct scenarios.</p>
 <p>Read-only MVP may support these comparisons without writing to 1C if invoice/evidence files are
 provided through the evidence plane.</p>
 <h3>Historical write pilot</h3>
+<p>Current normalized intake now supports an explicitly approved INVOICE-only JSON codec containing
+the complete quantity/price/VAT/item/quality/header facts in §11. Private storage/operator intake/
+index/manifest route support its exact MIME/profile; no content sniffing, class relabelling or raw
+identity/value exposure. Duplicate/extra/schema/precision/scope inputs fail closed. Carrier SHA is
+not an original PDF fingerprint; extraction never fixes invoice arithmetic or approves tax law.
+This closes the structured normalized input gap ONLY. The coverage table's business rules, native
+PDF/XML extraction, original archive, live source collectors and REAL-INV-001..011 remain OPEN.</p>
 <p>The source also proves historical test capability to:</p>
 <ul>
 <li>create/edit a purchase document;</li>

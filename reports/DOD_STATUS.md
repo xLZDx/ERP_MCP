@@ -1,6 +1,12 @@
 
 # Definition of Done status
 
+<!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=5d379650bceed8faa9f12159d0dd7dfeed20945b8e981c73c20a889885106548 -->
+
+## Structured normalized invoice input — 2026-10-06
+
+DAD-2/EVID-1/D4/D11: explicitly approved INVOICE-only normalized JSON codec supports scoped header/line supplier-buyer identity, invoice number/date, currency, quantity/price/discount/net/VAT/total, item-quality-UOM and service dates. Shared exact source/profile/retention/digest gate reused; strict UTF-8/exact schema/duplicate/size/row/decimal/date validation. No content sniffing, native PDF/XML/UTF16 fallback, policy overrides or class relabelling. Private store/index/runtime safe manifest support exact approved JSON MIME; operator CLI requires explicit --mime application/json. Immutable facts preserve arithmetic discrepancies for future rules, never auto-repair/legal VAT approval. Carrier fingerprint explicitly NORMALIZED_CARRIER; original PDF/archive fingerprint never inferred. Generic scalar DAD comparator rejects invoice line type. 121 focused invoice/existing CSV/store/operator tests PASS, including 29 structured invoice contracts; backward compatibility unaffected. Parent bda7e34 CI 37494671262 FOUR jobs PASS (tested merge 38d36f99bc96f6f2fd2e28c610f25a5a656603b6). Current full suite 670 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Downloaded parent release exact head/merge, four image/SBOM and five JUnit summary hashes verified; SHA256 8289372cf43a40879915ca4b25807404ceb8a5832d9738350fa4bb1b82db4fb0, scanner PASS. Own hosted CI pending. Eleven invoice business rules, native extraction/original archive/live collectors/real corpus, month-close/statements/tax/aging/Ferma/native/full fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=APPROVED_EVIDENCE_RUNTIME_20261006 ENGINEERING_IMPLEMENTATION=6f14065bc3613f0e4b370fe11fa60585f58704c6afbb2c5efb069513bb6852d5 -->
 
 ## Approved private evidence runtime — 2026-10-06
