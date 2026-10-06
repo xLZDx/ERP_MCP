@@ -27,3 +27,4 @@
   run under a temporary source-wide grant created/revoked through the Admin API; U05-U10 use the
   baseline company-scoped grants. The denial under the company-only grant is asserted explicitly.
 - Evidence: collect-only and ruff clean; not yet executed (environment owned by lane A).
+- U05-U10 written under the baseline seed. Company row-content assertions skip with the explicit reason `BLOCKED-no-validated-semantic-profile` (a validated profile needs native reconciliation evidence, intentionally not faked); access decisions are proven by the `ACCESS_AUTHORIZED` audit receipt and the Fake1C request log. U08 removes the group at the IdP by editing the git-ignored `.e2e/idp-config.json` and restarting the test IdP, restoring the original bytes in `finally`.
