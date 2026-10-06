@@ -471,8 +471,15 @@ The service read has a server-configured five-second deadline (maximum 30); time
 error, never a business success. Cancellation/timeout cannot stop an already running filesystem
 thread, but that bounded thread is read-only and cannot return data to the cancelled request.
 
-Still OPEN: runtime provider wiring and operator ingest/receipt index, deployment identity/volume,
-backup/restore/retention approval, native format parsers and real source reconciliation. Local file
+Runtime now wires the optional provider through a pinned private approval index and the read-only
+`external_evidence_manifest` tool. Operator normalized intake creates a NEW index, preserves prior
+records and prints only hashes/counts/opaque IDs. Gateway inputs cannot authorize paths, hashes,
+profiles or policies. Index hash/permission/scope/window checks run before AND after blob reading;
+revoked/stale approvals are never served from a trusted cache. See Integration's operator runbook.
+Approval expiry bounds read authorization, not automatic retention/destruction guarantees.
+
+Still OPEN: deployment identity/volume, backup/restore/retention approval, native format parsers and
+real source reconciliation. Local file
 fsync/reopen and fixture permission checks are not production WORM/PITR/retention approval.
 
 ---

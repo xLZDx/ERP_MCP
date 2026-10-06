@@ -32,6 +32,7 @@ class OperationalMetrics:
         "accounting_balance_and_turnovers", "inventory_balance", "inventory_movements",
         "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
         "payable_balance", "sales_documents", "purchase_documents", "onec_read", "audit",
+        "external_evidence_manifest",
     })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(
         {"database", "redis", "jwks", "odata_sidecar", "rsv_bridge", "secrets", "audit"}

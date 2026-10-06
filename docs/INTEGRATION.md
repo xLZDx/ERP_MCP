@@ -316,6 +316,59 @@ The engine returns stable status:
 Tax/payroll/legal rule families preserve human-review flags and effective-date/jurisdiction
 provenance.
 
+### 14.1 Normalized evidence provider / operator runbook
+
+`external_evidence_manifest(source_id, company_id, evidence_id)` is read-only and returns ONLY a
+safe manifest. It accepts no path, fetch URL, digest, parser profile, retention policy or approval
+from the model. Gateway OAuth scope, current source/company ACL, rate check and durable access
+receipt precede filesystem reads. Completion records parser fingerprint/count, never raw facts.
+Disabled provider returns `CAPABILITY_UNSUPPORTED`; missing/cross-scope/expired entries return
+`EVIDENCE_REQUIRED`; stale/corrupt input cannot PASS. `business_acceptance=NOT_EVALUATED`.
+
+Configure all three SERVER-ONLY settings together; default is disabled:
+
+```text
+BAG_EVIDENCE_STORE_ROOT=<absolute protected private store outside Git>
+BAG_EVIDENCE_APPROVAL_INDEX=<absolute protected private index file outside Git>
+BAG_EVIDENCE_APPROVAL_SHA256=<operator-approved exact file SHA-256>
+```
+
+Index schema v1 is bounded to 512 KB/64 entries: exact schemas, duplicate JSON keys, receipt/profile
+hashes, source/company scope, UTC approval windows and retention IDs are validated. Protected file
+permissions and pinned SHA are rechecked BEFORE AND AFTER blob reading. Updated files are not
+silently approved or served from a cached authorization snapshot. Pin rotation requires explicit
+operator approval and server restart. This static receipt index requires no new SQL migration.
+
+Operator intake (never a public MCP write tool):
+
+1. Create a new owned store with `PrivateEvidenceStore.create` on an approved private volume.
+   Preserve its actual directory for server configuration; never alter a general/user root.
+2. Obtain explicit source/company parser and storage-retention approval. Prepare only normalized
+   `text/csv` and an exact `EvidenceParserProfile` JSON snapshot, with pinned input/profile hashes.
+   Both files stay outside Git and must pass private-file OS permission checks. Do NOT rename
+   PDF/XML/ZIP to CSV or claim native validation from a normalized exchange.
+3. Execute the explicit operator command (all paths/identities remain private):
+
+```text
+python -m scripts.evidence_intake --store-root <private-store> --input <private.csv>
+  --input-sha256 <approved-sha> --profile <private-profile.json> --profile-sha256 <approved-sha>
+  --retention-policy-id <approved-policy> --approved-from <UTC-RFC3339>
+  --approved-until <UTC-RFC3339> --approval-output <new-file-in-private-store>
+```
+
+To add an artifact, pass `--existing-index` and `--existing-index-sha256`, with a NEW output file.
+Existing index/files are preserved, never overwritten. Only hashes/counts/opaque IDs are printed.
+Configure the returned approval SHA explicitly; never accept an approval digest from model input.
+
+4. Rehearse authorized manifest reading and denied source/company, stale index, tamper and audit
+   outage. Publish only safe hashes/audit correlations, not private paths/raw documents, in CI.
+
+Approval windows bound READ AUTHORIZATION, not legal retention/destruction guarantees. No deletion
+or retention scheduler exists; expired/orphan data needs approved operator handling, not automatic
+destructive cleanup. Real-data ingestion remains gated on the approved storage retention policy.
+Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
+reconciliation, deployed volume identity, retention and backup/restore remain OPEN.
+
 ## 15. Test-only 1C seeder boundary
 
 The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.

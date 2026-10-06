@@ -464,6 +464,8 @@ Any automatic deletion/retention policy must be explicitly defined and approved 
 
 The internal normalized evidence provider returns immutable opaque blob references plus pinned
 manifest/document SHA-256 receipts. Store these in a trusted registry/index separate from raw
-private files before accepting persistent reconciliation references. The local provider itself
-does not approve receipt indexes or legal retention; a private orphan without a pinned receipt
+private files before accepting persistent reconciliation references. Runtime supports an optional
+operator-pinned private static index (512 KB/64 entries); model input cannot authorize it. A private
+orphan without a pinned receipt
 is not usable evidence. Raw documents remain outside Git and outside standard logs/CI artifacts.
+Index approval windows bound read authorization, not physical/legal retention guarantees.

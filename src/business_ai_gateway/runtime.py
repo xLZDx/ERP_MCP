@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 from redis.asyncio import Redis
 
@@ -10,6 +11,8 @@ from .adapters.onec.rsv_bridge import RSVDataBridgeClient
 from .adapters.onec.sidecar_client import ODataSidecarClient
 from .audit import Audit
 from .db import Database
+from .evidence_index import ApprovedEvidenceProvider
+from .evidence_store import PrivateEvidenceStore
 from .observability import OperationalMetrics
 from .rate_limit import RateLimiter
 from .registry import Registry
@@ -33,6 +36,11 @@ class Runtime:
             self.db, include_query=settings.audit_include_query, metrics=self.metrics
         )
         self.rate_limit = RateLimiter(self.redis, per_minute=settings.rate_limit_per_minute)
+        self.evidence_provider = (
+            ApprovedEvidenceProvider(PrivateEvidenceStore(Path(settings.evidence_store_root)),
+                Path(settings.evidence_approval_index), settings.evidence_approval_sha256)
+            if settings.evidence_store_root else None
+        )
         self.onec_client = OneCReadClient(
             timeout_seconds=settings.http_timeout_seconds,
             max_response_bytes=settings.max_response_bytes,

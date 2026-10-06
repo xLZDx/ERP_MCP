@@ -1,6 +1,12 @@
 
 # ERP_MCP implementation status
 
+<!-- ENGINEERING_CHECKPOINT=APPROVED_EVIDENCE_RUNTIME_20261006 ENGINEERING_IMPLEMENTATION=6f14065bc3613f0e4b370fe11fa60585f58704c6afbb2c5efb069513bb6852d5 -->
+
+## Approved private evidence runtime — 2026-10-06
+
+EVID-1/FR-F1/D11/D4: optional runtime provider and read-only external_evidence_manifest wired behind normal gateway scope/source-company ACL/rate/durable access receipt. Model inputs are bounded IDs only, never path/hash/profile/policy approval. Private operator-pinned static index (512 KB/64 entries) binds actual receipts, parser fingerprints, exact scopes and UTC READ-approval windows; strict duplicate/schema validation, file permissions and SHA checked before AND after blob reading, no stale approval cache. Only safe manifest returned: business_acceptance NOT_EVALUATED/native NOT_PROVEN; timeout/tamper never PASS. Operator-only CLI persists approved normalized CSV into private store and publishes a NEW pinned index, preserving previous records; actual subprocess repeat rejects overwrite without raw diagnostics. 117 focused tests PASS/zero skips with actual app-role PostgreSQL: receipt visible before actual SDK/provider FS read, correlated completion/no raw query; readonly append failure prevents provider call. ACL contracts are stubs, not live/native acceptance. Settings paired/absolute/hash-pinned, validation inputs hidden; metric tool allowlist matches new endpoint. Source docs/env examples/34 offline render synchronized. Parent 908d7ac CI 37491887628 FOUR jobs PASS (tested merge 9ae4efde9debe89a82152d62d1e2ac9db2d1e4e4). Full current suite 641 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted CI pending. READ approval expiry is NOT physical/legal retention; deployment/retention/DR/native parsers, invoice/month-close/statements/tax/aging/Ferma/native/fault/deployment remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=PRIVATE_EVIDENCE_STORE_20261006 ENGINEERING_IMPLEMENTATION=29e6051f77bd1a7c7dcfd770209a6cf1f1552babf190a301839969d51a74779d -->
 
 ## Private normalized evidence storage — 2026-10-06

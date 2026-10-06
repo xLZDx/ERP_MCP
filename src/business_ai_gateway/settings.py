@@ -23,6 +23,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     environment: Literal["development", "test", "production"] = "development"
@@ -53,6 +54,9 @@ class Settings(BaseSettings):
     rsv_bridge_executable_sha256: str | None = None
     rsv_bridge_config_root: str | None = None
     rsv_bridge_config_secret_ref: str | None = None
+    evidence_store_root: str | None = Field(default=None, repr=False, max_length=1024)
+    evidence_approval_index: str | None = Field(default=None, repr=False, max_length=1024)
+    evidence_approval_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
 
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
@@ -95,6 +99,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        evidence_settings = (self.evidence_store_root, self.evidence_approval_index, self.evidence_approval_sha256)
+        if any(evidence_settings) and not all(evidence_settings):
+            raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INCOMPLETE')
+        if self.evidence_store_root and not all(Path(value).is_absolute() for value in evidence_settings[:2]):
+            raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INVALID')
         if self.metrics_token and len(self.metrics_token.get_secret_value().encode()) < 32:
             raise ValueError("BAG_METRICS_TOKEN must contain at least 32 bytes")
         if (self.rsv_bridge_executable is None) != (self.rsv_bridge_config_root is None):

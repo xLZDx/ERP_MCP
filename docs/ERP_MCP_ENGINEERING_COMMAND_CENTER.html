@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 98dabc3d · CI 37490159346: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: private normalized evidence store · 91 focused PASS · full suite / hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 908d7ac6 · CI 37491887628: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: approved private evidence runtime · 117 focused PASS with actual PostgreSQL · full suite / hosted CI pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,9 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=APPROVED_EVIDENCE_RUNTIME_20261006 ENGINEERING_IMPLEMENTATION=6f14065bc3613f0e4b370fe11fa60585f58704c6afbb2c5efb069513bb6852d5 -->
+<p><strong>Approved private evidence runtime — 2026-10-06:</strong> EVID-1/FR-F1/D11/D4: optional runtime provider and read-only external_evidence_manifest wired behind normal gateway scope/source-company ACL/rate/durable access receipt. Model inputs are bounded IDs only, never path/hash/profile/policy approval. Private operator-pinned static index (512 KB/64 entries) binds actual receipts, parser fingerprints, exact scopes and UTC READ-approval windows; strict duplicate/schema validation, file permissions and SHA checked before AND after blob reading, no stale approval cache. Only safe manifest returned: business_acceptance NOT_EVALUATED/native NOT_PROVEN; timeout/tamper never PASS. Operator-only CLI persists approved normalized CSV into private store and publishes a NEW pinned index, preserving previous records; actual subprocess repeat rejects overwrite without raw diagnostics. 117 focused tests PASS/zero skips with actual app-role PostgreSQL: receipt visible before actual SDK/provider FS read, correlated completion/no raw query; readonly append failure prevents provider call. ACL contracts are stubs, not live/native acceptance. Settings paired/absolute/hash-pinned, validation inputs hidden; metric tool allowlist matches new endpoint. Source docs/env examples/34 offline render synchronized. Parent 908d7ac CI 37491887628 FOUR jobs PASS (tested merge 9ae4efde9debe89a82152d62d1e2ac9db2d1e4e4). Full current suite 641 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted CI pending. READ approval expiry is NOT physical/legal retention; deployment/retention/DR/native parsers, invoice/month-close/statements/tax/aging/Ferma/native/fault/deployment remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+
 <!-- ENGINEERING_CHECKPOINT=PRIVATE_EVIDENCE_STORE_20261006 ENGINEERING_IMPLEMENTATION=29e6051f77bd1a7c7dcfd770209a6cf1f1552babf190a301839969d51a74779d -->
 <p><strong>Private normalized evidence storage — 2026-10-06:</strong> EVID-1/D11/D4: private append-only local normalized evidence provider implements new outside-Git protected stores, opaque references, exclusive file creation, fsync and final manifest commit marker. Existing approved bounded CSV parser reused for all 14 classes; native formats/URLs/decompression NOT enabled. Reopen binds independently pinned manifest/document SHA, exact source/company/config/profile and retention approval. Actual disk/NTFS permissions, Everyone file-ACL widening rejection, owned junction rejection, hardlink/traversal/tamper/oversize/orphan/no-overwrite controls PASS. Shared permission verifier is read-only on existing objects; RSV ACL behavior retained. Internal reader requires OAuth scope/current company ACL/rate/durable access receipt before filesystem; completion/error audit and bounded deadline; background timed-out thread remains read-only. 91 focused store/OS/evidence tests PASS (45 store, 8 RSV privacy, 38 normalized evidence); runtime/testbed Bandit and Ruff PASS. Parent 98dabc3 CI 37490159346 FOUR jobs PASS (tested merge ae49662738357246a88f26e4ce7c82539f1f932f). Full current suite 607 passed/17 skipped; combined Windows privacy/bridge/wire/store suite 81 passed/zero skips; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted verification pending. Receipt index/operator ingest/runtime wiring, production volume identity/retention/DR, native parsers and frozen DAD/Ferma/native/fault/deployment remain OPEN; no WORM/PITR/native acceptance inferred. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
@@ -612,7 +615,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>98dabc3d05f47983c65d7e6220a19e2db71cf7de</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37490159346">37490159346</a>: FOUR jobs PASS. Текущий private evidence store batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>908d7ac63e6a75feb6be79c10b2ce589fc1687cf</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37491887628">37491887628</a>: FOUR jobs PASS. Текущий approved evidence runtime batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -1040,7 +1043,7 @@ requirement/gate. Work that cannot do so waits for explicit operator rebaseline.
     </article>
 <article class="doc-card searchable" id="doc-data-model" data-cat="architecture" data-title="Data Model">
       <div class="doc-head"><div><span class="eyebrow">Данные</span><h2>Data Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DATA_MODEL.md DOC_SOURCE_SHA256=c5b7d488b930c3ccf0b8ae0fe552a86fba4bd6bea7e5527e2cd8a8dc7e3a8516 DOC_RENDER_SHA256=17b9725aff3cba5c19bc6b0c232901177be07263ef259d6ccbaf3b0de21c8ac6 -->
+      <div class="md"><!-- DOC_SOURCE=docs/DATA_MODEL.md DOC_SOURCE_SHA256=07256de4b87f059fcd2aace07da5026b1f1cd719b297556c31b8240e876517ef DOC_RENDER_SHA256=dd23bbf58ffc1e75b6f7443a4dcc4aeaf3bc640024885b9259c201e2a85c4559 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Data Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -1423,9 +1426,11 @@ adapter/result provenance. A missing completion is an unfinished request, not a 
 <p>Any automatic deletion/retention policy must be explicitly defined and approved before production.</p>
 <p>The internal normalized evidence provider returns immutable opaque blob references plus pinned
 manifest/document SHA-256 receipts. Store these in a trusted registry/index separate from raw
-private files before accepting persistent reconciliation references. The local provider itself
-does not approve receipt indexes or legal retention; a private orphan without a pinned receipt
-is not usable evidence. Raw documents remain outside Git and outside standard logs/CI artifacts.</p>
+private files before accepting persistent reconciliation references. Runtime supports an optional
+operator-pinned private static index (512 KB/64 entries); model input cannot authorize it. A private
+orphan without a pinned receipt
+is not usable evidence. Raw documents remain outside Git and outside standard logs/CI artifacts.
+Index approval windows bound read authorization, not physical/legal retention guarantees.</p>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-governance" data-cat="governance" data-title="Governance">
@@ -2173,7 +2178,7 @@ production Ferma adapter.</p>
     </article>
 <article class="doc-card searchable" id="doc-integration" data-cat="architecture" data-title="Integration Contract">
       <div class="doc-head"><div><span class="eyebrow">Интеграция</span><h2>Integration Contract</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=bd4d83ad5b710d486b6b32c2c4b793036cb0cdc152cb3cecad708abe6fa5aea5 DOC_RENDER_SHA256=d7dd873e26b72f6e4eba0ce9b5240e4092f8ac8d94caf41dd9a4e98fbb8c9efe -->
+      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=db34347516c81211450fa30f6a8326790f35b4a3533aa83d8917db3793258fd6 DOC_RENDER_SHA256=ce477bb7141f3cffd9c2c4f109425ec875e2d2264f9f818a4bb45bdeed7b54d6 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Integration Contract</h1>
 <p><strong>Version:</strong> 1.1
@@ -2417,6 +2422,50 @@ frozen DAD scenarios.</p>
 <code>PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR</code>.</p>
 <p>Tax/payroll/legal rule families preserve human-review flags and effective-date/jurisdiction
 provenance.</p>
+<h3>14.1 Normalized evidence provider / operator runbook</h3>
+<p><code>external_evidence_manifest(source_id, company_id, evidence_id)</code> is read-only and returns ONLY a
+safe manifest. It accepts no path, fetch URL, digest, parser profile, retention policy or approval
+from the model. Gateway OAuth scope, current source/company ACL, rate check and durable access
+receipt precede filesystem reads. Completion records parser fingerprint/count, never raw facts.
+Disabled provider returns <code>CAPABILITY_UNSUPPORTED</code>; missing/cross-scope/expired entries return
+<code>EVIDENCE_REQUIRED</code>; stale/corrupt input cannot PASS. <code>business_acceptance=NOT_EVALUATED</code>.</p>
+<p>Configure all three SERVER-ONLY settings together; default is disabled:</p>
+<pre><code>BAG_EVIDENCE_STORE_ROOT=&lt;absolute protected private store outside Git&gt;
+BAG_EVIDENCE_APPROVAL_INDEX=&lt;absolute protected private index file outside Git&gt;
+BAG_EVIDENCE_APPROVAL_SHA256=&lt;operator-approved exact file SHA-256&gt;
+</code></pre>
+<p>Index schema v1 is bounded to 512 KB/64 entries: exact schemas, duplicate JSON keys, receipt/profile
+hashes, source/company scope, UTC approval windows and retention IDs are validated. Protected file
+permissions and pinned SHA are rechecked BEFORE AND AFTER blob reading. Updated files are not
+silently approved or served from a cached authorization snapshot. Pin rotation requires explicit
+operator approval and server restart. This static receipt index requires no new SQL migration.</p>
+<p>Operator intake (never a public MCP write tool):</p>
+<ol>
+<li>Create a new owned store with <code>PrivateEvidenceStore.create</code> on an approved private volume.
+   Preserve its actual directory for server configuration; never alter a general/user root.</li>
+<li>Obtain explicit source/company parser and storage-retention approval. Prepare only normalized
+   <code>text/csv</code> and an exact <code>EvidenceParserProfile</code> JSON snapshot, with pinned input/profile hashes.
+   Both files stay outside Git and must pass private-file OS permission checks. Do NOT rename
+   PDF/XML/ZIP to CSV or claim native validation from a normalized exchange.</li>
+<li>Execute the explicit operator command (all paths/identities remain private):</li>
+</ol>
+<pre><code>python -m scripts.evidence_intake --store-root &lt;private-store&gt; --input &lt;private.csv&gt;
+  --input-sha256 &lt;approved-sha&gt; --profile &lt;private-profile.json&gt; --profile-sha256 &lt;approved-sha&gt;
+  --retention-policy-id &lt;approved-policy&gt; --approved-from &lt;UTC-RFC3339&gt;
+  --approved-until &lt;UTC-RFC3339&gt; --approval-output &lt;new-file-in-private-store&gt;
+</code></pre>
+<p>To add an artifact, pass <code>--existing-index</code> and <code>--existing-index-sha256</code>, with a NEW output file.
+Existing index/files are preserved, never overwritten. Only hashes/counts/opaque IDs are printed.
+Configure the returned approval SHA explicitly; never accept an approval digest from model input.</p>
+<ol>
+<li>Rehearse authorized manifest reading and denied source/company, stale index, tamper and audit
+   outage. Publish only safe hashes/audit correlations, not private paths/raw documents, in CI.</li>
+</ol>
+<p>Approval windows bound READ AUTHORIZATION, not legal retention/destruction guarantees. No deletion
+or retention scheduler exists; expired/orphan data needs approved operator handling, not automatic
+destructive cleanup. Real-data ingestion remains gated on the approved storage retention policy.
+Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
+reconciliation, deployed volume identity, retention and backup/restore remain OPEN.</p>
 <h2>15. Test-only 1C seeder boundary</h2>
 <p>The Ferma→1C seeder is WRITE-CAPABLE <strong>only in the test plane</strong>.</p>
 <p>It must:
@@ -4933,7 +4982,7 @@ one of them into committed scope.</p>
 </blockquote>
 <p>If there is no answer, the work is scope expansion and must wait for explicit rebaseline.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
-<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=d08e37d40298dd8cdf80bf8cc9fc883914b70494d36db58e6f950986470db431 DOC_RENDER_SHA256=43810a83b77bc9c99d1c116080bc56e70ff87e9d1edfe4e9624048514144124c -->
+<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=27fe6ccb413cb3b070949d602bc40324b0d9713308fb3fcd82dd54bd55f13e7c DOC_RENDER_SHA256=79f2fe350e20686db5b36bb6abe6cc271dbbe657a424bce06cd05e6e7122e8ec -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>DAD 1C MCP — Source Requirements &amp; Scenario Coverage</h1>
 <p><strong>Status:</strong> REVIEWED SOURCE-OF-PROBLEM + IMPLEMENTATION/TEST COVERAGE
@@ -5774,8 +5823,14 @@ inherited file DACL verification and rejection after an owned test file is widen
 The service read has a server-configured five-second deadline (maximum 30); timeout records an
 error, never a business success. Cancellation/timeout cannot stop an already running filesystem
 thread, but that bounded thread is read-only and cannot return data to the cancelled request.</p>
-<p>Still OPEN: runtime provider wiring and operator ingest/receipt index, deployment identity/volume,
-backup/restore/retention approval, native format parsers and real source reconciliation. Local file
+<p>Runtime now wires the optional provider through a pinned private approval index and the read-only
+<code>external_evidence_manifest</code> tool. Operator normalized intake creates a NEW index, preserves prior
+records and prints only hashes/counts/opaque IDs. Gateway inputs cannot authorize paths, hashes,
+profiles or policies. Index hash/permission/scope/window checks run before AND after blob reading;
+revoked/stale approvals are never served from a trusted cache. See Integration's operator runbook.
+Approval expiry bounds read authorization, not automatic retention/destruction guarantees.</p>
+<p>Still OPEN: deployment identity/volume, backup/restore/retention approval, native format parsers and
+real source reconciliation. Local file
 fsync/reopen and fixture permission checks are not production WORM/PITR/retention approval.</p>
 <hr>
 <h2>13. DAD rule-pack architecture</h2>
