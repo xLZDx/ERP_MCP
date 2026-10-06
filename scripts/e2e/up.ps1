@@ -42,6 +42,8 @@ try { Invoke-Envctl @('seed', '--mode', $Seed) | Out-Null } finally { Clear-E2eS
 
 foreach ($name in $script:ProcessComponents) { Start-E2eComponent $name }
 foreach ($name in $script:ProcessComponents) { Wait-E2eComponent $name }
+# The ready marker (env.json) is published only after seed and health checks succeeded.
+Invoke-Envctl @('commit-ready') | Out-Null
 
 Write-Step ('environment ready. Consumers: . ' + (Join-Path $script:E2eDir 'env.ps1'))
 Write-Step ('gateway http://127.0.0.1:' + $script:Ports.gateway + ' (MCP /mcp, Admin UI /admin/), IdP http://127.0.0.1:' + $script:Ports.idp +

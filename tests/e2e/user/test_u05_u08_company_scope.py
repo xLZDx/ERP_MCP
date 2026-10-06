@@ -1,15 +1,14 @@
 """U05-U08 - company isolation, group-grant access and denial of users without access.
 
 All four rows run under the BASELINE seed: UC1 has a company-one subject grant, the
-company-two-readers group has a company-two grant, UNA has nothing. Company-scoped data tools
-need a validated semantic profile (none is seeded on purpose: a "validated" profile requires
-native reconciliation evidence). Therefore:
+company-two-readers group has a company-two grant, UNA has nothing. The environment runs the
+reviewed synthetic fixture profile (BAG_ENVIRONMENT=test, source tag synthetic-fixture), so the
+company-scoped business tools return real rows (L1 synthetic evidence, never native
+reconciliation). Row content is asserted against the committed Fake1C seed, together with:
 
-* the access decision is proven through the authorization receipt in the audit log
-  (`ACCESS_AUTHORIZED`, written only after the grants allow the exact source+company) and the
-  absence/presence of upstream Fake1C traffic;
-* the row-content assertions (`*_rows_*` tests) skip with the explicit reason
-  `BLOCKED-no-validated-semantic-profile` when no validated profile exists - never a silent pass.
+* the access decision through the authorization receipt in the audit log (`ACCESS_AUTHORIZED`,
+  written only after the grants allow the exact source+company);
+* the absence/presence of upstream Fake1C traffic for denied calls.
 """
 
 from __future__ import annotations
@@ -28,15 +27,10 @@ from user_support import (
     receipts,
     run_fault,
     seed,
-    validated_profile_exists,
     wait_until,
 )
 
 pytestmark = [pytest.mark.user]
-
-BLOCKED = ("BLOCKED-no-validated-semantic-profile: company-scoped row content cannot be produced "
-           "without a validated semantic profile (needs native reconciliation evidence)")
-
 
 def _sales_args(ids, company: str) -> dict:
     return {"source_id": ids["source"], "company_id": company, "top": 20}
@@ -44,11 +38,6 @@ def _sales_args(ids, company: str) -> dict:
 
 def _doc_numbers_for(company: str) -> set[str]:
     return {row["Number"] for row in seed()["sales"] if row["Организация_Key"] == company}
-
-
-async def _skip_unless_profile(db, company: str):
-    if not await validated_profile_exists(db, company, "sales"):
-        pytest.skip(BLOCKED)
 
 
 # ------------------------------------------------------------------------------------- U05
@@ -68,13 +57,15 @@ async def test_u05_uc1_sees_only_company_one_and_is_authorized_for_it(
     assert {str(r["company_id"]) for r in rows} == {ids["one"]}  # never company two
 
 
-async def test_u05_company_one_rows_never_contain_company_two_documents(
+async def test_u05_company_one_rows_are_exactly_the_company_one_documents(
         db, call, tokens, ids):
-    await _skip_unless_profile(db, ids["one"])
     outcome = await call(tokens["uc1"], "sales_documents", _sales_args(ids, ids["one"]))
     assert outcome.ok, outcome.text
+    assert outcome.payload["company_id"] == ids["one"]
+    assert outcome.payload["profile_kind"] == "SYNTHETIC_FIXTURE"  # L1 synthetic, not native
+    assert outcome.payload["native_reconciliation"] == "NOT_RUN"
     numbers = {row["document_number"] for row in outcome.payload["value"]}
-    assert numbers and numbers <= _doc_numbers_for(ids["one"]), numbers
+    assert numbers == _doc_numbers_for(ids["one"]) != set(), numbers  # all of them, only them
     assert not numbers & _doc_numbers_for(ids["two"])
 
 
@@ -100,6 +91,7 @@ async def test_u06_uc2_group_grant_authorizes_company_two_only(
         db, call, tokens, ids, fake1c_log):
     since = await db_clock(db)
     allowed = await call(tokens["uc2"], "sales_documents", _sales_args(ids, ids["two"]))
+    assert allowed.ok, allowed.text
     mark = fake1c_log.mark()
     denied = await call(tokens["uc2"], "sales_documents", _sales_args(ids, ids["one"]))
     assert denied.is_error and denied.payload is None
@@ -110,17 +102,17 @@ async def test_u06_uc2_group_grant_authorizes_company_two_only(
     assert [r["outcome"] for r in rows if str(r["company_id"]) == ids["one"]] == ["denied"]
     companies = await call(tokens["uc2"], "companies_list", {"source_id": ids["source"]})
     assert [c["company_id"] for c in companies.payload] == [ids["two"]]
-    assert allowed.transport_error is None
 
 
 async def test_u06_company_two_rows_for_uc2_only(db, call, tokens, ids):
-    await _skip_unless_profile(db, ids["two"])
     outcome = await call(tokens["uc2"], "sales_documents", _sales_args(ids, ids["two"]))
-    assert outcome.ok, outcome.text
+    assert outcome.ok, outcome.text  # UC2 (group grant) reads company two
+    assert outcome.payload["company_id"] == ids["two"]
     numbers = {row["document_number"] for row in outcome.payload["value"]}
-    assert numbers and numbers <= _doc_numbers_for(ids["two"])
+    assert numbers == _doc_numbers_for(ids["two"]) != set(), numbers
+    assert not numbers & _doc_numbers_for(ids["one"])
     uc1 = await call(tokens["uc1"], "sales_documents", _sales_args(ids, ids["two"]))
-    assert uc1.is_error
+    assert uc1.is_error and uc1.payload is None  # UC1 is denied company two
 
 
 # ------------------------------------------------------------------------------------- U07
@@ -152,9 +144,14 @@ async def test_u07_user_without_access_is_denied_with_sanitized_error(
     assert fake1c_log.since(mark, gateway_only=False) == []
 
     rows = await audit_since(db, since, subject=ids["una"], tool=tool)
-    if outcome.is_error:
+    if tool == "companies_list":
+        # The list tool filters instead of failing: the audited outcome is a successful call that
+        # returned ZERO items (nothing about the source/companies is revealed).
+        assert rows and {r["outcome"] for r in rows} == {"success"}, rows
+        assert all(r["returned_items"] == 0 for r in rows), rows
+    else:
         assert rows and {r["outcome"] for r in rows} <= {"denied", "error"}, rows
-        assert any(r["outcome"] == "denied" for r in rows) or tool == "companies_list"
+        assert any(r["outcome"] == "denied" for r in rows), rows
     assert all(r["detail_code"] != "ACCESS_AUTHORIZED" for r in rows)  # never authorized
 
 

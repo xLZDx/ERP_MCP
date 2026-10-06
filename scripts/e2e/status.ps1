@@ -42,14 +42,22 @@ foreach ($name in 'postgres', 'redis') {
     $components[$name] = $row
 }
 $checks = [ordered]@{
-    fake1c = ($base + '18766/odata/standard.odata/$metadata')
-    idp = ($base + '18080/healthz')
-    gateway = ($base + '18000/readyz')
+    fake1c = ($base + $script:Ports.fake1c + '/odata/standard.odata/$metadata')
+    sidecar = ($base + $script:Ports.sidecar + '/__ft__/requests')
+    idp = ($base + $script:Ports.idp + '/healthz')
+    gateway = ($base + $script:Ports.gateway + '/readyz')
 }
 foreach ($name in $checks.Keys) {
     $code = Test-Http -Url $checks[$name] -TimeoutSec 5
     $components[$name] = [ordered]@{ healthy = ($code -eq 200); port = $script:Ports[$name]
         http_status = $code; bind = (Get-BindState $script:Ports[$name]) }
+    # The listener must be OUR process (recorded launcher / venv python), not merely something
+    # that answers on the port.
+    $foreign = Get-ForeignListener $name
+    $recorded = Get-ComponentPid $name
+    $components[$name].pid = $recorded
+    $components[$name].pid_match = [bool]($recorded -and -not $foreign -and (Test-ComponentUp $name))
+    if (-not $components[$name].pid_match) { $components[$name].healthy = $false }
 }
 foreach ($name in $components.Keys) {
     if ($components[$name].bind -like 'EXPOSED*') { $components[$name].healthy = $false }

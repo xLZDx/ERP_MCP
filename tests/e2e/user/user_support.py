@@ -138,6 +138,47 @@ class Fake1cLog:
         return {i["path"].rsplit("/", 1)[-1] for i in items if not i["path"].endswith("$metadata")}
 
 
+SIDECAR_READ_PATHS = {"/v1/read", "/v1/capabilities/registers"}
+
+
+class UpstreamLog(Fake1cLog):
+    """Everything the gateway sent upstream: Fake1C (OData GET) plus the fake sidecar (POST).
+
+    With the fixture-profile stack the gateway reads entity data through the read-only sidecar
+    protocol, so "no upstream traffic" and "bounded/projected upstream read" must be proven on
+    BOTH recorders. Sidecar entries are normalised to the Fake1C entry shape: ``path`` ends with
+    the entity set, ``numeric_params`` carries $top/$skip and ``query_keys`` has "$select" when a
+    projection was sent. A mark is a (fake1c_seq, sidecar_seq) pair.
+    """
+
+    def __init__(self, fake1c_root: str, sidecar_root: str):
+        super().__init__(fake1c_root)
+        self.sidecar = Fake1cLog(sidecar_root)
+
+    def mark(self):
+        return (super().mark(), self.sidecar.mark())
+
+    def since(self, mark, *, gateway_only: bool = True) -> list[dict]:
+        items = super().since(mark[0], gateway_only=gateway_only)
+        for raw in self.sidecar._get(mark[1])["requests"]:
+            entity = raw.get("entity_set")
+            params = {key: raw[name] for key, name in (("$top", "top"), ("$skip", "skip"))
+                      if raw.get(name) is not None}
+            items.append({
+                **raw, "upstream": "sidecar", "user_agent": "erp-mcp/sidecar",
+                "path": raw["path"] + (f"/{entity}" if entity else ""),
+                "query_keys": ["$select"] if raw.get("select") else [],
+                "numeric_params": params})
+        return items
+
+    def all_methods_read_only(self, mark) -> bool:
+        fake = super().since(mark[0], gateway_only=False)
+        sidecar = self.sidecar._get(mark[1])["requests"]
+        return ({i["method"] for i in fake} <= READ_ONLY_METHODS
+                and all(i["method"] == "POST" and i["path"] in SIDECAR_READ_PATHS
+                        for i in sidecar))
+
+
 # --------------------------------------------------------------------------- DB evidence
 
 
@@ -317,6 +358,19 @@ def wait_until(predicate, *, timeout: float, interval: float = 1.0, what: str = 
             last = exc
         time.sleep(interval)
     raise AssertionError(f"timed out after {timeout}s waiting for {what} (last={last!r})")
+
+
+def metric_value(env, name: str, **labels: str) -> float:
+    """Value of one counter from the gateway /metrics endpoint (0.0 when not yet emitted)."""
+    response = httpx.get(env.gateway + "/metrics", trust_env=False, timeout=10,
+                         headers={"Authorization": f"Bearer {env.secrets['metrics_token']}"})
+    assert response.status_code == 200, response.status_code
+    wanted = ",".join(f'{key}="{value}"' for key, value in labels.items())
+    total = 0.0
+    for line in response.text.splitlines():
+        if line.startswith(name + "{") and wanted in line:
+            total += float(line.rsplit(" ", 1)[1])
+    return total
 
 
 def gateway_ready(env) -> bool:

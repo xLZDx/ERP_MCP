@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from user_support import audit_since, db_clock, receipts
+from user_support import audit_since, db_clock, receipts, seed
 
 pytestmark = [pytest.mark.user]
 
@@ -69,6 +69,9 @@ async def test_u10_regrant_restores_access_without_restart(
     since = await db_clock(db)
     again = await call(tokens["uc1"], "companies_list", {"source_id": ids["source"]})
     assert [c["company_id"] for c in again.payload] == [ids["one"]]
-    await call(tokens["uc1"], "sales_documents", _args(ids))
+    again_read = await call(tokens["uc1"], "sales_documents", _args(ids))
+    assert again_read.ok, again_read.text  # data really comes back after the re-grant
+    numbers = {row["document_number"] for row in again_read.payload["value"]}
+    assert numbers == {r["Number"] for r in seed()["sales"] if r["Организация_Key"] == ids["one"]}
     rows = await audit_since(db, since, subject=ids["uc1"], tool="sales_documents")
     assert [str(r["company_id"]) for r in receipts(rows)] == [ids["one"]]

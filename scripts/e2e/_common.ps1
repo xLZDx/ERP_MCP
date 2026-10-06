@@ -226,7 +226,7 @@ function Get-ForeignListener([string]$Name) {
 function Get-ComponentModule([string]$Name) {
     switch ($Name) {
         'fake1c' { return 'testbed.fake1c.app:app' }
-        'sidecar' { return 'sidecar_recorder:app' }
+        'sidecar' { return 'sidecar_recording_app:app' }
         'idp' { return 'testbed.idp' }
         'gateway' { return 'business_ai_gateway.app:app' }
     }
@@ -236,7 +236,7 @@ function Get-ComponentCommand([string]$Name) {
     switch ($Name) {
         'fake1c' { return @('-m', 'uvicorn', 'testbed.fake1c.app:app', '--host', $script:BindHost,
             '--port', [string]$script:Ports.fake1c, '--no-access-log') }
-        'sidecar' { return @('-m', 'uvicorn', 'tests.functional.support.sidecar_recorder:app',
+        'sidecar' { return @('-m', 'uvicorn', 'testbed.fake1c.sidecar_recording_app:app',
             '--host', $script:BindHost, '--port', [string]$script:Ports.sidecar, '--no-access-log') }
         'idp' { return @('-m', 'testbed.idp') }
         'gateway' { return @('-m', 'uvicorn', 'business_ai_gateway.app:app', '--host', $script:BindHost,

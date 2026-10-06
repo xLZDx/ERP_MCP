@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from user_support import Fake1cLog, GrantAdmin, call_tool
+from user_support import GrantAdmin, UpstreamLog, call_tool
 
 
 @pytest.fixture(scope="session")
@@ -23,10 +23,12 @@ def ids(e2e_env):
 
 
 @pytest.fixture
-def fake1c_log(e2e_env) -> Fake1cLog:
-    """Recording Fake1C reader. Fails (never skips) when Fake1C runs without the recorder."""
-    root = f"http://{e2e_env.raw['host']}:{e2e_env.raw['ports']['fake1c']}"
-    log = Fake1cLog(root)
+def fake1c_log(e2e_env) -> UpstreamLog:
+    """Recording reader over Fake1C AND the fake sidecar (all gateway upstream traffic).
+
+    Fails (never skips) when Fake1C runs without the recorder."""
+    host, ports = e2e_env.raw["host"], e2e_env.raw["ports"]
+    log = UpstreamLog(f"http://{host}:{ports['fake1c']}", f"http://{host}:{ports['sidecar']}")
     before = log.mark()
     probe = httpx.get(e2e_env.fake1c_url + "/$metadata", trust_env=False, timeout=10,
                       headers={"User-Agent": "e2e-recorder-probe"})
