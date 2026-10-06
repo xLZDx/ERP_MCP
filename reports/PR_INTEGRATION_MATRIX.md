@@ -42,10 +42,30 @@ tables; corrected ordered setup and full rerun passed. Initial pip 25.3 audit fa
 the disposable venv to pip 26.2.1 cleared the audit without ignoring vulnerabilities.
 Follow-up review found runtime schema guard still expected v7 despite migrations through v9.
 Fixed the guard and added old/missing/future-schema rejection coverage. Combined rerun:
-137 passed/1 real-1C skip. Runtime image smoke PASS: healthy, UID 10001, read-only filesystem,
+138 passed/1 real-1C skip. Runtime image smoke PASS: healthy, UID 10001, read-only filesystem,
 all capabilities dropped, no-new-privileges, no published ports.
 Exact deployed Node dependency audit PASS: 9 package identities, zero advisories.
 Whole upstream workspace audit reports 33 vulnerabilities in unused MCP/CLI dependency trees;
 those packages are not included in the deployed sidecar. See SUPPLY_CHAIN_REPORT.md.
-PENDING: hosted integrated candidate checks.
-Individual PR green checks do not establish a green integrated candidate.
+Hosted integrated candidate checks PASS on head `4683586` (run `37423947922`): Python/PostgreSQL
+suite and pinned upstream OData build/test. Individual PR checks were not treated as integration proof.
+
+## PostgreSQL restore drill
+
+PASS on candidate `4683586`, PostgreSQL 16.15. Automation created fresh source/restored instances,
+migrated empty → v7 → synthetic seed → v9, backed up and restored into a separate fresh instance.
+Per-table row counts and SHA-256 fingerprints matched across 9 tables, including company grants,
+capability profile, candidate semantic profile/mapping, append-only profile event and three audit
+outcomes. Restored runtime schema readiness and least-privilege checker passed; all 7 PostgreSQL
+registry integration tests passed against the restored database. Duration 19.247 s.
+Evidence: `D:/Temp/ERP_MCP/evidence/restore-20261006-3/evidence.json`; backup SHA-256
+`08b56330b108fc7531ce347ca318295d844c0eec9ed2731ffd972079316b6e2f`.
+Synthetic only; production PITR and 1C reconciliation remain NOT_RUN. CI now runs the same drill.
+
+## Secret rotation and ACL load follow-up
+
+FileSecrets unit test confirms atomic replacement is observed on the next read and file removal
+revokes access without process restart. Synthetic PostgreSQL ACL list load drill passed exact
+authorization counts at 30/50/100/150 sources (32 concurrent requests per stage; 10-connection
+pool); results and noisy latency caveat are in `SYNTHETIC_LOAD_DRILL.md`. CI now executes this drill.
+This measures control-plane ACL listing only, not adapter fan-out or 1C capacity.

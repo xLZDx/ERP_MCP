@@ -4,7 +4,7 @@ Assessed: 2026-10-06. Source register: `docs/RISK_REGISTER.md`.
 
 ## Current integrated assessment
 
-Candidate code `d05c620`: 132 Python/PostgreSQL tests PASS, 1 real-1C skip; migrations/privileges
+Candidate code `4683586` plus current drill follow-up: 138 Python/PostgreSQL tests PASS, 1 real-1C skip; migrations/privileges
 and security/dependency checks pass. R-06 company isolation and R-08 audit outcomes now have
 multi-source/lifecycle and success/deny/error append-only evidence from #9/#10 in this candidate.
 R-02 includes metadata/capability TTL and source endpoint/credential-reference invalidation.
@@ -12,9 +12,17 @@ R-17 Redis fail-closed test is implemented; broader dependency failure injection
 R-09 pinned upstream tests/image build pass; universal locks/SBOM/audit remain local work.
 R-12: official v1.3.0 CFE artifact exists and hash is verified; compiled source/rights/company
 audit and real COM smoke remain unverified. Release tag differs from approved source pin.
-R-01/R-23 native accounting reconciliation, R-04 deployment egress, R-05/R-26 rotation,
-R-13/R-28 capacity, R-18 restore and R-22 fan-out remain open. No risk acceptance is inferred.
+R-01/R-23 native accounting reconciliation, R-04 deployment egress, production R-05/R-26 secret
+rotation, R-13/R-28 capacity, R-18 production PITR and R-22 fan-out remain open. File-secret
+rotation behavior is now covered by a synthetic unit test; ACL list authorization correctness was
+load-exercised at 30/50/100/150 sources, but noisy local latency is not a capacity claim. No risk
+acceptance is inferred.
 All independent software/drill work will precede any external-only stopping decision.
+
+R-18 application-level backup/restore is now partially mitigated: disposable PostgreSQL 16 drill
+passed on `4683586` with exact per-table row fingerprints after fresh-instance restore, runtime
+readiness, privilege checker and seven registry integration tests. Production PITR/retention and
+deployment rollback remain open.
 
 ## Historical controls (superseded where updated above)
 
