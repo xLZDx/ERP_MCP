@@ -17,6 +17,8 @@ from admin_support import (
     anonymous,
     bearer,
     expect,
+    find_leaks,
+    secret_values,
     unique,
 )
 
@@ -169,7 +171,7 @@ def test_A06_platform_admin_reaches_every_read_surface(e2e_env, world):
     sid = world.source_id
     detail = _mut(pa.get(f"/admin/v1/sources/{sid}"), "A06 source detail", 200)
     assert detail.body["source_id"] == sid and detail.body["read_only"] is True
-    assert "password" not in detail.text.lower().replace("password_secret_ref", "")
+    assert not find_leaks(detail.text, secret_values(e2e_env)), "credential value in detail"
     _mut(pa.get(f"/admin/v1/companies/{world.company_id('one')}"), "A06 company detail", 200)
     profile_id = world.steps["profile"].data["profile_id"]
     _mut(pa.get(f"/admin/v1/semantic-profiles/{profile_id}"), "A06 profile detail", 200)
@@ -242,10 +244,34 @@ def test_A06_platform_admin_reaches_every_write_surface(e2e_env, world, evidence
         "expected_version": 1, "reason": "A06 override revoke"}), "A06 override revoke", 200)
     steps += ["assign", "unassign", "override", "override-revoke"]
 
-    # semantic profile create / mapping / validate / scope mapping / retire
+    # semantic profile create / mapping / retire
     draft = _mut(world.create_profile(pa, sid), "A06 profile create", 201).body["id"]
     _mut(world.add_mapping(pa, draft), "A06 mapping", 201)
-    validated = _mut(world.validate_profile(pa, draft), "A06 validate", 200)
+    _mut(pa.post(f"/admin/v1/semantic-profiles/{draft}/retire", {"reason": "A06 retire"}),
+         "A06 retire", 200)
+    steps += ["profile-create", "mapping", "retire"]
+
+    audited = {r["action"] for r in evidence.admin_events_since(
+        world.t0, actor_subject="platform_admin")}
+    for action in ("source.update", "company.create", "grant.create", "platform_role.create",
+                   "business_role.assign", "capability_override.create",
+                   "semantic_profile.create", "semantic_mapping.create"):
+        assert action in audited, f"A06 mutation {action} left no admin audit event ({steps})"
+
+
+def test_A06_platform_admin_reaches_validate_and_scope_mapping_surfaces(e2e_env, world,
+                                                                      evidence):
+    """Validate + company-scope-mapping writes need register-capability evidence for the source
+    (normally produced by the OData sidecar). Without it the product answers
+    CAPABILITY_UNSUPPORTED, which this test reports as an environment limitation."""
+    world.need("source", "caps")
+    pa = world.pa
+    draft = _mut(world.create_profile(pa, world.source_id), "A06 profile", 201).body["id"]
+    _mut(world.add_mapping(pa, draft), "A06 mapping", 201)
+    validated = world.validate_profile(pa, draft)
+    assert validated.status == 200, (
+        "profile validation is not possible in this environment (no register capability "
+        f"evidence / sidecar?): {validated.describe()}")
     assert validated.body["status"] == "VALIDATED"
     scope = _mut(pa.post("/admin/v1/company-scope-mappings", {
         "profile_id": draft, "entity_set": "Document_Sales", "company_property": "Organization_Key",
@@ -253,14 +279,9 @@ def test_A06_platform_admin_reaches_every_write_surface(e2e_env, world, evidence
     assert scope.body["entity_set"] == "Document_Sales"
     _mut(pa.post(f"/admin/v1/semantic-profiles/{draft}/retire", {"reason": "A06 retire"}),
          "A06 retire", 200)
-    steps += ["profile-create", "mapping", "validate", "scope-mapping", "retire"]
-
     audited = {r["action"] for r in evidence.admin_events_since(
         world.t0, actor_subject="platform_admin")}
-    for action in ("source.update", "company.create", "grant.create", "platform_role.create",
-                   "business_role.assign", "capability_override.create",
-                   "semantic_profile.validate", "company_scope_mapping.create"):
-        assert action in audited, f"A06 mutation {action} left no admin audit event ({steps})"
+    assert {"semantic_profile.validate", "company_scope_mapping.create"} <= audited
 
 
 # --------------------------------------------------------------------------------------- A07

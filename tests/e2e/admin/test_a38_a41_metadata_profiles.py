@@ -65,23 +65,28 @@ def test_A39_refresh_failure_recorded_without_invented_fingerprint(e2e_env, worl
     world.need("source", "caps")
     before = _caps_row(evidence, world.source_id)
     assert before["metadata_fingerprint"], "precondition: previous capability evidence exists"
-    if mode == "fake1c-down":
-        context = outage(e2e_env, "fake1c")
-    else:
-        context = fake1c_replaced_by(e2e_env, lambda: recorder_app([], broken=True))
-    with context:
-        failed = world.pa.post(f"/admin/v1/sources/{world.source_id}/capability-refresh",
-                               {"reason": f"A39 refresh while {mode}"})
+    try:
+        if mode == "fake1c-down":
+            context = outage(e2e_env, "fake1c")
+        else:
+            context = fake1c_replaced_by(e2e_env, lambda: recorder_app([], broken=True))
+        with context:
+            failed = world.pa.post(f"/admin/v1/sources/{world.source_id}/capability-refresh",
+                                   {"reason": f"A39 refresh while {mode}"})
+        after = _caps_row(evidence, world.source_id)
+        audit = evidence.admin_events(failed)
+    finally:
+        # A product that accepted the broken metadata leaves DRIFTED evidence behind; restore
+        # STABLE evidence so later rows are not poisoned by this one.
+        resync_capabilities(world)
     assert failed.status >= 400, f"refresh must fail while {mode}: {failed.describe()}"
     assert set(failed.body) == {"error"}, f"unsanitized failure body: {failed.describe()}"
     for secret in e2e_env.secrets.get("fake1c_password", ""), e2e_env.secrets["fake1c_username"]:
         assert secret not in failed.text
-    after = _caps_row(evidence, world.source_id)
     assert after["metadata_fingerprint"] == before["metadata_fingerprint"], (
         "fingerprint changed by a failed refresh")
     assert after["discovered_at"] == before["discovered_at"], "failed refresh rewrote evidence"
     assert after["drift_status"] == before["drift_status"]
-    audit = evidence.admin_events(failed)
     assert audit and audit[0]["outcome"] == "error", f"failure not recorded: {audit}"
     assert audit[0]["action"] == "capability.refresh" and audit[0]["detail_code"]
     recovered = expect(world.pa.post(f"/admin/v1/sources/{world.source_id}/capability-refresh",
@@ -94,16 +99,8 @@ def test_A40_stale_profile_cannot_be_validated_or_acknowledged(e2e_env, world, e
     world.need("source", "caps", "roles")
     pra, pa = world.role_session("PROFILE_ADMIN"), world.pa
     original_fp = _caps_row(evidence, world.source_id)["metadata_fingerprint"]
-
-    # Positive control: validation works while metadata is unchanged.
-    validated = expect(world.create_profile(pra, world.source_id), 201, "A40 control profile")
-    expect(world.add_mapping(pra, validated.body["id"]), 201, "A40 control mapping")
-    expect(world.validate_profile(pra, validated.body["id"]), 200, "A40 control validate")
-    assert _profile_status(evidence, validated.body["id"]) == "VALIDATED"
-    # A draft profile that will become stale.
     draft = expect(world.create_profile(pra, world.source_id), 201, "A40 draft profile").body["id"]
     expect(world.add_mapping(pra, draft), 201, "A40 draft mapping")
-
     try:
         with drifted_fake1c(e2e_env):
             drifted = expect(pa.post(f"/admin/v1/sources/{world.source_id}/capability-refresh",
@@ -139,14 +136,32 @@ def test_A40_stale_profile_cannot_be_validated_or_acknowledged(e2e_env, world, e
             assert _profile_status(evidence, draft) != "VALIDATED", "stale profile validated"
             audit = evidence.admin_events(stale)
             assert audit and audit[0]["outcome"] == "conflict"
-            # The previously validated profile was invalidated and cannot be re-validated.
-            assert _profile_status(evidence, validated.body["id"]) == "STALE"
-            again = world.validate_profile(pra, validated.body["id"])
-            assert again.status == 409, again.describe()
-            assert _profile_status(evidence, validated.body["id"]) == "STALE"
     finally:
         resync_capabilities(world)
     assert _caps_row(evidence, world.source_id)["metadata_fingerprint"] == original_fp
+
+
+def test_A40_validated_profile_turns_stale_on_drift_and_stays_unusable(e2e_env, world,
+                                                                        evidence):
+    """Needs a profile that validated successfully, i.e. register-capability evidence."""
+    world.need("source", "caps", "roles")
+    pra = world.role_session("PROFILE_ADMIN")
+    validated = expect(world.create_profile(pra, world.source_id), 201, "A40 control").body["id"]
+    expect(world.add_mapping(pra, validated), 201, "A40 control mapping")
+    control = world.validate_profile(pra, validated)
+    assert control.status == 200, (
+        "cannot create a VALIDATED profile in this environment (no register capability "
+        f"evidence / sidecar?): {control.describe()}")
+    try:
+        with drifted_fake1c(e2e_env):
+            expect(world.pa.post(f"/admin/v1/sources/{world.source_id}/capability-refresh",
+                                 {"reason": "A40 drift"}), 200, "A40 refresh")
+            assert _profile_status(evidence, validated) == "STALE"
+            again = world.validate_profile(pra, validated)
+            assert again.status == 409, again.describe()
+            assert _profile_status(evidence, validated) == "STALE"
+    finally:
+        resync_capabilities(world)
 
 
 # --------------------------------------------------------------------------------------- A41

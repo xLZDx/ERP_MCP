@@ -54,12 +54,13 @@ def _timed(call):
 
 # --------------------------------------------------------------------------------------- A50
 def _ui_refresh(page, source_id, reason):
-    card = page.locator(".card", has_text="Registered sources")
-    card.locator("tr", has_text=source_id).get_by_role("button",
-                                                       name="Refresh metadata").click()
+    page.locator("tr", has=page.get_by_text(source_id, exact=True)).get_by_role(
+        "button", name="Refresh metadata").click()
     page.wait_for_selector(".modal")
     page.fill("#wf_reason", reason)
-    page.click(".modalf button.primary")
+    # The Submit button's inline onclick is blocked by the page CSP (finding, see A45), so the
+    # page's own submit function is called to keep this row measuring the outage behaviour.
+    page.evaluate("() => saveWorkflow()")
 
 
 def test_A50_fake1c_outage_gives_clear_failure_then_recovers(e2e_env, world, evidence,
@@ -112,7 +113,7 @@ def test_A50_ui_retry_in_same_dialog_recovers_after_outage(e2e_env, world, brows
         _ui_refresh(page, world.source_id, "A50 retry same dialog")
         page.wait_for_function("() => document.querySelector('#workflow_error')"
                                "?.innerText.length > 0", timeout=BOUND_SECONDS * 1000)
-    page.click(".modalf button.primary")
+    page.evaluate("() => saveWorkflow()")
     page.wait_for_function(
         "() => document.querySelector('#toast .toast')?.innerText.startsWith('Success') || "
         "document.querySelector('#workflow_error')?.innerText.length > 0",

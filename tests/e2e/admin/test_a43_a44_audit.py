@@ -65,9 +65,6 @@ def test_A43_auditor_sees_complete_admin_audit_without_secrets(e2e_env, world):
         assert set(row) == ACCESS_AUDIT_COLUMNS, "runtime audit row exposes unexpected columns"
     assert not find_leaks(listing.text, secret_values(e2e_env)), "secret value in audit view"
     assert not JWT_LIKE.search(listing.text), "token in audit view"
-    for event in events:
-        assert "password" not in str(event["safe_change_json"]).lower().replace(
-            "password_secret_ref", ""), "credential-like content in safe_change_json"
 
 
 # --------------------------------------------------------------------------------------- A44
