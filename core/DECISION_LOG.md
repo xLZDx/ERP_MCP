@@ -40,3 +40,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
   $select/$skip`; it now evaluates the conjunctive filters the gateway builds (read-only); (c) the
   fixture pins the metadata fingerprint only; capability evidence is bound to it by
   `require_profile_capabilities`. Re-pin with `scripts/synthetic_fixture_profiles.py --write`.
+
+## 2026-10-07 - Refresh engineering checkpoint after SC step 1
+
+- Evidence: with disposable PG16+Redis7 the full suite is 1170 passed, 6 skipped (baseline 1157/6 plus 13 new fixture-profile chains); `validate_scenarios.py` and `check_document_consistency.py` pass. The implementation fingerprint in `reports/CURRENT_ENGINEERING_CHECKPOINT.json` and report markers was refreshed mechanically (PR/gate dispositions unchanged: NO-GO, PARTIAL).
