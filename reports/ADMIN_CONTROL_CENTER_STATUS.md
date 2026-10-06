@@ -3,8 +3,8 @@
 Branch: `feature/admin-control-center-implementation`
 Worktree: `D:\Repo\ERP_MCP-admin-control-center`
 Admin start SHA: `dff4c81d18e645fed64aed50d148ab8df9109f66`
-Integration baseline: `15fc9d02ccf6f068d9e4ceeeb77d9fed2d82e481`
-Current Admin candidate: merge commit pending after integrating the latest integration tip and final verification.
+Integration baseline: `672fec4efae10949df0185c98e44b07b57ca45f3`
+Current Admin candidate: `68bd9d6a9bc28f88244602d0061a8fc827921ce8` (published; CI pending).
 
 ## Verified Admin scope
 
@@ -18,11 +18,11 @@ Current Admin candidate: merge commit pending after integrating the latest integ
 
 ## Latest observed full-suite run
 
-After integrating integration tip `15fc9d0`, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 174.25s. Skips are environment-gated external/OS fixtures (live 1C, private Ferma/RSV evidence, Windows-only ACL checks); Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed before the latest integration-only merge; rerunning it on the merged tree. `pip-audit` found no known vulnerabilities.
+After integrating integration tip `672fec4`, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 174.25s. Skips are environment-gated external/OS fixtures (live 1C, private Ferma/RSV evidence, Windows-only ACL checks); Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed on the merged tree. `pip-audit` found no known vulnerabilities.
 
 ## Review consensus
 
-Local Luna-medium second-round reviewers: security confirmed the remediations; database confirmed migration and privilege gates; architecture confirmed the CI/browser/B2 additions and identified that integration had advanced to `15fc9d0`, which is being incorporated. No remaining Admin-specific blocker was reported. Runtime checks were independently run locally against disposable services.
+Local Luna-medium second-round reviewers: security confirmed the remediations; database confirmed migration and privilege gates; architecture confirmed the CI/browser/B2 additions and identified the moving integration base; current candidate includes `672fec4`. No remaining Admin-specific blocker was reported. Runtime checks were independently run locally against disposable services.
 
 ## Readiness
 
