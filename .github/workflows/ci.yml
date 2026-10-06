@@ -239,6 +239,15 @@ jobs:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
           BAG_REDIS_URL: redis://localhost:6379/0
       - run: uv run --locked python scripts/postgres_restore_drill.py
+      - name: Measure real runtime PostgreSQL pool under bounded synthetic fan-out
+        run: |
+          uv run --locked python -m scripts.postgres_pool_benchmark --output "$RUNNER_TEMP/postgres-pool-performance.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/postgres-pool-performance.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: postgres-pool-performance-${{ github.sha }}
+          path: ${{ runner.temp }}/postgres-pool-performance.json
+          if-no-files-found: error
       - run: |
           uv run --locked pytest --junitxml="$RUNNER_TEMP/gateway-pytest.xml"
           uv run --locked python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/gateway-pytest.xml" --suite-id gateway-pytest --commit "$(git rev-parse HEAD)" --exit-code 0 --output "$RUNNER_TEMP/gateway-pytest.summary.json"

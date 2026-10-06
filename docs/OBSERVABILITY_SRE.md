@@ -227,6 +227,21 @@ Track:
 Capacity increase must preserve bounded concurrency. “150 companies” does not mean “150 simultaneous
 unbounded queries”.
 
+### Measured disposable PostgreSQL pool benchmark
+
+`python -m scripts.postgres_pool_benchmark --output <new-private-file>` creates a NEW loopback-only
+PostgreSQL container (retained, never reused/deleted), then uses the production `Database` pool
+factory and `FanoutExecutor` for 30/50/100/150 synthetic sources, three repetitions each. It runs
+only fixed read-only transactions/`pg_sleep` queries, never registry/accounting data or 1C queries.
+Authorization denial prevents acquisition; an independent synthetic source failure is explicit.
+Artifacts include separate nearest-rank p50/p95/p99 distributions for pool acquisition, readonly
+transaction, source total and batch, measured peak connections and Python allocated-memory peak.
+Acquisition includes connection growth (not pure queue wait); the first size starts with a cold
+pool, subsequent sizes use the grown pool. Pool sizes before/after distinguish these conditions.
+Memory is tracemalloc allocation, NOT process RSS or container memory. Strict count/finite/order/
+concurrency/readonly/isolation validation rejects invalid artifacts. CI retains scanned evidence.
+This closes the measurement gap, not pilot SLO/production capacity, actual 1C load or DB-pool metrics.
+
 
 ## 12. Scope-freeze observability
 

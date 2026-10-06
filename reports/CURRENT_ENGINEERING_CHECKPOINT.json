@@ -1,23 +1,25 @@
 {
   "schema_version": 1,
-  "batch_id": "DAD_SCOPED_COMPARISON_20261006",
-  "implementation_sha256": "b9b2cb0783f03dd7dbad458f08820122658eeac1035712c97d812c4a6e9c6cfb",
+  "batch_id": "POSTGRES_POOL_MEASURED_20261006",
+  "implementation_sha256": "ef8034ee21c3775de5e9426f2eea453597097cab28cf4e272247628df7e8478d",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "5d49ec285c63b354979ed5f93afa662f6ec458f0",
-  "last_verified_hosted_run": 37462582061,
+  "last_verified_hosted_commit": "d755ebc2c9ea08e5eabcd5460b4cb5a431b2ad3e",
+  "last_verified_hosted_run": 37473881846,
+  "last_verified_tested_merge": "504b48692b4749910ecb16b8e9892d3657b789c0",
   "last_failed_hosted_commit": "2affa6fc822a9f6e054d1a4a9267aaf5a89ddd9a",
   "last_failed_hosted_run": 37470166429,
-  "hosted_status_at_snapshot": "THREE_PREREQUISITE_JOBS_PASS_TRIVY_CACHE_LOCATION_FIX_PENDING",
+  "hosted_status_at_snapshot": "PARENT_FOUR_JOBS_AND_ASSEMBLED_ARTIFACT_PASS_POOL_BATCH_PENDING",
   "last_local_full_suite": {
-    "passed": 405,
-    "skipped": 10
+    "passed": 422,
+    "skipped": 11
   },
   "focused_tests": {
     "dad_comparison": 33,
-    "release_assembly": 21
+    "release_assembly": 21,
+    "pool_validators_and_actual_postgres": 18
   },
   "upstream_junit": {
     "client": {

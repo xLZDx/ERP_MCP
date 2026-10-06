@@ -2,6 +2,17 @@
 
 # ERP_MCP implementation gap analysis
 
+## Actual pool benchmark and assembled artifact — 2026-10-06
+
+NFR-P2/D13 real PostgreSQL acquisition/read/source/batch distributions measured with the production
+pool and fan-out executor for 30/50/100/150 synthetic sources. Readonly/ten-connection ceiling/
+denial and failure isolation verified. 18 focused tests with actual DB PASS; full local 422/11.
+Cold connection growth and Python-only allocation memory are explicitly labeled, no capacity GO.
+Parent d755ebc CI 37473881846 all FOUR jobs PASS. Downloaded assembled evidence hash checks PASS:
+two image/SBOM/provenance pairs, five actual summaries, exact tested merge 504b48692b4749910ecb16b8e9892d3657b789c0.
+Registry publication/native closure remain unproven; package explicitly NO-GO/PARTIAL. Full native
+DAD/Ferma/evidence parsers/storage/runtime ACL/audit/fault/deployment work remains locally actionable.
+
 ## Current DAD comparison checkpoint — 2026-10-06
 
 Versioned normalized Z/terminal/bank comparisons now enforce exact source/company/configuration/

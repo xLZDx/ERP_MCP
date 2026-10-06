@@ -1,5 +1,11 @@
 # Autonomous engineering execution log
 
+<!-- ENGINEERING_CHECKPOINT=POSTGRES_POOL_MEASURED_20261006 ENGINEERING_IMPLEMENTATION=ef8034ee21c3775de5e9426f2eea453597097cab28cf4e272247628df7e8478d -->
+
+## Actual PostgreSQL pool acquisition measurements — 2026-10-06
+
+NFR-P2/D13: actual production Database pool and FanoutExecutor measured on NEW disposable PostgreSQL for 30/50/100/150 synthetic sources, three repetitions each. Pool acquisition/read/source/batch p50/p95/p99, peak ten connections, readonly transactions, denied-source zero calls and independent failure outcomes verified. Acquisition includes cold connection growth; Python allocated memory is not process RSS; no 1C/production capacity/native evidence claimed. 18 focused tests PASS with real DB; scanned measured artifact SHA 944e538d7dd844805169c3207c3e05162a0d6e9770b7f5661d2756c05e45704e. Parent d755ebc run 37473881846 ALL FOUR jobs PASS; downloaded release artifact hashes and same tested merge 504b48692b4749910ecb16b8e9892d3657b789c0 verified (two images/five suites), retains NO-GO/PARTIAL. Current full local suite 422 passed, 11 skipped; Ruff/Bandit/compileall/document gates PASS. Pool batch awaits its own CI. Remaining native/DAD/Ferma/deployment/fault gates OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=DAD_SCOPED_COMPARISON_20261006 ENGINEERING_IMPLEMENTATION=b9b2cb0783f03dd7dbad458f08820122658eeac1035712c97d812c4a6e9c6cfb -->
 
 ## Scoped DAD comparison foundation and release cache correction — 2026-10-06
