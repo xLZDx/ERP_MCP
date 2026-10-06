@@ -1,47 +1,36 @@
 # Definition of Done status
 
-Assessed 2026-10-06 against merged PR #1 (`8481c0e`), P4 draft PR #2 and follow-up PR #8, stacked
-P5 draft PR #3 and
-P6 draft PR #4, P7 draft PR #5, P8 draft PR #6 and P9 draft PR #7. P4 settlement commit
-`17571de` passed hosted CI run `37383219137`; P5 `7b9b31e` passed `37383877277`; P6 passed
-`37384482140`; P7 passed `37384584340`; P8 passed `37384949997`; P9 passed both jobs in
-`37385454985`.
+Assessed 2026-10-06 on integrated code `d05c620`, combining main `8481c0e`,
+the #2–#8 stack and independent #9/#10 follow-ups. PRs remain Draft on GitHub.
+Local Python/PostgreSQL: 132 passed, 1 skipped (real 1C). Migrations 001–009,
+role checker, Ruff, compileall, Bandit, 12 synthetic scenarios and pip-audit pass.
+Pinned client: 428 passed/1 skipped; metadata: 53 passed; wrapper/image build pass.
+Container runtime smoke and hosted integrated checks are recorded separately when complete.
 
-P6 evidence so far: isolated pinned bridge process client, strict source-specific config lookup,
-tool inventory allowlist, ping-only health handshake, sanitized failure behavior and Windows
-operations/ACL runbook. No business-data operation is routed through COM: validated company scope,
-source capability persistence and cross-adapter semantic parity are still required.
+PARTIAL means remaining implementation or target-environment evidence prevents gate closure.
+No production gate is promoted solely by synthetic tests.
 
-P6 hosted run `37384482140` and P7 hosted run `37384584340` passed both CI jobs. P8 now has an
-opt-in `/metrics` endpoint with bearer protection and bounded HTTP labels; it is process-local and
-does not close the broader observability/operations gate.
+| Gate | Status | Implemented / verified | Remaining work |
+|---|---|---|---|
+| D0 Documentation | PARTIAL | Normative package, PR integration matrix, provenance/audit report | Reconcile all final reports, exact release/evidence links |
+| D1 Build/dependencies | PARTIAL | Combined Python/PG, upstream and static checks pass; pip upgraded to audited 26.2.1 | Universal exact lock, SBOM, Node audit/image scan and hosted combined checks |
+| D2 Authentication | PARTIAL | JWT issuer/audience/signature/expiry/scope/JWKS-failure tests | Rotation/cache/timeouts, framework-level auth and target IdP evidence |
+| D3 Authorization | PARTIAL | Company deny/allow, runtime/admin privileges, multi-source ACL add/revoke | Full fan-out/cross-adapter scope; target deployment evidence |
+| D4 Secrets | PARTIAL | Reference-only registry, production ENV rejection, path escape denial | Rotation/credential isolation/leak drill and production provider |
+| D5 Read-only | PARTIAL | Read-only sidecar, mutation-negative contract; RSV ping-only | CFE call-path audit, real zero-write proof |
+| D6 SSRF/transport | PARTIAL | Registry endpoints, allowlist, redirects/HTTPS/path checks | DNS rebinding/egress, deployment TLS/private route evidence |
+| D7 Compatibility | PARTIAL | Per-source positive/negative register/semantic evidence, sticky drift, bounded TTL | Real capability handshakes; audited fallback behavior |
+| D8 Data plane | PARTIAL | Query/key/count/register wrapper/upstream tests | Real smoke/parity, fallback normalized read route and failure coverage |
+| D9 Accounting | PARTIAL | Profile-gated documents/balances/movements/posting rows; synthetic invariants | Aging/verified tax/profile contracts, >=10 real native-report reconciliations |
+| D10 Multi-company | PARTIAL | Three-source ACL lifecycle integration passes | Bounded fan-out/failure isolation, 30/50/100/150-source load and live heterogeneous sources |
+| D11 Audit/provenance | PARTIAL | Success/deny/error runtime-role round-trip and UPDATE/DELETE denial | Integrated telemetry/trace propagation, leakage and deployed audit review |
+| D12 Observability | PARTIAL | Protected bounded HTTP metrics | Structured logs/spans, operation/dependency metrics, alerts/runbooks |
+| D13 Performance | PARTIAL | Request/row/byte/time/per-source limits | Synthetic load measurements, global/fan-out limits, real capacity evidence |
+| D14 Resilience | PARTIAL | Readiness, Redis fail-closed, sidecar timeout/circuit tests | Full DB/Redis/JWKS/secrets/upstream/process failure matrix |
+| D15 Restore/rollback | PARTIAL | Normative contract | Disposable backup/restore drill, prior-schema migration, rollback automation/runbook; production PITR |
+| D16 Deployment | PARTIAL | Non-root sidecar build, fail-closed settings | Reproducible deployment/supply-chain smoke, target network/identity/secrets |
+| D17 Operations | PARTIAL | RSV and pilot runbooks | Complete incident/onboarding/rotation/drift/audit procedures and named owner |
+| D18 Pilot | PARTIAL | Strict evidence manifest/validator returns NOT_READY | Real pilot, owner approval, exact release production evidence |
 
-P9 has a machine-checked evidence manifest and negative GO gate in CI; the checked-in template is
-`NOT_READY`. Real target-environment and user evidence remains absent, so production GO is denied.
-
-`PARTIAL` means some implementation exists but mandatory evidence/behavior remains open. `NOT
-STARTED` is used where implementation is still required before external evidence is relevant.
-
-| Gate | Status | Current evidence / open work |
-|---|---|---|
-| D0 Documentation | PARTIAL | Normative set and requirements traceability exist; gap/status files created; implementation docs updated; command center carries progress through current HEAD. Close against exact release. |
-| D1 Build/dependencies | PARTIAL | Current local Python suite: 119 passed/7 skipped; Ruff, compileall, Bandit, pip-audit and diff check pass. P4 hosted CI run 37383219137, P5 37383877277, P6 37384482140, P7 37384584340, P8 37384949997 and P9 37385454985 passed both jobs. P4 movement follow-up CI is pending. Pinned upstream checks remain recorded above. |
-| D2 Authentication | PARTIAL | RSA JWT positive/negative tests cover signature, issuer, audience, expiry, scope, subject and JWKS failure; framework-level resource-server behavior and live IdP evidence remain. |
-| D3 Authorization | PARTIAL | Source subject/group ACL remains; company scope and deny precedence added; CI confirmed PostgreSQL role grants. PostgreSQL ACL and runtime-role tests passed in runs 37355876333/37356701516. Admin-role positive/negative DML test passed CI run 37357432914. Account, document, inventory, bank and settlement reads enforce exact source/company grants; multi-source and production IdP evidence remain. |
-| D4 Secrets | PARTIAL | File/GCP abstractions and production env-secret prohibition exist; rotation and leakage evidence remain. |
-| D5 Read-only | PARTIAL | Python transport remains GET/HEAD-only; sidecar exposes only upstream GET-backed query/key/count/register methods; mutation-shaped operation/method rejection covered by sidecar tests. Other adapter inventory and external zero-write proof remain. |
-| D6 SSRF/transport | PARTIAL | Registered source, exact host:port allowlist in sidecar, production HTTPS, bearer hop and redirect/path checks; DNS rebinding/egress proof incomplete. |
-| D7 Compatibility | PARTIAL | Existing JSON/Atom fingerprint/drift controls remain; migration 005 persists per-source register capability evidence. Exact-source metadata evidence gates method use; stale/missing confirmation denies. P4 hosted CI is green; real-source behavior remains. |
-| D8 Data plane | PARTIAL | Internal sidecar contract is documented and tested; pinned upstream routing implements query/key/count/constrained register reads; live register capability is revalidated before operation; DrCr unsupported negative and confirmed positive fixtures pass. All current account/document/inventory/bank/settlement reads use the existing pinned adapter path. Real-source behavior remains. |
-| D9 Accounting | PARTIAL | Source/company profile lifecycle requires explicit `CONFIRMED`/`HIGH` mapping, current capability/schema fingerprints and ten passing native-report cases; migration 008 stales a validated profile after mapping edits; migration 009 adds profile fingerprint to audit. Existing scoped balances/documents plus inventory movement records normalize reviewed fields; movement reads require exact live EntitySet metadata, confirmed source timezone, record-type values and positive-magnitude encoding. Cash movements, AR/AP aging, tax, posting trace and native reconciliation for movements remain. |
-| D10 Multi-company | PARTIAL | Company table and scoped grants/list/resolve exist; transaction-isolated PostgreSQL ACL integration test passed in CI; three-source tests and bounded fan-out remain. |
-| D11 Audit/provenance | PARTIAL | Append-only schema extended for request/company/adapter/policy/fingerprint/bytes/truncation; runtime-role `Audit.write` round-trip and update/delete denials passed CI 37357024926; MCP handler tests for success, ACL denial, Redis outage denial and adapter failure passed CI 37360482223. New SDK middleware assigns one context-isolated correlation UUID per inbound MCP message and reuses it for its audit writes; production persistence/trace propagation and complete provenance remain. |
-| D12 Observability | PARTIAL | Opt-in bearer-protected `/metrics` provides process-local HTTP count/active/latency with fixed labels; no identifiers or query values. Distributed logs/traces, source/DB/Redis/audit metrics and alert drills remain. |
-| D13 Performance | PARTIAL | Sidecar adds response/row/request/time/per-source concurrency bounds; load and capacity evidence absent. |
-| D14 Resilience | PARTIAL | Sidecar timeout, disconnect abort and per-source circuit breaker tested locally; Redis fail-closed evidence in CI 37361430688. Broader gateway/data-plane fault injection remains. |
-| D15 Backup/restore | PARTIAL | Contract documented; automation and restore drill remain. |
-| D16 Deployment | PARTIAL | Rebuilt sidecar image starts healthy as UID 10001 with no published port; production HTTPS/token/allowlist contract documented. Hosted CI, SBOM/scans and deployment evidence remain. |
-| D17 Operations | PARTIAL | Windows/COM bridge operations and P9 evidence-gate instructions documented; broader owners/on-call, incident, rotation and restore drills remain. |
-| D18 Pilot | PARTIAL | Strict P9 manifest and CI negative GO gate exist; no real target environment, pilot users, native reports or release approval evidence exists. Current state is NOT_READY. |
-
-No gate is declared PASS solely because normative documentation exists.
+P7 is explicitly demand-driven/deferred; P10 is outside modern 1C MVP.
+Locally actionable work remains, so Terminal B has NOT been reached.

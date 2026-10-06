@@ -1,6 +1,22 @@
 # Risk status
 
-Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
+Assessed: 2026-10-06. Source register: `docs/RISK_REGISTER.md`.
+
+## Current integrated assessment
+
+Candidate code `d05c620`: 132 Python/PostgreSQL tests PASS, 1 real-1C skip; migrations/privileges
+and security/dependency checks pass. R-06 company isolation and R-08 audit outcomes now have
+multi-source/lifecycle and success/deny/error append-only evidence from #9/#10 in this candidate.
+R-02 includes metadata/capability TTL and source endpoint/credential-reference invalidation.
+R-17 Redis fail-closed test is implemented; broader dependency failure injection remains open.
+R-09 pinned upstream tests/image build pass; universal locks/SBOM/audit remain local work.
+R-12: official v1.3.0 CFE artifact exists and hash is verified; compiled source/rights/company
+audit and real COM smoke remain unverified. Release tag differs from approved source pin.
+R-01/R-23 native accounting reconciliation, R-04 deployment egress, R-05/R-26 rotation,
+R-13/R-28 capacity, R-18 restore and R-22 fan-out remain open. No risk acceptance is inferred.
+All independent software/drill work will precede any external-only stopping decision.
+
+## Historical controls (superseded where updated above)
 
 | Risk | Status | Current control/evidence | Remaining action |
 |---|---|---|---|

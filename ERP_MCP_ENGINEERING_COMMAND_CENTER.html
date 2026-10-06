@@ -8,43 +8,44 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.0 · 1C-first Production MVP · snapshot 2026-10-05 · branch bootstrap/1c-day1-production</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.0 · snapshot 2026-10-06 · progress across PR #1–#10 · local branch phase/p6-rsv-bridge-boundary</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
   <div class="phase-desc">Нормативный baseline</div><div class="phase-stat">закрыт · 100%</div>
   <div class="bar"><span style="width:100%"></span></div></div><div class="phase-card progress">
   <div class="phase-code">P1</div><div class="phase-name">Control plane</div>
-  <div class="phase-desc">OAuth · ACL · Registry · Audit</div><div class="phase-stat">в работе · 68%</div>
-  <div class="bar"><span style="width:68%"></span></div></div><div class="phase-card progress">
+  <div class="phase-desc">ACL lifecycle + audit outcomes: CI PASS</div><div class="phase-stat">реализовано · follow-ups PR #9, #10 Draft</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P2</div><div class="phase-name">Capability router</div>
-  <div class="phase-desc">Fingerprint · routing · drift</div><div class="phase-stat">в работе · 62%</div>
-  <div class="bar"><span style="width:62%"></span></div></div><div class="phase-card planned">
+  <div class="phase-desc">Source capabilities · drift · bounded cache</div><div class="phase-stat">реализовано для OData · fallback открыт</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P3</div><div class="phase-name">Modern OData</div>
-  <div class="phase-desc">@1c-odata read-only plane</div><div class="phase-stat">план · 15%</div>
-  <div class="bar"><span style="width:15%"></span></div></div><div class="phase-card notstarted">
+  <div class="phase-desc">Pinned sidecar + upstream/contract tests: PASS</div><div class="phase-stat">код в merged PR #1 · live parity открыт</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P4</div><div class="phase-name">Semantic accounting</div>
-  <div class="phase-desc">AR/AP · sales · cash · stock</div><div class="phase-stat">не начат · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card progress">
+  <div class="phase-desc">Profiles · balances · documents · movements</div><div class="phase-stat">CI PASS · PR #2, #8 Draft · native сверка открыта</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P5</div><div class="phase-name">Real 1C testbed</div>
-  <div class="phase-desc">L2 reconciliation evidence</div><div class="phase-stat">в работе · 20%</div>
-  <div class="bar"><span style="width:20%"></span></div></div><div class="phase-card planned">
+  <div class="phase-desc">L1 seed + 10 scenario contracts: PASS</div><div class="phase-stat">PR #3 Draft · реальные L2/L3 открыты</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P6</div><div class="phase-name">COM / extension</div>
-  <div class="phase-desc">RSV Data fallback</div><div class="phase-stat">план · 10%</div>
-  <div class="bar"><span style="width:10%"></span></div></div><div class="phase-card optional">
+  <div class="phase-desc">Isolated process + health boundary: PASS</div><div class="phase-stat">PR #4 Draft · data route/COM smoke открыты</div>
+  </div><div class="phase-card optional">
   <div class="phase-code">P7</div><div class="phase-name">Legacy 8.2</div>
-  <div class="phase-desc">isolated GPL route</div><div class="phase-stat">опционально · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card progress">
+  <div class="phase-desc">Demand gate · isolated GPL route</div><div class="phase-stat">PR #5 Draft · реализация по запросу</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P8</div><div class="phase-name">Prod hardening</div>
-  <div class="phase-desc">OTel · load · DR · SBOM</div><div class="phase-stat">в работе · 15%</div>
-  <div class="bar"><span style="width:15%"></span></div></div><div class="phase-card notstarted">
+  <div class="phase-desc">Protected bounded HTTP metrics</div><div class="phase-stat">PR #6 Draft · load/restore/deploy открыты</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P9</div><div class="phase-name">Pilot & GO</div>
-  <div class="phase-desc">controlled production gate</div><div class="phase-stat">не начат · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card planned">
+  <div class="phase-desc">Fail-closed pilot evidence validator</div><div class="phase-stat">PR #7 Draft · production GO не подтверждён</div>
+  </div><div class="phase-card planned">
   <div class="phase-code">P10</div><div class="phase-name">ERP / Ferma</div>
-  <div class="phase-desc">future adapters</div><div class="phase-stat">план · 5%</div>
-  <div class="bar"><span style="width:5%"></span></div></div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>в работе</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>не начат / опционально</span></div>
-<div class="status-note">Проценты — визуальная оценка текущей реализации по Master Plan, не замена формального DoD closure.</div></section>
+  <div class="phase-desc">future adapters</div><div class="phase-stat">будущий этап · вне modern MVP</div>
+  </div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>реализация / проверка</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>опционально</span></div>
+<div class="status-note">Статусы отражают подтверждённую реализацию в отдельных PR. Draft PR ещё не объединены в main; CI не закрывает live-1C и production gates.</div></section>
+<section class="panel" id="latest-delivery-summary" style="margin-top:18px"><h3>Обновление 2026-10-06 — что выполнено</h3><p><strong>PR #1 merged; PR #2–#10 открыты Draft.</strong> Pinned OData sidecar и capability rule реализованы; semantic reads, deterministic testbed, RSV health boundary, metrics и pilot validator опубликованы в отдельных PR. Последние P4/P1 follow-ups #8–#10 прошли hosted CI.</p><p><strong>Следующие gates:</strong> реальные 1С metadata/semantic profiles и 10 native-report сверок; P6 company-scoped data route и Windows/COM smoke; production deployment, load/restore и pilot evidence. MVP ещё не закрыт. <a href="#current-mvp-status">Подробная сводка</a> · <a href="#p4-step32">Последние результаты CI</a>.</p></section>
 <section class="summary-grid"><div class="panel"><h3>Baseline в цифрах</h3><div class="metric-row"><div class="metric"><b>28</b><span>документов в HTML</span></div><div class="metric"><b>19</b><span>DoD gates D0–D18</span></div><div class="metric"><b>30</b><span>рисков в register</span></div><div class="metric"><b>6</b><span>accepted ADR</span></div><div class="metric"><b>3</b><span>уровня 1C testbed</span></div></div></div>
 <div class="panel"><h3>Неподвижные инварианты</h3><div class="invariants"><div class="inv"><strong>Read-only</strong>Нет mutation surface для 1C MVP.</div><div class="inv"><strong>Fail-closed</strong>Auth/state/secrets нельзя обойти dev-mode.</div><div class="inv"><strong>Server-side ACL</strong>AI не выбирает произвольный endpoint.</div><div class="inv"><strong>Accounting evidence</strong>Нативная сверка 1C обязательна.</div></div></div></section>
 <section class="panel" id="architecture"><h3>Архитектура в одном экране</h3><div class="architecture-mini">AI / MCP Clients
@@ -444,12 +445,16 @@ transport safely.</li>
 30–150+ companies, tolerate heterogeneous 1C deployments, and produce accounting answers that are
 reconcilable with native 1C reports.</p>
 <h2>Phase map</h2>
-<table>
+<p><strong>Статус на 2026-10-06.</strong> Реализация учитывает отдельные PR #1–#10: #1 merged, #2–#10 Draft. «CI PASS» подтверждает проверенный код; закрытие фазы требует её exit criteria и evidence для конкретной базы/релиза. «Осталось» — работа, которую можно продолжать; «Блокер» — недостающая зависимость или среда.</p>
+<div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
   <th>Phase</th>
   <th>Name</th>
   <th>Primary outcome</th>
+  <th>Статус / evidence</th>
+  <th>Что осталось / следующий шаг</th>
+  <th>Блокеры / зависимости</th>
 </tr>
 </thead>
 <tbody>
@@ -457,59 +462,93 @@ reconcilable with native 1C reports.</p>
   <td>P0</td>
   <td>Documentation &amp; decision freeze</td>
   <td>Normative TDD/architecture/data/governance/DoD baseline</td>
+  <td><strong>Baseline зафиксирован</strong><br>Нормативный пакет и ADR опубликованы.</td>
+  <td>Синхронизировать execution/status/DoD отчёты с итоговым объединённым релизом; проверить traceability.</td>
+  <td>Для документации блокера нет. Release closure зависит от окончательного состава изменений.</td>
 </tr>
 <tr>
   <td>P1</td>
   <td>Control-plane baseline</td>
   <td>OAuth, ACL, registry, secrets, audit, limits, migrations</td>
+  <td><strong>Реализовано; интеграционные проверки PASS</strong><br>PR #1 merged; <a href="https://github.com/xLZDx/ERP_MCP/pull/9">#9</a> multi-source ACL и <a href="https://github.com/xLZDx/ERP_MCP/pull/10">#10</a> audit outcomes — Draft, CI PASS.</td>
+  <td>Объединить и проверить follow-ups; подтвердить live IdP, secret rotation/leakage, production trace propagation и работу нескольких баз.</td>
+  <td>Не подтверждены production IdP/secret provider и целевая среда. PR #9/#10 ещё не объединены.</td>
 </tr>
 <tr>
   <td>P2</td>
   <td>Capability router</td>
   <td>Source fingerprinting and deterministic adapter selection</td>
+  <td><strong>OData capability rule реализован</strong><br>Per-source evidence, deny неподтверждённых методов, drift и cache invalidation проверены.</td>
+  <td>Проверить routing на реальных heterogeneous sources; закончить fallback capability contract и негативные проверки смены платформы/конфигурации.</td>
+  <td>Нужны live metadata/probes конкретных баз; fallback data route зависит от P6.</td>
 </tr>
 <tr>
   <td>P3</td>
   <td>Modern OData data-plane</td>
   <td>Mature upstream OData v3 engine integrated read-only</td>
+  <td><strong>Sidecar интегрирован; CI PASS</strong><br>Код в merged PR #1; pinned client/metadata, contract tests и non-root image smoke проходят.</td>
+  <td>Подтвердить live query/key/count/register parity, transport/egress и zero-write evidence на целевой базе.</td>
+  <td>Не записаны результаты реального OData source. Требуются endpoint, read-only identity и source-specific capabilities.</td>
 </tr>
 <tr>
   <td>P4</td>
   <td>Semantic accounting layer</td>
   <td>Stable transport-independent business tools</td>
+  <td><strong>Частично реализовано; CI PASS</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/2">PR #2</a> и <a href="https://github.com/xLZDx/ERP_MCP/pull/8">#8</a> Draft: profiles, documents, balances, inventory/cash movements и posting follow-up.</td>
+  <td>Закончить оставшуюся AR/AP aging и tax/VAT семантику; сверить заявленный scope, подтвердить mappings и ≥10 native-report cases на конкретной конфигурации.</td>
+  <td>Нет validated customer profiles/native reports; upstream presets остаются candidates. Семантическая валидация зависит от P5.</td>
 </tr>
 <tr>
   <td>P5</td>
   <td>Real 1C testbed &amp; reconciliation</td>
   <td>L2 evidence against native reports</td>
+  <td><strong>L1 готов; L2/L3 открыты</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/3">PR #3</a> Draft, CI PASS: deterministic seed и 10 executable scenario contracts.</td>
+  <td>Поднять реальные test bases, импортировать seed, заполнить snapshot manifests, выполнить сценарии и native-report reconciliation.</td>
+  <td>Не подтверждена доступная тестовая 1С с нужной конфигурацией/правами; native cases остаются NOT_RUN.</td>
 </tr>
 <tr>
   <td>P6</td>
   <td>Local/extension/COM fallback</td>
   <td>MIT RSV-data based fallback route</td>
+  <td><strong>Health boundary готов; data route открыт</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/4">PR #4</a> Draft, CI PASS. MCP process reuse, source config binding и ping-only health.</td>
+  <td>Проверить upstream extension behavior и constrained company-scoped adapter contract; capability persistence, parity, Windows/COM smoke и recovery.</td>
+  <td>В pinned repo нет проверяемого CFE implementation; Windows/1C/COM evidence отсутствует. Содержимое предоставленного MCP-RSV-Data.zip ещё не проверено. Data calls запрещены до подтверждения.</td>
 </tr>
 <tr>
   <td>P7</td>
   <td>Legacy 8.2 route</td>
   <td>Optional isolated legacy service if business need exists</td>
+  <td><strong>Отложено по demand gate</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/5">PR #5</a> Draft: требование к named legacy target и отдельному GPL service.</td>
+  <td>При подтверждённой потребности: определить 8.2 target, развернуть isolated service, выполнить license/security и compatibility проверки.</td>
+  <td>Нет конкретного legacy target/customer requirement. Эта опциональная фаза не блокирует modern MVP.</td>
 </tr>
 <tr>
   <td>P8</td>
   <td>Production hardening</td>
   <td>load, observability, backup/restore, incident/rollback</td>
+  <td><strong>Частично реализовано</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/6">PR #6</a> Draft: protected bounded HTTP metrics, CI PASS.</td>
+  <td>Закончить logs/traces/source telemetry, load/fault injection, SBOM/scans, deployment checks, backup/restore drill и incident/rollback evidence.</td>
+  <td>Не подтверждены production infrastructure, load target и backup/restore среда; необходимы реальные sources для эксплуатационных проверок.</td>
 </tr>
 <tr>
   <td>P9</td>
   <td>Pilot &amp; production GO</td>
   <td>controlled customer pilot, closure evidence</td>
+  <td><strong>Gate реализован; NOT_READY</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/7">PR #7</a> Draft: strict evidence manifest/validator. Production GO не подтверждён.</td>
+  <td>Собрать exact-release evidence, провести controlled pilot, закрыть обязательные DoD gates, оформить итоговое release approval.</td>
+  <td>Открыты P4/P5/P8 evidence; отсутствуют подтверждённые pilot users, среда, native reconciliation и release approvals.</td>
 </tr>
 <tr>
   <td>P10</td>
   <td>ERP/Ferma adapters</td>
   <td>reuse common control plane without weakening domain boundaries</td>
+  <td><strong>Будущий этап</strong><br>Вне текущего modern 1C MVP.</td>
+  <td>После MVP определить target ERP/Ferma API, reuse intake, domain contracts и отдельные acceptance tests.</td>
+  <td>Не выбран конкретный target/scope. Текущий modern MVP эта фаза не блокирует.</td>
 </tr>
 </tbody>
 </table>
+</div>
 <h2>P0 — Documentation &amp; decision freeze</h2>
 <p>Deliver:</p>
 <ul>

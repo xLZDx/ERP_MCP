@@ -32,6 +32,7 @@ jobs:
       - name: Build and smoke-test the non-root sidecar image
         run: |
           docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
+          docker run --rm -v "$GITHUB_WORKSPACE/scripts/audit_node_runtime.mjs:/audit.mjs:ro" erp-mcp-odata-sidecar:ci node /audit.mjs
           token="$(openssl rand -hex 32)"
           docker run -d --name erp-mcp-sidecar-ci \
             -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
@@ -80,6 +81,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
+      - run: python -m pip install --upgrade pip
       - run: ruff check .
       - run: bandit -q -r src
       - run: python -m compileall -q src scripts testbed
