@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from scripts.migrate import load_migrations
+try:
+    from .migrate import load_migrations
+except ImportError:
+    from migrate import load_migrations
 
 
 def main() -> int:

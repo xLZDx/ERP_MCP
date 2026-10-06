@@ -33,7 +33,7 @@ async def test_runtime_accepts_the_complete_migration_chain():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("version", [None, 7, 8, 10, 12, 14])
+@pytest.mark.parametrize("version", [None, 7, 8, 10, 12, 13, 15])
 async def test_runtime_rejects_old_missing_and_unknown_future_schema(version):
     db = Database("unused")
     db.pool = SchemaPool(version)

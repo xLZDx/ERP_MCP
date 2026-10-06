@@ -47,7 +47,7 @@ class FutureLedgerConnection:
     async def fetch(self, query, *args):
         if "information_schema.columns" in query:
             return [{"column_name": "name"}, {"column_name": "checksum"}]
-        return [{"version": 14, "name": "future", "checksum": "0" * 64}]
+        return [{"version": 15, "name": "future", "checksum": "0" * 64}]
 
 
 @pytest.mark.asyncio

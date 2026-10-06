@@ -1,7 +1,7 @@
 # ADR-0007 — Admin Control Center boundary and authorization
 
-**Status:** ACCEPTED  
-**Date:** 2026-10-06  
+**Status:** ACCEPTED
+**Date:** 2026-10-06
 **Change class:** C3
 
 ## Context

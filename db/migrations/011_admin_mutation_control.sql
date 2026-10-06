@@ -53,7 +53,6 @@ BEGIN
   RAISE EXCEPTION 'bag.admin_audit_events is append-only';
 END;
 $$;
-
 DROP TRIGGER IF EXISTS admin_audit_events_no_update_delete ON bag.admin_audit_events;
 CREATE TRIGGER admin_audit_events_no_update_delete
 BEFORE UPDATE OR DELETE ON bag.admin_audit_events

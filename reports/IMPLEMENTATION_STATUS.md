@@ -1,7 +1,11 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=7abfa421c1bb703e51f411cd8221214ad0f7125e52c2c0544dfd586f8d812254 -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=ab2c8807b59e99335f2a1c6109f03d4841da3ccb1c4e5a3b55b77a44d1a16c16 -->
+
+## Capability observation boundary — 2026-10-06
+
+Combined Admin/integration tree now has migration 014: metadata transport/parser failure never becomes a synthetic fingerprint; it records `NEEDS_VALIDATION`, preserves the last known fingerprint, and recovery/change transitions are handled by a narrow `SECURITY DEFINER` observation function. `business_ai_app` no longer has direct INSERT/UPDATE on trusted capability rows. Focused boundary tests pass; combined suite is 1123 passed/39 environment-gated skips. Production remains NO-GO pending real 1C and deployed gates.
 
 ## Fault-injection runner — 2026-10-06
 

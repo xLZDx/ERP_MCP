@@ -49,7 +49,7 @@ def require_acknowledged_metadata(drift_state: dict[str, Any]) -> None:
 class OneCCapabilities:
     source_id: str
     platform_version: str | None
-    metadata_fingerprint: str
+    metadata_fingerprint: str | None
     metadata_supported: bool
     json_supported: bool
     atom_supported: bool
@@ -122,9 +122,9 @@ class OneCCapabilityDetector:
         except Exception as exc:  # noqa: BLE001
             index = None
             metadata_supported = False
-            metadata_fingerprint = hashlib.sha256(
-                f"metadata-error:{type(exc).__name__}".encode()
-            ).hexdigest()
+            # A transport/parser failure is availability state, not metadata truth.  Do not
+            # manufacture a durable fingerprint from the exception class.
+            metadata_fingerprint = None
             evidence["metadata"] = type(exc).__name__
 
         json_supported = False

@@ -90,6 +90,7 @@ async def test_capability_detector_reports_unsupported_without_safe_route():
 
     assert capabilities.compatibility_status == CompatibilityStatus.UNSUPPORTED
     assert capabilities.adapter_profile == AdapterProfile.UNSUPPORTED
+    assert capabilities.metadata_fingerprint is None
     assert index is None
 
 

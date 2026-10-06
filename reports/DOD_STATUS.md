@@ -1,7 +1,11 @@
 
 # Definition of Done status
 
-<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=7abfa421c1bb703e51f411cd8221214ad0f7125e52c2c0544dfd586f8d812254 -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=ab2c8807b59e99335f2a1c6109f03d4841da3ccb1c4e5a3b55b77a44d1a16c16 -->
+
+## Capability observation boundary — 2026-10-06
+
+The final combined tree closes the locally actionable false-drift/runtime-write tail with migration 014 and regression tests. Runtime observations use a constrained database function; acknowledgement remains an Admin/control-plane action. Full combined suite: 1123 passed/39 skips. DoD remains PARTIAL because native 1C, deployed recovery and customer gates are external.
 
 ## Fault-injection runner — 2026-10-06
 

@@ -2,7 +2,11 @@
 
 # Risk status
 
-<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=7abfa421c1bb703e51f411cd8221214ad0f7125e52c2c0544dfd586f8d812254 -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=ab2c8807b59e99335f2a1c6109f03d4841da3ccb1c4e5a3b55b77a44d1a16c16 -->
+
+## Capability observation boundary — 2026-10-06
+
+Risk reduced: unavailable metadata is no longer durable schema truth, and the runtime role cannot directly acknowledge or rewrite drift status. Remaining risk is limited to executing the new privilege/upgrade acceptance against a live disposable PostgreSQL service and then deployed/native gates.
 
 ## Fault-injection runner — 2026-10-06
 
