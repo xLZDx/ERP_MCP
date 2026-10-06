@@ -39,3 +39,17 @@ Additional local automation:
   artifacts while explicitly keeping the result as evidence, not capacity sign-off;
 - `uv run --locked python scripts/check_report_references.py` prevents a release with missing or
   contradictory authoritative report artifacts.
+- `uv run --locked python scripts/fault_injection_runner.py` runs the offline dependency disable,
+  sanitized-error, audit, and recovery matrix for PostgreSQL/Redis/JWKS/OData/RSV.
+- `uv run --locked python scripts/rsv_lifecycle_harness.py` covers crash, timeout, malformed
+  envelope, reconnect and secret-rotation lifecycle contracts without calling 1C.
+- `uv run --locked python scripts/performance_benchmark.py --output <evidence.json>` emits the
+  30/50/100/150-source p50/p95/p99, pool-wait, memory and isolation evidence artifact.
+- `uv run --locked python scripts/validate_metrics.py deploy/alerts/prometheus.rules.yml` checks
+  alert names and rejects source/company/query/path labels.
+- `uv run --locked python scripts/capability_report.py <export.json> --diff <other.json>` provides
+  capability diff, stale/unsupported views and an evidence-manifest export.
+- `uv run --locked python scripts/security_regression_pack.py` runs the offline secret, SSRF,
+  traversal, redirect, envelope and mutation-negative regression matrix.
+- `deploy/runbooks/ONBOARDING_OFFBOARDING.md`, `CREDENTIAL_ROTATION_AND_DRIFT.md` and
+  `ADAPTER_CRASH_RECOVERY.md` are mandatory operator references for lifecycle changes.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REQUIRED = (
@@ -21,6 +22,14 @@ def check(root: Path) -> None:
     dod = (root / "reports/DOD_STATUS.md").read_text(encoding="utf-8")
     if "Production GO remains" not in status or "DoD remains PARTIAL" not in dod:
         raise ValueError("authoritative reports must state the current fail-closed decision")
+    authoritative = status.split("## Current authoritative state", 2)[1].split(
+        "## Current authoritative state", 1
+    )[0]
+    stale_markers = ("HOSTED CI PENDING", "TODO: UPDATE", "<CURRENT_COMMIT>")
+    if any(marker in authoritative for marker in stale_markers):
+        raise ValueError("authoritative report contains a stale status marker")
+    if not re.search(r"Hosted confirmation:.*run `?\d{8,}`?.*PASS", authoritative, re.IGNORECASE | re.DOTALL):
+        raise ValueError("authoritative report is missing current hosted confirmation")
 
 
 def main() -> None:

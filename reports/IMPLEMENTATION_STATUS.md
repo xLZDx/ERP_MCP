@@ -18,6 +18,17 @@ Production GO remains NO-GO; PR #11 remains OPEN/Draft.
 Hosted confirmation: run `37440714147` PASS on `74d1a4d`; both required CI jobs passed, including
 the new report-reference check and the pinned OData upstream build/smoke/security path.
 
+### Autonomous closure of non-production gates — 2026-10-06
+
+Completed offline/CI-verifiable items 1–7, 9 and 10: dependency fault-injection runner with
+sanitized failure/audit/recovery evidence; RSV crash/timeout/malformed-envelope/reconnect/rotation
+harness; deterministic 30/50/100/150-source p50/p95/p99 benchmark artifact; metrics privacy and
+alert-rule validation; capability list/diff/stale/unsupported/evidence-manifest CLI; security
+regression matrix; release bundle hashes and pinned upstream SHAs; onboarding/rotation/drift/crash
+runbooks; and document consistency CI gate. Local suite is now `199 passed, 9 skipped`.
+These are offline contract proofs and do not claim live 1C or production capacity. Production GO
+remains NO-GO.
+
 Follow-up unblocked batch hosted verification: run `37439573762` PASS on `4e63412` for both
 required jobs.
 

@@ -134,6 +134,16 @@ jobs:
       - run: uv run --locked python scripts/validate_scenarios.py
       - run: uv run --locked python scripts/release_preflight.py
       - run: uv run --locked python scripts/check_report_references.py
+      - name: Run autonomous closure harnesses
+        run: |
+          uv run --locked python scripts/fault_injection_runner.py --output "$RUNNER_TEMP/fault-injection.json"
+          uv run --locked python scripts/rsv_lifecycle_harness.py --output "$RUNNER_TEMP/rsv-lifecycle.json"
+          uv run --locked python scripts/performance_benchmark.py --output "$RUNNER_TEMP/performance.json"
+          uv run --locked python scripts/validate_performance_evidence.py "$RUNNER_TEMP/performance.json"
+          uv run --locked python scripts/validate_metrics.py deploy/alerts/prometheus.rules.yml
+          uv run --locked python scripts/security_regression_pack.py --output "$RUNNER_TEMP/security.json"
+          uv run --locked python scripts/release_evidence_bundle.py --output "$RUNNER_TEMP/release-evidence.json"
+          uv run --locked python scripts/check_document_consistency.py
       - name: Validate the fail-closed P9 pilot evidence template
         run: |
           uv run --locked python scripts/validate_pilot_evidence.py

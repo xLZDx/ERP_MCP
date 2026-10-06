@@ -14,6 +14,11 @@ approval. DoD remains PARTIAL and production GO remains NO-GO.
 
 Hosted confirmation: run `37440714147` PASS on `74d1a4d`; `test` and `odata-upstream` both passed.
 
+Autonomous non-production closure: items 1–7, 9 and 10 now have executable offline harnesses,
+validators, runbooks and CI wiring. Local suite is `199 passed, 9 skipped`; this evidence is not a
+substitute for live 1C semantic validation, native-report reconciliation, production rehearsal or
+operator approval. DoD remains PARTIAL and production GO remains NO-GO.
+
 Follow-up artifacts hosted verification: run `37439573762` PASS on `4e63412` for both required jobs.
 
 The current local suite is `184 passed, 9 skipped`; hosted run `37437328906` passed both required
