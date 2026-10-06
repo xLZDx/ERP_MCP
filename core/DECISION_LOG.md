@@ -9,3 +9,8 @@
 - Decision: secrets are generated randomly once under the git-ignored `.e2e/`; the test IdP is
   the only place identities live. ERP_MCP gained no user-creation path and no 1C write path.
 - Evidence: see docs/E2E_ENVIRONMENT.md and the commit history of this branch.
+
+## 2026-10-07 - E2E test scaffolding
+
+- Decision: tests/e2e is auto-skipped only when .e2e/env.json is absent and ERP_MCP_E2E_NO_SKIP is unset; scripts/e2e/test.ps1 sets it so a missing environment is an error.
+- Evidence: 12 smoke tests green against the live environment (tests/e2e/test_smoke_environment.py).
