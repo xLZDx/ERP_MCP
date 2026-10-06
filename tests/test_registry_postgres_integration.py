@@ -394,7 +394,7 @@ async def test_semantic_profile_admin_lifecycle_and_append_only_events(tmp_path)
         )
         await conn.execute("RESET ROLE")
 
-        metadata_fingerprint = "semantic-metadata-" + "e" * 64
+        metadata_fingerprint = "e" * 64
         register_capabilities = {
             "source_id": source_id,
             "metadata_fingerprint": metadata_fingerprint,
