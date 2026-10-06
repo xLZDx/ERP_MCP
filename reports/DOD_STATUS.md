@@ -1,7 +1,19 @@
 
 # Definition of Done status
 
-<!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=00b83a1a28d3f2225cc0b9fac545a3d78faa3ef247087e0d96884a01e43f02d1 -->
+<!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=e5ad547999bf0e0b15bcf87ff1a327b0979c1c7b9a546541f25c7b157ec549c3 -->
+
+## Internal financial projection — 2026-10-06
+
+DAD-4/D9: internal exact-profile Balance Sheet/P&L/Cash Flow projection and independent native comparison contract implemented. Scope/config/metadata/chart/activity metric-sign-row mapping/period/currency/timezone/comparative/effective-date/native-report/tolerance fingerprinted; no universal chart, protocol/query/formula generator. BS exact as-of known-opening snapshots; P&L gross turnovers; cash flow only confirmed gross cash events, never balances. Explicit zero coverage required; missing/unmapped nonzero/duplicate/nonfinite/stale/cross-scope facts cannot PASS. Required comparative snapshots AND comparative native reports independent/complete. Result hash binds data/artifact/level, rejects mutation; native approval requires exact profile hash, not shared mapping-name alias. Private monetary projection stays private; hashed mismatches/human review/no evidence-level upgrade or source/release GO. 32 focused statement contracts and 71 combined statement/invoice rules PASS. Public financial tools/live collectors/real chart/native report validation remain OPEN. Parent 15fc9d0 CI 37499186509 FOUR jobs PASS; unused pip cache failure at 160e3c9 fixed, release assembly restored (tested merge e1790df45ef6f84638918bbafc347087bdd1cf15). Current full suite 741 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted CI pending. Full frozen month-close/tax/payroll/aging/native parsers/corpus/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
+<!-- ENGINEERING_CHECKPOINT=INVOICE_RULE_PACK_20261006 ENGINEERING_IMPLEMENTATION=39ee0ad1433f488681518a0f30441874123164387f37eb197d7ccf56404dc32e -->
+
+## Invoice normalized rule pack / CI fix — 2026-10-06
+
+DAD-2/D9/D11: internal versioned eleven-case invoice comparison pack implemented with exact source/company/config/metadata/buyer/item/native-report/amount-encoding profiles, bounded typed independent observations, parser snapshot and detached-facts fingerprints. Source-specific service/overhead applicability; no universal 821, tax/VAT deductibility inference or 1C mutation. Verified primary archive proof binds scope+invoice/supplier+original digest; normalized carrier/source digest cannot masquerade as original, absent proof EVIDENCE_REQUIRED. Missing receipt never manufactures other PASS checks. Quantity/price/discount/net/VAT/total/header math discrepancies remain findings; profile line-VAT rounding requires EXACT header totals and cannot waive total mismatch. Hashed findings preserve L1/native/legal approval false. 106 focused rule/parser/CSV tests PASS: all eleven frozen logical aliases are SYNTHETIC, not real private corpus. Parent 160e3c9 CI 37496725289 FAILED only in setup-python post-step: unused pip cache directory absent while uv installs dependencies; tests/security/build gates successful, OData+Windows PASS, release assembly skipped. Removed unused cache: pip, no test/security suppression. Last fully verified bda7e34 CI 37494671262 retained. Current full suite 709 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/scenario/release gates PASS. Own hosted remediation pending. Public/live invoice delivery, native extraction/original archive/private corpus, full month-close/statements/tax/aging/Ferma/native/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
+<!-- ENGINEERING_CHECKPOINT=STRUCTURED_INVOICE_INPUT_20261006 ENGINEERING_IMPLEMENTATION=5d379650bceed8faa9f12159d0dd7dfeed20945b8e981c73c20a889885106548 -->
 
 ## Structured normalized invoice input — 2026-10-06
 

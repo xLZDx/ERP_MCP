@@ -346,17 +346,17 @@ distinct scenarios.
 
 | ID | Scenario | Current coverage |
 |---|---|---|
-| DAD-INV-01 | payment exists but purchase/receipt is missing | PARTIAL primitives; correlation rule missing |
-| DAD-INV-02 | one PDF has two qualities/items but 1C collapsed them into one line | NOT IMPLEMENTED external document comparison |
-| DAD-INV-03 | supplier/company ID differs between PDF and 1C master data | NOT IMPLEMENTED |
-| DAD-INV-04 | wrong product mapping / two product types represented as one item | NOT IMPLEMENTED |
-| DAD-INV-05 | invoice date and 1C registration period differ; VAT deduction period requires review | NOT IMPLEMENTED tax rule |
-| DAD-INV-06 | service covers multiple periods; accrual/period allocation required | NOT IMPLEMENTED |
-| DAD-INV-07 | production overhead account 821 remains unresolved after invoice review | PARTIAL month-close primitive |
-| DAD-INV-08 | 1C receipt exists but primary document is absent from archive | NOT IMPLEMENTED external evidence completeness |
-| DAD-INV-09 | amount/VAT exact match across invoice vs 1C | NOT IMPLEMENTED document reconciliation service |
-| DAD-INV-10 | line-level quantity/price/amount/VAT comparison | NOT IMPLEMENTED document reconciliation service |
-| DAD-INV-11 | 1-cent line VAT differences but correct invoice VAT total | NOT IMPLEMENTED tolerance policy |
+| DAD-INV-01 | payment exists but purchase/receipt is missing | PARTIAL: normalized correlation rule; live/native OPEN |
+| DAD-INV-02 | one PDF has two qualities/items but 1C collapsed them into one line | PARTIAL: normalized quality/line comparison; native extraction OPEN |
+| DAD-INV-03 | supplier/company ID differs between PDF and 1C master data | PARTIAL: scoped identity comparison; live/native OPEN |
+| DAD-INV-04 | wrong product mapping / two product types represented as one item | PARTIAL: exact approved item mapping; live/native OPEN |
+| DAD-INV-05 | invoice date and 1C registration period differ; VAT deduction period requires review | PARTIAL: period human-review finding; no legal tax approval |
+| DAD-INV-06 | service covers multiple periods; accrual/period allocation required | PARTIAL: scoped allocation-review rule; native proof OPEN |
+| DAD-INV-07 | production overhead account 821 remains unresolved after invoice review | PARTIAL: profile-only overhead rule; native proof OPEN |
+| DAD-INV-08 | 1C receipt exists but primary document is absent from archive | PARTIAL: exact archive-proof contract; original verification OPEN |
+| DAD-INV-09 | amount/VAT exact match across invoice vs 1C | PARTIAL: normalized totals comparison; native/public delivery OPEN |
+| DAD-INV-10 | line-level quantity/price/amount/VAT comparison | PARTIAL: normalized line comparison; native/public delivery OPEN |
+| DAD-INV-11 | 1-cent line VAT differences but correct invoice VAT total | PARTIAL: explicit versioned exact-header tolerance; native acceptance OPEN |
 
 Read-only MVP may support these comparisons without writing to 1C if invoice/evidence files are
 provided through the evidence plane.
@@ -368,8 +368,30 @@ the complete quantity/price/VAT/item/quality/header facts in §11. Private stora
 index/manifest route support its exact MIME/profile; no content sniffing, class relabelling or raw
 identity/value exposure. Duplicate/extra/schema/precision/scope inputs fail closed. Carrier SHA is
 not an original PDF fingerprint; extraction never fixes invoice arithmetic or approves tax law.
-This closes the structured normalized input gap ONLY. The coverage table's business rules, native
-PDF/XML extraction, original archive, live source collectors and REAL-INV-001..011 remain OPEN.
+Structured input was implemented before the internal rule pack below. Native PDF/XML extraction,
+original archive, live source collectors and real REAL-INV-001..011 corpus acceptance remain OPEN.
+
+`invoice_rules.py` now implements an INTERNAL versioned normalized comparison pack for all eleven
+logical cases. Synthetic acceptance fixtures use the frozen REAL-INV-001..011 IDs but are NOT the
+private real corpus. Scope/metadata/item/buyer/native-report mapping and amount encoding are exact
+profile-bound; missing/stale/unapproved/cross-company/incomplete or same-plane facts cannot PASS.
+Private identities/values are not emitted in findings. Original archive proof binds exact scope,
+invoice/supplier identity and verified private blob digest; a normalized carrier/source-result
+digest cannot be relabelled as the original PDF. Without confirmed archive proof the receipt case
+is `EVIDENCE_REQUIRED`, including when normalized JSON exists.
+
+Invoice fact snapshots are separately fingerprinted so detached/altered parsed header/lines fail
+before comparison. Missing receipt never manufactures ten other PASS results; service/overhead
+checks carry explicit applicability. There is no global 821 or legal VAT-period conclusion.
+Registration/service periods produce human-review findings, not a tax deductibility decision.
+Quantity/price/discount/net/VAT/total comparisons use explicit versioned tolerances. Line VAT
+rounding is allowed ONLY by profile and when all invoice header totals match EXACTLY; it cannot
+waive a total mismatch. Mathematical line/header inconsistencies remain findings, not corrections.
+All results preserve the supplied evidence level and deny native/legal approval inference.
+
+Internal logical rules are implemented; public invoice tool/live source collection, verified raw
+archive/native PDF/XML extraction, approved real profiles and private real-corpus/native acceptance
+remain OPEN. The table above describes native/business-delivery gaps, not a full engineering GO.
 
 The source also proves historical test capability to:
 
@@ -563,6 +585,35 @@ Requirements:
 - comparative period where required;
 - native 1C report reconciliation;
 - no universal hard-coded Moldovan/Russian account assumptions.
+
+### 14.1 Internal normalized projection and native comparison contract
+
+`financial_statements.py` implements an INTERNAL exact-profile projection for all three statement
+kinds. It is not yet the three public/live semantic tools above. Approved profile fingerprints bind
+source/company/configuration/metadata, chart/activity selector + metric/sign/row mapping, currency/
+timezone, period/comparative period, effective dates, native report mapping and tolerance. There
+are no global account numbers, invented cash classifications or unrestricted formula/query input.
+
+- Balance Sheet accepts complete known-opening `closing` snapshots at the exact end-of-period day.
+- P&L accepts confirmed gross debit/credit period facts with profile-owned signs.
+- Cash Flow accepts confirmed `cash_in`/`cash_out` activity facts, NEVER inferred from closing cash
+  balances; distinct gross events are not deduplicated merely because amounts/net totals match.
+- Every selector/metric requires explicit extracted coverage (including explicit zero); missing
+  rows, unclassified nonzero amounts, duplicate facts, stale/cross-scope/incomplete/nonfinite data
+  cannot PASS. No silent “unmapped ignore” option exists.
+- Comparative periods require separate complete same-profile/currency/timezone observations.
+  Required comparative native rows also cannot be skipped in native comparison.
+
+Projection PASS means `VALIDATED_PROFILE_PROJECTION_ONLY`, not native/business acceptance. Returned
+money is private authorized data, never public evidence. Result fingerprints bind rows plus source
+artifact/evidence-level provenance and reject detached/mutated projection data. Native comparison
+requires exact approved PROFILE fingerprint (a shared report-name alias is insufficient), exact
+scope, completeness, independent artifacts and preserved evidence level; mismatches return hashed
+findings. Neither projection nor equal native rows automatically approves a source/release/GO.
+
+Public statement tools, runtime/live source collectors, approved chart/activity mappings, real
+configuration native reports and required case coverage remain OPEN. This contract's synthetic
+L1 fixtures are not native 1C or financial/legal validation.
 
 ---
 
