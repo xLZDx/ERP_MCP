@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "batch_id": "RSV_NATIVE_LIFECYCLE_20261006",
-  "implementation_sha256": "b9f952c03cd8306096d4ca0089bd5e2d585475bdc1429b228f8fdd9336561c70",
+  "batch_id": "EVIDENCE_PROFILE_BINDING_20261006",
+  "implementation_sha256": "465da0053ae2d5029224389141cc23c1217265e0cb96af329ac031f6c9c1abf8",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
@@ -13,11 +13,11 @@
   "last_failed_hosted_run": 37470166429,
   "hosted_status_at_snapshot": "PARENT_POOL_FOUR_JOBS_PASS_NATIVE_BATCH_PENDING",
   "last_local_full_suite": {
-    "passed": 422,
+    "passed": 435,
     "skipped": 12
   },
   "focused_tests": {
-    "dad_comparison": 33,
+    "dad_and_external_evidence": 76,
     "release_assembly": 21,
     "pool_validators_and_actual_postgres": 18,
     "executed_native_bridge_lifecycle": 1

@@ -2,6 +2,14 @@
 
 # ERP_MCP implementation gap analysis
 
+## Profile-class binding and malformed-result privacy — 2026-10-06
+
+EVID-1/DAD-5 evidence revalidation now binds the complete immutable parser-profile snapshot to
+class/version/parser/scope and recomputed approved fingerprint. Detached approved hashes cannot
+authorize relabeled evidence. DAD free-text/non-string levels are rejected/null, never echoed.
+76 focused tests PASS, full local 435 PASS/12 SKIP; static/security/docs gates PASS. Native
+authenticity/parsers/storage/runtime ACL/audit and complete business/Ferma/deployment gates OPEN.
+
 ## Executed disposable native metadata lifecycle — 2026-10-06
 
 P6 real bridge crash + fresh COM reconnect now has executed proof using the unchanged audited

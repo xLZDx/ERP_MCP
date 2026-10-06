@@ -105,3 +105,22 @@ def test_business_gate_does_not_invent_missing_evidence_or_accept_stale_scope():
     with pytest.raises(EvidenceRejected, match="EVIDENCE_INCONCLUSIVE"):
         require_evidence(required, (candidate,), scope=replace(scope(), company_id="other"),
                          validated_profiles=approved)
+
+
+@pytest.mark.parametrize("mutation", ["class", "profile_class", "profile_version", "profile_scope",
+                                     "profile_missing", "digest", "facts_type", "untyped"])
+def test_reconstructed_evidence_cannot_relabel_an_approved_profile(mutation):
+    candidate = parse(b"key,date,currency,amount\nfixture,2026-01-12,MDL,1\n")
+    approved = frozenset({candidate.profile_fingerprint})
+    changes = {
+        "class": {"evidence_class": EvidenceClass.Z_REPORT},
+        "profile_class": {"parser_profile": replace(candidate.parser_profile, evidence_class=EvidenceClass.Z_REPORT)},
+        "profile_version": {"parser_profile": replace(candidate.parser_profile, version="v2")},
+        "profile_scope": {"parser_profile": replace(candidate.parser_profile, scope=replace(scope(), company_id="other"))},
+        "profile_missing": {"parser_profile": None}, "digest": {"document_sha256": "private-raw-document"},
+        "facts_type": {"facts": list(candidate.facts)},
+    }
+    item = object() if mutation == "untyped" else replace(candidate, **changes[mutation])
+    with pytest.raises(EvidenceRejected, match="EVIDENCE_INCONCLUSIVE") as error:
+        require_evidence(frozenset({EvidenceClass.BANK_STATEMENT}), (item,), scope=scope(), validated_profiles=approved)
+    assert "private-raw-document" not in str(error.value)

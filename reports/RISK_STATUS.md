@@ -4,6 +4,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=EVIDENCE_PROFILE_BINDING_20261006 ENGINEERING_IMPLEMENTATION=465da0053ae2d5029224389141cc23c1217265e0cb96af329ac031f6c9c1abf8 -->
+
+## Evidence profile binding and result privacy — 2026-10-06
+
+EVID-1/DAD-5/D4: normalized evidence now retains and revalidates its immutable exact parser-profile snapshot; class/scope/version/parser/digest mismatch or missing/untyped profile cannot reuse an approved detached fingerprint. DAD evidence-level output allows only known bounded identifiers, rejects malformed/free-text/non-string levels without echo even on early rule rejection. 76 focused tests PASS including 13 new adversarial class-binding/privacy cases. No native format/authenticity/signature validation inferred. Parent 8e3abb0 CI 37475165164 pending; last fully verified 75c362d run 37474490200 four jobs PASS, actual hosted pool artifact validated. Full local suite 435 passed/12 skipped, Ruff/Bandit/compileall/document gates PASS; hosted binding batch pending. Native evidence storage/ACL/audit, full rule packs/Ferma/observers/fault/deployment/stdout bounds remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=RSV_NATIVE_LIFECYCLE_20261006 ENGINEERING_IMPLEMENTATION=b9f952c03cd8306096d4ca0089bd5e2d585475bdc1429b228f8fdd9336561c70 -->
 
 ## Executed native bridge crash and COM reconnect — 2026-10-06

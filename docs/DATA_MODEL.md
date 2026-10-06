@@ -312,6 +312,12 @@ Manifest output contains hashes/counts only and always retains human review. Par
 URL/file fetch, blob storage, 1C writes or business PASS. Private storage, ACL/audit upload endpoints,
 native parsers, retention administration and DAD rule integration remain separate open gates.
 
+The immutable normalized evidence retains its exact `EvidenceParserProfile` snapshot. Reuse gates
+recompute the approved profile fingerprint and bind class/version/parser/scope, not just membership
+of a detached fingerprint string. Relabeling bank evidence as Z evidence, changing profile scope
+or version, missing profile snapshots, malformed document digests and untyped envelopes cannot pass.
+This is profile-binding validation, not proof of native-document authenticity or signature validity.
+
 ### 10B. DAD rule-pack model
 
 Recommended logical entities:
@@ -346,6 +352,10 @@ Exact bounded Decimal comparisons preserve micro-units; input evidence level is 
 native approval is never inferred. This is a normalized comparison foundation for Z/terminal/
 bank-style inputs, not native format validation or universal account rules. Runtime tool/ACL/audit
 integration, configured account selectors, native observers and full month-close packs remain open.
+
+Only bounded known evidence-level identifiers may enter result envelopes. Malformed/free-text/
+non-string evidence levels are returned as null and rejected, including early unconfirmed-rule
+paths; raw document or credential-like text is never echoed through this field.
 
 ### 10C. Testbed/reference provenance
 

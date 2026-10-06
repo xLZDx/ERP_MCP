@@ -86,11 +86,13 @@ def evaluate_reconciliation(
 ) -> dict:
     """Trusted internal inputs only. Not exposed as an AI-authored query or public upload tool."""
     fingerprint = rule.fingerprint()
+    level = observation.evidence_level if observation is not None else None
+    safe_level = level if type(level) is str and level in {"L1", "L2-A", "L2-B", "L3"} else None
     result = {"rule_id": rule.rule_id, "pack_id": rule.pack_id, "pack_version": rule.pack_version,
               "rule_fingerprint": fingerprint, "scope_fingerprint": rule.scope.fingerprint(),
               "status": "INCONCLUSIVE", "reason": "RULE_UNCONFIRMED", "findings": [],
               "human_review_required": True, "native_approval_inferred": False,
-              "evidence_level": observation.evidence_level if observation is not None else None}
+              "evidence_level": safe_level}
     if fingerprint not in validated_rules:
         return result
     try:
@@ -108,7 +110,7 @@ def evaluate_reconciliation(
         result.update(status="CAPABILITY_UNSUPPORTED", reason="SEMANTIC_PROFILE_UNCONFIRMED")
         return result
     if (observation.scope != rule.scope or observation.semantic_concept != rule.semantic_concept
-            or observation.complete is not True or observation.evidence_level not in {"L1", "L2-A", "L2-B", "L3"}
+            or observation.complete is not True or safe_level is None
             or not isinstance(observation.artifact_sha256, str)
             or not re.fullmatch(r"[a-f0-9]{64}", observation.artifact_sha256)
             or not _valid_facts(observation.facts, rule.scope)):

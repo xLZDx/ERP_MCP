@@ -132,3 +132,13 @@ def test_explicit_tolerance_and_pack_fingerprint_change_are_honored():
     assert evaluate(tolerant, document, observation)["status"] == "PASS"
     assert evaluate(rule, document, observation)["status"] == "FINDING"
     assert tolerant.fingerprint() != rule.fingerprint()
+
+
+@pytest.mark.parametrize("level", ["private-token-or-document-text", ["private-secret"], {"private": "payload"}, 1, None])
+def test_invalid_evidence_level_is_not_echoed_even_on_early_rule_rejection(level):
+    rule, document, observation = fixture()
+    observation = replace(observation, evidence_level=level)
+    for approved in (frozenset(), frozenset({rule.fingerprint()})):
+        result = evaluate(rule, document, observation, validated_rules=approved)
+        assert result["status"] == "INCONCLUSIVE" and result["evidence_level"] is None
+        assert "private" not in str(result)

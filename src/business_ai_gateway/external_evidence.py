@@ -114,6 +114,7 @@ class ExternalEvidence:
     private_blob_ref: str
     retention_policy_id: str
     facts: tuple[EvidenceFact, ...]
+    parser_profile: EvidenceParserProfile
 
     def safe_manifest(self) -> dict:
         # No private blob path, business keys, dates, company/source names or raw accounting values.
@@ -140,6 +141,7 @@ def parse_normalized_csv(
         raise EvidenceRejected("EVIDENCE_PROFILE_UNCONFIRMED")
     if (not isinstance(private_blob_ref, str)
             or not re.fullmatch(r"private:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", private_blob_ref)
+            or not isinstance(retention_policy_id, str) or not _ID.fullmatch(retention_policy_id)
             or retention_policy_id not in approved_retention_policies):
         raise EvidenceRejected("EVIDENCE_RETENTION_UNCONFIRMED")
     if type(payload) is not bytes or not payload or len(payload) > MAX_BYTES:
@@ -176,7 +178,7 @@ def parse_normalized_csv(
     if not facts:
         raise EvidenceRejected("EVIDENCE_REQUIRED")
     return ExternalEvidence(expected_scope, profile.evidence_class, digest, fingerprint,
-                            profile.parser_version, private_blob_ref, retention_policy_id, tuple(facts))
+                            profile.parser_version, private_blob_ref, retention_policy_id, tuple(facts), profile)
 
 
 def require_evidence(
@@ -185,11 +187,25 @@ def require_evidence(
 ) -> None:
     """Gate normalized inputs only; passing this gate is never a business/accounting PASS."""
     scope.validate()
-    if len(evidence) > 64 or any(not isinstance(item, EvidenceClass) for item in required):
+    if (not isinstance(evidence, tuple) or len(evidence) > 64
+            or not isinstance(required, frozenset) or any(not isinstance(item, EvidenceClass) for item in required)):
         raise EvidenceRejected("EVIDENCE_SCHEMA_INVALID")
     for item in evidence:
-        if (item.scope != scope or item.profile_fingerprint not in validated_profiles
-                or not item.facts or item.parser_version != "external-normalized-csv-v1"):
+        if (not isinstance(item, ExternalEvidence) or item.scope != scope
+                or not isinstance(item.evidence_class, EvidenceClass)
+                or not isinstance(item.profile_fingerprint, str)
+                or item.profile_fingerprint not in validated_profiles
+                or not isinstance(item.parser_profile, EvidenceParserProfile)
+                or item.parser_profile.scope != scope or item.parser_profile.evidence_class != item.evidence_class
+                or item.parser_profile.parser_version != item.parser_version
+                or not isinstance(item.document_sha256, str) or not _HASH.fullmatch(item.document_sha256)
+                or not isinstance(item.facts, tuple) or not item.facts or len(item.facts) > MAX_ROWS
+                or item.parser_version != "external-normalized-csv-v1"):
             raise EvidenceRejected("EVIDENCE_INCONCLUSIVE")
+        try:
+            if item.parser_profile.fingerprint() != item.profile_fingerprint:
+                raise EvidenceRejected("EVIDENCE_INCONCLUSIVE")
+        except EvidenceRejected:
+            raise EvidenceRejected("EVIDENCE_INCONCLUSIVE") from None
     if not required.issubset({item.evidence_class for item in evidence}):
         raise EvidenceRejected("EVIDENCE_REQUIRED")
