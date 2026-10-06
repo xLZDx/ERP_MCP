@@ -29,6 +29,9 @@ runbooks; and document consistency CI gate. Local suite is now `199 passed, 9 sk
 These are offline contract proofs and do not claim live 1C or production capacity. Production GO
 remains NO-GO.
 
+Hosted confirmation: run `37442318470` PASS on `7e30ef4`; `test` and `odata-upstream` passed,
+including the autonomous closure harnesses, full pytest, pinned image scans and SBOM/provenance.
+
 Follow-up unblocked batch hosted verification: run `37439573762` PASS on `4e63412` for both
 required jobs.
 

@@ -12,6 +12,8 @@ alert/report-reference CI gates, and operational artifact tests. This does not s
 production-like rehearsal, live 1C semantic validation, native-report reconciliation, or release
 approval. DoD remains PARTIAL and production GO remains NO-GO.
 
+Hosted confirmation: run `37442318470` PASS on `7e30ef4`; both required CI jobs passed.
+
 Hosted confirmation: run `37440714147` PASS on `74d1a4d`; `test` and `odata-upstream` both passed.
 
 Autonomous non-production closure: items 1–7, 9 and 10 now have executable offline harnesses,
