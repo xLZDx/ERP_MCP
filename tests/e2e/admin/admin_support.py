@@ -39,6 +39,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 FAULT_SCRIPT = ROOT / "scripts" / "e2e" / "fault.ps1"
+LOG_DIR = ROOT / ".e2e" / "logs"
+JWT_LIKE = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.")
 SESSION_COOKIE = "erp_mcp_admin_session"
 SECRET_REFS = {"username": "FAKE1C_USERNAME", "password": "FAKE1C_PASSWORD"}
 STEP_UP_MAX_AGE = 120  # seconds; the gateway accepts 300, stay well inside

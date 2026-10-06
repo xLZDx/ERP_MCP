@@ -19,4 +19,4 @@
 
 - Decision: the Admin suite runs on seed mode bootstrap-only; source, companies, role bindings and grants are created through /admin/ by the `world` fixture (tests/e2e/admin/admin_support.py). The suite fails loudly (never skips) when the environment is not pristine.
 - Decision: contract rows whose evidence the product does not currently produce (login/logout audit rows for A01, audit trail for 401 denials in A03/A04) are asserted strictly in their own tests so a failure is visible and classified, not weakened.
-- Evidence: batch 1 (A01-A15) collects cleanly and is ruff-clean; not yet executed against the environment (lane A owns the ports).
+- Evidence: batches so far (A01-A33, A42) collect cleanly and are ruff-clean; not yet executed against the environment (lane A owns the ports).
