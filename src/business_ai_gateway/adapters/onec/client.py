@@ -71,13 +71,16 @@ class OneCReadClient:
         url = self._url(source, relative)
 
         for attempt in range(3):
-            async with self._client.stream(
-                "GET",
-                url,
-                params=params,
-                headers={"Accept": accept},
-                auth=auth,
-            ) as response:
+            try:
+                request = self._client.build_request(
+                    "GET", url, params=params, headers={"Accept": accept}
+                )
+                response = await self._client.send(request, stream=True, auth=auth)
+            except httpx.TimeoutException:
+                raise OneCTransportError("SOURCE_TIMEOUT") from None
+            except httpx.RequestError:
+                raise OneCTransportError("SOURCE_NETWORK_ERROR") from None
+            try:
                 if response.status_code in self.RETRYABLE and attempt < 2:
                     retry_after = response.headers.get("Retry-After")
                     delay = 0.25 * (2**attempt)
@@ -86,7 +89,8 @@ class OneCReadClient:
                     await response.aclose()
                     await asyncio.sleep(delay)
                     continue
-                response.raise_for_status()
+                if response.is_error:
+                    raise OneCTransportError(f"1C_UPSTREAM_HTTP_{response.status_code}")
                 data = bytearray()
                 async for chunk in response.aiter_bytes():
                     data.extend(chunk)
@@ -95,6 +99,8 @@ class OneCReadClient:
                             f"response exceeded {self.max_response_bytes} bytes"
                         )
                 return bytes(data)
+            finally:
+                await response.aclose()
 
         raise OneCTransportError("unreachable retry state")
 

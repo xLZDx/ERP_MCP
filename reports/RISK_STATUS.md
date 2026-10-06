@@ -1,5 +1,11 @@
 # Risk status
 
+## Current authoritative checkpoint — 2026-10-06
+
+Last hosted candidate baseline: `b6df856ef518a5a972f2a8141fb87cbdc0432ea8`, PR #11 Draft, CI `37425137186` PASS. Current local uncommitted work is not represented in that CI. Focused security tests (15) pass, including no raw audit query persistence and sanitized upstream errors.
+
+Still OPEN: R-04 SSRF/DNS rebinding/effective egress restriction (critical); R-05 end-to-end secret/log/trace leak and production rotation; R-09 clean dependency/image vulnerability results and provenance (pending scan); R-13 full controlled load proof; R-17/R-18 dependency failure matrix; accounting reconciliation risks R-01/R-23. Synthetic tests are not production evidence. Production GO remains NO-GO and no risk acceptance is inferred.
+
 Assessed: 2026-10-06. Source register: `docs/RISK_REGISTER.md`.
 
 ## Current integrated assessment

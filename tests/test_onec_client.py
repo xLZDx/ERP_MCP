@@ -1,3 +1,4 @@
+import httpx
 import pytest
 
 from business_ai_gateway.adapters.onec.client import OneCReadClient, OneCTransportError
@@ -28,6 +29,53 @@ def test_write_methods_do_not_exist():
     }
     for verb in ("post", "put", "patch", "delete"):
         assert verb not in public
+
+
+@pytest.mark.asyncio
+async def test_upstream_http_error_does_not_expose_url_or_query_values():
+    async def handler(request):
+        return httpx.Response(500, request=request, text="private backend detail")
+
+    client = OneCReadClient(
+        timeout_seconds=1,
+        max_response_bytes=1000,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        with pytest.raises(OneCTransportError, match="1C_UPSTREAM_HTTP_500") as raised:
+            await client.get_bytes(
+                source(),
+                "Catalog_Organizations",
+                username=None,
+                password=None,
+                params={"$filter": "SECRET-ACCOUNT-7741"},
+            )
+        assert "SECRET-ACCOUNT-7741" not in str(raised.value)
+        assert "private backend detail" not in str(raised.value)
+        assert raised.value.__cause__ is None
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_upstream_network_error_is_mapped_without_chaining_request_url():
+    async def handler(request):
+        raise httpx.ConnectError("SECRET-CONNECTION-DETAIL", request=request)
+
+    client = OneCReadClient(
+        timeout_seconds=1,
+        max_response_bytes=1000,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        with pytest.raises(OneCTransportError, match="SOURCE_NETWORK_ERROR") as raised:
+            await client.get_bytes(
+                source(), "Catalog_Organizations", username=None, password=None
+            )
+        assert "SECRET-CONNECTION-DETAIL" not in str(raised.value)
+        assert raised.value.__cause__ is None
+    finally:
+        await client.close()
 
 
 @pytest.mark.asyncio

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     oauth_required_scope: str = "onec:read"
     oauth_jwks_url: str | None = None
     oauth_algorithms: str = "RS256"
+    oauth_jwks_timeout_seconds: float = Field(default=3.0, gt=0, le=10)
+    oauth_jwks_cache_ttl_seconds: int = Field(default=300, ge=1, le=3600)
+    oauth_jwks_refresh_cooldown_seconds: float = Field(default=1.0, ge=0, le=30)
 
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None

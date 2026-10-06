@@ -106,8 +106,8 @@ class ODataSidecarClient:
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError
             return value
-        except (IndexError, KeyError, TypeError, ValueError) as exc:
-            raise ODataSidecarError("OData sidecar returned invalid count") from exc
+        except (IndexError, KeyError, TypeError, ValueError):
+            raise ODataSidecarError("OData sidecar returned invalid count") from None
 
     async def get(
         self,
@@ -254,16 +254,16 @@ class ODataSidecarClient:
                     body.extend(chunk)
                     if len(body) > self.max_response_bytes:
                         raise ODataSidecarError("OData sidecar response exceeded configured limit")
-        except httpx.HTTPError as exc:
-            raise ODataSidecarError("OData sidecar is unavailable") from exc
+        except httpx.HTTPError:
+            raise ODataSidecarError("OData sidecar is unavailable") from None
         try:
             envelope = json.loads(body)
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             if response.status_code != 200:
                 raise ODataSidecarError(
                     f"OData sidecar returned HTTP {response.status_code}"
-                ) from exc
-            raise ODataSidecarError("OData sidecar returned invalid JSON") from exc
+                ) from None
+            raise ODataSidecarError("OData sidecar returned invalid JSON") from None
         if response.status_code != 200:
             error = envelope.get("error") if isinstance(envelope, dict) else None
             code = error.get("code") if isinstance(error, dict) else None

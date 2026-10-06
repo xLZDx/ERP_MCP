@@ -2,6 +2,17 @@
 
 Last updated: 2026-10-06
 
+## Current authoritative state — autonomous local closure
+
+- Working tree: `D:/Repo/ERP_MCP-integration-candidate`, branch `integration/1c-mvp-production-candidate`.
+- Last committed/hosted-verification baseline: `b6df856ef518a5a972f2a8141fb87cbdc0432ea8`; PR #11 remains OPEN/Draft. No merge/main write is authorized.
+- A new local, uncommitted hardening batch is in progress: pinned Python/Node bases; uv dependency/runtime locks and CI SBOM scan/provenance wiring; bounded JWKS behavior; bounded ACL-first fan-out and synthetic load drill; raw-query audit suppression and sanitized 1C transport failures.
+- Current checks: Python full suite `146 passed, 8 skipped`; Ruff/Bandit/compileall pass; pip-audit clean; OData sidecar contracts `11/11`; both pinned final container images pass Trivy at all severities with no suppressions; image builds/import and sidecar health/runtime inventory pass. Synthetic fan-out/load exercise passed at 30/50/100/150 sources. CI has not yet verified this uncommitted batch.
+- A pure synthetic AR/AP aging bucket contract and boundary/malformed-input tests have now been added; it is not wired to real source tools and no production mapping is inferred.
+- Open local gates: hosted CI/SBOM/provenance confirmation, structured observability, full dependency failure injection, SSRF/DNS rebinding-safe egress, rollback/deploy/runbooks, and review of the Python 3.14/Node 26 final-runtime vs Python 3.12/Node 24 upstream build split.
+- External-only proof (real 1C metadata/configuration and native report reconciliation, production IdP/secrets/network, Windows COM runtime and operator/release approvals) remains distinct and cannot be fabricated. Production GO remains NO-GO.
+- All following older branch/head/PR statements are historical snapshots, not current state.
+
 ## Current authoritative state — integration recovery
 
 - Date: 2026-10-06. Verified main: `8481c0e7c794fc2474efb1b56044363043608698`.

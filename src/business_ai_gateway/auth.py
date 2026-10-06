@@ -16,9 +16,14 @@ class JWTTokenVerifier(TokenVerifier):
         self.settings = settings
         self._jwks = jwt.PyJWKClient(
             settings.oauth_jwks_url,
-            cache_keys=True,
-            lifespan=300,
+            cache_jwk_set=True,
+            # Individual-key LRU caching is deliberately disabled: it has no TTL and
+            # would keep removed/rotated keys usable past the bounded JWKS set age.
+            lifespan=settings.oauth_jwks_cache_ttl_seconds,
+            timeout=settings.oauth_jwks_timeout_seconds,
         )
+        # Bound forced refreshes caused by unknown `kid` values to prevent IdP request floods.
+        self._jwks.cooldown_duration = settings.oauth_jwks_refresh_cooldown_seconds
 
     @staticmethod
     def _scopes(claims: dict[str, Any]) -> list[str]:

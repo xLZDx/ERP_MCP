@@ -1,5 +1,11 @@
 # Definition of Done status
 
+## Current authoritative checkpoint — 2026-10-06
+
+Committed baseline `b6df856ef518a5a972f2a8141fb87cbdc0432ea8` / PR #11 Draft had hosted run `37425137186` PASS. The following local uncommitted batch is not covered by that run. Current local evidence: Python `146 passed, 8 skipped`; pinned OData client `428 passed, 1 skipped`; metadata `53 passed`; sidecar contract `11/11`; Ruff, Bandit, compileall, lock reproduction and pip-audit pass; gateway and sidecar final images build/import/health-check and pass Trivy across UNKNOWN–CRITICAL with no suppressions. Synthetic ACL-first fan-out/load and AR/AP aging fixtures pass. Overall DoD remains PARTIAL; no production gate is promoted.
+
+Open locally verifiable closure includes hosted CI/artifact confirmation for the new locks/SBOM/provenance, structured telemetry, complete dependency outage matrix, SSRF/DNS rebinding protection, deployment/rollback/runbooks and wiring aging behind a validated semantic profile. External evidence still required: real 1C source capability/configuration and native-report reconciliation; production IdP/network/secrets; Windows COM execution and operator/release approval. PR #11 stays Draft; no merge was performed.
+
 Assessed 2026-10-06 on candidate `fa863986b16d9aed39b27f2a6d4c6c1e85de90f1`, combining main `8481c0e`,
 the #2–#8 stack and independent #9/#10 follow-ups. PR #11 remains Draft; hosted candidate run
 `37424817213` passed both `test` and `odata-upstream`.

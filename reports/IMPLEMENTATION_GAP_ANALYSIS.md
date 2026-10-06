@@ -2,6 +2,12 @@
 
 Assessment date: 2026-10-06
 
+## Current authoritative checkpoint — 2026-10-06
+
+The latest committed candidate is `b6df856ef518a5a972f2a8141fb87cbdc0432ea8` on `integration/1c-mvp-production-candidate`; PR #11 remains Draft and the hosted run `37425137186` passed its then-current code. A subsequent uncommitted local batch is not covered by that run. Current local batch evidence: Python `146 passed, 8 skipped`; Ruff/Bandit/compileall/pip-audit pass; sidecar contracts 11/11; pinned Chainguard final images pass Trivy on UNKNOWN through CRITICAL with no suppressions; synthetic fan-out portfolio exercise passes; synthetic AR/AP bucket contract exists without source wiring.
+
+Local work still in scope: hosted lock/image/SBOM/provenance verification; structured logs/traces and dependency metrics; failure injection; DNS-rebinding-safe network egress; deployment/rollback/runbooks; integration of synthetic AR/AP fixtures with an evidence-gated semantic profile. External proof remains real 1C source metadata/configuration and native-report reconciliation, production IdP/network/secrets, and Windows COM runtime/operator release authority. Do not mark these gates DONE from synthetic fixtures. Production GO is NO-GO.
+
 ## Current integration gaps
 
 Integration from main `8481c0e` includes the #2–#8 stack plus independent #9/#10 tests.

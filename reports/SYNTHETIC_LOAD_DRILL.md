@@ -1,5 +1,20 @@
 # Synthetic ACL load drill
 
+## Current bounded fan-out exercise — local synthetic only
+
+The additional `scripts/fanout_load_drill.py` exercises PostgreSQL company ACL → Redis rate-limit
+check → pinned OData adapter contract → Fake1C for portfolio sizes 30/50/100/150. Each portfolio
+uses batches of at most 16 sources, global concurrency 20 and per-source concurrency 2. In the
+latest local run: DB pool peak 10/10 (acquire p50 0.040 ms, p95 13.177 ms), Redis check p50 8.306
+ms/p95 16.290 ms; 318 synthetic reads succeeded, 12 expected partial failures (one ACL denial,
+one timeout, one malformed result at each portfolio size), and the denied adapter was dispatched
+zero times. Measured end-to-end portfolio throughput ranged 29.60–125.96 sources/sec; p95 batch
+latency ranged 128.859–180.321 ms. Peak Python traced allocation was 3,231,459 bytes.
+
+These are one shared local host run, not a capacity/SLO claim. Synthetic Fake1C never substitutes
+for production source timing or 1C reconciliation. CI re-runs the same correctness/concurrency
+exercise after the follow-up is integrated.
+
 Assessed 2026-10-06 against the local PostgreSQL 16 candidate database. This drill invokes only
 `Registry.list_allowed`; it does not call an adapter, sidecar, or 1C. It creates 150 synthetic
 source/company pairs, grows the principal's grant set through 30/50/100/150, and runs 32 concurrent

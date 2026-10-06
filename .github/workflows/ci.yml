@@ -20,7 +20,7 @@ jobs:
           docker run --rm --tmpfs /work:exec,size=4g
           -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
           -v "$GITHUB_WORKSPACE/adapters/odata-sidecar:/sidecar:ro"
-          -w /work node:24.18.0-alpine
+          -w /work node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
           sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
           cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
           corepack pnpm install --frozen-lockfile &&
@@ -32,7 +32,7 @@ jobs:
       - name: Build and smoke-test the non-root sidecar image
         run: |
           docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
-          docker run --rm -v "$GITHUB_WORKSPACE/scripts/audit_node_runtime.mjs:/audit.mjs:ro" erp-mcp-odata-sidecar:ci node /audit.mjs
+          docker run --rm --entrypoint /usr/bin/node -v "$GITHUB_WORKSPACE/scripts/audit_node_runtime.mjs:/audit.mjs:ro" erp-mcp-odata-sidecar:ci /audit.mjs
           token="$(openssl rand -hex 32)"
           docker run -d --name erp-mcp-sidecar-ci \
             -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
@@ -46,9 +46,48 @@ jobs:
             sleep 1
           done
           [ "$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)" = healthy ]
-          [ "$(docker exec erp-mcp-sidecar-ci id -u)" = 10001 ]
-          docker exec erp-mcp-sidecar-ci node -e \
+          [ "$(docker inspect --format '{{.Config.User}}' erp-mcp-sidecar-ci)" = "65532:65532" ]
+          docker exec erp-mcp-sidecar-ci /usr/bin/node -e \
             "fetch('http://127.0.0.1:8765/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      - name: Generate and scan OData sidecar SBOM/image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: erp-mcp-odata-sidecar:ci
+          format: cyclonedx
+          output: ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Scan all sidecar OS/runtime advisories without suppression
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: erp-mcp-odata-sidecar:ci
+          format: table
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Record OData image digest and dependency provenance
+        run: >-
+          python scripts/write_image_provenance.py
+          --image erp-mcp-odata-sidecar:ci
+          --base-image "build=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd;runtime=cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096"
+          --lock vendor/reference/1c-odata-v3/pnpm-lock.yaml
+          --upstream-sha cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5
+          --sbom ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+          --output ${{ runner.temp }}/erp-mcp-odata-sidecar-provenance.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: odata-sidecar-sbom-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+            ${{ runner.temp }}/erp-mcp-odata-sidecar-provenance.json
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest
@@ -80,8 +119,15 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
-      - run: python -m pip install --upgrade pip
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: 0.12.23
+      - name: Verify exact Python runtime lock
+        run: |
+          uv lock --check
+          uv export --locked --no-dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/requirements-runtime.lock"
+          python -c 'from pathlib import Path; import sys; current=Path("requirements-runtime.lock").read_text().splitlines()[2:]; generated=Path(sys.argv[1]).read_text().splitlines()[2:]; sys.exit(0 if current == generated else 1)' "$RUNNER_TEMP/requirements-runtime.lock"
+      - run: uv sync --locked --extra dev
       - run: ruff check .
       - run: bandit -q -r src
       - run: python -m compileall -q src scripts testbed
@@ -107,8 +153,55 @@ jobs:
       - run: python scripts/acl_load_drill.py
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: python scripts/fanout_load_drill.py
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+          BAG_REDIS_URL: redis://localhost:6379/0
       - run: python scripts/postgres_restore_drill.py
       - run: pytest
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: pip-audit
+      - name: Build the exact-locked Python gateway image
+        run: |
+          docker build -t erp-mcp-gateway:ci .
+          docker run --rm --entrypoint /usr/bin/python erp-mcp-gateway:ci -c \
+            "import business_ai_gateway.app, asyncpg, httpx, jwt; print('gateway runtime imports PASS')"
+      - name: Generate and scan gateway SBOM/image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: erp-mcp-gateway:ci
+          format: cyclonedx
+          output: ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Scan all gateway OS/runtime advisories without suppression
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: erp-mcp-gateway:ci
+          format: table
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Record gateway image digest and dependency provenance
+        run: >-
+          python scripts/write_image_provenance.py
+          --image erp-mcp-gateway:ci
+          --base-image "build=python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8;runtime=cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84"
+          --lock requirements-runtime.lock
+          --sbom ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+          --output ${{ runner.temp }}/erp-mcp-gateway-provenance.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gateway-sbom-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+            ${{ runner.temp }}/erp-mcp-gateway-provenance.json
+          if-no-files-found: error

@@ -80,9 +80,8 @@ class Audit:
             source_id,
             outcome,
             query_fingerprint(query),
-            json.dumps(query, ensure_ascii=False, default=str)
-            if self.include_query and query
-            else None,
+            # Never persist raw filters: accounting queries may contain sensitive data.
+            None,
             returned_items,
             elapsed_ms,
             detail_code,

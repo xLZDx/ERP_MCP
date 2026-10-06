@@ -90,6 +90,24 @@ async def test_audit_generates_request_id_when_caller_does_not_supply_one():
 
 
 @pytest.mark.asyncio
+async def test_audit_never_persists_raw_query_even_when_legacy_flag_is_enabled():
+    pool = FakePool()
+    query = {"filter": "Account eq 'SECRET-ACCOUNT-7741'", "token": "SECRET-TOKEN"}
+    await Audit(FakeDatabase(pool), include_query=True).write(
+        principal=Principal("subject", "client", frozenset(), frozenset(), {}),
+        tool="onec_read",
+        source_id="source-1",
+        outcome="success",
+        started_at=0,
+        query=query,
+    )
+    assert pool.args[6] is not None
+    assert pool.args[7] is None
+    assert "SECRET-ACCOUNT-7741" not in repr(pool.args)
+    assert "SECRET-TOKEN" not in repr(pool.args)
+
+
+@pytest.mark.asyncio
 async def test_audit_middleware_shares_one_correlation_id_and_isolates_requests():
     captured = []
     middleware = AuditCorrelationMiddleware()

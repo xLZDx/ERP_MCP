@@ -378,6 +378,7 @@ async def test_sidecar_client_bounds_response_and_sanitizes_upstream_error():
                 skip=0,
             )
         assert "secret upstream detail" not in str(error.value)
+        assert error.value.__cause__ is None
     finally:
         await client.close()
 
