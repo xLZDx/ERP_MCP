@@ -13,3 +13,4 @@ dist/
 build/
 *.egg-info/
 coverage.xml
+.e2e/
