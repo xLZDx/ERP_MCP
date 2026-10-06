@@ -379,7 +379,7 @@ Ferma:
 - global accounting semantics based solely on Russian default chart-of-accounts assumptions;
 - GPL/AGPL source copied into core without explicit licensing decision.
 
-## 11. Admin Control Center extension
+## 13. Admin Control Center extension
 
 The browser administration plane is a same-origin UI/BFF layered beside, not inside, the MCP authorization model.
 
@@ -390,3 +390,15 @@ Read operations use the control-plane read model. Mutations use the separate bus
 Admin platform roles are fixed initial roles: PLATFORM_ADMIN, SOURCE_ADMIN, ACCESS_ADMIN, PROFILE_ADMIN and AUDITOR. They are independent of business roles such as ACCOUNTANT or EXECUTIVE.
 
 Company-aware data access is exposed only through onec_company_read. It resolves the authorized company, checks business capability when enabled, requires acknowledged current metadata, selects a VALIDATED semantic profile/company-scope mapping, verifies the mapped company property in live metadata, then injects the company predicate before adapter execution.
+
+The Admin probe uses a separate four-slot pool with a 45-second deadline and pins an approved
+numeric IP with the original Host/TLS identity. Capability refresh uses that approved adapter.
+Policy, idempotency outcome and success audit commit together; savepoints retain failed keys
+and failure audit without committing failed policy writes. Runtime capability observations
+retain the existing restricted runtime DB path and can be refreshed after an audit failure.
+
+Admin lists use bounded offset pagination (default 50, maximum 200) and source filters.
+Effective access is queried for one exact principal/source, with at most 200 companies and 50
+grant evidence entries per company; all matching grants still determine deny precedence.
+Group membership uses verified caller claims or a future trusted directory. Other subjects'
+memberships remain unknown. Company navigation expansion is unavailable until separately proven.

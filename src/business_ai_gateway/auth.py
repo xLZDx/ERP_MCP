@@ -6,6 +6,7 @@ from typing import Any
 import jwt
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 
+from .principal import claim_groups
 from .settings import Settings
 
 
@@ -28,8 +29,9 @@ class JWTTokenVerifier(TokenVerifier):
             raise ValueError("oauth audience required")
         self._jwks = jwt.PyJWKClient(
             settings.oauth_jwks_url,
-            cache_keys=True,
+            cache_keys=False,
             lifespan=300,
+            timeout=10,
         )
 
     @staticmethod
@@ -63,6 +65,10 @@ class JWTTokenVerifier(TokenVerifier):
 
         subject = claims.get("sub")
         if not isinstance(subject, str) or not subject.strip():
+            return None
+        try:
+            claim_groups(claims)
+        except PermissionError:
             return None
         scopes = self._scopes(claims)
         if self.required_scope not in scopes:

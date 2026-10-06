@@ -60,3 +60,21 @@ class Database:
             "elevated", "privileged_member", "mutable_audit", "can_delete", "broad_drift_update", "owns_schema_objects"
         )):
             raise RuntimeError("admin control database role violates least-privilege contract")
+
+    async def assert_runtime_role(self):
+        row = await self.require_pool().fetchrow("""
+            SELECT pg_has_role(current_user, 'business_ai_app', 'USAGE') AS runtime_member,
+                   EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN (current_user, session_user)
+                     AND (r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolbypassrls OR r.rolreplication)) AS elevated,
+                   EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN
+                     ('business_ai_owner','business_ai_admin','business_ai_control_api')
+                     AND pg_has_role(session_user, r.oid, 'MEMBER')) AS privileged_member,
+                   has_table_privilege(current_user, 'bag.sources', 'INSERT,UPDATE,DELETE') AS mutable_sources,
+                   has_table_privilege(current_user, 'bag.access_grants', 'INSERT,UPDATE,DELETE') AS mutable_grants,
+                   has_table_privilege(current_user, 'bag.companies', 'INSERT,UPDATE,DELETE') AS mutable_companies,
+                   has_table_privilege(current_user, 'bag.audit_events', 'UPDATE,DELETE') AS mutable_audit
+        """)
+        if not row["runtime_member"] or any(row[key] for key in (
+            "elevated", "privileged_member", "mutable_sources", "mutable_grants", "mutable_companies", "mutable_audit"
+        )):
+            raise RuntimeError("runtime database role violates least-privilege contract")

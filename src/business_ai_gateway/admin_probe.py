@@ -52,6 +52,15 @@ def _split_csv(value: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
+def safe_capability_summary(capabilities):
+    evidence = {}
+    for key in ("metadata", "json_probe", "atom_probe", "expand_probe", "read_probe"):
+        value = capabilities.evidence.get(key)
+        if isinstance(value, str):
+            evidence[key] = "ok" if value == "ok" or value.startswith("ok:") else "unavailable"
+    return replace(capabilities, evidence=evidence)
+
+
 class SourceEgressPolicy:
     def __init__(self, *, allowed_hosts: str, allowed_cidrs: str):
         self.allowed_hosts = frozenset(item.casefold() for item in _split_csv(allowed_hosts))
@@ -167,13 +176,8 @@ class AdminSourceProbe:
                 raise SourceEgressDenied("source metadata unavailable")
 
         safe_capabilities = replace(
-            capabilities,
+            safe_capability_summary(capabilities),
             source_id="candidate",
-            evidence={
-                key: value
-                for key, value in capabilities.evidence.items()
-                if isinstance(value, (str, int, float, bool, type(None)))
-            },
             register_capabilities={},
         ).as_dict()
         return {

@@ -24,6 +24,9 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
                  coalesce(g.has_deny, false) AS has_deny,
                  coalesce(g.has_allow, false) AS has_allow,
                  coalesce(g.grants, '[]'::jsonb) AS matching_grants,
+                 coalesce(g.grant_count, 0) AS grant_count,
+                 coalesce(g.has_direct, false) AS has_direct,
+                 coalesce(g.has_inherited, false) AS has_inherited,
                  EXISTS (
                    SELECT 1 FROM bag.company_scope_mappings m
                    JOIN bag.semantic_profiles p ON p.profile_id=m.profile_id
@@ -36,28 +39,29 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
           LEFT JOIN LATERAL (
             SELECT bool_or(a.effect='deny') AS has_deny,
                    bool_or(a.effect='allow') AS has_allow,
+                   count(*) AS grant_count,
+                   bool_or(a.principal_kind=$1 AND a.principal_id=$2) AS has_direct,
+                   bool_or(NOT (a.principal_kind=$1 AND a.principal_id=$2)) AS has_inherited,
                    jsonb_agg(jsonb_build_object(
                      'grant_id', a.grant_id, 'principal_kind', a.principal_kind,
                      'principal_id', a.principal_id, 'effect', a.effect,
                      'scope', CASE WHEN a.company_id IS NULL THEN 'source-wide' ELSE 'company' END,
                      'inheritance', CASE WHEN a.principal_kind=$1 AND a.principal_id=$2
                         THEN 'direct' ELSE 'inherited' END
-                   ) ORDER BY a.grant_id) AS grants
-            FROM bag.access_grants a
-            WHERE (a.source_id=c.source_id OR a.all_sources)
+                   ) ORDER BY a.grant_id) FILTER (WHERE a.evidence_rank<=50) AS grants
+            FROM (SELECT a.*, row_number() OVER (ORDER BY (a.effect='deny') DESC, a.grant_id) AS evidence_rank
+            FROM bag.access_grants a WHERE (a.source_id=c.source_id OR a.all_sources)
               AND (a.company_id IS NULL OR a.company_id=c.company_id)
               AND a.revoked_at IS NULL AND (a.expires_at IS NULL OR a.expires_at>now())
               AND ((a.principal_kind=$1 AND a.principal_id=$2)
-                OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))
+                OR (a.principal_kind='group' AND a.principal_id=ANY($3::text[])))) a
           ) g ON true
           WHERE c.source_id=$4
         )
         SELECT * FROM explained
         WHERE ($6='' OR ($6='deny' AND has_deny) OR ($6='allow' AND has_allow AND NOT has_deny)
                         OR ($6='none' AND NOT has_allow AND NOT has_deny))
-          AND ($7='' OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements(matching_grants) a WHERE a->>'inheritance'=$7
-          ))
+          AND ($7='' OR ($7='direct' AND has_direct) OR ($7='inherited' AND has_inherited))
         ORDER BY company_id LIMIT $8 OFFSET $9
         """,
         kind, principal_id, groups, source_id, entity_set, effect, inheritance, limit + 1, offset,
@@ -84,6 +88,8 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
                 )
             ),
             "matching_grants": grants,
+            "matching_grant_count": row["grant_count"],
+            "grant_evidence_truncated": row["grant_count"] > 50,
             "company_operation": "mapping_candidate_requires_live_checks" if row["mapping_candidate"]
                                  else "unsupported_or_stale_mapping",
             "generic_onec_read": "requires_source_wide_grant",

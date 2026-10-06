@@ -35,7 +35,7 @@ class OneCReadClient:
                 max_keepalive_connections=20,
                 keepalive_expiry=30,
             ),
-            headers={"User-Agent": "erp-mcp/0.1"},
+            headers={"User-Agent": "erp-mcp/0.1", "Accept-Encoding": "identity"},
             transport=transport,
         )
 
@@ -87,6 +87,8 @@ class OneCReadClient:
                     await asyncio.sleep(delay)
                     continue
                 response.raise_for_status()
+                if response.headers.get("content-encoding", "identity").lower() != "identity":
+                    raise OneCTransportError("encoded response is unsupported by bounded native transport")
                 data = bytearray()
                 async for chunk in response.aiter_bytes():
                     data.extend(chunk)

@@ -1,5 +1,15 @@
 # Risk status
 
+## Admin Control Center continuation — 2026-10-06
+
+No unresolved BLOCKER/MAJOR code findings in the testable ACC scope after the adversarial pass.
+DB/Redis/HTTP/browser tests cover auth, session/CSRF, scope, idempotency, source pinning, data
+isolation, credential privilege rejection and restore. The earlier platform risk rows remain
+historical/target gates; this extension does not declare the whole ERP_MCP production-ready.
+Open target risks: real IdP claims/step-up and revocation, source/provider/network approval,
+real native reconciliation/1C pilot, production restore/PITR and load/SLO. UI inline CSP is a
+minor future hardening item. Flags remain default-off; only human feature-branch review is ready.
+
 Assessed: 2026-10-05. Source register: `docs/RISK_REGISTER.md`.
 
 | Risk | Status | Current control/evidence | Remaining action |

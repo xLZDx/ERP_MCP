@@ -64,6 +64,12 @@ OIDC state consumption and session refresh are atomic; concurrent logout cannot 
 Company-aware reads reject navigation expansion and unbalanced caller-filter delimiters;
 current live metadata is refreshed before applying a mapping.
 
+Runtime credentials must also satisfy the app contract without administrative DML/elevated
+membership. JWKS uses a five-minute set TTL, no indefinite per-key cache, and a ten-second
+fetch deadline. Malformed/distributed-overage group claims deny. Connection/ref changes stale
+validated profiles even with identical metadata. Delegated SOURCE_ADMIN cannot repoint
+connections/refs. Mutation JSON rejects non-string company IDs and non-integer versions.
+
 Production keeps Admin API/UI/mutations/business-capability enforcement disabled until the environment-specific prerequisites and bootstrap bindings are configured and verified.
 
 

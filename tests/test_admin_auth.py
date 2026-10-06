@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 
 import jwt
@@ -148,3 +149,47 @@ def test_admin_access_token_negative_cryptographic_cases(failure):
         claims.pop("sub")
     signing = make_keypair()[0] if failure == "signature" else private
     assert verifier._verify_sync(jwt.encode(claims, signing, algorithm="RS256")) is None
+
+
+def test_removed_signing_key_is_rejected_after_jwks_ttl(monkeypatch):
+    config = admin_settings()
+    verifier = JWTTokenVerifier(config, audience=config.admin_oauth_audience,
+                                required_scope=config.admin_oauth_required_scope)
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    replacement = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    old_key = {**json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(private.public_key())), "kid": "old", "use": "sig"}
+    new_key = {**json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(replacement.public_key())), "kid": "new", "use": "sig"}
+    keys = {"keys": [old_key]}
+    clock = [0]
+    monkeypatch.setattr("jwt.jwk_set_cache.time.monotonic", lambda: clock[0])
+
+    def fetch_data():
+        verifier._jwks.jwk_set_cache.put(keys)
+        return keys
+
+    monkeypatch.setattr(verifier._jwks, "fetch_data", fetch_data)
+    now = int(time.time())
+    token = jwt.encode({"iss": config.oauth_issuer, "aud": config.admin_oauth_audience, "scope": "erp_mcp:admin",
+                        "sub": "admin", "iat": now, "exp": now + 600}, private,
+                       algorithm="RS256", headers={"kid": "old"})
+    assert verifier._verify_sync(token) is not None
+    keys["keys"] = [new_key]
+    clock[0] = 301
+    assert verifier._verify_sync(token) is None
+
+
+@pytest.mark.parametrize("extra", [
+    {"groups": {"erp-ops": False}}, {"groups": [123]}, {"groups": True},
+    {"groups": ["erp-ops"], "_claim_names": {"groups": "remote"}}, {"hasgroups": True},
+])
+def test_malformed_or_incomplete_group_claims_cannot_create_permissions(extra):
+    private, public = make_keypair()
+    config = admin_settings()
+    verifier = JWTTokenVerifier(config, audience=config.admin_oauth_audience,
+                                required_scope=config.admin_oauth_required_scope)
+    verifier._jwks = FixedJWKS(public)
+    now = int(time.time())
+    raw = jwt.encode({"iss": config.oauth_issuer, "aud": config.admin_oauth_audience,
+                      "sub": "admin", "scope": "erp_mcp:admin", "iat": now, "exp": now + 300,
+                      **extra}, private, algorithm="RS256")
+    assert verifier._verify_sync(raw) is None

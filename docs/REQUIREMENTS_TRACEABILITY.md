@@ -48,10 +48,13 @@ requirement has no row here, update this matrix as part of the same change.
 
 | Req | Requirement | Primary design | Evidence / DoD |
 |---|---|---|---|
-| ACC-A1 | Admin identity uses distinct audience/scope and DB-backed platform roles | ADR-0007, Architecture §11 | Admin extension gate |
+| ACC-A1 | Admin identity uses distinct audience/scope and DB-backed platform roles | ADR-0007, Architecture §13 | Admin extension gate |
 | ACC-A2 | Browser tokens remain server-side; OIDC PKCE session + CSRF | Security Admin extension, Threat Model delta | Admin session/security tests |
 | ACC-A3 | Admin mutations are attributable, idempotent and exact-ID | Data Model §15, migration 009 | Admin audit/idempotency tests |
 | ACC-A4 | Source onboarding is egress-controlled and GET/HEAD-only | Security, admin source probe | SSRF/egress tests |
 | ACC-A5 | Platform role, data scope and business capability stay independent | RBAC design, migration 008/010 | Role/capability matrix |
 | ACC-A6 | Company-only access is enforced only through validated mapped operations | company_scope_mappings, onec_company_read | Company-scope runtime tests |
 | ACC-A7 | Runtime DB role cannot administer new policy tables | migrations 008-011 | DB privilege checker |
+| ACC-A8 | Bounded exact-principal access explanation labels unknown membership | Architecture §13 | PostgreSQL 151-company pagination/provenance test |
+| ACC-A9 | Platform-role changes require verified fresh step-up claims | Security, operations runbook | Role endpoint matrix and step-up negatives |
+| ACC-A10 | Browser lifecycle workflows retain retry identity and accessible controls | Live UI, operations runbook | Headless browser contract in CI |

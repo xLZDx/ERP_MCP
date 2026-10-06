@@ -81,7 +81,7 @@ async function render(){
    document.getElementById('root').innerHTML=shell(table('Audit events',all,[{h:'Time',f:i=>esc(i.occurred_at)},{h:'Stream',f:i=>tag(i.stream)},{h:'Actor',f:i=>esc(i.actor_subject||i.principal_subject)},{h:'Action',f:i=>esc(i.action||i.tool_name)},{h:'Source',f:i=>esc(i.source_id||'—')},{h:'Outcome',f:i=>tag(i.outcome,i.outcome==='success'?'ok':i.outcome==='denied'?'deny':'warn')}]));
   }
   document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{state.page=b.dataset.page;render()});
- }catch(e){if(e.message!=='AUTH_REQUIRED')document.getElementById('root').innerHTML='<div class="login"><div class="loginbox"><h2>Unable to load</h2><p class="error">'+esc(e.message)+'</p><button class="btn" onclick="location.reload()">Retry</button></div></div>'}
+ }catch(e){if(e.message!=='AUTH_REQUIRED')document.getElementById('root').innerHTML=shell('<div class="banner warn" role="alert">'+(e.message==='PLATFORM_ROLE_DENIED'?'Forbidden: your platform role does not permit this screen.':'Dependency unavailable or request failed. ')+esc(e.message)+'</div><button class="btn" onclick="render()">Retry</button>')}
 }
 async function resolvePrincipal(){const out=document.getElementById('principal_result');out.innerHTML='<p class="muted">Resolving?</p>';try{const x=await api('/admin/v1/principals/resolve?kind='+encodeURIComponent(val('p_kind'))+'&id='+encodeURIComponent(val('p_id')));out.innerHTML='<div class="banner" style="margin-top:12px"><b>'+esc(x.principal_kind)+' ? '+esc(x.principal_id)+'</b><br>Directory: '+esc(x.directory_status)+'<br>Platform roles: '+(x.platform_roles||[]).map(i=>tag(i.role_name,'ok')).join(' ')+'<br>Grants: '+(x.grants||[]).length+' ? Business assignments: '+(x.business_role_assignments||[]).length+' ? Capability overrides: '+(x.capability_overrides||[]).length+'</div>'}catch(e){out.innerHTML='<p class="error">'+esc(e.message)+'</p>'}}
 function modal(title,body,submit){document.getElementById('overlay').innerHTML='<div class="modalback"><section class="modal"><div class="modalh"><h2>'+title+'</h2><button class="btn" onclick="closeModal()">×</button></div><div class="form">'+body+'</div><div class="modalf"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="'+submit+'">Submit</button></div></section></div>'}
@@ -96,7 +96,7 @@ async function createGrant(){try{await api('/admin/v1/grants',{method:'POST',bod
 async function revokeGrant(id,version){const reason=prompt('Reason for revoke:');if(!reason)return;try{await api('/admin/v1/grants/'+encodeURIComponent(id)+'/revoke',{method:'POST',body:JSON.stringify({expected_version:version,reason})});toast('Grant revoked');render()}catch(e){toast(e.message,true)}}
 async function logout(){try{await api('/admin/logout',{method:'POST'});location.href='/admin/'}catch{location.href='/admin/'}}
 function toast(msg,bad=false){document.getElementById('toast').innerHTML='<div class="toast" style="'+(bad?'border-color:#82474a;background:#3a2023;color:#ffc0c0':'')+'">'+esc(msg)+'</div>';setTimeout(()=>document.getElementById('toast').innerHTML='',3000)}
-(async()=>{try{state.me=await api('/admin/v1/me');state.csrf=state.me.csrf_token;await render()}catch(e){if(e.message!=='AUTH_REQUIRED')showLogin()}})();
+(async()=>{try{state.me=await api('/admin/v1/me');state.csrf=state.me.csrf_token;await render()}catch(e){if(e.message!=='AUTH_REQUIRED')document.getElementById('root').innerHTML='<div class="login"><div class="loginbox"><h2>'+ (e.message==='PLATFORM_ROLE_DENIED'?'Access forbidden':'Administration unavailable')+'</h2><p role="alert">'+esc(e.message)+'</p><p>Contact your platform administrator if access is missing.</p><button class="btn" onclick="location.reload()">Retry</button><a class="btn" href="/admin/login">Sign in</a></div></div>'}})();
 </script>
 <style>
 :focus-visible{outline:3px solid #9bf0dc;outline-offset:3px}.form-error{white-space:pre-wrap}.sr-status{padding:10px}.workflow-help{color:#dcc18d}.nav button{min-height:44px}.field label{cursor:pointer}dialog{color:inherit}.modal h2{font-size:18px}textarea{min-height:90px}
@@ -113,11 +113,16 @@ api=async function(path,opts={}){
  const data=await baseApi(path,opts);if(data.next_offset!==null&&data.next_offset!==undefined)state.more=true;return data;
 };
 function permitted(role,source){return state.me?.mutations_enabled&&state.me.roles.some(r=>(r.role==='PLATFORM_ADMIN'||r.role===role)&&(!source||!r.source_id||r.source_id===source))}
+function globalSourceAdmin(){return state.me?.roles.some(r=>['PLATFORM_ADMIN','SOURCE_ADMIN'].includes(r.role)&&!r.source_id)}
 function operationButton(label,op,item,role,gate=true){
  if(!permitted(role,item.source_id)||!gate)return '';
  const index=state.records.push(item)-1;return '<button class="btn" data-op="'+op+'" data-record="'+index+'">'+label+'</button> ';
 }
+function policyState(item){return item.revoked_at?'Revoked':item.expires_at&&Date.parse(item.expires_at)<=Date.now()?'Expired':'Active'}
 table=function(title,items,cols){
+ if(['Access grants','Platform role bindings','Assignments','Capability overrides'].includes(title)){
+  cols=cols.filter(c=>c.h!=='State');cols=[...cols,{h:'State',f:i=>tag(policyState(i),policyState(i)==='Active'?'ok':'warn')},{h:'Expiry',f:i=>esc(i.expires_at||'No expiry')}];
+ }
  const actions={
  'Access grants':i=>i.revoked_at?'':operationButton('Revoke','grant-revoke',i,'ACCESS_ADMIN'),
  'Registered sources':i=>operationButton('Edit / disable','source',i,'SOURCE_ADMIN')+operationButton('Refresh metadata','refresh',i,'SOURCE_ADMIN'),
@@ -152,7 +157,7 @@ render=async function(){
  document.querySelectorAll('.nav button').forEach(b=>{b.setAttribute('aria-label',pages[b.dataset.page][0]);b.onclick=()=>{state.page=b.dataset.page;state.offset=0;render()}});
  if(!state.me.mutations_enabled)content.insertAdjacentHTML('afterbegin','<div class="banner warn">Read-only mode: administrative mutations are disabled.</div>');
  const pageRole={sources:'SOURCE_ADMIN',companies:'SOURCE_ADMIN',access:'ACCESS_ADMIN'}[state.page];
- document.querySelectorAll('.actions button').forEach(b=>{if(!state.me.mutations_enabled||(pageRole&&!permitted(pageRole)))b.disabled=true});
+ document.querySelectorAll('.actions button').forEach(b=>{if(!state.me.mutations_enabled||(pageRole&&!permitted(pageRole))||(state.page==='sources'&&!globalSourceAdmin()))b.disabled=true});
  if(listPaths.size&&state.page!=='identities'&&state.page!=='overview')content.insertAdjacentHTML('beforeend','<div class="actions" style="margin-top:14px"><button class="btn" onclick="pageBack()" '+(state.offset?'':'disabled')+'>Previous</button><span>Page '+(state.offset/50+1)+'</span><button class="btn" onclick="pageNext()" '+(state.more?'':'disabled')+'>Next</button></div>');
  labelForms();
 };
@@ -186,9 +191,9 @@ function workflowBody(){
  return body;
 }
 async function saveWorkflow(){const w=state.workflow;if(!w||w.busy)return;try{
- const body=workflowBody(),payload=JSON.stringify(body);if(w.payload!==null&&w.payload!==payload)w.key=crypto.randomUUID();w.payload=payload;w.busy=true;
+ const body=workflowBody(),payload=JSON.stringify(body);w.payload=payload;w.busy=true;
  document.querySelectorAll('.modalf button').forEach(b=>b.disabled=true);
- await api(w.path,{method:w.method,headers:{'Idempotency-Key':w.key},body:payload});closeModal();toast('Success: operation recorded in audit.');await render();
+ await api(w.path,{method:w.method,headers:{'Idempotency-Key':w.key},body:payload});w.busy=false;closeModal();toast('Success: operation recorded in audit.');await render();
  }catch(e){const box=document.getElementById('workflow_error');if(box)box.textContent=(e.message==='POLICY_VERSION_CONFLICT'?'Conflict: refresh the screen and review the current version. ':e.message==='STEP_UP_REQUIRED'?'Step-up required: sign in again using your approved IdP authentication level. ':'')+e.message;}finally{w.busy=false;document.querySelectorAll('.modalf button').forEach(b=>b.disabled=false)}}
 async function probeWorkflow(){try{const body=workflowBody();const x=await api('/admin/v1/source-probes',{method:'POST',body:JSON.stringify(body)});document.getElementById('workflow_error').textContent='Probe succeeded. Metadata fingerprint: '+x.capabilities.metadata_fingerprint}catch(e){document.getElementById('workflow_error').textContent=e.message}}
 sourceModal=function(){workflow('Connect 1C source','/admin/v1/sources',[inputField('source_id','Source ID'),inputField('display_name','Display name'),inputField('base_url','Approved OData URL'),inputField('username_secret_ref','Username secret reference'),inputField('password_secret_ref','Password secret reference')],{tags:[]},'POST','This registers a technical connection. Register business companies separately. Secrets stay server-side.')};
@@ -203,7 +208,7 @@ async function operate(op,item){
  const id=encodeURIComponent(item.source_id||''),profile=encodeURIComponent(item.profile_id||'');
  try{
  if(op==='profile-evidence'){const x=await api('/admin/v1/semantic-profiles/'+profile);modal('Profile evidence','<pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(x,null,2))+'</pre>','closeModal()');document.querySelector('.modalf button:last-child').textContent='Close';return}
- if(op==='source'){const x=await api('/admin/v1/sources/'+id);workflow('Edit source','/admin/v1/sources/'+id,[inputField('display_name','Display name'),inputField('base_url','Approved OData URL'),inputField('username_secret_ref','Username secret reference'),inputField('password_secret_ref','Password secret reference'),inputField('enabled','Enabled (true / false)','boolean')],{...x,expected_version:x.row_version},'PATCH','Disabling removes runtime access to this source. The server rechecks egress.');document.getElementById('wf_enabled').value=String(x.enabled)}
+ if(op==='source'){const x=await api('/admin/v1/sources/'+id);workflow('Edit source','/admin/v1/sources/'+id,[inputField('display_name','Display name'),inputField('base_url','Approved OData URL'),inputField('username_secret_ref','Username secret reference'),inputField('password_secret_ref','Password secret reference'),inputField('enabled','Enabled (true / false)','boolean')],{...x,expected_version:x.row_version},'PATCH','Disabling removes runtime access to this source. Connection target and secret-reference changes require global source administration.');document.getElementById('wf_enabled').value=String(x.enabled);if(!globalSourceAdmin())['base_url','username_secret_ref','password_secret_ref'].forEach(k=>document.getElementById('wf_'+k).readOnly=true)}
  if(op==='company'){const x=await api('/admin/v1/companies/'+encodeURIComponent(item.company_id));workflow('Edit company','/admin/v1/companies/'+encodeURIComponent(item.company_id),[inputField('display_name','Display name'),inputField('legal_name','Legal name'),inputField('country_code','Country code'),inputField('enabled','Enabled (true / false)','boolean')],{...x,expected_version:x.row_version},'PATCH','Source and external reference are immutable. Disabling removes runtime access to this company.');document.getElementById('wf_enabled').value=String(x.enabled)}
  if(op==='refresh')workflow('Refresh capabilities','/admin/v1/sources/'+id+'/capability-refresh',[],{},'POST','Refresh live metadata using the approved read-only connection.');
  if(op==='drift')workflow('Acknowledge current drift','/admin/v1/sources/'+id+'/drift-acknowledgements',[],{metadata_fingerprint:item.metadata_fingerprint},'POST','Only the exact current fingerprint is acknowledged. Stale semantic profiles still require revalidation.',item.metadata_fingerprint);
@@ -219,11 +224,11 @@ function accessForm(){return '<div class="card" style="margin-top:16px"><div cla
 async function explainAccess(offset){const out=document.getElementById('access_explanation');out.textContent='Loading…';try{
  const params=new URLSearchParams({kind:val('p_kind'),id:val('p_id'),source_id:val('ea_source'),entity_set:val('ea_entity'),effect:val('ea_effect'),inheritance:val('ea_inheritance'),limit:'50',offset:String(offset)});
  const x=await api('/admin/v1/effective-access?'+params);
- out.innerHTML='<p>Identity mode: '+esc(x.mode)+'; group membership: '+esc(x.group_membership)+'. Capability authorization and live metadata checks remain separate runtime gates.</p>'+baseTable('Company policy results',x.items,[{h:'Company',f:i=>esc(i.display_name)},{h:'ACL',f:i=>tag(i.data_acl)},{h:'Why',f:i=>esc(i.detail_code)},{h:'Grant evidence',f:i=>i.matching_grants.map(g=>esc(g.grant_id)+' / '+esc(g.effect)+' / '+esc(g.inheritance)+' / '+esc(g.scope)).join('<br>')},{h:'Company operation',f:i=>esc(i.company_operation)}])+(x.next_offset!==null?'<button class="btn" onclick="explainAccess('+x.next_offset+')">Next results</button>':'');
+ out.innerHTML='<p>Identity mode: '+esc(x.mode)+'; group membership: '+esc(x.group_membership)+'. Capability authorization and live metadata checks remain separate runtime gates.</p>'+baseTable('Company policy results',x.items,[{h:'Company',f:i=>esc(i.display_name)},{h:'ACL',f:i=>tag(i.data_acl)},{h:'Why',f:i=>esc(i.detail_code)},{h:'Grant evidence',f:i=>i.matching_grants.map(g=>esc(g.grant_id)+' / '+esc(g.effect)+' / '+esc(g.inheritance)+' / '+esc(g.scope)).join('<br>')+(i.grant_evidence_truncated?'<br>Evidence limited to 50; all '+esc(i.matching_grant_count)+' grants were evaluated. Denies are prioritized.':'')},{h:'Company operation',f:i=>esc(i.company_operation)}])+(x.next_offset!==null?'<button class="btn" onclick="explainAccess('+x.next_offset+')">Next results</button>':'');
  }catch(e){out.textContent=e.message}}
 let previousFocus=null;
 modal=function(title,body,submit){previousFocus=document.activeElement;baseModal(title,body,submit);const d=document.querySelector('.modal');d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.querySelector('h2').id='dialog_title';d.setAttribute('aria-labelledby','dialog_title');d.querySelector('.modalh button').setAttribute('aria-label','Close dialog');labelForms();d.querySelector('input,select,textarea,button')?.focus()};
-closeModal=function(){document.getElementById('overlay').innerHTML='';state.workflow=null;previousFocus?.focus()};
+closeModal=function(){if(state.workflow?.busy)return;document.getElementById('overlay').innerHTML='';state.workflow=null;previousFocus?.focus()};
 document.addEventListener('keydown',e=>{const d=document.querySelector('.modal');if(!d)return;if(e.key==='Escape'){e.preventDefault();closeModal()}if(e.key==='Tab'){const nodes=[...d.querySelectorAll('button:not(:disabled),input,select,textarea,a[href]')];const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 document.getElementById('toast').setAttribute('role','status');
 </script>

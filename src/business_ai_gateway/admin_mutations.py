@@ -135,6 +135,17 @@ class AdminMutationService:
         self.db = db
         self.production = production
 
+    async def _preflight_new_request(self, actor, key, reason, preflight):
+        _clean_reason(reason)
+        key = _clean_key(key)
+        if preflight is not None:
+            exists = await self.db.require_pool().fetchval(
+                "SELECT EXISTS(SELECT 1 FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2)",
+                actor.subject, key,
+            )
+            if not exists:
+                await preflight()
+
     async def _reserve(
         self,
         *,
@@ -181,41 +192,22 @@ class AdminMutationService:
         request_id: uuid.UUID,
         idempotency_key: str,
         code: str,
+        conn,
     ) -> None:
-        pool = self.db.require_pool()
-        async with pool.acquire() as conn, conn.transaction():
-            await conn.execute(
-                """
-                    UPDATE bag.admin_idempotency
-                    SET outcome='error', detail_code=$3, updated_at=now()
-                    WHERE actor_subject=$1 AND idempotency_key=$2 AND outcome='pending'
-                    """,
-                actor.subject,
-                idempotency_key,
-                code,
-            )
-            await conn.execute(
-                """
-                    INSERT INTO bag.admin_audit_events(
-                        event_id, request_id, actor_subject, actor_client_id,
-                        action, target_type, target_id, source_id, company_id,
-                        reason, idempotency_key, outcome, detail_code
-                    ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$13,$12)
-                    """,
-                uuid.uuid4(),
-                request_id,
-                actor.subject,
-                actor.client_id,
-                command,
-                target_type,
-                target_id,
-                source_id,
-                company_id,
-                reason,
-                idempotency_key,
-                code,
-                "conflict" if code == "POLICY_VERSION_CONFLICT" else "error",
-            )
+        await conn.execute(
+            """UPDATE bag.admin_idempotency SET outcome='error', detail_code=$3, updated_at=now()
+               WHERE actor_subject=$1 AND idempotency_key=$2 AND outcome='pending'""",
+            actor.subject, idempotency_key, code,
+        )
+        await conn.execute(
+            """INSERT INTO bag.admin_audit_events(
+                event_id, request_id, actor_subject, actor_client_id, action, target_type,
+                target_id, source_id, company_id, reason, idempotency_key, outcome, detail_code, policy_version
+               ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$13,$12,'admin-v1')""",
+            uuid.uuid4(), request_id, actor.subject, actor.client_id, command, target_type,
+            target_id, source_id, company_id, reason, idempotency_key, code,
+            "conflict" if code == "POLICY_VERSION_CONFLICT" else "error",
+        )
 
     async def _execute(
         self,
@@ -240,78 +232,91 @@ class AdminMutationService:
         ):
             raise AdminValidationError("invalid exact principal id")
         pool = self.db.require_pool()
-        try:
-            async with pool.acquire() as conn, conn.transaction():
-                # Reservation, domain write, result and success audit commit atomically.
-                # Concurrent identical requests wait for that commit and replay its result.
+        failure = None
+        async with pool.acquire() as conn, conn.transaction():
+            try:
                 replay = await self._reserve(
                     actor=actor, command=command, key=idempotency_key,
                     request={**request, "reason": reason}, conn=conn,
                 )
                 if replay is not None:
                     return replay
-                result = await mutation(conn)
-                safe_result = json.loads(json.dumps(result, default=str))
-                await conn.execute(
-                    """
-                        UPDATE bag.admin_idempotency
-                        SET outcome='success', result_json=$3::jsonb,
-                            detail_code=NULL, updated_at=now()
-                        WHERE actor_subject=$1 AND idempotency_key=$2
-                        """,
-                    actor.subject,
-                    idempotency_key,
-                    json.dumps(safe_result, ensure_ascii=False),
+            except AdminConflict as exc:
+                await self._record_failure(
+                    actor=actor, command=command, target_type=target_type, target_id=target_id,
+                    source_id=source_id, company_id=company_id, reason=reason, request_id=request_id,
+                    idempotency_key=idempotency_key, code=exc.code, conn=conn,
                 )
-                await conn.execute(
-                    """
-                        INSERT INTO bag.admin_audit_events(
-                            event_id, request_id, actor_subject, actor_client_id,
-                            action, target_type, target_id, source_id, company_id,
-                            reason, idempotency_key, before_fingerprint,
-                            after_fingerprint, safe_change_json, outcome
-                        ) VALUES(
-                            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,'success'
+                failure = exc
+            if failure is None:
+                try:
+                    # The savepoint retains the reservation when the domain write fails.
+                    # Successful policy/result/audit still share one outer transaction.
+                    async with conn.transaction():
+                        return await self._apply_mutation(
+                            conn=conn, actor=actor, command=command, target_type=target_type,
+                            target_id=target_id, source_id=source_id, company_id=company_id,
+                            reason=reason, request_id=request_id, idempotency_key=idempotency_key,
+                            mutation=mutation,
                         )
-                        """,
-                    uuid.uuid4(),
-                    request_id,
-                    actor.subject,
-                    actor.client_id,
-                    command,
-                    target_type,
-                    str(result.get("id", target_id)) if result.get("id", target_id) else None,
-                    source_id or result.get("source_id"),
-                    (
-                        company_id
-                        or (
-                            uuid.UUID(str(result["company_id"]))
-                            if result.get("company_id")
-                            else None
-                        )
-                    ),
-                    reason,
-                    idempotency_key,
-                    result.get("before_fingerprint"),
-                    _fingerprint(safe_result),
-                    json.dumps(safe_result, ensure_ascii=False),
+                except Exception as exc:  # noqa: BLE001 - persist failure, then re-raise after commit
+                    await self._record_failure(
+                        actor=actor, command=command, target_type=target_type, target_id=target_id,
+                        source_id=source_id, company_id=company_id, reason=reason, request_id=request_id,
+                        idempotency_key=idempotency_key, code=getattr(exc, "code", "ADMIN_MUTATION_ERROR"), conn=conn,
+                    )
+                    failure = exc
+        raise failure
+
+    async def _apply_mutation(self, *, conn, actor, command, target_type, target_id,
+                              source_id, company_id, reason, request_id, idempotency_key, mutation):
+        result = await mutation(conn)
+        safe_result = json.loads(json.dumps(result, default=str))
+        await conn.execute(
+            """
+                UPDATE bag.admin_idempotency
+                SET outcome='success', result_json=$3::jsonb,
+                    detail_code=NULL, updated_at=now()
+                WHERE actor_subject=$1 AND idempotency_key=$2
+                """,
+            actor.subject,
+            idempotency_key,
+            json.dumps(safe_result, ensure_ascii=False),
+        )
+        await conn.execute(
+            """
+                INSERT INTO bag.admin_audit_events(
+                    event_id, request_id, actor_subject, actor_client_id,
+                    action, target_type, target_id, source_id, company_id,
+                    reason, idempotency_key, before_fingerprint,
+                    after_fingerprint, safe_change_json, outcome, policy_version
+                ) VALUES(
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,'success','admin-v1'
                 )
-                return safe_result
-        except Exception as exc:
-            code = getattr(exc, "code", type(exc).__name__)
-            await self._record_failure(
-                actor=actor,
-                command=command,
-                target_type=target_type,
-                target_id=target_id,
-                source_id=source_id,
-                company_id=company_id,
-                reason=reason,
-                request_id=request_id,
-                idempotency_key=idempotency_key,
-                code=code,
-            )
-            raise
+                """,
+            uuid.uuid4(),
+            request_id,
+            actor.subject,
+            actor.client_id,
+            command,
+            target_type,
+            str(result.get("id", target_id)) if result.get("id", target_id) else None,
+            source_id or result.get("source_id"),
+            (
+                company_id
+                or (
+                    uuid.UUID(str(result["company_id"]))
+                    if result.get("company_id")
+                    else None
+                )
+            ),
+            reason,
+            idempotency_key,
+            result.get("before_fingerprint"),
+            _fingerprint(safe_result),
+            json.dumps(safe_result, ensure_ascii=False),
+        )
+        return safe_result
 
     async def record_admin_event(
         self,
@@ -337,8 +342,8 @@ class AdminMutationService:
             INSERT INTO bag.admin_audit_events(
                 event_id, request_id, actor_subject, actor_client_id,
                 action, target_type, target_id, source_id, company_id,
-                reason, safe_change_json, outcome, detail_code
-            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13)
+                reason, safe_change_json, outcome, detail_code, policy_version
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,'admin-v1')
             """,
             uuid.uuid4(),
             request_id,
@@ -735,6 +740,7 @@ class AdminMutationService:
         reason: str,
         request_id: uuid.UUID,
         idempotency_key: str,
+        preflight=None,
     ) -> dict[str, Any]:
         candidate = Source(
             id=source_id,
@@ -751,6 +757,7 @@ class AdminMutationService:
             entity_deny_patterns=(),
         )
         candidate.validate_runtime(production=self.production)
+        await self._preflight_new_request(actor, idempotency_key, reason, preflight)
         request = {
             "source_id": source_id,
             "display_name": display_name,
@@ -819,6 +826,7 @@ class AdminMutationService:
         request_id: uuid.UUID,
         idempotency_key: str,
         enabled: bool = True,
+        preflight=None,
     ) -> dict[str, Any]:
         candidate = Source(
             id=source_id,
@@ -835,6 +843,7 @@ class AdminMutationService:
             entity_deny_patterns=(),
         )
         candidate.validate_runtime(production=self.production)
+        await self._preflight_new_request(actor, idempotency_key, reason, preflight)
         request = {
             "source_id": source_id,
             "expected_version": expected_version,
@@ -847,6 +856,8 @@ class AdminMutationService:
         }
 
         async def mutation(conn):
+            before = await conn.fetchrow("""SELECT display_name, base_url, username_secret_ref,
+                password_secret_ref, tags, enabled, row_version FROM bag.sources WHERE source_id=$1 FOR UPDATE""", source_id)
             row = await conn.fetchrow(
                 """
                 UPDATE bag.sources
@@ -854,7 +865,8 @@ class AdminMutationService:
                     password_secret_ref=$6, tags=$7, read_only=true, enabled=$8,
                     row_version=row_version+1, updated_at=now()
                 WHERE source_id=$1 AND row_version=$2
-                RETURNING source_id, display_name, base_url, read_only,
+                RETURNING source_id, display_name, base_url, read_only, enabled,
+                          username_secret_ref, password_secret_ref, tags,
                           row_version, updated_at
                 """,
                 source_id,
@@ -874,12 +886,26 @@ class AdminMutationService:
                 if not exists:
                     raise AdminNotFound("source not found")
                 raise AdminConflict("source version changed")
+            connection_changed = any(before[key] != row[key] for key in (
+                "base_url", "username_secret_ref", "password_secret_ref"
+            ))
+            if connection_changed:
+                await conn.execute("""UPDATE bag.source_capabilities
+                    SET drift_status='DRIFTED', drift_acknowledged_at=NULL WHERE source_id=$1""", source_id)
+                await conn.execute("""UPDATE bag.semantic_profiles SET status='STALE'
+                    WHERE source_id=$1 AND status='VALIDATED'""", source_id)
             return {
                 "id": row["source_id"],
                 "source_id": row["source_id"],
                 "display_name": row["display_name"],
                 "base_url": row["base_url"],
                 "read_only": row["read_only"],
+                "enabled": row["enabled"],
+                "username_secret_ref": row["username_secret_ref"],
+                "password_secret_ref": row["password_secret_ref"],
+                "tags": list(row["tags"]),
+                "before_fingerprint": _fingerprint(dict(before)),
+                "connection_changed": connection_changed,
                 "row_version": row["row_version"],
                 "updated_at": str(row["updated_at"]),
             }
@@ -926,6 +952,8 @@ class AdminMutationService:
         }
 
         async def mutation(conn):
+            before = await conn.fetchrow("""SELECT display_name, legal_name, country_code,
+                enabled, is_default, row_version FROM bag.companies WHERE company_id=$1 FOR UPDATE""", company_id)
             row = await conn.fetchrow(
                 """
                 UPDATE bag.companies
@@ -955,6 +983,7 @@ class AdminMutationService:
                 raise AdminConflict("company version changed")
             return {
                 "id": str(row["company_id"]),
+                "before_fingerprint": _fingerprint(dict(before)),
                 "source_id": row["source_id"],
                 "external_ref": row["external_ref"],
                 "display_name": row["display_name"],

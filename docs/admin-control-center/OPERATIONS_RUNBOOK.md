@@ -131,8 +131,7 @@ The web wizard follows:
     candidate URL + secret refs
       -> exact host allowlist
       -> DNS/CIDR validation
-      -> bounded GET/HEAD probe
-      -> DNS re-check
+      -> numeric-IP-pinned GET/HEAD probe (original Host and TLS name)
       -> capability summary
       -> operator review
       -> audited source registration
@@ -221,3 +220,56 @@ Do not label the feature PRODUCTION GO until target-environment pilot evidence e
 ## Admin request logging
 
 OIDC authorization codes, state and other callback query parameters must never be written to standard access logs. The gateway image disables Uvicorn access logging; ingress/OTel request telemetry must log a redacted path without the admin callback query string.
+
+## Browser lifecycle and investigation
+
+Sources supports connect/probe, edit/disable, refresh and exact-fingerprint drift acknowledgement.
+Companies uses source ID + external reference; editing cannot move a company between sources.
+Delegated SOURCE_ADMIN may edit labels/tags/enabled state but cannot change connection URL or
+secret references. These changes require global source administration, preventing source A
+from being repointed to source B's connection/credentials.
+
+Access Policies creates subject/group allow/deny grants and revokes exact IDs. Review group
+and source-wide impact, supply a reason, and use the displayed row version. An unchanged retry
+keeps its key. On conflict, review current policy before starting a new operation; do not blindly
+replace an uncertain outcome with a new key.
+
+Roles & Capabilities distinguishes active, expired and revoked policies. Business controls
+require enforcement ON; bootstrap initial assignments through the reviewed Bearer Admin API
+before enabling enforcement for users. Platform-role changes require configured approved ACR
+values and signed `acr`/`auth_time` in the access token from within five minutes.
+`/admin/login?step_up=1` requests fresh authentication. If the IdP cannot provide this evidence,
+web role changes remain denied; use the controlled exact-ID CLI path. Browser confirmation
+does not replace IdP evidence.
+
+Semantic Profiles supports create, mapping, evidence inspection, validate, retire and explicit
+company-scope mappings. Validation needs ten unique PASS native-report cases and current
+fingerprints. Drift acknowledgement does not revalidate a stale profile. Company-aware reads
+refresh live metadata, reject unbalanced filters and reject navigation/expand until separately
+proven. A company-specific profile takes precedence over a source-wide profile.
+
+Users & Groups resolves exact IDs and explains one selected principal/source through
+`/admin/v1/effective-access`, with effect/direct/inherited filters and pagination. Another
+subject's memberships remain unknown without a trusted directory. At most 50 evidence grants
+are returned per company, prioritizing denies; all matching grants determine the result.
+Capability authorization and live mapping eligibility remain separate runtime gates.
+
+Lists default to 50 rows (maximum 200) with offset/next_offset and optional source_id. Audit
+records `admin-v1`, actor/client, reason, request/key and safe outcomes. Source/company edits
+include before/after fingerprints. Correlate request IDs with `admin_request` logs; probe
+metrics include outcome/duration, without URLs or credentials.
+
+Native Python 1C and token exchange require identity response encoding, rejecting encoded
+responses before decompression. Token JSON is capped at 256 KB; probes at 5 MB and 45 seconds
+including queue time, with four dedicated slots and a separate HTTP pool. Successful source
+mutation retries replay without fresh source I/O. Production startup rejects owner/operator or
+elevated control credentials, including privileged membership.
+
+Runtime credentials must inherit only the app contract, without control/operator/owner rights.
+JWKS keys have a five-minute set TTL and ten-second fetch timeout. Configure complete string
+group IDs: malformed/distributed-overage claims deny until a trusted resolver exists; remote
+claim URLs are never followed. Callback completion is capped at 30 seconds. Connection/ref
+changes mark drift and stale validated profiles even with identical XML. Acknowledge the current
+fingerprint and create/revalidate a suitable profile with native evidence afterward. Admin
+refresh preserves register evidence only for stable matching metadata; new/drifted register
+support stays unknown until the existing data-plane discovery supplies evidence.

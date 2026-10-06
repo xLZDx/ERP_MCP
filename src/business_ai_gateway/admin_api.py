@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -22,10 +23,16 @@ from .admin_mutations import (
     AdminNotFound,
     AdminValidationError,
 )
-from .admin_probe import AdminSourceProbe, SourceEgressDenied, SourceEgressPolicy
+from .admin_probe import (
+    AdminSourceProbe,
+    SourceEgressDenied,
+    SourceEgressPolicy,
+    safe_capability_summary,
+)
 from .admin_session import AdminSessionManager
 from .auth import JWTTokenVerifier
 from .models import source_from_record
+from .principal import claim_groups
 from .rate_limit import RateLimitExceeded
 from .settings import Settings
 
@@ -54,13 +61,20 @@ def _json_record(row) -> dict[str, Any]:
 
 
 def _request_id(request: Request) -> UUID:
+    cached = getattr(request.state, "admin_request_id", None)
+    if cached is not None:
+        return cached
     raw = request.headers.get("x-request-id")
     if raw:
         try:
-            return UUID(raw)
+            value = UUID(raw)
+            request.state.admin_request_id = value
+            return value
         except ValueError:
             pass
-    return uuid4()
+    value = uuid4()
+    request.state.admin_request_id = value
+    return value
 
 
 async def _json_body(request: Request) -> dict[str, Any]:
@@ -75,6 +89,21 @@ async def _json_body(request: Request) -> dict[str, Any]:
         raise AdminValidationError("request body must be valid JSON") from exc
     if not isinstance(body, dict):
         raise AdminValidationError("request body must be a JSON object")
+    text_fields = {"reason", "principal_kind", "principal_id", "source_id", "company_id",
+        "role_name", "role_id", "capability_key", "base_url", "username_secret_ref", "password_secret_ref",
+        "display_name", "external_ref", "profile_id", "preset_id", "profile_name", "entity_set",
+        "company_property", "literal_kind", "canonical_concept", "metadata_fingerprint", "expires_at",
+        "legal_name", "country_code"}
+    nullable = {"company_id", "expires_at", "legal_name", "country_code"}
+    if request.scope.get("path") == "/admin/v1/platform-role-bindings":
+        nullable.add("source_id")
+    for key in text_fields & body.keys():
+        if not isinstance(body[key], str) and not (key in nullable and body[key] is None):
+            raise AdminValidationError("invalid text field")
+    if "expected_version" in body and (
+        not isinstance(body["expected_version"], int) or isinstance(body["expected_version"], bool)
+    ):
+        raise AdminValidationError("invalid expected version")
     return body
 
 
@@ -612,11 +641,7 @@ class AdminAPI:
 
     @staticmethod
     def _groups(token: AccessToken) -> frozenset[str]:
-        claims = token.claims or {}
-        raw = claims.get("groups") or []
-        if isinstance(raw, str):
-            raw = [raw]
-        return frozenset(str(value) for value in raw)
+        return claim_groups(token.claims or {})
 
     async def authenticate(self, request: Request) -> AdminContext | JSONResponse:
         header = request.headers.get("authorization", "")
@@ -630,7 +655,7 @@ class AdminAPI:
             session = await self.sessions.resolve(request)
             if session is None:
                 return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
-            token = await self.verifier.verify_token(session.access_token)
+            token = await self.sessions.verifier.verify_token(session.access_token)
             session_id = session.session_id
             csrf_token = session.csrf_token
         else:
@@ -638,6 +663,7 @@ class AdminAPI:
 
         if token is None:
             return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
+        request.state.admin_token = token
 
         await self.runtime.start()
         try:
@@ -693,9 +719,10 @@ class AdminAPI:
                     payload.update(items=items[:ctx.page_limit], limit=ctx.page_limit, offset=ctx.page_offset,
                                    next_offset=ctx.page_offset + ctx.page_limit if len(items) > ctx.page_limit else None)
                     response = JSONResponse(payload)
-            if response.status_code == 403 and ctx is not None and self.mutations is not None:
+            actor_token = ctx.token if ctx is not None else getattr(request.state, "admin_token", None)
+            if response.status_code == 403 and actor_token is not None and self.mutations is not None:
                 await self.mutations.record_admin_event(
-                    actor=self._actor(ctx), action=f"admin.{handler.__name__}",
+                    actor=AdminActor(subject=actor_token.subject or "", client_id=actor_token.client_id), action=f"admin.{handler.__name__}",
                     target_type="admin_route", target_id=None, source_id=None, company_id=None,
                     reason="server authorization denied", request_id=_request_id(request), outcome="denied",
                     detail_code="ADMIN_REQUEST_DENIED",
@@ -706,7 +733,9 @@ class AdminAPI:
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Content-Type-Options"] = "nosniff"
         logging.getLogger("uvicorn.error").info(
-            "admin_request action=%s status=%s", handler.__name__, response.status_code,
+            "admin_request action=%s status=%s request_id=%s actor=%s",
+            handler.__name__, response.status_code, _request_id(request),
+            getattr(getattr(request.state, "admin_token", None), "subject", "anonymous"),
         )
         return response
 
@@ -722,7 +751,10 @@ class AdminAPI:
         if session is None:
             return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
         supplied = request.headers.get("x-csrf-token", "")
-        if not supplied or not secrets.compare_digest(supplied, session.csrf_token):
+        if not supplied or not secrets.compare_digest(supplied.encode(), session.csrf_token.encode()):
+            token = await self.sessions.verifier.verify_token(session.access_token)
+            if token is not None:
+                request.state.admin_token = token
             return JSONResponse({"error": "CSRF_DENIED"}, status_code=403)
         return None
 
@@ -805,7 +837,8 @@ class AdminAPI:
         if self.sessions is None:
             return JSONResponse({"error": "ADMIN_UI_DISABLED"}, status_code=404)
         try:
-            return await self.sessions.callback(request)
+            async with asyncio.timeout(30):
+                return await self.sessions.callback(request)
         except Exception:  # noqa: BLE001 - never expose token-exchange internals
             return JSONResponse({"error": "OIDC_LOGIN_FAILED"}, status_code=401)
 
@@ -1029,14 +1062,25 @@ class AdminAPI:
             body = await _json_body(request)
             if str(body.get("source_id", source_id)) != source_id:
                 raise AdminValidationError("source_id is immutable")
-            if _boolean(body, "enabled", True):
-                await self.probe.probe(
-                    base_url=str(body.get("base_url", "")),
-                    username_secret_ref=str(body.get("username_secret_ref", "")),
-                    password_secret_ref=str(body.get("password_secret_ref", "")),
-                    display_name=str(body.get("display_name", "")),
-                    platform_version_hint=body.get("platform_version_hint"),
-                )
+            if ctx.source_scope("PLATFORM_ADMIN", "SOURCE_ADMIN") is not None:
+                current = await self.repository.source_detail(ctx, source_id)
+                if current is None:
+                    return JSONResponse({"error": "SOURCE_NOT_FOUND"}, status_code=404)
+                # Repointing a delegated source to another approved base/credential can
+                # otherwise turn an A-only administrator into a confused deputy for B.
+                if any(str(body.get(key, "")) != str(current.get(key) or "") for key in (
+                    "base_url", "username_secret_ref", "password_secret_ref"
+                )):
+                    return self._denied()
+            async def preflight():
+                if _boolean(body, "enabled", True):
+                    await self.probe.probe(
+                        base_url=str(body.get("base_url", "")),
+                        username_secret_ref=str(body.get("username_secret_ref", "")),
+                        password_secret_ref=str(body.get("password_secret_ref", "")),
+                        display_name=str(body.get("display_name", "")),
+                        platform_version_hint=body.get("platform_version_hint"),
+                    )
             result = await self.mutations.update_source(
                 actor=self._actor(ctx),
                 source_id=source_id,
@@ -1047,6 +1091,7 @@ class AdminAPI:
                 password_secret_ref=str(body.get("password_secret_ref", "")),
                 tags=[str(item) for item in body.get("tags", [])],
                 enabled=_boolean(body, "enabled", True),
+                preflight=preflight,
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),
@@ -1112,6 +1157,13 @@ class AdminAPI:
                     capabilities = await adapter.capabilities(source, refresh=True)
                     if not capabilities.metadata_supported:
                         raise SourceEgressDenied("source metadata unavailable")
+                capabilities = safe_capability_summary(capabilities)
+                previous = await self.repository.db.require_pool().fetchval("""
+                    SELECT register_capabilities_json FROM bag.source_capabilities
+                    WHERE source_id=$1 AND metadata_fingerprint=$2 AND drift_status='STABLE'
+                """, source_id, capabilities.metadata_fingerprint)
+                if previous:
+                    capabilities = replace(capabilities, register_capabilities=json.loads(previous) if isinstance(previous, str) else previous)
                 drift = await self.runtime.registry.save_capabilities(capabilities)
                 return {**capabilities.as_dict(), **drift}
 
@@ -1153,14 +1205,15 @@ class AdminAPI:
             return self._denied()
         try:
             body = await _json_body(request)
-            # Re-probe immediately before registration; browser probe results are never trusted.
-            await self.probe.probe(
-                base_url=str(body.get("base_url", "")),
-                username_secret_ref=str(body.get("username_secret_ref", "")),
-                password_secret_ref=str(body.get("password_secret_ref", "")),
-                display_name=str(body.get("display_name", "")),
-                platform_version_hint=body.get("platform_version_hint"),
-            )
+            async def preflight():
+                # Browser probe results are never trusted; successful retries need no new I/O.
+                await self.probe.probe(
+                    base_url=str(body.get("base_url", "")),
+                    username_secret_ref=str(body.get("username_secret_ref", "")),
+                    password_secret_ref=str(body.get("password_secret_ref", "")),
+                    display_name=str(body.get("display_name", "")),
+                    platform_version_hint=body.get("platform_version_hint"),
+                )
             result = await self.mutations.create_source(
                 actor=self._actor(ctx),
                 source_id=str(body.get("source_id", "")),
@@ -1169,6 +1222,7 @@ class AdminAPI:
                 username_secret_ref=str(body.get("username_secret_ref", "")),
                 password_secret_ref=str(body.get("password_secret_ref", "")),
                 tags=[str(item) for item in body.get("tags", [])],
+                preflight=preflight,
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),

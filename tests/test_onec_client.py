@@ -1,3 +1,4 @@
+import httpx
 import pytest
 
 from business_ai_gateway.adapters.onec.client import OneCReadClient, OneCTransportError
@@ -43,5 +44,20 @@ async def test_url_is_pinned_to_registered_host():
         )
         with pytest.raises(OneCTransportError):
             client._url(source(), "https://evil.example/x")
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_native_transport_rejects_encoding_before_unbounded_decompression():
+    async def upstream(request):
+        assert request.headers["accept-encoding"] == "identity"
+        # Streaming response: transport must inspect the encoding before reading it.
+        return httpx.Response(200, headers={"content-encoding": "gzip"}, stream=httpx.ByteStream(b"unread encoded data"))
+
+    client = OneCReadClient(timeout_seconds=5, max_response_bytes=10000, transport=httpx.MockTransport(upstream))
+    try:
+        with pytest.raises(OneCTransportError, match="encoded response"):
+            await client.get_bytes(source(), "$metadata", username=None, password=None)
     finally:
         await client.close()

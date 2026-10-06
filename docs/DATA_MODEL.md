@@ -342,6 +342,11 @@ Any automatic deletion/retention policy must be explicitly defined and approved 
 
 ## 15. Admin Control Center policy extension
 
+Idempotency is keyed by actor subject + key and fingerprints payload plus reason. Reservation,
+successful policy/result/audit share a transaction. Domain failures roll back to a savepoint,
+retaining the failed key and safe audit. A changed payload cannot reuse that key. Schema remains
+11; no existing migration is renumbered.
+
 Migrations 008-011 add control-plane administration without introducing local user passwords or persisted accounting facts.
 
 platform_role_bindings stores external subject/group references bound to fixed platform roles with optional delegated source scope, expiry, revocation, actor provenance and optimistic row_version.

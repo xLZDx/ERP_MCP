@@ -154,6 +154,8 @@ async def test_probe_returns_only_safe_capability_summary(monkeypatch):
     assert "resolved_addresses" not in result["egress"]
     assert result["capabilities"]["source_id"] == "candidate"
     assert result["capabilities"]["register_capabilities"] == {}
+    assert result["capabilities"]["evidence"]["json_probe"] == "ok"
+    assert "Catalog_X" not in str(result)
 
 
 @pytest.mark.asyncio

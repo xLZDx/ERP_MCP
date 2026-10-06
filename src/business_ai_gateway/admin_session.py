@@ -140,7 +140,7 @@ class AdminSessionManager:
             )
         except jwt.PyJWTError as exc:
             raise PermissionError("invalid OIDC id_token") from exc
-        if not secrets.compare_digest(str(claims.get("nonce", "")), nonce):
+        if not secrets.compare_digest(str(claims.get("nonce", "")).encode(), nonce.encode()):
             raise PermissionError("OIDC nonce mismatch")
         if (isinstance(claims.get("aud"), list) and len(claims["aud"]) > 1
                 and claims.get("azp") != self.settings.admin_oidc_client_id):
@@ -156,7 +156,7 @@ class AdminSessionManager:
         cookie_state = request.cookies.get(self.LOGIN_COOKIE)
         if not code or not state or not cookie_state:
             return JSONResponse({"error": "OIDC_STATE_INVALID"}, status_code=400)
-        if not secrets.compare_digest(state, cookie_state):
+        if not secrets.compare_digest(state.encode(), cookie_state.encode()):
             return JSONResponse({"error": "OIDC_STATE_INVALID"}, status_code=400)
 
         key = self._login_key(state)
@@ -182,10 +182,19 @@ class AdminSessionManager:
                 follow_redirects=False,
                 trust_env=False,
                 transport=self.transport,
-            ) as client:
-                response = await client.post(self.settings.admin_oidc_token_url, data=form)
+            ) as client, client.stream(
+                "POST", self.settings.admin_oidc_token_url, data=form,
+                headers={"Accept-Encoding": "identity"},
+            ) as response:
                 response.raise_for_status()
-                token_response = response.json()
+                if response.headers.get("content-encoding", "identity").lower() != "identity":
+                    raise ValueError("encoded token response is unsupported")
+                raw_response = bytearray()
+                async for chunk in response.aiter_bytes():
+                    raw_response.extend(chunk)
+                    if len(raw_response) > 256_000:
+                        raise ValueError("token response exceeds limit")
+                token_response = json.loads(raw_response)
             if not isinstance(token_response, dict):
                 raise TypeError("invalid token response")
         except (httpx.HTTPError, ValueError, TypeError):

@@ -179,3 +179,10 @@ idempotency/policy/result/success audit share a transaction, and caller filters 
 the server predicate through delimiters. Company navigation/expand is denied until separately
 proven. Unknown capability keys deny before evaluating stored overrides. Other subjects' group
 membership remains explicitly unknown without a trusted directory provider.
+
+Additional negatives close indefinite signing-key acceptance after revocation, dictionary/
+overage group interpretation, numeric company-ID widening and semantic reuse after connection
+changes with identical metadata. Both DB credential paths are validated. Token exchange is
+bounded to 30 seconds/256 KB; native transport rejects encoded responses before byte caps.
+Probe evidence contains fixed statuses instead of arbitrary upstream strings. Raw callback
+query access logging is disabled in the image.

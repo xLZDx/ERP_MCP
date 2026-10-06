@@ -342,6 +342,21 @@ async def test_login_rate_limit_is_bounded():
 
 
 @pytest.mark.asyncio
+async def test_token_exchange_response_is_size_bounded():
+    redis = FakeRedis()
+    redis.data["erp_mcp:admin:login:state"] = json.dumps({"nonce": "n", "verifier": "v"})
+
+    async def endpoint(request):
+        assert request.headers["accept-encoding"] == "identity"
+        return httpx.Response(200, content=b"x" * 256001)
+
+    manager = AdminSessionManager(settings(), redis, FakeVerifier(), transport=httpx.MockTransport(endpoint))
+    result = await manager.callback(request(query="code=c&state=state", cookies={manager.LOGIN_COOKIE: "state"}))
+    assert result.status_code == 502
+    assert result.body == b'{"error":"OIDC_TOKEN_EXCHANGE_FAILED"}'
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("failure", ["signature", "issuer", "audience", "nonce", "expiry", "authorized_party", None])
 async def test_id_token_signature_and_claim_validation(failure):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)

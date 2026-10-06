@@ -1,5 +1,9 @@
 # Admin Control Center operator runbook
 
+Current operational contract: [Operations Runbook](OPERATIONS_RUNBOOK.md). The continuation
+uses connect-time DNS pinning, verified step-up and bounded policy explanation; that runbook
+supersedes earlier rollout details in this handoff guide.
+
 ## Purpose
 
 Operate the Admin Control Center without weakening the ERP_MCP read-only data plane.

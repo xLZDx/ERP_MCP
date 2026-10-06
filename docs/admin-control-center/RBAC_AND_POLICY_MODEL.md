@@ -28,6 +28,12 @@ Recommended implementation: principal bindings to these fixed roles. Role names 
 
 A SOURCE_ADMIN or ACCESS_ADMIN may optionally be restricted to a set of source IDs. PLATFORM_ADMIN is global.
 
+Delegated SOURCE_ADMIN cannot change connection URL or secret references. These changes require
+global SOURCE_ADMIN or PLATFORM_ADMIN because repointing an assigned source can otherwise
+bypass the technical-source boundary. Labels/tags/enabled state, refresh and drift operations
+remain available within the assigned source. Unknown capability keys fail closed even if an
+unrecognized override exists in storage.
+
 ## 3. Data scope
 
 Data scope continues to use access_grants:

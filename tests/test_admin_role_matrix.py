@@ -17,7 +17,11 @@ ROLES = ['PLATFORM_ADMIN', 'SOURCE_ADMIN', 'ACCESS_ADMIN', 'PROFILE_ADMIN', 'AUD
 SOURCE = {'PLATFORM_ADMIN', 'SOURCE_ADMIN'}
 ACCESS = {'PLATFORM_ADMIN', 'ACCESS_ADMIN'}
 PROFILE = {'PLATFORM_ADMIN', 'PROFILE_ADMIN'}
+READ = set(ROLES) - {'NONE'}
 ENDPOINTS = {
+    'me': READ, 'overview_view': READ, 'sources': READ, 'companies': READ, 'capabilities': READ,
+    'business_roles': READ, 'source_detail_view': READ, 'company_detail_view': READ,
+    'profile_detail': PROFILE | {'AUDITOR'},
     'source_probe': SOURCE, 'source_create': SOURCE, 'source_update': SOURCE,
     'capability_refresh': SOURCE, 'company_create': SOURCE, 'company_update': SOURCE, 'drift_ack': SOURCE,
     'grant_create': ACCESS, 'grant_revoke': ACCESS,
@@ -51,15 +55,17 @@ def req(source='s1'):
 
 def fake_api(role, scope=None):
     api = object.__new__(AdminAPI)
-    api.settings = SimpleNamespace(admin_step_up_acr_values='urn:mfa')
+    api.settings = SimpleNamespace(admin_step_up_acr_values='urn:mfa', business_capability_enforcement_enabled=True)
     token = SimpleNamespace(subject='actor', client_id='client', claims={'acr': 'urn:mfa', 'auth_time': int(time.time())})
     ctx = AdminContext(token=token, groups=frozenset(), bindings=(AdminRoleBinding(role, scope),))
     api.authenticate = AsyncMock(return_value=JSONResponse({'error': 'PLATFORM_ROLE_DENIED'}, status_code=403) if role == 'NONE' else ctx)
     methods = ['source_detail', 'company_detail', 'source_model', 'visible_target', 'resolve_principal',
+               'list_sources', 'list_companies', 'list_capabilities', 'list_business_roles', 'overview',
                'list_grants', 'list_platform_role_bindings', 'list_business_role_assignments', 'list_capability_overrides',
                'list_profiles', 'list_company_scope_mappings', 'list_access_audit', 'list_admin_audit']
     api.repository = SimpleNamespace(**{name: AsyncMock(return_value=[]) for name in methods})
-    api.repository.db = SimpleNamespace(require_pool=lambda: SimpleNamespace(fetch=AsyncMock(return_value=[])))
+    api.repository.db = SimpleNamespace(require_pool=lambda: SimpleNamespace(fetch=AsyncMock(return_value=[]),
+        fetchrow=AsyncMock(return_value={'source_id': 's1'})))
     api.repository.visible_target.return_value = scope is None or scope == 's1'
     api.repository.company_detail.return_value = {'source_id': 's1'}
     api.repository.source_model.return_value = SimpleNamespace(base_url='https://approved.test/odata')
@@ -98,3 +104,33 @@ async def test_delegated_roles_cannot_cross_source_boundary(endpoint):
     assert result.status_code == 403
     for method in vars(api.mutations).values():
         method.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_delegated_source_admin_cannot_repoint_own_source_to_another_credential_or_base():
+    api = fake_api('SOURCE_ADMIN', scope='s1')
+    api.repository.source_detail.return_value = {
+        'source_id': 's1', 'base_url': 'https://assigned.test/odata',
+        'username_secret_ref': 'ASSIGNED_USER', 'password_secret_ref': 'ASSIGNED_PASSWORD',
+    }
+    result = await api.source_update(req())
+    assert result.status_code == 403
+    api.probe.probe.assert_not_awaited()
+    api.mutations.update_source.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('value', [0, False, [], {}])
+async def test_invalid_company_identifier_cannot_be_coerced_into_a_source_wide_grant(value):
+    api = fake_api('ACCESS_ADMIN')
+    request = req()
+    body = json.loads(await request.body())
+    body['company_id'] = value
+    request._body = json.dumps(body).encode()
+    async def receive():
+        return {'type': 'http.request', 'body': request._body, 'more_body': False}
+    request._receive = receive
+    request._stream_consumed = False
+    result = await api.grant_create(request)
+    assert result.status_code == 400
+    api.mutations.create_grant.assert_not_awaited()

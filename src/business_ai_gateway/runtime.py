@@ -63,6 +63,8 @@ class Runtime:
                 return
             await self.db.start()
             await self.db.assert_schema()
+            if self.settings.environment == "production":
+                await self.db.assert_runtime_role()
             if self.admin_db is not None:
                 await self.admin_db.start()
                 await self.admin_db.assert_schema()

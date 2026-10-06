@@ -245,3 +245,16 @@ No unresolved FAIL can be reclassified as PASS without a documented corrected ex
 Mandatory automated coverage includes distinct admin OAuth audience/scope negatives; OIDC state/nonce/PKCE and opaque-session tests; cookie CSRF enforcement and no browser token persistence; platform-role/source-boundary tests; exact-ID revoke, optimistic concurrency and idempotency; append-only admin audit and least-privilege business_ai_control_api; source-probe host/CIDR negative cases; source/company registration separation; business role/capability deny precedence; and company-aware read denial before adapter with validated live-metadata scope mapping.
 
 The Admin Control Center branch also runs the entire existing baseline suite to prove the extension does not weaken the read-only 1C data plane.
+
+The role matrix exercises every restricted lifecycle endpoint across five platform roles and
+no role, plus delegated boundaries. PostgreSQL tests use the control role for replay/conflict,
+concurrent requests, exact revoke, role/capability lifecycle, 151-company explanation and
+privilege rejection. `python scripts/verify_admin_ui.py` runs in CI with synthetic same-origin
+APIs: retry identity, CSRF, navigation, escaping, dialog focus, narrow layout, 200% zoom and
+disabled enforcement/step-up controls. It does not replace a real IdP/1C pilot.
+
+CI enables disposable Redis for real ASGI/OIDC callback routes, opaque sessions, CSRF, grant
+write/replay and logout. The IdP endpoint/keys are synthetic; DB, Redis and routing are real.
+Negatives additionally cover key removal after JWKS TTL, malformed/overage groups, delegated
+connection repointing, numeric company-ID coercion, encoded/oversized responses and profile
+invalidation after connection changes.

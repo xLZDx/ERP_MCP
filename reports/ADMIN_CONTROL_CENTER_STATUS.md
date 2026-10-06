@@ -16,7 +16,7 @@ Status: local implementation complete through the testable ACC scope; external p
 - ACC-07: DB-backed platform roles, bootstrap/revoke CLI and delegated source boundaries.
 - ACC-08: built-in business role/capability model, assignments, overrides and runtime enforcement flag.
 - ACC-09: validated company-scope mappings and onec_company_read server-injected organization filter.
-- ACC-10 local hardening: CSRF/session controls, admin rate limiting, DNS re-check, security scans, packaging and PostgreSQL privilege/integration verification.
+- ACC-10: testable hardening complete — session/CSRF, DNS pinning, bounded access explanation, rate limits, credential checks, scans, browser/DB/Redis integration and restore. Pilot remains external.
 
 ## Deliberately not claimed
 
@@ -35,7 +35,7 @@ The following require the target environment and cannot be truthfully closed loc
 Final local verification on the implementation working tree:
 
 - compileall: PASS;
-- pytest with disposable PostgreSQL enabled: 336 passed, 1 skipped;
+- pytest with disposable PostgreSQL and Redis: 420 passed, 1 skipped in 27.60s;
 - the remaining skip is tests/test_real_1c_integration.py because ONEC_TEST_BASE_URL is not configured;
 - Ruff: PASS;
 - Bandit: PASS;
@@ -43,12 +43,39 @@ Final local verification on the implementation working tree:
 - PostgreSQL 16 migrations 001-011 applied from an empty database: PASS;
 - database privilege policy for business_ai_app, business_ai_admin and business_ai_control_api: PASS;
 - PostgreSQL admin mutation/integration tests: PASS;
-- backup/restore rehearsal into a second clean PostgreSQL 16 instance: PASS;
-- restored schema version: 11; restored BAG tables: 17; required DB roles: 3;
+- schema 7→11 upgrade in a clean disposable database: PASS;
+- dump/restore into a separate disposable database: PASS; restored schema 11 and privileges PASS;
 - wheel build: PASS; business_ai_gateway/static/admin.html is packaged;
 - Admin UI JavaScript syntax check: PASS;
 - headless Chrome Admin UI browser contract: PASS for navigation, mutation retry/idempotency, CSRF, untrusted-label escaping, dialog focus, narrow viewport and 200% zoom.
 
-The two temporary verification PostgreSQL containers are retained (not deleted) to respect the no-destructive-cleanup rule and may be stopped after evidence capture.
+Fixtures created by this continuation: erpmcp-acc-final-20261006 (PostgreSQL),
+erpmcp-acc-redis-final-20261006 (Redis) and erpmcp-acc-browser-final-20261006 (completed
+Linux browser run). Existing worktrees/containers were not removed/reset. No customer action
+or main merge was performed.
+
+## Adversarial review
+
+No unresolved BLOCKER/MAJOR findings in the testable ACC implementation. Resolved: login-state
+race; logout resurrection/CSRF bypass; step-up; delegated connection repointing; stale semantic
+reuse after connection changes; filter escape/navigation expansion; idempotency races/failed
+keys; replay requiring fresh source I/O; numeric company-ID widening; malformed/overage groups;
+indefinite signing-key cache; elevated DB credentials; unbounded grant evidence; oversized/
+encoded responses; raw callback access logs and arbitrary probe evidence strings.
+
+Minor limitation: compact UI inline scripts/styles under same-origin CSP. Labels are escaped
+and browser-tested; external assets and stricter CSP can be a later frontend change. Target
+accessibility/load/pilot evidence remains external.
+
+## Branch / readiness
+
+Continuation base: 6a645bb002deeb1ef14e24dec7d7b7532ea74b36.
+Published milestones 68faa8994e4fafdb3940adad8ce9207319858163 and
+cda66a6b7c0cbc6ac2eb6896d774972b0f96c822 have observed green runs 37478797188 / 37481848809.
+Final closure SHA/CI is recorded in the final review handoff/PR, avoiding a self-referential
+commit hash in this document.
+
+Readiness: CODE COMPLETE / INTEGRATION READY for human review; not PRODUCTION GO. Flags stay
+default-off. Main is an ancestor; merging to main is not authorized or performed.
 
 See docs/admin-control-center/OPERATIONS_RUNBOOK.md for production enablement and rollback.

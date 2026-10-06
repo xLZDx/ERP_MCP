@@ -168,15 +168,15 @@ business_ai_app remains unchanged and cannot administer.
 
 ## 9. Migration sequence
 
-Recommended monotonic sequence after current 007:
+Implemented sequence after 007:
 
-- 008_access_grant_admin_provenance.sql
-- 009_platform_role_bindings.sql
+- 008_admin_platform_roles.sql
+- 009_admin_mutation_control.sql — provenance, versions, audit, idempotency and control API privileges
 - 010_business_capability_policy.sql
-- 011_admin_audit_idempotency.sql
-- 012_control_api_privileges.sql
+- 011_company_scope_mappings.sql
 
-Actual numbering must be rechecked at implementation HEAD; never reuse a migration number.
+Schema is 11. New migrations must use a new number. Verification includes empty PostgreSQL,
+upgrade from schema 7 and disposable dump/restore with the role privilege contract retained.
 
 ## 10. Backfill
 

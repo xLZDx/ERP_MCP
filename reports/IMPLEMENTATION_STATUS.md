@@ -171,7 +171,8 @@ Verification on the implementation worktree:
 
 External production gates remain: real IdP client/login smoke, real target 1C safe probe, target-environment secrets/network configuration, operator bootstrap, pilot evidence and exact release CI/review. No production-ready claim is made.
 
-Continuation review: ACC-02 and ACC-10 remain under verification. The initial live UI
-supports creation of sources/companies/grants and exact grant revoke; additional lifecycle
-controls, effective-access explanation, connect-time DNS pinning and platform-role step-up
-gating must be completed before declaring the full requested browser scope finished.
+Continuation closure: lifecycle UI, bounded access explanation, DNS pinning and step-up are
+implemented. Disposable PostgreSQL/Redis suite: 420 passed, 1 skipped (real 1C not configured).
+Browser contract, compileall/Ruff/Bandit, dependency scans, schema 7→11 upgrade and restore/
+privileges pass. Details: reports/ADMIN_CONTROL_CENTER_STATUS.md. Readiness is code complete /
+integration ready; final-head hosted CI is recorded in the final review handoff.
