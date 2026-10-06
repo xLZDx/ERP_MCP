@@ -8,7 +8,7 @@ CAPABILITY_KEYS = frozenset({
     "source.status.read", "company.list", "metadata.read", "accounting.read", "ar.read", "ap.read",
     "sales.read", "purchases.read", "bank.read", "cash.read", "inventory.read", "invoice.reconcile",
     "month_close.review", "financial_statements.read", "tax.review", "audit.evidence.read",
-    "executive_summary.read", "payroll.review",
+    "executive_summary.read", "payroll.review", "onec.raw.read",
 })
 
 

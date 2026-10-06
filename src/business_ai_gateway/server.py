@@ -4,11 +4,11 @@ import json
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server import MCPServer
 from mcp.server.auth.settings import AuthSettings
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, Field
 
 from .adapters.onec.rsv_bridge import METADATA_TOOLS
 from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
@@ -19,6 +19,7 @@ from .compatibility import (
     MetadataDriftUnacknowledged,
     require_acknowledged_metadata,
 )
+from .external_evidence import EvidenceRejected
 from .principal import current_principal
 from .runtime import Runtime
 from .semantic import (
@@ -49,6 +50,28 @@ from .semantic import (
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
+
+BUSINESS_CAPABILITY_BY_TOOL = {
+    "source_health": "source.status.read",
+    "rsv_metadata": "metadata.read",
+    "companies_list": "company.list",
+    "onec_capabilities": "metadata.read",
+    "onec_metadata_summary": "metadata.read",
+    "onec_find_entities": "metadata.read",
+    "accounting_balance_and_turnovers": "accounting.read",
+    "inventory_balance": "inventory.read",
+    "inventory_movements": "inventory.read",
+    "accounting_posting_rows": "accounting.read",
+    "cash_movements": "cash.read",
+    "bank_balance": "bank.read",
+    "receivable_balance": "ar.read",
+    "payable_balance": "ap.read",
+    "sales_documents": "sales.read",
+    "purchase_documents": "purchases.read",
+    # Arbitrary EntitySet/filter OData reads are deliberately isolated from
+    # semantic accounting capabilities and have no seeded business-role grant.
+    "onec_read": "onec.raw.read",
+}
 
 
 def _count_items(payload: Any) -> int | None:
@@ -114,26 +137,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=type(exc).__name__,
             )
             raise
-        capability_by_tool = {
-            "source_health": "source.status.read",
-            "rsv_metadata": "metadata.read",
-            "companies_list": "company.list",
-            "onec_capabilities": "metadata.read",
-            "onec_metadata_summary": "metadata.read",
-            "onec_find_entities": "metadata.read",
-            "accounting_balance_and_turnovers": "accounting.read",
-            "inventory_balance": "inventory.read",
-            "inventory_movements": "inventory.read",
-            "accounting_posting_rows": "accounting.read",
-            "cash_movements": "cash.read",
-            "bank_balance": "bank.read",
-            "receivable_balance": "ar.read",
-            "payable_balance": "ap.read",
-            "sales_documents": "sales.read",
-            "purchase_documents": "purchases.read",
-            "onec_read": "accounting.read",
-        }
-        capability = capability_by_tool.get(tool)
+        capability = BUSINESS_CAPABILITY_BY_TOOL.get(tool)
         if settings.business_capability_enforcement_enabled:
             if capability is None:
                 raise PermissionError("business capability is not mapped for this operation")
@@ -316,6 +320,52 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=type(exc).__name__,
             )
             raise
+
+    @mcp.tool()
+    async def external_evidence_manifest(
+        source_id: Annotated[str, Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$')],
+        company_id: Annotated[str, Field(min_length=36, max_length=36)],
+        evidence_id: Annotated[str, Field(pattern=r'^[a-f0-9]{32}$')],
+    ) -> dict[str, Any]:
+        """Read an approved private evidence's safe manifest only; no upload, raw facts or accounting PASS."""
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError:
+            await runtime.audit.write(principal=principal, tool='external_evidence_manifest',
+                source_id=source_id, outcome='denied', started_at=started, detail_code='INVALID_COMPANY_ID')
+            raise ValueError('INVALID_COMPANY_ID') from None
+        query = {'company_id': str(parsed_company_id), 'evidence_id': evidence_id}
+        await resolve_source(principal, source_id, 'external_evidence_manifest', started, query,
+                             company_id=parsed_company_id)
+        try:
+            provider = getattr(runtime, 'evidence_provider', None)
+            if provider is None:
+                raise EvidenceRejected('CAPABILITY_UNSUPPORTED')
+            manifest = await provider.read_manifest_after_access_gate(source_id, parsed_company_id, evidence_id)
+            await runtime.audit.write(principal=principal, tool='external_evidence_manifest',
+                source_id=source_id, company_id=parsed_company_id, outcome='success', started_at=started,
+                query=query, detail_code='EVIDENCE_MANIFEST_COMPLETE',
+                profile_fingerprint=manifest['profile_fingerprint'], returned_items=manifest['fact_count'])
+            return {'manifest': manifest, 'business_acceptance': 'NOT_EVALUATED', 'native_approval_inferred': False}
+        except EvidenceRejected as exc:
+            known = {'CAPABILITY_UNSUPPORTED', 'EVIDENCE_REQUIRED', 'EVIDENCE_REFERENCE_INVALID',
+                     'EVIDENCE_APPROVAL_INVALID', 'EVIDENCE_APPROVAL_STALE', 'EVIDENCE_PROFILE_UNCONFIRMED',
+                     'EVIDENCE_RETENTION_UNCONFIRMED', 'EVIDENCE_STORAGE_INTEGRITY_INVALID',
+                     'EVIDENCE_FINGERPRINT_MISMATCH', 'EVIDENCE_READ_TIMEOUT'}
+            code = str(exc) if str(exc) in known else 'EVIDENCE_READ_REJECTED'
+            operation_error = code in {'EVIDENCE_READ_TIMEOUT', 'EVIDENCE_STORAGE_INTEGRITY_INVALID',
+                                      'EVIDENCE_FINGERPRINT_MISMATCH'}
+            await runtime.audit.write(principal=principal, tool='external_evidence_manifest',
+                source_id=source_id, company_id=parsed_company_id,
+                outcome='error' if operation_error else 'denied', started_at=started,
+                query=query, detail_code=code)
+            status = ('CAPABILITY_UNSUPPORTED' if code == 'CAPABILITY_UNSUPPORTED' else
+                      'EVIDENCE_REQUIRED' if code == 'EVIDENCE_REQUIRED' else
+                      'ERROR' if operation_error else 'INCONCLUSIVE')
+            return {'status': status, 'reason': code, 'business_acceptance': 'NOT_EVALUATED',
+                    'native_approval_inferred': False}
 
     @mcp.tool()
     async def rsv_metadata(

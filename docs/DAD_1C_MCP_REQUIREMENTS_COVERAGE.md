@@ -363,6 +363,14 @@ provided through the evidence plane.
 
 ### Historical write pilot
 
+Current normalized intake now supports an explicitly approved INVOICE-only JSON codec containing
+the complete quantity/price/VAT/item/quality/header facts in §11. Private storage/operator intake/
+index/manifest route support its exact MIME/profile; no content sniffing, class relabelling or raw
+identity/value exposure. Duplicate/extra/schema/precision/scope inputs fail closed. Carrier SHA is
+not an original PDF fingerprint; extraction never fixes invoice arithmetic or approves tax law.
+This closes the structured normalized input gap ONLY. The coverage table's business rules, native
+PDF/XML extraction, original archive, live source collectors and REAL-INV-001..011 remain OPEN.
+
 The source also proves historical test capability to:
 
 - create/edit a purchase document;
@@ -471,8 +479,15 @@ The service read has a server-configured five-second deadline (maximum 30); time
 error, never a business success. Cancellation/timeout cannot stop an already running filesystem
 thread, but that bounded thread is read-only and cannot return data to the cancelled request.
 
-Still OPEN: runtime provider wiring and operator ingest/receipt index, deployment identity/volume,
-backup/restore/retention approval, native format parsers and real source reconciliation. Local file
+Runtime now wires the optional provider through a pinned private approval index and the read-only
+`external_evidence_manifest` tool. Operator normalized intake creates a NEW index, preserves prior
+records and prints only hashes/counts/opaque IDs. Gateway inputs cannot authorize paths, hashes,
+profiles or policies. Index hash/permission/scope/window checks run before AND after blob reading;
+revoked/stale approvals are never served from a trusted cache. See Integration's operator runbook.
+Approval expiry bounds read authorization, not automatic retention/destruction guarantees.
+
+Still OPEN: deployment identity/volume, backup/restore/retention approval, native format parsers and
+real source reconciliation. Local file
 fsync/reopen and fixture permission checks are not production WORM/PITR/retention approval.
 
 ---

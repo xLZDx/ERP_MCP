@@ -316,6 +316,79 @@ The engine returns stable status:
 Tax/payroll/legal rule families preserve human-review flags and effective-date/jurisdiction
 provenance.
 
+### 14.1 Normalized evidence provider / operator runbook
+
+`external_evidence_manifest(source_id, company_id, evidence_id)` is read-only and returns ONLY a
+safe manifest. It accepts no path, fetch URL, digest, parser profile, retention policy or approval
+from the model. Gateway OAuth scope, current source/company ACL, rate check and durable access
+receipt precede filesystem reads. Completion records parser fingerprint/count, never raw facts.
+Disabled provider returns `CAPABILITY_UNSUPPORTED`; missing/cross-scope/expired entries return
+`EVIDENCE_REQUIRED`; stale/corrupt input cannot PASS. `business_acceptance=NOT_EVALUATED`.
+
+Configure all three SERVER-ONLY settings together; default is disabled:
+
+```text
+BAG_EVIDENCE_STORE_ROOT=<absolute protected private store outside Git>
+BAG_EVIDENCE_APPROVAL_INDEX=<absolute protected private index file outside Git>
+BAG_EVIDENCE_APPROVAL_SHA256=<operator-approved exact file SHA-256>
+```
+
+Index schema v1 is bounded to 512 KB/64 entries: exact schemas, duplicate JSON keys, receipt/profile
+hashes, source/company scope, UTC approval windows and retention IDs are validated. Protected file
+permissions and pinned SHA are rechecked BEFORE AND AFTER blob reading. Updated files are not
+silently approved or served from a cached authorization snapshot. Pin rotation requires explicit
+operator approval and server restart. This static receipt index requires no new SQL migration.
+
+Operator intake (never a public MCP write tool):
+
+1. Create a new owned store with `PrivateEvidenceStore.create` on an approved private volume.
+   Preserve its actual directory for server configuration; never alter a general/user root.
+2. Obtain explicit source/company parser and storage-retention approval. Prepare only normalized
+   `text/csv` and an exact `EvidenceParserProfile` JSON snapshot, with pinned input/profile hashes.
+   Both files stay outside Git and must pass private-file OS permission checks. Do NOT rename
+   PDF/XML/ZIP to CSV or claim native validation from a normalized exchange.
+3. Execute the explicit operator command (all paths/identities remain private):
+
+```text
+python -m scripts.evidence_intake --store-root <private-store> --input <private.csv>
+  --input-sha256 <approved-sha> --profile <private-profile.json> --profile-sha256 <approved-sha>
+  --retention-policy-id <approved-policy> --approved-from <UTC-RFC3339>
+  --approved-until <UTC-RFC3339> --approval-output <new-file-in-private-store>
+```
+
+To add an artifact, pass `--existing-index` and `--existing-index-sha256`, with a NEW output file.
+Existing index/files are preserved, never overwritten. Only hashes/counts/opaque IDs are printed.
+Configure the returned approval SHA explicitly; never accept an approval digest from model input.
+
+4. Rehearse authorized manifest reading and denied source/company, stale index, tamper and audit
+   outage. Publish only safe hashes/audit correlations, not private paths/raw documents, in CI.
+
+Approval windows bound READ AUTHORIZATION, not legal retention/destruction guarantees. No deletion
+or retention scheduler exists; expired/orphan data needs approved operator handling, not automatic
+destructive cleanup. Real-data ingestion remains gated on the approved storage retention policy.
+Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
+reconciliation, deployed volume identity, retention and backup/restore remain OPEN.
+
+#### Structured normalized invoice exchange
+
+An INVOICE-only profile may explicitly select `external-normalized-invoice-json-v1` with MIME
+`application/json` (operator CLI requires `--mime application/json`). No sniffing or alternate
+parser fallback exists; CSV profiles remain CSV. Other evidence classes cannot claim this codec.
+
+The versioned `invoice-normalized-v1` envelope has exact header/line schemas: source evidence ID,
+supplier/buyer identity, invoice number/date, scoped currency, quantity/unit price/discount/net,
+VAT rate/amount, total, UOM/item/quality/canonical line refs and optional explicit service dates.
+All decimal values are strings, finite/bounded with at most six fractional digits; duplicate keys/
+line refs, unknown fields (including policy/scope overrides), cross-period/currency data and excess
+size/line count are rejected. Dates/field names are not guessed from document text.
+
+This is NOT PDF/XML/e-factura extraction, legal VAT rate approval or business arithmetic validation.
+The extractor preserves inconsistent totals for the rule engine rather than repairing them. Its
+document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
+Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
+lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
+original archive verification and the 11-case invoice rule/real-corpus acceptance remain OPEN.
+
 ## 15. Test-only 1C seeder boundary
 
 The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.

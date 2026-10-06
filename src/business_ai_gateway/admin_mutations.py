@@ -5,7 +5,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import Source
@@ -130,7 +130,7 @@ def _expiry(value: Any) -> datetime | None:
             raise AdminValidationError("expiry must be an ISO timestamp")
         if not isinstance(parsed, datetime) or parsed.tzinfo is None:
             raise AdminValidationError("expiry must include timezone")
-        return parsed.astimezone(timezone.utc)
+        return parsed.astimezone(UTC)
     except (ValueError, TypeError, OverflowError) as exc:
         raise AdminValidationError("invalid expiry") from exc
 

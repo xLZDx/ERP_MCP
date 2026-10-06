@@ -15,7 +15,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from business_ai_gateway.admin_access import explain_access
-from business_ai_gateway.admin_api import register_admin_routes
+from business_ai_gateway.admin_api import AdminRepository, register_admin_routes
 from business_ai_gateway.admin_mutations import (
     AdminActor,
     AdminConflict,
@@ -23,8 +23,9 @@ from business_ai_gateway.admin_mutations import (
     AdminValidationError,
     _expiry,
 )
-from business_ai_gateway.admin_api import AdminRepository
+from business_ai_gateway.business_policy import CapabilityDenied, CapabilityPolicy
 from business_ai_gateway.db import Database
+from business_ai_gateway.principal import Principal
 from business_ai_gateway.runtime import Runtime
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
@@ -246,6 +247,21 @@ async def test_global_non_platform_role_is_rejected_and_expired_binding_is_ineff
 
 
 @pytest.mark.asyncio
+async def test_company_scoped_capability_deny_blocks_unscoped_read(service):
+    svc, owner, source, company = service
+    subject = f"company-denied-{uuid4()}"
+    await owner.execute(
+        """INSERT INTO bag.capability_overrides(override_id,principal_kind,principal_id,capability_key,
+           source_id,company_id,effect) VALUES($1,'subject',$2,'accounting.read',$3,$4,'deny')""",
+        uuid4(), subject, source, company,
+    )
+    policy = CapabilityPolicy(svc.db, enabled=True)
+    principal = Principal(subject, "client", frozenset(), frozenset(), {})
+    with pytest.raises(CapabilityDenied):
+        await policy.require(principal, "accounting.read", source_id=source)
+
+
+@pytest.mark.asyncio
 async def test_source_and_company_update_versions_audit_and_replay_without_probe(service):
     svc, owner, source, company = service
     calls = []
@@ -360,5 +376,110 @@ async def test_real_http_routes_oidc_session_csrf_policy_replay_and_logout(servi
             assert await owner.fetchval("SELECT count(*) FROM bag.access_grants WHERE created_by_subject=$1", subject) == 1
             assert (await client.post("/admin/logout", headers={"X-CSRF-Token": csrf})).status_code == 302
             assert (await client.get("/admin/v1/me")).status_code == 401
+    finally:
+        await runtime.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not os.getenv("BAG_ADMIN_TEST_REDIS_URL"), reason="requires disposable Redis BAG_ADMIN_TEST_REDIS_URL")
+async def test_real_http_cross_source_exact_target_mutations_have_no_write_side_effects(service):
+    svc, owner, source_a, _company_a = service
+    source_b = f"acc-target-{uuid4()}"
+    company_b, grant_id, assignment_id, override_id, profile_id = uuid4(), uuid4(), uuid4(), uuid4(), uuid4()
+    subject = f"cross-source-{uuid4()}"
+    await owner.execute(
+        "INSERT INTO bag.sources(source_id,project,kind,display_name,base_url) VALUES($1,'onec','onec_auto','Target B','https://approved.test/odata')",
+        source_b,
+    )
+    await owner.execute(
+        "INSERT INTO bag.companies(company_id,source_id,external_ref,display_name) VALUES($1,$2,'org-b','Company B')",
+        company_b, source_b,
+    )
+    await owner.executemany(
+        """INSERT INTO bag.platform_role_bindings(binding_id,principal_kind,principal_id,role_name,source_id)
+           VALUES($1,'subject',$2,$3,$4)""",
+        [(uuid4(), subject, "ACCESS_ADMIN", source_a), (uuid4(), subject, "PROFILE_ADMIN", source_a)],
+    )
+    await owner.execute(
+        """INSERT INTO bag.access_grants(grant_id,principal_kind,principal_id,source_id,company_id,effect)
+           VALUES($1,'subject','victim',$2,$3,'allow')""",
+        grant_id, source_b, company_b,
+    )
+    await owner.execute(
+        """INSERT INTO bag.business_role_assignments(assignment_id,principal_kind,principal_id,role_id,source_id,company_id)
+           VALUES($1,'subject','victim','VIEWER',$2,$3)""",
+        assignment_id, source_b, company_b,
+    )
+    await owner.execute(
+        """INSERT INTO bag.capability_overrides(override_id,principal_kind,principal_id,capability_key,source_id,company_id,effect)
+           VALUES($1,'subject','victim','accounting.read',$2,$3,'deny')""",
+        override_id, source_b, company_b,
+    )
+    await owner.execute(
+        """INSERT INTO bag.semantic_profiles(profile_id,source_id,company_id,preset_id,profile_name,profile_version,status,
+           metadata_fingerprint,capability_fingerprint,profile_fingerprint,preset_repository,preset_upstream_sha,created_by)
+           VALUES($1,$2,$3,'bp30','Target B profile',1,'DRAFT','meta','caps','profile','fixture','fixture','fixture')""",
+        profile_id, source_b, company_b,
+    )
+    settings = Settings(
+        environment="test", database_url=URL, admin_control_database_url=URL,
+        redis_url=os.environ["BAG_ADMIN_TEST_REDIS_URL"], oauth_enabled=True,
+        public_mcp_url="https://gateway.test/mcp", oauth_issuer="https://identity.test/",
+        oauth_audience="https://gateway.test/mcp", oauth_jwks_url="https://identity.test/jwks",
+        admin_api_enabled=True, admin_mutations_enabled=True, admin_ui_enabled=False,
+        admin_oauth_audience="https://gateway.test/admin",
+    )
+    runtime = Runtime(settings)
+    runtime.admin_db.pool = svc.db.require_pool()
+    mcp = build_mcp(settings, runtime)
+    api = register_admin_routes(mcp, settings, runtime)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    api.verifier._jwks = SimpleNamespace(get_signing_key_from_jwt=lambda _raw: SimpleNamespace(key=key.public_key()))
+    claims = {
+        "iss": settings.oauth_issuer, "sub": subject, "iat": int(time.time()),
+        "exp": int(time.time()) + 300, "aud": settings.admin_oauth_audience,
+        "scope": settings.admin_oauth_required_scope,
+    }
+    access = jwt.encode(claims, key, algorithm="RS256")
+    app = mcp.streamable_http_app(streamable_http_path="/mcp", json_response=True)
+    routes = [
+        (f"/admin/v1/grants/{grant_id}/revoke", {"expected_version": 1, "reason": "negative test"}),
+        (f"/admin/v1/business-role-assignments/{assignment_id}/revoke", {"expected_version": 1, "reason": "negative test"}),
+        (f"/admin/v1/capability-overrides/{override_id}/revoke", {"expected_version": 1, "reason": "negative test"}),
+        (f"/admin/v1/semantic-profiles/{profile_id}/mappings", {"canonical_concept": "test", "mapping": {}, "reason": "negative test"}),
+        (f"/admin/v1/semantic-profiles/{profile_id}/validate", {"validation_evidence": {}, "reason": "negative test"}),
+        (f"/admin/v1/semantic-profiles/{profile_id}/retire", {"reason": "negative test"}),
+        ("/admin/v1/company-scope-mappings", {"profile_id": str(profile_id), "entity_set": "Document_Test",
+         "company_property": "Organization_Key", "literal_kind": "guid", "reason": "negative test"}),
+    ]
+    try:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://gateway.test") as client:
+            for path, body in routes:
+                response = await client.post(
+                    path, json=body,
+                    headers={"Authorization": "Bearer " + access, "Idempotency-Key": str(uuid4())},
+                )
+                assert response.status_code == 403, (path, response.status_code, response.text)
+        grant_after = await owner.fetchrow(
+            "SELECT revoked_at,row_version FROM bag.access_grants WHERE grant_id=$1", grant_id
+        )
+        assignment_after = await owner.fetchrow(
+            "SELECT revoked_at,row_version FROM bag.business_role_assignments WHERE assignment_id=$1", assignment_id
+        )
+        override_after = await owner.fetchrow(
+            "SELECT revoked_at,row_version FROM bag.capability_overrides WHERE override_id=$1", override_id
+        )
+        profile_after = await owner.fetchrow(
+            "SELECT status,profile_fingerprint FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        )
+        assert tuple(grant_after.values()) == (None, 1)
+        assert tuple(assignment_after.values()) == (None, 1)
+        assert tuple(override_after.values()) == (None, 1)
+        assert tuple(profile_after.values()) == ("DRAFT", "profile")
+        assert await owner.fetchval("SELECT count(*) FROM bag.semantic_mappings WHERE profile_id=$1", profile_id) == 0
+        assert await owner.fetchval("SELECT count(*) FROM bag.company_scope_mappings WHERE profile_id=$1", profile_id) == 0
+        assert await owner.fetchval(
+            "SELECT count(*) FROM bag.admin_audit_events WHERE actor_subject=$1 AND outcome='success'", subject
+        ) == 0
     finally:
         await runtime.close()

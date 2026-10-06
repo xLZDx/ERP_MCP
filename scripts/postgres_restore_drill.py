@@ -24,7 +24,11 @@ import asyncpg
 from business_ai_gateway.db import Database
 
 REPO = Path(__file__).resolve().parents[1]
-ROLES = "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
+ROLES = (
+    "CREATE ROLE business_ai_app NOLOGIN; "
+    "CREATE ROLE business_ai_admin NOLOGIN; "
+    "CREATE ROLE business_ai_control_api NOLOGIN;"
+)
 
 
 def command(*args: str, env=None, timeout=120) -> str:

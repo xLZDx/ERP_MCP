@@ -94,7 +94,8 @@ class OneCReadClient:
         for attempt in range(3):
             try:
                 request = self._client.build_request(
-                    "GET", url, params=params, headers={"Accept": accept}
+                    "GET", url, params=params,
+                    headers={"Accept": accept, "Accept-Encoding": "identity"},
                 )
                 response = await self._client.send(request, stream=True, auth=auth)
             except httpx.TimeoutException:

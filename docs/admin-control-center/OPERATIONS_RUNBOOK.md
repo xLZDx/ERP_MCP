@@ -158,7 +158,12 @@ Unknown/unassigned capabilities fail closed. Explicit capability deny overrides 
 
 ## 10. Company-aware reads
 
-Generic onec_read stays source-wide.
+Generic `onec_read` remains arbitrary EntitySet/filter access and is always source-scoped by
+the existing data-plane grant. With `BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED=true`, it is
+separately checked against `onec.raw.read`; no business role seeds that capability, so an
+`accounting.read` assignment cannot authorize generic reads. Fixed canonical accounting tools
+use `accounting.read` after their company/profile checks. Leave raw reads disabled under
+capability enforcement until a separately reviewed policy intentionally grants raw access.
 
 Company-aware accounting operations require:
 
@@ -274,3 +279,34 @@ changes mark drift and stale validated profiles even with identical XML. Acknowl
 fingerprint and create/revalidate a suitable profile with native evidence afterward. Admin
 refresh preserves register evidence only for stable matching metadata; new/drifted register
 support stays unknown until the existing data-plane discovery supplies evidence.
+
+## Legacy migration recovery (non-destructive)
+
+The migration runner refuses version-only Admin histories above v9 and any database with
+unknown, gapped, or checksum-changed versions. Do not edit `schema_migrations`, renumber rows,
+reuse an old Admin migration file at a new version, or drop the original database to bypass the
+guard.
+
+1. Stop all application instances that can connect to the affected database and take a verified
+   custom-format backup: `pg_dump --format=custom --no-owner --file=admin-legacy.dump "$DSN"`.
+   Record `Get-FileHash admin-legacy.dump -Algorithm SHA256` and retain the backup under the
+   normal protected backup policy.
+2. Restore that backup to a newly provisioned, isolated inspection database. Keep the source
+   database read-only and unchanged. Capture the complete `bag.schema_migrations` rows and
+   inspect the actual tables, constraints, triggers, grants, role bindings, profiles, mappings,
+   audit and idempotency data; a version number by itself does not establish lineage.
+3. Provision a separate empty target database with the documented database roles, apply the
+   frozen integration migrations 001–009 followed by Admin 010–013, and run the migration
+   acceptance and privilege checks there.
+4. If Admin data must be retained, create a reviewed, purpose-built export/import conversion
+   for that observed schema and data. Validate row counts, stable IDs, source/company foreign
+   keys, active/revoked/expired semantics, audit ordering, and checksums against the inspection
+   copy before opening the new target to traffic. Require a second operator to approve the
+   conversion evidence.
+5. Keep the old database and verified backup available for rollback until application reads,
+   writes, audit, and role-resolution checks pass against the new target. Only a separate
+   approved retention/decommission action may remove the old database.
+
+There is no automatic in-place remap for colliding legacy Admin histories. If a conversion tool
+has not been reviewed for the exact source schema, leave the old database untouched and do not
+cut over.

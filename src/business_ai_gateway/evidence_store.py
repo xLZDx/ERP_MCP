@@ -22,8 +22,10 @@ from .external_evidence import (
     EvidenceRejected,
     EvidenceScope,
     ExternalEvidence,
-    parse_normalized_csv,
+    evidence_mime,
+    parse_approved_evidence,
 )
+from .invoice_evidence import InvoiceEvidence
 from .secret_files import (
     SecretDirectoryUnavailable,
     protect_private_directory,
@@ -118,11 +120,11 @@ class PrivateEvidenceStore:
                           expected_document_sha256: str, mime: str = 'text/csv',
                           encoding: str = 'identity') -> StoredEvidenceReceipt:
         """Trusted operator ingest only; not registered as a public/model write tool."""
-        if mime != 'text/csv' or encoding != 'identity':
+        if mime != evidence_mime(profile) or encoding != 'identity':
             raise EvidenceRejected('EVIDENCE_FORMAT_UNSUPPORTED')
         identifier = uuid4().hex
         reference = f'private:{identifier}'
-        evidence = parse_normalized_csv(payload, profile=profile, expected_scope=expected_scope,
+        evidence = parse_approved_evidence(payload, profile=profile, expected_scope=expected_scope,
             validated_profiles=validated_profiles, private_blob_ref=reference,
             retention_policy_id=retention_policy_id, approved_retention_policies=approved_retention_policies,
             expected_document_sha256=expected_document_sha256)
@@ -148,7 +150,7 @@ class PrivateEvidenceStore:
 
     def read_normalized(self, receipt: StoredEvidenceReceipt, *, profile: EvidenceParserProfile,
                         expected_scope: EvidenceScope, validated_profiles: frozenset[str],
-                        approved_retention_policies: frozenset[str]) -> ExternalEvidence:
+                        approved_retention_policies: frozenset[str]) -> ExternalEvidence | InvoiceEvidence:
         if (not isinstance(receipt, StoredEvidenceReceipt) or type(receipt.private_blob_ref) is not str
                 or not (match := _REF.fullmatch(receipt.private_blob_ref))
                 or any(type(value) is not str or not _SHA.fullmatch(value)
@@ -175,12 +177,12 @@ class PrivateEvidenceStore:
                     or manifest['document_sha256'] != receipt.document_sha256
                     or manifest['evidence_class'] != profile.evidence_class.value
                     or manifest['parser_version'] != profile.parser_version
-                    or manifest['mime'] != 'text/csv' or manifest['encoding'] != 'identity'):
+                    or manifest['mime'] != evidence_mime(profile) or manifest['encoding'] != 'identity'):
                 raise EvidenceRejected('EVIDENCE_STORAGE_INTEGRITY_INVALID')
             payload = _read_bounded(directory / 'document.bin', MAX_BYTES)
             if len(payload) != manifest['bytes']:
                 raise EvidenceRejected('EVIDENCE_STORAGE_INTEGRITY_INVALID')
-            return parse_normalized_csv(payload, profile=profile, expected_scope=expected_scope,
+            return parse_approved_evidence(payload, profile=profile, expected_scope=expected_scope,
                 validated_profiles=validated_profiles, private_blob_ref=receipt.private_blob_ref,
                 retention_policy_id=manifest['retention_policy_id'],
                 approved_retention_policies=approved_retention_policies,
@@ -205,7 +207,7 @@ class AuthorizedEvidenceReader:
 
     async def read(self, principal, receipt: StoredEvidenceReceipt, *, profile: EvidenceParserProfile,
                    expected_scope: EvidenceScope, validated_profiles: frozenset[str],
-                   approved_retention_policies: frozenset[str]) -> ExternalEvidence:
+                   approved_retention_policies: frozenset[str]) -> ExternalEvidence | InvoiceEvidence:
         started = time.monotonic()
         expected_scope.validate()
         try:

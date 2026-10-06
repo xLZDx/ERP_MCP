@@ -79,6 +79,49 @@ async def _verify_legacy_admin_refusal(base_url: str) -> None:
         await maintenance.close()
 
 
+async def _verify_future_version_refusal(base_url: str) -> None:
+    name = f"acc_future_schema_{uuid.uuid4().hex[:16]}"
+    maintenance = await asyncpg.connect(_database_url(base_url, "postgres"))
+    try:
+        await maintenance.execute(f'CREATE DATABASE "{name}"')
+        conn = await asyncpg.connect(_database_url(base_url, name))
+        try:
+            await conn.execute("CREATE SCHEMA bag")
+            await conn.execute(
+                """CREATE TABLE bag.schema_migrations(
+                     version integer PRIMARY KEY, name text NOT NULL,
+                     checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
+                   )"""
+            )
+            await conn.execute(
+                "INSERT INTO bag.schema_migrations(version,name,checksum) VALUES($1,$2,$3)",
+                14,
+                "future",
+                "0" * 64,
+            )
+            try:
+                await migrate(conn, load_migrations())
+            except RuntimeError as exc:
+                if "unknown to this release" not in str(exc):
+                    raise
+            else:
+                raise AssertionError("ahead-of-code schema version was accepted")
+            tables = await conn.fetch(
+                """SELECT table_name FROM information_schema.tables
+                   WHERE table_schema='bag' ORDER BY table_name"""
+            )
+            if [row["table_name"] for row in tables] != ["schema_migrations"]:
+                raise AssertionError("future-version refusal mutated the schema")
+            row = await conn.fetchrow("SELECT version,name,checksum FROM bag.schema_migrations")
+            if (row["version"], row["name"], row["checksum"]) != (14, "future", "0" * 64):
+                raise AssertionError("future-version refusal modified the migration ledger")
+        finally:
+            await conn.close()
+    finally:
+        await maintenance.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        await maintenance.close()
+
+
 async def main() -> None:
     base_url = os.environ.get("BAG_PRIVILEGE_TEST_DATABASE_URL")
     if not base_url:
@@ -89,6 +132,8 @@ async def main() -> None:
     print("integration v9 -> Admin v13 PostgreSQL upgrade: PASS")
     await _verify_legacy_admin_refusal(base_url)
     print("ambiguous legacy Admin v11 refusal without DB changes: PASS")
+    await _verify_future_version_refusal(base_url)
+    print("ahead-of-code schema v14 refusal without DB changes: PASS")
 
 
 if __name__ == "__main__":

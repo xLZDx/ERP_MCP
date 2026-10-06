@@ -223,6 +223,60 @@ async def _assert_history_identity(conn, migration: Migration) -> None:
         )
 
 
+async def _preflight_history(conn, migrations: list[Migration]) -> None:
+    """Reject unknown or changed ledger history before performing any DDL."""
+    if not await conn.fetchval("SELECT to_regclass('bag.schema_migrations') IS NOT NULL"):
+        return
+    columns = {
+        row["column_name"]
+        for row in await conn.fetch(
+            """SELECT column_name FROM information_schema.columns
+               WHERE table_schema='bag' AND table_name='schema_migrations'"""
+        )
+    }
+    rows = await conn.fetch("SELECT * FROM bag.schema_migrations ORDER BY version")
+    versions = [int(row["version"]) for row in rows]
+    if not versions:
+        return
+    by_version = {migration.version: migration for migration in migrations}
+    unknown = [version for version in versions if version not in by_version]
+    if unknown:
+        raise RuntimeError(
+            f"database schema history contains versions unknown to this release: {unknown}"
+        )
+    if versions != list(range(1, max(versions) + 1)):
+        raise RuntimeError("migration history is not contiguous; refusing before schema changes")
+
+    identity_columns = {"name", "checksum"}
+    present = columns & identity_columns
+    if present and present != identity_columns:
+        raise RuntimeError("migration ledger has partial identity columns; manual repair required")
+    if not present:
+        if max(versions) > 9:
+            raise RuntimeError(
+                "legacy Admin development schema has colliding version-only history; "
+                "follow the non-destructive legacy recovery runbook"
+            )
+        if max(versions) >= 8 and not await _verify_integration_legacy_signature(
+            conn, max(versions)
+        ):
+            raise RuntimeError(
+                "legacy migration v8/v9 does not match the integration lineage; "
+                "refusing to adopt ambiguous Admin history"
+            )
+        return
+
+    for row in rows:
+        migration = by_version[int(row["version"])]
+        if row["name"] is None or row["checksum"] is None:
+            raise RuntimeError("migration ledger has partial immutable identities; manual repair required")
+        if row["name"] != migration.name or row["checksum"] != migration.checksum:
+            raise RuntimeError(
+                f"applied migration {migration.version:03d} identity/checksum changed; "
+                "manual migration review required"
+            )
+
+
 async def _apply(conn, migration: Migration) -> None:
     if migration.version <= 9:
         # The frozen integration migrations own their historical BEGIN/COMMIT and version INSERT.
@@ -249,6 +303,7 @@ async def migrate(conn, migrations: list[Migration]) -> None:
     await conn.execute(f"SELECT pg_advisory_lock({_LOCK_ID})")
     try:
         if await conn.fetchval("SELECT to_regclass('bag.schema_migrations') IS NOT NULL"):
+            await _preflight_history(conn, migrations)
             await _prepare_history_identity(conn, migrations)
             await _adopt_legacy_history(conn, migrations)
         for migration in migrations:

@@ -88,7 +88,9 @@ class EvidenceParserProfile:
         if (not isinstance(self.profile_id, str) or not _ID.fullmatch(self.profile_id)
                 or not isinstance(self.version, str) or not _ID.fullmatch(self.version)
                 or not isinstance(self.evidence_class, EvidenceClass)
-                or self.parser_version != "external-normalized-csv-v1"):
+                or not (self.parser_version == "external-normalized-csv-v1" or (
+                    self.evidence_class == EvidenceClass.INVOICE
+                    and self.parser_version == "external-normalized-invoice-json-v1"))):
             raise EvidenceRejected("EVIDENCE_PROFILE_INVALID")
         encoded = json.dumps({"id": self.profile_id, "version": self.version,
                               "class": self.evidence_class.value, "scope": self.scope.fingerprint(),
@@ -135,20 +137,12 @@ def parse_normalized_csv(
     Exact headers key,date,currency,amount are a normalized exchange contract, not guessed bank,
     PDF, Z, tax or payroll formats. No URL/file fetching, blob writes or business PASS is performed.
     """
-    expected_scope.validate()
-    fingerprint = profile.fingerprint()
-    if profile.scope != expected_scope or fingerprint not in validated_profiles:
-        raise EvidenceRejected("EVIDENCE_PROFILE_UNCONFIRMED")
-    if (not isinstance(private_blob_ref, str)
-            or not re.fullmatch(r"private:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", private_blob_ref)
-            or not isinstance(retention_policy_id, str) or not _ID.fullmatch(retention_policy_id)
-            or retention_policy_id not in approved_retention_policies):
-        raise EvidenceRejected("EVIDENCE_RETENTION_UNCONFIRMED")
-    if type(payload) is not bytes or not payload or len(payload) > MAX_BYTES:
-        raise EvidenceRejected("EVIDENCE_INPUT_LIMIT")
-    digest = hashlib.sha256(payload).hexdigest()
-    if not isinstance(expected_document_sha256, str) or digest != expected_document_sha256:
-        raise EvidenceRejected("EVIDENCE_FINGERPRINT_MISMATCH")
+    if profile.parser_version != 'external-normalized-csv-v1':
+        raise EvidenceRejected('EVIDENCE_FORMAT_UNSUPPORTED')
+    fingerprint, digest = validate_evidence_input(payload, profile=profile, expected_scope=expected_scope,
+        validated_profiles=validated_profiles, private_blob_ref=private_blob_ref,
+        retention_policy_id=retention_policy_id, approved_retention_policies=approved_retention_policies,
+        expected_document_sha256=expected_document_sha256)
     facts = []
     keys = set()
     try:
@@ -179,6 +173,45 @@ def parse_normalized_csv(
         raise EvidenceRejected("EVIDENCE_REQUIRED")
     return ExternalEvidence(expected_scope, profile.evidence_class, digest, fingerprint,
                             profile.parser_version, private_blob_ref, retention_policy_id, tuple(facts), profile)
+
+
+def validate_evidence_input(
+    payload: bytes, *, profile: EvidenceParserProfile, expected_scope: EvidenceScope,
+    validated_profiles: frozenset[str], private_blob_ref: str, retention_policy_id: str,
+    approved_retention_policies: frozenset[str], expected_document_sha256: str,
+) -> tuple[str, str]:
+    """Shared exact approval/retention/scope/digest gate for explicitly selected normalized codecs."""
+    expected_scope.validate()
+    fingerprint = profile.fingerprint()
+    if profile.scope != expected_scope or fingerprint not in validated_profiles:
+        raise EvidenceRejected("EVIDENCE_PROFILE_UNCONFIRMED")
+    if (not isinstance(private_blob_ref, str)
+            or not re.fullmatch(r"private:[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", private_blob_ref)
+            or not isinstance(retention_policy_id, str) or not _ID.fullmatch(retention_policy_id)
+            or retention_policy_id not in approved_retention_policies):
+        raise EvidenceRejected("EVIDENCE_RETENTION_UNCONFIRMED")
+    if type(payload) is not bytes or not payload or len(payload) > MAX_BYTES:
+        raise EvidenceRejected("EVIDENCE_INPUT_LIMIT")
+    digest = hashlib.sha256(payload).hexdigest()
+    if not isinstance(expected_document_sha256, str) or digest != expected_document_sha256:
+        raise EvidenceRejected("EVIDENCE_FINGERPRINT_MISMATCH")
+    return fingerprint, digest
+
+
+def evidence_mime(profile: EvidenceParserProfile) -> str:
+    profile.fingerprint()
+    return 'application/json' if profile.parser_version == 'external-normalized-invoice-json-v1' else 'text/csv'
+
+
+def parse_approved_evidence(payload: bytes, **approved_inputs):
+    """No sniffing/fallback: only an explicitly approved codec can receive the bytes."""
+    profile = approved_inputs['profile']
+    profile.fingerprint()
+    if profile.parser_version == 'external-normalized-invoice-json-v1':
+        from .invoice_evidence import parse_normalized_invoice
+
+        return parse_normalized_invoice(payload, **approved_inputs)
+    return parse_normalized_csv(payload, **approved_inputs)
 
 
 def require_evidence(

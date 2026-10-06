@@ -12,6 +12,16 @@ class SchemaPool:
     async def fetchval(self, query):
         return self.version
 
+    async def fetchrow(self, query):
+        if self.version is None:
+            return {"minimum": None, "maximum": None, "count": 0, "identified": None}
+        return {
+            "minimum": 1,
+            "maximum": self.version,
+            "count": self.version,
+            "identified": True,
+        }
+
 
 @pytest.mark.asyncio
 async def test_runtime_accepts_the_complete_migration_chain():
@@ -23,9 +33,9 @@ async def test_runtime_accepts_the_complete_migration_chain():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("version", [None, 7, 8, 10])
+@pytest.mark.parametrize("version", [None, 7, 8, 10, 12, 14])
 async def test_runtime_rejects_old_missing_and_unknown_future_schema(version):
     db = Database("unused")
     db.pool = SchemaPool(version)
-    with pytest.raises(RuntimeError, match="unsupported or missing schema"):
+    with pytest.raises(RuntimeError, match="unsupported or unidentified schema"):
         await db.assert_schema()

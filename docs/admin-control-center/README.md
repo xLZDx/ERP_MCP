@@ -25,7 +25,7 @@ The implementation preserves the frozen 1C read-only boundary while adding a gov
 - business role/capability assignments and overrides;
 - source/company-aware canonical accounting reads backed by validated semantic profiles.
 
-Generic `onec_read` remains source-scoped. A company-only grant does not authorize it. Admin-created `company_scope_mappings` are retained as candidate configuration and do not authorize reads; the generic `onec_company_read` endpoint is disabled until independent per-company evidence can be enforced.
+Generic `onec_read` remains source-scoped. When business-capability enforcement is enabled, it also requires the unseeded `onec.raw.read` capability; an `accounting.read` assignment authorizes only fixed canonical operations. A company-only grant does not authorize generic reads. Admin-created `company_scope_mappings` are retained as candidate configuration and do not authorize reads; the generic `onec_company_read` endpoint is disabled until independent per-company evidence can be enforced.
 
 ## Identity model
 

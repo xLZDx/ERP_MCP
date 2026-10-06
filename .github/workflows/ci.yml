@@ -167,6 +167,9 @@ jobs:
           uv export --locked --no-dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/requirements-runtime.lock"
           python -c 'from pathlib import Path; import sys; current=Path("requirements-runtime.lock").read_text().splitlines()[2:]; generated=Path(sys.argv[1]).read_text().splitlines()[2:]; sys.exit(0 if current == generated else 1)' "$RUNNER_TEMP/requirements-runtime.lock"
       - run: uv sync --locked --extra dev
+      - name: Install Chromium for the Admin UI contract
+        run: uv run --locked playwright install --with-deps chromium
+      - run: uv run --locked python scripts/verify_admin_ui.py
       - run: uv run --locked ruff check .
       - run: uv run --locked bandit -q -r src
       - run: uv run --locked python -m compileall -q src scripts testbed
@@ -223,7 +226,7 @@ jobs:
           fi
       - run: >-
           psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
-          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
+          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN; CREATE ROLE business_ai_control_api NOLOGIN;"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
       - run: uv run --locked python scripts/migrate.py
@@ -257,6 +260,7 @@ jobs:
           uv run --locked python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/gateway-pytest.xml" --suite-id gateway-pytest --commit "$(git rev-parse HEAD)" --exit-code 0 --output "$RUNNER_TEMP/gateway-pytest.summary.json"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+          BAG_ADMIN_TEST_REDIS_URL: redis://localhost:6379/15
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gateway-test-summary-${{ github.sha }}

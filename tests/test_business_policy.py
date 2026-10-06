@@ -6,6 +6,7 @@ import pytest
 
 from business_ai_gateway.business_policy import CapabilityDenied, CapabilityPolicy
 from business_ai_gateway.principal import Principal
+from business_ai_gateway.server import BUSINESS_CAPABILITY_BY_TOOL
 
 
 class FakePool:
@@ -90,3 +91,12 @@ async def test_unknown_capability_cannot_be_allowed_by_an_unrecognized_db_overri
     with pytest.raises(CapabilityDenied):
         await policy.require(principal(), "unknown.capability", source_id="s1")
     assert not db.pool.calls
+
+
+@pytest.mark.asyncio
+async def test_generic_onec_read_uses_unseeded_raw_capability_not_accounting_read():
+    assert BUSINESS_CAPABILITY_BY_TOOL["onec_read"] == "onec.raw.read"
+    db = FakeDB([False, False, False])
+    policy = CapabilityPolicy(db, enabled=True)
+    with pytest.raises(CapabilityDenied):
+        await policy.require(principal(), "onec.raw.read", source_id="s1")

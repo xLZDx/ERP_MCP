@@ -16,6 +16,7 @@ GRANT = "33333333-3333-4333-8333-333333333333"
 
 async def verify():
     html = Path("src/business_ai_gateway/static/admin.html").read_text(encoding="utf-8")
+    javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
     requests, errors = [], []
     source = {"source_id": "source-1", "display_name": "<img src=x onerror=alert(1)>", "kind": "onec_auto",
               "read_only": True, "enabled": True, "row_version": 1, "base_url": "https://approved.test/odata",
@@ -57,6 +58,9 @@ async def verify():
             path = request.url.split(ORIGIN, 1)[-1].split("?", 1)[0]
             if path == "/admin/":
                 await route.fulfill(status=200, content_type="text/html", body=html)
+                return
+            if path == "/admin/static/admin.js":
+                await route.fulfill(status=200, content_type="text/javascript", body=javascript)
                 return
             if request.method in {"POST", "PATCH"}:
                 assert request.headers.get("x-csrf-token") == "synthetic-csrf"

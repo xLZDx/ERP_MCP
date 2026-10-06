@@ -51,7 +51,7 @@ Data scope continues to use access_grants:
 - revocation;
 - deny precedence.
 
-Company-specific grants do not authorize generic unscoped `onec_read`. Existing company-aware accounting tools use fixed operations with a selected company and validated semantic profile. Admin `company_scope_mappings` are candidate configuration only; they are not consumed by a runtime read route and do not authorize company data access.
+Company-specific grants do not authorize generic unscoped `onec_read`. With business-capability enforcement enabled, arbitrary `onec_read` also requires the separate `onec.raw.read` capability, which is deliberately absent from seeded business roles. `accounting.read` authorizes fixed canonical accounting operations only after company/profile checks. Existing company-aware accounting tools use fixed operations with a selected company and validated semantic profile. Admin `company_scope_mappings` are candidate configuration only; they are not consumed by a runtime read route and do not authorize company data access.
 
 ## 4. Business capabilities
 

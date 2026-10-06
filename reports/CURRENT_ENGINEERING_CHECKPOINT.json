@@ -1,22 +1,25 @@
 {
   "schema_version": 1,
-  "batch_id": "PRIVATE_EVIDENCE_STORE_20261006",
-  "implementation_sha256": "29e6051f77bd1a7c7dcfd770209a6cf1f1552babf190a301839969d51a74779d",
+  "batch_id": "STRUCTURED_INVOICE_INPUT_20261006",
+  "implementation_sha256": "00b83a1a28d3f2225cc0b9fac545a3d78faa3ef247087e0d96884a01e43f02d1",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "98dabc3d05f47983c65d7e6220a19e2db71cf7de",
-  "last_verified_hosted_run": 37490159346,
-  "last_verified_tested_merge": "ae49662738357246a88f26e4ce7c82539f1f932f",
+  "last_verified_hosted_commit": "bda7e34ebcba422eb57e804334940e7dbfac89ff",
+  "last_verified_hosted_run": 37494671262,
+  "last_verified_tested_merge": "38d36f99bc96f6f2fd2e28c610f25a5a656603b6",
   "last_failed_hosted_commit": "2affa6fc822a9f6e054d1a4a9267aaf5a89ddd9a",
   "last_failed_hosted_run": 37470166429,
-  "hosted_status_at_snapshot": "DAD_SMALL_PARENT_FOUR_JOBS_PASS_PRIVATE_STORE_PENDING",
+  "hosted_status_at_snapshot": "EVIDENCE_RUNTIME_PARENT_FOUR_JOBS_PASS_INVOICE_INPUT_PENDING",
   "last_local_full_suite": {
-    "passed": 607,
-    "skipped": 17
+    "passed": 670,
+    "skipped": 18
   },
   "focused_tests": {
+    "structured_invoice_input": 29,
+    "invoice_csv_store_operator_compatibility": 121,
+    "approved_index_operator_store_settings_and_actual_pg_audit": 117,
     "private_evidence_store": 45,
     "windows_privacy_bridge_wire_store": 81,
     "private_store_os_permissions_and_normalized_evidence": 91,
