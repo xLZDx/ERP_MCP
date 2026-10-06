@@ -123,3 +123,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Review remediation F7: test doubles out of the production image
 
 - Decision: `.dockerignore` gains `**/testbed` so `src/business_ai_gateway/testbed/` (Fake1C, fake sidecar) is not in the production build context; the root `testbed` entry only matched the top-level directory. No production module imports the package (static test asserts this and the Dockerfile COPY lines). Scripts copied into the image that import it (fanout_load_drill, synthetic_fixture_profiles) are CI/test tools and are not run from the image; the CI image smoke only imports business_ai_gateway.app.
+
+## 2026-10-07 - Review remediation F8: product chain tests cannot silently skip
+
+- Decision: the four product chain modules share `tests/sc_stack.py` PG_MARKS/needs_pg; with ERP_MCP_REQUIRE_DB_TESTS=1 and no BAG_PRIVILEGE_TEST_DATABASE_URL they fail (fixture `require_pg_database`) instead of skipping; CI sets the variable on the pytest step. Assertions strengthened: naive-timestamp tests assert error detail/no audit row and no upstream read, SC04 asserts the exact audit rows, stale-fingerprint and invalid-VALIDATED-row tests assert no upstream read; dead `deltas` line removed.
