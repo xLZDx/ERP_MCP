@@ -54,3 +54,8 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - SC step 3: SC10 account turnover on Fake1C
 
 - Decision: the fake sidecar serves a read-only `balanceAndTurnovers` virtual table for `AccountingRegister_Ledger` (capability evidence carries the live metadata fingerprint; sidecar `virtual_tables` is overridable so a missing capability is testable). Seed row 100 + 40 - 15 = 125 for organization one; other companies get no rows; naive timestamps are rejected by the existing tool validator. No metadata or migration change.
+
+## 2026-10-07 - SC step 4: receivable_aging / payable_aging (SC01-SC03)
+
+- Decision: two new read-only tools reuse capability keys ar.read/ap.read (no policy migration) and the existing aging engine; new concepts receivable.open_items / payable.open_items validated by `settlement_collector.py` (deviation: validator lives there, not semantic.py, to keep semantic.py unchanged) and wired into the shared registry validator chain and scripts/semantic_profiles.py. Fixture covers receivable only; payable has no fixture profile and is fail-closed. validated_profiles is derived server-side, never from tool input; evidence level is L1 for fixtures, mapping-declared for native profiles. Fake1C gains AccumulationRegister_SettlementItems (additive wiring); company-two item proves scope isolation.
+- SC06 stays EXTERNAL-GATE and SC08 NOT IMPLEMENTED (out of freeze), unchanged.
