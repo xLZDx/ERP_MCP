@@ -880,6 +880,8 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
     await tx.start()
     source_id = f"role-test-{uuid.uuid4()}"
     request_id = uuid.uuid4()
+    success_request_id = uuid.uuid4()
+    denied_request_id = uuid.uuid4()
     company_id = uuid.uuid4()
     try:
         await conn.execute(
@@ -964,17 +966,58 @@ async def test_postgres_runtime_role_is_read_only_except_append_only_audit():
         assert audit_row["outcome"] == "error"
         assert audit_row["detail_code"] == "IntegrationTestError"
 
-        with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            async with conn.transaction():
-                await conn.execute(
-                    "UPDATE bag.audit_events SET detail_code='tampered' WHERE request_id=$1",
-                    request_id,
-                )
-        with pytest.raises(asyncpg.InsufficientPrivilegeError):
-            async with conn.transaction():
-                await conn.execute(
-                    "DELETE FROM bag.audit_events WHERE request_id=$1", request_id
-                )
+        await Audit(ConnectionDatabase(conn), include_query=True).write(
+            principal=principal,
+            tool="inventory_balance",
+            source_id=source_id,
+            outcome="success",
+            started_at=time.monotonic(),
+            query={"period": "2026-01-01T00:00:00Z"},
+            request_id=success_request_id,
+            company_id=company_id,
+            adapter_kind="ODATA_JSON_V3",
+            metadata_fingerprint="b" * 64,
+            returned_items=3,
+            response_bytes=512,
+        )
+        await Audit(ConnectionDatabase(conn), include_query=True).write(
+            principal=principal,
+            tool="inventory_balance",
+            source_id=source_id,
+            outcome="denied",
+            started_at=time.monotonic(),
+            query={"period": "2026-01-01T00:00:00Z"},
+            request_id=denied_request_id,
+            company_id=company_id,
+            detail_code="AccessDenied",
+        )
+        outcome_rows = await conn.fetch(
+            "SELECT * FROM bag.audit_events WHERE request_id = ANY($1::uuid[])",
+            [success_request_id, denied_request_id],
+        )
+        rows_by_id = {row["request_id"]: row for row in outcome_rows}
+        assert rows_by_id[success_request_id]["outcome"] == "success"
+        assert rows_by_id[success_request_id]["returned_items"] == 3
+        assert rows_by_id[success_request_id]["response_bytes"] == 512
+        assert rows_by_id[success_request_id]["company_id"] == company_id
+        assert rows_by_id[denied_request_id]["outcome"] == "denied"
+        assert rows_by_id[denied_request_id]["detail_code"] == "AccessDenied"
+        assert rows_by_id[denied_request_id]["company_id"] == company_id
+
+        audited_request_ids = [request_id, success_request_id, denied_request_id]
+        for audited_request_id in audited_request_ids:
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE bag.audit_events SET detail_code='tampered' WHERE request_id=$1",
+                        audited_request_id,
+                    )
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                async with conn.transaction():
+                    await conn.execute(
+                        "DELETE FROM bag.audit_events WHERE request_id=$1", audited_request_id
+                    )
+
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             async with conn.transaction():
                 await conn.execute(

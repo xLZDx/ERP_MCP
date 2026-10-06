@@ -1,6 +1,18 @@
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-06
+
+## Current integration gaps
+
+Integration from main `8481c0e` includes the #2–#8 stack plus independent #9/#10 tests.
+Full combined checks remain PENDING. Remaining locally actionable work: reproducible supply-chain
+checks, semantic aging/tax profile contracts, structured telemetry/traces, bounded fan-out/load,
+fault injection, PostgreSQL restore drill, secret rotation and operational automation.
+RSV v1.3.0 built CFE is available according to the supplied artifact pin; acquisition/hash/audit
+and local 1C discovery are pending, not an assumed external blocker. Native 1C/customer production
+evidence cannot be substituted with Fake1C. Production GO remains false.
+
+## Historical assessment and phase detail
 Current implementation is tracked as Draft PRs #2–#8 after PR #1 merged. Working branch
 `phase/p4-inventory-movements` is at `f4340b38945c783a357ce19caa3f34c49d7fdcd0`; hosted run
 `37415523392` passed both `test` (including PostgreSQL runtime-role evidence persistence) and
@@ -77,8 +89,9 @@ P10 ERP/Ferma is outside the current 1C MVP terminal condition and remains reser
 | D8 Data-plane correctness | PARTIAL | Pinned upstream sidecar supports bounded reads; per-source register capability profile is persisted; exact operation rechecked against live metadata before call; DrCr unsupported negative and confirmed positive fixtures; sidecar 11/11, upstream client 428/1 skipped, metadata 53/53, PostgreSQL 4/4 | Hosted CI, company scoping and real-source compatibility |
 | D9 Accounting correctness | PARTIAL | Fail-closed profile lifecycle and canonical account-turnover, sales/purchase, inventory/bank/settlement balance, inventory/cash movement and bounded posting-row tools are implemented in draft PRs #2/#8; current P4 hosted tests pass in run 37415523392 | Reconcile >=10 representative cases against native reports on the target synthetic/test 1C base; complete aging/tax/full posting-trace semantics only from confirmed source profiles |
 | D10 Multi-company | PARTIAL | Distinct company/source registry; scoped allow/deny list/resolve; hosted PostgreSQL ACL integration passed CI 37355876333 and multi-source subject/group isolation + live source-add/revoke contract passed CI 37415897249 in draft PR #9 | Bounded fan-out evidence; company-filtered business adapter; deployed heterogeneous-source pilot |
-| D11 Audit/provenance | PARTIAL | Append-only trigger; schema fields for request/correlation, company, adapter/profile/policy fingerprints, bytes/truncation; `Audit.write` field persistence and runtime-role append-only assertions passed CI 37357024926 for one error event | Verify success/denied-path field population and all values emitted by tool handlers |
+| D11 Audit/provenance | PARTIAL | Append-only trigger; schema fields for request/correlation, company, adapter/profile/policy fingerprints, bytes/truncation; runtime-role PostgreSQL round-trip now verifies success/denied/error fields and UPDATE/DELETE denial for each in PR #10, CI 37416120977 | End-to-end MCP provenance on every tool path, operational audit review and production retention/incident evidence |
 | D12 Observability | PARTIAL | Protected aggregate HTTP counters, in-flight gauge and latency histogram with bounded labels are implemented in draft PR #6; hosted CI run 37384949997 passed | Structured logs/traces, source/DB/Redis/audit metrics, dashboards/alerts and leakage/load evidence |
+
 | D13 Performance/limits | PARTIAL | Basic HTTP timeout, response byte cap, rows/filter and Redis per-tool rate limit settings | Load test, p50/p95/p99, per-source/principal concurrency, fan-out, pool saturation and memory evidence |
 | D14 Resilience | PARTIAL | DB/Redis readiness, selected HTTP retries | Defined Redis outage semantics, source isolation/circuit breaker, secret/IdP/adapter failure injection |
 | D15 Backup/restore/rollback | PARTIAL | PostgreSQL backup/PITR and rollback contract in docs | Implement operator automation and run a restore drill in an available DB/deployment environment |

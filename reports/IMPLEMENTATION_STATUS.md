@@ -2,7 +2,20 @@
 
 Last updated: 2026-10-06
 
-## Current authoritative state
+## Current authoritative state — integration recovery
+
+- Date: 2026-10-06. Verified main: `8481c0e7c794fc2474efb1b56044363043608698`.
+- Integration branch: `integration/1c-mvp-production-candidate`, separate worktree
+  `D:/Repo/ERP_MCP-integration-candidate`; original HTML edits/RSV archive preserved.
+- PR #1 merged; #2–#10 OPEN/Draft; every latest PR head has both hosted checks SUCCESS.
+- #8 contains #2–#7; #9 and #10 are independent main-based follow-ups. All are being integrated
+  without rewriting branches. Only documentation conflicted; test code auto-merged.
+- Combined candidate verification is PENDING. No readiness promotion or production GO.
+- Next local work: integration quality matrix, pinned RSV artifact/platform discovery, semantic
+  gaps, telemetry/failure/load/restore/rotation automation. These are not external blockers.
+- See [integration matrix](PR_INTEGRATION_MATRIX.md) for exact heads/bases/CI.
+
+## Historical branch snapshots (superseded by integration recovery)
 
 - Active delivery branch: `phase/p4-inventory-movements` at `f4340b38945c783a357ce19caa3f34c49d7fdcd0`.
 - PR #1 is merged. Draft PRs #2–#8 remain open; PR #8 carries the current P4 follow-up and is
@@ -34,6 +47,18 @@ Last updated: 2026-10-06
 - Pilot validator remains `NOT_READY`; native 1C accounting reconciliation and target deployment
   evidence are unavailable. No production readiness claim is made.
 - Bootstrap chronology below is retained as historical execution log, not current branch/PR status.
+
+- PR #1 is merged; draft implementation/follow-up PRs #2–#10 remain for user review. No PR has been
+  self-approved or merged.
+- P4 follow-up PR #8 code head `f4340b3` passed CI `37415523392` (cache drift regression, capability
+  evidence persistence, pinned upstream suites and non-root image smoke).
+- D10 PR #9 code head `6356005` passed CI `37415897249` (multi-source/company/group isolation,
+  source add/revoke in a live registry); D11 PR #10 code head `c14376d` passed CI `37416120977`
+  (runtime-role audit success/deny/error and append-only checks).
+- The current branch is an independent main-based audit follow-up. The bootstrap chronology below
+  is historical. Native 1C reconciliation, target deployment and pilot evidence remain unavailable;
+  the pilot validator is still `NOT_READY`.
+
 
 ## Bootstrap
 

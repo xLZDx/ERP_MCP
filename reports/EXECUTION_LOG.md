@@ -364,3 +364,20 @@
   grant. Local regression suite remains `74 passed, 8 skipped`. Corrected PR head `6356005` passed
   hosted CI run `37415897249`: `81 passed, 1 skipped`, pip-audit clean, and pinned upstream
   client/metadata tests plus non-root sidecar image smoke passed.
+
+- D11 audit outcome follow-up on `phase/p1-audit-outcomes`: extended the runtime-role PostgreSQL
+  round-trip to exercise success, denial and error events, assert company/provenance/result fields,
+  and attempt append-only UPDATE/DELETE against each event. Local suite: `74 passed, 7 skipped`
+  (the PostgreSQL integration test requires CI DB); Ruff, compileall and diff check pass. Draft PR
+  #10 is at https://github.com/xLZDx/ERP_MCP/pull/10. Hosted CI run `37416120977` passed on
+  `c14376d`: pytest `80 passed, 1 skipped`; pip-audit clean; pinned upstream client/metadata tests
+  and non-root image smoke passed.
+
+
+## Integration recovery — 2026-10-06
+
+Verified main `8481c0e`; latest heads of PR #2–#10 all have successful hosted checks.
+Created a separate production-candidate worktree, merged the #8 stack once and independent
+#9/#10 follow-ups, preserving both historical evidence streams. Documentation conflicts were
+reconciled; combined code/migrations/tests are awaiting the full quality gate.
+
