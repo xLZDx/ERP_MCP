@@ -1,23 +1,23 @@
 {
   "schema_version": 1,
-  "batch_id": "JWKS_RECOVERY_20261006",
-  "implementation_sha256": "c0ed6464251446ec3dd71dd8db9cc8b2eb5d9f4d812239187296df13e97de58f",
+  "batch_id": "DAD_SCOPED_COMPARISON_20261006",
+  "implementation_sha256": "b9b2cb0783f03dd7dbad458f08820122658eeac1035712c97d812c4a6e9c6cfb",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
   "last_verified_hosted_commit": "5d49ec285c63b354979ed5f93afa662f6ec458f0",
   "last_verified_hosted_run": 37462582061,
-  "last_failed_hosted_commit": "4e07daf5d163723fa820aa6ffed47a747f966c8b",
-  "last_failed_hosted_run": 37468209819,
-  "hosted_status_at_snapshot": "WINDOWS_ACL_GUARD_PASS_INDEPENDENT_POWERSHELL_FIX_AWAITING_CI",
+  "last_failed_hosted_commit": "2affa6fc822a9f6e054d1a4a9267aaf5a89ddd9a",
+  "last_failed_hosted_run": 37470166429,
+  "hosted_status_at_snapshot": "THREE_PREREQUISITE_JOBS_PASS_TRIVY_CACHE_LOCATION_FIX_PENDING",
   "last_local_full_suite": {
-    "passed": 372,
+    "passed": 405,
     "skipped": 10
   },
   "focused_tests": {
-    "release_assembly_and_gitlink": 22,
-    "rsv_privacy_and_bridge": 29
+    "dad_comparison": 33,
+    "release_assembly": 21
   },
   "upstream_junit": {
     "client": {
@@ -33,5 +33,5 @@
       "skipped": 0
     }
   },
-  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS"
+  "current_full_suite_status": "PASS"
 }

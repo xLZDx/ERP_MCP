@@ -8,6 +8,9 @@ import subprocess
 from pathlib import Path
 
 IMPLEMENTATION = {
+    "DAD-3": ["src/business_ai_gateway/dad_rules.py", "tests/test_dad_reconciliation_rules.py"],
+    "DAD-5": ["src/business_ai_gateway/dad_rules.py", "src/business_ai_gateway/external_evidence.py",
+              "tests/test_dad_reconciliation_rules.py"],
     "EVID-1": ["src/business_ai_gateway/external_evidence.py", "tests/test_external_evidence.py"],
     "FR-A1": ["src/business_ai_gateway/auth.py", "tests/test_auth.py"],
     "NFR-R2": ["src/business_ai_gateway/auth.py", "tests/test_auth_jwks_http.py",

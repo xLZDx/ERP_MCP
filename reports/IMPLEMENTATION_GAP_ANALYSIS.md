@@ -2,6 +2,17 @@
 
 # ERP_MCP implementation gap analysis
 
+## Current DAD comparison checkpoint — 2026-10-06
+
+Versioned normalized Z/terminal/bank comparisons now enforce exact source/company/configuration/
+semantic scope, approved rule/parser fingerprints and independent complete observation planes.
+33 focused tests and full local suite 405 passed/10 skipped; lint/security/checkpoint gates PASS.
+This does not close native parsers, evidence storage, runtime ACL/audit tools, account selectors,
+native observers, full month-close packs or Ferma seeding. Latest hosted 2affa6f / 37470166429:
+three prerequisite jobs PASS, release assembly FAIL due to checkout-local Trivy cache. The cache
+location is corrected without weakening clean-worktree provenance; corrected hosted run pending.
+Production NO-GO, DoD PARTIAL, PR #11 Draft. Independent local engineering remains actionable.
+
 ## Persisted registry CLI follow-up — 2026-10-06
 
 FR-C1/C2 registry diagnostics: all five CLI commands implemented against bounded repeatable read-only DB snapshots; aggregate output, exact source/profile/fingerprint freshness and drift checks, exact-register diff, safe private export outside Git/no overwrite. Diagnostic SUPPORTED does not grant runtime authorization; no OData/COM/probe calls. 22 focused tests PASS plus 1 executed test on a NEW PostgreSQL instance (5 snapshots readonly=on), including DrCr negative/positive, stale/drift and oversized profiles. Prior first drill failed because its synthetic seed used the unconfirmed default drift state; corrected fixture then actual DB PASS. Hosted e7898f2 / run 37461088241 BOTH jobs PASS. Current full local suite 341 passed, 10 skipped; separate actual PostgreSQL contract 1/1 PASS. Ruff/Bandit/documentation gates PASS; hosted CLI batch awaits its own run. DAD/native evidence/Ferma/deployment gates remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.

@@ -337,6 +337,16 @@ Recommended logical entities:
 
 A rule cannot silently become universal across configurations/companies.
 
+Internal comparison implementation: `dad_rules.py` binds immutable rule/pack/version/effective
+period/tolerance/class/concept to an exact EvidenceScope and server-approved rule fingerprint.
+It separately requires confirmed semantic scope and confirmed external parser profile. Missing,
+unconfirmed, cross-company/currency/period, incomplete, ambiguous and same-artifact-plane inputs
+cannot yield PASS. Findings contain opaque key hashes/reason codes, never raw identifiers/amounts.
+Exact bounded Decimal comparisons preserve micro-units; input evidence level is retained and
+native approval is never inferred. This is a normalized comparison foundation for Z/terminal/
+bank-style inputs, not native format validation or universal account rules. Runtime tool/ACL/audit
+integration, configured account selectors, native observers and full month-close packs remain open.
+
 ### 10C. Testbed/reference provenance
 
 Reference/oracle artifacts are tracked by references and hashes, not copied into the public DB model:

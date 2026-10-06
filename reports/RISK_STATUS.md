@@ -4,6 +4,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=DAD_SCOPED_COMPARISON_20261006 ENGINEERING_IMPLEMENTATION=b9b2cb0783f03dd7dbad458f08820122658eeac1035712c97d812c4a6e9c6cfb -->
+
+## Scoped DAD comparison foundation and release cache correction — 2026-10-06
+
+DAD-3/DAD-5: internal versioned exact-scope normalized reconciliation rules for Z/terminal/bank comparisons implemented. Approved rule fingerprint, effective period/tolerance, confirmed semantic scope, confirmed external profile, complete observations and separate artifact planes required. Missing/invalid/cross-scope/ambiguous inputs cannot PASS; findings expose key hashes/reason codes only. Evidence level retained, human review always required, no native approval inferred. 33 focused tests PASS including exact large Decimal micro-differences. Runtime ACL/audit/tool integration, native parsers/selectors/observers/full month-close packs remain OPEN. 2affa6f run 37470166429: Windows, gateway and OData PASS; assembly failed strict dirty-worktree check because Trivy cache was in checkout. Cache moved to runner temp and excluded from source/build contexts; guard not relaxed. Full local suite 405 passed, 10 skipped; Ruff/Bandit/compileall/checkpoint gates PASS. Fresh 4-job assembly verification pending. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=JWKS_RECOVERY_20261006 ENGINEERING_IMPLEMENTATION=c0ed6464251446ec3dd71dd8db9cc8b2eb5d9f4d812239187296df13e97de58f -->
 
 ## Actual JWKS recovery and independent Windows proof correction — 2026-10-06

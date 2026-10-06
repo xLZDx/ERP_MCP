@@ -89,6 +89,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
           image-ref: erp-mcp-odata-sidecar:ci
           format: cyclonedx
           output: ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
@@ -101,6 +102,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
           image-ref: erp-mcp-odata-sidecar:ci
           format: table
           scanners: vuln
@@ -269,6 +271,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
           image-ref: erp-mcp-gateway:ci
           format: cyclonedx
           output: ${{ runner.temp }}/erp-mcp-gateway.cdx.json
@@ -281,6 +284,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
           image-ref: erp-mcp-gateway:ci
           format: table
           scanners: vuln
