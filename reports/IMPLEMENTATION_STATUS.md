@@ -15,6 +15,9 @@ report-reference CI gates, and operational artifact coverage tests. Local verifi
 semantic profiles, native-report reconciliation, and operator approval remain external gates.
 Production GO remains NO-GO; PR #11 remains OPEN/Draft.
 
+Hosted confirmation: run `37440714147` PASS on `74d1a4d`; both required CI jobs passed, including
+the new report-reference check and the pinned OData upstream build/smoke/security path.
+
 Follow-up unblocked batch hosted verification: run `37439573762` PASS on `4e63412` for both
 required jobs.
 

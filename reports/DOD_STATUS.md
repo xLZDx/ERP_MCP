@@ -12,6 +12,8 @@ alert/report-reference CI gates, and operational artifact tests. This does not s
 production-like rehearsal, live 1C semantic validation, native-report reconciliation, or release
 approval. DoD remains PARTIAL and production GO remains NO-GO.
 
+Hosted confirmation: run `37440714147` PASS on `74d1a4d`; `test` and `odata-upstream` both passed.
+
 Follow-up artifacts hosted verification: run `37439573762` PASS on `4e63412` for both required jobs.
 
 The current local suite is `184 passed, 9 skipped`; hosted run `37437328906` passed both required
