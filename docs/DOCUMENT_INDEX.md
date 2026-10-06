@@ -1,9 +1,9 @@
 # ERP_MCP — Normative Documentation Index
 
-**Baseline:** v1.0  
-**Date:** 2026-10-05  
-**Status:** FROZEN FOR IMPLEMENTATION  
-**Scope:** 1C-first production MVP with future ERP/Ferma adapter boundaries
+**Baseline:** v1.1 — operator scope freeze
+**Date:** 2026-10-06
+**Status:** FROZEN — NO NEW SCOPE UNTIL CURRENT COMMITTED SCOPE CLOSES
+**Scope:** frozen read-only 1C/DAD delivery baseline; recorded deferred lanes stay deferred until explicit rebaseline
 
 Interactive view: [ERP_MCP Engineering Command Center](ERP_MCP_ENGINEERING_COMMAND_CENTER.html).
 
@@ -21,14 +21,15 @@ When documents conflict, use this order:
 
 1. `SECURITY.md` — security invariants and trust boundaries.
 2. `docs/GOVERNANCE.md` — change authority, review and evidence rules.
-3. `docs/adr/` — accepted architecture decisions.
-4. `docs/TDD.md` — product/technical requirements.
-5. `docs/ARCHITECTURE.md` — system/component/deployment architecture.
-6. `docs/DATA_MODEL.md` — control-plane and semantic data contracts.
-7. `docs/INTEGRATION.md` — adapter and external-system integration contracts.
-8. `docs/DEFINITION_OF_DONE.md` — release acceptance.
-9. `docs/MASTER_PLAN.md` — execution order and milestones.
-10. Supporting documents: compatibility, test strategy, SRE/observability, risks and vendor intake.
+3. `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` — operator-approved committed/deferred scope and rebaseline barrier.
+4. `docs/adr/` — accepted architecture decisions.
+5. `docs/TDD.md` — product/technical requirements.
+6. `docs/ARCHITECTURE.md` — system/component/deployment architecture.
+7. `docs/DATA_MODEL.md` — control-plane and semantic data contracts.
+8. `docs/INTEGRATION.md` — adapter and external-system integration contracts.
+9. `docs/DEFINITION_OF_DONE.md` — release acceptance.
+10. `docs/MASTER_PLAN.md` — execution order and milestones.
+11. Supporting documents: DAD coverage, Ferma testbed blueprint, compatibility, test strategy, SRE/observability, risks and vendor intake.
 
 No lower-precedence document may silently weaken a higher-precedence invariant.
 
@@ -36,6 +37,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 
 | Document | Purpose |
 |---|---|
+| [Scope Freeze Baseline](SCOPE_FREEZE_BASELINE_2026-10-06.md) | Operator-approved current scope, anti-scope-creep rule, committed vs deferred lanes and freeze-release barrier |
 | [TDD](TDD.md) | Technical Design Document: goals, requirements, constraints, invariants |
 | [Master Plan](MASTER_PLAN.md) | Delivery phases, gates, dependencies and exit criteria |
 | [Data Model](DATA_MODEL.md) | PostgreSQL control-plane schema and canonical semantic model |
@@ -64,6 +66,8 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 - [Vendor sources](../vendor/UPSTREAMS.md)
 - [Machine-readable vendor intake](../vendor/intake.json)
 - [Testbed](../testbed/README.md)
+- [Ferma → 1C Synthetic Testbed & Reconciliation — Implementation Blueprint](FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md) — proposed supporting implementation plan for deterministic Ferma-driven real-1C L2 reconciliation; does not override higher-precedence invariants.
+- [DAD 1C MCP Requirements & Scenario Coverage](DAD_1C_MCP_REQUIREMENTS_COVERAGE.md) — audited source-of-problem, link/material inventory, full scenario lanes, current implementation gaps and DAD acceptance priorities.
 
 ## Architecture decisions
 
@@ -85,3 +89,10 @@ requires:
 - governance approval before implementation is treated as complete.
 
 Documentation is part of the product. A release with stale normative documents is not Done.
+
+### Scope-freeze rule
+
+While `SCOPE_FREEZE_BASELINE_2026-10-06.md` is active, every new issue/PR/task must cite the
+existing frozen requirement/gate it closes. A task without such a trace is scope expansion and is
+blocked until explicit operator rebaseline. Security/defect/DoD-evidence work required to complete
+an existing frozen requirement is scope-preserving.

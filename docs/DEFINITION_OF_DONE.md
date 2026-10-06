@@ -1,7 +1,8 @@
 # ERP_MCP Definition of Done — 1C Production MVP
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
+**Scope:** active operator freeze; no new product scope until current committed scope closes
 
 A production MVP is Done only when **all mandatory gates** pass for the exact release/environment.
 
@@ -11,7 +12,8 @@ A production MVP is Done only when **all mandatory gates** pass for the exact re
 - requirements/ADRs/DoD match implementation;
 - PR/release identifies exact commit;
 - known deviations/deferred work are listed;
-- vendor provenance/license manifest is current.
+- vendor provenance/license manifest is current;
+- `SCOPE_FREEZE_BASELINE_2026-10-06.md` matches implementation/roadmap and every active task traces to an existing frozen requirement/gate.
 
 ## D1 — Build and dependency integrity
 
@@ -59,7 +61,8 @@ Mandatory:
 - modern OData data-plane exposes only approved reads;
 - fallback/COM/native-query adapter has explicit read-only allowlist;
 - tests prove POST/PUT/PATCH/DELETE or equivalent mutation path is unavailable;
-- arbitrary code execution is not exposed.
+- arbitrary code execution is not exposed;
+- test-only Ferma/1C seeder and historical R/W helpers are absent/unreachable from production MCP routes.
 
 ## D6 — SSRF/transport safety
 
@@ -98,14 +101,24 @@ all pass contract tests and real-source smoke tests where applicable.
 
 ## D9 — Accounting correctness
 
-At least 10 representative accounting scenarios on a real synthetic/test 1C base:
-- native 1C report/UI result captured;
-- MCP/semantic result captured;
-- reconciliation result PASS;
-- discrepancy rules/tolerance documented;
-- semantic profile and metadata fingerprint recorded.
+Accounting correctness uses both frozen L2 tracks:
 
-No unresolved material accounting discrepancy.
+**L2-B real reference**
+- private real-reference 1C clone fingerprinted;
+- known-good/known-error regression cases exercised;
+- native 1C report/UI evidence captured;
+- source-specific profile/mapping tied to exact metadata fingerprint.
+
+**L2-A Ferma controlled synthetic**
+- deterministic scenario/oracle provenance captured;
+- test-only seeder creates normal 1C business documents in a marked disposable base;
+- native 1C result and ERP_MCP result captured independently;
+- oracle independence mechanically preserved.
+
+At least 10 representative native-report reconciliation cases are mandatory per production semantic
+profile, and the broader frozen DAD scenario families must reach their declared acceptance level.
+
+No unresolved material accounting discrepancy may be waived into PASS.
 
 ## D10 — Multi-company operation
 
@@ -192,6 +205,20 @@ Targets are approved from measured results, not guessed.
 - audit reviewed;
 - high/blocker risks closed or explicitly accepted;
 - exact production release SHA approved.
+
+## Cross-cutting scope-freeze closure
+
+Before the operator considers lifting/rebaselining the freeze:
+
+- all current committed requirements in `SCOPE_FREEZE_BASELINE_2026-10-06.md` have explicit
+  implementation/evidence status;
+- DAD R0–R7 read-only scope is implemented to its declared acceptance level;
+- real-reference and Ferma controlled-synthetic assurance paths are complete for frozen scenario
+  families;
+- External Evidence dependencies return explicit evidence states rather than guessed PASS;
+- no locally actionable blocker/high risk is hidden as “future”;
+- deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;
+- Command Center and normative docs match exact release evidence.
 
 ## Final terminal condition
 

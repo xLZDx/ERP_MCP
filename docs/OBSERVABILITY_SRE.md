@@ -1,7 +1,7 @@
 # ERP_MCP Observability and SRE Contract
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 ## 1. Objectives
 
@@ -68,11 +68,15 @@ Must not include:
 - capability refresh/drift;
 - metadata fingerprint change.
 
-### Semantic
+### Semantic / DAD assurance
 
 - tool executions by semantic profile;
 - reconciliation status in validation environments;
-- profile-unvalidated blocks/warnings.
+- profile-unvalidated blocks/warnings;
+- DAD rule executions by bounded rule ID/status;
+- `PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR` counts;
+- external-evidence parser failures/required-missing counts by bounded evidence class;
+- reference/Ferma test level in validation evidence, never raw customer identifiers as metric labels.
 
 ## 4. Traces
 
@@ -88,6 +92,8 @@ mcp.request
   adapter.call
     upstream.1c
   semantic.transform
+  evidence.resolve      # when required
+  dad.rule.evaluate     # when required
   audit.append
 ```
 
@@ -220,3 +226,31 @@ Track:
 
 Capacity increase must preserve bounded concurrency. “150 companies” does not mean “150 simultaneous
 unbounded queries”.
+
+
+## 12. Scope-freeze observability
+
+Operational dashboards/status reports must distinguish:
+
+- current committed frozen scope;
+- completed evidence;
+- locally actionable open work;
+- external-only evidence blockers;
+- recorded deferred lanes.
+
+A deferred lane must never appear as active progress unless explicitly promoted by operator
+rebaseline.
+
+Engineering Command Center is a reporting surface, not the authority. Its status must be reconciled
+against normative docs and exact CI/release evidence before closure claims.
+
+## 13. Private reference/evidence telemetry
+
+For `REFERENCE_TEST_BASE_A` and private external documents:
+
+- logs use safe aliases/fingerprints, not raw private Drive links or customer identifiers;
+- credentials never appear;
+- raw document text is excluded from standard telemetry;
+- test level and artifact digest are sufficient for evidence correlation;
+- test-only write activity on a disposable RW clone must be explicitly labelled as test activity and
+  must never be mixed with production read-only metrics.

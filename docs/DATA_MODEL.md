@@ -1,17 +1,24 @@
 # ERP_MCP Data Model
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
+**Version:** 1.1
+**Date:** 2026-10-06
 **Principle:** persist control/provenance, not an uncontrolled copy of accounting data
 
 ## 1. Data domains
 
-ERP_MCP separates four data domains:
+ERP_MCP separates six data domains:
 
 1. **Control plane** — sources, companies, access, policies, adapter bindings.
 2. **Capability/schema** — metadata fingerprints, adapter capabilities, schema drift.
 3. **Semantic configuration** — per-configuration mappings from canonical concepts to 1C objects.
 4. **Evidence/audit** — immutable access audit and accounting reconciliation evidence.
+5. **External evidence metadata** — fingerprint/provenance/reference for approved read-only evidence
+   required by frozen DAD scenarios; raw private documents remain outside the control database by
+   default.
+6. **Business-assurance rules** — versioned DAD rule packs/applicability/evidence requirements.
+
+The active scope freeze is governed by `SCOPE_FREEZE_BASELINE_2026-10-06.md`; no new persistent
+domain is introduced without explicit rebaseline.
 
 Raw operational accounting facts are read through source adapters and are **not persisted by default**.
 
@@ -266,11 +273,70 @@ Never assume account 62/60/51/etc. globally. Those may be preset candidates only
 - input period/parameters fingerprint;
 - result fingerprint/summary;
 - native result/evidence reference;
-- status: PASS/FAIL/INCONCLUSIVE;
+- status: PASS/FAIL/INCONCLUSIVE/EVIDENCE_REQUIRED/CAPABILITY_UNSUPPORTED;
+- external/native/oracle evidence references as applicable;
+- test level: L1/L2-A/L2-B/L3;
 - discrepancy;
 - timestamp.
 
 This is the correctness evidence for production accounting semantics.
+
+### 10A. External evidence metadata
+
+Recommended logical entity: `external_evidence_refs`.
+
+Fields:
+- evidence ID;
+- source/company association;
+- evidence class (invoice, bank_statement, z_report, terminal_report, tax_filing, tax_receipt,
+  customs_ccac, payroll_source, contract, reconciliation_act, other already-frozen class);
+- private blob/object reference, never public URL from the model;
+- SHA-256/content fingerprint;
+- MIME/type/parser version;
+- source/provenance;
+- business period/date;
+- ingest time;
+- retention/access classification;
+- parse status/warnings.
+
+Raw private evidence is not copied into Git/public CI or ordinary audit rows.
+
+### 10B. DAD rule-pack model
+
+Recommended logical entities:
+
+`dad_rule_packs`
+- pack ID/version;
+- jurisdiction/effective period where applicable;
+- configuration/company/activity applicability;
+- status: draft/validated/retired;
+- provenance/owner.
+
+`dad_rules`
+- rule ID;
+- pack ID/version;
+- semantic inputs;
+- account/dimension selector;
+- condition/comparison;
+- required evidence classes;
+- severity;
+- explanation/remediation;
+- human-review requirement;
+- native-report/reconciliation reference.
+
+A rule cannot silently become universal across configurations/companies.
+
+### 10C. Testbed/reference provenance
+
+Reference/oracle artifacts are tracked by references and hashes, not copied into the public DB model:
+
+- real-reference base alias + archive SHA/configuration fingerprint;
+- Ferma commit/generator/profile/seed/scenario digest;
+- synthetic-base marker;
+- native observer/result digest;
+- ERP_MCP result digest.
+
+Test-only write credentials/seeder state are never valid production source credentials.
 
 ## 11. Audit model
 
@@ -349,6 +415,10 @@ The semantic layer may return richer domain shapes, but provenance must not be l
 - audit: durable append-only subject to deployment retention policy;
 - raw accounting result: request-scoped by default;
 - reconciliation evidence: durable for release/governance evidence;
-- synthetic test data: repository/testbed only, never copied from customers.
+- synthetic test data: repository/testbed only, never copied from customers;
+- private real-reference 1C archives/backups: private testbed storage only, immutable golden source;
+- external evidence raw documents: approved private storage/retention only; repository stores at most
+  safe metadata/hashes/aliases;
+- Ferma expected/oracle artifacts: isolated from 1C/ERP_MCP actual computation inputs.
 
 Any automatic deletion/retention policy must be explicitly defined and approved before production.

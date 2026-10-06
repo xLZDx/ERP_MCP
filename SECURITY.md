@@ -20,6 +20,11 @@ ERP_MCP is **read-only by construction** for the 1C Day-1 production MVP.
 - Raw OData filters are not stored in audit by default.
 - Runtime DB credentials cannot modify source registry or grants.
 - Source credentials never appear in MCP results.
+- External evidence is untrusted read-only input; it cannot change authorization/policy or trigger
+  production 1C mutation.
+- Raw private reference bases/documents/credentials/private Drive links never enter Git/public CI.
+- Test-only Ferma/1C seed/write code and credentials are isolated from production MCP routes.
+- Missing evidence never authorizes a guessed accounting/tax/payroll PASS.
 
 ## 1C service account
 

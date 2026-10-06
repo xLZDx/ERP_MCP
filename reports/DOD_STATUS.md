@@ -1,4 +1,21 @@
+[Reading 87 lines from start (total: 87 lines, 0 remaining)]
+
 # Definition of Done status
+
+## Scope freeze checkpoint — 2026-10-06
+
+Operator froze further scope additions until the current committed scope is implemented and mandatory
+evidence closes. Authoritative scope: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md`.
+
+Current candidate:
+- PR #11 Draft / mergeable;
+- HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`;
+- hosted CI `37446049853`: SUCCESS;
+- Production GO: NO-GO.
+
+No new feature/scenario/adapter/integration family may enter execution without explicit operator
+rebaseline. Existing deferred write/legacy/production ERP-Ferma lanes remain deferred.
+
 
 ## Current authoritative checkpoint — 2026-10-06
 
@@ -70,3 +87,5 @@ No production gate is promoted solely by synthetic tests.
 
 P7 is explicitly demand-driven/deferred; P10 is outside modern 1C MVP.
 Locally actionable work remains, so Terminal B has NOT been reached.
+
+[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]

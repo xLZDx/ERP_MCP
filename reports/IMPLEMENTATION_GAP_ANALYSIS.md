@@ -1,6 +1,28 @@
+[Reading 150 lines from start (total: 150 lines, 0 remaining)]
+
 # ERP_MCP implementation gap analysis
 
 Assessment date: 2026-10-06
+
+## Scope freeze checkpoint — 2026-10-06
+
+Further product-scope additions are frozen. Gap analysis is now measured only against
+`docs/SCOPE_FREEZE_BASELINE_2026-10-06.md`; new feature/scenario/adapter/integration families are
+not accepted without explicit operator rebaseline.
+
+Current PR #11: Draft/mergeable, HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; hosted CI
+`37446049853` SUCCESS. Production GO remains NO-GO.
+
+Newly frozen implementation gaps now include the already accepted DAD read-only scope:
+- private real-reference restore/fingerprint/native reconciliation;
+- Ferma controlled-synthetic scenario/oracle/seeder path;
+- six accountant-selected checks;
+- invoice/e-factura reconciliation;
+- DAD month-close rule packs;
+- P&L/CF/BS;
+- External Evidence Plane and accepted bank/Z/terminal/customs/CCAC/tax/payroll precheck families.
+
+These are current scope, not future additions.
 
 ## Current authoritative checkpoint — 2026-10-06
 
@@ -33,7 +55,7 @@ the stacked draft PRs are already in `main`. Bootstrap snapshot below is histori
 
 Implementation assessed through CI-tested commit `de035247d61a6f166434d449dd69cb2a9dfe418e`;
 hosted CI run `37375751454` passed gateway/database and pinned OData jobs.
-Branch: `bootstrap/1c-day1-production`  
+Branch: `bootstrap/1c-day1-production`
 Method: code/schema/tests/documents inspected against `docs/MASTER_PLAN.md`,
 `docs/DEFINITION_OF_DONE.md`, and `docs/REQUIREMENTS_TRACEABILITY.md`.
 
@@ -128,3 +150,5 @@ the authorization contract can be enforced end-to-end.
 
 No external blocker is terminal while independent software, local tests, automation, and runbooks
 remain unfinished.
+
+[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]

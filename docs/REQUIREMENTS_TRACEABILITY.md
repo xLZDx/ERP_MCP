@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 This matrix connects requirements to architecture, implementation areas and release gates.
 
@@ -38,6 +38,17 @@ This matrix connects requirements to architecture, implementation areas and rele
 | OPS-1 | Source onboarding handshake | Integration §9 | D10/D17 |
 | OPS-2 | Source offboarding safe | Integration §10 | D17 |
 | OPS-3 | Deterministic release preflight and non-destructive rollback manifest | Release Operations / Rollback runbook | D15–D18 |
+| SCOPE-1 | No new product scope while operator freeze is active | Scope Freeze Baseline, Governance §2A | D0 + freeze closure |
+| DAD-1 | Six accountant-selected read-only checks | DAD Requirements Coverage §8, DAD rule engine | D9 + DAD acceptance |
+| DAD-2 | Invoice/e-factura read-only reconciliation | DAD Requirements Coverage §11/§27, External Evidence Plane | D9/D11 |
+| DAD-3 | Versioned applicability-aware month-close rule packs | TDD FR-G, Data Model §10B | D9/D11 |
+| DAD-4 | P&L / Cash Flow / Balance Sheet semantic reports | TDD G-07, semantic profiles | D9 |
+| DAD-5 | Bank/Z/terminal/customs/CCAC reconciliation | TDD FR-H, Integration §13–14 | D9/D11 |
+| DAD-6 | VAT/IPC/VEN and payroll prechecks require external evidence + human review | TDD G-07/FR-H | D9/D11 |
+| EVID-1 | Missing external evidence never becomes guessed PASS | TDD FR-G/FR-H | D9/D11 |
+| TEST-REF-1 | Private real-reference base used via immutable golden + disposable clones | Scope Freeze §3.6, DAD Coverage §22–34 | D5/D7/D8/D9 |
+| TEST-FERMA-1 | Ferma synthetic scenario/oracle remains independent from 1C/ERP_MCP actual | TDD G-08, Ferma→1C Blueprint | D9 |
+| P6-SEC-1 | RSV business query/reveal remain denied unless audited conditions are proven | RSV audit, Master Plan P6 | D5/D7 |
 | FUT-ERP | Preserve ERP tenant/org RLS | Architecture §11 | future adapter DoD |
 | FUT-FERMA | Preserve oracle independence | Architecture §11 | future adapter DoD |
 

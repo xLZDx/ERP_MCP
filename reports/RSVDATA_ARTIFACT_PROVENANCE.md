@@ -24,3 +24,9 @@ Verified 2026-10-06 against the official GitHub v1.3.0 release API and downloade
 Archive contents confirm the built extension exists. Hash verification does not establish
 read-only behavior, company isolation, reproducible binary builds, or production approval.
 No executable has been launched and no extension has been installed in a customer base.
+
+## Live-use update — 2026-10-06
+
+The artifact was subsequently installed only in a disposable synthetic local 1C 8.3.27.2342 base,
+exported to XML/BSL, and exercised through COM. This does not alter the provenance hashes above.
+See `RSVDATA_EXTENSION_AUDIT.md` for the live security findings and production disposition.

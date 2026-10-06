@@ -8,8 +8,8 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.0 · snapshot 2026-10-06 · progress across PR #1–#10 · local branch phase/p6-rsv-bridge-boundary</div></div>
-<div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.1 · SCOPE FROZEN 2026-10-06 · candidate 65883a5 · CI 37446049853 PASS</div></div>
+<div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
   <div class="phase-desc">Нормативный baseline</div><div class="phase-stat">закрыт · 100%</div>
@@ -26,14 +26,14 @@
   <div class="phase-code">P4</div><div class="phase-name">Semantic accounting</div>
   <div class="phase-desc">Profiles · balances · documents · movements</div><div class="phase-stat">CI PASS · PR #2, #8 Draft · native сверка открыта</div>
   </div><div class="phase-card progress">
-  <div class="phase-code">P5</div><div class="phase-name">Real 1C testbed</div>
-  <div class="phase-desc">L1 seed + 10 scenario contracts: PASS</div><div class="phase-stat">PR #3 Draft · реальные L2/L3 открыты</div>
+  <div class="phase-code">P5</div><div class="phase-name">Dual 1C assurance</div>
+  <div class="phase-desc">P5-A Real Reference + P5-B Ferma Controlled Synthetic</div><div class="phase-stat">L1 PASS · private reference restore/native reconciliation + Ferma L2 remain active frozen scope</div>
   </div><div class="phase-card progress">
   <div class="phase-code">P6</div><div class="phase-name">COM / extension</div>
-  <div class="phase-desc">Isolated process + health boundary: PASS</div><div class="phase-stat">PR #4 Draft · data route/COM smoke открыты</div>
+  <div class="phase-desc">1C 8.3.27.2342 + V83.COMConnector + RSV metadata smoke: PASS</div><div class="phase-stat">metadata allowlist proven · query default DENY · execute_query DENY · reveal HARD DENY</div>
   </div><div class="phase-card optional">
-  <div class="phase-code">P7</div><div class="phase-name">Legacy 8.2</div>
-  <div class="phase-desc">Demand gate · isolated GPL route</div><div class="phase-stat">PR #5 Draft · реализация по запросу</div>
+  <div class="phase-code">P7</div><div class="phase-name">Legacy 8.2 / 7.7</div>
+  <div class="phase-desc">Demand-gated isolated compatibility lanes</div><div class="phase-stat">8.2 Windows VM/service · 7.7 parser/VM only on concrete target · frozen deferred</div>
   </div><div class="phase-card progress">
   <div class="phase-code">P8</div><div class="phase-name">Prod hardening</div>
   <div class="phase-desc">Protected bounded HTTP metrics</div><div class="phase-stat">PR #6 Draft · load/restore/deploy открыты</div>
@@ -41,28 +41,66 @@
   <div class="phase-code">P9</div><div class="phase-name">Pilot & GO</div>
   <div class="phase-desc">Fail-closed pilot evidence validator</div><div class="phase-stat">PR #7 Draft · production GO не подтверждён</div>
   </div><div class="phase-card planned">
-  <div class="phase-code">P10</div><div class="phase-name">ERP / Ferma</div>
-  <div class="phase-desc">future adapters</div><div class="phase-stat">будущий этап · вне modern MVP</div>
+  <div class="phase-code">P10</div><div class="phase-name">Production ERP / Ferma</div>
+  <div class="phase-desc">recorded deferred production adapters</div><div class="phase-stat">не продвигаются при freeze · Ferma test/oracle role активен только внутри P5-B</div>
   </div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>реализация / проверка</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>опционально</span></div>
-<div class="status-note">Статусы отражают подтверждённую реализацию в отдельных PR. Draft PR ещё не объединены в main; CI не закрывает live-1C и production gates.</div></section>
-<section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b"><h2>Текущий статус локального MVP closure — 2026-10-06</h2><p><strong>Статус: IN PROGRESS · Production GO: NO-GO.</strong> Candidate <code>integration/1c-mvp-production-candidate</code>; PR <a href="https://github.com/xLZDx/ERP_MCP/pull/11">#11 остаётся OPEN / Draft</a>, merge не выполнялся. Локальный Python suite: <code>155 passed, 8 skipped</code>; Ruff, Bandit, compileall PASS. Hosted run <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37431824985">37431824985 PASS</a> на HEAD <code>5ff7ccf</code>, оба job’а зелёные; source-host allowlist, readiness и sidecar outage tests проверены.</p><div class="table-wrap"><table><thead><tr><th>Тема</th><th>Состояние</th><th>Осталось / блокер</th></tr></thead><tbody><tr><td>Python/PostgreSQL gates</td><td>Hosted test job PASS: migrations, privileges, ACL/fanout/restore drills, pytest, pip-audit, gateway SBOM/image scan и provenance</td><td>Новых блокеров в hosted job нет</td></tr><tr><td>Pinned OData sidecar</td><td>Upstream client/metadata tests, sidecar build/smoke, Trivy, SBOM и provenance PASS</td><td>Новых блокеров в hosted job нет</td></tr><tr><td>Observability / leak controls</td><td>Privacy-safe JSON access logs с correlation ID; исключены URL path/query, headers и payload. Audit raw-query storage запрещён; transport errors sanitised</td><td>Добавить spans, dependency/operation metrics и end-to-end log/trace/secret leakage drill</td></tr><tr><td>1C metadata transport</td><td>Timeout/network errors для GET и metadata HEAD, sidecar outages, readiness 503 — fail-closed и sanitized</td><td>Оставшаяся failure matrix: DB/Redis/JWKS/secrets/process combinations</td></tr><tr><td>SSRF / DNS rebinding</td><td>Exact host allowlist обязателен в production и применяется в gateway Registry; DNS rebinding gate остаётся открыт</td><td>Нужны DNS-to-connect защита и deployment egress policy для Python и Node; on-prem CIDR задаётся явно</td></tr><tr><td>Accounting / live 1C</td><td>Profiles fail-closed; synthetic AR/AP aging contracts есть, не подключены как source tool</td><td>Ждём реальную конфигурацию/metadata и минимум 10 сверок с native reports</td></tr><tr><td>Production / Windows COM</td><td>Локальный MVP closure не равен production GO</td><td>Внешние gates: Windows COM host smoke, IdP/secrets/network, rollback rehearsal, operator/release approval</td></tr></tbody></table></div><p><strong>Следующие локальные шаги:</strong> продолжить fault-injection/security/deployment gates → обновить evidence. Не закрывать MVP/DoD на synthetic evidence и не снимать Draft PR без пользовательского approval. Подробности: <a href="reports/IMPLEMENTATION_STATUS.md">implementation status</a>, <a href="reports/DOD_STATUS.md">DoD status</a>, <a href="reports/RISK_STATUS.md">risk status</a>.</p></section>
-<section class="panel" id="latest-delivery-summary" style="margin-top:18px"><h3>Историческая сводка этапа — superseded текущим статусом выше</h3><p><strong>PR #1 merged; PR #2–#10 открыты Draft.</strong> Pinned OData sidecar и capability rule реализованы; semantic reads, deterministic testbed, RSV health boundary, metrics и pilot validator опубликованы в отдельных PR. Последние P4/P1 follow-ups #8–#10 прошли hosted CI.</p><p><strong>Открытые gates:</strong> реальные 1С metadata/semantic profiles и 10 native-report сверок; P6 company-scoped data route и Windows/COM smoke; production deployment, load/restore и pilot evidence. MVP ещё не закрыт. <a href="#current-mvp-status">Подробная сводка</a> · <a href="#p4-step32">Последние результаты CI</a>.</p></section>
-<section class="summary-grid"><div class="panel"><h3>Baseline в цифрах</h3><div class="metric-row"><div class="metric"><b>28</b><span>документов в HTML</span></div><div class="metric"><b>19</b><span>DoD gates D0–D18</span></div><div class="metric"><b>30</b><span>рисков в register</span></div><div class="metric"><b>6</b><span>accepted ADR</span></div><div class="metric"><b>3</b><span>уровня 1C testbed</span></div></div></div>
-<div class="panel"><h3>Неподвижные инварианты</h3><div class="invariants"><div class="inv"><strong>Read-only</strong>Нет mutation surface для 1C MVP.</div><div class="inv"><strong>Fail-closed</strong>Auth/state/secrets нельзя обойти dev-mode.</div><div class="inv"><strong>Server-side ACL</strong>AI не выбирает произвольный endpoint.</div><div class="inv"><strong>Accounting evidence</strong>Нативная сверка 1C обязательна.</div></div></div></section>
+<div class="status-note"><strong>SCOPE FREEZE ACTIVE.</strong> PR #11 Draft/mergeable, candidate <code>65883a5</code>; hosted CI <code>37446049853</code> PASS. Новые feature/scenario/adapter/integration families запрещены до закрытия текущего committed scope или явного operator rebaseline. CI PASS не означает Production GO.</div></section><section class="panel" id="scope-freeze" style="margin-top:18px;border:2px solid #57a8ff">
+<h3>Scope Freeze · baseline 2026-10-06</h3>
+<p><strong>Решение оператора:</strong> новые product additions заморожены. Работаем только по уже принятому scope, defect/security/compliance fixes и evidence/ops задачам, нужным для его закрытия. Новая задача обязана сослаться на существующий frozen requirement/gate.</p>
+<div class="summary-grid"><div><h4>Committed/current</h4><ul>
+<li>Read-only control plane: OAuth/OIDC, source/company ACL, 30–150+, grant/revoke, secrets, audit, limits.</li>
+<li>Modern OData, capability-first routing, semantic accounting and exact profiles.</li>
+<li>DAD assurance: 6 accountant checks, invoice reconciliation, month-close rule packs, P&amp;L/CF/BS, accepted bank/Z/terminal/customs/CCAC/tax/payroll prechecks.</li>
+<li>External Evidence Plane for already accepted evidence classes.</li>
+<li>P5-A Real Reference + P5-B Ferma Controlled Synthetic; P6 audited COM/RSV boundary; D0–D18 + pilot.</li>
+</ul></div><div><h4>Frozen deferred</h4><ul>
+<li>Legacy 8.2/7.7 runtime without a concrete target.</li>
+<li>Future production write plane.</li>
+<li>Production ERP/Ferma adapters; Ferma test/oracle remains P5-B only.</li>
+</ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
+</section>
+<section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<h2>Актуальный frozen status · 2026-10-06</h2>
+<p><strong>Production GO: NO-GO.</strong> PR #11 OPEN/Draft/mergeable; HEAD <code>65883a5a83fbb369cbd32e5e31af3041f9d7c515</code>; hosted CI <code>37446049853</code> SUCCESS. Последний autonomous closure status сообщает до <code>199 passed, 9 skipped</code>; skipped/live gates не являются PASS.</p>
+<div class="table-wrap"><table><thead><tr><th>Тема</th><th>Состояние</th><th>Осталось</th></tr></thead><tbody>
+<tr><td>Control plane / hardening</td><td>ACL/audit/OData/capability, SBOM/scans, bounded fan-out/load evidence, failure harnesses, release/rollback artifacts and runbooks имеют CI/offline evidence</td><td>Production rehearsal/IdP/network/secrets/PITR/pilot evidence</td></tr>
+<tr><td>Local 1C / COM</td><td>1C 8.3.27.2342 + Community License + V83.COMConnector; RSV v1.3.0 installed/exported/audited; metadata allowlist smoke PASS</td><td>P6 lifecycle/secret-ref closure; business query stays denied</td></tr>
+<tr><td>P5-A Real Reference</td><td>Private reference corpus identified with known real errors/invoices</td><td>Acquire/hash/restore immutable golden→RO clone; exact fingerprint/native reports/reconciliation</td></tr>
+<tr><td>P5-B Ferma</td><td>Architecture frozen: deterministic scenario/oracle + test-only 1C seeder + native/ERP_MCP observers</td><td>Implement scenario package/seeder/three-plane reconciliation</td></tr>
+<tr><td>DAD business assurance</td><td>Requirements/coverage frozen</td><td>Implement R1–R7: six checks, invoice reconciliation, rule packs, statements, external-evidence regulated prechecks</td></tr>
+</tbody></table></div>
+<p><strong>Rule:</strong> не добавлять новые feature/scenario families. Все новые задачи должны закрывать существующий frozen requirement/gate.</p>
+</section>
+<section class="panel" id="latest-delivery-summary" style="margin-top:18px">
+<h3>Последняя verified delivery — scope-frozen candidate</h3>
+<p><strong>HEAD <code>65883a5</code>, CI <code>37446049853</code> PASS.</strong> Engineering/offline closure expanded through fault injection, RSV lifecycle, performance evidence, telemetry/alert checks, release bundle/rollback and operational runbooks. Это не заменяет real native-accounting или production/pilot evidence.</p>
+<p><strong>Freeze baseline:</strong> текущий read-only/DAD scope теперь фиксирован отдельным normative document; новые additions запрещены.</p>
+</section>
+<section class="summary-grid"><div class="panel"><h3>Baseline в цифрах</h3><div class="metric-row"><div class="metric"><b>31</b><span>required baseline docs</span></div><div class="metric"><b>19</b><span>DoD gates D0–D18</span></div><div class="metric"><b>35</b><span>рисков в register</span></div><div class="metric"><b>6</b><span>accepted ADR</span></div><div class="metric"><b>4</b><span>L1 / L2-A / L2-B / L3</span></div></div></div>
+<div class="panel"><h3>Неподвижные инварианты</h3><div class="invariants"><div class="inv"><strong>Read-only</strong>Нет mutation surface для 1C MVP.</div><div class="inv"><strong>Fail-closed</strong>Auth/state/secrets нельзя обойти dev-mode.</div><div class="inv"><strong>Server-side ACL</strong>AI не выбирает произвольный endpoint.</div><div class="inv"><strong>Accounting evidence</strong>Нативная сверка 1C обязательна.</div><div class="inv"><strong>Scope freeze</strong>Новый scope только через явный operator rebaseline.</div></div></div></section>
 <section class="panel" id="architecture"><h3>Архитектура в одном экране</h3><div class="architecture-mini">AI / MCP Clients
        │ OAuth/OIDC + HTTPS
        ▼
 ERP_MCP CONTROL PLANE
 Auth · ACL · Registry · Policy · Audit · Limits · Semantics
        │
-Capability Router
-   ┌───┼────────────┐
-   ▼   ▼            ▼
-OData  RSV/COM   Legacy 8.2
- MIT    MIT       isolated GPL
-   └───┴────────────┘
-       ▼
-       1C</div></section>
+       ├──── Capability Router ────┐
+       ▼                           ▼
+ OData V3                  RSV/COM / Legacy
+       └────────────┬──────────────┘
+                    ▼
+                1C Data Plane
+                    │
+             Semantic Layer
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+External Evidence          DAD Rule Engine
+        └───────────┬───────────┘
+                    ▼
+          Findings / Evidence
+
+ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP_MCP proof</div></section>
 <section class="panel" id="gates" style="margin-top:18px"><h3>DoD gate map — D0…D18</h3><div class="gate-grid"><div class="gate"><span>D0</span><b>Documentation &amp; traceability</b><em>tracked</em></div><div class="gate"><span>D1</span><b>Build &amp; dependency integrity</b><em>tracked</em></div><div class="gate"><span>D2</span><b>Authentication</b><em>tracked</em></div><div class="gate"><span>D3</span><b>Authorization &amp; isolation</b><em>tracked</em></div><div class="gate"><span>D4</span><b>Secrets</b><em>tracked</em></div><div class="gate"><span>D5</span><b>Read-only guarantee</b><em>tracked</em></div><div class="gate"><span>D6</span><b>SSRF / transport safety</b><em>tracked</em></div><div class="gate"><span>D7</span><b>Compatibility routing</b><em>tracked</em></div><div class="gate"><span>D8</span><b>Data-plane correctness</b><em>tracked</em></div><div class="gate"><span>D9</span><b>Accounting correctness</b><em>tracked</em></div><div class="gate"><span>D10</span><b>Multi-company operation</b><em>tracked</em></div><div class="gate"><span>D11</span><b>Audit &amp; provenance</b><em>tracked</em></div><div class="gate"><span>D12</span><b>Observability</b><em>tracked</em></div><div class="gate"><span>D13</span><b>Performance &amp; limits</b><em>tracked</em></div><div class="gate"><span>D14</span><b>Resilience</b><em>tracked</em></div><div class="gate"><span>D15</span><b>Backup / restore / rollback</b><em>tracked</em></div><div class="gate"><span>D16</span><b>Production deployment</b><em>tracked</em></div><div class="gate"><span>D17</span><b>Operations &amp; support</b><em>tracked</em></div><div class="gate"><span>D18</span><b>Pilot closure</b><em>tracked</em></div></div><div class="print-note" style="margin-top:10px">Статус “tracked” означает: gate нормативно определён. Фактический PASS фиксируется только evidence по exact release/environment.</div></section>
 <section class="content-layout" id="documents"><aside class="sidebar"><input id="search" class="search" placeholder="Поиск по документам…  /"><div class="filter-row"><button class="chip active" data-cat="all">все</button><button class="chip" data-cat="core">core</button><button class="chip" data-cat="plan">plan</button><button class="chip" data-cat="architecture">arch</button><button class="chip" data-cat="governance">gov</button><button class="chip" data-cat="gates">gates</button><button class="chip" data-cat="security">security</button><button class="chip" data-cat="adapter">1C/adapters</button><button class="chip" data-cat="quality">test</button><button class="chip" data-cat="operations">ops</button><button class="chip" data-cat="risk">risk</button><button class="chip" data-cat="adr">ADR</button></div><button class="doc-link" data-target="doc-document-index" data-cat="core">Индекс документов</button>
 <button class="doc-link" data-target="doc-tdd" data-cat="core">TDD</button>
@@ -446,7 +484,7 @@ transport safely.</li>
 30–150+ companies, tolerate heterogeneous 1C deployments, and produce accounting answers that are
 reconcilable with native 1C reports.</p>
 <h2>Phase map</h2>
-<p><strong>Статус на 2026-10-06.</strong> Реализация учитывает отдельные PR #1–#10: #1 merged, #2–#10 Draft. «CI PASS» подтверждает проверенный код; закрытие фазы требует её exit criteria и evidence для конкретной базы/релиза. «Осталось» — работа, которую можно продолжать; «Блокер» — недостающая зависимость или среда.</p>
+<p><strong>Статус на 2026-10-06.</strong> SCOPE FROZEN. PR #11 Draft/mergeable, HEAD <code>65883a5</code>, hosted CI <code>37446049853</code> PASS. Phase closure still requires native/config/deployment evidence; no new scope is admitted.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -500,24 +538,20 @@ reconcilable with native 1C reports.</p>
   <td>Нет validated customer profiles/native reports; upstream presets остаются candidates. Семантическая валидация зависит от P5.</td>
 </tr>
 <tr>
-  <td>P5</td>
-  <td>Real 1C testbed &amp; reconciliation</td>
-  <td>L2 evidence against native reports</td>
-  <td><strong>L1 готов; L2/L3 открыты</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/3">PR #3</a> Draft, CI PASS: deterministic seed и 10 executable scenario contracts.</td>
-  <td>Поднять реальные test bases, импортировать seed, заполнить snapshot manifests, выполнить сценарии и native-report reconciliation.</td>
-  <td>Не подтверждена доступная тестовая 1С с нужной конфигурацией/правами; native cases остаются NOT_RUN.</td>
+<td>P5</td><td>Dual 1C assurance</td><td>Real Reference + Ferma Controlled Synthetic</td>
+<td><strong>L1 PASS; L2 strategy frozen</strong><br>P5-A private real reference + P5-B Ferma independent oracle.</td>
+<td>Restore/fingerprint reference clone; native-report semantic validation; implement Ferma scenario/seeder/observer.</td>
+<td>Real native evidence remains NOT_RUN until reference restore; pilot remains separate.</td>
 </tr>
 <tr>
-  <td>P6</td>
-  <td>Local/extension/COM fallback</td>
-  <td>MIT RSV-data based fallback route</td>
-  <td><strong>Health boundary готов; data route открыт</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/4">PR #4</a> Draft, CI PASS. MCP process reuse, source config binding и ping-only health.</td>
-  <td>Проверить upstream extension behavior и constrained company-scoped adapter contract; capability persistence, parity, Windows/COM smoke и recovery.</td>
-  <td>В pinned repo нет проверяемого CFE implementation; Windows/1C/COM evidence отсутствует. Содержимое предоставленного MCP-RSV-Data.zip ещё не проверено. Data calls запрещены до подтверждения.</td>
+<td>P6</td><td>Local/extension/COM fallback</td><td>Audited metadata fallback</td>
+<td><strong>Real Windows/COM metadata smoke PASS</strong><br>1C 8.3.27.2342 + V83.COMConnector; RSV v1.3.0 exported/audited.</td>
+<td>Secret-ref lifecycle/reconnect/timeout/crash and normalized metadata closure.</td>
+<td>query default DENY; execute_query DENY; reveal HARD DENY until separate proof/rebaseline.</td>
 </tr>
 <tr>
   <td>P7</td>
-  <td>Legacy 8.2 route</td>
+  <td>Legacy 8.2 / 7.7</td>
   <td>Optional isolated legacy service if business need exists</td>
   <td><strong>Отложено по demand gate</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/5">PR #5</a> Draft: требование к named legacy target и отдельному GPL service.</td>
   <td>При подтверждённой потребности: определить 8.2 target, развернуть isolated service, выполнить license/security и compatibility проверки.</td>
@@ -541,7 +575,7 @@ reconcilable with native 1C reports.</p>
 </tr>
 <tr>
   <td>P10</td>
-  <td>ERP/Ferma adapters</td>
+  <td>Production ERP/Ferma adapters</td>
   <td>reuse common control plane without weakening domain boundaries</td>
   <td><strong>Будущий этап</strong><br>Вне текущего modern 1C MVP.</td>
   <td>После MVP определить target ERP/Ferma API, reuse intake, domain contracts и отдельные acceptance tests.</td>

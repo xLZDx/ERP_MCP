@@ -1,4 +1,20 @@
+[Reading 68 lines from start (total: 68 lines, 0 remaining)]
+
 # Risk status
+
+## Scope freeze checkpoint — 2026-10-06
+
+Operator scope freeze is active. Current candidate: PR #11 Draft/mergeable,
+HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`; CI `37446049853` SUCCESS; Production GO NO-GO.
+
+New frozen-scope risk rows are R-31–R-35:
+- scope creep;
+- malicious/mis-scoped external evidence;
+- private reference artifact leakage;
+- Ferma oracle/actual correlation false-green;
+- test-only write boundary leakage.
+
+No risk acceptance is inferred. Deferred write/legacy/production ERP-Ferma lanes remain deferred.
 
 ## Current authoritative checkpoint — 2026-10-06
 
@@ -52,3 +68,5 @@ deployment rollback remain open.
 | R-25 unsupported production claim | MITIGATED IN STATUS REPORTING | This work uses DEV READY and explicit gate matrix | Keep exact evidence and readiness label updated |
 
 Critical/high risks remain open; production readiness is not claimed.
+
+[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]

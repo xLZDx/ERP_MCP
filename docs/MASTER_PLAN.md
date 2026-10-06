@@ -1,14 +1,27 @@
 # ERP_MCP Master Plan
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
-**Execution mode:** gated, evidence-driven, reuse-before-rewrite
+**Version:** 1.1
+**Date:** 2026-10-06
+**Execution mode:** SCOPE-FROZEN, gated, evidence-driven, reuse-before-rewrite
 
 ## North star
 
 Deliver a production-ready read-only 1C MCP gateway that can safely serve a changing portfolio of
 30–150+ companies, tolerate heterogeneous 1C deployments, and produce accounting answers that are
 reconcilable with native 1C reports.
+
+## Active scope freeze
+
+The operator froze further scope additions on 2026-10-06. The authoritative frozen backlog and
+completion barrier are defined in `SCOPE_FREEZE_BASELINE_2026-10-06.md`.
+
+No new feature/scenario/adapter/integration family may enter execution until the current committed
+scope closes or the operator explicitly rebaselines it. Existing deferred lanes remain recorded but
+do not become active by implication.
+
+Current committed scope includes the read-only control/data/semantic plane, DAD business-assurance
+rules, External Evidence Plane, dual P5 assurance (real reference + Ferma synthetic), P6 audited
+fallback, production hardening and pilot evidence.
 
 ## Phase map
 
@@ -152,32 +165,66 @@ Exit:
 - no semantic tool depends directly on a configuration-specific name outside a profile;
 - each tool has deterministic synthetic scenarios and reconciliation specification.
 
-## P5 — Real 1C testbed
+## P5 — Real 1C testbed & assurance
 
-L1: Fake1C mandatory in CI.  
-L2: real file-mode 1C synthetic base.  
-L3: server-mode production-parity environment.
+L1: Fake1C mandatory in CI.
 
-Deliver:
-- deterministic synthetic seed;
-- snapshot manifest;
-- >=10 representative accounting cases;
-- expected/native-report evidence;
-- configuration/platform fingerprints.
+L2 is split into two complementary frozen tracks.
+
+### P5-A — Real Reference
+
+Use the private `REFERENCE_TEST_BASE_A` as a real configuration/known-error regression corpus:
+
+- immutable golden source artifact + SHA-256;
+- disposable read-only restored clone;
+- exact platform/configuration/metadata fingerprint;
+- capability discovery and OData/COM parity where supported;
+- native-report inventory and reconciliation;
+- accountant-selected DAD checks;
+- private invoice/evidence regression corpus;
+- no mutation of the golden/reference copy.
+
+### P5-B — Ferma Controlled Synthetic
+
+Use Ferma as the deterministic scenario/oracle owner:
+
+- versioned scenario package;
+- independent expected/oracle;
+- test-only business-document seeder;
+- real 1C posting in a marked disposable synthetic base;
+- native observer;
+- normal read-only ERP_MCP observer;
+- controlled multi-company, edge-case and scale scenarios;
+- three-plane reconciliation.
+
+L3: controlled target/server-mode production-parity environment.
 
 Exit:
-- reconciled results documented;
-- discrepancies explained/resolved, not waived.
+- >=10 mandatory native-report cases for each production semantic profile, with the broader frozen
+  DAD scenario matrix represented at its declared acceptance level;
+- real-reference known-error cases remain detectable;
+- Ferma oracle independence is mechanically preserved;
+- discrepancies are explained/resolved, never waived into PASS.
 
 ## P6 — Local/extension/COM fallback
 
 Use approved MIT bridge patterns, preferably `mcp-rsv-data`.
 
-Current implementation status: P6 process/health foundation is partial. The ERP-side stdio client
-launches only the pinned bridge, binds one config path to one source ID, validates the upstream tool
-inventory and calls `ping` only. It never proxies generic `query`/`execute_query`. Health does not
-establish data capability or company isolation; semantic reads remain unavailable until a
-source/company profile can enforce those boundaries.
+Current implementation status: the local Windows/COM environment is no longer unavailable.
+1C 8.3.27.2342 x64 + Community/Developer License + `V83.COMConnector` works in a disposable
+engineering environment. Official RSV Data v1.3.0 was installed, exported to XML/BSL and audited;
+live metadata operations succeeded.
+
+Production policy remains deliberately narrow:
+
+- metadata allowlist: ping/config/describe/get_structure/help behind ERP_MCP ACL;
+- `query`: DENY by default until zero-write + immutable company-scope proof;
+- `execute_query`: DENY;
+- `reveal`: HARD DENY;
+- direct upstream RSV MCP exposure to AI: DENY.
+
+P6 still requires secret-ref binding, lifecycle/reconnect/failure evidence and normalized adapter
+contract closure.
 
 Deliver:
 - isolated process/service integration;
@@ -204,6 +251,10 @@ If required:
 - run compatibility/test suite.
 
 No business requirement -> phase remains not started and does not block modern MVP.
+
+Legacy 7.7 follows the same demand gate: prefer an isolated parser/reference lane where sufficient;
+use a compatible Windows/x86 VM only when actual 7.7 runtime behavior is required. Do not install a
+matrix of old runtimes on the modern 8.3 host.
 
 ## P8 — Production hardening
 
@@ -249,9 +300,13 @@ ERP:
 - preserve tenant/org RLS;
 - never introduce a super-reader.
 
-Ferma:
+Ferma production adapter:
+- remains a future adapter boundary after the 1C MVP;
 - read oracle/observer/comparator outputs;
 - never let ERP/1C data contaminate expected/oracle calculation.
+
+This does not defer Ferma's already accepted P5-B test/oracle role; P5-B is active committed test
+scope, not a production Ferma adapter.
 
 ## Dependency graph
 
@@ -275,3 +330,6 @@ A phase may overlap another only when:
 - evidence remains attributable to exact commit/configuration versions.
 
 “Code exists” is progress, not closure.
+
+During the active scope freeze, every implementation task must cite an existing frozen
+requirement/gate. Work that cannot do so waits for explicit operator rebaseline.

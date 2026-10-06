@@ -1,8 +1,8 @@
 # Technical Design Document — ERP_MCP 1C-first Production MVP
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
-**Status:** FROZEN FOR IMPLEMENTATION
+**Version:** 1.1
+**Date:** 2026-10-06
+**Status:** SCOPE-FROZEN FOR IMPLEMENTATION — see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
 
 ## 1. Purpose
 
@@ -10,7 +10,12 @@ ERP_MCP provides a production-grade, read-only AI integration layer for many 1C 
 It presents a safe MCP surface to authorized AI clients while isolating authentication, policy,
 source routing, secrets, audit and accounting semantics from the underlying 1C transport.
 
-The first production scope is 1C. ERP and Ferma reuse the same control plane later.
+The first production scope is 1C. ERP and Ferma production adapters reuse the same control plane
+later. Ferma is already part of the committed **test/assurance** scope as an independent synthetic
+scenario/oracle source; this does not make Ferma a production data adapter.
+
+The current scope is frozen. New feature/scenario/integration families are blocked until the
+committed baseline is closed or explicitly rebaselined by the operator.
 
 ## 2. Problem statement
 
@@ -58,6 +63,29 @@ against native 1C reports/UI on a real test base.
 Identity, ACL, source registry, audit, limits, secrets and observability must be reusable by future
 ERP/Ferma adapters without weakening their native authorization boundaries.
 
+### G-07 DAD business assurance
+
+Implement the already accepted DAD read-only assurance scope above validated 1C primitives:
+
+- accountant-selected month-close checks;
+- invoice/e-factura reconciliation;
+- versioned month-close rule packs;
+- P&L / Cash Flow / Balance Sheet;
+- bank/Z/terminal/customs/CCAC reconciliation;
+- tax/payroll prechecks with explicit evidence dependencies and human review.
+
+Missing required evidence must produce an explicit non-PASS state rather than model inference.
+
+### G-08 Dual real/synthetic correctness
+
+Use both:
+
+- a private real-reference 1C test copy for real configuration/known-error/native-report validation;
+- Ferma-controlled synthetic scenarios for deterministic edge cases, multi-company isolation, scale
+  and an independent expected/oracle.
+
+Neither path may contaminate the other into a correlated false green.
+
 ## 4. Non-goals for 1C MVP
 
 The MVP does **not**:
@@ -67,7 +95,10 @@ The MVP does **not**:
 - emulate internal 1C SQL tables;
 - build a new general-purpose OData v3 implementation when a licensed mature implementation exists;
 - guarantee universal support for every private/custom 1C installation without capability evidence;
-- persist a general-purpose copy/data lake of business transactions.
+- persist a general-purpose copy/data lake of business transactions;
+- act as a generic document-management/archive product beyond evidence required by frozen scenarios;
+- add new business-rule families during the active scope freeze without operator rebaseline;
+- promote historical test/write capability into the production MCP.
 
 ## 5. Hard invariants
 
@@ -83,6 +114,9 @@ The MVP does **not**:
 10. Direct access to internal 1C DB tables is prohibited.
 11. Upstream/copyleft license constraints are enforced before source intake.
 12. ERP/Ferma adapters must preserve their own tenant/org/oracle boundaries.
+13. **SCOPE FREEZE:** implementation work must trace to an already frozen requirement/gate or explicit operator rebaseline.
+14. External evidence is untrusted read-only input with provenance; missing evidence is never guessed into PASS.
+15. Test-only seed/write credentials and code are isolated from the production read-only runtime.
 
 ## 6. Functional requirements
 
@@ -167,6 +201,42 @@ Record at minimum:
 
 Raw filters/payloads are excluded by default.
 
+### FR-G DAD rule/evidence engine
+
+The accepted DAD business-assurance layer must:
+
+- execute versioned, applicability-aware rules over validated semantic operations;
+- identify rule/profile/configuration/effective-date provenance;
+- support `PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR`;
+- never compile an unrestricted model-generated query into privileged 1C access;
+- retain human-review requirements for tax/payroll/legal conclusions.
+
+### FR-H External Evidence Plane
+
+For already accepted DAD scenarios, ingest approved read-only evidence such as invoices, bank
+statements, Z/terminal reports, customs/CCAC documents, filed tax forms/receipts and payroll source
+documents.
+
+Requirements:
+
+- explicit source/document fingerprint and provenance;
+- no model-supplied arbitrary URL fetch;
+- bounded parsing/normalization;
+- retention/minimization policy;
+- private/customer artifacts excluded from public Git/CI;
+- missing evidence -> `EVIDENCE_REQUIRED` or `INCONCLUSIVE`.
+
+### FR-I Assurance/testbeds
+
+The implementation must preserve three evidence classes:
+
+- L1 Fake1C fast contract/security tests;
+- L2-A Ferma-controlled real-1C synthetic scenarios with independent oracle;
+- L2-B private real-reference 1C configuration/known-error/native-report regression;
+- L3 controlled target/pilot evidence.
+
+Evidence must state its level; L1/L2 cannot be relabelled L3.
+
 ## 7. Non-functional requirements
 
 ### Security
@@ -244,3 +314,7 @@ Production GO requires all DoD gates, including:
 - current documentation and provenance.
 
 Implementation completeness without accounting and operational evidence is **not production GO**.
+
+The active scope freeze is not released merely because current code is green. The complete committed
+scope defined in `SCOPE_FREEZE_BASELINE_2026-10-06.md` must reach its declared acceptance level
+before new product scope is admitted.

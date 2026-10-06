@@ -1,7 +1,7 @@
 # ERP_MCP Threat Model
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 ## Assets
 
@@ -12,7 +12,10 @@ Critical:
 - audit/provenance;
 - accounting data returned from 1C;
 - semantic profiles/mappings;
-- production endpoint registry.
+- production endpoint registry;
+- private real-reference test artifacts and external evidence documents;
+- Ferma oracle independence;
+- test-only write boundary.
 
 ## Adversaries / failure sources
 
@@ -24,7 +27,11 @@ Critical:
 - operator misconfiguration;
 - accidental source/company scope mix-up;
 - compromised internal adapter process;
-- supply-chain/license error.
+- supply-chain/license error;
+- malicious/untrusted external evidence document;
+- accidental publication of private reference artifacts;
+- test-only seeder/write helper exposed to production;
+- scope creep that bypasses review/evidence.
 
 ## STRIDE-oriented threats
 
@@ -156,3 +163,60 @@ Copyleft/unknown-license code follows ADR-0006.
 No technical control can prove accounting semantic correctness for an arbitrary custom 1C
 configuration. That residual risk is controlled through semantic profiles and native-report
 reconciliation before production approval.
+
+
+## External evidence threat model
+
+External evidence is untrusted input even when supplied by an accountant/operator.
+
+Threats:
+- prompt/instruction injection embedded in PDFs/XLSX/text;
+- parser exploit/decompression bomb;
+- stale/forged document;
+- evidence associated with the wrong company/source;
+- sensitive evidence leaked to logs/public CI/model context.
+
+Controls:
+- approved ingress only; no model-supplied arbitrary URL;
+- MIME/size/decompression/parser limits;
+- content fingerprint/provenance;
+- explicit source/company association;
+- business content treated as data, never policy/instructions;
+- bounded extraction;
+- retention/minimization and private storage;
+- missing/invalid evidence yields explicit non-PASS state.
+
+## Real-reference testbed threat model
+
+The private real-reference base may contain realistic/customer-derived information even though it is
+designated for testing.
+
+Controls:
+- immutable private golden archive;
+- safe alias in public repo;
+- disposable clones only;
+- least-privilege RO identity for read validation;
+- separate write-capable test identity only for isolated RW clone;
+- no raw archive, credentials, private links or customer identifiers in Git/public CI;
+- fingerprints and bounded sanitized summaries only.
+
+## Test-only write boundary
+
+Threat:
+- Ferma seeder or historical write helper becomes callable from production MCP.
+
+Controls:
+- separate package/process/credentials;
+- synthetic/test target marker;
+- deny production source IDs;
+- no production tool registration;
+- package/tool inventory negative tests;
+- no generic arbitrary mutation API.
+
+## Scope-freeze control
+
+Scope expansion is itself a governance risk because it can delay closure and bypass threat/evidence
+analysis.
+
+Every new work item must cite an existing frozen requirement/gate. No trace -> no execution until
+explicit operator rebaseline.
