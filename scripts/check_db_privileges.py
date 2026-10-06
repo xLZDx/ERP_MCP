@@ -27,7 +27,7 @@ EXPECTED = {
         "bag.access_grants": p(select=True),
         "bag.companies": p(select=True),
         "bag.audit_events": p(select=True, insert=True),
-        "bag.source_capabilities": p(select=True, insert=True, update=True),
+        "bag.source_capabilities": p(select=True),
         "bag.semantic_profiles": p(select=True),
         "bag.semantic_mappings": p(select=True),
         "bag.semantic_profile_events": p(select=True),
@@ -76,6 +76,9 @@ EXPECTED = {
 }
 
 COLUMN_EXPECTED = {
+    ("business_ai_app", "bag.source_capabilities", "evidence_json", "UPDATE"): True,
+    ("business_ai_app", "bag.source_capabilities", "drift_status", "UPDATE"): False,
+    ("business_ai_app", "bag.source_capabilities", "drift_acknowledged_at", "UPDATE"): False,
     ("business_ai_control_api", "bag.source_capabilities", "drift_status", "UPDATE"): True,
     (
         "business_ai_control_api",
