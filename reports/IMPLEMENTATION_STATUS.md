@@ -2,6 +2,12 @@
 
 # ERP_MCP implementation status
 
+<!-- ENGINEERING_CHECKPOINT=JWKS_RECOVERY_20261006 ENGINEERING_IMPLEMENTATION=c0ed6464251446ec3dd71dd8db9cc8b2eb5d9f4d812239187296df13e97de58f -->
+
+## Actual JWKS recovery and independent Windows proof correction — 2026-10-06
+
+NFR-R2 actual HTTP JWKS recovery: after real cache TTL expiry, IdP 503 produces sanitized SDK 401, recovery returns 200; 4 JWKS HTTP tests PASS. Native Windows independent ACL test now uses SID-targeted access rules, explicit Windows PowerShell 5.1 system module path and bounded 45s startup budget, without widening permissions or skipping the check; combined privacy/JWKS focused suite 12/12 PASS. 4e07daf run 37468209819: gateway/OData PASS, Windows protected-DACL contracts PASS, independent PowerShell test timed out, assembly correctly SKIPPED. Current full local suite 372 passed, 10 skipped; Ruff/Bandit/documentation gates PASS. Fresh corrected 4-job evidence verification pending. Native COM/reconciliation, complete container/audit fault matrix, DAD/Ferma/deployment remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=RELEASE_ASSEMBLY_20261006 ENGINEERING_IMPLEMENTATION=bce5fae366d03bdddc1e2d6e6470534ec329b6ed3abf0db38171fe6023121608 -->
 
 ## Same-revision release evidence assembly — 2026-10-06

@@ -15,10 +15,12 @@ DEPENDENCIES = ("postgres", "redis", "jwks", "odata", "rsv")
 
 
 def run() -> dict[str, object]:
-    result = execute(["tests/test_health_routes.py"])
+    paths = ["tests/test_health_routes.py", "tests/test_auth_jwks_http.py"]
+    result = execute(paths)
     result["real_1c_called"] = False
-    result["not_covered"] = ["container_stop_restart","dependency_specific_faults","audit_event_recovery"]
-    result["cases"] = [{"test_path": "tests/test_health_routes.py", "passed": result["passed"]}]
+    result["not_covered"] = ["JWKS_container_stop_restart", "secret_provider_OData_container_faults", "audit_event_recovery"]
+    result["coverage"] = "readiness_and_real_HTTP_JWKS_timeout_TTL_outage_401_recovery"
+    result["cases"] = [{"test_path": path, "passed": result["passed"]} for path in paths]
     return result
 
 

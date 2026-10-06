@@ -10,6 +10,8 @@ from pathlib import Path
 IMPLEMENTATION = {
     "EVID-1": ["src/business_ai_gateway/external_evidence.py", "tests/test_external_evidence.py"],
     "FR-A1": ["src/business_ai_gateway/auth.py", "tests/test_auth.py"],
+    "NFR-R2": ["src/business_ai_gateway/auth.py", "tests/test_auth_jwks_http.py",
+               "scripts/fault_injection_runner.py", "tests/test_rsv_process_lifecycle.py"],
     "FR-A2": ["src/business_ai_gateway/registry.py"],
     "FR-A3": ["src/business_ai_gateway/registry.py"],
     "FR-B1": ["src/business_ai_gateway/registry.py"],

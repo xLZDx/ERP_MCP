@@ -8,14 +8,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
-from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
+from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend, RequireAuthMiddleware
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Route
+from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
 from business_ai_gateway.auth import JWTTokenVerifier
@@ -170,3 +170,30 @@ def test_framework_bearer_auth_uses_local_mock_idp(mock_idp):
     assert denied.status_code == 403
     assert accepted.status_code == 200
     assert accepted.json() == {"subject": "synthetic-mcp-client"}
+
+
+def test_actual_jwks_http_outage_after_cache_expiry_returns_401_and_recovers(mock_idp):
+    private, public = keypair()
+    set_keys(mock_idp, jwk(public, "outage-key"))
+    verifier = verifier_for(mock_idp, ttl=1)
+
+    async def protected(_request):
+        return JSONResponse({"status": "authorized"})
+
+    inner = Starlette(routes=[Route("/protected", protected)])
+    app = Starlette(routes=[Mount("/guard", app=RequireAuthMiddleware(inner, required_scopes=["onec:read"]))],
+                    middleware=[Middleware(AuthenticationMiddleware, backend=BearerAuthBackend(verifier))])
+    bearer = token(private, "outage-key")
+    with TestClient(app) as client:
+        assert client.get("/guard/protected", headers={"Authorization": f"Bearer {bearer}"}).status_code == 200
+        with mock_idp.lock:
+            mock_idp.status = 503
+        time.sleep(1.05)  # actual TTL expiration; no stale key bypass
+        denied = client.get("/guard/protected", headers={"Authorization": f"Bearer {bearer}"})
+        assert denied.status_code == 401
+        assert bearer not in denied.text and "outage-key" not in denied.text
+        with mock_idp.lock:
+            mock_idp.status = 200
+        recovered = client.get("/guard/protected", headers={"Authorization": f"Bearer {bearer}"})
+        assert recovered.status_code == 200 and recovered.json() == {"status": "authorized"}
+    assert mock_idp.requests == 3

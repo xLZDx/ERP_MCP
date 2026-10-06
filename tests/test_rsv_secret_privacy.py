@@ -77,24 +77,35 @@ def test_secret_file_inherits_only_the_three_trusted_directory_aces():
         protect_secret_directory(parent)
         child = parent / "synthetic-config.json"
         child.write_text("{}")
-        environment = {name: os.environ[name] for name in ("PATH", "SystemRoot", "TEMP", "TMP") if name in os.environ}
+        environment = {name: os.environ[name] for name in
+                       ("PATH", "SystemRoot", "TEMP", "TMP", "USERPROFILE", "APPDATA", "LOCALAPPDATA")
+                       if name in os.environ}
         environment["ERP_MCP_ACL_FIXTURE"] = str(child)
+        # Windows PowerShell 5.1 must not inherit a PowerShell 7 module search path.
+        environment["PSModulePath"] = str(Path(os.environ["SystemRoot"]) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules")
         # Constant script; path is an environment value, never interpolated as executable text.
         script = """
+        $ErrorActionPreference = 'Stop'
+        try {
         $rsvAcl = Get-Acl -LiteralPath $env:ERP_MCP_ACL_FIXTURE
         $rsvIdentity = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
         $rsvAllowed = @($rsvIdentity, 'S-1-5-18', 'S-1-5-32-544')
-        $rsvUnexpected = @($rsvAcl.Access | Where-Object {
-          $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $rsvAllowed -or
+        $rsvRules = $rsvAcl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
+        $rsvUnexpected = @($rsvRules | Where-Object {
+          $_.IdentityReference.Value -notin $rsvAllowed -or
           $_.AccessControlType -ne 'Allow'
         })
-        @{unexpected=$rsvUnexpected.Count; total=$rsvAcl.Access.Count;
-          inherited=@($rsvAcl.Access | Where-Object IsInherited).Count} | ConvertTo-Json -Compress
+        @{unexpected=$rsvUnexpected.Count; total=$rsvRules.Count;
+          inherited=@($rsvRules | Where-Object IsInherited).Count} | ConvertTo-Json -Compress
+        } catch {
+          @{error_id=$_.FullyQualifiedErrorId; category=$_.CategoryInfo.Category.ToString()} | ConvertTo-Json -Compress
+          exit 1
+        }
         """
         result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-                                env=environment, capture_output=True, text=True, timeout=15,
+                                env=environment, capture_output=True, text=True, timeout=45,
                                 creationflags=subprocess.CREATE_NO_WINDOW, check=False)
-        assert result.returncode == 0
+        assert result.returncode == 0, result.stdout
         assert json.loads(result.stdout) == {"unexpected": 0, "total": 3, "inherited": 3}
 
 
