@@ -19,7 +19,6 @@ from scripts import synthetic_fixture_profiles as fixture_gen
 from tests.sc_stack import (
     ORG_ONE,
     ORG_TWO,
-    ServerThread,
     build_stack,
     fixture_document,
     write_fixture_file,
@@ -29,22 +28,6 @@ DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
 needs_pg = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
 START = "2026-04-01T00:00:00+00:00"
 END = "2026-04-30T00:00:00+00:00"
-
-
-@pytest.fixture(scope="module")
-def fake1c():
-    from testbed.fake1c.app import create_app
-
-    with ServerThread(create_app("json")) as server:
-        yield f"http://127.0.0.1:{server.port}"
-
-
-@pytest.fixture(scope="module")
-def fake_sidecar():
-    from business_ai_gateway.testbed.fake_sidecar import create_sidecar_app
-
-    with ServerThread(create_sidecar_app("t" * 40)) as server:
-        yield f"http://127.0.0.1:{server.port}"
 
 
 async def _stack(fake1c, fake_sidecar, tmp_path, monkeypatch, *, tags=("synthetic-fixture",), listed=True):
@@ -159,8 +142,10 @@ async def test_sc11_inventory_signed_deltas_through_mcp_fixture_profile_and_audi
         assert not result.is_error
         body = stack.payload(result)
         deltas = [Decimal(row["quantity_delta"]) for row in body["value"]]
+        item1 = [r for r in body["value"] if r["item_ref"].endswith("0001")]
+        deltas = [Decimal(r["quantity_delta"]) for r in item1]
         assert deltas == [Decimal(7), Decimal(-2)] and sum(deltas) == 5
-        assert [row["direction"] for row in body["value"]] == ["receipt", "expense"]
+        assert [row["direction"] for row in item1] == ["receipt", "expense"]
         assert body["profile_kind"] == "SYNTHETIC_FIXTURE"
         assert body["evidence_level"] == "L1"
         assert body["native_reconciliation"] == "NOT_RUN"
@@ -313,7 +298,8 @@ async def test_validated_db_profile_always_wins_over_fixture_and_fixture_never_a
         assert body["profile_kind"] == "VALIDATED_NATIVE"
         assert "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE" not in body["warnings"]
         assert not body["profile_fingerprint"].startswith("synthetic-fixture:")
-        assert [Decimal(r["quantity_delta"]) for r in body["value"]] == [Decimal(-7), Decimal(2)]
+        item1 = [r for r in body["value"] if r["item_ref"].endswith("0001")]
+        assert [Decimal(r["quantity_delta"]) for r in item1] == [Decimal(-7), Decimal(2)]
         # a VALIDATED row that is invalid never falls through to the fixture
         await pool.execute(
             "UPDATE bag.semantic_mappings SET mapping_json=$2::jsonb WHERE profile_id=$1",

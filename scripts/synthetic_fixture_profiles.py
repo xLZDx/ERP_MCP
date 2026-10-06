@@ -29,6 +29,16 @@ def metadata_fingerprint() -> str:
     return hashlib.sha256(METADATA).hexdigest()
 
 
+def _balance(entity_set: str, fields: dict) -> dict:
+    return {
+        "entity_set": entity_set,
+        "method": "Balance",
+        "company_scope": GUID_SCOPE,
+        "output_fields": fields,
+        "required_register_capabilities": [{"entity_set": entity_set, "method": "Balance"}],
+    }
+
+
 def concept_mappings() -> dict[str, dict]:
     return {
         "inventory.movements": {
@@ -65,6 +75,50 @@ def concept_mappings() -> dict[str, dict]:
             "source_timezone": "UTC",
             "required_register_capabilities": [],
         },
+        "sales": {
+            "entity_set": "Document_Sales",
+            "company_scope": GUID_SCOPE,
+            "output_fields": {
+                "document_ref": "Ref_Key",
+                "document_number": "Number",
+                "date": "Date",
+                "counterparty": "Контрагент_Key",
+                "amount": "Amount",
+                "currency": "Валюта_Key",
+                "posted": "Posted",
+            },
+            "order_by": "Date",
+        },
+        "accounting.posting_rows": {
+            "entity_set": "AccountingRegister_Ledger",
+            "company_scope": GUID_SCOPE,
+            "output_fields": {
+                "period": "Period",
+                "recorder_ref": "Recorder",
+                "line_number": "LineNumber",
+                "active": "Active",
+                "account_dr_ref": "AccountDr_Key",
+                "account_cr_ref": "AccountCr_Key",
+            },
+            "source_timezone": "UTC",
+            "required_register_capabilities": [],
+        },
+        "inventory.balance": _balance(
+            "AccumulationRegister_InventoryBalances",
+            {
+                "item_ref": "Номенклатура_Key",
+                "warehouse_ref": "Склад_Key",
+                "quantity": "КоличествоBalance",
+            },
+        ),
+        "bank.balance": _balance(
+            "AccumulationRegister_BankBalances",
+            {
+                "bank_account_ref": "БанковскийСчет_Key",
+                "currency_ref": "Валюта_Key",
+                "amount": "СуммаBalance",
+            },
+        ),
     }
 
 

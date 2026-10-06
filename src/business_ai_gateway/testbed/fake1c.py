@@ -34,6 +34,9 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
       <EntityType Name="Document_Sales">
         <Property Name="Ref_Key" Type="Edm.Guid"/>
         <Property Name="Number" Type="Edm.String"/>
+        <Property Name="Date" Type="Edm.DateTime"/>
+        <Property Name="Контрагент_Key" Type="Edm.Guid"/>
+        <Property Name="Валюта_Key" Type="Edm.String"/>
         <Property Name="Posted" Type="Edm.Boolean"/>
         <Property Name="Amount" Type="Edm.Decimal"/>
         <Property Name="Организация_Key" Type="Edm.Guid"/>
@@ -41,6 +44,9 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
       <EntityType Name="Document_Purchases">
         <Property Name="Ref_Key" Type="Edm.Guid"/>
         <Property Name="Number" Type="Edm.String"/>
+        <Property Name="Date" Type="Edm.DateTime"/>
+        <Property Name="Контрагент_Key" Type="Edm.Guid"/>
+        <Property Name="Валюта_Key" Type="Edm.String"/>
         <Property Name="Posted" Type="Edm.Boolean"/>
         <Property Name="Amount" Type="Edm.Decimal"/>
         <Property Name="Организация_Key" Type="Edm.Guid"/>
@@ -88,6 +94,15 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <Property Name="СуммаBalance" Type="Edm.Decimal"/>
         <Property Name="Организация_Key" Type="Edm.Guid"/>
       </EntityType>
+      <EntityType Name="AccountingRegister_Ledger">
+        <Property Name="Period" Type="Edm.DateTime"/>
+        <Property Name="Recorder" Type="Edm.Guid"/>
+        <Property Name="LineNumber" Type="Edm.Int32"/>
+        <Property Name="Active" Type="Edm.Boolean"/>
+        <Property Name="AccountDr_Key" Type="Edm.Guid"/>
+        <Property Name="AccountCr_Key" Type="Edm.Guid"/>
+        <Property Name="Организация_Key" Type="Edm.Guid"/>
+      </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="Catalog_Organizations" EntityType="Fake1C.Catalog_Organizations"/>
         <EntitySet Name="Catalog_Counterparties" EntityType="Fake1C.Catalog_Counterparties"/>
@@ -99,6 +114,7 @@ METADATA = """<?xml version="1.0" encoding="utf-8"?>
         <EntitySet Name="AccumulationRegister_BankBalances" EntityType="Fake1C.AccumulationRegister_BankBalances"/>
         <EntitySet Name="AccumulationRegister_ReceivableBalances" EntityType="Fake1C.AccumulationRegister_ReceivableBalances"/>
         <EntitySet Name="AccumulationRegister_PayableBalances" EntityType="Fake1C.AccumulationRegister_PayableBalances"/>
+        <EntitySet Name="AccountingRegister_Ledger" EntityType="Fake1C.AccountingRegister_Ledger"/>
       </EntityContainer>
     </Schema>
   </edmx:DataServices>
@@ -117,6 +133,7 @@ def _rows(entity: str):
         "AccumulationRegister_BankBalances": SEED["bank_balances"],
         "AccumulationRegister_ReceivableBalances": SEED["receivable_balances"],
         "AccumulationRegister_PayableBalances": SEED["payable_balances"],
+        "AccountingRegister_Ledger": SEED["accounting_postings"],
     }
     if entity not in mapping:
         raise KeyError(entity)

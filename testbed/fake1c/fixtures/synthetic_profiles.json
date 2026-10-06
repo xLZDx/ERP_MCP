@@ -10,6 +10,42 @@
       "companies": {
         "00000000-0000-0000-0000-000000000001": {
           "concepts": {
+            "accounting.posting_rows": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Ledger",
+              "output_fields": {
+                "account_cr_ref": "AccountCr_Key",
+                "account_dr_ref": "AccountDr_Key",
+                "active": "Active",
+                "line_number": "LineNumber",
+                "period": "Period",
+                "recorder_ref": "Recorder"
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            },
+            "bank.balance": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_BankBalances",
+              "method": "Balance",
+              "output_fields": {
+                "amount": "СуммаBalance",
+                "bank_account_ref": "БанковскийСчет_Key",
+                "currency_ref": "Валюта_Key"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccumulationRegister_BankBalances",
+                  "method": "Balance"
+                }
+              ]
+            },
             "cash.movements": {
               "amount_encoding": "positive_magnitude_by_record_type",
               "company_scope": {
@@ -37,6 +73,25 @@
               "required_register_capabilities": [],
               "source_timezone": "UTC"
             },
+            "inventory.balance": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_InventoryBalances",
+              "method": "Balance",
+              "output_fields": {
+                "item_ref": "Номенклатура_Key",
+                "quantity": "КоличествоBalance",
+                "warehouse_ref": "Склад_Key"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccumulationRegister_InventoryBalances",
+                  "method": "Balance"
+                }
+              ]
+            },
             "inventory.movements": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -63,11 +118,64 @@
               },
               "required_register_capabilities": [],
               "source_timezone": "UTC"
+            },
+            "sales": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "Document_Sales",
+              "order_by": "Date",
+              "output_fields": {
+                "amount": "Amount",
+                "counterparty": "Контрагент_Key",
+                "currency": "Валюта_Key",
+                "date": "Date",
+                "document_number": "Number",
+                "document_ref": "Ref_Key",
+                "posted": "Posted"
+              }
             }
           }
         },
         "00000000-0000-0000-0000-000000000002": {
           "concepts": {
+            "accounting.posting_rows": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Ledger",
+              "output_fields": {
+                "account_cr_ref": "AccountCr_Key",
+                "account_dr_ref": "AccountDr_Key",
+                "active": "Active",
+                "line_number": "LineNumber",
+                "period": "Period",
+                "recorder_ref": "Recorder"
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            },
+            "bank.balance": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_BankBalances",
+              "method": "Balance",
+              "output_fields": {
+                "amount": "СуммаBalance",
+                "bank_account_ref": "БанковскийСчет_Key",
+                "currency_ref": "Валюта_Key"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccumulationRegister_BankBalances",
+                  "method": "Balance"
+                }
+              ]
+            },
             "cash.movements": {
               "amount_encoding": "positive_magnitude_by_record_type",
               "company_scope": {
@@ -95,6 +203,25 @@
               "required_register_capabilities": [],
               "source_timezone": "UTC"
             },
+            "inventory.balance": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_InventoryBalances",
+              "method": "Balance",
+              "output_fields": {
+                "item_ref": "Номенклатура_Key",
+                "quantity": "КоличествоBalance",
+                "warehouse_ref": "Склад_Key"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccumulationRegister_InventoryBalances",
+                  "method": "Balance"
+                }
+              ]
+            },
             "inventory.movements": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -121,11 +248,28 @@
               },
               "required_register_capabilities": [],
               "source_timezone": "UTC"
+            },
+            "sales": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "Document_Sales",
+              "order_by": "Date",
+              "output_fields": {
+                "amount": "Amount",
+                "counterparty": "Контрагент_Key",
+                "currency": "Валюта_Key",
+                "date": "Date",
+                "document_number": "Number",
+                "document_ref": "Ref_Key",
+                "posted": "Posted"
+              }
             }
           }
         }
       },
-      "metadata_fingerprint": "83edc5b67998546d1ca29140a6cd54f2b7e3570c08974edf7a698d63949674b7"
+      "metadata_fingerprint": "b229f62720567e1e267f76b82a89849399c9f6ab65b5694bebc0a4e0c03aad77"
     }
   }
 }
