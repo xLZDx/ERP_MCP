@@ -104,3 +104,7 @@
   is contacted and no fan-out/performance claim is made. Local suite on the main-based branch:
   `74 passed, 8 skipped` (PostgreSQL integration requires CI DB); Ruff/compileall/diff-check pass.
   Draft PR and hosted PostgreSQL verification pending.
+- First PR #9 hosted run `37415768895` showed the standalone `main` base predates the later
+  `require_source_for_company` helper. The test now asserts only APIs present on `main`:
+  `require_company` permits the granted company while `require_source` still denies a company-only
+  grant. Local regression suite remains `74 passed, 8 skipped`; hosted rerun pending.

@@ -170,7 +170,6 @@ async def test_postgres_heterogeneous_sources_are_added_and_revoked_without_rest
         assert {source.id for source in await registry.list_allowed(principal)} == set(source_ids)
         for source_id, company_id in zip(source_ids, company_ids, strict=True):
             assert (await registry.require_company(principal, source_id, company_id)).id == company_id
-            assert (await registry.require_source_for_company(principal, source_id, company_id)).id == source_id
             with pytest.raises(AccessDenied):
                 await registry.require_source(principal, source_id)
 
