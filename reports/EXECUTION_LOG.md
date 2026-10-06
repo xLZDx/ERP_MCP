@@ -341,3 +341,10 @@
 - Corrected head `02eab2d` passed hosted run `37415224776`: PostgreSQL migrations, privilege checker,
   all pytest tests (including runtime-role capability evidence persistence/refresh), pip-audit,
   exact pinned upstream client/metadata tests, and non-root sidecar build/smoke all passed.
+- D7 cache-refresh follow-up: gateway cached `$metadata` and capabilities indefinitely, so persisted
+  metadata drift could remain invisible until restart. Added configurable `BAG_METADATA_CACHE_TTL_SECONDS`
+  (60-second default, one-hour maximum), shared expiry for detector/capability results, invalidation
+  when the registered base URL or credential references change, and forced capability refresh after
+  directly refetching metadata. Synthetic detector test changes metadata fingerprint after expiry
+  and confirms the new EntitySet is observed; targeted and full local tests pass (125 passed,
+  7 PostgreSQL-only skips), as do Ruff, Bandit, compileall and pip-audit. Hosted CI pending.

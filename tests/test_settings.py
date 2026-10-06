@@ -65,3 +65,11 @@ def test_rsv_bridge_settings_require_paired_absolute_paths(tmp_path):
 def test_metrics_endpoint_token_must_be_long_enough():
     with pytest.raises(ValidationError, match="at least 32 bytes"):
         Settings(metrics_token="short")
+
+
+def test_metadata_cache_ttl_is_bounded_and_positive():
+    assert Settings().metadata_cache_ttl_seconds == 60
+    with pytest.raises(ValidationError):
+        Settings(metadata_cache_ttl_seconds=0)
+    with pytest.raises(ValidationError):
+        Settings(metadata_cache_ttl_seconds=3601)

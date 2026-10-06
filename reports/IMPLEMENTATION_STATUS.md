@@ -16,6 +16,8 @@ Last updated: 2026-10-06
 - P4 now includes inventory movements, bounded accounting posting rows, cash movements, and
   persistent source-specific negative capability evidence. No unconfirmed EntitySet/property name
   is guessed; missing evidence denies with `CAPABILITY_UNSUPPORTED`.
+- New local D7 hardening adds bounded metadata/capability cache freshness and invalidates cached
+  fingerprints on source endpoint/credential-reference changes. It is not yet included in hosted CI.
 - Pilot validator remains `NOT_READY`; native 1C reconciliation has not been run. This is not a
   production-ready declaration. The historical bootstrap chronology below is retained as a log,
   not as the current branch/PR status.

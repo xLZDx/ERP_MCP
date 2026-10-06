@@ -46,6 +46,11 @@ these semantic entries, while a changed metadata fingerprint makes old evidence 
 The `onec_capabilities` result exposes the persisted semantic evidence separately from the pinned
 sidecar register profile.
 
+The gateway caches source metadata and the associated capability fingerprint only for
+`BAG_METADATA_CACHE_TTL_SECONDS` (default 60 seconds, maximum one hour). Expiry reruns the existing
+metadata detector/parser; fetching fresh metadata invalidates its prior capability snapshot so
+configuration drift reaches the persisted gate without requiring a process restart.
+
 ## Register read
 
 `POST /v1/read` uses `operation: "register_read"`, exact `register_set`, `register_method`, bounded

@@ -5,6 +5,7 @@ import pytest
 
 from business_ai_gateway.adapters.onec.adapter import OneCAdapter
 from business_ai_gateway.adapters.onec.client import OneCReadClient
+from business_ai_gateway.adapters.onec.metadata import parse_metadata
 from business_ai_gateway.compatibility import (
     AdapterProfile,
     CompatibilityStatus,
@@ -139,6 +140,7 @@ async def test_unimplemented_fallback_fails_closed_without_network_call():
         compatibility_status=CompatibilityStatus.SUPPORTED_WITH_FALLBACK,
         evidence={"metadata": "ConnectError"},
     )
+    adapter._capabilities_expires_at[candidate.id] = 10**9
 
     with pytest.raises(NotImplementedError, match="read-only HTTP/query fallback"):
         await adapter.read(
@@ -153,3 +155,56 @@ async def test_unimplemented_fallback_fails_closed_without_network_call():
         )
 
     assert client.calls == []
+
+
+@pytest.mark.asyncio
+async def test_capability_and_metadata_cache_expiry_observes_schema_drift():
+    adapter = OneCAdapter(Settings(metadata_cache_ttl_seconds=5), NoSecrets(), object())
+    now = [100.0]
+    adapter._clock = lambda: now[0]
+
+    class ChangingDetector:
+        calls = 0
+
+        async def detect(self, _source):
+            self.calls += 1
+            entity_set = f"Catalog_Items_v{self.calls}"
+            index = parse_metadata(
+                f'<Edmx><EntityType Name="T{self.calls}"><Property Name="Name" />'
+                f'</EntityType><EntitySet Name="{entity_set}" EntityType="T{self.calls}" />'
+                "</Edmx>".encode()
+            )
+            capabilities = OneCCapabilities(
+                source_id="fake",
+                platform_version="8.3.test",
+                metadata_fingerprint=f"{self.calls:064x}",
+                metadata_supported=True,
+                json_supported=True,
+                atom_supported=False,
+                expand_supported=True,
+                entity_set_count=len(index.entities),
+                adapter_profile=AdapterProfile.ODATA_JSON_V3,
+                compatibility_status=CompatibilityStatus.SUPPORTED,
+                evidence={"metadata": "test"},
+            )
+            return capabilities, index
+
+    detector = ChangingDetector()
+    adapter._detector = detector
+
+    first = await adapter.capabilities(source())
+    cached = await adapter.capabilities(source())
+    assert cached.metadata_fingerprint == first.metadata_fingerprint
+    assert detector.calls == 1
+
+    now[0] += 5.01
+    second = await adapter.capabilities(source())
+    assert second.metadata_fingerprint != first.metadata_fingerprint
+    assert detector.calls == 2
+    assert (await adapter.metadata(source())).names == {"Catalog_Items_v2"}
+
+    relocated = replace(source(), base_url="http://fake-next/odata/standard.odata")
+    third = await adapter.capabilities(relocated)
+    assert third.metadata_fingerprint != second.metadata_fingerprint
+    assert detector.calls == 3
+    assert (await adapter.metadata(relocated)).names == {"Catalog_Items_v3"}

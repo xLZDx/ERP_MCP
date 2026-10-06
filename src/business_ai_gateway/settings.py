@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     max_rows: int = Field(default=200, ge=1, le=10_000)
     max_response_bytes: int = Field(default=5_000_000, ge=10_000, le=100_000_000)
     http_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    metadata_cache_ttl_seconds: float = Field(default=60.0, gt=0, le=3600)
     max_filter_chars: int = Field(default=4000, ge=64, le=20_000)
     require_metadata_entity: bool = True
     rate_limit_per_minute: int = Field(default=120, ge=1, le=10_000)
