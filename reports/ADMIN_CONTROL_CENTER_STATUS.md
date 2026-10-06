@@ -4,7 +4,7 @@ Branch: `feature/admin-control-center-implementation`
 Worktree: `D:\Repo\ERP_MCP-admin-control-center`
 Admin start SHA: `dff4c81d18e645fed64aed50d148ab8df9109f66`
 Integration baseline: `672fec4efae10949df0185c98e44b07b57ca45f3`
-Previous hosted candidate: `a0138f5088d35ee2216d85815ee2c21a59375185`; restore-drill issue from run `37502940204` is fixed locally and awaiting a new hosted run.
+Previous hosted candidate: `da13f3af996df3801e0c12a6ba8b3c1c06e6a834`; CI run `37504428513` is in progress. It fixes the restore-drill issue from run `37502940204`.
 
 ## Verified Admin scope
 
@@ -22,7 +22,7 @@ After integrating integration tip `672fec4` and fixing restore-drill migration e
 
 ## Review consensus
 
-Local Luna-medium second-round reviewers: security confirmed the remediations; database confirmed migration and privilege gates; architecture confirmed CI/browser/B2 coverage and the current integration baseline. They are reviewing the final restore-drill fixture correction. Runtime checks were independently run locally against disposable services.
+Local Luna-medium second-round reviewers: security confirmed the remediations; database confirmed migration and privilege gates; architecture confirmed CI/browser/B2 coverage, reviewed the restore-drill fix, and found an adjacent capability-registry drill import regression. That caller now uses the identity-aware runner; its import smoke check passes. No remaining Admin-specific blocker was reported. Runtime checks were independently run locally against disposable services.
 
 ## Readiness
 
