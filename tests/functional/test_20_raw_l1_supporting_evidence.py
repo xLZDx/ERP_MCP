@@ -97,6 +97,6 @@ async def test_seed_consistency_sc05_inventory_balance_matches_movement_net():
 
 
 async def test_raw_read_bounded_by_top():
-    rows, out = await raw("Document_Sales", top=1)
+    rows, _ = await raw("Document_Sales", top=1)
     assert len(rows) == 1
     record("SC04", bounded="onec_read top=1 returned exactly 1 row")

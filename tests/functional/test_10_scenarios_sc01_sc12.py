@@ -50,7 +50,7 @@ def _assert_denied_closed(out: h.Outcome, company: str | None):
 
 @pytest.mark.parametrize("case", IDS)
 async def test_scenario_positive_contract(case):
-    spec, args, out = await _gated(case)
+    spec, _args, out = await _gated(case)
     tools = await h.list_tool_names()
     tool_present = spec["tool"] in tools
     surface_gap = spec.get("force_not_implemented") or (
@@ -59,11 +59,12 @@ async def test_scenario_positive_contract(case):
     if surface_gap:
         # Fail closed AND surface check: if a matching tool appears this branch stops applying
         # and the test fails loudly so the evaluator gets written.
-        record(case, observed_status="NOT IMPLEMENTED", public_tool=spec["tool"] if tool_present else None,
+        status = spec.get("disposition", "NOT IMPLEMENTED")
+        record(case, observed_status=status, public_tool=spec["tool"] if tool_present else None,
                missing=spec["missing"], question=spec["question"])
         if out.is_error:
             _assert_denied_closed(out, h.COMPANY_ONE) if spec["tool"] != "onec_read" else None
-        pytest.xfail(f"NOT IMPLEMENTED {case} ({spec['slug']}): needs {spec['missing']}")
+        pytest.xfail(f"{status} {case} ({spec['slug']}): {spec['missing']}")
     if out.ok:
         _evaluate_success(case, out)
         record(case, observed_status="PASS", public_tool=spec["tool"], question=spec["question"])

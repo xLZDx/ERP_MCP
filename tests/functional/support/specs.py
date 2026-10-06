@@ -1,3 +1,4 @@
+# ruff: noqa: C408
 """Static scenario catalogue (questions, public tools, minimal missing interfaces).
 
 Expected invariants come from testbed/scenarios/accounting_scenarios.json and the Fake1C seed
@@ -59,8 +60,10 @@ SPECS = {
         slug="vat-mixed", question="Different VAT treatments remain distinguishable",
         tool="sales_documents", kind="missing", args="docs",
         missing_regex=r"vat|tax",
-        missing="tax_base_by_vat_treatment(source_id, company_id, start, end) -> per-treatment base and total "
-                "(docs/SEMANTIC_PROFILES.md: tax/VAT unavailable)",
+        disposition="EXTERNAL-GATE",
+        missing="DISPOSITION EXTERNAL-GATE: VAT views exist only when a source/company profile is validated "
+                "(freeze 3.3 'VAT/tax views only when validated'); needs tax_base_by_vat_treatment(source_id, "
+                "company_id, start, end) -> per-treatment base and total on a validated profile",
     ),
     "SC07": dict(
         slug="backdated-document", question="Backdated document appears in the correct accounting period",
@@ -73,8 +76,10 @@ SPECS = {
         slug="duplicate-counterparty", question="Potential duplicate counterparties are identified without merge",
         tool="onec_read", kind="missing", args="none",
         missing_regex=r"duplicate",
-        missing="counterparty_duplicate_candidates(source_id, company_id) -> candidate pairs and merge_count=0; "
-                "seed Catalog_Counterparties holds a customer and a supplier, not a duplicate pair",
+        disposition="NOT IMPLEMENTED",
+        missing="DISPOSITION NOT IMPLEMENTED: duplicate-counterparty detection is outside the frozen scope and "
+                "needs an operator rebaseline; would need counterparty_duplicate_candidates(source_id, company_id) "
+                "with merge_count=0 and a duplicate pair in the seed",
     ),
     "SC09": dict(
         slug="cash-bank", question="Cash and bank balances remain separate and sum to combined",
@@ -112,7 +117,7 @@ def build_args(spec: dict, source_id: str, company_id: str) -> dict:
     if kind == "range":
         return {**base, "start_period": PERIOD_START, "end_period": PERIOD_END}
     if kind == "turnover":
-        return {**base, "start_period": "2026-04-01", "end_period": "2026-04-30"}
+        return {**base, "start_period": PERIOD_START, "end_period": PERIOD_END}
     if kind == "docs":
         return base
     return {"source_id": source_id, "entity_set": "Catalog_Counterparties", "top": 10}

@@ -1,3 +1,4 @@
+# ruff: noqa: SIM117
 """Black-box harness: real MCP Streamable-HTTP client + read-only evidence readers.
 
 No gateway internals are imported. Environment contract (also in docs/FUNCTIONAL_TESTER...):
@@ -79,6 +80,7 @@ def _unwrap(structured: Any) -> Any:
 
 async def _raw_call(tool: str, args: dict, token: str | None) -> Outcome:
     client = None
+    token = token or env("FT_BEARER_TOKEN")
     if token:
         client = httpx2.AsyncClient(headers={"Authorization": f"Bearer {token}"}, timeout=60)
     try:
@@ -101,6 +103,7 @@ async def _raw_call(tool: str, args: dict, token: str | None) -> Outcome:
 
 
 async def list_tool_names(token: str | None = None) -> list[str]:
+    token = token or env("FT_BEARER_TOKEN")
     client = httpx2.AsyncClient(headers={"Authorization": f"Bearer {token}"}) if token else None
     try:
         async with streamable_http_client(env("FT_MCP_URL"), http_client=client) as (r, w):
