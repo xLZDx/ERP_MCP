@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from decimal import Decimal
+from unittest.mock import AsyncMock
 
 import pytest
 from mcp.server.mcpserver.exceptions import UnexpectedToolError
@@ -14,6 +15,7 @@ from scripts import synthetic_fixture_profiles as fixture_gen
 from tests.sc_stack import (
     ORG_ONE,
     ORG_TWO,
+    PG_MARKS,
     ServerThread,
     build_stack,
     fixture_document,
@@ -22,7 +24,7 @@ from tests.sc_stack import (
 from tests.test_synthetic_fixture_profiles import _stack
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
+pytestmark = PG_MARKS
 WINDOW = {"start_period": "2026-04-01T00:00:00+00:00", "end_period": "2026-04-30T00:00:00+00:00"}
 
 
@@ -65,12 +67,18 @@ async def test_sc10_naive_timestamps_are_rejected_before_any_register_read(
 ):
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
+        stack.runtime.onec.register_read = AsyncMock()
+        stack.runtime.onec.read = AsyncMock()
         with pytest.raises(UnexpectedToolError):
             await stack.call(
                 "accounting_balance_and_turnovers", source_id=stack.source_id,
                 company_id=str(stack.companies[ORG_ONE]),
                 start_period="2026-04-01", end_period="2026-04-30",
             )
+        stack.runtime.onec.register_read.assert_not_awaited()
+        stack.runtime.onec.read.assert_not_awaited()
+        rows = await stack.audit_rows("accounting_balance_and_turnovers")
+        assert (rows[-1]["outcome"], rows[-1]["detail_code"]) == ("error", "ValueError")
     finally:
         await stack.db.close()
 

@@ -21,11 +21,11 @@ from tests.sc_stack import (
     ORG_TWO,
     build_stack,
     fixture_document,
+    needs_pg,
     write_fixture_file,
 )
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
-needs_pg = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
 START = "2026-04-01T00:00:00+00:00"
 END = "2026-04-30T00:00:00+00:00"
 
@@ -141,7 +141,6 @@ async def test_sc11_inventory_signed_deltas_through_mcp_fixture_profile_and_audi
         )
         assert not result.is_error
         body = stack.payload(result)
-        deltas = [Decimal(row["quantity_delta"]) for row in body["value"]]
         item1 = [r for r in body["value"] if r["item_ref"].endswith("0001")]
         deltas = [Decimal(r["quantity_delta"]) for r in item1]
         assert deltas == [Decimal(7), Decimal(-2)] and sum(deltas) == 5
@@ -238,11 +237,13 @@ async def test_stale_fixture_fingerprint_is_denied_as_schema_drift(fake1c, fake_
     try:
         provider = stack.runtime.registry.synthetic_profiles
         provider._sources[stack.source_id]["metadata_fingerprint"] = "f" * 64
+        stack.runtime.onec.read = AsyncMock()
         with pytest.raises(UnexpectedToolError):
             await stack.call(
                 "cash_movements", source_id=stack.source_id,
                 company_id=str(stack.companies[ORG_ONE]), start_period=START, end_period=END,
             )
+        stack.runtime.onec.read.assert_not_awaited()
         rows = await stack.audit_rows("cash_movements")
         assert rows[-1]["detail_code"] == "SCHEMA_DRIFT"
     finally:
@@ -304,8 +305,10 @@ async def test_validated_db_profile_always_wins_over_fixture_and_fixture_never_a
         await pool.execute(
             "UPDATE bag.semantic_mappings SET mapping_json=$2::jsonb WHERE profile_id=$1",
             profile_id, json.dumps({"entity_set": "bad"}))
+        stack.runtime.onec.read = AsyncMock()
         with pytest.raises(UnexpectedToolError):
             await stack.call("inventory_movements", **args)
+        stack.runtime.onec.read.assert_not_awaited()
         rows = await stack.audit_rows("inventory_movements")
         assert rows[-1]["detail_code"] == "SEMANTIC_PROFILE_UNVALIDATED"
     finally:

@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from tests.sc_stack import ServerThread
+
+
+@pytest.fixture
+def require_pg_database():
+    if not os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL"):
+        pytest.fail("ERP_MCP_REQUIRE_DB_TESTS=1 but BAG_PRIVILEGE_TEST_DATABASE_URL is not set")
 
 
 @pytest.fixture(scope="module")

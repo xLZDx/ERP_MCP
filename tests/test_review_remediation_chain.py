@@ -13,11 +13,10 @@ from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
 from business_ai_gateway.adapters.onec.sidecar_client import UPSTREAM_SHA, ODataSidecarClient
 from business_ai_gateway.fixture_profiles import profile_provenance
-from tests.sc_stack import ORG_ONE
+from tests.sc_stack import ORG_ONE, needs_pg
 from tests.test_synthetic_fixture_profiles import _stack
 
 DATABASE_URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
-needs_pg = pytest.mark.skipif(not DATABASE_URL, reason="requires disposable PostgreSQL")
 AS_OF = "2026-04-30T00:00:00+00:00"
 MARKER = "SYNTHETIC_FIXTURE_PROFILE"
 
