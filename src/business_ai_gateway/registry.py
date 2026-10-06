@@ -39,9 +39,16 @@ class AccessDenied(PermissionError):
 
 
 class Registry:
-    def __init__(self, db: Database, *, production: bool):
+    def __init__(
+        self,
+        db: Database,
+        *,
+        production: bool,
+        allowed_source_hosts: tuple[str, ...] = (),
+    ):
         self.db = db
         self.production = production
+        self.allowed_source_hosts = allowed_source_hosts
 
     async def list_allowed(self, principal: Principal) -> list[Source]:
         rows = await self.db.require_pool().fetch(
@@ -76,7 +83,9 @@ class Registry:
         )
         result = [source_from_record(row) for row in rows]
         for source in result:
-            source.validate_runtime(production=self.production)
+            source.validate_runtime(
+                production=self.production, allowed_source_hosts=self.allowed_source_hosts
+            )
         return result
 
     async def require_source(self, principal: Principal, source_id: str) -> Source:
@@ -115,7 +124,9 @@ class Registry:
         if row is None:
             raise AccessDenied(f"no access to source {source_id!r}")
         source = source_from_record(row)
-        source.validate_runtime(production=self.production)
+        source.validate_runtime(
+            production=self.production, allowed_source_hosts=self.allowed_source_hosts
+        )
         return source
 
     async def list_allowed_companies(self, principal: Principal, source_id: str) -> list[Company]:
@@ -245,7 +256,9 @@ class Registry:
         if row is None:
             raise AccessDenied("no access to source/company scope")
         source = source_from_record(row)
-        source.validate_runtime(production=self.production)
+        source.validate_runtime(
+            production=self.production, allowed_source_hosts=self.allowed_source_hosts
+        )
         return source
 
     async def require_semantic_mapping(

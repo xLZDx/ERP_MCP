@@ -43,6 +43,7 @@ class Settings(BaseSettings):
 
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
+    source_host_allowlist: str | None = None
     metrics_token: SecretStr | None = None
     rsv_bridge_executable: str | None = None
     rsv_bridge_config_root: str | None = None
@@ -63,6 +64,16 @@ class Settings(BaseSettings):
     @property
     def oauth_algorithm_list(self) -> list[str]:
         return [x.strip() for x in self.oauth_algorithms.split(",") if x.strip()]
+
+    @property
+    def source_host_allowlist_items(self) -> tuple[str, ...]:
+        if not self.source_host_allowlist:
+            return ()
+        return tuple(
+            host.strip().rstrip(".").lower()
+            for host in self.source_host_allowlist.split(",")
+            if host.strip()
+        )
 
     @model_validator(mode="after")
     def production_guards(self):
@@ -96,6 +107,17 @@ class Settings(BaseSettings):
                 raise ValueError("production BAG_ODATA_SIDECAR_URL must use https://")
         if self.environment != "production":
             return self
+        if not self.source_host_allowlist_items:
+            raise ValueError("production requires BAG_SOURCE_HOST_ALLOWLIST")
+        for host in self.source_host_allowlist_items:
+            parsed_host = urlparse(f"//{host}")
+            if (
+                not parsed_host.hostname
+                or parsed_host.port is not None
+                or parsed_host.hostname.rstrip(".").lower() != host
+                or "*" in host
+            ):
+                raise ValueError("BAG_SOURCE_HOST_ALLOWLIST must contain exact hostnames only")
         if not self.oauth_enabled:
             raise ValueError("production requires BAG_OAUTH_ENABLED=true")
         required = {

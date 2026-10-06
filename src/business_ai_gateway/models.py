@@ -25,7 +25,9 @@ class Source:
     fallback_kind: str | None = None
     fallback_base_url: str | None = None
 
-    def validate_runtime(self, *, production: bool):
+    def validate_runtime(
+        self, *, production: bool, allowed_source_hosts: tuple[str, ...] = ()
+    ):
         if self.project != "onec" or self.kind not in {"onec_odata", "onec_auto"}:
             raise ValueError("1C MVP supports only onec/onec_odata or onec/onec_auto")
         if not self.read_only:
@@ -39,6 +41,10 @@ class Source:
             raise ValueError("source base_url must not contain query/fragment")
         if production and parsed.scheme != "https":
             raise ValueError("production 1C source must use HTTPS")
+        if production and allowed_source_hosts:
+            registered_host = (parsed.hostname or "").rstrip(".").lower()
+            if registered_host not in allowed_source_hosts:
+                raise ValueError("1C source host is not in BAG_SOURCE_HOST_ALLOWLIST")
 
         if self.fallback_kind is not None and self.fallback_kind != "onec_http_query":
             raise ValueError("unsupported 1C fallback kind")

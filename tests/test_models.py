@@ -32,6 +32,17 @@ def test_source_is_read_only_and_https_in_production():
         ).validate_runtime(production=True)
 
 
+def test_source_host_must_match_explicit_production_allowlist():
+    source = make_source()
+    source.validate_runtime(
+        production=True, allowed_source_hosts=("1c.example.com",)
+    )
+    with pytest.raises(ValueError, match="BAG_SOURCE_HOST_ALLOWLIST"):
+        source.validate_runtime(
+            production=True, allowed_source_hosts=("other.example.com",)
+        )
+
+
 def test_entity_policy_deny_wins():
     source = make_source()
     assert source.entity_allowed("Catalog_Organizations")

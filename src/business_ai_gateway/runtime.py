@@ -21,7 +21,11 @@ class Runtime:
         self.settings = settings
         self.db = Database(settings.database_url)
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
-        self.registry = Registry(self.db, production=settings.environment == "production")
+        self.registry = Registry(
+            self.db,
+            production=settings.environment == "production",
+            allowed_source_hosts=settings.source_host_allowlist_items,
+        )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(self.db, include_query=settings.audit_include_query)
         self.rate_limit = RateLimiter(self.redis, per_minute=settings.rate_limit_per_minute)

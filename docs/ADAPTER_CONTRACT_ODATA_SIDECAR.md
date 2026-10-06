@@ -75,3 +75,9 @@ Both endpoints require the private bearer token and exact host allowlist. Reques
 bytes, row counts, timeout, per-source concurrency and circuit state are bounded. Responses include
 `source_id`, adapter kind/version, exact upstream SHA and operation. Redirects are disabled in the
 Python hop, and production requires TLS between gateway and sidecar.
+
+Production gateway source registration additionally requires an exact-host
+`BAG_SOURCE_HOST_ALLOWLIST`; synchronize it with `ONEC_ALLOWED_HOSTS`. Neither
+hostname allowlist prevents DNS rebinding by itself. Production network policy
+must constrain egress to approved 1C address ranges, and DNS-to-connect pinning
+remains a release gate for both Python and sidecar clients.

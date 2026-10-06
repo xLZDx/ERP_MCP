@@ -38,10 +38,30 @@ def test_production_accepts_required_security_shape():
         oauth_audience="https://mcp.example.com/mcp",
         oauth_jwks_url="https://id.example.com/jwks",
         secret_provider="file",
+        source_host_allowlist="1c.example.com",
         database_url="postgresql://u:p@db/x",
         redis_url="redis://redis/0",
     )
     assert settings.environment == "production"
+    assert settings.source_host_allowlist_items == ("1c.example.com",)
+
+
+def test_production_requires_exact_source_host_allowlist():
+    values = {
+        "environment": "production",
+        "public_mcp_url": "https://mcp.example.com/mcp",
+        "oauth_enabled": True,
+        "oauth_issuer": "https://id.example.com/",
+        "oauth_audience": "https://mcp.example.com/mcp",
+        "oauth_jwks_url": "https://id.example.com/jwks",
+        "secret_provider": "file",
+        "database_url": "postgresql://u:p@db/x",
+        "redis_url": "redis://redis/0",
+    }
+    with pytest.raises(ValidationError, match="BAG_SOURCE_HOST_ALLOWLIST"):
+        Settings(**values)
+    with pytest.raises(ValidationError, match="exact hostnames"):
+        Settings(**values, source_host_allowlist="*.example.com")
 
 
 def test_sidecar_settings_require_paired_url_and_long_secret():
