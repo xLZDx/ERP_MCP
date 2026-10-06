@@ -51,6 +51,28 @@ from .semantic import (
 )
 from .settings import Settings
 
+BUSINESS_CAPABILITY_BY_TOOL = {
+    "source_health": "source.status.read",
+    "rsv_metadata": "metadata.read",
+    "companies_list": "company.list",
+    "onec_capabilities": "metadata.read",
+    "onec_metadata_summary": "metadata.read",
+    "onec_find_entities": "metadata.read",
+    "accounting_balance_and_turnovers": "accounting.read",
+    "inventory_balance": "inventory.read",
+    "inventory_movements": "inventory.read",
+    "accounting_posting_rows": "accounting.read",
+    "cash_movements": "cash.read",
+    "bank_balance": "bank.read",
+    "receivable_balance": "ar.read",
+    "payable_balance": "ap.read",
+    "sales_documents": "sales.read",
+    "purchase_documents": "purchases.read",
+    # Arbitrary EntitySet/filter OData reads are deliberately isolated from
+    # semantic accounting capabilities and have no seeded business-role grant.
+    "onec_read": "onec.raw.read",
+}
+
 
 def _count_items(payload: Any) -> int | None:
     if isinstance(payload, list):
@@ -115,6 +137,30 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=type(exc).__name__,
             )
             raise
+        capability = BUSINESS_CAPABILITY_BY_TOOL.get(tool)
+        if settings.business_capability_enforcement_enabled:
+            if capability is None:
+                raise PermissionError("business capability is not mapped for this operation")
+            try:
+                await runtime.capability_policy.require(
+                    principal,
+                    capability,
+                    source_id=source_id,
+                    company_id=company_id,
+                )
+            except Exception as exc:
+                await runtime.audit.write(
+                    principal=principal,
+                    tool=tool,
+                    source_id=source_id,
+                    company_id=company_id,
+                    outcome="denied",
+                    started_at=started,
+                    query=query,
+                    policy_version=runtime.capability_policy.POLICY_VERSION,
+                    detail_code=getattr(exc, "code", type(exc).__name__),
+                )
+                raise
         try:
             await runtime.rate_limit.check(
                 subject=principal.subject,
@@ -380,6 +426,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         started = time.monotonic()
         principal = await ctx()
         try:
+            if settings.business_capability_enforcement_enabled:
+                await runtime.capability_policy.require(
+                    principal,
+                    "company.list",
+                    source_id=source_id,
+                )
             await runtime.rate_limit.check(
                 subject=principal.subject,
                 source_id=source_id,

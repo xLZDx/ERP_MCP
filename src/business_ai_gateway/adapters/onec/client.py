@@ -94,7 +94,8 @@ class OneCReadClient:
         for attempt in range(3):
             try:
                 request = self._client.build_request(
-                    "GET", url, params=params, headers={"Accept": accept}
+                    "GET", url, params=params,
+                    headers={"Accept": accept, "Accept-Encoding": "identity"},
                 )
                 response = await self._client.send(request, stream=True, auth=auth)
             except httpx.TimeoutException:
@@ -112,6 +113,8 @@ class OneCReadClient:
                     continue
                 if response.is_error or 300 <= response.status_code < 400:
                     raise OneCTransportError(f"1C_UPSTREAM_HTTP_{response.status_code}")
+                if response.headers.get("content-encoding", "identity").lower() != "identity":
+                    raise OneCTransportError("encoded response is unsupported by bounded native transport")
                 data = bytearray()
                 async for chunk in response.aiter_bytes():
                     data.extend(chunk)

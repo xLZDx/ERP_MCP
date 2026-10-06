@@ -232,3 +232,20 @@ Allowed intermediate labels:
 
 Do not call a release “production-ready” if it has not reached at least `PILOT READY` with all
 pre-pilot mandatory gates satisfied.
+
+## Admin Control Center extension gate
+
+Admin Control Center may be enabled for an environment only when:
+- ADR-0007 and migrations 008-011 match the deployed exact head;
+- admin audience/scope is distinct from MCP onec:read;
+- OIDC Authorization Code + PKCE login and session/CSRF tests pass;
+- a first PLATFORM_ADMIN subject/group is bootstrapped through controlled operator tooling;
+- business_ai_control_api privilege verification passes and business_ai_app remains unable to administer policy;
+- source egress host/CIDR policy is explicitly configured before mutations are enabled;
+- admin audit/idempotency and exact-ID revoke tests pass;
+- business capability enforcement is enabled only after assignments exist for intended users;
+- company-aware reads are enabled only for entity sets with VALIDATED metadata-bound scope mappings;
+- full baseline tests, Ruff, compileall, Bandit and dependency audit are green;
+- real IdP login, target 1C safe-probe and pilot operator smoke evidence are captured for the deployment environment.
+
+Passing repository tests alone is DEV/INTEGRATION evidence, not production activation approval.

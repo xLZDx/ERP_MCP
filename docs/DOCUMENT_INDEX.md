@@ -9,7 +9,8 @@ Interactive view: [ERP_MCP Engineering Command Center](ERP_MCP_ENGINEERING_COMMA
 
 Current implementation evidence: [execution log](../reports/EXECUTION_LOG.md),
 [status](../reports/IMPLEMENTATION_STATUS.md), [gap analysis](../reports/IMPLEMENTATION_GAP_ANALYSIS.md),
-[DoD status](../reports/DOD_STATUS.md), and [risk status](../reports/RISK_STATUS.md).
+[DoD status](../reports/DOD_STATUS.md), [risk status](../reports/RISK_STATUS.md), and
+[Admin Control Center status](../reports/ADMIN_CONTROL_CENTER_STATUS.md).
 
 Machine-readable current snapshot: [engineering checkpoint](../reports/CURRENT_ENGINEERING_CHECKPOINT.json).
 CI checks its implementation-content fingerprint against all six report/dashboard markers;
@@ -74,6 +75,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Pilot evidence gate](PILOT_EVIDENCE_GATE.md) | P9 evidence manifest, validation contract and production GO conditions |
 | [Risk Register](RISK_REGISTER.md) | Principal technical, accounting, security, licensing and operational risks |
 | [Threat Model](THREAT_MODEL.md) | Assets, trust threats, STRIDE controls and residual risk |
+| [Admin Control Center](admin-control-center/README.md) | Browser control-plane design, implementation contract and operator runbook |
 | [Requirements Traceability](REQUIREMENTS_TRACEABILITY.md) | Requirement → design → DoD/evidence mapping |
 
 ## Existing normative/supporting documents
@@ -98,6 +100,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 - [ADR-0004 — Behavior-first capability routing](adr/ADR-0004-capability-routing.md)
 - [ADR-0005 — No direct 1C SQL integration](adr/ADR-0005-no-direct-1c-sql.md)
 - [ADR-0006 — Copyleft adapter isolation](adr/ADR-0006-copyleft-isolation.md)
+- [ADR-0007 — Admin Control Center boundary and authorization](adr/ADR-0007-admin-control-center.md)
 
 ## Change rule
 

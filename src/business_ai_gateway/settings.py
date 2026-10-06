@@ -39,6 +39,23 @@ class Settings(BaseSettings):
     oauth_jwks_cache_ttl_seconds: int = Field(default=300, ge=1, le=3600)
     oauth_jwks_refresh_cooldown_seconds: float = Field(default=1.0, ge=0, le=30)
 
+    admin_api_enabled: bool = False
+    admin_mutations_enabled: bool = False
+    admin_ui_enabled: bool = False
+    admin_oauth_audience: str | None = None
+    admin_oauth_required_scope: str = "erp_mcp:admin"
+    admin_oidc_authorization_url: str | None = None
+    admin_oidc_token_url: str | None = None
+    admin_oidc_client_id: str | None = None
+    admin_oidc_client_secret: SecretStr | None = None
+    admin_oidc_redirect_uri: str | None = None
+    admin_session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
+    admin_step_up_acr_values: str = ""
+    admin_control_database_url: str | None = None
+    admin_source_allowed_hosts: str = ""
+    admin_source_allowed_cidrs: str = ""
+    business_capability_enforcement_enabled: bool = False
+
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None
     migration_database_url: str | None = None
@@ -144,6 +161,50 @@ class Settings(BaseSettings):
                 raise ValueError("BAG_ODATA_SIDECAR_TOKEN must contain at least 32 bytes")
             if self.environment == "production" and parsed.scheme != "https":
                 raise ValueError("production BAG_ODATA_SIDECAR_URL must use https://")
+
+        if self.admin_api_enabled:
+            if not self.oauth_enabled:
+                raise ValueError("admin API requires BAG_OAUTH_ENABLED=true")
+            if not self.admin_oauth_audience:
+                raise ValueError("admin API requires BAG_ADMIN_OAUTH_AUDIENCE")
+            if len(self.admin_oauth_required_scope.split()) != 1:
+                raise ValueError("admin API requires one nonempty admin scope")
+            if self.admin_oauth_audience == self.oauth_audience:
+                raise ValueError("admin API audience must differ from MCP OAuth audience")
+            if self.admin_oauth_required_scope == self.oauth_required_scope:
+                raise ValueError("admin API scope must differ from MCP OAuth scope")
+        if self.admin_mutations_enabled:
+            if not self.admin_api_enabled:
+                raise ValueError("admin mutations require BAG_ADMIN_API_ENABLED=true")
+            if not self.admin_control_database_url:
+                raise ValueError("admin mutations require BAG_ADMIN_CONTROL_DATABASE_URL")
+            if self.environment == "production" and not self.admin_source_allowed_hosts.strip():
+                raise ValueError("production admin mutations require BAG_ADMIN_SOURCE_ALLOWED_HOSTS")
+        if self.admin_ui_enabled:
+            if not self.admin_api_enabled:
+                raise ValueError("admin UI requires BAG_ADMIN_API_ENABLED=true")
+            ui_required = {
+                "BAG_ADMIN_OIDC_AUTHORIZATION_URL": self.admin_oidc_authorization_url,
+                "BAG_ADMIN_OIDC_TOKEN_URL": self.admin_oidc_token_url,
+                "BAG_ADMIN_OIDC_CLIENT_ID": self.admin_oidc_client_id,
+                "BAG_ADMIN_OIDC_REDIRECT_URI": self.admin_oidc_redirect_uri,
+            }
+            missing_ui = [name for name, value in ui_required.items() if not value]
+            if missing_ui:
+                raise ValueError(
+                    f"admin UI missing OIDC settings: {', '.join(missing_ui)}"
+                )
+            for name, value in (
+                ("BAG_ADMIN_OIDC_AUTHORIZATION_URL", self.admin_oidc_authorization_url),
+                ("BAG_ADMIN_OIDC_TOKEN_URL", self.admin_oidc_token_url),
+                ("BAG_ADMIN_OIDC_REDIRECT_URI", self.admin_oidc_redirect_uri),
+            ):
+                parsed = urlparse(value or "")
+                if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                    raise ValueError(f"{name} must be an absolute HTTP(S) URL")
+                if self.environment == "production" and parsed.scheme != "https":
+                    raise ValueError(f"production {name} must use https://")
+
         if self.environment != "production":
             return self
         if not self.source_host_allowlist_items:

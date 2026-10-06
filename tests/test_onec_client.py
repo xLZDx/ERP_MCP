@@ -79,6 +79,28 @@ async def test_upstream_network_error_is_mapped_without_chaining_request_url():
 
 
 @pytest.mark.asyncio
+async def test_native_transport_rejects_encoding_before_unbounded_decompression():
+    async def upstream(request):
+        assert request.headers["accept-encoding"] == "identity"
+        return httpx.Response(
+            200,
+            headers={"content-encoding": "gzip"},
+            stream=httpx.ByteStream(b"unread encoded data"),
+        )
+
+    client = OneCReadClient(
+        timeout_seconds=5,
+        max_response_bytes=10000,
+        transport=httpx.MockTransport(upstream),
+    )
+    try:
+        with pytest.raises(OneCTransportError, match="encoded response"):
+            await client.get_bytes(source(), "$metadata", username=None, password=None)
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_url_is_pinned_to_registered_host():
     client = OneCReadClient(
         timeout_seconds=5,

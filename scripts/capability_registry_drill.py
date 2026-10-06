@@ -11,7 +11,8 @@ from pathlib import Path
 import asyncpg
 
 from scripts.execute_evidence_tests import execute
-from scripts.postgres_restore_drill import migrate, new_postgres
+from scripts.migrate import load_migrations, migrate
+from scripts.postgres_restore_drill import new_postgres
 
 
 async def run() -> dict:
@@ -19,7 +20,7 @@ async def run() -> dict:
     dsn = await new_postgres(container)
     connection = await asyncpg.connect(dsn)
     try:
-        await migrate(connection)
+        await migrate(connection, load_migrations())
     finally:
         await connection.close()
     previous = os.environ.get("BAG_PRIVILEGE_TEST_DATABASE_URL")

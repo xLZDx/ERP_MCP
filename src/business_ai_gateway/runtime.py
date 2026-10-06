@@ -10,6 +10,8 @@ from .adapters.onec.client import OneCReadClient
 from .adapters.onec.rsv_bridge import RSVDataBridgeClient
 from .adapters.onec.sidecar_client import ODataSidecarClient
 from .audit import Audit
+from .business_policy import CapabilityPolicy
+from .company_scope import CompanyScopeResolver
 from .db import Database
 from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
@@ -25,6 +27,11 @@ class Runtime:
         self.settings = settings
         self.metrics = OperationalMetrics()
         self.db = Database(settings.database_url)
+        self.admin_db = (
+            Database(settings.admin_control_database_url)
+            if settings.admin_control_database_url
+            else None
+        )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
         self.registry = Registry(
             self.db,
@@ -35,6 +42,11 @@ class Runtime:
         self.audit = Audit(
             self.db, include_query=settings.audit_include_query, metrics=self.metrics
         )
+        self.capability_policy = CapabilityPolicy(
+            self.db,
+            enabled=settings.business_capability_enforcement_enabled,
+        )
+        self.company_scope = CompanyScopeResolver(self.db)
         self.rate_limit = RateLimiter(self.redis, per_minute=settings.rate_limit_per_minute)
         self.evidence_provider = (
             ApprovedEvidenceProvider(PrivateEvidenceStore(Path(settings.evidence_store_root)),
@@ -84,18 +96,30 @@ class Runtime:
                 return
             await self.db.start()
             await self.db.assert_schema()
+            if self.settings.environment == "production":
+                await self.db.assert_runtime_role()
+            if self.admin_db is not None:
+                await self.admin_db.start()
+                await self.admin_db.assert_schema()
+                if self.settings.environment == "production":
+                    await self.admin_db.assert_control_api_role()
+            if self.settings.admin_mutations_enabled and self.admin_db is None:
+                raise RuntimeError("admin mutation database is not configured")
             if not await self.redis.ping():
                 raise RuntimeError("redis unavailable")
             self._started = True
 
     async def ready(self) -> bool:
         await self.start()
-        return await self.db.ping() and bool(await self.redis.ping())
+        admin_ready = self.admin_db is None or await self.admin_db.ping()
+        return await self.db.ping() and admin_ready and bool(await self.redis.ping())
 
     async def close(self):
         await self.onec_client.close()
         if self.odata_sidecar is not None:
             await self.odata_sidecar.close()
         await self.redis.aclose()
+        if self.admin_db is not None:
+            await self.admin_db.close()
         await self.db.close()
         self._started = False

@@ -37,6 +37,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+business_ai_gateway = ["static/*.html", "static/*.js"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]
@@ -51,3 +54,8 @@ target-version = "py312"
 
 [tool.ruff.lint.isort]
 known-first-party = ["business_ai_gateway", "testbed"]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.58,<2",
+]
