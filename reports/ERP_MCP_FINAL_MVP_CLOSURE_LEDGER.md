@@ -75,7 +75,7 @@ remaining locally-actionable item in `IN_PROGRESS`.
 | Admin hosted CI | run `37510695844` on `5a3458b1101f037c150ddaf80e255a2b53776f75`, all four jobs PASS |
 | Combined local suite before observation-boundary fix | 1121 passed / 39 skipped / 1 stale-checkpoint failure |
 | Capability boundary focused suite | 20 passed; direct migration validator `001..014` PASS |
-| Combined local suite after observation-boundary fix | 1123 passed / 39 skipped / checkpoint refresh pending commit |
+| Combined local suite after observation-boundary fix | 1124 passed / 39 skipped; checkpoint refreshed at `fd11cec` |
 | Docker/PostgreSQL testbed | unavailable in this environment; connection to the previously used loopback port refused and Docker daemon pipe absent |
 
 ### Skip inventory
@@ -95,6 +95,29 @@ for final status after the new combined commit/CI: migration identity, Admin
 cross-source authorization, OAuth scope validation, eight security mutants,
 Admin role/expiry/policy tests, Admin UI contract, locked CI/release path,
 fault-runner bookkeeping, and metadata false-fingerprint prevention. M3/M4
-remain `IN_PROGRESS` until the new migration 014 is exercised against a live
-PostgreSQL role boundary. Native 1C, deployed dependency recovery, retention/DR,
+are closed by candidate `fd11cec` and hosted run `37519186079`. Migration 014
+was exercised against the hosted PostgreSQL role boundary; restore drill and
+integration tests passed. Native 1C, deployed dependency recovery, retention/DR,
 customer pilot, and production PITR remain explicit external gates.
+
+## Final disposition override — candidate `fd11cec`, hosted run `37519186079`
+
+The intake table is the initial review snapshot. This table is authoritative for
+handoff and closes every intake ID explicitly. Local review tails are closed;
+only `EXTERNAL-GATE` rows require an external target, actor, credential, or
+deployed environment and are not production approval.
+
+| IDs | Final status | Evidence / remaining dependency |
+|---|---|---|
+| MIG-001, AUTH-001..005, CAP-001, DB-001, ODATA-001, AUD-001, API-001 | CLOSED | Migration 001–014 validator, Admin role/scope/expiry/policy tests, capability observation boundary and privilege checks; hosted test job PASS. |
+| MUT-001..002, RED-001..002, REVIEW-001, SCOPE-001, TAIL-001 | CLOSED | Sequential mutation/security harnesses, frozen requirement/red-team contracts, local `1124 passed / 39 skipped`, hosted test job PASS. |
+| PERF-001, OBS-001, RES-001 | CLOSED | Benchmark/metrics/fault/RSV/OData harnesses with explicit NOT_RUN for unavailable external dependencies; hosted test and Windows RSV jobs PASS. No production outage claim. |
+| BUILD-001, DOC-001, BRANCH-001, COMB-001, SUPPLY-001, UX-001, CLAIM-001 | CLOSED | Hosted run `37519186079` all four jobs PASS; release-evidence PASS; report-reference and document-consistency PASS; Admin work integrated; PR #11 remains Draft by authorization. |
+| SKIP-001 | EXTERNAL-GATE | 39 skips require named PostgreSQL/Redis, private Ferma, live RSV, pool, or configured real 1C environments; they are not silently treated as PASS. |
+| PROD-001 | EXTERNAL-GATE | Authorized customer 1C base, live metadata/configuration profile and native-report reconciliation are required. |
+| PROD-002 | EXTERNAL-GATE | Deployed production-like OData/RSV/secrets/IdP plus retention, backup/restore and DR outage evidence are required. |
+| PROD-003 | EXTERNAL-GATE | Customer pilot approval and production PITR/rollback evidence are required. |
+
+Terminal engineering disposition: **local actionable closure achieved**.
+Production disposition remains **NO-GO** until the three external gates above
+are completed by operator/customer/platform owners.
