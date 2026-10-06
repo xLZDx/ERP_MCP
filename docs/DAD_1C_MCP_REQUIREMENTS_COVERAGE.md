@@ -134,6 +134,8 @@ Current candidate implements or has tests for:
 - `purchase_documents`
 - bounded generic `onec_read` behind capability/policy gates
 - a synthetic AR/AP aging computation contract not yet wired to real source profiles
+- an internal exact-profile document/payment allocation→aging contract with bounded Decimal,
+  partial settlement/advance/oversettlement/relationship guards; public/live/native aging remains OPEN
 
 This is a strong primitive layer, but it is not yet the DAD business-rule layer.
 
