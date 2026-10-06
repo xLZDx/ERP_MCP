@@ -54,3 +54,13 @@ Critical boundary: current generic onec_read requires a source-wide grant. Compa
 Review/accept the draft ADR as ACC-00. Then create a separate code branch from the then-current approved implementation baseline, for example feature/admin-control-center-implementation.
 
 Do not implement web mutations by exposing scripts/admin.py or business_ai_admin directly to request handlers.
+
+## Implementation branch status
+
+The design package has now been implemented on feature/admin-control-center-implementation.
+
+The original docs/admin-control-center/index.html remains a standalone fictional prototype for design review. The live runtime UI is packaged at src/business_ai_gateway/static/admin.html and is served at /admin/ only when BAG_ADMIN_UI_ENABLED=true.
+
+The live implementation includes OIDC PKCE BFF sessions, server-side admin authorization, source/company/grant administration, platform roles, business capabilities, semantic profile/drift workflows, audit, source egress controls and an explicit validated company-aware read path. All Admin Control Center feature flags remain disabled by default.
+
+See ADR-0007, deploy/PRODUCTION.md and the implementation status appended to IMPLEMENTATION_BACKLOG.md before enabling it in any environment.

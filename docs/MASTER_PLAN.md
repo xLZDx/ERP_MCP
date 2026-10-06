@@ -246,3 +246,21 @@ A phase may overlap another only when:
 - evidence remains attributable to exact commit/configuration versions.
 
 “Code exists” is progress, not closure.
+
+## P11 — Admin Control Center extension
+
+This is an additive C3 control-plane workstream after the frozen 1C MVP baseline.
+
+Delivered on feature/admin-control-center-implementation:
+- browser Admin Control Center UI/BFF;
+- distinct admin OAuth authorization;
+- platform roles with delegated source boundaries;
+- read-only admin API and attributable mutation API;
+- admin audit, idempotency and optimistic concurrency;
+- safe source probe/onboarding;
+- company administration;
+- semantic profile/drift administration;
+- business role/capability policy;
+- validated company-aware data path.
+
+Remaining environment gates before production activation are real IdP client registration/login smoke, bootstrap of a real platform administrator, approved source egress host/CIDR policy, real 1C source probe, pilot-specific business assignments/company mappings, and exact release review/rollback evidence.

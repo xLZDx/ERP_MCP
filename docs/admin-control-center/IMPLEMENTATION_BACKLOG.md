@@ -159,3 +159,19 @@ ACC-00
   |
   +-----------------------> ACC-10
 ~~~
+
+## Implementation status on feature/admin-control-center-implementation
+
+- ACC-00: IMPLEMENTED — ADR-0007 and security boundary accepted for this feature branch.
+- ACC-01: IMPLEMENTED — admin auth boundary and read API.
+- ACC-02: IMPLEMENTED — live same-origin UI/BFF, auth/error states and exact-ID identity resolution fallback.
+- ACC-03: IMPLEMENTED — append-only admin audit, idempotency and exact-ID grant mutations.
+- ACC-04: IMPLEMENTED — safe egress-controlled source probe, source create/update and capability refresh.
+- ACC-05: IMPLEMENTED — company create/update and access views.
+- ACC-06: IMPLEMENTED — exact-fingerprint drift acknowledgement and semantic-profile lifecycle.
+- ACC-07: IMPLEMENTED — DB-backed platform roles, delegated source enforcement and bootstrap CLI.
+- ACC-08: IMPLEMENTED — business role/capability assignments/overrides and runtime enforcement feature flag.
+- ACC-09: IMPLEMENTED FOR EXPLICITLY MAPPED ENTITY READS — onec_company_read requires a VALIDATED semantic/company-scope mapping and current live metadata. Generic onec_read remains source-scoped by design.
+- ACC-10: CODE HARDENING IMPLEMENTED — session/CSRF, egress tests, least-privilege DB check, full regression, Bandit and dependency audit.
+
+Production activation remains gated on real IdP, real 1C and pilot evidence for the target environment. Those external facts are not fabricated by repository tests.

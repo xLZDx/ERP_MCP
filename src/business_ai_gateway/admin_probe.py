@@ -98,6 +98,9 @@ class AdminSourceProbe:
 
         health = await self.runtime.onec.health(source)
         capabilities = await self.runtime.onec.capabilities(source, refresh=True)
+        egress_after = await self.policy.validate(base_url)
+        if egress_after["resolved_addresses"] != egress["resolved_addresses"]:
+            raise SourceEgressDenied("source DNS resolution changed during probe")
         # Probe identities are ephemeral and must not remain in adapter caches.
         self.runtime.onec._metadata.pop(source.id, None)
         self.runtime.onec._capabilities.pop(source.id, None)

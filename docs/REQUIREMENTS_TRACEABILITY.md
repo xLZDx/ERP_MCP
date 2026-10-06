@@ -43,3 +43,15 @@ This matrix connects requirements to architecture, implementation areas and rele
 
 Every feature PR should cite one or more requirement IDs and the DoD gate it advances. If a new
 requirement has no row here, update this matrix as part of the same change.
+
+## Admin Control Center extension requirements
+
+| Req | Requirement | Primary design | Evidence / DoD |
+|---|---|---|---|
+| ACC-A1 | Admin identity uses distinct audience/scope and DB-backed platform roles | ADR-0007, Architecture §11 | Admin extension gate |
+| ACC-A2 | Browser tokens remain server-side; OIDC PKCE session + CSRF | Security Admin extension, Threat Model delta | Admin session/security tests |
+| ACC-A3 | Admin mutations are attributable, idempotent and exact-ID | Data Model §15, migration 009 | Admin audit/idempotency tests |
+| ACC-A4 | Source onboarding is egress-controlled and GET/HEAD-only | Security, admin source probe | SSRF/egress tests |
+| ACC-A5 | Platform role, data scope and business capability stay independent | RBAC design, migration 008/010 | Role/capability matrix |
+| ACC-A6 | Company-only access is enforced only through validated mapped operations | company_scope_mappings, onec_company_read | Company-scope runtime tests |
+| ACC-A7 | Runtime DB role cannot administer new policy tables | migrations 008-011 | DB privilege checker |

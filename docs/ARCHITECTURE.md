@@ -378,3 +378,15 @@ Ferma:
 - silent fallback to insecure auth/dev mode;
 - global accounting semantics based solely on Russian default chart-of-accounts assumptions;
 - GPL/AGPL source copied into core without explicit licensing decision.
+
+## 11. Admin Control Center extension
+
+The browser administration plane is a same-origin UI/BFF layered beside, not inside, the MCP authorization model.
+
+Browser -> OIDC Authorization Code + PKCE -> Admin BFF opaque HttpOnly session -> CSRF + admin audience/scope + platform-role authorization -> /admin/v1.
+
+Read operations use the control-plane read model. Mutations use the separate business_ai_control_api credential. Source probes pass an egress allowlist and remain GET/HEAD-only. Admin audit/idempotency is persisted separately. MCP runtime remains separately authorized by onec:read, data ACL, and optional business capability policy.
+
+Admin platform roles are fixed initial roles: PLATFORM_ADMIN, SOURCE_ADMIN, ACCESS_ADMIN, PROFILE_ADMIN and AUDITOR. They are independent of business roles such as ACCOUNTANT or EXECUTIVE.
+
+Company-aware data access is exposed only through onec_company_read. It resolves the authorized company, checks business capability when enabled, requires acknowledged current metadata, selects a VALIDATED semantic profile/company-scope mapping, verifies the mapped company property in live metadata, then injects the company predicate before adapter execution.

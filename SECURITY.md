@@ -36,3 +36,23 @@ composition. Never reuse an administrator account.
 
 Prefer placing the gateway near/private to 1C. Do not expose the 1C OData endpoint directly
 to AI clients.
+
+## Admin Control Center extension
+
+The Admin Control Center is a distinct control-plane surface and does not inherit permission from the MCP data-plane scope.
+
+Security invariants:
+- admin OAuth audience and scope are distinct from the MCP data-plane audience/scope;
+- browser sign-in uses OIDC Authorization Code + PKCE, state and nonce;
+- the browser receives only an opaque HttpOnly SameSite session cookie; bearer tokens remain server-side in Redis and are revalidated on every admin API request;
+- cookie-authenticated POST/PATCH requests require a per-session CSRF token;
+- admin mutations are disabled by default and require a separate business_ai_control_api database credential;
+- every mutation requires actor, reason, request ID and idempotency key and writes append-only admin audit;
+- exact-ID revocation is used for grants and role/policy assignments;
+- source probes are GET/HEAD-only and require an explicit host plus optional CIDR egress allowlist;
+- secret values never enter Admin UI/API responses, audit events or registry rows;
+- platform administration roles, data-scope grants and business capabilities are independent;
+- business capability enforcement is fail-closed when enabled and never widens source/company scope;
+- generic onec_read remains source-scoped. Company-only access is accepted only by onec_company_read when a current VALIDATED semantic profile supplies an explicit company-scope mapping verified against live metadata.
+
+Production keeps Admin API/UI/mutations/business-capability enforcement disabled until the environment-specific prerequisites and bootstrap bindings are configured and verified.

@@ -156,3 +156,18 @@ Copyleft/unknown-license code follows ADR-0006.
 No technical control can prove accounting semantic correctness for an arbitrary custom 1C
 configuration. That residual risk is controlled through semantic profiles and native-report
 reconciliation before production approval.
+
+## Admin Control Center threat-model delta
+
+Additional assets include platform-role bindings, admin sessions/CSRF tokens, admin mutation/idempotency records, source onboarding endpoints and business capability policy.
+
+Additional threats and controls:
+- OAuth login CSRF/code interception: state + nonce + PKCE, exact redirect URI, validated issuer/signature/audience and one-time login state.
+- Browser bearer theft: access tokens stay server-side; browser cookie is opaque, HttpOnly, SameSite and Secure in production.
+- Ambient-cookie mutation CSRF: all cookie-authenticated non-read admin routes require the per-session CSRF token.
+- Privilege escalation: distinct admin audience/scope plus DB-backed platform role enforcement; UI visibility is never authorization.
+- Confused deputy across delegated sources: every source/company/policy mutation is checked against the actor's effective platform-role source boundary.
+- Source-onboarding SSRF/DNS rebinding: exact host allowlist, optional approved CIDRs, server-side DNS resolution, redirects disabled, bounded GET/HEAD-only probe and registered endpoints only.
+- Duplicate/replayed mutations: actor-scoped idempotency key + request fingerprint and optimistic row version.
+- Audit tampering: admin and runtime audit tables reject UPDATE/DELETE.
+- Company-scope bypass: generic source reads cannot consume a company-only grant; explicit company-aware reads require a validated metadata-bound company predicate before adapter execution.

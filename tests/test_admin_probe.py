@@ -124,3 +124,51 @@ async def test_probe_returns_only_safe_capability_summary(monkeypatch):
     assert result["health"] == {"status_code": 200, "ok": True}
     assert result["capabilities"]["source_id"] == "candidate"
     assert result["capabilities"]["register_capabilities"] == {}
+
+
+@pytest.mark.asyncio
+async def test_probe_rejects_dns_resolution_change_during_probe(monkeypatch):
+    answers = iter(
+        [
+            [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.44.1.7", 443))],
+            [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.44.1.8", 443))],
+        ]
+    )
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: next(answers))
+    capabilities = OneCCapabilities(
+        source_id="ephemeral",
+        platform_version="8.3.27",
+        metadata_fingerprint="abc",
+        metadata_supported=True,
+        json_supported=True,
+        atom_supported=False,
+        expand_supported=True,
+        entity_set_count=42,
+        adapter_profile=AdapterProfile.ODATA_JSON_V3,
+        compatibility_status=CompatibilityStatus.SUPPORTED,
+        evidence={"metadata": "ok"},
+        register_capabilities={},
+    )
+    runtime = SimpleNamespace(
+        settings=SimpleNamespace(environment="production"),
+        onec=SimpleNamespace(
+            health=AsyncMock(return_value={"status_code": 200, "ok": True}),
+            capabilities=AsyncMock(return_value=capabilities),
+            _metadata={},
+            _capabilities={},
+        ),
+    )
+    probe = AdminSourceProbe(
+        runtime,
+        SourceEgressPolicy(
+            allowed_hosts="onec.internal.example",
+            allowed_cidrs="10.44.0.0/16",
+        ),
+    )
+
+    with pytest.raises(SourceEgressDenied, match="DNS resolution changed"):
+        await probe.probe(
+            base_url="https://onec.internal.example/odata",
+            username_secret_ref="ONEC_USER",
+            password_secret_ref="ONEC_PASS",
+        )

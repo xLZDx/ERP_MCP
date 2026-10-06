@@ -145,3 +145,33 @@ Last updated: 2026-10-06
   the PR conflict. The merge commit is pushed after report synchronization; merge itself remains
   intentionally unperformed.
 - Readiness: `DEV READY` for the implemented bootstrap/control-plane scope only; no production claim.
+
+## Admin Control Center feature branch — 2026-10-06
+
+Branch: feature/admin-control-center-implementation. This status is branch-local until merged.
+
+Implemented:
+- ADR-0007, platform-role schema and delegated source authorization;
+- distinct admin OAuth audience/scope;
+- OIDC Authorization Code + PKCE BFF with Redis-backed opaque HttpOnly session and CSRF;
+- live same-origin Admin Control Center UI;
+- read and mutation /admin/v1 surface for sources, companies, grants, platform roles, business roles/capabilities, drift, semantic profiles, company-scope mappings and audit;
+- exact-ID revoke, optimistic row_version, idempotency and append-only admin audit;
+- egress-controlled GET/HEAD-only source probe;
+- business capability runtime policy with explicit deny precedence;
+- explicit onec_company_read path requiring authorized company, capability policy, acknowledged metadata and VALIDATED company-scope mapping.
+
+Verification on the implementation worktree:
+- full non-DB suite after atomic callback hardening: 118 passed, 7 skipped;
+- disposable PostgreSQL migrations 001-011 + privilege checker: PASS;
+- PostgreSQL-enabled full suite: 115 passed, 1 skipped (external real-1C test only);
+- Ruff, compileall and JavaScript syntax: PASS;
+- Bandit: no findings after hardening;
+- pip-audit: no known vulnerabilities.
+
+External production gates remain: real IdP client/login smoke, real target 1C safe probe, target-environment secrets/network configuration, operator bootstrap, pilot evidence and exact release CI/review. No production-ready claim is made.
+
+Continuation review: ACC-02 and ACC-10 remain under verification. The initial live UI
+supports creation of sources/companies/grants and exact grant revoke; additional lifecycle
+controls, effective-access explanation, connect-time DNS pinning and platform-role step-up
+gating must be completed before declaring the full requested browser scope finished.

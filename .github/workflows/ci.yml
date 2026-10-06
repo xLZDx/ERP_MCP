@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, bootstrap/1c-day1-production]
+    branches: [main, bootstrap/1c-day1-production, feature/admin-control-center-implementation]
   pull_request:
 
 permissions:

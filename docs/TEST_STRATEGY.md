@@ -239,3 +239,9 @@ Before production GO:
 - source onboarding/offboarding smoke.
 
 No unresolved FAIL can be reclassified as PASS without a documented corrected expectation or code fix.
+
+## Admin Control Center verification extension
+
+Mandatory automated coverage includes distinct admin OAuth audience/scope negatives; OIDC state/nonce/PKCE and opaque-session tests; cookie CSRF enforcement and no browser token persistence; platform-role/source-boundary tests; exact-ID revoke, optimistic concurrency and idempotency; append-only admin audit and least-privilege business_ai_control_api; source-probe host/CIDR negative cases; source/company registration separation; business role/capability deny precedence; and company-aware read denial before adapter with validated live-metadata scope mapping.
+
+The Admin Control Center branch also runs the entire existing baseline suite to prove the extension does not weaken the read-only 1C data plane.

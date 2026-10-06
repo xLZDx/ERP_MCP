@@ -73,3 +73,15 @@ Before first production enablement:
 - arbitrary URL target impossible;
 - response-size/rate limits verified;
 - ten representative accounting questions reconciled with 1C UI/reports.
+
+## Admin Control Center production activation
+
+Keep Admin Control Center feature flags disabled until the target IdP and control API credential are configured.
+
+Required settings when enabled include BAG_ADMIN_API_ENABLED, BAG_ADMIN_UI_ENABLED, a distinct BAG_ADMIN_OAUTH_AUDIENCE and BAG_ADMIN_OAUTH_REQUIRED_SCOPE, OIDC authorization/token/client/redirect settings, BAG_ADMIN_CONTROL_DATABASE_URL using business_ai_control_api, and explicit BAG_ADMIN_SOURCE_ALLOWED_HOSTS plus approved CIDRs where used.
+
+Bootstrap the first platform administrator with the separate operator/admin database credential using scripts/admin.py platform-role-add. Enable BAG_ADMIN_MUTATIONS_ENABLED only after the control-API privilege check and source egress policy pass.
+
+Enable BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED only after intended users/groups have assignments; otherwise protected MCP operations fail closed by design.
+
+Rollback is application/config rollback: disable Admin UI/API/mutations/capability enforcement. Migrations 008-011 are additive and may remain inert. Do not drop policy or audit tables during routine rollback.

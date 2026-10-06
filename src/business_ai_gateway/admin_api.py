@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 from mcp.server.auth.provider import AccessToken
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse
 
 from .admin_mutations import (
     AdminActor,
@@ -17,7 +19,10 @@ from .admin_mutations import (
     AdminValidationError,
 )
 from .admin_probe import AdminSourceProbe, SourceEgressDenied, SourceEgressPolicy
+from .admin_session import AdminSessionManager
 from .auth import JWTTokenVerifier
+from .models import source_from_record
+from .rate_limit import RateLimitExceeded
 from .settings import Settings
 
 ADMIN_ROLES = frozenset(
@@ -70,6 +75,8 @@ class AdminContext:
     token: AccessToken
     groups: frozenset[str]
     bindings: tuple[AdminRoleBinding, ...]
+    session_id: str | None = None
+    csrf_token: str | None = None
 
     def has_role(self, *roles: str) -> bool:
         allowed = set(roles)
@@ -158,6 +165,49 @@ class AdminRepository:
             limit=500,
         )
 
+    async def source_detail(
+        self, ctx: AdminContext, source_id: str
+    ) -> dict[str, Any] | None:
+        if not ctx.can_admin_source(source_id):
+            return None
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT source_id, project, kind, display_name, base_url,
+                   username_secret_ref, password_secret_ref, read_only, enabled,
+                   tags, entity_allow_patterns, entity_deny_patterns,
+                   platform_version_hint, fallback_kind, fallback_base_url,
+                   row_version, created_at, updated_at
+            FROM bag.sources WHERE source_id=$1
+            """,
+            source_id,
+        )
+        return _json_record(row) if row is not None else None
+
+    async def source_model(self, ctx: AdminContext, source_id: str):
+        if not ctx.can_admin_source(source_id):
+            return None
+        row = await self.db.require_pool().fetchrow(
+            "SELECT * FROM bag.sources WHERE source_id=$1 AND enabled=true",
+            source_id,
+        )
+        return source_from_record(row) if row is not None else None
+
+    async def company_detail(
+        self, ctx: AdminContext, company_id: UUID
+    ) -> dict[str, Any] | None:
+        row = await self.db.require_pool().fetchrow(
+            """
+            SELECT company_id, source_id, external_ref, display_name, legal_name,
+                   country_code, enabled, is_default, row_version,
+                   created_at, updated_at
+            FROM bag.companies WHERE company_id=$1
+            """,
+            company_id,
+        )
+        if row is None or not ctx.can_admin_source(row["source_id"]):
+            return None
+        return _json_record(row)
+
     async def list_companies(self, ctx: AdminContext) -> list[dict[str, Any]]:
         return await self._scoped_rows(
             ctx=ctx,
@@ -226,6 +276,78 @@ class AdminRepository:
             """,
             limit=1000,
         )
+
+    async def list_platform_role_bindings(
+        self, ctx: AdminContext
+    ) -> list[dict[str, Any]]:
+        return await self._scoped_rows(
+            ctx=ctx,
+            roles=("PLATFORM_ADMIN", "AUDITOR"),
+            global_sql="""
+                SELECT binding_id, principal_kind, principal_id, role_name,
+                       source_id, expires_at, revoked_at, row_version,
+                       created_by_subject, created_by_client, reason,
+                       created_at, updated_at
+                FROM bag.platform_role_bindings
+                ORDER BY created_at DESC, binding_id LIMIT $1
+            """,
+            scoped_sql="""
+                SELECT binding_id, principal_kind, principal_id, role_name,
+                       source_id, expires_at, revoked_at, row_version,
+                       created_by_subject, created_by_client, reason,
+                       created_at, updated_at
+                FROM bag.platform_role_bindings
+                WHERE source_id=ANY($1::text[])
+                ORDER BY created_at DESC, binding_id LIMIT $2
+            """,
+            limit=1000,
+        )
+
+    async def resolve_principal(
+        self, ctx: AdminContext, *, principal_kind: str, principal_id: str
+    ) -> dict[str, Any]:
+        if principal_kind not in {"subject", "group"}:
+            raise AdminValidationError("principal kind must be subject or group")
+        principal_id = principal_id.strip()
+        if not principal_id or len(principal_id) > 512:
+            raise AdminValidationError("principal id is required and must be <=512 characters")
+
+        grants = [
+            item
+            for item in await self.list_grants(ctx)
+            if item["principal_kind"] == principal_kind
+            and item["principal_id"] == principal_id
+        ]
+        assignments = [
+            item
+            for item in await self.list_business_role_assignments(ctx)
+            if item["principal_kind"] == principal_kind
+            and item["principal_id"] == principal_id
+        ]
+        overrides = [
+            item
+            for item in await self.list_capability_overrides(ctx)
+            if item["principal_kind"] == principal_kind
+            and item["principal_id"] == principal_id
+        ]
+        platform_roles: list[dict[str, Any]] = []
+        if ctx.has_role("PLATFORM_ADMIN", "AUDITOR"):
+            platform_roles = [
+                item
+                for item in await self.list_platform_role_bindings(ctx)
+                if item["principal_kind"] == principal_kind
+                and item["principal_id"] == principal_id
+            ]
+        return {
+            "principal_kind": principal_kind,
+            "principal_id": principal_id,
+            "directory_status": "not_configured",
+            "display_name": None,
+            "platform_roles": platform_roles,
+            "grants": grants,
+            "business_role_assignments": assignments,
+            "capability_overrides": overrides,
+        }
 
     async def list_business_roles(self) -> list[dict[str, Any]]:
         rows = await self.db.require_pool().fetch(
@@ -437,6 +559,11 @@ class AdminAPI:
             required_scope=settings.admin_oauth_required_scope,
             resource=settings.admin_oauth_audience,
         )
+        self.sessions = (
+            AdminSessionManager(settings, runtime.redis, self.verifier)
+            if settings.admin_ui_enabled
+            else None
+        )
 
     @staticmethod
     def _groups(token: AccessToken) -> frozenset[str]:
@@ -449,18 +576,63 @@ class AdminAPI:
     async def authenticate(self, request: Request) -> AdminContext | JSONResponse:
         header = request.headers.get("authorization", "")
         scheme, _, raw_token = header.partition(" ")
-        if scheme.lower() != "bearer" or not raw_token.strip():
+        session_id = None
+        csrf_token = None
+
+        if scheme.lower() == "bearer" and raw_token.strip():
+            token = await self.verifier.verify_token(raw_token.strip())
+        elif self.sessions is not None:
+            session = await self.sessions.resolve(request)
+            if session is None:
+                return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
+            token = await self.verifier.verify_token(session.access_token)
+            session_id = session.session_id
+            csrf_token = session.csrf_token
+        else:
             return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
-        token = await self.verifier.verify_token(raw_token.strip())
+
         if token is None:
             return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
 
         await self.runtime.start()
+        try:
+            await self.runtime.rate_limit.check(
+                subject=token.subject or "",
+                source_id="__admin__",
+                tool="admin_api",
+            )
+        except RateLimitExceeded:
+            return JSONResponse({"error": "RATE_LIMITED"}, status_code=429)
+        except Exception:  # noqa: BLE001 - admin API fails closed on limiter dependency loss
+            return JSONResponse({"error": "ADMIN_DEPENDENCY_UNAVAILABLE"}, status_code=503)
+
         groups = self._groups(token)
         bindings = await self.repository.resolve_bindings(token.subject or "", groups)
         if not bindings:
             return JSONResponse({"error": "PLATFORM_ROLE_DENIED"}, status_code=403)
-        return AdminContext(token=token, groups=groups, bindings=bindings)
+        return AdminContext(
+            token=token,
+            groups=groups,
+            bindings=bindings,
+            session_id=session_id,
+            csrf_token=csrf_token,
+        )
+
+    async def csrf_guard(self, request: Request):
+        if self.sessions is None:
+            return None
+        scheme, _, bearer = request.headers.get("authorization", "").partition(" ")
+        if scheme.lower() == "bearer" and bearer.strip():
+            return None
+        if not request.cookies.get(self.sessions.SESSION_COOKIE):
+            return None
+        session = await self.sessions.resolve(request)
+        if session is None:
+            return JSONResponse({"error": "AUTH_REQUIRED"}, status_code=401)
+        supplied = request.headers.get("x-csrf-token", "")
+        if not supplied or not secrets.compare_digest(supplied, session.csrf_token):
+            return JSONResponse({"error": "CSRF_DENIED"}, status_code=403)
+        return None
 
     @staticmethod
     def _denied() -> JSONResponse:
@@ -482,7 +654,7 @@ class AdminAPI:
             status_code = 403
         else:
             status_code = 500
-        code = getattr(exc, "code", type(exc).__name__)
+        code = getattr(exc, "code", "INVALID_REQUEST" if status_code == 400 else "ADMIN_DEPENDENCY_FAILED")
         return JSONResponse({"error": code}, status_code=status_code)
 
     @staticmethod
@@ -491,6 +663,52 @@ class AdminAPI:
             subject=ctx.token.subject or "",
             client_id=ctx.token.client_id,
         )
+
+    async def admin_root(self, _request: Request):
+        return RedirectResponse("/admin/", status_code=302)
+
+    async def admin_ui(self, _request: Request):
+        static_path = Path(__file__).resolve().parent / "static" / "admin.html"
+        return FileResponse(
+            static_path,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Security-Policy": (
+                    "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+                    "script-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                    "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
+                    "form-action 'self'"
+                ),
+                "Referrer-Policy": "no-referrer",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+            },
+        )
+
+    async def login(self, request: Request):
+        if self.sessions is None:
+            return JSONResponse({"error": "ADMIN_UI_DISABLED"}, status_code=404)
+        try:
+            return await self.sessions.login(request)
+        except Exception:  # noqa: BLE001 - redact OIDC/session dependency failures
+            return JSONResponse({"error": "OIDC_LOGIN_UNAVAILABLE"}, status_code=503)
+
+    async def callback(self, request: Request):
+        if self.sessions is None:
+            return JSONResponse({"error": "ADMIN_UI_DISABLED"}, status_code=404)
+        try:
+            return await self.sessions.callback(request)
+        except Exception:  # noqa: BLE001 - never expose token-exchange internals
+            return JSONResponse({"error": "OIDC_LOGIN_FAILED"}, status_code=401)
+
+    async def logout(self, request: Request):
+        if self.sessions is None:
+            return JSONResponse({"error": "ADMIN_UI_DISABLED"}, status_code=404)
+        guard = await self.csrf_guard(request)
+        if guard is not None:
+            return guard
+        return await self.sessions.logout(request)
 
     async def me(self, request: Request):
         ctx = await self.authenticate(request)
@@ -506,6 +724,8 @@ class AdminAPI:
                     for binding in ctx.bindings
                 ],
                 "mutations_enabled": self.mutations is not None,
+                "csrf_token": ctx.csrf_token,
+                "session_authenticated": ctx.session_id is not None,
             }
         )
 
@@ -540,6 +760,32 @@ class AdminAPI:
         if not ctx.has_role("PLATFORM_ADMIN", "ACCESS_ADMIN", "AUDITOR"):
             return self._denied()
         return JSONResponse({"items": await self.repository.list_grants(ctx)})
+
+    async def platform_role_bindings(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if not ctx.has_role("PLATFORM_ADMIN", "AUDITOR"):
+            return self._denied()
+        return JSONResponse(
+            {"items": await self.repository.list_platform_role_bindings(ctx)}
+        )
+
+    async def principal_resolve(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if not ctx.has_role("PLATFORM_ADMIN", "ACCESS_ADMIN", "AUDITOR"):
+            return self._denied()
+        try:
+            result = await self.repository.resolve_principal(
+                ctx,
+                principal_kind=request.query_params.get("kind", ""),
+                principal_id=request.query_params.get("id", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
 
     async def business_roles(self, request: Request):
         ctx = await self.authenticate(request)
@@ -597,6 +843,160 @@ class AdminAPI:
         else:
             result["admin"] = []
         return JSONResponse(result)
+
+    async def source_detail_view(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        item = await self.repository.source_detail(ctx, request.path_params["source_id"])
+        if item is None:
+            return JSONResponse({"error": "SOURCE_NOT_FOUND"}, status_code=404)
+        return JSONResponse(item)
+
+    async def company_detail_view(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        try:
+            company_id = UUID(request.path_params["company_id"])
+        except ValueError:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        item = await self.repository.company_detail(ctx, company_id)
+        if item is None:
+            return JSONResponse({"error": "COMPANY_NOT_FOUND"}, status_code=404)
+        return JSONResponse(item)
+
+    async def source_update(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        source_id = request.path_params["source_id"]
+        if not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN"):
+            return self._denied()
+        try:
+            body = await _json_body(request)
+            if str(body.get("source_id", source_id)) != source_id:
+                raise AdminValidationError("source_id is immutable")
+            await self.probe.probe(
+                base_url=str(body.get("base_url", "")),
+                username_secret_ref=str(body.get("username_secret_ref", "")),
+                password_secret_ref=str(body.get("password_secret_ref", "")),
+                display_name=str(body.get("display_name", "")),
+                platform_version_hint=body.get("platform_version_hint"),
+            )
+            result = await self.mutations.update_source(
+                actor=self._actor(ctx),
+                source_id=source_id,
+                expected_version=int(body.get("expected_version", 0)),
+                display_name=str(body.get("display_name", "")),
+                base_url=str(body.get("base_url", "")),
+                username_secret_ref=str(body.get("username_secret_ref", "")),
+                password_secret_ref=str(body.get("password_secret_ref", "")),
+                tags=[str(item) for item in body.get("tags", [])],
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
+    async def company_update(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        try:
+            company_id = UUID(request.path_params["company_id"])
+            current = await self.repository.company_detail(ctx, company_id)
+            if current is None:
+                return self._denied()
+            if not ctx.can_admin_source(
+                current["source_id"], "PLATFORM_ADMIN", "SOURCE_ADMIN"
+            ):
+                return self._denied()
+            body = await _json_body(request)
+            if "source_id" in body and body["source_id"] != current["source_id"]:
+                raise AdminValidationError("company source_id is immutable")
+            if "external_ref" in body and body["external_ref"] != current["external_ref"]:
+                raise AdminValidationError("company external_ref is immutable")
+            result = await self.mutations.update_company(
+                actor=self._actor(ctx),
+                company_id=company_id,
+                expected_version=int(body.get("expected_version", 0)),
+                display_name=str(body.get("display_name", "")),
+                legal_name=body.get("legal_name"),
+                country_code=body.get("country_code"),
+                enabled=bool(body.get("enabled", True)),
+                is_default=bool(body.get("is_default", False)),
+                reason=str(body.get("reason", "")),
+                request_id=_request_id(request),
+                idempotency_key=request.headers.get("idempotency-key", ""),
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            return self._mutation_error(exc)
+
+    async def capability_refresh(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if self.mutations is None:
+            return self._disabled()
+        source_id = request.path_params["source_id"]
+        if not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN"):
+            return self._denied()
+        actor = self._actor(ctx)
+        request_id = _request_id(request)
+        reason = "capability refresh"
+        try:
+            body = await _json_body(request)
+            reason = str(body.get("reason", ""))
+            source = await self.repository.source_model(ctx, source_id)
+            if source is None:
+                return JSONResponse({"error": "SOURCE_NOT_FOUND"}, status_code=404)
+            await self.probe.policy.validate(source.base_url)
+            capabilities = await self.runtime.onec.capabilities(source, refresh=True)
+            drift = await self.runtime.registry.save_capabilities(capabilities)
+            result = capabilities.as_dict()
+            result.update(drift)
+            await self.mutations.record_admin_event(
+                actor=actor,
+                action="capability.refresh",
+                target_type="source_capability",
+                target_id=source_id,
+                source_id=source_id,
+                company_id=None,
+                reason=reason,
+                request_id=request_id,
+                outcome="success",
+                safe_change={
+                    "metadata_fingerprint": capabilities.metadata_fingerprint,
+                    "adapter_profile": capabilities.adapter_profile.value,
+                    "drift_status": drift["drift_status"],
+                },
+            )
+            return JSONResponse(result)
+        except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            try:
+                await self.mutations.record_admin_event(
+                    actor=actor,
+                    action="capability.refresh",
+                    target_type="source_capability",
+                    target_id=source_id,
+                    source_id=source_id,
+                    company_id=None,
+                    reason=reason or "capability refresh failed",
+                    request_id=request_id,
+                    outcome="error",
+                    detail_code=getattr(exc, "code", type(exc).__name__),
+                )
+            except Exception:  # noqa: BLE001 - preserve original safe API error
+                _ = None
+            return self._mutation_error(exc)
 
     async def source_probe(self, request: Request):
         ctx = await self.authenticate(request)
@@ -1057,9 +1457,17 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ("/admin/v1/me", ["GET"], api.me),
         ("/admin/v1/overview", ["GET"], api.overview_view),
         ("/admin/v1/sources", ["GET"], api.sources),
+        ("/admin/v1/sources/{source_id}", ["GET"], api.source_detail_view),
         ("/admin/v1/companies", ["GET"], api.companies),
+        ("/admin/v1/companies/{company_id}", ["GET"], api.company_detail_view),
         ("/admin/v1/capabilities", ["GET"], api.capabilities),
         ("/admin/v1/grants", ["GET"], api.grants),
+        (
+            "/admin/v1/platform-role-bindings",
+            ["GET"],
+            api.platform_role_bindings,
+        ),
+        ("/admin/v1/principals/resolve", ["GET"], api.principal_resolve),
         ("/admin/v1/business-roles", ["GET"], api.business_roles),
         (
             "/admin/v1/business-role-assignments",
@@ -1092,7 +1500,14 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ),
         ("/admin/v1/source-probes", ["POST"], api.source_probe),
         ("/admin/v1/sources", ["POST"], api.source_create),
+        ("/admin/v1/sources/{source_id}", ["PATCH"], api.source_update),
+        (
+            "/admin/v1/sources/{source_id}/capability-refresh",
+            ["POST"],
+            api.capability_refresh,
+        ),
         ("/admin/v1/companies", ["POST"], api.company_create),
+        ("/admin/v1/companies/{company_id}", ["PATCH"], api.company_update),
         ("/admin/v1/grants", ["POST"], api.grant_create),
         ("/admin/v1/grants/{grant_id}/revoke", ["POST"], api.grant_revoke),
         ("/admin/v1/platform-role-bindings", ["POST"], api.platform_role_create),
@@ -1133,5 +1548,21 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ),
     )
     for path, methods, handler in routes:
-        mcp.custom_route(path, methods=methods)(handler)
+        if any(method in {"POST", "PUT", "PATCH", "DELETE"} for method in methods):
+            async def guarded(request, _handler=handler):
+                guard = await api.csrf_guard(request)
+                if guard is not None:
+                    return guard
+                return await _handler(request)
+
+            mcp.custom_route(path, methods=methods)(guarded)
+        else:
+            mcp.custom_route(path, methods=methods)(handler)
+
+    if settings.admin_ui_enabled:
+        mcp.custom_route("/admin", methods=["GET"])(api.admin_root)
+        mcp.custom_route("/admin/", methods=["GET"])(api.admin_ui)
+        mcp.custom_route("/admin/login", methods=["GET"])(api.login)
+        mcp.custom_route("/admin/callback", methods=["GET"])(api.callback)
+        mcp.custom_route("/admin/logout", methods=["POST"])(api.logout)
     return api

@@ -339,3 +339,15 @@ The semantic layer may return richer domain shapes, but provenance must not be l
 - synthetic test data: repository/testbed only, never copied from customers.
 
 Any automatic deletion/retention policy must be explicitly defined and approved before production.
+
+## 15. Admin Control Center policy extension
+
+Migrations 008-011 add control-plane administration without introducing local user passwords or persisted accounting facts.
+
+platform_role_bindings stores external subject/group references bound to fixed platform roles with optional delegated source scope, expiry, revocation, actor provenance and optimistic row_version.
+
+Existing sources, companies and access_grants gain additive row-version/provenance fields. admin_audit_events is append-only and records actor, action, target, reason, request ID, idempotency key, safe change summary and outcome. admin_idempotency prevents duplicate mutation effects on retry.
+
+business_roles, business_role_capabilities, business_role_assignments and capability_overrides implement a policy dimension separate from source/company ACL. Explicit capability deny overrides allow; missing capability permission denies when enforcement is enabled.
+
+company_scope_mappings binds a VALIDATED semantic profile/entity set to the metadata property that identifies a company. Runtime may use it only when profile/source/company and metadata fingerprint remain valid. The mapping does not authorize access by itself: source/company ACL and business capability checks still run first.

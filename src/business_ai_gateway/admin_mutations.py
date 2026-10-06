@@ -302,6 +302,48 @@ class AdminMutationService:
             )
             raise
 
+    async def record_admin_event(
+        self,
+        *,
+        actor: AdminActor,
+        action: str,
+        target_type: str,
+        target_id: str | None,
+        source_id: str | None,
+        company_id: uuid.UUID | None,
+        reason: str,
+        request_id: uuid.UUID,
+        outcome: str,
+        safe_change: dict[str, Any] | None = None,
+        detail_code: str | None = None,
+    ) -> None:
+        reason = _clean_reason(reason)
+        if outcome not in {"success", "error", "denied", "conflict"}:
+            raise AdminValidationError("invalid admin audit outcome")
+        payload = safe_change or {}
+        await self.db.require_pool().execute(
+            """
+            INSERT INTO bag.admin_audit_events(
+                event_id, request_id, actor_subject, actor_client_id,
+                action, target_type, target_id, source_id, company_id,
+                reason, safe_change_json, outcome, detail_code
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13)
+            """,
+            uuid.uuid4(),
+            request_id,
+            actor.subject,
+            actor.client_id,
+            action,
+            target_type,
+            target_id,
+            source_id,
+            company_id,
+            reason,
+            json.dumps(payload, ensure_ascii=False, default=str),
+            outcome,
+            detail_code,
+        )
+
     async def create_grant(
         self,
         *,
@@ -734,6 +776,179 @@ class AdminMutationService:
             target_id=source_id,
             source_id=source_id,
             company_id=None,
+            reason=reason,
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            request=request,
+            mutation=mutation,
+        )
+
+    async def update_source(
+        self,
+        *,
+        actor: AdminActor,
+        source_id: str,
+        expected_version: int,
+        display_name: str,
+        base_url: str,
+        username_secret_ref: str,
+        password_secret_ref: str,
+        tags: list[str],
+        reason: str,
+        request_id: uuid.UUID,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        candidate = Source(
+            id=source_id,
+            project="onec",
+            kind="onec_auto",
+            display_name=display_name,
+            base_url=base_url,
+            username_secret_ref=username_secret_ref,
+            password_secret_ref=password_secret_ref,
+            read_only=True,
+            enabled=True,
+            tags=tuple(tags),
+            entity_allow_patterns=(),
+            entity_deny_patterns=(),
+        )
+        candidate.validate_runtime(production=self.production)
+        request = {
+            "source_id": source_id,
+            "expected_version": expected_version,
+            "display_name": display_name,
+            "base_url": base_url,
+            "username_secret_ref": username_secret_ref,
+            "password_secret_ref": password_secret_ref,
+            "tags": tags,
+        }
+
+        async def mutation(conn):
+            row = await conn.fetchrow(
+                """
+                UPDATE bag.sources
+                SET display_name=$3, base_url=$4, username_secret_ref=$5,
+                    password_secret_ref=$6, tags=$7, read_only=true,
+                    row_version=row_version+1, updated_at=now()
+                WHERE source_id=$1 AND row_version=$2
+                RETURNING source_id, display_name, base_url, read_only,
+                          row_version, updated_at
+                """,
+                source_id,
+                expected_version,
+                display_name,
+                base_url,
+                username_secret_ref,
+                password_secret_ref,
+                tags,
+            )
+            if row is None:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS(SELECT 1 FROM bag.sources WHERE source_id=$1)",
+                    source_id,
+                )
+                if not exists:
+                    raise AdminNotFound("source not found")
+                raise AdminConflict("source version changed")
+            return {
+                "id": row["source_id"],
+                "source_id": row["source_id"],
+                "display_name": row["display_name"],
+                "base_url": row["base_url"],
+                "read_only": row["read_only"],
+                "row_version": row["row_version"],
+                "updated_at": str(row["updated_at"]),
+            }
+
+        return await self._execute(
+            actor=actor,
+            command="source.update",
+            target_type="source",
+            target_id=source_id,
+            source_id=source_id,
+            company_id=None,
+            reason=reason,
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            request=request,
+            mutation=mutation,
+        )
+
+    async def update_company(
+        self,
+        *,
+        actor: AdminActor,
+        company_id: uuid.UUID,
+        expected_version: int,
+        display_name: str,
+        legal_name: str | None,
+        country_code: str | None,
+        enabled: bool,
+        is_default: bool,
+        reason: str,
+        request_id: uuid.UUID,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        if not display_name.strip():
+            raise AdminValidationError("display_name is required")
+        request = {
+            "company_id": str(company_id),
+            "expected_version": expected_version,
+            "display_name": display_name,
+            "legal_name": legal_name,
+            "country_code": country_code,
+            "enabled": enabled,
+            "is_default": is_default,
+        }
+
+        async def mutation(conn):
+            row = await conn.fetchrow(
+                """
+                UPDATE bag.companies
+                SET display_name=$3, legal_name=$4, country_code=$5,
+                    enabled=$6, is_default=$7, row_version=row_version+1,
+                    updated_at=now()
+                WHERE company_id=$1 AND row_version=$2
+                RETURNING company_id, source_id, external_ref, display_name,
+                          legal_name, country_code, enabled, is_default,
+                          row_version, updated_at
+                """,
+                company_id,
+                expected_version,
+                display_name,
+                legal_name,
+                country_code,
+                enabled,
+                is_default,
+            )
+            if row is None:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS(SELECT 1 FROM bag.companies WHERE company_id=$1)",
+                    company_id,
+                )
+                if not exists:
+                    raise AdminNotFound("company not found")
+                raise AdminConflict("company version changed")
+            return {
+                "id": str(row["company_id"]),
+                "source_id": row["source_id"],
+                "external_ref": row["external_ref"],
+                "display_name": row["display_name"],
+                "legal_name": row["legal_name"],
+                "country_code": row["country_code"],
+                "enabled": row["enabled"],
+                "is_default": row["is_default"],
+                "row_version": row["row_version"],
+                "updated_at": str(row["updated_at"]),
+            }
+
+        return await self._execute(
+            actor=actor,
+            command="company.update",
+            target_type="company",
+            target_id=str(company_id),
+            source_id=None,
+            company_id=company_id,
             reason=reason,
             request_id=request_id,
             idempotency_key=idempotency_key,
