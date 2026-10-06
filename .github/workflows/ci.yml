@@ -74,7 +74,7 @@ jobs:
           exit-code: "1"
       - name: Record OData image digest and dependency provenance
         run: >-
-          uv run --locked python scripts/write_image_provenance.py
+          python scripts/write_image_provenance.py
           --image erp-mcp-odata-sidecar:ci
           --base-image "build=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd;runtime=cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096"
           --lock vendor/reference/1c-odata-v3/pnpm-lock.yaml

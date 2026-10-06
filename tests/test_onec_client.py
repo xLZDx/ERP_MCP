@@ -93,3 +93,29 @@ async def test_url_is_pinned_to_registered_host():
             client._url(source(), "https://evil.example/x")
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (httpx.ReadTimeout("PRIVATE-TIMEOUT-DETAIL"), "SOURCE_TIMEOUT"),
+        (httpx.ConnectError("PRIVATE-CONNECTION-DETAIL"), "SOURCE_NETWORK_ERROR"),
+    ],
+)
+async def test_metadata_probe_outage_is_sanitized_and_fails_closed(error, expected):
+    async def handler(request):
+        raise error
+
+    client = OneCReadClient(
+        timeout_seconds=0.1,
+        max_response_bytes=1000,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        with pytest.raises(OneCTransportError, match=expected) as raised:
+            await client.head_metadata(source(), username=None, password=None)
+        assert "PRIVATE-" not in str(raised.value)
+        assert raised.value.__cause__ is None
+    finally:
+        await client.close()

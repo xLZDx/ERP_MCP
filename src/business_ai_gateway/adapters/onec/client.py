@@ -116,11 +116,16 @@ class OneCReadClient:
             if username is not None and password is not None
             else None
         )
-        response = await self._client.head(
-            self._url(source, "$metadata"),
-            headers={"Accept": "application/xml"},
-            auth=auth,
-        )
+        try:
+            response = await self._client.head(
+                self._url(source, "$metadata"),
+                headers={"Accept": "application/xml"},
+                auth=auth,
+            )
+        except httpx.TimeoutException:
+            raise OneCTransportError("SOURCE_TIMEOUT") from None
+        except httpx.RequestError:
+            raise OneCTransportError("SOURCE_NETWORK_ERROR") from None
         try:
             return {"status_code": response.status_code, "ok": response.is_success}
         finally:
