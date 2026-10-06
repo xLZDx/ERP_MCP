@@ -6,7 +6,8 @@ Last updated: 2026-10-06
 
 ### Batch 1–8 checkpoint — 2026-10-06
 
-Local verification is now `184 passed, 9 skipped`; Ruff, Bandit, compileall, pip-audit and release
+Local verification is now `184 passed, 9 skipped`; hosted run `37437328906` also passed both CI jobs
+on `ec04b32`. Ruff, Bandit, compileall, pip-audit and release
 preflight pass. Added bounded operation/dependency metrics, privacy-safe internal spans, readiness
 failure-matrix tests, DNS resolution/egress CIDR policy, secret-provider-backed ephemeral RSV config,
 non-destructive rollback manifest validation, release preflight CI wiring and traceability rows.

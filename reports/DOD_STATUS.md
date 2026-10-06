@@ -4,7 +4,8 @@
 
 ### Batch 1–8 checkpoint
 
-The current local suite is `184 passed, 9 skipped`. Metrics/spans, failure-matrix regressions,
+The current local suite is `184 passed, 9 skipped`; hosted run `37437328906` passed both required
+jobs on `ec04b32`. Metrics/spans, failure-matrix regressions,
 egress policy, ephemeral secret-bound RSV config, release preflight and rollback-manifest checks
 pass. These are implementation evidence only; deployed alerting, actual rollback rehearsal, live 1C
 semantic validation and native-report reconciliation remain open. DoD remains PARTIAL and production
