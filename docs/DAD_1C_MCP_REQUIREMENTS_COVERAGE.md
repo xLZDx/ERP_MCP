@@ -586,6 +586,35 @@ Requirements:
 - native 1C report reconciliation;
 - no universal hard-coded Moldovan/Russian account assumptions.
 
+### 14.1 Internal normalized projection and native comparison contract
+
+`financial_statements.py` implements an INTERNAL exact-profile projection for all three statement
+kinds. It is not yet the three public/live semantic tools above. Approved profile fingerprints bind
+source/company/configuration/metadata, chart/activity selector + metric/sign/row mapping, currency/
+timezone, period/comparative period, effective dates, native report mapping and tolerance. There
+are no global account numbers, invented cash classifications or unrestricted formula/query input.
+
+- Balance Sheet accepts complete known-opening `closing` snapshots at the exact end-of-period day.
+- P&L accepts confirmed gross debit/credit period facts with profile-owned signs.
+- Cash Flow accepts confirmed `cash_in`/`cash_out` activity facts, NEVER inferred from closing cash
+  balances; distinct gross events are not deduplicated merely because amounts/net totals match.
+- Every selector/metric requires explicit extracted coverage (including explicit zero); missing
+  rows, unclassified nonzero amounts, duplicate facts, stale/cross-scope/incomplete/nonfinite data
+  cannot PASS. No silent “unmapped ignore” option exists.
+- Comparative periods require separate complete same-profile/currency/timezone observations.
+  Required comparative native rows also cannot be skipped in native comparison.
+
+Projection PASS means `VALIDATED_PROFILE_PROJECTION_ONLY`, not native/business acceptance. Returned
+money is private authorized data, never public evidence. Result fingerprints bind rows plus source
+artifact/evidence-level provenance and reject detached/mutated projection data. Native comparison
+requires exact approved PROFILE fingerprint (a shared report-name alias is insufficient), exact
+scope, completeness, independent artifacts and preserved evidence level; mismatches return hashed
+findings. Neither projection nor equal native rows automatically approves a source/release/GO.
+
+Public statement tools, runtime/live source collectors, approved chart/activity mappings, real
+configuration native reports and required case coverage remain OPEN. This contract's synthetic
+L1 fixtures are not native 1C or financial/legal validation.
+
 ---
 
 ## 15. Tax and payroll guardrails

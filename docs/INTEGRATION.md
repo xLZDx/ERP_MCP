@@ -396,6 +396,16 @@ service allocation and profile-selected overhead are human-review findings. Nona
 are labelled explicitly, not counted as completed native acceptance. Full live/public invoice tool
 and real native/corpus delivery remain OPEN despite synthetic logical rule coverage.
 
+### 14.2 Internal financial statement projection
+
+An exact approved statement profile chooses canonical account/activity selectors, allowed metric
+types, signs, rows, period/currency/timezone, comparative scope and native report mapping. Internal
+projection is transport-independent; it never builds OData/native/SQL queries or assumes a universal
+chart. Missing or unclassified facts are INCONCLUSIVE, not zero. Cash flow cannot use balance-only
+facts. Required comparative/native evidence must be independently complete and scope-matched.
+Public/live statement tools are not yet implemented by this arithmetic contract; native validation
+and deployment/GO gates remain OPEN. Monetary projection outputs stay private.
+
 ## 15. Test-only 1C seeder boundary
 
 The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.
