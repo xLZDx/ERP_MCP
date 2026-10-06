@@ -15,15 +15,28 @@ _request_correlation_id: ContextVar[uuid.UUID | None] = ContextVar(
 )
 
 
+def begin_request_correlation_id():
+    value = _request_correlation_id.get() or uuid.uuid4()
+    return _request_correlation_id.set(value), value
+
+
+def end_request_correlation_id(token) -> None:
+    _request_correlation_id.reset(token)
+
+
+def current_request_correlation_id() -> uuid.UUID | None:
+    return _request_correlation_id.get()
+
+
 class AuditCorrelationMiddleware:
     """Give every inbound MCP message one isolated audit correlation ID."""
 
     async def __call__(self, ctx, call_next):
-        token = _request_correlation_id.set(uuid.uuid4())
+        token, _ = begin_request_correlation_id()
         try:
             return await call_next(ctx)
         finally:
-            _request_correlation_id.reset(token)
+            end_request_correlation_id(token)
 
 
 def query_fingerprint(query: dict[str, Any] | None) -> str | None:

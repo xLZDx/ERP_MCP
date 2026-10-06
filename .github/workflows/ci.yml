@@ -74,7 +74,7 @@ jobs:
           exit-code: "1"
       - name: Record OData image digest and dependency provenance
         run: >-
-          python scripts/write_image_provenance.py
+          uv run --locked python scripts/write_image_provenance.py
           --image erp-mcp-odata-sidecar:ci
           --base-image "build=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd;runtime=cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096"
           --lock vendor/reference/1c-odata-v3/pnpm-lock.yaml
@@ -128,14 +128,14 @@ jobs:
           uv export --locked --no-dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/requirements-runtime.lock"
           python -c 'from pathlib import Path; import sys; current=Path("requirements-runtime.lock").read_text().splitlines()[2:]; generated=Path(sys.argv[1]).read_text().splitlines()[2:]; sys.exit(0 if current == generated else 1)' "$RUNNER_TEMP/requirements-runtime.lock"
       - run: uv sync --locked --extra dev
-      - run: ruff check .
-      - run: bandit -q -r src
-      - run: python -m compileall -q src scripts testbed
-      - run: python scripts/validate_scenarios.py
+      - run: uv run --locked ruff check .
+      - run: uv run --locked bandit -q -r src
+      - run: uv run --locked python -m compileall -q src scripts testbed
+      - run: uv run --locked python scripts/validate_scenarios.py
       - name: Validate the fail-closed P9 pilot evidence template
         run: |
-          python scripts/validate_pilot_evidence.py
-          if python scripts/validate_pilot_evidence.py --require-go; then
+          uv run --locked python scripts/validate_pilot_evidence.py
+          if uv run --locked python scripts/validate_pilot_evidence.py --require-go; then
             echo "empty pilot template unexpectedly passed production GO" >&2
             exit 1
           fi
@@ -144,24 +144,24 @@ jobs:
           -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/migrate.py
+      - run: uv run --locked python scripts/migrate.py
         env:
           BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/check_db_privileges.py
+      - run: uv run --locked python scripts/check_db_privileges.py
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/acl_load_drill.py
+      - run: uv run --locked python scripts/acl_load_drill.py
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/fanout_load_drill.py
+      - run: uv run --locked python scripts/fanout_load_drill.py
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
           BAG_REDIS_URL: redis://localhost:6379/0
-      - run: python scripts/postgres_restore_drill.py
-      - run: pytest
+      - run: uv run --locked python scripts/postgres_restore_drill.py
+      - run: uv run --locked pytest
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: pip-audit
+      - run: uv run --locked pip-audit
       - name: Build the exact-locked Python gateway image
         run: |
           docker build -t erp-mcp-gateway:ci .
@@ -192,7 +192,7 @@ jobs:
           exit-code: "1"
       - name: Record gateway image digest and dependency provenance
         run: >-
-          python scripts/write_image_provenance.py
+          uv run --locked python scripts/write_image_provenance.py
           --image erp-mcp-gateway:ci
           --base-image "build=python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8;runtime=cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84"
           --lock requirements-runtime.lock

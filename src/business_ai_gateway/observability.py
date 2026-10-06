@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import hmac
+import json
+import logging
 import time
 from collections import defaultdict
 from typing import Any
 
 from pydantic import SecretStr
 from starlette.responses import JSONResponse, PlainTextResponse, Response
+
+from .audit import begin_request_correlation_id, end_request_correlation_id
+
+_access_logger = logging.getLogger("business_ai_gateway.http")
 
 
 def metrics_response(
@@ -56,6 +62,7 @@ class HTTPMetrics:
             method = "OTHER"
         started = time.perf_counter()
         status = 500
+        correlation_token, request_id = begin_request_correlation_id()
         self._active[route] += 1
 
         async def observed_send(message: dict[str, Any]) -> None:
@@ -76,6 +83,23 @@ class HTTPMetrics:
                 if elapsed <= bound:
                     self._duration_buckets[(method, route, bound)] += 1
                     break
+            _access_logger.info(
+                json.dumps(
+                    {
+                        "event": "http_request",
+                        "request_id": str(request_id),
+                        "method": method,
+                        "route": route,
+                        "status_code": status,
+                        "duration_ms": round(elapsed * 1000, 3),
+                        "outcome": (
+                            "success" if status < 400 else "client_error" if status < 500 else "server_error"
+                        ),
+                    },
+                    separators=(",", ":"),
+                )
+            )
+            end_request_correlation_id(correlation_token)
 
     def bind(self, app) -> HTTPMetrics:
         self.app = app
