@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from mcp.server.auth.provider import AccessToken
@@ -638,6 +639,59 @@ class AdminAPI:
             if settings.admin_ui_enabled
             else None
         )
+        if self.sessions is not None:
+            self.sessions.audit_hook = self._audit_session_event
+        self._denial_window_start = 0.0
+        self._denial_window_count = 0
+
+    async def _audit_session_event(self, event: str, subject: str, client_id: str, request: Request):
+        """Login/logout evidence (A01). Subject/client come from the verified session only."""
+        if self.mutations is None:
+            return
+        await self.mutations.record_admin_event(
+            actor=AdminActor(subject=subject, client_id=client_id), action=event,
+            target_type="admin_session", target_id=None, source_id=None, company_id=None,
+            reason="interactive admin session " + event.rsplit(".", 1)[-1],
+            request_id=_request_id(request), outcome="success",
+        )
+
+    _DENIAL_WINDOW_SECONDS = 60.0
+    _DENIAL_WINDOW_MAX = 30
+
+    @staticmethod
+    def _looks_like_jwt(raw: str) -> bool:
+        parts = raw.split(".")
+        return (
+            len(parts) == 3 and len(raw) <= 8192
+            and all(part and all(c.isalnum() or c in "-_=" for c in part) for part in parts)
+        )
+
+    async def _audit_rejected_bearer(self, request: Request, raw_token: str) -> None:
+        """Audit a rejected bearer credential (A03/A04) without letting anonymous callers flood.
+
+        Only a syntactically valid JWT-shaped credential is recorded (random garbage and
+        scanners leave no row), at most _DENIAL_WINDOW_MAX rows per minute per process. The
+        row never contains token material or unverified claims: the actor is "unverified".
+        """
+        if self.mutations is None or not self._looks_like_jwt(raw_token):
+            return
+        now = time.monotonic()
+        if now - self._denial_window_start >= self._DENIAL_WINDOW_SECONDS:
+            self._denial_window_start, self._denial_window_count = now, 0
+        if self._denial_window_count >= self._DENIAL_WINDOW_MAX:
+            return
+        self._denial_window_count += 1
+        try:
+            await self.mutations.record_admin_event(
+                actor=AdminActor(subject="unverified", client_id="unknown"),
+                action="auth.denied", target_type="admin_route", target_id=None,
+                source_id=None, company_id=None, reason="bearer credential rejected",
+                request_id=_request_id(request), outcome="denied",
+                detail_code="TOKEN_REJECTED",
+                safe_change={"credential": "bearer", "path": request.url.path[:200]},
+            )
+        except Exception:  # noqa: BLE001 - the 401 stays authoritative if audit is down
+            logging.getLogger("uvicorn.error").warning("admin denial audit write failed")
 
     @staticmethod
     def _groups(token: AccessToken) -> frozenset[str]:
@@ -651,6 +705,8 @@ class AdminAPI:
 
         if scheme.lower() == "bearer" and raw_token.strip():
             token = await self.verifier.verify_token(raw_token.strip())
+            if token is None:
+                await self._audit_rejected_bearer(request, raw_token.strip())
         elif self.sessions is not None:
             session = await self.sessions.resolve(request)
             if session is None:
@@ -1193,6 +1249,7 @@ class AdminAPI:
             return ctx
         if ctx.source_scope("PLATFORM_ADMIN", "SOURCE_ADMIN") is not None:
             return self._denied()
+        body: dict = {}
         try:
             body = await _json_body(request)
             result = await self.probe.probe(
@@ -1202,9 +1259,29 @@ class AdminAPI:
                 display_name=str(body.get("display_name", "Admin source probe")),
                 platform_version_hint=body.get("platform_version_hint"),
             )
+            await self._audit_probe(ctx, request, body, "success", None)
             return JSONResponse(result)
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
+            await self._audit_probe(ctx, request, body, "error",
+                                    getattr(exc, "code", "ADMIN_DEPENDENCY_FAILED"))
             return self._mutation_error(exc)
+
+    async def _audit_probe(self, ctx: AdminContext, request: Request, body: dict, outcome: str,
+                           detail_code: str | None) -> None:
+        """Probe evidence (A16): actor, target host only, outcome; never the URL or secrets."""
+        if self.mutations is None:
+            return
+        try:
+            host = (urlsplit(str(body.get("base_url", ""))).hostname or "")[:253] or None
+            await self.mutations.record_admin_event(
+                actor=self._actor(ctx), action="source.probe", target_type="source_probe",
+                target_id=host, source_id=None, company_id=None,
+                reason=str(body.get("reason") or "source connection probe")[:1000],
+                request_id=_request_id(request), outcome=outcome, detail_code=detail_code,
+                safe_change={"host": host},
+            )
+        except Exception:  # noqa: BLE001 - audit failure must not change the probe result
+            logging.getLogger("uvicorn.error").warning("admin probe audit write failed")
 
     async def source_create(self, request: Request):
         ctx = await self.authenticate(request)

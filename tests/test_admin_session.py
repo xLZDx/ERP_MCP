@@ -61,6 +61,7 @@ class FakeVerifier:
     async def verify_token(self, _token):
         return SimpleNamespace(
             subject="admin-1",
+            client_id="erp-admin",
             expires_at=int(time.time()) + 3600,
         )
 
@@ -383,3 +384,63 @@ async def test_id_token_signature_and_claim_validation(failure):
             await manager._verify_id_token(token, nonce="nonce")
     else:
         assert (await manager._verify_id_token(token, nonce="nonce"))["sub"] == "admin-1"
+
+
+class RecordingMutations:
+    def __init__(self):
+        self.events = []
+
+    async def record_admin_event(self, **kwargs):
+        self.events.append(kwargs)
+
+
+@pytest.mark.asyncio
+async def test_login_and_logout_leave_audit_evidence(monkeypatch):
+    """A01: login success and logout are audited with the verified subject, no secrets."""
+    redis = FakeRedis()
+    state = "state-audit"
+    redis.data[f"erp_mcp:admin:login:{state}"] = json.dumps(
+        {"nonce": "nonce-1", "verifier": "verifier-1", "created_at": 1})
+
+    async def token_endpoint(_request):
+        return httpx.Response(200, json={"access_token": "access.jwt", "id_token": "id.jwt"})
+
+    manager = AdminSessionManager(settings(), redis, FakeVerifier(),
+                                  transport=httpx.MockTransport(token_endpoint))
+
+    async def verify_id_token(_raw, *, nonce):
+        return {"sub": "admin-1"}
+
+    monkeypatch.setattr(manager, "_verify_id_token", verify_id_token)
+    api = object.__new__(AdminAPI)
+    api.mutations = RecordingMutations()
+    manager.audit_hook = api._audit_session_event
+    await manager.callback(request("/admin/callback", query=f"code=c&state={state}",
+                                   cookies={manager.LOGIN_COOKIE: state}))
+    sid = next(key for key in redis.data if key.startswith("erp_mcp:admin:session:"))
+    await manager.logout(request(cookies={manager.SESSION_COOKIE: sid.rsplit(":", 1)[-1]}))
+    events = api.mutations.events
+    assert [(e["action"], e["outcome"], e["actor"].subject, e["actor"].client_id) for e in events] == [
+        ("session.login", "success", "admin-1", "erp-admin"),
+        ("session.logout", "success", "admin-1", "erp-admin"),
+    ]
+    assert "access.jwt" not in json.dumps(events, default=str)
+
+
+@pytest.mark.asyncio
+async def test_rejected_bearer_is_audited_bounded_and_without_token_material():
+    """A03/A04: only JWT-shaped rejected credentials are audited, capped per window."""
+    api = object.__new__(AdminAPI)
+    api.mutations = RecordingMutations()
+    api._denial_window_start = 0.0
+    api._denial_window_count = 0
+    jwt_shaped = "aaaa.bbbb.cccc"
+    await api._audit_rejected_bearer(request("/admin/v1/me"), "not-a-token")
+    assert api.mutations.events == []
+    for _ in range(api._DENIAL_WINDOW_MAX + 20):
+        await api._audit_rejected_bearer(request("/admin/v1/me"), jwt_shaped)
+    assert len(api.mutations.events) == api._DENIAL_WINDOW_MAX
+    event = api.mutations.events[0]
+    assert event["action"] == "auth.denied" and event["outcome"] == "denied"
+    assert event["actor"].subject == "unverified"
+    assert jwt_shaped not in json.dumps(event, default=str)

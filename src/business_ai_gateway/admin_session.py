@@ -4,6 +4,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import secrets
 import time
 from dataclasses import dataclass
@@ -54,6 +55,16 @@ class AdminSessionManager:
         self.verifier = verifier
         self.transport = transport
         self.login_limiter = RateLimiter(redis, per_minute=10)
+        # Optional async callable(event, subject, client_id, request) used for audit evidence.
+        self.audit_hook = None
+
+    async def _audit(self, event: str, subject: str, client_id: str | None, request: Request):
+        if self.audit_hook is None:
+            return
+        try:
+            await self.audit_hook(event, subject, client_id or "unknown", request)
+        except Exception:  # noqa: BLE001 - audit write must not break login/logout flow
+            logging.getLogger("uvicorn.error").warning("admin session audit write failed event=%s", event)
 
     @property
     def secure_cookie(self) -> bool:
@@ -229,6 +240,7 @@ class AdminSessionManager:
             "access_token": access_token,
             "csrf_token": csrf_token,
             "subject": verified.subject,
+            "client_id": verified.client_id,
             "last_seen": now,
             "absolute_expires_at": absolute_expires_at,
         }
@@ -237,6 +249,7 @@ class AdminSessionManager:
             min(self.IDLE_TTL_SECONDS, absolute_expires_at - now),
             json.dumps(session),
         )
+        await self._audit("session.login", verified.subject or "", verified.client_id, request)
 
         redirect = RedirectResponse("/admin/", status_code=302)
         old_session = record.get("previous_session_id") or request.cookies.get(self.SESSION_COOKIE)
@@ -296,7 +309,17 @@ class AdminSessionManager:
     async def logout(self, request: Request):
         session_id = request.cookies.get(self.SESSION_COOKIE)
         if session_id:
+            raw = await self.redis.get(self._session_key(session_id))
             await self.redis.delete(self._session_key(session_id))
+            if raw:
+                try:
+                    record = json.loads(raw)
+                    subject = str(record.get("subject") or "")
+                    client_id = record.get("client_id")
+                except (TypeError, ValueError, AttributeError):
+                    subject, client_id = "", None
+                if subject:
+                    await self._audit("session.logout", subject, client_id, request)
         response = RedirectResponse("/admin/", status_code=302)
         response.delete_cookie(self.SESSION_COOKIE, path="/admin")
         return response
