@@ -10,10 +10,22 @@ from .settings import Settings
 
 
 class JWTTokenVerifier(TokenVerifier):
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        audience: str | None = None,
+        required_scope: str | None = None,
+        resource: str | None = None,
+    ):
         if not settings.oauth_jwks_url:
             raise ValueError("oauth_jwks_url required")
         self.settings = settings
+        self.audience = audience or settings.oauth_audience
+        self.required_scope = required_scope or settings.oauth_required_scope
+        self.resource = resource or settings.public_mcp_url
+        if not self.audience:
+            raise ValueError("oauth audience required")
         self._jwks = jwt.PyJWKClient(
             settings.oauth_jwks_url,
             cache_keys=True,
@@ -37,7 +49,7 @@ class JWTTokenVerifier(TokenVerifier):
                 signing_key,
                 algorithms=self.settings.oauth_algorithm_list,
                 issuer=self.settings.oauth_issuer,
-                audience=self.settings.oauth_audience,
+                audience=self.audience,
                 options={
                     "require": ["exp", "iat", "iss", "sub", "aud"],
                     "verify_signature": True,
@@ -53,7 +65,7 @@ class JWTTokenVerifier(TokenVerifier):
         if not isinstance(subject, str) or not subject.strip():
             return None
         scopes = self._scopes(claims)
-        if self.settings.oauth_required_scope not in scopes:
+        if self.required_scope not in scopes:
             return None
         client_id = (
             claims.get("client_id")
@@ -66,7 +78,7 @@ class JWTTokenVerifier(TokenVerifier):
             client_id=str(client_id),
             scopes=scopes,
             expires_at=int(claims["exp"]),
-            resource=self.settings.public_mcp_url,
+            resource=self.resource,
             subject=subject,
             claims=claims,
         )

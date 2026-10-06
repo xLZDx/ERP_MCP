@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     oauth_jwks_url: str | None = None
     oauth_algorithms: str = "RS256"
 
+    admin_api_enabled: bool = False
+    admin_oauth_audience: str | None = None
+    admin_oauth_required_scope: str = "erp_mcp:admin"
+
     database_url: str = "postgresql://business_ai:business_ai@localhost:5432/business_ai"
     admin_database_url: str | None = None
     migration_database_url: str | None = None
@@ -74,6 +78,17 @@ class Settings(BaseSettings):
                 raise ValueError("BAG_ODATA_SIDECAR_TOKEN must contain at least 32 bytes")
             if self.environment == "production" and parsed.scheme != "https":
                 raise ValueError("production BAG_ODATA_SIDECAR_URL must use https://")
+
+        if self.admin_api_enabled:
+            if not self.oauth_enabled:
+                raise ValueError("admin API requires BAG_OAUTH_ENABLED=true")
+            if not self.admin_oauth_audience:
+                raise ValueError("admin API requires BAG_ADMIN_OAUTH_AUDIENCE")
+            if self.admin_oauth_audience == self.oauth_audience:
+                raise ValueError("admin API audience must differ from MCP OAuth audience")
+            if self.admin_oauth_required_scope == self.oauth_required_scope:
+                raise ValueError("admin API scope must differ from MCP OAuth scope")
+
         if self.environment != "production":
             return self
         if not self.oauth_enabled:

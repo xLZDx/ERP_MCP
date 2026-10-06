@@ -6,6 +6,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from .admin_api import register_admin_routes
 from .runtime import Runtime
 from .server import build_mcp
 from .settings import Settings
@@ -13,6 +14,7 @@ from .settings import Settings
 settings = Settings()
 runtime = Runtime(settings)
 mcp = build_mcp(settings, runtime)
+register_admin_routes(mcp, settings, runtime)
 
 
 @mcp.custom_route("/healthz", methods=["GET"])
