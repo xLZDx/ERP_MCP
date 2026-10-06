@@ -464,23 +464,8 @@ def recorder_app(hits: list[tuple[str, str]], *, redirect_to: str | None = None,
     return Starlette(routes=[Route("/{path:path}", handler, methods=methods)])
 
 
-def drifted_fake1c_app():
-    """The real Fake1C app serving metadata with one extra EntitySet (fingerprint drift)."""
-    from business_ai_gateway.testbed import fake1c
-
-    extra_type = (b'<EntityType Name="Catalog_E2EDrift"><Property Name="Ref_Key" '
-                  b'Type="Edm.Guid"/></EntityType>\n      <EntityContainer')
-    extra_set = (b'<EntitySet Name="Catalog_E2EDrift" EntityType="Fake1C.Catalog_E2EDrift"/>\n'
-                 b'      </EntityContainer>')
-    patched = fake1c.METADATA.replace(b"<EntityContainer", extra_type, 1)
-    patched = patched.replace(b"</EntityContainer>", extra_set, 1)
-    assert patched != fake1c.METADATA, "drift patch did not change metadata"
-    return fake1c, patched
-
-
 @contextlib.contextmanager
-def fake1c_replaced_by(env, make_app: Callable[[], Any], *, before: Callable[[], None] | None = None
-                       ) -> Iterator[AsgiServer]:
+def fake1c_replaced_by(env, make_app: Callable[[], Any]) -> Iterator[AsgiServer]:
     """Stop the real Fake1C, serve ``make_app()`` on its port, ALWAYS restore Fake1C after."""
     port = env.raw["ports"]["fake1c"]
     fault("fake1c", "stop")
@@ -492,6 +477,74 @@ def fake1c_replaced_by(env, make_app: Callable[[], Any], *, before: Callable[[],
         if server is not None:
             server.__exit__(None, None, None)
         restore(env, "fake1c")
+
+
+@contextlib.contextmanager
+def drifted_fake1c(env) -> Iterator[AsgiServer]:
+    """Serve the real Fake1C app with one extra EntitySet (a different metadata fingerprint)."""
+    from business_ai_gateway.testbed import fake1c
+
+    original = fake1c.METADATA
+    extra_type = (b'<EntityType Name="Catalog_E2EDrift"><Property Name="Ref_Key" '
+                  b'Type="Edm.Guid"/></EntityType><EntityContainer')
+    extra_set = (b'<EntitySet Name="Catalog_E2EDrift" EntityType="Fake1C.Catalog_E2EDrift"/>'
+                 b'</EntityContainer>')
+    patched = original.replace(b"<EntityContainer", extra_type, 1)
+    patched = patched.replace(b"</EntityContainer>", extra_set, 1)
+    assert patched != original, "drift patch did not change the metadata"
+    fake1c.METADATA = patched
+    try:
+        with fake1c_replaced_by(env, lambda: fake1c.create_app("json")) as server:
+            yield server
+    finally:
+        fake1c.METADATA = original
+
+
+def attempt_sql(env, role: str, sql: str, *args: Any) -> tuple[str, str | None, str]:
+    """Run one statement as a DB login role inside a transaction that is ALWAYS rolled back.
+
+    Returns ("success"|"error", sqlstate, message). Never persists anything.
+    """
+    box: dict[str, Any] = {}
+
+    async def go() -> tuple[str, str | None, str]:
+        import asyncpg
+
+        conn = await asyncpg.connect(env.dsn(role), timeout=10)
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            await conn.execute(sql, *args)
+            return ("success", None, "")
+        except asyncpg.PostgresError as exc:
+            return ("error", exc.sqlstate, str(exc))
+        finally:
+            await transaction.rollback()
+            await conn.close()
+
+    def run() -> None:
+        box["result"] = asyncio.run(go())
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    thread.join(30)
+    assert "result" in box, f"SQL attempt as {role} did not finish"
+    return box["result"]
+
+
+def resync_capabilities(world, source_id: str | None = None) -> Resp:
+    """Refresh a source's metadata and acknowledge any drift so STABLE evidence is restored."""
+    sid = source_id or world.source_id
+    resp = expect(world.pa.post(f"/admin/v1/sources/{sid}/capability-refresh",
+                                {"reason": "restore stable capability evidence"}), 200,
+                  "resync refresh")
+    row = world.ev.one("SELECT drift_status, metadata_fingerprint FROM bag.source_capabilities "
+                       "WHERE source_id=$1", sid)
+    if row["drift_status"] == "DRIFTED":
+        expect(world.pa.post(f"/admin/v1/sources/{sid}/drift-acknowledgements", {
+            "expected_fingerprint": row["metadata_fingerprint"],
+            "reason": "restore stable capability evidence"}), 200, "resync acknowledge")
+    return resp
 
 
 # --------------------------------------------------------------------------- data plane (MCP)
