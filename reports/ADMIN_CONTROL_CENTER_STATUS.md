@@ -4,8 +4,8 @@ Branch: `feature/admin-control-center-implementation`
 Worktree: `D:\Repo\ERP_MCP-admin-control-center`
 Admin start SHA: `dff4c81d18e645fed64aed50d148ab8df9109f66`
 Integration baseline: `c07127fc2d7db40db4ad83678e1a9e9ad0957d99`
-Final Admin SHA: `6ddb43fdacc03682245c54361a1e1f754a426f1e`.
-Hosted CI run `37509438929` passed all four jobs (test, Windows privacy, OData upstream, release-evidence) on the final merged tree. Earlier runs `37507319003`, `37504428513`, and `37504580327` also passed their respective final corrections.
+Final Admin SHA: `f15bac2cf7fba861352719ab9f17bf2ed7f28486`.
+Hosted CI run `37510077711` passed all four jobs (test, Windows privacy, OData upstream, release-evidence) on the final merged tree. Earlier runs `37509438929`, `37507319003`, `37504428513`, and `37504580327` also passed their respective final corrections.
 
 ## Verified Admin scope
 
