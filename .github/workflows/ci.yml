@@ -206,6 +206,17 @@ jobs:
       - run: uv run --locked pytest
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - name: Read the actual migrated capability registry without exposing source identities
+        run: |
+          uv run --locked python -m scripts.capability_registry_cli capability-list > "$RUNNER_TEMP/capability-registry-summary.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/capability-registry-summary.json"
+        env:
+          BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: capability-registry-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/capability-registry-summary.json
+          if-no-files-found: error
       - run: uv run --locked pip-audit
       - name: Build the exact-locked Python gateway image
         run: |

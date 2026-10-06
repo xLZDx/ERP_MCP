@@ -39,6 +39,27 @@ Required operational evidence before GO:
 
 Additional local automation:
 
+Registry diagnostics (FR-C1/C2), using `BAG_DATABASE_URL` from the operator environment, never a
+command-line DSN. Use a least-privilege registry-reader account; every snapshot is repeatable-read
+and read-only. Default output is counts/reason codes only; `--details` is PRIVATE operator output.
+
+```powershell
+python -m scripts.capability_registry_cli capability-list
+python -m scripts.capability_registry_cli stale-profile
+python -m scripts.capability_registry_cli unsupported-reason --source-id SOURCE_ALIAS --register AccountingRegister_EXACT_BINDING --method drCrTurnovers
+python -m scripts.capability_registry_cli capability-diff --before PRIVATE_BEFORE.json --after PRIVATE_AFTER.json
+python -m scripts.capability_registry_cli export-evidence-manifest --output D:\\PRIVATE_TESTBED\\capabilities-new.json
+```
+
+Exports must stay outside this repository and cannot overwrite existing files. They contain no
+endpoint, username/password references or raw upstream evidence. They remain private metadata,
+not publication artifacts. The diagnostic does not acknowledge drift, refresh/probe a source or
+authorize an operation: runtime ACL/live capability checks remain mandatory. `SUPPORTED` requires
+an exact fresh live-metadata profile/source/fingerprint and enabled OData JSON route; stale,
+drifted, absent and oversized profiles cannot grant support. Diff keys include register EntitySet
+so two registers with the same method never collapse. `python -m scripts.capability_registry_drill`
+creates a NEW disposable PostgreSQL instance; it retains the container and reports executed tests.
+
 - `uv run --locked python scripts/dependency_failure_matrix.py` validates the six-case fail-closed
   contract used by the deployment fault-injection harness;
 - `uv run --locked python scripts/capability_report.py <export.json>` renders source capability

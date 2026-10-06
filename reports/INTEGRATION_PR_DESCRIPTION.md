@@ -3,8 +3,10 @@
 Supersedes historical validation counts and blanket closure claims below. PR #11 remains Draft;
 Production GO is NO-GO, DoD PARTIAL, frozen scope unchanged.
 
-Verified hosted baseline: c59f07096a1b08c27c33554c29638d4922fe8621 / run 37459728181, BOTH jobs PASS.
-Local current suite: 319 passed, 9 external skips; Ruff/Bandit/documentation gates PASS.
+Verified hosted baseline: e7898f2166f79aaf829618aab93429d7d3004590 / run 37461088241, BOTH jobs PASS.
+Local current suite: 341 passed, 10 environment skips; separate real PostgreSQL capability contract 1/1 PASS.
+Ruff/Bandit/documentation gates PASS. DB-backed five-command capability CLI is bounded, read-only,
+default aggregate/private export only, never grants authorization or probes OData/COM.
 Actual SDK subprocess crash/timeout/malformed/recovery/rotation, measured fan-out, Docker
 PostgreSQL/Redis outages, pinned promtool assertions and socket-time egress tests replace declared
 PASS constants. Four production fan-out mutations are executed/killed. Runtime dispatcher is
@@ -14,8 +16,8 @@ Current EVID-1 foundation: bounded normalized CSV input, exact confirmed scope/p
 private retention references and missing-evidence gate. Native evidence formats, public upload
 ACL/storage/audit and DAD rule execution remain OPEN. Ferma/native seeding/observer/L2,
 production firewall/capacity/DR/alert receiver, native COM lifecycle and Windows secret DACL remain
-separate gates. The document-content fingerprint portability fix awaits a fresh hosted run after
-the previous fingerprint failure: exact failed run is 37460339973 at 871ea20.
+separate gates. The document-content fingerprint portability fix passed hosted verification on
+e7898f2 after the historical failure at 871ea20 / 37460339973; the newer CLI batch awaits its own run.
 
 Historical integration narrative:
 

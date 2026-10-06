@@ -1,23 +1,21 @@
 {
   "schema_version": 1,
-  "batch_id": "EVIDENCE_BOUNDARY_20261006",
-  "implementation_sha256": "04b30b612b0301694c62f03ab36b10f3a5b4aaf57339f11f87ce3e2be6055cc6",
+  "batch_id": "CAPABILITY_REGISTRY_20261006",
+  "implementation_sha256": "2d34eb224df1c235c1a0aaa3e4755c2922c6d06bba407150d9df3542d63cc37e",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "c59f07096a1b08c27c33554c29638d4922fe8621",
-  "last_verified_hosted_run": 37459728181,
-  "last_failed_hosted_commit": "871ea208fceb990e6e121befa2eb3a7f9e570df2",
-  "last_failed_hosted_run": 37460339973,
-  "hosted_status_at_snapshot": "CHECKPOINT_GENERATED_METADATA_FIX_AWAITING_CI",
+  "last_verified_hosted_commit": "e7898f2166f79aaf829618aab93429d7d3004590",
+  "last_verified_hosted_run": 37461088241,
+  "hosted_status_at_snapshot": "PARENT_BOTH_JOBS_PASS_NEW_CLI_AWAITING_CI",
   "last_local_full_suite": {
-    "passed": 319,
-    "skipped": 9
+    "passed": 341,
+    "skipped": 10
   },
   "focused_tests": {
-    "external_evidence": 30,
-    "checkpoint": 11
+    "capability_cli": 22,
+    "actual_postgres": 1
   },
-  "current_full_suite_status": "LOCAL_PASS_9_EXTERNAL_SKIPS"
+  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS_PG_SEPARATELY_PASS"
 }
