@@ -14,3 +14,9 @@
 
 - Decision: tests/e2e is auto-skipped only when .e2e/env.json is absent and ERP_MCP_E2E_NO_SKIP is unset; scripts/e2e/test.ps1 sets it so a missing environment is an error.
 - Evidence: 12 smoke tests green against the live environment (tests/e2e/test_smoke_environment.py).
+
+## 2026-10-07 - Admin E2E suite A01-A54 (branch e2e/admin-flows)
+
+- Decision: the Admin suite runs on seed mode bootstrap-only; source, companies, role bindings and grants are created through /admin/ by the `world` fixture (tests/e2e/admin/admin_support.py). The suite fails loudly (never skips) when the environment is not pristine.
+- Decision: contract rows whose evidence the product does not currently produce (login/logout audit rows for A01, audit trail for 401 denials in A03/A04) are asserted strictly in their own tests so a failure is visible and classified, not weakened.
+- Evidence: batch 1 (A01-A15) collects cleanly and is ruff-clean; not yet executed against the environment (lane A owns the ports).
