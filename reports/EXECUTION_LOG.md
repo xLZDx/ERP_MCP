@@ -97,3 +97,8 @@
 - Next software work: executable company-filtered business reads, canonical accounting tools,
   completed audit/operations proof and remaining deployment/security gates. Promoting a candidate
   or validating accounting semantics still requires a real target 1C source and native reports.
+- D11 audit outcome follow-up on `phase/p1-audit-outcomes`: extended the runtime-role PostgreSQL
+  round-trip to exercise success, denial and error events, assert company/provenance/result fields,
+  and attempt append-only UPDATE/DELETE against each event. Local suite: `74 passed, 7 skipped`
+  (the PostgreSQL integration test requires CI DB); Ruff, compileall and diff check pass. Draft PR
+  and hosted verification pending.
