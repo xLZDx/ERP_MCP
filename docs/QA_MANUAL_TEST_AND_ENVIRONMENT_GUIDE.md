@@ -192,13 +192,48 @@ This suite requires a non-production OIDC provider. Use a dedicated Admin client
 an Admin audience different from the MCP data audience, `erp_mcp:admin` scope, local
 callback URI, test subjects/groups, and the configured step-up ACR for role changes.
 The test IdP and client credentials are environment-specific and are not stored here.
-Before starting the gateway for this suite, set `BAG_OAUTH_ENABLED=true`, issuer,
-data-plane audience, JWKS URL and public MCP URL; set `BAG_ADMIN_API_ENABLED=true`,
-`BAG_ADMIN_UI_ENABLED=true`, a distinct `BAG_ADMIN_OAUTH_AUDIENCE`, admin scope,
-authorization/token URLs, client ID and local callback URI. Set
-`BAG_ADMIN_MUTATIONS_ENABLED=true` only after the dedicated control API login role,
-host allowlist and test secrets are provisioned. The IdP must issue the expected scope
-and signed step-up `acr`/recent `auth_time` claims for sensitive platform-role changes.
+Do not run this suite with the development-local gateway from step 9. Stop it with
+Ctrl+C, then start a separate gateway process in a new PowerShell window after replacing
+the placeholders below with the test IdP's registered values:
+
+```powershell
+Set-Location D:\Repo\ERP_MCP-integration-candidate
+$env:BAG_ENVIRONMENT = 'development'
+$env:BAG_DATABASE_URL = 'postgresql://business_ai_app:LOCAL_ONLY_APP_PASSWORD@localhost:5432/business_ai'
+$env:BAG_ADMIN_DATABASE_URL = 'postgresql://business_ai_admin:LOCAL_ONLY_ADMIN_PASSWORD@localhost:5432/business_ai'
+$env:BAG_ADMIN_CONTROL_DATABASE_URL = 'postgresql://business_ai_control_api:LOCAL_ONLY_CONTROL_PASSWORD@localhost:5432/business_ai'
+$env:BAG_REDIS_URL = 'redis://localhost:6379/0'
+$env:BAG_PUBLIC_MCP_URL = 'http://127.0.0.1:8000/mcp'
+$env:BAG_OAUTH_ENABLED = 'true'
+$env:BAG_OAUTH_ISSUER = 'http://127.0.0.1:8080/realms/erp-mcp-test'
+$env:BAG_OAUTH_AUDIENCE = 'http://127.0.0.1:8000/mcp'
+$env:BAG_OAUTH_JWKS_URL = 'http://127.0.0.1:8080/realms/erp-mcp-test/protocol/openid-connect/certs'
+$env:BAG_ADMIN_API_ENABLED = 'true'
+$env:BAG_ADMIN_UI_ENABLED = 'true'
+$env:BAG_ADMIN_MUTATIONS_ENABLED = 'true'
+$env:BAG_ADMIN_OAUTH_AUDIENCE = 'http://127.0.0.1:8000/admin'
+$env:BAG_ADMIN_OAUTH_REQUIRED_SCOPE = 'erp_mcp:admin'
+$env:BAG_ADMIN_OIDC_AUTHORIZATION_URL = 'http://127.0.0.1:8080/realms/erp-mcp-test/protocol/openid-connect/auth'
+$env:BAG_ADMIN_OIDC_TOKEN_URL = 'http://127.0.0.1:8080/realms/erp-mcp-test/protocol/openid-connect/token'
+$env:BAG_ADMIN_OIDC_CLIENT_ID = 'erp-mcp-admin-test'
+$env:BAG_ADMIN_OIDC_CLIENT_SECRET = '<test-only-client-secret-if-required>'
+$env:BAG_ADMIN_OIDC_REDIRECT_URI = 'http://127.0.0.1:8000/admin/callback'
+$env:BAG_ADMIN_STEP_UP_ACR_VALUES = 'urn:local-test:step-up'
+$env:BAG_ADMIN_SOURCE_ALLOWED_HOSTS = '127.0.0.1:8766'
+$env:BAG_SECRET_PROVIDER = 'env'
+$env:FAKE1C_USERNAME = 'synthetic-user'
+$env:FAKE1C_PASSWORD = 'synthetic-password'
+uv run --locked uvicorn business_ai_gateway.app:app --host 127.0.0.1 --port 8000
+```
+
+The example issuer, audience and ACR are placeholders; they only work if the test IdP
+is configured to issue them. The Admin API requires the distinct audience and scope;
+the browser flow also requires correct issuer, authorization/token endpoints, client
+and callback registration. The IdP must issue signed step-up `acr` and recent
+`auth_time` claims for sensitive platform-role changes. Keep client secrets in the
+PowerShell process or a private local secret store, never in committed files. Enable
+mutations only after the dedicated control API login role and exact test host allowlist
+are provisioned.
 Bootstrap one local test `PLATFORM_ADMIN` and one test `SOURCE_ADMIN` bound only to
 `fake1c-local`; create separate `ACCESS_ADMIN`, `PROFILE_ADMIN`, `AUDITOR`, and no-role
 users/groups if the IdP/operator permits. Keep production tenants and identities out.
