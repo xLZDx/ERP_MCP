@@ -3,8 +3,9 @@
 Branch: `feature/admin-control-center-implementation`
 Worktree: `D:\Repo\ERP_MCP-admin-control-center`
 Admin start SHA: `dff4c81d18e645fed64aed50d148ab8df9109f66`
-Integration baseline: `672fec4efae10949df0185c98e44b07b57ca45f3`
-Hosted candidate `da13f3af996df3801e0c12a6ba8b3c1c06e6a834` passed all three CI jobs in run `37504428513`. Current code adds the architecture-reviewed capability-registry drill import fix at `e96c871684fc8086ea9a65d7bdc46d0315753c6e`; final-SHA CI is pending.
+Integration baseline: `4b6f48826f491d751a5ae71922b02914053fe583`
+Final Admin SHA: `13b3c833e45553aefcadaaf6bf46b83d1d49fc47`.
+Hosted CI run `37507319003` passed all four jobs (test, Windows privacy, OData upstream, release-evidence) on the final merged tree. Earlier runs `37504428513` and `37504580327` also passed the restore and capability-drill corrections.
 
 ## Verified Admin scope
 
@@ -18,7 +19,7 @@ Hosted candidate `da13f3af996df3801e0c12a6ba8b3c1c06e6a834` passed all three CI 
 
 ## Latest observed full-suite run
 
-After integrating integration tip `672fec4` and fixing restore-drill migration execution, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 170.08s. The later capability-drill import-only change passes its smoke import and Ruff; final CI is exercising the exact latest tree. Six skips are environment-gated external evidence/integration fixtures; Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed on the merged tree. `pip-audit` found no known vulnerabilities.
+Before the final integration-only update, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 170.08s. The subsequent Windows run after integration added 1149 passed and 6 skipped but hit 6 local `STATUS_INSUFFICIENT_RESOURCES` subprocess failures; hosted CI for the exact final SHA passed its full test job. Six skips are environment-gated external evidence/integration fixtures. Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed. `pip-audit` found no known vulnerabilities.
 
 ## Review consensus
 
@@ -26,5 +27,5 @@ Local Luna-medium second-round reviewers: security confirmed the remediations; d
 
 ## Readiness
 
-Admin Control Center: **NOT READY pending green CI on the final pushed SHA.**
+Admin Control Center: **READY for merge review.**
 Production decision remains **NO-GO**. No main merge or production action is authorized or performed.

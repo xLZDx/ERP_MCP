@@ -6,12 +6,12 @@
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "672fec4efae10949df0185c98e44b07b57ca45f3",
-  "last_verified_hosted_run": 37501690166,
-  "last_verified_tested_merge": "c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9",
+  "last_verified_hosted_commit": "13b3c833e45553aefcadaaf6bf46b83d1d49fc47",
+  "last_verified_hosted_run": 37507319003,
+  "last_verified_tested_merge": "13b3c833e45553aefcadaaf6bf46b83d1d49fc47",
   "last_failed_hosted_commit": "160e3c912ced75abeb22e2628136f44b4fd101a9",
   "last_failed_hosted_run": 37496725289,
-  "hosted_status_at_snapshot": "FINANCIAL_PARENT_FOUR_JOBS_PASS_SETTLEMENT_AGING_PENDING",
+  "hosted_status_at_snapshot": "ADMIN_FINAL_FOUR_JOBS_PASS",
   "last_local_full_suite": {
     "passed": 769,
     "skipped": 18
