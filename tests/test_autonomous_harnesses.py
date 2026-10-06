@@ -15,9 +15,16 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_fault_and_rsv_harnesses_cover_recovery_without_1c():
-    assert run_faults()["passed"] is True
+    faults = run_faults()
+    assert faults["passed"] is True
     assert run_rsv()["passed"] is True
-    assert run_faults()["real_1c_called"] is False
+    assert faults["real_1c_called"] is False
+    assert faults["compose"]["status"] in {"VALID", "NOT_RUN"}
+    assert {case["dependency"] for case in faults["planned_cases"]} == {
+        "postgres", "redis", "jwks", "odata", "rsv"
+    }
+    assert all(case["status"] == "NOT_RUN" for case in faults["planned_cases"])
+    assert "explicit_NOT_RUN_for_unexecuted_dependency_outages" in faults["coverage"]
     assert run_docker_plan(ROOT, execute=False)["status"] == "NOT_RUN"
 
 

@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "batch_id": "SETTLEMENT_AGING_20261006",
-  "implementation_sha256": "ec5330d820a4a95fe6132d7ac6760470237843b6d4cd7a4ab3f5bc722be9395b",
+  "batch_id": "FAULT_INJECTION_20261006",
+  "implementation_sha256": "7abfa421c1bb703e51f411cd8221214ad0f7125e52c2c0544dfd586f8d812254",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "13b3c833e45553aefcadaaf6bf46b83d1d49fc47",
-  "last_verified_hosted_run": 37507319003,
-  "last_verified_tested_merge": "13b3c833e45553aefcadaaf6bf46b83d1d49fc47",
+  "last_verified_hosted_commit": "4b6f48826f491d751a5ae71922b02914053fe583",
+  "last_verified_hosted_run": 37504902497,
+  "last_verified_tested_merge": "fb05698785f0a464913420044ecc3e302c42e7d9",
   "last_failed_hosted_commit": "160e3c912ced75abeb22e2628136f44b4fd101a9",
   "last_failed_hosted_run": 37496725289,
-  "hosted_status_at_snapshot": "ADMIN_FINAL_FOUR_JOBS_PASS",
+  "hosted_status_at_snapshot": "SETTLEMENT_AGING_FOUR_JOBS_PASS_MERGE_PENDING",
   "last_local_full_suite": {
     "passed": 769,
     "skipped": 18

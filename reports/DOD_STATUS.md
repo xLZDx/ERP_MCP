@@ -1,7 +1,11 @@
 
 # Definition of Done status
 
-<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=ec5330d820a4a95fe6132d7ac6760470237843b6d4cd7a4ab3f5bc722be9395b -->
+<!-- ENGINEERING_CHECKPOINT=FAULT_INJECTION_20261006 ENGINEERING_IMPLEMENTATION=7abfa421c1bb703e51f411cd8221214ad0f7125e52c2c0544dfd586f8d812254 -->
+
+## Fault-injection runner — 2026-10-06
+
+Compose topology validation and explicit `NOT_RUN` case accounting are implemented and tested. This closes the local harness bookkeeping gap, not the deployment outage gate: real secret/OData/RSV/audit recovery and production 1C evidence remain open. Hosted CI run `37504902497` passed all four jobs; DoD remains PARTIAL and Production remains NO-GO.
 
 ## Internal settlement aging — 2026-10-06
 
