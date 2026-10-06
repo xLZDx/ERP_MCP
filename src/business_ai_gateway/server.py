@@ -20,6 +20,7 @@ from .compatibility import (
     require_acknowledged_metadata,
 )
 from .external_evidence import EvidenceRejected
+from .fixture_profiles import profile_provenance
 from .principal import current_principal
 from .runtime import Runtime
 from .semantic import (
@@ -666,6 +667,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -676,7 +678,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -774,6 +776,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -785,7 +788,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -929,6 +932,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -940,7 +944,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -1085,6 +1089,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
             )
             return {
                 "source_id": source_id,
@@ -1095,7 +1100,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": value,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": ["Rows are not a native accounting report reconciliation."],
+                **profile_provenance(
+                    profile, ["Rows are not a native accounting report reconciliation."]
+                ),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -1214,6 +1221,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
             )
             return {
                 "source_id": source_id, "company_id": str(parsed_company_id),
@@ -1222,7 +1230,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": value, "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -1302,6 +1310,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -1313,7 +1322,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -1405,6 +1414,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -1416,7 +1426,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -1547,6 +1557,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
             return {
@@ -1557,7 +1568,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                "warnings": [],
+                **profile_provenance(profile),
             }
         except Exception as exc:
             await runtime.audit.write(

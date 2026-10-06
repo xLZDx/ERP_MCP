@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import html
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 
 from starlette.applications import Starlette
@@ -121,6 +123,77 @@ def _rows(entity: str):
     return mapping[entity]
 
 
+_COND = re.compile(
+    r"^(?P<f>[\w\u0080-\uffff]+)\s+(?P<op>eq|ne|ge|gt|le|lt)\s+"
+    r"(?P<v>guid'[^']*'|datetime'[^']*'|'(?:[^']|'')*'|[^\s']+)$"
+)
+
+
+def _literal(text: str):
+    if text.startswith("guid'"):
+        return text[5:-1].lower()
+    if text.startswith("datetime'"):
+        return datetime.fromisoformat(text[9:-1])
+    if text.startswith("'"):
+        return text[1:-1].replace("''", "'")
+    if text in {"true", "false"}:
+        return text == "true"
+    return float(text)
+
+
+def _coerce(value, literal):
+    if isinstance(literal, datetime):
+        return datetime.fromisoformat(str(value))
+    if isinstance(literal, str):
+        return str(value).lower() if re.fullmatch(r"[0-9a-fA-F-]{36}", str(value)) else str(value)
+    if isinstance(literal, bool):
+        return bool(value)
+    return float(value)
+
+
+def apply_filter(rows, expression: str | None):
+    """Evaluate the conjunctive eq/ne/ge/gt/le/lt filters the gateway builds (read-only)."""
+    if not expression:
+        return rows
+    conditions = []
+    for part in re.split(r"\s+and\s+", expression.strip()):
+        match = _COND.match(part.strip())
+        if match is None:
+            raise ValueError("unsupported $filter")
+        conditions.append((match["f"], match["op"], _literal(match["v"])))
+    ops = {
+        "eq": lambda a, b: a == b, "ne": lambda a, b: a != b, "ge": lambda a, b: a >= b,
+        "gt": lambda a, b: a > b, "le": lambda a, b: a <= b, "lt": lambda a, b: a < b,
+    }
+    result = []
+    for row in rows:
+        if all(
+            field in row and row[field] is not None
+            and ops[op](_coerce(row[field], lit), lit)
+            for field, op, lit in conditions
+        ):
+            result.append(row)
+    return result
+
+
+def apply_query(rows, params):
+    rows = apply_filter(rows, params.get("$filter"))
+    order = params.get("$orderby")
+    if order:
+        for item in reversed([x.strip() for x in order.split(",") if x.strip()]):
+            field, _, direction = item.partition(" ")
+            rows = sorted(rows, key=lambda r, f=field: str(r.get(f, "")),
+                          reverse=direction.strip().lower() == "desc")
+    skip = int(params.get("$skip", 0))
+    top = int(params.get("$top", len(rows)))
+    rows = rows[max(0, skip): max(0, skip) + max(0, top)]
+    select = params.get("$select")
+    if select:
+        keep = [x.strip() for x in select.split(",") if x.strip()]
+        rows = [{k: r[k] for k in keep if k in r} for r in rows]
+    return rows
+
+
 def _atom(rows) -> bytes:
     atom = "http://www.w3.org/2005/Atom"
     metadata_ns = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
@@ -156,8 +229,10 @@ def create_app(profile: str = "json") -> Starlette:
         except KeyError:
             return JSONResponse({"error": "unknown entity"}, status_code=404)
 
-        top = int(request.query_params.get("$top", len(rows)))
-        rows = rows[: max(0, top)]
+        try:
+            rows = apply_query(rows, request.query_params)
+        except ValueError:
+            return JSONResponse({"error": "unsupported query"}, status_code=400)
         accept = request.headers.get("accept", "")
 
         if profile == "atom":
@@ -175,3 +250,26 @@ def create_app(profile: str = "json") -> Starlette:
             Route("/odata/standard.odata/{entity}", entity, methods=["GET"]),
         ]
     )
+
+
+# Registers that expose read-only virtual tables to the fake sidecar (capability evidence is
+# derived from this table; the plain Fake1C OData app does not serve virtual tables itself).
+VIRTUAL_TABLES: dict[str, list[str]] = {
+    "AccumulationRegister_InventoryBalances": ["Balance"],
+    "AccumulationRegister_BankBalances": ["Balance"],
+    "AccumulationRegister_ReceivableBalances": ["Balance"],
+    "AccumulationRegister_PayableBalances": ["Balance"],
+}
+_BALANCE_SOURCES = {
+    "AccumulationRegister_InventoryBalances": "inventory_balances",
+    "AccumulationRegister_BankBalances": "bank_balances",
+    "AccumulationRegister_ReceivableBalances": "receivable_balances",
+    "AccumulationRegister_PayableBalances": "payable_balances",
+}
+
+
+def virtual_table_rows(entity_set: str, method: str, args: dict) -> list[dict]:
+    """Read-only virtual-table results from the seed; LookupError => CAPABILITY_UNSUPPORTED."""
+    if method == "Balance" and entity_set in _BALANCE_SOURCES:
+        return apply_filter(SEED[_BALANCE_SOURCES[entity_set]], args.get("Condition"))
+    raise LookupError(f"{entity_set}/{method}")

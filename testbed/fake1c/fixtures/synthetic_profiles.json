@@ -1,0 +1,131 @@
+{
+  "fixture_id": "erp-mcp-synthetic-v1-profiles",
+  "review": {
+    "kind": "SYNTHETIC_FIXTURE",
+    "notes": "Reviewed against testbed/fake1c metadata and seed; L1 only, never native reconciliation, never a bag.semantic_profiles row."
+  },
+  "schema_version": 1,
+  "sources": {
+    "fake1c-local": {
+      "companies": {
+        "00000000-0000-0000-0000-000000000001": {
+          "concepts": {
+            "cash.movements": {
+              "amount_encoding": "positive_magnitude_by_record_type",
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_CashMovements",
+              "output_fields": {
+                "amount": "Сумма",
+                "cash_account_ref": "СчетДенежныхСредств_Key",
+                "currency_ref": "Валюта_Key",
+                "line_number": "LineNumber",
+                "period": "Period",
+                "record_type": "RecordType",
+                "recorder_ref": "Recorder"
+              },
+              "record_type_values": {
+                "expense": [
+                  "Expense"
+                ],
+                "receipt": [
+                  "Receipt"
+                ]
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            },
+            "inventory.movements": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_InventoryMovements",
+              "order_by": "Period",
+              "output_fields": {
+                "item_ref": "Номенклатура_Key",
+                "period": "Period",
+                "quantity": "Количество",
+                "record_type": "RecordType",
+                "recorder_ref": "Recorder_Key",
+                "warehouse_ref": "Склад_Key"
+              },
+              "quantity_encoding": "positive_magnitude_by_record_type",
+              "record_type_values": {
+                "expense": [
+                  "Expense"
+                ],
+                "receipt": [
+                  "Receipt"
+                ]
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            }
+          }
+        },
+        "00000000-0000-0000-0000-000000000002": {
+          "concepts": {
+            "cash.movements": {
+              "amount_encoding": "positive_magnitude_by_record_type",
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_CashMovements",
+              "output_fields": {
+                "amount": "Сумма",
+                "cash_account_ref": "СчетДенежныхСредств_Key",
+                "currency_ref": "Валюта_Key",
+                "line_number": "LineNumber",
+                "period": "Period",
+                "record_type": "RecordType",
+                "recorder_ref": "Recorder"
+              },
+              "record_type_values": {
+                "expense": [
+                  "Expense"
+                ],
+                "receipt": [
+                  "Receipt"
+                ]
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            },
+            "inventory.movements": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccumulationRegister_InventoryMovements",
+              "order_by": "Period",
+              "output_fields": {
+                "item_ref": "Номенклатура_Key",
+                "period": "Period",
+                "quantity": "Количество",
+                "record_type": "RecordType",
+                "recorder_ref": "Recorder_Key",
+                "warehouse_ref": "Склад_Key"
+              },
+              "quantity_encoding": "positive_magnitude_by_record_type",
+              "record_type_values": {
+                "expense": [
+                  "Expense"
+                ],
+                "receipt": [
+                  "Receipt"
+                ]
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "UTC"
+            }
+          }
+        }
+      },
+      "metadata_fingerprint": "83edc5b67998546d1ca29140a6cd54f2b7e3570c08974edf7a698d63949674b7"
+    }
+  }
+}
