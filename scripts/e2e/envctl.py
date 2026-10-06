@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
-import uuid
+import time
 from pathlib import Path
 
 import asyncpg
@@ -23,7 +25,36 @@ ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")
 
 HOST = "127.0.0.1"
-PORTS = {"postgres": 15432, "redis": 16379, "fake1c": 18766, "idp": 18080, "gateway": 18000}
+# Default topology. ONE variable set relocates the whole environment so that a second copy can
+# run next to the default one (never sharing ports, compose project, volume or network):
+#   E2E_PORT_OFFSET     integer added to every default port (default 0)
+#   E2E_PROJECT_SUFFIX  appended to the compose project name, e.g. "-rem" (default "")
+# When neither variable is set the values recorded in E2E_DIR/env.json (if any) are used.
+BASE_PORTS = {"postgres": 15432, "redis": 16379, "fake1c": 18766, "sidecar": 18767,
+              "idp": 18080, "gateway": 18000}
+
+
+def _topology() -> tuple[int, str]:
+    offset_raw = os.environ.get("E2E_PORT_OFFSET")
+    suffix_raw = os.environ.get("E2E_PROJECT_SUFFIX")
+    recorded: dict = {}
+    if offset_raw is None and suffix_raw is None:
+        try:
+            recorded = json.loads((E2E_DIR / "env.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded = {}
+    offset = int(offset_raw if offset_raw is not None else recorded.get("port_offset", 0))
+    suffix = suffix_raw if suffix_raw is not None else recorded.get("project_suffix", "")
+    if not 0 <= offset <= 65535 - max(BASE_PORTS.values()):
+        raise SystemExit("E2E_PORT_OFFSET out of range")
+    if not re.fullmatch(r"(-[a-z0-9]+)*", suffix):
+        raise SystemExit("E2E_PROJECT_SUFFIX must look like -name (lowercase letters/digits)")
+    return offset, suffix
+
+
+PORT_OFFSET, PROJECT_SUFFIX = _topology()
+PROJECT = "erpmcp-e2e" + PROJECT_SUFFIX
+PORTS = {name: port + PORT_OFFSET for name, port in BASE_PORTS.items()}
 REALM = "erp-mcp-test"
 ISSUER = f"http://{HOST}:{PORTS['idp']}/realms/{REALM}"
 MCP_AUDIENCE = f"http://{HOST}:{PORTS['gateway']}/mcp"
@@ -55,13 +86,28 @@ IDENTITIES = {
 }
 
 
+def _replace(source: Path, target: Path) -> None:
+    """os.replace with a bounded retry (transient WinError 5/32 from short-lived handles)."""
+    for attempt in range(10):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == 9:
+                raise
+            time.sleep(0.2)
+
+
 def _write(path: Path, text: str) -> None:
+    """Atomic write: a reader never sees a half-written file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(text.encode("utf-8"))
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(text.encode("utf-8"))
     try:
-        os.chmod(path, 0o600)
+        os.chmod(temporary, 0o600)
     except OSError:
         pass
+    _replace(temporary, path)
 
 
 def _load(name: str) -> dict:
@@ -74,53 +120,60 @@ def _token() -> str:
 
 def init_secrets() -> None:
     """Generate secrets/credentials/IdP config once; never regenerate existing files."""
-    if not (E2E_DIR / "secrets.json").exists():
-        _write(E2E_DIR / "secrets.json", json.dumps({
-            "pg_owner_password": _token(), "pg_app_password": _token(),
-            "pg_admin_password": _token(), "pg_control_password": _token(),
-            "redis_password": _token(), "fake1c_username": "e2e-" + secrets.token_hex(4),
-            "fake1c_password": _token(), "admin_client_secret": _token(),
-            "headless_client_secret": _token(), "idp_cookie_secret": _token(),
-        }, indent=2))
+    existing = _load("secrets.json") if (E2E_DIR / "secrets.json").exists() else {}
+    wanted = {
+        "pg_owner_password": _token, "pg_app_password": _token,
+        "pg_admin_password": _token, "pg_control_password": _token,
+        "redis_password": _token, "fake1c_username": lambda: "e2e-" + secrets.token_hex(4),
+        "fake1c_password": _token, "admin_client_secret": _token,
+        "headless_client_secret": _token, "idp_cookie_secret": _token,
+        "sidecar_token": _token, "metrics_token": _token,  # 48 hex chars = 48 bytes (>= 32)
+    }
+    missing = {key: make() for key, make in wanted.items() if key not in existing}
+    if missing or not existing:
+        _write(E2E_DIR / "secrets.json", json.dumps({**existing, **missing}, indent=2))
     if not (E2E_DIR / "credentials.json").exists():
         _write(E2E_DIR / "credentials.json", json.dumps({
             "users": {n: {"sub": n, "username": n, "password": _token()} for n in IDENTITIES},
         }, indent=2))
     sec = _load("secrets.json")
-    if not (E2E_DIR / "idp-config.json").exists():
-        _write(E2E_DIR / "idp-config.json", json.dumps({
-            "issuer": ISSUER, "host": HOST, "port": PORTS["idp"],
-            "key_path": str(E2E_DIR / "idp-signing-key.pem"),
-            "credentials_path": str(E2E_DIR / "credentials.json"),
-            "cookie_secret": sec["idp_cookie_secret"],
-            "step_up_acr": STEP_UP_ACR, "basic_acr": BASIC_ACR,
-            "access_token_ttl": 3600, "id_token_ttl": 3600, "refresh_ttl": 1800,
-            "sso_session_ttl": 28800,
-            "audiences": {"data": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE},
-            "groups": {n: g for n, g in IDENTITIES.items()},
-            "clients": [
-                {"client_id": ADMIN_CLIENT, "secret": sec["admin_client_secret"],
-                 "redirect_uris": [f"http://{HOST}:{PORTS['gateway']}/admin/callback"],
-                 "post_logout_redirect_uris": [f"http://{HOST}:{PORTS['gateway']}/admin/"],
-                 "audiences": [ADMIN_AUDIENCE],
-                 "scopes": ["openid", "profile", "erp_mcp:admin"],
-                 "grant_types": ["authorization_code", "refresh_token"]},
-                {"client_id": DATA_CLIENT, "secret": None,
-                 "redirect_uris": [f"http://{HOST}:{PORTS['idp']}/e2e/callback"],
-                 "post_logout_redirect_uris": [f"http://{HOST}:{PORTS['idp']}/e2e/callback"],
-                 "audiences": [MCP_AUDIENCE],
-                 "scopes": ["openid", "profile", "onec:read"],
-                 "grant_types": ["authorization_code", "refresh_token"]},
-                {"client_id": HEADLESS_CLIENT, "secret": sec["headless_client_secret"],
-                 "redirect_uris": [], "post_logout_redirect_uris": [],
-                 "audiences": [MCP_AUDIENCE, ADMIN_AUDIENCE],
-                 "scopes": ["openid", "profile", "onec:read", "erp_mcp:admin"],
-                 "grant_types": ["password"]},
-            ],
-        }, indent=2))
+    # Regenerated on every run (atomically): a stale or hand-edited config (for example one left
+    # behind by an interrupted U08) must never survive an up/reset.
+    _write(E2E_DIR / "idp-config.json", json.dumps({
+        "issuer": ISSUER, "host": HOST, "port": PORTS["idp"],
+        "key_path": str(E2E_DIR / "idp-signing-key.pem"),
+        "credentials_path": str(E2E_DIR / "credentials.json"),
+        "cookie_secret": sec["idp_cookie_secret"],
+        "step_up_acr": STEP_UP_ACR, "basic_acr": BASIC_ACR,
+        "access_token_ttl": 3600, "id_token_ttl": 3600, "refresh_ttl": 1800,
+        "sso_session_ttl": 28800,
+        "audiences": {"data": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE},
+        "groups": {n: g for n, g in IDENTITIES.items()},
+        "clients": [
+            {"client_id": ADMIN_CLIENT, "secret": sec["admin_client_secret"],
+             "redirect_uris": [f"http://{HOST}:{PORTS['gateway']}/admin/callback"],
+             "post_logout_redirect_uris": [f"http://{HOST}:{PORTS['gateway']}/admin/"],
+             "audiences": [ADMIN_AUDIENCE],
+             "scopes": ["openid", "profile", "erp_mcp:admin"],
+             "grant_types": ["authorization_code", "refresh_token"]},
+            {"client_id": DATA_CLIENT, "secret": None,
+             "redirect_uris": [f"http://{HOST}:{PORTS['idp']}/e2e/callback"],
+             "post_logout_redirect_uris": [f"http://{HOST}:{PORTS['idp']}/e2e/callback"],
+             "audiences": [MCP_AUDIENCE],
+             "scopes": ["openid", "profile", "onec:read"],
+             "grant_types": ["authorization_code", "refresh_token"]},
+            {"client_id": HEADLESS_CLIENT, "secret": sec["headless_client_secret"],
+             "redirect_uris": [], "post_logout_redirect_uris": [],
+             "audiences": [MCP_AUDIENCE, ADMIN_AUDIENCE],
+             "scopes": ["openid", "profile", "onec:read", "erp_mcp:admin"],
+             "grant_types": ["password"]},
+        ],
+    }, indent=2))
     _write(E2E_DIR / "compose.env", "\n".join([
         f"E2E_PG_OWNER_PASSWORD={sec['pg_owner_password']}",
-        f"E2E_REDIS_PASSWORD={sec['redis_password']}", ""]))
+        f"E2E_REDIS_PASSWORD={sec['redis_password']}",
+        f"E2E_PROJECT_NAME={PROJECT}", f"E2E_PG_PORT={PORTS['postgres']}",
+        f"E2E_REDIS_PORT={PORTS['redis']}", ""]))
 
 
 def dsn(role: str) -> str:
@@ -138,11 +191,28 @@ def redis_url() -> str:
     return f"redis://:{_load('secrets.json')['redis_password']}@{HOST}:{PORTS['redis']}/0"
 
 
+FIXTURE_FILE = E2E_DIR / "synthetic_profiles.json"
+
+
+def render_fixture() -> bytes:
+    """Reviewed synthetic fixture profiles for THIS environment's source id (L1, test-only)."""
+    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT / "src"))
+    from scripts import synthetic_fixture_profiles as generator
+
+    return generator.render(SOURCE_ID)
+
+
+def fixture_sha256() -> str:
+    return hashlib.sha256(render_fixture()).hexdigest()
+
+
 def env_vars() -> dict[str, str]:
     sec = _load("secrets.json")
     gw = PORTS["gateway"]
     return {
-        "BAG_ENVIRONMENT": "development",
+        # `test` is required by the reviewed synthetic fixture profile (hard-denied in production).
+        "BAG_ENVIRONMENT": "test",
         "BAG_PUBLIC_MCP_URL": MCP_AUDIENCE,
         "BAG_DATABASE_URL": dsn("app"),
         "BAG_ADMIN_DATABASE_URL": dsn("admin"),
@@ -167,6 +237,12 @@ def env_vars() -> dict[str, str]:
         "BAG_ADMIN_SOURCE_ALLOWED_CIDRS": "127.0.0.1/32",
         "BAG_SECRET_PROVIDER": "env",
         "BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED": "false",
+        "BAG_SYNTHETIC_FIXTURE_PROFILES_FILE": str(FIXTURE_FILE),
+        "BAG_SYNTHETIC_FIXTURE_PROFILES_SHA256": fixture_sha256(),
+        "BAG_ODATA_SIDECAR_URL": f"http://{HOST}:{PORTS['sidecar']}",
+        "BAG_ODATA_SIDECAR_TOKEN": sec["sidecar_token"],
+        "BAG_METRICS_TOKEN": sec["metrics_token"],
+        "FAKE_SIDECAR_TOKEN": sec["sidecar_token"],
         "FAKE1C_USERNAME": sec["fake1c_username"],
         "FAKE1C_PASSWORD": sec["fake1c_password"],
         "NO_PROXY": f"{HOST},localhost",
@@ -175,7 +251,12 @@ def env_vars() -> dict[str, str]:
 
 
 def write_env(seed: str) -> None:
-    """Write env.json (non-secret topology) and env.ps1 (secret-bearing, for consumers)."""
+    """Write env.ps1 (secret-bearing) and env.pending.json; env.json is the READY marker.
+
+    env.json is only created by `commit-ready` after seeding and health checks succeeded, so a
+    half-started environment is never mistaken for a usable one.
+    """
+    _write(FIXTURE_FILE, render_fixture().decode("utf-8"))
     lines = ["# Generated by scripts/e2e/envctl.py - contains secrets, never commit."]
     for key, value in env_vars().items():
         lines.append(f"$env:{key} = '{value}'")
@@ -184,8 +265,10 @@ def write_env(seed: str) -> None:
     lines.append(f"$env:E2E_DIR = '{E2E_DIR}'")
     _write(E2E_DIR / "env.ps1", "\r\n".join(lines) + "\r\n")
     ports = dict(PORTS)
-    _write(E2E_DIR / "env.json", json.dumps({
-        "project": "erpmcp-e2e", "host": HOST, "ports": ports, "seed_mode": seed,
+    _write(E2E_DIR / "env.pending.json", json.dumps({
+        "project": PROJECT, "project_suffix": PROJECT_SUFFIX, "port_offset": PORT_OFFSET,
+        "host": HOST, "ports": ports, "seed_mode": seed,
+        "environment": "test", "fixture_profiles": True,
         "issuer": ISSUER, "realm": REALM,
         "idp": {"authorization_endpoint": f"{ISSUER}/protocol/openid-connect/auth",
                 "token_endpoint": f"{ISSUER}/protocol/openid-connect/token",
@@ -200,11 +283,26 @@ def write_env(seed: str) -> None:
         "urls": {"gateway": f"http://{HOST}:{PORTS['gateway']}",
                  "mcp": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE + "/",
                  "fake1c": f"http://{HOST}:{PORTS['fake1c']}/odata/standard.odata",
+                 "fake1c_root": f"http://{HOST}:{PORTS['fake1c']}",
+                 "sidecar": f"http://{HOST}:{PORTS['sidecar']}",
                  "idp": f"http://{HOST}:{PORTS['idp']}"},
         "identities": {n: {"sub": n, "groups": g} for n, g in IDENTITIES.items()},
         "source_id": SOURCE_ID, "companies": {"one": COMPANY_ONE, "two": COMPANY_TWO},
         "schema_version": 14,
     }, indent=2))
+
+
+def commit_ready() -> None:
+    """Publish env.pending.json as env.json (the ready marker) atomically."""
+    pending = E2E_DIR / "env.pending.json"
+    if not pending.exists():
+        raise SystemExit("nothing to commit: run write-env first")
+    _replace(pending, E2E_DIR / "env.json")
+    print("environment marked ready")
+
+
+def mark_not_ready() -> None:
+    (E2E_DIR / "env.json").unlink(missing_ok=True)
 
 
 async def _owner():
@@ -341,7 +439,9 @@ async def seed(mode: str) -> None:
                "Fake1C E2E synthetic source", "--base-url",
                f"http://{HOST}:{PORTS['fake1c']}/odata/standard.odata",
                "--username-secret", "FAKE1C_USERNAME", "--password-secret", "FAKE1C_PASSWORD",
-               "--allow", "Catalog_*", "Document_*", "AccumulationRegister_*")
+               "--tags", "synthetic-fixture",
+               "--allow", "Catalog_*", "Document_*", "AccumulationRegister_*",
+               "AccountingRegister_*")
     _admin_cli("company-upsert", "--company-id", COMPANY_ONE, "--source-id", SOURCE_ID,
                "--external-ref", COMPANY_ONE, "--display-name", "Synthetic organization one",
                "--default")
@@ -374,7 +474,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("init-secrets", "ensure-roles", "drop-schema", "schema-version", "flush-redis",
-                 "verify-schema", "status-json"):
+                 "verify-schema", "status-json", "commit-ready", "mark-not-ready"):
         sub.add_parser(name)
     w = sub.add_parser("write-env")
     w.add_argument("--seed", choices=SEED_MODES, required=True)
@@ -388,6 +488,10 @@ def main() -> None:
         init_secrets()
     elif args.cmd == "write-env":
         write_env(args.seed)
+    elif args.cmd == "commit-ready":
+        commit_ready()
+    elif args.cmd == "mark-not-ready":
+        mark_not_ready()
     elif args.cmd == "ensure-roles":
         asyncio.run(ensure_roles())
     elif args.cmd == "drop-schema":
@@ -409,5 +513,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    _ = uuid  # keep import for deterministic id helpers used by tests
     main()

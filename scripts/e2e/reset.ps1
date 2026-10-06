@@ -27,4 +27,5 @@ Import-E2eEnv
 try { Invoke-Envctl @('seed', '--mode', $Seed) | Out-Null } finally { Clear-E2eSecretEnv }
 foreach ($name in $script:ProcessComponents) { Start-E2eComponent $name }
 foreach ($name in $script:ProcessComponents) { Wait-E2eComponent $name }
+Invoke-Envctl @('commit-ready') | Out-Null
 Write-Step ('reset complete, seed mode ' + $Seed)

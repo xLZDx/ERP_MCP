@@ -9,7 +9,7 @@ param([switch]$Purge)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
-foreach ($name in 'gateway', 'idp', 'fake1c') { Stop-E2eComponent $name }
+foreach ($name in 'gateway', 'idp', 'sidecar', 'fake1c') { Stop-E2eComponent $name }
 if (Test-Path (Join-Path $script:E2eDir 'compose.env')) {
     $args1 = @('down', '--remove-orphans')
     if ($Purge) { $args1 += '--volumes' }

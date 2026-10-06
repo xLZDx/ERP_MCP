@@ -55,7 +55,7 @@ foreach ($name in $components.Keys) {
     if ($components[$name].bind -like 'EXPOSED*') { $components[$name].healthy = $false }
 }
 $healthy = -not ($components.Values | Where-Object { -not $_.healthy })
-$result = [ordered]@{ healthy = [bool]$healthy; project = 'erpmcp-e2e'; seed_mode = $info.seed_mode
+$result = [ordered]@{ healthy = [bool]$healthy; project = $script:ProjectName; seed_mode = $info.seed_mode
     components = $components }
 if ($Json) {
     $result | ConvertTo-Json -Depth 6
@@ -67,6 +67,7 @@ if ($Json) {
         if ($c.healthy) { $state = 'ok' }
         $extra = ''
         if ($c.Contains('version')) { $extra += ' version=' + $c.version }
+        if ($c.Contains('pid_match')) { $extra += ' pid=' + $c.pid + ' pid_match=' + $c.pid_match }
         if ($c.Contains('schema_version')) { $extra += ' schema=' + $c.schema_version }
         Write-Host ('{0,-9} {1,-9} port={2} {3}{4}' -f $name, $state, $c.port, $c.bind, $extra)
     }

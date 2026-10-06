@@ -289,15 +289,19 @@ def run_fault(component: str, action: str, *, timeout: int = 300) -> None:
 
 @contextmanager
 def outage(component: str):
-    """Stop `component`; ALWAYS start it again, even when the body raised."""
-    run_fault(component, "stop")
+    """Stop `component`; ALWAYS start it again, even when the stop or the body raised."""
     try:
+        run_fault(component, "stop")
         yield
     finally:
         try:
             run_fault(component, "start")
-        except RuntimeError:
-            run_fault(component, "start")  # one retry: a half-started component is worse
+        except (RuntimeError, subprocess.TimeoutExpired):
+            try:  # one retry: a half-started component is worse than a slow one
+                run_fault(component, "start")
+            except (RuntimeError, subprocess.TimeoutExpired) as second:
+                raise RuntimeError(f"{component} could NOT be restarted after the outage; "
+                                   "the environment is degraded") from second
 
 
 def wait_until(predicate, *, timeout: float, interval: float = 1.0, what: str = "condition"):
