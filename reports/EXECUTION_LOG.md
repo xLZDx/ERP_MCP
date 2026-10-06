@@ -1,5 +1,11 @@
 # Autonomous engineering execution log
 
+<!-- ENGINEERING_CHECKPOINT=RSV_SECRET_PRIVACY_20261006 ENGINEERING_IMPLEMENTATION=b0e7cc82e2dab58e96f23fc2d9e09f623948f36e4854a6536e9c4f542f7babb4 -->
+
+## Protected RSV secret files and scoped diagnostic privacy — 2026-10-06
+
+P6-SEC-1 / D4 privacy: secret-backed configs use a verified protected NTFS DACL (runtime identity/SYSTEM/Administrators), restricted inherited file ACL and exclusive-create; POSIX owner/0700/0600. Failure prevents process launch; cleanup errors are sanitized. Raw bridge stderr is discarded, scoped SDK diagnostics/exception/path/structured-extra fields are sanitized; concurrent non-RSV logs remain unchanged. 29 focused contracts PASS on this Windows host, including independent native file ACL inheritance check. New mandatory windows-rsv-privacy CI job added; cross-platform evidence runner keeps that platform proof separate, no skipped test is treated as PASS. Upstream bridge/COM/protocol code unchanged. Hosted 5d49ec2 / run 37462582061 BOTH parent jobs PASS; current full suite 349 passed, 10 skipped; Ruff/Bandit/documentation gates PASS; new 3-job CI verification pending. Native COM restart, stdout pre-parser memory bound, DAD/Ferma/deployment/release assembly remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=CAPABILITY_REGISTRY_20261006 ENGINEERING_IMPLEMENTATION=2d34eb224df1c235c1a0aaa3e4755c2922c6d06bba407150d9df3542d63cc37e -->
 
 ## Persisted capability registry diagnostics — 2026-10-06

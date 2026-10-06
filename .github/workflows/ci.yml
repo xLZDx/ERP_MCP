@@ -9,6 +9,18 @@ permissions:
   contents: read
 
 jobs:
+  windows-rsv-privacy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: uv sync --extra dev --locked
+      - name: Verify actual Windows DACL, inherited file permissions and sanitized SDK stderr/logs
+        run: uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py
+
   odata-upstream:
     runs-on: ubuntu-latest
     steps:

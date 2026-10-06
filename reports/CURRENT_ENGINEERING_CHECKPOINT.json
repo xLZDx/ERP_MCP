@@ -1,21 +1,20 @@
 {
   "schema_version": 1,
-  "batch_id": "CAPABILITY_REGISTRY_20261006",
-  "implementation_sha256": "2d34eb224df1c235c1a0aaa3e4755c2922c6d06bba407150d9df3542d63cc37e",
+  "batch_id": "RSV_SECRET_PRIVACY_20261006",
+  "implementation_sha256": "b0e7cc82e2dab58e96f23fc2d9e09f623948f36e4854a6536e9c4f542f7babb4",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "e7898f2166f79aaf829618aab93429d7d3004590",
-  "last_verified_hosted_run": 37461088241,
-  "hosted_status_at_snapshot": "PARENT_BOTH_JOBS_PASS_NEW_CLI_AWAITING_CI",
+  "last_verified_hosted_commit": "5d49ec285c63b354979ed5f93afa662f6ec458f0",
+  "last_verified_hosted_run": 37462582061,
+  "hosted_status_at_snapshot": "PARENT_BOTH_JOBS_PASS_NEW_WINDOWS_JOB_AWAITING_CI",
   "last_local_full_suite": {
-    "passed": 341,
+    "passed": 349,
     "skipped": 10
   },
   "focused_tests": {
-    "capability_cli": 22,
-    "actual_postgres": 1
+    "rsv_bridge_and_privacy": 29
   },
-  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS_PG_SEPARATELY_PASS"
+  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS_WINDOWS_ACL_ACTIVE"
 }

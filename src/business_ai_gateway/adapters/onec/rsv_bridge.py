@@ -15,6 +15,8 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from ...models import Source
+from ...secret_files import SecretDirectoryUnavailable, protect_secret_directory
+from .rsv_privacy import private_rsv_operation, quiet_stdio_client
 
 
 class RSVBridgeUnavailable(RuntimeError):
@@ -57,7 +59,7 @@ class RSVDataBridgeClient:
         self.executable = str(Path(executable).resolve())
         self.config_root = Path(config_root).resolve()
         self._session_factory = session_factory
-        self._stdio_factory = stdio_factory
+        self._stdio_factory = quiet_stdio_client if stdio_factory is stdio_client else stdio_factory
         self.timeout_seconds = timeout_seconds
         self.expected_executable_sha256 = (
             expected_executable_sha256.lower() if expected_executable_sha256 else None
@@ -76,6 +78,13 @@ class RSVDataBridgeClient:
         ):
             raise RSVBridgeUnavailable("configured RSV bridge executable digest mismatch")
         return digest
+
+    @staticmethod
+    def _cleanup_temporary(temporary) -> None:
+        try:
+            temporary.cleanup()
+        except OSError:
+            raise RSVBridgeUnavailable("temporary bridge config cleanup failed") from None
 
     @staticmethod
     def _metadata_arguments(operation: str, arguments: dict[str, Any] | None) -> dict[str, Any]:
@@ -129,10 +138,14 @@ class RSVDataBridgeClient:
                 raise RSVBridgeUnavailable("secret-bound bridge config is invalid") from None
             temporary = tempfile.TemporaryDirectory(prefix="erp-mcp-rsv-")
             config = Path(temporary.name) / f"{source.id}.json"
-            config.write_text(
-                json.dumps(parsed_config, ensure_ascii=False, separators=(",", ":")),
-                encoding="utf-8",
-            )
+            try:
+                protect_secret_directory(Path(temporary.name))
+                descriptor = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+                    output.write(json.dumps(parsed_config, ensure_ascii=False, separators=(",", ":")))
+            except (SecretDirectoryUnavailable, OSError, TypeError, ValueError):
+                self._cleanup_temporary(temporary)
+                raise RSVBridgeUnavailable("secret-bound bridge config could not be protected") from None
         else:
             config = (self.config_root / f"{source.id}.json").resolve()
             if config.parent != self.config_root:
@@ -149,6 +162,7 @@ class RSVDataBridgeClient:
         )
         return parameters, executable_sha256, temporary
 
+    @private_rsv_operation
     async def health(self, source: Source) -> dict[str, Any]:
         temporary = None
         try:
@@ -183,8 +197,9 @@ class RSVDataBridgeClient:
             ) from None
         finally:
             if temporary is not None:
-                temporary.cleanup()
+                self._cleanup_temporary(temporary)
 
+    @private_rsv_operation
     async def metadata(
         self,
         source: Source,
@@ -253,4 +268,4 @@ class RSVDataBridgeClient:
             ) from None
         finally:
             if temporary is not None:
-                temporary.cleanup()
+                self._cleanup_temporary(temporary)
