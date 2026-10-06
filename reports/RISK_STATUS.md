@@ -2,6 +2,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=PRIVATE_EVIDENCE_STORE_20261006 ENGINEERING_IMPLEMENTATION=29e6051f77bd1a7c7dcfd770209a6cf1f1552babf190a301839969d51a74779d -->
+
+## Private normalized evidence storage — 2026-10-06
+
+EVID-1/D11/D4: private append-only local normalized evidence provider implements new outside-Git protected stores, opaque references, exclusive file creation, fsync and final manifest commit marker. Existing approved bounded CSV parser reused for all 14 classes; native formats/URLs/decompression NOT enabled. Reopen binds independently pinned manifest/document SHA, exact source/company/config/profile and retention approval. Actual disk/NTFS permissions, Everyone file-ACL widening rejection, owned junction rejection, hardlink/traversal/tamper/oversize/orphan/no-overwrite controls PASS. Shared permission verifier is read-only on existing objects; RSV ACL behavior retained. Internal reader requires OAuth scope/current company ACL/rate/durable access receipt before filesystem; completion/error audit and bounded deadline; background timed-out thread remains read-only. 91 focused store/OS/evidence tests PASS (45 store, 8 RSV privacy, 38 normalized evidence); runtime/testbed Bandit and Ruff PASS. Parent 98dabc3 CI 37490159346 FOUR jobs PASS (tested merge ae49662738357246a88f26e4ce7c82539f1f932f). Full current suite 607 passed/17 skipped; combined Windows privacy/bridge/wire/store suite 81 passed/zero skips; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted verification pending. Receipt index/operator ingest/runtime wiring, production volume identity/retention/DR, native parsers and frozen DAD/Ferma/native/fault/deployment remain OPEN; no WORM/PITR/native acceptance inferred. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=DAD_SMALL_NORMALIZED_RULES_20261006 ENGINEERING_IMPLEMENTATION=ace9edf0e6a05c37684ffe5bbf65d6f12d41b4ad4123deabedfe3b708bbf123b -->
 
 ## DAD six internal checks — 2026-10-06

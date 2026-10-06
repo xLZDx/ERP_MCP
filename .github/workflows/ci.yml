@@ -20,7 +20,7 @@ jobs:
       - run: uv sync --extra dev --locked
       - name: Verify actual Windows DACL, inherited file permissions and sanitized SDK stderr/logs
         run: |
-          uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py tests/test_rsv_wire_limits.py --junitxml="$env:RUNNER_TEMP/windows-rsv.xml"
+          uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py tests/test_rsv_wire_limits.py tests/test_private_evidence_store.py --junitxml="$env:RUNNER_TEMP/windows-rsv.xml"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rsvTestCommit = git rev-parse HEAD
           uv run --locked python -m scripts.summarize_test_results --junit "$env:RUNNER_TEMP/windows-rsv.xml" --suite-id windows-rsv-privacy --commit $rsvTestCommit --exit-code 0 --output "$env:RUNNER_TEMP/windows-rsv-privacy.summary.json"

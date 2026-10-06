@@ -78,7 +78,6 @@ def _protect_windows(path: Path) -> None:
     advapi, kernel = _windows_libraries()
     sid = _current_sid(advapi, kernel)
     descriptor = ctypes.c_void_p()
-    observed = ctypes.c_void_p()
     try:
         sddl = f"D:P(A;OICI;FA;;;{sid})(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
         if not advapi.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, ctypes.byref(descriptor), None):
@@ -90,11 +89,25 @@ def _protect_windows(path: Path) -> None:
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
         if advapi.SetNamedSecurityInfoW(str(path), 1, 0x80000004, None, None, dacl, None):
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
+    finally:
+        if descriptor.value:
+            kernel.LocalFree(descriptor)
+    _verify_windows(path)
+
+
+def _verify_windows(path: Path, *, directory: bool = True) -> None:
+    """Read permissions only; never repair/reset an existing store's ACL implicitly."""
+    from ctypes import wintypes
+
+    advapi, kernel = _windows_libraries()
+    sid = _current_sid(advapi, kernel)
+    observed, dacl = ctypes.c_void_p(), ctypes.c_void_p()
+    try:
         if advapi.GetNamedSecurityInfoW(str(path), 1, 4, None, None, ctypes.byref(dacl), None, ctypes.byref(observed)):
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
         control, revision = wintypes.WORD(), wintypes.DWORD()
         if (not advapi.GetSecurityDescriptorControl(observed, ctypes.byref(control), ctypes.byref(revision))
-                or not control.value & 0x1000 or not dacl.value):
+                or (directory and not control.value & 0x1000) or not dacl.value):
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
         class ACLSize(ctypes.Structure):
             _fields_ = [("count", wintypes.DWORD), ("used", wintypes.DWORD), ("free", wintypes.DWORD)]
@@ -114,7 +127,8 @@ def _protect_windows(path: Path) -> None:
             if not advapi.GetAce(dacl, index, ctypes.byref(address)) or not address.value:
                 raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
             ace = ctypes.cast(address, ctypes.POINTER(AllowedACE)).contents
-            if ace.kind != 0 or ace.flags != 3 or ace.mask != 0x1F01FF or ace.size < 16:
+            if (ace.kind != 0 or (directory and ace.flags != 3)
+                    or ace.mask != 0x1F01FF or ace.size < 16):
                 raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
             text = ctypes.c_void_p()
             try:
@@ -130,14 +144,25 @@ def _protect_windows(path: Path) -> None:
         if trustees != allowed:
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
     finally:
-        for pointer in (descriptor, observed):
-            if pointer.value:
-                kernel.LocalFree(pointer)
+        if observed.value:
+            kernel.LocalFree(observed)
 
 
 def protect_secret_directory(path: Path) -> None:
+    protect_private_directory(path, purpose='rsv')
+
+
+def _private_target(path: Path, purpose: str):
+    prefix = {'rsv': 'erp-mcp-rsv-', 'evidence': 'erp-mcp-evidence-'}.get(purpose)
+    if (prefix is None or path.is_symlink() or path.is_junction() or not path.is_dir()
+            or not path.name.startswith(prefix)):
+        raise SecretDirectoryUnavailable('PRIVATE_SECRET_DIRECTORY_UNAVAILABLE')
+
+
+def protect_private_directory(path: Path, *, purpose: str) -> None:
     """Accept only a new empty task-specific directory, never change an existing config root."""
-    if path.is_symlink() or not path.is_dir() or not path.name.startswith("erp-mcp-rsv-") or any(path.iterdir()):
+    _private_target(path, purpose)
+    if any(path.iterdir()):
         raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
     try:
         if os.name == "nt":
@@ -149,3 +174,25 @@ def protect_secret_directory(path: Path) -> None:
                 raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
     except (OSError, TypeError, ValueError):
         raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE") from None
+
+
+def verify_private_directory(path: Path, *, purpose: str) -> None:
+    _private_target(path, purpose)
+    if os.name == 'nt':
+        _verify_windows(path)
+    else:
+        info = path.stat()
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+            raise SecretDirectoryUnavailable('PRIVATE_SECRET_DIRECTORY_UNAVAILABLE')
+
+
+def verify_private_file(path: Path) -> None:
+    if path.is_symlink() or path.is_junction() or not path.is_file():
+        raise SecretDirectoryUnavailable('PRIVATE_SECRET_DIRECTORY_UNAVAILABLE')
+    info = path.stat()
+    if info.st_nlink != 1:
+        raise SecretDirectoryUnavailable('PRIVATE_SECRET_DIRECTORY_UNAVAILABLE')
+    if os.name == 'nt':
+        _verify_windows(path, directory=False)
+    elif info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o600:
+        raise SecretDirectoryUnavailable('PRIVATE_SECRET_DIRECTORY_UNAVAILABLE')

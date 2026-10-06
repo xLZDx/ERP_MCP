@@ -461,3 +461,9 @@ adapter/result provenance. A missing completion is an unfinished request, not a 
 - Ferma expected/oracle artifacts: isolated from 1C/ERP_MCP actual computation inputs.
 
 Any automatic deletion/retention policy must be explicitly defined and approved before production.
+
+The internal normalized evidence provider returns immutable opaque blob references plus pinned
+manifest/document SHA-256 receipts. Store these in a trusted registry/index separate from raw
+private files before accepting persistent reconciliation references. The local provider itself
+does not approve receipt indexes or legal retention; a private orphan without a pinned receipt
+is not usable evidence. Raw documents remain outside Git and outside standard logs/CI artifacts.

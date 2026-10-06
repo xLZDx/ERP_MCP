@@ -442,6 +442,39 @@ Rules:
 - never let evidence values contaminate the independent expected/oracle path in L2;
 - missing evidence yields `INCONCLUSIVE/EVIDENCE_REQUIRED`, not a guessed PASS/FAIL.
 
+### 12.1 Internal private normalized evidence provider
+
+`evidence_store.py` adds an append-only local provider for the existing approved normalized CSV
+contract across the 14 frozen evidence classes. It does NOT parse native PDF/XML/bank/payroll
+formats, infer their schema, accept arbitrary URLs or decompress uploads. Only `text/csv` with
+identity encoding is accepted; existing 4 MB/2000-fact parser, exact digest/profile/scope and
+approved retention policy checks run before raw bytes are persisted.
+
+Storage is created only as a new task-owned directory on an operator-configured volume outside
+Git, with opaque server-generated references. Directory junctions/symlinks, file hardlinks,
+path traversal, wrong permissions, altered/truncated/oversized artifacts and changed scope,
+profile or retention approval are rejected. Shared OS permission code verifies protected NTFS
+binary DACLs (current service identity/SYSTEM/Administrators only) or Unix 0700/0600. Read checks
+never silently repair/widen an existing store's permissions.
+
+Each blob/manifest is created exclusively, flushed/fsynced; manifest is the final commit marker.
+Unix directory entries are fsynced too. A failed write leaves a private uncommitted/orphan artifact,
+not a usable receipt. There is no overwrite/delete/automatic retention API. Separate trusted
+registry state must retain the returned manifest/document hashes; recomputing approval from a
+modified store is forbidden. Reopen verifies both pinned hashes and reparses bounded bytes.
+
+The internal `AuthorizedEvidenceReader` requires OAuth scope, current source/company ACL, rate
+check and durable access audit before filesystem reads, then completion/error audit. It does not
+expose a public upload or model-authored profile/policy approval tool. Windows CI executes actual
+inherited file DACL verification and rejection after an owned test file is widened to Everyone.
+The service read has a server-configured five-second deadline (maximum 30); timeout records an
+error, never a business success. Cancellation/timeout cannot stop an already running filesystem
+thread, but that bounded thread is read-only and cannot return data to the cancelled request.
+
+Still OPEN: runtime provider wiring and operator ingest/receipt index, deployment identity/volume,
+backup/restore/retention approval, native format parsers and real source reconciliation. Local file
+fsync/reopen and fixture permission checks are not production WORM/PITR/retention approval.
+
 ---
 
 ## 13. DAD rule-pack architecture
