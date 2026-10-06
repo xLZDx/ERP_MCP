@@ -11,7 +11,8 @@ DEPENDENCIES = ("pyproject.toml", "uv.lock", "requirements-runtime.lock", "vendo
 REPORTS = ("reports/IMPLEMENTATION_STATUS.md", "reports/DOD_STATUS.md", "reports/RISK_STATUS.md",
            "reports/EXECUTION_LOG.md", "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
            "docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html")
-IGNORED = {"node_modules", ".pnpm", "__pycache__", ".pytest_cache", ".ruff_cache", ".git"}
+IGNORED = {"node_modules", ".pnpm", "__pycache__", ".pytest_cache", ".ruff_cache", ".git",
+           "build", "dist", "var"}
 TEXT = {".py", ".mjs", ".json", ".lock", ".toml", ".yaml", ".yml", ".md", ".txt", ".xml"}
 
 
@@ -19,7 +20,10 @@ def implementation_fingerprint(root: Path) -> str:
     paths = set()
     for directory in ROOTS:
         for path in (root / directory).rglob("*"):
-            if path.is_file() and not IGNORED.intersection(path.relative_to(root).parts):
+            parts = path.relative_to(root).parts
+            generated = any(part.endswith(".egg-info") for part in parts) or path.suffix == ".pyc"
+            private_env = path.name.startswith(".env") and not path.name.endswith(".example")
+            if path.is_file() and not generated and not private_env and not IGNORED.intersection(parts):
                 paths.add(path)
     paths.update(root / name for name in DEPENDENCIES if (root / name).is_file())
     if not paths or len(paths) > 5000:

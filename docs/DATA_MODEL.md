@@ -301,6 +301,17 @@ Fields:
 
 Raw private evidence is not copied into Git/public CI or ordinary audit rows.
 
+Internal implementation foundation: `external_evidence.py` accepts only bounded uploaded bytes in
+`external-normalized-csv-v1` (exact headers `key,date,currency,amount`). It requires the exact
+source/company/configuration/semantic-profile/period/currency/timezone scope, a server-confirmed
+parser-profile fingerprint, approved retention-policy ID and opaque `private:` blob reference.
+All frozen evidence classes share this normalized interchange contract; this does NOT prove
+native bank/Z/terminal/PDF/tax/payroll format support. Empty/missing requirements raise
+`EVIDENCE_REQUIRED`; unconfirmed/cross-scope inputs are rejected or `EVIDENCE_INCONCLUSIVE`.
+Manifest output contains hashes/counts only and always retains human review. Parser performs no
+URL/file fetch, blob storage, 1C writes or business PASS. Private storage, ACL/audit upload endpoints,
+native parsers, retention administration and DAD rule integration remain separate open gates.
+
 ### 10B. DAD rule-pack model
 
 Recommended logical entities:

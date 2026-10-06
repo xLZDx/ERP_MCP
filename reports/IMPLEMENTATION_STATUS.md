@@ -2,6 +2,12 @@
 
 # ERP_MCP implementation status
 
+<!-- ENGINEERING_CHECKPOINT=EVIDENCE_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=04b30b612b0301694c62f03ab36b10f3a5b4aaf57339f11f87ce3e2be6055cc6 -->
+
+## Normalized external evidence boundary — 2026-10-06
+
+EVID-1 / DAD evidence boundary: exact-scope confirmed-profile normalized CSV parser and missing-evidence gate implemented, 30 focused tests PASS. Manifest exposes hashes/counts only; no arbitrary URL, blob writes or native-format/accounting PASS. Retention/ACL/storage/native parsers and DAD rule execution remain OPEN. Checkpoint portability fix excludes generated editable-install metadata; 11 checkpoint tests PASS. Last verified hosted code c59f070: run 37459728181 BOTH jobs PASS. Run 37460339973 at 871ea20 failed the new fingerprint gate on generated metadata; fix awaits hosted verification. Current full local suite: 319 passed, 9 skipped; Ruff/Bandit and both documentation gates PASS. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=DOC_CHECKPOINT_20261006 ENGINEERING_IMPLEMENTATION=8cacf624874a4cb7eae41a0a9df8874557a842a1e422eb269855df2d4e055d55 -->
 
 ## Content-bound documentation checkpoint — 2026-10-06

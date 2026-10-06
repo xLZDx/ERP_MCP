@@ -36,6 +36,15 @@ def test_checkpoint_rejects_source_drift(tmp_path):
         check_checkpoint(tmp_path)
 
 
+def test_platform_specific_generated_metadata_is_not_implementation(tmp_path):
+    prepare(tmp_path)
+    generated = tmp_path / "src/fixture.egg-info"
+    generated.mkdir()
+    (generated / "PKG-INFO").write_text("platform-specific editable install metadata")
+    (tmp_path / "src/.env").write_text("synthetic_private_configuration=fixture")
+    check_checkpoint(tmp_path)
+
+
 @pytest.mark.parametrize("report", REPORTS)
 def test_checkpoint_rejects_stale_report_marker(tmp_path, report):
     prepare(tmp_path)

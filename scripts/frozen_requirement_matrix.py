@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 IMPLEMENTATION = {
+    "EVID-1": ["src/business_ai_gateway/external_evidence.py", "tests/test_external_evidence.py"],
     "FR-A1": ["src/business_ai_gateway/auth.py", "tests/test_auth.py"],
     "FR-A2": ["src/business_ai_gateway/registry.py"],
     "FR-A3": ["src/business_ai_gateway/registry.py"],

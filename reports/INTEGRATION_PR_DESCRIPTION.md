@@ -1,3 +1,24 @@
+## Current autonomous recovery snapshot — 2026-10-06
+
+Supersedes historical validation counts and blanket closure claims below. PR #11 remains Draft;
+Production GO is NO-GO, DoD PARTIAL, frozen scope unchanged.
+
+Verified hosted baseline: c59f07096a1b08c27c33554c29638d4922fe8621 / run 37459728181, BOTH jobs PASS.
+Local current suite: 319 passed, 9 external skips; Ruff/Bandit/documentation gates PASS.
+Actual SDK subprocess crash/timeout/malformed/recovery/rotation, measured fan-out, Docker
+PostgreSQL/Redis outages, pinned promtool assertions and socket-time egress tests replace declared
+PASS constants. Four production fan-out mutations are executed/killed. Runtime dispatcher is
+MIT undici 8.10.2 with lock/provenance; exact pinned 1C engine remains unchanged.
+
+Current EVID-1 foundation: bounded normalized CSV input, exact confirmed scope/profile, hashes,
+private retention references and missing-evidence gate. Native evidence formats, public upload
+ACL/storage/audit and DAD rule execution remain OPEN. Ferma/native seeding/observer/L2,
+production firewall/capacity/DR/alert receiver, native COM lifecycle and Windows secret DACL remain
+separate gates. The document-content fingerprint portability fix awaits a fresh hosted run after
+the previous fingerprint failure: exact failed run is 37460339973 at 871ea20.
+
+Historical integration narrative:
+
 Integrate the existing semantic/testbed/RSV/metrics/pilot stack (#2–#8) with the independent
 multi-source ACL (#9) and audit outcome (#10) follow-ups on main `8481c0e` so the complete
 candidate can be tested together. Merge ancestry preserves each original branch and avoids
