@@ -347,4 +347,7 @@
   when the registered base URL or credential references change, and forced capability refresh after
   directly refetching metadata. Synthetic detector test changes metadata fingerprint after expiry
   and confirms the new EntitySet is observed; targeted and full local tests pass (125 passed,
-  7 PostgreSQL-only skips), as do Ruff, Bandit, compileall and pip-audit. Hosted CI pending.
+  7 PostgreSQL-only skips), as do Ruff, Bandit, compileall, scenario validation and pip-audit.
+  Hosted run `37415523392` passed both jobs on `f4340b3`: Python/PostgreSQL `125 passed, 1 skipped`,
+  pinned upstream client `428 passed, 1 skipped`, metadata `53 passed`, and non-root sidecar image
+  smoke passed.

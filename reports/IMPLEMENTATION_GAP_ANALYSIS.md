@@ -2,9 +2,9 @@
 
 Assessment date: 2026-10-06
 Current implementation is tracked as Draft PRs #2–#8 after PR #1 merged. Working branch
-`phase/p4-inventory-movements` is at `02eab2d612f2bf5fef946eaa561642edcf6cf80c`; hosted run
-`37415224776` passed both `test` (including PostgreSQL runtime-role evidence persistence) and
-`odata-upstream` (including non-root image smoke). P4 now includes profile-gated inventory
+`phase/p4-inventory-movements` is at `f4340b38945c783a357ce19caa3f34c49d7fdcd0`; hosted run
+`37415523392` passed both `test` (including PostgreSQL runtime-role evidence persistence) and
+`odata-upstream` (including non-root image smoke and the metadata cache-expiry regression). P4 now includes profile-gated inventory
 movements, posting rows, cash movements, and
 persistent negative capability evidence. The report below retains historical phase evidence and is
 being progressively reconciled; the current implementation status is authoritative for latest P4.

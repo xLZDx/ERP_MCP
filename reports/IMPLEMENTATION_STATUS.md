@@ -4,7 +4,7 @@ Last updated: 2026-10-06
 
 ## Current authoritative state
 
-- Active delivery branch: `phase/p4-inventory-movements` at `02eab2d612f2bf5fef946eaa561642edcf6cf80c`.
+- Active delivery branch: `phase/p4-inventory-movements` at `f4340b38945c783a357ce19caa3f34c49d7fdcd0`.
 - PR #1 is merged. Draft PRs #2–#8 remain open; PR #8 carries the current P4 follow-up and is
   stacked on the P9 evidence-gate branch. No PR has been self-approved or merged by this agent.
 - Hosted run `37415224776` on this head passed both jobs: PostgreSQL migrations, privilege checker,
@@ -17,7 +17,9 @@ Last updated: 2026-10-06
   persistent source-specific negative capability evidence. No unconfirmed EntitySet/property name
   is guessed; missing evidence denies with `CAPABILITY_UNSUPPORTED`.
 - New local D7 hardening adds bounded metadata/capability cache freshness and invalidates cached
-  fingerprints on source endpoint/credential-reference changes. It is not yet included in hosted CI.
+  fingerprints on source endpoint/credential-reference changes. Hosted run `37415523392` passed on
+  this head: Python/PostgreSQL `125 passed, 1 skipped`; upstream client `428 passed, 1 skipped`,
+  metadata `53 passed`, sidecar image smoke and pip-audit passed.
 - Pilot validator remains `NOT_READY`; native 1C reconciliation has not been run. This is not a
   production-ready declaration. The historical bootstrap chronology below is retained as a log,
   not as the current branch/PR status.
