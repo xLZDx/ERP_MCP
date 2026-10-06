@@ -107,6 +107,121 @@ async def test_postgres_company_grants_deny_precedence_and_live_revocation():
 
 
 @pytest.mark.asyncio
+async def test_postgres_heterogeneous_sources_are_added_and_revoked_without_restart():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_ids = [f"portfolio-{kind}-{uuid.uuid4()}" for kind in ("auto", "odata", "legacy")]
+    company_ids = [uuid.uuid4() for _ in source_ids]
+    subject = f"portfolio-user-{uuid.uuid4()}"
+    finance_group = f"finance-{uuid.uuid4()}"
+    operations_group = f"operations-{uuid.uuid4()}"
+    group_grant = uuid.uuid4()
+    try:
+        source_kinds = ["onec_auto", "onec_odata", "onec_auto"]
+        await conn.executemany(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', $2, $3, $4)
+            """,
+            [
+                (
+                    source_id,
+                    kind,
+                    f"Portfolio source {i + 1}",
+                    f"https://source-{i + 1}.example.test/odata",
+                )
+                for i, (source_id, kind) in enumerate(zip(source_ids, source_kinds, strict=True))
+            ],
+        )
+        await conn.executemany(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, $3, $4)
+            """,
+            [
+                (company_id, source_id, f"company-{i + 1}", f"Company {i + 1}")
+                for i, (source_id, company_id) in enumerate(
+                    zip(source_ids, company_ids, strict=True)
+                )
+            ],
+        )
+        await conn.executemany(
+            """
+            INSERT INTO bag.access_grants(
+              grant_id, principal_kind, principal_id, source_id, company_id, effect
+            ) VALUES($1, $2, $3, $4, $5, 'allow')
+            """,
+            [
+                (uuid.uuid4(), "subject", subject, source_ids[0], company_ids[0]),
+                (group_grant, "group", finance_group, source_ids[1], company_ids[1]),
+                (uuid.uuid4(), "group", operations_group, source_ids[2], company_ids[2]),
+            ],
+        )
+        principal = Principal(
+            subject=subject,
+            client_id="portfolio-test",
+            scopes=frozenset({"onec:read"}),
+            groups=frozenset({finance_group, operations_group}),
+            claims={},
+        )
+        registry = Registry(ConnectionDatabase(conn), production=True)
+
+        assert {source.id for source in await registry.list_allowed(principal)} == set(source_ids)
+        for source_id, company_id in zip(source_ids, company_ids, strict=True):
+            assert (await registry.require_company(principal, source_id, company_id)).id == company_id
+            assert (await registry.require_source_for_company(principal, source_id, company_id)).id == source_id
+            with pytest.raises(AccessDenied):
+                await registry.require_source(principal, source_id)
+
+        # A newly onboarded fourth source becomes visible through registry state, without restart.
+        added_source = f"portfolio-added-{uuid.uuid4()}"
+        added_company = uuid.uuid4()
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Added portfolio source',
+                   'https://added.example.test/odata')
+            """,
+            added_source,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.companies(company_id, source_id, external_ref, display_name)
+            VALUES($1, $2, 'added-company', 'Added company')
+            """,
+            added_company,
+            added_source,
+        )
+        await conn.execute(
+            """
+            INSERT INTO bag.access_grants(
+              grant_id, principal_kind, principal_id, source_id, company_id, effect
+            ) VALUES($1, 'group', $2, $3, $4, 'allow')
+            """,
+            uuid.uuid4(),
+            finance_group,
+            added_source,
+            added_company,
+        )
+        assert added_source in {source.id for source in await registry.list_allowed(principal)}
+        assert (
+            await registry.require_company(principal, added_source, added_company)
+        ).id == added_company
+
+        # Grant revocation takes effect on the next authorization query in this live registry.
+        await conn.execute(
+            "UPDATE bag.access_grants SET revoked_at=now() WHERE grant_id=$1", group_grant
+        )
+        with pytest.raises(AccessDenied):
+            await registry.require_company(principal, source_ids[1], company_ids[1])
+        assert await registry.list_allowed_companies(principal, source_ids[1]) == []
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
 async def test_semantic_profile_validation_is_scoped_and_requires_ten_native_cases():
     conn = await asyncpg.connect(DATABASE_URL)
     tx = conn.transaction()

@@ -97,3 +97,10 @@
 - Next software work: executable company-filtered business reads, canonical accounting tools,
   completed audit/operations proof and remaining deployment/security gates. Promoting a candidate
   or validating accounting semantics still requires a real target 1C source and native reports.
+- D10 multi-source integration follow-up on `phase/p1-multisource-contract`: added a PostgreSQL
+  contract test for three differently configured OData sources with separate subject/group company
+  grants, plus a fourth source onboarded during the same live Registry instance and immediate access
+  denial after revocation. This exercises registry/ACL control-plane behavior only; no 1C endpoint
+  is contacted and no fan-out/performance claim is made. Local suite on the main-based branch:
+  `74 passed, 8 skipped` (PostgreSQL integration requires CI DB); Ruff/compileall/diff-check pass.
+  Draft PR and hosted PostgreSQL verification pending.
