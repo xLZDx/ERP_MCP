@@ -127,3 +127,24 @@ def test_admin_api_cannot_reuse_data_plane_scope():
             admin_oauth_audience="https://mcp.example.test/admin",
             admin_oauth_required_scope="onec:read",
         )
+
+
+@pytest.mark.parametrize("failure", ["signature", "issuer", "expiry", "missing_scope", "missing_subject"])
+def test_admin_access_token_negative_cryptographic_cases(failure):
+    private, public = make_keypair()
+    config = admin_settings()
+    verifier = JWTTokenVerifier(config, audience=config.admin_oauth_audience,
+                                required_scope=config.admin_oauth_required_scope)
+    verifier._jwks = FixedJWKS(public)
+    raw = token_for(private, audience=config.admin_oauth_audience, scope="erp_mcp:admin")
+    claims = jwt.decode(raw, options={"verify_signature": False})
+    if failure == "issuer":
+        claims["iss"] = "https://untrusted.example.test/"
+    elif failure == "expiry":
+        claims["exp"] = int(time.time()) - 60
+    elif failure == "missing_scope":
+        claims["scope"] = "onec:read"
+    elif failure == "missing_subject":
+        claims.pop("sub")
+    signing = make_keypair()[0] if failure == "signature" else private
+    assert verifier._verify_sync(jwt.encode(claims, signing, algorithm="RS256")) is None

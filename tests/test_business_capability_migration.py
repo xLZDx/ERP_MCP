@@ -1,4 +1,7 @@
+import re
 from pathlib import Path
+
+from business_ai_gateway.business_policy import CAPABILITY_KEYS
 
 
 def test_business_capability_migration_separates_roles_assignments_and_overrides():
@@ -11,3 +14,22 @@ def test_business_capability_migration_separates_roles_assignments_and_overrides
     assert "effect IN ('allow','deny')" in sql
     assert "business_ai_app" in sql and "GRANT SELECT ON" in sql
     assert "VALUES (10)" in sql
+
+
+def test_seeded_capabilities_match_runtime_allowlist():
+    sql = Path("db/migrations/010_business_capability_policy.sql").read_text(
+        encoding="utf-8"
+    )
+    section = sql.split(
+        "INSERT INTO bag.business_role_capabilities(role_id, capability_key)",
+        1,
+    )[1].split("ON CONFLICT(role_id, capability_key)", 1)[0]
+    seeded = {
+        capability
+        for _role, capability in re.findall(
+            r"\('([^']+)','([^']+)'\)",
+            section,
+        )
+    }
+
+    assert seeded == CAPABILITY_KEYS

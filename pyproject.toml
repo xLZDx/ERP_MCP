@@ -24,6 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 gcp = ["google-cloud-secret-manager>=2.21,<3"]
 dev = [
+  "playwright>=1.58,<2",
   "bandit>=1.8,<2",
   "pip-audit>=2.7,<3",
   "pytest>=9.0.3,<10",

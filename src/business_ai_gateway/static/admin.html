@@ -98,5 +98,134 @@ async function logout(){try{await api('/admin/logout',{method:'POST'});location.
 function toast(msg,bad=false){document.getElementById('toast').innerHTML='<div class="toast" style="'+(bad?'border-color:#82474a;background:#3a2023;color:#ffc0c0':'')+'">'+esc(msg)+'</div>';setTimeout(()=>document.getElementById('toast').innerHTML='',3000)}
 (async()=>{try{state.me=await api('/admin/v1/me');state.csrf=state.me.csrf_token;await render()}catch(e){if(e.message!=='AUTH_REQUIRED')showLogin()}})();
 </script>
+<style>
+:focus-visible{outline:3px solid #9bf0dc;outline-offset:3px}.form-error{white-space:pre-wrap}.sr-status{padding:10px}.workflow-help{color:#dcc18d}.nav button{min-height:44px}.field label{cursor:pointer}dialog{color:inherit}.modal h2{font-size:18px}textarea{min-height:90px}
+@media(max-width:900px){.nav button span{display:inline}.app{grid-template-columns:1fr}.side{position:static;height:auto}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.sidefoot{display:none}.brand div:last-child{display:block}}
+</style>
+<script>
+// Structured lifecycle workflows reuse the same domain API and opaque session.
+state.offset=0;state.more=false;state.records=[];state.workflow=null;state.renderGeneration=0;
+const baseApi=api,baseRender=render,baseTable=table,baseModal=modal,baseShowLogin=showLogin;
+showLogin=function(){state.me=null;state.csrf=null;state.workflow=null;document.getElementById('overlay').innerHTML='';baseShowLogin()};
+const listPaths=new Set(['/admin/v1/sources','/admin/v1/companies','/admin/v1/grants','/admin/v1/platform-role-bindings','/admin/v1/business-role-assignments','/admin/v1/capability-overrides','/admin/v1/semantic-profiles','/admin/v1/capabilities','/admin/v1/company-scope-mappings','/admin/v1/audit']);
+api=async function(path,opts={}){
+ if(!opts.method&&listPaths.has(path)){path+='?limit=50&offset='+state.offset}
+ const data=await baseApi(path,opts);if(data.next_offset!==null&&data.next_offset!==undefined)state.more=true;return data;
+};
+function permitted(role,source){return state.me?.mutations_enabled&&state.me.roles.some(r=>(r.role==='PLATFORM_ADMIN'||r.role===role)&&(!source||!r.source_id||r.source_id===source))}
+function operationButton(label,op,item,role,gate=true){
+ if(!permitted(role,item.source_id)||!gate)return '';
+ const index=state.records.push(item)-1;return '<button class="btn" data-op="'+op+'" data-record="'+index+'">'+label+'</button> ';
+}
+table=function(title,items,cols){
+ const actions={
+ 'Access grants':i=>i.revoked_at?'':operationButton('Revoke','grant-revoke',i,'ACCESS_ADMIN'),
+ 'Registered sources':i=>operationButton('Edit / disable','source',i,'SOURCE_ADMIN')+operationButton('Refresh metadata','refresh',i,'SOURCE_ADMIN'),
+ 'Registered companies':i=>operationButton('Edit / disable','company',i,'SOURCE_ADMIN'),
+ 'Platform role bindings':i=>i.revoked_at?'':operationButton('Revoke','platform-revoke',i,'PLATFORM_ADMIN',state.me.platform_role_step_up_configured),
+ 'Assignments':i=>i.revoked_at?'':operationButton('Revoke','assignment-revoke',i,'ACCESS_ADMIN',state.me.business_capability_enforcement_enabled),
+ 'Capability overrides':i=>i.revoked_at?'':operationButton('Revoke','override-revoke',i,'ACCESS_ADMIN',state.me.business_capability_enforcement_enabled),
+ 'Semantic profiles':i=>evidenceButton(i)+operationButton('Add mapping','profile-mapping',i,'PROFILE_ADMIN',['DRAFT','NEEDS_VALIDATION'].includes(i.status))+operationButton('Validate','profile-validate',i,'PROFILE_ADMIN',['DRAFT','NEEDS_VALIDATION'].includes(i.status))+operationButton('Retire','profile-retire',i,'PROFILE_ADMIN',i.status!=='RETIRED')+operationButton('Company mapping','company-mapping',i,'PROFILE_ADMIN',i.status==='VALIDATED'),
+ 'Metadata & drift':i=>operationButton('Acknowledge drift','drift',i,'SOURCE_ADMIN',i.drift_status==='DRIFTED')
+ };
+ if(actions[title])cols=[...cols.filter(c=>c.h!=='Action'),{h:'Operations',f:actions[title]}];
+ return baseTable(title,items,cols);
+};
+render=async function(){
+ if(state.renderBusy){state.renderRequested=true;return}state.renderBusy=true;const requestedPage=state.page;
+ const generation=++state.renderGeneration;state.records=[];state.more=false;
+ const root=document.getElementById('root');if(state.me)root.innerHTML=shell('<div role="status" class="loading">Loading…</div>');
+ await baseRender();state.renderBusy=false;if(state.renderRequested||requestedPage!==state.page){state.renderRequested=false;return render()}if(generation!==state.renderGeneration||!document.querySelector('.content'))return;
+ const content=document.querySelector('.content'),actions=document.querySelector('.actions');
+ if(state.page==='sources'){
+  try{const x=await api('/admin/v1/capabilities');content.insertAdjacentHTML('beforeend','<div style="height:14px"></div>'+table('Metadata & drift',x.items,[{h:'Source',f:i=>esc(i.source_id)},{h:'Fingerprint',f:i=>esc(i.metadata_fingerprint)},{h:'State',f:i=>tag(i.drift_status,i.drift_status==='DRIFTED'?'warn':'ok')},{h:'Adapter',f:i=>esc(i.adapter_profile)}]))}catch(e){content.insertAdjacentHTML('beforeend','<p role="alert">Metadata dependency unavailable: '+esc(e.message)+'</p>')}
+ }
+ if(state.page==='roles'){
+  const disabled=!state.me.business_capability_enforcement_enabled;
+  content.insertAdjacentHTML('afterbegin','<div class="banner warn">'+(disabled?'Business capability enforcement is OFF. Assignment controls are disabled until backend enforcement is active.':'Business capability enforcement is ON. Roles and overrides never widen data scope.')+' '+(!state.me.platform_role_step_up_configured?'Platform role changes require configured IdP step-up; browser changes are disabled.':'Platform role changes require an approved authentication level from the last five minutes.')+'</div>');
+  if(permitted('PLATFORM_ADMIN')&&state.me.platform_role_step_up_configured)actions.insertAdjacentHTML('beforeend','<a class="btn" href="/admin/login?step_up=1">Authenticate for role change</a><button class="btn" onclick="platformRoleModal()">Assign platform role</button>');
+  if(permitted('ACCESS_ADMIN')&&!disabled)actions.insertAdjacentHTML('beforeend','<button class="btn" onclick="businessRoleModal()">Assign business role</button><button class="btn" onclick="overrideModal()">Capability override</button>');
+ }
+ if(state.page==='profiles'&&permitted('PROFILE_ADMIN'))actions.insertAdjacentHTML('beforeend','<button class="btn" onclick="profileModal()">Create profile</button>');
+ if(state.page==='identities')content.insertAdjacentHTML('beforeend',accessForm());
+ document.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>operate(b.dataset.op,state.records[Number(b.dataset.record)]));
+ document.querySelectorAll('.nav button').forEach(b=>{b.setAttribute('aria-label',pages[b.dataset.page][0]);b.onclick=()=>{state.page=b.dataset.page;state.offset=0;render()}});
+ if(!state.me.mutations_enabled)content.insertAdjacentHTML('afterbegin','<div class="banner warn">Read-only mode: administrative mutations are disabled.</div>');
+ const pageRole={sources:'SOURCE_ADMIN',companies:'SOURCE_ADMIN',access:'ACCESS_ADMIN'}[state.page];
+ document.querySelectorAll('.actions button').forEach(b=>{if(!state.me.mutations_enabled||(pageRole&&!permitted(pageRole)))b.disabled=true});
+ if(listPaths.size&&state.page!=='identities'&&state.page!=='overview')content.insertAdjacentHTML('beforeend','<div class="actions" style="margin-top:14px"><button class="btn" onclick="pageBack()" '+(state.offset?'':'disabled')+'>Previous</button><span>Page '+(state.offset/50+1)+'</span><button class="btn" onclick="pageNext()" '+(state.more?'':'disabled')+'>Next</button></div>');
+ labelForms();
+};
+function pageBack(){state.offset=Math.max(0,state.offset-50);render()}function pageNext(){state.offset+=50;render()}
+function labelForms(){document.querySelectorAll('.field').forEach(f=>{const label=f.querySelector('label'),input=f.querySelector('input,select,textarea');if(label&&input){if(!input.id)input.id='field-'+crypto.randomUUID();label.htmlFor=input.id}})}
+function inputField(name,label,type='text',options=null){return {name,label,type,options}}
+function evidenceButton(item){const index=state.records.push(item)-1;return '<button class="btn" data-op="profile-evidence" data-record="'+index+'">Evidence</button> '}
+const principalFields=()=>[inputField('principal_kind','Principal kind','select',['subject','group']),inputField('principal_id','Stable IdP principal ID')];
+const scopeFields=()=>[inputField('source_id','Source ID'),inputField('company_id','Company UUID (optional)')];
+const expiryField=()=>inputField('expires_at','Expiry (optional, ISO timestamp with timezone)');
+function workflow(title,path,fields,initial={},method='POST',help='',confirmValue=''){
+ state.workflow={path,fields,initial,method,key:crypto.randomUUID(),payload:null,busy:false,confirmValue};
+ let body=help?'<p class="workflow-help">'+esc(help)+'</p>':'';
+ for(const f of [...fields,inputField('reason','Reason','textarea')]){
+  const value=initial[f.name]??(f.type==='json'?'{}':'');
+  const options=f.type==='boolean'?['true','false']:(f.options||[]);
+  body+='<div class="field"><label for="wf_'+f.name+'">'+esc(f.label)+'</label>'+(f.type==='select'||f.type==='boolean'?'<select id="wf_'+f.name+'">'+options.map(x=>'<option '+(String(value)===String(x)?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select>':(f.type==='textarea'||f.type==='json'?'<textarea id="wf_'+f.name+'">'+esc(typeof value==='object'?JSON.stringify(value,null,2):value)+'</textarea>':'<input id="wf_'+f.name+'" value="'+esc(value)+'">'))+'</div>';
+ }
+ if(confirmValue)body+='<div class="field"><label for="wf_confirm">Type '+esc(confirmValue)+' to confirm the exact target</label><input id="wf_confirm" autocomplete="off"></div>';
+ body+='<div id="workflow_error" class="form-error error" role="alert"></div>';
+ modal(title,body,'saveWorkflow()');
+ if(path==='/admin/v1/sources')document.querySelector('.modalf').insertAdjacentHTML('afterbegin','<button class="btn" onclick="probeWorkflow()">Probe connection</button>');
+}
+function workflowBody(){
+ const w=state.workflow,body={...w.initial};
+ for(const f of w.fields){const raw=val('wf_'+f.name);body[f.name]=f.type==='json'?JSON.parse(raw):f.type==='boolean'?raw==='true':f.type==='number'?Number(raw):raw;}
+ for(const key of ['company_id','expires_at'])if(key in body&&!body[key])body[key]=null;
+ if(w.path==='/admin/v1/platform-role-bindings'&&!body.source_id)body.source_id=null;
+ body.reason=val('wf_reason');if(!body.reason)throw new Error('A reason is required.');
+ if(w.confirmValue&&val('wf_confirm')!==w.confirmValue)throw new Error('Exact target confirmation does not match.');
+ return body;
+}
+async function saveWorkflow(){const w=state.workflow;if(!w||w.busy)return;try{
+ const body=workflowBody(),payload=JSON.stringify(body);if(w.payload!==null&&w.payload!==payload)w.key=crypto.randomUUID();w.payload=payload;w.busy=true;
+ document.querySelectorAll('.modalf button').forEach(b=>b.disabled=true);
+ await api(w.path,{method:w.method,headers:{'Idempotency-Key':w.key},body:payload});closeModal();toast('Success: operation recorded in audit.');await render();
+ }catch(e){const box=document.getElementById('workflow_error');if(box)box.textContent=(e.message==='POLICY_VERSION_CONFLICT'?'Conflict: refresh the screen and review the current version. ':e.message==='STEP_UP_REQUIRED'?'Step-up required: sign in again using your approved IdP authentication level. ':'')+e.message;}finally{w.busy=false;document.querySelectorAll('.modalf button').forEach(b=>b.disabled=false)}}
+async function probeWorkflow(){try{const body=workflowBody();const x=await api('/admin/v1/source-probes',{method:'POST',body:JSON.stringify(body)});document.getElementById('workflow_error').textContent='Probe succeeded. Metadata fingerprint: '+x.capabilities.metadata_fingerprint}catch(e){document.getElementById('workflow_error').textContent=e.message}}
+sourceModal=function(){workflow('Connect 1C source','/admin/v1/sources',[inputField('source_id','Source ID'),inputField('display_name','Display name'),inputField('base_url','Approved OData URL'),inputField('username_secret_ref','Username secret reference'),inputField('password_secret_ref','Password secret reference')],{tags:[]},'POST','This registers a technical connection. Register business companies separately. Secrets stay server-side.')};
+companyModal=function(){workflow('Register company','/admin/v1/companies',[inputField('source_id','Source ID'),inputField('external_ref','External reference'),inputField('display_name','Display name')])};
+grantModal=function(){workflow('Create access grant','/admin/v1/grants',[...principalFields(),...scopeFields(),inputField('effect','Effect','select',['allow','deny']),expiryField()],{},'POST','A source-wide grant affects every company in this source. A group grant applies to all trusted IdP members. Deny takes precedence.')};
+revokeGrant=function(id,version){workflow('Revoke exact grant','/admin/v1/grants/'+encodeURIComponent(id)+'/revoke',[],{expected_version:version},'POST','Only this exact grant is revoked.',id)};
+function platformRoleModal(){workflow('Assign platform role','/admin/v1/platform-role-bindings',[...principalFields(),inputField('role_name','Platform role','select',['PLATFORM_ADMIN','SOURCE_ADMIN','ACCESS_ADMIN','PROFILE_ADMIN','AUDITOR']),inputField('source_id','Delegated source (blank means global)'),expiryField()],{},'POST','Platform roles grant administration rights, independently of business roles and data grants. Global administration has platform-wide impact.','ASSIGN PLATFORM ROLE')}
+function businessRoleModal(){workflow('Assign business role','/admin/v1/business-role-assignments',[...principalFields(),...scopeFields(),inputField('role_id','Business role template','select',['VIEWER','ACCOUNTANT','SENIOR_ACCOUNTANT','TAX_REVIEWER','AUDITOR_BUSINESS','EXECUTIVE','PAYROLL_REVIEWER']),expiryField()])}
+function overrideModal(){workflow('Capability override','/admin/v1/capability-overrides',[...principalFields(),...scopeFields(),inputField('capability_key','Capability key'),inputField('effect','Effect','select',['allow','deny']),expiryField()],{},'POST','An explicit deny overrides role and direct allows. Data grants remain required.')}
+function profileModal(){workflow('Create semantic profile','/admin/v1/semantic-profiles',[...scopeFields(),inputField('preset_id','Configuration preset','select',['bp30','ut11','erp2','zup31']),inputField('profile_name','Profile name'),inputField('profile_definition','Profile definition','json')],{},'POST','Presets are advisory candidates. Validation requires native reconciliation evidence.')}
+async function operate(op,item){
+ const id=encodeURIComponent(item.source_id||''),profile=encodeURIComponent(item.profile_id||'');
+ try{
+ if(op==='profile-evidence'){const x=await api('/admin/v1/semantic-profiles/'+profile);modal('Profile evidence','<pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(JSON.stringify(x,null,2))+'</pre>','closeModal()');document.querySelector('.modalf button:last-child').textContent='Close';return}
+ if(op==='source'){const x=await api('/admin/v1/sources/'+id);workflow('Edit source','/admin/v1/sources/'+id,[inputField('display_name','Display name'),inputField('base_url','Approved OData URL'),inputField('username_secret_ref','Username secret reference'),inputField('password_secret_ref','Password secret reference'),inputField('enabled','Enabled (true / false)','boolean')],{...x,expected_version:x.row_version},'PATCH','Disabling removes runtime access to this source. The server rechecks egress.');document.getElementById('wf_enabled').value=String(x.enabled)}
+ if(op==='company'){const x=await api('/admin/v1/companies/'+encodeURIComponent(item.company_id));workflow('Edit company','/admin/v1/companies/'+encodeURIComponent(item.company_id),[inputField('display_name','Display name'),inputField('legal_name','Legal name'),inputField('country_code','Country code'),inputField('enabled','Enabled (true / false)','boolean')],{...x,expected_version:x.row_version},'PATCH','Source and external reference are immutable. Disabling removes runtime access to this company.');document.getElementById('wf_enabled').value=String(x.enabled)}
+ if(op==='refresh')workflow('Refresh capabilities','/admin/v1/sources/'+id+'/capability-refresh',[],{},'POST','Refresh live metadata using the approved read-only connection.');
+ if(op==='drift')workflow('Acknowledge current drift','/admin/v1/sources/'+id+'/drift-acknowledgements',[],{metadata_fingerprint:item.metadata_fingerprint},'POST','Only the exact current fingerprint is acknowledged. Stale semantic profiles still require revalidation.',item.metadata_fingerprint);
+ const revoke={ 'grant-revoke':['grants','grant_id'],'platform-revoke':['platform-role-bindings','binding_id'],'assignment-revoke':['business-role-assignments','assignment_id'],'override-revoke':['capability-overrides','override_id'] };
+ if(revoke[op]){const [route,key]=revoke[op];workflow('Revoke exact assignment','/admin/v1/'+route+'/'+encodeURIComponent(item[key])+'/revoke',[],{expected_version:item.row_version},'POST','Only this exact assignment is revoked.',item[key])}
+ if(op==='profile-mapping')workflow('Add semantic mapping','/admin/v1/semantic-profiles/'+profile+'/mappings',[inputField('canonical_concept','Canonical concept','select',['receivable','payable','sales','cash','inventory','vat']),inputField('mapping','Mapping definition','json'),inputField('evidence','Evidence references and notes','json')]);
+ if(op==='profile-validate')workflow('Validate semantic profile','/admin/v1/semantic-profiles/'+profile+'/validate',[inputField('validation_evidence','Native reconciliation evidence manifest','json')],{},'POST','At least ten unique PASS native-report cases are mandatory. A stale metadata fingerprint is rejected.');
+ if(op==='profile-retire')workflow('Retire semantic profile','/admin/v1/semantic-profiles/'+profile+'/retire',[],{},'POST','Retirement removes this profile from runtime eligibility.',item.profile_id);
+ if(op==='company-mapping')workflow('Map company property','/admin/v1/company-scope-mappings',[inputField('entity_set','Entity set'),inputField('company_property','Company property'),inputField('literal_kind','Organization key type','select',['guid','string'])],{profile_id:item.profile_id},'POST','Only explicitly mapped entities can use company-aware reads. The property is checked against live metadata.');
+ }catch(e){toast(e.message,true)}
+}
+function accessForm(){return '<div class="card" style="margin-top:16px"><div class="cardhead"><h2>Effective data-access explanation</h2></div><div class="form"><p>Uses the principal kind and ID above. For another subject, group membership is unknown without a directory provider; results explicitly show that limitation.</p><div class="field"><label>Source ID</label><input id="ea_source"></div><div class="field"><label>Entity set (optional)</label><input id="ea_entity"></div><div class="row2"><div class="field"><label>Effect</label><select id="ea_effect"><option value="">All</option><option>allow</option><option>deny</option><option>none</option></select></div><div class="field"><label>Grant origin</label><select id="ea_inheritance"><option value="">All</option><option>direct</option><option>inherited</option></select></div></div><button class="btn" onclick="explainAccess(0)">Explain access</button><div id="access_explanation" role="status"></div></div></div>'}
+async function explainAccess(offset){const out=document.getElementById('access_explanation');out.textContent='Loading…';try{
+ const params=new URLSearchParams({kind:val('p_kind'),id:val('p_id'),source_id:val('ea_source'),entity_set:val('ea_entity'),effect:val('ea_effect'),inheritance:val('ea_inheritance'),limit:'50',offset:String(offset)});
+ const x=await api('/admin/v1/effective-access?'+params);
+ out.innerHTML='<p>Identity mode: '+esc(x.mode)+'; group membership: '+esc(x.group_membership)+'. Capability authorization and live metadata checks remain separate runtime gates.</p>'+baseTable('Company policy results',x.items,[{h:'Company',f:i=>esc(i.display_name)},{h:'ACL',f:i=>tag(i.data_acl)},{h:'Why',f:i=>esc(i.detail_code)},{h:'Grant evidence',f:i=>i.matching_grants.map(g=>esc(g.grant_id)+' / '+esc(g.effect)+' / '+esc(g.inheritance)+' / '+esc(g.scope)).join('<br>')},{h:'Company operation',f:i=>esc(i.company_operation)}])+(x.next_offset!==null?'<button class="btn" onclick="explainAccess('+x.next_offset+')">Next results</button>':'');
+ }catch(e){out.textContent=e.message}}
+let previousFocus=null;
+modal=function(title,body,submit){previousFocus=document.activeElement;baseModal(title,body,submit);const d=document.querySelector('.modal');d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.querySelector('h2').id='dialog_title';d.setAttribute('aria-labelledby','dialog_title');d.querySelector('.modalh button').setAttribute('aria-label','Close dialog');labelForms();d.querySelector('input,select,textarea,button')?.focus()};
+closeModal=function(){document.getElementById('overlay').innerHTML='';state.workflow=null;previousFocus?.focus()};
+document.addEventListener('keydown',e=>{const d=document.querySelector('.modal');if(!d)return;if(e.key==='Escape'){e.preventDefault();closeModal()}if(e.key==='Tab'){const nodes=[...d.querySelectorAll('button:not(:disabled),input,select,textarea,a[href]')];const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
+document.getElementById('toast').setAttribute('role','status');
+</script>
 </body>
 </html>

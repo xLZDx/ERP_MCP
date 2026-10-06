@@ -41,7 +41,8 @@ Optional: `client_id`/`azp`, `groups`.
 ## Database privilege split
 
 - `BAG_MIGRATION_DATABASE_URL`: schema owner/migrations only.
-- `BAG_ADMIN_DATABASE_URL`: source and grant administration.
+- `BAG_ADMIN_DATABASE_URL`: protected operator/CLI source and policy administration / bootstrap.
+- `BAG_ADMIN_CONTROL_DATABASE_URL`: web Admin Control Center mutations using `business_ai_control_api` least privilege.
 - `BAG_DATABASE_URL`: runtime read registry/grants and insert audit only.
 
 Register an organization discovered and verified during onboarding, then grant only that scope:
@@ -59,9 +60,7 @@ python scripts/admin.py grant-add \
   --company-id <stable-uuid>
 ```
 
-Company-scoped grants currently authorize organization discovery only. Generic `onec_read` requires
-a source-wide grant until a semantic adapter can enforce company scope in the data query. Use
-`--effect deny` to add an overriding source/company deny.
+Generic `onec_read` continues to require a source-wide grant. Company-scoped grants may authorize only the explicit `onec_company_read` path when a current VALIDATED semantic profile has an entity-specific company-scope mapping, that mapped property exists in live metadata, and the server injects the company predicate before adapter execution. Without that evidence the operation fails closed. Use `--effect deny` to add an overriding source/company deny.
 
 ## Release gate
 
@@ -78,10 +77,15 @@ Before first production enablement:
 
 Keep Admin Control Center feature flags disabled until the target IdP and control API credential are configured.
 
-Required settings when enabled include BAG_ADMIN_API_ENABLED, BAG_ADMIN_UI_ENABLED, a distinct BAG_ADMIN_OAUTH_AUDIENCE and BAG_ADMIN_OAUTH_REQUIRED_SCOPE, OIDC authorization/token/client/redirect settings, BAG_ADMIN_CONTROL_DATABASE_URL using business_ai_control_api, and explicit BAG_ADMIN_SOURCE_ALLOWED_HOSTS plus approved CIDRs where used.
+Required settings when enabled include BAG_ADMIN_API_ENABLED, BAG_ADMIN_UI_ENABLED, a distinct BAG_ADMIN_OAUTH_AUDIENCE and BAG_ADMIN_OAUTH_REQUIRED_SCOPE, OIDC authorization/token/client/redirect settings, BAG_ADMIN_STEP_UP_ACR_VALUES for sensitive platform-role changes, BAG_ADMIN_CONTROL_DATABASE_URL using business_ai_control_api, and explicit BAG_ADMIN_SOURCE_ALLOWED_HOSTS plus approved CIDRs where used.
 
 Bootstrap the first platform administrator with the separate operator/admin database credential using scripts/admin.py platform-role-add. Enable BAG_ADMIN_MUTATIONS_ENABLED only after the control-API privilege check and source egress policy pass.
 
 Enable BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED only after intended users/groups have assignments; otherwise protected MCP operations fail closed by design.
 
 Rollback is application/config rollback: disable Admin UI/API/mutations/capability enforcement. Migrations 008-011 are additive and may remain inert. Do not drop policy or audit tables during routine rollback.
+
+
+## Admin request logging
+
+OIDC authorization codes, state and other callback query parameters must never be written to standard access logs. The gateway image disables Uvicorn access logging; ingress/OTel request telemetry must log a redacted path without the admin callback query string.

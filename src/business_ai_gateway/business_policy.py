@@ -4,6 +4,13 @@ from uuid import UUID
 
 from .principal import Principal
 
+CAPABILITY_KEYS = frozenset({
+    "source.status.read", "company.list", "metadata.read", "accounting.read", "ar.read", "ap.read",
+    "sales.read", "purchases.read", "bank.read", "cash.read", "inventory.read", "invoice.reconcile",
+    "month_close.review", "financial_statements.read", "tax.review", "audit.evidence.read",
+    "executive_summary.read", "payroll.review",
+})
+
 
 class CapabilityDenied(PermissionError):
     code = "CAPABILITY_DENIED"
@@ -26,7 +33,7 @@ class CapabilityPolicy:
     ) -> str | None:
         if not self.enabled:
             return None
-        if not capability or not source_id:
+        if capability not in CAPABILITY_KEYS or not source_id:
             raise CapabilityDenied("capability and source are required")
 
         pool = self.db.require_pool()

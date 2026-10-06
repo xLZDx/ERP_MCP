@@ -5,6 +5,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from typing import Any
 
 from .models import Source
@@ -117,6 +118,18 @@ def _clean_key(key: str) -> str:
     return value
 
 
+def _expiry(value: Any) -> datetime | None:
+    if value is None or value == "":
+        return None
+    try:
+        parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
+        if not isinstance(parsed, datetime) or parsed.tzinfo is None:
+            raise AdminValidationError("expiry must include timezone")
+        return parsed
+    except ValueError as exc:
+        raise AdminValidationError("invalid expiry") from exc
+
+
 class AdminMutationService:
     def __init__(self, db, *, production: bool):
         self.db = db
@@ -129,48 +142,31 @@ class AdminMutationService:
         command: str,
         key: str,
         request: dict[str, Any],
+        conn,
     ) -> dict[str, Any] | None:
         key = _clean_key(key)
         request_fp = _fingerprint(request)
-        pool = self.db.require_pool()
-        async with pool.acquire() as conn, conn.transaction():
-            row = await conn.fetchrow(
-                """
-                    SELECT command_name, request_fingerprint, outcome, result_json, detail_code
-                    FROM bag.admin_idempotency
-                    WHERE actor_subject=$1 AND idempotency_key=$2
-                    FOR UPDATE
-                    """,
-                actor.subject,
-                key,
-            )
-            if row is not None:
-                if (
-                    row["command_name"] != command
-                    or row["request_fingerprint"] != request_fp
-                ):
-                    raise AdminConflict("idempotency key already used for another request")
-                if row["outcome"] == "success":
-                    result = row["result_json"]
-                    if isinstance(result, str):
-                        result = json.loads(result)
-                    return dict(result or {})
-                raise AdminConflict(
-                    f"idempotent request already has outcome {row['outcome']}"
-                )
-            await conn.execute(
-                """
-                    INSERT INTO bag.admin_idempotency(
-                        actor_subject, idempotency_key, command_name,
-                        request_fingerprint, outcome
-                    ) VALUES($1,$2,$3,$4,'pending')
-                    """,
-                actor.subject,
-                key,
-                command,
-                request_fp,
-            )
-        return None
+        inserted = await conn.fetchval(
+            """
+            INSERT INTO bag.admin_idempotency(
+                actor_subject, idempotency_key, command_name, request_fingerprint, outcome
+            ) VALUES($1,$2,$3,$4,'pending')
+            ON CONFLICT (actor_subject, idempotency_key) DO NOTHING RETURNING true
+            """, actor.subject, key, command, request_fp,
+        )
+        if inserted:
+            return None
+        row = await conn.fetchrow(
+            """SELECT command_name, request_fingerprint, outcome, result_json
+               FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2 FOR UPDATE""",
+            actor.subject, key,
+        )
+        if row is None or row["command_name"] != command or row["request_fingerprint"] != request_fp:
+            raise AdminConflict("idempotency key already used for another request")
+        if row["outcome"] != "success":
+            raise AdminConflict("prior idempotency outcome is not successful")
+        result = row["result_json"]
+        return dict(json.loads(result) if isinstance(result, str) else result or {})
 
     async def _record_failure(
         self,
@@ -192,7 +188,7 @@ class AdminMutationService:
                 """
                     UPDATE bag.admin_idempotency
                     SET outcome='error', detail_code=$3, updated_at=now()
-                    WHERE actor_subject=$1 AND idempotency_key=$2
+                    WHERE actor_subject=$1 AND idempotency_key=$2 AND outcome='pending'
                     """,
                 actor.subject,
                 idempotency_key,
@@ -204,7 +200,7 @@ class AdminMutationService:
                         event_id, request_id, actor_subject, actor_client_id,
                         action, target_type, target_id, source_id, company_id,
                         reason, idempotency_key, outcome, detail_code
-                    ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'error',$12)
+                    ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$13,$12)
                     """,
                 uuid.uuid4(),
                 request_id,
@@ -218,6 +214,7 @@ class AdminMutationService:
                 reason,
                 idempotency_key,
                 code,
+                "conflict" if code == "POLICY_VERSION_CONFLICT" else "error",
             )
 
     async def _execute(
@@ -237,15 +234,22 @@ class AdminMutationService:
     ) -> dict[str, Any]:
         reason = _clean_reason(reason)
         idempotency_key = _clean_key(idempotency_key)
-        replay = await self._reserve(
-            actor=actor, command=command, key=idempotency_key, request=request
-        )
-        if replay is not None:
-            return replay
-
+        principal_id = request.get("principal_id")
+        if principal_id is not None and (
+            not isinstance(principal_id, str) or not principal_id.strip() or len(principal_id) > 512
+        ):
+            raise AdminValidationError("invalid exact principal id")
         pool = self.db.require_pool()
         try:
             async with pool.acquire() as conn, conn.transaction():
+                # Reservation, domain write, result and success audit commit atomically.
+                # Concurrent identical requests wait for that commit and replay its result.
+                replay = await self._reserve(
+                    actor=actor, command=command, key=idempotency_key,
+                    request={**request, "reason": reason}, conn=conn,
+                )
+                if replay is not None:
+                    return replay
                 result = await mutation(conn)
                 safe_result = json.loads(json.dumps(result, default=str))
                 await conn.execute(
@@ -278,7 +282,14 @@ class AdminMutationService:
                     target_type,
                     str(result.get("id", target_id)) if result.get("id", target_id) else None,
                     source_id or result.get("source_id"),
-                    company_id,
+                    (
+                        company_id
+                        or (
+                            uuid.UUID(str(result["company_id"]))
+                            if result.get("company_id")
+                            else None
+                        )
+                    ),
                     reason,
                     idempotency_key,
                     result.get("before_fingerprint"),
@@ -344,6 +355,16 @@ class AdminMutationService:
             detail_code,
         )
 
+    async def refresh_capabilities(self, *, actor, source_id, reason, request_id, idempotency_key, refresh):
+        async def mutation(_conn):
+            return await refresh()
+        return await self._execute(
+            actor=actor, command="capability.refresh", target_type="source_capability",
+            target_id=source_id, source_id=source_id, company_id=None, reason=reason,
+            request_id=request_id, idempotency_key=idempotency_key,
+            request={"source_id": source_id}, mutation=mutation,
+        )
+
     async def create_grant(
         self,
         *,
@@ -407,7 +428,7 @@ class AdminMutationService:
                 source_id,
                 company_id,
                 effect,
-                expires_at,
+                _expiry(expires_at),
                 actor.subject,
                 actor.client_id,
                 reason,
@@ -543,7 +564,7 @@ class AdminMutationService:
                     principal_id,
                     role_name,
                     source_id,
-                    expires_at,
+                    _expiry(expires_at),
                     actor.subject,
                     actor.client_id,
                     reason,
@@ -797,6 +818,7 @@ class AdminMutationService:
         reason: str,
         request_id: uuid.UUID,
         idempotency_key: str,
+        enabled: bool = True,
     ) -> dict[str, Any]:
         candidate = Source(
             id=source_id,
@@ -821,6 +843,7 @@ class AdminMutationService:
             "username_secret_ref": username_secret_ref,
             "password_secret_ref": password_secret_ref,
             "tags": tags,
+            "enabled": enabled,
         }
 
         async def mutation(conn):
@@ -828,7 +851,7 @@ class AdminMutationService:
                 """
                 UPDATE bag.sources
                 SET display_name=$3, base_url=$4, username_secret_ref=$5,
-                    password_secret_ref=$6, tags=$7, read_only=true,
+                    password_secret_ref=$6, tags=$7, read_only=true, enabled=$8,
                     row_version=row_version+1, updated_at=now()
                 WHERE source_id=$1 AND row_version=$2
                 RETURNING source_id, display_name, base_url, read_only,
@@ -841,6 +864,7 @@ class AdminMutationService:
                 username_secret_ref,
                 password_secret_ref,
                 tags,
+                enabled,
             )
             if row is None:
                 exists = await conn.fetchval(
@@ -1014,7 +1038,7 @@ class AdminMutationService:
                     role_id,
                     source_id,
                     company_id,
-                    expires_at,
+                    _expiry(expires_at),
                     actor.subject,
                     actor.client_id,
                     reason,
@@ -1174,7 +1198,7 @@ class AdminMutationService:
                     source_id,
                     company_id,
                     effect,
-                    expires_at,
+                    _expiry(expires_at),
                     actor.subject,
                     actor.client_id,
                     reason,

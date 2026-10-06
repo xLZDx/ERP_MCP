@@ -12,6 +12,7 @@ from pydantic import AnyHttpUrl
 
 from .audit import AuditCorrelationMiddleware
 from .auth import JWTTokenVerifier
+from .company_scope import CompanyScopeUnavailable
 from .compatibility import MetadataDriftUnacknowledged, require_acknowledged_metadata
 from .principal import current_principal
 from .runtime import Runtime
@@ -514,7 +515,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             query=query,
         )
         try:
-            capabilities = await runtime.onec.capabilities(source)
+            if expand or (select and any("/" in item for item in select)):
+                raise CompanyScopeUnavailable("company-scoped navigation reads are unsupported")
+            capabilities = await runtime.onec.capabilities(source, refresh=True)
             drift = await runtime.registry.save_capabilities(capabilities)
             require_acknowledged_metadata(drift)
             mapping = await runtime.company_scope.mapping(

@@ -81,3 +81,12 @@ async def test_missing_capability_fails_closed():
 
     with pytest.raises(CapabilityDenied):
         await policy.require(principal(), "unknown.capability", source_id="s1")
+
+
+@pytest.mark.asyncio
+async def test_unknown_capability_cannot_be_allowed_by_an_unrecognized_db_override():
+    db = FakeDB([False, True])
+    policy = CapabilityPolicy(db, enabled=True)
+    with pytest.raises(CapabilityDenied):
+        await policy.require(principal(), "unknown.capability", source_id="s1")
+    assert not db.pool.calls

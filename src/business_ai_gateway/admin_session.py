@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -14,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse
 
 from .auth import JWTTokenVerifier
+from .rate_limit import RateLimiter, RateLimitExceeded
 from .settings import Settings
 
 
@@ -51,6 +53,7 @@ class AdminSessionManager:
         self.redis = redis
         self.verifier = verifier
         self.transport = transport
+        self.login_limiter = RateLimiter(redis, per_minute=10)
 
     @property
     def secure_cookie(self) -> bool:
@@ -63,7 +66,15 @@ class AdminSessionManager:
         return f"erp_mcp:admin:session:{session_id}"
 
     async def login(self, request: Request):
-        await self.redis.ping()
+        try:
+            await self.login_limiter.check(
+                subject=request.client.host if request.client else "unknown",
+                source_id="__admin_login__", tool="login",
+            )
+        except RateLimitExceeded:
+            return JSONResponse({"error": "RATE_LIMITED"}, status_code=429)
+        except Exception:  # noqa: BLE001 - fail closed without Redis
+            return JSONResponse({"error": "ADMIN_DEPENDENCY_UNAVAILABLE"}, status_code=503)
         state = _token_urlsafe()
         nonce = _token_urlsafe()
         verifier = _token_urlsafe(48)
@@ -71,14 +82,14 @@ class AdminSessionManager:
             "nonce": nonce,
             "verifier": verifier,
             "created_at": int(time.time()),
+            "previous_session_id": request.cookies.get(self.SESSION_COOKIE),
         }
         await self.redis.setex(
             self._login_key(state),
             self.LOGIN_TTL_SECONDS,
             json.dumps(record),
         )
-        query = urlencode(
-            {
+        parameters = {
                 "response_type": "code",
                 "client_id": self.settings.admin_oidc_client_id,
                 "redirect_uri": self.settings.admin_oidc_redirect_uri,
@@ -88,7 +99,11 @@ class AdminSessionManager:
                 "code_challenge": _challenge(verifier),
                 "code_challenge_method": "S256",
             }
-        )
+        if request.query_params.get("step_up") == "1" and self.settings.admin_step_up_acr_values.strip():
+            parameters.update(acr_values=" ".join(
+                value.strip() for value in self.settings.admin_step_up_acr_values.split(",") if value.strip()
+            ), max_age="0", prompt="login")
+        query = urlencode(parameters)
         response = RedirectResponse(
             f"{self.settings.admin_oidc_authorization_url}?{query}",
             status_code=302,
@@ -106,7 +121,9 @@ class AdminSessionManager:
 
     async def _verify_id_token(self, raw_token: str, *, nonce: str) -> dict:
         try:
-            signing_key = self.verifier._jwks.get_signing_key_from_jwt(raw_token).key
+            signing_key = (await asyncio.to_thread(
+                self.verifier._jwks.get_signing_key_from_jwt, raw_token
+            )).key
             claims = jwt.decode(
                 raw_token,
                 signing_key,
@@ -125,6 +142,9 @@ class AdminSessionManager:
             raise PermissionError("invalid OIDC id_token") from exc
         if not secrets.compare_digest(str(claims.get("nonce", "")), nonce):
             raise PermissionError("OIDC nonce mismatch")
+        if (isinstance(claims.get("aud"), list) and len(claims["aud"]) > 1
+                and claims.get("azp") != self.settings.admin_oidc_client_id):
+            raise PermissionError("OIDC authorized party mismatch")
         return claims
 
     async def callback(self, request: Request):
@@ -205,12 +225,12 @@ class AdminSessionManager:
         }
         await self.redis.setex(
             self._session_key(session_id),
-            min(self.IDLE_TTL_SECONDS, self.settings.admin_session_ttl_seconds),
+            min(self.IDLE_TTL_SECONDS, absolute_expires_at - now),
             json.dumps(session),
         )
 
         redirect = RedirectResponse("/admin/", status_code=302)
-        old_session = request.cookies.get(self.SESSION_COOKIE)
+        old_session = record.get("previous_session_id") or request.cookies.get(self.SESSION_COOKIE)
         if old_session:
             await self.redis.delete(self._session_key(old_session))
         redirect.delete_cookie(self.LOGIN_COOKIE, path="/admin")
@@ -237,7 +257,7 @@ class AdminSessionManager:
             now = int(time.time())
             absolute = int(record["absolute_expires_at"])
             last_seen = int(record["last_seen"])
-            if now >= absolute or now - last_seen > self.IDLE_TTL_SECONDS:
+            if now >= absolute or now - last_seen >= self.IDLE_TTL_SECONDS:
                 await self.redis.delete(self._session_key(session_id))
                 return None
             access_token = str(record["access_token"])
@@ -248,11 +268,16 @@ class AdminSessionManager:
 
         record["last_seen"] = now
         remaining = max(1, absolute - now)
-        await self.redis.setex(
-            self._session_key(session_id),
+        # Compare-and-refresh cannot recreate a session deleted by a concurrent logout.
+        refreshed = await self.redis.eval(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+            "redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3]); return 1 "
+            "else return redis.call('EXISTS', KEYS[1]) end",
+            1, self._session_key(session_id), raw, json.dumps(record),
             min(self.IDLE_TTL_SECONDS, remaining),
-            json.dumps(record),
         )
+        if not refreshed:
+            return None
         return AdminSession(
             session_id=session_id,
             access_token=access_token,

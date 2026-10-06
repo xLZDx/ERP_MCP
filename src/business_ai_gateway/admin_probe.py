@@ -2,16 +2,50 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import socket
+import time
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from urllib.parse import urlparse
 
+import httpx
+
+from .adapters.onec.adapter import OneCAdapter
+from .adapters.onec.client import OneCReadClient
 from .models import Source
 
 
 class SourceEgressDenied(PermissionError):
     code = "SOURCE_EGRESS_DENIED"
+
+
+class PinnedSourceTransport(httpx.AsyncBaseTransport):
+    """Connect to a validated numeric address; retain the original TLS name and Host."""
+
+    def __init__(self, host: str, port: int, address: str, transport=None):
+        self.host, self.port, self.address = host, port, address
+        self.transport = transport or httpx.AsyncHTTPTransport(trust_env=False)
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if request.method not in {"GET", "HEAD"}:
+            raise SourceEgressDenied("probe transport is read-only")
+        port = request.url.port or (443 if request.url.scheme == "https" else 80)
+        if request.url.host.casefold() != self.host or port != self.port:
+            raise SourceEgressDenied("probe target differs from approved authority")
+        extensions = {**request.extensions, "sni_hostname": self.host}
+        pinned = httpx.Request(
+            request.method,
+            request.url.copy_with(host=self.address),
+            headers=request.headers,
+            stream=request.stream,
+            extensions=extensions,
+        )
+        return await self.transport.handle_async_request(pinned)
+
+    async def aclose(self):
+        await self.transport.aclose()
 
 
 def _split_csv(value: str) -> tuple[str, ...]:
@@ -38,7 +72,9 @@ class SourceEgressPolicy:
     async def validate(self, url: str) -> dict[str, object]:
         host, port = self.authority(url)
         authority = f"{host}:{port}"
-        if host not in self.allowed_hosts and authority not in self.allowed_hosts:
+        if authority not in self.allowed_hosts and not (
+            host in self.allowed_hosts and port in {80, 443}
+        ):
             raise SourceEgressDenied("source host is not in the administrative egress allowlist")
 
         infos = await asyncio.to_thread(
@@ -66,6 +102,33 @@ class AdminSourceProbe:
     def __init__(self, runtime, policy: SourceEgressPolicy):
         self.runtime = runtime
         self.policy = policy
+        self._slots = asyncio.Semaphore(4)
+
+    @asynccontextmanager
+    async def approved_adapter(self, base_url: str):
+        # Separate pool and caches isolate slow probes from the MCP runtime.
+        started = time.monotonic()
+        outcome = "error"
+        try:
+            async with asyncio.timeout(45), self._slots:
+                egress = await self.policy.validate(base_url)
+                transport = PinnedSourceTransport(
+                    str(egress["host"]), int(egress["port"]), egress["resolved_addresses"][0]
+                )
+                client = OneCReadClient(
+                    timeout_seconds=min(self.runtime.settings.http_timeout_seconds, 10),
+                    max_response_bytes=min(self.runtime.settings.max_response_bytes, 5_000_000),
+                    transport=transport,
+                )
+                adapter = OneCAdapter(self.runtime.settings, self.runtime.secrets, client)
+                try:
+                    yield adapter, egress
+                    outcome = "success"
+                finally:
+                    await client.close()
+        finally:
+            logging.getLogger("uvicorn.error").info("admin_source_probe outcome=%s duration_ms=%s",
+                outcome, int((time.monotonic() - started) * 1000))
 
     async def probe(
         self,
@@ -76,7 +139,6 @@ class AdminSourceProbe:
         display_name: str = "Admin source probe",
         platform_version_hint: str | None = None,
     ) -> dict[str, object]:
-        egress = await self.policy.validate(base_url)
         source = Source(
             id=f"admin-probe-{uuid.uuid4()}",
             project="onec",
@@ -96,14 +158,13 @@ class AdminSourceProbe:
             production=self.runtime.settings.environment == "production"
         )
 
-        health = await self.runtime.onec.health(source)
-        capabilities = await self.runtime.onec.capabilities(source, refresh=True)
-        egress_after = await self.policy.validate(base_url)
-        if egress_after["resolved_addresses"] != egress["resolved_addresses"]:
-            raise SourceEgressDenied("source DNS resolution changed during probe")
-        # Probe identities are ephemeral and must not remain in adapter caches.
-        self.runtime.onec._metadata.pop(source.id, None)
-        self.runtime.onec._capabilities.pop(source.id, None)
+        async with self.approved_adapter(base_url) as (adapter, egress):
+            health = await adapter.health(source)
+            if not health.get("ok"):
+                raise SourceEgressDenied("source health probe failed")
+            capabilities = await adapter.capabilities(source, refresh=True)
+            if not capabilities.metadata_supported:
+                raise SourceEgressDenied("source metadata unavailable")
 
         safe_capabilities = replace(
             capabilities,
@@ -116,7 +177,11 @@ class AdminSourceProbe:
             register_capabilities={},
         ).as_dict()
         return {
-            "egress": egress,
+            "egress": {
+                "host": egress["host"],
+                "port": egress["port"],
+                "resolved_count": len(egress["resolved_addresses"]),
+            },
             "health": {
                 "status_code": int(health.get("status_code", 0)),
                 "ok": bool(health.get("ok", False)),

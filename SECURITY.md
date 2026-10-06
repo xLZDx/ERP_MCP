@@ -46,13 +46,27 @@ Security invariants:
 - browser sign-in uses OIDC Authorization Code + PKCE, state and nonce;
 - the browser receives only an opaque HttpOnly SameSite session cookie; bearer tokens remain server-side in Redis and are revalidated on every admin API request;
 - cookie-authenticated POST/PATCH requests require a per-session CSRF token;
+- admin sessions cannot outlive the validated admin access-token expiration and also enforce idle/absolute TTLs;
+- admin API requests share a subject-level Redis rate budget and fail closed if the limiter dependency is unavailable;
+- platform-role create/revoke requires an approved step-up ACR and recent auth_time;
 - admin mutations are disabled by default and require a separate business_ai_control_api database credential;
 - every mutation requires actor, reason, request ID and idempotency key and writes append-only admin audit;
 - exact-ID revocation is used for grants and role/policy assignments;
-- source probes are GET/HEAD-only and require an explicit host plus optional CIDR egress allowlist;
+- source probes are GET/HEAD-only, require an explicit host plus optional CIDR egress allowlist, and connect to a validated numeric IP with the original Host and TLS SNI/certificate name. The probe has its own pool, four concurrent slots and a 45-second total deadline; production also requires network-level egress enforcement;
 - secret values never enter Admin UI/API responses, audit events or registry rows;
 - platform administration roles, data-scope grants and business capabilities are independent;
 - business capability enforcement is fail-closed when enabled and never widens source/company scope;
 - generic onec_read remains source-scoped. Company-only access is accepted only by onec_company_read when a current VALIDATED semantic profile supplies an explicit company-scope mapping verified against live metadata.
 
+Production startup rejects a control DB session with superuser/owner/operator membership,
+schema ownership, role-management rights, DELETE, mutable admin audit or broad drift UPDATE.
+OIDC state consumption and session refresh are atomic; concurrent logout cannot recreate a session.
+Company-aware reads reject navigation expansion and unbalanced caller-filter delimiters;
+current live metadata is refreshed before applying a mapping.
+
 Production keeps Admin API/UI/mutations/business-capability enforcement disabled until the environment-specific prerequisites and bootstrap bindings are configured and verified.
+
+
+## Admin request logging
+
+OIDC authorization codes, state and other callback query parameters must never be written to standard access logs. The gateway image disables Uvicorn access logging; ingress/OTel request telemetry must log a redacted path without the admin callback query string.

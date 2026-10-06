@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     admin_oidc_client_secret: SecretStr | None = None
     admin_oidc_redirect_uri: str | None = None
     admin_session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
+    admin_step_up_acr_values: str = ""
     admin_control_database_url: str | None = None
     admin_source_allowed_hosts: str = ""
     admin_source_allowed_cidrs: str = ""
@@ -96,6 +97,8 @@ class Settings(BaseSettings):
                 raise ValueError("admin API requires BAG_OAUTH_ENABLED=true")
             if not self.admin_oauth_audience:
                 raise ValueError("admin API requires BAG_ADMIN_OAUTH_AUDIENCE")
+            if len(self.admin_oauth_required_scope.split()) != 1:
+                raise ValueError("admin API requires one nonempty admin scope")
             if self.admin_oauth_audience == self.oauth_audience:
                 raise ValueError("admin API audience must differ from MCP OAuth audience")
             if self.admin_oauth_required_scope == self.oauth_required_scope:

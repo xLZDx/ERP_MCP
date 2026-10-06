@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import logging
 import secrets
+import time
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -11,6 +14,7 @@ from mcp.server.auth.provider import AccessToken
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse
 
+from .admin_access import explain_access
 from .admin_mutations import (
     AdminActor,
     AdminConflict,
@@ -41,7 +45,12 @@ def _json_value(value: Any) -> Any:
 
 
 def _json_record(row) -> dict[str, Any]:
-    return {str(key): _json_value(value) for key, value in dict(row).items()}
+    result = {}
+    for key, value in dict(row).items():
+        if isinstance(value, str) and (key.endswith("_json") or key == "capabilities"):
+            value = json.loads(value)
+        result[str(key)] = _json_value(value)
+    return result
 
 
 def _request_id(request: Request) -> UUID:
@@ -56,12 +65,24 @@ def _request_id(request: Request) -> UUID:
 
 async def _json_body(request: Request) -> dict[str, Any]:
     try:
-        body = await request.json()
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 256_000:
+                raise AdminValidationError("request body exceeds 256 KB")
+        body = json.loads(raw)
     except Exception as exc:
         raise AdminValidationError("request body must be valid JSON") from exc
     if not isinstance(body, dict):
         raise AdminValidationError("request body must be a JSON object")
     return body
+
+
+def _boolean(body, key, default):
+    value = body.get(key, default)
+    if not isinstance(value, bool):
+        raise AdminValidationError("boolean field required")
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +98,9 @@ class AdminContext:
     bindings: tuple[AdminRoleBinding, ...]
     session_id: str | None = None
     csrf_token: str | None = None
+    page_limit: int | None = None
+    page_offset: int = 0
+    selected_source: str | None = None
 
     def has_role(self, *roles: str) -> bool:
         allowed = set(roles)
@@ -103,6 +127,17 @@ class AdminContext:
 class AdminRepository:
     def __init__(self, db):
         self.db = db
+
+    async def visible_target(self, ctx, target_kind, target_id):
+        queries = {
+            "grant": ("SELECT source_id FROM bag.access_grants WHERE grant_id=$1", ("PLATFORM_ADMIN", "ACCESS_ADMIN")),
+            "assignment": ("SELECT source_id FROM bag.business_role_assignments WHERE assignment_id=$1", ("PLATFORM_ADMIN", "ACCESS_ADMIN")),
+            "override": ("SELECT source_id FROM bag.capability_overrides WHERE override_id=$1", ("PLATFORM_ADMIN", "ACCESS_ADMIN")),
+            "profile": ("SELECT source_id FROM bag.semantic_profiles WHERE profile_id=$1", ("PLATFORM_ADMIN", "PROFILE_ADMIN")),
+        }
+        sql, roles = queries[target_kind]
+        row = await self.db.require_pool().fetchrow(sql, target_id)
+        return row is not None and ctx.can_admin_source(row["source_id"], *roles)
 
     async def resolve_bindings(
         self, subject: str, groups: frozenset[str]
@@ -137,13 +172,17 @@ class AdminRepository:
         limit: int,
     ) -> list[dict[str, Any]]:
         scope = ctx.source_scope(*roles)
+        if ctx.selected_source:
+            scope = {ctx.selected_source} if scope is None or ctx.selected_source in scope else set()
         if scope == set():
             return []
         pool = self.db.require_pool()
+        if ctx.page_limit is not None:
+            limit = ctx.page_limit + 1
         if scope is None:
-            rows = await pool.fetch(global_sql, limit)
+            rows = await pool.fetch(global_sql + " OFFSET $2", limit, ctx.page_offset) if ctx.page_limit is not None else await pool.fetch(global_sql, limit)
         else:
-            rows = await pool.fetch(scoped_sql, sorted(scope), limit)
+            rows = await pool.fetch(scoped_sql + " OFFSET $3", sorted(scope), limit, ctx.page_offset) if ctx.page_limit is not None else await pool.fetch(scoped_sql, sorted(scope), limit)
         return [_json_record(row) for row in rows]
 
     async def list_sources(self, ctx: AdminContext) -> list[dict[str, Any]]:
@@ -312,41 +351,47 @@ class AdminRepository:
         if not principal_id or len(principal_id) > 512:
             raise AdminValidationError("principal id is required and must be <=512 characters")
 
-        grants = [
-            item
-            for item in await self.list_grants(ctx)
-            if item["principal_kind"] == principal_kind
-            and item["principal_id"] == principal_id
-        ]
-        assignments = [
-            item
-            for item in await self.list_business_role_assignments(ctx)
-            if item["principal_kind"] == principal_kind
-            and item["principal_id"] == principal_id
-        ]
-        overrides = [
-            item
-            for item in await self.list_capability_overrides(ctx)
-            if item["principal_kind"] == principal_kind
-            and item["principal_id"] == principal_id
-        ]
+        scope = ctx.source_scope("PLATFORM_ADMIN", "ACCESS_ADMIN", "AUDITOR")
+
+        async def selected(sql):
+            rows = await self.db.require_pool().fetch(
+                sql, principal_kind, principal_id, None if scope is None else sorted(scope)
+            )
+            return [_json_record(row) for row in rows]
+
+        grants = await selected("""SELECT * FROM bag.access_grants
+            WHERE principal_kind=$1 AND principal_id=$2
+              AND ($3::text[] IS NULL OR source_id=ANY($3))
+            ORDER BY created_at DESC, grant_id LIMIT 101""")
+        assignments = await selected("""SELECT * FROM bag.business_role_assignments
+            WHERE principal_kind=$1 AND principal_id=$2
+              AND ($3::text[] IS NULL OR source_id=ANY($3))
+            ORDER BY created_at DESC, assignment_id LIMIT 101""")
+        overrides = await selected("""SELECT * FROM bag.capability_overrides
+            WHERE principal_kind=$1 AND principal_id=$2
+              AND ($3::text[] IS NULL OR source_id=ANY($3))
+            ORDER BY created_at DESC, override_id LIMIT 101""")
         platform_roles: list[dict[str, Any]] = []
         if ctx.has_role("PLATFORM_ADMIN", "AUDITOR"):
-            platform_roles = [
-                item
-                for item in await self.list_platform_role_bindings(ctx)
-                if item["principal_kind"] == principal_kind
-                and item["principal_id"] == principal_id
-            ]
+            role_scope = ctx.source_scope("PLATFORM_ADMIN", "AUDITOR")
+            rows = await self.db.require_pool().fetch("""SELECT * FROM bag.platform_role_bindings
+                WHERE principal_kind=$1 AND principal_id=$2
+                  AND ($3::text[] IS NULL OR source_id=ANY($3))
+                ORDER BY created_at DESC, binding_id LIMIT 101""",
+                principal_kind, principal_id, None if role_scope is None else sorted(role_scope))
+            platform_roles = [_json_record(row) for row in rows]
         return {
             "principal_kind": principal_kind,
             "principal_id": principal_id,
             "directory_status": "not_configured",
+            "mode": "exact-id",
+            "existence_verified": False,
+            "truncated": any(len(items) > 100 for items in (grants, assignments, overrides, platform_roles)),
             "display_name": None,
-            "platform_roles": platform_roles,
-            "grants": grants,
-            "business_role_assignments": assignments,
-            "capability_overrides": overrides,
+            "platform_roles": platform_roles[:100],
+            "grants": grants[:100],
+            "business_role_assignments": assignments[:100],
+            "capability_overrides": overrides[:100],
         }
 
     async def list_business_roles(self) -> list[dict[str, Any]]:
@@ -520,16 +565,16 @@ class AdminRepository:
         )
 
     async def overview(self, ctx: AdminContext) -> dict[str, int]:
-        sources = await self.list_sources(ctx)
-        companies = await self.list_companies(ctx)
-        capabilities = await self.list_capabilities(ctx)
-        return {
-            "sources": len(sources),
-            "companies": len(companies),
-            "drifted_sources": sum(
-                1 for item in capabilities if item.get("drift_status") == "DRIFTED"
-            ),
-        }
+        scope = ctx.source_scope()
+        if ctx.selected_source:
+            scope = {ctx.selected_source} if scope is None or ctx.selected_source in scope else set()
+        row = await self.db.require_pool().fetchrow("""
+            SELECT (SELECT count(*) FROM bag.sources WHERE $1::text[] IS NULL OR source_id=ANY($1)) AS sources,
+                   (SELECT count(*) FROM bag.companies WHERE $1::text[] IS NULL OR source_id=ANY($1)) AS companies,
+                   (SELECT count(*) FROM bag.source_capabilities WHERE drift_status='DRIFTED'
+                      AND ($1::text[] IS NULL OR source_id=ANY($1))) AS drifted_sources
+        """, None if scope is None else sorted(scope))
+        return dict(row)
 
 
 class AdminAPI:
@@ -610,19 +655,66 @@ class AdminAPI:
         bindings = await self.repository.resolve_bindings(token.subject or "", groups)
         if not bindings:
             return JSONResponse({"error": "PLATFORM_ROLE_DENIED"}, status_code=403)
-        return AdminContext(
+        try:
+            page_limit = int(request.query_params.get("limit", "50"))
+            page_offset = int(request.query_params.get("offset", "0"))
+            if not 1 <= page_limit <= 200 or not 0 <= page_offset <= 100_000:
+                raise ValueError("invalid pagination")
+        except ValueError:
+            return JSONResponse({"error": "INVALID_REQUEST"}, status_code=400)
+        ctx = AdminContext(
             token=token,
             groups=groups,
             bindings=bindings,
             session_id=session_id,
             csrf_token=csrf_token,
+            page_limit=page_limit, page_offset=page_offset,
+            selected_source=request.query_params.get("source_id") or None,
         )
+        request.state.admin_context = ctx
+        return ctx
 
-    async def csrf_guard(self, request: Request):
+    async def serve(self, request: Request, handler):
+        try:
+            guard = await self.csrf_guard(request) if request.method in {"POST", "PUT", "PATCH", "DELETE"} else None
+            response = guard if guard is not None else await handler(request)
+            ctx = getattr(request.state, "admin_context", None)
+            if ctx is not None and isinstance(response, JSONResponse) and response.status_code == 200:
+                payload = json.loads(response.body)
+                if isinstance(payload, dict) and "access" in payload and "admin" in payload:
+                    more = any(len(payload[key]) > ctx.page_limit for key in ("access", "admin"))
+                    for key in ("access", "admin"):
+                        payload[key] = payload[key][:ctx.page_limit]
+                    payload.update(limit=ctx.page_limit, offset=ctx.page_offset,
+                                   next_offset=ctx.page_offset + ctx.page_limit if more else None)
+                    response = JSONResponse(payload)
+                if isinstance(payload, dict) and isinstance(payload.get("items"), list) and "next_offset" not in payload:
+                    items = payload["items"]
+                    payload.update(items=items[:ctx.page_limit], limit=ctx.page_limit, offset=ctx.page_offset,
+                                   next_offset=ctx.page_offset + ctx.page_limit if len(items) > ctx.page_limit else None)
+                    response = JSONResponse(payload)
+            if response.status_code == 403 and ctx is not None and self.mutations is not None:
+                await self.mutations.record_admin_event(
+                    actor=self._actor(ctx), action=f"admin.{handler.__name__}",
+                    target_type="admin_route", target_id=None, source_id=None, company_id=None,
+                    reason="server authorization denied", request_id=_request_id(request), outcome="denied",
+                    detail_code="ADMIN_REQUEST_DENIED",
+                )
+        except Exception:  # noqa: BLE001 - safe dependency boundary, including read handlers
+            response = JSONResponse({"error": "ADMIN_DEPENDENCY_UNAVAILABLE"}, status_code=503)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        logging.getLogger("uvicorn.error").info(
+            "admin_request action=%s status=%s", handler.__name__, response.status_code,
+        )
+        return response
+
+    async def csrf_guard(self, request: Request, *, allow_bearer=True):
         if self.sessions is None:
             return None
         scheme, _, bearer = request.headers.get("authorization", "").partition(" ")
-        if scheme.lower() == "bearer" and bearer.strip():
+        if allow_bearer and scheme.lower() == "bearer" and bearer.strip():
             return None
         if not request.cookies.get(self.sessions.SESSION_COOKIE):
             return None
@@ -663,6 +755,21 @@ class AdminAPI:
             subject=ctx.token.subject or "",
             client_id=ctx.token.client_id,
         )
+
+    def _step_up_guard(self, ctx: AdminContext):
+        approved = {value.strip() for value in self.settings.admin_step_up_acr_values.split(",") if value.strip()}
+        claims = ctx.token.claims or {}
+        auth_time = claims.get("auth_time")
+        if (
+            not approved
+            or not isinstance(claims.get("acr"), str)
+            or claims.get("acr") not in approved
+            or not isinstance(auth_time, int)
+            or isinstance(auth_time, bool)
+            or not 0 <= time.time() - auth_time <= 300
+        ):
+            return JSONResponse({"error": "STEP_UP_REQUIRED"}, status_code=403)
+        return None
 
     async def admin_root(self, _request: Request):
         return RedirectResponse("/admin/", status_code=302)
@@ -705,7 +812,7 @@ class AdminAPI:
     async def logout(self, request: Request):
         if self.sessions is None:
             return JSONResponse({"error": "ADMIN_UI_DISABLED"}, status_code=404)
-        guard = await self.csrf_guard(request)
+        guard = await self.csrf_guard(request, allow_bearer=False)
         if guard is not None:
             return guard
         return await self.sessions.logout(request)
@@ -726,6 +833,8 @@ class AdminAPI:
                 "mutations_enabled": self.mutations is not None,
                 "csrf_token": ctx.csrf_token,
                 "session_authenticated": ctx.session_id is not None,
+                "business_capability_enforcement_enabled": self.settings.business_capability_enforcement_enabled,
+                "platform_role_step_up_configured": bool(self.settings.admin_step_up_acr_values.strip()),
             }
         )
 
@@ -787,6 +896,27 @@ class AdminAPI:
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
             return self._mutation_error(exc)
 
+    async def effective_access(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        source_id = request.query_params.get("source_id", "")
+        if not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "ACCESS_ADMIN", "AUDITOR"):
+            return self._denied()
+        try:
+            return JSONResponse(await explain_access(
+                self.repository.db.require_pool(), ctx=ctx,
+                kind=request.query_params.get("kind", ""),
+                principal_id=request.query_params.get("id", "").strip(),
+                source_id=source_id, entity_set=request.query_params.get("entity_set", ""),
+                limit=int(request.query_params.get("limit", "50")),
+                offset=int(request.query_params.get("offset", "0")),
+                effect=request.query_params.get("effect", ""),
+                inheritance=request.query_params.get("inheritance", ""),
+            ))
+        except Exception as exc:  # noqa: BLE001 - redact boundary failures
+            return self._mutation_error(exc)
+
     async def business_roles(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
@@ -830,6 +960,26 @@ class AdminAPI:
         if not ctx.has_role("PLATFORM_ADMIN", "PROFILE_ADMIN", "AUDITOR"):
             return self._denied()
         return JSONResponse({"items": await self.repository.list_profiles(ctx)})
+
+    async def profile_detail(self, request: Request):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if not ctx.has_role("PLATFORM_ADMIN", "PROFILE_ADMIN", "AUDITOR"):
+            return self._denied()
+        try:
+            profile_id = UUID(request.path_params["profile_id"])
+            pool = self.repository.db.require_pool()
+            row = await pool.fetchrow("""SELECT profile_id, source_id, company_id, profile_name,
+                profile_version, status, metadata_fingerprint, profile_fingerprint,
+                validation_evidence_json, profile_json FROM bag.semantic_profiles WHERE profile_id=$1""", profile_id)
+            if row is None or not ctx.can_admin_source(row["source_id"], "PLATFORM_ADMIN", "PROFILE_ADMIN", "AUDITOR"):
+                return JSONResponse({"error": "NOT_FOUND"}, status_code=404)
+            mappings = await pool.fetch("""SELECT canonical_concept, mapping_status, confidence, mapping_json,
+                evidence_json FROM bag.semantic_mappings WHERE profile_id=$1 ORDER BY canonical_concept LIMIT 200""", profile_id)
+            return JSONResponse({**_json_record(row), "mappings": [_json_record(item) for item in mappings]})
+        except Exception as exc:  # noqa: BLE001 - safe API boundary
+            return self._mutation_error(exc)
 
     async def audit(self, request: Request):
         ctx = await self.authenticate(request)
@@ -879,13 +1029,14 @@ class AdminAPI:
             body = await _json_body(request)
             if str(body.get("source_id", source_id)) != source_id:
                 raise AdminValidationError("source_id is immutable")
-            await self.probe.probe(
-                base_url=str(body.get("base_url", "")),
-                username_secret_ref=str(body.get("username_secret_ref", "")),
-                password_secret_ref=str(body.get("password_secret_ref", "")),
-                display_name=str(body.get("display_name", "")),
-                platform_version_hint=body.get("platform_version_hint"),
-            )
+            if _boolean(body, "enabled", True):
+                await self.probe.probe(
+                    base_url=str(body.get("base_url", "")),
+                    username_secret_ref=str(body.get("username_secret_ref", "")),
+                    password_secret_ref=str(body.get("password_secret_ref", "")),
+                    display_name=str(body.get("display_name", "")),
+                    platform_version_hint=body.get("platform_version_hint"),
+                )
             result = await self.mutations.update_source(
                 actor=self._actor(ctx),
                 source_id=source_id,
@@ -895,6 +1046,7 @@ class AdminAPI:
                 username_secret_ref=str(body.get("username_secret_ref", "")),
                 password_secret_ref=str(body.get("password_secret_ref", "")),
                 tags=[str(item) for item in body.get("tags", [])],
+                enabled=_boolean(body, "enabled", True),
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),
@@ -930,8 +1082,8 @@ class AdminAPI:
                 display_name=str(body.get("display_name", "")),
                 legal_name=body.get("legal_name"),
                 country_code=body.get("country_code"),
-                enabled=bool(body.get("enabled", True)),
-                is_default=bool(body.get("is_default", False)),
+                enabled=_boolean(body, "enabled", True),
+                is_default=_boolean(body, "is_default", False),
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),
@@ -949,60 +1101,34 @@ class AdminAPI:
         source_id = request.path_params["source_id"]
         if not ctx.can_admin_source(source_id, "PLATFORM_ADMIN", "SOURCE_ADMIN"):
             return self._denied()
-        actor = self._actor(ctx)
-        request_id = _request_id(request)
-        reason = "capability refresh"
         try:
             body = await _json_body(request)
-            reason = str(body.get("reason", ""))
             source = await self.repository.source_model(ctx, source_id)
             if source is None:
                 return JSONResponse({"error": "SOURCE_NOT_FOUND"}, status_code=404)
-            await self.probe.policy.validate(source.base_url)
-            capabilities = await self.runtime.onec.capabilities(source, refresh=True)
-            drift = await self.runtime.registry.save_capabilities(capabilities)
-            result = capabilities.as_dict()
-            result.update(drift)
-            await self.mutations.record_admin_event(
-                actor=actor,
-                action="capability.refresh",
-                target_type="source_capability",
-                target_id=source_id,
-                source_id=source_id,
-                company_id=None,
-                reason=reason,
-                request_id=request_id,
-                outcome="success",
-                safe_change={
-                    "metadata_fingerprint": capabilities.metadata_fingerprint,
-                    "adapter_profile": capabilities.adapter_profile.value,
-                    "drift_status": drift["drift_status"],
-                },
+
+            async def refresh():
+                async with self.probe.approved_adapter(source.base_url) as (adapter, _egress):
+                    capabilities = await adapter.capabilities(source, refresh=True)
+                    if not capabilities.metadata_supported:
+                        raise SourceEgressDenied("source metadata unavailable")
+                drift = await self.runtime.registry.save_capabilities(capabilities)
+                return {**capabilities.as_dict(), **drift}
+
+            result = await self.mutations.refresh_capabilities(
+                actor=self._actor(ctx), source_id=source_id, reason=str(body.get("reason", "")),
+                request_id=_request_id(request), idempotency_key=request.headers.get("idempotency-key", ""),
+                refresh=refresh,
             )
             return JSONResponse(result)
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
-            try:
-                await self.mutations.record_admin_event(
-                    actor=actor,
-                    action="capability.refresh",
-                    target_type="source_capability",
-                    target_id=source_id,
-                    source_id=source_id,
-                    company_id=None,
-                    reason=reason or "capability refresh failed",
-                    request_id=request_id,
-                    outcome="error",
-                    detail_code=getattr(exc, "code", type(exc).__name__),
-                )
-            except Exception:  # noqa: BLE001 - preserve original safe API error
-                _ = None
             return self._mutation_error(exc)
 
     async def source_probe(self, request: Request):
         ctx = await self.authenticate(request)
         if isinstance(ctx, JSONResponse):
             return ctx
-        if not ctx.has_role("PLATFORM_ADMIN", "SOURCE_ADMIN"):
+        if ctx.source_scope("PLATFORM_ADMIN", "SOURCE_ADMIN") is not None:
             return self._denied()
         try:
             body = await _json_body(request)
@@ -1071,7 +1197,7 @@ class AdminAPI:
                 display_name=str(body.get("display_name", "")),
                 legal_name=body.get("legal_name"),
                 country_code=body.get("country_code"),
-                is_default=bool(body.get("is_default", False)),
+                is_default=_boolean(body, "is_default", False),
                 reason=str(body.get("reason", "")),
                 request_id=_request_id(request),
                 idempotency_key=request.headers.get("idempotency-key", ""),
@@ -1120,8 +1246,7 @@ class AdminAPI:
             body = await _json_body(request)
             grant_id = UUID(request.path_params["grant_id"])
             # Scope is rechecked against the stored grant before mutation.
-            rows = await self.repository.list_grants(ctx)
-            if not any(str(item["grant_id"]) == str(grant_id) for item in rows):
+            if not await self.repository.visible_target(ctx, "grant", grant_id):
                 return self._denied()
             result = await self.mutations.revoke_grant(
                 actor=self._actor(ctx),
@@ -1143,6 +1268,9 @@ class AdminAPI:
             return self._disabled()
         if ctx.source_scope("PLATFORM_ADMIN") is not None:
             return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
         try:
             body = await _json_body(request)
             result = await self.mutations.create_platform_role(
@@ -1168,6 +1296,9 @@ class AdminAPI:
             return self._disabled()
         if ctx.source_scope("PLATFORM_ADMIN") is not None:
             return self._denied()
+        guard = self._step_up_guard(ctx)
+        if guard is not None:
+            return guard
         try:
             body = await _json_body(request)
             result = await self.mutations.revoke_platform_role(
@@ -1220,8 +1351,7 @@ class AdminAPI:
             return self._denied()
         try:
             assignment_id = UUID(request.path_params["assignment_id"])
-            rows = await self.repository.list_business_role_assignments(ctx)
-            if not any(str(item["assignment_id"]) == str(assignment_id) for item in rows):
+            if not await self.repository.visible_target(ctx, "assignment", assignment_id):
                 return self._denied()
             body = await _json_body(request)
             result = await self.mutations.revoke_business_role(
@@ -1275,8 +1405,7 @@ class AdminAPI:
             return self._denied()
         try:
             override_id = UUID(request.path_params["override_id"])
-            rows = await self.repository.list_capability_overrides(ctx)
-            if not any(str(item["override_id"]) == str(override_id) for item in rows):
+            if not await self.repository.visible_target(ctx, "override", override_id):
                 return self._denied()
             body = await _json_body(request)
             result = await self.mutations.revoke_capability_override(
@@ -1328,8 +1457,7 @@ class AdminAPI:
             return self._denied()
         try:
             profile_id = UUID(request.path_params["profile_id"])
-            visible = await self.repository.list_profiles(ctx)
-            if not any(str(item["profile_id"]) == str(profile_id) for item in visible):
+            if not await self.repository.visible_target(ctx, "profile", profile_id):
                 return self._denied()
             body = await _json_body(request)
             result = await self.mutations.add_semantic_mapping(
@@ -1356,8 +1484,7 @@ class AdminAPI:
             return self._denied()
         try:
             profile_id = UUID(request.path_params["profile_id"])
-            visible = await self.repository.list_profiles(ctx)
-            if not any(str(item["profile_id"]) == str(profile_id) for item in visible):
+            if not await self.repository.visible_target(ctx, "profile", profile_id):
                 return self._denied()
             body = await _json_body(request)
             result = await self.mutations.validate_semantic_profile(
@@ -1382,8 +1509,7 @@ class AdminAPI:
             return self._denied()
         try:
             profile_id = UUID(request.path_params["profile_id"])
-            visible = await self.repository.list_profiles(ctx)
-            if not any(str(item["profile_id"]) == str(profile_id) for item in visible):
+            if not await self.repository.visible_target(ctx, "profile", profile_id):
                 return self._denied()
             body = await _json_body(request)
             result = await self.mutations.retire_semantic_profile(
@@ -1408,8 +1534,7 @@ class AdminAPI:
         try:
             body = await _json_body(request)
             profile_id = UUID(str(body.get("profile_id", "")))
-            visible = await self.repository.list_profiles(ctx)
-            if not any(str(item["profile_id"]) == str(profile_id) for item in visible):
+            if not await self.repository.visible_target(ctx, "profile", profile_id):
                 return self._denied()
             result = await self.mutations.create_company_scope_mapping(
                 actor=self._actor(ctx),
@@ -1468,6 +1593,7 @@ def register_admin_routes(mcp, settings: Settings, runtime):
             api.platform_role_bindings,
         ),
         ("/admin/v1/principals/resolve", ["GET"], api.principal_resolve),
+        ("/admin/v1/effective-access", ["GET"], api.effective_access),
         ("/admin/v1/business-roles", ["GET"], api.business_roles),
         (
             "/admin/v1/business-role-assignments",
@@ -1481,6 +1607,7 @@ def register_admin_routes(mcp, settings: Settings, runtime):
             api.company_scope_mappings,
         ),
         ("/admin/v1/semantic-profiles", ["GET"], api.profiles),
+        ("/admin/v1/semantic-profiles/{profile_id}", ["GET"], api.profile_detail),
         ("/admin/v1/audit", ["GET"], api.audit),
         ("/admin/v1/semantic-profiles", ["POST"], api.semantic_profile_create),
         (
@@ -1548,21 +1675,19 @@ def register_admin_routes(mcp, settings: Settings, runtime):
         ),
     )
     for path, methods, handler in routes:
-        if any(method in {"POST", "PUT", "PATCH", "DELETE"} for method in methods):
-            async def guarded(request, _handler=handler):
-                guard = await api.csrf_guard(request)
-                if guard is not None:
-                    return guard
-                return await _handler(request)
-
-            mcp.custom_route(path, methods=methods)(guarded)
-        else:
-            mcp.custom_route(path, methods=methods)(handler)
+        async def guarded(request, _handler=handler):
+            return await api.serve(request, _handler)
+        mcp.custom_route(path, methods=methods)(guarded)
 
     if settings.admin_ui_enabled:
         mcp.custom_route("/admin", methods=["GET"])(api.admin_root)
         mcp.custom_route("/admin/", methods=["GET"])(api.admin_ui)
-        mcp.custom_route("/admin/login", methods=["GET"])(api.login)
-        mcp.custom_route("/admin/callback", methods=["GET"])(api.callback)
-        mcp.custom_route("/admin/logout", methods=["POST"])(api.logout)
+        for path, methods, handler in (
+            ("/admin/login", ["GET"], api.login),
+            ("/admin/callback", ["GET"], api.callback),
+            ("/admin/logout", ["POST"], api.logout),
+        ):
+            async def browser_route(request, _handler=handler):
+                return await api.serve(request, _handler)
+            mcp.custom_route(path, methods=methods)(browser_route)
     return api

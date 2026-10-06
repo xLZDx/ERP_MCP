@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 import httpx
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from starlette.requests import Request
 
 from business_ai_gateway.admin_api import AdminAPI
@@ -33,6 +35,26 @@ class FakeRedis:
 
     async def getdel(self, key):
         return self.data.pop(key, None)
+
+    def pipeline(self, transaction=True):
+        return self
+
+    def incr(self, key):
+        self.counter_key = key
+        return self
+
+    def expire(self, key, ttl):
+        return self
+
+    async def execute(self):
+        count = self.data.get(self.counter_key, 0) + 1
+        self.data[self.counter_key] = count
+        return count, True
+
+    async def eval(self, script, numkeys, key, raw, updated, ttl):
+        if self.data.get(key) == raw:
+            self.data[key] = updated
+        return int(key in self.data)
 
 
 class FakeVerifier:
@@ -279,3 +301,70 @@ async def test_bearer_authentication_does_not_require_cookie_csrf():
     api.sessions = AdminSessionManager(settings(), FakeRedis(), FakeVerifier())
     req = request(cookies={api.sessions.SESSION_COOKIE: "expired"}, headers={"authorization": "Bearer explicit-token"})
     assert await api.csrf_guard(req) is None
+
+
+@pytest.mark.asyncio
+async def test_logout_cannot_use_an_unvalidated_bearer_to_bypass_cookie_csrf():
+    api = object.__new__(AdminAPI)
+    redis = FakeRedis()
+    api.sessions = AdminSessionManager(settings(), redis, FakeVerifier())
+    redis.data[api.sessions._session_key("sid")] = json.dumps({
+        "access_token": "token", "csrf_token": "csrf", "last_seen": int(time.time()),
+        "absolute_expires_at": int(time.time()) + 300,
+    })
+    req = request(cookies={api.sessions.SESSION_COOKIE: "sid"}, headers={"authorization": "Bearer arbitrary"})
+    result = await api.logout(req)
+    assert result.status_code == 403
+    assert api.sessions._session_key("sid") in redis.data
+
+
+@pytest.mark.asyncio
+async def test_resolve_cannot_resurrect_a_concurrently_logged_out_session():
+    class LogoutRedis(FakeRedis):
+        async def get(self, key):
+            return self.data.pop(key, None)
+
+    redis = LogoutRedis()
+    manager = AdminSessionManager(settings(), redis, FakeVerifier())
+    redis.data[manager._session_key("sid")] = json.dumps({
+        "access_token": "token", "csrf_token": "csrf", "last_seen": int(time.time()),
+        "absolute_expires_at": int(time.time()) + 300,
+    })
+    assert await manager.resolve(request(cookies={manager.SESSION_COOKIE: "sid"})) is None
+    assert manager._session_key("sid") not in redis.data
+
+
+@pytest.mark.asyncio
+async def test_login_rate_limit_is_bounded():
+    manager = AdminSessionManager(settings(), FakeRedis(), FakeVerifier())
+    results = [await manager.login(request()) for _ in range(11)]
+    assert results[-1].status_code == 429
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["signature", "issuer", "audience", "nonce", "expiry", "authorized_party", None])
+async def test_id_token_signature_and_claim_validation(failure):
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    verifier = FakeVerifier()
+    verifier._jwks = SimpleNamespace(get_signing_key_from_jwt=lambda raw: SimpleNamespace(key=key.public_key()))
+    manager = AdminSessionManager(settings(), FakeRedis(), verifier)
+    now = int(time.time())
+    claims = {"iss": manager.settings.oauth_issuer, "aud": "erp-admin", "sub": "admin-1",
+              "iat": now, "exp": now + 300, "nonce": "nonce"}
+    if failure == "issuer":
+        claims["iss"] = "https://untrusted.test/"
+    if failure == "audience":
+        claims["aud"] = "other-client"
+    if failure == "nonce":
+        claims["nonce"] = "other-nonce"
+    if failure == "expiry":
+        claims["exp"] = now - 60
+    if failure == "authorized_party":
+        claims.update(aud=["erp-admin", "other-client"], azp="other-client")
+    signing_key = rsa.generate_private_key(public_exponent=65537, key_size=2048) if failure == "signature" else key
+    token = jwt.encode(claims, signing_key, algorithm="RS256")
+    if failure:
+        with pytest.raises(PermissionError):
+            await manager._verify_id_token(token, nonce="nonce")
+    else:
+        assert (await manager._verify_id_token(token, nonce="nonce"))["sub"] == "admin-1"

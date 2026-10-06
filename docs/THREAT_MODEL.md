@@ -163,11 +163,19 @@ Additional assets include platform-role bindings, admin sessions/CSRF tokens, ad
 
 Additional threats and controls:
 - OAuth login CSRF/code interception: state + nonce + PKCE, exact redirect URI, validated issuer/signature/audience and one-time login state.
-- Browser bearer theft: access tokens stay server-side; browser cookie is opaque, HttpOnly, SameSite and Secure in production.
+- Browser bearer theft: access tokens stay server-side; browser cookie is opaque, HttpOnly, SameSite and Secure in production; session lifetime is capped by access-token expiration plus idle/absolute TTL.
 - Ambient-cookie mutation CSRF: all cookie-authenticated non-read admin routes require the per-session CSRF token.
-- Privilege escalation: distinct admin audience/scope plus DB-backed platform role enforcement; UI visibility is never authorization.
+- Privilege escalation: distinct admin audience/scope plus DB-backed platform role enforcement; UI visibility is never authorization; platform-role mutation additionally requires configured recent step-up ACR/auth_time.
 - Confused deputy across delegated sources: every source/company/policy mutation is checked against the actor's effective platform-role source boundary.
-- Source-onboarding SSRF/DNS rebinding: exact host allowlist, optional approved CIDRs, server-side DNS resolution, redirects disabled, bounded GET/HEAD-only probe and registered endpoints only.
+- Source-onboarding SSRF/DNS rebinding: exact host/port allowlist, optional approved CIDRs, connect-time numeric IP pinning with original TLS identity, no environment proxy, redirects disabled and a bounded dedicated GET/HEAD-only probe pool. Production also requires network-level egress enforcement.
+- Admin control-plane DoS: all authenticated admin API requests share a per-subject Redis-backed rate budget; limiter dependency loss fails closed.
 - Duplicate/replayed mutations: actor-scoped idempotency key + request fingerprint and optimistic row version.
 - Audit tampering: admin and runtime audit tables reject UPDATE/DELETE.
 - Company-scope bypass: generic source reads cannot consume a company-only grant; explicit company-aware reads require a validated metadata-bound company predicate before adapter execution.
+
+Continuation controls: one-time OIDC state uses Redis GETDEL, session refresh uses compare-and-set
+to prevent logout resurrection, platform-role changes require trusted fresh ACR/auth_time,
+idempotency/policy/result/success audit share a transaction, and caller filters cannot escape
+the server predicate through delimiters. Company navigation/expand is denied until separately
+proven. Unknown capability keys deny before evaluating stored overrides. Other subjects' group
+membership remains explicitly unknown without a trusted directory provider.

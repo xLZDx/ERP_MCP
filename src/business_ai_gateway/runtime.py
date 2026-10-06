@@ -66,6 +66,8 @@ class Runtime:
             if self.admin_db is not None:
                 await self.admin_db.start()
                 await self.admin_db.assert_schema()
+                if self.settings.environment == "production":
+                    await self.admin_db.assert_control_api_role()
             if self.settings.admin_mutations_enabled and self.admin_db is None:
                 raise RuntimeError("admin mutation database is not configured")
             if not await self.redis.ping():

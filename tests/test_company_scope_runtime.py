@@ -56,6 +56,16 @@ def test_company_filter_is_always_parenthesized_before_caller_filter():
     assert result == "(Org eq 'A') and (Amount gt 0 or Amount lt -1)"
 
 
+@pytest.mark.parametrize("caller", ["Amount gt 0) or true or (Amount gt 0", "Name eq 'x", "((Amount gt 0)"])
+def test_caller_filter_cannot_escape_server_company_predicate(caller):
+    with pytest.raises(CompanyScopeUnavailable):
+        CompanyScopeResolver.combine("Org eq 'A'", caller)
+
+
+def test_caller_filter_accepts_parentheses_inside_escaped_string():
+    assert CompanyScopeResolver.combine("Org eq 'A'", "Name eq 'O''Brien (MD)' and (Amount gt 0)")
+
+
 def test_invalid_guid_fails_closed():
     with pytest.raises(CompanyScopeUnavailable):
         CompanyScopeResolver.filter_for(mapping(), company("not-a-guid"))

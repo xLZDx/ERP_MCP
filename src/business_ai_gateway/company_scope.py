@@ -48,7 +48,7 @@ class CompanyScopeResolver:
               AND p.status='VALIDATED'
               AND p.metadata_fingerprint=$3
               AND m.entity_set=$4
-            ORDER BY (p.company_id=$2) DESC, p.profile_version DESC
+            ORDER BY (p.company_id=$2) DESC NULLS LAST, p.profile_version DESC
             LIMIT 1
             """,
             source.id,
@@ -90,6 +90,21 @@ class CompanyScopeResolver:
 
     @staticmethod
     def combine(company_filter: str, caller_filter: str | None) -> str:
+        if caller_filter:
+            depth = 0
+            quoted = False
+            for char in caller_filter:
+                if char == "'":
+                    quoted = not quoted
+                elif not quoted:
+                    if char == "(":
+                        depth += 1
+                    elif char == ")":
+                        depth -= 1
+                        if depth < 0:
+                            raise CompanyScopeUnavailable("unbalanced caller filter")
+            if quoted or depth:
+                raise CompanyScopeUnavailable("unbalanced caller filter")
         return (
             f"({company_filter}) and ({caller_filter})"
             if caller_filter
