@@ -93,8 +93,8 @@ def test_A44_audit_history_is_append_only_for_runtime_and_control_roles(e2e_env,
     for role in ROLES:
         for table in AUDIT_TABLES:
             statements = {
-                "UPDATE": (f"UPDATE bag.{table} SET detail_code='tamper' "
-                           "WHERE event_id=$1", (targets[table],)),
+                "UPDATE": (f"UPDATE bag.{table} SET detail_code='tamper' WHERE event_id=$1",
+                           (targets[table],)),
                 "UPDATE-all": (f"UPDATE bag.{table} SET detail_code='tamper'", ()),
                 "DELETE": (f"DELETE FROM bag.{table} WHERE event_id=$1", (targets[table],)),
                 "DELETE-all": (f"DELETE FROM bag.{table}", ()),

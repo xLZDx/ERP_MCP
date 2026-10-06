@@ -140,10 +140,10 @@ def test_A20_unsafe_redirect_is_not_followed(e2e_env, world, evidence):
     target = f"http://127.0.0.1:{canary_port}/stolen"
     candidate = _source_body(e2e_env)
     before = evidence.count("sources")
-    with AsgiServer(recorder_app(canary_hits), canary_port):
-        with fake1c_replaced_by(e2e_env, lambda: recorder_app(redirect_hits, redirect_to=target)):
-            probe = world.pa.post("/admin/v1/source-probes", _probe_body(e2e_env))
-            register = world.pa.post("/admin/v1/sources", candidate)
+    with (AsgiServer(recorder_app(canary_hits), canary_port),
+          fake1c_replaced_by(e2e_env, lambda: recorder_app(redirect_hits, redirect_to=target))):
+        probe = world.pa.post("/admin/v1/source-probes", _probe_body(e2e_env))
+        register = world.pa.post("/admin/v1/sources", candidate)
     for resp in (probe, register):
         assert resp.status in (400, 403), resp.describe()
         _sanitized(resp, e2e_env, extra_forbidden=(str(canary_port),))

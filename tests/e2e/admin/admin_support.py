@@ -33,7 +33,7 @@ from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import httpx
 import pytest
@@ -437,13 +437,13 @@ class AsgiServer:
             app, host="127.0.0.1", port=port, log_level="warning", lifespan="off"))
         self.thread = threading.Thread(target=self.server.run, daemon=True)
 
-    def __enter__(self) -> AsgiServer:
+    def __enter__(self) -> Self:
         self.thread.start()
         wait_until(lambda: self.server.started, timeout=15, interval=0.1,
                    what=f"stub server on {self.port}")
         return self
 
-    def __exit__(self, *exc: Any) -> None:
+    def __exit__(self, *exc: object) -> None:
         self.server.should_exit = True
         self.thread.join(15)
         assert not self.thread.is_alive(), f"stub server on {self.port} did not stop"
@@ -600,23 +600,24 @@ def data_view(env, token: str | None, source_id: str, tools: tuple[str, ...] = (
 
         view = DataView()
         headers = {"Authorization": f"Bearer {token}"} if token else {}
-        async with httpx2.AsyncClient(headers=headers, timeout=30) as http, \
-                streamable_http_client(env.mcp_url, http_client=http) as streams:
-            async with ClientSession(streams[0], streams[1]) as session:
-                await session.initialize()
-                listed = await session.call_tool("sources_list", {})
-                if getattr(listed, "is_error", False) or getattr(listed, "isError", False):
-                    view.errors.append("sources_list:error")
-                else:
-                    payload = _decode(listed) or []
-                    view.sources = [i.get("id") for i in payload if isinstance(i, dict)]
-                companies = await session.call_tool("companies_list", {"source_id": source_id})
-                if getattr(companies, "is_error", False) or getattr(companies, "isError", False):
-                    view.errors.append("companies_list:error")
-                else:
-                    payload = _decode(companies) or []
-                    view.companies = {i.get("company_id") for i in payload
-                                      if isinstance(i, dict)}
+        async with (
+            httpx2.AsyncClient(headers=headers, timeout=30) as http,
+            streamable_http_client(env.mcp_url, http_client=http) as streams,
+            ClientSession(streams[0], streams[1]) as session,
+        ):
+            await session.initialize()
+            listed = await session.call_tool("sources_list", {})
+            if getattr(listed, "is_error", False) or getattr(listed, "isError", False):
+                view.errors.append("sources_list:error")
+            else:
+                payload = _decode(listed) or []
+                view.sources = [i.get("id") for i in payload if isinstance(i, dict)]
+            companies = await session.call_tool("companies_list", {"source_id": source_id})
+            if getattr(companies, "is_error", False) or getattr(companies, "isError", False):
+                view.errors.append("companies_list:error")
+            else:
+                payload = _decode(companies) or []
+                view.companies = {i.get("company_id") for i in payload if isinstance(i, dict)}
         return view
 
     def run() -> None:
