@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "batch_id": "FERMA_PINNED_EXPORT_20261006",
-  "implementation_sha256": "939f780dd1f7cb3b77f394eece05b3586bbc60fec8097be8287511300b6881bf",
+  "batch_id": "DASHBOARD_SOURCE_SYNC_20261006",
+  "implementation_sha256": "b0c9ec58d9d448e9425d9dbc8e224c34c2ad1926a8e86323c0c1055057fcf572",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "last_verified_hosted_commit": "fc61b1c17281ea6586be8e4e2dafc370855ed306",
-  "last_verified_hosted_run": 37476481866,
-  "last_verified_tested_merge": "fe301b68815a57430383aa576f388e5225695905",
+  "last_verified_hosted_commit": "42ecfbeb780d6afde87cb108a0faa293c4301f6e",
+  "last_verified_hosted_run": 37478449261,
+  "last_verified_tested_merge": "3c1b8429826147209811e89a20b942154bb472f7",
   "last_failed_hosted_commit": "2affa6fc822a9f6e054d1a4a9267aaf5a89ddd9a",
   "last_failed_hosted_run": 37470166429,
-  "hosted_status_at_snapshot": "AUDIT_PARENT_FOUR_JOBS_PASS_PRIVATE_FERMA_EXPORT_BATCH_PENDING",
+  "hosted_status_at_snapshot": "FERMA_PARENT_FOUR_JOBS_PASS_DASHBOARD_SYNC_BATCH_PENDING",
   "last_local_full_suite": {
-    "passed": 465,
+    "passed": 479,
     "skipped": 16
   },
   "focused_tests": {
@@ -22,7 +22,8 @@
     "pool_validators_and_actual_postgres": 18,
     "executed_native_bridge_lifecycle": 1,
     "audit_metrics_with_actual_postgres": 26,
-    "executed_private_ferma_export_intake_comparator_checkpoint": 47
+    "executed_private_ferma_export_intake_comparator_checkpoint": 47,
+    "dashboard_source_render_contracts": 14
   },
   "upstream_junit": {
     "client": {

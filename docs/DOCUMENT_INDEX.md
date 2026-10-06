@@ -18,6 +18,20 @@ historical freeze/CI references remain historical, not automatic proof for chang
 The implementation fingerprint also includes the isolated `testbed/` code; changing an exporter,
 target guard or comparator without refreshing status evidence fails the same consistency gate.
 
+Both offline Command Center copies embed all 31 required normative sources plus the three existing
+supporting sources through `python -m scripts.sync_dashboard_documents`. The current phase-status
+overlay is preserved independently of normative Master Plan content. CI checks source hashes AND
+exact sanitized renderer output; editing a source, refreshing a hash alone, changing an embedded
+body, missing/duplicated cards or mismatching copies fails. Regenerate after normative edits, then
+run `python -m scripts.sync_dashboard_documents --check`. No browser CDN/fetch is needed.
+Renderer is dev-only [Python-Markdown 3.11](https://pypi.org/project/Markdown/3.11/), BSD-3-Clause,
+locked in uv; production runtime dependency lock is unchanged. Raw HTML, active URL schemes and
+tracking images are not activated by documentation embedding.
+
+Legacy copied reading/device tool envelopes are omitted from presentation, not from immutable
+freeze sources: their complete original source hash is still checked. Generated report shells
+must not publish the engineer's device identity or put diagnostic text before the HTML doctype.
+
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
 change first.

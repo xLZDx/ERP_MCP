@@ -1,6 +1,11 @@
-[Reading 318 lines from start (total: 318 lines, 0 remaining)]
 
 # ERP_MCP implementation status
+
+<!-- ENGINEERING_CHECKPOINT=DASHBOARD_SOURCE_SYNC_20261006 ENGINEERING_IMPLEMENTATION=b0c9ec58d9d448e9425d9dbc8e224c34c2ad1926a8e86323c0c1055057fcf572 -->
+
+## Authoritative offline documentation source/render synchronization — 2026-10-06
+
+SCOPE-1/D0/D18: both offline dashboards now deterministically embed all 31 required normative sources plus 3 existing supporting sources using locked dev-only Python-Markdown 3.11 and narrow presentation policy. Source SHA plus exact sanitized render checked; source drift, hash-only forgery, altered/missing/duplicate bodies/cards, divergent copies fail CI. Phase-status overlay retained; known normative links use shared offline anchors; scripts/data URLs/tracking images cannot activate; code operators remain exact. 14 focused tests PASS; installed dependency audit found no known vulnerabilities, runtime lock unchanged; Ruff/Bandit(runtime+testbed+renderer) PASS. Legacy copied read/device wrapper text removed from report/dashboard shells; immutable freeze source/hash retained, wrappers omitted only in presentation. Expanded scripts audit separately reports 38 findings (6 medium) for triage, not suppressed or mislabeled closed. Parent 42ecfbe CI 37478449261 four jobs PASS; full current local suite 479 passed/16 skipped; Ruff/Bandit(runtime+testbed+renderer)/compileall/checkpoint/source-render/report gates PASS, browser header/status review PASS. Dashboard batch awaits its own hosted run. Native/DAD/Ferma/full fault/deployment/source stdout gates remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
 
 <!-- ENGINEERING_CHECKPOINT=FERMA_PINNED_EXPORT_20261006 ENGINEERING_IMPLEMENTATION=939f780dd1f7cb3b77f394eece05b3586bbc60fec8097be8287511300b6881bf -->
 
@@ -434,5 +439,3 @@ NO-GO; PR #11 remains OPEN/Draft.
   the PR conflict. The merge commit is pushed after report synchronization; merge itself remains
   intentionally unperformed.
 - Readiness: `DEV READY` for the implemented bootstrap/control-plane scope only; no production claim.
-
-[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]

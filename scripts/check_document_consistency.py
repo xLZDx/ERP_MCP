@@ -7,8 +7,10 @@ from pathlib import Path
 
 try:
     from .engineering_checkpoint import check_checkpoint
+    from .sync_dashboard_documents import check as check_dashboard_documents
 except ImportError:
     from engineering_checkpoint import check_checkpoint
+    from sync_dashboard_documents import check as check_dashboard_documents
 
 REQUIRED_LINKS = (
     "ERP_MCP_ENGINEERING_COMMAND_CENTER.html",
@@ -20,6 +22,7 @@ REQUIRED_LINKS = (
 
 def check(root: Path) -> None:
     check_checkpoint(root)
+    check_dashboard_documents(root)
     index = (root / "docs/DOCUMENT_INDEX.md").read_text(encoding="utf-8")
     status = (root / "reports/IMPLEMENTATION_STATUS.md").read_text(encoding="utf-8")
     dod = (root / "reports/DOD_STATUS.md").read_text(encoding="utf-8")

@@ -1,6 +1,16 @@
-[Reading 150 lines from start (total: 150 lines, 0 remaining)]
 
 # ERP_MCP implementation gap analysis
+
+## Offline normative document synchronization — 2026-10-06
+
+All 31 required normative + 3 supporting documents now embed from current registered source files
+with exact source/render checks; status overlay retained, raw HTML/active URLs/images blocked,
+offline normative anchors and code operators preserved. Legacy copied reading/device wrappers
+removed from report/dashboard shells; immutable freeze source preserved and hashed, wrapper lines
+omitted only in presentation. 14 focused tests PASS; dev dependency audit no known vulnerabilities;
+runtime dependency lock unchanged. Old 1.0 embedded normative snapshots are replaced, not asserted
+current by a new top-level status string. Expanded scripts Bandit scan: 38 findings / 6 medium,
+triage OPEN; runtime/testbed/new-renderer scan PASS. Native/DAD/Ferma/fault/deployment work OPEN.
 
 ## Actual isolated Ferma package exporter — 2026-10-06
 
@@ -254,5 +264,3 @@ the authorization contract can be enforced end-to-end.
 
 No external blocker is terminal while independent software, local tests, automation, and runbooks
 remain unfinished.
-
-[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]
