@@ -39,6 +39,7 @@ def test_production_accepts_required_security_shape():
         oauth_jwks_url="https://id.example.com/jwks",
         secret_provider="file",
         source_host_allowlist="1c.example.com",
+        source_egress_cidrs="10.0.0.0/8",
         database_url="postgresql://u:p@db/x",
         redis_url="redis://redis/0",
     )
@@ -93,6 +94,17 @@ def test_rsv_bridge_executable_digest_must_be_well_formed_and_paired(tmp_path):
         )
 
 
+def test_rsv_bridge_secret_config_ref_requires_bridge(tmp_path):
+    with pytest.raises(ValidationError, match="CONFIG_SECRET_REF"):
+        Settings(rsv_bridge_config_secret_ref="rsv-config")
+    settings = Settings(
+        rsv_bridge_executable=str(tmp_path / "bridge.exe"),
+        rsv_bridge_config_root=str(tmp_path),
+        rsv_bridge_config_secret_ref="rsv-config",
+    )
+    assert settings.rsv_bridge_config_secret_ref == "rsv-config"
+
+
 def test_production_rsv_bridge_requires_approved_binary_digest(tmp_path):
     values = {
         "environment": "production",
@@ -102,6 +114,7 @@ def test_production_rsv_bridge_requires_approved_binary_digest(tmp_path):
         "oauth_audience": "https://mcp.example.com/mcp",
         "oauth_jwks_url": "https://id.example.com/jwks",
         "source_host_allowlist": "onec.example.test",
+        "source_egress_cidrs": "10.0.0.0/8",
         "secret_provider": "file",
         "rsv_bridge_executable": str(tmp_path / "bridge.exe"),
         "rsv_bridge_config_root": str(tmp_path),

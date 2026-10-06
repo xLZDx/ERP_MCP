@@ -271,3 +271,40 @@ async def test_rsv_bridge_checks_configured_executable_digest_before_launch(tmp_
         await client.metadata(_source(), operation="config")
     assert launches == []
 
+
+@pytest.mark.asyncio
+async def test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it(tmp_path: Path):
+    executable = tmp_path / "bridge.exe"
+    executable.touch()
+    config_root = tmp_path / "configs"
+    config_root.mkdir()
+    session = FakeSession(
+        ["ping", "config", "describe", "get_structure", "help"],
+        result_text='{"safe":true}',
+    )
+    observed_config = {}
+
+    @asynccontextmanager
+    async def fake_stdio(parameters):
+        config_path = Path(parameters.args[2])
+        observed_config["path"] = config_path
+        observed_config["content"] = config_path.read_text(encoding="utf-8")
+        yield object(), object()
+
+    async def loader(_ref: str) -> str:
+        return '{"kind":"file","file":"C:\\\\disposable\\\\base"}'
+
+    client = RSVDataBridgeClient(
+        executable=str(executable),
+        config_root=str(config_root),
+        config_secret_loader=loader,
+        config_secret_ref="rsv-config",
+        session_factory=lambda *_streams: session,
+        stdio_factory=fake_stdio,
+    )
+    result = await client.metadata(_source(), operation="config")
+
+    assert result["operation"] == "config"
+    assert '"kind":"file"' in observed_config["content"]
+    assert not observed_config["path"].exists()
+

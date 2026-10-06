@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from enum import StrEnum
 from pathlib import Path
@@ -45,10 +46,13 @@ class Settings(BaseSettings):
     odata_sidecar_url: str | None = None
     odata_sidecar_token: SecretStr | None = None
     source_host_allowlist: str | None = None
+    source_egress_cidrs: str | None = None
+    sidecar_egress_cidrs: str | None = None
     metrics_token: SecretStr | None = None
     rsv_bridge_executable: str | None = None
     rsv_bridge_executable_sha256: str | None = None
     rsv_bridge_config_root: str | None = None
+    rsv_bridge_config_secret_ref: str | None = None
 
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
@@ -77,6 +81,18 @@ class Settings(BaseSettings):
             if host.strip()
         )
 
+    @staticmethod
+    def _cidr_items(value: str | None) -> tuple[str, ...]:
+        return tuple(item.strip() for item in (value or "").split(",") if item.strip())
+
+    @property
+    def source_egress_cidr_items(self) -> tuple[str, ...]:
+        return self._cidr_items(self.source_egress_cidrs)
+
+    @property
+    def sidecar_egress_cidr_items(self) -> tuple[str, ...]:
+        return self._cidr_items(self.sidecar_egress_cidrs)
+
     @model_validator(mode="after")
     def production_guards(self):
         if self.metrics_token and len(self.metrics_token.get_secret_value().encode()) < 32:
@@ -88,6 +104,8 @@ class Settings(BaseSettings):
             )
         if self.rsv_bridge_executable_sha256 and self.rsv_bridge_executable is None:
             raise ValueError("BAG_RSV_BRIDGE_EXECUTABLE_SHA256 requires the bridge executable")
+        if self.rsv_bridge_config_secret_ref and not self.rsv_bridge_executable:
+            raise ValueError("BAG_RSV_BRIDGE_CONFIG_SECRET_REF requires the bridge executable")
         if self.rsv_bridge_executable_sha256 and not re.fullmatch(
             r"[0-9a-fA-F]{64}", self.rsv_bridge_executable_sha256
         ):
@@ -99,6 +117,8 @@ class Settings(BaseSettings):
                 raise ValueError("RSV bridge executable and config root must be absolute paths")
             if self.environment == "production" and not self.rsv_bridge_executable_sha256:
                 raise ValueError("production requires BAG_RSV_BRIDGE_EXECUTABLE_SHA256")
+            if self.environment == "production" and not self.rsv_bridge_config_secret_ref:
+                raise ValueError("production requires BAG_RSV_BRIDGE_CONFIG_SECRET_REF")
         if (self.odata_sidecar_url is None) != (self.odata_sidecar_token is None):
             raise ValueError(
                 "BAG_ODATA_SIDECAR_URL and BAG_ODATA_SIDECAR_TOKEN must be configured together"
@@ -128,6 +148,15 @@ class Settings(BaseSettings):
                 or "*" in host
             ):
                 raise ValueError("BAG_SOURCE_HOST_ALLOWLIST must contain exact hostnames only")
+        if not self.source_egress_cidr_items:
+            raise ValueError("production requires BAG_SOURCE_EGRESS_CIDRS")
+        if self.odata_sidecar_url and not self.sidecar_egress_cidr_items:
+            raise ValueError("production requires BAG_SIDECAR_EGRESS_CIDRS")
+        for cidr in (*self.source_egress_cidr_items, *self.sidecar_egress_cidr_items):
+            try:
+                ipaddress.ip_network(cidr, strict=False)
+            except ValueError:
+                raise ValueError("egress CIDR must be a valid IP network") from None
         if not self.oauth_enabled:
             raise ValueError("production requires BAG_OAUTH_ENABLED=true")
         required = {

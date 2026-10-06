@@ -276,10 +276,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
             if operation not in METADATA_TOOLS:
                 raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
-            # Current pinned bridge configs are plaintext files. Do not permit that
-            # credential path in production until secret-ref-bound ephemeral config
-            # handling is implemented and independently verified.
-            if settings.environment == "production":
+            if settings.environment == "production" and not settings.rsv_bridge_config_secret_ref:
                 raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
             result = await runtime.onec.rsv_metadata(
                 source,

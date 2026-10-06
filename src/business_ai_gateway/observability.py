@@ -5,14 +5,119 @@ import json
 import logging
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from typing import Any
 
 from pydantic import SecretStr
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
-from .audit import begin_request_correlation_id, end_request_correlation_id
+from .audit import (
+    begin_request_correlation_id,
+    current_request_correlation_id,
+    end_request_correlation_id,
+)
 
 _access_logger = logging.getLogger("business_ai_gateway.http")
+_trace_logger = logging.getLogger("business_ai_gateway.trace")
+
+
+class OperationalMetrics:
+    """Bounded operation/dependency metrics; never accepts user values as labels."""
+
+    OUTCOMES = frozenset({"success", "denied", "error"})
+    DEPENDENCIES = frozenset(
+        {"database", "redis", "jwks", "odata_sidecar", "rsv_bridge", "secrets"}
+    )
+
+    def __init__(self) -> None:
+        self._operations: dict[tuple[str, str], int] = defaultdict(int)
+        self._dependencies: dict[tuple[str, str], int] = defaultdict(int)
+        self._dependency_duration: dict[tuple[str, str], tuple[int, float]] = defaultdict(
+            lambda: (0, 0.0)
+        )
+
+    def record_operation(self, tool: str, outcome: str) -> None:
+        safe_tool = (
+            tool if tool and len(tool) <= 64 and tool.replace("_", "").isalnum() else "other"
+        )
+        safe_outcome = outcome if outcome in self.OUTCOMES else "error"
+        self._operations[(safe_tool, safe_outcome)] += 1
+
+    def record_dependency(self, dependency: str, outcome: str, elapsed_seconds: float = 0.0) -> None:
+        safe_dependency = dependency if dependency in self.DEPENDENCIES else "other"
+        safe_outcome = outcome if outcome in self.OUTCOMES else "error"
+        self._dependencies[(safe_dependency, safe_outcome)] += 1
+        count, total = self._dependency_duration[(safe_dependency, safe_outcome)]
+        self._dependency_duration[(safe_dependency, safe_outcome)] = (
+            count + 1,
+            total + max(0.0, elapsed_seconds),
+        )
+
+    def render(self) -> str:
+        lines = [
+            "# HELP erp_mcp_operations_total MCP operations by bounded tool and outcome.",
+            "# TYPE erp_mcp_operations_total counter",
+        ]
+        for (tool, outcome), count in sorted(self._operations.items()):
+            lines.append(
+                f'erp_mcp_operations_total{{tool="{tool}",outcome="{outcome}"}} {count}'
+            )
+        lines.extend(
+            [
+                "# HELP erp_mcp_dependency_requests_total Dependency calls by bounded dependency and outcome.",
+                "# TYPE erp_mcp_dependency_requests_total counter",
+            ]
+        )
+        for (dependency, outcome), count in sorted(self._dependencies.items()):
+            lines.append(
+                f'erp_mcp_dependency_requests_total{{dependency="{dependency}",outcome="{outcome}"}} {count}'
+            )
+        return "\n".join(lines) + "\n"
+
+
+@asynccontextmanager
+async def trace_span(name: str, **attributes: str):
+    """Privacy-safe internal span; attributes are fixed semantic values only."""
+    started = time.perf_counter()
+    correlation_id = current_request_correlation_id()
+    safe_attributes = {
+        key: value[:64]
+        for key, value in attributes.items()
+        if key in {"tool", "dependency", "adapter", "outcome"}
+        and isinstance(value, str)
+    }
+    try:
+        yield
+    except Exception as exc:
+        safe_attributes["outcome"] = "error"
+        _trace_logger.info(
+            json.dumps(
+                {
+                    "event": "trace_span",
+                    "name": name,
+                    "request_id": str(correlation_id) if correlation_id else None,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 3),
+                    "error_type": type(exc).__name__,
+                    **safe_attributes,
+                },
+                separators=(",", ":"),
+            )
+        )
+        raise
+    else:
+        safe_attributes.setdefault("outcome", "success")
+        _trace_logger.info(
+            json.dumps(
+                {
+                    "event": "trace_span",
+                    "name": name,
+                    "request_id": str(correlation_id) if correlation_id else None,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 3),
+                    **safe_attributes,
+                },
+                separators=(",", ":"),
+            )
+        )
 
 
 def metrics_response(
@@ -46,6 +151,13 @@ class HTTPMetrics:
         self._duration_count: dict[tuple[str, str], int] = defaultdict(int)
         self._duration_sum: dict[tuple[str, str], float] = defaultdict(float)
         self._duration_buckets: dict[tuple[str, str, float], int] = defaultdict(int)
+        self.operational = OperationalMetrics()
+
+    def record_operation(self, tool: str, outcome: str) -> None:
+        self.operational.record_operation(tool, outcome)
+
+    def record_dependency(self, dependency: str, outcome: str, elapsed_seconds: float = 0.0) -> None:
+        self.operational.record_dependency(dependency, outcome, elapsed_seconds)
 
     @classmethod
     def _route(cls, path: str) -> str:
@@ -149,4 +261,4 @@ class HTTPMetrics:
                 f"{self._duration_sum[(method, route)]:.9f}"
             )
             lines.append(f'erp_mcp_http_request_duration_seconds_count{{{labels}}} {count}')
-        return "\n".join(lines) + "\n"
+        return "\n".join(lines) + "\n" + self.operational.render()

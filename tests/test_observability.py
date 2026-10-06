@@ -9,7 +9,7 @@ import pytest
 from pydantic import SecretStr
 
 from business_ai_gateway.audit import current_request_correlation_id
-from business_ai_gateway.observability import HTTPMetrics, metrics_response
+from business_ai_gateway.observability import HTTPMetrics, metrics_response, trace_span
 
 
 @pytest.mark.asyncio
@@ -76,4 +76,34 @@ def test_metrics_endpoint_is_hidden_without_token_and_constant_time_guarded():
     assert allowed.status_code == 200
     assert allowed.headers["cache-control"] == "no-store"
     assert "text/plain" in allowed.headers["content-type"]
+
+
+def test_operational_metrics_have_bounded_labels():
+    metrics = HTTPMetrics()
+    metrics.record_operation("source_health", "success")
+    metrics.record_operation("secret=DO_NOT_LABEL", "success")
+    metrics.record_dependency("redis", "error", 0.02)
+    body = metrics.render()
+    assert 'tool="source_health",outcome="success"' in body
+    assert 'tool="other",outcome="success"' in body
+    assert 'dependency="redis",outcome="error"' in body
+    assert "DO_NOT_LABEL" not in body
+
+
+@pytest.mark.asyncio
+async def test_trace_span_logs_only_fixed_attributes(caplog):
+    with caplog.at_level(logging.INFO, logger="business_ai_gateway.trace"):
+        async with trace_span(
+            "adapter.call",
+            tool="source_health",
+            adapter="odata",
+            secret="MUST_NOT_LOG",
+        ):
+            pass
+    event = json.loads(caplog.records[-1].message)
+    assert event["event"] == "trace_span"
+    assert event["name"] == "adapter.call"
+    assert event["tool"] == "source_health"
+    assert "secret" not in event
+    assert "MUST_NOT_LOG" not in caplog.records[-1].message
 

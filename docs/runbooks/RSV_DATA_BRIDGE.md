@@ -5,19 +5,20 @@ implement COM, 1C native queries, or MCP stdio framing. The integration verifies
 upstream tool inventory and supports the source-ACL-protected metadata-only operations `ping`,
 `config`, `describe`, `get_structure`, and `help`. Each call runs in a fresh process/COM connection
 and returns a bounded normalized envelope. It never proxies `query`, `execute_query`, or `reveal`.
-The metadata operation is disabled in production until credential references can be safely bound
-without the upstream's persistent plaintext JSON credential config.
+Production requires `BAG_RSV_BRIDGE_CONFIG_SECRET_REF` in addition to executable SHA pinning. The
+secret provider returns a bounded JSON config which is materialized only in a short-lived temporary
+directory and removed after the bridge operation. The upstream persisted customer config is never
+used as production secret management.
 
 ## Install and bind a source (Windows)
 
 1. Install the pinned upstream `rsvdata-bridge.exe` and 1C platform on a dedicated Windows host
    with the required COM registration. Verify the release against the approved upstream release
    process before deployment; do not build or patch another bridge in ERP_MCP.
-2. Run the upstream setup under the dedicated service identity. Use the exact ERP_MCP source ID as
-   the connection name so the `<source-id>.json` target descriptor is unambiguous. Do not place
-   customer credentials in a test config. The upstream format persists credentials as plaintext;
-   until secret-ref binding is implemented, metadata calls are allowed only in local/test with a
-   disposable base.
+2. Run the upstream setup under the dedicated service identity only for local/test discovery. Use
+   the exact ERP_MCP source ID as the connection name so the `<source-id>.json` target descriptor is
+   unambiguous. Production must provide the reviewed JSON config through the configured secret
+   provider; do not persist customer credentials in the upstream config directory.
 3. Place per-source config files in a dedicated directory outside the repository. Restrict the
    directory and files to the service identity using Windows ACLs; do not rely on POSIX `0600`
    semantics on Windows. If production bridge operation is later approved, set

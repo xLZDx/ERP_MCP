@@ -30,12 +30,14 @@ This matrix connects requirements to architecture, implementation areas and rele
 | NFR-R2 | Safe timeout/retry/circuit behavior | Integration/Architecture | D8, D14 |
 | NFR-O1 | Structured logs/metrics/traces | Observability | D12 |
 | NFR-O2 | Backup/restore/rollback | Observability §9–10 | D15 |
+| NFR-O3 | Bounded DNS resolution and deployment egress | Network policy / Production contract | D6, D16 |
 | NFR-P1 | Bounded multi-company fan-out | Architecture §8 | D10, D13 |
 | NFR-P2 | Measured performance before GO | Test Strategy §8 | D13 |
 | COR-1 | Accounting reconciliation with native 1C | TDD §3 G-05 | D9 |
 | COR-2 | Drift invalidates affected semantics | Test Strategy §6 | D7/D9 |
 | OPS-1 | Source onboarding handshake | Integration §9 | D10/D17 |
 | OPS-2 | Source offboarding safe | Integration §10 | D17 |
+| OPS-3 | Deterministic release preflight and non-destructive rollback manifest | Release Operations / Rollback runbook | D15–D18 |
 | FUT-ERP | Preserve ERP tenant/org RLS | Architecture §11 | future adapter DoD |
 | FUT-FERMA | Preserve oracle independence | Architecture §11 | future adapter DoD |
 

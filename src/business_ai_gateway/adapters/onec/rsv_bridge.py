@@ -6,6 +6,8 @@ import hmac
 import json
 import os
 import re
+import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +51,8 @@ class RSVDataBridgeClient:
         stdio_factory: Any = stdio_client,
         timeout_seconds: float = 30.0,
         expected_executable_sha256: str | None = None,
+        config_secret_loader: Callable[[str], Awaitable[str]] | None = None,
+        config_secret_ref: str | None = None,
     ):
         self.executable = str(Path(executable).resolve())
         self.config_root = Path(config_root).resolve()
@@ -58,6 +62,8 @@ class RSVDataBridgeClient:
         self.expected_executable_sha256 = (
             expected_executable_sha256.lower() if expected_executable_sha256 else None
         )
+        self._config_secret_loader = config_secret_loader
+        self._config_secret_ref = config_secret_ref
 
     def _verify_executable(self) -> str:
         try:
@@ -100,14 +106,38 @@ class RSVDataBridgeClient:
                 raise RSVBridgeUnavailable("RSV metadata selectors must be strings of at most 256 chars")
         return dict(args)
 
-    def _parameters(self, source: Source) -> tuple[StdioServerParameters, str]:
+    async def _parameters(
+        self, source: Source
+    ) -> tuple[StdioServerParameters, str, tempfile.TemporaryDirectory[str] | None]:
         if not self._SOURCE_ID.fullmatch(source.id):
             raise RSVBridgeUnavailable("source id is not safe for bridge config lookup")
-        config = (self.config_root / f"{source.id}.json").resolve()
-        if config.parent != self.config_root:
-            raise RSVBridgeUnavailable("bridge config path escaped its configured root")
-        if not config.is_file():
-            raise RSVBridgeUnavailable("source bridge config is not installed")
+        temporary: tempfile.TemporaryDirectory[str] | None = None
+        if self._config_secret_loader is not None or self._config_secret_ref is not None:
+            if self._config_secret_loader is None or not self._config_secret_ref:
+                raise RSVBridgeUnavailable("secret-bound bridge config is incomplete")
+            try:
+                raw_config = await self._config_secret_loader(self._config_secret_ref)
+                if not isinstance(raw_config, str) or len(raw_config.encode("utf-8")) > 65_536:
+                    raise ValueError("bridge config secret is too large")
+                parsed_config = json.loads(raw_config)
+                if not isinstance(parsed_config, dict):
+                    raise TypeError("bridge config secret must be a JSON object")
+            except RSVBridgeUnavailable:
+                raise
+            except (OSError, TypeError, UnicodeError, ValueError, RuntimeError):
+                raise RSVBridgeUnavailable("secret-bound bridge config is invalid") from None
+            temporary = tempfile.TemporaryDirectory(prefix="erp-mcp-rsv-")
+            config = Path(temporary.name) / f"{source.id}.json"
+            config.write_text(
+                json.dumps(parsed_config, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8",
+            )
+        else:
+            config = (self.config_root / f"{source.id}.json").resolve()
+            if config.parent != self.config_root:
+                raise RSVBridgeUnavailable("bridge config path escaped its configured root")
+            if not config.is_file():
+                raise RSVBridgeUnavailable("source bridge config is not installed")
         executable_sha256 = self._verify_executable()
         inherited = {key: os.environ[key] for key in ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP") if key in os.environ}
         parameters = StdioServerParameters(
@@ -117,10 +147,10 @@ class RSVDataBridgeClient:
             env=inherited,
             cwd=str(Path(self.executable).parent),
         )
-        return parameters, executable_sha256
+        return parameters, executable_sha256, temporary
 
     async def health(self, source: Source) -> dict[str, Any]:
-        parameters, _executable_sha256 = self._parameters(source)
+        parameters, _executable_sha256, temporary = await self._parameters(source)
         try:
             async with (
                 self._stdio_factory(parameters) as (read_stream, write_stream),
@@ -146,6 +176,9 @@ class RSVDataBridgeClient:
             raise RSVBridgeUnavailable(
                 f"upstream bridge health check failed ({type(exc).__name__})"
             ) from None
+        finally:
+            if temporary is not None:
+                temporary.cleanup()
 
     async def metadata(
         self,
@@ -156,7 +189,7 @@ class RSVDataBridgeClient:
         max_response_bytes: int = 1_000_000,
     ) -> dict[str, Any]:
         args = self._metadata_arguments(operation, arguments)
-        parameters, executable_sha256 = self._parameters(source)
+        parameters, executable_sha256, temporary = await self._parameters(source)
         try:
             async with asyncio.timeout(self.timeout_seconds):
                 async with (
@@ -212,3 +245,6 @@ class RSVDataBridgeClient:
             raise RSVBridgeUnavailable(
                 f"upstream bridge metadata operation failed ({type(exc).__name__})"
             ) from None
+        finally:
+            if temporary is not None:
+                temporary.cleanup()

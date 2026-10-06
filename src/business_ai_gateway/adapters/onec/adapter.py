@@ -11,6 +11,7 @@ from ...compatibility import (
     OneCCapabilityDetector,
 )
 from ...models import Source
+from ...observability import trace_span
 from ...secrets import SecretProvider
 from ...settings import Settings
 from .atom import parse_atom_payload
@@ -91,12 +92,13 @@ class OneCAdapter:
     ) -> dict:
         if source.kind != "onec_auto" or self.rsv_bridge is None:
             raise CapabilityUnsupported("CAPABILITY_UNSUPPORTED")
-        return await self.rsv_bridge.metadata(
-            source,
-            operation=operation,
-            arguments=arguments,
-            max_response_bytes=max_response_bytes,
-        )
+        async with trace_span("adapter.call", adapter="rsv_bridge", tool="rsv_metadata"):
+            return await self.rsv_bridge.metadata(
+                source,
+                operation=operation,
+                arguments=arguments,
+                max_response_bytes=max_response_bytes,
+            )
 
     async def capabilities(
         self,

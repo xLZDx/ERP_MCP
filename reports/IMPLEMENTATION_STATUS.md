@@ -4,6 +4,16 @@ Last updated: 2026-10-06
 
 ## Current authoritative state — autonomous local closure
 
+### Batch 1–8 checkpoint — 2026-10-06
+
+Local verification is now `184 passed, 9 skipped`; Ruff, Bandit, compileall, pip-audit and release
+preflight pass. Added bounded operation/dependency metrics, privacy-safe internal spans, readiness
+failure-matrix tests, DNS resolution/egress CIDR policy, secret-provider-backed ephemeral RSV config,
+non-destructive rollback manifest validation, release preflight CI wiring and traceability rows.
+Production still requires deployment-level connect-time egress/rebinding evidence, rollback rehearsal,
+deployed scrape/alerts, real 1C semantic profiles and native reconciliation. Production GO remains
+NO-GO; PR #11 remains OPEN/Draft.
+
 - Working tree: `D:/Repo/ERP_MCP-integration-candidate`, branch `integration/1c-mvp-production-candidate`.
 - Last hosted-verified code/status commit: `ec1ca10aeb185fb461275c5823cc7ff7d0c8f094`; run `37434812280` passed both required jobs (`test` and `odata-upstream`). PR #11 remains OPEN/Draft; no merge/main write is authorized.
 - Implemented and committed hardening includes pinned Python/Node bases; uv dependency/runtime locks and CI SBOM/provenance; bounded JWKS behavior; bounded ACL-first fan-out and synthetic load drill; raw-query audit suppression and sanitized 1C transport failures; privacy-safe structured access logs with shared correlation IDs; production source-host allowlisting; sidecar/readiness failure sanitization; and a documented rollback/restore procedure.

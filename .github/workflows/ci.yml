@@ -132,6 +132,7 @@ jobs:
       - run: uv run --locked bandit -q -r src
       - run: uv run --locked python -m compileall -q src scripts testbed
       - run: uv run --locked python scripts/validate_scenarios.py
+      - run: uv run --locked python scripts/release_preflight.py
       - name: Validate the fail-closed P9 pilot evidence template
         run: |
           uv run --locked python scripts/validate_pilot_evidence.py

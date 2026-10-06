@@ -134,6 +134,7 @@ async def test_rsv_metadata_stays_disabled_in_production_until_secret_binding():
         oauth_audience="https://mcp.example.com/mcp",
         oauth_jwks_url="https://id.example.com/jwks",
         source_host_allowlist="onec.example.test",
+            source_egress_cidrs="10.0.0.0/8",
         secret_provider="file",
     )
     mcp = build_mcp(settings, runtime_value)

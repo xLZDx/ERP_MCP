@@ -8,6 +8,7 @@ import httpx
 
 from ...compatibility import AdapterProfile, CapabilityUnsupported
 from ...models import Source
+from ...network_policy import EgressPolicyError, validate_resolved_egress
 
 UPSTREAM_SHA = "cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5"
 
@@ -26,12 +27,14 @@ class ODataSidecarClient:
         max_response_bytes: int,
         max_rows: int,
         transport: httpx.AsyncBaseTransport | None = None,
+        allowed_egress_cidrs: tuple[str, ...] = (),
     ):
         parsed = urlparse(base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError("invalid OData sidecar URL")
         self.max_response_bytes = max_response_bytes
         self.max_rows = max_rows
+        self.allowed_egress_cidrs = allowed_egress_cidrs
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/") + "/",
             timeout=httpx.Timeout(timeout_seconds),
@@ -216,6 +219,10 @@ class ODataSidecarClient:
         extra_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         capability_request = operation == "register_capabilities"
+        try:
+            await validate_resolved_egress(str(self._client.base_url), self.allowed_egress_cidrs)
+        except EgressPolicyError:
+            raise ODataSidecarError("SIDECAR_EGRESS_DENIED") from None
         payload = (
             {
                 "source_id": source.id,

@@ -47,9 +47,10 @@ def query_fingerprint(query: dict[str, Any] | None) -> str | None:
 
 
 class Audit:
-    def __init__(self, db: Database, *, include_query: bool):
+    def __init__(self, db: Database, *, include_query: bool, metrics: Any | None = None):
         self.db = db
         self.include_query = include_query
+        self.metrics = metrics
 
     async def write(
         self,
@@ -74,7 +75,12 @@ class Audit:
         detail_code: str | None = None,
     ):
         elapsed_ms = int((time.monotonic() - started_at) * 1000)
-        await self.db.require_pool().execute(
+        if self.metrics is not None:
+            self.metrics.record_operation(tool, outcome)
+        from .observability import trace_span
+
+        async with trace_span("audit.append", tool=tool, outcome=outcome):
+            await self.db.require_pool().execute(
             """
             INSERT INTO bag.audit_events(
                 event_id, principal_subject, client_id, tool_name, source_id,
@@ -108,4 +114,4 @@ class Audit:
             profile_fingerprint,
             response_bytes,
             truncated,
-        )
+            )

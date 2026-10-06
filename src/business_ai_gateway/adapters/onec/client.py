@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from ...models import Source
+from ...network_policy import EgressPolicyError, validate_resolved_egress
 
 
 class OneCTransportError(RuntimeError):
@@ -24,8 +25,10 @@ class OneCReadClient:
         timeout_seconds: float,
         max_response_bytes: int,
         transport: httpx.AsyncBaseTransport | None = None,
+        allowed_egress_cidrs: tuple[str, ...] = (),
     ):
         self.max_response_bytes = max_response_bytes
+        self.allowed_egress_cidrs = allowed_egress_cidrs
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout_seconds),
             verify=True,
@@ -69,6 +72,10 @@ class OneCReadClient:
             else None
         )
         url = self._url(source, relative)
+        try:
+            await validate_resolved_egress(url, self.allowed_egress_cidrs)
+        except EgressPolicyError:
+            raise OneCTransportError("SOURCE_EGRESS_DENIED") from None
 
         for attempt in range(3):
             try:
@@ -117,6 +124,12 @@ class OneCReadClient:
             else None
         )
         try:
+            try:
+                await validate_resolved_egress(
+                    self._url(source, "$metadata"), self.allowed_egress_cidrs
+                )
+            except EgressPolicyError:
+                raise OneCTransportError("SOURCE_EGRESS_DENIED") from None
             response = await self._client.head(
                 self._url(source, "$metadata"),
                 headers={"Accept": "application/xml"},

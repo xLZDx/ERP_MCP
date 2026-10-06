@@ -92,6 +92,9 @@ mcp.request
 ```
 
 Sensitive query values should be omitted/redacted; fingerprints can correlate repeated shapes.
+The current internal span implementation covers audit append and adapter calls with correlation ID,
+duration, fixed semantic attributes and exception type only. It never records credentials, URLs,
+query values, source/company IDs or response payloads.
 
 ## 5. Health/readiness
 
@@ -117,6 +120,8 @@ tool arguments, URLs, and query values are never labels. The endpoint is disable
 `BAG_METRICS_TOKEN` is configured with at least 32 bytes; scrapers send it as a bearer token. The
 token must be held in the deployment secret store and rotated independently. Metrics are per-process
 and reset on restart; they are not a durable audit or a substitute for database/audit monitoring.
+The endpoint also exposes bounded operation and dependency counters. Tool names are restricted to
+safe registered names; source IDs, company IDs, URLs, query values and subjects are never labels.
 
 ## 6. Service objectives
 

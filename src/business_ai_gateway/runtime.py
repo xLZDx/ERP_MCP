@@ -10,6 +10,7 @@ from .adapters.onec.rsv_bridge import RSVDataBridgeClient
 from .adapters.onec.sidecar_client import ODataSidecarClient
 from .audit import Audit
 from .db import Database
+from .observability import OperationalMetrics
 from .rate_limit import RateLimiter
 from .registry import Registry
 from .secrets import build_secret_provider
@@ -19,6 +20,7 @@ from .settings import Settings
 class Runtime:
     def __init__(self, settings: Settings):
         self.settings = settings
+        self.metrics = OperationalMetrics()
         self.db = Database(settings.database_url)
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
         self.registry = Registry(
@@ -27,11 +29,14 @@ class Runtime:
             allowed_source_hosts=settings.source_host_allowlist_items,
         )
         self.secrets = build_secret_provider(settings)
-        self.audit = Audit(self.db, include_query=settings.audit_include_query)
+        self.audit = Audit(
+            self.db, include_query=settings.audit_include_query, metrics=self.metrics
+        )
         self.rate_limit = RateLimiter(self.redis, per_minute=settings.rate_limit_per_minute)
         self.onec_client = OneCReadClient(
             timeout_seconds=settings.http_timeout_seconds,
             max_response_bytes=settings.max_response_bytes,
+            allowed_egress_cidrs=settings.source_egress_cidr_items,
         )
         self.odata_sidecar = (
             ODataSidecarClient(
@@ -40,6 +45,7 @@ class Runtime:
                 timeout_seconds=settings.http_timeout_seconds,
                 max_response_bytes=settings.max_response_bytes,
                 max_rows=settings.max_rows,
+                allowed_egress_cidrs=settings.sidecar_egress_cidr_items,
             )
             if settings.odata_sidecar_url and settings.odata_sidecar_token
             else None
@@ -50,6 +56,8 @@ class Runtime:
                 config_root=settings.rsv_bridge_config_root,
                 timeout_seconds=settings.http_timeout_seconds,
                 expected_executable_sha256=settings.rsv_bridge_executable_sha256,
+                config_secret_loader=self.secrets.get if settings.rsv_bridge_config_secret_ref else None,
+                config_secret_ref=settings.rsv_bridge_config_secret_ref,
             )
             if settings.rsv_bridge_executable and settings.rsv_bridge_config_root
             else None

@@ -2,6 +2,14 @@
 
 ## Current authoritative checkpoint — 2026-10-06
 
+### Batch 1–8 checkpoint
+
+The current local suite is `184 passed, 9 skipped`. Metrics/spans, failure-matrix regressions,
+egress policy, ephemeral secret-bound RSV config, release preflight and rollback-manifest checks
+pass. These are implementation evidence only; deployed alerting, actual rollback rehearsal, live 1C
+semantic validation and native-report reconciliation remain open. DoD remains PARTIAL and production
+GO remains NO-GO.
+
 Candidate PR #11 remains Draft. Hosted run `37434812280` PASS on HEAD `ec1ca10`: both Python/PostgreSQL `test` and pinned `odata-upstream` jobs succeeded, including migration/privilege/ACL/fanout/restore drills, full pytest, pip-audit, both image scans, SBOMs and provenance. Current local evidence: Python `170 passed, 9 skipped`; pinned OData client `428 passed, 1 skipped`; metadata `53 passed`; sidecar contract `11/11`; Ruff, Bandit, compileall, lock reproduction and pip-audit pass. Synthetic ACL-first fan-out/load and AR/AP aging fixtures pass. A disposable Windows/COM RSV metadata smoke passed all five reviewed metadata operations (`ping/config/describe/get_structure/help`) with pinned upstream and executable digests; no business/query/reveal operation was called. Structured JSON access logs use correlation IDs and omit URL path/query, headers, and payloads. Metadata GET/HEAD, sidecar and readiness failures map to sanitized fail-closed errors with dedicated hosted tests. A production rollback/restore runbook is documented but not rehearsed. Overall DoD remains PARTIAL; no production gate is promoted.
 
 Open locally verifiable closure includes structured telemetry, complete dependency outage matrix, DNS-to-connect rebinding protection, production-like rollback/restore rehearsal and wiring aging behind a validated semantic profile. P6 metadata transport is locally demonstrated, but production RSV is blocked by plaintext upstream bridge configuration until secret-ref binding is implemented; business reads remain blocked pending live source capabilities, semantic profiles and native-report reconciliation. A rollback/restore procedure is now documented but has not been rehearsed. Production requires an exact source-host allowlist checked on every registry fetch; this does not replace DNS pinning or network egress enforcement. External evidence still required: real 1C semantic configuration and native-report reconciliation; production IdP/network/secrets; deployment-grade Windows COM execution and operator/release approval. PR #11 stays Draft; no merge was performed.

@@ -15,6 +15,7 @@ settings = Settings()
 runtime = Runtime(settings)
 mcp = build_mcp(settings, runtime)
 http_metrics = HTTPMetrics()
+http_metrics.operational = runtime.metrics
 
 
 @mcp.custom_route("/healthz", methods=["GET"])

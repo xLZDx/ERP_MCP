@@ -35,3 +35,19 @@ async def test_readiness_sanitizes_dependency_failure(monkeypatch):
         "error": "ConnectionError",
     }
     assert b"PRIVATE-DETAIL" not in response.body
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("dependency", ["database", "redis", "jwks", "secrets", "sidecar"])
+async def test_readiness_failure_matrix_is_fail_closed_and_sanitized(monkeypatch, dependency):
+    from business_ai_gateway.app import readyz, runtime
+
+    async def dependency_unavailable():
+        raise RuntimeError(f"{dependency}=credential-SHOULD-NOT-LEAK")
+
+    monkeypatch.setattr(runtime, "ready", dependency_unavailable)
+    response = await readyz(None)
+
+    assert response.status_code == 503
+    assert json.loads(response.body) == {"status": "not-ready", "error": "RuntimeError"}
+    assert b"SHOULD-NOT-LEAK" not in response.body
