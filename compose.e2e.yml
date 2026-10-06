@@ -1,0 +1,42 @@
+# Disposable, localhost-only dependencies for the local E2E environment.
+# Gateway, Fake1C and the test IdP run as host processes (see scripts/e2e/up.ps1) so that
+# issuer/audience URLs are identical for the browser and the gateway and so that outages can
+# be injected by stopping a process. Passwords come from .e2e/compose.env (generated, ignored).
+name: erpmcp-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: business_ai
+      POSTGRES_USER: business_ai
+      POSTGRES_PASSWORD: ${E2E_PG_OWNER_PASSWORD:?run scripts/e2e/up.ps1}
+    ports: ["127.0.0.1:15432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    networks: [e2e]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U business_ai -d business_ai"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${E2E_REDIS_PASSWORD:?run scripts/e2e/up.ps1}
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
+    ports: ["127.0.0.1:16379:6379"]
+    networks: [e2e]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+networks:
+  e2e:
+    name: erpmcp-e2e-net
+
+volumes:
+  pgdata:
+    name: erpmcp-e2e-pgdata
