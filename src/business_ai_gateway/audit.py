@@ -17,6 +17,10 @@ _request_correlation_id: ContextVar[uuid.UUID | None] = ContextVar(
 )
 
 
+class AuditUnavailable(RuntimeError):
+    """Fixed-code durable-audit failure; no database/provider exception details."""
+
+
 def begin_request_correlation_id():
     value = _request_correlation_id.get() or uuid.uuid4()
     return _request_correlation_id.set(value), value
@@ -55,19 +59,23 @@ class Audit:
         self.metrics = metrics
 
     @asynccontextmanager
-    async def _monitored_append(self, tool: str, outcome: str):
+    async def _monitored_append(self, tool: str, outcome: str, *, record_tool_outcome: bool):
         started = time.perf_counter()
         try:
             yield
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError) as exc:
             if self.metrics is not None:
                 self.metrics.record_operation(tool, "error")
                 self.metrics.record_operation("audit", "error")
                 self.metrics.record_dependency("audit", "error", time.perf_counter() - started)
-            raise  # keep append failure fail-closed; never substitute a successful result
+            if isinstance(exc, asyncio.CancelledError):
+                raise
+            # Applies to receipts AND completion; SDK logging must not expose DB details.
+            raise AuditUnavailable('AUDIT_UNAVAILABLE') from None
         else:
             if self.metrics is not None:
-                self.metrics.record_operation(tool, outcome)
+                if record_tool_outcome:
+                    self.metrics.record_operation(tool, outcome)
                 self.metrics.record_operation("audit", "success")
                 self.metrics.record_dependency("audit", "success", time.perf_counter() - started)
 
@@ -92,12 +100,15 @@ class Audit:
         response_bytes: int | None = None,
         truncated: bool = False,
         detail_code: str | None = None,
+        record_tool_outcome: bool = True,
     ):
+        if type(record_tool_outcome) is not bool:
+            raise ValueError('AUDIT_METRIC_POLICY_INVALID')
         elapsed_ms = int((time.monotonic() - started_at) * 1000)
         from .observability import trace_span
 
         async with (trace_span("audit.append", tool=tool, outcome=outcome),
-                    self._monitored_append(tool, outcome)):
+                    self._monitored_append(tool, outcome, record_tool_outcome=record_tool_outcome)):
             await self.db.require_pool().execute(
             """
             INSERT INTO bag.audit_events(

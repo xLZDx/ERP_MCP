@@ -67,9 +67,36 @@ async def test_source_health_success_is_audited_after_authorized_call():
         subject="development-local", source_id="source-1", tool="source_health"
     )
     onec.health.assert_awaited_once()
-    assert len(audit.events) == 1
-    assert audit.events[0]["outcome"] == "success"
-    assert audit.events[0]["source_id"] == "source-1"
+    assert len(audit.events) == 2
+    assert audit.events[0]['detail_code'] == 'ACCESS_AUTHORIZED'
+    assert audit.events[0]['record_tool_outcome'] is False
+    assert audit.events[-1]["outcome"] == "success"
+    assert audit.events[-1]["source_id"] == "source-1"
+
+
+async def test_durable_access_receipt_exists_before_adapter_dispatch():
+    mcp, audit, _rate, onec = create_mcp()
+
+    async def adapter(_source):
+        assert len(audit.events) == 1
+        assert audit.events[0]['detail_code'] == 'ACCESS_AUTHORIZED'
+        assert audit.events[0]['policy_version'] == 'predispatch-audit-v1'
+        assert audit.events[0]['record_tool_outcome'] is False
+        return {'status': 'ok'}
+
+    onec.health.side_effect = adapter
+    result = await mcp.call_tool('source_health', {'source_id': 'source-1'})
+    assert not result.is_error and len(audit.events) == 2
+
+
+async def test_pre_dispatch_audit_outage_is_sanitized_and_never_calls_adapter(caplog):
+    mcp, audit, rate, onec = create_mcp()
+    audit.write = AsyncMock(side_effect=ConnectionError('private-audit-dsn-password'))
+    with pytest.raises(UnexpectedToolError) as failure:
+        await mcp.call_tool('source_health', {'source_id': 'source-1'})
+    onec.health.assert_not_awaited()
+    rate.check.assert_awaited_once()
+    assert 'private-audit-dsn-password' not in str(failure.value) + caplog.text
 
 
 @pytest.mark.asyncio
@@ -108,10 +135,11 @@ async def test_adapter_failure_is_audited_as_error():
     with pytest.raises(UnexpectedToolError):
         await mcp.call_tool("source_health", {"source_id": "source-1"})
 
-    assert len(audit.events) == 1
-    assert audit.events[0]["outcome"] == "error"
-    assert audit.events[0]["detail_code"] == "TimeoutError"
-    assert audit.events[0]["source_id"] == "source-1"
+    assert len(audit.events) == 2
+    assert audit.events[0]['detail_code'] == 'ACCESS_AUTHORIZED'
+    assert audit.events[-1]["outcome"] == "error"
+    assert audit.events[-1]["detail_code"] == "TimeoutError"
+    assert audit.events[-1]["source_id"] == "source-1"
 
 
 @pytest.mark.asyncio
@@ -205,8 +233,8 @@ async def test_account_turnovers_uses_confirmed_mapping_and_enforces_company_sco
         },
         top=Settings().max_rows,
     )
-    assert audit.events[0]["company_id"] == company_id
-    assert audit.events[0]["profile_fingerprint"] == "sha256:profile"
+    assert audit.events[-1]["company_id"] == company_id
+    assert audit.events[-1]["profile_fingerprint"] == "sha256:profile"
 
 
 @pytest.mark.asyncio

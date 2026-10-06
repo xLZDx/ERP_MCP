@@ -440,6 +440,14 @@ The semantic layer may return richer domain shapes, but provenance must not be l
 
 ## 14. Data lifecycle
 
+Source-bound reads require a durable access receipt after source/company ACL and rate checks,
+before adapter dispatch, secret retrieval or capability probing. The receipt uses the same request
+correlation ID as completion, `detail_code=ACCESS_AUTHORIZED`, `policy_version=predispatch-audit-v1`,
+and `outcome=success` meaning authorization succeeded ONLY. It is not evidence of a completed read.
+Raw query JSON remains NULL; only a query fingerprint may be stored. An append failure prevents
+dispatch and exposes only `AUDIT_UNAVAILABLE`, never provider details. Completion retains existing
+adapter/result provenance. A missing completion is an unfinished request, not a successful read.
+
 - registry/policy state: durable, backed up;
 - secrets: external secret provider;
 - metadata/cache: recreatable;

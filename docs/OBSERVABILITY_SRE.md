@@ -278,6 +278,14 @@ against normative docs and exact CI/release evidence before closure claims.
 
 ## 13. Private reference/evidence telemetry
 
+Access receipts (`detail_code=ACCESS_AUTHORIZED`) count successful audit appends, not successful
+business operations. Completed-read audit statistics must exclude those receipts and correlate
+completion by request ID. A receipt without completion indicates an interrupted/unfinished read;
+investigate with the dependency and audit error signals, never convert it to business PASS.
+If the pre-dispatch append fails, no adapter call occurs, the existing audit-error alert selector
+is incremented and callers receive a sanitized error. Recovery requires restoring durable audit
+storage and retrying with a new request; never bypass audit or replay a read as a mutation.
+
 For `REFERENCE_TEST_BASE_A` and private external documents:
 
 - logs use safe aliases/fingerprints, not raw private Drive links or customer identifiers;

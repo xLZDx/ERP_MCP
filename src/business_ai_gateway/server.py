@@ -12,7 +12,7 @@ from pydantic import AnyHttpUrl
 
 from .adapters.onec.rsv_bridge import METADATA_TOOLS
 from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
-from .audit import AuditCorrelationMiddleware
+from .audit import AuditCorrelationMiddleware, AuditUnavailable
 from .auth import JWTTokenVerifier
 from .compatibility import (
     CapabilityUnsupported,
@@ -132,6 +132,19 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=type(exc).__name__,
             )
             raise
+        # Durable access receipt before any external adapter/secret/capability call. This is
+        # policy authorization success, NOT a successful business read; completion is separate.
+        try:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, company_id=company_id,
+                outcome='success', started_at=started, query=query,
+                detail_code='ACCESS_AUTHORIZED', policy_version='predispatch-audit-v1',
+                record_tool_outcome=False,
+            )
+        except Exception as exc:  # noqa: BLE001 -- provider boundary must sanitize every append failure
+            # Do not retain provider traceback locals in the public SDK failure.
+            exc.__traceback__ = None
+            raise AuditUnavailable('AUDIT_UNAVAILABLE') from None
         return source
 
     async def deny_unconfirmed_semantic_capability(

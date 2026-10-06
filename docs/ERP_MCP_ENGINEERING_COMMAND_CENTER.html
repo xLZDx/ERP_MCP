@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 2c86e514 · CI 37484138607: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: scoped RSV wire bounds · local 510 PASS / 16 SKIP · hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD e462941a · CI 37487651656: FOUR jobs PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: durable pre-dispatch audit · 52 focused PASS with actual PostgreSQL · full suite / hosted CI pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,8 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=PREDISPATCH_DURABLE_AUDIT_20261006 ENGINEERING_IMPLEMENTATION=54d54d2bd076e5d3064c48521a055c646e44a4874b0774654db47d9f9eabcfe5 -->
+<p><strong>Durable pre-dispatch audit — 2026-10-06:</strong> FR-F1/D11: source/company ACL and rate checks precede durable ACCESS_AUTHORIZED receipt; adapter, secrets and capability calls occur only after append succeeds. Receipt and completion share the transport request context; receipt does not count business success. Every real Audit append failure, including completion, is normalized to AUDIT_UNAVAILABLE with provider context suppressed; cancellation propagates. 52 focused tests PASS with actual migrated disposable PostgreSQL app role: receipt observed inside adapter, two correlated rows with NULL raw query, readonly append failure prevents adapter dispatch and drives audit alert metrics. Direct SDK test explicitly establishes transport request context. Invalid metric policy rejected before INSERT. Normative data/SRE docs and 34-document offline render synchronized. Parent e462941 CI 37487651656 all four jobs PASS (tested merge 1905d0a6adfa8241d0ae700713c9e39cd0fb0613). Current full suite 516 passed/17 skipped; Ruff, runtime/testbed Bandit, compileall, release preflight, 12 synthetic scenarios, checkpoint/report/source-render gates PASS. Downloaded parent release bundle exact head/merge plus four image/SBOM and five test summary hashes verified; bundle SHA256 9102f3ca99ee35ec69244b467c1297860783d60b0d4a5295e6b4c4ef655bb32c. Own hosted run pending. Remaining frozen DAD/Ferma/native/fault/deployment/evidence storage/ACL/parsers remain locally OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=RSV_WIRE_BOUNDS_20261006 ENGINEERING_IMPLEMENTATION=a886933286d4662657d4e7391da15d1d5b28987b32b27976defd92891e481cb5 -->
 <p><strong>Scoped RSV wire bounds — 2026-10-06:</strong> P6-SEC-1/NFR-R2/D4/D8/D14: locked SDK TextReceiveStream is wrapped once with per-stream RSV ContextVar activation; 5 MB line/10 MB session/64 frames enforced after UTF-8 decode BEFORE JSON parsing. Only owned receive pipe closes on excess; fixed code, no raw stdout/cleanup details; SDK retains spawning/framing/teardown, upstream COM bridge unchanged. Fragmented/multibyte/boundary/reset/flood/cleanup/idempotency/concurrent non-RSV contracts PASS. 36 focused privacy/bridge/wire tests, executed 19-case lifecycle harness and actual native bridge 1 PASS (zero skips); default 6 MB attacks actually rejected before parser, fresh sessions/rotation recover. Initial flood was a fixture failure: SDK diverted handler stdout to stderr; corrected with test-only saved wire descriptor. Malformed case now proves SDK validation received it, not just timeout. SDK seam coupling documented; Windows job includes wire contracts. Parent 2c86e51 CI 37484138607 four jobs PASS. Full current local suite 510 passed/16 skipped; Ruff/Bandit(runtime+testbed)/compileall/checkpoint/source-render/report gates PASS. Wire batch awaits its own hosted run. Native engine crash/zero-write/accounting, DAD/Ferma/full fault/deployment/evidence storage/ACL/parsers remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.</p>
 <!-- ENGINEERING_CHECKPOINT=SCRIPT_EVIDENCE_HARDENING_20261006 ENGINEERING_IMPLEMENTATION=44c37233b715dda3413d94fd58fb1ff0ee16dd8b8f72bd6880fc57f6c3c6e6d5 -->
@@ -604,7 +606,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>2c86e514bc94800814c0b6310c0fca9c4b2cb21c</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37484138607">37484138607</a>: FOUR jobs PASS. Текущий RSV wire-bound batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; последний проверенный implementation HEAD <code>e462941acca533a2a8ddcceaabf0991eb13310e4</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37487651656">37487651656</a>: FOUR jobs PASS. Текущий durable pre-dispatch audit batch и content fingerprint указаны в верхнем checkpoint; его CI ещё не завершён. Freeze code <code>65883a5</code> / scope baseline <code>57eb5b0</code> — исторические anchors, НЕ текущий HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -1032,7 +1034,7 @@ requirement/gate. Work that cannot do so waits for explicit operator rebaseline.
     </article>
 <article class="doc-card searchable" id="doc-data-model" data-cat="architecture" data-title="Data Model">
       <div class="doc-head"><div><span class="eyebrow">Данные</span><h2>Data Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DATA_MODEL.md DOC_SOURCE_SHA256=2b352f59a1cb484996409428840ee4ed4048e4f9c568969d5ae75d8e5667b5b5 DOC_RENDER_SHA256=d3c7ac8fc92e244cd78a1876aa65dcfdae5469ef068e4681439818b475f4f0ff -->
+      <div class="md"><!-- DOC_SOURCE=docs/DATA_MODEL.md DOC_SOURCE_SHA256=3f75e14e35627931b4cdafe06f8990118f08d7b637b74b1d271833f473773f5c DOC_RENDER_SHA256=53d96871f11512f85e950f41bbb94b574d2d0e36cb389a6a3c156487703c1d58 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Data Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -1392,6 +1394,13 @@ exact mapping profile used for a read.</p>
 </code></pre>
 <p>The semantic layer may return richer domain shapes, but provenance must not be lost.</p>
 <h2>14. Data lifecycle</h2>
+<p>Source-bound reads require a durable access receipt after source/company ACL and rate checks,
+before adapter dispatch, secret retrieval or capability probing. The receipt uses the same request
+correlation ID as completion, <code>detail_code=ACCESS_AUTHORIZED</code>, <code>policy_version=predispatch-audit-v1</code>,
+and <code>outcome=success</code> meaning authorization succeeded ONLY. It is not evidence of a completed read.
+Raw query JSON remains NULL; only a query fingerprint may be stored. An append failure prevents
+dispatch and exposes only <code>AUDIT_UNAVAILABLE</code>, never provider details. Completion retains existing
+adapter/result provenance. A missing completion is an unfinished request, not a successful read.</p>
 <ul>
 <li>registry/policy state: durable, backed up;</li>
 <li>secrets: external secret provider;</li>
@@ -2656,7 +2665,7 @@ test output where automation is possible.</p>
     </article>
 <article class="doc-card searchable" id="doc-observability-sre" data-cat="operations" data-title="Observability &amp; SRE">
       <div class="doc-head"><div><span class="eyebrow">Операции</span><h2>Observability &amp; SRE</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/OBSERVABILITY_SRE.md DOC_SOURCE_SHA256=79267e5d28d27e7ea0246856126e64526b7ad261302ef6bf18dc52de2b3f3747 DOC_RENDER_SHA256=947dabd7196f4b4c8c781cac558b664ada6542cc866a9546f07ae82f85e9b7f8 -->
+      <div class="md"><!-- DOC_SOURCE=docs/OBSERVABILITY_SRE.md DOC_SOURCE_SHA256=93b78ef4d8b2661aa26865e1f75cb1d95b055f54fd86bcf91f58e30c527dc4ef DOC_RENDER_SHA256=f6cbfc3aacf43e02af3683fc17885fb974a49e228c742ea1e114ab09c7c2a6ab -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Observability and SRE Contract</h1>
 <p><strong>Version:</strong> 1.1
@@ -2886,6 +2895,13 @@ rebaseline.</p>
 <p>Engineering Command Center is a reporting surface, not the authority. Its status must be reconciled
 against normative docs and exact CI/release evidence before closure claims.</p>
 <h2>13. Private reference/evidence telemetry</h2>
+<p>Access receipts (<code>detail_code=ACCESS_AUTHORIZED</code>) count successful audit appends, not successful
+business operations. Completed-read audit statistics must exclude those receipts and correlate
+completion by request ID. A receipt without completion indicates an interrupted/unfinished read;
+investigate with the dependency and audit error signals, never convert it to business PASS.
+If the pre-dispatch append fails, no adapter call occurs, the existing audit-error alert selector
+is incremented and callers receive a sanitized error. Recovery requires restoring durable audit
+storage and retrying with a new request; never bypass audit or replay a read as a mutation.</p>
 <p>For <code>REFERENCE_TEST_BASE_A</code> and private external documents:</p>
 <ul>
 <li>logs use safe aliases/fingerprints, not raw private Drive links or customer identifiers;</li>

@@ -2,6 +2,10 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=PREDISPATCH_DURABLE_AUDIT_20261006 ENGINEERING_IMPLEMENTATION=54d54d2bd076e5d3064c48521a055c646e44a4874b0774654db47d9f9eabcfe5 -->
+## Durable pre-dispatch audit — 2026-10-06
+
+FR-F1/D11: source/company ACL and rate checks precede durable ACCESS_AUTHORIZED receipt; adapter, secrets and capability calls occur only after append succeeds. Receipt and completion share the transport request context; receipt does not count business success. Every real Audit append failure, including completion, is normalized to AUDIT_UNAVAILABLE with provider context suppressed; cancellation propagates. 52 focused tests PASS with actual migrated disposable PostgreSQL app role: receipt observed inside adapter, two correlated rows with NULL raw query, readonly append failure prevents adapter dispatch and drives audit alert metrics. Direct SDK test explicitly establishes transport request context. Invalid metric policy rejected before INSERT. Normative data/SRE docs and 34-document offline render synchronized. Parent e462941 CI 37487651656 all four jobs PASS (tested merge 1905d0a6adfa8241d0ae700713c9e39cd0fb0613). Current full suite 516 passed/17 skipped; Ruff, runtime/testbed Bandit, compileall, release preflight, 12 synthetic scenarios, checkpoint/report/source-render gates PASS. Downloaded parent release bundle exact head/merge plus four image/SBOM and five test summary hashes verified; bundle SHA256 9102f3ca99ee35ec69244b467c1297860783d60b0d4a5295e6b4c4ef655bb32c. Own hosted run pending. Remaining frozen DAD/Ferma/native/fault/deployment/evidence storage/ACL/parsers remain locally OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
 <!-- ENGINEERING_CHECKPOINT=RSV_WIRE_BOUNDS_20261006 ENGINEERING_IMPLEMENTATION=a886933286d4662657d4e7391da15d1d5b28987b32b27976defd92891e481cb5 -->
 
 ## Scoped pre-parser RSV wire resource guard — 2026-10-06

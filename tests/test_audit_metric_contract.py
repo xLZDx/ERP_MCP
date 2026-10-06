@@ -6,13 +6,23 @@ import time
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import asyncpg
 import pytest
+from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
-from business_ai_gateway.audit import Audit
+from business_ai_gateway.audit import (
+    Audit,
+    AuditUnavailable,
+    begin_request_correlation_id,
+    current_request_correlation_id,
+    end_request_correlation_id,
+)
 from business_ai_gateway.observability import HTTPMetrics, OperationalMetrics, trace_span
 from business_ai_gateway.principal import Principal
+from business_ai_gateway.server import build_mcp
+from business_ai_gateway.settings import Settings
 
 
 def test_fixed_metric_tools_exactly_cover_registered_mcp_plus_internal_audit():
@@ -112,14 +122,40 @@ async def test_actual_append_failure_emits_existing_audit_alert_selector_without
 
     audit = Audit(SimpleNamespace(require_pool=lambda: SimpleNamespace(execute=execute)),
                   include_query=False, metrics=metrics)
-    with caplog.at_level(logging.INFO), pytest.raises(RuntimeError):
+    with caplog.at_level(logging.INFO), pytest.raises(AuditUnavailable, match='^AUDIT_UNAVAILABLE$') as failure:
         await write(audit)
+    assert failure.value.__suppress_context__ is True and failure.value.__cause__ is None
     body = metrics.render()
     assert 'tool="audit",outcome="error"} 1' in body
     assert 'tool="source_health",outcome="error"} 1' in body
     assert 'dependency="audit",outcome="error"} 1' in body
     assert 'outcome="success"' not in body
     assert 'private-dsn-password-token' not in body + caplog.text
+
+
+async def test_access_receipt_success_never_counts_as_completed_business_success():
+    metrics = OperationalMetrics()
+
+    async def execute(*_args):
+        pass
+
+    audit = Audit(SimpleNamespace(require_pool=lambda: SimpleNamespace(execute=execute)),
+                  include_query=False, metrics=metrics)
+    await audit.write(principal=PRINCIPAL, tool='source_health', source_id='synthetic-source',
+                      outcome='success', started_at=time.monotonic(), detail_code='ACCESS_AUTHORIZED',
+                      record_tool_outcome=False)
+    assert 'tool="source_health"' not in metrics.render()
+    assert 'tool="audit",outcome="success"} 1' in metrics.render()
+
+
+@pytest.mark.parametrize('flag', [None, 1, 'false'])
+async def test_receipt_metric_policy_rejects_non_boolean_before_append(flag):
+    execute = AsyncMock()
+    audit = Audit(SimpleNamespace(require_pool=lambda: SimpleNamespace(execute=execute)), include_query=False)
+    with pytest.raises(ValueError, match='^AUDIT_METRIC_POLICY_INVALID$'):
+        await audit.write(principal=PRINCIPAL, tool='source_health', source_id='synthetic-source',
+                          outcome='success', started_at=time.monotonic(), record_tool_outcome=flag)
+    execute.assert_not_awaited()
 
 
 async def test_append_cancellation_propagates_and_never_becomes_success():
@@ -142,6 +178,51 @@ async def test_append_cancellation_propagates_and_never_becomes_success():
 
 
 @pytest.mark.skipif(not os.getenv('BAG_PRIVILEGE_TEST_DATABASE_URL'), reason='requires disposable PostgreSQL')
+async def test_real_database_receipt_precedes_dispatch_and_readonly_outage_blocks_it():
+    connection = await asyncpg.connect(os.environ['BAG_PRIVILEGE_TEST_DATABASE_URL'])
+    metrics = OperationalMetrics()
+    audit = Audit(SimpleNamespace(require_pool=lambda: connection), include_query=False, metrics=metrics)
+    rate = SimpleNamespace(check=AsyncMock())
+    registry = SimpleNamespace(require_source=AsyncMock(return_value=SimpleNamespace(id='synthetic-source')))
+    receipt = []
+
+    async def adapter(_source):
+        # Role SELECT grant permits checking the durable receipt in the adapter itself.
+        row = await connection.fetchrow(
+            "SELECT request_id, query_json, outcome FROM bag.audit_events "
+            "WHERE request_id=$1 AND tool_name='source_health' "
+            "AND detail_code='ACCESS_AUTHORIZED'", current_request_correlation_id())
+        assert row is not None and row['query_json'] is None and row['outcome'] == 'success'
+        receipt.append(row['request_id'])
+        return {'status': 'ok'}
+
+    onec = SimpleNamespace(health=AsyncMock(side_effect=adapter))
+    mcp = build_mcp(Settings(), SimpleNamespace(audit=audit, registry=registry, rate_limit=rate, onec=onec))
+    # Direct SDK calls omit transport middleware; explicitly establish its request context.
+    token, _ = begin_request_correlation_id()
+    try:
+        await connection.execute('SET ROLE business_ai_app')
+        result = await mcp.call_tool('source_health', {'source_id': 'synthetic-source'})
+        assert not result.is_error and len(receipt) == 1
+        rows = await connection.fetch(
+            'SELECT detail_code, query_json FROM bag.audit_events WHERE request_id=$1', receipt[0])
+        assert len(rows) == 2 and all(row['query_json'] is None for row in rows)
+        assert sum(row['detail_code'] == 'ACCESS_AUTHORIZED' for row in rows) == 1
+        onec.health.reset_mock()
+        async with connection.transaction(readonly=True):
+            with pytest.raises(UnexpectedToolError):
+                await mcp.call_tool('source_health', {'source_id': 'synthetic-source'})
+        onec.health.assert_not_awaited()
+        body = metrics.render()
+        assert 'tool="source_health",outcome="success"} 1' in body
+        assert 'tool="audit",outcome="error"} 1' in body
+        assert 'dependency="audit",outcome="error"} 1' in body
+    finally:
+        end_request_correlation_id(token)
+        await connection.close()
+
+
+@pytest.mark.skipif(not os.getenv('BAG_PRIVILEGE_TEST_DATABASE_URL'), reason='requires disposable PostgreSQL')
 async def test_actual_runtime_role_insert_and_readonly_failure_drive_audit_alert():
     connection = await asyncpg.connect(os.environ['BAG_PRIVILEGE_TEST_DATABASE_URL'])
     metrics = OperationalMetrics()
@@ -151,7 +232,7 @@ async def test_actual_runtime_role_insert_and_readonly_failure_drive_audit_alert
         await connection.execute('SET ROLE business_ai_app')
         await audit.write(principal=principal, tool='system_status', source_id=None,
                           outcome='success', started_at=time.monotonic())
-        with pytest.raises(asyncpg.ReadOnlySQLTransactionError):
+        with pytest.raises(AuditUnavailable, match='^AUDIT_UNAVAILABLE$'):
             async with connection.transaction(readonly=True):
                 await audit.write(principal=principal, tool='system_status', source_id=None,
                                   outcome='success', started_at=time.monotonic())
