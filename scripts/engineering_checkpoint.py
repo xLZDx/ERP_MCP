@@ -13,7 +13,7 @@ REPORTS = ("reports/IMPLEMENTATION_STATUS.md", "reports/DOD_STATUS.md", "reports
            "docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html")
 IGNORED = {"node_modules", ".pnpm", "__pycache__", ".pytest_cache", ".ruff_cache", ".git",
            "build", "dist", "var"}
-TEXT = {".py", ".mjs", ".json", ".lock", ".toml", ".yaml", ".yml", ".md", ".txt", ".xml"}
+TEXT = {".py", ".mjs", ".json", ".lock", ".toml", ".yaml", ".yml", ".md", ".txt", ".xml", ".html"}
 
 
 def implementation_fingerprint(root: Path) -> str:
