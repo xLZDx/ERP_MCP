@@ -34,9 +34,17 @@ ROLES = (
 
 
 def command(*args: str, env=None, timeout=120) -> str:
-    return subprocess.run(
-        args, cwd=REPO, env=env, check=True, capture_output=True, text=True, timeout=timeout
-    ).stdout.strip()
+    try:
+        return subprocess.run(
+            args, cwd=REPO, env=env, check=True, capture_output=True, text=True, timeout=timeout
+        ).stdout.strip()
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "").strip()
+        detail = re.sub(r"postgres(?:ql)?://\S+", "postgresql://REDACTED", detail)
+        detail = re.sub(r"(?i)(password|secret|token)\s*[=:]\s*\S+", r"\1=REDACTED", detail)
+        raise RuntimeError(
+            f"child command failed: {Path(str(args[0])).name}; {detail[-1200:]}"
+        ) from None
 
 
 async def new_postgres(name: str, *, host_port: int | None = None) -> str:
