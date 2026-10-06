@@ -39,6 +39,19 @@ Safe next P6 work is locally actionable now:
 - bridge lifecycle/reconnect/timeout/failure tests;
 - COM process restart evidence.
 
+### Executed native lifecycle follow-up — 2026-10-06
+
+Production client + official SDK + unmodified digest-pinned RSV v1.3.0 bridge now exercised against
+the established disposable base: confirmed native ping, test-owned bridge crash, dead-session
+sanitized failure, fresh process/COM reconnect and metadata config. Three newly spawned processes
+terminated and protected temporary configurations removed. Opt-in test 1/1 PASS, zero skips;
+sanitized evidence scanner PASS. Repeat using `python -m scripts.rsv_native_lifecycle_harness
+--confirm-disposable-base --output <new-private-file>`. No arbitrary PID/native engine kill,
+business query, raw metadata publication or production-source change. Initial test iteration failed
+on the fixture's wrong envelope-key expectation after recovery; corrected to the actual adapter
+contract and rerun through the evidence harness. Native engine crash, zero-write snapshots,
+binary/source build parity and native accounting reconciliation are NOT claimed.
+
 Do NOT enable:
 - reveal;
 - execute_query;

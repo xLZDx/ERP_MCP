@@ -2,6 +2,17 @@
 
 # ERP_MCP implementation gap analysis
 
+## Executed disposable native metadata lifecycle — 2026-10-06
+
+P6 real bridge crash + fresh COM reconnect now has executed proof using the unchanged audited
+binary, production client/SDK and protected ephemeral configs. 1 native test PASS, zero skips;
+private evidence `D:/Temp/erp-rsv-native-lifecycle-20261006a.json`, SHA-256
+`31c489a41797e3bcdf580ef8a539f7b9c672ab16d5fca5a37d855d86ffe668c0`; scanner PASS.
+Only test-created bridge handles killed, no native engine/business queries/customer target.
+Full ordinary suite 422 PASS/12 SKIP; native opt-in executed separately. Parent 75c362d CI
+37474490200 four jobs PASS, real hosted pool artifact validated. Zero-write snapshot, native
+engine crash, stdout pre-parser bound and full DAD/Ferma/evidence/deployment remain separate gaps.
+
 ## Actual pool benchmark and assembled artifact — 2026-10-06
 
 NFR-P2/D13 real PostgreSQL acquisition/read/source/batch distributions measured with the production

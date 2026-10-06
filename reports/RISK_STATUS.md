@@ -4,6 +4,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=RSV_NATIVE_LIFECYCLE_20261006 ENGINEERING_IMPLEMENTATION=b9f952c03cd8306096d4ca0089bd5e2d585475bdc1429b228f8fdd9336561c70 -->
+
+## Executed native bridge crash and COM reconnect — 2026-10-06
+
+P6-SEC-1/D14: opt-in native metadata lifecycle executed on established disposable 1C 8.3.27.2342 base with production client, official SDK and audited digest-pinned v1.3.0 RSV binary. Confirmed live ping, killed only exact test-owned bridge handle, dead-session sanitized failure, fresh process/COM health recovery and metadata config; three created processes terminated and protected ephemeral configs removed. Executed native test 1/1 PASS, zero skips; artifact scanner PASS. No new COM bridge/protocol, native engine kill, business query, zero-write snapshot, binary/source parity or native accounting approval inferred. Parent 75c362d CI 37474490200 all FOUR jobs PASS; hosted measured pool artifact validated, gateway suite 433 cases/3 skips, tested merge 189f0b2fbcd5355e344d96a90dd8f222e8a09358. Full local 422 passed/12 skipped (native opt-in separately executed PASS), Ruff/Bandit/compileall/document gates PASS. Native batch awaits its own hosted run. DAD/Ferma/native formats/storage/runtime evidence ACL/audit/full fault/deployment and stdout pre-parser bound remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=POSTGRES_POOL_MEASURED_20261006 ENGINEERING_IMPLEMENTATION=ef8034ee21c3775de5e9426f2eea453597097cab28cf4e272247628df7e8478d -->
 
 ## Actual PostgreSQL pool acquisition measurements — 2026-10-06

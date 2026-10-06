@@ -52,3 +52,17 @@ not prove per-company isolation, semantic correctness, or virtual-table availabi
 validated source/company profile and a constrained query mapping exist, data operations must return
 `CAPABILITY_UNSUPPORTED`; no guessed table names or alternate names may be tried. The bridge's
 own 1C account must remain read-only as defense in depth.
+## Local disposable native bridge crash/reconnect proof
+
+`python -m scripts.rsv_native_lifecycle_harness --confirm-disposable-base --output <new-private-file>`
+is an opt-in Windows-only engineering drill for the already established `RSVDataAudit` disposable
+base. Target and audited official v1.3.0 executable digest are fixed in the test, never taken from
+model input or a customer configuration. It reuses the production client, protected ephemeral
+secret config, official SDK transport and unmodified upstream bridge; no COM implementation added.
+Only `ping` and metadata `config` are called. After a confirmed live ping, the exact process handle
+created by the SDK in that test is killed; a dead-session call must fail sanitized. Fresh processes
+must reconnect/return health and metadata, terminate, and remove their temporary config directories.
+No process-name search, arbitrary PID kill, native engine kill, database mutation/query or raw
+metadata artifact is used. This proves bridge crash + fresh COM connection, not native engine crash,
+zero-write snapshot comparison, binary/source build parity or native accounting reconciliation.
+The native test is explicit opt-in and is NOT inferred from hosted Windows unit privacy evidence.
