@@ -138,6 +138,10 @@ After pilot, record approved SLOs here with measurement method and error budget.
 
 ## 7. Alert classes
 
+The checked-in Prometheus rules are in `deploy/alerts/prometheus.rules.yml`. They intentionally use
+only route/status/outcome/tool labels from the bounded metrics contract; source IDs, company IDs,
+subjects and query values are excluded.
+
 ### P1 / critical
 
 Examples:

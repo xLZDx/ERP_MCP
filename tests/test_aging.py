@@ -50,3 +50,21 @@ def test_synthetic_aging_contract_keeps_boundaries_currency_and_credits_separate
 def test_synthetic_aging_contract_rejects_malformed_inputs(rows):
     with pytest.raises((TypeError, ValueError)):
         aggregate_open_items(rows, as_of=date(2026, 10, 6))
+
+
+def test_synthetic_aging_contract_covers_exact_due_and_all_bucket_edges():
+    rows = [
+        {"counterparty_id": "edge", "currency": "USD", "due_date": "2026-10-06", "open_amount": "1"},
+        {"counterparty_id": "edge", "currency": "USD", "due_date": "2026-09-06", "open_amount": "2"},
+        {"counterparty_id": "edge", "currency": "USD", "due_date": "2026-08-07", "open_amount": "3"},
+        {"counterparty_id": "edge", "currency": "USD", "due_date": "2026-07-08", "open_amount": "4"},
+        {"counterparty_id": "edge", "currency": "USD", "due_date": "2026-07-07", "open_amount": "5"},
+    ]
+    result = aggregate_open_items(rows, as_of=date(2026, 10, 6))[0]
+    assert result["buckets"] == {
+        "not_due": "1",
+        "days_1_30": "2",
+        "days_31_60": "3",
+        "days_61_90": "4",
+        "days_91_plus": "5",
+    }
