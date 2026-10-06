@@ -13,6 +13,8 @@ IMPLEMENTATION = {
     "DAD-2": ["src/business_ai_gateway/invoice_evidence.py", "tests/test_invoice_evidence.py",
               "src/business_ai_gateway/invoice_rules.py", "tests/test_invoice_rules.py"],
     "DAD-4": ["src/business_ai_gateway/financial_statements.py", "tests/test_financial_statements.py"],
+    "FR-E1": ["src/business_ai_gateway/semantic.py", "src/business_ai_gateway/aging.py",
+              "src/business_ai_gateway/settlement_aging.py", "tests/test_settlement_aging.py"],
     "DAD-3": ["src/business_ai_gateway/dad_rules.py", "tests/test_dad_reconciliation_rules.py"],
     "DAD-5": ["src/business_ai_gateway/dad_rules.py", "src/business_ai_gateway/external_evidence.py",
               "tests/test_dad_reconciliation_rules.py"],

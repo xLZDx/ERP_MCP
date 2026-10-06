@@ -406,6 +406,26 @@ facts. Required comparative/native evidence must be independently complete and s
 Public/live statement tools are not yet implemented by this arithmetic contract; native validation
 and deployment/GO gates remain OPEN. Monetary projection outputs stay private.
 
+### 14.3 Internal AR/AP settlement-to-aging contract
+
+`settlement_aging.py` reuses `aging.aggregate_open_items`, not a second bucket engine or source
+protocol. An exact approved profile binds source/company/config/semantic/metadata, AR/AP sign
+encoding, timezone, as-of, effective window, due-date rule, explicit document/payment relationship
+and native report mapping. Unknown/stale/incomplete/opening-unverified profiles/data cannot PASS.
+
+Document/payment/allocation identities and dates are bounded. Allocations must match exact
+counterparty AND contract, known document/payment refs and chronology; no FIFO/alternative matching
+is guessed. Multiple explicitly identified allocation events are preserved. Payment overallocation
+is rejected; document oversettlement is a visible hashed anomaly/credit, never silently clamped.
+Unapplied advances remain credits and do not net against debt in another item/contract/currency.
+Each scope is one declared currency; no implicit FX conversion exists.
+
+The reused canonical bucket function now bounds rows/IDs/schema/as-of/decimal precision and uses
+local high Decimal precision, preserving micro-units regardless of ambient context. Private money/
+counterparty outputs are not public evidence. Synthetic correctness does NOT validate native due
+dates, settlement relationships or source mapping. Runtime public AR/AP-aging tools, live source
+collectors/approved profiles and native report reconciliation remain OPEN.
+
 ## 15. Test-only 1C seeder boundary
 
 The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.

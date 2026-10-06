@@ -1,5 +1,11 @@
 # Autonomous engineering execution log
 
+<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=b11eb91b74050fd9739a7dc28296a89ff71765c1811ea8188528319dde1bafc5 -->
+
+## Internal settlement aging — 2026-10-06
+
+FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
 
 ## Internal financial projection — 2026-10-06

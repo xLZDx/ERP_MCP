@@ -9,7 +9,7 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 15fc9d02 · CI 37499186509: FOUR PASS · pip-cache failure remediated · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: internal financial statement projection · 32 focused / 71 combined contracts PASS · full suite / hosted CI pending</div></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Current verified HEAD 672fec4e · CI 37501690166: FOUR PASS · Production NO-GO · PR #11 Draft<br>Historical freeze: v1.1 · 2026-10-06 · code 65883a5 · baseline 57eb5b0 · no new scope<br>Current batch: internal settlement allocation / aging · 34 focused PASS · full suite / hosted CI pending</div></div>
 <div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
@@ -61,6 +61,9 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+<!-- ENGINEERING_CHECKPOINT=SETTLEMENT_AGING_20261006 ENGINEERING_IMPLEMENTATION=b11eb91b74050fd9739a7dc28296a89ff71765c1811ea8188528319dde1bafc5 -->
+<p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
 <p><strong>Internal financial projection — 2026-10-06:</strong> DAD-4/D9: internal exact-profile Balance Sheet/P&L/Cash Flow projection and independent native comparison contract implemented. Scope/config/metadata/chart/activity metric-sign-row mapping/period/currency/timezone/comparative/effective-date/native-report/tolerance fingerprinted; no universal chart, protocol/query/formula generator. BS exact as-of known-opening snapshots; P&L gross turnovers; cash flow only confirmed gross cash events, never balances. Explicit zero coverage required; missing/unmapped nonzero/duplicate/nonfinite/stale/cross-scope facts cannot PASS. Required comparative snapshots AND comparative native reports independent/complete. Result hash binds data/artifact/level, rejects mutation; native approval requires exact profile hash, not shared mapping-name alias. Private monetary projection stays private; hashed mismatches/human review/no evidence-level upgrade or source/release GO. 32 focused statement contracts and 71 combined statement/invoice rules PASS. Public financial tools/live collectors/real chart/native report validation remain OPEN. Parent 15fc9d0 CI 37499186509 FOUR jobs PASS; unused pip cache failure at 160e3c9 fixed, release assembly restored (tested merge e1790df45ef6f84638918bbafc347087bdd1cf15). Current full suite 741 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted CI pending. Full frozen month-close/tax/payroll/aging/native parsers/corpus/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
@@ -624,7 +627,7 @@ before new product scope is admitted.</p>
 <article class="doc-card searchable" id="doc-master-plan" data-cat="plan" data-title="Master Plan">
       <div class="doc-head"><div><span class="eyebrow">План</span><h2>Master Plan</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
       <div class="md"><h2>Phase map</h2>
-<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; verified HEAD <code>15fc9d02ccf6f068d9e4ceeeb77d9fed2d82e481</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37499186509">37499186509</a>: FOUR PASS, release assembly restored. Historical <code>160e3c9</code>/<code>37496725289</code> unused pip-cache failure is REMEDIATED, not current red CI. Current financial projection batch/fingerprint above; own hosted run pending. Freeze <code>65883a5</code>/<code>57eb5b0</code> are historical, NOT current HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
+<p><strong>Текущий engineering snapshot — 2026-10-06.</strong> PR #11 Draft; verified HEAD <code>672fec4efae10949df0185c98e44b07b57ca45f3</code>, CI <a href="https://github.com/xLZDx/ERP_MCP/actions/runs/37501690166">37501690166</a>: FOUR PASS. Current settlement-aging batch/fingerprint above; own hosted run pending. Historical pip-cache failure remains remediated. Freeze <code>65883a5</code>/<code>57eb5b0</code> are historical, NOT current HEAD. Production NO-GO; DoD PARTIAL; no new scope.</p>
 <div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
@@ -2187,7 +2190,7 @@ production Ferma adapter.</p>
     </article>
 <article class="doc-card searchable" id="doc-integration" data-cat="architecture" data-title="Integration Contract">
       <div class="doc-head"><div><span class="eyebrow">Интеграция</span><h2>Integration Contract</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=f97e98e568762fee6ab0b96247d6d4ded0eec92c9002a373331c268545b75ddc DOC_RENDER_SHA256=9e291d1fbbccf6f5cda347f4bccefb3a4b7284b64a321f25d6fd82d4d1ce65d8 -->
+      <div class="md"><!-- DOC_SOURCE=docs/INTEGRATION.md DOC_SOURCE_SHA256=cf150d61b09abed1ecd20a43c6a9a34076b336c3b1860efcc27e6ff8e5bd1f14 DOC_RENDER_SHA256=f4b84608bcaf8ff78336c8f18e6aec22831691618db082b9a0a184e630196610 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Integration Contract</h1>
 <p><strong>Version:</strong> 1.1
@@ -2505,6 +2508,22 @@ chart. Missing or unclassified facts are INCONCLUSIVE, not zero. Cash flow canno
 facts. Required comparative/native evidence must be independently complete and scope-matched.
 Public/live statement tools are not yet implemented by this arithmetic contract; native validation
 and deployment/GO gates remain OPEN. Monetary projection outputs stay private.</p>
+<h3>14.3 Internal AR/AP settlement-to-aging contract</h3>
+<p><code>settlement_aging.py</code> reuses <code>aging.aggregate_open_items</code>, not a second bucket engine or source
+protocol. An exact approved profile binds source/company/config/semantic/metadata, AR/AP sign
+encoding, timezone, as-of, effective window, due-date rule, explicit document/payment relationship
+and native report mapping. Unknown/stale/incomplete/opening-unverified profiles/data cannot PASS.</p>
+<p>Document/payment/allocation identities and dates are bounded. Allocations must match exact
+counterparty AND contract, known document/payment refs and chronology; no FIFO/alternative matching
+is guessed. Multiple explicitly identified allocation events are preserved. Payment overallocation
+is rejected; document oversettlement is a visible hashed anomaly/credit, never silently clamped.
+Unapplied advances remain credits and do not net against debt in another item/contract/currency.
+Each scope is one declared currency; no implicit FX conversion exists.</p>
+<p>The reused canonical bucket function now bounds rows/IDs/schema/as-of/decimal precision and uses
+local high Decimal precision, preserving micro-units regardless of ambient context. Private money/
+counterparty outputs are not public evidence. Synthetic correctness does NOT validate native due
+dates, settlement relationships or source mapping. Runtime public AR/AP-aging tools, live source
+collectors/approved profiles and native report reconciliation remain OPEN.</p>
 <h2>15. Test-only 1C seeder boundary</h2>
 <p>The Ferma→1C seeder is WRITE-CAPABLE <strong>only in the test plane</strong>.</p>
 <p>It must:
@@ -5021,7 +5040,7 @@ one of them into committed scope.</p>
 </blockquote>
 <p>If there is no answer, the work is scope expansion and must wait for explicit rebaseline.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
-<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=797396b40671a428e3cc87ffe2ceb590584946331924cc68d5fd3505065c128f DOC_RENDER_SHA256=37cc1d4f2b955d72f67fc171dd5a5884d4701885ad26f1cf9d228966865dffc6 -->
+<article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=2caeeaf25d544b6e42c245bf80f93e006a9848c9d399985931f8a6dc92e75f8c DOC_RENDER_SHA256=d9312c5edb8b53b7ba8139337c4d0f314160dab4a2350f7ecd36bfebb554d428 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>DAD 1C MCP — Source Requirements &amp; Scenario Coverage</h1>
 <p><strong>Status:</strong> REVIEWED SOURCE-OF-PROBLEM + IMPLEMENTATION/TEST COVERAGE
@@ -5215,6 +5234,8 @@ automation.</p>
 <li><code>purchase_documents</code></li>
 <li>bounded generic <code>onec_read</code> behind capability/policy gates</li>
 <li>a synthetic AR/AP aging computation contract not yet wired to real source profiles</li>
+<li>an internal exact-profile document/payment allocation→aging contract with bounded Decimal,
+  partial settlement/advance/oversettlement/relationship guards; public/live/native aging remains OPEN</li>
 </ul>
 <p>This is a strong primitive layer, but it is not yet the DAD business-rule layer.</p>
 <hr>
