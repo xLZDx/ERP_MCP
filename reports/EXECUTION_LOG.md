@@ -101,4 +101,6 @@
   round-trip to exercise success, denial and error events, assert company/provenance/result fields,
   and attempt append-only UPDATE/DELETE against each event. Local suite: `74 passed, 7 skipped`
   (the PostgreSQL integration test requires CI DB); Ruff, compileall and diff check pass. Draft PR
-  and hosted verification pending.
+  #10 is at https://github.com/xLZDx/ERP_MCP/pull/10. Hosted CI run `37416120977` passed on
+  `c14376d`: pytest `80 passed, 1 skipped`; pip-audit clean; pinned upstream client/metadata tests
+  and non-root image smoke passed.

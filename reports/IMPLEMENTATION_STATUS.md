@@ -2,6 +2,19 @@
 
 Last updated: 2026-10-06
 
+## Current authoritative state
+
+- PR #1 is merged; draft implementation/follow-up PRs #2–#10 remain for user review. No PR has been
+  self-approved or merged.
+- P4 follow-up PR #8 code head `f4340b3` passed CI `37415523392` (cache drift regression, capability
+  evidence persistence, pinned upstream suites and non-root image smoke).
+- D10 PR #9 code head `6356005` passed CI `37415897249` (multi-source/company/group isolation,
+  source add/revoke in a live registry); D11 PR #10 code head `c14376d` passed CI `37416120977`
+  (runtime-role audit success/deny/error and append-only checks).
+- The current branch is an independent main-based audit follow-up. The bootstrap chronology below
+  is historical. Native 1C reconciliation, target deployment and pilot evidence remain unavailable;
+  the pilot validator is still `NOT_READY`.
+
 ## Bootstrap
 
 - Repository: `https://github.com/xLZDx/ERP_MCP`
