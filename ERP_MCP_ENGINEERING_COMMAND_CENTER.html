@@ -186,7 +186,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=6e272dcd091db632528087a18fbaeb3145460111b3e327638f81aadf2163a606 DOC_RENDER_SHA256=187426abe7309c58f4d0bdd02bdab9ba48b7c5066e26e9538f5153ad269ff02c -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=af7ba0e8b943e75a7e61adaf7acc7dfc3eb5d5d759a7ec58ac5ab9f69ee44522 DOC_RENDER_SHA256=fa0d141328ff74284b4cd8dd98bd3c3cfe5cc5fee27dfbeed62f9a72b4502887 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -196,7 +196,8 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <p>Interactive view: <a href="ERP_MCP_ENGINEERING_COMMAND_CENTER.html">ERP_MCP Engineering Command Center</a>.</p>
 <p>Current implementation evidence: <a href="../reports/EXECUTION_LOG.md">execution log</a>,
 <a href="../reports/IMPLEMENTATION_STATUS.md">status</a>, <a href="../reports/IMPLEMENTATION_GAP_ANALYSIS.md">gap analysis</a>,
-<a href="../reports/DOD_STATUS.md">DoD status</a>, and <a href="../reports/RISK_STATUS.md">risk status</a>.</p>
+<a href="../reports/DOD_STATUS.md">DoD status</a>, <a href="../reports/RISK_STATUS.md">risk status</a>, and
+<a href="../reports/ADMIN_CONTROL_CENTER_STATUS.md">Admin Control Center status</a>.</p>
 <p>Machine-readable current snapshot: <a href="../reports/CURRENT_ENGINEERING_CHECKPOINT.json">engineering checkpoint</a>.
 CI checks its implementation-content fingerprint against all six report/dashboard markers;
 historical freeze/CI references remain historical, not automatic proof for changed code.</p>
@@ -307,6 +308,10 @@ change first.</p>
 <td>Assets, trust threats, STRIDE controls and residual risk</td>
 </tr>
 <tr>
+<td><a href="admin-control-center/README.md">Admin Control Center</a></td>
+<td>Browser control-plane design, implementation contract and operator runbook</td>
+</tr>
+<tr>
 <td><a href="#doc-requirements-traceability">Requirements Traceability</a></td>
 <td>Requirement → design → DoD/evidence mapping</td>
 </tr>
@@ -334,6 +339,7 @@ change first.</p>
 <li><a href="#doc-adr-0004">ADR-0004 — Behavior-first capability routing</a></li>
 <li><a href="#doc-adr-0005">ADR-0005 — No direct 1C SQL integration</a></li>
 <li><a href="#doc-adr-0006">ADR-0006 — Copyleft adapter isolation</a></li>
+<li><a href="adr/ADR-0007-admin-control-center.md">ADR-0007 — Admin Control Center boundary and authorization</a></li>
 </ul>
 <h2>Change rule</h2>
 <p>A change to any invariant marked <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>HARD BOUNDARY</strong> or <strong>FAIL-CLOSED</strong>
@@ -1608,7 +1614,7 @@ rollback affecting customer access.</p>
     </article>
 <article class="doc-card searchable" id="doc-definition-of-done" data-cat="gates" data-title="Definition of Done">
       <div class="doc-head"><div><span class="eyebrow">Гейты</span><h2>Definition of Done</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DEFINITION_OF_DONE.md DOC_SOURCE_SHA256=f3f171d8d0665c24d743da17f1c01c85b31d663bd614791eff9bb796e99a7291 DOC_RENDER_SHA256=8d22ab14b92982c11977d39ea76f39a84f4ec4b3b17dcb2a737c172fbab9b50c -->
+      <div class="md"><!-- DOC_SOURCE=docs/DEFINITION_OF_DONE.md DOC_SOURCE_SHA256=0360d4f5f6177c66ae64f419241f2869fe0720cb9e573ab25ba152f12cf9a7c2 DOC_RENDER_SHA256=a1f63da63d5b15f5e6985cacb4d225397707654f86183b53cbf1b0655db1ebb7 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Definition of Done — 1C Production MVP</h1>
 <p><strong>Version:</strong> 1.1
@@ -1817,11 +1823,25 @@ profile, and the broader frozen DAD scenario families must reach their declared 
 - <code>PRODUCTION GO</code></p>
 <p>Do not call a release “production-ready” if it has not reached at least <code>PILOT READY</code> with all
 pre-pilot mandatory gates satisfied.</p>
+<h2>Admin Control Center extension gate</h2>
+<p>Admin Control Center may be enabled for an environment only when:
+- ADR-0007 and migrations 008-011 match the deployed exact head;
+- admin audience/scope is distinct from MCP onec:read;
+- OIDC Authorization Code + PKCE login and session/CSRF tests pass;
+- a first PLATFORM_ADMIN subject/group is bootstrapped through controlled operator tooling;
+- business_ai_control_api privilege verification passes and business_ai_app remains unable to administer policy;
+- source egress host/CIDR policy is explicitly configured before mutations are enabled;
+- admin audit/idempotency and exact-ID revoke tests pass;
+- business capability enforcement is enabled only after assignments exist for intended users;
+- company-aware reads are enabled only for entity sets with VALIDATED metadata-bound scope mappings;
+- full baseline tests, Ruff, compileall, Bandit and dependency audit are green;
+- real IdP login, target 1C safe-probe and pilot operator smoke evidence are captured for the deployment environment.</p>
+<p>Passing repository tests alone is DEV/INTEGRATION evidence, not production activation approval.</p>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-architecture" data-cat="architecture" data-title="Architecture">
       <div class="doc-head"><div><span class="eyebrow">Архитектура</span><h2>Architecture</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/ARCHITECTURE.md DOC_SOURCE_SHA256=c14ad5aaba4a52d47dbf20eadabb785b9e53e0abef266cde26f11873a3781ab8 DOC_RENDER_SHA256=ca989cab534fe101e5e60700013cbe70b1809f5a987e39de7eba717893450773 -->
+      <div class="md"><!-- DOC_SOURCE=docs/ARCHITECTURE.md DOC_SOURCE_SHA256=122ea899dda7e5a63020e0afd9fe3585cdb5a71785bb321e64ec6eb49b4e1393 DOC_RENDER_SHA256=55bd0856bc7c660aa6891e7c47afbc0d0ec4895ab26ee0110c32da58a3883de2 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Architecture</h1>
 <p><strong>Version:</strong> 1.1
@@ -2183,6 +2203,22 @@ production Ferma adapter.</p>
 <li>global accounting semantics based solely on Russian default chart-of-accounts assumptions;</li>
 <li>GPL/AGPL source copied into core without explicit licensing decision.</li>
 </ul>
+<h2>13. Admin Control Center extension</h2>
+<p>The browser administration plane is a same-origin UI/BFF layered beside, not inside, the MCP authorization model.</p>
+<p>Browser -&gt; OIDC Authorization Code + PKCE -&gt; Admin BFF opaque HttpOnly session -&gt; CSRF + admin audience/scope + platform-role authorization -&gt; /admin/v1.</p>
+<p>Read operations use the control-plane read model. Mutations use the separate business_ai_control_api credential. Source probes pass an egress allowlist and remain GET/HEAD-only. Admin audit/idempotency is persisted separately. MCP runtime remains separately authorized by onec:read, data ACL, and optional business capability policy.</p>
+<p>Admin platform roles are fixed initial roles: PLATFORM_ADMIN, SOURCE_ADMIN, ACCESS_ADMIN, PROFILE_ADMIN and AUDITOR. They are independent of business roles such as ACCOUNTANT or EXECUTIVE.</p>
+<p>Company-aware data access is limited to fixed canonical operations. Each resolves the authorized company, checks business capability when enabled, requires acknowledged current metadata and a VALIDATED semantic profile, then constructs the operation's server-owned company predicate before adapter execution. Admin <code>company_scope_mappings</code> remain candidate configuration and are not used to authorize reads.</p>
+<p>The Admin probe uses a separate four-slot pool with a 45-second deadline and pins an approved
+numeric IP with the original Host/TLS identity. Capability refresh uses that approved adapter.
+Policy, idempotency outcome and success audit commit together; savepoints retain failed keys
+and failure audit without committing failed policy writes. Runtime capability observations
+retain the existing restricted runtime DB path and can be refreshed after an audit failure.</p>
+<p>Admin lists use bounded offset pagination (default 50, maximum 200) and source filters.
+Effective access is queried for one exact principal/source, with at most 200 companies and 50
+grant evidence entries per company; all matching grants still determine deny precedence.
+Group membership uses verified caller claims or a future trusted directory. Other subjects'
+memberships remain unknown. Company navigation expansion is unavailable until separately proven.</p>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-integration" data-cat="architecture" data-title="Integration Contract">
@@ -2530,7 +2566,7 @@ and deployment/GO gates remain OPEN. Monetary projection outputs stay private.</
     </article>
 <article class="doc-card searchable" id="doc-test-strategy" data-cat="quality" data-title="Test Strategy">
       <div class="doc-head"><div><span class="eyebrow">Качество</span><h2>Test Strategy</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/TEST_STRATEGY.md DOC_SOURCE_SHA256=9b37b962ced0923aa9a61a38df3a9d624ff51deb68fa607c6a2dbc72a0d09127 DOC_RENDER_SHA256=164ae320a03e788b15fa33d9ba6ecb420f23d36f93aaece0c4ab28e4445467af -->
+      <div class="md"><!-- DOC_SOURCE=docs/TEST_STRATEGY.md DOC_SOURCE_SHA256=2942b10f83a07969a70388a95e99af535ebc32355bf481a1b0f792c6c808ddc6 DOC_RENDER_SHA256=505a2873dcc95d4df94087aabb3dde6358002082cf791f4ef1cfb363c06fe284 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Test and Verification Strategy</h1>
 <p><strong>Version:</strong> 1.1
@@ -2760,6 +2796,20 @@ test output where automation is possible.</p>
 - migration/restore evidence;
 - source onboarding/offboarding smoke.</p>
 <p>No unresolved FAIL can be reclassified as PASS without a documented corrected expectation or code fix.</p>
+<h2>Admin Control Center verification extension</h2>
+<p>Mandatory automated coverage includes distinct admin OAuth audience/scope negatives; OIDC state/nonce/PKCE and opaque-session tests; cookie CSRF enforcement and no browser token persistence; platform-role/source-boundary tests; exact-ID revoke, optimistic concurrency and idempotency; append-only admin audit and least-privilege business_ai_control_api; source-probe host/CIDR negative cases; source/company registration separation; business role/capability deny precedence; and company-aware read denial before adapter with validated live-metadata scope mapping.</p>
+<p>The Admin Control Center branch also runs the entire existing baseline suite to prove the extension does not weaken the read-only 1C data plane.</p>
+<p>The role matrix exercises every restricted lifecycle endpoint across five platform roles and
+no role, plus delegated boundaries. PostgreSQL tests use the control role for replay/conflict,
+concurrent requests, exact revoke, role/capability lifecycle, 151-company explanation and
+privilege rejection. <code>python scripts/verify_admin_ui.py</code> runs in CI with synthetic same-origin
+APIs: retry identity, CSRF, navigation, escaping, dialog focus, narrow layout, 200% zoom and
+disabled enforcement/step-up controls. It does not replace a real IdP/1C pilot.</p>
+<p>CI enables disposable Redis for real ASGI/OIDC callback routes, opaque sessions, CSRF, grant
+write/replay and logout. The IdP endpoint/keys are synthetic; DB, Redis and routing are real.
+Negatives additionally cover key removal after JWKS TTL, malformed/overage groups, delegated
+connection repointing, numeric company-ID coercion, encoded/oversized responses and profile
+invalidation after connection changes.</p>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-observability-sre" data-cat="operations" data-title="Observability &amp; SRE">
@@ -3504,7 +3554,7 @@ explicit operator rebaseline.</p>
     </article>
 <article class="doc-card searchable" id="doc-requirements-traceability" data-cat="core" data-title="Requirements Traceability">
       <div class="doc-head"><div><span class="eyebrow">Трассировка</span><h2>Requirements Traceability</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=b58358d65f9f1f002ef341cbd9af95462e5f067df3a607ade819b04951a9be08 DOC_RENDER_SHA256=4d31cd7a47679a34ed9c2130ca2b087c93594a3ec32274071c180677eb8b9a6a -->
+      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=c2dc69222257ab51559dae46b91977f8e61d11ef378b890412d14144cd24eb0a DOC_RENDER_SHA256=df7f29aa9b56cfe798e7839697d2ed956191bf274d660df38eb6d183fbe856d4 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Requirements Traceability Matrix</h1>
 <p><strong>Version:</strong> 1.1
@@ -3789,6 +3839,79 @@ explicit operator rebaseline.</p>
 <h2>PR usage</h2>
 <p>Every feature PR should cite one or more requirement IDs and the DoD gate it advances. If a new
 requirement has no row here, update this matrix as part of the same change.</p>
+<h2>Admin Control Center extension requirements</h2>
+<table>
+<thead>
+<tr>
+<th>Req</th>
+<th>Requirement</th>
+<th>Primary design</th>
+<th>Evidence / DoD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ACC-A1</td>
+<td>Admin identity uses distinct audience/scope and DB-backed platform roles</td>
+<td>ADR-0007, Architecture §13</td>
+<td>Admin extension gate</td>
+</tr>
+<tr>
+<td>ACC-A2</td>
+<td>Browser tokens remain server-side; OIDC PKCE session + CSRF</td>
+<td>Security Admin extension, Threat Model delta</td>
+<td>Admin session/security tests</td>
+</tr>
+<tr>
+<td>ACC-A3</td>
+<td>Admin mutations are attributable, idempotent and exact-ID</td>
+<td>Data Model §15, migration 009</td>
+<td>Admin audit/idempotency tests</td>
+</tr>
+<tr>
+<td>ACC-A4</td>
+<td>Source onboarding is egress-controlled and GET/HEAD-only</td>
+<td>Security, admin source probe</td>
+<td>SSRF/egress tests</td>
+</tr>
+<tr>
+<td>ACC-A5</td>
+<td>Platform role, data scope and business capability stay independent</td>
+<td>RBAC design, migration 008/010</td>
+<td>Role/capability matrix</td>
+</tr>
+<tr>
+<td>ACC-A6</td>
+<td>Company-only access is enforced only through validated mapped operations</td>
+<td>company_scope_mappings, onec_company_read</td>
+<td>Company-scope runtime tests</td>
+</tr>
+<tr>
+<td>ACC-A7</td>
+<td>Runtime DB role cannot administer new policy tables</td>
+<td>migrations 008-011</td>
+<td>DB privilege checker</td>
+</tr>
+<tr>
+<td>ACC-A8</td>
+<td>Bounded exact-principal access explanation labels unknown membership</td>
+<td>Architecture §13</td>
+<td>PostgreSQL 151-company pagination/provenance test</td>
+</tr>
+<tr>
+<td>ACC-A9</td>
+<td>Platform-role changes require verified fresh step-up claims</td>
+<td>Security, operations runbook</td>
+<td>Role endpoint matrix and step-up negatives</td>
+</tr>
+<tr>
+<td>ACC-A10</td>
+<td>Browser lifecycle workflows retain retry identity and accessible controls</td>
+<td>Live UI, operations runbook</td>
+<td>Headless browser contract in CI</td>
+</tr>
+</tbody>
+</table>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-compatibility" data-cat="adapter" data-title="Compatibility">
@@ -4227,7 +4350,7 @@ not a production-ready adapter release.</p>
     </article>
 <article class="doc-card searchable" id="doc-security" data-cat="security" data-title="Security Model">
       <div class="doc-head"><div><span class="eyebrow">Безопасность</span><h2>Security Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=SECURITY.md DOC_SOURCE_SHA256=93a1d2df472f0dfe2321e2dac47aabd2e9c630403be5c48c7f151a7d703ce031 DOC_RENDER_SHA256=eef23010dae04bf7b63332e97cae10dc6c1ea4f49c5eced57c1b6819a5a10c3a -->
+      <div class="md"><!-- DOC_SOURCE=SECURITY.md DOC_SOURCE_SHA256=4d46bed4286665211090da93a79df26c547dc6d373b87baeafd95f3dc65a9d21 DOC_RENDER_SHA256=1d8a016aea2b275319ece11f5851cac249724dedd7e120c9a27924f5c88359eb -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Security model</h1>
 <p>ERP_MCP is <strong>read-only by construction</strong> for the 1C Day-1 production MVP.</p>
@@ -4267,6 +4390,37 @@ composition. Never reuse an administrator account.</p>
 <h2>Network</h2>
 <p>Prefer placing the gateway near/private to 1C. Do not expose the 1C OData endpoint directly
 to AI clients.</p>
+<h2>Admin Control Center extension</h2>
+<p>The Admin Control Center is a distinct control-plane surface and does not inherit permission from the MCP data-plane scope.</p>
+<p>Security invariants:
+- admin OAuth audience and scope are distinct from the MCP data-plane audience/scope;
+- browser sign-in uses OIDC Authorization Code + PKCE, state and nonce;
+- the browser receives only an opaque HttpOnly SameSite session cookie; bearer tokens remain server-side in Redis and are revalidated on every admin API request;
+- cookie-authenticated POST/PATCH requests require a per-session CSRF token;
+- admin sessions cannot outlive the validated admin access-token expiration and also enforce idle/absolute TTLs;
+- admin API requests share a subject-level Redis rate budget and fail closed if the limiter dependency is unavailable;
+- platform-role create/revoke requires an approved step-up ACR and recent auth_time;
+- admin mutations are disabled by default and require a separate business_ai_control_api database credential;
+- every mutation requires actor, reason, request ID and idempotency key and writes append-only admin audit;
+- exact-ID revocation is used for grants and role/policy assignments;
+- source probes are GET/HEAD-only, require an explicit host plus optional CIDR egress allowlist, and connect to a validated numeric IP with the original Host and TLS SNI/certificate name. The probe has its own pool, four concurrent slots and a 45-second total deadline; production also requires network-level egress enforcement;
+- secret values never enter Admin UI/API responses, audit events or registry rows;
+- platform administration roles, data-scope grants and business capabilities are independent;
+- business capability enforcement is fail-closed when enabled and never widens source/company scope;
+- generic <code>onec_read</code> remains source-scoped. Company-aware access is limited to fixed canonical operations using validated semantic profiles. Admin company-scope mappings are candidate configuration and are not consumed by a runtime read route.</p>
+<p>Production startup rejects a control DB session with superuser/owner/operator membership,
+schema ownership, role-management rights, DELETE, mutable admin audit or broad drift UPDATE.
+OIDC state consumption and session refresh are atomic; concurrent logout cannot recreate a session.
+Company-aware reads reject navigation expansion and unbalanced caller-filter delimiters;
+current live metadata is refreshed before applying a mapping.</p>
+<p>Runtime credentials must also satisfy the app contract without administrative DML/elevated
+membership. JWKS uses a five-minute set TTL, no indefinite per-key cache, and a ten-second
+fetch deadline. Malformed/distributed-overage group claims deny. Connection/ref changes stale
+validated profiles even with identical metadata. Delegated SOURCE_ADMIN cannot repoint
+connections/refs. Mutation JSON rejects non-string company IDs and non-integer versions.</p>
+<p>Production keeps Admin API/UI/mutations/business-capability enforcement disabled until the environment-specific prerequisites and bootstrap bindings are configured and verified.</p>
+<h2>Admin request logging</h2>
+<p>OIDC authorization codes, state and other callback query parameters must never be written to standard access logs. The gateway image disables Uvicorn access logging; ingress/OTel request telemetry must log a redacted path without the admin callback query string.</p>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-production" data-cat="operations" data-title="Production Contract">
