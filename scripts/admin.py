@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 import uuid
 
 import asyncpg
 
 from business_ai_gateway.models import Source
+from business_ai_gateway.admin_mutations import AdminValidationError, _expiry
 from business_ai_gateway.settings import Settings
 
 
@@ -151,6 +153,11 @@ async def capability_ack_drift(args, conn):
 
 
 async def platform_role_add(args, conn):
+    if args.role == "PLATFORM_ADMIN" and args.source_id is not None:
+        raise AdminValidationError("PLATFORM_ADMIN must be global")
+    if args.role != "PLATFORM_ADMIN" and args.source_id is None:
+        raise AdminValidationError(f"{args.role} must be source-scoped")
+    expires_at = _expiry(args.expires_at)
     binding_id = uuid.UUID(args.binding_id) if args.binding_id else uuid.uuid4()
     row = await conn.fetchrow(
         """
@@ -166,7 +173,7 @@ async def platform_role_add(args, conn):
         args.principal,
         args.role,
         args.source_id,
-        args.expires_at,
+        expires_at,
         args.created_by,
         args.client_id,
         args.reason,
@@ -296,4 +303,8 @@ def parser():
 
 
 if __name__ == "__main__":
-    asyncio.run(run(parser().parse_args()))
+    try:
+        asyncio.run(run(parser().parse_args()))
+    except (AdminValidationError, ValueError, TypeError) as exc:
+        print(f"admin command rejected: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None

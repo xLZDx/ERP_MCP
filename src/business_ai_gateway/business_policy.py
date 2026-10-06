@@ -52,7 +52,7 @@ class CapabilityPolicy:
               WHERE o.capability_key=$5
                 AND o.effect='deny'
                 AND o.source_id=$3
-                AND (o.company_id IS NULL OR o.company_id=$4::uuid)
+                AND (o.company_id IS NULL OR $4::uuid IS NULL OR o.company_id=$4::uuid)
                 AND o.revoked_at IS NULL
                 AND (o.expires_at IS NULL OR o.expires_at > now())
                 AND (

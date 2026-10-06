@@ -1,7 +1,7 @@
 # ERP_MCP Engineering Governance
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
+**Version:** 1.1
+**Date:** 2026-10-06
 **Applies to:** code, infrastructure, migrations, adapters, documentation and vendor intake
 
 ## 1. Governance objectives
@@ -20,6 +20,33 @@ The normative document precedence is defined in `DOCUMENT_INDEX.md`.
 Code does not override an invariant simply because it already exists. If code conflicts with the
 normative baseline, the conflict must be resolved through an explicit governance decision.
 
+## 2A. Operator scope freeze — active
+
+The operator froze further product-scope additions on 2026-10-06.
+
+Authoritative baseline:
+`docs/SCOPE_FREEZE_BASELINE_2026-10-06.md`.
+
+While active:
+
+- every issue/PR/task MUST identify the existing frozen requirement/gate it closes;
+- new feature/scenario/adapter/integration families are blocked;
+- deferred lanes cannot be promoted implicitly;
+- upstream functionality does not become product scope merely because it is available;
+- only the operator may explicitly rebaseline/unfreeze scope.
+
+Scope-preserving work is allowed when necessary to close accepted scope:
+
+- defect/regression fixes;
+- security/privacy/compliance/license remediation;
+- tests, observability, evidence, runbooks, restore/rollback;
+- configuration/source mappings required by already accepted semantic requirements;
+- external-evidence ingestion required by already accepted DAD scenarios;
+- refactors with no new externally promised capability.
+
+If a proposed task cannot cite an existing requirement/gate, it is treated as scope expansion and
+MUST NOT start until operator rebaseline.
+
 ## 3. Change classes
 
 ### C0 — Documentation/non-behavioral
@@ -31,6 +58,8 @@ Requires:
 - no architecture/security behavior change.
 
 ### C1 — Bounded read-only feature
+
+During the active scope freeze, C1 is allowed only when it implements an already frozen requirement; otherwise it is scope expansion and blocked.
 
 Examples: metadata helper, semantic read tool using existing adapter contract.
 
@@ -78,6 +107,7 @@ Requires:
 ## 4. Pull request contract
 
 Every non-trivial PR must state:
+- exact frozen requirement/gate IDs advanced, or explicit operator rebaseline reference;
 - exact scope;
 - base/head SHA;
 - affected normative requirements/DoD gates;

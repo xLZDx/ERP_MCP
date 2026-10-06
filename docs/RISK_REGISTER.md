@@ -1,7 +1,7 @@
 # ERP_MCP Risk Register
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 Ratings: Probability (P) / Impact (I): Low, Medium, High, Critical.
 
@@ -37,6 +37,11 @@ Ratings: Probability (P) / Impact (I): Low, Medium, High, Critical.
 | R-28 | Unbounded 150-company fan-out exhausts 1C/gateway | Medium | High | explicit fan-out cap/batching/concurrency budget | load test |
 | R-29 | Migration changes privilege/isolation semantics | Low | Critical | migration governance + previous-version CI | migration evidence |
 | R-30 | Legacy adapter returns inconsistent normalized shape | Medium | High | common adapter contract suite | contract suite |
+| R-31 | Scope creep prevents completion of already accepted MVP/DAD scope | High | High | active operator scope freeze; every task traces to frozen requirement/gate | scope-freeze review |
+| R-32 | External evidence document injects instructions or is associated with wrong company | Medium | Critical | untrusted-data handling, bounded parser, fingerprint/provenance, explicit source/company binding | evidence-plane security tests |
+| R-33 | Private real-reference 1C/customer artifacts leak into public repo/CI | Low | Critical | private storage, aliases/hashes only, pre-commit/review scan | public/private evidence review |
+| R-34 | Ferma oracle becomes correlated with 1C/ERP_MCP actual and creates false green | Medium | Critical | import/data-flow isolation, seeder cannot read expected results, independent observers | oracle-independence architecture tests |
+| R-35 | Test-only write seeder or historical R/W helper becomes reachable from production MCP | Low | Critical | separate package/credential/target marker, production inventory negative tests | production tool/package inventory test |
 
 ## Risk acceptance
 

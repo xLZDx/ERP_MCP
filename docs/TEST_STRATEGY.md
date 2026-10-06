@@ -1,7 +1,7 @@
 # ERP_MCP Test and Verification Strategy
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 ## 1. Verification principle
 
@@ -12,7 +12,11 @@ A release must verify:
 2. adapter/protocol behavior;
 3. source compatibility;
 4. accounting semantic correctness;
-5. operations/resilience.
+5. DAD rule/evidence correctness for frozen business-assurance scope;
+6. operations/resilience.
+
+The active scope freeze also requires every new test/work item to trace to an existing frozen
+requirement/gate; tests do not create new product scope by themselves.
 
 ## 2. Test pyramid
 
@@ -55,24 +59,47 @@ Examples:
 - register virtual tables;
 - byte/row truncation.
 
-### L2 — real file-mode 1C
+### L2-A — Ferma controlled synthetic on real 1C
 
-Synthetic data only.
+Purpose: controlled completeness and independent expected/oracle.
 
 Verify:
-- real metadata;
-- capability profile;
-- entity/query behavior;
-- registers;
-- semantic scenarios;
-- native 1C report reconciliation.
+- deterministic Ferma package/profile/seed/scenario digest;
+- test-only seeder target guard and idempotency;
+- normal 1C business-document posting;
+- real metadata/capability/register behavior;
+- native 1C observations;
+- normal read-only ERP_MCP observations;
+- independent oracle comparison;
+- multi-company and rare edge cases.
 
-Every run captures:
+### L2-B — private real-reference 1C
+
+Purpose: real configuration fidelity and known-error regression.
+
+Use an immutable private golden source and disposable read-only clone.
+
+Verify:
+- exact platform/configuration/extensions;
+- metadata fingerprint;
+- capability profile;
+- OData/COM parity where available;
+- source-specific semantic mappings;
+- native 1C reports;
+- accountant-selected DAD checks;
+- private invoice/evidence regression cases.
+
+Do not commit raw reference data/credentials/private source links.
+
+Every L2 run captures:
+- test level;
 - platform/configuration;
 - extensions;
 - metadata fingerprint;
-- seed/snapshot version;
-- code/adapters SHA.
+- reference/synthetic artifact digest;
+- code/adapters SHA;
+- semantic/rule-pack version;
+- evidence fingerprints.
 
 ### L3 — server-mode production parity
 
@@ -136,17 +163,22 @@ Each case contains:
 - PASS/FAIL/INCONCLUSIVE;
 - evidence artifact/reference.
 
-Suggested domains:
-- receivable aging;
+Suggested/frozen domains include:
+- receivable/payable aging;
 - partial payment;
 - overpayment/advance;
 - unposted document;
-- returns;
-- VAT treatment;
+- returns/credit notes;
+- VAT treatment where validated;
 - backdated document;
-- duplicate counterparty/anomaly;
+- duplicate/same-name counterparty anomaly;
 - cash vs bank;
-- opening/turnover/closing balance.
+- opening/turnover/closing balance;
+- accountant-selected 211/217/221/523/224/521/241 checks;
+- invoice/PDF mismatch classes;
+- production-cost/month-close rules;
+- P&L/CF/BS once mapped;
+- external-evidence reconciliations returning explicit evidence states.
 
 ## 6. Schema drift tests
 
@@ -226,7 +258,11 @@ test output where automation is possible.
 - no production/customer data in repository/public CI;
 - synthetic identities and transactions only;
 - secrets supplied out-of-band;
-- snapshots with licensed 1C binaries/data are not committed publicly.
+- snapshots with licensed 1C binaries/data are not committed publicly;
+- private real-reference artifacts remain in private/local testbed storage and are referred to by
+  safe aliases/hashes;
+- test-only write credentials are separate from read-only observation credentials;
+- Ferma expected/oracle artifacts are not input to the seeder or actual-side computation.
 
 ## 12. Release regression
 

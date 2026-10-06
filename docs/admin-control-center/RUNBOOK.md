@@ -38,7 +38,7 @@ Record the returned binding ID in controlled deployment evidence.
 7. Exercise one create/revoke test grant and verify admin_audit_events.
 8. Configure business-role/capability assignments.
 9. Enable BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED=true only when intended callers have policy.
-10. Enable company-aware use only for entity sets with a VALIDATED semantic profile and company-scope mapping.
+10. Enable only fixed company-aware canonical operations with validated semantic profiles. Admin company-scope mappings are candidates and do not authorize reads.
 
 ## Incident / break-glass
 

@@ -5,7 +5,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .models import Source
@@ -119,14 +119,19 @@ def _clean_key(key: str) -> str:
 
 
 def _expiry(value: Any) -> datetime | None:
-    if value is None or value == "":
+    if value is None or (isinstance(value, str) and not value.strip()):
         return None
     try:
-        parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
+        if isinstance(value, str):
+            parsed = datetime.fromisoformat(value)
+        elif isinstance(value, datetime):
+            parsed = value
+        else:
+            raise AdminValidationError("expiry must be an ISO timestamp")
         if not isinstance(parsed, datetime) or parsed.tzinfo is None:
             raise AdminValidationError("expiry must include timezone")
-        return parsed
-    except ValueError as exc:
+        return parsed.astimezone(timezone.utc)
+    except (ValueError, TypeError, OverflowError) as exc:
         raise AdminValidationError("invalid expiry") from exc
 
 
@@ -542,6 +547,8 @@ class AdminMutationService:
             raise AdminValidationError("invalid platform role binding")
         if role_name == "PLATFORM_ADMIN" and source_id is not None:
             raise AdminValidationError("PLATFORM_ADMIN must be global")
+        if role_name != "PLATFORM_ADMIN" and source_id is None:
+            raise AdminValidationError(f"{role_name} must be source-scoped")
         request = {
             "principal_kind": principal_kind,
             "principal_id": principal_id,

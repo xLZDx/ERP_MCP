@@ -1,0 +1,35 @@
+name: erp-mcp-fault-injection
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    profiles: [dependency-matrix]
+    environment:
+      POSTGRES_DB: business_ai
+      POSTGRES_USER: business_ai
+      POSTGRES_PASSWORD: local-only
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U business_ai -d business_ai]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    profiles: [dependency-matrix]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+  jwks:
+    image: nginx:1.27-alpine
+    profiles: [dependency-matrix]
+    healthcheck:
+      test: [CMD, wget, -q, -O, -, http://127.0.0.1/]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+# The harness deliberately has no production credentials, source endpoints, or published ports.
+# Stop one service at a time and run scripts/dependency_failure_matrix.py against the isolated
+# gateway target. This file is a test fixture, not a deployment topology.

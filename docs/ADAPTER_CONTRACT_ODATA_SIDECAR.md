@@ -37,6 +37,20 @@ handshake, returns it from `onec_capabilities`, and persists it in
 evidence source; safe probes or validated semantic profiles may be added later with their own
 provenance and validation rules.
 
+For semantic record-set reads (not virtual methods), ERP_MCP also stores exact-source negative
+evidence in `bag.source_capabilities.evidence_json.semantic_capabilities`. Entries are scoped to the
+source, concept, exact EntitySet and expected property set, carry the current metadata fingerprint,
+and state `UNSUPPORTED` plus a bounded reason such as `ENTITY_SET_ABSENT` or `PROPERTY_ABSENT`.
+Only property names are recorded; no business rows are stored. A normal capability refresh preserves
+these semantic entries, while a changed metadata fingerprint makes old evidence historical/stale.
+The `onec_capabilities` result exposes the persisted semantic evidence separately from the pinned
+sidecar register profile.
+
+The gateway caches source metadata and the associated capability fingerprint only for
+`BAG_METADATA_CACHE_TTL_SECONDS` (default 60 seconds, maximum one hour). Expiry reruns the existing
+metadata detector/parser; fetching fresh metadata invalidates its prior capability snapshot so
+configuration drift reaches the persisted gate without requiring a process restart.
+
 ## Register read
 
 `POST /v1/read` uses `operation: "register_read"`, exact `register_set`, `register_method`, bounded
@@ -61,3 +75,13 @@ Both endpoints require the private bearer token and exact host allowlist. Reques
 bytes, row counts, timeout, per-source concurrency and circuit state are bounded. Responses include
 `source_id`, adapter kind/version, exact upstream SHA and operation. Redirects are disabled in the
 Python hop, and production requires TLS between gateway and sidecar.
+
+Production gateway source registration additionally requires an exact-host
+`BAG_SOURCE_HOST_ALLOWLIST`; synchronize it with `ONEC_ALLOWED_HOSTS`. Neither
+hostname allowlist prevents DNS rebinding by itself. Production network policy
+must constrain egress to approved 1C address ranges. Python HTTPcore and the MIT
+`undici@8.10.2` sidecar dispatcher now validate all DNS answers at socket creation,
+dial an approved numeric address and preserve the original TLS SNI/Host. The sidecar
+uses the matching dispatcher fetch implementation on both Node 24 build tests and
+the pinned runtime; engine code/SHA remain unchanged. Upstream redirects are denied.
+Deployment firewall/egress enforcement is still a release gate, not proven by unit tests.

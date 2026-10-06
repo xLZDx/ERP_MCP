@@ -1,17 +1,24 @@
 # ERP_MCP Data Model
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
+**Version:** 1.1
+**Date:** 2026-10-06
 **Principle:** persist control/provenance, not an uncontrolled copy of accounting data
 
 ## 1. Data domains
 
-ERP_MCP separates four data domains:
+ERP_MCP separates six data domains:
 
 1. **Control plane** — sources, companies, access, policies, adapter bindings.
 2. **Capability/schema** — metadata fingerprints, adapter capabilities, schema drift.
 3. **Semantic configuration** — per-configuration mappings from canonical concepts to 1C objects.
 4. **Evidence/audit** — immutable access audit and accounting reconciliation evidence.
+5. **External evidence metadata** — fingerprint/provenance/reference for approved read-only evidence
+   required by frozen DAD scenarios; raw private documents remain outside the control database by
+   default.
+6. **Business-assurance rules** — versioned DAD rule packs/applicability/evidence requirements.
+
+The active scope freeze is governed by `SCOPE_FREEZE_BASELINE_2026-10-06.md`; no new persistent
+domain is introduced without explicit rebaseline.
 
 Raw operational accounting facts are read through source adapters and are **not persisted by default**.
 
@@ -141,7 +148,11 @@ Migration 005 adds `register_capabilities_json`, a per-source profile of registe
 operation evidence. A capability entry records availability, the evidence source, exact function
 import/entity-set binding, HTTP method, discovery time and metadata fingerprint. Negative evidence
 is retained too; a runtime/API method list alone never grants availability. Any metadata fingerprint
-change replaces the evidence profile and retains the existing sticky drift gate.
+change replaces the register-operation profile and retains the existing sticky drift gate. The
+`evidence_json.semantic_capabilities` object separately records negative evidence for exact
+semantic concept/EntitySet/expected-property mappings (absent EntitySet or properties); entries are
+metadata-fingerprint-scoped, contain schema names only, and are preserved by capability refreshes.
+Entries from an older metadata fingerprint are historical and cannot authorize a read.
 
 Migration 004 additionally stores:
 - previous metadata fingerprint;
@@ -224,6 +235,12 @@ Maps canonical concepts to source-specific implementation:
 Mappings are versioned through their owning profile. They remain `CANDIDATE` until source-specific
 metadata and semantic evidence confirms them; a preset name or upstream `verified` label alone does
 not enable a 1C operation.
+Migration 008 adds an operator-confirmed `CONFIRMED`/`HIGH` state with evidence refs and an
+append-only `MAPPING_CONFIRMED` event. Profile validation fails while any mapping remains a candidate.
+The first canonical account-turnover mapping binds one exact `AccountingRegister_*` method, an
+operator-reviewed company dimension/type, and seven source property names projected to canonical
+output keys. Runtime use still requires matching source/company, current acknowledged metadata,
+validated profile evidence and a positive live capability for that exact register method.
 
 ### `semantic_profile_events`
 
@@ -256,11 +273,101 @@ Never assume account 62/60/51/etc. globally. Those may be preset candidates only
 - input period/parameters fingerprint;
 - result fingerprint/summary;
 - native result/evidence reference;
-- status: PASS/FAIL/INCONCLUSIVE;
+- status: PASS/FAIL/INCONCLUSIVE/EVIDENCE_REQUIRED/CAPABILITY_UNSUPPORTED;
+- external/native/oracle evidence references as applicable;
+- test level: L1/L2-A/L2-B/L3;
 - discrepancy;
 - timestamp.
 
 This is the correctness evidence for production accounting semantics.
+
+### 10A. External evidence metadata
+
+Recommended logical entity: `external_evidence_refs`.
+
+Fields:
+- evidence ID;
+- source/company association;
+- evidence class (invoice, bank_statement, z_report, terminal_report, tax_filing, tax_receipt,
+  customs_ccac, payroll_source, contract, reconciliation_act, other already-frozen class);
+- private blob/object reference, never public URL from the model;
+- SHA-256/content fingerprint;
+- MIME/type/parser version;
+- source/provenance;
+- business period/date;
+- ingest time;
+- retention/access classification;
+- parse status/warnings.
+
+Raw private evidence is not copied into Git/public CI or ordinary audit rows.
+
+Internal implementation foundation: `external_evidence.py` accepts only bounded uploaded bytes in
+`external-normalized-csv-v1` (exact headers `key,date,currency,amount`). It requires the exact
+source/company/configuration/semantic-profile/period/currency/timezone scope, a server-confirmed
+parser-profile fingerprint, approved retention-policy ID and opaque `private:` blob reference.
+All frozen evidence classes share this normalized interchange contract; this does NOT prove
+native bank/Z/terminal/PDF/tax/payroll format support. Empty/missing requirements raise
+`EVIDENCE_REQUIRED`; unconfirmed/cross-scope inputs are rejected or `EVIDENCE_INCONCLUSIVE`.
+Manifest output contains hashes/counts only and always retains human review. Parser performs no
+URL/file fetch, blob storage, 1C writes or business PASS. Private storage, ACL/audit upload endpoints,
+native parsers, retention administration and DAD rule integration remain separate open gates.
+
+The immutable normalized evidence retains its exact `EvidenceParserProfile` snapshot. Reuse gates
+recompute the approved profile fingerprint and bind class/version/parser/scope, not just membership
+of a detached fingerprint string. Relabeling bank evidence as Z evidence, changing profile scope
+or version, missing profile snapshots, malformed document digests and untyped envelopes cannot pass.
+This is profile-binding validation, not proof of native-document authenticity or signature validity.
+
+### 10B. DAD rule-pack model
+
+Recommended logical entities:
+
+`dad_rule_packs`
+- pack ID/version;
+- jurisdiction/effective period where applicable;
+- configuration/company/activity applicability;
+- status: draft/validated/retired;
+- provenance/owner.
+
+`dad_rules`
+- rule ID;
+- pack ID/version;
+- semantic inputs;
+- account/dimension selector;
+- condition/comparison;
+- required evidence classes;
+- severity;
+- explanation/remediation;
+- human-review requirement;
+- native-report/reconciliation reference.
+
+A rule cannot silently become universal across configurations/companies.
+
+Internal comparison implementation: `dad_rules.py` binds immutable rule/pack/version/effective
+period/tolerance/class/concept to an exact EvidenceScope and server-approved rule fingerprint.
+It separately requires confirmed semantic scope and confirmed external parser profile. Missing,
+unconfirmed, cross-company/currency/period, incomplete, ambiguous and same-artifact-plane inputs
+cannot yield PASS. Findings contain opaque key hashes/reason codes, never raw identifiers/amounts.
+Exact bounded Decimal comparisons preserve micro-units; input evidence level is retained and
+native approval is never inferred. This is a normalized comparison foundation for Z/terminal/
+bank-style inputs, not native format validation or universal account rules. Runtime tool/ACL/audit
+integration, configured account selectors, native observers and full month-close packs remain open.
+
+Only bounded known evidence-level identifiers may enter result envelopes. Malformed/free-text/
+non-string evidence levels are returned as null and rejected, including early unconfirmed-rule
+paths; raw document or credential-like text is never echoed through this field.
+
+### 10C. Testbed/reference provenance
+
+Reference/oracle artifacts are tracked by references and hashes, not copied into the public DB model:
+
+- real-reference base alias + archive SHA/configuration fingerprint;
+- Ferma commit/generator/profile/seed/scenario digest;
+- synthetic-base marker;
+- native observer/result digest;
+- ERP_MCP result digest.
+
+Test-only write credentials/seeder state are never valid production source credentials.
 
 ## 11. Audit model
 
@@ -272,6 +379,9 @@ Migration 003 adds the initial request/correlation and adapter provenance fields
 - adapter kind/version and upstream SHA;
 - policy and metadata fingerprints;
 - response bytes and truncation.
+
+Migration 009 adds the semantic profile fingerprint so canonical-tool audit events identify the
+exact mapping profile used for a read.
 
 Target fields:
 - event ID/time;
@@ -330,29 +440,30 @@ The semantic layer may return richer domain shapes, but provenance must not be l
 
 ## 14. Data lifecycle
 
+Source-bound reads require a durable access receipt after source/company ACL and rate checks,
+before adapter dispatch, secret retrieval or capability probing. The receipt uses the same request
+correlation ID as completion, `detail_code=ACCESS_AUTHORIZED`, `policy_version=predispatch-audit-v1`,
+and `outcome=success` meaning authorization succeeded ONLY. It is not evidence of a completed read.
+Raw query JSON remains NULL; only a query fingerprint may be stored. An append failure prevents
+dispatch and exposes only `AUDIT_UNAVAILABLE`, never provider details. Completion retains existing
+adapter/result provenance. A missing completion is an unfinished request, not a successful read.
+
 - registry/policy state: durable, backed up;
 - secrets: external secret provider;
 - metadata/cache: recreatable;
 - audit: durable append-only subject to deployment retention policy;
 - raw accounting result: request-scoped by default;
 - reconciliation evidence: durable for release/governance evidence;
-- synthetic test data: repository/testbed only, never copied from customers.
+- synthetic test data: repository/testbed only, never copied from customers;
+- private real-reference 1C archives/backups: private testbed storage only, immutable golden source;
+- external evidence raw documents: approved private storage/retention only; repository stores at most
+  safe metadata/hashes/aliases;
+- Ferma expected/oracle artifacts: isolated from 1C/ERP_MCP actual computation inputs.
 
 Any automatic deletion/retention policy must be explicitly defined and approved before production.
 
-## 15. Admin Control Center policy extension
-
-Idempotency is keyed by actor subject + key and fingerprints payload plus reason. Reservation,
-successful policy/result/audit share a transaction. Domain failures roll back to a savepoint,
-retaining the failed key and safe audit. A changed payload cannot reuse that key. Schema remains
-11; no existing migration is renumbered.
-
-Migrations 008-011 add control-plane administration without introducing local user passwords or persisted accounting facts.
-
-platform_role_bindings stores external subject/group references bound to fixed platform roles with optional delegated source scope, expiry, revocation, actor provenance and optimistic row_version.
-
-Existing sources, companies and access_grants gain additive row-version/provenance fields. admin_audit_events is append-only and records actor, action, target, reason, request ID, idempotency key, safe change summary and outcome. admin_idempotency prevents duplicate mutation effects on retry.
-
-business_roles, business_role_capabilities, business_role_assignments and capability_overrides implement a policy dimension separate from source/company ACL. Explicit capability deny overrides allow; missing capability permission denies when enforcement is enabled.
-
-company_scope_mappings binds a VALIDATED semantic profile/entity set to the metadata property that identifies a company. Runtime may use it only when profile/source/company and metadata fingerprint remain valid. The mapping does not authorize access by itself: source/company ACL and business capability checks still run first.
+The internal normalized evidence provider returns immutable opaque blob references plus pinned
+manifest/document SHA-256 receipts. Store these in a trusted registry/index separate from raw
+private files before accepting persistent reconciliation references. The local provider itself
+does not approve receipt indexes or legal retention; a private orphan without a pinned receipt
+is not usable evidence. Raw documents remain outside Git and outside standard logs/CI artifacts.

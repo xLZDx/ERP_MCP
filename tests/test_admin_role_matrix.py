@@ -107,6 +107,26 @@ async def test_delegated_roles_cannot_cross_source_boundary(endpoint):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(('role', 'endpoint'), [
+    ('ACCESS_ADMIN', 'grant_revoke'),
+    ('ACCESS_ADMIN', 'business_role_revoke'),
+    ('ACCESS_ADMIN', 'capability_override_revoke'),
+    ('PROFILE_ADMIN', 'semantic_mapping_create'),
+    ('PROFILE_ADMIN', 'semantic_profile_validate'),
+    ('PROFILE_ADMIN', 'semantic_profile_retire'),
+    ('PROFILE_ADMIN', 'company_scope_mapping_create'),
+])
+async def test_exact_object_cross_source_mutations_are_denied_before_write(role, endpoint):
+    api = fake_api(role, scope='source-a')
+    api.repository.visible_target.return_value = False
+    result = await getattr(api, endpoint)(req(source='source-a'))
+    assert result.status_code == 403
+    api.repository.visible_target.assert_awaited_once()
+    for method in vars(api.mutations).values():
+        method.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_delegated_source_admin_cannot_repoint_own_source_to_another_credential_or_base():
     api = fake_api('SOURCE_ADMIN', scope='s1')
     api.repository.source_detail.return_value = {

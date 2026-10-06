@@ -1,9 +1,9 @@
 # ERP_MCP — Normative Documentation Index
 
-**Baseline:** v1.0  
-**Date:** 2026-10-05  
-**Status:** FROZEN FOR IMPLEMENTATION  
-**Scope:** 1C-first production MVP with future ERP/Ferma adapter boundaries
+**Baseline:** v1.1 — operator scope freeze
+**Date:** 2026-10-06
+**Status:** FROZEN — NO NEW SCOPE UNTIL CURRENT COMMITTED SCOPE CLOSES
+**Scope:** frozen read-only 1C/DAD delivery baseline; recorded deferred lanes stay deferred until explicit rebaseline
 
 Interactive view: [ERP_MCP Engineering Command Center](ERP_MCP_ENGINEERING_COMMAND_CENTER.html).
 
@@ -11,6 +11,27 @@ Current implementation evidence: [execution log](../reports/EXECUTION_LOG.md),
 [status](../reports/IMPLEMENTATION_STATUS.md), [gap analysis](../reports/IMPLEMENTATION_GAP_ANALYSIS.md),
 [DoD status](../reports/DOD_STATUS.md), [risk status](../reports/RISK_STATUS.md), and
 [Admin Control Center status](../reports/ADMIN_CONTROL_CENTER_STATUS.md).
+
+Machine-readable current snapshot: [engineering checkpoint](../reports/CURRENT_ENGINEERING_CHECKPOINT.json).
+CI checks its implementation-content fingerprint against all six report/dashboard markers;
+historical freeze/CI references remain historical, not automatic proof for changed code.
+
+The implementation fingerprint also includes the isolated `testbed/` code; changing an exporter,
+target guard or comparator without refreshing status evidence fails the same consistency gate.
+
+Both offline Command Center copies embed all 31 required normative sources plus the three existing
+supporting sources through `python -m scripts.sync_dashboard_documents`. The current phase-status
+overlay is preserved independently of normative Master Plan content. CI checks source hashes AND
+exact sanitized renderer output; editing a source, refreshing a hash alone, changing an embedded
+body, missing/duplicated cards or mismatching copies fails. Regenerate after normative edits, then
+run `python -m scripts.sync_dashboard_documents --check`. No browser CDN/fetch is needed.
+Renderer is dev-only [Python-Markdown 3.11](https://pypi.org/project/Markdown/3.11/), BSD-3-Clause,
+locked in uv; production runtime dependency lock is unchanged. Raw HTML, active URL schemes and
+tracking images are not activated by documentation embedding.
+
+Legacy copied reading/device tool envelopes are omitted from presentation, not from immutable
+freeze sources: their complete original source hash is still checked. Generated report shells
+must not publish the engineer's device identity or put diagnostic text before the HTML doctype.
 
 This directory is the normative engineering contract for ERP_MCP. Implementation must follow these
 documents. A code change that conflicts with the baseline requires an explicit architecture/governance
@@ -22,14 +43,15 @@ When documents conflict, use this order:
 
 1. `SECURITY.md` — security invariants and trust boundaries.
 2. `docs/GOVERNANCE.md` — change authority, review and evidence rules.
-3. `docs/adr/` — accepted architecture decisions.
-4. `docs/TDD.md` — product/technical requirements.
-5. `docs/ARCHITECTURE.md` — system/component/deployment architecture.
-6. `docs/DATA_MODEL.md` — control-plane and semantic data contracts.
-7. `docs/INTEGRATION.md` — adapter and external-system integration contracts.
-8. `docs/DEFINITION_OF_DONE.md` — release acceptance.
-9. `docs/MASTER_PLAN.md` — execution order and milestones.
-10. Supporting documents: compatibility, test strategy, SRE/observability, risks and vendor intake.
+3. `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` — operator-approved committed/deferred scope and rebaseline barrier.
+4. `docs/adr/` — accepted architecture decisions.
+5. `docs/TDD.md` — product/technical requirements.
+6. `docs/ARCHITECTURE.md` — system/component/deployment architecture.
+7. `docs/DATA_MODEL.md` — control-plane and semantic data contracts.
+8. `docs/INTEGRATION.md` — adapter and external-system integration contracts.
+9. `docs/DEFINITION_OF_DONE.md` — release acceptance.
+10. `docs/MASTER_PLAN.md` — execution order and milestones.
+11. Supporting documents: DAD coverage, Ferma testbed blueprint, compatibility, test strategy, SRE/observability, risks and vendor intake.
 
 No lower-precedence document may silently weaken a higher-precedence invariant.
 
@@ -37,6 +59,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 
 | Document | Purpose |
 |---|---|
+| [Scope Freeze Baseline](SCOPE_FREEZE_BASELINE_2026-10-06.md) | Operator-approved current scope, anti-scope-creep rule, committed vs deferred lanes and freeze-release barrier |
 | [TDD](TDD.md) | Technical Design Document: goals, requirements, constraints, invariants |
 | [Master Plan](MASTER_PLAN.md) | Delivery phases, gates, dependencies and exit criteria |
 | [Data Model](DATA_MODEL.md) | PostgreSQL control-plane schema and canonical semantic model |
@@ -45,9 +68,11 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Architecture](ARCHITECTURE.md) | Context, containers, components, trust boundaries and deployment |
 | [Integration](INTEGRATION.md) | Internal adapter contract and external integration rules |
 | [Pinned OData sidecar contract](ADAPTER_CONTRACT_ODATA_SIDECAR.md) | Private ERP_MCP ↔ pinned OData sidecar API and source-capability rules |
+| [RSV Data bridge runbook](runbooks/RSV_DATA_BRIDGE.md) | Isolated Windows/COM sidecar setup, source binding, ACL and recovery boundaries |
 | [Semantic profiles and presets](SEMANTIC_PROFILES.md) | Candidate preset, source/company profile lifecycle, validation evidence and operator CLI |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Observability & SRE](OBSERVABILITY_SRE.md) | Signals, SLO objectives, alerts, runbooks and rollback |
+| [Pilot evidence gate](PILOT_EVIDENCE_GATE.md) | P9 evidence manifest, validation contract and production GO conditions |
 | [Risk Register](RISK_REGISTER.md) | Principal technical, accounting, security, licensing and operational risks |
 | [Threat Model](THREAT_MODEL.md) | Assets, trust threats, STRIDE controls and residual risk |
 | [Admin Control Center](admin-control-center/README.md) | Browser control-plane design, implementation contract and operator runbook |
@@ -64,6 +89,8 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 - [Vendor sources](../vendor/UPSTREAMS.md)
 - [Machine-readable vendor intake](../vendor/intake.json)
 - [Testbed](../testbed/README.md)
+- [Ferma → 1C Synthetic Testbed & Reconciliation — Implementation Blueprint](FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md) — proposed supporting implementation plan for deterministic Ferma-driven real-1C L2 reconciliation; does not override higher-precedence invariants.
+- [DAD 1C MCP Requirements & Scenario Coverage](DAD_1C_MCP_REQUIREMENTS_COVERAGE.md) — audited source-of-problem, link/material inventory, full scenario lanes, current implementation gaps and DAD acceptance priorities.
 
 ## Architecture decisions
 
@@ -86,3 +113,10 @@ requires:
 - governance approval before implementation is treated as complete.
 
 Documentation is part of the product. A release with stale normative documents is not Done.
+
+### Scope-freeze rule
+
+While `SCOPE_FREEZE_BASELINE_2026-10-06.md` is active, every new issue/PR/task must cite the
+existing frozen requirement/gate it closes. A task without such a trace is scope expansion and is
+blocked until explicit operator rebaseline. Security/defect/DoD-evidence work required to complete
+an existing frozen requirement is scope-preserving.

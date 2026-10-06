@@ -32,7 +32,7 @@ EXPECTED = {
         "bag.semantic_mappings": p(select=True),
         "bag.semantic_profile_events": p(select=True),
         "bag.platform_role_bindings": p(select=True),
-        "bag.company_scope_mappings": p(select=True),
+        "bag.company_scope_mappings": p(),
         "bag.admin_audit_events": p(),
         "bag.admin_idempotency": p(),
         **{table: p(select=True) for table in READ_POLICY_TABLES},
@@ -85,6 +85,15 @@ COLUMN_EXPECTED = {
     ): True,
 }
 
+TRUNCATE_EXPECTED = {
+    ("business_ai_app", "bag.audit_events"): False,
+    ("business_ai_app", "bag.admin_audit_events"): False,
+    ("business_ai_control_api", "bag.admin_audit_events"): False,
+    ("business_ai_control_api", "bag.audit_events"): False,
+    ("business_ai_admin", "bag.audit_events"): False,
+    ("business_ai_admin", "bag.admin_audit_events"): False,
+}
+
 
 async def main() -> None:
     dsn = os.environ.get("BAG_PRIVILEGE_TEST_DATABASE_URL")
@@ -124,6 +133,14 @@ async def main() -> None:
             if actual is not expected:
                 failures.append(
                     f"{role} {privilege} {table}.{column}: expected {expected}, got {actual}"
+                )
+        for (role, table), expected in TRUNCATE_EXPECTED.items():
+            actual = await conn.fetchval(
+                "SELECT has_table_privilege($1, $2, 'TRUNCATE')", role, table
+            )
+            if actual is not expected:
+                failures.append(
+                    f"{role} TRUNCATE {table}: expected {expected}, got {actual}"
                 )
         if failures:
             raise RuntimeError("\n".join(failures))

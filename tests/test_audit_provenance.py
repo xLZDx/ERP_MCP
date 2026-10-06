@@ -51,14 +51,15 @@ async def test_audit_writes_correlation_scope_and_adapter_provenance():
         upstream_sha="abc123",
         policy_version="policy-7",
         metadata_fingerprint="sha256:metadata",
+        profile_fingerprint="sha256:profile",
         returned_items=4,
         response_bytes=512,
         truncated=True,
     )
 
     assert "request_id, company_id, adapter_kind" in pool.sql
-    assert "response_bytes, truncated" in pool.sql
-    assert pool.args[11:20] == (
+    assert "profile_fingerprint, response_bytes, truncated" in pool.sql
+    assert pool.args[11:21] == (
         request_id,
         company_id,
         "ODATA_V3",
@@ -66,6 +67,7 @@ async def test_audit_writes_correlation_scope_and_adapter_provenance():
         "abc123",
         "policy-7",
         "sha256:metadata",
+        "sha256:profile",
         512,
         True,
     )
@@ -85,6 +87,24 @@ async def test_audit_generates_request_id_when_caller_does_not_supply_one():
     )
 
     assert isinstance(pool.args[11], uuid.UUID)
+
+
+@pytest.mark.asyncio
+async def test_audit_never_persists_raw_query_even_when_legacy_flag_is_enabled():
+    pool = FakePool()
+    query = {"filter": "Account eq 'SECRET-ACCOUNT-7741'", "token": "SECRET-TOKEN"}
+    await Audit(FakeDatabase(pool), include_query=True).write(
+        principal=Principal("subject", "client", frozenset(), frozenset(), {}),
+        tool="onec_read",
+        source_id="source-1",
+        outcome="success",
+        started_at=0,
+        query=query,
+    )
+    assert pool.args[6] is not None
+    assert pool.args[7] is None
+    assert "SECRET-ACCOUNT-7741" not in repr(pool.args)
+    assert "SECRET-TOKEN" not in repr(pool.args)
 
 
 @pytest.mark.asyncio

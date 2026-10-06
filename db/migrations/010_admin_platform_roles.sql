@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS bag.platform_role_bindings (
     binding_id uuid PRIMARY KEY,
     principal_kind text NOT NULL CHECK (principal_kind IN ('subject','group')),
@@ -22,7 +20,10 @@ CREATE TABLE IF NOT EXISTS bag.platform_role_bindings (
     row_version bigint NOT NULL DEFAULT 1 CHECK (row_version > 0),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CHECK (role_name <> 'PLATFORM_ADMIN' OR source_id IS NULL)
+    CONSTRAINT platform_role_bindings_scope_check CHECK (
+      (role_name = 'PLATFORM_ADMIN' AND source_id IS NULL)
+      OR (role_name <> 'PLATFORM_ADMIN' AND source_id IS NOT NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS platform_role_bindings_lookup_idx
@@ -53,8 +54,3 @@ BEGIN
 END;
 $$;
 
-INSERT INTO bag.schema_migrations(version)
-VALUES (8)
-ON CONFLICT (version) DO NOTHING;
-
-COMMIT;

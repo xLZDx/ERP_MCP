@@ -21,7 +21,9 @@ from business_ai_gateway.admin_mutations import (
     AdminConflict,
     AdminMutationService,
     AdminValidationError,
+    _expiry,
 )
+from business_ai_gateway.admin_api import AdminRepository
 from business_ai_gateway.db import Database
 from business_ai_gateway.runtime import Runtime
 from business_ai_gateway.server import build_mcp
@@ -29,6 +31,21 @@ from business_ai_gateway.settings import Settings
 
 URL = os.getenv("BAG_PRIVILEGE_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="requires disposable PostgreSQL BAG_PRIVILEGE_TEST_DATABASE_URL")
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_expiry_empty_means_no_expiry(value):
+    assert _expiry(value) is None
+
+
+@pytest.mark.parametrize("value", ["not-a-date", "2026-10-06T12:00:00", 123, object()])
+def test_expiry_rejects_malformed_and_naive_values(value):
+    with pytest.raises(AdminValidationError):
+        _expiry(value)
+
+
+def test_expiry_normalizes_timezone_to_utc():
+    assert _expiry("2026-10-06T15:00:00+03:00").isoformat() == "2026-10-06T12:00:00+00:00"
 
 
 @pytest.fixture
@@ -202,6 +219,30 @@ async def test_role_binding_assignment_override_replays_and_exact_revokes(servic
     assert await svc.create_capability_override(**args, capability_key="accounting.read", effect="deny") == override
     await svc.revoke_capability_override(actor=common["actor"], override_id=UUID(override["id"]), expected_version=1,
                                         reason="revoke exact override", request_id=uuid4(), idempotency_key=str(uuid4()))
+
+
+@pytest.mark.asyncio
+async def test_global_non_platform_role_is_rejected_and_expired_binding_is_ineffective(service):
+    svc, owner, source, _company = service
+    base = {"actor": AdminActor(str(uuid4()), "client"), "principal_kind": "subject",
+            "principal_id": f"expired-{uuid4()}", "expires_at": None, "reason": "test",
+            "request_id": uuid4(), "idempotency_key": str(uuid4())}
+    with pytest.raises(AdminValidationError, match="must be source-scoped"):
+        await svc.create_platform_role(**base, role_name="AUDITOR", source_id=None)
+    await owner.execute(
+        """INSERT INTO bag.platform_role_bindings(binding_id,principal_kind,principal_id,role_name,source_id,expires_at)
+           VALUES($1,'subject',$2,'ACCESS_ADMIN',$3,now()-interval '1 second')""",
+        uuid4(), base["principal_id"], source,
+    )
+    repository = AdminRepository(SimpleNamespace(require_pool=lambda: owner))
+    assert await repository.resolve_bindings(base["principal_id"], frozenset()) == ()
+    revoked_principal = f"revoked-{uuid4()}"
+    await owner.execute(
+        """INSERT INTO bag.platform_role_bindings(binding_id,principal_kind,principal_id,role_name,source_id,revoked_at)
+           VALUES($1,'subject',$2,'ACCESS_ADMIN',$3,now())""",
+        uuid4(), revoked_principal, source,
+    )
+    assert await repository.resolve_bindings(revoked_principal, frozenset()) == ()
 
 
 @pytest.mark.asyncio

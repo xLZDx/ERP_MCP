@@ -171,7 +171,7 @@ ACC-00
 - ACC-06: IMPLEMENTED — exact-fingerprint drift acknowledgement and semantic-profile lifecycle.
 - ACC-07: IMPLEMENTED — DB-backed platform roles, delegated source enforcement and bootstrap CLI.
 - ACC-08: IMPLEMENTED — business role/capability assignments/overrides and runtime enforcement feature flag.
-- ACC-09: IMPLEMENTED FOR EXPLICITLY MAPPED ENTITY READS — onec_company_read requires a VALIDATED semantic/company-scope mapping and current live metadata. Generic onec_read remains source-scoped by design.
+- ACC-09: CANDIDATE CONFIGURATION ONLY — Admin `company_scope_mappings` do not authorize runtime reads. Company-aware access is limited to fixed canonical operations with validated semantic profiles. Generic `onec_read` remains source-scoped; generic `onec_company_read` is disabled pending independently verified per-company scope evidence.
 - ACC-10: TESTABLE HARDENING COMPLETE — full regression 420 passed / 1 external skip, real disposable DB/Redis/HTTP integration, browser contract, 7→11 upgrade/restore/privileges, Bandit and dependency audit. Target pilot remains external.
 
 Production activation remains gated on real IdP, real 1C and pilot evidence for the target environment. Those external facts are not fabricated by repository tests.

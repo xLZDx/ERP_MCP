@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS bag.company_scope_mappings (
     scope_mapping_id uuid PRIMARY KEY,
     profile_id uuid NOT NULL REFERENCES bag.semantic_profiles(profile_id) ON DELETE RESTRICT,
@@ -14,9 +12,6 @@ CREATE TABLE IF NOT EXISTS bag.company_scope_mappings (
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_ai_app') THEN
-    GRANT SELECT ON bag.company_scope_mappings TO business_ai_app;
-  END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_ai_admin') THEN
     GRANT SELECT, INSERT, UPDATE ON bag.company_scope_mappings TO business_ai_admin;
   END IF;
@@ -26,8 +21,3 @@ BEGIN
 END;
 $$;
 
-INSERT INTO bag.schema_migrations(version)
-VALUES (11)
-ON CONFLICT (version) DO NOTHING;
-
-COMMIT;

@@ -20,6 +20,11 @@ ERP_MCP is **read-only by construction** for the 1C Day-1 production MVP.
 - Raw OData filters are not stored in audit by default.
 - Runtime DB credentials cannot modify source registry or grants.
 - Source credentials never appear in MCP results.
+- External evidence is untrusted read-only input; it cannot change authorization/policy or trigger
+  production 1C mutation.
+- Raw private reference bases/documents/credentials/private Drive links never enter Git/public CI.
+- Test-only Ferma/1C seed/write code and credentials are isolated from production MCP routes.
+- Missing evidence never authorizes a guessed accounting/tax/payroll PASS.
 
 ## 1C service account
 
@@ -56,7 +61,7 @@ Security invariants:
 - secret values never enter Admin UI/API responses, audit events or registry rows;
 - platform administration roles, data-scope grants and business capabilities are independent;
 - business capability enforcement is fail-closed when enabled and never widens source/company scope;
-- generic onec_read remains source-scoped. Company-only access is accepted only by onec_company_read when a current VALIDATED semantic profile supplies an explicit company-scope mapping verified against live metadata.
+- generic `onec_read` remains source-scoped. Company-aware access is limited to fixed canonical operations using validated semantic profiles. Admin company-scope mappings are candidate configuration and are not consumed by a runtime read route.
 
 Production startup rejects a control DB session with superuser/owner/operator membership,
 schema ownership, role-management rights, DELETE, mutable admin audit or broad drift UPDATE.

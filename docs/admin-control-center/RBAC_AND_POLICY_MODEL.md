@@ -26,7 +26,13 @@ Fixed initial roles:
 
 Recommended implementation: principal bindings to these fixed roles. Role names are not editable in v1.
 
-A SOURCE_ADMIN or ACCESS_ADMIN may optionally be restricted to a set of source IDs. PLATFORM_ADMIN is global.
+Scope contract is enforced by the service and the database:
+
+- `PLATFORM_ADMIN` must be global (`source_id IS NULL`).
+- `SOURCE_ADMIN`, `ACCESS_ADMIN`, `PROFILE_ADMIN`, and `AUDITOR` must name one source (`source_id IS NOT NULL`).
+- No non-platform role has implicit global scope in v1, including AUDITOR.
+
+Delegation may restrict a source role to one or more source IDs; it cannot broaden a role to all sources.
 
 Delegated SOURCE_ADMIN cannot change connection URL or secret references. These changes require
 global SOURCE_ADMIN or PLATFORM_ADMIN because repointing an assigned source can otherwise
@@ -45,7 +51,7 @@ Data scope continues to use access_grants:
 - revocation;
 - deny precedence.
 
-Important current limitation: company-specific grants do not authorize generic unscoped onec_read. Company-scoped data reads remain disabled until the selected company is enforced end-to-end by an adapter/tool contract.
+Company-specific grants do not authorize generic unscoped `onec_read`. Existing company-aware accounting tools use fixed operations with a selected company and validated semantic profile. Admin `company_scope_mappings` are candidate configuration only; they are not consumed by a runtime read route and do not authorize company data access.
 
 ## 4. Business capabilities
 
@@ -135,7 +141,7 @@ validate token/session
 
 Authorization happens before any 1C call.
 
-For a source-wide unscoped operation, company-only grants are ignored by design.
+For a source-wide unscoped operation, company-only ALLOW grants do not authorize access. Any applicable company-scoped access DENY or capability DENY rejects the unscoped request because its result could include that company.
 
 ## 8. Platform-admin authorization algorithm
 

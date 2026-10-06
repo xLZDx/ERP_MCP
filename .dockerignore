@@ -9,6 +9,7 @@
 .pytest_cache
 .ruff_cache
 .mypy_cache
+.cache/trivy
 .coverage
 coverage.xml
 reports

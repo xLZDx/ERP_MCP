@@ -7,6 +7,34 @@ import { createHandler } from './server.mjs';
 
 const TOKEN = 'test-sidecar-token-with-at-least-thirty-two-bytes';
 
+test('upstream redirects never reach another origin or forward credentials', async () => {
+  let escaped = 0;
+  const target = createServer((_req, res) => { escaped++; res.end('unexpected'); });
+  target.listen(0, '127.0.0.1');
+  await once(target, 'listening');
+  const source = createServer((_req, res) => {
+    res.writeHead(302, { location: `http://127.0.0.1:${target.address().port}/escape` });
+    res.end();
+  });
+  source.listen(0, '127.0.0.1');
+  await once(source, 'listening');
+  const authority = `127.0.0.1:${source.address().port}`;
+  const handler = createHandler({ token: TOKEN, allowedHosts: [authority], egressCidrs: ['127.0.0.1/32'] });
+  try {
+    await withServer(handler, async (base) => {
+      const response = await post(base, requestBody({ base_url: `http://${authority}/odata/standard.odata` }));
+      assert.equal(response.status, 502);
+      assert.equal(escaped, 0);
+      const body = await response.text();
+      assert.equal(body.includes('secret-value'), false);
+      assert.equal(body.includes('/escape'), false);
+    });
+  } finally {
+    source.close(); target.close();
+    await Promise.all([once(source, 'close'), once(target, 'close')]);
+  }
+});
+
 async function withServer(handler, run) {
   const server = createServer(async (req, res) => {
     try {

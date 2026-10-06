@@ -677,7 +677,10 @@ class AdminAPI:
         except Exception:  # noqa: BLE001 - admin API fails closed on limiter dependency loss
             return JSONResponse({"error": "ADMIN_DEPENDENCY_UNAVAILABLE"}, status_code=503)
 
-        groups = self._groups(token)
+        try:
+            groups = self._groups(token)
+        except PermissionError:
+            return JSONResponse({"error": "PLATFORM_ROLE_DENIED"}, status_code=403)
         bindings = await self.repository.resolve_bindings(token.subject or "", groups)
         if not bindings:
             return JSONResponse({"error": "PLATFORM_ROLE_DENIED"}, status_code=403)
@@ -815,7 +818,7 @@ class AdminAPI:
                 "Cache-Control": "no-store",
                 "Content-Security-Policy": (
                     "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                    "script-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                    "script-src 'self'; img-src 'self' data:; "
                     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
                     "form-action 'self'"
                 ),
@@ -823,6 +826,14 @@ class AdminAPI:
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",
             },
+        )
+
+    async def admin_js(self, _request: Request):
+        static_path = Path(__file__).resolve().parent / "static" / "admin.js"
+        return FileResponse(
+            static_path,
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
         )
 
     async def login(self, request: Request):
@@ -1736,6 +1747,7 @@ def register_admin_routes(mcp, settings: Settings, runtime):
     if settings.admin_ui_enabled:
         mcp.custom_route("/admin", methods=["GET"])(api.admin_root)
         mcp.custom_route("/admin/", methods=["GET"])(api.admin_ui)
+        mcp.custom_route("/admin/static/admin.js", methods=["GET"])(api.admin_js)
         for path, methods, handler in (
             ("/admin/login", ["GET"], api.login),
             ("/admin/callback", ["GET"], api.callback),

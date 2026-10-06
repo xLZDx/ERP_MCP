@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pydantic import ValidationError
 
 from business_ai_gateway.auth import JWTTokenVerifier
+from business_ai_gateway.principal import claim_groups
 from business_ai_gateway.settings import Settings
 
 
@@ -192,4 +193,7 @@ def test_malformed_or_incomplete_group_claims_cannot_create_permissions(extra):
     raw = jwt.encode({"iss": config.oauth_issuer, "aud": config.admin_oauth_audience,
                       "sub": "admin", "scope": "erp_mcp:admin", "iat": now, "exp": now + 300,
                       **extra}, private, algorithm="RS256")
-    assert verifier._verify_sync(raw) is None
+    token = verifier._verify_sync(raw)
+    assert token is not None
+    with pytest.raises(PermissionError):
+        claim_groups(token.claims or {})

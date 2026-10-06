@@ -53,7 +53,7 @@ updated_at TIMESTAMPTZ
 
 Rules:
 - PLATFORM_ADMIN must be global: source_id NULL.
-- source-scoped roles may be global or delegated to one source.
+- every non-platform role is source-scoped; no non-platform role has implicit global access.
 - USER is represented by no admin binding, not a stored privileged role.
 - active deny semantics are unnecessary here if role revocation is exact and immediate; if negative bindings are later needed, add them deliberately through another C3 change.
 

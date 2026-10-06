@@ -1,7 +1,7 @@
 # ERP_MCP Threat Model
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 ## Assets
 
@@ -12,7 +12,10 @@ Critical:
 - audit/provenance;
 - accounting data returned from 1C;
 - semantic profiles/mappings;
-- production endpoint registry.
+- production endpoint registry;
+- private real-reference test artifacts and external evidence documents;
+- Ferma oracle independence;
+- test-only write boundary.
 
 ## Adversaries / failure sources
 
@@ -24,7 +27,11 @@ Critical:
 - operator misconfiguration;
 - accidental source/company scope mix-up;
 - compromised internal adapter process;
-- supply-chain/license error.
+- supply-chain/license error;
+- malicious/untrusted external evidence document;
+- accidental publication of private reference artifacts;
+- test-only seeder/write helper exposed to production;
+- scope creep that bypasses review/evidence.
 
 ## STRIDE-oriented threats
 
@@ -157,32 +164,59 @@ No technical control can prove accounting semantic correctness for an arbitrary 
 configuration. That residual risk is controlled through semantic profiles and native-report
 reconciliation before production approval.
 
-## Admin Control Center threat-model delta
 
-Additional assets include platform-role bindings, admin sessions/CSRF tokens, admin mutation/idempotency records, source onboarding endpoints and business capability policy.
+## External evidence threat model
 
-Additional threats and controls:
-- OAuth login CSRF/code interception: state + nonce + PKCE, exact redirect URI, validated issuer/signature/audience and one-time login state.
-- Browser bearer theft: access tokens stay server-side; browser cookie is opaque, HttpOnly, SameSite and Secure in production; session lifetime is capped by access-token expiration plus idle/absolute TTL.
-- Ambient-cookie mutation CSRF: all cookie-authenticated non-read admin routes require the per-session CSRF token.
-- Privilege escalation: distinct admin audience/scope plus DB-backed platform role enforcement; UI visibility is never authorization; platform-role mutation additionally requires configured recent step-up ACR/auth_time.
-- Confused deputy across delegated sources: every source/company/policy mutation is checked against the actor's effective platform-role source boundary.
-- Source-onboarding SSRF/DNS rebinding: exact host/port allowlist, optional approved CIDRs, connect-time numeric IP pinning with original TLS identity, no environment proxy, redirects disabled and a bounded dedicated GET/HEAD-only probe pool. Production also requires network-level egress enforcement.
-- Admin control-plane DoS: all authenticated admin API requests share a per-subject Redis-backed rate budget; limiter dependency loss fails closed.
-- Duplicate/replayed mutations: actor-scoped idempotency key + request fingerprint and optimistic row version.
-- Audit tampering: admin and runtime audit tables reject UPDATE/DELETE.
-- Company-scope bypass: generic source reads cannot consume a company-only grant; explicit company-aware reads require a validated metadata-bound company predicate before adapter execution.
+External evidence is untrusted input even when supplied by an accountant/operator.
 
-Continuation controls: one-time OIDC state uses Redis GETDEL, session refresh uses compare-and-set
-to prevent logout resurrection, platform-role changes require trusted fresh ACR/auth_time,
-idempotency/policy/result/success audit share a transaction, and caller filters cannot escape
-the server predicate through delimiters. Company navigation/expand is denied until separately
-proven. Unknown capability keys deny before evaluating stored overrides. Other subjects' group
-membership remains explicitly unknown without a trusted directory provider.
+Threats:
+- prompt/instruction injection embedded in PDFs/XLSX/text;
+- parser exploit/decompression bomb;
+- stale/forged document;
+- evidence associated with the wrong company/source;
+- sensitive evidence leaked to logs/public CI/model context.
 
-Additional negatives close indefinite signing-key acceptance after revocation, dictionary/
-overage group interpretation, numeric company-ID widening and semantic reuse after connection
-changes with identical metadata. Both DB credential paths are validated. Token exchange is
-bounded to 30 seconds/256 KB; native transport rejects encoded responses before byte caps.
-Probe evidence contains fixed statuses instead of arbitrary upstream strings. Raw callback
-query access logging is disabled in the image.
+Controls:
+- approved ingress only; no model-supplied arbitrary URL;
+- MIME/size/decompression/parser limits;
+- content fingerprint/provenance;
+- explicit source/company association;
+- business content treated as data, never policy/instructions;
+- bounded extraction;
+- retention/minimization and private storage;
+- missing/invalid evidence yields explicit non-PASS state.
+
+## Real-reference testbed threat model
+
+The private real-reference base may contain realistic/customer-derived information even though it is
+designated for testing.
+
+Controls:
+- immutable private golden archive;
+- safe alias in public repo;
+- disposable clones only;
+- least-privilege RO identity for read validation;
+- separate write-capable test identity only for isolated RW clone;
+- no raw archive, credentials, private links or customer identifiers in Git/public CI;
+- fingerprints and bounded sanitized summaries only.
+
+## Test-only write boundary
+
+Threat:
+- Ferma seeder or historical write helper becomes callable from production MCP.
+
+Controls:
+- separate package/process/credentials;
+- synthetic/test target marker;
+- deny production source IDs;
+- no production tool registration;
+- package/tool inventory negative tests;
+- no generic arbitrary mutation API.
+
+## Scope-freeze control
+
+Scope expansion is itself a governance risk because it can delay closure and bypass threat/evidence
+analysis.
+
+Every new work item must cite an existing frozen requirement/gate. No trace -> no execution until
+explicit operator rebaseline.

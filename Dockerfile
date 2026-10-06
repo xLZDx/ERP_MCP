@@ -1,25 +1,23 @@
-FROM python:3.12.8-slim-bookworm
+FROM python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8 AS dependencies
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+ENV PIP_NO_CACHE_DIR=1
 
-RUN groupadd --system --gid 10001 app \
- && useradd --system --uid 10001 --gid 10001 --create-home app
+WORKDIR /build
+COPY requirements-runtime.lock ./
+RUN python -m pip install --require-hashes --target=/runtime-deps -r requirements-runtime.lock
 
+FROM cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src:/usr/lib/python3.14/site-packages
 WORKDIR /app
-COPY pyproject.toml README.md SECURITY.md ./
+COPY --from=dependencies /runtime-deps/ /usr/lib/python3.14/site-packages/
 COPY src ./src
-RUN python -m pip install --upgrade pip \
- && python -m pip install .
 
 COPY db ./db
 COPY scripts ./scripts
 
-USER 10001:10001
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"
+  CMD ["/usr/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
 
-CMD ["uvicorn", "business_ai_gateway.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--no-access-log"]
+CMD ["-m", "uvicorn", "business_ai_gateway.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--no-access-log"]

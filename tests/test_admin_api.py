@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
 from types import SimpleNamespace
 
 import pytest
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from business_ai_gateway.admin_api import AdminContext, AdminRepository, AdminRoleBinding
 
@@ -35,6 +38,10 @@ class FakePool:
         if "FROM bag.companies" in sql:
             return []
         raise AssertionError(sql)
+
+    async def fetchrow(self, sql, *args):
+        self.calls.append((sql, args))
+        return {"source_id": "source-b"}
 
 
 class FakeDB:
@@ -74,6 +81,63 @@ async def test_source_scoped_admin_reads_only_delegated_sources():
     sql, args = db.pool.calls[-1]
     assert "source_id=ANY" in sql
     assert args == (["source-a"], 500)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["grant", "assignment", "override", "profile"])
+async def test_target_authorization_looks_up_exact_object_by_primary_key(kind):
+    db = FakeDB()
+    repo = AdminRepository(db)
+    target_id = "target-outside-any-list-page"
+    ctx = AdminContext(
+        token=SimpleNamespace(subject="subject-1", client_id="client-1"),
+        groups=frozenset(),
+        bindings=(AdminRoleBinding("ACCESS_ADMIN" if kind != "profile" else "PROFILE_ADMIN", "source-a"),),
+    )
+    assert await repo.visible_target(ctx, kind, target_id) is False
+    sql, args = db.pool.calls[-1]
+    assert "WHERE" in sql and "$1" in sql
+    assert "LIMIT" not in sql.upper()
+    assert args == (target_id,)
+
+
+@pytest.mark.asyncio
+async def test_authenticate_returns_403_when_valid_token_has_no_role_binding():
+    from business_ai_gateway.admin_api import AdminAPI
+
+    api = object.__new__(AdminAPI)
+    api.sessions = None
+    api.verifier = SimpleNamespace(verify_token=AsyncMock(return_value=SimpleNamespace(
+        subject="unbound", client_id="client", claims={"groups": []}
+    )))
+    api.runtime = SimpleNamespace(
+        start=AsyncMock(),
+        rate_limit=SimpleNamespace(check=AsyncMock()),
+    )
+    api.repository = SimpleNamespace(resolve_bindings=AsyncMock(return_value=()))
+    request = Request({
+        "type": "http", "method": "GET", "path": "/admin/v1/me", "query_string": b"",
+        "headers": [(b"authorization", b"Bearer valid")],
+    })
+    result = await api.authenticate(request)
+    assert isinstance(result, JSONResponse)
+    assert result.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_authenticate_returns_401_when_token_verifier_returns_none():
+    from business_ai_gateway.admin_api import AdminAPI
+
+    api = object.__new__(AdminAPI)
+    api.sessions = None
+    api.verifier = SimpleNamespace(verify_token=AsyncMock(return_value=None))
+    request = Request({
+        "type": "http", "method": "GET", "path": "/admin/v1/me", "query_string": b"",
+        "headers": [(b"authorization", b"Bearer invalid")],
+    })
+    result = await api.authenticate(request)
+    assert isinstance(result, JSONResponse)
+    assert result.status_code == 401
 
 
 def test_global_auditor_is_global_read_context():

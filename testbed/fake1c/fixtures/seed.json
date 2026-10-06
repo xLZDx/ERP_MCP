@@ -1,14 +1,53 @@
 {
+  "schema_version": 1,
+  "seed_id": "erp-mcp-synthetic-v1",
   "organizations": [
-    {"Ref_Key": "00000000-0000-0000-0000-000000000001", "Code": "ORG1", "Description": "MCP TEST SRL"},
-    {"Ref_Key": "00000000-0000-0000-0000-000000000002", "Code": "ORG2", "Description": "MCP TEST TWO SRL"}
+    {"Ref_Key": "00000000-0000-0000-0000-000000000001", "Code": "ORG1", "Description": "Synthetic organization one"},
+    {"Ref_Key": "00000000-0000-0000-0000-000000000002", "Code": "ORG2", "Description": "Synthetic organization two"}
   ],
   "counterparties": [
-    {"Ref_Key": "10000000-0000-0000-0000-000000000001", "Code": "C001", "Description": "Customer Alpha"},
-    {"Ref_Key": "10000000-0000-0000-0000-000000000002", "Code": "S001", "Description": "Supplier Beta"}
+    {"Ref_Key": "10000000-0000-0000-0000-000000000001", "Code": "C001", "Description": "Synthetic customer"},
+    {"Ref_Key": "10000000-0000-0000-0000-000000000002", "Code": "S001", "Description": "Synthetic supplier"}
   ],
   "sales": [
-    {"Ref_Key": "20000000-0000-0000-0000-000000000001", "Number": "SALE-001", "Posted": true, "Amount": 1200.0},
-    {"Ref_Key": "20000000-0000-0000-0000-000000000002", "Number": "SALE-002", "Posted": false, "Amount": 500.0}
-  ]
+    {"Ref_Key": "20000000-0000-0000-0000-000000000001", "Number": "SALE-001", "Posted": true, "Amount": 1200.0, "Организация_Key": "00000000-0000-0000-0000-000000000001"},
+    {"Ref_Key": "20000000-0000-0000-0000-000000000002", "Number": "SALE-002", "Posted": false, "Amount": 500.0, "Организация_Key": "00000000-0000-0000-0000-000000000002"}
+  ],
+  "purchases": [
+    {"Ref_Key": "21000000-0000-0000-0000-000000000001", "Number": "PUR-001", "Posted": true, "Amount": 700.0, "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "inventory_balances": [
+    {"Номенклатура_Key": "30000000-0000-0000-0000-000000000001", "Склад_Key": "31000000-0000-0000-0000-000000000001", "КоличествоBalance": 7, "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "inventory_movements": [
+    {"Period": "2026-04-02T06:30:00", "Номенклатура_Key": "30000000-0000-0000-0000-000000000001", "Склад_Key": "31000000-0000-0000-0000-000000000001", "Количество": 7, "RecordType": "Receipt", "Recorder_Key": "40000000-0000-0000-0000-000000000001", "Организация_Key": "00000000-0000-0000-0000-000000000001"},
+    {"Period": "2026-04-02T07:30:00", "Номенклатура_Key": "30000000-0000-0000-0000-000000000001", "Склад_Key": "31000000-0000-0000-0000-000000000001", "Количество": 2, "RecordType": "Expense", "Recorder_Key": "40000000-0000-0000-0000-000000000002", "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "cash_movements": [
+    {"Period": "2026-04-02T06:30:00", "LineNumber": 1, "СчетДенежныхСредств_Key": "33000000-0000-0000-0000-000000000001", "Валюта_Key": "MDL", "Сумма": 10, "RecordType": "Receipt", "Recorder": "41000000-0000-0000-0000-000000000001", "Организация_Key": "00000000-0000-0000-0000-000000000001"},
+    {"Period": "2026-04-02T07:30:00", "LineNumber": 2, "СчетДенежныхСредств_Key": "33000000-0000-0000-0000-000000000001", "Валюта_Key": "MDL", "Сумма": 3, "RecordType": "Expense", "Recorder": "41000000-0000-0000-0000-000000000002", "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "bank_balances": [
+    {"БанковскийСчет_Key": "32000000-0000-0000-0000-000000000001", "Валюта_Key": "MDL", "СуммаBalance": 250.0, "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "receivable_balances": [
+    {"Контрагент_Key": "10000000-0000-0000-0000-000000000001", "Договор_Key": "33000000-0000-0000-0000-000000000001", "СуммаBalance": 500.0, "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "payable_balances": [
+    {"Контрагент_Key": "10000000-0000-0000-0000-000000000002", "Договор_Key": "33000000-0000-0000-0000-000000000002", "СуммаBalance": 700.0, "Организация_Key": "00000000-0000-0000-0000-000000000001"}
+  ],
+  "scenario_fixtures": {
+    "ar-overdue-30d": {"open_balance": 500, "overdue_30d": 420},
+    "partial-payment": {"invoice_total": 1000, "payments_applied": 250, "open_balance": 750},
+    "overpayment": {"invoice_open": 0, "unapplied_advance": 125},
+    "unposted-document": {"posted": false, "movement_count": 0},
+    "return": {"receipt_quantity": 10, "returned_quantity": 3, "on_hand": 7},
+    "vat-mixed": {"standard_base": 1000, "exempt_base": 500, "total_base": 1500, "treatment_count": 2},
+    "backdated-document": {"document_date": "2025-12-31", "accounting_period": "2025-12"},
+    "duplicate-counterparty": {"candidate_count": 2, "merge_count": 0},
+    "cash-bank": {"cash_balance": 100, "bank_balance": 250, "combined_balance": 350},
+    "account-turnover": {"opening_debit": 100, "debit_turnover": 40, "credit_turnover": 15, "closing_debit": 125},
+    "inventory-receipt-expense": {"receipt_quantity": 7, "expense_quantity": 2, "expense_delta": -2, "net_quantity": 5},
+    "cash-receipt-expense": {"receipt_amount": 10, "expense_amount": 3, "expense_delta": -3, "net_amount": 7}
+  }
 }

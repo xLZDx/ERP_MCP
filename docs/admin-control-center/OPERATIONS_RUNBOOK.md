@@ -14,7 +14,7 @@ Admin Control Center does not replace the existing 1C read-only boundary.
 - Cookie-authenticated mutations require a CSRF token.
 - Web mutations use business_ai_control_api, not business_ai_admin.
 - Grants and role assignments are revoked by exact IDs with optimistic concurrency.
-- Company-only grants authorize only company-aware operations with a validated scope mapping.
+- Company-only grants authorize only fixed company-aware operations with a validated semantic profile. Admin-created `company_scope_mappings` are candidate configuration and never authorize a read.
 
 ## 2. Database preparation
 
@@ -160,16 +160,16 @@ Unknown/unassigned capabilities fail closed. Explicit capability deny overrides 
 
 Generic onec_read stays source-wide.
 
-onec_company_read is the company-aware path. It requires:
+Company-aware accounting operations require:
 
 - authorized company via source/company ACL;
 - accounting.read capability when capability enforcement is enabled;
 - acknowledged metadata;
 - VALIDATED semantic profile;
-- company-scope mapping for the exact EntitySet;
-- mapped company property present in current live metadata.
+- the exact canonical tool and validated semantic mapping for that operation;
+- the server-owned company key in the operation's company predicate.
 
-The server injects the company filter and combines it with any caller filter. A company grant alone cannot authorize generic OData reads.
+There is no generic arbitrary-EntitySet onec_company_read route. Candidate company-scope mappings in Admin are not consumed by runtime reads. A company grant alone cannot authorize generic OData reads.
 
 ## 11. Rollback
 
@@ -242,11 +242,12 @@ values and signed `acr`/`auth_time` in the access token from within five minutes
 web role changes remain denied; use the controlled exact-ID CLI path. Browser confirmation
 does not replace IdP evidence.
 
-Semantic Profiles supports create, mapping, evidence inspection, validate, retire and explicit
+Semantic Profiles supports create, mapping, evidence inspection, validate, retire and candidate
 company-scope mappings. Validation needs ten unique PASS native-report cases and current
-fingerprints. Drift acknowledgement does not revalidate a stale profile. Company-aware reads
-refresh live metadata, reject unbalanced filters and reject navigation/expand until separately
-proven. A company-specific profile takes precedence over a source-wide profile.
+fingerprints. Drift acknowledgement does not revalidate a stale profile. Runtime company-aware
+access is limited to fixed canonical tools; no arbitrary-EntitySet route consumes candidate
+company-scope mappings. Keep such reads disabled until per-company positive and negative evidence
+is independently verified. A company-specific profile takes precedence over a source-wide profile.
 
 Users & Groups resolves exact IDs and explains one selected principal/source through
 `/admin/v1/effective-access`, with effect/direct/inherited filters and pagination. Another

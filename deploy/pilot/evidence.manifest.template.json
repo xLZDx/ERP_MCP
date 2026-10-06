@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "decision": "NOT_READY",
+  "release": {
+    "commit_sha": null,
+    "tag": null,
+    "approved_by": null,
+    "approved_at": null
+  },
+  "pilot_scope": {
+    "pilot_id": null,
+    "owner": null,
+    "source_count": 0,
+    "company_count": 0,
+    "user_count": 0
+  },
+  "gates": {
+    "ci_green": {"status": "NOT_PROVIDED", "evidence": null},
+    "production_config_review": {"status": "NOT_PROVIDED", "evidence": null},
+    "idp_authz_negative_tests": {"status": "NOT_PROVIDED", "evidence": null},
+    "secret_rotation_drill": {"status": "NOT_PROVIDED", "evidence": null},
+    "source_company_isolation": {"status": "NOT_PROVIDED", "evidence": null},
+    "source_capability_profiles": {"status": "NOT_PROVIDED", "evidence": null},
+    "ten_case_native_reconciliation": {"status": "NOT_PROVIDED", "evidence": null},
+    "zero_write_review": {"status": "NOT_PROVIDED", "evidence": null},
+    "audit_provenance_review": {"status": "NOT_PROVIDED", "evidence": null},
+    "performance_load_test": {"status": "NOT_PROVIDED", "evidence": null},
+    "resilience_drills": {"status": "NOT_PROVIDED", "evidence": null},
+    "backup_restore_drill": {"status": "NOT_PROVIDED", "evidence": null},
+    "rollback_drill": {"status": "NOT_PROVIDED", "evidence": null},
+    "operations_oncall": {"status": "NOT_PROVIDED", "evidence": null},
+    "privacy_security_review": {"status": "NOT_PROVIDED", "evidence": null},
+    "pilot_user_acceptance": {"status": "NOT_PROVIDED", "evidence": null},
+    "production_release_approval": {"status": "NOT_PROVIDED", "evidence": null}
+  }
+}

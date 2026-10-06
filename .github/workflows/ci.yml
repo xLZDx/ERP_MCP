@@ -2,13 +2,34 @@ name: ci
 
 on:
   push:
-    branches: [main, bootstrap/1c-day1-production, feature/admin-control-center-implementation]
+    branches: [main, bootstrap/1c-day1-production]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  windows-rsv-privacy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: uv sync --extra dev --locked
+      - name: Verify actual Windows DACL, inherited file permissions and sanitized SDK stderr/logs
+        run: |
+          uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py tests/test_rsv_wire_limits.py tests/test_private_evidence_store.py --junitxml="$env:RUNNER_TEMP/windows-rsv.xml"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rsvTestCommit = git rev-parse HEAD
+          uv run --locked python -m scripts.summarize_test_results --junit "$env:RUNNER_TEMP/windows-rsv.xml" --suite-id windows-rsv-privacy --commit $rsvTestCommit --exit-code 0 --output "$env:RUNNER_TEMP/windows-rsv-privacy.summary.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-test-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/windows-rsv-privacy.summary.json
+          if-no-files-found: error
+
   odata-upstream:
     runs-on: ubuntu-latest
     steps:
@@ -20,21 +41,37 @@ jobs:
           docker run --rm --tmpfs /work:exec,size=4g
           -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
           -v "$GITHUB_WORKSPACE/adapters/odata-sidecar:/sidecar:ro"
-          -w /work node:24.18.0-alpine
+          -v "$RUNNER_TEMP:/evidence"
+          -w /work node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
           sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
           cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
           corepack pnpm install --frozen-lockfile &&
+          npm ci --prefix packages/client/sidecar --omit=dev --ignore-scripts &&
+          mkdir -p node_modules/@1c-odata && ln -s ../../packages/client node_modules/@1c-odata/client &&
           corepack pnpm --filter @1c-odata/client build &&
-          node --test packages/client/sidecar/server.test.mjs &&
-          corepack pnpm --filter @1c-odata/client test:unit &&
+          node --test --test-reporter=junit --test-reporter-destination=/evidence/odata-wrapper.xml packages/client/sidecar/server.test.mjs packages/client/sidecar/egress.test.mjs &&
+          corepack pnpm --filter @1c-odata/client test:unit --reporter=junit --outputFile=/evidence/odata-client.xml &&
           corepack pnpm --filter @1c-odata/metadata build &&
-          corepack pnpm --filter @1c-odata/metadata test:unit"
+          corepack pnpm --filter @1c-odata/metadata test:unit --reporter=junit --outputFile=/evidence/odata-metadata.xml"
+      - name: Summarize actual upstream and wrapper tests without raw test payloads
+        run: |
+          python -m pip install --require-hashes --no-deps -r scripts/requirements-evidence.lock
+          tested_revision="$(git rev-parse HEAD)"
+          for suite in odata-client odata-metadata odata-wrapper; do
+            python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/$suite.xml" --suite-id "$suite" --commit "$tested_revision" --exit-code 0 --output "$RUNNER_TEMP/$suite.summary.json"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: odata-test-summaries-${{ github.sha }}
+          path: ${{ runner.temp }}/odata-*.summary.json
+          if-no-files-found: error
       - name: Build and smoke-test the non-root sidecar image
         run: |
           docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
+          docker run --rm --entrypoint /usr/bin/node -v "$GITHUB_WORKSPACE/scripts/audit_node_runtime.mjs:/audit.mjs:ro" erp-mcp-odata-sidecar:ci /audit.mjs
           token="$(openssl rand -hex 32)"
           docker run -d --name erp-mcp-sidecar-ci \
-            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
+            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost -e ONEC_EGRESS_CIDRS=127.0.0.1/32,::1/128 \
             erp-mcp-odata-sidecar:ci
           cleanup() { docker rm -f erp-mcp-sidecar-ci >/dev/null 2>&1 || true; }
           trap cleanup EXIT
@@ -45,9 +82,51 @@ jobs:
             sleep 1
           done
           [ "$(docker inspect --format '{{.State.Health.Status}}' erp-mcp-sidecar-ci)" = healthy ]
-          [ "$(docker exec erp-mcp-sidecar-ci id -u)" = 10001 ]
-          docker exec erp-mcp-sidecar-ci node -e \
+          [ "$(docker inspect --format '{{.Config.User}}' erp-mcp-sidecar-ci)" = "65532:65532" ]
+          docker exec erp-mcp-sidecar-ci /usr/bin/node -e \
             "fetch('http://127.0.0.1:8765/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      - name: Generate and scan OData sidecar SBOM/image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
+          image-ref: erp-mcp-odata-sidecar:ci
+          format: cyclonedx
+          output: ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Scan all sidecar OS/runtime advisories without suppression
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
+          image-ref: erp-mcp-odata-sidecar:ci
+          format: table
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Record OData image digest and dependency provenance
+        run: >-
+          python scripts/write_image_provenance.py
+          --image erp-mcp-odata-sidecar:ci
+          --base-image "build=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd;runtime=cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096"
+          --lock vendor/reference/1c-odata-v3/pnpm-lock.yaml
+          --additional-lock adapters/odata-sidecar/package-lock.json
+          --upstream-sha cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5
+          --sbom ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+          --output ${{ runner.temp }}/erp-mcp-odata-sidecar-provenance.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: odata-sidecar-sbom-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
+            ${{ runner.temp }}/erp-mcp-odata-sidecar-provenance.json
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest
@@ -79,25 +158,201 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
-      - run: ruff check .
-      - run: bandit -q -r src
-      - run: python -m compileall -q src scripts testbed
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: 0.12.23
+      - name: Verify exact Python runtime lock
+        run: |
+          uv lock --check
+          uv export --locked --no-dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/requirements-runtime.lock"
+          python -c 'from pathlib import Path; import sys; current=Path("requirements-runtime.lock").read_text().splitlines()[2:]; generated=Path(sys.argv[1]).read_text().splitlines()[2:]; sys.exit(0 if current == generated else 1)' "$RUNNER_TEMP/requirements-runtime.lock"
+      - run: uv sync --locked --extra dev
+      - run: uv run --locked ruff check .
+      - run: uv run --locked bandit -q -r src
+      - run: uv run --locked python -m compileall -q src scripts testbed
+      - run: uv run --locked python -m scripts.validate_migrations
+      - run: uv run --locked python scripts/validate_scenarios.py
+      - run: uv run --locked python scripts/release_preflight.py
+      - run: uv run --locked python scripts/check_report_references.py
+      - name: Run autonomous closure harnesses
+        run: |
+          uv run --locked python scripts/fault_injection_runner.py --output "$RUNNER_TEMP/fault-injection.json"
+          uv run --locked python scripts/rsv_lifecycle_harness.py --output "$RUNNER_TEMP/rsv-lifecycle.json"
+          uv run --locked python scripts/performance_benchmark.py --output "$RUNNER_TEMP/performance.json"
+          uv run --locked python scripts/validate_performance_evidence.py "$RUNNER_TEMP/performance.json"
+          uv run --locked python scripts/validate_metrics.py deploy/alerts/prometheus.rules.yml
+          uv run --locked python scripts/validate_prometheus.py --output "$RUNNER_TEMP/promtool-evidence.json"
+          uv run --locked python scripts/security_regression_pack.py --output "$RUNNER_TEMP/security.json"
+          uv run --locked python scripts/rsv_process_harness.py --output "$RUNNER_TEMP/rsv-process.json"
+          uv run --locked python scripts/docker_fault_runner.py --output "$RUNNER_TEMP/docker-fault-plan.json"
+          uv run --locked python scripts/docker_fault_runner.py --execute --output "$RUNNER_TEMP/docker-fault-actual.json"
+          uv run --locked python scripts/frozen_requirement_matrix.py --output "$RUNNER_TEMP/frozen-requirements.json"
+          uv run --locked python scripts/ssrf_fuzz_matrix.py --output "$RUNNER_TEMP/ssrf.json"
+          uv run --locked python scripts/mutation_negative_pack.py --output "$RUNNER_TEMP/mutations.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py \
+            "$RUNNER_TEMP/fault-injection.json" "$RUNNER_TEMP/rsv-lifecycle.json" \
+            "$RUNNER_TEMP/performance.json" "$RUNNER_TEMP/security.json" \
+            "$RUNNER_TEMP/rsv-process.json" "$RUNNER_TEMP/docker-fault-plan.json" \
+            "$RUNNER_TEMP/ssrf.json" "$RUNNER_TEMP/mutations.json"
+          uv run --locked python scripts/release_evidence_bundle.py --output "$RUNNER_TEMP/release-evidence.json"
+          uv run --locked python scripts/check_document_consistency.py
+      - name: Upload autonomous evidence bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: autonomous-closure-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/fault-injection.json
+            ${{ runner.temp }}/rsv-lifecycle.json
+            ${{ runner.temp }}/rsv-process.json
+            ${{ runner.temp }}/performance.json
+            ${{ runner.temp }}/promtool-evidence.json
+            ${{ runner.temp }}/security.json
+            ${{ runner.temp }}/docker-fault-plan.json
+            ${{ runner.temp }}/docker-fault-actual.json
+            ${{ runner.temp }}/frozen-requirements.json
+            ${{ runner.temp }}/ssrf.json
+            ${{ runner.temp }}/mutations.json
+            ${{ runner.temp }}/release-evidence.json
+          if-no-files-found: error
+      - name: Validate the fail-closed P9 pilot evidence template
+        run: |
+          uv run --locked python scripts/validate_pilot_evidence.py
+          if uv run --locked python scripts/validate_pilot_evidence.py --require-go; then
+            echo "empty pilot template unexpectedly passed production GO" >&2
+            exit 1
+          fi
       - run: >-
           psql "$BAG_PRIVILEGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1
-          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN; CREATE ROLE business_ai_control_api NOLOGIN;"
+          -c "CREATE ROLE business_ai_app NOLOGIN; CREATE ROLE business_ai_admin NOLOGIN;"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/migrate.py
+      - run: uv run --locked python scripts/migrate.py
         env:
           BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: python scripts/check_db_privileges.py
+      - run: uv run --locked python -m scripts.migration_acceptance
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-      - run: pytest
+      - run: uv run --locked python scripts/check_db_privileges.py
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
-          BAG_ADMIN_TEST_REDIS_URL: redis://localhost:6379/15
-      - run: pip-audit
-      - run: python -m playwright install --with-deps chromium
-      - run: python scripts/verify_admin_ui.py
+      - run: uv run --locked python scripts/acl_load_drill.py
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - run: uv run --locked python scripts/fanout_load_drill.py
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+          BAG_REDIS_URL: redis://localhost:6379/0
+      - run: uv run --locked python scripts/postgres_restore_drill.py
+      - name: Measure real runtime PostgreSQL pool under bounded synthetic fan-out
+        run: |
+          uv run --locked python -m scripts.postgres_pool_benchmark --output "$RUNNER_TEMP/postgres-pool-performance.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/postgres-pool-performance.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: postgres-pool-performance-${{ github.sha }}
+          path: ${{ runner.temp }}/postgres-pool-performance.json
+          if-no-files-found: error
+      - run: |
+          uv run --locked pytest --junitxml="$RUNNER_TEMP/gateway-pytest.xml"
+          uv run --locked python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/gateway-pytest.xml" --suite-id gateway-pytest --commit "$(git rev-parse HEAD)" --exit-code 0 --output "$RUNNER_TEMP/gateway-pytest.summary.json"
+        env:
+          BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gateway-test-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/gateway-pytest.summary.json
+          if-no-files-found: error
+      - name: Read the actual migrated capability registry without exposing source identities
+        run: |
+          uv run --locked python -m scripts.capability_registry_cli capability-list > "$RUNNER_TEMP/capability-registry-summary.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/capability-registry-summary.json"
+        env:
+          BAG_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: capability-registry-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/capability-registry-summary.json
+          if-no-files-found: error
+
+      - run: uv run --locked pip-audit
+      - name: Build the exact-locked Python gateway image
+        run: |
+          docker build -t erp-mcp-gateway:ci .
+          docker run --rm --entrypoint /usr/bin/python erp-mcp-gateway:ci -c \
+            "import business_ai_gateway.app, asyncpg, httpx, jwt; print('gateway runtime imports PASS')"
+      - name: Generate and scan gateway SBOM/image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
+          image-ref: erp-mcp-gateway:ci
+          format: cyclonedx
+          output: ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Scan all gateway OS/runtime advisories without suppression
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          cache-dir: ${{ runner.temp }}/trivy-cache
+          image-ref: erp-mcp-gateway:ci
+          format: table
+          scanners: vuln
+          version: v0.75.0
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+      - name: Record gateway image digest and dependency provenance
+        run: >-
+          uv run --locked python scripts/write_image_provenance.py
+          --image erp-mcp-gateway:ci
+          --base-image "build=python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8;runtime=cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84"
+          --lock requirements-runtime.lock
+          --sbom ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+          --output ${{ runner.temp }}/erp-mcp-gateway-provenance.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gateway-sbom-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/erp-mcp-gateway.cdx.json
+            ${{ runner.temp }}/erp-mcp-gateway-provenance.json
+          if-no-files-found: error
+
+  release-evidence:
+    needs: [test, odata-upstream, windows-rsv-privacy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: uv sync --extra dev --locked
+      - run: git submodule update --init vendor/reference/1c-odata-v3
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gateway-sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled/gateway
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: odata-sidecar-sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled/odata_sidecar
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*test-summar*-${{ github.sha }}'
+          merge-multiple: true
+          path: ${{ runner.temp }}/assembled/tests
+      - name: Assemble verified same-revision engineering evidence; never production GO
+        run: |
+          uv run --locked python -m scripts.assemble_release_evidence --artifacts "$RUNNER_TEMP/assembled" --commit "$(git rev-parse HEAD)" --pr-head-commit "$PR_HEAD_COMMIT" --run-id "$GITHUB_RUN_ID" --output "$RUNNER_TEMP/assembled/release-evidence.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/assembled/release-evidence.json"
+        env:
+          PR_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engineering-release-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled
+          if-no-files-found: error

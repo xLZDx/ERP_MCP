@@ -2,6 +2,15 @@
 
 ## Mandatory external services
 
+Connect-time network controls: Python dials only CIDR-validated numeric addresses through a
+pinned HTTPcore backend while preserving the registered hostname for TLS/SNI. Environment proxy
+routing is disabled. The Node sidecar requires `ONEC_EGRESS_CIDRS` when NODE_ENV=production;
+configure it to the same approved source ranges as `BAG_SOURCE_EGRESS_CIDRS`. Its pinned dispatcher
+validates DNS answers at TCP connect, including numeric-IP targets. Both origin changes and HTTP
+redirects are rejected. These controls supplement deployment egress enforcement; they do not
+replace firewall/private-network evidence. Undici runtime dependencies are locked separately from
+the unchanged 1C upstream source.
+
 - PostgreSQL with backups/PITR.
 - Redis or compatible managed Redis.
 - OAuth/OIDC IdP issuing JWT access tokens for the MCP resource.
@@ -33,6 +42,22 @@ hop. Production requires HTTPS on that hop. Do not publish the sidecar port outs
 service network. The sidecar only exposes bounded OData query/count operations; all other routes and
 verbs fail closed. A sidecar response is rejected unless its source id and upstream SHA match.
 
+Configure `BAG_SOURCE_HOST_ALLOWLIST` on the gateway as a comma-separated list of exact source
+hostnames (no scheme, port, wildcard, or path), synchronized with `ONEC_ALLOWED_HOSTS`. Production
+source registration/lookups fail closed for any hostname not on this list. This hostname check does
+not prevent DNS rebinding: the production network must separately restrict gateway and sidecar
+egress to approved 1C address ranges, and release evidence must demonstrate that DNS resolution
+cannot redirect an approved hostname to an unapproved destination at connect time. On-premises
+private addresses are supported only when explicitly allowlisted and permitted by network policy.
+
+The optional RSV metadata route uses the pinned MIT bridge. In production it remains fail-closed
+unless `BAG_RSV_BRIDGE_CONFIG_SECRET_REF` is supplied: the referenced JSON config is loaded through
+the configured secret provider, written only to a short-lived private temporary directory for the
+bridge process, and removed after the operation. Never use the upstream wizard's persisted customer
+credentials as production secret management. Pin the bridge executable with
+`BAG_RSV_BRIDGE_EXECUTABLE_SHA256`; source SHA and executable digest are distinct provenance.
+Business/query/reveal operations remain unavailable regardless of this metadata route.
+
 ## JWT claims
 
 Required: `iss`, `aud`, `sub`, `iat`, `exp`, and scope `onec:read`.
@@ -41,8 +66,7 @@ Optional: `client_id`/`azp`, `groups`.
 ## Database privilege split
 
 - `BAG_MIGRATION_DATABASE_URL`: schema owner/migrations only.
-- `BAG_ADMIN_DATABASE_URL`: protected operator/CLI source and policy administration / bootstrap.
-- `BAG_ADMIN_CONTROL_DATABASE_URL`: web Admin Control Center mutations using `business_ai_control_api` least privilege.
+- `BAG_ADMIN_DATABASE_URL`: source and grant administration.
 - `BAG_DATABASE_URL`: runtime read registry/grants and insert audit only.
 
 Register an organization discovered and verified during onboarding, then grant only that scope:
@@ -60,7 +84,9 @@ python scripts/admin.py grant-add \
   --company-id <stable-uuid>
 ```
 
-Generic `onec_read` continues to require a source-wide grant. Company-scoped grants may authorize only the explicit `onec_company_read` path when a current VALIDATED semantic profile has an entity-specific company-scope mapping, that mapped property exists in live metadata, and the server injects the company predicate before adapter execution. Without that evidence the operation fails closed. Use `--effect deny` to add an overriding source/company deny.
+Company-scoped grants currently authorize organization discovery only. Generic `onec_read` requires
+a source-wide grant until a semantic adapter can enforce company scope in the data query. Use
+`--effect deny` to add an overriding source/company deny.
 
 ## Release gate
 
@@ -70,22 +96,10 @@ Before first production enablement:
 - revoked grants effective without restart;
 - writable source rejected;
 - arbitrary URL target impossible;
+- exact source host allowlist enforced and DNS-rebinding/egress controls evidenced;
 - response-size/rate limits verified;
 - ten representative accounting questions reconciled with 1C UI/reports.
 
-## Admin Control Center production activation
-
-Keep Admin Control Center feature flags disabled until the target IdP and control API credential are configured.
-
-Required settings when enabled include BAG_ADMIN_API_ENABLED, BAG_ADMIN_UI_ENABLED, a distinct BAG_ADMIN_OAUTH_AUDIENCE and BAG_ADMIN_OAUTH_REQUIRED_SCOPE, OIDC authorization/token/client/redirect settings, BAG_ADMIN_STEP_UP_ACR_VALUES for sensitive platform-role changes, BAG_ADMIN_CONTROL_DATABASE_URL using business_ai_control_api, and explicit BAG_ADMIN_SOURCE_ALLOWED_HOSTS plus approved CIDRs where used.
-
-Bootstrap the first platform administrator with the separate operator/admin database credential using scripts/admin.py platform-role-add. Enable BAG_ADMIN_MUTATIONS_ENABLED only after the control-API privilege check and source egress policy pass.
-
-Enable BAG_BUSINESS_CAPABILITY_ENFORCEMENT_ENABLED only after intended users/groups have assignments; otherwise protected MCP operations fail closed by design.
-
-Rollback is application/config rollback: disable Admin UI/API/mutations/capability enforcement. Migrations 008-011 are additive and may remain inert. Do not drop policy or audit tables during routine rollback.
-
-
-## Admin request logging
-
-OIDC authorization codes, state and other callback query parameters must never be written to standard access logs. The gateway image disables Uvicorn access logging; ingress/OTel request telemetry must log a redacted path without the admin callback query string.
+Recovery must follow [the rollback and restore runbook](ROLLBACK.md). No in-place database restore
+or destructive recovery is authorized by this document; production rehearsals and named operator
+approval remain required evidence.

@@ -1,7 +1,8 @@
 # ERP_MCP Integration Contract
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
+**Scope:** frozen; see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
 
 ## 1. Purpose
 
@@ -12,6 +13,9 @@ Define stable boundaries between:
 - future ERP/Ferma adapters.
 
 Transport implementations may change; this contract is the stable product boundary.
+
+During the active scope freeze, new integration families are not added. Only integrations required
+to close already frozen requirements may be implemented.
 
 ## 2. External MCP contract
 
@@ -267,3 +271,74 @@ Expose:
 - lineage/explanations.
 
 Do not expose an adapter path that lets live 1C/ERP data alter Ferma expected/oracle computation.
+
+
+## 13. External Evidence integration contract
+
+The External Evidence Plane is read-only and exists only for evidence classes already required by
+frozen DAD scenarios.
+
+Allowed ingress:
+- operator/user upload through an approved bounded interface;
+- approved authenticated connector;
+- approved private import path.
+
+Forbidden:
+- model-supplied arbitrary URL fetch;
+- evidence content changing authorization/policy;
+- automatic mutation of 1C based solely on parsed evidence;
+- raw private evidence committed to Git/public CI.
+
+Every evidence object carries:
+- evidence ID/class;
+- source/company association;
+- SHA-256/content fingerprint;
+- parser/version;
+- provenance/time/period;
+- retention/access classification;
+- parse warnings.
+
+Missing or unparseable required evidence returns `EVIDENCE_REQUIRED` or `INCONCLUSIVE`.
+
+## 14. DAD rule-engine integration
+
+DAD assurance tools consume only:
+
+1. validated semantic 1C results;
+2. approved external evidence refs;
+3. versioned rule packs.
+
+They MUST NOT expose arbitrary model-generated native queries.
+
+The engine returns stable status:
+`PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR`.
+
+Tax/payroll/legal rule families preserve human-review flags and effective-date/jurisdiction
+provenance.
+
+## 15. Test-only 1C seeder boundary
+
+The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.
+
+It must:
+- run outside production MCP routes;
+- require an explicit synthetic/test target marker;
+- refuse production source IDs;
+- use separate test-only credentials;
+- create normal configuration-native business documents;
+- never write internal 1C SQL/register tables directly just to manufacture expected results;
+- be idempotent per scenario/run/event;
+- emit write receipts/provenance.
+
+Production packages/routes must not expose this seeder.
+
+## 16. Real-reference base integration
+
+The private `REFERENCE_TEST_BASE_A` is handled only as a test/evidence target:
+
+- immutable golden source;
+- disposable RO clone for discovery/reconciliation;
+- optional separate disposable RW clone for isolated test-only write experiments;
+- hashes/fingerprints in public reports, not raw data/credentials/private links.
+
+The golden source is never used for mutation tests.

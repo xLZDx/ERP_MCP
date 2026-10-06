@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .admin_api import register_admin_routes
+from .observability import HTTPMetrics, metrics_response
 from .runtime import Runtime
 from .server import build_mcp
 from .settings import Settings
@@ -15,6 +16,8 @@ settings = Settings()
 runtime = Runtime(settings)
 mcp = build_mcp(settings, runtime)
 register_admin_routes(mcp, settings, runtime)
+http_metrics = HTTPMetrics()
+http_metrics.operational = runtime.metrics
 
 
 @mcp.custom_route("/healthz", methods=["GET"])
@@ -37,6 +40,15 @@ async def readyz(_: Request):
         )
 
 
+@mcp.custom_route("/metrics", methods=["GET"])
+async def metrics(request: Request):
+    return metrics_response(
+        http_metrics,
+        settings.metrics_token,
+        request.headers.get("authorization", ""),
+    )
+
+
 parsed = urlparse(settings.public_mcp_url)
 hostname = parsed.hostname or "127.0.0.1"
 host_with_port = parsed.netloc
@@ -51,11 +63,13 @@ transport_security = TransportSecuritySettings(
     allowed_origins=[origin],
 )
 
-app = mcp.streamable_http_app(
-    streamable_http_path="/mcp",
-    json_response=True,
-    max_request_body_size=1_048_576,
-    session_idle_timeout=300,
-    max_sessions=1000,
-    transport_security=transport_security,
+app = http_metrics.bind(
+    mcp.streamable_http_app(
+        streamable_http_path="/mcp",
+        json_response=True,
+        max_request_body_size=1_048_576,
+        session_idle_timeout=300,
+        max_sessions=1000,
+        transport_security=transport_security,
+    )
 )

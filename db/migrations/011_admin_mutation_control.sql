@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE bag.sources
   ADD COLUMN IF NOT EXISTS row_version bigint NOT NULL DEFAULT 1 CHECK (row_version > 0);
 
@@ -119,8 +117,3 @@ BEGIN
 END;
 $$;
 
-INSERT INTO bag.schema_migrations(version)
-VALUES (9)
-ON CONFLICT (version) DO NOTHING;
-
-COMMIT;

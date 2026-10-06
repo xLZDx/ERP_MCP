@@ -1,5 +1,11 @@
 # Third-party notices
 
+The sidecar TCP/DNS dispatcher directly reuses Undici 8.10.2 (MIT), locked with npm artifact
+integrity in `adapters/odata-sidecar/package-lock.json`. Its original LICENSE is included in the
+runtime package. Copyright (c) Matteo Collina and Undici contributors. This runtime dependency is
+separate from the older dev-only dispatcher in the unmodified pinned 1C upstream. The full
+installed runtime inventory, including direct packages, is audited and scanned in CI.
+
 The runtime integrations remain original wrapper code; selected **candidate preset data** is
 adapted from `theYahia/WWmcp/servers/aprovodka/src/presets/` at pinned SHA
 `7b62c90e1fe74324605dc28d76f195200bb97252`. Entity names and upstream confidence labels are

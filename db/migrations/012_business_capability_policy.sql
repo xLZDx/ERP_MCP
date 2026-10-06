@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS bag.business_roles (
     role_id text PRIMARY KEY,
     display_name text NOT NULL,
@@ -169,8 +167,3 @@ BEGIN
 END;
 $$;
 
-INSERT INTO bag.schema_migrations(version)
-VALUES (10)
-ON CONFLICT (version) DO NOTHING;
-
-COMMIT;
