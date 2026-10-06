@@ -4,6 +4,12 @@
 
 # Risk status
 
+<!-- ENGINEERING_CHECKPOINT=RELEASE_ASSEMBLY_20261006 ENGINEERING_IMPLEMENTATION=bce5fae366d03bdddc1e2d6e6470534ec329b6ed3abf0db38171fe6023121608 -->
+
+## Same-revision release evidence assembly — 2026-10-06
+
+Release assembly (NFR-L1, D1/D18): two image config digests/SBOM/provenance pairs, exact current locks, all five sanitized JUnit suites, risk/DoD/freeze refs and four pinned SHAs are validated and assembled only after three prerequisite jobs PASS. Report URLs bind tested revision; PR head is separate; unpublished image config digest is not a registry manifest digest. Case hashes/outcomes/counts only, no raw names/payloads, no inferred L2/L3 or production GO. 22 assembly/gitlink focused tests PASS; actual pinned upstream JUnit: client 429 cases/1 skip, metadata 53, wrapper 14, all non-skipped cases PASS. 729273e run 37465948528: gateway/OData PASS, Windows FAIL on textual SDDL alias comparison; fixed with binary ACE/SID comparisons, unchanged allowed rights/principals. 29 Windows-local privacy/bridge tests PASS. Current full local suite: 371 passed, 10 skipped; Ruff/Bandit/workflow structure/documentation gates PASS. Fresh 4-job CI/actual assembled artifact verification pending. Native COM/reconciliation, DAD/Ferma/deployment gates remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=RSV_SECRET_PRIVACY_20261006 ENGINEERING_IMPLEMENTATION=b0e7cc82e2dab58e96f23fc2d9e09f623948f36e4854a6536e9c4f542f7babb4 -->
 
 ## Protected RSV secret files and scoped diagnostic privacy — 2026-10-06

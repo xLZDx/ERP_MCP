@@ -18,6 +18,8 @@ IMPLEMENTATION = {
               "tests/test_capability_registry_cli.py", "tests/test_capability_registry_postgres.py"],
     "FR-C2": ["src/business_ai_gateway/registry.py", "scripts/capability_registry_cli.py",
               "tests/test_capability_registry_postgres.py"],
+    "NFR-L1": ["vendor/intake.json", "scripts/assemble_release_evidence.py",
+               "scripts/write_image_provenance.py", "tests/test_release_evidence_assembly.py"],
     "NFR-P1": ["src/business_ai_gateway/fanout.py", "tests/test_fanout.py"],
     "NFR-P2": ["scripts/performance_benchmark.py", "tests/test_measured_performance.py"],
     "P6-SEC-1": ["src/business_ai_gateway/adapters/onec/rsv_bridge.py", "tests/test_rsv_bridge.py",

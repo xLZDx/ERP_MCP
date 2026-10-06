@@ -1,20 +1,37 @@
 {
   "schema_version": 1,
-  "batch_id": "RSV_SECRET_PRIVACY_20261006",
-  "implementation_sha256": "b0e7cc82e2dab58e96f23fc2d9e09f623948f36e4854a6536e9c4f542f7babb4",
+  "batch_id": "RELEASE_ASSEMBLY_20261006",
+  "implementation_sha256": "bce5fae366d03bdddc1e2d6e6470534ec329b6ed3abf0db38171fe6023121608",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
   "last_verified_hosted_commit": "5d49ec285c63b354979ed5f93afa662f6ec458f0",
   "last_verified_hosted_run": 37462582061,
-  "hosted_status_at_snapshot": "PARENT_BOTH_JOBS_PASS_NEW_WINDOWS_JOB_AWAITING_CI",
+  "last_failed_hosted_commit": "729273e980ee33a8b627edc9d5933a2ef8aa3b63",
+  "last_failed_hosted_run": 37465948528,
+  "hosted_status_at_snapshot": "LINUX_ODATA_PASS_WINDOWS_SDDL_ALIAS_FIX_AWAITING_CI",
   "last_local_full_suite": {
-    "passed": 349,
+    "passed": 371,
     "skipped": 10
   },
   "focused_tests": {
-    "rsv_bridge_and_privacy": 29
+    "release_assembly_and_gitlink": 22,
+    "rsv_privacy_and_bridge": 29
   },
-  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS_WINDOWS_ACL_ACTIVE"
+  "upstream_junit": {
+    "client": {
+      "tests": 429,
+      "skipped": 1
+    },
+    "metadata": {
+      "tests": 53,
+      "skipped": 0
+    },
+    "wrapper": {
+      "tests": 14,
+      "skipped": 0
+    }
+  },
+  "current_full_suite_status": "LOCAL_PASS_10_ENVIRONMENT_SKIPS"
 }

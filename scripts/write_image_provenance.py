@@ -18,27 +18,40 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def source_tree_sha256() -> str:
+def source_tree_sha256(root: Path = ROOT) -> str:
+    staged = subprocess.run(["git", "ls-files", "--stage", "-z"], cwd=root,
+                            check=True, capture_output=True).stdout.split(b"\0")
+    gitlinks = {}
+    for item in staged:
+        if not item:
+            continue
+        header, path = item.split(b"\t", 1)
+        mode, revision, stage = header.split()
+        if stage != b"0":
+            raise ValueError("source index contains an unresolved merge")
+        if mode == b"160000":
+            gitlinks[path] = revision
     tracked_and_untracked = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cwd=ROOT,
+        cwd=root,
         check=True,
         capture_output=True,
     ).stdout.split(b"\0")
     digest = hashlib.sha256()
     for raw_path in sorted(path for path in tracked_and_untracked if path):
-        path = ROOT / raw_path.decode("utf-8")
+        path = root / raw_path.decode("utf-8")
         digest.update(raw_path)
         digest.update(b"\0")
-        if path.is_dir():
-            revision = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=path,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-            digest.update(revision.encode("ascii"))
+        if raw_path in gitlinks:
+            # An uninitialized submodule directory must not resolve to the parent repository HEAD.
+            if (path / ".git").exists():
+                revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path,
+                                          check=True, capture_output=True).stdout.strip()
+                if revision != gitlinks[raw_path]:
+                    raise ValueError("initialized upstream differs from its pinned gitlink")
+            digest.update(gitlinks[raw_path])
+        elif path.is_dir():
+            raise ValueError("unexpected directory in source inventory")
         else:
             digest.update(bytes.fromhex(sha256(path)))
     return digest.hexdigest()

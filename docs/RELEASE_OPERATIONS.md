@@ -39,6 +39,17 @@ Required operational evidence before GO:
 
 Additional local automation:
 
+Release assembly is now separate from inventory. `release_evidence_bundle.py` emits only an
+`INVENTORY_ONLY_NOT_ASSEMBLED` snapshot, never invented image digests or test counts. CI's
+`release-evidence` job depends on gateway, OData and Windows privacy jobs, then downloads both
+SBOM/provenance pairs and five sanitized executed-test summaries. `assemble_release_evidence.py`
+rejects wrong tested revision, dirty image source, stale locks, invalid config digest, mismatched
+SBOM hash/component count and missing/failed/inconsistent case manifests. Report URLs point to the
+exact tested revision. PR head SHA is recorded separately because pull-request CI can test a merge
+revision. Local Docker config digest is not mislabeled a published registry manifest digest.
+Skip counts are visible and cannot imply native L2/L3 closure. Output remains engineering evidence
+only: NO-GO / PARTIAL. Images are not published and no pilot/native/operator gate is auto-approved.
+
 Registry diagnostics (FR-C1/C2), using `BAG_DATABASE_URL` from the operator environment, never a
 command-line DSN. Use a least-privilege registry-reader account; every snapshot is repeatable-read
 and read-only. Default output is counts/reason codes only; `--details` is PRIVATE operator output.

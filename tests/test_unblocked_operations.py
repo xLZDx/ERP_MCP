@@ -34,7 +34,9 @@ def test_capability_report_is_sorted_and_preserves_unsupported(tmp_path: Path):
 
 def test_release_bundle_is_non_secret_and_points_to_evidence():
     bundle = build_bundle(Path(__file__).parents[1])
-    assert bundle["production_decision"] == "NO-GO_UNTIL_EXTERNAL_EVIDENCE"
+    assert bundle["production_decision"] == "NO-GO_UNTIL_ALL_FROZEN_GATES_CLOSE"
+    assert bundle["package_status"] == "INVENTORY_ONLY_NOT_ASSEMBLED"
+    assert bundle["actual_image_digests"] is None
     assert bundle["secret_values_included"] is False
     assert "deploy/alerts/prometheus.rules.yml" in bundle["required_evidence"]
 

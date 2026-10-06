@@ -4,7 +4,16 @@ Supersedes historical validation counts and blanket closure claims below. PR #11
 Production GO is NO-GO, DoD PARTIAL, frozen scope unchanged.
 
 Verified hosted baseline: e7898f2166f79aaf829618aab93429d7d3004590 / run 37461088241, BOTH jobs PASS.
-Local current suite: 341 passed, 10 environment skips; separate real PostgreSQL capability contract 1/1 PASS.
+Local current suite: 371 passed, 10 environment skips; separate real PostgreSQL capability contract 1/1 PASS.
+Privacy boundary: Windows DACL and inherited child permissions, exclusive config creation,
+sanitized SDK diagnostics/structured extras and discarded raw stderr. Local focused 29/29 PASS.
+729273e hosted run 37465948528 had gateway/OData PASS and Windows FAIL on textual SDDL alias
+comparison; binary ACE/SID validation fixes the identity representation issue without widening ACL.
+The new 4-job workflow must confirm Windows fix and actual assembled release evidence.
+Release assembly validates two SBOM/image provenance pairs, same-revision locks and five executed
+JUnit summaries (hashed case IDs/outcomes, no raw test names/payloads). Tested merge revision and
+PR head remain distinct; Docker config digest is not claimed as published registry digest.
+Actual upstream JUnit produced locally: 429 client cases / 1 skip, metadata 53, wrapper 14.
 Ruff/Bandit/documentation gates PASS. DB-backed five-command capability CLI is bounded, read-only,
 default aggregate/private export only, never grants authorization or probes OData/COM.
 Actual SDK subprocess crash/timeout/malformed/recovery/rotation, measured fan-out, Docker

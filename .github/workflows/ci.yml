@@ -19,7 +19,16 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - run: uv sync --extra dev --locked
       - name: Verify actual Windows DACL, inherited file permissions and sanitized SDK stderr/logs
-        run: uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py
+        run: |
+          uv run --locked pytest -q tests/test_rsv_secret_privacy.py tests/test_rsv_bridge.py --junitxml="$env:RUNNER_TEMP/windows-rsv.xml"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rsvTestCommit = git rev-parse HEAD
+          uv run --locked python -m scripts.summarize_test_results --junit "$env:RUNNER_TEMP/windows-rsv.xml" --suite-id windows-rsv-privacy --commit $rsvTestCommit --exit-code 0 --output "$env:RUNNER_TEMP/windows-rsv-privacy.summary.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-test-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/windows-rsv-privacy.summary.json
+          if-no-files-found: error
 
   odata-upstream:
     runs-on: ubuntu-latest
@@ -32,6 +41,7 @@ jobs:
           docker run --rm --tmpfs /work:exec,size=4g
           -v "$GITHUB_WORKSPACE/vendor/reference/1c-odata-v3:/src:ro"
           -v "$GITHUB_WORKSPACE/adapters/odata-sidecar:/sidecar:ro"
+          -v "$RUNNER_TEMP:/evidence"
           -w /work node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
           sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
           cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
@@ -39,10 +49,22 @@ jobs:
           npm ci --prefix packages/client/sidecar --omit=dev --ignore-scripts &&
           mkdir -p node_modules/@1c-odata && ln -s ../../packages/client node_modules/@1c-odata/client &&
           corepack pnpm --filter @1c-odata/client build &&
-          node --test packages/client/sidecar/server.test.mjs packages/client/sidecar/egress.test.mjs &&
-          corepack pnpm --filter @1c-odata/client test:unit &&
+          node --test --test-reporter=junit --test-reporter-destination=/evidence/odata-wrapper.xml packages/client/sidecar/server.test.mjs packages/client/sidecar/egress.test.mjs &&
+          corepack pnpm --filter @1c-odata/client test:unit --reporter=junit --outputFile=/evidence/odata-client.xml &&
           corepack pnpm --filter @1c-odata/metadata build &&
-          corepack pnpm --filter @1c-odata/metadata test:unit"
+          corepack pnpm --filter @1c-odata/metadata test:unit --reporter=junit --outputFile=/evidence/odata-metadata.xml"
+      - name: Summarize actual upstream and wrapper tests without raw test payloads
+        run: |
+          python -m pip install --require-hashes --no-deps -r scripts/requirements-evidence.lock
+          tested_revision="$(git rev-parse HEAD)"
+          for suite in odata-client odata-metadata odata-wrapper; do
+            python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/$suite.xml" --suite-id "$suite" --commit "$tested_revision" --exit-code 0 --output "$RUNNER_TEMP/$suite.summary.json"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: odata-test-summaries-${{ github.sha }}
+          path: ${{ runner.temp }}/odata-*.summary.json
+          if-no-files-found: error
       - name: Build and smoke-test the non-root sidecar image
         run: |
           docker build -f adapters/odata-sidecar/Dockerfile --build-arg ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5 -t erp-mcp-odata-sidecar:ci .
@@ -215,9 +237,16 @@ jobs:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
           BAG_REDIS_URL: redis://localhost:6379/0
       - run: uv run --locked python scripts/postgres_restore_drill.py
-      - run: uv run --locked pytest
+      - run: |
+          uv run --locked pytest --junitxml="$RUNNER_TEMP/gateway-pytest.xml"
+          uv run --locked python -m scripts.summarize_test_results --junit "$RUNNER_TEMP/gateway-pytest.xml" --suite-id gateway-pytest --commit "$(git rev-parse HEAD)" --exit-code 0 --output "$RUNNER_TEMP/gateway-pytest.summary.json"
         env:
           BAG_PRIVILEGE_TEST_DATABASE_URL: postgresql://business_ai:business_ai@localhost:5432/business_ai
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gateway-test-summary-${{ github.sha }}
+          path: ${{ runner.temp }}/gateway-pytest.summary.json
+          if-no-files-found: error
       - name: Read the actual migrated capability registry without exposing source identities
         run: |
           uv run --locked python -m scripts.capability_registry_cli capability-list > "$RUNNER_TEMP/capability-registry-summary.json"
@@ -229,6 +258,7 @@ jobs:
           name: capability-registry-summary-${{ github.sha }}
           path: ${{ runner.temp }}/capability-registry-summary.json
           if-no-files-found: error
+
       - run: uv run --locked pip-audit
       - name: Build the exact-locked Python gateway image
         run: |
@@ -272,4 +302,40 @@ jobs:
           path: |
             ${{ runner.temp }}/erp-mcp-gateway.cdx.json
             ${{ runner.temp }}/erp-mcp-gateway-provenance.json
+          if-no-files-found: error
+
+  release-evidence:
+    needs: [test, odata-upstream, windows-rsv-privacy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: uv sync --extra dev --locked
+      - run: git submodule update --init vendor/reference/1c-odata-v3
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: gateway-sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled/gateway
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: odata-sidecar-sbom-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled/odata_sidecar
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*test-summar*-${{ github.sha }}'
+          merge-multiple: true
+          path: ${{ runner.temp }}/assembled/tests
+      - name: Assemble verified same-revision engineering evidence; never production GO
+        run: |
+          uv run --locked python -m scripts.assemble_release_evidence --artifacts "$RUNNER_TEMP/assembled" --commit "$(git rev-parse HEAD)" --pr-head-commit "$PR_HEAD_COMMIT" --run-id "$GITHUB_RUN_ID" --output "$RUNNER_TEMP/assembled/release-evidence.json"
+          uv run --locked python scripts/scan_sensitive_artifacts.py "$RUNNER_TEMP/assembled/release-evidence.json"
+        env:
+          PR_HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engineering-release-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/assembled
           if-no-files-found: error

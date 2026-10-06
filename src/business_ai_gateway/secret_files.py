@@ -27,7 +27,8 @@ def _windows_libraries():
         "SetNamedSecurityInfoW": ([wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD, pointer, pointer, pointer, pointer], wintypes.DWORD),
         "GetNamedSecurityInfoW": ([wintypes.LPCWSTR, ctypes.c_int, wintypes.DWORD, pointer, pointer, ctypes.POINTER(pointer), pointer, ctypes.POINTER(pointer)], wintypes.DWORD),
         "GetSecurityDescriptorControl": ([pointer, ctypes.POINTER(wintypes.WORD), ctypes.POINTER(wintypes.DWORD)], wintypes.BOOL),
-        "ConvertSecurityDescriptorToStringSecurityDescriptorW": ([pointer, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(pointer), pointer], wintypes.BOOL),
+        "GetAclInformation": ([pointer, pointer, wintypes.DWORD, ctypes.c_int], wintypes.BOOL),
+        "GetAce": ([pointer, wintypes.DWORD, ctypes.POINTER(pointer)], wintypes.BOOL),
     }
     for name, (arguments, result) in signatures.items():
         function = getattr(advapi, name)
@@ -78,7 +79,6 @@ def _protect_windows(path: Path) -> None:
     sid = _current_sid(advapi, kernel)
     descriptor = ctypes.c_void_p()
     observed = ctypes.c_void_p()
-    observed_text = ctypes.c_void_p()
     try:
         sddl = f"D:P(A;OICI;FA;;;{sid})(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
         if not advapi.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, ctypes.byref(descriptor), None):
@@ -96,23 +96,41 @@ def _protect_windows(path: Path) -> None:
         if (not advapi.GetSecurityDescriptorControl(observed, ctypes.byref(control), ctypes.byref(revision))
                 or not control.value & 0x1000 or not dacl.value):
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
-        if not advapi.ConvertSecurityDescriptorToStringSecurityDescriptorW(observed, 1, 4, ctypes.byref(observed_text), None):
+        class ACLSize(ctypes.Structure):
+            _fields_ = [("count", wintypes.DWORD), ("used", wintypes.DWORD), ("free", wintypes.DWORD)]
+
+        class AllowedACE(ctypes.Structure):
+            _fields_ = [("kind", ctypes.c_ubyte), ("flags", ctypes.c_ubyte),
+                        ("size", wintypes.WORD), ("mask", wintypes.DWORD)]
+
+        info = ACLSize()
+        if not advapi.GetAclInformation(dacl, ctypes.byref(info), ctypes.sizeof(info), 2) or info.count != 3:
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
-        value = ctypes.wstring_at(observed_text.value)
-        aces = re.findall(r"\([^)]*\)", value)
-        allowed = {sid, "SY", "BA"}
-        if sid == "S-1-5-18":
-            allowed.remove(sid)
+        allowed = {sid, "S-1-5-18", "S-1-5-32-544"}
         trustees = set()
-        for ace in aces:
-            match = re.fullmatch(r"\(A;OICI;FA;;;([^)]*)\)", ace)
-            if not match or match[1] not in allowed:
+        # Compare actual binary SID values, not SDDL aliases (e.g. hosted administrator LA).
+        for index in range(info.count):
+            address = ctypes.c_void_p()
+            if not advapi.GetAce(dacl, index, ctypes.byref(address)) or not address.value:
                 raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
-            trustees.add(match[1])
-        if len(aces) != 3 or trustees != allowed:
+            ace = ctypes.cast(address, ctypes.POINTER(AllowedACE)).contents
+            if ace.kind != 0 or ace.flags != 3 or ace.mask != 0x1F01FF or ace.size < 16:
+                raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
+            text = ctypes.c_void_p()
+            try:
+                if not advapi.ConvertSidToStringSidW(address.value + ctypes.sizeof(AllowedACE), ctypes.byref(text)):
+                    raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
+                trustee = ctypes.wstring_at(text.value)
+                if trustee not in allowed:
+                    raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
+                trustees.add(trustee)
+            finally:
+                if text.value:
+                    kernel.LocalFree(text)
+        if trustees != allowed:
             raise SecretDirectoryUnavailable("PRIVATE_SECRET_DIRECTORY_UNAVAILABLE")
     finally:
-        for pointer in (descriptor, observed, observed_text):
+        for pointer in (descriptor, observed):
             if pointer.value:
                 kernel.LocalFree(pointer)
 
