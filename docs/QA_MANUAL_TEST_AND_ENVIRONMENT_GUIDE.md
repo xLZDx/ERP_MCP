@@ -3,6 +3,7 @@
 Snapshot: 2026-10-06. Target candidate: `integration/1c-mvp-production-candidate`.
 This guide prepares local synthetic L1 testing and two separate manual suites.
 Fake1C evidence is synthetic contract evidence; it is never native 1C reconciliation.
+Automated setup of sections 2 and 4: see [E2E_ENVIRONMENT.md](E2E_ENVIRONMENT.md).
 
 ## 1. What is ready and what is needed
 

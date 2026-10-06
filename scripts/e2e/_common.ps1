@@ -145,10 +145,13 @@ function Start-E2eComponent {
     $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
     if ($Name -eq 'gateway') { Import-E2eEnv }
     if ($Name -eq 'idp') { $env:E2E_IDP_CONFIG = (Join-Path $script:E2eDir 'idp-config.json') }
+    # Launch through cmd.exe via ShellExecute (no -Redirect*): the service must NOT inherit the
+    # caller's stdout/stderr pipes, otherwise a caller reading our output waits for EOF forever.
+    $arguments = (Get-ComponentCommand $Name) -join ' '
+    $commandLine = '/c ""' + $script:Py + '" ' + $arguments + ' > "' + $out + '" 2> "' + $err + '""'
     try {
-        $process = Start-Process -FilePath $script:Py -ArgumentList (Get-ComponentCommand $Name) `
-            -WorkingDirectory $script:Root -WindowStyle Hidden -PassThru `
-            -RedirectStandardOutput $out -RedirectStandardError $err
+        $process = Start-Process -FilePath $env:ComSpec -ArgumentList $commandLine `
+            -WorkingDirectory $script:Root -WindowStyle Hidden -PassThru
     } finally {
         Clear-E2eSecretEnv
         Remove-Item Env:E2E_IDP_CONFIG -ErrorAction SilentlyContinue

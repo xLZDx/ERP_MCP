@@ -117,7 +117,7 @@ def e2e_env() -> E2eEnv:
         if os.environ.get(NO_SKIP_VAR):
             pytest.fail(message)
         pytest.skip(message)
-    load = lambda name: json.loads((E2E_DIR / name).read_text(encoding="utf-8"))  # noqa: E731
+    load = lambda name: json.loads((E2E_DIR / name).read_text(encoding="utf-8"))
     return E2eEnv(load("env.json"), load("secrets.json"), load("credentials.json"))
 
 
@@ -174,11 +174,13 @@ def mcp_client(e2e_env: E2eEnv):
     @asynccontextmanager
     async def connect(token: str | None):
         headers = {"Authorization": f"Bearer {token}"} if token else {}
-        async with httpx2.AsyncClient(headers=headers, timeout=30) as http, \
-                streamable_http_client(e2e_env.mcp_url, http_client=http) as streams:
-            async with ClientSession(streams[0], streams[1]) as session:
-                await session.initialize()
-                yield session
+        async with (
+            httpx2.AsyncClient(headers=headers, timeout=30) as http,
+            streamable_http_client(e2e_env.mcp_url, http_client=http) as streams,
+            ClientSession(streams[0], streams[1]) as session,
+        ):
+            await session.initialize()
+            yield session
 
     return connect
 

@@ -84,7 +84,7 @@ async def test_user_company_one_calls_tools_over_mcp(e2e_env, idp, mcp_client, t
 
 
 async def test_mcp_requires_authentication(mcp_client):
-    with pytest.raises(Exception):  # noqa: B017, PT011 - transport raises on HTTP 401
+    with pytest.raises(Exception):  # noqa: B017 - transport raises on HTTP 401
         async with mcp_client(None):
             pass
 
