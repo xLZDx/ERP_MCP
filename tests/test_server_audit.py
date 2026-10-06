@@ -167,6 +167,7 @@ async def test_account_turnovers_uses_confirmed_mapping_and_enforces_company_sco
                     "closing_credit": "ClosingCredit",
                 },
             },
+            "profile_kind": "VALIDATED_NATIVE",
             "profile_fingerprint": "sha256:profile",
         }
     )
@@ -332,7 +333,7 @@ async def test_sales_documents_uses_only_confirmed_profile_entity_and_company_fi
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:sales-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:sales-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -411,7 +412,7 @@ async def test_inventory_balance_uses_exact_profile_and_point_in_time_company_co
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:inventory-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:inventory-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -490,7 +491,7 @@ async def test_inventory_movements_uses_live_entity_and_company_timezone_profile
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:movement-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:movement-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -585,7 +586,7 @@ async def test_inventory_movements_denies_entity_absent_from_live_metadata():
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:profile"}
     )
     audit = RecordingAudit()
     onec = SimpleNamespace(
@@ -645,7 +646,7 @@ async def test_accounting_posting_rows_requires_live_entity_and_uses_profile_pro
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:posting-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:posting-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -787,7 +788,7 @@ async def test_cash_movements_uses_exact_profile_and_live_metadata():
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:cash-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:cash-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -860,7 +861,7 @@ async def test_bank_balance_uses_only_confirmed_profile_and_exact_source_registe
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": "sha256:bank-profile"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": "sha256:bank-profile"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(
@@ -942,7 +943,7 @@ async def test_settlement_balance_uses_company_scoped_confirmed_mapping(tool, co
     registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=str(company_id)))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
     registry.require_semantic_mapping = AsyncMock(
-        return_value={"mapping": mapping, "profile_fingerprint": f"sha256:{concept}"}
+        return_value={"mapping": mapping, "profile_kind": "VALIDATED_NATIVE", "profile_fingerprint": f"sha256:{concept}"}
     )
     audit = RecordingAudit()
     capabilities = SimpleNamespace(

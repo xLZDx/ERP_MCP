@@ -53,7 +53,9 @@ async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar
         ]
         assert {r["company_id"] for r in posting} == {stack.companies[ORG_ONE]}
         sales_audit = await stack.audit_rows("sales_documents")
-        assert [r["outcome"] for r in sales_audit] == ["success"]
+        assert [r["detail_code"] for r in sales_audit] == [
+            "ACCESS_AUTHORIZED", "SYNTHETIC_FIXTURE_PROFILE",
+        ]
     finally:
         await stack.db.close()
 

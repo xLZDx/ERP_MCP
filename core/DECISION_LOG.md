@@ -127,3 +127,7 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Review remediation F8: product chain tests cannot silently skip
 
 - Decision: the four product chain modules share `tests/sc_stack.py` PG_MARKS/needs_pg; with ERP_MCP_REQUIRE_DB_TESTS=1 and no BAG_PRIVILEGE_TEST_DATABASE_URL they fail (fixture `require_pg_database`) instead of skipping; CI sets the variable on the pytest step. Assertions strengthened: naive-timestamp tests assert error detail/no audit row and no upstream read, SC04 asserts the exact audit rows, stale-fingerprint and invalid-VALIDATED-row tests assert no upstream read; dead `deltas` line removed.
+
+## 2026-10-07 - Review remediation: fallout and checkpoint re-pin
+
+- Decision: test doubles in tests/test_server_audit.py that stand in for the registry now carry `profile_kind: VALIDATED_NATIVE` like the real registry (required by the stricter profile_provenance); SC04 audit assertions match the exact rows (access row plus tool row); engineering checkpoint fingerprint and report markers re-pinned to the new implementation content. Full suite with own PG/Redis and ERP_MCP_REQUIRE_DB_TESTS=1: 1189 passed, 140 skipped (live-stack e2e/functional suites and the 6 env-gated tests).
