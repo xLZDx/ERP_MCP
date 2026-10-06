@@ -11,3 +11,7 @@
   (no public tool/data). No synthetic profile or native evidence was fabricated.
 - Evidence: Fake1C is synthetic L1 only; never native 1C reconciliation.
 - Commit: see git log on this branch.
+
+## 2026-10-07 - Dispositions and token default
+
+- SC10 args now timezone-qualified (tester bug). SC06 encoded EXTERNAL-GATE (VAT only when validated), SC08 NOT IMPLEMENTED (outside frozen scope; needs operator rebaseline). FT_BEARER_TOKEN is now the default identity for every call.
