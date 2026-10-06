@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -39,7 +40,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 FAULT_SCRIPT = ROOT / "scripts" / "e2e" / "fault.ps1"
-LOG_DIR = ROOT / ".e2e" / "logs"
+E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")
+LOG_DIR = E2E_DIR / "logs"
+ARTIFACT_DIR = E2E_DIR / "artifacts" / "admin"
 JWT_LIKE = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.")
 SESSION_COOKIE = "erp_mcp_admin_session"
 SECRET_REFS = {"username": "FAKE1C_USERNAME", "password": "FAKE1C_PASSWORD"}
@@ -84,6 +87,14 @@ def pace_login() -> None:
 
 
 # --------------------------------------------------------------------------- waiting
+def shot(page, name: str) -> str:
+    """Save a full-page screenshot as evidence and return its path."""
+    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    path = ARTIFACT_DIR / f"{name}.png"
+    page.screenshot(path=str(path), full_page=True)
+    return str(path)
+
+
 def wait_until(cond: Callable[[], Any], *, timeout: float = 30.0, interval: float = 0.5,
                what: str = "condition") -> Any:
     """Poll an observable condition; fail with the last observed value on timeout."""
@@ -332,11 +343,13 @@ def _powershell() -> str:
     return found
 
 
-def fault(component: str, action: str) -> None:
+def fault(component: str, action: str, *, drop_env: tuple[str, ...] = ()) -> None:
+    """Run scripts/e2e/fault.ps1. ``drop_env`` removes variables inherited from the test run."""
+    child_env = {k: v for k, v in os.environ.items() if k not in drop_env}
     result = subprocess.run(
         [_powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(FAULT_SCRIPT),
          "-Component", component, "-Action", action],
-        cwd=ROOT, capture_output=True, text=True, timeout=420, check=False)
+        cwd=ROOT, capture_output=True, text=True, timeout=420, check=False, env=child_env)
     if result.returncode != 0:
         pytest.fail(f"fault.ps1 {component} {action} failed rc={result.returncode}: "
                     f"{(result.stdout + result.stderr)[-600:]}")
