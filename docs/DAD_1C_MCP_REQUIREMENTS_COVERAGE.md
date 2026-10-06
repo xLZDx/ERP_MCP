@@ -203,15 +203,44 @@ read-only checks.
 
 | ID | Check | Coverage | Required semantic/rule |
 |---|---|---|---|
-| DAD-SMALL-01 | account 211 final negatives by quantity or value | PARTIAL | inventory/account rule: negative ending position |
-| DAD-SMALL-02 | 211/217 positions with no movement during month | PARTIAL | stale/no-movement inventory rule |
-| DAD-SMALL-03 | counterparties with simultaneous/“regraded” 221/523 and 224/521 balances | PARTIAL | analytic cross-account exclusivity rule |
-| DAD-SMALL-04 | days when account 241 becomes negative | PARTIAL | daily rolling cash balance by cashier/subdivision |
-| DAD-SMALL-05 | Z-report balance/turnover vs 1C | NOT IMPLEMENTED | external Z-report evidence reconciliation |
-| DAD-SMALL-06 | terminal report vs 1C, enumerate mismatches | NOT IMPLEMENTED | external terminal evidence reconciliation |
+| DAD-SMALL-01 | account 211 final negatives by quantity or value | PARTIAL: internal engine; native OPEN | inventory/account rule: negative ending position |
+| DAD-SMALL-02 | 211/217 positions with no movement during month | PARTIAL: internal engine; native OPEN | stale/no-movement inventory rule |
+| DAD-SMALL-03 | counterparties with simultaneous/“regraded” 221/523 and 224/521 balances | PARTIAL: internal engine; native OPEN | analytic cross-account exclusivity rule |
+| DAD-SMALL-04 | days when account 241 becomes negative | PARTIAL: internal engine; native OPEN | daily rolling cash balance by cashier/subdivision |
+| DAD-SMALL-05 | Z-report balance/turnover vs 1C | PARTIAL: normalized engine; native/evidence OPEN | external Z-report evidence reconciliation |
+| DAD-SMALL-06 | terminal report vs 1C, enumerate mismatches | PARTIAL: normalized engine; native/evidence OPEN | external terminal evidence reconciliation |
 
 These six should become the first DAD rule-pack acceptance cases because they are small, concrete,
 read-only and accountant-selected.
+
+### 8.1 Current internal normalized acceptance engine
+
+`dad_small_checks.py` implements the four named arithmetic checks and binds DAD-SMALL-05/06 to
+the existing bounded external evidence comparator. This is an internal evaluation contract, not
+a public tool or proof of live/native acceptance. The coverage table above remains PARTIAL/not
+native-implemented until actual source collection, registry approval and native cases execute.
+
+Every small-check profile is versioned and fingerprinted with exact source/company/configuration,
+semantic profile, live metadata hash, selectors, ordered dimensions, period, currency/timezone,
+effective dates, native-report mapping and explicit quantity/value tolerances. Approval comes from
+server-side configuration; an unconfirmed profile returns `CAPABILITY_UNSUPPORTED`. There are no
+global account 211/217/221/523/224/521/544/241 defaults or guessed alternate virtual-table names.
+
+- 01 checks negative final quantity OR signed value at the approved item grain.
+- 02 checks a nonzero position with zero gross movement, not zero net debit/credit turnover.
+- 03 requires counterparty/contract/document grain, scoped currency, and exact approved account
+  pairs. It never falls back to counterparty-only aggregate exclusivity.
+- 04 requires every business day for each observed cash analytic, opening/closing continuity and
+  receipt/payment arithmetic. A missing day is INCONCLUSIVE, not assumed zero activity. Findings
+  enumerate business dates; analytic keys are hashed. These dated results remain private evidence.
+- 05/06 preserve `EVIDENCE_REQUIRED` without matching Z/terminal inputs and enumerate existing
+  normalized comparator findings without fetching URLs or creating another native-format parser.
+
+Truncated, stale, cross-company, duplicate, nonfinite, inconsistent or wrong-grain observations
+cannot PASS. Inputs are bounded to 2000 normalized rows and a 366-day window. Results retain their
+original evidence level and always require human review; no L2/native approval is inferred.
+Live source collectors, runtime ACL/audit tool exposure, validated source profiles and native
+acceptance remain locally/open or operator-evidence work, not closed by these fixture tests.
 
 ---
 
