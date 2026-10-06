@@ -8,7 +8,7 @@ import httpx
 
 from ...compatibility import AdapterProfile, CapabilityUnsupported
 from ...models import Source
-from ...network_policy import EgressPolicyError, validate_resolved_egress
+from ...network_policy import EgressPolicyError, pinned_egress_transport, validate_resolved_egress
 
 UPSTREAM_SHA = "cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5"
 
@@ -46,7 +46,8 @@ class ODataSidecarClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            transport=transport,
+            transport=transport or (pinned_egress_transport(allowed_egress_cidrs) if allowed_egress_cidrs else None),
+            trust_env=False,
         )
 
     async def close(self):

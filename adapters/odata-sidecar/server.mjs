@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
+import { pinnedAgent } from './egress.mjs';
 import { ODataV3Client, BasicAuth } from '@1c-odata/client';
 import { raw } from '@1c-odata/client/filter';
 import {
@@ -29,7 +30,10 @@ if (!globalThis[FETCH_BUDGET]) {
   globalThis.fetch = async (...args) => {
     const budget = fetchBudgetStorage.getStore();
     if (!budget) return nativeFetch(...args);
-    const response = await nativeFetch(...args);
+    const target = new URL(typeof args[0] === 'string' || args[0] instanceof URL ? args[0] : args[0].url);
+    if (target.origin !== budget.allowedOrigin) throw new SidecarError(403, 'UPSTREAM_ORIGIN_DENIED');
+    const response = await nativeFetch(args[0], { ...args[1], redirect: 'error',
+      ...(budget.dispatcher ? { dispatcher: budget.dispatcher } : {}) });
     const declaredLength = Number(response.headers.get('content-length'));
     if (Number.isFinite(declaredLength) && declaredLength > budget.maxBytes - budget.usedBytes) {
       await response.body?.cancel();
@@ -403,9 +407,11 @@ export function createHandler({
   clientFactory = buildClient,
   metadataProvider = fetchMetadataXml,
   limits = {},
+  egressCidrs = [],
   now = () => performance.now(),
 } = {}) {
   const config = { ...DEFAULTS, ...limits };
+  const dispatcher = egressCidrs.length ? pinnedAgent(egressCidrs) : undefined;
   const hostSet = new Set([...allowedHosts ?? []].map((host) => String(host).toLowerCase()));
   const inFlight = new Map();
   const circuits = new Map();
@@ -456,7 +462,7 @@ export function createHandler({
       let capabilityProfile;
       try {
         data = await fetchBudgetStorage.run(
-          { maxBytes: config.maxResponseBytes, usedBytes: 0 },
+          { maxBytes: config.maxResponseBytes, usedBytes: 0, dispatcher, allowedOrigin: input.url.origin },
           async () => {
             if (input.operation === 'register_capabilities' || input.operation === 'register_read') {
               const cacheKey = `${input.source_id}\u0000${input.url.toString()}`;
@@ -464,7 +470,7 @@ export function createHandler({
               if (!cached || cached.expiresAt <= Date.now()) {
                 try {
                   const xml = await fetchBudgetStorage.run(
-                    { maxBytes: config.maxMetadataBytes, usedBytes: 0 },
+                    { maxBytes: config.maxMetadataBytes, usedBytes: 0, dispatcher, allowedOrigin: input.url.origin },
                     () => metadataProvider({
                       baseUrl: input.url.toString().replace(/\/$/u, ''),
                       auth: BasicAuth({ username: input.username, password: input.password }),
@@ -584,10 +590,12 @@ export function createHandler({
 export function startFromEnvironment() {
   const token = process.env.SIDECAR_TOKEN;
   const allowedHosts = (process.env.ONEC_ALLOWED_HOSTS ?? '').split(',').map((host) => host.trim()).filter(Boolean);
+  const egressCidrs = (process.env.ONEC_EGRESS_CIDRS ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+  if (process.env.NODE_ENV === 'production' && egressCidrs.length === 0) throw new Error('ONEC_EGRESS_CIDRS_REQUIRED');
   const server = createServer((req, res) => {
     void createHandlerSingleton(req, res);
   });
-  const handler = createHandler({ token, allowedHosts });
+  const handler = createHandler({ token, allowedHosts, egressCidrs });
   async function createHandlerSingleton(req, res) {
     try {
       await handler(req, res);

@@ -22,6 +22,23 @@ for (const entry of await readdir(join(root, '.pnpm'), { withFileTypes: true }))
   }
 }
 if (!inventory.has('fast-xml-parser')) throw new Error('Missing expected runtime dependency');
+// Include direct runtime packages copied alongside the pnpm store (e.g. the pinned dispatcher).
+for (const entry of await readdir(root, { withFileTypes: true })) {
+  if (entry.name.startsWith('.') || (!entry.isDirectory() && !entry.isSymbolicLink())) continue;
+  const names = entry.name.startsWith('@')
+    ? (await readdir(join(root, entry.name))).map(name => `${entry.name}/${name}`)
+    : [entry.name];
+  for (const packageName of names) {
+    const manifest = JSON.parse(await readFile(join(root, packageName, 'package.json'), 'utf8'));
+    if (!manifest.name || !manifest.version) throw new Error('Invalid direct installed manifest');
+    const versions = inventory.get(manifest.name) ?? new Set();
+    versions.add(manifest.version);
+    inventory.set(manifest.name, versions);
+  }
+}
+if (!inventory.has('undici') || !inventory.get('undici').has('8.10.2')) {
+  throw new Error('Missing pinned runtime dispatcher');
+}
 const packages = Object.fromEntries([...inventory].sort().map(([name, versions]) =>
   [name, [...versions].sort()]));
 // The source-pinned workspace client is verified with upstream parity tests, not npm resolution.

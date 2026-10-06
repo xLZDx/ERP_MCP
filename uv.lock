@@ -466,6 +466,7 @@ source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
     { name = "defusedxml" },
+    { name = "httpcore" },
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
     { name = "pydantic" },
@@ -495,6 +496,7 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8,<2" },
     { name = "defusedxml", specifier = ">=0.7,<1" },
     { name = "google-cloud-secret-manager", marker = "extra == 'gcp'", specifier = ">=2.21,<3" },
+    { name = "httpcore", specifier = "==1.0.9" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "mcp", extras = ["cli"], specifier = ">=2,<3" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7,<3" },

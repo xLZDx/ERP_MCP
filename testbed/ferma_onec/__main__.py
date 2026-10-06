@@ -13,7 +13,12 @@ def main() -> None:
     parser.add_argument("operation", choices=["verify"])
     parser.add_argument("--package", type=Path, required=True)
     args = parser.parse_args()
-    seed = load_seed_inputs(args.package)
+    try:
+        seed = load_seed_inputs(args.package)
+    except (OSError, ValueError, TypeError, UnicodeError) as exc:
+        # Parser/model exceptions may embed private input values. Emit only a stable class.
+        print(json.dumps({"status": "PACKAGE_INVALID", "error_class": type(exc).__name__}))
+        raise SystemExit(1) from None
     print(json.dumps({"schema_version": seed.manifest.schema_version,
                       "scenario_id": seed.manifest.scenario_id, "run_id": seed.manifest.run_id,
                       "manifest_fingerprint": hashlib.sha256(seed.manifest.model_dump_json().encode()).hexdigest(),

@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ScenarioManifest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
     schema_version: Literal["ferma-1c-scenario/v1"]
-    scenario_id: str = Field(min_length=1, max_length=128)
-    run_id: str = Field(min_length=1, max_length=128)
-    universe_id: str = Field(min_length=1, max_length=128)
+    scenario_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+    run_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+    universe_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
     master_seed: int
     generator_version: str = Field(min_length=1, max_length=128)
     ferma_commit: str = Field(pattern=r"^[0-9a-f]{40}$")

@@ -8,6 +8,7 @@ COPY adapters/odata-sidecar/ ./packages/client/sidecar/
 
 RUN corepack enable \
  && pnpm install --frozen-lockfile \
+ && npm ci --prefix packages/client/sidecar --omit=dev --ignore-scripts \
  && pnpm --filter @1c-odata/client build \
  && pnpm --filter @1c-odata/metadata build \
  && pnpm --filter @1c-odata/metadata deploy --prod --legacy /build/runtime
@@ -19,10 +20,11 @@ ENV NODE_ENV=production PORT=8765
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /build/upstream/packages/client/package.json ./packages/client/package.json
 COPY --from=build --chown=10001:10001 /build/upstream/packages/client/dist ./packages/client/dist
-COPY --from=build --chown=10001:10001 /build/upstream/packages/client/sidecar ./packages/client/sidecar
+COPY --from=build --chown=10001:10001 /build/upstream/packages/client/sidecar/*.mjs ./packages/client/sidecar/
 COPY --from=build --chown=10001:10001 /build/upstream/packages/metadata/package.json ./packages/metadata/package.json
 COPY --from=build --chown=10001:10001 /build/upstream/packages/metadata/dist ./packages/metadata/dist
 COPY --from=build --chown=10001:10001 /build/runtime/node_modules ./node_modules
+COPY --from=build --chown=10001:10001 /build/upstream/packages/client/sidecar/node_modules/undici ./node_modules/undici
 
 LABEL org.opencontainers.image.title="ERP_MCP read-only OData sidecar" \
       org.opencontainers.image.version="0.6.0" \

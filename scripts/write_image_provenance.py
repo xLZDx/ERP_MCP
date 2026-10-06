@@ -49,6 +49,7 @@ def main() -> None:
     parser.add_argument("--image", required=True)
     parser.add_argument("--base-image", required=True)
     parser.add_argument("--lock", required=True)
+    parser.add_argument("--additional-lock", action="append", default=[])
     parser.add_argument("--sbom", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--upstream-sha")
@@ -103,6 +104,10 @@ def main() -> None:
             "path": args.lock.replace("\\", "/"),
             "sha256": sha256(lock_path),
         },
+        "additional_dependency_locks": [
+            {"path": lock.replace("\\", "/"), "sha256": sha256(ROOT / lock)}
+            for lock in args.additional_lock
+        ],
         "upstream_sha": args.upstream_sha,
         "sbom": {
             "format": "CycloneDX JSON",

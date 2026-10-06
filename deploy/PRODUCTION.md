@@ -2,6 +2,15 @@
 
 ## Mandatory external services
 
+Connect-time network controls: Python dials only CIDR-validated numeric addresses through a
+pinned HTTPcore backend while preserving the registered hostname for TLS/SNI. Environment proxy
+routing is disabled. The Node sidecar requires `ONEC_EGRESS_CIDRS` when NODE_ENV=production;
+configure it to the same approved source ranges as `BAG_SOURCE_EGRESS_CIDRS`. Its pinned dispatcher
+validates DNS answers at TCP connect, including numeric-IP targets. Both origin changes and HTTP
+redirects are rejected. These controls supplement deployment egress enforcement; they do not
+replace firewall/private-network evidence. Undici runtime dependencies are locked separately from
+the unchanged 1C upstream source.
+
 - PostgreSQL with backups/PITR.
 - Redis or compatible managed Redis.
 - OAuth/OIDC IdP issuing JWT access tokens for the MCP resource.

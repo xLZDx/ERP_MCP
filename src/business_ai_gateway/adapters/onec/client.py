@@ -7,7 +7,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from ...models import Source
-from ...network_policy import EgressPolicyError, validate_resolved_egress
+from ...network_policy import EgressPolicyError, pinned_egress_transport, validate_resolved_egress
 
 
 class OneCTransportError(RuntimeError):
@@ -39,7 +39,8 @@ class OneCReadClient:
                 keepalive_expiry=30,
             ),
             headers={"User-Agent": "erp-mcp/0.1"},
-            transport=transport,
+            transport=transport or (pinned_egress_transport(allowed_egress_cidrs) if allowed_egress_cidrs else None),
+            trust_env=False,
         )
 
     async def close(self):

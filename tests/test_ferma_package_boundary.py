@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from dataclasses import fields
 from pathlib import Path
 
@@ -98,3 +100,15 @@ def test_production_artifact_excludes_testbed_modules():
     assert "testbed" in (root / ".dockerignore").read_text(encoding="utf-8").splitlines()
     for source in (root / "src").rglob("*.py"):
         assert "testbed.ferma_onec" not in source.read_text(encoding="utf-8")
+
+
+def test_package_cli_does_not_echo_private_invalid_input(tmp_path):
+    package = tmp_path / "scenario"
+    scenario(package)
+    (package / "events.jsonl").write_text('private-secret=never-log-this', encoding="utf-8")
+    result = subprocess.run([sys.executable, "-m", "testbed.ferma_onec", "verify", "--package", str(package)],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode == 1
+    assert json.loads(result.stdout)["status"] == "PACKAGE_INVALID"
+    assert "private-secret" not in result.stdout + result.stderr
+    assert "Traceback" not in result.stderr

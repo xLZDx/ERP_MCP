@@ -24,8 +24,9 @@ jobs:
           sh -lc "cp -a /src/. /work/ && mkdir -p packages/client/sidecar &&
           cp -a /sidecar/. packages/client/sidecar/ && corepack enable &&
           corepack pnpm install --frozen-lockfile &&
+          npm ci --prefix packages/client/sidecar --omit=dev --ignore-scripts &&
           corepack pnpm --filter @1c-odata/client build &&
-          node --test packages/client/sidecar/server.test.mjs &&
+          node --test packages/client/sidecar/server.test.mjs packages/client/sidecar/egress.test.mjs &&
           corepack pnpm --filter @1c-odata/client test:unit &&
           corepack pnpm --filter @1c-odata/metadata build &&
           corepack pnpm --filter @1c-odata/metadata test:unit"
@@ -35,7 +36,7 @@ jobs:
           docker run --rm --entrypoint /usr/bin/node -v "$GITHUB_WORKSPACE/scripts/audit_node_runtime.mjs:/audit.mjs:ro" erp-mcp-odata-sidecar:ci /audit.mjs
           token="$(openssl rand -hex 32)"
           docker run -d --name erp-mcp-sidecar-ci \
-            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost \
+            -e SIDECAR_TOKEN="$token" -e ONEC_ALLOWED_HOSTS=localhost -e ONEC_EGRESS_CIDRS=127.0.0.1/32,::1/128 \
             erp-mcp-odata-sidecar:ci
           cleanup() { docker rm -f erp-mcp-sidecar-ci >/dev/null 2>&1 || true; }
           trap cleanup EXIT
@@ -78,6 +79,7 @@ jobs:
           --image erp-mcp-odata-sidecar:ci
           --base-image "build=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd;runtime=cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096"
           --lock vendor/reference/1c-odata-v3/pnpm-lock.yaml
+          --additional-lock adapters/odata-sidecar/package-lock.json
           --upstream-sha cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5
           --sbom ${{ runner.temp }}/erp-mcp-odata-sidecar.cdx.json
           --output ${{ runner.temp }}/erp-mcp-odata-sidecar-provenance.json
