@@ -6,13 +6,14 @@
 
 ## Current evidence integrity assessment — 2026-10-06
 
-Baseline `e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`, CI `37447721792` PASS.
+Verified implementation `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`, CI `37455962411` PASS.
 R-25 remains OPEN: prior benchmark and harness closure claims included formula-generated numbers
 and constant PASS values. They are withdrawn. R-05 is advanced by JSON/header scanner regression
 coverage; R-12 by health timeout and pre-secret executable verification; R-13/R-28 by measured
 production executor latency/memory/concurrency and four executed guard mutations. Actual Docker
 PostgreSQL/Redis outages returned sanitized 503 then 200 after restart. No production risk
-acceptance or complete mitigation is inferred.
+acceptance or complete mitigation is inferred. D12 checks now run pinned promtool: rule lint,
+pending/firing/resolution and gateway text format pass locally. Alert delivery remains open.
 
 ## Scope freeze checkpoint — 2026-10-06
 

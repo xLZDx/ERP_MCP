@@ -1,0 +1,77 @@
+rule_files:
+  - prometheus.rules.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'erp_mcp_http_requests_total{status="500"}'
+        values: '0+60x20 1200+0x30'
+      - series: 'erp_mcp_http_requests_total{status="200"}'
+        values: '0+540x20 10800+0x30'
+      - series: 'erp_mcp_dependency_requests_total{outcome="error"}'
+        values: '0+60x20 1200+0x30'
+      - series: 'erp_mcp_operations_total{tool="audit",outcome="error"}'
+        values: '0+60x20 1200+0x30'
+      - series: 'erp_mcp_http_request_duration_seconds_bucket{route="/mcp",le="2"}'
+        values: '0+0x50'
+      - series: 'erp_mcp_http_request_duration_seconds_bucket{route="/mcp",le="4"}'
+        values: '0+100x20 2000+0x30'
+      - series: 'erp_mcp_http_request_duration_seconds_bucket{route="/mcp",le="+Inf"}'
+        values: '0+100x20 2000+0x30'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ErpMcpHighServerErrorRate
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ErpMcpHighServerErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: ERP_MCP server error rate is elevated
+              runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - eval_time: 40m
+        alertname: ErpMcpHighServerErrorRate
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: ErpMcpDependencyErrors
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ErpMcpDependencyErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: ERP_MCP dependency errors detected
+              runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - eval_time: 40m
+        alertname: ErpMcpDependencyErrors
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: ErpMcpAuditAppendErrors
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ErpMcpAuditAppendErrors
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: ERP_MCP audit append errors detected
+              runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - eval_time: 40m
+        alertname: ErpMcpAuditAppendErrors
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: ErpMcpHighLatency
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ErpMcpHighLatency
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: ERP_MCP MCP request p95 latency is elevated
+              runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - eval_time: 40m
+        alertname: ErpMcpHighLatency
+        exp_alerts: []

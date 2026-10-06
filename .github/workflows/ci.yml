@@ -141,6 +141,7 @@ jobs:
           uv run --locked python scripts/performance_benchmark.py --output "$RUNNER_TEMP/performance.json"
           uv run --locked python scripts/validate_performance_evidence.py "$RUNNER_TEMP/performance.json"
           uv run --locked python scripts/validate_metrics.py deploy/alerts/prometheus.rules.yml
+          uv run --locked python scripts/validate_prometheus.py --output "$RUNNER_TEMP/promtool-evidence.json"
           uv run --locked python scripts/security_regression_pack.py --output "$RUNNER_TEMP/security.json"
           uv run --locked python scripts/rsv_process_harness.py --output "$RUNNER_TEMP/rsv-process.json"
           uv run --locked python scripts/docker_fault_runner.py --output "$RUNNER_TEMP/docker-fault-plan.json"
@@ -164,6 +165,7 @@ jobs:
             ${{ runner.temp }}/rsv-lifecycle.json
             ${{ runner.temp }}/rsv-process.json
             ${{ runner.temp }}/performance.json
+            ${{ runner.temp }}/promtool-evidence.json
             ${{ runner.temp }}/security.json
             ${{ runner.temp }}/docker-fault-plan.json
             ${{ runner.temp }}/docker-fault-actual.json

@@ -5,7 +5,7 @@
 ## Evidence correction — 2026-10-06
 
 DoD remains PARTIAL; Production GO remains NO-GO. Last verified recovery baseline:
-`e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`, CI `37447721792` PASS.
+`dbeafc8d2afb72de07b794bed926f6ed8cecdb06`, CI `37455962411` PASS (both jobs).
 Previous deterministic benchmark/fault/mutation PASS constants do not close D13/D14. Current
 repair batch replaces benchmark numbers with measurements, verifies executed test counts, kills
 four real fan-out mutations and fixes RSV deadlines/config cleanup. Local pytest: `218 passed,
@@ -13,6 +13,8 @@ four real fan-out mutations and fixes RSV deadlines/config cleanup. Local pytest
 JWKS/secrets/OData/RSV/audit recovery coverage remains open. Frozen business,
 evidence, Ferma, deployment and native-accounting gates remain open. Historical blanket closure
 claims below are withdrawn where they relied on declared rather than executed results.
+Local D12 follow-up: pinned promtool lint, 12 pending/firing/resolution assertions and actual
+gateway metrics text validation PASS. Deployed alert delivery remains open.
 
 ## Scope freeze checkpoint — 2026-10-06
 

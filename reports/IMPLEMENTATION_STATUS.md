@@ -4,8 +4,8 @@
 
 ## Execution recovery and evidence correction — 2026-10-06
 
-Recovered branch/PR HEAD: `e7b98ac3f8d1ca0a70e18d9dfb48b61a4e200e32`; hosted run
-`37447721792` PASS. This is the last verified baseline; the current repair batch is under test.
+Last verified implementation: `dbeafc8d2afb72de07b794bed926f6ed8cecdb06`; hosted run
+`37455962411` PASS, both required jobs. Recovery began at `e7b98ac`; the repair batch is verified.
 Freeze baseline remains `57eb5b0696063237a43f5d1baf0a646278f5d832`.
 
 The earlier blanket claim that items 1–10 were closed is withdrawn. The previous benchmark used
@@ -18,8 +18,12 @@ before resolving/materializing secrets. Full local suite: `218 passed, 9 skipped
 Actual Docker PostgreSQL/Redis outage/restart passed: each dependency returned sanitized 503 then
 200 from the production readiness handler. New disposable containers are retained for inspection.
 
+D12 follow-up: pinned promtool v3.5.0 checks four alert rules, pending/firing/resolution across
+12 assertions, and real HTTPMetrics text output. All three local checks PASS; alerts now link to
+the response runbook. Delivery to a deployed alert receiver remains unverified.
+
 Locally actionable work remains: complete dependency/adapter lifecycle drills, SSRF connect-time
-protection, real MCP process recovery/rotation, promtool firing tests, DB capability CLI integration,
+protection, real MCP process recovery/rotation, DB capability CLI integration,
 release assembly, DAD/external evidence and Ferma P5-B. Real reference acquisition/native
 reconciliation must be pursued using the available local 1C/COM environment. Production GO remains
 NO-GO. PR #11 remains Draft. Older closure statements below are superseded by this correction.

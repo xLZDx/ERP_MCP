@@ -1,5 +1,17 @@
 # Release and operations evidence
 
+Evidence correction (2026-10-06): previous fixed-number benchmark and constant-PASS harness
+artifacts are superseded. The benchmark measures the production FanoutExecutor; missing DB pool
+measurements remain null. Contract evidence comes from executed pytest/JUnit; mutation evidence
+executes four fan-out guard mutations. Docker --execute now stops/restarts NEW disposable
+PostgreSQL/Redis and checks production readiness responses (503 then 200). Containers are retained.
+JWKS/secrets/OData/RSV/audit recovery are not covered by that Docker drill.
+
+Run `uv run --locked python scripts/validate_prometheus.py --output <evidence.json>` for pinned
+promtool rule lint, pending/firing/resolution fixtures and actual gateway metrics text validation.
+The Docker checker is network-isolated, read-only, capability-free, with bounded tmpfs. Deployed
+alert delivery is not claimed.
+
 The release preflight is deterministic and local: `uv run --locked python scripts/release_preflight.py`.
 It verifies the pinned dependency locks, mandatory upstream reuse documents, ADR-0003, production
 and rollback runbooks. It does not claim production readiness.
