@@ -157,7 +157,12 @@ def create_app(profile: str = "json") -> Starlette:
             return JSONResponse({"error": "unknown entity"}, status_code=404)
 
         top = int(request.query_params.get("$top", len(rows)))
-        rows = rows[: max(0, top)]
+        skip = max(0, int(request.query_params.get("$skip", 0)))
+        rows = rows[skip : skip + max(0, top)]
+        # Real OData honours $select; the fake must too or "only requested fields" is untestable.
+        select = [item for item in request.query_params.get("$select", "").split(",") if item]
+        if select:
+            rows = [{key: value for key, value in row.items() if key in select} for row in rows]
         accept = request.headers.get("accept", "")
 
         if profile == "atom":

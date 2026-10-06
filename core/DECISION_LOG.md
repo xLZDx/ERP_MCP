@@ -14,3 +14,16 @@
 
 - Decision: tests/e2e is auto-skipped only when .e2e/env.json is absent and ERP_MCP_E2E_NO_SKIP is unset; scripts/e2e/test.ps1 sets it so a missing environment is an error.
 - Evidence: 12 smoke tests green against the live environment (tests/e2e/test_smoke_environment.py).
+
+## 2026-10-07 - Data-plane User E2E suite U01-U18 (branch e2e/user-flows)
+
+- Decision: Fake1C (testbed/fake1c/app.py) now records every request (method, path, user agent,
+  numeric $top/$skip, credentials-present flag; no header values) at `/__ft__/requests`, the same
+  shape as the Functional Tester recorder, so U04/U06/U11/U13/U14 can prove "only GET/HEAD" and
+  "no upstream request on denial". The fake also honours `$select`/`$skip` like real OData.
+- Finding (needs GPT-PM contract clarification): the baseline seed grants UC1 a company-one grant
+  only, but source-level tools (source_health, onec_*) require a source-wide grant in the registry
+  (`g.company_id IS NULL`), and a source-wide grant also covers company two. U02-U04/U11-U14 therefore
+  run under a temporary source-wide grant created/revoked through the Admin API; U05-U10 use the
+  baseline company-scoped grants. The denial under the company-only grant is asserted explicitly.
+- Evidence: collect-only and ruff clean; not yet executed (environment owned by lane A).
