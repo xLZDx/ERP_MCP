@@ -4,7 +4,7 @@ Branch: `feature/admin-control-center-implementation`
 Worktree: `D:\Repo\ERP_MCP-admin-control-center`
 Admin start SHA: `dff4c81d18e645fed64aed50d148ab8df9109f66`
 Integration baseline: `672fec4efae10949df0185c98e44b07b57ca45f3`
-Previous hosted candidate: `da13f3af996df3801e0c12a6ba8b3c1c06e6a834`; CI run `37504428513` is in progress. It fixes the restore-drill issue from run `37502940204`.
+Hosted candidate `da13f3af996df3801e0c12a6ba8b3c1c06e6a834` passed all three CI jobs in run `37504428513`. Current code adds the architecture-reviewed capability-registry drill import fix at `e96c871684fc8086ea9a65d7bdc46d0315753c6e`; final-SHA CI is pending.
 
 ## Verified Admin scope
 
@@ -18,7 +18,7 @@ Previous hosted candidate: `da13f3af996df3801e0c12a6ba8b3c1c06e6a834`; CI run `3
 
 ## Latest observed full-suite run
 
-After integrating integration tip `672fec4` and fixing restore-drill migration execution, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 170.08s. Six skips are environment-gated external evidence/integration fixtures; Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed on the merged tree. `pip-audit` found no known vulnerabilities.
+After integrating integration tip `672fec4` and fixing restore-drill migration execution, `uv run --locked pytest -q` against disposable PostgreSQL/Redis completed **1127 passed, 6 skipped** in 170.08s. The later capability-drill import-only change passes its smoke import and Ruff; final CI is exercising the exact latest tree. Six skips are environment-gated external evidence/integration fixtures; Admin PostgreSQL/Redis B2 ran rather than skipped. Playwright Admin UI browser contract passed on the merged tree. `pip-audit` found no known vulnerabilities.
 
 ## Review consensus
 
