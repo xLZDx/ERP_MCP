@@ -4,6 +4,8 @@
 
 ### Batch 1–8 checkpoint
 
+Follow-up artifacts hosted verification: run `37439573762` PASS on `4e63412` for both required jobs.
+
 The current local suite is `184 passed, 9 skipped`; hosted run `37437328906` passed both required
 jobs on `ec04b32`. Metrics/spans, failure-matrix regressions,
 egress policy, ephemeral secret-bound RSV config, release preflight and rollback-manifest checks
