@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
 import uuid
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Any
 
@@ -52,6 +54,23 @@ class Audit:
         self.include_query = include_query
         self.metrics = metrics
 
+    @asynccontextmanager
+    async def _monitored_append(self, tool: str, outcome: str):
+        started = time.perf_counter()
+        try:
+            yield
+        except (Exception, asyncio.CancelledError):
+            if self.metrics is not None:
+                self.metrics.record_operation(tool, "error")
+                self.metrics.record_operation("audit", "error")
+                self.metrics.record_dependency("audit", "error", time.perf_counter() - started)
+            raise  # keep append failure fail-closed; never substitute a successful result
+        else:
+            if self.metrics is not None:
+                self.metrics.record_operation(tool, outcome)
+                self.metrics.record_operation("audit", "success")
+                self.metrics.record_dependency("audit", "success", time.perf_counter() - started)
+
     async def write(
         self,
         *,
@@ -75,11 +94,10 @@ class Audit:
         detail_code: str | None = None,
     ):
         elapsed_ms = int((time.monotonic() - started_at) * 1000)
-        if self.metrics is not None:
-            self.metrics.record_operation(tool, outcome)
         from .observability import trace_span
 
-        async with trace_span("audit.append", tool=tool, outcome=outcome):
+        async with (trace_span("audit.append", tool=tool, outcome=outcome),
+                    self._monitored_append(tool, outcome)):
             await self.db.require_pool().execute(
             """
             INSERT INTO bag.audit_events(

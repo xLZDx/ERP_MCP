@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import json
 import logging
+import math
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -25,8 +26,15 @@ class OperationalMetrics:
     """Bounded operation/dependency metrics; never accepts user values as labels."""
 
     OUTCOMES = frozenset({"success", "denied", "error"})
+    TOOLS = frozenset({
+        "system_status", "sources_list", "source_health", "rsv_metadata", "companies_list",
+        "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
+        "accounting_balance_and_turnovers", "inventory_balance", "inventory_movements",
+        "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
+        "payable_balance", "sales_documents", "purchase_documents", "onec_read", "audit",
+    })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(
-        {"database", "redis", "jwks", "odata_sidecar", "rsv_bridge", "secrets"}
+        {"database", "redis", "jwks", "odata_sidecar", "rsv_bridge", "secrets", "audit"}
     )
 
     def __init__(self) -> None:
@@ -37,20 +45,19 @@ class OperationalMetrics:
         )
 
     def record_operation(self, tool: str, outcome: str) -> None:
-        safe_tool = (
-            tool if tool and len(tool) <= 64 and tool.replace("_", "").isalnum() else "other"
-        )
-        safe_outcome = outcome if outcome in self.OUTCOMES else "error"
+        safe_tool = tool if isinstance(tool, str) and tool in self.TOOLS else "other"
+        safe_outcome = outcome if isinstance(outcome, str) and outcome in self.OUTCOMES else "error"
         self._operations[(safe_tool, safe_outcome)] += 1
 
     def record_dependency(self, dependency: str, outcome: str, elapsed_seconds: float = 0.0) -> None:
-        safe_dependency = dependency if dependency in self.DEPENDENCIES else "other"
-        safe_outcome = outcome if outcome in self.OUTCOMES else "error"
+        safe_dependency = dependency if isinstance(dependency, str) and dependency in self.DEPENDENCIES else "other"
+        safe_outcome = outcome if isinstance(outcome, str) and outcome in self.OUTCOMES else "error"
         self._dependencies[(safe_dependency, safe_outcome)] += 1
         count, total = self._dependency_duration[(safe_dependency, safe_outcome)]
         self._dependency_duration[(safe_dependency, safe_outcome)] = (
             count + 1,
-            total + max(0.0, elapsed_seconds),
+            total + (min(3600.0, max(0.0, elapsed_seconds)) if type(elapsed_seconds) in (int, float)
+                     and math.isfinite(elapsed_seconds) else 0.0),
         )
 
     def render(self) -> str:
@@ -72,6 +79,14 @@ class OperationalMetrics:
             lines.append(
                 f'erp_mcp_dependency_requests_total{{dependency="{dependency}",outcome="{outcome}"}} {count}'
             )
+        lines.extend([
+            "# HELP erp_mcp_dependency_duration_seconds Dependency request duration.",
+            "# TYPE erp_mcp_dependency_duration_seconds summary",
+        ])
+        for (dependency, outcome), (count, total) in sorted(self._dependency_duration.items()):
+            labels = f'dependency="{dependency}",outcome="{outcome}"'
+            lines.append(f'erp_mcp_dependency_duration_seconds_sum{{{labels}}} {total:.9f}')
+            lines.append(f'erp_mcp_dependency_duration_seconds_count{{{labels}}} {count}')
         return "\n".join(lines) + "\n"
 
 
@@ -80,12 +95,16 @@ async def trace_span(name: str, **attributes: str):
     """Privacy-safe internal span; attributes are fixed semantic values only."""
     started = time.perf_counter()
     correlation_id = current_request_correlation_id()
-    safe_attributes = {
-        key: value[:64]
-        for key, value in attributes.items()
-        if key in {"tool", "dependency", "adapter", "outcome"}
-        and isinstance(value, str)
-    }
+    allowed_spans = {"mcp.request", "auth.verify", "acl.resolve", "rate.check", "capability.route",
+                     "secret.resolve", "adapter.call", "upstream.1c", "semantic.transform",
+                     "evidence.resolve", "dad.rule.evaluate", "audit.append"}
+    safe_name = name if isinstance(name, str) and name in allowed_spans else "other"
+    allowed_values = {"tool": OperationalMetrics.TOOLS,
+                      "dependency": OperationalMetrics.DEPENDENCIES,
+                      "adapter": frozenset({"odata", "odata_sidecar", "rsv_bridge"}),
+                      "outcome": OperationalMetrics.OUTCOMES}
+    safe_attributes = {key: value if isinstance(value, str) and value in allowed_values[key] else "other"
+                       for key, value in attributes.items() if key in allowed_values}
     try:
         yield
     except Exception as exc:
@@ -94,7 +113,7 @@ async def trace_span(name: str, **attributes: str):
             json.dumps(
                 {
                     "event": "trace_span",
-                    "name": name,
+                    "name": safe_name,
                     "request_id": str(correlation_id) if correlation_id else None,
                     "duration_ms": round((time.perf_counter() - started) * 1000, 3),
                     "error_type": type(exc).__name__,
@@ -110,7 +129,7 @@ async def trace_span(name: str, **attributes: str):
             json.dumps(
                 {
                     "event": "trace_span",
-                    "name": name,
+                    "name": safe_name,
                     "request_id": str(correlation_id) if correlation_id else None,
                     "duration_ms": round((time.perf_counter() - started) * 1000, 3),
                     **safe_attributes,
@@ -180,7 +199,8 @@ class HTTPMetrics:
         async def observed_send(message: dict[str, Any]) -> None:
             nonlocal status
             if message["type"] == "http.response.start":
-                status = int(message["status"])
+                candidate = message.get("status")
+                status = candidate if type(candidate) is int and 100 <= candidate <= 599 else 500
             await send(message)
 
         try:

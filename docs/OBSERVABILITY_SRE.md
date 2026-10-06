@@ -129,6 +129,23 @@ and reset on restart; they are not a durable audit or a substitute for database/
 The endpoint also exposes bounded operation and dependency counters. Tool names are restricted to
 safe registered names; source IDs, company IDs, URLs, query values and subjects are never labels.
 
+The operation allowlist is fixed to the registered MCP names plus the reserved internal `audit`
+append operation; unknown alphanumeric identifiers also map to `other`, not new label series.
+CI compares this allowlist to the decorated server tools. Dependency duration sum/count uses only
+fixed dependency/outcome labels, rejects non-finite/non-numeric samples, and caps pathological
+individual duration samples at one hour to prevent overflow. HTTP status labels accept only integer
+100–599; malformed statuses map to 500 without changing downstream response messages. Trace span
+names and tool/dependency/adapter/outcome values use fixed allowlists; unknown/free-text values
+become `other`, never raw private data.
+
+Audit operation outcomes are emitted AFTER the INSERT completes, not before. Failed or cancelled
+append emits the original operation's error, reserved `tool="audit",outcome="error"` and
+`dependency="audit",outcome="error"`; failures still propagate, never substitute a successful
+answer. This wires the checked-in `ErpMcpAuditAppendErrors` selector to real append failure.
+Actual PostgreSQL runtime-role tests verify successful append and readonly-transaction failure;
+synthetic audit rows remain append-only/retained. Receiver delivery and complete production fault
+rehearsal remain separate gates.
+
 ## 6. Service objectives
 
 Initial production objectives must be set from measured pilot data. Before measurements, use

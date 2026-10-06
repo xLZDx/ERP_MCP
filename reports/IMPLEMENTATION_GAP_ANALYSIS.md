@@ -2,6 +2,17 @@
 
 # ERP_MCP implementation gap analysis
 
+## Real audit signal and fixed label/trace boundaries — 2026-10-06
+
+NFR-O1/D12/D11: arbitrary alphanumeric tool identifiers no longer create metric series; fixed
+registered-tool allowlist is AST-tested. Trace names/attributes, HTTP statuses and dependency
+durations are bounded. Audit only emits original outcome after INSERT; error/cancellation emits
+existing critical audit alert selector and never a false success. Real runtime-role PostgreSQL
+success/readonly-failure tests PASS, synthetic append-only audit rows retained; 26 focused PASS,
+full local 455 PASS/13 SKIP. Pinned promtool lint/format/pending/firing/resolution PASS. Parent
+bebc223 CI 37475685751 all four jobs PASS. Receiver delivery, full fault/deployment/DAD/Ferma/native
+evidence storage/ACL/parser and stdout pre-parser gates remain OPEN; no production GO inferred.
+
 ## Profile-class binding and malformed-result privacy — 2026-10-06
 
 EVID-1/DAD-5 evidence revalidation now binds the complete immutable parser-profile snapshot to

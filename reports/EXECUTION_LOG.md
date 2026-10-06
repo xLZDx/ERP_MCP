@@ -1,5 +1,11 @@
 # Autonomous engineering execution log
 
+<!-- ENGINEERING_CHECKPOINT=AUDIT_METRIC_PRIVACY_20261006 ENGINEERING_IMPLEMENTATION=ae442eba2e20d75cd4dce0ee81aabf3f98f07de82e58e135437db2183e44e6e6 -->
+
+## Bounded metrics/traces and actual audit-alert signal — 2026-10-06
+
+NFR-O1/D12/D11: fixed MCP-tool metric allowlist (plus reserved audit), bounded HTTP status and trace attribute/name allowlists prevent alphanumeric private identifiers becoming series/log data. Audit outcome now recorded only after INSERT; real append failure/cancellation emits existing audit alert selector and original-tool error, never false success. Dependency duration sum/count rejects non-measurements and bounds overflow. 26 focused tests PASS against actual disposable PostgreSQL runtime role; one successful append retained, readonly INSERT failure verified; pinned promtool format/lint/firing/resolution and evidence scanner PASS. Parent bebc223 CI 37475685751 ALL FOUR jobs PASS. Full current local suite 455 passed/13 skipped; real DB focused 26 PASS separately, Ruff/Bandit/compileall/document gates PASS. Audit batch awaits its own hosted run. Alert delivery, full fault/deployment/DAD/Ferma/native evidence storage/ACL/parsers/stdout bound remain OPEN. Production GO remains NO-GO; DoD remains PARTIAL; PR #11 Draft.
+
 <!-- ENGINEERING_CHECKPOINT=EVIDENCE_PROFILE_BINDING_20261006 ENGINEERING_IMPLEMENTATION=465da0053ae2d5029224389141cc23c1217265e0cb96af329ac031f6c9c1abf8 -->
 
 ## Evidence profile binding and result privacy — 2026-10-06

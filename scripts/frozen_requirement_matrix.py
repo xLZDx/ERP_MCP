@@ -26,6 +26,8 @@ IMPLEMENTATION = {
     "NFR-L1": ["vendor/intake.json", "scripts/assemble_release_evidence.py",
                "scripts/write_image_provenance.py", "tests/test_release_evidence_assembly.py"],
     "NFR-P1": ["src/business_ai_gateway/fanout.py", "tests/test_fanout.py"],
+    "NFR-O1": ["src/business_ai_gateway/observability.py", "src/business_ai_gateway/audit.py",
+               "tests/test_audit_metric_contract.py", "scripts/validate_prometheus.py"],
     "NFR-P2": ["scripts/performance_benchmark.py", "tests/test_measured_performance.py",
                "scripts/postgres_pool_benchmark.py", "tests/test_postgres_pool_benchmark.py"],
     "P6-SEC-1": ["src/business_ai_gateway/adapters/onec/rsv_bridge.py", "tests/test_rsv_bridge.py",
