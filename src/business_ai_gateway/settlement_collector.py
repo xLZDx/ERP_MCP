@@ -7,6 +7,7 @@ validated_profiles is derived server-side from the profile in use, never from to
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -44,6 +45,11 @@ OPEN_ITEM_FIELDS = (
     "settled_document_ref",
 )
 MAX_OPEN_ITEM_ROWS = 2000
+# Reasons that mean the source answer cannot be trusted; the tool audits them as outcome=error.
+OPEN_ITEMS_FAILURE_REASONS = frozenset({
+    "COMPANY_SCOPE_MISMATCH", "SETTLEMENT_FACT_INVALID", "AGING_ROWS_TRUNCATED",
+    "SOURCE_RESPONSE_INVALID",
+})
 _RECORD_REGISTER = re.compile(r"^(?:Accumulation|Information)Register_[\w\u0080-￿]+$")
 _PROPERTY = re.compile(r"^[\w\u0080-￿]+$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
@@ -107,6 +113,20 @@ class OpenItemsInvalid(ValueError):
     pass
 
 
+def _amount(raw: Any) -> Decimal:
+    """Exact Decimal of a source amount; imprecise binary floats are rejected, never rounded."""
+    if isinstance(raw, float):
+        if not math.isfinite(raw):
+            raise OpenItemsInvalid("amount")
+        # A JSON number parsed as float keeps at most 15 reliable significant digits.
+        if len(Decimal(repr(raw)).normalize().as_tuple().digits) > 15:
+            raise OpenItemsInvalid("amount")
+    try:
+        return Decimal(str(raw))
+    except InvalidOperation:
+        raise OpenItemsInvalid("amount") from None
+
+
 def _day(value: Any) -> date:
     if not isinstance(value, str) or len(value) < 10:
         raise OpenItemsInvalid("date")
@@ -143,7 +163,7 @@ def _result(
 def evaluate_open_items(
     concept: str,
     mapping: dict[str, Any],
-    raw_rows: list[dict[str, Any]],
+    raw_rows: Any,
     *,
     source_id: str,
     company_id: str,
@@ -153,11 +173,14 @@ def evaluate_open_items(
     metadata_fingerprint: str,
     profile_fingerprint: str,
     synthetic: bool,
+    source_truncated: bool = False,
 ) -> dict[str, Any]:
     """Return the aging payload (PASS/FINDING/INCONCLUSIVE); never raises on bad business data."""
     kind = validate_open_items_mapping(concept, mapping)
     fields = mapping["output_fields"]
-    truncated = len(raw_rows) >= row_limit
+    if not isinstance(raw_rows, list):
+        return _result(kind, "INCONCLUSIVE", "SOURCE_RESPONSE_INVALID")
+    truncated = source_truncated or len(raw_rows) >= row_limit
     if truncated:
         return _result(kind, "INCONCLUSIVE", "AGING_ROWS_TRUNCATED", truncated=True)
     if not mapping["opening_items_known"]:
@@ -179,14 +202,16 @@ def evaluate_open_items(
                 raise OpenItemsInvalid("row")
             if str(row[scope_field]).lower() != company_external_ref.lower():
                 return _result(kind, "INCONCLUSIVE", "COMPANY_SCOPE_MISMATCH")
-            direction = directions.get(row[fields["record_type"]])
+            record_type = row[fields["record_type"]]
             raw_amount = row[fields["amount"]]
-            if direction is None or isinstance(raw_amount, bool):
+            if (
+                not isinstance(record_type, str)
+                or directions.get(record_type) is None
+                or isinstance(raw_amount, bool)
+            ):
                 raise OpenItemsInvalid("row")
-            try:
-                amount = Decimal(str(raw_amount))
-            except InvalidOperation:
-                raise OpenItemsInvalid("amount") from None
+            direction = directions[record_type]
+            amount = _amount(raw_amount)
             counterparty = str(row[fields["counterparty_ref"]])
             contract = str(row[fields["contract_ref"]])
             ref = str(row[fields["document_ref"]])
@@ -209,30 +234,32 @@ def evaluate_open_items(
                             f"alloc-{ref}", ref, str(settled), business_date, amount
                         )
                     )
-        all_dates = [d.document_date for d in documents] + [p.payment_date for p in payments]
-        period_start = min([as_of, *all_dates])
-        period_end = as_of + timedelta(days=1)
-        digest = profile_fingerprint.split(":", 1)[-1]
-        if not _HEX64.fullmatch(digest) or not _HEX64.fullmatch(metadata_fingerprint or ""):
-            raise OpenItemsInvalid("fingerprint")
-        scope = EvidenceScope(
-            source_id, company_id, metadata_fingerprint, digest, period_start, period_end,
-            mapping["currency"], "UTC",
-        )
-        level = "L1" if synthetic else mapping.get("evidence_level", "")
-        profile = AgingProfile(
-            scope, metadata_fingerprint, "open-items-v1", kind, as_of, period_start,
-            period_end, "source-confirmed-due", "source-explicit-allocation", "native-not-run",
-        )
-        observation = SettlementObservation(
-            scope, profile.fingerprint(), metadata_fingerprint, digest, level, True,
-            True, tuple(documents), tuple(payments), tuple(allocations),
-        )
-        outcome = evaluate_aging(
-            profile, observation, validated_profiles=frozenset({profile.fingerprint()})
-        )
-    except (OpenItemsInvalid, ValueError, TypeError):
+    except OpenItemsInvalid:
         return _result(kind, "INCONCLUSIVE", "SETTLEMENT_FACT_INVALID")
+    # Anything raised below is an internal or configuration defect, not bad source data:
+    # it propagates so the tool audits outcome=error instead of a silent INCONCLUSIVE.
+    all_dates = [d.document_date for d in documents] + [p.payment_date for p in payments]
+    period_start = min([as_of, *all_dates])
+    period_end = as_of + timedelta(days=1)
+    digest = profile_fingerprint.split(":", 1)[-1]
+    if not _HEX64.fullmatch(digest) or not _HEX64.fullmatch(metadata_fingerprint or ""):
+        raise ValueError("OPEN_ITEMS_FINGERPRINT_INVALID")
+    scope = EvidenceScope(
+        source_id, company_id, metadata_fingerprint, digest, period_start, period_end,
+        mapping["currency"], "UTC",
+    )
+    level = "L1" if synthetic else mapping.get("evidence_level", "")
+    profile = AgingProfile(
+        scope, metadata_fingerprint, "open-items-v1", kind, as_of, period_start,
+        period_end, "source-confirmed-due", "source-explicit-allocation", "native-not-run",
+    )
+    observation = SettlementObservation(
+        scope, profile.fingerprint(), metadata_fingerprint, digest, level, True,
+        True, tuple(documents), tuple(payments), tuple(allocations),
+    )
+    outcome = evaluate_aging(
+        profile, observation, validated_profiles=frozenset({profile.fingerprint()})
+    )
     summary: list[dict[str, str]] = []
     if outcome["status"] in {"PASS", "FINDING"}:
         summary = _summary(documents, payments, allocations)

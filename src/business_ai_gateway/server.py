@@ -53,6 +53,7 @@ from .semantic import (
 from .settings import Settings
 from .settlement_collector import (
     MAX_OPEN_ITEM_ROWS,
+    OPEN_ITEMS_FAILURE_REASONS,
     PAYABLE_OPEN_ITEMS_CONCEPT,
     RECEIVABLE_OPEN_ITEMS_CONCEPT,
     build_open_items_query,
@@ -1512,6 +1513,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             principal, source_id, tool_name, started, query, company_id=parsed_company_id
         )
         capabilities = None
+        profile = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
             capabilities = await runtime.onec.capabilities(source)
@@ -1542,7 +1544,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source, entity_set=entity_set, select=select, filter_expr=filter_expr,
                 orderby=orderby, expand=None, top=row_limit, skip=0,
             )
-            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            raw_rows = result.get("value") if isinstance(result, dict) else result
+            page = result.get("page") if isinstance(result, dict) else None
+            source_truncated = isinstance(page, dict) and page.get("truncated", False) is not False
             payload = evaluate_open_items(
                 concept, mapping, raw_rows, source_id=source_id,
                 company_id=str(parsed_company_id), company_external_ref=company.external_ref,
@@ -1550,18 +1554,28 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
                 synthetic=profile.get("profile_kind") == SYNTHETIC_PROFILE_KIND,
+                source_truncated=source_truncated,
             )
             conclusive = payload["status"] in {"PASS", "FINDING"}
+            marker = profile.get("audit_detail_code")
+            # Source-data integrity failures are never audited as success; the synthetic
+            # marker stays visible as "<marker>:<reason>" (the reason is a fixed code).
+            detail_code = marker if conclusive else (
+                f"{marker}:{payload['reason']}" if marker else payload["reason"]
+            )
             response_bytes = len(
                 json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
             )
             await runtime.audit.write(
-                principal=principal, tool=tool_name, source_id=source_id, outcome="success",
+                principal=principal, tool=tool_name, source_id=source_id,
+                outcome=(
+                    "error" if payload["reason"] in OPEN_ITEMS_FAILURE_REASONS else "success"
+                ),
                 started_at=started, query=query, returned_items=len(payload["rows"]),
                 company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
-                detail_code=(profile.get("audit_detail_code") if conclusive else payload["reason"]),
+                detail_code=detail_code,
                 response_bytes=response_bytes, truncated=bool(payload["truncated"]),
             )
             return {
@@ -1582,7 +1596,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 started_at=started, query=query, company_id=parsed_company_id,
                 adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
                 metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
-                detail_code=getattr(exc, "code", type(exc).__name__),
+                profile_fingerprint=(profile["profile_fingerprint"] if profile else None),
+                detail_code=(
+                    f"{profile['audit_detail_code']}:" if profile and profile.get("audit_detail_code")
+                    else ""
+                ) + getattr(exc, "code", type(exc).__name__),
             )
             raise
 

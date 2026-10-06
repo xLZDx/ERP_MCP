@@ -98,6 +98,9 @@ def profile_provenance(profile: dict[str, Any], warnings: list[str] | None = Non
             "native_reconciliation": "NOT_RUN",
             "warnings": [*out, SYNTHETIC_WARNING],
         }
+    if profile.get("profile_kind") != "VALIDATED_NATIVE":
+        # Never label unknown provenance as native-validated evidence.
+        raise ValueError("PROFILE_PROVENANCE_UNKNOWN")
     return {
         "profile_kind": "VALIDATED_NATIVE",
         "evidence_level": "PROFILE_VALIDATED",

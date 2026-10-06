@@ -101,7 +101,8 @@ async def test_truncation_is_inconclusive_and_never_a_partial_answer(
         assert body["status"] == "INCONCLUSIVE" and body["reason"] == "AGING_ROWS_TRUNCATED"
         assert body["rows"] == [] and body["summary"] == [] and body["truncated"] is True
         audit = await stack.audit_rows("receivable_aging")
-        assert audit[-1]["detail_code"] == "AGING_ROWS_TRUNCATED"
+        assert audit[-1]["detail_code"] == "SYNTHETIC_FIXTURE_PROFILE:AGING_ROWS_TRUNCATED"
+        assert audit[-1]["outcome"] == "error"
     finally:
         await stack.db.close()
 

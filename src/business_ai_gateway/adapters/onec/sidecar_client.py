@@ -81,7 +81,12 @@ class ODataSidecarClient:
             top=top,
             skip=skip,
         )
-        return {"value": envelope["data"]}
+        result: dict[str, Any] = {"value": envelope["data"]}
+        # The sidecar reports byte-limit truncation only in page; never drop it.
+        page = envelope.get("page")
+        if isinstance(page, dict):
+            result["page"] = page
+        return result
 
     async def count(
         self,

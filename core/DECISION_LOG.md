@@ -112,3 +112,10 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 ## 2026-10-07 - Suite moved onto the fixture-profile stack
 
 - Stack now BAG_ENVIRONMENT=test with the reviewed synthetic fixture profile file (SHA-256 pinned at setup), source tag synthetic-fixture, test-only fake sidecar behind a recording wrapper (:28767). SC01-SC05, SC07, SC09-SC12 evaluate real tool output (PASS, L1 synthetic only); SC06 EXTERNAL-GATE, SC08 NOT IMPLEMENTED by decision. Final run 73 passed, 3 skipped (needs-oidc-identity), 2 xfailed (SC06, SC08).
+
+## 2026-10-07 - Review remediation F1-F6 (aging fail-closed, honest audit)
+
+- Decision: the sidecar client `read` now returns the envelope `page`; receivable/payable aging treats `page.truncated` (any non-False value) as INCONCLUSIVE/AGING_ROWS_TRUNCATED with no partial rows. Other semantic tools already echo `result["page"]`, so they now expose the flag without further change.
+- Decision: float amounts with more than 15 significant digits are rejected as SETTLEMENT_FACT_INVALID instead of rounded (chosen over parse_float=Decimal to avoid changing numeric typing of every other tool). Row parsing catches only OpenItemsInvalid (unhashable record types are now bad data); evaluate_aging/scope/profile errors propagate and audit as outcome=error. A response without a `value` list is INCONCLUSIVE/SOURCE_RESPONSE_INVALID, never an empty PASS.
+- Decision: audit vocabulary is unchanged (success/error/denied; no migration). COMPANY_SCOPE_MISMATCH, SETTLEMENT_FACT_INVALID, AGING_ROWS_TRUNCATED and SOURCE_RESPONSE_INVALID audit as `error` (closest existing non-success value; `denied` is reserved for authorization). Non-conclusive aging detail_code is `<profile marker>:<reason>` (e.g. SYNTHETIC_FIXTURE_PROFILE:AGING_ROWS_TRUNCATED); exception-path audit also keeps the marker and profile fingerprint.
+- Decision: profile_provenance raises PROFILE_PROVENANCE_UNKNOWN unless profile_kind is VALIDATED_NATIVE or SYNTHETIC_FIXTURE.
