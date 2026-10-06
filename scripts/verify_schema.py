@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncpg
 
+from business_ai_gateway.db import SCHEMA_VERSION
+
 EXPECTED_TABLES = {
     "schema_migrations",
     "sources",
@@ -42,11 +44,11 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
            FROM bag.schema_migrations"""
     )
     if (
-        history["count"] != 13
+        history["count"] != SCHEMA_VERSION
         or history["minimum"] != 1
-        or history["maximum"] != 13
+        or history["maximum"] != SCHEMA_VERSION
         or not history["identified"]
-        or history["names"] != 13
+        or history["names"] != SCHEMA_VERSION
     ):
         raise AssertionError(f"schema migration identity is incomplete: {dict(history)}")
 
@@ -61,6 +63,7 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         "schema_migrations_checksum_format_check",
         "platform_role_bindings_scope_check",
         "semantic_mappings_confirmed_confidence_check",
+        "source_capabilities_drift_status_check",
     }
     if missing_constraints := required_constraints - constraints:
         raise AssertionError(f"missing schema constraints: {sorted(missing_constraints)}")
@@ -102,6 +105,7 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         "bag.reject_audit_mutation()",
         "bag.reject_admin_audit_mutation()",
         "bag.invalidate_validated_profile_on_mapping_change()",
+        "bag.record_capability_observation(text,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
     )
     for signature in required_functions:
         if not await conn.fetchval("SELECT to_regprocedure($1) IS NOT NULL", signature):
@@ -116,6 +120,7 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         "control_cannot_truncate_admin_audit": ("business_ai_control_api", "bag.admin_audit_events", "TRUNCATE", False),
         "app_cannot_mutate_admin_audit": ("business_ai_app", "bag.admin_audit_events", "INSERT,UPDATE,DELETE,TRUNCATE", False),
         "app_cannot_read_candidate_scope_mappings": ("business_ai_app", "bag.company_scope_mappings", "SELECT", False),
+        "app_cannot_update_trusted_capability_rows": ("business_ai_app", "bag.source_capabilities", "UPDATE", False),
     }
     for label, (role, table, privilege, expected) in privilege_checks.items():
         actual = await conn.fetchval(
