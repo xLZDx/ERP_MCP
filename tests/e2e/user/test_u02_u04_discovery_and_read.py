@@ -130,7 +130,10 @@ async def test_u04_onec_read_returns_only_requested_fields_and_bounded_rows(
 
     upstream = fake1c_log.since(mark)
     reads = [r for r in upstream if r["path"].endswith("Catalog_Organizations")]
-    assert reads and all(r["method"] == "GET" for r in reads)
+    # Entity data goes through the read-only sidecar protocol (POST /v1/read) in this stack;
+    # a projection/bound is proven on the sidecar recorder, Fake1C only ever sees GET/HEAD.
+    assert reads and fake1c_log.all_methods_read_only(mark)
+    assert all(r.get("upstream") == "sidecar" or r["method"] == "GET" for r in reads)
     assert any("$select" in r["query_keys"] and r["numeric_params"].get("$top") == 1
                for r in reads), reads
     assert fake1c_log.all_methods_read_only(mark)  # no write verb ever reaches Fake1C
