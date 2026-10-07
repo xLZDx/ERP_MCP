@@ -42,20 +42,28 @@ foreach ($name in 'postgres', 'redis') {
     $components[$name] = $row
 }
 $checks = [ordered]@{
-    fake1c = ($base + '18766/odata/standard.odata/$metadata')
-    idp = ($base + '18080/healthz')
-    gateway = ($base + '18000/readyz')
+    fake1c = ($base + $script:Ports.fake1c + '/odata/standard.odata/$metadata')
+    sidecar = ($base + $script:Ports.sidecar + '/__ft__/requests')
+    idp = ($base + $script:Ports.idp + '/healthz')
+    gateway = ($base + $script:Ports.gateway + '/readyz')
 }
 foreach ($name in $checks.Keys) {
     $code = Test-Http -Url $checks[$name] -TimeoutSec 5
     $components[$name] = [ordered]@{ healthy = ($code -eq 200); port = $script:Ports[$name]
         http_status = $code; bind = (Get-BindState $script:Ports[$name]) }
+    # The listener must be OUR process (recorded launcher / venv python), not merely something
+    # that answers on the port.
+    $foreign = Get-ForeignListener $name
+    $recorded = Get-ComponentPid $name
+    $components[$name].pid = $recorded
+    $components[$name].pid_match = [bool]($recorded -and -not $foreign -and (Test-ComponentUp $name))
+    if (-not $components[$name].pid_match) { $components[$name].healthy = $false }
 }
 foreach ($name in $components.Keys) {
     if ($components[$name].bind -like 'EXPOSED*') { $components[$name].healthy = $false }
 }
 $healthy = -not ($components.Values | Where-Object { -not $_.healthy })
-$result = [ordered]@{ healthy = [bool]$healthy; project = 'erpmcp-e2e'; seed_mode = $info.seed_mode
+$result = [ordered]@{ healthy = [bool]$healthy; project = $script:ProjectName; seed_mode = $info.seed_mode
     components = $components }
 if ($Json) {
     $result | ConvertTo-Json -Depth 6
@@ -67,6 +75,7 @@ if ($Json) {
         if ($c.healthy) { $state = 'ok' }
         $extra = ''
         if ($c.Contains('version')) { $extra += ' version=' + $c.version }
+        if ($c.Contains('pid_match')) { $extra += ' pid=' + $c.pid + ' pid_match=' + $c.pid_match }
         if ($c.Contains('schema_version')) { $extra += ' schema=' + $c.schema_version }
         Write-Host ('{0,-9} {1,-9} port={2} {3}{4}' -f $name, $state, $c.port, $c.bind, $extra)
     }

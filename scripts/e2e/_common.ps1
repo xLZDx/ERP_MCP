@@ -1,34 +1,78 @@
 #Requires -Version 5.1
 # Shared helpers for the disposable local E2E environment (dot-source this file).
 # Works on Windows PowerShell 5.1 and PowerShell 7. Never prints secrets.
+#
+# Topology is relocatable with ONE variable set (defaults unchanged):
+#   E2E_PORT_OFFSET     integer added to every default port (default 0)
+#   E2E_PROJECT_SUFFIX  appended to the compose project name, e.g. -rem (default empty)
+# When neither is set, the values recorded in .e2e/env.json (or env.pending.json) are used, so
+# status/fault/test run from any shell address the same environment that up.ps1 created.
 
 Set-StrictMode -Version 2.0
 
 $script:Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:E2eDir = Join-Path $script:Root '.e2e'
+if ($env:E2E_DIR) { $script:E2eDir = $env:E2E_DIR }
 $script:Py = Join-Path $script:Root '.venv\Scripts\python.exe'
 $script:ComposeFile = Join-Path $script:Root 'compose.e2e.yml'
-$script:ProjectName = 'erpmcp-e2e'
 $script:BindHost = '127.0.0.1'
-$script:Ports = [ordered]@{ postgres = 15432; redis = 16379; fake1c = 18766; idp = 18080; gateway = 18000 }
-$script:ProcessComponents = @('fake1c', 'idp', 'gateway')
+$script:BasePorts = [ordered]@{ postgres = 15432; redis = 16379; fake1c = 18766; sidecar = 18767
+    idp = 18080; gateway = 18000 }
+# Components that run as host processes (start order); stop order is the reverse.
+$script:ProcessComponents = @('fake1c', 'sidecar', 'idp', 'gateway')
+
+function Resolve-E2eTopology {
+    $offset = $env:E2E_PORT_OFFSET
+    $suffix = $env:E2E_PROJECT_SUFFIX
+    $recorded = $null
+    if ($null -eq $offset -and $null -eq $suffix) {
+        foreach ($name in 'env.json', 'env.pending.json') {
+            $file = Join-Path $script:E2eDir $name
+            if (Test-Path $file) {
+                try { $recorded = Get-Content $file -Raw | ConvertFrom-Json; break } catch { $recorded = $null }
+            }
+        }
+    }
+    if ($null -eq $offset) {
+        $offset = 0
+        if ($recorded -and ($recorded.PSObject.Properties.Name -contains 'port_offset')) { $offset = $recorded.port_offset }
+    }
+    if ($null -eq $suffix) {
+        $suffix = ''
+        if ($recorded -and ($recorded.PSObject.Properties.Name -contains 'project_suffix')) { $suffix = $recorded.project_suffix }
+    }
+    $offset = [int]$offset
+    if ($offset -lt 0 -or ($offset + 18767) -gt 65535) { throw 'E2E_PORT_OFFSET out of range' }
+    if ($suffix -notmatch '^(-[a-z0-9]+)*$') { throw 'E2E_PROJECT_SUFFIX must look like -name' }
+    $script:PortOffset = $offset
+    $script:ProjectSuffix = $suffix
+    $script:ProjectName = 'erpmcp-e2e' + $suffix
+    $script:Ports = [ordered]@{}
+    foreach ($name in $script:BasePorts.Keys) { $script:Ports[$name] = $script:BasePorts[$name] + $offset }
+    # Child processes (envctl.py, pytest, fault.ps1) must see the same topology.
+    $env:E2E_PORT_OFFSET = [string]$offset
+    $env:E2E_PROJECT_SUFFIX = $suffix
+}
+Resolve-E2eTopology
 
 function Write-Step([string]$Message) { Write-Host ('[e2e] ' + $Message) }
 
 function Invoke-Native {
-    # Runs a native command, streams its output, throws on non-zero exit.
+    # Runs a native command, streams its output, throws (with the output tail) on non-zero exit.
     param([string]$File, [string[]]$Arguments, [switch]$AllowFail, [switch]$Quiet)
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+    $global:LASTEXITCODE = 0   # never inherit a stale exit code from an earlier command
     try {
-        $output = & $File @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+        $output = @(& $File @Arguments 2>&1 | ForEach-Object { $_.ToString() })
+        $code = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $previous
     }
-    $code = $LASTEXITCODE
     if (-not $Quiet) { $output | ForEach-Object { Write-Host $_ } }
     if ($code -ne 0 -and -not $AllowFail) {
-        throw ('command failed (exit ' + $code + '): ' + $File + ' ' + ($Arguments -join ' '))
+        $tail = (@($output | Select-Object -Last 15) -join "`n")
+        throw ('command failed (exit ' + $code + '): ' + $File + ' ' + ($Arguments -join ' ') + "`n" + $tail)
     }
     return , @($output, $code)
 }
@@ -79,7 +123,8 @@ function Import-E2eEnv {
 }
 
 function Clear-E2eSecretEnv {
-    Get-ChildItem Env: | Where-Object { $_.Name -like 'BAG_*' -or $_.Name -like 'FAKE1C_*' } |
+    Get-ChildItem Env: | Where-Object {
+        $_.Name -like 'BAG_*' -or $_.Name -like 'FAKE1C_*' -or $_.Name -like 'FAKE_SIDECAR_*' } |
         ForEach-Object { Remove-Item ('Env:' + $_.Name) }
 }
 
@@ -101,49 +146,134 @@ function Test-Http {
 }
 
 function Wait-Http {
-    param([string]$Url, [int]$ExpectStatus = 200, [int]$TimeoutSec = 60)
+    param([string]$Url, [int]$ExpectStatus = 200, [int]$TimeoutSec = 60, [string]$Component = '')
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
         if ((Test-Http -Url $Url -TimeoutSec 3) -eq $ExpectStatus) { return $true }
+        if ($Component -and -not (Get-ComponentPid $Component)) {
+            throw ($Component + ' exited while starting' + "`n" + (Get-LogTail $Component))
+        }
         Start-Sleep -Milliseconds 500
     }
     throw ('timeout waiting for ' + $Url)
 }
 
+# ---------------------------------------------------------------------------- process identity
+# The pid file stores "<pid> <start-time-ticks-utc>" of the cmd.exe launcher. A pid is trusted
+# only while that process still has the recorded start time (Windows reuses pids).
+
 function Get-PidFile([string]$Name) { Join-Path $script:E2eDir ('pids\' + $Name + '.pid') }
 
-function Get-ComponentPid([string]$Name) {
+function Get-ProcessStartTicks([int]$ProcessId) {
+    $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    if (-not $process) { return $null }
+    try { return [string]$process.StartTime.ToUniversalTime().Ticks } catch { return $null }
+}
+
+function Read-PidRecord([string]$Name) {
     $file = Get-PidFile $Name
     if (-not (Test-Path $file)) { return $null }
-    $value = [int](Get-Content $file -Raw)
-    if (Get-Process -Id $value -ErrorAction SilentlyContinue) { return $value }
+    $parts = @((Get-Content $file -Raw).Trim() -split '\s+')
+    if ($parts.Count -lt 1 -or $parts[0] -notmatch '^\d+$') { return $null }
+    $ticks = ''
+    if ($parts.Count -ge 2) { $ticks = $parts[1] }
+    return [pscustomobject]@{ Pid = [int]$parts[0]; Ticks = $ticks }
+}
+
+function Get-ComponentPid([string]$Name) {
+    # The recorded launcher pid, only if it is alive AND is the process we started.
+    $record = Read-PidRecord $Name
+    if (-not $record) { return $null }
+    $actual = Get-ProcessStartTicks $record.Pid
+    if (-not $actual) { return $null }
+    if ($record.Ticks -and $record.Ticks -ne $actual) { return $null }
+    return $record.Pid
+}
+
+function Get-ProcessInfo([int]$ProcessId) {
+    return Get-CimInstance Win32_Process -Filter ('ProcessId=' + $ProcessId) -ErrorAction SilentlyContinue
+}
+
+function Test-ListenerIsOurs {
+    # True when the listening process descends from our recorded launcher, or (no live record)
+    # its ancestor chain carries this worktree's venv python and the component's module.
+    param([string]$Name, [int]$ListenerPid)
+    $recorded = Get-ComponentPid $Name
+    $module = Get-ComponentModule $Name
+    $current = $ListenerPid
+    for ($depth = 0; $depth -lt 8 -and $current; $depth++) {
+        if ($recorded -and $current -eq $recorded) { return $true }
+        $info = Get-ProcessInfo $current
+        if (-not $info) { return $false }
+        if (-not $recorded -and $info.CommandLine -and
+            $info.CommandLine.ToLower().Contains($script:Py.ToLower()) -and
+            $info.CommandLine.Contains($module)) { return $true }
+        $current = [int]$info.ParentProcessId
+    }
+    return $false
+}
+
+function Get-ForeignListener([string]$Name) {
+    # The first listener on the component's port that is not ours, or $null.
+    $listeners = Get-ListenerInfo $script:Ports[$Name]
+    if (-not $listeners) { return $null }
+    foreach ($row in $listeners) {
+        if (-not (Test-ListenerIsOurs $Name $row.Pid)) { return $row }
+    }
     return $null
+}
+
+function Get-ComponentModule([string]$Name) {
+    switch ($Name) {
+        'fake1c' { return 'testbed.fake1c.app:app' }
+        'sidecar' { return 'sidecar_recording_app:app' }
+        'idp' { return 'testbed.idp' }
+        'gateway' { return 'business_ai_gateway.app:app' }
+    }
 }
 
 function Get-ComponentCommand([string]$Name) {
     switch ($Name) {
         'fake1c' { return @('-m', 'uvicorn', 'testbed.fake1c.app:app', '--host', $script:BindHost,
             '--port', [string]$script:Ports.fake1c, '--no-access-log') }
+        'sidecar' { return @('-m', 'uvicorn', 'testbed.fake1c.sidecar_recording_app:app',
+            '--host', $script:BindHost, '--port', [string]$script:Ports.sidecar, '--no-access-log') }
         'idp' { return @('-m', 'testbed.idp') }
         'gateway' { return @('-m', 'uvicorn', 'business_ai_gateway.app:app', '--host', $script:BindHost,
             '--port', [string]$script:Ports.gateway, '--no-access-log') }
     }
 }
 
+function Get-LogTail([string]$Name, [int]$Lines = 15) {
+    $parts = @()
+    foreach ($suffix in 'err', 'out') {
+        $file = Join-Path $script:E2eDir ('logs\' + $Name + '.' + $suffix + '.log')
+        if (Test-Path $file) {
+            $parts += ('--- ' + $Name + '.' + $suffix + '.log (tail) ---')
+            $parts += @(Get-Content $file -Tail $Lines -ErrorAction SilentlyContinue)
+        }
+    }
+    return ($parts -join "`n")
+}
+
 function Test-ComponentUp([string]$Name) {
-    $port = $script:Ports[$Name]
-    return [bool](Get-ListenerInfo $port)
+    return [bool](Get-ListenerInfo $script:Ports[$Name])
 }
 
 function Start-E2eComponent {
-    param([ValidateSet('fake1c', 'idp', 'gateway')][string]$Name)
-    if (Test-ComponentUp $Name) { Write-Step ($Name + ' already listening'); return }
+    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
+    $foreign = Get-ForeignListener $Name
+    if ($foreign) {
+        throw ('port ' + $script:Ports[$Name] + ' for ' + $Name + ' is held by a foreign process (pid ' +
+            $foreign.Pid + '); refusing to start or reuse it')
+    }
+    if (Test-ComponentUp $Name) { Write-Step ($Name + ' already listening (ours)'); return }
     Initialize-PythonEnv
     New-Item -ItemType Directory -Force -Path (Join-Path $script:E2eDir 'pids'),
         (Join-Path $script:E2eDir 'logs') | Out-Null
     $out = Join-Path $script:E2eDir ('logs\' + $Name + '.out.log')
     $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
-    if ($Name -eq 'gateway') { Import-E2eEnv }
+    if ($Name -in 'gateway', 'sidecar') { Import-E2eEnv }
     if ($Name -eq 'idp') { $env:E2E_IDP_CONFIG = (Join-Path $script:E2eDir 'idp-config.json') }
     # Launch through cmd.exe via ShellExecute (no -Redirect*): the service must NOT inherit the
     # caller's stdout/stderr pipes, otherwise a caller reading our output waits for EOF forever.
@@ -156,13 +286,28 @@ function Start-E2eComponent {
         Clear-E2eSecretEnv
         Remove-Item Env:E2E_IDP_CONFIG -ErrorAction SilentlyContinue
     }
-    Set-Content -Path (Get-PidFile $Name) -Value $process.Id -Encoding ascii
+    $ticks = ''
+    try { $ticks = [string]$process.StartTime.ToUniversalTime().Ticks } catch { $ticks = '' }
+    Set-Content -Path (Get-PidFile $Name) -Value ([string]$process.Id + ' ' + $ticks) -Encoding ascii
+    # Fail fast: the launcher exits at once when python cannot start or the app import fails.
+    $deadline = (Get-Date).AddSeconds(2)
+    while ((Get-Date) -lt $deadline) {
+        if ($process.HasExited) {
+            throw ($Name + ' exited immediately (exit ' + $process.ExitCode + ')' + "`n" + (Get-LogTail $Name))
+        }
+        Start-Sleep -Milliseconds 250
+    }
     Write-Step ('started ' + $Name + ' (pid ' + $process.Id + ', port ' + $script:Ports[$Name] + ')')
 }
 
 function Stop-E2eComponent {
-    param([ValidateSet('fake1c', 'idp', 'gateway')][string]$Name)
+    param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
     $port = $script:Ports[$Name]
+    $foreign = Get-ForeignListener $Name
+    if ($foreign) {
+        throw ('port ' + $port + ' for ' + $Name + ' is held by a foreign process (pid ' + $foreign.Pid +
+            '); refusing to stop it')
+    }
     $targets = @()
     $recorded = Get-ComponentPid $Name
     if ($recorded) { $targets += $recorded }
@@ -174,17 +319,22 @@ function Stop-E2eComponent {
     }
     $deadline = (Get-Date).AddSeconds(15)
     while ((Test-ComponentUp $Name) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 300 }
+    # Remove the pid record only once the port is confirmed free.
+    if (Test-ComponentUp $Name) { throw ($Name + ' still listening on ' + $port + '; pid file kept') }
     Remove-Item (Get-PidFile $Name) -ErrorAction SilentlyContinue
-    if (Test-ComponentUp $Name) { throw ($Name + ' still listening on ' + $port) }
     Write-Step ('stopped ' + $Name)
 }
 
 function Wait-E2eComponent([string]$Name) {
     $base = 'http://' + $script:BindHost + ':' + $script:Ports[$Name]
     switch ($Name) {
-        'fake1c' { Wait-Http ($base + '/odata/standard.odata/$metadata') | Out-Null }
-        'idp' { Wait-Http ($base + '/healthz') | Out-Null }
-        'gateway' { Wait-Http ($base + '/healthz') | Out-Null; Wait-Http ($base + '/readyz') | Out-Null }
+        'fake1c' { Wait-Http ($base + '/odata/standard.odata/$metadata') -Component $Name | Out-Null }
+        'sidecar' { Wait-Http ($base + '/__ft__/requests') -Component $Name | Out-Null }
+        'idp' { Wait-Http ($base + '/healthz') -Component $Name | Out-Null }
+        'gateway' {
+            Wait-Http ($base + '/healthz') -Component $Name | Out-Null
+            Wait-Http ($base + '/readyz') -Component $Name | Out-Null
+        }
     }
 }
 

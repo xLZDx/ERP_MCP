@@ -161,7 +161,7 @@ def concept_mappings() -> dict[str, dict]:
     }
 
 
-def build_document() -> dict:
+def build_document(source_id: str = SOURCE_ID) -> dict:
     companies = {
         org["Ref_Key"]: {"concepts": concept_mappings()} for org in SEED["organizations"]
     }
@@ -174,13 +174,13 @@ def build_document() -> dict:
             "reconciliation, never a bag.semantic_profiles row.",
         },
         "sources": {
-            SOURCE_ID: {"metadata_fingerprint": metadata_fingerprint(), "companies": companies}
+            source_id: {"metadata_fingerprint": metadata_fingerprint(), "companies": companies}
         },
     }
 
 
-def render() -> bytes:
-    text = json.dumps(build_document(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+def render(source_id: str = SOURCE_ID) -> bytes:
+    text = json.dumps(build_document(source_id), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     return text.encode("utf-8")
 
 

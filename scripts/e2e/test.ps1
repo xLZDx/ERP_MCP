@@ -26,7 +26,7 @@ Import-E2eEnv
 $env:ERP_MCP_E2E_NO_SKIP = '1'
 Push-Location $script:Root
 try {
-    $arguments = @('-m', 'pytest', 'tests/e2e', '-m', $expr, '-p', 'no:cacheprovider', '-q') + $PytestArgs
+    $arguments = @('-m', 'pytest', 'tests/e2e', '-m', $expr, '-p', 'no:cacheprovider', '-q', '-rs') + $PytestArgs
     & $script:Py @arguments
     $code = $LASTEXITCODE
 } finally {

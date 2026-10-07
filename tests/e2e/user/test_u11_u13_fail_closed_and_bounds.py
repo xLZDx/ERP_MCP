@@ -57,19 +57,25 @@ async def test_u11_unsupported_entity_fails_closed_without_alternative_query(
 
 # ------------------------------------------------------------------------------------- U12
 
-_BUSINESS_CALLS = (
-    ("bank_balance", {"period": "2026-04-30T00:00:00"}),
-    ("receivable_balance", {"period": "2026-04-30T00:00:00"}),
-    ("payable_balance", {"period": "2026-04-30T00:00:00"}),
-    ("inventory_balance", {"period": "2026-04-30T00:00:00"}),
-    ("accounting_balance_and_turnovers", {"start_period": "2026-04-01T00:00:00",
-                                          "end_period": "2026-05-01T00:00:00"}),
-    ("cash_movements", {"start_period": "2026-04-01T00:00:00",
-                        "end_period": "2026-05-01T00:00:00"}),
-    ("inventory_movements", {"start_period": "2026-04-01T00:00:00",
-                             "end_period": "2026-05-01T00:00:00"}),
-    ("accounting_posting_rows", {"start_period": "2026-04-01T00:00:00",
-                                 "end_period": "2026-05-01T00:00:00"}),
+_AS_OF = "2026-04-30T00:00:00+00:00"
+_APRIL = {"start_period": "2026-04-01T00:00:00+00:00", "end_period": "2026-04-30T00:00:00+00:00"}
+
+# The reviewed synthetic fixture profile has NO mapping for these concepts, so the tools must
+# still fail closed (no native reconciliation evidence, nothing fabricated).
+_UNCONFIRMED_CALLS = (
+    ("receivable_balance", {"period": _AS_OF}),
+    ("payable_balance", {"period": _AS_OF}),
+    ("payable_aging", {"as_of": _AS_OF}),
+)
+# Concepts the fixture profile DOES confirm: answered, but labelled synthetic L1 (never native).
+_FIXTURE_CALLS = (
+    ("bank_balance", {"period": "2026-05-01T00:00:00+00:00"}),
+    ("inventory_balance", {"period": _AS_OF}),
+    ("accounting_balance_and_turnovers", _APRIL),
+    ("cash_movements", _APRIL),
+    ("inventory_movements", _APRIL),
+    ("accounting_posting_rows", _APRIL),
+    ("receivable_aging", {"as_of": _AS_OF}),
 )
 
 
@@ -85,14 +91,26 @@ def _seed_amounts() -> set[str]:
     return values
 
 
-@pytest.mark.parametrize(("tool", "extra"), _BUSINESS_CALLS, ids=[c[0] for c in _BUSINESS_CALLS])
+@pytest.mark.parametrize(("tool", "extra"), _FIXTURE_CALLS, ids=[c[0] for c in _FIXTURE_CALLS])
+async def test_u12_fixture_profile_answers_are_labelled_synthetic_l1_not_native(
+        db, call, tokens, ids, tool, extra):
+    outcome = await call(tokens["uc1"], tool, {"source_id": ids["source"],
+                                                "company_id": ids["one"], **extra})
+    assert outcome.ok, outcome.text
+    assert outcome.payload["profile_kind"] == "SYNTHETIC_FIXTURE"
+    assert outcome.payload["evidence_level"] == "L1"
+    assert outcome.payload["native_reconciliation"] == "NOT_RUN"
+    assert "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE" in outcome.payload["warnings"]
+
+
+@pytest.mark.parametrize(("tool", "extra"), _UNCONFIRMED_CALLS,
+                         ids=[c[0] for c in _UNCONFIRMED_CALLS])
 async def test_u12_unconfirmed_capability_fails_closed_without_fabricated_numbers(
         e2e_env, db, call, tokens, ids, fake1c_log, tool, extra):
     profiles = await db.fetch(
         "SELECT 1 FROM bag.semantic_profiles WHERE company_id=$1::uuid AND status='VALIDATED' "
         "LIMIT 1", ids["one"], role="admin")
-    if profiles:
-        pytest.skip("a validated profile exists for company one: U12 negative case not applicable")
+    assert not profiles, "baseline seed must not contain a validated semantic profile"
 
     since, mark = await db_clock(db), fake1c_log.mark()
     outcome = await call(tokens["uc1"], tool, {"source_id": ids["source"],

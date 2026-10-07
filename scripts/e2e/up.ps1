@@ -16,11 +16,13 @@ if ($existing -and $existing -ne $Seed) {
         '"; run scripts/e2e/reset.ps1 -Seed ' + $Seed + ' to change it')
 }
 
-# Refuse to start if one of OUR ports is held by something that is not our own component.
+# Refuse to start if one of OUR ports is held by something that is not our own component
+# (loopback or not, with or without a pid file).
 foreach ($name in $script:ProcessComponents) {
-    $listener = Get-ListenerInfo $script:Ports[$name]
-    if ($listener -and -not (Get-ComponentPid $name) -and -not ($listener | Where-Object { $_.Address -eq '127.0.0.1' })) {
-        throw ('port ' + $script:Ports[$name] + ' is held by a foreign listener')
+    $foreign = Get-ForeignListener $name
+    if ($foreign) {
+        throw ('port ' + $script:Ports[$name] + ' (' + $name + ') is held by a foreign process (pid ' +
+            $foreign.Pid + ')')
     }
 }
 
@@ -28,7 +30,7 @@ Write-Step 'generating secrets (once) and environment files'
 Invoke-Envctl @('init-secrets') | Out-Null
 Invoke-Envctl @('write-env', '--seed', $Seed) | Out-Null
 
-Write-Step 'starting PostgreSQL 16 and Redis 7 (compose project erpmcp-e2e)'
+Write-Step 'starting PostgreSQL 16 and Redis 7 (compose project ' + $script:ProjectName + ')'
 Start-E2eDependencies
 
 Write-Step 'creating login roles, migrating, verifying schema and privileges'
@@ -40,6 +42,9 @@ try { Invoke-Envctl @('seed', '--mode', $Seed) | Out-Null } finally { Clear-E2eS
 
 foreach ($name in $script:ProcessComponents) { Start-E2eComponent $name }
 foreach ($name in $script:ProcessComponents) { Wait-E2eComponent $name }
+# The ready marker (env.json) is published only after seed and health checks succeeded.
+Invoke-Envctl @('commit-ready') | Out-Null
 
 Write-Step ('environment ready. Consumers: . ' + (Join-Path $script:E2eDir 'env.ps1'))
-Write-Step 'gateway http://127.0.0.1:18000 (MCP /mcp, Admin UI /admin/), IdP http://127.0.0.1:18080'
+Write-Step ('gateway http://127.0.0.1:' + $script:Ports.gateway + ' (MCP /mcp, Admin UI /admin/), IdP http://127.0.0.1:' + $script:Ports.idp +
+    ', fake sidecar :' + $script:Ports.sidecar + ' (BAG_ENVIRONMENT=test, synthetic fixture profiles)')

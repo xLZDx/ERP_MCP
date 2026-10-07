@@ -32,10 +32,12 @@ from typing import Any
 import asyncpg
 import httpx
 import pytest
+from skip_policy import pytest_runtest_makereport, pytest_terminal_summary  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")
 NO_SKIP_VAR = "ERP_MCP_E2E_NO_SKIP"
+ENV_FREE_MODULES = {"test_skip_policy.py", "test_outage_helper.py"}
 
 
 def _env_present() -> bool:
@@ -47,6 +49,8 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if here in Path(str(item.fspath)).parents:
             item.add_marker(pytest.mark.e2e)
+            if Path(str(item.fspath)).name in ENV_FREE_MODULES:
+                continue  # tests of the harness itself: no environment needed
             if not _env_present() and not os.environ.get(NO_SKIP_VAR):
                 item.add_marker(pytest.mark.skip(
                     reason=f"{E2E_DIR / 'env.json'} absent: run scripts/e2e/up.ps1 "
@@ -202,7 +206,10 @@ class AdminHttp:
         self.client = httpx.Client(base_url=env.gateway, follow_redirects=False,
                                    trust_env=False, timeout=30)
         self._login(step_up)
-        self.csrf = self.get("/admin/v1/me").json().get("csrf_token")
+        me = self.get("/admin/v1/me")
+        assert me.status_code == 200, (me.status_code, me.text[:200])
+        self.csrf = me.json().get("csrf_token")
+        assert self.csrf, "/admin/v1/me returned no csrf_token (no admin session established)"
 
     def _login(self, step_up: bool) -> None:
         response = self.client.get("/admin/login", params={"step_up": "1"} if step_up else None)
@@ -301,11 +308,16 @@ class DbHelper:
         box: dict[str, Any] = {}
 
         def run():
-            box["rows"] = asyncio.run(self.fetch(sql, *args, role=role))
+            try:
+                box["rows"] = asyncio.run(self.fetch(sql, *args, role=role))
+            except BaseException as exc:  # noqa: BLE001 - re-raised in the caller's thread
+                box["error"] = exc
 
         thread = threading.Thread(target=run)
         thread.start()
         thread.join()
+        if "error" in box:
+            raise box["error"]
         return box["rows"]
 
 
