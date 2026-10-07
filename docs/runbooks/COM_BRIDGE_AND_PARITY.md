@@ -55,6 +55,31 @@ Changing the source base URL, credential identity, configuration or metadata fin
 binding until re-approval; change `version` in both places together. The caller can never supply a path, secret
 reference, user, route or query text: the request has exactly the fields of the ADR wire contract.
 
+## End-to-end check and what it showed (2026-10-07)
+
+The public tool was run end to end on the disposable probe clone, read-only: tool -> `OneCAdapter` -> real OData sidecar
+-> GET/HEAD-only lane proxy -> real Apache publication (OData leg), and tool -> `ComBridgeClient` -> real bridge process
+-> real COM (COM leg; the OData capability was forced to UNSUPPORTED because the real base answers AVAILABLE, so this leg
+proves the wiring, not the route decision). Registry and audit were the test fakes; the mappings were built from live keys.
+
+| Mapping | Route | Rows | Analytics returned |
+|---|---|---|---|
+| accounts 521.* | odata and com | 15 and 15 | counterparty, contract |
+| account 211.1 | odata and com | 6 and 6 | item, warehouse |
+
+Findings that shape operations:
+
+- **One mapping per account family.** Accounts with different analytics layouts must not share a mapping that sets
+  `expected_type`: a mapping of 521 and 211 together correctly failed closed (`SOURCE_RESPONSE_INVALID`) on the first 211
+  row. Create one confirmed profile per family (counterparties, items and warehouses, ...).
+- **The COM route needs a known platform version.** `configuration_fingerprint` is built from the platform version and the
+  adapter profile. The real publication does not report a version by itself, so the registered source must carry
+  `platform_version_hint`; without it a binding cannot be created (`COM_BINDING_CONFIGURATION_UNKNOWN`).
+- **The sidecar allow-list is `host:port`.** `ONEC_ALLOWED_HOSTS=127.0.0.1` answered 403; `127.0.0.1:<port>` works.
+- **No binding file or bridge is configured for any real source yet.** On the real reference base `Balance` is AVAILABLE,
+  so the gateway routes to OData; the COM route is exercised only where OData is proven absent and the operator has
+  approved a binding.
+
 ## Behaviour after a timeout, admission and identity
 
 - A call that exceeds `call_timeout_seconds` answers `COM_TIMEOUT`. The query may still run inside 1C, so the binding

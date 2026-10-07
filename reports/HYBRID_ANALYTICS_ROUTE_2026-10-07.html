@@ -69,6 +69,13 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <p><span class="ok">Live parity proof</span> (disposable clone, read-only, reference clone never opened): the OData publication <code>erp_mcp_probe</code> and COM on the same database (the publication descriptor path equals the COM clone path): 21 of 21 rows equal, identical hashes, database unchanged during the run.</p>
 </div>
 
+<h2>End-to-end run</h2>
+<div class="card">
+<p>The public tool was run end to end on the disposable clone, read-only: tool → adapter → real sidecar → GET/HEAD-only proxy → real Apache publication (OData leg), and tool → client → real bridge → real COM (COM leg; the OData capability was forced to unsupported because the real base answers available, so this leg proves the wiring, not the route decision). Registry and audit were test fakes; the mappings were built from live keys.</p>
+<div class="wrap"><table><tr><th>Mapping</th><th>Route</th><th>Rows</th><th>Analytics</th></tr><tr><td>accounts 521.*</td><td>odata and com</td><td>15 and 15</td><td>counterparty, contract</td></tr><tr><td>account 211.1</td><td>odata and com</td><td>6 and 6</td><td>item, warehouse</td></tr></table></div>
+<ul><li><span class="warn">One mapping per account family.</span> Mixing 521 and 211 with a pinned slot type correctly failed closed; each family needs its own confirmed profile.</li><li><span class="warn">The COM route needs a known platform version.</span> The real publication does not report one: the registered source must carry <code>platform_version_hint</code>, otherwise no binding can be created.</li><li><span class="warn">No bridge or binding file is configured for any real source yet.</span> On the reference base <code>Balance</code> is available, so the gateway routes to OData.</li></ul>
+</div>
+
 <h2>Planned items</h2>
 <div class="wrap"><table>
 <tr><th>Plan item</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Remaining tail</th></tr>
