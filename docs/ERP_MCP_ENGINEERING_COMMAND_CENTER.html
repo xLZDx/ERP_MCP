@@ -189,7 +189,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=6c0edcf67e251c41ecfdf3bbdcbc0b76578d0b625d63ff7ad649c829bba97165 DOC_RENDER_SHA256=55205ba3132d2e4cc14ecff26a11ab2ac7e0f796e943d3dae59ead8881be882f -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=e52a9a40d3d4d9bb38cea6879bebdef327d5d96329ec882d33ac84d6b726992b DOC_RENDER_SHA256=44edd57a950dbbc555fa222e0615bce3729609f6e11bdc328662ff05d31e57ce -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -317,6 +317,10 @@ change first.</p>
 <tr>
 <td><a href="FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md">Functional Tester autonomous assignment</a></td>
 <td>Task prompt and deliverable contract for executable black-box tests of the scenario pack</td>
+</tr>
+<tr>
+<td><a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 duplicate-counterparty detection contract</a></td>
+<td>Frozen read-only detection semantics for SC08 (fields, normalisation, grouping, two-phase company scope, truncation, schema, privacy, mutation matrix) under the 2026-10-07 operator rebaseline</td>
 </tr>
 <tr>
 <td><a href="../reports/FUNCTIONAL_TESTER_SC01_SC12.md">Functional Tester report SC01-SC12</a></td>
@@ -4977,7 +4981,7 @@ catalog of 1C MCP projects. It is a discovery source, not a runtime dependency.<
 
 </code></pre>
 <!-- NORMATIVE_SOURCE_END --></div>
-    </article><article class="doc-card searchable" id="doc-scope-freeze" data-cat="core" data-title="SCOPE FREEZE BASELINE 2026-10-06"><div class="doc-head"><h2>SCOPE FREEZE BASELINE 2026-10-06</h2></div><div class="md"><!-- DOC_SOURCE=docs/SCOPE_FREEZE_BASELINE_2026-10-06.md DOC_SOURCE_SHA256=f5cbeee6560946f19bff9d7d6e5e561d98b1bae3a4faaf36b9eba66e989a1619 DOC_RENDER_SHA256=c7af26cbc0be5271af429cbf6e9559332ebc0258bcc15b39673e457377873c51 -->
+    </article><article class="doc-card searchable" id="doc-scope-freeze" data-cat="core" data-title="SCOPE FREEZE BASELINE 2026-10-06"><div class="doc-head"><h2>SCOPE FREEZE BASELINE 2026-10-06</h2></div><div class="md"><!-- DOC_SOURCE=docs/SCOPE_FREEZE_BASELINE_2026-10-06.md DOC_SOURCE_SHA256=5fa7ceb64bbb857a739297608c6f77188f3c90f5000eab2a1a20300c4674b75e DOC_RENDER_SHA256=3dd890c74d05aa5408b1417b58514e8e22dca4fc5f00cb70c1bed5f5f2810481 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Scope Freeze Baseline — 2026-10-06</h1>
 <p><strong>Status:</strong> FROZEN
@@ -5225,6 +5229,17 @@ one of them into committed scope.</p>
 <p>Which existing frozen requirement ID/gate does this close?</p>
 </blockquote>
 <p>If there is no answer, the work is scope expansion and must wait for explicit rebaseline.</p>
+<h2>8. Operator rebaselines</h2>
+<h3>8.1 2026-10-07 — SC08 duplicate-counterparty candidate detection (read-only)</h3>
+<p>The operator was asked whether to implement or waive scenario SC08 <code>duplicate-counterparty</code>
+(<code>testbed/scenarios/accounting_scenarios.json</code>), which was not among the committed lanes of §3, and
+answered explicitly "implement". This rebaseline promotes exactly one read-only capability into the
+committed scope of §3.3: duplicate-counterparty CANDIDATE detection without any merge, defined
+completely by <code>docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md</code>. It adds no write or merge capability,
+no new permission key (<code>accounting.read</code>), no migration, no tax-id matching and no native
+reconciliation claim, and it does not lift the production NO-GO. Everything else in §4 stays deferred.
+Closing requirement IDs: the SC08 half of Amendment A1 of <code>docs/E2E_ACCEPTANCE_CONTRACT.md</code> is
+retired by Amendment A2 once GPT-PM approves it.</p>
 <!-- NORMATIVE_SOURCE_END --></div></article>
 <article class="doc-card searchable" id="doc-dad-coverage" data-cat="core" data-title="DAD 1C MCP REQUIREMENTS COVERAGE"><div class="doc-head"><h2>DAD 1C MCP REQUIREMENTS COVERAGE</h2></div><div class="md"><!-- DOC_SOURCE=docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md DOC_SOURCE_SHA256=2caeeaf25d544b6e42c245bf80f93e006a9848c9d399985931f8a6dc92e75f8c DOC_RENDER_SHA256=d9312c5edb8b53b7ba8139337c4d0f314160dab4a2350f7ecd36bfebb554d428 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->

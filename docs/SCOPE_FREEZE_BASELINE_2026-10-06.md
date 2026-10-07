@@ -276,4 +276,18 @@ Every new issue/PR/task must answer:
 
 If there is no answer, the work is scope expansion and must wait for explicit rebaseline.
 
+## 8. Operator rebaselines
+
+### 8.1 2026-10-07 — SC08 duplicate-counterparty candidate detection (read-only)
+
+The operator was asked whether to implement or waive scenario SC08 `duplicate-counterparty`
+(`testbed/scenarios/accounting_scenarios.json`), which was not among the committed lanes of §3, and
+answered explicitly "implement". This rebaseline promotes exactly one read-only capability into the
+committed scope of §3.3: duplicate-counterparty CANDIDATE detection without any merge, defined
+completely by `docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md`. It adds no write or merge capability,
+no new permission key (`accounting.read`), no migration, no tax-id matching and no native
+reconciliation claim, and it does not lift the production NO-GO. Everything else in §4 stays deferred.
+Closing requirement IDs: the SC08 half of Amendment A1 of `docs/E2E_ACCEPTANCE_CONTRACT.md` is
+retired by Amendment A2 once GPT-PM approves it.
+
 [executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]
