@@ -105,6 +105,23 @@
                 "ref": "Ref_Key"
               },
               "required_register_capabilities": []
+            },
+            "purchases": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "Document_ПоступлениеТоваровУслуг",
+              "order_by": "Date",
+              "output_fields": {
+                "amount": "СуммаДокумента",
+                "counterparty": "Контрагент_Key",
+                "currency": "ВалютаДокумента_Key",
+                "date": "Date",
+                "document_number": "Number",
+                "document_ref": "Ref_Key",
+                "posted": "Posted"
+              }
             }
           }
         }

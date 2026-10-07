@@ -639,3 +639,23 @@ def summarize_account_turnovers(rows: list[dict[str, Any]], mapping: dict[str, A
         {"account": code, "row_count": entry["row_count"], **{name: text(entry[name]) for name in fields}}
         for code, entry in sorted(sums.items())
     ]
+
+
+def summarize_document_amounts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Exact per-currency sums of normalized document rows (Decimal, server side)."""
+    sums: dict[Any, list[Any]] = {}
+    for row in rows:
+        entry = sums.setdefault(row.get("currency"), [Decimal(0), 0])
+        entry[0] += Decimal(_decimal(row["amount"]))
+        entry[1] += 1
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {"currency": currency, "amount": text(total), "document_count": count}
+        for currency, (total, count) in sorted(sums.items(), key=lambda item: str(item[0]))
+    ]

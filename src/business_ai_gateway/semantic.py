@@ -619,6 +619,27 @@ def build_company_filter(mapping: dict[str, Any], company_external_ref: str) -> 
     return f"{field} eq {literal}"
 
 
+def build_document_filter(
+    mapping: dict[str, Any],
+    company_external_ref: str,
+    *,
+    counterparty_ref: str | None = None,
+    posted_only: bool = False,
+) -> str:
+    """Company filter plus optional counterparty / posted narrowing, all property names from the profile."""
+    parts = [build_company_filter(mapping, company_external_ref)]
+    output_fields = mapping["output_fields"]
+    if counterparty_ref is not None:
+        try:
+            ref = str(UUID(counterparty_ref))
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("counterparty_ref must be a GUID") from exc
+        parts.append(f"{output_fields['counterparty']} eq guid'{ref}'")
+    if posted_only:
+        parts.append(f"{output_fields['posted']} eq true")
+    return " and ".join(parts)
+
+
 def normalize_document_rows(
     rows: Any, mapping: dict[str, Any], concept: str
 ) -> list[dict[str, Any]]:

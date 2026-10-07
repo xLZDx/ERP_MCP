@@ -23,6 +23,7 @@ from .analytics_balance import (
     compute_account_totals,
     normalize_com_balance_rows,
     summarize_account_turnovers,
+    summarize_document_amounts,
     normalize_odata_balance_rows,
     select_route,
 )
@@ -72,6 +73,7 @@ from .semantic import (
     build_bank_balance_arguments,
     build_cash_movements_query,
     build_company_filter,
+    build_document_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
     build_settlement_balance_arguments,
@@ -2132,6 +2134,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         tool_name: str,
         top: int,
         skip: int,
+        counterparty_ref: str | None = None,
+        posted_only: bool = False,
     ) -> dict[str, Any]:
         started = time.monotonic()
         principal = await ctx()
@@ -2155,6 +2159,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": concept,
             "top": bounded_top,
             "skip": skip,
+            "counterparty_ref": counterparty_ref,
+            "posted_only": posted_only,
         }
         source = await resolve_source(
             principal,
@@ -2176,7 +2182,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source_id, parsed_company_id, concept
             )
             mapping = profile["mapping"]
-            company_filter = build_company_filter(mapping, company.external_ref)
+            company_filter = build_document_filter(
+                mapping,
+                company.external_ref,
+                counterparty_ref=counterparty_ref,
+                posted_only=posted_only,
+            )
             result = await runtime.onec.read(
                 source,
                 entity_set=mapping["entity_set"],
@@ -2189,6 +2200,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_document_rows(raw_rows, mapping, concept)
+            page = result.get("page") if isinstance(result, dict) else None
+            amount_totals = summarize_document_amounts(normalized_rows)
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -2214,7 +2227,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
-                "page": result.get("page") if isinstance(result, dict) else None,
+                "page": page,
+                "amount_totals": amount_totals,
+                "amount_totals_complete": isinstance(page, dict) and page.get("has_more") is False,
                 **profile_provenance(profile),
             }
         except Exception as exc:
@@ -2260,9 +2275,18 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool()
     async def purchase_documents(
-        source_id: str, company_id: str, top: int = 50, skip: int = 0
+        source_id: str,
+        company_id: str,
+        top: int = 50,
+        skip: int = 0,
+        counterparty_ref: str | None = None,
+        posted_only: bool = False,
     ) -> dict[str, Any]:
-        """List company-scoped purchase documents using a validated semantic mapping."""
+        """List company-scoped purchase documents using a validated semantic mapping.
+
+        ``counterparty_ref`` (a GUID, e.g. from counterparty_find) narrows the list to one supplier and
+        ``posted_only`` keeps only posted documents; ``amount_totals`` carries exact per-currency sums.
+        """
         return await read_company_documents(
             source_id,
             company_id,
@@ -2270,6 +2294,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             tool_name="purchase_documents",
             top=top,
             skip=skip,
+            counterparty_ref=counterparty_ref,
+            posted_only=posted_only,
         )
 
     @mcp.tool()
