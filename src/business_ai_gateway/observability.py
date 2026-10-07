@@ -29,7 +29,8 @@ class OperationalMetrics:
     TOOLS = frozenset({
         "system_status", "sources_list", "source_health", "rsv_metadata", "companies_list",
         "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
-        "accounting_balance_and_turnovers", "inventory_balance", "inventory_movements",
+        "accounting_balance_and_turnovers", "accounting_balance_by_analytics",
+        "inventory_balance", "inventory_movements",
         "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
         "payable_balance", "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
         "sales_documents", "purchase_documents", "onec_read", "audit",

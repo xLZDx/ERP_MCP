@@ -12,6 +12,10 @@ from typing import Any
 
 import asyncpg
 
+from business_ai_gateway.analytics_balance import (
+    ANALYTICS_BALANCE_CONCEPT,
+    validate_analytics_balance_mapping,
+)
 from business_ai_gateway.compatibility import CapabilityUnsupported
 from business_ai_gateway.duplicate_counterparties import (
     DUPLICATE_CONCEPT,
@@ -63,6 +67,7 @@ CONCEPTS = (
     BANK_BALANCE_CONCEPT,
     RECEIVABLE_BALANCE_CONCEPT,
     PAYABLE_BALANCE_CONCEPT,
+    ANALYTICS_BALANCE_CONCEPT,
     "vat",
 )
 
@@ -299,6 +304,12 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
         if required is not None and required != expected:
             raise ValueError("settlement capability dependency must match the exact mapping")
         mapping["required_register_capabilities"] = expected
+    elif args.concept == ANALYTICS_BALANCE_CONCEPT:
+        if isinstance(mapping, dict) and "required_register_capabilities" not in mapping:
+            mapping["required_register_capabilities"] = [
+                {"entity_set": mapping.get("entity_set"), "method": mapping.get("method")}
+            ]
+        validate_analytics_balance_mapping(mapping)
     evidence = _read_object(args.evidence_file) if args.evidence_file else {}
     evidence = _validate_mapping_evidence(evidence)
     if "required_register_capabilities" in mapping:
@@ -417,6 +428,8 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
                 {"entity_set": entity_set, "method": method}
             ]:
                 raise ValueError("settlement capability dependency does not match its operation")
+        elif args.concept == ANALYTICS_BALANCE_CONCEPT:
+            validate_analytics_balance_mapping(mapping)
         previous_evidence = _json_value(mapping_row["evidence_json"])
         combined_evidence = {
             "evidence_refs": list(
@@ -505,6 +518,9 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
             required = mapping.get("required_register_capabilities", [])
             if not isinstance(required, list):
                 raise TypeError("mapping required_register_capabilities must be a list")
+            if mapping_row["canonical_concept"] == ANALYTICS_BALANCE_CONCEPT:
+                validate_analytics_balance_mapping(mapping)
+                continue  # OData availability is judged per request by route selection (ADR-0008)
             require_profile_capabilities(
                 required,
                 capability_profile,

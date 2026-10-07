@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     evidence_approval_index: str | None = Field(default=None, repr=False, max_length=1024)
     evidence_approval_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
 
+    # Optional COM route for balance-by-analytics (ADR-0008). Absent settings mean "no COM route".
+    com_bindings_file: str | None = Field(default=None, repr=False, max_length=1024)
+    com_bindings_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
+    com_bridge_url: str | None = None
+    com_bridge_token_secret_ref: str | None = None
+
     # Test-only reviewed synthetic fixture profiles (hard-denied in production; see
     # fixture_profiles.py). Never a native reconciliation substitute.
     synthetic_fixture_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
@@ -139,6 +145,21 @@ class Settings(BaseSettings):
             raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INCOMPLETE')
         if self.evidence_store_root and not all(Path(value).is_absolute() for value in evidence_settings[:2]):
             raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INVALID')
+        if bool(self.com_bindings_file) != bool(self.com_bindings_sha256):
+            raise ValueError("COM_BINDINGS_SETTINGS_INCOMPLETE")
+        if self.com_bindings_file and not Path(self.com_bindings_file).is_absolute():
+            raise ValueError("COM_BINDINGS_SETTINGS_INVALID")
+        if bool(self.com_bridge_url) != bool(self.com_bridge_token_secret_ref):
+            raise ValueError("COM_BRIDGE_SETTINGS_INCOMPLETE")
+        if self.com_bridge_url:
+            parsed_bridge = urlparse(self.com_bridge_url)
+            if (
+                parsed_bridge.scheme != "http"
+                or parsed_bridge.hostname not in {"127.0.0.1", "localhost", "::1"}
+                or parsed_bridge.username or parsed_bridge.password
+                or parsed_bridge.query or parsed_bridge.fragment
+            ):
+                raise ValueError("COM_BRIDGE_URL_MUST_BE_LOOPBACK_HTTP")
         if self.metrics_token and len(self.metrics_token.get_secret_value().encode()) < 32:
             raise ValueError("BAG_METRICS_TOKEN must contain at least 32 bytes")
         if (self.rsv_bridge_executable is None) != (self.rsv_bridge_config_root is None):
