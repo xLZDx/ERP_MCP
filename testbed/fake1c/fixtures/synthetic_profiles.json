@@ -96,6 +96,24 @@
               "required_register_capabilities": [],
               "source_timezone": "UTC"
             },
+            "counterparty.duplicate_candidates": {
+              "company_activity": {
+                "company_scope": {
+                  "field": "Организация_Key",
+                  "value_type": "guid"
+                },
+                "counterparty_field": "Counterparty_Key",
+                "entity_set": "AccumulationRegister_SettlementItems"
+              },
+              "entity_set": "Catalog_Counterparties",
+              "match_rule": "normalized_name_v1",
+              "output_fields": {
+                "code": "Code",
+                "counterparty_ref": "Ref_Key",
+                "name": "Description"
+              },
+              "required_register_capabilities": []
+            },
             "inventory.balance": {
               "company_scope": {
                 "field": "Организация_Key",
@@ -276,6 +294,24 @@
               },
               "required_register_capabilities": [],
               "source_timezone": "UTC"
+            },
+            "counterparty.duplicate_candidates": {
+              "company_activity": {
+                "company_scope": {
+                  "field": "Организация_Key",
+                  "value_type": "guid"
+                },
+                "counterparty_field": "Counterparty_Key",
+                "entity_set": "AccumulationRegister_SettlementItems"
+              },
+              "entity_set": "Catalog_Counterparties",
+              "match_rule": "normalized_name_v1",
+              "output_fields": {
+                "code": "Code",
+                "counterparty_ref": "Ref_Key",
+                "name": "Description"
+              },
+              "required_register_capabilities": []
             },
             "inventory.balance": {
               "company_scope": {

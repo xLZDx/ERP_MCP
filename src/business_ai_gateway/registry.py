@@ -6,6 +6,7 @@ from uuid import UUID
 
 from .compatibility import OneCCapabilities
 from .db import Database
+from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
 from .fixture_profiles import (
     SYNTHETIC_AUDIT_CODE,
     SYNTHETIC_PROFILE_KIND,
@@ -330,6 +331,12 @@ class Registry:
             if required:
                 raise SemanticMappingUnconfirmed(
                     "open-item record-set mapping cannot claim virtual-table methods"
+                )
+        elif concept == DUPLICATE_CONCEPT:
+            validate_duplicate_mapping(mapping)
+            if required:
+                raise SemanticMappingUnconfirmed(
+                    "duplicate-counterparty mapping cannot claim virtual-table methods"
                 )
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")

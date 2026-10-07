@@ -10,7 +10,10 @@ import pytest
 from tests.functional.support import harness as h
 from tests.functional.support.evidence import record
 
-SENSITIVE_VALUES = ["synthetic-password", "SALE-001", "SALE-002", "PUR-001", "Synthetic customer", "Synthetic supplier"]
+SENSITIVE_VALUES = ["synthetic-password", "SALE-001", "SALE-002", "PUR-001", "Synthetic customer", "Synthetic supplier",
+    # remaining seed counterparties (SC08): names and codes must never reach audit or logs
+    "Synthetic partial-payment customer", "Synthetic overpaying customer",
+    "C001D", "C001", "S001", "C004", "C005"]
 
 
 def _secrets() -> list[str]:

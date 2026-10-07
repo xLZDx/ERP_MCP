@@ -60,6 +60,20 @@ def _open_items() -> dict:
     }
 
 
+def _duplicate_candidates() -> dict:
+    return {
+        "entity_set": "Catalog_Counterparties",
+        "output_fields": {"counterparty_ref": "Ref_Key", "code": "Code", "name": "Description"},
+        "company_activity": {
+            "entity_set": "AccumulationRegister_SettlementItems",
+            "counterparty_field": "Counterparty_Key",
+            "company_scope": GUID_SCOPE,
+        },
+        "match_rule": "normalized_name_v1",
+        "required_register_capabilities": [],
+    }
+
+
 def concept_mappings() -> dict[str, dict]:
     return {
         "inventory.movements": {
@@ -142,6 +156,7 @@ def concept_mappings() -> dict[str, dict]:
             ],
         },
         "receivable.open_items": _open_items(),
+        "counterparty.duplicate_candidates": _duplicate_candidates(),
         "inventory.balance": _balance(
             "AccumulationRegister_InventoryBalances",
             {

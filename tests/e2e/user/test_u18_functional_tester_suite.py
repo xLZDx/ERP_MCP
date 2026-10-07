@@ -5,11 +5,11 @@ E2E gateway with real IdP-issued bearer tokens, and the junit XML is parsed with
 expectation (pytest counts xfail as "skipped", so a bare `skipped == 0` check cannot be used):
 
 * SC01..SC12 each appear in `test_scenario_positive_contract`;
-* SC01-SC05, SC07, SC09-SC12 PASSED (no skipped/xfail/failure/error element);
-* SC06 is the ONLY allowed xfail "EXTERNAL-GATE" and SC08 the ONLY allowed xfail
-  "NOT IMPLEMENTED" (Amendment A1 of docs/E2E_ACCEPTANCE_CONTRACT.md: U18 is reported as
-  10 of 12 PASS plus these two declared dispositions, never as 12/12; an unexpected pass of
-  either also fails U18 so the declaration must then be retired);
+* SC01-SC05, SC07, SC08, SC09-SC12 PASSED (no skipped/xfail/failure/error element);
+* SC06 is the ONLY allowed xfail "EXTERNAL-GATE" (Amendment A2 of docs/E2E_ACCEPTANCE_CONTRACT.md,
+  which retires the SC08 half of Amendment A1: U18 is reported as 11 of 12 PASS plus one
+  declared disposition, never as 12/12; an unexpected pass of SC06 also fails U18 so the
+  declaration must then be retired; SC08 as xfail/skip/failure fails U18);
 * every other test case passed: no failure, no error and no skip, EXCEPT the two dev-mode-only
   cases in `ALLOWED_SKIPS` (they revoke/re-add the dev principal's grant with scripts/admin.py and
   are skipped by design whenever a bearer token is configured; the same grant lifecycle is
@@ -39,8 +39,17 @@ pytestmark = [pytest.mark.user]
 
 FT_DIR = ROOT / "tests" / "functional"
 SC_IDS = [f"SC{n:02d}" for n in range(1, 13)]
-EXPECTED_XFAIL = {"SC06": "EXTERNAL-GATE", "SC08": "NOT IMPLEMENTED"}
+EXPECTED_XFAIL = {"SC06": "EXTERNAL-GATE"}
 POSITIVE_TEST = "test_scenario_positive_contract"
+# SC08 is a real PASS scenario: its dedicated cases must be present AND passed, so a deleted or
+# renamed case cannot hide behind the generic "everything else passed" rule.
+REQUIRED_SC08_CASES = (
+    f"{POSITIVE_TEST}[SC08]",
+    "test_scenario_negative_wrong_company_denied_before_upstream[SC08]",
+    "test_scenario_negative_company_isolation[SC08]",
+    "test_scenario_request_correlation_and_company_scope_in_audit[SC08]",
+    "test_sc08_truncated_scan_is_inconclusive_not_partial",
+)
 ALLOWED_SKIPS = {
     "test_revoked_source_grant_denies_before_any_upstream_request_and_restores",
     "test_company_scoped_grant_isolates_company_two_from_company_one",
@@ -90,6 +99,12 @@ def check_ft_results(cases: dict[str, dict]) -> list[str]:
                 problems.append(f"{sc}: expected xfail {EXPECTED_XFAIL[sc]!r}, got {result}")
         elif result["status"] != "passed":
             problems.append(f"{sc}: expected PASS, got {result}")
+    by_name = {key.rsplit("::", 1)[-1]: result for key, result in cases.items()}
+    for name in REQUIRED_SC08_CASES:
+        if name not in by_name:
+            problems.append(f"SC08: required case {name} missing from the junit report")
+        elif by_name[name]["status"] != "passed":
+            problems.append(f"SC08: required case {name} expected PASS, got {by_name[name]}")
     for key, result in cases.items():
         is_expected_xfail = any(
             f"{POSITIVE_TEST}[{sc}]" in key for sc in EXPECTED_XFAIL)
@@ -102,8 +117,17 @@ def check_ft_results(cases: dict[str, dict]) -> list[str]:
 
 def test_u18_junit_definition_is_exact_not_vacuous(tmp_path):
     """The classifier itself: it must reject every deviation from the U18 definition."""
-    def junit(cases: dict[str, str]) -> Path:
+    def junit(cases: dict[str, str], drop: tuple[str, ...] = ()) -> Path:
         root = ET.Element("testsuite")
+        for name in REQUIRED_SC08_CASES[1:]:  # the positive one is emitted per SC below
+            if name in drop:
+                continue
+            case = ET.SubElement(root, "testcase", classname="tests.functional.t10", name=name)
+            kind = cases.get(name, "pass")
+            if kind == "fail":
+                ET.SubElement(case, "failure", message="boom")
+            elif kind == "skip":
+                ET.SubElement(case, "skipped", type="pytest.skip", message="x")
         for sc in SC_IDS:
             case = ET.SubElement(root, "testcase", classname="tests.functional.t10",
                                  name=f"{POSITIVE_TEST}[{sc}]")
@@ -119,12 +143,29 @@ def test_u18_junit_definition_is_exact_not_vacuous(tmp_path):
         ET.ElementTree(root).write(path)
         return path
 
-    good = {"SC06": "xfail", "SC08": "xfail"}
+    good = {"SC06": "xfail"}
     assert check_ft_results(classify_junit(junit(good))) == []
     assert check_ft_results(classify_junit(junit({**good, "SC03": "skip"})))  # a skip is not a pass
     assert check_ft_results(classify_junit(junit({**good, "SC03": "fail"})))
-    assert check_ft_results(classify_junit(junit({"SC06": "xfail"})))  # SC08 must be xfail
-    assert check_ft_results(classify_junit(junit({**good, "SC01": "xfail"})))  # unexpected xfail
+    assert check_ft_results(classify_junit(junit({})))  # SC06 must be xfail: an unexpected PASS fails
+    # SC08 is a real PASS scenario: xfail, failure and skip are all deviations.
+    for kind in ("xfail", "fail", "skip"):
+        problems = check_ft_results(classify_junit(junit({**good, "SC08": kind})))
+        assert any(p.startswith("SC08:") for p in problems), (kind, problems)
+    # every other SC turned into xfail/skip/fail is rejected, naming that scenario
+    for sc in SC_IDS:
+        if sc in EXPECTED_XFAIL:
+            continue
+        for kind in ("xfail", "skip", "fail"):
+            problems = check_ft_results(classify_junit(junit({**good, sc: kind})))
+            assert any(p.startswith(f"{sc}:") for p in problems), (sc, kind, problems)
+    assert len(EXPECTED_XFAIL) == 1 and "SC08" not in EXPECTED_XFAIL
+    # each SC08-specific case: deleting, skipping or failing it is rejected, naming SC08
+    for name in REQUIRED_SC08_CASES[1:]:
+        for kind in ("delete", "skip", "fail"):
+            cases = junit({**good, name: kind}, drop=(name,) if kind == "delete" else ())
+            problems = check_ft_results(classify_junit(cases))
+            assert any(p.startswith("SC08:") and name in p for p in problems), (name, kind)
     allowed = junit(good)
     root = ET.parse(allowed).getroot()
     extra = ET.SubElement(root, "testcase", classname="tests.functional.t30",

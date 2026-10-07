@@ -4,7 +4,9 @@ Statuses are OBSERVED, never assumed:
 
 * PASS            a public tool answered with live data and the declared invariant held
 * EXTERNAL-GATE   VAT-style capability that exists only on a validated profile (SC06)
-* NOT IMPLEMENTED out of the frozen scope / no public tool (SC08)
+
+SC08 (duplicate counterparties) is a real PASS scenario: the read-only candidate tool
+`counterparty_duplicate_candidates` (docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md), merge_count always 0.
 
 The data-bearing tools answer through the TEST-ONLY reviewed synthetic fixture profile
 (BAG_ENVIRONMENT=test, source tag synthetic-fixture). Every response must be labelled
@@ -13,6 +15,7 @@ SYNTHETIC_FIXTURE / L1 / native_reconciliation NOT_RUN: this is never native 1C 
 
 from __future__ import annotations
 
+import json
 import re
 from decimal import Decimal
 
@@ -26,6 +29,8 @@ from tests.functional.support.specs import (
     FIX,
     ITEM_1,
     ITEM_2,
+    PARTY_DUP_A,
+    PARTY_DUP_B,
     PARTY_OVERDUE,
     PARTY_OVERPAID,
     PARTY_PARTIAL,
@@ -178,9 +183,38 @@ async def eval_sc12():
     return f"April receipts {receipts} + expense {sum(expense)} = net {receipts + sum(expense)}"
 
 
+async def eval_sc08():
+    body = (await ok_call("counterparty_duplicate_candidates")).data
+    f = FIX["duplicate-counterparty"]
+    assert body["status"] == "FINDING" and body["reason"] == "DUPLICATE_CANDIDATES_FOUND"
+    assert body["match_rule"] == "normalized_name_v1"
+    assert body["candidate_count"] == f["candidate_count"] == 2
+    assert body["merge_count"] == f["merge_count"] == 0 and isinstance(body["merge_count"], int)
+    assert body["group_count"] == 1 and body["truncated"] is False
+    assert body["native_approval_inferred"] is False and body["human_review_required"] is True
+    groups = body["groups"]
+    assert len(groups) == body["group_count"] <= 200, "groups must be bounded"
+    (group,) = groups
+    assert group["match_basis"] == "NORMALIZED_NAME" and group["group_id"].startswith("dup-")
+    members = group["members"]
+    assert len(members) == body["candidate_count"] <= 200
+    assert {m["counterparty_id"] for m in members} == {PARTY_DUP_A, PARTY_DUP_B}
+    assert {m["code"] for m in members} == {"C001", "C001D"}
+    assert {m["name"] for m in members} == {"Synthetic customer"}
+    assert sorted(members, key=lambda m: m["code"]) == [
+        {"counterparty_id": PARTY_DUP_A, "code": "C001", "name": "Synthetic customer"},
+        {"counterparty_id": PARTY_DUP_B, "code": "C001D", "name": "Synthetic customer"},
+    ], "exactly the two in-scope namesakes, with no extra member or field"
+    # Scoping guard: the catalog holds BOTH namesakes, but company two has activity for only one
+    # of them, so it must get no pair. Dropping the activity/company scoping would report one.
+    two = (await ok_call("counterparty_duplicate_candidates", h.COMPANY_TWO)).data
+    assert (two["status"], two["candidate_count"], two["groups"]) == ("PASS", 0, [])
+    return f"1 group of {len(members)} duplicate counterparties (C001, C001D); merge_count=0"
+
+
 EVALUATORS = {"SC01": eval_sc01, "SC02": eval_sc02, "SC03": eval_sc03, "SC04": eval_sc04,
-              "SC05": eval_sc05, "SC07": eval_sc07, "SC09": eval_sc09, "SC10": eval_sc10,
-              "SC11": eval_sc11, "SC12": eval_sc12}
+              "SC05": eval_sc05, "SC07": eval_sc07, "SC08": eval_sc08, "SC09": eval_sc09,
+              "SC10": eval_sc10, "SC11": eval_sc11, "SC12": eval_sc12}
 
 
 @pytest.mark.parametrize("case", IDS)
@@ -201,7 +235,7 @@ async def test_scenario_positive_contract(case):
 
 # ---------------------------------------------------------------- negatives
 
-@pytest.mark.parametrize("case", [c for c in IDS if c != "SC08"])
+@pytest.mark.parametrize("case", IDS)
 async def test_scenario_negative_wrong_company_denied_before_upstream(case):
     spec = SPECS[case]
     tool = spec["tools"][0]
@@ -249,6 +283,14 @@ async def _isolation(case: str):
         assert (await ok_call("bank_balance", two)).data["value"] == []
     elif case == "SC10":
         assert (await ok_call("accounting_balance_and_turnovers", two)).data["value"] == []
+    elif case == "SC08":
+        body = (await ok_call("counterparty_duplicate_candidates", two)).data
+        assert body["status"] == "PASS" and body["reason"] == "NO_DUPLICATE_CANDIDATES"
+        assert (body["candidate_count"], body["group_count"], body["merge_count"]) == (0, 0, 0)
+        assert body["groups"] == []
+        text = json.dumps(body, ensure_ascii=False)
+        assert PARTY_DUP_A not in text and PARTY_DUP_B not in text
+        assert "Synthetic customer" not in text
     else:
         pytest.skip(f"{case}: no data tool")
     record(case, negative_company_scope="company two receives none of company one's rows")
@@ -280,9 +322,22 @@ async def test_sc01_truncated_aging_is_inconclusive_not_partial():
     record("SC01", bounded="top=3 -> INCONCLUSIVE AGING_ROWS_TRUNCATED with no partial answer")
 
 
+async def test_sc08_truncated_scan_is_inconclusive_not_partial():
+    tool = "counterparty_duplicate_candidates"
+    out = await h.call(tool, args_for(tool, h.SOURCE_ID, h.COMPANY_ONE, top=3))
+    assert out.ok, out.text or out.transport_error
+    body = out.data
+    assert body["status"] == "INCONCLUSIVE" and body["reason"] == "COUNTERPARTY_ROWS_TRUNCATED"
+    assert body["groups"] == [] and body["truncated"] is True
+    assert body["candidate_count"] == 0 and body["group_count"] == 0 and body["merge_count"] == 0
+    assert h.no_write_reached_1c(out)
+    assert h.final_audit(out)["outcome"] == "error"
+    record("SC08", bounded="top=3 -> INCONCLUSIVE COUNTERPARTY_ROWS_TRUNCATED with no partial answer")
+
+
 # ---------------------------------------------------------------- correlation / audit evidence
 
-@pytest.mark.parametrize("case", [c for c in IDS if c != "SC08"])
+@pytest.mark.parametrize("case", IDS)
 async def test_scenario_request_correlation_and_company_scope_in_audit(case):
     tool = SPECS[case]["tools"][0]
     out = await h.call(tool, args_for(tool, h.SOURCE_ID, h.COMPANY_ONE))

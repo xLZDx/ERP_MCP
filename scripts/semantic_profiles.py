@@ -13,6 +13,10 @@ from typing import Any
 import asyncpg
 
 from business_ai_gateway.compatibility import CapabilityUnsupported
+from business_ai_gateway.duplicate_counterparties import (
+    DUPLICATE_CONCEPT,
+    validate_duplicate_mapping,
+)
 from business_ai_gateway.semantic import (
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
@@ -45,6 +49,7 @@ CONCEPTS = (
     "account.balance_and_turnovers",
     "receivable.open_items",
     "payable.open_items",
+    DUPLICATE_CONCEPT,
     "receivable",
     "payable",
     "sales",
@@ -278,6 +283,8 @@ async def add_mapping(args: argparse.Namespace, conn: asyncpg.Connection) -> Non
             raise ValueError("cash movement record-set mapping cannot claim virtual-table methods")
     elif args.concept in OPEN_ITEMS_CONCEPTS:
         validate_open_items_mapping(args.concept, mapping)
+    elif args.concept == DUPLICATE_CONCEPT:
+        validate_duplicate_mapping(mapping)
     elif args.concept == BANK_BALANCE_CONCEPT:
         entity_set, method = validate_bank_balance_mapping(mapping)
         required = mapping.get("required_register_capabilities")

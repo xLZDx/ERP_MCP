@@ -19,6 +19,18 @@ from .compatibility import (
     MetadataDriftUnacknowledged,
     require_acknowledged_metadata,
 )
+from .duplicate_counterparties import (
+    DUPLICATE_CONCEPT,
+    DUPLICATE_FAILURE_REASONS,
+    DuplicateResponseTooLarge,
+    build_activity_query,
+    build_catalog_query,
+    evaluate_duplicate_candidates,
+    rows_truncated,
+)
+from .duplicate_counterparties import (
+    MAX_ROWS as MAX_DUPLICATE_ROWS,
+)
 from .external_evidence import EvidenceRejected
 from .fixture_profiles import SYNTHETIC_PROFILE_KIND, profile_provenance
 from .principal import current_principal
@@ -78,6 +90,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "payable_balance": "ap.read",
     "receivable_aging": "ar.read",
     "payable_aging": "ap.read",
+    "counterparty_duplicate_candidates": "accounting.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
@@ -1622,6 +1635,149 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         return await read_open_items_aging(
             source_id, company_id, as_of, concept=PAYABLE_OPEN_ITEMS_CONCEPT,
             tool_name="payable_aging", top=top,
+        )
+
+    async def read_duplicate_candidates(
+        source_id: str, company_id: str, *, tool_name: str, top: int
+    ) -> dict[str, Any]:
+        concept = DUPLICATE_CONCEPT
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id, outcome="denied",
+                started_at=started, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        if top < 1:
+            raise ValueError("top must be positive")
+        row_limit = min(top, settings.max_rows, MAX_DUPLICATE_ROWS)
+        # The audit query never carries counterparty names or codes (contract section 10).
+        query = {"company_id": str(parsed_company_id), "concept": concept, "top": row_limit}
+        source = await resolve_source(
+            principal, source_id, tool_name, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        profile = None
+        try:
+            company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, concept
+            )
+            mapping = profile["mapping"]
+            # The 1C register carries the company's external reference, not the gateway UUID.
+            activity_query = build_activity_query(mapping, company.external_ref, row_limit)
+            catalog_query = build_catalog_query(mapping, row_limit)
+            metadata = await runtime.onec.metadata(source)
+            for planned in (activity_query, catalog_query):
+                entity_set = planned["entity_set"]
+                select = planned["select"]
+                live_fields = _metadata_entity_fields(metadata, entity_set)
+                if entity_set not in metadata.names or set(select) - live_fields:
+                    await deny_unconfirmed_semantic_capability(
+                        source_id=source_id,
+                        metadata_fingerprint=capabilities.metadata_fingerprint,
+                        concept=concept,
+                        entity_set=entity_set,
+                        reason="ENTITY_SET_ABSENT" if entity_set not in metadata.names
+                        else "PROPERTY_ABSENT",
+                        expected_properties=sorted(select),
+                        missing_properties=sorted(set(select) - live_fields),
+                        message="configured duplicate-counterparty entity is absent from live metadata",
+                    )
+            # Source entity policy for BOTH planned reads is checked before the first upstream read.
+            if not all(source.entity_allowed(p["entity_set"]) for p in (activity_query, catalog_query)):
+                raise PermissionError("EntitySet denied by source policy")
+
+            def _flags(result: Any) -> tuple[Any, bool]:
+                rows = result.get("value") if isinstance(result, dict) else result
+                page = result.get("page") if isinstance(result, dict) else None
+                return rows, isinstance(page, dict) and page.get("truncated", False) is not False
+
+            result = await runtime.onec.read(
+                source, entity_set=activity_query["entity_set"], select=activity_query["select"],
+                filter_expr=activity_query["filter_expr"], orderby=activity_query["orderby"],
+                expand=None, top=row_limit, skip=0,
+            )
+            activity_rows, activity_truncated = _flags(result)
+            catalog_rows, catalog_truncated = None, False
+            # A truncated or malformed activity read stops the scan before the catalog read.
+            if isinstance(activity_rows, list) and not rows_truncated(
+                activity_rows, row_limit, activity_truncated
+            ):
+                result = await runtime.onec.read(
+                    source, entity_set=catalog_query["entity_set"], select=catalog_query["select"],
+                    filter_expr=None, orderby=catalog_query["orderby"],
+                    expand=None, top=row_limit, skip=0,
+                )
+                catalog_rows, catalog_truncated = _flags(result)
+            payload = evaluate_duplicate_candidates(
+                mapping, company_id=company.external_ref, row_limit=row_limit,
+                activity_rows=activity_rows, activity_truncated=activity_truncated,
+                catalog_rows=catalog_rows, catalog_truncated=catalog_truncated,
+            )
+            conclusive = payload["status"] in {"PASS", "FINDING"}
+            marker = profile.get("audit_detail_code")
+            detail_code = marker if conclusive else (
+                f"{marker}:{payload['reason']}" if marker else payload["reason"]
+            )
+            response = {
+                "source_id": source_id, "company_id": str(parsed_company_id),
+                "concept": concept,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **payload,
+                **profile_provenance(profile),
+            }
+            response_bytes = len(
+                json.dumps(response, ensure_ascii=False, default=str).encode("utf-8")
+            )
+            if response_bytes > settings.max_response_bytes:
+                raise DuplicateResponseTooLarge()
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id,
+                outcome=("error" if payload["reason"] in DUPLICATE_FAILURE_REASONS else "success"),
+                started_at=started, query=query, returned_items=payload["group_count"],
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=detail_code,
+                response_bytes=response_bytes, truncated=bool(payload["truncated"]),
+            )
+            return response
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool_name, source_id=source_id,
+                outcome=("denied" if isinstance(exc, (
+                    PermissionError, CapabilityUnsupported, MetadataDriftUnacknowledged,
+                    SemanticProfileUnavailable,
+                )) else "error"),
+                started_at=started, query=query, company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                profile_fingerprint=(profile["profile_fingerprint"] if profile else None),
+                detail_code=(
+                    f"{profile['audit_detail_code']}:" if profile and profile.get("audit_detail_code")
+                    else ""
+                ) + getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def counterparty_duplicate_candidates(
+        source_id: str, company_id: str, top: int = 2000
+    ) -> dict[str, Any]:
+        """List potential duplicate counterparties by normalized name for one company.
+
+        Read-only: returns candidate groups for human review and never merges or changes anything.
+        """
+        return await read_duplicate_candidates(
+            source_id, company_id, tool_name="counterparty_duplicate_candidates", top=top
         )
 
     async def read_company_documents(

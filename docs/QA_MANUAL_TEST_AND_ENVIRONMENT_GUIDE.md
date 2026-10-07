@@ -9,7 +9,7 @@ Automated setup of sections 2 and 4: see [E2E_ENVIRONMENT.md](E2E_ENVIRONMENT.md
 identities are now provisioned by `scripts/e2e/up.ps1` (see E2E_ENVIRONMENT.md). The two manual suites
 have dedicated step-by-step packs: [MANUAL_ACCEPTANCE_USER.md](MANUAL_ACCEPTANCE_USER.md) and
 [MANUAL_ACCEPTANCE_ADMIN.md](MANUAL_ACCEPTANCE_ADMIN.md). The automated equivalents pass locally
-(User U01-U18 52 with U18 = 10 of 12 scenarios PASS + SC06/SC08 declared per Amendment A1, Admin A01-A54 87 + 1 declared EXTERNAL-GATE skip, Functional Tester SC01-SC12
+(User U01-U18 52 with U18 = 11 of 12 scenarios PASS + SC06 declared (Amendment A2: SC08 is implemented by `counterparty_duplicate_candidates` per `SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md`; SC06 is the only declared disposition), Admin A01-A54 87 + 1 declared EXTERNAL-GATE skip, Functional Tester SC01-SC12
 73 passed / 3 skipped / 2 xfailed); owner manual acceptance remains PENDING and none of this is
 native 1C or production evidence.
 
@@ -319,7 +319,7 @@ test harness; do not fabricate an API or mark it passed using arithmetic alone.
 | SC05 | `return` | receipt quantity minus return equals on-hand quantity |
 | SC06 | `vat-mixed` | standard plus exempt base equals total; treatments remain distinct |
 | SC07 | `backdated-document` | document date maps to the correct accounting period |
-| SC08 | `duplicate-counterparty` | two duplicate candidates; zero automatic merges |
+| SC08 | `duplicate-counterparty` | two duplicate candidates; zero automatic merges; implemented by read-only `counterparty_duplicate_candidates` per [SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md) and Amendment A2 (synthetic L1 only) |
 | SC09 | `cash-bank` | cash and bank balances remain separate and sum to combined balance |
 | SC10 | `account-turnover` | opening debit + debit turnover - credit turnover = closing debit |
 | SC11 | `inventory-receipt-expense` | signed expense is negative; receipt minus expense = net quantity |

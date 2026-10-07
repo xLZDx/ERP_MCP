@@ -43,7 +43,7 @@ one; group grant (company-two readers group)→company two; nothing for UNA.
 | U15 | UC1 | Stop PostgreSQL, call, restart, call | Fail-closed per contract (no authorization decision without DB); recovery after restart | Allow-on-DB-failure | audit after recovery | AUTO |
 | U16 | UC1 | Stop Redis, call, restart, call | Behavior exactly per rate-limit/cache contract (fail-closed or documented degraded); recovery | Silent bypass of limits not documented | metrics/audit | AUTO |
 | U17 | UC1, UNA | Produce success, deny and error calls | Audit rows for each outcome with caller, source, tool, outcome | Tokens, credentials, accounting payloads in audit | DB read via evidence role | AUTO+MANUAL |
-| U18 | UC1 | Run SC01..SC12 through the public MCP tools (Functional Tester suite) | Every L1 scenario PASS per `reports/FUNCTIONAL_TESTER_SC01_SC12.md` (SC06/SC08 as declared in Amendment A1) | Fixture arithmetic or internal function used as proof | FT report with commit SHA | AUTO |
+| U18 | UC1 | Run SC01..SC12 through the public MCP tools (Functional Tester suite) | Every L1 scenario PASS per `reports/FUNCTIONAL_TESTER_SC01_SC12.md` (SC06 as declared in Amendment A2; SC08 implemented, Amendment A1 retired for SC08) | Fixture arithmetic or internal function used as proof | FT report with commit SHA | AUTO |
 
 ## 2. Admin cases
 
@@ -114,8 +114,9 @@ binding is created through `/admin/`.
 SC01..SC12 are defined by `docs/QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md` section 5 and
 `testbed/scenarios/accounting_scenarios.json`; U18 is satisfied only when the Functional Tester
 report shows PASS for all twelve through public MCP tools at the exact code evidence SHA,
-except for the two declared dispositions of Amendment A1 below (SC06 EXTERNAL-GATE, SC08 NOT
-IMPLEMENTED), which U18 reports explicitly and never counts as PASS.
+except for the declared dispositions of Amendments A1 and A2 below: SC06 EXTERNAL-GATE (A1, kept by
+A2) and, until A2 takes effect, SC08 NOT IMPLEMENTED (A1; retired by A2 once approved). A declared
+disposition is reported explicitly and never counted as PASS.
 
 ### Amendment A1 (2026-10-07) - SC06 and SC08 dispositions for U18
 
@@ -139,6 +140,25 @@ U18, and a SC06/SC08 that unexpectedly passes also fails U18 (the declaration mu
 retired). U18 is therefore reported as "10 of 12 PASS, 2 declared dispositions", never as 12/12.
 Production readiness claims must not depend on SC06 or SC08. Retiring this amendment requires either
 the operator rebaseline for SC08 and a validated profile for SC06, or an explicit operator waiver.
+
+### Amendment A2 (2026-10-07) - SC08 implemented under the operator rebaseline
+
+Status: PROPOSED to GPT-PM in the SC08 sprint-end review; effective only once approved. The text of
+Amendment A1 above is kept unchanged as history. A2 retires only the SC08 half of A1.
+
+Authority: the operator rebaseline of 2026-10-07 (explicit answer "implement"), recorded in
+`SCOPE_FREEZE_BASELINE_2026-10-06.md` section 8.1. SC08 `duplicate-counterparty` is now delivered by
+one read-only tool, `counterparty_duplicate_candidates`, whose detection semantics are frozen in
+`docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md`. SC06 is unchanged: it stays an EXTERNAL-GATE.
+
+Amended U18 semantics, enforced exactly by `tests/e2e/user/test_u18_functional_tester_suite.py`:
+SC01-SC05, SC07, SC08 and SC09-SC12 (eleven scenarios) must PASS through public MCP tools at the
+exact code evidence SHA; SC06 must be reported `xfail` with reason `EXTERNAL-GATE`; any other
+scenario that is skipped, xfailed, failed or errored fails U18, including SC08, and an SC06 that
+unexpectedly passes also fails U18 (the declaration must then be retired). U18 is reported as "11 of
+12 PASS, 1 declared disposition (SC06)", never as 12/12. SC08 evidence is synthetic L1 only: it never
+counts as native reconciliation, and production readiness claims must not depend on it. Production
+returns `SEMANTIC_PROFILE_UNVALIDATED` for the tool until an operator-validated profile exists.
 
 ## 4. EXTERNAL-GATE (never satisfied locally)
 

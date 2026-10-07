@@ -26,6 +26,9 @@ BANK_AS_OF = "2026-05-01T00:00:00+00:00"
 PARTY_OVERDUE = "10000000-0000-0000-0000-000000000001"
 PARTY_PARTIAL = "10000000-0000-0000-0000-000000000004"
 PARTY_OVERPAID = "10000000-0000-0000-0000-000000000005"
+# The two duplicate counterparties of seed.json (C001 and C001D, both "Synthetic customer").
+PARTY_DUP_A = "10000000-0000-0000-0000-000000000001"
+PARTY_DUP_B = "10000000-0000-0000-0000-000000000003"
 ITEM_1 = "30000000-0000-0000-0000-000000000001"
 ITEM_2 = "30000000-0000-0000-0000-000000000002"
 
@@ -50,10 +53,7 @@ SPECS = {
     "SC07": dict(slug="backdated-document", question="Backdated document appears in the correct accounting period",
                  tools=["sales_documents", "accounting_posting_rows"], neg_tool="purchase_documents"),
     "SC08": dict(slug="duplicate-counterparty", question="Potential duplicate counterparties are identified without merge",
-                 tools=["onec_read"], neg_tool=None,
-                 disposition="NOT IMPLEMENTED", missing_regex=r"duplicate",
-                 missing="duplicate-counterparty detection is outside the frozen scope; needs an operator "
-                         "rebaseline (then a candidate tool with merge_count=0 and a duplicate pair in the seed)"),
+                 tools=["counterparty_duplicate_candidates"], neg_tool="purchase_documents"),
     "SC09": dict(slug="cash-bank", question="Cash and bank balances remain separate and sum to combined",
                  tools=["cash_movements", "bank_balance"], neg_tool="payable_balance"),
     "SC10": dict(slug="account-turnover", question="Opening, turnover and closing values reconcile",
@@ -69,6 +69,8 @@ def args_for(tool: str, source_id: str, company_id: str, **extra) -> dict:
     base = {"source_id": source_id, "company_id": company_id}
     if tool in {"receivable_aging", "payable_aging"}:
         return {**base, "as_of": AS_OF, **extra}
+    if tool == "counterparty_duplicate_candidates":
+        return {**base, **extra}  # input is exactly source_id, company_id, top (default 2000)
     if tool in {"inventory_balance", "receivable_balance", "payable_balance"}:
         return {**base, "period": AS_OF, **extra}
     if tool == "bank_balance":

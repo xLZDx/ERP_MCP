@@ -76,6 +76,7 @@ _FIXTURE_CALLS = (
     ("inventory_movements", _APRIL),
     ("accounting_posting_rows", _APRIL),
     ("receivable_aging", {"as_of": _AS_OF}),
+    ("counterparty_duplicate_candidates", {}),
 )
 
 
