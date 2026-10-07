@@ -142,7 +142,9 @@ function Test-Http {
         $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -Method Get
         return [int]$response.StatusCode
     } catch {
-        if ($_.Exception.Response) { return [int]$_.Exception.Response.StatusCode }
+        # a refused connection raises an exception without a Response property (PowerShell 7 under strict mode)
+        $failure = $_.Exception
+        if ($failure.PSObject.Properties['Response'] -and $failure.Response) { return [int]$failure.Response.StatusCode }
         return 0
     }
 }

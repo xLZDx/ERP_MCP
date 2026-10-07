@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import shutil
+import socket
 import subprocess
 from pathlib import Path
 
@@ -105,3 +106,17 @@ def test_the_start_primitive_refuses_fake_components_in_the_real_profile(compone
     out = subprocess.run(["pwsh", "-NoProfile", "-Command", script], capture_output=True, text=True, env=env,
                          timeout=60, check=False).stdout
     assert "REFUSED" in out and "real local 1C profile" in out and "STARTED" not in out
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="PowerShell 7 is not installed")
+def test_http_probe_of_a_closed_port_returns_zero_instead_of_throwing(tmp_path):
+    with socket.socket() as sock:  # a port that was free a moment ago and has no listener
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    script = (f"Set-StrictMode -Version Latest; . '{ROOT / 'scripts' / 'e2e' / '_common.ps1'}'; "
+              f"try {{ 'STATUS=' + (Test-Http -Url 'http://127.0.0.1:{port}/' -TimeoutSec 2) }} "
+              "catch { 'THREW: ' + $_.Exception.Message }")
+    env = {**os.environ, "E2E_DIR": str(tmp_path)}
+    out = subprocess.run(["pwsh", "-NoProfile", "-Command", script], capture_output=True, text=True, env=env,
+                         timeout=60, check=False).stdout
+    assert "STATUS=0" in out and "THREW" not in out

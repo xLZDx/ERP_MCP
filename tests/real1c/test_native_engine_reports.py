@@ -648,3 +648,50 @@ def test_only_probe_and_report_clones_are_disposable():
     assert not ner._is_disposable(ner.REFERENCE_CLONE)
     assert not ner._is_disposable(ner.WORKING_DIR / "818HA_reference_ro")
     assert not ner._is_disposable(ner.WORKING_DIR / "other" / "818HA_report_gen_20261007_120000")
+
+
+def test_a_failed_copy_is_reported_without_deleting_the_partial_directory(monkeypatch, tmp_path):
+    monkeypatch.setattr(ner, "WORKING_DIR", tmp_path)
+    monkeypatch.setattr(ner, "_db_stamp", lambda clone: (1, 1))
+    monkeypatch.setattr(ner, "_assert_distinct_clones", lambda base: None)
+    removed = Mock()
+    monkeypatch.setattr(ner.shutil, "rmtree", removed)
+
+    def failing(source, target):
+        target.mkdir()
+        raise ner.shutil.Error([("a", "b", "locked")])
+
+    with pytest.raises(ner.GeneratorRefused, match="partial copy"):
+        ner.prepare_report_clone("20261007_120000", copier=failing)
+    assert (tmp_path / "818HA_report_gen_20261007_120000").exists()
+    removed.assert_not_called()
+
+
+def test_the_real_copy_skips_the_session_temp_directory(monkeypatch, tmp_path):
+    source, target = tmp_path / "src", tmp_path / "dst"
+    (source / "1Cv8Temp").mkdir(parents=True)
+    (source / "1Cv8Temp" / "locked.tmp").write_text("x")
+    (source / "1Cv8.1CD").write_text("db")
+    monkeypatch.undo()  # drop the autouse refusal so the real helper runs on a tiny tree
+    ner._copy_clone(source, target)
+    assert (target / "1Cv8.1CD").exists() and not (target / "1Cv8Temp").exists()
+
+
+def test_a_right_that_does_not_apply_to_an_object_kind_counts_as_not_granted():
+    class Conn(FakeConn):
+        def AccessRight(self, right, obj):
+            if right == "Insert" and obj.Name == "Cat":
+                raise RuntimeError("Cannot apply the Insert right to РегистрНакопления.Cat")
+            return super().AccessRight(right, obj)
+
+    rights = ner.reader_write_rights(Conn(rights={("Update", "Cat"): True}))
+    assert rights["counts"] == {"Insert": 0, "Update": 1, "Delete": 0}
+
+
+def test_any_other_access_right_error_is_not_swallowed():
+    class Conn(FakeConn):
+        def AccessRight(self, right, obj):
+            raise RuntimeError("COM server gone")
+
+    with pytest.raises(RuntimeError, match="COM server gone"):
+        ner.reader_write_rights(Conn())

@@ -198,7 +198,8 @@ def _db_stamp(clone: Path) -> tuple[int, int]:
 
 
 def _copy_clone(source: Path, target: Path) -> None:
-    shutil.copytree(source, target)
+    """File copy of an infobase directory without its session temp files (``1Cv8Temp`` can be locked by a stale session)."""
+    shutil.copytree(source, target, ignore=shutil.ignore_patterns("1Cv8Temp"))
 
 
 def prepare_report_clone(run_id: str, *, copier: Callable[[Path, Path], None] | None = None) -> Path:
@@ -210,7 +211,11 @@ def prepare_report_clone(run_id: str, *, copier: Callable[[Path, Path], None] | 
     if target.exists():
         raise GeneratorRefused(f"{target} already exists; a report clone is never reused or deleted by the generator")
     before = _db_stamp(PROBE_CLONE)
-    (copier or _copy_clone)(PROBE_CLONE, target)
+    try:
+        (copier or _copy_clone)(PROBE_CLONE, target)
+    except (OSError, shutil.Error) as exc:
+        raise GeneratorRefused(f"copying the probe clone failed ({type(exc).__name__}); a partial copy may remain at {target} "
+                               "and is removed by the operator, never reused") from None
     if _db_stamp(PROBE_CLONE) != before:
         raise GeneratorRefused("the probe clone changed while it was copied (it is in use); the copy is not trusted")
     return target
@@ -219,6 +224,20 @@ def prepare_report_clone(run_id: str, *, copier: Callable[[Path, Path], None] | 
 _RIGHTS_ERROR_MARKERS = ("access violation", "insufficient rights", "недостаточно прав", "нарушение прав доступа")
 FORBIDDEN_WRITE_KINDS = ("Documents", "AccountingRegisters", "ChartsOfAccounts")
 WRITE_RIGHTS = ("Insert", "Update", "Delete")
+
+
+_NOT_APPLICABLE_MARKERS = ("cannot apply the", "невозможно применить право")
+
+
+def _has_right(conn: Any, right: str, obj: Any) -> bool:
+    """AccessRight, where a right that does not exist for this kind of object (for example Insert on an accumulation
+    register) counts as not granted; any other error propagates."""
+    try:
+        return bool(conn.AccessRight(right, obj))
+    except Exception as exc:
+        if any(marker in str(exc).lower() for marker in _NOT_APPLICABLE_MARKERS):
+            return False
+        raise
 
 
 def reader_write_rights(conn: Any) -> dict:
@@ -231,7 +250,7 @@ def reader_write_rights(conn: Any) -> dict:
     for kind in KINDS:
         for obj in getattr(conn.Metadata, kind, []):
             for right in WRITE_RIGHTS:
-                if conn.AccessRight(right, obj):
+                if _has_right(conn, right, obj):
                     hits[right].append(f"{kind}.{obj.Name}")
     names = sorted({name for found in hits.values() for name in found})
     return {
