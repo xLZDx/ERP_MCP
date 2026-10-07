@@ -107,9 +107,11 @@ async def verify():
             await page.get_by_role("button", name=name, exact=True).click()
             await page.get_by_role("heading", name=name, exact=True, level=1).wait_for()
         await page.get_by_role("button", name="1C sources", exact=True).click()
-        await page.get_by_role("button", name="Edit / disable", exact=True).wait_for()
+        # Row buttons carry a row-specific aria-label ("Edit / disable <row>"), so match the prefix.
+        edit_button = page.get_by_role("button", name="Edit / disable").first
+        await edit_button.wait_for()
         assert await page.locator("img").count() == 0, "untrusted labels must be escaped"
-        await page.get_by_role("button", name="Edit / disable", exact=True).click()
+        await edit_button.click()
         await page.get_by_role("dialog").wait_for()
         await page.keyboard.press("Escape")
         assert await page.get_by_role("dialog").count() == 0
