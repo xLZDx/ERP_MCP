@@ -19,7 +19,9 @@ $script:BindHost = '127.0.0.1'
 $script:BasePorts = [ordered]@{ postgres = 15432; redis = 16379; fake1c = 18766; sidecar = 18767
     idp = 18080; gateway = 18000 }
 # Components that run as host processes (start order); stop order is the reverse.
-$script:ProcessComponents = @('fake1c', 'sidecar', 'idp', 'gateway')
+$script:Real1c = ($env:E2E_REAL1C -eq '1')
+# Real local 1C profile (E2E_REAL1C=1): no Fake1C and no fake sidecar process is started, stopped or probed.
+$script:ProcessComponents = if ($script:Real1c) { @('idp', 'gateway') } else { @('fake1c', 'sidecar', 'idp', 'gateway') }
 
 function Resolve-E2eTopology {
     $offset = $env:E2E_PORT_OFFSET
@@ -140,7 +142,9 @@ function Test-Http {
         $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -Method Get
         return [int]$response.StatusCode
     } catch {
-        if ($_.Exception.Response) { return [int]$_.Exception.Response.StatusCode }
+        # a refused connection raises an exception without a Response property (PowerShell 7 under strict mode)
+        $failure = $_.Exception
+        if ($failure.PSObject.Properties['Response'] -and $failure.Response) { return [int]$failure.Response.StatusCode }
         return 0
     }
 }
@@ -260,8 +264,16 @@ function Test-ComponentUp([string]$Name) {
     return [bool](Get-ListenerInfo $script:Ports[$Name])
 }
 
+function Assert-E2eComponentAllowed([string]$Name) {
+    # The real local 1C profile never starts, stops or probes the Fake1C or the fake sidecar component.
+    if ($script:Real1c -and $Name -in 'fake1c', 'sidecar') {
+        throw ('component ' + $Name + ' does not exist in the real local 1C profile (E2E_REAL1C=1)')
+    }
+}
+
 function Start-E2eComponent {
     param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
+    Assert-E2eComponentAllowed $Name
     $foreign = Get-ForeignListener $Name
     if ($foreign) {
         throw ('port ' + $script:Ports[$Name] + ' for ' + $Name + ' is held by a foreign process (pid ' +
@@ -302,6 +314,7 @@ function Start-E2eComponent {
 
 function Stop-E2eComponent {
     param([ValidateSet('fake1c', 'sidecar', 'idp', 'gateway')][string]$Name)
+    Assert-E2eComponentAllowed $Name
     $port = $script:Ports[$Name]
     $foreign = Get-ForeignListener $Name
     if ($foreign) {
@@ -326,6 +339,7 @@ function Stop-E2eComponent {
 }
 
 function Wait-E2eComponent([string]$Name) {
+    Assert-E2eComponentAllowed $Name
     $base = 'http://' + $script:BindHost + ':' + $script:Ports[$Name]
     switch ($Name) {
         'fake1c' { Wait-Http ($base + '/odata/standard.odata/$metadata') -Component $Name | Out-Null }

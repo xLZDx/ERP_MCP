@@ -10,7 +10,9 @@ files.
 - `ONEC_TEST_PASSWORD`
 - `ONEC_TEST_PLATFORM_VERSION_HINT` — optional evidence only
 
-When `ONEC_TEST_BASE_URL` is absent, real-1C tests skip. Fake1C remains mandatory in normal CI.
+When `ONEC_TEST_BASE_URL` is absent, real-1C tests skip. Real-1C tests (`tests/real1c`, the L2 lane in
+`scripts/real1c`) run only against the local real 1C reference clone and never against Fake1C; the L2 stand
+starts no Fake1C and no fake sidecar (see `E2E_REAL1C=1` in `docs/E2E_ENVIRONMENT.md`).
 
 ## L2
 

@@ -8,20 +8,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from decimal import Decimal
 from pathlib import Path
 
+from scripts.real1c.com_fingerprint import KINDS, QUERY_KIND, fingerprint_of
+
 CLONE = Path("D:/ERP_MCP_Testbed/1c/reference/working/818HA_test_ready")
 SECRETS = Path("D:/secrets/erp_mcp")
-
-KINDS = ("Catalogs", "Documents", "AccumulationRegisters", "AccountingRegisters", "InformationRegisters",
-         "ChartsOfAccounts")
-QUERY_KIND = {
-    "Catalogs": "Справочник", "Documents": "Документ", "AccumulationRegisters": "РегистрНакопления",
-    "AccountingRegisters": "РегистрБухгалтерии", "InformationRegisters": "РегистрСведений",
-    "ChartsOfAccounts": "ПланСчетов",
-}
 
 
 def dec(value) -> Decimal:
@@ -99,18 +92,7 @@ class Oracle:
                 for kind in KINDS for obj in getattr(self._conn.Metadata, kind)}
 
     def fingerprint(self) -> dict:
-        names = self.metadata_names()
-        counts = self.table_counts()
-        lines = [f"{key}={counts[key]}" for key in sorted(counts)]
-        return {
-            "metadata_fingerprint": hashlib.sha256("\n".join(names).encode("utf-8")).hexdigest(),
-            "metadata_object_count": len(names),
-            "content_fingerprint_sha256": hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest(),
-            "table_count": len(counts),
-            "total_rows": sum(counts.values()),
-            "nonempty_tables": sum(1 for value in counts.values() if value),
-            "per_table": counts,
-        }
+        return fingerprint_of(self._conn)
 
     def organisations(self) -> list[dict]:
         rows = self.rows("ВЫБРАТЬ Т.Ссылка КАК Ссылка, Т.Наименование КАК Наименование, "

@@ -70,6 +70,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Pinned OData sidecar contract](ADAPTER_CONTRACT_ODATA_SIDECAR.md) | Private ERP_MCP ↔ pinned OData sidecar API and source-capability rules |
 | [RSV Data bridge runbook](runbooks/RSV_DATA_BRIDGE.md) | Isolated Windows/COM sidecar setup, source binding, ACL and recovery boundaries |
 | [Semantic profiles and presets](SEMANTIC_PROFILES.md) | Candidate preset, source/company profile lifecycle, validation evidence and operator CLI |
+| [Native 1C report capture runbook](NATIVE_REPORT_CAPTURE_RUNBOOK.md) | Evidence classes, the ten proposed native report cases, capture/hash/record procedure and the read-only engine-report generator (PROPOSED until accountant approval) |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Manual QA environment and acceptance guide](QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md) | Windows L1 setup and separate manual data-plane user/Admin suites, with all 12 synthetic scenario IDs |
 | [Manual acceptance — simple user](MANUAL_ACCEPTANCE_USER.md) | Step-by-step owner acceptance pack for a non-admin data-plane identity (U cases, SC01-SC12 spot checks) |

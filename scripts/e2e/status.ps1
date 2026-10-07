@@ -47,6 +47,7 @@ $checks = [ordered]@{
     idp = ($base + $script:Ports.idp + '/healthz')
     gateway = ($base + $script:Ports.gateway + '/readyz')
 }
+if ($script:Real1c) { $checks.Remove('fake1c'); $checks.Remove('sidecar') }
 foreach ($name in $checks.Keys) {
     $code = Test-Http -Url $checks[$name] -TimeoutSec 5
     $components[$name] = [ordered]@{ healthy = ($code -eq 200); port = $script:Ports[$name]
