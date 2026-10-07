@@ -186,3 +186,24 @@ async def test_unknown_reference_is_reported_not_invented():
     out = await balance(mcp, company)
     assert "name" not in counterparty_slot(out)
     assert out["warnings"] == ["COUNTERPARTY_NAME_NOT_FOUND:1"]
+
+
+# ---------------------------------------------------------------- every tool rejects unknown arguments
+
+
+async def test_every_published_tool_schema_forbids_additional_properties():
+    mcp, *_ = build()
+    tools = await mcp.list_tools()
+    assert len(tools) > 20
+    assert [t.name for t in tools if t.input_schema.get("additionalProperties") is not False] == []
+
+
+@pytest.mark.parametrize("misnamed", ["filter", "$filter", "query", "where"])
+async def test_onec_read_with_a_misnamed_filter_is_rejected_not_answered_unfiltered(misnamed):
+    mcp, _audit, onec, company = build()
+    with pytest.raises(ToolError) as raised:
+        await mcp.call_tool("onec_read", {
+            "source_id": "source-1", "entity_set": "ChartOfAccounts_Хозрасчетный",
+            "select": ["Code"], misnamed: "Code eq '521.1'"})
+    assert misnamed in str(raised.value)
+    onec.read.assert_not_awaited()

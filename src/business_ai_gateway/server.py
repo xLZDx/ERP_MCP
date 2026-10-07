@@ -2309,7 +2309,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         top: int = 50,
         skip: int = 0,
     ) -> dict[str, Any] | list[Any]:
-        """Read one authorized 1C OData EntitySet. This tool cannot mutate 1C."""
+        """Read one authorized 1C OData EntitySet. This tool cannot mutate 1C.
+
+        Arguments: ``entity_set`` (required, e.g. ChartOfAccounts_Хозрасчетный), ``select`` (list of
+        property names), ``filter_expr`` (OData $filter, e.g. ``Code eq '521.1'`` or
+        ``startswith(Code,'521')``), ``orderby``, ``expand`` (list), ``top``, ``skip``. Unknown argument
+        names are rejected, never ignored.
+        """
         started = time.monotonic()
         principal = await ctx()
         query = {
@@ -2371,14 +2377,15 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     # ADR-0008 §5: the caller cannot pass route/bridge/path/secret/query text. Unknown arguments
     # are rejected (not silently dropped) and the published schema says additionalProperties=false.
-    # counterparty_find gets the same treatment: the catalog, filter and shape are profile-owned.
-    for strict_name in ("accounting_balance_by_analytics", "counterparty_find"):
-        strict_tool = mcp._tool_manager.get_tool(strict_name)
-        if strict_tool is None:
-            raise RuntimeError(f"{strict_name} tool is not registered")
+    # This covers EVERY tool: a silently ignored, misnamed filter (``filter`` instead of
+    # ``filter_expr``) used to return an unfiltered page as if it were the answer.
+    for strict_tool in mcp._tool_manager.list_tools():
         strict_model = strict_tool.fn_metadata.arg_model
         strict_model.model_config["extra"] = "forbid"
         strict_model.model_rebuild(force=True)
         strict_tool.parameters["additionalProperties"] = False
+    for required_tool in ("accounting_balance_by_analytics", "counterparty_find"):
+        if mcp._tool_manager.get_tool(required_tool) is None:
+            raise RuntimeError(f"{required_tool} tool is not registered")
 
     return mcp
