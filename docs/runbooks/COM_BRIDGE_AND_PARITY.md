@@ -93,4 +93,7 @@ paths or credentials.
 - Production topology and licensing for 30-150 bases (one bridge per host, COM license consumption) are undecided.
 - COM-only sources (no OData publication) need a source kind in the registry; out of scope here.
 - The as-of instant is passed to 1C as the wall-clock value of the supplied offset time (1C dates are naive).
-- Row reading and numeric conversion are marked `VERIFY-LIVE` in `onec_com_bridge/query.py`.
+- Live status (2026-10-07): row reading, GUID conversion, type names and the split amounts were checked on a disposable
+  clone; the connector has no `Type()`, so refs are built through `TypeDescription` and `XMLValue`. A parity proof on
+  one database (publication descriptor path equal to the COM clone path) matched 21 of 21 canonical rows. The metadata
+  fingerprint was not compared live; compare it when the gateway profile for that clone is registered.

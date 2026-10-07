@@ -56,6 +56,13 @@ MUST NOT start until operator rebaseline.
   Record: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1; frozen detection semantics:
   [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md). Changing those semantics needs a new
   amendment (A3) approved by GPT-PM.
+- **2026-10-07 — hybrid OData + COM `accounting_balance_by_analytics` (explicit operator rebaseline).**
+  Authority: the operator's explicit decision "hybrid OData + COM to cover all cases". Scope: exactly one
+  read-only MCP tool (`accounting.read`, three parameters, no write) with an OData primary route and a COM fallback
+  route behind a separate loopback bridge process; the route is chosen from persisted capability evidence before
+  execution and never switches after an OData failure. Traces to DAD-SMALL-03, DAD-BIZ-02, DAD-BIZ-08. Record:
+  [ADR-0008](adr/ADR-0008-hybrid-odata-com-analytics-balance.md), Scope Freeze §2.1. Production deployment stays NO-GO;
+  production topology and licensing for the COM host are open.
 
 ## 3. Change classes
 
