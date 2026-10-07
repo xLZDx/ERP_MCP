@@ -1,6 +1,6 @@
 # Autonomous engineering execution log
 
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=e67d436d39895302ebddbe9c908c6ad3074ba57b9ed02e7b38885b47e7ccb5cf -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=b4aad79f7c8133252e39821b9cf2b7942efb0cc70e1294330168d80a33e7d230 -->
 
 ## Capability observation boundary — 2026-10-06
 
@@ -551,3 +551,5 @@ Verification matrix 31/31 exit 0; full pytest 1230 passed / 232 skipped (disposi
 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped / 2 xfailed
 (`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: PENDING.
 Production decision: NO-GO; DoD: PARTIAL; external gates unchanged.
+
+2026-10-07 real-reference L2 lane (818HA clone, read-only, code `1864bd9`): 130 catalogue stories dispositioned (CAPABILITY_UNSUPPORTED 25, EVIDENCE_REQUIRED 29, FINDING 4, INCONCLUSIVE 2, PASS 6, REFUSED-WRITE 6, SEMANTIC_PROFILE_UNVALIDATED 58); supplementary: ACL:PASS 7, INV:EVIDENCE_REQUIRED 21, NR:EVIDENCE_REQUIRED 9, NR:INCONCLUSIVE 1, RL2:FINDING 1, RL2:PASS 9, RULE:CAPABILITY_UNSUPPORTED 90, RULE:EVIDENCE_REQUIRED 90, SYS:FINDING 5, SYS:PASS 2. No semantic profile is validated: COM comparisons are NATIVE_COM_QUERY context only and at least ten genuine native UI reports are still owed by the owner. Evidence: `reports/real1c/` (summary, per-test details ru/en; exact figures kept privately outside Git), `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`. Hosted CI for the exact head: PENDING. Owner manual acceptance: PENDING. Production decision: NO-GO.

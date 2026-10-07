@@ -9,7 +9,7 @@ Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full p
 238 skipped (dispositions in the ledger); E2E smoke 29; User U01-U18 53 passed, 0 skipped (U18 = 11 of 12 scenarios PASS + SC06 EXTERNAL-GATE declared, Amendment A2 PROPOSED until GPT-PM approves; not 12/12); Admin
 A01-A54 87 passed + 1 declared EXTERNAL-GATE skip; Functional Tester 83 tests: 79 passed / 3 skipped /
 1 xfailed (SC06 external gate), SC08 cases PASS, 23 public tools. Local sprint-end reviewers: no BLOCKER (see
-`core/DECISION_LOG.md`). The real-reference L2-B lane is not executed yet (next lane). All E2E/FT evidence is synthetic L1
+`core/DECISION_LOG.md`). The real-reference L2 lane against the 818HA clone has been executed read-only (`reports/real1c/`); the E2E/FT evidence before it is synthetic L1
 (Fake1C, fake OData sidecar, test-only IdP); it is not native 1C or production evidence. Manual packs:
 `docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`.
 

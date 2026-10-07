@@ -48,6 +48,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | DAD-6 | VAT/IPC/VEN and payroll prechecks require external evidence + human review | TDD G-07/FR-H | D9/D11 |
 | EVID-1 | Missing external evidence never becomes guessed PASS | TDD FR-G/FR-H | D9/D11 |
 | TEST-REF-1 | Private real-reference base used via immutable golden + disposable clones | Scope Freeze §3.6, DAD Coverage §22–34 | D5/D7/D8/D9 |
+| REAL-L2-1 | Real-reference L2 lane: 130 frozen catalogue stories plus NR/INV/RULE/RL2/ACL/SYS cases executed read-only against the 818HA clone through the real gateway and sidecar; COM comparison is context only, no profile validated | `docs/REAL_1C_STORY_CATALOG_818HA.md`, `scripts/real1c` | `reports/real1c/`, `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`, `tests/real1c` |
 | TEST-FERMA-1 | Ferma synthetic scenario/oracle remains independent from 1C/ERP_MCP actual | TDD G-08, Ferma→1C Blueprint | D9 |
 | P6-SEC-1 | RSV business query/reveal remain denied unless audited conditions are proven | RSV audit, Master Plan P6 | D5/D7 |
 | FUT-ERP | Preserve ERP tenant/org RLS | Architecture §11 | future adapter DoD |

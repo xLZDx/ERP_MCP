@@ -61,7 +61,7 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=e67d436d39895302ebddbe9c908c6ad3074ba57b9ed02e7b38885b47e7ccb5cf -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=b4aad79f7c8133252e39821b9cf2b7942efb0cc70e1294330168d80a33e7d230 -->
 <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
@@ -3693,7 +3693,7 @@ explicit operator rebaseline.</p>
     </article>
 <article class="doc-card searchable" id="doc-requirements-traceability" data-cat="core" data-title="Requirements Traceability">
       <div class="doc-head"><div><span class="eyebrow">Трассировка</span><h2>Requirements Traceability</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=0b42c7fcb75e9956993155f4b857b8dfc84db389ff6ee8d2f856bfdfa1b336ce DOC_RENDER_SHA256=7b334eb54ce4aa990d4116af88ebdcb455a9cef39d05da99218de96840f65115 -->
+      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=3be98869e8b3c945e9d2b8f56ed83e13d9e0ad338d0a74ab94a90a2145a640a3 DOC_RENDER_SHA256=e8cd8d930ba94111cf0b332763c318b95210ddaa2d51f61468cac5a77df1996a -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Requirements Traceability Matrix</h1>
 <p><strong>Version:</strong> 1.1
@@ -3954,6 +3954,12 @@ explicit operator rebaseline.</p>
 <td>Private real-reference base used via immutable golden + disposable clones</td>
 <td>Scope Freeze §3.6, DAD Coverage §22–34</td>
 <td>D5/D7/D8/D9</td>
+</tr>
+<tr>
+<td>REAL-L2-1</td>
+<td>Real-reference L2 lane: 130 frozen catalogue stories plus NR/INV/RULE/RL2/ACL/SYS cases executed read-only against the 818HA clone through the real gateway and sidecar; COM comparison is context only, no profile validated</td>
+<td><code>docs/REAL_1C_STORY_CATALOG_818HA.md</code>, <code>scripts/real1c</code></td>
+<td><code>reports/real1c/</code>, <code>reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md</code>, <code>tests/real1c</code></td>
 </tr>
 <tr>
 <td>TEST-FERMA-1</td>

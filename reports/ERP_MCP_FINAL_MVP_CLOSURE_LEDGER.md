@@ -128,7 +128,7 @@ Supersedes the `d7e578e` and `fd11cec` counts for local evidence (SC08 duplicate
 implemented). Local sprint-end reviewers (security, silent-failure, test-adequacy): no BLOCKER; closable
 findings closed in `abe290f`; accepted items are in `core/DECISION_LOG.md` entry "2026-10-07 - SC08
 sprint-end local reviewers: findings triaged". Amendment A2 of `docs/E2E_ACCEPTANCE_CONTRACT.md` stays
-PROPOSED until GPT-PM approves it. The real-reference L2-B lane is NOT executed yet (planned next lane). Hosted CI for the exact final head is
+PROPOSED until GPT-PM approves it. The real-reference L2 lane (818HA clone) has now been executed read-only (see `reports/real1c/` and `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`); native UI reports are still owed. Hosted CI for the exact final head is
 **PENDING** here by design: the final head SHA and hosted run ID are recorded only in the PR #11
 body/comment, so no tracked commit follows a green hosted run.
 
