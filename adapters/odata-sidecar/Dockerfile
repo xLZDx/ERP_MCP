@@ -13,7 +13,7 @@ RUN corepack enable \
  && pnpm --filter @1c-odata/metadata build \
  && pnpm --filter @1c-odata/metadata deploy --prod --legacy /build/runtime
 
-FROM cgr.dev/chainguard/node:latest@sha256:af9d762479c010649ab93b6ba2b0580522956d30c15043b61b00dea5743c9096 AS runtime
+FROM cgr.dev/chainguard/node:latest@sha256:4dcf9bbb401b4ba7e1fb65dcc5dbd42d71bac515ed6a4662126424017d51df8e AS runtime
 ARG ODATA_UPSTREAM_SHA=cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5
 ENV NODE_ENV=production PORT=8765
 
