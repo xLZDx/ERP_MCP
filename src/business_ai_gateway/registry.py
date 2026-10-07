@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 from uuid import UUID
 
+from .analytics_balance import ANALYTICS_BALANCE_CONCEPT, validate_analytics_balance_mapping
 from .compatibility import OneCCapabilities
 from .db import Database
 from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
@@ -338,6 +339,8 @@ class Registry:
                 raise SemanticMappingUnconfirmed(
                     "duplicate-counterparty mapping cannot claim virtual-table methods"
                 )
+        elif concept == ANALYTICS_BALANCE_CONCEPT:
+            validate_analytics_balance_mapping(mapping)
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")
         return required
@@ -405,12 +408,13 @@ class Registry:
             metadata_fingerprint=row["current_metadata_fingerprint"],
             drift_status=row["drift_status"],
         )
-        require_profile_capabilities(
-            required,
-            capability_profile,
-            source_id=source_id,
-            metadata_fingerprint=row["current_metadata_fingerprint"],
-        )
+        if concept != ANALYTICS_BALANCE_CONCEPT:  # route selection judges this capability (ADR-0008)
+            require_profile_capabilities(
+                required,
+                capability_profile,
+                source_id=source_id,
+                metadata_fingerprint=row["current_metadata_fingerprint"],
+            )
         return {
             "profile_kind": "VALIDATED_NATIVE",
             "audit_detail_code": None,
@@ -470,12 +474,13 @@ class Registry:
         capability_profile = row["register_capabilities_json"]
         if isinstance(capability_profile, str):
             capability_profile = json.loads(capability_profile)
-        require_profile_capabilities(
-            required,
-            capability_profile,
-            source_id=source_id,
-            metadata_fingerprint=row["current_metadata_fingerprint"],
-        )
+        if concept != ANALYTICS_BALANCE_CONCEPT:
+            require_profile_capabilities(
+                required,
+                capability_profile,
+                source_id=source_id,
+                metadata_fingerprint=row["current_metadata_fingerprint"],
+            )
         return {
             "profile_kind": SYNTHETIC_PROFILE_KIND,
             "audit_detail_code": SYNTHETIC_AUDIT_CODE,

@@ -74,6 +74,8 @@ BASIC_ACR = "urn:local-test:basic"
 ADMIN_CLIENT = "erp-mcp-admin-e2e"
 DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
+DESKTOP_CLIENT = "erp-mcp-claude-desktop"
+DESKTOP_CALLBACK_PORT = 3334  # mcp-remote default OAuth callback port
 SOURCE_ID = "fake1c-e2e"
 COMPANY_ONE = "00000000-0000-0000-0000-000000000001"
 COMPANY_TWO = "00000000-0000-0000-0000-000000000002"
@@ -179,6 +181,12 @@ def init_secrets() -> None:
              "audiences": [MCP_AUDIENCE, ADMIN_AUDIENCE],
              "scopes": ["openid", "profile", "onec:read", "erp_mcp:admin"],
              "grant_types": ["password"]},
+            {"client_id": DESKTOP_CLIENT, "secret": None,
+             "redirect_uris": [f"http://{HOST}:{DESKTOP_CALLBACK_PORT}/oauth/callback"],
+             "post_logout_redirect_uris": [],
+             "audiences": [MCP_AUDIENCE],
+             "scopes": ["onec:read"],
+             "grant_types": ["authorization_code", "refresh_token"]},
         ],
     }, indent=2))
     _write(E2E_DIR / "compose.env", "\n".join([

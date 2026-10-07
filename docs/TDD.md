@@ -263,6 +263,15 @@ The implementation must preserve three evidence classes:
 
 Evidence must state its level; L1/L2 cannot be relabelled L3.
 
+### FR-J Balance by analytics (operator rebaseline 2026-10-07)
+
+`accounting_balance_by_analytics(source_id, company_id, as_of)` returns balances of a profile-approved account set
+split by up to three analytics slots. The route (OData `Balance` or the COM bridge) is selected before execution from
+persisted capability evidence; any error of the selected route fails closed and never triggers the other route. Both
+routes return the same canonical rows with `route` provenance. Required tests: route selection (AVAILABLE, UNSUPPORTED
+with and without a binding, UNKNOWN), no runtime fallback, binding mismatch and company-not-in-binding denial, row
+outside the account set fails closed, bridge never accepts caller text. See ADR-0008.
+
 ## 7. Non-functional requirements
 
 ### Security

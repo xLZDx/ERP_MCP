@@ -4,14 +4,26 @@ import json
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Annotated, Any
 
 from mcp.server import MCPServer
 from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl, Field
 
+from .adapters.onec.com_contract import COM_MAX_ROWS, ComBalanceRequest
 from .adapters.onec.rsv_bridge import METADATA_TOOLS
 from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
+from .analytics_balance import (
+    ANALYTICS_BALANCE_CONCEPT,
+    AnalyticsBalanceDenied,
+    AnalyticsBalanceError,
+    ComRouteUnsupported,
+    build_analytics_balance_arguments,
+    normalize_com_balance_rows,
+    normalize_odata_balance_rows,
+    select_route,
+)
 from .audit import AuditCorrelationMiddleware, AuditUnavailable
 from .auth import JWTTokenVerifier
 from .compatibility import (
@@ -81,6 +93,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "onec_metadata_summary": "metadata.read",
     "onec_find_entities": "metadata.read",
     "accounting_balance_and_turnovers": "accounting.read",
+    "accounting_balance_by_analytics": "accounting.read",
     "inventory_balance": "inventory.read",
     "inventory_movements": "inventory.read",
     "accounting_posting_rows": "accounting.read",
@@ -728,6 +741,188 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
                 metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
                 detail_code=getattr(exc, "code", type(exc).__name__),
+            )
+            raise
+
+    @mcp.tool()
+    async def accounting_balance_by_analytics(
+        source_id: str, company_id: str, as_of: str
+    ) -> dict[str, Any]:
+        """Read company-scoped account balances by analytics via its validated profile.
+
+        The route (OData or COM) is decided server-side from capability evidence; the caller
+        cannot choose or influence it.
+        """
+        tool = "accounting_balance_by_analytics"
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, outcome="denied",
+                started_at=started, company_id=None, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {
+            "company_id": str(parsed_company_id),
+            "concept": ANALYTICS_BALANCE_CONCEPT,
+            "as_of": as_of,
+        }
+        source = await resolve_source(
+            principal, source_id, tool, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        decision = None
+        try:
+            company = await runtime.registry.require_company(
+                principal, source_id, parsed_company_id
+            )
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, ANALYTICS_BALANCE_CONCEPT
+            )
+            mapping = profile["mapping"]
+            register_set, method, arguments = build_analytics_balance_arguments(
+                mapping, company_external_ref=company.external_ref, as_of=as_of
+            )
+            decision = select_route(
+                capabilities,
+                mapping,
+                getattr(runtime, "com_bindings", None) or (),
+                source=source,
+                company_external_ref=company.external_ref,
+            )
+            if decision.route == "odata":
+                result = await runtime.onec.register_read(
+                    source,
+                    register_set=register_set,
+                    method=method,
+                    arguments=arguments,
+                    top=settings.max_rows,
+                )
+                page = result.get("page") if isinstance(result, dict) else None
+                raw_rows = result.get("value") if isinstance(result, dict) else None
+                if (
+                    not isinstance(page, dict)
+                    or type(page.get("has_more")) is not bool
+                    or not isinstance(raw_rows, list)
+                    or len(raw_rows) > settings.max_rows
+                ):
+                    raise AnalyticsBalanceError("SOURCE_PAGE_INVALID")
+                # a full page is never presented as complete, whatever the source flag says
+                truncated = page["has_more"] or len(raw_rows) >= settings.max_rows
+                rows = normalize_odata_balance_rows(
+                    raw_rows, mapping, company_external_ref=company.external_ref
+                )
+                adapter_kind = capabilities.adapter_profile.value
+            else:
+                binding = decision.binding
+                client_factory = getattr(runtime, "com_client", None)
+                client = await client_factory() if client_factory else None
+                if client is None:
+                    raise ComRouteUnsupported("com_bridge_not_configured")
+                max_rows = min(settings.max_rows, COM_MAX_ROWS)
+                response = await client.balance_by_analytics(
+                    ComBalanceRequest(
+                        binding_id=binding.binding_id,
+                        binding_version=binding.version,
+                        source_id=source.id,
+                        as_of=datetime.fromisoformat(arguments["Period"]),
+                        company_external_ref=str(uuid.UUID(company.external_ref)),
+                        account_keys=tuple(
+                            str(uuid.UUID(item["account_key"])) for item in mapping["accounts"]
+                        ),
+                        max_rows=max_rows,
+                    )
+                )
+                if (
+                    response.binding_id != binding.binding_id
+                    or response.binding_version != binding.version
+                    or response.source_id != binding.source_id
+                    or response.metadata_fingerprint != binding.metadata_fingerprint
+                    or response.clone_identity != binding.clone_identity
+                    or type(response.truncated) is not bool
+                    or len(response.rows) > max_rows
+                ):
+                    raise AnalyticsBalanceError("COM_PROVENANCE_MISMATCH")
+                truncated = response.truncated or len(response.rows) >= max_rows
+                rows = normalize_com_balance_rows(
+                    list(response.rows), mapping, company_external_ref=company.external_ref
+                )
+                adapter_kind = "COM_BRIDGE"
+            provenance = profile_provenance(profile)  # may raise: build it before the success audit
+            response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
+            detail = f"route={decision.route};reason={decision.reason}"
+            if decision.binding is not None:
+                detail += f";binding={decision.binding.binding_id}@{decision.binding.version}"
+            if profile.get("audit_detail_code"):
+                detail += f";profile={profile['audit_detail_code']}"
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool,
+                source_id=source_id,
+                outcome="success",
+                started_at=started,
+                query=query,
+                returned_items=len(rows),
+                company_id=parsed_company_id,
+                adapter_kind=adapter_kind,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=detail,
+                response_bytes=response_bytes,
+                truncated=truncated,
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ANALYTICS_BALANCE_CONCEPT,
+                "as_of": arguments["Period"],
+                "rows": rows,
+                "row_count": len(rows),
+                "truncated": truncated,
+                "route": decision.route,
+                "route_reason": decision.reason,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **provenance,
+            }
+        except Exception as exc:
+            code = getattr(exc, "code", type(exc).__name__)
+            detail = str(code)
+            if getattr(exc, "reason", None) and isinstance(exc, ComRouteUnsupported):
+                detail += f";reason={exc.reason}"
+            if decision is not None:
+                detail += f";route={decision.route}"
+                if decision.binding is not None:
+                    detail += f";binding={decision.binding.binding_id}@{decision.binding.version}"
+            await runtime.audit.write(
+                principal=principal,
+                tool=tool,
+                source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(
+                        exc,
+                        (
+                            PermissionError,
+                            CapabilityUnsupported,
+                            MetadataDriftUnacknowledged,
+                            SemanticProfileUnavailable,
+                            AnalyticsBalanceDenied,
+                        ),
+                    )
+                    else "error"
+                ),
+                started_at=started,
+                query=query,
+                company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=detail,
             )
             raise
 
@@ -1998,5 +2193,15 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 ),
             )
             raise
+
+    # ADR-0008 §5: the caller cannot pass route/bridge/path/secret/query text. Unknown arguments
+    # are rejected (not silently dropped) and the published schema says additionalProperties=false.
+    analytics_tool = mcp._tool_manager.get_tool("accounting_balance_by_analytics")
+    if analytics_tool is None:
+        raise RuntimeError("accounting_balance_by_analytics tool is not registered")
+    analytics_model = analytics_tool.fn_metadata.arg_model
+    analytics_model.model_config["extra"] = "forbid"
+    analytics_model.model_rebuild(force=True)
+    analytics_tool.parameters["additionalProperties"] = False
 
     return mcp

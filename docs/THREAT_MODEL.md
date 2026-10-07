@@ -233,3 +233,20 @@ analysis.
 
 Every new work item must cite an existing frozen requirement/gate. No trace -> no execution until
 explicit operator rebaseline.
+
+## Hybrid OData + COM analytics balance route (ADR-0008, operator decision 2026-10-07)
+
+Tool `accounting_balance_by_analytics` reads balances by analytics through OData (primary) or a separate local COM bridge
+(fallback). The route is chosen before execution from persisted evidence; there is no runtime fallback.
+
+| Threat (STRIDE) | Risk | Controls |
+|---|---|---|
+| Tampering / elevation: caller text reaches a 1C query | Injection through account, company or date input | The tool has three parameters (`source_id`, `company_id`, `as_of`); account keys are GUIDs from the validated profile; the COM bridge runs one fixed code-owned template with typed parameters; no query text crosses any boundary |
+| Spoofing: wrong physical source behind a logical source id | A stale COM binding answers for a re-registered source | The binding pins source id, base-URL hash, credential identity, configuration and metadata fingerprints; any change invalidates it until re-approval; the bridge refuses a request that does not match its own binding table |
+| Information disclosure: cross-company rows | Company A reads company B through a shared base | Company reference must be in the binding's allowed set, checked before any COM call; the bridge filters by the company dimension, selects it in every row and fails closed on a row of another company; the gateway client and normalizer compare each row's company again; an OData row without the company property is refused |
+| Information disclosure: silent fallback hides a real failure | An OData 401/503 is answered from COM | Selection is by evidence only; any selected-route error fails closed with zero COM calls; tests assert the call counts |
+| Elevation: write or generic execute through COM | The bridge becomes a general 1C client | No write verb, no execute, one template, reader identity only, loopback + bearer, row cap and timeout; a test asserts the absence of write capability |
+| Information disclosure: secrets | Reader password in a response, log or process argument | Secret references are resolved only inside the bridge; errors are sanitized; nothing secret is returned to the gateway or the model |
+| Tampering: parity evidence from different databases | OData and COM compared on two copies | Parity is claimed only with a separate publication bound to the same disposable clone and a same-database proof before comparison; otherwise reported as cross-copy comparison |
+| Denial of service | Large balance sets or COM license exhaustion | Row cap, timeout, one connection per binding, bounded accounts and analytics slots; after a timeout the binding stays poisoned (immediate `COM_UNAVAILABLE`, no second 1C session) until the abandoned query returns; at most two requests per binding are admitted so a slow binding cannot starve the others; the body cap is checked on `Content-Length` before the body is read; production licensing topology is an open item |
+| Spoofing: bridge identity is configuration, not attestation | `clone_identity` and `metadata_fingerprint` come from the operator's bridge file and are not recomputed; the bridge does not itself refuse the reference clone path | Operator attestation: the binding is approved by the operator, the gateway compares the echoed identity with its own binding, the COM route serves only the fixed register and company field, and production binding review must confirm the base path is not the reference clone |

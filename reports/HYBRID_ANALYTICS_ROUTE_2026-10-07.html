@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — hybrid route for balance by analytics</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}.info{color:var(--info);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — hybrid OData + COM route for balance by analytics</h1>
+<div class="sub">Date: 2026-10-07 · PR #21 (Draft) · branch <code>feature/hybrid-analytics-route</code> · operator decision: hybrid OData + COM to cover all cases</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; feature/hybrid-analytics-route @ 368f4fa</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+
+<h2>Summary</h2>
+<div class="card">
+<p>One read-only tool was added: <code>accounting_balance_by_analytics(source_id, company_id, as_of)</code>. It returns balances of the profile-approved accounts split by up to three analytics slots (counterparty, contract, item, warehouse and so on).</p>
+<p>The route is chosen before execution and only from persisted evidence: OData <code>Balance</code> when available; a separate local COM bridge only when OData is proven unsupported and an exactly matching approved binding exists; unknown or drifted state fails closed. There is no automatic switch from OData to COM after an error.</p>
+<p><span class="ok">Verified:</span> ruff clean; full non-e2e suite 1769 passed, 182 skipped; hosted CI of PR #21 on head <code>368f4fa</code>: test, windows-rsv-privacy, odata-upstream, release-evidence all success.</p>
+<p><span class="ok">Live parity proof</span> (disposable clone, read-only, reference clone never opened): the OData publication <code>erp_mcp_probe</code> and COM on the same database (the publication descriptor path equals the COM clone path): 21 of 21 rows equal, identical hashes, database unchanged during the run.</p>
+</div>
+
+<h2>End-to-end run</h2>
+<div class="card">
+<p>The public tool was run end to end on the disposable clone, read-only: tool → adapter → real sidecar → GET/HEAD-only proxy → real Apache publication (OData leg), and tool → client → real bridge → real COM (COM leg; the OData capability was forced to unsupported because the real base answers available, so this leg proves the wiring, not the route decision). Registry and audit were test fakes; the mappings were built from live keys.</p>
+<div class="wrap"><table><tr><th>Mapping</th><th>Route</th><th>Rows</th><th>Analytics</th></tr><tr><td>accounts 521.*</td><td>odata and com</td><td>15 and 15</td><td>counterparty, contract</td></tr><tr><td>account 211.1</td><td>odata and com</td><td>6 and 6</td><td>item, warehouse</td></tr></table></div>
+<ul><li><span class="warn">One mapping per account family.</span> Mixing 521 and 211 with a pinned slot type correctly failed closed; each family needs its own confirmed profile.</li><li><span class="warn">The COM route needs a known platform version.</span> The real publication does not report one: the registered source must carry <code>platform_version_hint</code>, otherwise no binding can be created.</li><li><span class="warn">No bridge or binding file is configured for any real source yet.</span> On the reference base <code>Balance</code> is available, so the gateway routes to OData.</li></ul>
+</div>
+
+<h2>Planned items</h2>
+<div class="wrap"><table>
+<tr><th>Plan item</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Remaining tail</th></tr>
+<tr><td>1. ADR and threat model</td><td>ADR-0008, THREAT_MODEL delta, document index</td><td>Documents consistent, consistency check PASS</td><td><span class="ok">Done</span> (<code>6fbab64</code>)</td><td>—</td></tr>
+<tr><td>2-3. Gateway: semantics, route, tool</td><td>Concept <code>account.balance_by_analytics</code>, mapping validator, route selector, OData route, three-parameter tool</td><td>Routing tests: AVAILABLE→odata, UNSUPPORTED+binding→com, UNKNOWN→fail closed with no calls, an OData error never reaches COM, foreign company, row outside the account set</td><td><span class="ok">Done</span> (<code>69681f5</code>, fixes <code>368f4fa</code>)</td><td>—</td></tr>
+<tr><td>4. COM bridge and client</td><td>Separate loopback process, one fixed query template, gateway client</td><td>No caller text/path/secret, binding and company checked before COM, a row of another company fails closed, binding poisoned after a timeout</td><td><span class="ok">Done</span> (<code>e99c9e5</code>, <code>368f4fa</code>)</td><td>Topology and licensing of the COM host for 30-150 bases are undecided (outside the ADR)</td></tr>
+<tr><td>5. OData ↔ COM parity</td><td>Harness and a live run on one disposable clone</td><td>Same-database proof before any read; label parity_proof only with that proof</td><td><span class="ok">Done</span>: 21/21 rows</td><td>The metadata fingerprint was not compared live: row equality on one database is proven, fingerprint equality is not</td></tr>
+<tr><td>6. Governance and documents</td><td>Scope-freeze rebaseline, runbook, repin, DECISION_LOG</td><td>SCOPE_FREEZE §2.1, GOVERNANCE, MASTER_PLAN, TDD FR-J, traceability HYB-1; consistency check PASS</td><td><span class="ok">Done</span> (<code>d271dad</code>)</td><td>—</td></tr>
+<tr><td>Sprint end: local reviews</td><td>Three narrow sonnet reviewers: bridge trust boundary, fail-closed handling, test adequacy</td><td>No BLOCKER; every closable finding closed</td><td><span class="ok">Done</span></td><td>Backlog: duplicate-row detection, real sidecar <code>has_more</code> semantics</td></tr>
+</table></div>
+
+<h2>What the live checks caught</h2>
+<div class="card">
+<ul>
+<li>The COM connector has no <code>Type()</code> method: a reference is built through <code>TypeDescription(...).Types().Get(0)</code> and <code>XMLValue</code>. Fixed in the bridge and the test fake.</li>
+<li>Real publication descriptors write the path unquoted (<code>ib="File=D:\...;"</code>); the parity-proof parser was fixed and a regression test added.</li>
+</ul>
+</div>
+
+<h2>Review findings closed</h2>
+<div class="card">
+<ul>
+<li>MAJOR: OData rows without the company property were accepted and the COM route had no per-row company check. The property is now required, the bridge selects the organization and fails closed on another one, and the gateway compares it again.</li>
+<li>MAJOR: after a timeout the COM query could still run inside 1C while the next request opened a second session, and a slow binding could occupy the shared thread pool. The binding is now poisoned until the abandoned query returns and at most two requests per binding are admitted.</li>
+<li>MAJOR (tests): swapping the internal company id for the external reference, drift on the COM branch, provenance per field, factory and binding call counts and the fingerprint clause of the harness each now have an assertion that fails on mutation.</li>
+<li>MINOR: a full page is always reported truncated; strict amount parsing; success audit written after the response is built; locked COM client creation; canonical company reference; <code>as_of</code> limited to 1990-2100; body cap on Content-Length; the COM route refuses a mapping the bridge does not serve.</li>
+</ul>
+</div>
+
+<h2>Open items</h2>
+<div class="card">
+<ul>
+<li>No merge is claimed: a fresh GPT-PM verification of the PR head was not run, by operator decision.</li>
+<li>The disposable clone <code>818HA_report_gen_20261007_172853</code> (about 4 GB) is no longer needed; the operator must delete it because the shell policy blocks recursive deletion.</li>
+<li>COM-only sources (no OData at all) need a registry source kind, outside this ADR.</li>
+<li>The 811.1 and turnover mismatch between the DAD report and the native ledger, the rule pack from the accountant workbook, the 211 per item/warehouse and 241 per day checks and the native reports from the accountant remain separate tasks.</li>
+<li>A plaintext test credential exists in the source DAD document: it was never copied; rotate it if the document is shared more widely.</li>
+</ul>
+</div>
+
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

@@ -244,6 +244,12 @@ Deliver:
 Exit:
 - same normalized adapter contract passes across OData and COM/extension routes.
 
+Rebaseline 2026-10-07 (operator): the first COM-route capability is `accounting_balance_by_analytics`
+(balance by counterparty/contract/item/warehouse). OData `Balance` is primary; the COM route is a separate loopback
+bridge with one fixed code-owned query template, chosen only from persisted capability evidence, never as a runtime
+fallback. See ADR-0008. Parity between the routes is claimed only on a disposable clone with a publication bound to the
+same database; otherwise it is reported as a cross-copy comparison.
+
 ## P7 — 8.2 legacy route
 
 This phase is demand-driven. No concrete 1C 8.2 target or customer requirement is currently recorded,

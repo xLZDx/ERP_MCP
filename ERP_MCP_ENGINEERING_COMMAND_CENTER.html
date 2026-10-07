@@ -61,7 +61,7 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=50e24cec517943f201fd0f815b44253b6d7a60842e3123eb2307c3d57c392ba5 -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=c4a82a075b32b13cc0a6244fc26bb3928cbc4e70edf67e02effd9d1ba9397d6a -->
 <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
@@ -189,7 +189,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=7027b94d865c2a35f3348046cf38972e8ffd3dd80d48a5fc5fe047224022164f DOC_RENDER_SHA256=aae86b77007ed9c6e9944de4e414bdec4bcc0d371dafc67dd724127032f4e073 -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=07c4e1b4e24ef8272c0e97d6ac4eee7642304bb81cbb339063834d40f1a122ee DOC_RENDER_SHA256=61e146baf1fa94bbbeb9a26ee70e43f83ab01dec35d6a5f0694204f3ffa29db8 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -383,6 +383,7 @@ change first.</p>
 <li><a href="#doc-adr-0005">ADR-0005 — No direct 1C SQL integration</a></li>
 <li><a href="#doc-adr-0006">ADR-0006 — Copyleft adapter isolation</a></li>
 <li><a href="adr/ADR-0007-admin-control-center.md">ADR-0007 — Admin Control Center boundary and authorization</a></li>
+<li><a href="adr/ADR-0008-hybrid-odata-com-analytics-balance.md">ADR-0008 — Hybrid OData + COM analytics balance route</a></li>
 </ul>
 <h2>Change rule</h2>
 <p>A change to any invariant marked <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>HARD BOUNDARY</strong> or <strong>FAIL-CLOSED</strong>
@@ -402,7 +403,7 @@ an existing frozen requirement is scope-preserving.</p>
     </article>
 <article class="doc-card searchable" id="doc-tdd" data-cat="core" data-title="TDD">
       <div class="doc-head"><div><span class="eyebrow">Требования</span><h2>TDD</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/TDD.md DOC_SOURCE_SHA256=855c6986d490274936e7cbe39e7476968eccc547a228d6ff091f491f527ca93f DOC_RENDER_SHA256=cb69e74730cc39a959b0927b4bee3bf9f449187773edb7eee50a5008cd6d8ceb -->
+      <div class="md"><!-- DOC_SOURCE=docs/TDD.md DOC_SOURCE_SHA256=eb781ef772d5fd33044536debf18ed83f901b5014f758bb0ffa3fd39ebae0c38 DOC_RENDER_SHA256=931d6fffbcf99ef22f7d6081c0d05162f81f3786497cb0c2e6e76030c3909d7e -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Technical Design Document — ERP_MCP 1C-first Production MVP</h1>
 <p><strong>Version:</strong> 1.1
@@ -620,6 +621,13 @@ documents.</p>
 <li>L3 controlled target/pilot evidence.</li>
 </ul>
 <p>Evidence must state its level; L1/L2 cannot be relabelled L3.</p>
+<h3>FR-J Balance by analytics (operator rebaseline 2026-10-07)</h3>
+<p><code>accounting_balance_by_analytics(source_id, company_id, as_of)</code> returns balances of a profile-approved account set
+split by up to three analytics slots. The route (OData <code>Balance</code> or the COM bridge) is selected before execution from
+persisted capability evidence; any error of the selected route fails closed and never triggers the other route. Both
+routes return the same canonical rows with <code>route</code> provenance. Required tests: route selection (AVAILABLE, UNSUPPORTED
+with and without a binding, UNKNOWN), no runtime fallback, binding mismatch and company-not-in-binding denial, row
+outside the account set fails closed, bridge never accepts caller text. See ADR-0008.</p>
 <h2>7. Non-functional requirements</h2>
 <h3>Security</h3>
 <ul>
@@ -798,7 +806,7 @@ before new product scope is admitted.</p>
 </tbody>
 </table>
 </div>
-<!-- DOC_SOURCE=docs/MASTER_PLAN.md DOC_SOURCE_SHA256=9c626e88463b84017ba66ed8523c828b8270d1d23564153f7a419c4b12a04a7e DOC_RENDER_SHA256=629883f602a933e83984d3b0dd5eb50ffd803deb0c5f76714675449c8dc4ff8a -->
+<!-- DOC_SOURCE=docs/MASTER_PLAN.md DOC_SOURCE_SHA256=98175950ee2beebf2e120ebdf18399cb989a37b4735cbc664e1f869cbfa5151f DOC_RENDER_SHA256=85603604372443117cd93958e20db8b70422b2095bef8a18b2a742f67e8c0cd9 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Master Plan</h1>
 <p><strong>Version:</strong> 1.1
@@ -1055,6 +1063,11 @@ contract closure.</p>
 - capability route integration.</p>
 <p>Exit:
 - same normalized adapter contract passes across OData and COM/extension routes.</p>
+<p>Rebaseline 2026-10-07 (operator): the first COM-route capability is <code>accounting_balance_by_analytics</code>
+(balance by counterparty/contract/item/warehouse). OData <code>Balance</code> is primary; the COM route is a separate loopback
+bridge with one fixed code-owned query template, chosen only from persisted capability evidence, never as a runtime
+fallback. See ADR-0008. Parity between the routes is claimed only on a disposable clone with a publication bound to the
+same database; otherwise it is reported as a cross-copy comparison.</p>
 <h2>P7 — 8.2 legacy route</h2>
 <p>This phase is demand-driven. No concrete 1C 8.2 target or customer requirement is currently recorded,
 so P7 is explicitly deferred for the modern MVP; there is no GPL adapter deployment in this phase.
@@ -1524,7 +1537,7 @@ Index approval windows bound read authorization, not physical/legal retention gu
     </article>
 <article class="doc-card searchable" id="doc-governance" data-cat="governance" data-title="Governance">
       <div class="doc-head"><div><span class="eyebrow">Управление</span><h2>Governance</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/GOVERNANCE.md DOC_SOURCE_SHA256=98f372c105f515bb369f59b5e8e92c2a38077523269e5f7f8e2997e4b7fe2297 DOC_RENDER_SHA256=7bcddd023ce77762564a144720239ab95c505e9da932a7de21cf0046915aae39 -->
+      <div class="md"><!-- DOC_SOURCE=docs/GOVERNANCE.md DOC_SOURCE_SHA256=60695f60393820440d9a0b6afc5f3ade05c4795f525efa5ad27885fa73dea603 DOC_RENDER_SHA256=a8571cb4ee86f966bb453cb6e7d7fd161552bffd6d96454b7b789d59389f773a -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Engineering Governance</h1>
 <p><strong>Version:</strong> 1.1
@@ -1575,6 +1588,13 @@ MUST NOT start until operator rebaseline.</p>
   Record: <code>docs/SCOPE_FREEZE_BASELINE_2026-10-06.md</code> §8.1; frozen detection semantics:
   <a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>. Changing those semantics needs a new
   amendment (A3) approved by GPT-PM.</li>
+<li><strong>2026-10-07 — hybrid OData + COM <code>accounting_balance_by_analytics</code> (explicit operator rebaseline).</strong>
+  Authority: the operator's explicit decision "hybrid OData + COM to cover all cases". Scope: exactly one
+  read-only MCP tool (<code>accounting.read</code>, three parameters, no write) with an OData primary route and a COM fallback
+  route behind a separate loopback bridge process; the route is chosen from persisted capability evidence before
+  execution and never switches after an OData failure. Traces to DAD-SMALL-03, DAD-BIZ-02, DAD-BIZ-08. Record:
+  <a href="adr/ADR-0008-hybrid-odata-com-analytics-balance.md">ADR-0008</a>, Scope Freeze §2.1. Production deployment stays NO-GO;
+  production topology and licensing for the COM host are open.</li>
 </ul>
 <h2>3. Change classes</h2>
 <h3>C0 — Documentation/non-behavioral</h3>
@@ -3478,7 +3498,7 @@ storage and retrying with a new request; never bypass audit or replay a read as 
     </article>
 <article class="doc-card searchable" id="doc-threat-model" data-cat="security" data-title="Threat Model">
       <div class="doc-head"><div><span class="eyebrow">Безопасность</span><h2>Threat Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=ef21e6e77786edad9ddf8f269ce36cdfd7bc90fed4411fe4812acc507f90e8aa DOC_RENDER_SHA256=f1633ec4f7f53ec49ba189fb3097b19af572475ed6620dd38da36d8eaeacacca -->
+      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=5f0210ae282f4d246965fb41a7cf222d780a6683eaa76ddb1af9c018060b48ff DOC_RENDER_SHA256=7069f5fefc9148382518cefdd3fd4cefa48ab78e4de2dcfdf49d011120ec74cb -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Threat Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -3693,11 +3713,70 @@ frozen in <a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>.</
 analysis.</p>
 <p>Every new work item must cite an existing frozen requirement/gate. No trace -&gt; no execution until
 explicit operator rebaseline.</p>
+<h2>Hybrid OData + COM analytics balance route (ADR-0008, operator decision 2026-10-07)</h2>
+<p>Tool <code>accounting_balance_by_analytics</code> reads balances by analytics through OData (primary) or a separate local COM bridge
+(fallback). The route is chosen before execution from persisted evidence; there is no runtime fallback.</p>
+<table>
+<thead>
+<tr>
+<th>Threat (STRIDE)</th>
+<th>Risk</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tampering / elevation: caller text reaches a 1C query</td>
+<td>Injection through account, company or date input</td>
+<td>The tool has three parameters (<code>source_id</code>, <code>company_id</code>, <code>as_of</code>); account keys are GUIDs from the validated profile; the COM bridge runs one fixed code-owned template with typed parameters; no query text crosses any boundary</td>
+</tr>
+<tr>
+<td>Spoofing: wrong physical source behind a logical source id</td>
+<td>A stale COM binding answers for a re-registered source</td>
+<td>The binding pins source id, base-URL hash, credential identity, configuration and metadata fingerprints; any change invalidates it until re-approval; the bridge refuses a request that does not match its own binding table</td>
+</tr>
+<tr>
+<td>Information disclosure: cross-company rows</td>
+<td>Company A reads company B through a shared base</td>
+<td>Company reference must be in the binding's allowed set, checked before any COM call; the bridge filters by the company dimension, selects it in every row and fails closed on a row of another company; the gateway client and normalizer compare each row's company again; an OData row without the company property is refused</td>
+</tr>
+<tr>
+<td>Information disclosure: silent fallback hides a real failure</td>
+<td>An OData 401/503 is answered from COM</td>
+<td>Selection is by evidence only; any selected-route error fails closed with zero COM calls; tests assert the call counts</td>
+</tr>
+<tr>
+<td>Elevation: write or generic execute through COM</td>
+<td>The bridge becomes a general 1C client</td>
+<td>No write verb, no execute, one template, reader identity only, loopback + bearer, row cap and timeout; a test asserts the absence of write capability</td>
+</tr>
+<tr>
+<td>Information disclosure: secrets</td>
+<td>Reader password in a response, log or process argument</td>
+<td>Secret references are resolved only inside the bridge; errors are sanitized; nothing secret is returned to the gateway or the model</td>
+</tr>
+<tr>
+<td>Tampering: parity evidence from different databases</td>
+<td>OData and COM compared on two copies</td>
+<td>Parity is claimed only with a separate publication bound to the same disposable clone and a same-database proof before comparison; otherwise reported as cross-copy comparison</td>
+</tr>
+<tr>
+<td>Denial of service</td>
+<td>Large balance sets or COM license exhaustion</td>
+<td>Row cap, timeout, one connection per binding, bounded accounts and analytics slots; after a timeout the binding stays poisoned (immediate <code>COM_UNAVAILABLE</code>, no second 1C session) until the abandoned query returns; at most two requests per binding are admitted so a slow binding cannot starve the others; the body cap is checked on <code>Content-Length</code> before the body is read; production licensing topology is an open item</td>
+</tr>
+<tr>
+<td>Spoofing: bridge identity is configuration, not attestation</td>
+<td><code>clone_identity</code> and <code>metadata_fingerprint</code> come from the operator's bridge file and are not recomputed; the bridge does not itself refuse the reference clone path</td>
+<td>Operator attestation: the binding is approved by the operator, the gateway compares the echoed identity with its own binding, the COM route serves only the fixed register and company field, and production binding review must confirm the base path is not the reference clone</td>
+</tr>
+</tbody>
+</table>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-requirements-traceability" data-cat="core" data-title="Requirements Traceability">
       <div class="doc-head"><div><span class="eyebrow">Трассировка</span><h2>Requirements Traceability</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=3be98869e8b3c945e9d2b8f56ed83e13d9e0ad338d0a74ab94a90a2145a640a3 DOC_RENDER_SHA256=e8cd8d930ba94111cf0b332763c318b95210ddaa2d51f61468cac5a77df1996a -->
+      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=9b744f6acd4f5a300ebd1ca8cffcac92156bc32dad8003be21fa03eb0b35b81a DOC_RENDER_SHA256=c952c136cbe3f6854d6b0b564c3ff3be204ed61b347543cd1bbfcd945f10a0f6 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Requirements Traceability Matrix</h1>
 <p><strong>Version:</strong> 1.1
@@ -3910,6 +3989,12 @@ explicit operator rebaseline.</p>
 <td>Operator rebaseline 2026-10-07: SC08 <code>duplicate-counterparty</code> as one read-only tool <code>counterparty_duplicate_candidates</code> (<code>accounting.read</code>, no merge/write, synthetic L1 only). Evidence status: IMPLEMENTED on synthetic L1 (src/business_ai_gateway/duplicate_counterparties.py + server handler; exact run counts and head SHA live in the PR #11 body, not here); Amendment A2 PROPOSED until GPT-PM approves; known accepted limitation: empty activity scan is PASS per contract (core/DECISION_LOG.md 2026-10-07)</td>
 <td><a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>, Scope Freeze §8.1, TDD FR-E</td>
 <td>D9 (read-only/synthetic only); evidence: tests/test_duplicate_counterparties_unit.py, tests/test_sc08_duplicate_counterparty_chain.py, tests/functional/test_10_scenarios_sc01_sc12.py (SC08 cases), tests/e2e/user/test_u18_functional_tester_suite.py (U18 oracle), manual pack U18 step</td>
+</tr>
+<tr>
+<td>HYB-1</td>
+<td>Operator rebaseline 2026-10-07: hybrid OData + COM read route for balances with analytics, one read-only tool <code>accounting_balance_by_analytics</code>; closes the "analytics balance" gap of DAD-SMALL-03 / DAD-BIZ-02 / DAD-BIZ-08. Evidence status: see core/DECISION_LOG.md 2026-10-07 entries; live parity status is recorded there (parity vs cross-copy comparison)</td>
+<td><a href="adr/ADR-0008-hybrid-odata-com-analytics-balance.md">ADR-0008</a>, Scope Freeze §2.1, TDD FR-J</td>
+<td>D5/D7/D9; evidence: tests/test_analytics_balance_routing.py, tests/test_com_bridge.py</td>
 </tr>
 <tr>
 <td>DAD-1</td>
@@ -5083,7 +5168,7 @@ catalog of 1C MCP projects. It is a discovery source, not a runtime dependency.<
 
 </code></pre>
 <!-- NORMATIVE_SOURCE_END --></div>
-    </article><article class="doc-card searchable" id="doc-scope-freeze" data-cat="core" data-title="SCOPE FREEZE BASELINE 2026-10-06"><div class="doc-head"><h2>SCOPE FREEZE BASELINE 2026-10-06</h2></div><div class="md"><!-- DOC_SOURCE=docs/SCOPE_FREEZE_BASELINE_2026-10-06.md DOC_SOURCE_SHA256=5fa7ceb64bbb857a739297608c6f77188f3c90f5000eab2a1a20300c4674b75e DOC_RENDER_SHA256=3dd890c74d05aa5408b1417b58514e8e22dca4fc5f00cb70c1bed5f5f2810481 -->
+    </article><article class="doc-card searchable" id="doc-scope-freeze" data-cat="core" data-title="SCOPE FREEZE BASELINE 2026-10-06"><div class="doc-head"><h2>SCOPE FREEZE BASELINE 2026-10-06</h2></div><div class="md"><!-- DOC_SOURCE=docs/SCOPE_FREEZE_BASELINE_2026-10-06.md DOC_SOURCE_SHA256=6a22d38bcd16b3ce338e88232e6ac5218c461308da18806ce70d2a9708ee4b69 DOC_RENDER_SHA256=7a0372dc1e675b7f723635270b8935357d0fb992756d1fdaf3e6e29325cd6172 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Scope Freeze Baseline — 2026-10-06</h1>
 <p><strong>Status:</strong> FROZEN
@@ -5135,6 +5220,14 @@ catalog of 1C MCP projects. It is a discovery source, not a runtime dependency.<
 <li>DEFINITION_OF_DONE.md when gates change;</li>
 <li>risk/threat model when applicable;</li>
 <li>Engineering Command Center.</li>
+</ul>
+<h3>2.1 Rebaseline record</h3>
+<ul>
+<li><strong>2026-10-07, operator decision (hybrid OData + COM):</strong> one new read-only capability, <code>accounting_balance_by_analytics</code>,
+  with an OData primary route and a COM fallback route served by a separate loopback bridge process. It traces to the
+  frozen requirements DAD-SMALL-03, DAD-BIZ-02 and DAD-BIZ-08. The COM bridge is the only new adapter family admitted;
+  it is bound by ADR-0008 (fixed code-owned query template, no caller text, no write, no runtime fallback from an OData
+  failure, RSV <code>query</code>/<code>execute_query</code>/<code>reveal</code> unchanged). No other scope is added.</li>
 </ul>
 <h2>3. Committed/current execution scope</h2>
 <p>The freeze applies to the complete read-only 1C/DAD delivery scope already accepted as of this date.</p>

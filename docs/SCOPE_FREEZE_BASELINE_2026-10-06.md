@@ -56,6 +56,14 @@ A rebaseline must update:
 - risk/threat model when applicable;
 - Engineering Command Center.
 
+### 2.1 Rebaseline record
+
+- **2026-10-07, operator decision (hybrid OData + COM):** one new read-only capability, `accounting_balance_by_analytics`,
+  with an OData primary route and a COM fallback route served by a separate loopback bridge process. It traces to the
+  frozen requirements DAD-SMALL-03, DAD-BIZ-02 and DAD-BIZ-08. The COM bridge is the only new adapter family admitted;
+  it is bound by ADR-0008 (fixed code-owned query template, no caller text, no write, no runtime fallback from an OData
+  failure, RSV `query`/`execute_query`/`reveal` unchanged). No other scope is added.
+
 ## 3. Committed/current execution scope
 
 The freeze applies to the complete read-only 1C/DAD delivery scope already accepted as of this date.
