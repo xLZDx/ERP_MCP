@@ -61,7 +61,7 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=57db5ff65c1838e00e55f2689698ac55314ced88afd87788cd5f858985a67ada -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=89cec657f6b7c5d18b2bbfa53e8d8f6522f053204d796f2f6b323322258d0f19 -->
 <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
@@ -189,7 +189,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=4c378428573f4c0f08df178544363e71fad3480056345a4f546ac46b8fd7c1b0 DOC_RENDER_SHA256=e636f1223a0915f298af7b75ec061ac944f2241776e242e4b44b32d2fc54c503 -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=d5f323e7fe3435bd1a26cf162e2a6f7185d85fe8d1ad9f1b6d667205f1b63ac5 DOC_RENDER_SHA256=6c70cf4197dcc23ea2d8e44612dfac2a53ee98f6af7dc7961c0c03192ad0a7d1 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -297,6 +297,14 @@ change first.</p>
 <tr>
 <td><a href="QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md">Manual QA environment and acceptance guide</a></td>
 <td>Windows L1 setup and separate manual data-plane user/Admin suites, with all 12 synthetic scenario IDs</td>
+</tr>
+<tr>
+<td><a href="MANUAL_ACCEPTANCE_USER.md">Manual acceptance — simple user</a></td>
+<td>Step-by-step owner acceptance pack for a non-admin data-plane identity (U cases, SC01-SC12 spot checks)</td>
+</tr>
+<tr>
+<td><a href="MANUAL_ACCEPTANCE_ADMIN.md">Manual acceptance — Admin Control Center</a></td>
+<td>Step-by-step owner acceptance pack for Admin identities and roles (A cases), separate credentials from the user pack</td>
 </tr>
 <tr>
 <td><a href="E2E_ACCEPTANCE_CONTRACT.md">E2E acceptance contract (frozen)</a></td>

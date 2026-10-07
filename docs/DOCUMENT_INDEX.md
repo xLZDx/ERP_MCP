@@ -72,6 +72,8 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [Semantic profiles and presets](SEMANTIC_PROFILES.md) | Candidate preset, source/company profile lifecycle, validation evidence and operator CLI |
 | [Test Strategy](TEST_STRATEGY.md) | L1/L2/L3 verification, security, load and reconciliation |
 | [Manual QA environment and acceptance guide](QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md) | Windows L1 setup and separate manual data-plane user/Admin suites, with all 12 synthetic scenario IDs |
+| [Manual acceptance — simple user](MANUAL_ACCEPTANCE_USER.md) | Step-by-step owner acceptance pack for a non-admin data-plane identity (U cases, SC01-SC12 spot checks) |
+| [Manual acceptance — Admin Control Center](MANUAL_ACCEPTANCE_ADMIN.md) | Step-by-step owner acceptance pack for Admin identities and roles (A cases), separate credentials from the user pack |
 | [E2E acceptance contract (frozen)](E2E_ACCEPTANCE_CONTRACT.md) | Frozen U01-U18 data-plane and A01-A54 Admin automated/manual acceptance matrix with actor, expected, negative, evidence and external gates |
 | [Local E2E environment](E2E_ENVIRONMENT.md) | Disposable localhost-only environment: compose, test IdP, seed modes, reset/fault scripts and e2e fixtures |
 | [Functional Tester autonomous assignment](FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md) | Task prompt and deliverable contract for executable black-box tests of the scenario pack |
