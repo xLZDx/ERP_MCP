@@ -75,6 +75,7 @@ from .semantic import (
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
+from .tool_errors import StructuredErrorMCPServer
 from .settlement_collector import (
     MAX_OPEN_ITEM_ROWS,
     OPEN_ITEMS_FAILURE_REASONS,
@@ -147,7 +148,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
 
     kwargs["middleware"] = [AuditCorrelationMiddleware()]
-    mcp = MCPServer("ERP_MCP — 1C Production", **kwargs)
+    mcp = StructuredErrorMCPServer("ERP_MCP — 1C Production", **kwargs)
 
     async def ctx():
         principal = current_principal(oauth_enabled=settings.oauth_enabled)

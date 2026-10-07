@@ -88,9 +88,61 @@ class SyntheticFixtureProfiles:
         )
 
 
+PROVISIONAL_PROFILE_KIND = "UNVALIDATED_INDEPENDENT_RECONCILIATION"
+PROVISIONAL_SOURCE_TAG = "real-reference"
+PROVISIONAL_AUDIT_CODE = "UNVALIDATED_INDEPENDENT_RECONCILIATION_PROFILE"
+PROVISIONAL_WARNING = "UNVALIDATED_INDEPENDENT_RECONCILIATION_NOT_NATIVE_VALIDATED"
+PROVISIONAL_FINGERPRINT_PREFIX = "provisional:"
+
+
+class ProvisionalProfiles(SyntheticFixtureProfiles):
+    """Reviewed, pinned semantic profiles for a REAL 1C source that is not yet natively validated.
+
+    Operator decision 2026-10-07: tools may answer from the real source while the profile awaits
+    native 1C reconciliation, but every result is labelled UNVALIDATED_INDEPENDENT_RECONCILIATION.
+    It is never a bag.semantic_profiles row, never VALIDATED, never counts towards the native-report
+    rule, and is hard-denied outside BAG_ENVIRONMENT == "test" (settings, constructor, every lookup).
+    A DB profile of any live status for the same scope always shadows it.
+    """
+
+    def __init__(self, path: str | Path, expected_sha256: str, *, environment: str):
+        try:
+            super().__init__(path, expected_sha256, environment=environment)
+        except RuntimeError as exc:
+            raise RuntimeError(str(exc).replace("SYNTHETIC_FIXTURE", "PROVISIONAL")) from None
+        raw = json.loads(Path(path).read_bytes())
+        reconciliation = raw.get("reconciliation")
+        if not isinstance(reconciliation, dict) or not reconciliation.get("basis"):
+            raise RuntimeError("PROVISIONAL_PROFILES_RECONCILIATION_BASIS_REQUIRED")
+        self.reconciliation: dict[str, Any] = reconciliation
+
+    def profile_fingerprint(
+        self, source_id: str, company_id: UUID, concept: str, mapping: dict[str, Any]
+    ) -> str:
+        return PROVISIONAL_FINGERPRINT_PREFIX + canonical_fingerprint(
+            {
+                "fixture_id": self.fixture_id,
+                "source_id": source_id,
+                "company_id": str(company_id),
+                "concept": concept,
+                "mapping": mapping,
+                "metadata_fingerprint": self.pinned_metadata_fingerprint(source_id),
+            }
+        )
+
+
 def profile_provenance(profile: dict[str, Any], warnings: list[str] | None = None) -> dict[str, Any]:
     """Response provenance fields merged into every semantic tool result."""
     out = list(warnings or [])
+    if profile.get("profile_kind") == PROVISIONAL_PROFILE_KIND:
+        return {
+            "profile_kind": PROVISIONAL_PROFILE_KIND,
+            "validation_status": PROVISIONAL_PROFILE_KIND,
+            "evidence_level": "L2_PROVISIONAL",
+            "native_reconciliation": "NOT_RUN",
+            "reconciliation_basis": profile.get("reconciliation_basis"),
+            "warnings": [*out, PROVISIONAL_WARNING],
+        }
     if profile.get("profile_kind") == SYNTHETIC_PROFILE_KIND:
         return {
             "profile_kind": SYNTHETIC_PROFILE_KIND,
