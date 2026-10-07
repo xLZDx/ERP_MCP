@@ -20,11 +20,20 @@ from .analytics_balance import (
     AnalyticsBalanceError,
     ComRouteUnsupported,
     build_analytics_balance_arguments,
+    compute_account_totals,
     normalize_com_balance_rows,
     normalize_odata_balance_rows,
     select_route,
 )
 from .audit import AuditCorrelationMiddleware, AuditUnavailable
+from .counterparty_lookup import (
+    COUNTERPARTY_LOOKUP_CONCEPT,
+    MAX_REFS_PER_REQUEST,
+    build_lookup_query,
+    build_refs_filter,
+    evaluate_lookup,
+    index_names,
+)
 from .auth import JWTTokenVerifier
 from .compatibility import (
     CapabilityUnsupported,
@@ -105,6 +114,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "receivable_aging": "ar.read",
     "payable_aging": "ap.read",
     "counterparty_duplicate_candidates": "accounting.read",
+    "counterparty_find": "accounting.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
@@ -745,6 +755,47 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
+    async def resolve_counterparty_names(source, source_id, company_id, rows):
+        """Add name/code/deleted to counterparty slots with batched catalog reads (profile-owned).
+
+        Never fails the balance: a missing profile or a failed read becomes a warning and the rows
+        keep their references. Returns the warning list.
+        """
+        refs = sorted({
+            slot["ref"] for row in rows for slot in row["analytics"]
+            if slot["role"] == "counterparty" and slot["ref"]
+        })
+        if not refs:
+            return []
+        try:
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, company_id, COUNTERPARTY_LOOKUP_CONCEPT
+            )
+            mapping = profile["mapping"]
+            names = {}
+            for start in range(0, len(refs), MAX_REFS_PER_REQUEST):
+                chunk = refs[start:start + MAX_REFS_PER_REQUEST]
+                result = await runtime.onec.read(
+                    source,
+                    entity_set=mapping["entity_set"],
+                    select=list(mapping["output_fields"].values()),
+                    filter_expr=build_refs_filter(mapping, chunk),
+                    orderby=None, expand=None, top=len(chunk), skip=0,
+                )
+                names.update(index_names(
+                    result.get("value", []) if isinstance(result, dict) else result, mapping
+                ))
+        except Exception as exc:  # noqa: BLE001 - degrade, but say why (safe code only)
+            return [f"COUNTERPARTY_NAMES_UNAVAILABLE:{getattr(exc, 'code', type(exc).__name__)}"]
+        for row in rows:
+            for slot in row["analytics"]:
+                if slot["role"] == "counterparty" and slot["ref"]:
+                    found = names.get(slot["ref"].lower())
+                    if found:
+                        slot.update(name=found["name"], code=found["code"], deleted=found["deleted"])
+        unresolved = [ref for ref in refs if ref.lower() not in names]
+        return [f"COUNTERPARTY_NAME_NOT_FOUND:{len(unresolved)}"] if unresolved else []
+
     @mcp.tool()
     async def accounting_balance_by_analytics(
         source_id: str, company_id: str, as_of: str
@@ -855,6 +906,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 )
                 adapter_kind = "COM_BRIDGE"
             provenance = profile_provenance(profile)  # may raise: build it before the success audit
+            warnings = await resolve_counterparty_names(source, source_id, parsed_company_id, rows)
+            account_totals = compute_account_totals(rows)
             response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
             detail = f"route={decision.route};reason={decision.reason}"
             if decision.binding is not None:
@@ -884,6 +937,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "as_of": arguments["Period"],
                 "rows": rows,
                 "row_count": len(rows),
+                "account_totals": account_totals,
+                "warnings": warnings,
                 "truncated": truncated,
                 "route": decision.route,
                 "route_reason": decision.reason,
@@ -924,6 +979,82 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
                 metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
                 detail_code=detail,
+            )
+            raise
+
+    @mcp.tool()
+    async def counterparty_find(
+        source_id: str, company_id: str, name: str
+    ) -> dict[str, Any]:
+        """Find a counterparty by name or code: exact, case-insensitive, or partial match.
+
+        Returns status EXACT, PARTIAL, AMBIGUOUS or NOT_FOUND with bounded matches (ref, code,
+        name, deleted). The catalog and field names come from the validated profile, not the caller.
+        """
+        tool = "counterparty_find"
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, outcome="denied",
+                started_at=started, company_id=None, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {"company_id": str(parsed_company_id), "concept": COUNTERPARTY_LOOKUP_CONCEPT,
+                 "name_length": len(name) if isinstance(name, str) else None}
+        source = await resolve_source(
+            principal, source_id, tool, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, COUNTERPARTY_LOOKUP_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr, row_limit = build_lookup_query(mapping, name)
+            result = await runtime.onec.read(
+                source, entity_set=entity_set, select=select, filter_expr=filter_expr,
+                orderby=None, expand=None, top=row_limit, skip=0,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            outcome = evaluate_lookup(raw_rows, mapping, name)
+            provenance = profile_provenance(profile)
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, outcome="success",
+                started_at=started, query=query, returned_items=outcome["match_count"],
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=f"status={outcome['status']}", truncated=outcome["truncated"],
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": COUNTERPARTY_LOOKUP_CONCEPT,
+                **outcome,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **provenance,
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(exc, (PermissionError, CapabilityUnsupported,
+                                        MetadataDriftUnacknowledged, SemanticProfileUnavailable))
+                    else "error"
+                ),
+                started_at=started, query=query, company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=str(getattr(exc, "code", type(exc).__name__)),
             )
             raise
 

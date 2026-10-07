@@ -63,6 +63,18 @@
                   "method": "balance"
                 }
               ]
+            },
+            "counterparty.lookup": {
+              "entity_set": "Catalog_Контрагенты",
+              "max_results": 20,
+              "output_fields": {
+                "code": "Code",
+                "deleted": "DeletionMark",
+                "folder": "IsFolder",
+                "name": "Description",
+                "ref": "Ref_Key"
+              },
+              "required_register_capabilities": []
             }
           }
         }

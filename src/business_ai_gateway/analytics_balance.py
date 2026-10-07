@@ -572,3 +572,37 @@ def select_route(
     ):
         raise ComRouteUnsupported("com_mapping_not_served_by_bridge")
     return RouteDecision("com", "capability_unsupported_binding_approved", binding)
+
+
+def compute_account_totals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Exact per-account totals of normalized rows (Decimal, server side).
+
+    ``net_credit`` is credit minus debit: for a passive account such as 521.1 a positive value is
+    what the company owes. Amounts stay strings so no float ever touches an accounting figure.
+    """
+    totals: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        entry = totals.setdefault(
+            row["account"],
+            {"account": row["account"], "debit": Decimal(0), "credit": Decimal(0), "row_count": 0},
+        )
+        entry["debit"] += Decimal(row["balance_debit"])
+        entry["credit"] += Decimal(row["balance_credit"])
+        entry["row_count"] += 1
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {
+            "account": entry["account"],
+            "balance_debit": text(entry["debit"]),
+            "balance_credit": text(entry["credit"]),
+            "net_credit": text(entry["credit"] - entry["debit"]),
+            "row_count": entry["row_count"],
+        }
+        for entry in sorted(totals.values(), key=lambda item: item["account"])
+    ]

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from .analytics_balance import ANALYTICS_BALANCE_CONCEPT, validate_analytics_balance_mapping
 from .compatibility import OneCCapabilities
+from .counterparty_lookup import COUNTERPARTY_LOOKUP_CONCEPT, validate_counterparty_lookup_mapping
 from .db import Database
 from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
 from .fixture_profiles import (
@@ -349,6 +350,8 @@ class Registry:
                 )
         elif concept == ANALYTICS_BALANCE_CONCEPT:
             validate_analytics_balance_mapping(mapping)
+        elif concept == COUNTERPARTY_LOOKUP_CONCEPT:
+            validate_counterparty_lookup_mapping(mapping)
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")
         return required
