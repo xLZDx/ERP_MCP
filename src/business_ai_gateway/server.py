@@ -924,8 +924,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                     list(response.rows), mapping, company_external_ref=company.external_ref
                 )
                 adapter_kind = "COM_BRIDGE"
-            provenance = profile_provenance(profile)  # may raise: build it before the success audit
             warnings = await resolve_counterparty_names(source, source_id, parsed_company_id, rows)
+            # may raise: build it before the success audit; the provenance owns the "warnings" key
+            provenance = profile_provenance(profile, warnings)
             account_totals = compute_account_totals(rows)
             response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
             detail = f"route={decision.route};reason={decision.reason}"
@@ -957,7 +958,6 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "rows": rows,
                 "row_count": len(rows),
                 "account_totals": account_totals,
-                "warnings": warnings,
                 "truncated": truncated,
                 "route": decision.route,
                 "route_reason": decision.reason,
@@ -2371,12 +2371,14 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     # ADR-0008 §5: the caller cannot pass route/bridge/path/secret/query text. Unknown arguments
     # are rejected (not silently dropped) and the published schema says additionalProperties=false.
-    analytics_tool = mcp._tool_manager.get_tool("accounting_balance_by_analytics")
-    if analytics_tool is None:
-        raise RuntimeError("accounting_balance_by_analytics tool is not registered")
-    analytics_model = analytics_tool.fn_metadata.arg_model
-    analytics_model.model_config["extra"] = "forbid"
-    analytics_model.model_rebuild(force=True)
-    analytics_tool.parameters["additionalProperties"] = False
+    # counterparty_find gets the same treatment: the catalog, filter and shape are profile-owned.
+    for strict_name in ("accounting_balance_by_analytics", "counterparty_find"):
+        strict_tool = mcp._tool_manager.get_tool(strict_name)
+        if strict_tool is None:
+            raise RuntimeError(f"{strict_name} tool is not registered")
+        strict_model = strict_tool.fn_metadata.arg_model
+        strict_model.model_config["extra"] = "forbid"
+        strict_model.model_rebuild(force=True)
+        strict_tool.parameters["additionalProperties"] = False
 
     return mcp
