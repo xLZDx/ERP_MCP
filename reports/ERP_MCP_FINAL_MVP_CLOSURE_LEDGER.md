@@ -122,21 +122,21 @@ Terminal engineering disposition: **local actionable closure achieved**.
 Production disposition remains **NO-GO** until the three external gates above
 are completed by operator/customer/platform owners.
 
-## E2E and Functional Tester program closure — code evidence `8283403` (2026-10-07)
+## E2E and Functional Tester program closure — code evidence `0f0c031` (2026-10-07)
 
 Supersedes the `fd11cec` counts above for local evidence. Hosted CI for the exact final head is
 **PENDING** here by design: the final head SHA and hosted run ID are recorded only in the PR #11
 body/comment, so no tracked commit follows a green hosted run.
 
-| Evidence | Result (local, exact code `8283403`) |
+| Evidence | Result (local, exact code `0f0c031`) |
 |---|---|
 | Local verification matrix | 31/31 steps exit 0 (ruff, bandit, compileall, migrations 001-014, scenarios, preflight, Admin UI browser contract, fault/RSV/perf/security/SSRF/mutation harnesses, fresh migrate, schema, privileges, ACL/fan-out load, PostgreSQL restore drill, pool benchmark, full pytest, document consistency) |
-| Full pytest (PG16 + Redis, `ERP_MCP_REQUIRE_DB_TESTS=1`) | 1206 passed / 232 skipped |
-| E2E smoke | 16 passed, 0 skipped |
+| Full pytest (PG16 + Redis, `ERP_MCP_REQUIRE_DB_TESTS=1`) | 1224 passed / 232 skipped |
+| E2E smoke | 29 passed, 0 skipped (16 environment checks + 13 skip-policy tests) |
 | User E2E U01-U18 | 52 passed, 0 skipped |
 | Admin E2E A01-A54 | 87 passed, 1 skipped (declared EXTERNAL-GATE) |
 | Functional Tester SC01-SC12 | 73 passed, 3 skipped, 2 xfailed, 0 failed (see `reports/FUNCTIONAL_TESTER_SC01_SC12.md`) |
-| Fake1C / sidecar upstream traffic during FT | Fake1C 14 GET + 1 HEAD; sidecar 57 `/v1/read` + 4 `/v1/capabilities/registers`; no write verbs |
+| Fake1C / sidecar upstream traffic during FT | Fake1C 17 GET + 1 HEAD; sidecar 57 `/v1/read` + 5 `/v1/capabilities/registers`; no write verbs |
 
 All E2E and FT evidence is synthetic L1 (Fake1C, fake OData sidecar, test-only IdP, synthetic fixture
 profiles). It is not native 1C, not L2 reconciliation and not production evidence.

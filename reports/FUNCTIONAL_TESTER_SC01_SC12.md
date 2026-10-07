@@ -1,6 +1,6 @@
 # Functional Tester report — SC01–SC12
 
-Candidate: `integration/1c-mvp-production-candidate`, code evidence head `8283403`
+Candidate: `integration/1c-mvp-production-candidate`, code evidence head `0f0c031`
 (Functional Tester worktree fast-forwarded to exactly this head; `git status` clean after the run).
 Date: 2026-10-07. Suite: `tests/functional/**` (black-box, public MCP tools only).
 
@@ -14,7 +14,7 @@ test-only synthetic fixture profile provider (`profile_kind=SYNTHETIC_FIXTURE`, 
 
 ## Result
 
-73 passed, 3 skipped, 2 xfailed, 0 failed, 0 errors (78 tests, 202.87 s). Identical to the earlier
+73 passed, 3 skipped, 2 xfailed, 0 failed, 0 errors (78 tests, 213.43 s). Identical to the earlier
 run at `d8f322b`. The first attempt on this head ran with no stack environment loaded and skipped all 78
 tests; it is not a result for the code and was discarded (cause: the suite reads only `FT_*` variables
 written by `scripts/ft/setup.ps1`).
@@ -47,6 +47,12 @@ unknown source and company/source mismatch, unsupported entities fail closed, mu
 discovery (exact reviewed read-only tool set, source and both companies listed, synthetic-only metadata,
 result bounds).
 
+The same suite also passed with identical counts (73/3/2/0) on the previous candidate code `8283403`
+(Fake1C 14 GET + 1 HEAD, sidecar 57 read + 4 capabilities). The upstream request totals differ between
+the two runs by +3 Fake1C and +1 sidecar; the Functional Tester attributes this to the gateway's 60 s
+OData metadata cache (inference from request timing, not an isolated measurement). In both runs only
+GET/HEAD reached Fake1C and only the two read-only POST paths reached the sidecar.
+
 ## Skips and expected failures (exact dispositions)
 
 | Test | Reason string | Disposition |
@@ -63,8 +69,8 @@ Recorded after the whole run (`/__ft__/requests`):
 
 | Recorder | Requests | Breakdown |
 |---|---|---|
-| Fake1C | 15 | 14 GET, 1 HEAD, 0 write verbs |
-| OData sidecar | 61 | 61 POST: 57 `/v1/read`, 4 `/v1/capabilities/registers` |
+| Fake1C | 18 | 17 GET, 1 HEAD, 0 write verbs |
+| OData sidecar | 62 | 62 POST: 57 `/v1/read`, 5 `/v1/capabilities/registers` |
 
 Whole-run hygiene tests (4/4 PASS): only GET/HEAD reached 1C; the sidecar saw only the two read-only
 protocol paths; audit rows contain no tokens, credentials or raw accounting rows; the gateway log contains
