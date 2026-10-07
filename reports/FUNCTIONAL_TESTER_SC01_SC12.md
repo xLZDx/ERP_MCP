@@ -1,6 +1,6 @@
 # Functional Tester report — SC01–SC12
 
-Candidate: `integration/1c-mvp-production-candidate`, code evidence head `0f0c031`
+Candidate: `integration/1c-mvp-production-candidate`, code evidence head `d7e578e`
 (Functional Tester worktree fast-forwarded to exactly this head; `git status` clean after the run).
 Date: 2026-10-07. Suite: `tests/functional/**` (black-box, public MCP tools only).
 
@@ -14,7 +14,7 @@ test-only synthetic fixture profile provider (`profile_kind=SYNTHETIC_FIXTURE`, 
 
 ## Result
 
-73 passed, 3 skipped, 2 xfailed, 0 failed, 0 errors (78 tests, 213.43 s). Identical to the earlier
+73 passed, 3 skipped, 2 xfailed, 0 failed, 0 errors (78 tests, 213.58 s). Identical to the earlier
 run at `d8f322b`. The first attempt on this head ran with no stack environment loaded and skipped all 78
 tests; it is not a result for the code and was discarded (cause: the suite reads only `FT_*` variables
 written by `scripts/ft/setup.ps1`).

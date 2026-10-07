@@ -1,11 +1,11 @@
-## Release-candidate snapshot — 2026-10-07 (code evidence `0f0c031`)
+## Release-candidate snapshot — 2026-10-07 (code evidence `d7e578e`)
 
 Local/automated E2E: GO. Code release candidate: GO. Owner manual User and Admin acceptance: PENDING.
 External production gates: listed in `reports/ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`. Production
 deployment: NO-GO. PR #11 stays Draft and is the only merge path to `main`. The exact final head SHA
 and hosted CI run ID are in the PR #11 body/comment (not tracked, so no commit follows a green run).
 
-Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full pytest 1224 passed /
+Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full pytest 1230 passed /
 232 skipped (dispositions in the ledger); E2E smoke 29; User U01-U18 52 passed, 0 skipped (U18 = 10 of 12 scenarios PASS + SC06/SC08 declared in Amendment A1, not 12/12); Admin
 A01-A54 87 passed + 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped /
 2 xfailed (SC06 external gate, SC08 needs operator rebaseline). All E2E/FT evidence is synthetic L1

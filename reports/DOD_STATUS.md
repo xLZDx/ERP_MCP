@@ -263,8 +263,8 @@ Locally actionable work remains, so Terminal B has NOT been reached.
 
 ## E2E, Functional Tester and release-candidate closure — 2026-10-07
 
-Code evidence `0f0c031` (local; hosted CI for the exact final head is recorded only in PR #11).
-Verification matrix 31/31 exit 0; full pytest 1224 passed / 232 skipped (dispositions in
+Code evidence `d7e578e` (local; hosted CI for the exact final head is recorded only in PR #11).
+Verification matrix 31/31 exit 0; full pytest 1230 passed / 232 skipped (dispositions in
 `ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`); E2E smoke 29, User U01-U18 52 passed (U18 = 10 of 12 scenarios PASS + SC06/SC08 declared per Amendment A1 of the E2E contract, not 12/12), Admin A01-A54 87 +
 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped / 2 xfailed
 (`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: PENDING.

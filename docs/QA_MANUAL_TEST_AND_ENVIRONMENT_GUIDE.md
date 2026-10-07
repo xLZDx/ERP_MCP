@@ -5,7 +5,7 @@ This guide prepares local synthetic L1 testing and two separate manual suites.
 Fake1C evidence is synthetic contract evidence; it is never native 1C reconciliation.
 Automated setup of sections 2 and 4: see [E2E_ENVIRONMENT.md](E2E_ENVIRONMENT.md).
 
-**Update 2026-10-07 (code evidence `0f0c031`).** The disposable environment, test-only OIDC IdP and
+**Update 2026-10-07 (code evidence `d7e578e`).** The disposable environment, test-only OIDC IdP and
 identities are now provisioned by `scripts/e2e/up.ps1` (see E2E_ENVIRONMENT.md). The two manual suites
 have dedicated step-by-step packs: [MANUAL_ACCEPTANCE_USER.md](MANUAL_ACCEPTANCE_USER.md) and
 [MANUAL_ACCEPTANCE_ADMIN.md](MANUAL_ACCEPTANCE_ADMIN.md). The automated equivalents pass locally

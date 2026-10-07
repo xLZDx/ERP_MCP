@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "candidate_branch": "integration/1c-mvp-production-candidate",
-  "code_evidence_sha": "0f0c031",
+  "code_evidence_sha": "d7e578e",
   "run_date": "2026-10-07",
   "evidence_level": "SYNTHETIC_L1_FIXTURE",
   "native_1c_evidence": false,
-  "totals": {"tests": 78, "passed": 73, "skipped": 3, "xfailed": 2, "failed": 0, "errors": 0, "seconds": 213.43},
+  "totals": {"tests": 78, "passed": 73, "skipped": 3, "xfailed": 2, "failed": 0, "errors": 0, "seconds": 213.58},
   "scenarios": {
     "SC01": "PASS", "SC02": "PASS", "SC03": "PASS", "SC04": "PASS", "SC05": "PASS",
     "SC06": "XFAIL_EXTERNAL_GATE", "SC07": "PASS", "SC08": "XFAIL_NOT_IMPLEMENTED",
