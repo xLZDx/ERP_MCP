@@ -130,3 +130,11 @@ automatic fallback of an OData failure.
 `SCOPE_FREEZE_BASELINE_2026-10-06.md` freezes new adapter families. The operator's explicit decision of 2026-10-07 is the
 rebaseline authority for the COM fallback of this one capability; the freeze document records it. No other scope is
 added by this ADR.
+
+## Addendum 2026-10-08: machine two-source validation (test lane)
+
+`account.balance_by_analytics` for account 521.1 may be validated from ten labelled machine cross-copy comparisons
+(`MACHINE_TWO_SOURCE_RECONCILIATION`) in the test lane only. This does not change section 8: a comparison between
+different physical copies is not parity proof and is never labelled native. Responses are labelled
+`VALIDATED_MACHINE_RECONCILED`; all other consumers of validated profiles stay native-only. Details and limits are in
+`docs/SEMANTIC_PROFILES.md`.

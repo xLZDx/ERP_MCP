@@ -323,6 +323,9 @@ function Start-E2eComponent {
     $out = Join-Path $script:E2eDir ('logs\' + $Name + '.out.log')
     $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
     if ($Name -in 'gateway', 'sidecar') { Import-E2eEnv }
+    # Test lane only: the single source whose profile may be served from labelled machine two-source evidence
+    # (ADR-0008 section 8; never native proof). Absent for every other profile and for production.
+    if ($Name -eq 'gateway' -and $script:Real1c) { $env:BAG_MACHINE_RECONCILED_SOURCES = 'onec-818ha-reference' }
     if ($Name -eq 'idp') { $env:E2E_IDP_CONFIG = (Join-Path $script:E2eDir 'idp-config.json') }
     # Launch through cmd.exe via ShellExecute (no -Redirect*): the service must NOT inherit the
     # caller's stdout/stderr pipes, otherwise a caller reading our output waits for EOF forever.

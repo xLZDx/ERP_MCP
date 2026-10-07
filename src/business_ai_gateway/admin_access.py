@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 from .admin_mutations import AdminValidationError
+from .evidence_basis import NATIVE_ONLY_SQL
 
 
 async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set, limit, offset,
@@ -34,6 +35,9 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
                    WHERE p.source_id=c.source_id AND (p.company_id=c.company_id OR p.company_id IS NULL)
                      AND p.status='VALIDATED' AND p.metadata_fingerprint=sc.metadata_fingerprint
                      AND sc.drift_status='STABLE' AND m.entity_set=$5
+                     AND """
+        + NATIVE_ONLY_SQL
+        + """
                  ) AS mapping_candidate
           FROM bag.companies c JOIN bag.sources s ON s.source_id=c.source_id
           LEFT JOIN LATERAL (

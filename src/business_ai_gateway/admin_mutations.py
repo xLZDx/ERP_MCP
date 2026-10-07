@@ -8,10 +8,12 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from .evidence_basis import EvidenceBasisError, require_native_basis
 from .models import Source
 from .semantic import (
     PRESETS_BY_ID,
     canonical_fingerprint,
+    capability_evidence_fingerprint,
     find_configuration_preset,
     require_profile_capabilities,
     validate_native_reconciliation_evidence,
@@ -1407,7 +1409,7 @@ class AdminMutationService:
             )
             if not isinstance(capability_profile, dict):
                 raise AdminValidationError("stored register capability profile is invalid")
-            capability_fingerprint = canonical_fingerprint(capability_profile)
+            capability_fingerprint = capability_evidence_fingerprint(capability_profile)
             version = await conn.fetchval(
                 """
                 SELECT coalesce(max(profile_version),0)+1
@@ -1687,7 +1689,7 @@ class AdminMutationService:
             capability_profile = _json_value(
                 capability_row["register_capabilities_json"]
             )
-            if canonical_fingerprint(capability_profile) != profile[
+            if capability_evidence_fingerprint(capability_profile) != profile[
                 "capability_fingerprint"
             ]:
                 raise AdminConflict("profile capability fingerprint is stale")
@@ -1872,7 +1874,8 @@ class AdminMutationService:
         async def mutation(conn):
             profile = await conn.fetchrow(
                 """
-                SELECT profile_id, source_id, company_id, status, metadata_fingerprint
+                SELECT profile_id, source_id, company_id, status, metadata_fingerprint,
+                       validation_evidence_json
                 FROM bag.semantic_profiles
                 WHERE profile_id=$1
                 """,
@@ -1882,6 +1885,12 @@ class AdminMutationService:
                 raise AdminNotFound("semantic profile not found")
             if profile["status"] != "VALIDATED":
                 raise AdminValidationError("company scope mapping requires VALIDATED profile")
+            try:
+                require_native_basis(profile["validation_evidence_json"])
+            except EvidenceBasisError as exc:
+                raise AdminValidationError(
+                    "company scope mapping requires a natively validated profile"
+                ) from exc
             mapping_id = uuid.uuid4()
             try:
                 await conn.execute(

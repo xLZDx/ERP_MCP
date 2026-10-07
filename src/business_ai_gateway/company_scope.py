@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from uuid import UUID
 
+from .evidence_basis import NATIVE_ONLY_SQL
 from .models import Company, Source
 
 _PROPERTY_RE = re.compile(r"^[^\W\d]\w*$", re.UNICODE)
@@ -48,6 +49,9 @@ class CompanyScopeResolver:
               AND p.status='VALIDATED'
               AND p.metadata_fingerprint=$3
               AND m.entity_set=$4
+              AND """
+            + NATIVE_ONLY_SQL
+            + """
             ORDER BY (p.company_id=$2) DESC NULLS LAST, p.profile_version DESC
             LIMIT 1
             """,

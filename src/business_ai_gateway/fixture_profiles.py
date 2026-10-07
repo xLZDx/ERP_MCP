@@ -21,6 +21,9 @@ SYNTHETIC_SOURCE_TAG = "synthetic-fixture"
 SYNTHETIC_AUDIT_CODE = "SYNTHETIC_FIXTURE_PROFILE"
 SYNTHETIC_WARNING = "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE"
 SYNTHETIC_FINGERPRINT_PREFIX = "synthetic-fixture:"
+MACHINE_PROFILE_KIND = "VALIDATED_MACHINE_RECONCILED"
+MACHINE_AUDIT_CODE = "MACHINE_RECONCILED_PROFILE"
+MACHINE_WARNING = "MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT"
 
 
 class SyntheticFixtureUnavailable(SemanticProfileUnavailable):
@@ -97,6 +100,13 @@ def profile_provenance(profile: dict[str, Any], warnings: list[str] | None = Non
             "evidence_level": "L1",
             "native_reconciliation": "NOT_RUN",
             "warnings": [*out, SYNTHETIC_WARNING],
+        }
+    if profile.get("profile_kind") == MACHINE_PROFILE_KIND:
+        return {
+            "profile_kind": MACHINE_PROFILE_KIND,
+            "evidence_level": "PROFILE_VALIDATED_MACHINE",
+            "native_reconciliation": "MACHINE_TWO_SOURCE",
+            "warnings": [*out, MACHINE_WARNING],
         }
     if profile.get("profile_kind") != "VALIDATED_NATIVE":
         # Never label unknown provenance as native-validated evidence.

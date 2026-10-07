@@ -8,7 +8,15 @@ from .analytics_balance import ANALYTICS_BALANCE_CONCEPT, validate_analytics_bal
 from .compatibility import OneCCapabilities
 from .db import Database
 from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
+from .evidence_basis import (
+    BASIS_NATIVE,
+    EvidenceBasisError,
+    check_machine_evidence_structure,
+    stored_evidence_basis,
+)
 from .fixture_profiles import (
+    MACHINE_AUDIT_CODE,
+    MACHINE_PROFILE_KIND,
     SYNTHETIC_AUDIT_CODE,
     SYNTHETIC_PROFILE_KIND,
     SYNTHETIC_SOURCE_TAG,
@@ -30,6 +38,7 @@ from .semantic import (
     SemanticProfileStale,
     SemanticProfileUnavailable,
     canonical_fingerprint,
+    capability_evidence_fingerprint,
     require_profile_capabilities,
     require_usable_semantic_profile,
     validate_account_turnovers_mapping,
@@ -56,9 +65,13 @@ class Registry:
         production: bool,
         allowed_source_hosts: tuple[str, ...] = (),
         synthetic_profiles: SyntheticFixtureProfiles | None = None,
+        machine_reconciled_sources: tuple[str, ...] = (),
     ):
         if production and synthetic_profiles is not None:
             raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+        if production and machine_reconciled_sources:
+            raise ValueError("MACHINE_RECONCILED_SOURCES_FORBIDDEN_IN_PRODUCTION")
+        self.machine_reconciled_sources = frozenset(machine_reconciled_sources)
         self.synthetic_profiles = synthetic_profiles
         self.db = db
         self.production = production
@@ -382,7 +395,7 @@ class Registry:
         capability_profile = row["register_capabilities_json"]
         if isinstance(capability_profile, str):
             capability_profile = json.loads(capability_profile)
-        if canonical_fingerprint(capability_profile) != row["capability_fingerprint"]:
+        if capability_evidence_fingerprint(capability_profile) != row["capability_fingerprint"]:
             raise SemanticProfileStale("account-turnover capability evidence changed")
         if row["mapping_status"] != "CONFIRMED" or row["confidence"] != "HIGH":
             raise SemanticMappingUnconfirmed(
@@ -395,6 +408,21 @@ class Registry:
         validation_evidence = row["validation_evidence_json"]
         if isinstance(validation_evidence, str):
             validation_evidence = json.loads(validation_evidence)
+        try:
+            basis = stored_evidence_basis(validation_evidence)
+        except EvidenceBasisError as exc:
+            raise SemanticProfileUnavailable(f"profile evidence is inconsistent: {exc}") from exc
+        machine = basis != BASIS_NATIVE
+        if machine:
+            await self._require_machine_profile(
+                row,
+                source_id=source_id,
+                company_id=company_id,
+                concept=concept,
+                mapping=mapping,
+                validation_evidence=validation_evidence,
+                capability_profile=capability_profile,
+            )
         require_usable_semantic_profile(
             {
                 "source_id": row["source_id"],
@@ -407,6 +435,7 @@ class Registry:
             company_id=company_id,
             metadata_fingerprint=row["current_metadata_fingerprint"],
             drift_status=row["drift_status"],
+            allow_machine=machine,
         )
         if concept != ANALYTICS_BALANCE_CONCEPT:  # route selection judges this capability (ADR-0008)
             require_profile_capabilities(
@@ -416,8 +445,8 @@ class Registry:
                 metadata_fingerprint=row["current_metadata_fingerprint"],
             )
         return {
-            "profile_kind": "VALIDATED_NATIVE",
-            "audit_detail_code": None,
+            "profile_kind": MACHINE_PROFILE_KIND if machine else "VALIDATED_NATIVE",
+            "audit_detail_code": MACHINE_AUDIT_CODE if machine else None,
             "source_id": row["source_id"],
             "company_id": row["company_id"],
             "metadata_fingerprint": row["metadata_fingerprint"],
@@ -425,6 +454,54 @@ class Registry:
             "mapping": mapping,
             "register_capabilities": capability_profile,
         }
+
+    async def _require_machine_profile(
+        self,
+        row,
+        *,
+        source_id: str,
+        company_id: UUID,
+        concept: str,
+        mapping: dict,
+        validation_evidence,
+        capability_profile: dict,
+    ) -> None:
+        """Gate for machine two-source reconciled profiles: test lane, allow-listed source, one concept only."""
+        if (
+            self.production
+            or source_id not in self.machine_reconciled_sources
+            or concept != ANALYTICS_BALANCE_CONCEPT
+        ):
+            raise SemanticProfileUnavailable(
+                "machine-reconciled profile is not enabled for this source or concept"
+            )
+        try:
+            check_machine_evidence_structure(
+                validation_evidence,
+                source_id=source_id,
+                company_id=str(company_id),
+                concept=concept,
+                mapping=mapping,
+                metadata_fingerprint=row["metadata_fingerprint"],
+                capability_fingerprint=row["capability_fingerprint"],
+            )
+        except EvidenceBasisError as exc:
+            raise SemanticProfileUnavailable(f"machine evidence is not usable: {exc}") from exc
+        count = await self.db.require_pool().fetchval(
+            """
+            SELECT count(*) FROM bag.semantic_mappings m
+            JOIN bag.semantic_profiles p ON p.profile_id=m.profile_id
+            WHERE p.source_id=$1 AND p.company_id=$2 AND p.status='VALIDATED'
+              AND p.profile_fingerprint=$3
+            """,
+            source_id,
+            company_id,
+            row["profile_fingerprint"],
+        )
+        if count != 1:
+            raise SemanticProfileUnavailable(
+                "machine-reconciled profile must carry exactly one confirmed mapping"
+            )
 
     async def _synthetic_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
         """Test-only reviewed fixture profile; consulted only when no VALIDATED DB row exists."""

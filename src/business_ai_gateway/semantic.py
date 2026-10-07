@@ -237,14 +237,46 @@ def canonical_fingerprint(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def validate_native_reconciliation_evidence(evidence: Any) -> list[dict[str, str]]:
+_NATIVE_EVIDENCE_CLASS = "NATIVE_UI_REPORT"
+_MACHINE_EVIDENCE_CLASS = "MACHINE_TWO_SOURCE_RECONCILIATION"
+
+
+# Probe-time stamps that change on every capability observation. They say when the source was probed, not what it
+# supports, so they must not take part in the fingerprint a validated profile is bound to (a live source would
+# otherwise invalidate every profile on its next probe).
+VOLATILE_CAPABILITY_KEYS = frozenset({"discovered_at"})
+
+
+def capability_evidence_fingerprint(capability_profile: Any) -> str:
+    if isinstance(capability_profile, dict):
+        capability_profile = {
+            key: value for key, value in capability_profile.items() if key not in VOLATILE_CAPABILITY_KEYS
+        }
+    return canonical_fingerprint(capability_profile)
+
+
+def validate_native_reconciliation_evidence(
+    evidence: Any, *, allow_machine: bool = False
+) -> list[dict[str, str]]:
+    """Normalize the ten PASS cases.
+
+    Machine two-source cases are refused unless the caller explicitly allows them: a manifest of machine cases can
+    therefore never be normalized into legacy native evidence by the native validation paths.
+    """
     cases = evidence.get("native_reconciliation_cases") if isinstance(evidence, dict) else None
     if not isinstance(cases, list) or len(cases) < 10:
         raise ValueError("at least ten native reconciliation cases are required")
+    if not allow_machine and ("machine_scope" in evidence or "evidence_basis" in evidence):
+        raise ValueError("machine evidence is not accepted here")
     normalized: list[dict[str, str]] = []
     for case in cases:
         if not isinstance(case, dict) or case.get("status") != "PASS":
             raise ValueError("every native reconciliation case must have status PASS")
+        evidence_class = case.get("evidence_class")
+        if evidence_class not in (None, _NATIVE_EVIDENCE_CLASS) and not (
+            allow_machine and evidence_class == _MACHINE_EVIDENCE_CLASS
+        ):
+            raise ValueError("evidence class is not accepted by this validation path")
         case_id = case.get("case_id")
         report_ref = case.get("native_report_ref")
         if not isinstance(case_id, str) or not case_id.strip():
@@ -996,6 +1028,7 @@ def require_usable_semantic_profile(
     company_id: UUID | None,
     metadata_fingerprint: str,
     drift_status: str,
+    allow_machine: bool = False,
 ) -> None:
     """Fail closed unless a validated profile applies to this exact source scope/schema."""
     if profile.get("status") != SemanticProfileStatus.VALIDATED:
@@ -1007,7 +1040,9 @@ def require_usable_semantic_profile(
     if drift_status != "STABLE":
         raise SemanticProfileUnavailable("source metadata stability is not acknowledged")
     try:
-        validate_native_reconciliation_evidence(profile.get("validation_evidence"))
+        validate_native_reconciliation_evidence(
+            profile.get("validation_evidence"), allow_machine=allow_machine
+        )
     except ValueError as exc:
         raise SemanticProfileUnavailable(str(exc)) from exc
 
