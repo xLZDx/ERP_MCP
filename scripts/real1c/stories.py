@@ -17,7 +17,7 @@ from scripts.real1c.sanitize import redact_text
 
 GATED_SET = set(GATED_TOOLS)
 SEMANTIC_OWNER = ("Owner/accountant: capture at least ten genuine native 1C UI report exports (runbook "
-                  "native_reports/NATIVE_REPORT_CAPTURE_RUNBOOK.md) so the real-source profile can be validated; until "
+                  "docs/NATIVE_REPORT_CAPTURE_RUNBOOK.md) so the real-source profile can be validated; until "
                   "then every semantic story stays SEMANTIC_PROFILE_UNVALIDATED.")
 EVIDENCE_OWNER = ("Owner/accountant: supply the external evidence for this case (hashed PDF, bank statement or "
                   "declaration) through the evidence plane; the lane never invents it.")

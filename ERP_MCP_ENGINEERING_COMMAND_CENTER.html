@@ -61,7 +61,7 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=9d480fa81c7a07698decfa5ad8524fb109893728a53c2fe27a9ee94499f4c598 -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=50e24cec517943f201fd0f815b44253b6d7a60842e3123eb2307c3d57c392ba5 -->
 <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
@@ -189,7 +189,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=e52a9a40d3d4d9bb38cea6879bebdef327d5d96329ec882d33ac84d6b726992b DOC_RENDER_SHA256=44edd57a950dbbc555fa222e0615bce3729609f6e11bdc328662ff05d31e57ce -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=7027b94d865c2a35f3348046cf38972e8ffd3dd80d48a5fc5fe047224022164f DOC_RENDER_SHA256=aae86b77007ed9c6e9944de4e414bdec4bcc0d371dafc67dd724127032f4e073 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -289,6 +289,10 @@ change first.</p>
 <tr>
 <td><a href="SEMANTIC_PROFILES.md">Semantic profiles and presets</a></td>
 <td>Candidate preset, source/company profile lifecycle, validation evidence and operator CLI</td>
+</tr>
+<tr>
+<td><a href="NATIVE_REPORT_CAPTURE_RUNBOOK.md">Native 1C report capture runbook</a></td>
+<td>Evidence classes, the ten proposed native report cases, capture/hash/record procedure and the read-only engine-report generator (PROPOSED until accountant approval)</td>
 </tr>
 <tr>
 <td><a href="#doc-test-strategy">Test Strategy</a></td>
@@ -4881,7 +4885,7 @@ No new product scope is admitted until the operator explicitly rebaselines the f
     </article>
 <article class="doc-card searchable" id="doc-testbed" data-cat="quality" data-title="1C Testbed">
       <div class="doc-head"><div><span class="eyebrow">Качество</span><h2>1C Testbed</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=testbed/real1c/README.md DOC_SOURCE_SHA256=d9c25a4130a418ccfe7adacf96ccc7942228f31810a29438b2062817ac72798c DOC_RENDER_SHA256=48fa475ea2073e26b3121068deec51bc3b71b3e0599ad80de2792f00728b64e8 -->
+      <div class="md"><!-- DOC_SOURCE=testbed/real1c/README.md DOC_SOURCE_SHA256=3bbc67660061e0bffb9d3dd1abaf8655e2639daa1235d96d384214bb58aeeb70 DOC_RENDER_SHA256=64dfca6a364ec1dc31567524a0967d5115bdc720954c03f156b7dae883d099ed -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Real 1C integration target</h1>
 <p>This directory documents L2/L3 integration, but does not contain licensed 1C binaries or database
@@ -4893,7 +4897,9 @@ files.</p>
 <li><code>ONEC_TEST_PASSWORD</code></li>
 <li><code>ONEC_TEST_PLATFORM_VERSION_HINT</code> — optional evidence only</li>
 </ul>
-<p>When <code>ONEC_TEST_BASE_URL</code> is absent, real-1C tests skip. Fake1C remains mandatory in normal CI.</p>
+<p>When <code>ONEC_TEST_BASE_URL</code> is absent, real-1C tests skip. Real-1C tests (<code>tests/real1c</code>, the L2 lane in
+<code>scripts/real1c</code>) run only against the local real 1C reference clone and never against Fake1C; the L2 stand
+starts no Fake1C and no fake sidecar (see <code>E2E_REAL1C=1</code> in <code>docs/E2E_ENVIRONMENT.md</code>).</p>
 <h2>L2</h2>
 <p>Use a real file-mode 1C test base with the deterministic synthetic seed and snapshot contract.</p>
 <h2>L3</h2>
