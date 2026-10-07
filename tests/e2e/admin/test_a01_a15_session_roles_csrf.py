@@ -274,9 +274,12 @@ def test_A06_platform_admin_is_authorized_for_validate_and_scope_mapping_surface
                           "reason": "A06 validation without native evidence"}
 
     refused = pa.post(validate_path, no_native_evidence)
-    assert refused.status in (400, 409, 422), (
-        f"validation without native evidence must be refused 4xx: {refused.describe()}")
-    assert refused.error in {"INVALID_REQUEST", "CAPABILITY_UNSUPPORTED"}, refused.describe()
+    # An empty native_reconciliation_cases input is rejected by request validation before any
+    # mutation starts: the ONLY valid outcome is 400 INVALID_REQUEST and no audit row.
+    assert refused.status == 400 and refused.error == "INVALID_REQUEST", (
+        f"empty native evidence must be refused 400 INVALID_REQUEST: {refused.describe()}")
+    assert not evidence.admin_events(refused), (
+        f"a request rejected by validation must leave no audit row: {evidence.admin_events(refused)}")
     forbidden = aud.post(validate_path, no_native_evidence)
     assert forbidden.status == 403 and forbidden.error == "PLATFORM_ROLE_DENIED", (
         f"the read-only role must not reach the validate surface: {forbidden.describe()}")

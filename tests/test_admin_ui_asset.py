@@ -49,6 +49,16 @@ def test_live_admin_ui_keeps_source_and_company_management_separate():
     assert "/admin/v1/principals/resolve" in app
 
 
+def test_workflow_rotates_idempotency_key_only_when_payload_changes():
+    javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
+
+    # An edited resubmit mints a fresh key; an unchanged one keeps it (retry semantics).
+    assert "if(w.payload!==null&&w.payload!==payload)w.key=crypto.randomUUID();w.payload=payload;" in javascript
+    assert javascript.index("w.key=crypto.randomUUID()") < javascript.index("'Idempotency-Key':w.key")
+    # The conflict remedy text must be reachable for api()'s 'Conflict: ' errors.
+    assert "String(e.message).startsWith('Conflict: ')" in javascript
+
+
 INLINE_HANDLER = re.compile(r"(?<![\w.])on[a-z]{3,}\s*=\s*\\?[\"']")
 
 

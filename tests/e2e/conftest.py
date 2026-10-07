@@ -32,7 +32,13 @@ from typing import Any
 import asyncpg
 import httpx
 import pytest
-from skip_policy import pytest_runtest_makereport, pytest_terminal_summary  # noqa: F401
+from skip_policy import (  # noqa: F401
+    pytest_configure,
+    pytest_make_collect_report,
+    pytest_runtest_makereport,
+    pytest_sessionfinish,
+    pytest_terminal_summary,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")

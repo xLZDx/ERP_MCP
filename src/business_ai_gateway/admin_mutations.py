@@ -144,11 +144,13 @@ class AdminMutationService:
         _clean_reason(reason)
         key = _clean_key(key)
         if preflight is not None:
-            exists = await self.db.require_pool().fetchval(
-                "SELECT EXISTS(SELECT 1 FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2)",
+            # Only a completed (success) key replays without re-checking egress/DNS/health;
+            # pending/error rows re-execute the write, so they must be preflighted again.
+            outcome = await self.db.require_pool().fetchval(
+                "SELECT outcome FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2",
                 actor.subject, key,
             )
-            if not exists:
+            if outcome != "success":
                 await preflight()
 
     async def _reserve(
@@ -209,6 +211,8 @@ class AdminMutationService:
         code: str,
         conn,
     ) -> None:
+        if not isinstance(code, str):
+            code = "ADMIN_MUTATION_ERROR"
         await conn.execute(
             """UPDATE bag.admin_idempotency SET outcome='error', detail_code=$3, updated_at=now()
                WHERE actor_subject=$1 AND idempotency_key=$2 AND outcome='pending'""",

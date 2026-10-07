@@ -165,3 +165,16 @@ def test_capability_refusal_is_a_conflict_not_a_server_fault():
     fault = AdminAPI._mutation_error(RuntimeError("boom"))
     assert fault.status_code == 500
     assert json.loads(fault.body) == {"error": "ADMIN_DEPENDENCY_FAILED"}
+
+
+def test_non_string_exception_code_is_sanitized_to_dependency_failed():
+    import json
+
+    from business_ai_gateway.admin_api import AdminAPI
+
+    class Odd(Exception):
+        code = 5
+
+    response = AdminAPI._mutation_error(Odd("odd"))
+    assert response.status_code == 500
+    assert json.loads(response.body) == {"error": "ADMIN_DEPENDENCY_FAILED"}

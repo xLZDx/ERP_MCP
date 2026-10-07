@@ -33,8 +33,8 @@ close automatically once the candidate is pushed.
 | `qa/functional-tester-sc01-sc12` | #16 | independent black-box SC01-SC12 | Included in candidate. |
 | `e2e/admin-flows` | #17 | Admin E2E A01-A54 | Included in candidate. |
 | `fix/review-product` | #18 | security / silent-failure review remediation | Included in candidate. |
-| `fix/review-e2e` | PR opened after push | test-adequacy review remediation | Included in candidate. |
-| `fix/admin-defects` | PR opened after push | Admin defect fixes P1-P8 | Included in candidate. |
+| `fix/review-e2e` | none (branch pushed for history; no diff against candidate) | test-adequacy review remediation | Included in candidate. |
+| `fix/admin-defects` | none (branch pushed for history; no diff against candidate) | Admin defect fixes P1-P8 | Included in candidate. |
 
 Not merged and not to be merged into the candidate: `main`, PRs #2-#10 (already ancestors), and
 `feature/admin-control-center-design`. No historical branch was deleted. PR #11 is the only merge path

@@ -841,7 +841,9 @@ class AdminAPI:
             status_code = 409
         else:
             status_code = 500
-        code = getattr(exc, "code", "INVALID_REQUEST" if status_code == 400 else "ADMIN_DEPENDENCY_FAILED")
+        code = getattr(exc, "code", None)
+        if not isinstance(code, str):
+            code = "INVALID_REQUEST" if status_code == 400 else "ADMIN_DEPENDENCY_FAILED"
         return JSONResponse({"error": code}, status_code=status_code)
 
     @staticmethod

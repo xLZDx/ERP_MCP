@@ -514,3 +514,61 @@ async def test_failed_attempt_is_retryable_with_the_same_key_and_payload(service
         "SELECT outcome FROM bag.admin_audit_events WHERE actor_subject=$1 ORDER BY occurred_at",
         actor.subject)]
     assert outcomes[:2] == ["error", "success"]
+
+
+@pytest.mark.asyncio
+async def test_errored_key_retry_reruns_preflight_but_success_replay_skips_it(service):
+    """S1: only a 'success' idempotency row may skip the egress/DNS/health preflight."""
+    svc, owner, source, _company = service
+    calls = []
+
+    async def preflight():
+        calls.append("probe")
+
+    actor, key = AdminActor(str(uuid4()), "client"), str(uuid4())
+    args = {"actor": actor, "source_id": source, "expected_version": 99, "display_name": "Updated source",
+            "base_url": "https://approved.test/odata", "username_secret_ref": "USER_REF",
+            "password_secret_ref": "PASS_REF", "tags": [], "enabled": True, "reason": "Stale update",
+            "request_id": uuid4(), "idempotency_key": key, "preflight": preflight}
+    with pytest.raises(AdminConflict):  # stale version: the write fails and the row becomes 'error'
+        await svc.update_source(**args)
+    assert await owner.fetchval(
+        "SELECT outcome FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2",
+        actor.subject, key) == "error"
+    assert calls == ["probe"]
+    with pytest.raises(AdminConflict):  # identical retry of the errored key must be preflighted again
+        await svc.update_source(**{**args, "request_id": uuid4()})
+    assert calls == ["probe", "probe"]
+
+    ok_key = str(uuid4())
+    ok = {**args, "expected_version": 1, "idempotency_key": ok_key, "request_id": uuid4()}
+    first = await svc.update_source(**ok)
+    assert calls == ["probe", "probe", "probe"]
+    assert await svc.update_source(**{**ok, "request_id": uuid4()}) == first
+    assert calls == ["probe", "probe", "probe"]
+
+
+@pytest.mark.asyncio
+async def test_non_string_exception_code_cannot_break_the_failure_row(service):
+    """F7: a non-str ``code`` attribute must not make the failure-row insert fail."""
+    svc, owner, source, _company = service
+    actor, key = AdminActor(str(uuid4()), "client"), str(uuid4())
+
+    class Odd(Exception):
+        code = 5
+
+    async def boom(_conn):
+        raise Odd("odd")
+
+    with pytest.raises(Odd):
+        await svc._execute(
+            actor=actor, command="refresh_capabilities", target_type="source", target_id=source,
+            source_id=source, company_id=None, reason="odd code", request_id=uuid4(),
+            idempotency_key=key, request={"source_id": source}, mutation=boom)
+    row = await owner.fetchrow(
+        "SELECT outcome, detail_code FROM bag.admin_idempotency WHERE actor_subject=$1 AND idempotency_key=$2",
+        actor.subject, key)
+    assert row["outcome"] == "error" and row["detail_code"] == "ADMIN_MUTATION_ERROR"
+    assert await owner.fetchval(
+        "SELECT detail_code FROM bag.admin_audit_events WHERE actor_subject=$1 AND outcome='error'",
+        actor.subject) == "ADMIN_MUTATION_ERROR"

@@ -24,6 +24,8 @@ if ($Suite -ne 'all') { $expr = 'e2e and ' + $Suite }
 foreach ($s in $Skip) { $expr += ' and not ' + $s }
 Import-E2eEnv
 $env:ERP_MCP_E2E_NO_SKIP = '1'
+# The skip allowlist is fixed in tests/e2e/skip_policy.py; never let the caller widen it.
+Remove-Item Env:ERP_MCP_E2E_ALLOWED_SKIP_REASONS -ErrorAction SilentlyContinue
 Push-Location $script:Root
 try {
     $arguments = @('-m', 'pytest', 'tests/e2e', '-m', $expr, '-p', 'no:cacheprovider', '-q', '-rs') + $PytestArgs

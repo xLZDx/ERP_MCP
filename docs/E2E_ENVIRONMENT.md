@@ -60,8 +60,11 @@ component and is unhealthy if the listener is not ours.
 ### Skip policy
 
 Under `ERP_MCP_E2E_NO_SKIP=1` (set by `test.ps1`, which also passes `-rs`) any skipped test that is
-not on the allowlist `ALLOWED_SKIP_REASONS` in `tests/e2e/skip_policy.py` (empty) FAILS the run, and
-the summary prints `e2e skip policy: skipped=N unexpected=M`. xfail is not a skip.
+not on the allowlist `ALLOWED_SKIP_REASONS` in `tests/e2e/skip_policy.py` FAILS the run. The allowlist
+holds exactly one declared entry (`EXTERNAL-GATE: validated profile requires native reconciliation
+evidence`, A40); more than one allowlisted skip, or any collection-time skip, also FAILS. `test.ps1`
+clears `ERP_MCP_E2E_ALLOWED_SKIP_REASONS` so a caller cannot widen the list. The summary prints
+`e2e skip policy: skipped=N unexpected=M` plus the effective allowlist. xfail is not a skip.
 
 ### Known limitations
 
