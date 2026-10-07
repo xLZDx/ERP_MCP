@@ -505,3 +505,12 @@ NO-GO; PR #11 remains OPEN/Draft.
   the PR conflict. The merge commit is pushed after report synchronization; merge itself remains
   intentionally unperformed.
 - Readiness: `DEV READY` for the implemented bootstrap/control-plane scope only; no production claim.
+
+## E2E, Functional Tester and release-candidate closure — 2026-10-07
+
+Code evidence `8283403` (local; hosted CI for the exact final head is recorded only in PR #11).
+Verification matrix 31/31 exit 0; full pytest 1206 passed / 232 skipped (dispositions in
+`ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`); E2E smoke 16, User U01-U18 52 (0 skipped), Admin A01-A54 87 +
+1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped / 2 xfailed
+(`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: PENDING.
+Production decision: NO-GO; DoD: PARTIAL; external gates unchanged.

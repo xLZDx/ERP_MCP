@@ -6,16 +6,29 @@
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
+  "code_evidence_sha": "8283403",
+  "code_evidence_note": "Local counts below were measured on the exact code of this commit. The final head SHA and hosted CI run for the closing-documents commit are recorded only in the PR #11 body/comment.",
   "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_verified_hosted_run": 37519186079,
   "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
   "last_failed_hosted_run": 37518882269,
-  "hosted_status_at_snapshot": "CANDIDATE_FOUR_JOBS_PASS",
+  "hosted_status_at_snapshot": "PENDING_FOR_CODE_EVIDENCE_8283403",
   "last_local_full_suite": {
-    "passed": 1124,
-    "skipped": 39
+    "passed": 1206,
+    "skipped": 232,
+    "skipped_live_stack_gated": 226,
+    "skipped_env_gated": 6
   },
+  "local_e2e": {
+    "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
+    "smoke": {"passed": 16, "skipped": 0},
+    "user_u01_u18": {"passed": 52, "skipped": 0},
+    "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
+    "functional_tester_sc01_sc12": {"passed": 73, "skipped": 3, "xfailed": 2, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE", "SC08 NOT IMPLEMENTED (needs operator rebaseline)"]}
+  },
+  "manual_owner_acceptance": "PENDING",
+  "local_matrix_steps": {"total": 31, "exit_zero": 31},
   "focused_tests": {
     "settlement_and_existing_aging": 34,
     "financial_statement_contracts": 32,

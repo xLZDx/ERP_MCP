@@ -1,4 +1,18 @@
-## Current autonomous recovery snapshot — 2026-10-06
+## Release-candidate snapshot — 2026-10-07 (code evidence `8283403`)
+
+Local/automated E2E: GO. Code release candidate: GO. Owner manual User and Admin acceptance: PENDING.
+External production gates: listed in `reports/ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`. Production
+deployment: NO-GO. PR #11 stays Draft and is the only merge path to `main`. The exact final head SHA
+and hosted CI run ID are in the PR #11 body/comment (not tracked, so no commit follows a green run).
+
+Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full pytest 1206 passed /
+232 skipped (dispositions in the ledger); E2E smoke 16; User U01-U18 52 passed, 0 skipped; Admin
+A01-A54 87 passed + 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped /
+2 xfailed (SC06 external gate, SC08 needs operator rebaseline). All E2E/FT evidence is synthetic L1
+(Fake1C, fake OData sidecar, test-only IdP); it is not native 1C or production evidence. Manual packs:
+`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`.
+
+## Previous autonomous recovery snapshot — 2026-10-06
 
 Supersedes historical validation counts and blanket closure claims below. PR #11 remains Draft;
 Production GO is NO-GO, DoD PARTIAL, frozen scope unchanged.

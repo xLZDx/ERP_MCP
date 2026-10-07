@@ -206,3 +206,9 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 
 - Decision: scripts/verify_admin_ui.py located the 1C sources row action by the exact accessible name "Edit / disable"; after the row-specific aria-label change (WCAG 2.5.3) the accessible name is "Edit / disable <row>", so the browser contract check timed out. The script now matches the visible-label prefix and takes the first row button. No product behavior and no gate changed.
 - Evidence: scripts/verify_admin_ui.py PASS locally; engineering checkpoint re-pinned to implementation_sha256 8e190e0f; document consistency PASS. The full matrix and live E2E are rerun on this exact code.
+
+## 2026-10-07 - Release-candidate closing evidence on code 8283403
+
+- Decision: closing documents record CODE_EVIDENCE_SHA `8283403` and local counts; hosted CI is PENDING in tracked files, and the exact final head SHA and hosted run ID go only into the PR #11 body/comment (no tracked commit after a green hosted run). Production deployment stays NO-GO; owner manual acceptance stays PENDING.
+- Evidence: verification matrix 31/31 exit 0; pytest 1206 passed / 232 skipped; E2E smoke 16, User 52 (0 skipped), Admin 87 + 1 declared EXTERNAL-GATE skip; Functional Tester rerun at 8283403: 73 passed / 3 skipped / 2 xfailed (SC06 EXTERNAL-GATE, SC08 NOT IMPLEMENTED, needs operator rebaseline), Fake1C 14 GET + 1 HEAD, sidecar 57 read + 4 capabilities, no write verbs, audit/log scans clean. All synthetic L1; not native 1C.
+- Refusal: no PRODUCTION GO claimed; SC08 not implemented because it is outside the scope freeze; no fake "create IdP user" feature.

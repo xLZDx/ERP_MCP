@@ -77,6 +77,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 | [E2E acceptance contract (frozen)](E2E_ACCEPTANCE_CONTRACT.md) | Frozen U01-U18 data-plane and A01-A54 Admin automated/manual acceptance matrix with actor, expected, negative, evidence and external gates |
 | [Local E2E environment](E2E_ENVIRONMENT.md) | Disposable localhost-only environment: compose, test IdP, seed modes, reset/fault scripts and e2e fixtures |
 | [Functional Tester autonomous assignment](FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md) | Task prompt and deliverable contract for executable black-box tests of the scenario pack |
+| [Functional Tester report SC01-SC12](../reports/FUNCTIONAL_TESTER_SC01_SC12.md) | Black-box SC01-SC12 results on the exact candidate code (synthetic L1), skip/xfail dispositions, upstream traffic and hygiene scan |
 | [Branch and merge readiness](../reports/BRANCH_MERGE_READINESS.md) | Branch/PR inventory and post-acceptance merge sequence |
 | [Observability & SRE](OBSERVABILITY_SRE.md) | Signals, SLO objectives, alerts, runbooks and rollback |
 | [Pilot evidence gate](PILOT_EVIDENCE_GATE.md) | P9 evidence manifest, validation contract and production GO conditions |

@@ -19,6 +19,27 @@ manual suites in `docs/QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md`.
 | `phase/p9-pilot-evidence-gate` / #7 | Branch HEAD is an ancestor of candidate; zero unique commits/files | Duplicate stacked PR; same disposition. |
 | `feature/admin-control-center-design` (no open PR listed) | Diverged from the shared bootstrap base before integration; its tree differs from candidate across 267 files and omits current migrations, runtime, CI and tests | Do not merge this branch head: that would reintroduce the older tree. Its pre-implementation design material was superseded by the implementation branch; keep it as historical design evidence. |
 
+## E2E / Functional Tester lane branches (2026-10-07)
+
+Every lane branch is an ancestor of the candidate (verified with `git merge-base --is-ancestor`); each
+was merged with a merge commit, full history kept, nothing squashed. Their Draft PRs into the candidate
+close automatically once the candidate is pushed.
+
+| Branch | PR | Content | Disposition |
+|---|---|---|---|
+| `e2e/local-environment` | #13 | `scripts/e2e/*`, test IdP, compose, Fake1C/sidecar wiring | Included in candidate. |
+| `feature/sc-public-coverage` | #14 | fixture-profile provider, aging tools, Fake1C seed data | Included in candidate. |
+| `e2e/user-flows` | #15 | User E2E U01-U18 | Included in candidate. |
+| `qa/functional-tester-sc01-sc12` | #16 | independent black-box SC01-SC12 | Included in candidate. |
+| `e2e/admin-flows` | #17 | Admin E2E A01-A54 | Included in candidate. |
+| `fix/review-product` | #18 | security / silent-failure review remediation | Included in candidate. |
+| `fix/review-e2e` | PR opened after push | test-adequacy review remediation | Included in candidate. |
+| `fix/admin-defects` | PR opened after push | Admin defect fixes P1-P8 | Included in candidate. |
+
+Not merged and not to be merged into the candidate: `main`, PRs #2-#10 (already ancestors), and
+`feature/admin-control-center-design`. No historical branch was deleted. PR #11 is the only merge path
+and stays Draft.
+
 ## Merge sequence after manual acceptance
 
 1. Record User Suite A and Admin Suite B results against exact candidate SHA. Resolve every
@@ -33,7 +54,10 @@ manual suites in `docs/QA_MANUAL_TEST_AND_ENVIRONMENT_GUIDE.md`.
 6. Keep Admin design-only branch separate unless a specific still-current artifact is
    requested. Its stale pre-implementation claims must not enter the final product docs.
 
-Current merge blocker: human manual User and Admin acceptance has not yet been run. Admin
-browser acceptance additionally needs a configured non-production OIDC provider and
-test identities. Real 1C/native-report, deployed DR/retention and customer-pilot gates stay
-external and are not satisfied by the local manual suites.
+Current merge blocker: human manual User and Admin acceptance has not yet been run
+(`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`; the disposable environment
+with the test IdP is started by `scripts/e2e/up.ps1`). Automated local E2E (smoke 16, User 52,
+Admin 87 + 1 declared EXTERNAL-GATE skip) and the Functional Tester rerun (73 passed / 3 skipped /
+2 xfailed) pass on code evidence `8283403`; hosted CI and the exact final head are recorded in the
+PR #11 body. Real 1C/native-report, deployed DR/retention and customer-pilot gates stay external
+and are not satisfied by the local suites. Production deployment: NO-GO.
