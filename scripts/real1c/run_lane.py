@@ -116,7 +116,7 @@ class Builder:
 
 
 NATIVE_OWNER = ("Owner/accountant: export the native 1C UI report for this case (runbook "
-                "native_reports/NATIVE_REPORT_CAPTURE_RUNBOOK.md); until then the COM comparison is context only.")
+                "docs/NATIVE_REPORT_CAPTURE_RUNBOOK.md); until then the COM comparison is context only.")
 SIGNOFF_OWNER = "Accountant: sign off the month-close rule disposition (OACC) and supply the required documents."
 
 

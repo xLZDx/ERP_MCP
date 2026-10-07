@@ -47,4 +47,5 @@ Invoke-Envctl @('commit-ready') | Out-Null
 
 Write-Step ('environment ready. Consumers: . ' + (Join-Path $script:E2eDir 'env.ps1'))
 Write-Step ('gateway http://127.0.0.1:' + $script:Ports.gateway + ' (MCP /mcp, Admin UI /admin/), IdP http://127.0.0.1:' + $script:Ports.idp +
-    ', fake sidecar :' + $script:Ports.sidecar + ' (BAG_ENVIRONMENT=test, synthetic fixture profiles)')
+    $(if ($script:Real1c) { ' (real local 1C profile: no Fake1C, no fake sidecar)' } else {
+        ', fake sidecar :' + $script:Ports.sidecar + ' (BAG_ENVIRONMENT=test, synthetic fixture profiles)' }))

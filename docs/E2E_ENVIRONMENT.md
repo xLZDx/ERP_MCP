@@ -83,6 +83,22 @@ Chromium (`.venv\Scripts\python.exe -m playwright install chromium`).
 Do not capture script output through a pipe that waits for EOF (for example `| tail`): the
 detached service processes inherit the console handles. Redirect to a file instead.
 
+## Real local 1C profile (`E2E_REAL1C=1`)
+
+The real-1C L2 lane runs on a stand with **no Fake1C and no fake sidecar**: only PostgreSQL, Redis, the test IdP and the
+gateway are started; the gateway talks to the real Node sidecar and the real 1C publication behind the loopback proxies.
+
+```text
+$env:E2E_REAL1C = '1'
+$env:E2E_SOURCE_ALLOWED_HOSTS = '127.0.0.1:8191,127.0.0.1:8192,127.0.0.1:8193'   # the real 1C proxies
+$env:E2E_SIDECAR_URL = 'http://127.0.0.1:21768'                                   # the real sidecar
+scripts/e2e/up.ps1 -Seed bootstrap-only
+```
+
+Both variables are mandatory in this profile (the stand refuses to build its environment without them), `-Seed baseline` is
+refused (it creates the Fake1C source), and no `FAKE1C_*`/`FAKE_SIDECAR_*` setting, secret or URL is generated. `down.ps1`
+and `status.ps1` skip the fake components. The default profile (variable unset) is unchanged for the L1 stack.
+
 ## Commands (run from the worktree root)
 
 ```powershell
