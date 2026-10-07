@@ -201,3 +201,8 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 - Decision: A38 expects the EntitySet count of the live Fake1C $metadata instead of a hard-coded 10 (the product lane extended Fake1C to 12).
 - Evidence: unit/static tests for the 409 mapping and the aria-labels pass; the live admin rerun result is recorded below once executed.
 - Evidence: admin suite live on candidate d493edb + these changes, two consecutive runs from a reset environment: 87 passed, 1 skipped (declared EXTERNAL-GATE), 0 failed (470 s and 465 s); engineering checkpoint re-pinned to implementation_sha256 3efb2f8f; document consistency PASS.
+
+## 2026-10-07 - verify_admin_ui matches row-specific aria-labels
+
+- Decision: scripts/verify_admin_ui.py located the 1C sources row action by the exact accessible name "Edit / disable"; after the row-specific aria-label change (WCAG 2.5.3) the accessible name is "Edit / disable <row>", so the browser contract check timed out. The script now matches the visible-label prefix and takes the first row button. No product behavior and no gate changed.
+- Evidence: scripts/verify_admin_ui.py PASS locally; engineering checkpoint re-pinned to implementation_sha256 8e190e0f; document consistency PASS. The full matrix and live E2E are rerun on this exact code.
