@@ -192,3 +192,10 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
   fix/admin-defects (strict CSP kept, no migration).
 - Evidence: Functional Tester run d8f322b: 73 passed, 3 skipped (needs-oidc-identity), 2 xfailed (SC06, SC08);
   product remediation suite 1189 passed; admin-defects suite 1196 passed (own PG/Redis).
+
+## 2026-10-07 - Admin E2E on candidate d493edb: capability refusal mapping, row labels, declared EXTERNAL-GATE
+
+- Decision: CapabilityUnsupported raised inside an Admin mutation (e.g. profile validate without register-capability evidence) is a domain refusal and now maps to HTTP 409 with the unchanged code CAPABILITY_UNSUPPORTED instead of HTTP 500 ADMIN_DEPENDENCY_FAILED; unmapped exceptions still map to sanitized 500. Regression test: tests/test_admin_api.py::test_capability_refusal_is_a_conflict_not_a_server_fault. No gate was weakened.
+- Decision: A06 validate/scope-mapping rows assert the PLATFORM_ADMIN is authorized (4xx domain refusal, never 200/201, audited as error not denied) while the read-only role gets 403; native reconciliation evidence is never fabricated. A40 half "validated profile turns stale on drift" is an explicit EXTERNAL-GATE skip with the exact reason "EXTERNAL-GATE: validated profile requires native reconciliation evidence", the single entry of ALLOWED_SKIP_REASONS in tests/e2e/skip_policy.py (policy test updated).
+- Decision: Admin UI row action buttons share visible labels (Edit / disable, Revoke); each now has a row-specific aria-label that starts with the visible label (WCAG 2.5.3). A45 "keyboard trap" was a test defect: the trap detector compared labels, so adjacent identical-label row buttons looked like one element; it now compares DOM index and position.
+- Decision: A38 expects the EntitySet count of the live Fake1C $metadata instead of a hard-coded 10 (the product lane extended Fake1C to 12).
