@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .semantic import canonical_fingerprint
@@ -66,7 +66,10 @@ _AUTHORITY = re.compile(r"^ROSETTA_PLAN:([A-Za-z0-9_.\-]{8,200}):([0-9a-f]{64})$
 # SQL twin of ``stored_evidence_basis(...) == NATIVE`` for consumers that filter in the database.  It is deliberately
 # conservative: a machine marker anywhere, or any case whose class is not the native class, excludes the profile.
 NATIVE_ONLY_SQL = """
- NOT (coalesce(p.validation_evidence_json, '{}'::jsonb) ? 'machine_scope')
+ jsonb_typeof(p.validation_evidence_json) = 'object'
+ AND jsonb_typeof(p.validation_evidence_json->'native_reconciliation_cases') = 'array'
+ AND NOT (p.validation_evidence_json ? 'machine_scope')
+ AND coalesce(p.validation_evidence_json->>'evidence_basis', 'NATIVE') = 'NATIVE'
  AND NOT EXISTS (
    SELECT 1
    FROM jsonb_array_elements(
@@ -275,11 +278,11 @@ def check_machine_evidence_structure(
         case_id, as_of = case.get("case_id"), case.get("as_of")
         if not isinstance(case_id, str) or not case_id.strip() or case_id in case_ids:
             raise EvidenceBasisError("machine case ids must be non-empty and unique")
-        _timestamp(as_of, "case as_of")
-        if as_of in as_ofs:
+        instant = _timestamp(as_of, "case as_of").astimezone(UTC)
+        if instant in as_ofs:
             raise EvidenceBasisError("the same as_of cannot be used by two cases")
         case_ids.add(case_id)
-        as_ofs.add(as_of)
+        as_ofs.add(instant)
         parse_authority(case.get("authorized_by"))
         record_a = _run_record(case.get("run_record_a"), side="A", method=MACHINE_METHOD_A, case_as_of=as_of)
         record_b = _run_record(case.get("run_record_b"), side="B", method=MACHINE_METHOD_B, case_as_of=as_of)
@@ -287,7 +290,7 @@ def check_machine_evidence_structure(
             raise EvidenceBasisError("the two sides need independent run ids and methods")
         if record_a["parameters"] != record_b["parameters"]:
             raise EvidenceBasisError("the two sides were not run with the same parameters")
-        for run_id in (record_a["run_id"], record_b["run_id"]):
+        for run_id in (str(uuid.UUID(str(record_a["run_id"]))), str(uuid.UUID(str(record_b["run_id"])))):
             if run_id in run_ids:
                 raise EvidenceBasisError("a run id is reused across cases")
             run_ids.add(run_id)

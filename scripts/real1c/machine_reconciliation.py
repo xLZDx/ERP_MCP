@@ -50,11 +50,13 @@ def _decimal(value: Any, label: str) -> Decimal:
 def verify_plan_authority(authority: str, *, scope_sha256: str, plans_dir: Path) -> dict[str, Any]:
     """The cited plan must be approved by GPT-PM for its exact hash and its scope must name this scope hash."""
     plan_id, plan_hash = parse_authority(authority)
-    matches = [path for path in Path(plans_dir).glob("*.json") if plan_id in path.name]
+    matches = [path for path in Path(plans_dir).glob("*.json") if path.stem == plan_id]
     if len(matches) != 1:
         raise MachineReconciliationError("the cited Rosetta plan was not found exactly once")
     plan = json.loads(matches[0].read_text(encoding="utf-8"))
-    approval = plan.get("approval") if isinstance(plan, dict) else None
+    if not isinstance(plan, dict):
+        raise MachineReconciliationError("the cited Rosetta plan is not an object")
+    approval = plan.get("approval")
     if (
         plan.get("plan_id") != plan_id
         or plan.get("status") not in PLAN_STATUSES

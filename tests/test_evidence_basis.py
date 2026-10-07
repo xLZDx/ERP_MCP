@@ -252,3 +252,19 @@ def test_capability_fingerprint_ignores_probe_timestamp_only():
     assert capability_evidence_fingerprint(base) == canonical_fingerprint(base)  # fixtures without the stamp unchanged
     changed = {**later, "registers": [{"entity_set": "R", "methods": {"balance": {"available": False}}}]}
     assert capability_evidence_fingerprint(changed) != capability_evidence_fingerprint(later)
+
+
+def test_uniqueness_compares_instants_and_uuids_not_spellings():
+    evidence = _machine_evidence()
+    first, second = evidence["native_reconciliation_cases"][0], evidence["native_reconciliation_cases"][1]
+    second["as_of"] = first["as_of"].replace("+00:00", "+0000") if "+00:00" in first["as_of"] else first["as_of"]
+    for side in ("run_record_a", "run_record_b"):
+        second[side]["parameters"]["as_of"] = second["as_of"]
+    with pytest.raises(EvidenceBasisError):
+        _check(evidence)
+
+    evidence = _machine_evidence()
+    reused = evidence["native_reconciliation_cases"][0]["run_record_a"]["run_id"]
+    evidence["native_reconciliation_cases"][1]["run_record_a"]["run_id"] = "{" + reused + "}"
+    with pytest.raises(EvidenceBasisError):
+        _check(evidence)

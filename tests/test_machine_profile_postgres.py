@@ -107,7 +107,42 @@ def _build_cases(root: Path, *, tamper_case: int | None = None) -> list[dict]:
     return cases
 
 
-async def _profile(conn, tmp_path: Path):
+def _capabilities(source_id: str, metadata_fingerprint: str, discovered_at: str | None, available: bool = True) -> dict:
+    caps = {
+        "source_id": source_id,
+        "metadata_fingerprint": metadata_fingerprint,
+        "registers": [{"entity_set": "AccountingRegister_X", "methods": {"balance": {"available": available}}}],
+    }
+    if discovered_at:
+        caps["discovered_at"] = discovered_at
+    return caps
+
+
+async def _save_capabilities(conn, source_id: str, metadata_fingerprint: str, caps: dict) -> None:
+    capability = OneCCapabilities(
+        source_id=source_id, platform_version=None, metadata_fingerprint=metadata_fingerprint,
+        metadata_supported=True, json_supported=True, atom_supported=False, expand_supported=True,
+        entity_set_count=1, adapter_profile=AdapterProfile.ODATA_JSON_V3,
+        compatibility_status=CompatibilityStatus.SUPPORTED, evidence={"metadata": "ok"},
+        register_capabilities=caps,
+    )
+    await Registry(ConnectionDatabase(conn), production=False).save_capabilities(capability)
+
+
+async def _validated(conn, tmp_path: Path, monkeypatch, discovered_at: str | None = None):
+    source_id, company_id, profile_id = await _profile(conn, tmp_path, discovered_at)
+    monkeypatch.setenv("BAG_MACHINE_RECONCILED_SOURCES", source_id)
+    evidence = await _manifest(conn, tmp_path, source_id, company_id, profile_id)
+    await validate_profile(_validate_args(profile_id, evidence, tmp_path), conn)
+    await conn.execute("RESET ROLE")
+    return source_id, company_id, profile_id
+
+
+def _machine_registry(conn, source_id: str) -> Registry:
+    return Registry(ConnectionDatabase(conn), production=False, machine_reconciled_sources=(source_id,))
+
+
+async def _profile(conn, tmp_path: Path, discovered_at: str | None = None):
     """A draft company-specific profile with exactly one confirmed 521.1 analytics mapping."""
     source_id = f"machine-lane-{uuid.uuid4().hex[:12]}"
     company_id = uuid.uuid4()
@@ -137,7 +172,7 @@ async def _profile(conn, tmp_path: Path):
         adapter_profile=AdapterProfile.ODATA_JSON_V3,
         compatibility_status=CompatibilityStatus.SUPPORTED,
         evidence={"metadata": "ok"},
-        register_capabilities={"source_id": source_id, "metadata_fingerprint": metadata_fingerprint, "registers": []},
+        register_capabilities=_capabilities(source_id, metadata_fingerprint, discovered_at),
     )
     await Registry(ConnectionDatabase(conn), production=False).save_capabilities(capability)
     await conn.execute("SET LOCAL ROLE business_ai_admin")
@@ -286,6 +321,161 @@ async def test_machine_validate_refuses_tampered_artifact_and_keeps_profile_unva
         assert await conn.fetchval(
             "SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
         ) == "NEEDS_VALIDATION"
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_native_only_consumers_refuse_the_machine_profile(tmp_path, machine_env, monkeypatch):
+    from types import SimpleNamespace
+
+    from business_ai_gateway.admin_access import explain_access
+    from business_ai_gateway.company_scope import CompanyScopeResolver, CompanyScopeUnavailable
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        source_id, company_id, profile_id = await _validated(conn, tmp_path, monkeypatch)
+        await conn.execute(
+            """INSERT INTO bag.company_scope_mappings(scope_mapping_id, profile_id, entity_set, company_property,
+               literal_kind, created_by) VALUES($1,$2,'Document_X','Организация_Key','guid','test')""",
+            uuid.uuid4(),
+            profile_id,
+        )
+        row = await conn.fetchrow(
+            "SELECT metadata_fingerprint FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        )
+        with pytest.raises(CompanyScopeUnavailable):
+            await CompanyScopeResolver(ConnectionDatabase(conn)).mapping(
+                source=SimpleNamespace(id=source_id),
+                company=SimpleNamespace(id=company_id),
+                entity_set="Document_X",
+                metadata_fingerprint=row["metadata_fingerprint"],
+                drift_status="STABLE",
+            )
+        ctx = SimpleNamespace(token=SimpleNamespace(subject="s"), groups=[])
+        explained = await explain_access(
+            conn, ctx=ctx, kind="subject", principal_id="s", source_id=source_id,
+            entity_set="Document_X", limit=50, offset=0,
+        )
+        assert "mapping_candidate" not in json.dumps(explained, default=str) or '"mapping_candidate": true' not in json.dumps(
+            explained, default=str
+        ).lower()
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_registry_refuses_tampered_machine_profile(tmp_path, machine_env, monkeypatch):
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        source_id, company_id, profile_id = await _validated(conn, tmp_path, monkeypatch)
+        registry = _machine_registry(conn, source_id)
+        await registry.require_semantic_mapping(source_id, company_id, ANALYTICS_BALANCE_CONCEPT)  # baseline serves
+
+        evidence = await conn.fetchval(
+            "SELECT validation_evidence_json FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+        )
+        evidence = json.loads(evidence) if isinstance(evidence, str) else evidence
+
+        mixed = json.loads(json.dumps(evidence))  # one native case slipped in behind the CLI's back
+        mixed["native_reconciliation_cases"][0] = {"case_id": "n", "status": "PASS", "native_report_ref": "r"}
+        forged = json.loads(json.dumps(evidence))  # scope no longer matches the profile mapping
+        forged["machine_scope"]["mapping_fingerprint"] = "0" * 64
+        for tampered in (mixed, forged):
+            await conn.execute(
+                "UPDATE bag.semantic_profiles SET validation_evidence_json=$2::jsonb WHERE profile_id=$1",
+                profile_id, json.dumps(tampered),
+            )
+            with pytest.raises(SemanticProfileUnavailable):
+                await registry.require_semantic_mapping(source_id, company_id, ANALYTICS_BALANCE_CONCEPT)
+        await conn.execute(
+            "UPDATE bag.semantic_profiles SET validation_evidence_json=$2::jsonb WHERE profile_id=$1",
+            profile_id, json.dumps(evidence),
+        )
+        await registry.require_semantic_mapping(source_id, company_id, ANALYTICS_BALANCE_CONCEPT)
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_probe_stamp_does_not_stale_the_profile_but_a_capability_change_does(
+    tmp_path, machine_env, monkeypatch
+):
+    from business_ai_gateway.semantic import SemanticProfileStale
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        source_id, company_id, profile_id = await _validated(
+            conn, tmp_path, monkeypatch, discovered_at="2026-10-08T01:00:00Z"
+        )
+        meta = (
+            await conn.fetchrow(
+                "SELECT metadata_fingerprint FROM bag.semantic_profiles WHERE profile_id=$1", profile_id
+            )
+        )["metadata_fingerprint"]
+        registry = _machine_registry(conn, source_id)
+        await _save_capabilities(conn, source_id, meta, _capabilities(source_id, meta, "2026-10-08T09:00:00Z"))
+        served = await registry.require_semantic_mapping(source_id, company_id, ANALYTICS_BALANCE_CONCEPT)
+        assert served["profile_kind"] == "VALIDATED_MACHINE_RECONCILED"
+        await _save_capabilities(
+            conn, source_id, meta, _capabilities(source_id, meta, "2026-10-08T10:00:00Z", available=False)
+        )
+        with pytest.raises(SemanticProfileStale):
+            await registry.require_semantic_mapping(source_id, company_id, ANALYTICS_BALANCE_CONCEPT)
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "case", ["no_artifacts_root", "no_plans_dir", "company_less", "other_account", "extra_key", "not_test_env"]
+)
+async def test_cli_refuses_machine_evidence_outside_its_limits(tmp_path, machine_env, monkeypatch, case):
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        source_id, company_id, profile_id = await _profile(conn, tmp_path)
+        monkeypatch.setenv("BAG_MACHINE_RECONCILED_SOURCES", source_id)
+        evidence_path = await _manifest(conn, tmp_path, source_id, company_id, profile_id)
+        args = _validate_args(profile_id, evidence_path, tmp_path)
+        if case == "no_artifacts_root":
+            args.artifacts_root = None
+        elif case == "no_plans_dir":
+            args.plans_dir = None
+        elif case == "company_less":
+            await conn.execute("UPDATE bag.semantic_profiles SET company_id=NULL WHERE profile_id=$1", profile_id)
+        elif case == "other_account":
+            mapping = await conn.fetchval(
+                "SELECT mapping_json FROM bag.semantic_mappings WHERE profile_id=$1", profile_id
+            )
+            mapping = json.loads(mapping) if isinstance(mapping, str) else mapping
+            mapping["accounts"][0]["code"] = "521.2"
+            await conn.execute(
+                "UPDATE bag.semantic_mappings SET mapping_json=$2::jsonb WHERE profile_id=$1",
+                profile_id, json.dumps(mapping),
+            )
+        elif case == "extra_key":
+            manifest = json.loads(evidence_path.read_text(encoding="utf-8"))
+            manifest["unexpected"] = 1
+            evidence_path.write_text(json.dumps(manifest), encoding="utf-8")
+        elif case == "not_test_env":
+            monkeypatch.setenv("BAG_ENVIRONMENT", "development")
+        with pytest.raises((ValueError, mr.MachineReconciliationError)):
+            await validate_profile(args, conn)
+        await conn.execute("RESET ROLE")
+        status = await conn.fetchval("SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id)
+        assert status != "VALIDATED"
     finally:
         await tx.rollback()
         await conn.close()

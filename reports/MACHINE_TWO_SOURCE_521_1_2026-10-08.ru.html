@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — счёт 521.1 по машинной сверке двух источников</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — счёт 521.1 по машинной сверке двух источников</h1>
+<div class="sub">Дата: 2026-10-08 · ветка integration/1c-mvp-production-candidate · коммит 6ca90e5 · план Rosetta 198889 (GPT-PM APPROVE) · правила v3</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; integration/1c-mvp-production-candidate @ 6ca90e5</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2><div class="card"><b class="ok">СДЕЛАНО в тестовом контуре.</b> <code>accounting_balance_by_analytics</code> по счёту 521.1 теперь отвечает из профиля, проверенного десятью машинными кейсами двух источников, и каждый ответ это помечает. Ответ точно равен ручному запросу 1С (2026-08-31). Больше ничего не открыто.</div>
+<h2>Чем это не является</h2><ul><li>Это сравнение двух машинных прогонов на разных копиях, а не доказательство паритета и не нативный отчёт 1С от человека (ADR-0008, раздел 8). Ответы несут метку <code>VALIDATED_MACHINE_RECONCILED</code> и предупреждение <code>MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT</code>.</li><li>Только тестовая среда; production отказывается принимать allow-list при старте. Один источник, один концепт, один счёт (521.1).</li><li>Остальные инструменты (<code>payable_balance</code>, <code>accounting_balance_and_turnovers</code> и др.) по-прежнему отказывают: валидированного профиля нет. Грант на весь источник для <code>user_company_one</code> не выдавался.</li><li>Живой вызов из ChatGPT после рестарта в эти доказательства не входит (оператор может сделать один вызов <code>system_status</code>).</li></ul>
+<h2>Реальные дефекты, найденные и исправленные</h2><div class="card"><b>Отпечаток возможностей включал <code>discovered_at</code></b><br>Любой профиль на живом источнике становился устаревшим при следующем зондировании («capability evidence changed»). Нашёл живой вызов. Исправлено одной общей функцией в пяти местах; добавлен регрессионный тест; фикстуры без этой метки дают то же значение.</div><div class="card"><b>Нормализация кейсов теряла класс evidence</b><br>Машинный профиль читался бы как нативный. Нашёл тест цепочки на PostgreSQL до запуска на lane. CLI теперь хранит полные проверенные записи кейсов.</div><div class="card"><b>Ссылки стороны A через COM</b><br>Первый прогон на lane дал по одной строке с пустыми ссылками на кейс. Исправлено в приватном скрипте lane (<code>XMLString</code> ссылки); код репозитория не затронут.</div>
+<h2>Доказательства на lane (приватные артефакты, без названий и сумм)</h2><ul><li>Десять кейсов на конец месяца 2025-11-30 .. 2026-08-31; сторона A — ручной запрос 1С через COM на одноразовой копии, сторона B — боевой код инструмента; 10 из 10 совпали точно в десятичных по ключу (контрагент, договор, валюта).</li><li>Профиль провалидирован через <code>scripts/semantic_profiles.py validate</code>: артефакты перечитаны (хэш, встроенные run id и метод, без усечения), проверен одобренный план Rosetta.</li><li>Шлюз lane перезапущен с <code>BAG_MACHINE_RECONCILED_SOURCES=onec-818ha-reference</code>; HTTP-вызов от <code>user_company_one</code>: помечено как машинно сверенное, 10 агрегированных строк равны запросу 1С.</li></ul>
+<h2>Матрица трассируемости тестов</h2><p class="sub">Тесты написал и запускал основной сеанс (не функциональные агенты); адекватность оценил functional-test-reviewer (раздел «Ревью»). Прогоны ограничены правилами v3.</p><div class="wrap"><table><thead><tr><th>Треб.</th><th>Требование</th><th>Тест (файл::кейс)</th><th>Что проверяет</th><th>Прогон</th><th>Результат</th><th>Найденный баг / исправление</th></tr></thead><tbody><tr><td>R1</td><td>Базис пересчитывается из сохранённых кейсов; противоречия отклоняются</td><td>test_evidence_basis.py::test_legacy_cases_without_class_are_native, test_mixed_cases_are_refused_at_runtime, test_contradictions_are_refused</td><td>старые кейсы = нативные; смешанные отклоняются; machine scope на нативных, машинные без scope, неверная заявленная метка — ошибка</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R2</td><td>Десять машинных кейсов привязаны к источнику, компании, маппингу, отпечаткам, одной авторизации</td><td>test_evidence_basis.py::test_structure_refusals (15 мутаций), test_scope_is_bound_to_profile_fingerprints</td><td>меньше десяти, дубли case id / as_of, неверные вид / ссылка / результат / авторизация, общий run id, разные параметры, плохой хэш, чужой scope — отказ</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R3</td><td>Нативные валидаторы отклоняют машинные доказательства</td><td>test_evidence_basis.py::test_native_validators_refuse_machine_evidence</td><td>нормализатор и require_usable_semantic_profile отклоняют машинные кейсы без allow_machine</td><td>RUN-1</td><td>pass</td><td>класс терялся при нормализации (исправлено)</td></tr><tr><td>R4</td><td>Метки и allow-list только для теста</td><td>test_evidence_basis.py::test_machine_provenance_is_labelled, test_settings_allow_list_is_test_only, test_registry_refuses_machine_sources_in_production</td><td>метки, отказ в production в Settings и Registry, формат id источника</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R5</td><td>Отпечаток возможностей игнорирует только метку зондирования</td><td>test_evidence_basis.py::test_capability_fingerprint_ignores_probe_timestamp_only</td><td>discovered_at игнорируется, реальное изменение возможностей замечается, фикстуры не меняются</td><td>RUN-1</td><td>pass</td><td>discovered_at делал профили устаревшими (исправлено)</td></tr><tr><td>R6</td><td>Точное сравнение артефактов</td><td>test_machine_reconciliation.py::тесты сравнения (7)</td><td>точное равенство, 1 цент, суб-центовое 100.004 против 100.00, float отклоняется, лишний/пропущенный ключ, разная валюта, дубль ключа</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R7</td><td>Целостность артефактов и границы ссылки</td><td>test_machine_reconciliation.py::тесты артефактов кейса (5)</td><td>подмена хэша, чужой run id (скопированный файл), усечение, пустой результат, выход за корень</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R8</td><td>Авторизация по плану</td><td>test_machine_reconciliation.py::тесты авторизации плана (8)</td><td>одобренный актуальный коррелированный план принят; неверные статус/хэш/scope/вердикт/корреляция/утверждающий и неизвестный план отклонены</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R9</td><td>CLI validate → сохранённый профиль → runtime-шлюз → потребители только для нативных (PostgreSQL 16)</td><td>test_machine_profile_postgres.py::test_machine_profile_chain_validates_serves_and_stays_out_of_native_consumers</td><td>CLI отказывает без allow-list; проходит с ним; Registry отдаёт только с allow-list и только этот концепт; NATIVE_ONLY_SQL исключает профиль</td><td>RUN-1 (PG)</td><td>pass</td><td>потеря класса (исправлено)</td></tr><tr><td>R10</td><td>Подменённый артефакт оставляет профиль невалидированным</td><td>test_machine_profile_postgres.py::test_machine_validate_refuses_tampered_artifact_and_keeps_profile_unvalidated</td><td>validate падает, статус остаётся NEEDS_VALIDATION</td><td>RUN-1 (PG)</td><td>pass</td><td>—</td></tr><tr><td>R11</td><td>Нет регрессий в остальном</td><td>весь существующий набор (1743 кейса)</td><td>прежнее поведение</td><td>RUN-2 (PG)</td><td>1743 прошли, 1 упал: устаревший engineering checkpoint (шаг перепина)</td><td>—</td></tr><tr><td>R12</td><td>Ответ реального источника равен запросу 1С</td><td>приватные скрипты lane</td><td>10/10 кейсов совпали; строки HTTP-инструмента равны строкам COM за 2026-08-31</td><td>RUN-3, RUN-4</td><td>pass</td><td>discovered_at; извлечение ссылок через COM</td></tr><tr><td>R13</td><td>Потребители «только нативные» отклоняют машинный профиль (настоящие запросы)</td><td>test_machine_profile_postgres.py::test_native_only_consumers_refuse_the_machine_profile</td><td>CompanyScopeResolver падает; объяснение доступа не показывает кандидата маппинга</td><td>RUN-5 (PG)</td><td>pass</td><td>пробел нашёл functional-test-reviewer</td></tr><tr><td>R14</td><td>Runtime отклоняет подменённые сохранённые доказательства</td><td>test_machine_profile_postgres.py::test_registry_refuses_tampered_machine_profile</td><td>смешанная строка и подделанный scope отклонены; восстановленная строка снова отдаётся</td><td>RUN-5 (PG)</td><td>pass</td><td>пробел нашёл functional-test-reviewer</td></tr><tr><td>R15</td><td>Метка зондирования не делает профиль устаревшим; реальное изменение возможностей — делает</td><td>test_machine_profile_postgres.py::test_probe_stamp_does_not_stale_the_profile_but_a_capability_change_does</td><td>возможности с новым discovered_at по-прежнему работают; смена available даёт SemanticProfileStale</td><td>RUN-5 (PG)</td><td>pass</td><td>пробел нашёл functional-test-reviewer</td></tr><tr><td>R16</td><td>CLI отклоняет доказательства вне своих границ</td><td>test_machine_profile_postgres.py::test_cli_refuses_machine_evidence_outside_its_limits (6 кейсов)</td><td>нет корня артефактов, нет каталога планов, профиль без компании, другой счёт, лишний ключ манифеста, не тестовая среда: отказ, статус не VALIDATED</td><td>RUN-5 (PG)</td><td>pass</td><td>пробел нашёл functional-test-reviewer</td></tr><tr><td>R17</td><td>Уникальность сравнивает моменты времени и UUID</td><td>test_evidence_basis.py::test_uniqueness_compares_instants_and_uuids_not_spellings</td><td>тот же момент в другой записи и uuid в скобках считаются дублями</td><td>RUN-5</td><td>pass</td><td>слабая уникальность (python-reviewer, исправлено)</td></tr></tbody></table></div>
+<h2>Прогоны</h2><div class="wrap"><table><thead><tr><th>Прогон</th><th>Когда (UTC+3)</th><th>Команда / что</th><th>Результат</th></tr></thead><tbody><tr><td>RUN-1</td><td>2026-10-08</td><td>pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py на одноразовом PostgreSQL 16 (127.0.0.1:58432)</td><td>46 прошли</td></tr><tr><td>RUN-2</td><td>2026-10-08</td><td>pytest tests (без e2e и real1c) на том же PostgreSQL; один раз в середине спринта, до того как стали известны правила v3</td><td>1743 прошли, 91 пропущен, 1 упал (устаревший checkpoint)</td></tr><tr><td>RUN-3</td><td>2026-10-08</td><td>приватный сборщик lane: 10 кейсов на конец месяца, сторона A запрос COM против стороны B боевой код инструмента</td><td>10 из 10 совпали</td></tr><tr><td>RUN-4</td><td>2026-10-08</td><td>HTTP-вызов accounting_balance_by_analytics от user_company_one после рестарта шлюза; плюс payable_balance и accounting_balance_and_turnovers</td><td>помечено как машинно сверенное и равно запросу 1С; два других отказывают</td></tr><tr><td>RUN-5</td><td>2026-10-08</td><td>после исправлений по ревью: pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py на PostgreSQL 16</td><td>56 прошли</td></tr></tbody></table></div>
+<h2>Ревью (конец спринта, sonnet medium, только чтение)</h2><p class="sub">Три рецензента только на чтение (functional-test-reviewer, python-reviewer, database-reviewer) по коммиту 6ca90e5. БЛОКЕРОВ нет. Роли, которые не понадобились: e2e-runner (в изменении нет браузерного сценария), architect (новой границы нет), refactor-cleaner.</p>
+<div class="wrap"><table><thead><tr><th>Находка</th><th>Серьёзность</th><th>Решение</th></tr></thead><tbody>
+<tr><td>У потребителей SQL «только нативные» (company scope, объяснение доступа) не было теста, который падает при удалении проверки</td><td>MAJOR (пробел тестов)</td><td class="ok">закрыто: <code>test_native_only_consumers_refuse_the_machine_profile</code></td></tr>
+<tr><td>Нет негативного теста на подмену данных во время работы (смешанная строка, подделанный scope)</td><td>MAJOR (пробел тестов)</td><td class="ok">закрыто: <code>test_registry_refuses_tampered_machine_profile</code></td></tr>
+<tr><td>Исправление <code>discovered_at</code> не проверялось через Registry и CLI</td><td>MAJOR (пробел тестов)</td><td class="ok">закрыто: <code>test_probe_stamp_does_not_stale_the_profile_but_a_capability_change_does</code></td></tr>
+<tr><td>Отказы CLI (нет корня артефактов, нет каталога планов, профиль без компании, другой счёт, лишний ключ манифеста, не тестовая среда)</td><td>MAJOR (пробел тестов)</td><td class="ok">закрыто: шесть параметризованных кейсов</td></tr>
+<tr><td>Сохранённые до изменения отпечатки могли бы стать устаревшими (условно)</td><td>MAJOR</td><td class="ok">проверено: на lane 1 валидированный профиль, расхождений 0; у реального источника только черновики; фикстуры без метки не изменились</td></tr>
+<tr><td>Поиск файла плана по подстроке</td><td>MAJOR (самозаявление)</td><td class="ok">ужесточено: имя файла без расширения должно равняться id плана, план должен быть объектом. Пересчёт хэша из тела плана — алгоритм PM Bridge: в бэклог</td></tr>
+<tr><td>Подсчёт маппингов не по профилю; SQL-двойник пропускал битые данные; уникальность сравнивалась по строкам</td><td>MINOR</td><td class="ok">закрыто в коде с тестами</td></tr>
+<tr><td>Тесты админ-методов, отдельная ветка неверного концепта, дополнительные негативы верификатора, перепроверка отпечатков профиля и манифеста при работе, CHECK в БД для машинных инвариантов, пересчёт хэша плана</td><td>MINOR / пробелы тестов MAJOR</td><td class="warn">бэклог (записано в decision log); каждая проверка покрыта функциональным тестом или другим слоем</td></tr>
+</tbody></table></div>
+<h2>Не проверено / осталось</h2><ul><li>Финальный GPT-PM на точной голове и затем push (ещё не сделано).</li><li>Перепин engineering checkpoint после последнего изменения кода.</li><li>Живое подтверждение из ChatGPT; десять нативных отчётов от человека остаются более сильным доказательством и по-прежнему нужны.</li><li>Права самого читателя на опорной публикации не менялись.</li></ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

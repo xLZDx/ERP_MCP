@@ -365,7 +365,7 @@ class Registry:
         row = await self.db.require_pool().fetchrow(
             """
             SELECT p.source_id, p.company_id, p.status AS profile_status,
-                   p.metadata_fingerprint, p.capability_fingerprint,
+                   p.profile_id, p.metadata_fingerprint, p.capability_fingerprint,
                    p.profile_fingerprint,
                    p.validation_evidence_json, m.mapping_json, m.mapping_status,
                    m.confidence, c.metadata_fingerprint AS current_metadata_fingerprint,
@@ -489,14 +489,9 @@ class Registry:
             raise SemanticProfileUnavailable(f"machine evidence is not usable: {exc}") from exc
         count = await self.db.require_pool().fetchval(
             """
-            SELECT count(*) FROM bag.semantic_mappings m
-            JOIN bag.semantic_profiles p ON p.profile_id=m.profile_id
-            WHERE p.source_id=$1 AND p.company_id=$2 AND p.status='VALIDATED'
-              AND p.profile_fingerprint=$3
+            SELECT count(*) FROM bag.semantic_mappings WHERE profile_id=$1
             """,
-            source_id,
-            company_id,
-            row["profile_fingerprint"],
+            row["profile_id"],
         )
         if count != 1:
             raise SemanticProfileUnavailable(
