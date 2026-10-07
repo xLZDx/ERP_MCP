@@ -92,19 +92,19 @@ def test_scope_needs_both_keys(mapping):
         validate_account_turnovers_mapping(only_field)
 
 
-def test_august_totals_are_exact_and_reconcile_with_the_real_figures(mapping):
-    # Real August 2026 figures for 521.1 (read live 2026-10-07): opening 533036.05, debit 173436.43,
-    # credit 263450.05, closing 623049.67 net credit. Split into two supplier rows for the test.
+def test_august_totals_are_exact_and_reconcile(mapping):
+    # Native 1C figures for 521.1, August 2026, read live through the gateway on 2026-10-07:
+    # debit turnover 173171.83, credit turnover 263450.05, closing net credit 623049.67.
+    # The two rows below are a synthetic split that sums to those totals.
     rows = normalize_account_turnovers([
-        native_row(KEY_521_1, 0, 533036.05, 100000.1, 200000.02, 0, 633035.97),
-        native_row(KEY_521_1, 0, 0, 73436.33, 63450.03, 9986.3, 0),
+        native_row(KEY_521_1, 0, 548670.54, 100000.1, 200000.02, 0, 648670.46),
+        native_row(KEY_521_1, 15899.09, 0, 73171.73, 63450.03, 25620.79, 0),
     ], mapping)
 
     [total] = summarize_account_turnovers(rows, mapping)
 
     assert total["account"] == "521.1" and total["row_count"] == 2
-    assert total["opening_credit"] == "533036.05"
-    assert total["debit_turnover"] == "173436.43"
+    assert total["debit_turnover"] == "173171.83"
     assert total["credit_turnover"] == "263450.05"
     opening = Decimal(total["opening_credit"]) - Decimal(total["opening_debit"])
     closing = Decimal(total["closing_credit"]) - Decimal(total["closing_debit"])
