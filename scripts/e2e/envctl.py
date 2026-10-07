@@ -76,6 +76,11 @@ DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
 DESKTOP_CLIENT = "erp-mcp-claude-desktop"
 DESKTOP_CALLBACK_PORT = 3334  # mcp-remote default OAuth callback port
+CHATGPT_CLIENT = "erp-mcp-chatgpt"
+CHATGPT_REDIRECT_URIS = [
+    "https://chatgpt.com/connector_platform_oauth_redirect",
+    "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
+]
 SOURCE_ID = "fake1c-e2e"
 COMPANY_ONE = "00000000-0000-0000-0000-000000000001"
 COMPANY_TWO = "00000000-0000-0000-0000-000000000002"
@@ -186,6 +191,12 @@ def init_secrets() -> None:
              "post_logout_redirect_uris": [],
              "audiences": [MCP_AUDIENCE],
              "scopes": ["onec:read"],
+             "grant_types": ["authorization_code", "refresh_token"]},
+            {"client_id": CHATGPT_CLIENT, "secret": None,
+             "redirect_uris": CHATGPT_REDIRECT_URIS,
+             "post_logout_redirect_uris": [],
+             "audiences": [MCP_AUDIENCE],
+             "scopes": ["openid", "profile", "onec:read"],
              "grant_types": ["authorization_code", "refresh_token"]},
         ],
     }, indent=2))
