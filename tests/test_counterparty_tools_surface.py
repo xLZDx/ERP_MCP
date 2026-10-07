@@ -207,3 +207,18 @@ async def test_onec_read_with_a_misnamed_filter_is_rejected_not_answered_unfilte
             "select": ["Code"], misnamed: "Code eq '521.1'"})
     assert misnamed in str(raised.value)
     onec.read.assert_not_awaited()
+
+
+# ---------------------------------------------------------------- tool descriptions steer the model
+
+
+async def test_tool_descriptions_name_the_right_tool_and_the_timezone_rule():
+    mcp, *_ = build()
+    desc = {t.name: (t.description or "") for t in await mcp.list_tools()}
+    assert "timezone" in desc["accounting_balance_and_turnovers"]
+    assert "accounting_balance_by_analytics" in desc["accounting_balance_and_turnovers"]
+    assert "counterparty_find" in desc["accounting_balance_and_turnovers"]
+    for name in ("payable_balance", "payable_aging"):
+        assert "SEMANTIC_PROFILE_UNVALIDATED" in desc[name]
+        assert "accounting_balance_by_analytics" in desc[name]
+    assert "timezone" in desc["accounting_balance_by_analytics"] and "name" in desc["accounting_balance_by_analytics"]

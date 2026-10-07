@@ -647,10 +647,14 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         end_period: str,
         account_code: str | None = None,
     ) -> dict[str, Any]:
-        """Read company-filtered account balances/turnovers via its validated semantic profile.
+        """Read company-filtered account opening/turnover/closing figures via its validated profile.
 
-        ``account_code`` (for example "521.1") narrows the read to one account the profile declares;
-        ``totals`` carries exact server-side per-account sums so nothing has to be added up by the caller.
+        ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset, for example
+        ``2026-08-01T00:00:00+03:00`` and ``2026-08-31T23:59:59+03:00``. ``account_code`` (for example
+        "521.1") narrows the read to one account the profile declares; ``totals`` carries exact
+        server-side per-account sums so nothing has to be added up by the caller. Rows are per analytics
+        combination and carry no counterparty names: for a breakdown by supplier or contract with names
+        use ``accounting_balance_by_analytics``; to find a counterparty use ``counterparty_find``.
         """
         started = time.monotonic()
         principal = await ctx()
@@ -821,6 +825,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     ) -> dict[str, Any]:
         """Read company-scoped account balances by analytics via its validated profile.
 
+        Best tool for "how much do we owe / are owed" questions: each row is one counterparty and
+        contract position of the profile's accounts (for example supplier debt on 521.1) with the
+        counterparty ``name`` and ``code`` resolved, and ``account_totals`` holds the exact net
+        (``net_credit`` = credit minus debit; positive on a liability account means we owe).
+        ``as_of`` is an ISO-8601 timestamp WITH a timezone offset, e.g. ``2026-08-31T23:59:59+03:00``.
         The route (OData or COM) is decided server-side from capability evidence; the caller
         cannot choose or influence it.
         """
@@ -1838,7 +1847,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool()
     async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
-        """Read point-in-time payable balances; this tool does not compute aging buckets."""
+        """Read point-in-time payable balances; this tool does not compute aging buckets.
+
+        Needs a confirmed settlement-register profile. Where the source publishes only the accounting
+        register (no settlement registers; the 818HA reference source) it fails closed with
+        SEMANTIC_PROFILE_UNVALIDATED. Supplier debt there is answered by ``accounting_balance_by_analytics``
+        (account 521.1 by counterparty and contract, names included).
+        """
         return await read_settlement_balance(
             source_id,
             company_id,
@@ -1977,7 +1992,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def payable_aging(
         source_id: str, company_id: str, as_of: str, top: int = 2000
     ) -> dict[str, Any]:
-        """Aging of open payable items from a confirmed settlement record set (read-only)."""
+        """Aging of open payable items from a confirmed settlement record set (read-only).
+
+        Needs a confirmed ``payable.open_items`` profile; on a source without settlement registers (the
+        818HA reference source) it fails closed with SEMANTIC_PROFILE_UNVALIDATED. ``as_of`` must carry a
+        timezone offset. Use ``accounting_balance_by_analytics`` for supplier balances there.
+        """
         return await read_open_items_aging(
             source_id, company_id, as_of, concept=PAYABLE_OPEN_ITEMS_CONCEPT,
             tool_name="payable_aging", top=top,
