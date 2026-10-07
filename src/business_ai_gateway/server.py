@@ -9,6 +9,7 @@ from typing import Annotated, Any
 
 from mcp.server import MCPServer
 from mcp.server.auth.settings import AuthSettings
+from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl, Field
 
 from .adapters.onec.com_contract import COM_MAX_ROWS, ComBalanceRequest
@@ -85,6 +86,19 @@ from .settlement_collector import (
     parse_as_of,
 )
 
+CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    openWorldHint=True,
+)
+
+CHATGPT_SERVER_INSTRUCTIONS = (
+    "ERP_MCP is a read-only ERP/1C data gateway. Use only sources and companies returned for "
+    "the authenticated principal. Never invent identifiers, broaden company scope, request or "
+    "expose credentials, or imply that synthetic/test evidence is native 1C reconciliation. "
+    "If a capability/profile is unavailable, report the refusal instead of guessing business data."
+)
+
 BUSINESS_CAPABILITY_BY_TOOL = {
     "source_health": "source.status.read",
     "rsv_metadata": "metadata.read",
@@ -147,7 +161,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
 
     kwargs["middleware"] = [AuditCorrelationMiddleware()]
-    mcp = MCPServer("ERP_MCP — 1C Production", **kwargs)
+    mcp = MCPServer(
+        "ERP_MCP — 1C Production",
+        title="ERP_MCP — secure read-only 1C/ERP gateway",
+        description="Company-scoped read-only ERP/1C data, metadata and accounting tools.",
+        instructions=CHATGPT_SERVER_INSTRUCTIONS,
+        **kwargs,
+    )
 
     async def ctx():
         principal = current_principal(oauth_enabled=settings.oauth_enabled)
@@ -254,7 +274,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
         raise CapabilityUnsupported(message)
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def system_status() -> dict[str, Any]:
         """Return safe, non-secret gateway status."""
         started = time.monotonic()
@@ -294,7 +314,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def sources_list() -> list[dict[str, Any]]:
         """List registered sources visible to the authenticated principal."""
         started = time.monotonic()
@@ -332,7 +352,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def source_health(source_id: str) -> dict[str, Any]:
         """Check one authorized registered 1C OData source."""
         started = time.monotonic()
@@ -359,7 +379,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def external_evidence_manifest(
         source_id: Annotated[str, Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$')],
         company_id: Annotated[str, Field(min_length=36, max_length=36)],
@@ -405,7 +425,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             return {'status': status, 'reason': code, 'business_acceptance': 'NOT_EVALUATED',
                     'native_approval_inferred': False}
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def rsv_metadata(
         source_id: str,
         operation: str,
@@ -458,7 +478,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def companies_list(source_id: str) -> list[dict[str, Any]]:
         """List enabled 1C organizations covered by this principal's grants."""
         started = time.monotonic()
@@ -508,7 +528,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def onec_capabilities(
         source_id: str,
         refresh: bool = False,
@@ -552,7 +572,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def onec_metadata_summary(
         source_id: str,
         refresh: bool = False,
@@ -590,7 +610,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def onec_find_entities(
         source_id: str,
         contains: str = "",
@@ -625,7 +645,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def accounting_balance_and_turnovers(
         source_id: str,
         company_id: str,
@@ -744,7 +764,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def accounting_balance_by_analytics(
         source_id: str, company_id: str, as_of: str
     ) -> dict[str, Any]:
@@ -926,7 +946,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def inventory_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
         """Read a point-in-time, company-scoped inventory balance via a validated profile."""
         started = time.monotonic()
@@ -1036,7 +1056,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def inventory_movements(
         source_id: str,
         company_id: str,
@@ -1192,7 +1212,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def accounting_posting_rows(
         source_id: str,
         company_id: str,
@@ -1350,7 +1370,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def cash_movements(
         source_id: str,
         company_id: str,
@@ -1465,7 +1485,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def bank_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
         """Read a point-in-time bank balance via an exact, validated source profile."""
         started = time.monotonic()
@@ -1674,7 +1694,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def receivable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
         """Read point-in-time receivable balances; this tool does not compute aging buckets."""
         return await read_settlement_balance(
@@ -1685,7 +1705,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             tool_name="receivable_balance",
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
         """Read point-in-time payable balances; this tool does not compute aging buckets."""
         return await read_settlement_balance(
@@ -1812,7 +1832,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def receivable_aging(
         source_id: str, company_id: str, as_of: str, top: int = 2000
     ) -> dict[str, Any]:
@@ -1822,7 +1842,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             tool_name="receivable_aging", top=top,
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def payable_aging(
         source_id: str, company_id: str, as_of: str, top: int = 2000
     ) -> dict[str, Any]:
@@ -1963,7 +1983,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def counterparty_duplicate_candidates(
         source_id: str, company_id: str, top: int = 2000
     ) -> dict[str, Any]:
@@ -2095,7 +2115,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def sales_documents(
         source_id: str, company_id: str, top: int = 50, skip: int = 0
     ) -> dict[str, Any]:
@@ -2109,7 +2129,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             skip=skip,
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def purchase_documents(
         source_id: str, company_id: str, top: int = 50, skip: int = 0
     ) -> dict[str, Any]:
@@ -2123,7 +2143,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             skip=skip,
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def onec_read(
         source_id: str,
         entity_set: str,
