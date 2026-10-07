@@ -151,3 +151,27 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 
 - Decision: docs/E2E_ENVIRONMENT.md documents the fixture-profile stack, relocation (E2E_PORT_OFFSET/E2E_PROJECT_SUFFIX), process identity, skip policy and the in-memory IdP revoked_sids limitation. U04 accepts the sidecar POST /v1/read as the read-only upstream verb and proves projection/top on the sidecar recorder. Engineering checkpoint fingerprint re-pinned (implementation content changed) and dashboard synced; no gate status changed (NO-GO/PARTIAL untouched).
 - Evidence (alternate topology offset 3000, project erpmcp-e2e-rem, from clean): smoke 15 passed; user 52 passed 0 skipped after reset; fault stop/start of fake1c, sidecar, idp, gateway, redis, postgres each flips status 1 then 0. One non-reproduced U18 failure (SC05 inventory_balance CAPABILITY_UNSUPPORTED) occurred once in the first full run after a fresh up; three later runs (partial order and full) passed.
+
+## 2026-10-07 - Admin defect fix P4 (branch fix/admin-defects)
+
+- Decision: `parse_metadata` rejects well-formed XML that is not OData `$metadata` (root must be Edmx with Schema/EntityType/EntitySet). An HTML 200 for `$metadata` therefore yields metadata_supported=false and no fingerprint, so the admin refresh fails with an audited error and the previous STABLE evidence is untouched (A39). Regression: tests/test_metadata.py, tests/test_compatibility.py.
+
+## 2026-10-07 - Admin defect fix P8 (branch fix/admin-defects)
+
+- Decision: server-side fix, UI keeps its key (scripts/verify_admin_ui.py already requires key retention on retry). A prior idempotency outcome of `error` (domain write rolled back; only reservation and audit row persisted) with the same actor+command+payload fingerprint is re-armed to `pending` and re-executed; success still replays, different payload/command still 409 (A29/A30), concurrent callers serialize on the row lock. Regression: tests/test_admin_mutations_postgres.py::test_failed_attempt_is_retryable_with_the_same_key_and_payload. No migration.
+
+## 2026-10-07 - Admin defect fix P1/P2/P3 audit gaps (branch fix/admin-defects)
+
+- Decision: no CHECK constraint exists on bag.admin_audit_events.action (only outcome IN success/error/denied/conflict), so no migration. New action values: `session.login`, `session.logout` (A01, verified subject/client from the session; client_id stored in the Redis session record), `auth.denied` (A03/A04), `source.probe` (A16; actor, target host only, outcome, no URL or secrets).
+- Decision (flood control): a rejected bearer is audited only when it is JWT-shaped (3 base64url segments, <=8 KiB) and at most 30 rows/minute/process; the row uses actor `unverified` and carries no token material or unverified claims. Plain garbage, scanners and missing credentials leave no row. Audit write failures never change the 401/probe response.
+- Regression: tests/test_admin_session.py (login/logout audit, bounded denial audit).
+
+## 2026-10-07 - Admin defect fix P5/P6 (branch fix/admin-defects)
+
+- Decision (P5): all inline `on*` attributes removed from the admin UI; controls carry `data-act` and a single delegated click listener dispatches through an `ACTIONS` registry (functions looked up at call time because several are overridden). CSP is unchanged (script-src 'self', no unsafe-inline). Static guards: tests/test_admin_ui_asset.py (no on* attribute, every data-act registered) and scripts/verify_admin_ui.py (same regex plus the real CSP header on the served page, console CSP violations fail the run).
+- Decision (P6): after a render, if focus fell to <body> (route change replaced the nav button, or a closed dialog's opener was re-rendered) focus moves to the main h1 (tabindex -1); a failed Submit restores focus to the previously focused control inside the dialog after the buttons are re-enabled.
+
+## 2026-10-07 - Admin defect fixes: verification and checkpoint re-pin (branch fix/admin-defects)
+
+- Evidence: full pytest with own postgres:16-alpine + redis:7-alpine and ERP_MCP_REQUIRE_DB_TESTS=1: 1196 passed, 228 skipped (baseline 1189 + 7 new tests; skips are env-gated e2e/functional/private); ruff, compileall, scripts/verify_admin_ui.py (real Chromium, page CSP enforced) and check_document_consistency pass. test_admin_api double updated for the new `mutations` attribute used by the rejected-bearer audit. Engineering checkpoint fingerprint and report markers re-pinned.
+- Not verified live: the live admin E2E suite could not start because the shared compose volume erpmcp-e2e-pgdata holds a password from an earlier environment (InvalidPasswordError in envctl ensure-roles); fixing it needs `down.ps1 -Purge` (volume deletion), left to the operator. Note: a leftover ignored .e2e/ directory makes the unit suite activate the e2e fixtures and fail massively; keep it out of the worktree when running the full suite.
