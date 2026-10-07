@@ -606,3 +606,36 @@ def compute_account_totals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for entry in sorted(totals.values(), key=lambda item: item["account"])
     ]
+
+
+def summarize_account_turnovers(rows: list[dict[str, Any]], mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    """Exact per-account sums of normalized balance-and-turnover rows (Decimal, server side).
+
+    Rows whose account is not declared by the profile fail closed: the account condition is sent to
+    the source, so a foreign account in the response means the filter was not honoured.
+    """
+    by_key = {item["account_key"].lower(): item["code"] for item in mapping.get("accounts", [])}
+    if not by_key:
+        return []
+    fields = ("opening_debit", "opening_credit", "debit_turnover", "credit_turnover",
+              "closing_debit", "closing_credit")
+    sums: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = str(row.get("account", "")).lower()
+        if key not in by_key:
+            raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
+        entry = sums.setdefault(by_key[key], {"row_count": 0, **{name: Decimal(0) for name in fields}})
+        entry["row_count"] += 1
+        for name in fields:
+            entry[name] += Decimal(_decimal(row[name]))
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {"account": code, "row_count": entry["row_count"], **{name: text(entry[name]) for name in fields}}
+        for code, entry in sorted(sums.items())
+    ]

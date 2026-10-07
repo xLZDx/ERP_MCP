@@ -22,6 +22,7 @@ from .analytics_balance import (
     build_analytics_balance_arguments,
     compute_account_totals,
     normalize_com_balance_rows,
+    summarize_account_turnovers,
     normalize_odata_balance_rows,
     select_route,
 )
@@ -642,8 +643,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         company_id: str,
         start_period: str,
         end_period: str,
+        account_code: str | None = None,
     ) -> dict[str, Any]:
-        """Read company-filtered account balances/turnovers via its validated semantic profile."""
+        """Read company-filtered account balances/turnovers via its validated semantic profile.
+
+        ``account_code`` (for example "521.1") narrows the read to one account the profile declares;
+        ``totals`` carries exact server-side per-account sums so nothing has to be added up by the caller.
+        """
         started = time.monotonic()
         principal = await ctx()
         try:
@@ -664,6 +670,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": ACCOUNT_TURNOVERS_CONCEPT,
             "start_period": start_period,
             "end_period": end_period,
+            "account_code": account_code,
         }
         source = await resolve_source(
             principal,
@@ -690,6 +697,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 company_external_ref=company.external_ref,
                 start_period=start_period,
                 end_period=end_period,
+                account_code=account_code,
             )
             result = await runtime.onec.register_read(
                 source,
@@ -700,6 +708,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_account_turnovers(raw_rows, mapping)
+            page = result.get("page") if isinstance(result, dict) else None
+            truncated = (
+                (not isinstance(page, dict) or page.get("has_more") is not False)
+                or len(normalized_rows) >= settings.max_rows
+            )
+            totals = summarize_account_turnovers(normalized_rows, mapping)
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -725,7 +739,10 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
-                "page": result.get("page") if isinstance(result, dict) else None,
+                "page": page,
+                "totals": totals,
+                "totals_complete": bool(totals) and not truncated,
+                "truncated": truncated,
                 **profile_provenance(profile),
             }
         except Exception as exc:

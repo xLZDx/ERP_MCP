@@ -16,6 +16,36 @@
       "companies": {
         "3e31afc5-351f-4f36-8074-99129fa3d911": {
           "concepts": {
+            "account.balance_and_turnovers": {
+              "account_field": "Account_Key",
+              "accounts": [
+                {
+                  "account_key": "5659a91f-5098-11ee-aa2f-d85ed30dc416",
+                  "code": "521.1"
+                }
+              ],
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Хозрасчетный",
+              "method": "balanceAndTurnovers",
+              "output_fields": {
+                "account": "Account_Key",
+                "closing_credit": "СуммаClosingSplittedBalanceCr",
+                "closing_debit": "СуммаClosingSplittedBalanceDr",
+                "credit_turnover": "СуммаTurnoverCr",
+                "debit_turnover": "СуммаTurnoverDr",
+                "opening_credit": "СуммаOpeningSplittedBalanceCr",
+                "opening_debit": "СуммаOpeningSplittedBalanceDr"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccountingRegister_Хозрасчетный",
+                  "method": "balanceAndTurnovers"
+                }
+              ]
+            },
             "account.balance_by_analytics": {
               "account_field": "Account_Key",
               "accounts": [
