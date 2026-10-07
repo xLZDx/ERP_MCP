@@ -110,6 +110,7 @@ No lower-precedence document may silently weaken a higher-precedence invariant.
 - [ADR-0005 — No direct 1C SQL integration](adr/ADR-0005-no-direct-1c-sql.md)
 - [ADR-0006 — Copyleft adapter isolation](adr/ADR-0006-copyleft-isolation.md)
 - [ADR-0007 — Admin Control Center boundary and authorization](adr/ADR-0007-admin-control-center.md)
+- [ADR-0008 — Hybrid OData + COM analytics balance route](adr/ADR-0008-hybrid-odata-com-analytics-balance.md)
 
 ## Change rule
 

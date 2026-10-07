@@ -189,7 +189,7 @@ ASSURANCE: Real Reference 1C + Ferma Synthetic → Native reconciliation → ERP
 <button class="doc-link" data-target="doc-vendor-upstreams" data-cat="adapter">Pinned Upstreams</button>
 <button class="doc-link" data-target="doc-package-manifest" data-cat="core">Package Manifest</button><button class="doc-link" data-target="doc-scope-freeze" data-cat="core">SCOPE FREEZE BASELINE 2026-10-06</button><button class="doc-link" data-target="doc-dad-coverage" data-cat="core">DAD 1C MCP REQUIREMENTS COVERAGE</button><button class="doc-link" data-target="doc-ferma-blueprint" data-cat="core">FERMA 1C SYNTHETIC TESTBED IMPLEMENTATION</button><button class="doc-link" data-target="doc-rsv-runbook" data-cat="core">RSV DATA BRIDGE</button><button class="doc-link" data-target="doc-pilot-evidence" data-cat="core">PILOT EVIDENCE GATE</button><button class="doc-link" data-target="doc-vendor-intake" data-cat="core">intake</button></aside><main><article class="doc-card searchable" id="doc-document-index" data-cat="core" data-title="Индекс документов">
       <div class="doc-head"><div><span class="eyebrow">Документы</span><h2>Индекс документов</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=e52a9a40d3d4d9bb38cea6879bebdef327d5d96329ec882d33ac84d6b726992b DOC_RENDER_SHA256=44edd57a950dbbc555fa222e0615bce3729609f6e11bdc328662ff05d31e57ce -->
+      <div class="md"><!-- DOC_SOURCE=docs/DOCUMENT_INDEX.md DOC_SOURCE_SHA256=f4f83798bdf0b30ec94658d3fad025672c25f009903aadada56686fb83ad1f94 DOC_RENDER_SHA256=19d52a7fc12c31dcf01c2c2badf8c9db7b830a2c8bbb4d0ff23121caf3663522 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP — Normative Documentation Index</h1>
 <p><strong>Baseline:</strong> v1.1 — operator scope freeze
@@ -379,6 +379,7 @@ change first.</p>
 <li><a href="#doc-adr-0005">ADR-0005 — No direct 1C SQL integration</a></li>
 <li><a href="#doc-adr-0006">ADR-0006 — Copyleft adapter isolation</a></li>
 <li><a href="adr/ADR-0007-admin-control-center.md">ADR-0007 — Admin Control Center boundary and authorization</a></li>
+<li><a href="adr/ADR-0008-hybrid-odata-com-analytics-balance.md">ADR-0008 — Hybrid OData + COM analytics balance route</a></li>
 </ul>
 <h2>Change rule</h2>
 <p>A change to any invariant marked <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>HARD BOUNDARY</strong> or <strong>FAIL-CLOSED</strong>
@@ -3474,7 +3475,7 @@ storage and retrying with a new request; never bypass audit or replay a read as 
     </article>
 <article class="doc-card searchable" id="doc-threat-model" data-cat="security" data-title="Threat Model">
       <div class="doc-head"><div><span class="eyebrow">Безопасность</span><h2>Threat Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=ef21e6e77786edad9ddf8f269ce36cdfd7bc90fed4411fe4812acc507f90e8aa DOC_RENDER_SHA256=f1633ec4f7f53ec49ba189fb3097b19af572475ed6620dd38da36d8eaeacacca -->
+      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=11eb4b9a6f363a34f82d0f844314af24be0f9bc3bf323f96faddb55ed0bbc4fa DOC_RENDER_SHA256=78ce9c4035989e4db7547f09064b73dfacc4303fc2175e216f4ce4aed54b1cbe -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Threat Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -3689,6 +3690,60 @@ frozen in <a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>.</
 analysis.</p>
 <p>Every new work item must cite an existing frozen requirement/gate. No trace -&gt; no execution until
 explicit operator rebaseline.</p>
+<h2>Hybrid OData + COM analytics balance route (ADR-0008, operator decision 2026-10-07)</h2>
+<p>Tool <code>accounting_balance_by_analytics</code> reads balances by analytics through OData (primary) or a separate local COM bridge
+(fallback). The route is chosen before execution from persisted evidence; there is no runtime fallback.</p>
+<table>
+<thead>
+<tr>
+<th>Threat (STRIDE)</th>
+<th>Risk</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tampering / elevation: caller text reaches a 1C query</td>
+<td>Injection through account, company or date input</td>
+<td>The tool has three parameters (<code>source_id</code>, <code>company_id</code>, <code>as_of</code>); account keys are GUIDs from the validated profile; the COM bridge runs one fixed code-owned template with typed parameters; no query text crosses any boundary</td>
+</tr>
+<tr>
+<td>Spoofing: wrong physical source behind a logical source id</td>
+<td>A stale COM binding answers for a re-registered source</td>
+<td>The binding pins source id, base-URL hash, credential identity, configuration and metadata fingerprints; any change invalidates it until re-approval; the bridge refuses a request that does not match its own binding table</td>
+</tr>
+<tr>
+<td>Information disclosure: cross-company rows</td>
+<td>Company A reads company B through a shared base</td>
+<td>Company reference must be in the binding's allowed set, checked before any COM call; the bridge filters by the company dimension; rows whose company differs fail closed on both routes</td>
+</tr>
+<tr>
+<td>Information disclosure: silent fallback hides a real failure</td>
+<td>An OData 401/503 is answered from COM</td>
+<td>Selection is by evidence only; any selected-route error fails closed with zero COM calls; tests assert the call counts</td>
+</tr>
+<tr>
+<td>Elevation: write or generic execute through COM</td>
+<td>The bridge becomes a general 1C client</td>
+<td>No write verb, no execute, one template, reader identity only, loopback + bearer, row cap and timeout; a test asserts the absence of write capability</td>
+</tr>
+<tr>
+<td>Information disclosure: secrets</td>
+<td>Reader password in a response, log or process argument</td>
+<td>Secret references are resolved only inside the bridge; errors are sanitized; nothing secret is returned to the gateway or the model</td>
+</tr>
+<tr>
+<td>Tampering: parity evidence from different databases</td>
+<td>OData and COM compared on two copies</td>
+<td>Parity is claimed only with a separate publication bound to the same disposable clone and a same-database proof before comparison; otherwise reported as cross-copy comparison</td>
+</tr>
+<tr>
+<td>Denial of service</td>
+<td>Large balance sets or COM license exhaustion</td>
+<td>Row cap, timeout, one connection per binding, bounded accounts and analytics slots; production licensing topology is an open item</td>
+</tr>
+</tbody>
+</table>
 <!-- NORMATIVE_SOURCE_END --></div>
     </article>
 <article class="doc-card searchable" id="doc-requirements-traceability" data-cat="core" data-title="Requirements Traceability">
