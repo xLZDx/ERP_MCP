@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
 
 This matrix connects requirements to architecture, implementation areas and release gates.
 
@@ -30,12 +30,28 @@ This matrix connects requirements to architecture, implementation areas and rele
 | NFR-R2 | Safe timeout/retry/circuit behavior | Integration/Architecture | D8, D14 |
 | NFR-O1 | Structured logs/metrics/traces | Observability | D12 |
 | NFR-O2 | Backup/restore/rollback | Observability §9–10 | D15 |
+| NFR-O3 | Bounded DNS resolution and deployment egress | Network policy / Production contract | D6, D16 |
 | NFR-P1 | Bounded multi-company fan-out | Architecture §8 | D10, D13 |
 | NFR-P2 | Measured performance before GO | Test Strategy §8 | D13 |
 | COR-1 | Accounting reconciliation with native 1C | TDD §3 G-05 | D9 |
 | COR-2 | Drift invalidates affected semantics | Test Strategy §6 | D7/D9 |
 | OPS-1 | Source onboarding handshake | Integration §9 | D10/D17 |
 | OPS-2 | Source offboarding safe | Integration §10 | D17 |
+| OPS-3 | Deterministic release preflight and non-destructive rollback manifest | Release Operations / Rollback runbook | D15–D18 |
+| SCOPE-1 | No new product scope while operator freeze is active | Scope Freeze Baseline, Governance §2A | D0 + freeze closure |
+| SC08-1 | Operator rebaseline 2026-10-07: SC08 `duplicate-counterparty` as one read-only tool `counterparty_duplicate_candidates` (`accounting.read`, no merge/write, synthetic L1 only). Evidence status: IMPLEMENTED on synthetic L1 (src/business_ai_gateway/duplicate_counterparties.py + server handler; exact run counts and head SHA live in the PR #11 body, not here); Amendment A2 PROPOSED until GPT-PM approves; known accepted limitation: empty activity scan is PASS per contract (core/DECISION_LOG.md 2026-10-07) | [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md), Scope Freeze §8.1, TDD FR-E | D9 (read-only/synthetic only); evidence: tests/test_duplicate_counterparties_unit.py, tests/test_sc08_duplicate_counterparty_chain.py, tests/functional/test_10_scenarios_sc01_sc12.py (SC08 cases), tests/e2e/user/test_u18_functional_tester_suite.py (U18 oracle), manual pack U18 step |
+| HYB-1 | Operator rebaseline 2026-10-07: hybrid OData + COM read route for balances with analytics, one read-only tool `accounting_balance_by_analytics`; closes the "analytics balance" gap of DAD-SMALL-03 / DAD-BIZ-02 / DAD-BIZ-08. Evidence status: see core/DECISION_LOG.md 2026-10-07 entries; live parity status is recorded there (parity vs cross-copy comparison) | [ADR-0008](adr/ADR-0008-hybrid-odata-com-analytics-balance.md), Scope Freeze §2.1, TDD FR-J | D5/D7/D9; evidence: tests/test_analytics_balance_routing.py, tests/test_com_bridge.py |
+| DAD-1 | Six accountant-selected read-only checks | DAD Requirements Coverage §8, DAD rule engine | D9 + DAD acceptance |
+| DAD-2 | Invoice/e-factura read-only reconciliation | DAD Requirements Coverage §11/§27, External Evidence Plane | D9/D11 |
+| DAD-3 | Versioned applicability-aware month-close rule packs | TDD FR-G, Data Model §10B | D9/D11 |
+| DAD-4 | P&L / Cash Flow / Balance Sheet semantic reports | TDD G-07, semantic profiles | D9 |
+| DAD-5 | Bank/Z/terminal/customs/CCAC reconciliation | TDD FR-H, Integration §13–14 | D9/D11 |
+| DAD-6 | VAT/IPC/VEN and payroll prechecks require external evidence + human review | TDD G-07/FR-H | D9/D11 |
+| EVID-1 | Missing external evidence never becomes guessed PASS | TDD FR-G/FR-H | D9/D11 |
+| TEST-REF-1 | Private real-reference base used via immutable golden + disposable clones | Scope Freeze §3.6, DAD Coverage §22–34 | D5/D7/D8/D9 |
+| REAL-L2-1 | Real-reference L2 lane: 130 frozen catalogue stories plus NR/INV/RULE/RL2/ACL/SYS cases executed read-only against the 818HA clone through the real gateway and sidecar; COM comparison is context only, no profile validated | `docs/REAL_1C_STORY_CATALOG_818HA.md`, `scripts/real1c` | `reports/real1c/`, `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`, `tests/real1c` |
+| TEST-FERMA-1 | Ferma synthetic scenario/oracle remains independent from 1C/ERP_MCP actual | TDD G-08, Ferma→1C Blueprint | D9 |
+| P6-SEC-1 | RSV business query/reveal remain denied unless audited conditions are proven | RSV audit, Master Plan P6 | D5/D7 |
 | FUT-ERP | Preserve ERP tenant/org RLS | Architecture §11 | future adapter DoD |
 | FUT-FERMA | Preserve oracle independence | Architecture §11 | future adapter DoD |
 
@@ -43,3 +59,18 @@ This matrix connects requirements to architecture, implementation areas and rele
 
 Every feature PR should cite one or more requirement IDs and the DoD gate it advances. If a new
 requirement has no row here, update this matrix as part of the same change.
+
+## Admin Control Center extension requirements
+
+| Req | Requirement | Primary design | Evidence / DoD |
+|---|---|---|---|
+| ACC-A1 | Admin identity uses distinct audience/scope and DB-backed platform roles | ADR-0007, Architecture §13 | Admin extension gate |
+| ACC-A2 | Browser tokens remain server-side; OIDC PKCE session + CSRF | Security Admin extension, Threat Model delta | Admin session/security tests |
+| ACC-A3 | Admin mutations are attributable, idempotent and exact-ID | Data Model §15, migration 009 | Admin audit/idempotency tests |
+| ACC-A4 | Source onboarding is egress-controlled and GET/HEAD-only | Security, admin source probe | SSRF/egress tests |
+| ACC-A5 | Platform role, data scope and business capability stay independent | RBAC design, migration 008/010 | Role/capability matrix |
+| ACC-A6 | Company-only access is enforced only through validated mapped operations | company_scope_mappings, onec_company_read | Company-scope runtime tests |
+| ACC-A7 | Runtime DB role cannot administer new policy tables | migrations 008-011 | DB privilege checker |
+| ACC-A8 | Bounded exact-principal access explanation labels unknown membership | Architecture §13 | PostgreSQL 151-company pagination/provenance test |
+| ACC-A9 | Platform-role changes require verified fresh step-up claims | Security, operations runbook | Role endpoint matrix and step-up negatives |
+| ACC-A10 | Browser lifecycle workflows retain retry identity and accessible controls | Live UI, operations runbook | Headless browser contract in CI |

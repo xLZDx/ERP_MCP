@@ -8,6 +8,7 @@ import httpx
 
 from ...compatibility import AdapterProfile, CapabilityUnsupported
 from ...models import Source
+from ...network_policy import EgressPolicyError, pinned_egress_transport, validate_resolved_egress
 
 UPSTREAM_SHA = "cf5f0d1cfb28cc24d0c9d374ad4a17d83dfe24c5"
 
@@ -26,12 +27,14 @@ class ODataSidecarClient:
         max_response_bytes: int,
         max_rows: int,
         transport: httpx.AsyncBaseTransport | None = None,
+        allowed_egress_cidrs: tuple[str, ...] = (),
     ):
         parsed = urlparse(base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError("invalid OData sidecar URL")
         self.max_response_bytes = max_response_bytes
         self.max_rows = max_rows
+        self.allowed_egress_cidrs = allowed_egress_cidrs
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/") + "/",
             timeout=httpx.Timeout(timeout_seconds),
@@ -43,7 +46,8 @@ class ODataSidecarClient:
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            transport=transport,
+            transport=transport or (pinned_egress_transport(allowed_egress_cidrs) if allowed_egress_cidrs else None),
+            trust_env=False,
         )
 
     async def close(self):
@@ -77,7 +81,12 @@ class ODataSidecarClient:
             top=top,
             skip=skip,
         )
-        return {"value": envelope["data"]}
+        result: dict[str, Any] = {"value": envelope["data"]}
+        # The sidecar reports byte-limit truncation only in page; never drop it.
+        page = envelope.get("page")
+        if isinstance(page, dict):
+            result["page"] = page
+        return result
 
     async def count(
         self,
@@ -106,8 +115,8 @@ class ODataSidecarClient:
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError
             return value
-        except (IndexError, KeyError, TypeError, ValueError) as exc:
-            raise ODataSidecarError("OData sidecar returned invalid count") from exc
+        except (IndexError, KeyError, TypeError, ValueError):
+            raise ODataSidecarError("OData sidecar returned invalid count") from None
 
     async def get(
         self,
@@ -216,6 +225,10 @@ class ODataSidecarClient:
         extra_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         capability_request = operation == "register_capabilities"
+        try:
+            await validate_resolved_egress(str(self._client.base_url), self.allowed_egress_cidrs)
+        except EgressPolicyError:
+            raise ODataSidecarError("SIDECAR_EGRESS_DENIED") from None
         payload = (
             {
                 "source_id": source.id,
@@ -254,16 +267,16 @@ class ODataSidecarClient:
                     body.extend(chunk)
                     if len(body) > self.max_response_bytes:
                         raise ODataSidecarError("OData sidecar response exceeded configured limit")
-        except httpx.HTTPError as exc:
-            raise ODataSidecarError("OData sidecar is unavailable") from exc
+        except httpx.HTTPError:
+            raise ODataSidecarError("OData sidecar is unavailable") from None
         try:
             envelope = json.loads(body)
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             if response.status_code != 200:
                 raise ODataSidecarError(
                     f"OData sidecar returned HTTP {response.status_code}"
-                ) from exc
-            raise ODataSidecarError("OData sidecar returned invalid JSON") from exc
+                ) from None
+            raise ODataSidecarError("OData sidecar returned invalid JSON") from None
         if response.status_code != 200:
             error = envelope.get("error") if isinstance(envelope, dict) else None
             code = error.get("code") if isinstance(error, dict) else None

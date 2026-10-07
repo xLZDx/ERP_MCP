@@ -11,8 +11,13 @@ def test_normative_documentation_package_is_complete():
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
 
     assert data["schema_version"] == 1
-    assert data["version"] == "1.0"
-    assert data["status"] == "FROZEN_FOR_IMPLEMENTATION"
+    assert data["version"] == "1.1"
+    assert data["status"] == "SCOPE_FROZEN_NO_NEW_SCOPE"
+    assert {
+        "docs/SCOPE_FREEZE_BASELINE_2026-10-06.md",
+        "docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md",
+        "docs/FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md",
+    }.issubset(set(data["required_documents"]))
 
     missing = [
         path

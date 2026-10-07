@@ -15,6 +15,22 @@ class Principal:
     claims: dict[str, Any]
 
 
+def claim_groups(claims: dict[str, Any]) -> frozenset[str]:
+    distributed = claims.get("_claim_names")
+    if (isinstance(distributed, dict) and "groups" in distributed) or claims.get("hasgroups"):
+        raise PermissionError("group membership is incomplete")
+    raw = claims.get("groups")
+    if raw is None:
+        return frozenset()
+    if isinstance(raw, str):
+        raw = [raw] if raw else []
+    if not isinstance(raw, list) or len(raw) > 2048 or any(
+        not isinstance(value, str) or not value or len(value) > 512 for value in raw
+    ):
+        raise PermissionError("invalid group membership claim")
+    return frozenset(raw)
+
+
 def current_principal(*, oauth_enabled: bool) -> Principal:
     token = get_access_token()
     if token is None:
@@ -28,9 +44,6 @@ def current_principal(*, oauth_enabled: bool) -> Principal:
             claims={},
         )
     claims = token.claims or {}
-    raw_groups = claims.get("groups") or []
-    if isinstance(raw_groups, str):
-        raw_groups = [raw_groups]
     subject = token.subject or claims.get("sub")
     if not subject:
         raise PermissionError("token has no subject")
@@ -38,6 +51,6 @@ def current_principal(*, oauth_enabled: bool) -> Principal:
         subject=str(subject),
         client_id=token.client_id,
         scopes=frozenset(token.scopes),
-        groups=frozenset(str(x) for x in raw_groups),
+        groups=claim_groups(claims),
         claims=claims,
     )

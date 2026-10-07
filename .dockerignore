@@ -9,11 +9,13 @@
 .pytest_cache
 .ruff_cache
 .mypy_cache
+.cache/trivy
 .coverage
 coverage.xml
 reports
 tests
 testbed
+**/testbed
 docs
 var
 vendor/reference/1c-odata-mcp

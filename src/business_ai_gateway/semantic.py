@@ -2,15 +2,91 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .compatibility import CapabilityUnsupported
 
 APROVODKA_REPOSITORY = "https://github.com/theYahia/WWmcp"
 APROVODKA_SHA = "7b62c90e1fe74324605dc28d76f195200bb97252"
+ACCOUNT_TURNOVERS_CONCEPT = "account.balance_and_turnovers"
+ACCOUNT_TURNOVERS_METHOD = "balanceAndTurnovers"
+INVENTORY_BALANCE_CONCEPT = "inventory.balance"
+INVENTORY_BALANCE_METHOD = "Balance"
+BANK_BALANCE_CONCEPT = "bank.balance"
+RECEIVABLE_BALANCE_CONCEPT = "receivable.balance"
+PAYABLE_BALANCE_CONCEPT = "payable.balance"
+INVENTORY_MOVEMENTS_CONCEPT = "inventory.movements"
+ACCOUNTING_POSTING_ROWS_CONCEPT = "accounting.posting_rows"
+CASH_MOVEMENTS_CONCEPT = "cash.movements"
+_ENTITY_SET_PATTERN = re.compile(r"^AccountingRegister_[\w\u0080-\uffff]+$", re.UNICODE)
+_RECORD_REGISTER_PATTERN = re.compile(
+    r"^(?:Accumulation|Accounting)Register_[\w\u0080-\uffff]+$", re.UNICODE
+)
+_PROPERTY_PATTERN = re.compile(r"^[\w\u0080-\uffff]+$", re.UNICODE)
+ACCOUNT_TURNOVERS_FIELDS = (
+    "account",
+    "opening_debit",
+    "opening_credit",
+    "debit_turnover",
+    "credit_turnover",
+    "closing_debit",
+    "closing_credit",
+)
+DOCUMENT_CONCEPT_FIELDS = {
+    "sales": (
+        "document_ref",
+        "document_number",
+        "date",
+        "counterparty",
+        "amount",
+        "currency",
+        "posted",
+    ),
+    "purchases": (
+        "document_ref",
+        "document_number",
+        "date",
+        "counterparty",
+        "amount",
+        "currency",
+        "posted",
+    ),
+}
+INVENTORY_BALANCE_FIELDS = ("item_ref", "warehouse_ref", "quantity")
+BANK_BALANCE_FIELDS = ("bank_account_ref", "currency_ref", "amount")
+SETTLEMENT_BALANCE_FIELDS = ("counterparty_ref", "contract_ref", "amount")
+INVENTORY_MOVEMENT_FIELDS = (
+    "period",
+    "item_ref",
+    "warehouse_ref",
+    "quantity",
+    "record_type",
+    "recorder_ref",
+)
+ACCOUNTING_POSTING_ROW_FIELDS = (
+    "period",
+    "recorder_ref",
+    "line_number",
+    "active",
+    "account_dr_ref",
+    "account_cr_ref",
+)
+CASH_MOVEMENT_FIELDS = (
+    "period",
+    "line_number",
+    "cash_account_ref",
+    "currency_ref",
+    "amount",
+    "record_type",
+    "recorder_ref",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +118,9 @@ CONFIGURATION_PRESETS = (
         ("бп", "бп3", "бухгалтерия", "accounting"),
         "servers/aprovodka/src/presets/bp30.ts",
         candidates=(
-            PresetEntityCandidate("AccountingRegister_Хозрасчетный", "accounting_register", "verified"),
+            PresetEntityCandidate(
+                "AccountingRegister_Хозрасчетный", "accounting_register", "verified"
+            ),
             PresetEntityCandidate("ChartOfAccounts_Хозрасчетный", "chart_of_accounts", "common"),
             PresetEntityCandidate("Catalog_Организации", "catalog", "verified"),
             PresetEntityCandidate("Catalog_Контрагенты", "catalog", "verified"),
@@ -51,7 +129,9 @@ CONFIGURATION_PRESETS = (
             PresetEntityCandidate("Catalog_Склады", "catalog", "common"),
             PresetEntityCandidate("Document_ПоступлениеТоваровУслуг", "document", "verified"),
             PresetEntityCandidate("Document_РеализацияТоваровУслуг", "document", "verified"),
-            PresetEntityCandidate("InformationRegister_КурсыВалют", "information_register", "common"),
+            PresetEntityCandidate(
+                "InformationRegister_КурсыВалют", "information_register", "common"
+            ),
         ),
     ),
     ConfigurationPreset(
@@ -60,18 +140,34 @@ CONFIGURATION_PRESETS = (
         ("ут", "торговля", "trade"),
         "servers/aprovodka/src/presets/ut11.ts",
         candidates=(
-            PresetEntityCandidate("AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"),
-            PresetEntityCandidate("InformationRegister_РаспределениеЗапасов", "information_register", "verified"),
-            PresetEntityCandidate("AccumulationRegister_ТоварыОрганизаций", "accumulation_register", "common"),
-            PresetEntityCandidate("AccumulationRegister_РасчетыСКлиентами", "accumulation_register", "common"),
-            PresetEntityCandidate("AccumulationRegister_РасчетыСПоставщиками", "accumulation_register", "common"),
-            PresetEntityCandidate("AccumulationRegister_ДенежныеСредстваБезналичные", "accumulation_register", "common"),
+            PresetEntityCandidate(
+                "AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"
+            ),
+            PresetEntityCandidate(
+                "InformationRegister_РаспределениеЗапасов", "information_register", "verified"
+            ),
+            PresetEntityCandidate(
+                "AccumulationRegister_ТоварыОрганизаций", "accumulation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "AccumulationRegister_РасчетыСКлиентами", "accumulation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "AccumulationRegister_РасчетыСПоставщиками", "accumulation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "AccumulationRegister_ДенежныеСредстваБезналичные",
+                "accumulation_register",
+                "common",
+            ),
             PresetEntityCandidate("Catalog_Партнеры", "catalog", "common"),
             PresetEntityCandidate("Catalog_Контрагенты", "catalog", "verified"),
             PresetEntityCandidate("Catalog_Номенклатура", "catalog", "verified"),
             PresetEntityCandidate("Catalog_Организации", "catalog", "verified"),
             PresetEntityCandidate("Document_РеализацияТоваровУслуг", "document", "verified"),
-            PresetEntityCandidate("InformationRegister_ЦеныНоменклатуры", "information_register", "common"),
+            PresetEntityCandidate(
+                "InformationRegister_ЦеныНоменклатуры", "information_register", "common"
+            ),
         ),
     ),
     ConfigurationPreset(
@@ -86,9 +182,15 @@ CONFIGURATION_PRESETS = (
             PresetEntityCandidate("Document_ПриемНаРаботу", "document", "common"),
             PresetEntityCandidate("Document_КадровыйПеревод", "document", "common"),
             PresetEntityCandidate("Document_НачислениеЗарплатыИВзносов", "document", "common"),
-            PresetEntityCandidate("CalculationRegister_Начисления", "calculation_register", "common"),
-            PresetEntityCandidate("CalculationRegister_Удержания", "calculation_register", "common"),
-            PresetEntityCandidate("InformationRegister_КадроваяИсторияСотрудников", "information_register", "common"),
+            PresetEntityCandidate(
+                "CalculationRegister_Начисления", "calculation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "CalculationRegister_Удержания", "calculation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "InformationRegister_КадроваяИсторияСотрудников", "information_register", "common"
+            ),
         ),
     ),
     ConfigurationPreset(
@@ -97,15 +199,27 @@ CONFIGURATION_PRESETS = (
         ("erp", "ерп", "1c:erp"),
         "servers/aprovodka/src/presets/erp2.ts",
         candidates=(
-            PresetEntityCandidate("AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"),
-            PresetEntityCandidate("InformationRegister_РаспределениеЗапасов", "information_register", "verified"),
-            PresetEntityCandidate("AccountingRegister_Хозрасчетный", "accounting_register", "common"),
+            PresetEntityCandidate(
+                "AccumulationRegister_ТоварыНаСкладах", "accumulation_register", "verified"
+            ),
+            PresetEntityCandidate(
+                "InformationRegister_РаспределениеЗапасов", "information_register", "verified"
+            ),
+            PresetEntityCandidate(
+                "AccountingRegister_Хозрасчетный", "accounting_register", "common"
+            ),
             PresetEntityCandidate("ChartOfAccounts_Хозрасчетный", "chart_of_accounts", "common"),
             PresetEntityCandidate("Document_ЗаказНаПроизводство2_2", "document", "common"),
             PresetEntityCandidate("Document_ЭтапПроизводства2_2", "document", "common"),
             PresetEntityCandidate("Catalog_РесурсныеСпецификации", "catalog", "common"),
-            PresetEntityCandidate("AccumulationRegister_ЗатратыНаВыпуск", "accumulation_register", "common"),
-            PresetEntityCandidate("AccumulationRegister_ДенежныеСредстваБезналичные", "accumulation_register", "common"),
+            PresetEntityCandidate(
+                "AccumulationRegister_ЗатратыНаВыпуск", "accumulation_register", "common"
+            ),
+            PresetEntityCandidate(
+                "AccumulationRegister_ДенежныеСредстваБезналичные",
+                "accumulation_register",
+                "common",
+            ),
         ),
     ),
 )
@@ -150,6 +264,708 @@ class SemanticProfileUnavailable(RuntimeError):
 
 class SemanticProfileStale(SemanticProfileUnavailable):
     code = "SCHEMA_DRIFT"
+
+
+class SemanticMappingUnconfirmed(SemanticProfileUnavailable):
+    code = "SEMANTIC_MAPPING_UNCONFIRMED"
+
+
+def validate_account_turnovers_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("account-turnover mapping must be a JSON object")
+    register_set = mapping.get("entity_set")
+    method = mapping.get("method")
+    company_scope = mapping.get("company_scope")
+    if (
+        set(mapping)
+        - {
+            "entity_set",
+            "method",
+            "company_scope",
+            "output_fields",
+            "required_register_capabilities",
+        }
+        or not isinstance(register_set, str)
+        or not _ENTITY_SET_PATTERN.fullmatch(register_set)
+        or method != ACCOUNT_TURNOVERS_METHOD
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(mapping.get("output_fields"), dict)
+        or set(mapping["output_fields"]) != set(ACCOUNT_TURNOVERS_FIELDS)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in mapping["output_fields"].values()
+        )
+        or len(set(mapping["output_fields"].values())) != len(ACCOUNT_TURNOVERS_FIELDS)
+    ):
+        raise SemanticMappingUnconfirmed("account-turnover mapping is incomplete or unsupported")
+    return register_set, method
+
+
+def normalize_account_turnovers(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    """Project source-native rows into a profile-defined canonical shape."""
+    validate_account_turnovers_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("register response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("register response contains a non-object row")
+        field_map = mapping["output_fields"]
+        missing = [source_field for source_field in field_map.values() if source_field not in row]
+        if missing:
+            raise SemanticMappingUnconfirmed(
+                "register response is missing a field required by the validated semantic mapping"
+            )
+        normalized.append(
+            {
+                canonical_field: row[source_field]
+                for canonical_field, source_field in field_map.items()
+            }
+        )
+    return normalized
+
+
+def validate_document_mapping(concept: str, mapping: dict[str, Any]) -> None:
+    fields = DOCUMENT_CONCEPT_FIELDS.get(concept)
+    if not isinstance(mapping, dict) or fields is None:
+        raise SemanticMappingUnconfirmed("document mapping concept/object is unsupported")
+    company_scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    if (
+        set(mapping) - {"entity_set", "company_scope", "output_fields", "order_by"}
+        or not isinstance(mapping.get("entity_set"), str)
+        or not mapping["entity_set"].startswith("Document_")
+        or not _ENTITY_SET_PATTERN.fullmatch(
+            mapping["entity_set"].replace("Document_", "AccountingRegister_", 1)
+        )
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(fields)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in output_fields.values()
+        )
+        or len(set(output_fields.values())) != len(fields)
+        or not isinstance(mapping.get("order_by"), str)
+        or not _PROPERTY_PATTERN.fullmatch(mapping["order_by"])
+        or mapping["order_by"] != output_fields.get("date")
+    ):
+        raise SemanticMappingUnconfirmed("document mapping is incomplete or unsupported")
+
+
+def _validate_accumulation_balance_mapping(
+    mapping: dict[str, Any], fields: tuple[str, ...], label: str
+) -> tuple[str, str]:
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("inventory mapping must be a JSON object")
+    register_set = mapping.get("entity_set")
+    company_scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    if (
+        set(mapping)
+        - {
+            "entity_set",
+            "method",
+            "company_scope",
+            "output_fields",
+            "required_register_capabilities",
+        }
+        or not isinstance(register_set, str)
+        or not register_set.startswith("AccumulationRegister_")
+        or not _ENTITY_SET_PATTERN.fullmatch(
+            register_set.replace("AccumulationRegister_", "AccountingRegister_", 1)
+        )
+        or mapping.get("method") != INVENTORY_BALANCE_METHOD
+        or not isinstance(company_scope, dict)
+        or set(company_scope) != {"field", "value_type"}
+        or not isinstance(company_scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(company_scope["field"])
+        or company_scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(fields)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in output_fields.values()
+        )
+        or len(set(output_fields.values())) != len(fields)
+    ):
+        raise SemanticMappingUnconfirmed(f"{label} balance mapping is incomplete or unsupported")
+    required = mapping.get("required_register_capabilities")
+    if required is not None and required != [
+        {"entity_set": register_set, "method": INVENTORY_BALANCE_METHOD}
+    ]:
+        raise SemanticMappingUnconfirmed(
+            f"{label} capability dependency does not match its operation"
+        )
+    return register_set, INVENTORY_BALANCE_METHOD
+
+
+def validate_inventory_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    return _validate_accumulation_balance_mapping(mapping, INVENTORY_BALANCE_FIELDS, "inventory")
+
+
+def validate_bank_balance_mapping(mapping: dict[str, Any]) -> tuple[str, str]:
+    return _validate_accumulation_balance_mapping(mapping, BANK_BALANCE_FIELDS, "bank")
+
+
+def validate_settlement_balance_mapping(concept: str, mapping: dict[str, Any]) -> tuple[str, str]:
+    labels = {
+        RECEIVABLE_BALANCE_CONCEPT: "receivable",
+        PAYABLE_BALANCE_CONCEPT: "payable",
+    }
+    label = labels.get(concept)
+    if label is None:
+        raise SemanticMappingUnconfirmed("settlement balance concept is unsupported")
+    return _validate_accumulation_balance_mapping(mapping, SETTLEMENT_BALANCE_FIELDS, label)
+
+
+def build_inventory_balance_arguments(
+    mapping: dict[str, Any], *, company_external_ref: str, period: str
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_inventory_balance_mapping(mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return (
+        register_set,
+        method,
+        {
+            "Period": point.isoformat(),
+            "Condition": build_company_filter(mapping, company_external_ref),
+        },
+    )
+
+
+def build_bank_balance_arguments(
+    mapping: dict[str, Any], *, company_external_ref: str, period: str
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_bank_balance_mapping(mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return (
+        register_set,
+        method,
+        {
+            "Period": point.isoformat(),
+            "Condition": build_company_filter(mapping, company_external_ref),
+        },
+    )
+
+
+def build_settlement_balance_arguments(
+    concept: str,
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    period: str,
+) -> tuple[str, str, dict[str, str]]:
+    register_set, method = validate_settlement_balance_mapping(concept, mapping)
+    try:
+        point = datetime.fromisoformat(period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period must be an ISO-8601 timestamp") from exc
+    if point.tzinfo is None:
+        raise ValueError("period must include an explicit timezone")
+    return (
+        register_set,
+        method,
+        {
+            "Period": point.isoformat(),
+            "Condition": build_company_filter(mapping, company_external_ref),
+        },
+    )
+
+
+def normalize_inventory_balance_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_inventory_balance_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("inventory balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("inventory balance response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed("inventory balance response is missing a mapped field")
+        normalized.append(
+            {
+                canonical_field: row[source_field]
+                for canonical_field, source_field in field_map.items()
+            }
+        )
+    return normalized
+
+
+def normalize_bank_balance_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_bank_balance_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("bank balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("bank balance response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed("bank balance response is missing a mapped field")
+        normalized.append(
+            {
+                canonical_field: row[source_field]
+                for canonical_field, source_field in field_map.items()
+            }
+        )
+    return normalized
+
+
+def normalize_settlement_balance_rows(
+    rows: Any, mapping: dict[str, Any], concept: str
+) -> list[dict[str, Any]]:
+    validate_settlement_balance_mapping(concept, mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("settlement balance response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed(
+                "settlement balance response contains a non-object row"
+            )
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed(
+                "settlement balance response is missing a mapped field"
+            )
+        normalized.append(
+            {
+                canonical_field: row[source_field]
+                for canonical_field, source_field in field_map.items()
+            }
+        )
+    return normalized
+
+
+def build_company_filter(mapping: dict[str, Any], company_external_ref: str) -> str:
+    company_scope = mapping.get("company_scope")
+    if not isinstance(company_scope, dict):
+        raise SemanticMappingUnconfirmed("company scope mapping is absent")
+    if company_scope.get("value_type") == "guid":
+        try:
+            company_ref = str(UUID(company_external_ref))
+        except (TypeError, ValueError) as exc:
+            raise SemanticMappingUnconfirmed(
+                "company reference is not a GUID as required by the validated mapping"
+            ) from exc
+        literal = f"guid'{company_ref}'"
+    elif company_scope.get("value_type") == "string":
+        if not company_external_ref or len(company_external_ref) > 256:
+            raise SemanticMappingUnconfirmed("company reference is empty or too long")
+        literal = "'" + company_external_ref.replace("'", "''") + "'"
+    else:
+        raise SemanticMappingUnconfirmed("company value type is unsupported")
+    field = company_scope.get("field")
+    if not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field):
+        raise SemanticMappingUnconfirmed("company dimension field is invalid")
+    return f"{field} eq {literal}"
+
+
+def normalize_document_rows(
+    rows: Any, mapping: dict[str, Any], concept: str
+) -> list[dict[str, Any]]:
+    validate_document_mapping(concept, mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("document response is not a row list")
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SemanticMappingUnconfirmed("document response contains a non-object row")
+        field_map = mapping["output_fields"]
+        if any(source_field not in row for source_field in field_map.values()):
+            raise SemanticMappingUnconfirmed(
+                "document response is missing a field required by the validated semantic mapping"
+            )
+        normalized.append(
+            {
+                canonical_field: row[source_field]
+                for canonical_field, source_field in field_map.items()
+            }
+        )
+    return normalized
+
+
+def validate_inventory_movements_mapping(mapping: dict[str, Any]) -> None:
+    """Validate an operator-confirmed record-set mapping; presets are never promoted here."""
+    if not isinstance(mapping, dict):
+        raise SemanticMappingUnconfirmed("inventory movement mapping must be a JSON object")
+    allowed = {
+        "entity_set",
+        "company_scope",
+        "output_fields",
+        "record_type_values",
+        "quantity_encoding",
+        "source_timezone",
+        "order_by",
+        "required_register_capabilities",
+    }
+    entity_set = mapping.get("entity_set")
+    scope = mapping.get("company_scope")
+    output_fields = mapping.get("output_fields")
+    record_values = mapping.get("record_type_values")
+    if (
+        set(mapping) - allowed
+        or not isinstance(entity_set, str)
+        or not entity_set.startswith("AccumulationRegister_")
+        or not _ENTITY_SET_PATTERN.fullmatch(
+            entity_set.replace("AccumulationRegister_", "AccountingRegister_", 1)
+        )
+        or not isinstance(scope, dict)
+        or set(scope) != {"field", "value_type"}
+        or not isinstance(scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(scope["field"])
+        or scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(output_fields, dict)
+        or set(output_fields) != set(INVENTORY_MOVEMENT_FIELDS)
+        or any(
+            not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field)
+            for field in output_fields.values()
+        )
+        or len(set(output_fields.values())) != len(INVENTORY_MOVEMENT_FIELDS)
+        or not isinstance(mapping.get("order_by"), str)
+        or mapping.get("order_by") != output_fields.get("period")
+        or not isinstance(record_values, dict)
+        or set(record_values) != {"receipt", "expense"}
+        or any(
+            not isinstance(values, list)
+            or not values
+            or any(not isinstance(value, str) or not value.strip() for value in values)
+            for values in record_values.values()
+        )
+        or set(record_values.get("receipt", [])) & set(record_values.get("expense", []))
+        or mapping.get("quantity_encoding") != "positive_magnitude_by_record_type"
+        or mapping.get("required_register_capabilities", []) != []
+    ):
+        raise SemanticMappingUnconfirmed("inventory movement mapping is incomplete or unsupported")
+    timezone_name = mapping.get("source_timezone")
+    if not isinstance(timezone_name, str) or not timezone_name:
+        raise SemanticMappingUnconfirmed(
+            "source timezone must be confirmed in the semantic profile"
+        )
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise SemanticMappingUnconfirmed("source timezone is not a valid IANA timezone") from exc
+
+
+def build_inventory_movement_query(
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    start_period: str,
+    end_period: str,
+) -> tuple[str, list[str], str]:
+    validate_inventory_movements_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start >= end:
+        raise ValueError("period boundaries must include a timezone and start < end")
+    source_zone = ZoneInfo(mapping["source_timezone"])
+    start_local = start.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    end_local = end.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    fields = mapping["output_fields"]
+    company_filter = build_company_filter(mapping, company_external_ref)
+    period_field = fields["period"]
+    filter_expr = (
+        f"{company_filter} and {period_field} ge datetime'{start_local}' "
+        f"and {period_field} lt datetime'{end_local}'"
+    )
+    return (
+        mapping["entity_set"],
+        list(fields.values()),
+        filter_expr,
+    )
+
+
+def normalize_inventory_movement_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_inventory_movements_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("inventory movement response is not a row list")
+    field_map = mapping["output_fields"]
+    directions = {
+        value: direction
+        for direction, values in mapping["record_type_values"].items()
+        for value in values
+    }
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict) or any(field not in row for field in field_map.values()):
+            raise SemanticMappingUnconfirmed("inventory movement row is missing mapped fields")
+        source_type = row[field_map["record_type"]]
+        direction = directions.get(source_type) if isinstance(source_type, str) else None
+        if direction is None:
+            raise SemanticMappingUnconfirmed(
+                "register record type is not mapped by this source profile"
+            )
+        raw_quantity = row[field_map["quantity"]]
+        if isinstance(raw_quantity, bool):
+            raise SemanticMappingUnconfirmed("movement quantity is not numeric")
+        try:
+            quantity = Decimal(str(raw_quantity))
+        except (InvalidOperation, ValueError) as exc:
+            raise SemanticMappingUnconfirmed("movement quantity is not numeric") from exc
+        if not quantity.is_finite() or quantity < 0:
+            raise SemanticMappingUnconfirmed(
+                "movement quantity must be a non-negative magnitude per the confirmed profile"
+            )
+        delta = quantity if direction == "receipt" else -quantity
+        normalized.append(
+            {
+                "period": row[field_map["period"]],
+                "item_ref": row[field_map["item_ref"]],
+                "warehouse_ref": row[field_map["warehouse_ref"]],
+                "quantity_delta": str(delta),
+                "direction": direction,
+                "recorder_ref": row[field_map["recorder_ref"]],
+            }
+        )
+    return normalized
+
+
+def validate_cash_movements_mapping(mapping: dict[str, Any]) -> None:
+    """Require a source-confirmed record set and exact cash direction semantics."""
+    allowed = {
+        "entity_set", "company_scope", "output_fields", "record_type_values",
+        "amount_encoding", "source_timezone", "required_register_capabilities",
+    }
+    entity_set = mapping.get("entity_set") if isinstance(mapping, dict) else None
+    scope = mapping.get("company_scope") if isinstance(mapping, dict) else None
+    fields = mapping.get("output_fields") if isinstance(mapping, dict) else None
+    directions = mapping.get("record_type_values") if isinstance(mapping, dict) else None
+    timezone_name = mapping.get("source_timezone") if isinstance(mapping, dict) else None
+    if (
+        not isinstance(mapping, dict)
+        or set(mapping) - allowed
+        or not isinstance(entity_set, str)
+        or not _RECORD_REGISTER_PATTERN.fullmatch(entity_set)
+        or not isinstance(scope, dict)
+        or set(scope) != {"field", "value_type"}
+        or not isinstance(scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(scope["field"])
+        or scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(fields, dict)
+        or set(fields) != set(CASH_MOVEMENT_FIELDS)
+        or any(not isinstance(value, str) or not _PROPERTY_PATTERN.fullmatch(value)
+               for value in fields.values())
+        or len(set(fields.values())) != len(CASH_MOVEMENT_FIELDS)
+        or not isinstance(directions, dict)
+        or set(directions) != {"receipt", "expense"}
+        or any(
+            not isinstance(values, list)
+            or not values
+            or any(not isinstance(value, str) or not value.strip() for value in values)
+            for values in directions.values()
+        )
+        or set(directions.get("receipt", [])) & set(directions.get("expense", []))
+        or mapping.get("amount_encoding") != "positive_magnitude_by_record_type"
+        or mapping.get("required_register_capabilities", []) != []
+        or not isinstance(timezone_name, str)
+        or not timezone_name
+    ):
+        raise SemanticMappingUnconfirmed("cash movement mapping is incomplete or unsupported")
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise SemanticMappingUnconfirmed("source timezone is not a valid IANA timezone") from exc
+
+
+def build_cash_movements_query(
+    mapping: dict[str, Any], *, company_external_ref: str, start_period: str, end_period: str
+) -> tuple[str, list[str], str]:
+    validate_cash_movements_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start >= end:
+        raise ValueError("period boundaries must include a timezone and start < end")
+    source_zone = ZoneInfo(mapping["source_timezone"])
+    start_local = start.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    end_local = end.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    fields = mapping["output_fields"]
+    period_field = fields["period"]
+    filter_expr = (
+        f"{build_company_filter(mapping, company_external_ref)} and "
+        f"{period_field} ge datetime'{start_local}' and "
+        f"{period_field} lt datetime'{end_local}'"
+    )
+    return mapping["entity_set"], list(fields.values()), filter_expr
+
+
+def normalize_cash_movement_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_cash_movements_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("cash movement response is not a row list")
+    fields = mapping["output_fields"]
+    directions = {
+        value: direction
+        for direction, values in mapping["record_type_values"].items()
+        for value in values
+    }
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict) or any(field not in row for field in fields.values()):
+            raise SemanticMappingUnconfirmed("cash movement row is missing mapped fields")
+        source_type = row[fields["record_type"]]
+        direction = directions.get(source_type) if isinstance(source_type, str) else None
+        if direction is None:
+            raise SemanticMappingUnconfirmed("cash record type is not mapped by this source profile")
+        raw_amount = row[fields["amount"]]
+        if isinstance(raw_amount, bool):
+            raise SemanticMappingUnconfirmed("cash movement amount is not numeric")
+        try:
+            amount = Decimal(str(raw_amount))
+        except (InvalidOperation, ValueError) as exc:
+            raise SemanticMappingUnconfirmed("cash movement amount is not numeric") from exc
+        if not amount.is_finite() or amount < 0:
+            raise SemanticMappingUnconfirmed(
+                "cash movement amount must be a non-negative magnitude per the confirmed profile"
+            )
+        delta = amount if direction == "receipt" else -amount
+        normalized.append(
+            {
+                "period": row[fields["period"]],
+                "line_number": row[fields["line_number"]],
+                "cash_account_ref": row[fields["cash_account_ref"]],
+                "currency_ref": row[fields["currency_ref"]],
+                "amount_delta": str(delta),
+                "direction": direction,
+                "recorder_ref": row[fields["recorder_ref"]],
+            }
+        )
+    return normalized
+
+
+def validate_accounting_posting_rows_mapping(mapping: dict[str, Any]) -> None:
+    """Validate an exact-source profile for read-only accounting register records."""
+    allowed = {
+        "entity_set",
+        "company_scope",
+        "output_fields",
+        "source_timezone",
+        "required_register_capabilities",
+    }
+    entity_set = mapping.get("entity_set") if isinstance(mapping, dict) else None
+    scope = mapping.get("company_scope") if isinstance(mapping, dict) else None
+    fields = mapping.get("output_fields") if isinstance(mapping, dict) else None
+    timezone_name = mapping.get("source_timezone") if isinstance(mapping, dict) else None
+    if (
+        not isinstance(mapping, dict)
+        or set(mapping) - allowed
+        or not isinstance(entity_set, str)
+        or not _ENTITY_SET_PATTERN.fullmatch(entity_set)
+        or not isinstance(scope, dict)
+        or set(scope) != {"field", "value_type"}
+        or not isinstance(scope.get("field"), str)
+        or not _PROPERTY_PATTERN.fullmatch(scope["field"])
+        or scope.get("value_type") not in {"guid", "string"}
+        or not isinstance(fields, dict)
+        or set(fields) != set(ACCOUNTING_POSTING_ROW_FIELDS)
+        or any(
+            not isinstance(value, str) or not _PROPERTY_PATTERN.fullmatch(value)
+            for value in fields.values()
+        )
+        or len(set(fields.values())) != len(ACCOUNTING_POSTING_ROW_FIELDS)
+        or mapping.get("required_register_capabilities", []) != []
+        or not isinstance(timezone_name, str)
+        or not timezone_name
+    ):
+        raise SemanticMappingUnconfirmed(
+            "accounting posting-row mapping is incomplete or unsupported"
+        )
+    try:
+        ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise SemanticMappingUnconfirmed("source timezone is not a valid IANA timezone") from exc
+
+
+def build_accounting_posting_rows_query(
+    mapping: dict[str, Any], *, company_external_ref: str, start_period: str, end_period: str
+) -> tuple[str, list[str], str]:
+    validate_accounting_posting_rows_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start >= end:
+        raise ValueError("period boundaries must include a timezone and start < end")
+    source_zone = ZoneInfo(mapping["source_timezone"])
+    start_local = start.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    end_local = end.astimezone(source_zone).replace(tzinfo=None).isoformat(timespec="seconds")
+    fields = mapping["output_fields"]
+    period_field = fields["period"]
+    filter_expr = (
+        f"{build_company_filter(mapping, company_external_ref)} and "
+        f"{period_field} ge datetime'{start_local}' and "
+        f"{period_field} lt datetime'{end_local}'"
+    )
+    return mapping["entity_set"], list(fields.values()), filter_expr
+
+
+def normalize_accounting_posting_rows(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_accounting_posting_rows_mapping(mapping)
+    if not isinstance(rows, list):
+        raise SemanticMappingUnconfirmed("accounting posting response is not a row list")
+    field_map = mapping["output_fields"]
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict) or any(field not in row for field in field_map.values()):
+            raise SemanticMappingUnconfirmed("accounting posting row is missing mapped fields")
+        normalized.append({key: row[field] for key, field in field_map.items()})
+    return normalized
+
+
+def build_account_turnovers_arguments(
+    mapping: dict[str, Any],
+    *,
+    company_external_ref: str,
+    start_period: str,
+    end_period: str,
+) -> tuple[str, str, dict[str, Any]]:
+    """Build bounded inputs from an operator-confirmed source/company mapping."""
+    register_set, method = validate_account_turnovers_mapping(mapping)
+    try:
+        start = datetime.fromisoformat(start_period)
+        end = datetime.fromisoformat(end_period)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("period boundaries must be ISO-8601 timestamps") from exc
+    if start.tzinfo is None or end.tzinfo is None or start > end:
+        raise ValueError("period boundaries must include a timezone and start <= end")
+
+    condition = build_company_filter(mapping, company_external_ref)
+    return (
+        register_set,
+        method,
+        {
+            "Period": {"from": start.isoformat(), "to": end.isoformat()},
+            "Condition": condition,
+        },
+    )
 
 
 class SemanticProfileStatus(StrEnum):
@@ -232,4 +1048,3 @@ def require_profile_capabilities(
             raise CapabilityUnsupported(
                 f"profile depends on an unconfirmed source capability: {register_set}.{method}"
             )
-

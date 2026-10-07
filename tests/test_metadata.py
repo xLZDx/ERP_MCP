@@ -20,3 +20,15 @@ def test_metadata_extracts_entities_and_properties():
     entity = index.entities[0]
     assert entity.name == "Catalog_Organizations"
     assert entity.properties == ("Ref_Key", "Description")
+
+
+def test_html_and_non_odata_xml_are_not_metadata():
+    import pytest
+
+    for body in (
+        b"<html><body>Service unavailable</body></html>",
+        b"<Edmx></Edmx>",
+        b"<error>nope</error>",
+    ):
+        with pytest.raises(ValueError):
+            parse_metadata(body)

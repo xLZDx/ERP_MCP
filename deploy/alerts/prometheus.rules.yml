@@ -1,0 +1,31 @@
+groups:
+  - name: erp-mcp-gateway
+    rules:
+      - alert: ErpMcpHighServerErrorRate
+        expr: sum(rate(erp_mcp_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(erp_mcp_http_requests_total[5m])), 1) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: ERP_MCP server error rate is elevated
+          runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - alert: ErpMcpDependencyErrors
+        expr: sum(rate(erp_mcp_dependency_requests_total{outcome="error"}[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: ERP_MCP dependency errors detected
+          runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - alert: ErpMcpAuditAppendErrors
+        expr: sum(rate(erp_mcp_operations_total{tool="audit",outcome="error"}[5m])) > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: ERP_MCP audit append errors detected
+          runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md
+      - alert: ErpMcpHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(erp_mcp_http_request_duration_seconds_bucket{route="/mcp"}[10m]))) > 2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: ERP_MCP MCP request p95 latency is elevated
+          runbook_url: https://github.com/xLZDx/ERP_MCP/blob/integration/1c-mvp-production-candidate/deploy/runbooks/ALERT_RESPONSE.md

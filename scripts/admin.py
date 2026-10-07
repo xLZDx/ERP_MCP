@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 import uuid
 
 import asyncpg
 
+from business_ai_gateway.admin_mutations import AdminValidationError, _expiry
 from business_ai_gateway.models import Source
 from business_ai_gateway.settings import Settings
 
@@ -150,6 +152,51 @@ async def capability_ack_drift(args, conn):
     print(f"acknowledged metadata drift for {row['source_id']}: {row['metadata_fingerprint']}")
 
 
+async def platform_role_add(args, conn):
+    if args.role == "PLATFORM_ADMIN" and args.source_id is not None:
+        raise AdminValidationError("PLATFORM_ADMIN must be global")
+    if args.role != "PLATFORM_ADMIN" and args.source_id is None:
+        raise AdminValidationError(f"{args.role} must be source-scoped")
+    expires_at = _expiry(args.expires_at)
+    binding_id = uuid.UUID(args.binding_id) if args.binding_id else uuid.uuid4()
+    row = await conn.fetchrow(
+        """
+        INSERT INTO bag.platform_role_bindings(
+          binding_id, principal_kind, principal_id, role_name, source_id,
+          expires_at, created_by_subject, created_by_client, reason
+        )
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        RETURNING binding_id, principal_kind, principal_id, role_name, source_id
+        """,
+        binding_id,
+        args.kind,
+        args.principal,
+        args.role,
+        args.source_id,
+        expires_at,
+        args.created_by,
+        args.client_id,
+        args.reason,
+    )
+    print(dict(row))
+
+
+async def platform_role_revoke(args, conn):
+    row = await conn.fetchrow(
+        """
+        UPDATE bag.platform_role_bindings
+        SET revoked_at=now(), updated_at=now(), row_version=row_version+1
+        WHERE binding_id=$1
+          AND revoked_at IS NULL
+        RETURNING binding_id, principal_kind, principal_id, role_name, source_id, revoked_at
+        """,
+        uuid.UUID(args.binding_id),
+    )
+    if row is None:
+        raise ValueError("platform role binding not found or already revoked")
+    print(dict(row))
+
+
 async def run(args):
     settings = Settings()
     dsn = settings.admin_database_url
@@ -175,6 +222,10 @@ async def run(args):
             await company_upsert(args, conn)
         elif args.command == "capability-ack-drift":
             await capability_ack_drift(args, conn)
+        elif args.command == "platform-role-add":
+            await platform_role_add(args, conn)
+        elif args.command == "platform-role-revoke":
+            await platform_role_revoke(args, conn)
     finally:
         await conn.close()
 
@@ -224,8 +275,36 @@ def parser():
     drift.add_argument("--source-id", required=True)
     drift.add_argument("--expected-fingerprint", required=True)
 
+    role_add = sub.add_parser("platform-role-add")
+    role_add.add_argument("--binding-id")
+    role_add.add_argument("--kind", choices=["subject", "group"], default="subject")
+    role_add.add_argument("--principal", required=True)
+    role_add.add_argument(
+        "--role",
+        choices=[
+            "PLATFORM_ADMIN",
+            "SOURCE_ADMIN",
+            "ACCESS_ADMIN",
+            "PROFILE_ADMIN",
+            "AUDITOR",
+        ],
+        required=True,
+    )
+    role_add.add_argument("--source-id")
+    role_add.add_argument("--expires-at")
+    role_add.add_argument("--created-by", required=True)
+    role_add.add_argument("--client-id", default="operator-cli")
+    role_add.add_argument("--reason", required=True)
+
+    role_revoke = sub.add_parser("platform-role-revoke")
+    role_revoke.add_argument("--binding-id", required=True)
+
     return p
 
 
 if __name__ == "__main__":
-    asyncio.run(run(parser().parse_args()))
+    try:
+        asyncio.run(run(parser().parse_args()))
+    except (AdminValidationError, ValueError, TypeError) as exc:
+        print(f"admin command rejected: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None

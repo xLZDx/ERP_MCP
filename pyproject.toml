@@ -12,18 +12,21 @@ dependencies = [
   "asyncpg>=0.30,<1",
   "defusedxml>=0.7,<1",
   "httpx>=0.28,<1",
+  "httpcore==1.0.9",
   "mcp[cli]>=2,<3",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
   "PyJWT[crypto]>=2.10,<3",
   "redis>=5.2,<7",
   "starlette>=1.3.1,<2",
+  "tzdata>=2024.1",
   "uvicorn[standard]>=0.32,<1",
 ]
 
 [project.optional-dependencies]
 gcp = ["google-cloud-secret-manager>=2.21,<3"]
 dev = [
+  "Markdown==3.11",
   "bandit>=1.8,<2",
   "pip-audit>=2.7,<3",
   "pytest>=9.0.3,<10",
@@ -34,12 +37,20 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+business_ai_gateway = ["static/*.html", "static/*.js"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]
 asyncio_mode = "auto"
 markers = [
   "integration: tests that require a real external 1C test instance",
+  "e2e: end-to-end tests against the disposable local environment (scripts/e2e/up.ps1)",
+  "smoke: fast environment smoke checks",
+  "user: data-plane user E2E suite",
+  "admin: Admin control center E2E suite",
+  "functional: black-box MCP scenario tests against a running stack (tests/functional; skipped without FT_* env)",
 ]
 
 [tool.ruff]
@@ -48,3 +59,8 @@ target-version = "py312"
 
 [tool.ruff.lint.isort]
 known-first-party = ["business_ai_gateway", "testbed"]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.58,<2",
+]

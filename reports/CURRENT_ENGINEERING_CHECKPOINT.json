@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "batch_id": "CAPABILITY_BOUNDARY_20261006",
+  "implementation_sha256": "1d884ee2bea7d92a117001016246f89039f7c99a206a7ae58446c0eca433d387",
+  "production_decision": "NO-GO",
+  "dod_status": "PARTIAL",
+  "pr_number": 11,
+  "pr_state": "DRAFT",
+  "code_evidence_sha": "abe290f",
+  "code_evidence_note": "Local counts below were measured on the exact code of this commit. The final head SHA and hosted CI run for the closing-documents commit are recorded only in the PR #11 body/comment.",
+  "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
+  "last_verified_hosted_run": 37519186079,
+  "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
+  "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
+  "last_failed_hosted_run": 37518882269,
+  "hosted_status_at_snapshot": "PENDING_FOR_CODE_EVIDENCE_abe290f",
+  "last_local_full_suite": {
+    "passed": 1438,
+    "skipped": 238,
+    "skipped_note": "same environment-gated classes as before (E2E/FT stack-env-absent, private Ferma snapshot, native metadata lifecycle opt-in, live RSV bridge); executed in their own planes"
+  },
+  "local_e2e": {
+    "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
+    "smoke": {"passed": 29, "skipped": 0},
+    "user_u01_u18": {"passed": 53, "skipped": 0, "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"},
+    "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
+    "functional_tester_sc01_sc12": {"tests": 83, "passed": 79, "skipped": 3, "xfailed": 1, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE"]}
+  },
+  "manual_owner_acceptance": "PENDING",
+  "local_matrix_steps": {"total": 31, "exit_zero": 31},
+  "focused_tests": {
+    "settlement_and_existing_aging": 34,
+    "financial_statement_contracts": 32,
+    "invoice_rules_parser_existing_csv": 106,
+    "invoice_rule_contracts": 39,
+    "structured_invoice_input": 29,
+    "invoice_csv_store_operator_compatibility": 121,
+    "approved_index_operator_store_settings_and_actual_pg_audit": 117,
+    "private_evidence_store": 45,
+    "windows_privacy_bridge_wire_store": 81,
+    "private_store_os_permissions_and_normalized_evidence": 91,
+    "dad_and_external_evidence": 122,
+    "dad_small_check_contracts": 46,
+    "release_assembly": 21,
+    "pool_validators_and_actual_postgres": 18,
+    "executed_native_bridge_lifecycle": 1,
+    "audit_metrics_with_actual_postgres": 52,
+    "executed_private_ferma_export_intake_comparator_checkpoint": 47,
+    "dashboard_source_render_contracts": 14,
+    "script_evidence_release_acl_sql_guards": 49,
+    "rsv_privacy_bridge_wire": 36,
+    "executed_sdk_lifecycle_wire": 19
+  },
+  "upstream_junit": {
+    "client": {
+      "tests": 429,
+      "skipped": 1
+    },
+    "metadata": {
+      "tests": 53,
+      "skipped": 0
+    },
+    "wrapper": {
+      "tests": 14,
+      "skipped": 0
+    }
+  },
+  "current_full_suite_status": "PASS"
+}

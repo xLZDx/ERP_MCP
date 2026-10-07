@@ -121,6 +121,24 @@ python scripts/admin.py grant-add \
 
 Revocation requires no application restart.
 
+## ChatGPT / custom MCP
+
+The read-only data-plane can be connected to ChatGPT through OpenAI Secure MCP Tunnel without
+publishing the local MCP port directly. The repository includes a synthetic-only local launcher,
+verified tunnel-client installer, tunnel profile helpers and a black-box MCP doctor.
+
+See [docs/CHATGPT_MCP_INTEGRATION.md](docs/CHATGPT_MCP_INTEGRATION.md).
+
+Local synthetic smoke:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\chatgpt\up.ps1
+powershell -ExecutionPolicy Bypass -File scripts\chatgpt\doctor.ps1
+```
+
+The ChatGPT MCP surface remains read-only. Admin Control Center mutations stay on `/admin/` and are
+not exposed as MCP tools by this integration.
+
 ## Definition of MVP done
 
 The codebase being production-shaped is not enough. The environment gets GO only after

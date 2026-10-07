@@ -1,15 +1,111 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "seed_id": "erp-mcp-synthetic-v1",
+  "reconciliation_status": "SYNTHETIC_ONLY",
   "scenarios": [
-    {"id": "ar-overdue-30d", "question": "Receivables overdue more than 30 days", "expected_class": "receivables"},
-    {"id": "partial-payment", "question": "Invoice with partial payment remains open", "expected_class": "settlement"},
-    {"id": "overpayment", "question": "Customer overpayment is separated from receivable", "expected_class": "settlement"},
-    {"id": "unposted-document", "question": "Unposted document does not create accounting movement", "expected_class": "posting"},
-    {"id": "return", "question": "Return reduces the relevant movement", "expected_class": "inventory"},
-    {"id": "vat-mixed", "question": "Different VAT treatments remain distinguishable", "expected_class": "tax"},
-    {"id": "backdated-document", "question": "Backdated document appears in the correct accounting period", "expected_class": "period"},
-    {"id": "duplicate-counterparty", "question": "Potential duplicate counterparties can be identified", "expected_class": "anomaly"},
-    {"id": "cash-bank", "question": "Cash and bank movements remain separable", "expected_class": "cash"},
-    {"id": "account-turnover", "question": "Opening, turnover and closing values reconcile", "expected_class": "accounting"}
+    {
+      "id": "ar-overdue-30d",
+      "question": "Receivables overdue more than 30 days",
+      "expected_class": "receivables",
+      "fixture_id": "ar-overdue-30d",
+      "checks": [{"op": "at_least", "path": "overdue_30d", "value": 0}, {"op": "at_most", "path": "overdue_30d", "value_path": "open_balance"}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "partial-payment",
+      "question": "Invoice with partial payment remains open",
+      "expected_class": "settlement",
+      "fixture_id": "partial-payment",
+      "checks": [{"op": "subtract_equals", "left": "invoice_total", "right": "payments_applied", "expected": "open_balance"}, {"op": "greater_than", "path": "open_balance", "value": 0}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "overpayment",
+      "question": "Customer overpayment is separated from receivable",
+      "expected_class": "settlement",
+      "fixture_id": "overpayment",
+      "checks": [{"op": "equals", "path": "invoice_open", "value": 0}, {"op": "greater_than", "path": "unapplied_advance", "value": 0}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "unposted-document",
+      "question": "Unposted document does not create accounting movement",
+      "expected_class": "posting",
+      "fixture_id": "unposted-document",
+      "checks": [{"op": "equals", "path": "posted", "value": false}, {"op": "equals", "path": "movement_count", "value": 0}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "return",
+      "question": "Return reduces the relevant movement",
+      "expected_class": "inventory",
+      "fixture_id": "return",
+      "checks": [{"op": "subtract_equals", "left": "receipt_quantity", "right": "returned_quantity", "expected": "on_hand"}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "vat-mixed",
+      "question": "Different VAT treatments remain distinguishable",
+      "expected_class": "tax",
+      "fixture_id": "vat-mixed",
+      "checks": [{"op": "sum_equals", "paths": ["standard_base", "exempt_base"], "expected": "total_base"}, {"op": "greater_than", "path": "treatment_count", "value": 1}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "backdated-document",
+      "question": "Backdated document appears in the correct accounting period",
+      "expected_class": "period",
+      "fixture_id": "backdated-document",
+      "checks": [{"op": "date_month_equals_period", "date": "document_date", "period": "accounting_period"}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "duplicate-counterparty",
+      "question": "Potential duplicate counterparties can be identified without merge",
+      "expected_class": "anomaly",
+      "fixture_id": "duplicate-counterparty",
+      "checks": [{"op": "equals", "path": "candidate_count", "value": 2}, {"op": "equals", "path": "merge_count", "value": 0}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "cash-bank",
+      "question": "Cash and bank movements remain separable",
+      "expected_class": "cash",
+      "fixture_id": "cash-bank",
+      "checks": [{"op": "sum_equals", "paths": ["cash_balance", "bank_balance"], "expected": "combined_balance"}, {"op": "greater_than", "path": "cash_balance", "value": 0}, {"op": "greater_than", "path": "bank_balance", "value": 0}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "account-turnover",
+      "question": "Opening, turnover and closing values reconcile",
+      "expected_class": "accounting",
+      "fixture_id": "account-turnover",
+      "checks": [{"op": "opening_plus_debit_minus_credit_equals_closing", "opening": "opening_debit", "debit": "debit_turnover", "credit": "credit_turnover", "closing": "closing_debit"}],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "inventory-receipt-expense",
+      "question": "Inventory movement direction signs reconcile to net quantity change",
+      "expected_class": "inventory",
+      "fixture_id": "inventory-receipt-expense",
+      "checks": [
+        {"op": "equals", "path": "expense_delta", "value": -2},
+        {"op": "subtract_equals", "left": "receipt_quantity", "right": "expense_quantity", "expected": "net_quantity"},
+        {"op": "greater_than", "path": "net_quantity", "value": 0}
+      ],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    },
+    {
+      "id": "cash-receipt-expense",
+      "question": "Cash movement direction signs reconcile to net amount change",
+      "expected_class": "cash_flow",
+      "fixture_id": "cash-receipt-expense",
+      "checks": [
+        {"op": "equals", "path": "expense_delta", "value": -3},
+        {"op": "subtract_equals", "left": "receipt_amount", "right": "expense_amount", "expected": "net_amount"},
+        {"op": "greater_than", "path": "net_amount", "value": 0}
+      ],
+      "native_reconciliation": {"status": "NOT_RUN", "report_ref": null}
+    }
   ]
 }

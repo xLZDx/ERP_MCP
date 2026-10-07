@@ -1,7 +1,8 @@
 # ERP_MCP Definition of Done — 1C Production MVP
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
+**Scope:** active operator freeze; no new product scope until current committed scope closes
 
 A production MVP is Done only when **all mandatory gates** pass for the exact release/environment.
 
@@ -11,7 +12,8 @@ A production MVP is Done only when **all mandatory gates** pass for the exact re
 - requirements/ADRs/DoD match implementation;
 - PR/release identifies exact commit;
 - known deviations/deferred work are listed;
-- vendor provenance/license manifest is current.
+- vendor provenance/license manifest is current;
+- `SCOPE_FREEZE_BASELINE_2026-10-06.md` matches implementation/roadmap and every active task traces to an existing frozen requirement/gate.
 
 ## D1 — Build and dependency integrity
 
@@ -59,7 +61,8 @@ Mandatory:
 - modern OData data-plane exposes only approved reads;
 - fallback/COM/native-query adapter has explicit read-only allowlist;
 - tests prove POST/PUT/PATCH/DELETE or equivalent mutation path is unavailable;
-- arbitrary code execution is not exposed.
+- arbitrary code execution is not exposed;
+- test-only Ferma/1C seeder and historical R/W helpers are absent/unreachable from production MCP routes.
 
 ## D6 — SSRF/transport safety
 
@@ -98,14 +101,24 @@ all pass contract tests and real-source smoke tests where applicable.
 
 ## D9 — Accounting correctness
 
-At least 10 representative accounting scenarios on a real synthetic/test 1C base:
-- native 1C report/UI result captured;
-- MCP/semantic result captured;
-- reconciliation result PASS;
-- discrepancy rules/tolerance documented;
-- semantic profile and metadata fingerprint recorded.
+Accounting correctness uses both frozen L2 tracks:
 
-No unresolved material accounting discrepancy.
+**L2-B real reference**
+- private real-reference 1C clone fingerprinted;
+- known-good/known-error regression cases exercised;
+- native 1C report/UI evidence captured;
+- source-specific profile/mapping tied to exact metadata fingerprint.
+
+**L2-A Ferma controlled synthetic**
+- deterministic scenario/oracle provenance captured;
+- test-only seeder creates normal 1C business documents in a marked disposable base;
+- native 1C result and ERP_MCP result captured independently;
+- oracle independence mechanically preserved.
+
+At least 10 representative native-report reconciliation cases are mandatory per production semantic
+profile, and the broader frozen DAD scenario families must reach their declared acceptance level.
+
+No unresolved material accounting discrepancy may be waived into PASS.
 
 ## D10 — Multi-company operation
 
@@ -193,6 +206,25 @@ Targets are approved from measured results, not guessed.
 - high/blocker risks closed or explicitly accepted;
 - exact production release SHA approved.
 
+## Cross-cutting scope-freeze closure
+
+Before the operator considers lifting/rebaselining the freeze:
+
+- all current committed requirements in `SCOPE_FREEZE_BASELINE_2026-10-06.md` have explicit
+  implementation/evidence status;
+- DAD R0–R7 read-only scope is implemented to its declared acceptance level;
+- real-reference and Ferma controlled-synthetic assurance paths are complete for frozen scenario
+  families;
+- External Evidence dependencies return explicit evidence states rather than guessed PASS;
+- no locally actionable blocker/high risk is hidden as “future”;
+- deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;
+- Command Center and normative docs match exact release evidence.
+
+SC08 rebaseline 2026-10-07: no production DoD gate change; SC08 adds one read-only candidate tool
+whose evidence is synthetic L1 only and never native reconciliation. See the explicit operator
+rebaseline in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1 and the
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
 ## Final terminal condition
 
 **PRODUCTION GO** only when D0–D18 mandatory gates are green for the target environment.
@@ -205,3 +237,20 @@ Allowed intermediate labels:
 
 Do not call a release “production-ready” if it has not reached at least `PILOT READY` with all
 pre-pilot mandatory gates satisfied.
+
+## Admin Control Center extension gate
+
+Admin Control Center may be enabled for an environment only when:
+- ADR-0007 and migrations 008-011 match the deployed exact head;
+- admin audience/scope is distinct from MCP onec:read;
+- OIDC Authorization Code + PKCE login and session/CSRF tests pass;
+- a first PLATFORM_ADMIN subject/group is bootstrapped through controlled operator tooling;
+- business_ai_control_api privilege verification passes and business_ai_app remains unable to administer policy;
+- source egress host/CIDR policy is explicitly configured before mutations are enabled;
+- admin audit/idempotency and exact-ID revoke tests pass;
+- business capability enforcement is enabled only after assignments exist for intended users;
+- company-aware reads are enabled only for entity sets with VALIDATED metadata-bound scope mappings;
+- full baseline tests, Ruff, compileall, Bandit and dependency audit are green;
+- real IdP login, target 1C safe-probe and pilot operator smoke evidence are captured for the deployment environment.
+
+Passing repository tests alone is DEV/INTEGRATION evidence, not production activation approval.

@@ -1,8 +1,8 @@
 # ERP_MCP Architecture
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
-**Status:** FROZEN FOR IMPLEMENTATION
+**Version:** 1.1
+**Date:** 2026-10-06
+**Status:** SCOPE-FROZEN FOR IMPLEMENTATION
 
 ## 1. Architecture principles
 
@@ -16,6 +16,9 @@
 8. **One broken customer source must not take down the gateway.**
 9. **No direct internal 1C SQL integration.**
 10. **Future ERP/Ferma adapters reuse control-plane services, not 1C assumptions.**
+11. **Scope is frozen:** new architecture capability families require explicit operator rebaseline.
+12. **External evidence is a separate read-only plane:** 1C data and outside evidence are not conflated.
+13. **Assurance is dual-source:** real-reference 1C proves configuration fidelity; Ferma synthetic proves controlled scenario coverage/oracle independence.
 
 ## 2. System context
 
@@ -152,6 +155,55 @@ It must not:
 - bypass source/company ACL;
 - infer universal account/register semantics without a validated profile.
 
+### 3.9 External Evidence Plane
+
+Provides read-only, provenance-carrying evidence required by already frozen DAD scenarios.
+
+Examples:
+- invoice/e-factura documents;
+- bank statements;
+- Z and payment-terminal reports;
+- customs/CCAC evidence;
+- filed tax declarations/receipts;
+- payroll source documents;
+- contracts/statutory supporting documents.
+
+Responsibilities:
+- approved-source ingestion;
+- fingerprint/provenance;
+- bounded parsing/normalization;
+- retention/data-minimization enforcement;
+- explicit missing-evidence state.
+
+It is not a generic arbitrary-URL fetcher or document-management product.
+
+### 3.10 DAD Rule Engine
+
+Runs versioned, applicability-aware business-assurance rules over validated semantic results plus
+optional external evidence.
+
+Rules carry:
+- rule-pack/version;
+- source/configuration/company applicability;
+- period/effective date;
+- required evidence;
+- severity/remediation;
+- native-report/reconciliation mapping.
+
+A missing dependency produces `EVIDENCE_REQUIRED`, `INCONCLUSIVE` or
+`CAPABILITY_UNSUPPORTED`, never a guessed PASS.
+
+### 3.11 Test and Assurance Plane
+
+Two complementary L2 paths are required:
+
+- **Real Reference:** private immutable source -> disposable RO clone -> native reports/known-error
+  regression/source-specific profile;
+- **Ferma Controlled Synthetic:** deterministic scenario/oracle -> test-only seeder -> real 1C ->
+  native observer + normal ERP_MCP observer -> independent comparison.
+
+Test-only write capabilities are isolated from the production gateway.
+
 ## 4. Trust boundaries
 
 ### TB-1 Client → ERP_MCP
@@ -204,6 +256,24 @@ Controls:
 - GET/read-only native query boundaries;
 - source-specific circuit breaker.
 
+### TB-6 External Evidence → ERP_MCP
+
+Threats:
+- malicious document content/prompt injection;
+- oversized/decompression-bomb input;
+- incorrect document-to-company association;
+- sensitive evidence leakage;
+- stale/forged evidence.
+
+Controls:
+- approved upload/connector boundary, never model-supplied arbitrary URL;
+- MIME/size/parser limits;
+- fingerprint/provenance;
+- explicit company/source association;
+- content treated as untrusted data;
+- retention/minimization;
+- no evidence text can change authorization/policy.
+
 ## 5. Request sequence
 
 ```text
@@ -230,6 +300,9 @@ Normalizer
   v
 Semantic Layer (when domain tool)
   | map/aggregate
+  v
+DAD Rule Engine (when assurance tool)
+  | combine validated 1C result + approved external evidence
   v
 Audit
   |
@@ -365,9 +438,12 @@ ERP:
 - preserve tenant/org RLS and signed scope;
 - never connect through an unrestricted DB super-user.
 
-Ferma:
+Ferma production boundary:
 - consume oracle/observer/comparator outputs;
 - never feed live ERP/1C results into the expected/oracle computation path.
+
+Ferma's P5 test/oracle role is active committed assurance scope and remains isolated from a future
+production Ferma adapter.
 
 ## 12. Forbidden architectures
 
@@ -378,3 +454,27 @@ Ferma:
 - silent fallback to insecure auth/dev mode;
 - global accounting semantics based solely on Russian default chart-of-accounts assumptions;
 - GPL/AGPL source copied into core without explicit licensing decision.
+
+## 13. Admin Control Center extension
+
+The browser administration plane is a same-origin UI/BFF layered beside, not inside, the MCP authorization model.
+
+Browser -> OIDC Authorization Code + PKCE -> Admin BFF opaque HttpOnly session -> CSRF + admin audience/scope + platform-role authorization -> /admin/v1.
+
+Read operations use the control-plane read model. Mutations use the separate business_ai_control_api credential. Source probes pass an egress allowlist and remain GET/HEAD-only. Admin audit/idempotency is persisted separately. MCP runtime remains separately authorized by onec:read, data ACL, and optional business capability policy.
+
+Admin platform roles are fixed initial roles: PLATFORM_ADMIN, SOURCE_ADMIN, ACCESS_ADMIN, PROFILE_ADMIN and AUDITOR. They are independent of business roles such as ACCOUNTANT or EXECUTIVE.
+
+Company-aware data access is limited to fixed canonical operations. Each resolves the authorized company, checks business capability when enabled, requires acknowledged current metadata and a VALIDATED semantic profile, then constructs the operation's server-owned company predicate before adapter execution. Admin `company_scope_mappings` remain candidate configuration and are not used to authorize reads.
+
+The Admin probe uses a separate four-slot pool with a 45-second deadline and pins an approved
+numeric IP with the original Host/TLS identity. Capability refresh uses that approved adapter.
+Policy, idempotency outcome and success audit commit together; savepoints retain failed keys
+and failure audit without committing failed policy writes. Runtime capability observations
+retain the existing restricted runtime DB path and can be refreshed after an audit failure.
+
+Admin lists use bounded offset pagination (default 50, maximum 200) and source filters.
+Effective access is queried for one exact principal/source, with at most 200 companies and 50
+grant evidence entries per company; all matching grants still determine deny precedence.
+Group membership uses verified caller claims or a future trusted directory. Other subjects'
+memberships remain unknown. Company navigation expansion is unavailable until separately proven.

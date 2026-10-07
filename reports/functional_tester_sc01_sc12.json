@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "candidate_branch": "integration/1c-mvp-production-candidate",
+  "code_evidence_sha": "abe290f",
+  "run_date": "2026-10-07",
+  "evidence_level": "SYNTHETIC_L1_FIXTURE",
+  "native_1c_evidence": false,
+  "totals": {"tests": 83, "passed": 79, "skipped": 3, "xfailed": 1, "failed": 0, "errors": 0, "seconds": 297.08},
+  "scenarios": {
+    "SC01": "PASS", "SC02": "PASS", "SC03": "PASS", "SC04": "PASS", "SC05": "PASS",
+    "SC06": "XFAIL_EXTERNAL_GATE", "SC07": "PASS", "SC08": "PASS",
+    "SC09": "PASS", "SC10": "PASS", "SC11": "PASS", "SC12": "PASS"
+  },
+  "skips": [
+    {"test": "test_oidc_identity_without_grants_is_denied", "reason": "needs-oidc-identity: set FT_BEARER_TOKEN_NO_ACCESS"},
+    {"test": "test_oidc_company_two_identity_cannot_read_company_one", "reason": "needs-oidc-identity: set FT_BEARER_TOKEN_COMPANY_TWO"},
+    {"test": "test_business_capability_denied_for_identity_without_capability", "reason": "needs-oidc-identity + business-capability enforcement environment (E2E)"}
+  ],
+  "upstream_requests": {
+    "fake1c": {"total": 18, "get": 17, "head": 1, "write": 0},
+    "sidecar": {"total": 71, "post_v1_read": 66, "post_v1_capabilities_registers": 5, "other": 0}
+  },
+  "hygiene": {"get_head_only": "PASS", "sidecar_read_only": "PASS", "audit_scan": "PASS", "gateway_log_scan": "PASS"}
+}

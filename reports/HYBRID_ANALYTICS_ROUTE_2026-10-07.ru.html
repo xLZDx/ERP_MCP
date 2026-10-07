@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — гибридный маршрут баланса по аналитике</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}.info{color:var(--info);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — гибридный маршрут OData + COM для баланса по аналитике</h1>
+<div class="sub">Дата: 2026-10-07 · PR #21 (Draft) · ветка <code>feature/hybrid-analytics-route</code> · решение оператора: «сделай гибридный вариант OData + COM, чтобы покрыть все кейсы»</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; feature/hybrid-analytics-route @ 368f4fa</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+
+<h2>Итог</h2>
+<div class="card">
+<p>Добавлен один read-only инструмент <code>accounting_balance_by_analytics(source_id, company_id, as_of)</code>. Он отдаёт остатки по счетам из утверждённого профиля в разрезе до трёх аналитик (контрагент, договор, номенклатура, склад и т. д.).</p>
+<p>Маршрут выбирается до выполнения и только по сохранённым свидетельствам: OData <code>Balance</code>, если он доступен; отдельный локальный COM-мост, только если OData доказанно не поддерживается и есть точно совпадающая утверждённая привязка; неизвестное или изменившееся состояние закрывается отказом. Автоматического перехода с OData на COM после ошибки нет.</p>
+<p><span class="ok">Проверено:</span> ruff чистый; полный набор без e2e: 1769 пройдено, 182 пропущено; хостовый CI PR #21 на голове <code>368f4fa</code>: test, windows-rsv-privacy, odata-upstream, release-evidence — все success.</p>
+<p><span class="ok">Живое доказательство паритета</span> (одноразовая копия, только чтение, эталонная копия не открывалась): публикация OData <code>erp_mcp_probe</code> и COM на той же базе (путь в дескрипторе публикации равен пути COM-копии): 21 из 21 строки совпали, хэши идентичны, база за время прогона не менялась.</p>
+</div>
+
+<h2>Сквозной прогон</h2>
+<div class="card">
+<p>Публичный инструмент запущен целиком на одноразовой копии, только чтение: инструмент → адаптер → реальный sidecar → прокси (только GET/HEAD) → реальная публикация Apache (ветка OData) и инструмент → клиент → реальный мост → реальный COM (ветка COM; возможность OData принудительно задана как «не поддерживается», потому что реальная база отвечает «доступно», поэтому эта ветка доказывает связку, а не выбор маршрута). Реестр и аудит были тестовыми заглушками, маппинги построены по живым ключам.</p>
+<div class="wrap"><table><tr><th>Маппинг</th><th>Маршрут</th><th>Строк</th><th>Аналитика</th></tr><tr><td>счета 521.*</td><td>odata и com</td><td>15 и 15</td><td>контрагент, договор</td></tr><tr><td>счёт 211.1</td><td>odata и com</td><td>6 и 6</td><td>номенклатура, склад</td></tr></table></div>
+<ul><li><span class="warn">Один маппинг на семейство счетов.</span> Смесь 521 и 211 с заданным типом слота корректно отказала; нужен отдельный подтверждённый профиль на семейство.</li><li><span class="warn">Для COM нужна известная версия платформы.</span> Реальная публикация её не сообщает: у источника в реестре должен быть <code>platform_version_hint</code>, иначе привязку создать нельзя.</li><li><span class="warn">Для реальных источников мост и файл привязок пока не настроены.</span> На эталонной базе <code>Balance</code> доступен, шлюз идёт по OData.</li></ul>
+</div>
+
+<h2>Плановые пункты</h2>
+<div class="wrap"><table>
+<tr><th>Пункт плана</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Остаток</th></tr>
+<tr><td>1. ADR и модель угроз</td><td>ADR-0008, дельта THREAT_MODEL, индекс документов</td><td>Документы согласованы, проверка консистентности PASS</td><td><span class="ok">Готово</span> (<code>6fbab64</code>)</td><td>—</td></tr>
+<tr><td>2–3. Шлюз: семантика, маршрут, инструмент</td><td>Концепт <code>account.balance_by_analytics</code>, валидатор маппинга, выбор маршрута, OData-маршрут, инструмент с тремя параметрами</td><td>Тесты маршрутизации: AVAILABLE→odata, UNSUPPORTED+привязка→com, UNKNOWN→отказ без вызовов, ошибка OData не вызывает COM, чужая компания, строка вне набора счетов</td><td><span class="ok">Готово</span> (<code>69681f5</code>, исправления <code>368f4fa</code>)</td><td>—</td></tr>
+<tr><td>4. COM-мост и клиент</td><td>Отдельный loopback-процесс, один фиксированный шаблон запроса, клиент шлюза</td><td>Нет текста/пути/секрета от вызывающего, привязка и компания проверяются до COM, отказ при строке чужой компании, отравление привязки после таймаута</td><td><span class="ok">Готово</span> (<code>e99c9e5</code>, <code>368f4fa</code>)</td><td>Топология и лицензирование COM-хоста для 30–150 баз не решены (вне ADR)</td></tr>
+<tr><td>5. Паритет OData ↔ COM</td><td>Харнес и живой прогон на одной одноразовой копии</td><td>Доказательство «одна и та же база» до чтения; метка parity_proof только при таком доказательстве</td><td><span class="ok">Готово</span>: 21/21 строк</td><td>Метаданные-отпечаток вживую не сравнивался: доказано равенство строк на одной базе, не равенство отпечатков</td></tr>
+<tr><td>6. Управление и документы</td><td>Перебазирование заморозки скоупа, runbook, репин, DECISION_LOG</td><td>SCOPE_FREEZE §2.1, GOVERNANCE, MASTER_PLAN, TDD FR-J, трассируемость HYB-1; проверка консистентности PASS</td><td><span class="ok">Готово</span> (<code>d271dad</code>)</td><td>—</td></tr>
+<tr><td>Конец спринта: локальные ревью</td><td>Три узких sonnet-ревьюера: граница доверия моста, отказ по умолчанию, достаточность тестов</td><td>Нет BLOCKER; закрыты все закрываемые находки</td><td><span class="ok">Готово</span></td><td>В бэклоге: детекция дублей строк, семантика <code>has_more</code> реального sidecar</td></tr>
+</table></div>
+
+<h2>Что поймала живая проверка</h2>
+<div class="card">
+<ul>
+<li>У COM-коннектора нет метода <code>Type()</code>: ссылка строится через <code>TypeDescription(...).Types().Get(0)</code> и <code>XMLValue</code>. Исправлено в мосте и тестовой подделке.</li>
+<li>Реальные дескрипторы публикаций пишут путь без кавычек (<code>ib="File=D:\...;"</code>); парсер доказательства паритета исправлен, добавлен регрессионный тест.</li>
+</ul>
+</div>
+
+<h2>Закрытые находки ревью</h2>
+<div class="card">
+<ul>
+<li>MAJOR: строки OData без поля компании пропускались, а у COM-маршрута не было проверки компании по строке. Теперь поле обязательно, мост выбирает организацию и отказывает на чужой, шлюз сравнивает повторно.</li>
+<li>MAJOR: после таймаута COM-запрос мог ещё идти в 1С, а следующий запрос открывал вторую сессию; медленная привязка занимала общий пул потоков. Теперь привязка «отравлена» до возврата запроса, на привязку допускается не более двух запросов.</li>
+<li>MAJOR (тесты): подмена внутреннего id компании внешней ссылкой, дрейф на COM-ветке, провенанс по полям, счётчики вызовов фабрики и привязок, условие отпечатка в харнесе — каждое теперь имеет проверку, которая падает при мутации.</li>
+<li>MINOR: полная страница всегда помечается усечённой; строгий разбор сумм; аудит успеха после сборки ответа; блокировка создания COM-клиента; канонизация внешней ссылки компании; диапазон <code>as_of</code> 1990–2100; лимит тела по Content-Length; COM-маршрут отказывает для маппинга, который мост не обслуживает.</li>
+</ul>
+</div>
+
+<h2>Что остаётся открытым</h2>
+<div class="card">
+<ul>
+<li>Мерж не заявляется: свежая проверка GPT-PM на голове PR не запускалась по решению оператора.</li>
+<li>Одноразовая копия <code>818HA_report_gen_20261007_172853</code> (около 4 ГБ) больше не нужна; удалить её должен оператор, политика оболочки блокирует рекурсивное удаление.</li>
+<li>Источники только с COM (без OData): нужен вид источника в реестре, вне объёма этого ADR.</li>
+<li>Расхождение 811.1 и оборота между отчётом DAD и нативным регистром, правило-пак из бухгалтерской таблицы, проверки 211 по номенклатуре и складу и 241 по дням, нативные отчёты от бухгалтера: остаются отдельными задачами.</li>
+<li>Тестовый пароль в открытом виде есть в исходном документе DAD: не копировался, при расширении доступа его стоит сменить.</li>
+</ul>
+</div>
+
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

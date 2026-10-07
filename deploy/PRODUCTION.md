@@ -2,6 +2,15 @@
 
 ## Mandatory external services
 
+Connect-time network controls: Python dials only CIDR-validated numeric addresses through a
+pinned HTTPcore backend while preserving the registered hostname for TLS/SNI. Environment proxy
+routing is disabled. The Node sidecar requires `ONEC_EGRESS_CIDRS` when NODE_ENV=production;
+configure it to the same approved source ranges as `BAG_SOURCE_EGRESS_CIDRS`. Its pinned dispatcher
+validates DNS answers at TCP connect, including numeric-IP targets. Both origin changes and HTTP
+redirects are rejected. These controls supplement deployment egress enforcement; they do not
+replace firewall/private-network evidence. Undici runtime dependencies are locked separately from
+the unchanged 1C upstream source.
+
 - PostgreSQL with backups/PITR.
 - Redis or compatible managed Redis.
 - OAuth/OIDC IdP issuing JWT access tokens for the MCP resource.
@@ -32,6 +41,22 @@ gateway sends registered-source URLs and resolved credentials only over the auth
 hop. Production requires HTTPS on that hop. Do not publish the sidecar port outside its private
 service network. The sidecar only exposes bounded OData query/count operations; all other routes and
 verbs fail closed. A sidecar response is rejected unless its source id and upstream SHA match.
+
+Configure `BAG_SOURCE_HOST_ALLOWLIST` on the gateway as a comma-separated list of exact source
+hostnames (no scheme, port, wildcard, or path), synchronized with `ONEC_ALLOWED_HOSTS`. Production
+source registration/lookups fail closed for any hostname not on this list. This hostname check does
+not prevent DNS rebinding: the production network must separately restrict gateway and sidecar
+egress to approved 1C address ranges, and release evidence must demonstrate that DNS resolution
+cannot redirect an approved hostname to an unapproved destination at connect time. On-premises
+private addresses are supported only when explicitly allowlisted and permitted by network policy.
+
+The optional RSV metadata route uses the pinned MIT bridge. In production it remains fail-closed
+unless `BAG_RSV_BRIDGE_CONFIG_SECRET_REF` is supplied: the referenced JSON config is loaded through
+the configured secret provider, written only to a short-lived private temporary directory for the
+bridge process, and removed after the operation. Never use the upstream wizard's persisted customer
+credentials as production secret management. Pin the bridge executable with
+`BAG_RSV_BRIDGE_EXECUTABLE_SHA256`; source SHA and executable digest are distinct provenance.
+Business/query/reveal operations remain unavailable regardless of this metadata route.
 
 ## JWT claims
 
@@ -71,5 +96,10 @@ Before first production enablement:
 - revoked grants effective without restart;
 - writable source rejected;
 - arbitrary URL target impossible;
+- exact source host allowlist enforced and DNS-rebinding/egress controls evidenced;
 - response-size/rate limits verified;
 - ten representative accounting questions reconciled with 1C UI/reports.
+
+Recovery must follow [the rollback and restore runbook](ROLLBACK.md). No in-place database restore
+or destructive recovery is authorized by this document; production rehearsals and named operator
+approval remain required evidence.

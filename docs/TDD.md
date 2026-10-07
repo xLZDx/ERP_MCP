@@ -1,8 +1,8 @@
 # Technical Design Document — ERP_MCP 1C-first Production MVP
 
-**Version:** 1.0  
-**Date:** 2026-10-05  
-**Status:** FROZEN FOR IMPLEMENTATION
+**Version:** 1.1
+**Date:** 2026-10-06
+**Status:** SCOPE-FROZEN FOR IMPLEMENTATION — see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
 
 ## 1. Purpose
 
@@ -10,7 +10,12 @@ ERP_MCP provides a production-grade, read-only AI integration layer for many 1C 
 It presents a safe MCP surface to authorized AI clients while isolating authentication, policy,
 source routing, secrets, audit and accounting semantics from the underlying 1C transport.
 
-The first production scope is 1C. ERP and Ferma reuse the same control plane later.
+The first production scope is 1C. ERP and Ferma production adapters reuse the same control plane
+later. Ferma is already part of the committed **test/assurance** scope as an independent synthetic
+scenario/oracle source; this does not make Ferma a production data adapter.
+
+The current scope is frozen. New feature/scenario/integration families are blocked until the
+committed baseline is closed or explicitly rebaselined by the operator.
 
 ## 2. Problem statement
 
@@ -58,6 +63,29 @@ against native 1C reports/UI on a real test base.
 Identity, ACL, source registry, audit, limits, secrets and observability must be reusable by future
 ERP/Ferma adapters without weakening their native authorization boundaries.
 
+### G-07 DAD business assurance
+
+Implement the already accepted DAD read-only assurance scope above validated 1C primitives:
+
+- accountant-selected month-close checks;
+- invoice/e-factura reconciliation;
+- versioned month-close rule packs;
+- P&L / Cash Flow / Balance Sheet;
+- bank/Z/terminal/customs/CCAC reconciliation;
+- tax/payroll prechecks with explicit evidence dependencies and human review.
+
+Missing required evidence must produce an explicit non-PASS state rather than model inference.
+
+### G-08 Dual real/synthetic correctness
+
+Use both:
+
+- a private real-reference 1C test copy for real configuration/known-error/native-report validation;
+- Ferma-controlled synthetic scenarios for deterministic edge cases, multi-company isolation, scale
+  and an independent expected/oracle.
+
+Neither path may contaminate the other into a correlated false green.
+
 ## 4. Non-goals for 1C MVP
 
 The MVP does **not**:
@@ -67,7 +95,10 @@ The MVP does **not**:
 - emulate internal 1C SQL tables;
 - build a new general-purpose OData v3 implementation when a licensed mature implementation exists;
 - guarantee universal support for every private/custom 1C installation without capability evidence;
-- persist a general-purpose copy/data lake of business transactions.
+- persist a general-purpose copy/data lake of business transactions;
+- act as a generic document-management/archive product beyond evidence required by frozen scenarios;
+- add new business-rule families during the active scope freeze without operator rebaseline;
+- promote historical test/write capability into the production MCP.
 
 ## 5. Hard invariants
 
@@ -83,6 +114,9 @@ The MVP does **not**:
 10. Direct access to internal 1C DB tables is prohibited.
 11. Upstream/copyleft license constraints are enforced before source intake.
 12. ERP/Ferma adapters must preserve their own tenant/org/oracle boundaries.
+13. **SCOPE FREEZE:** implementation work must trace to an already frozen requirement/gate or explicit operator rebaseline.
+14. External evidence is untrusted read-only input with provenance; missing evidence is never guessed into PASS.
+15. Test-only seed/write credentials and code are isolated from the production read-only runtime.
 
 ## 6. Functional requirements
 
@@ -149,6 +183,32 @@ Semantic tools must be transport-independent. Initial target domains:
 
 Mappings are per semantic profile, not universal hard-coded account numbers.
 
+#### FR-E SC08 duplicate-counterparty candidates (explicit operator rebaseline 2026-10-07)
+
+Exactly one read-only tool, `counterparty_duplicate_candidates` (concept
+`counterparty.duplicate_candidates`, permission `accounting.read`, no migration, no merge/write
+capability, no tax-id matching, never native reconciliation). Detection semantics are frozen in
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md); this section only restates the acceptance
+obligations (same mutation cases as contract §12). Record: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1.
+Each rule below MUST fail a test when broken independently:
+
+- case, whitespace, NFKC and punctuation/underscore variants of one name group together; different
+  names do not;
+- blank and punctuation-only names are excluded;
+- the same `Ref_Key` twice is `COUNTERPARTY_FACT_INVALID`;
+- two- and three-member groups are produced;
+- a catalog counterparty without company activity is not returned;
+- company two does not see company one's pair;
+- null-counterparty activity rows are ignored;
+- activity truncation stops before the catalog read;
+- catalog truncation is INCONCLUSIVE with no partial FINDING;
+- shuffled input and duplicated activity rows give an identical result; `group_id` is stable;
+- `merge_count` is 0 in every branch;
+- no write verb reaches Fake1C or the sidecar;
+- no counterparty name appears in audit rows or the gateway log;
+- production/no-profile fails closed with zero upstream reads;
+- `accounting.read` denial is audited with zero upstream reads.
+
 ### FR-F Audit
 
 Record at minimum:
@@ -166,6 +226,51 @@ Record at minimum:
 - error/deny code.
 
 Raw filters/payloads are excluded by default.
+
+### FR-G DAD rule/evidence engine
+
+The accepted DAD business-assurance layer must:
+
+- execute versioned, applicability-aware rules over validated semantic operations;
+- identify rule/profile/configuration/effective-date provenance;
+- support `PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR`;
+- never compile an unrestricted model-generated query into privileged 1C access;
+- retain human-review requirements for tax/payroll/legal conclusions.
+
+### FR-H External Evidence Plane
+
+For already accepted DAD scenarios, ingest approved read-only evidence such as invoices, bank
+statements, Z/terminal reports, customs/CCAC documents, filed tax forms/receipts and payroll source
+documents.
+
+Requirements:
+
+- explicit source/document fingerprint and provenance;
+- no model-supplied arbitrary URL fetch;
+- bounded parsing/normalization;
+- retention/minimization policy;
+- private/customer artifacts excluded from public Git/CI;
+- missing evidence -> `EVIDENCE_REQUIRED` or `INCONCLUSIVE`.
+
+### FR-I Assurance/testbeds
+
+The implementation must preserve three evidence classes:
+
+- L1 Fake1C fast contract/security tests;
+- L2-A Ferma-controlled real-1C synthetic scenarios with independent oracle;
+- L2-B private real-reference 1C configuration/known-error/native-report regression;
+- L3 controlled target/pilot evidence.
+
+Evidence must state its level; L1/L2 cannot be relabelled L3.
+
+### FR-J Balance by analytics (operator rebaseline 2026-10-07)
+
+`accounting_balance_by_analytics(source_id, company_id, as_of)` returns balances of a profile-approved account set
+split by up to three analytics slots. The route (OData `Balance` or the COM bridge) is selected before execution from
+persisted capability evidence; any error of the selected route fails closed and never triggers the other route. Both
+routes return the same canonical rows with `route` provenance. Required tests: route selection (AVAILABLE, UNSUPPORTED
+with and without a binding, UNKNOWN), no runtime fallback, binding mismatch and company-not-in-binding denial, row
+outside the account set fails closed, bridge never accepts caller text. See ADR-0008.
 
 ## 7. Non-functional requirements
 
@@ -244,3 +349,7 @@ Production GO requires all DoD gates, including:
 - current documentation and provenance.
 
 Implementation completeness without accounting and operational evidence is **not production GO**.
+
+The active scope freeze is not released merely because current code is green. The complete committed
+scope defined in `SCOPE_FREEZE_BASELINE_2026-10-06.md` must reach its declared acceptance level
+before new product scope is admitted.

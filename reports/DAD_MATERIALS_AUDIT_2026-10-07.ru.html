@@ -1,0 +1,103 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аудит материалов DAD и пробелы покрытия</title><style>
+:root{--bg:#f6f7f4;--fg:#1d2420;--mut:#5b655f;--line:#d7dcd5;--acc:#1f5f4a;--card:#ffffff;--warn:#8a4b00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151a17;--fg:#e6ebe7;--mut:#9aa59e;--line:#2c3631;--acc:#6bc4a0;--card:#1c231f;--warn:#e0a45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151a17;--fg:#e6ebe7;--mut:#9aa59e;--line:#2c3631;--acc:#6bc4a0;--card:#1c231f;--warn:#e0a45a;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif;padding-inline:max(16px,4vw)}
+main,header{max-width:1040px;margin-inline:auto}header{padding-block:28px 8px}h1{font-size:1.7rem;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.15rem;margin:32px 0 10px;color:var(--acc)}p{max-width:75ch}.lead{color:var(--mut)}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:560px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}tr:last-child td{border-bottom:0}
+.gap{border-left:3px solid var(--warn);padding:6px 12px;margin:10px 0;background:var(--card)}.gap b{color:var(--warn)}
+ol,ul{max-width:75ch;padding-left:22px}li{margin:4px 0}footer{padding-block:24px 40px;color:var(--mut);font-size:.85rem}
+</style></head><body><header><h1>Аудит материалов DAD и пробелы покрытия</h1><p class="lead">Проверены все ссылки из документа «История и контекст 1C MCP», сверены документы с тем, что уже покрыто в ERP_MCP, и проверено на реальной базе, какие отчёты движок 1С формирует сам. Бизнес-цифры в этот отчёт не включены, они лежат в приватных доказательствах вне Git.</p></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-native-reports</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; feature/real1c-native-report-capture @ ffb1ecf</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end --><main><h2>1. Ссылки документа</h2><div class="wrap"><table><thead><tr><th>Материал</th><th>Результат</th><th>Что внутри</th></tr></thead><tbody><tr><td>Список задач (docx)</td><td>Открыт</td><td>8 задач только на чтение и 2 на запись после read-only этапа</td></tr><tr><td>Вопросы пилота (PDF)</td><td>Открыт</td><td>Процесс закрытия месяца и технические запросы к базе</td></tr><tr><td>Копия базы 1С (ZIP, около 2,6 ГБ)</td><td>Доступна, не скачивалась повторно</td><td>Уже восстановлена как эталонная копия; сверка идёт по ней</td></tr><tr><td>Таблица «Verificare balanta» (xlsx)</td><td>Открыт</td><td>Процедура бухгалтера: 172 строки счетов с проверками и перечнем документов</td></tr><tr><td>Скриншот ответов бухгалтера (jpeg)</td><td>Прямая ссылка недоступна без входа</td><td>Шесть шагов проверки зафиксированы в документе покрытия</td></tr><tr><td>Отчёт о проверке закрытия месяца (PDF)</td><td>Открыт</td><td>Расчёт по записям из копии базы, не нативный отчёт 1С</td></tr><tr><td>Папка электронных накладных</td><td>Список открыт</td><td>21 PDF-накладная</td></tr><tr><td>Отчёты по накладным, записи в 1С и статистика (3 PDF)</td><td>Открыты</td><td>Расхождения по накладным и история пилота записи (запись вне текущего объёма)</td></tr><tr><td>Пример Diadoc</td><td>Не открывался автоматически</td><td>Внешний образец сервиса; сайт блокирует автоматические запросы</td></tr></tbody></table></div><h2>2. Нужные отчёты: что даёт движок 1С</h2><p>Материалы DAD сами не содержат нативных отчётов 1С из интерфейса (всё в папке сформировано нашими расчётами). Поэтому проверено, что можно получить из реальной копии базы тем же движком. Все прогоны шли только на одноразовых копиях под учётной записью чтения, эталонная копия не открывалась.</p><div class="wrap"><table><thead><tr><th>Отчёт или запрос</th><th>Результат</th><th>Что закрывает</th></tr></thead><tbody><tr><td>Доходы и расходы (стандартный отчёт)</td><td>Формируется, есть данные</td><td>Выручка 611 за месяц; сверка с отчётом DAD</td></tr><tr><td>Доходы и расходы по документам</td><td>Формируется, 1571 строка</td><td>Список документов для разбора накладных (NR-08, NR-10)</td></tr><tr><td>Остатки денежных средств</td><td>Формируется, один итог</td><td>Только общий итог; кассу 241.1 по дням не даёт (NR-07)</td></tr><tr><td>Остатки и движение товаров</td><td>Формируется, строк данных нет</td><td>Не закрывает склад 211: учёт идёт иначе</td></tr><tr><td>Задолженность поставщикам, взаиморасчёты</td><td>Формируется, строк данных нет</td><td>Подтверждает вывод: расчёты с поставщиками ведутся на счёте 521, а не в таком регистре</td></tr><tr><td>Запрос оборотов и остатков по плану счетов (движок 1С)</td><td>Работает на копии, 66 счетов с данными</td><td>Даёт оборотно-сальдовые данные для NR-02, NR-03, NR-04, NR-07; класс NATIVE_COM_QUERY, только для сравнения</td></tr></tbody></table></div><p class="lead">Оборотно-сальдовая ведомость и карточка счёта как стандартные отчёты через внешнее соединение пустые (логика в интерактивной форме). Для проверенных нами показателей запрос по регистру бухгалтерии работает.</p><h2>3. Сверка отчёта DAD о закрытии месяца с копией базы</h2><p>Отчёт DAD строился по записям, извлечённым из базы. Сверка с оборотами и остатками движка 1С: счета 216.1, 241.1, 611.1, 711.1, 821 и 521.1 совпадают. Счёт 811.1 не совпадает (оборот за август, начальное и конечное сальдо), и общий оборот за август тоже отличается. Причина не установлена. Гипотезы: границы периода и часовой пояс, либо отбор активных записей. Вывод для продукта: итоги нельзя восстанавливать из строк проводок, нужны виртуальные таблицы остатков и оборотов, как в `accounting_balance_and_turnovers`.</p><h2>4. Что покрыто и что нет</h2><div class="wrap"><table><thead><tr><th>Требование DAD</th><th>Статус</th><th>Комментарий</th></tr></thead><tbody><tr><td>Только чтение, 30–150 компаний на пользователя, выдача и отзыв доступа без перезапуска</td><td>Покрыто (синтетика), живое подтверждение частично</td><td>Реальная копия одна и с одной организацией; масштаб и изоляция проверяются на синтетике</td></tr><tr><td>Исправление чтения, если ИИ читает неправильно</td><td>Частично</td><td>Есть дрейф метаданных и профили; нужен выверенный регламент пересборки профиля</td></tr><tr><td>Задача 2: быстрые ответы (долги, НДС, кто должен)</td><td>Частично</td><td>Итог по счёту работает. По контрагентам данные доступны через OData, но готового инструмента нет (пробел A). НДС не покрыт</td></tr><tr><td>Шесть шагов бухгалтера</td><td>Частично</td><td>Внутренний движок есть. На реальной копии не прогнаны: 211 по номенклатуре и складу, 241 по дням (см. пробел C)</td></tr><tr><td>Таблица бухгалтера, 172 строки счетов</td><td>Не покрыто как набор правил</td><td>Нужен версионируемый набор правил с условиями применимости; 172 ветки в коде делать нельзя</td></tr><tr><td>Задача 1: анализ закрытия месяца с предложениями</td><td>Закрыта по решению заказчика</td><td>Заказчик отказался от отчёта по закрытию месяца; правила остаются в дорожной карте</td></tr><tr><td>Задача 3: P&amp;L, ДДС, баланс</td><td>Внутренний контракт, публичных инструментов нет</td><td>Профили счетов нужно утвердить и сверить с нативными отчётами</td></tr><tr><td>Задачи 4–8 (налоги, банк, таможня, зарплата, акты сверки)</td><td>Не покрыто</td><td>Нужны внешние доказательства: выписки, декларации, акты. Без них результат EVIDENCE_REQUIRED, не PASS</td></tr><tr><td>Накладные (21 PDF)</td><td>Логика сверки есть, источник не подключён</td><td>Нужны разбор PDF/XML и сбор из живой базы</td></tr><tr><td>Запись в 1С (накладные, платежи, касса)</td><td>Отложено</td><td>Заказчик вернул режим только чтения; запись только отдельным продуктом</td></tr></tbody></table></div><h2>5. Пробелы, найденные в этой проверке</h2><div class="gap"><b>A.</b> Исправлено после проверки. Раньше здесь было написано, что аналитика по контрагентам недоступна: это было неверно, проверялся только список сущностей, а не функции. На опубликованном OData функции Balance и RecordsWithExtDimensions регистра бухгалтерии работают и возвращают аналитику (контрагент, договор) и остатки по ней. Не хватает инструмента: текущий accounting_balance_and_turnovers отдаёт семь канонических полей без аналитики. Решение оператора: гибрид, OData как основной маршрут и COM как запасной для баз, где аналитика не опубликована.</div><div class="gap"><b>B.</b> Отчёт DAD расходится с движком по счёту 811.1 и общему обороту; причина не найдена (раздел 3). До выяснения нельзя утверждать, что 811.1 в августе без сальдо или с сальдо.</div><div class="gap"><b>C.</b> Проверки по номенклатуре и складу (211) и по дням (241) требуют запросов с аналитикой и по дням. Они ещё не выполнялись на реальной копии. Это следующий шаг для NR-05..NR-07.</div><div class="gap"><b>D.</b> Нативные отчёты из интерфейса 1С всё ещё нужны от бухгалтера для десяти кейсов; запросы движка годятся только для сравнения и не заменяют их.</div><div class="gap"><b>E.</b> В исходном документе в открытом виде записан логин и пароль тестовой копии. Для ERP_MCP это ссылка на секрет; пароль нельзя копировать в Git, отчёты и подсказки. Рекомендуется сменить его, если копия будет использоваться шире.</div><h2>6. Рекомендация по payable_balance</h2><ol><li>Не искать регистр накопления взаиморасчётов: в этой конфигурации его нет.</li><li>Определить payable_balance через профиль по счетам: 521 как долг, 224 и 544 как авансы и прочее. Номера счетов хранит утверждённый профиль, а не код.</li><li>Итог по счёту уже подтверждён: ответ шлюза равен запросу движка по 521.1.</li><li>Разбивку по поставщикам получать из остатков регистра по счёту 521 с аналитикой «контрагент» (OData Balance, запасной маршрут COM), а не из суммы документов поступления: зачёты и предоплаты так не видны.</li><li>Старение долга оставить недоступным. Приёмка: оборотно-сальдовая ведомость по 521 из интерфейса 1С, подготовленная бухгалтером.</li></ol><h2>7. Следующие шаги</h2><ol><li>Построить инструмент остатков с аналитикой: OData как основной маршрут, COM как запасной (решение оператора), с проверкой совпадения двух маршрутов на одноразовой копии.</li><li>Прогнать 211 по номенклатуре и складу и 241 по дням на одноразовой копии.</li><li>Выяснить расхождение по 811.1 на копии базы (период и отбор активных записей).</li><li>Собрать набор правил из таблицы бухгалтера, начиная с тех, что опираются на утверждённые профили.</li><li>После слияния обновлений интеграционной ветки в PR #20 получить свежий APPROVE на новом head.</li></ol></main><footer>ERP_MCP, 2026-10-07</footer>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

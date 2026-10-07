@@ -1,7 +1,8 @@
 # ERP_MCP Integration Contract
 
-**Version:** 1.0  
-**Date:** 2026-10-05
+**Version:** 1.1
+**Date:** 2026-10-06
+**Scope:** frozen; see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
 
 ## 1. Purpose
 
@@ -12,6 +13,9 @@ Define stable boundaries between:
 - future ERP/Ferma adapters.
 
 Transport implementations may change; this contract is the stable product boundary.
+
+During the active scope freeze, new integration families are not added. Only integrations required
+to close already frozen requirements may be implemented.
 
 ## 2. External MCP contract
 
@@ -267,3 +271,184 @@ Expose:
 - lineage/explanations.
 
 Do not expose an adapter path that lets live 1C/ERP data alter Ferma expected/oracle computation.
+
+
+## 13. External Evidence integration contract
+
+The External Evidence Plane is read-only and exists only for evidence classes already required by
+frozen DAD scenarios.
+
+Allowed ingress:
+- operator/user upload through an approved bounded interface;
+- approved authenticated connector;
+- approved private import path.
+
+Forbidden:
+- model-supplied arbitrary URL fetch;
+- evidence content changing authorization/policy;
+- automatic mutation of 1C based solely on parsed evidence;
+- raw private evidence committed to Git/public CI.
+
+Every evidence object carries:
+- evidence ID/class;
+- source/company association;
+- SHA-256/content fingerprint;
+- parser/version;
+- provenance/time/period;
+- retention/access classification;
+- parse warnings.
+
+Missing or unparseable required evidence returns `EVIDENCE_REQUIRED` or `INCONCLUSIVE`.
+
+## 14. DAD rule-engine integration
+
+DAD assurance tools consume only:
+
+1. validated semantic 1C results;
+2. approved external evidence refs;
+3. versioned rule packs.
+
+They MUST NOT expose arbitrary model-generated native queries.
+
+The engine returns stable status:
+`PASS|FINDING|INCONCLUSIVE|EVIDENCE_REQUIRED|CAPABILITY_UNSUPPORTED|ERROR`.
+
+Tax/payroll/legal rule families preserve human-review flags and effective-date/jurisdiction
+provenance.
+
+### 14.1 Normalized evidence provider / operator runbook
+
+`external_evidence_manifest(source_id, company_id, evidence_id)` is read-only and returns ONLY a
+safe manifest. It accepts no path, fetch URL, digest, parser profile, retention policy or approval
+from the model. Gateway OAuth scope, current source/company ACL, rate check and durable access
+receipt precede filesystem reads. Completion records parser fingerprint/count, never raw facts.
+Disabled provider returns `CAPABILITY_UNSUPPORTED`; missing/cross-scope/expired entries return
+`EVIDENCE_REQUIRED`; stale/corrupt input cannot PASS. `business_acceptance=NOT_EVALUATED`.
+
+Configure all three SERVER-ONLY settings together; default is disabled:
+
+```text
+BAG_EVIDENCE_STORE_ROOT=<absolute protected private store outside Git>
+BAG_EVIDENCE_APPROVAL_INDEX=<absolute protected private index file outside Git>
+BAG_EVIDENCE_APPROVAL_SHA256=<operator-approved exact file SHA-256>
+```
+
+Index schema v1 is bounded to 512 KB/64 entries: exact schemas, duplicate JSON keys, receipt/profile
+hashes, source/company scope, UTC approval windows and retention IDs are validated. Protected file
+permissions and pinned SHA are rechecked BEFORE AND AFTER blob reading. Updated files are not
+silently approved or served from a cached authorization snapshot. Pin rotation requires explicit
+operator approval and server restart. This static receipt index requires no new SQL migration.
+
+Operator intake (never a public MCP write tool):
+
+1. Create a new owned store with `PrivateEvidenceStore.create` on an approved private volume.
+   Preserve its actual directory for server configuration; never alter a general/user root.
+2. Obtain explicit source/company parser and storage-retention approval. Prepare only normalized
+   `text/csv` and an exact `EvidenceParserProfile` JSON snapshot, with pinned input/profile hashes.
+   Both files stay outside Git and must pass private-file OS permission checks. Do NOT rename
+   PDF/XML/ZIP to CSV or claim native validation from a normalized exchange.
+3. Execute the explicit operator command (all paths/identities remain private):
+
+```text
+python -m scripts.evidence_intake --store-root <private-store> --input <private.csv>
+  --input-sha256 <approved-sha> --profile <private-profile.json> --profile-sha256 <approved-sha>
+  --retention-policy-id <approved-policy> --approved-from <UTC-RFC3339>
+  --approved-until <UTC-RFC3339> --approval-output <new-file-in-private-store>
+```
+
+To add an artifact, pass `--existing-index` and `--existing-index-sha256`, with a NEW output file.
+Existing index/files are preserved, never overwritten. Only hashes/counts/opaque IDs are printed.
+Configure the returned approval SHA explicitly; never accept an approval digest from model input.
+
+4. Rehearse authorized manifest reading and denied source/company, stale index, tamper and audit
+   outage. Publish only safe hashes/audit correlations, not private paths/raw documents, in CI.
+
+Approval windows bound READ AUTHORIZATION, not legal retention/destruction guarantees. No deletion
+or retention scheduler exists; expired/orphan data needs approved operator handling, not automatic
+destructive cleanup. Real-data ingestion remains gated on the approved storage retention policy.
+Manifest wiring/operator normalized intake are implemented; native parsers, real semantics/native
+reconciliation, deployed volume identity, retention and backup/restore remain OPEN.
+
+#### Structured normalized invoice exchange
+
+An INVOICE-only profile may explicitly select `external-normalized-invoice-json-v1` with MIME
+`application/json` (operator CLI requires `--mime application/json`). No sniffing or alternate
+parser fallback exists; CSV profiles remain CSV. Other evidence classes cannot claim this codec.
+
+The versioned `invoice-normalized-v1` envelope has exact header/line schemas: source evidence ID,
+supplier/buyer identity, invoice number/date, scoped currency, quantity/unit price/discount/net,
+VAT rate/amount, total, UOM/item/quality/canonical line refs and optional explicit service dates.
+All decimal values are strings, finite/bounded with at most six fractional digits; duplicate keys/
+line refs, unknown fields (including policy/scope overrides), cross-period/currency data and excess
+size/line count are rejected. Dates/field names are not guessed from document text.
+
+This is NOT PDF/XML/e-factura extraction, legal VAT rate approval or business arithmetic validation.
+The extractor preserves inconsistent totals for the rule engine rather than repairing them. Its
+document SHA is the normalized CARRIER digest, not an inferred original PDF/primary archive digest.
+Safe manifests disclose neither supplier/buyer identity nor invoice numbers/line values. Invoice
+lines cannot be relabelled as scalar bank/Z facts in the generic DAD comparator. Native extraction,
+original archive verification, live invoice delivery and real-corpus acceptance remain OPEN.
+
+The internal eleven-case rule pack now consumes these immutable fingerprinted facts plus an exact
+approved source observation/rule profile and independently confirmed primary archive proof. It
+never invokes source protocols or writes 1C. Rules compare data, not legal tax eligibility; period,
+service allocation and profile-selected overhead are human-review findings. Nonapplicable checks
+are labelled explicitly, not counted as completed native acceptance. Full live/public invoice tool
+and real native/corpus delivery remain OPEN despite synthetic logical rule coverage.
+
+### 14.2 Internal financial statement projection
+
+An exact approved statement profile chooses canonical account/activity selectors, allowed metric
+types, signs, rows, period/currency/timezone, comparative scope and native report mapping. Internal
+projection is transport-independent; it never builds OData/native/SQL queries or assumes a universal
+chart. Missing or unclassified facts are INCONCLUSIVE, not zero. Cash flow cannot use balance-only
+facts. Required comparative/native evidence must be independently complete and scope-matched.
+Public/live statement tools are not yet implemented by this arithmetic contract; native validation
+and deployment/GO gates remain OPEN. Monetary projection outputs stay private.
+
+### 14.3 Internal AR/AP settlement-to-aging contract
+
+`settlement_aging.py` reuses `aging.aggregate_open_items`, not a second bucket engine or source
+protocol. An exact approved profile binds source/company/config/semantic/metadata, AR/AP sign
+encoding, timezone, as-of, effective window, due-date rule, explicit document/payment relationship
+and native report mapping. Unknown/stale/incomplete/opening-unverified profiles/data cannot PASS.
+
+Document/payment/allocation identities and dates are bounded. Allocations must match exact
+counterparty AND contract, known document/payment refs and chronology; no FIFO/alternative matching
+is guessed. Multiple explicitly identified allocation events are preserved. Payment overallocation
+is rejected; document oversettlement is a visible hashed anomaly/credit, never silently clamped.
+Unapplied advances remain credits and do not net against debt in another item/contract/currency.
+Each scope is one declared currency; no implicit FX conversion exists.
+
+The reused canonical bucket function now bounds rows/IDs/schema/as-of/decimal precision and uses
+local high Decimal precision, preserving micro-units regardless of ambient context. Private money/
+counterparty outputs are not public evidence. Synthetic correctness does NOT validate native due
+dates, settlement relationships or source mapping. Runtime public AR/AP-aging tools, live source
+collectors/approved profiles and native report reconciliation remain OPEN.
+
+## 15. Test-only 1C seeder boundary
+
+The Ferma→1C seeder is WRITE-CAPABLE **only in the test plane**.
+
+It must:
+- run outside production MCP routes;
+- require an explicit synthetic/test target marker;
+- refuse production source IDs;
+- use separate test-only credentials;
+- create normal configuration-native business documents;
+- never write internal 1C SQL/register tables directly just to manufacture expected results;
+- be idempotent per scenario/run/event;
+- emit write receipts/provenance.
+
+Production packages/routes must not expose this seeder.
+
+## 16. Real-reference base integration
+
+The private `REFERENCE_TEST_BASE_A` is handled only as a test/evidence target:
+
+- immutable golden source;
+- disposable RO clone for discovery/reconciliation;
+- optional separate disposable RW clone for isolated test-only write experiments;
+- hashes/fingerprints in public reports, not raw data/credentials/private links.
+
+The golden source is never used for mutation tests.

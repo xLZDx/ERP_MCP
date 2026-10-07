@@ -42,6 +42,8 @@ def auth_setup():
         oauth_audience="https://mcp.example.test/mcp",
         oauth_jwks_url="https://identity.example.test/jwks",
         oauth_required_scope="onec:read",
+        oauth_jwks_timeout_seconds=1.0,
+        oauth_jwks_cache_ttl_seconds=300,
     )
     verifier = JWTTokenVerifier(settings)
     verifier._jwks = FixedJWKS(public_key)

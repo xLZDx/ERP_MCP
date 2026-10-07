@@ -1,0 +1,71 @@
+{
+ "gates": {
+  "frozen catalogue sha256": "OK dad5bddccc3c24ac…",
+  "code tree": "committed",
+  "reference manifest hash": "OK 2751d13fecde4ef1…",
+  "testbed readiness": "READY_FOR_SCENARIO_EXECUTION",
+  "pre-run COM fingerprint equals manifest": "OK d75bf1f7c4b0be1e… (1184 tables, 755011 rows)",
+  "gateway + sidecar + proxies": "reachable",
+  "post-run COM fingerprint equals pre-run": "OK identical",
+  "upstream methods seen by the lane proxies": "{'HEAD': 6, 'GET': 124} (no write verb)",
+  "case result schema": "OK 365 results",
+  "public report view": "exact monetary values of NR/RL2/INV removed (20 figures kept privately)"
+ },
+ "readiness_verdict": "READY_FOR_SCENARIO_EXECUTION",
+ "story_dispositions": {
+  "EVIDENCE_REQUIRED": 29,
+  "CAPABILITY_UNSUPPORTED": 25,
+  "SEMANTIC_PROFILE_UNVALIDATED": 58,
+  "INCONCLUSIVE": 2,
+  "REFUSED-WRITE": 6,
+  "PASS": 6,
+  "FINDING": 4
+ },
+ "supplementary": {
+  "ACL:PASS": 7,
+  "INV:EVIDENCE_REQUIRED": 21,
+  "NR:EVIDENCE_REQUIRED": 9,
+  "NR:INCONCLUSIVE": 1,
+  "RL2:FINDING": 1,
+  "RL2:PASS": 9,
+  "RULE:CAPABILITY_UNSUPPORTED": 90,
+  "RULE:EVIDENCE_REQUIRED": 90,
+  "SYS:FINDING": 5,
+  "SYS:PASS": 2
+ },
+ "findings": [
+  "ST-075",
+  "ST-076",
+  "ST-077",
+  "ST-085",
+  "RL2-10",
+  "SYS-01",
+  "SYS-02",
+  "SYS-03",
+  "SYS-04",
+  "SYS-05"
+ ],
+ "verdict": {
+  "en": "Read-only lane executed against the 818HA reference clone at 1864bd91da9d: 130 catalogue stories, 6 PASS, 58 blocked by the semantic profile gate, 10 FINDING items across all cases. Business acceptance stays PENDING and production stays NO-GO: no native 1C UI report has validated a semantic profile.",
+  "ru": "Линия только для чтения выполнена на эталонном клоне 818HA на 1864bd91da9d: 130 историй каталога, 6 PASS, 58 остановлены воротами семантического профиля, 10 FINDING по всем кейсам. Бизнес-приёмка остаётся PENDING, прод остаётся NO-GO: ни один нативный отчёт интерфейса 1C ещё не валидировал семантический профиль."
+ },
+ "open_items": [
+  {
+   "en": "At least ten genuine native 1C UI reports are required before any semantic profile can be validated.",
+   "ru": "Нужно не менее десяти настоящих нативных отчётов интерфейса 1C, иначе семантический профиль не валидировать."
+  },
+  {
+   "en": "Manual business acceptance is PENDING; production is NO-GO.",
+   "ru": "Ручная бизнес-приёмка PENDING; прод NO-GO."
+  },
+  {
+   "en": "Hosted CI on the exact head is PENDING (recorded in the PR body, not in tracked docs).",
+   "ru": "Hosted CI на точном head в статусе PENDING (фиксируется в теле PR, не в отслеживаемых доках)."
+  }
+ ],
+ "mode": "GATE",
+ "git_sha": "1864bd91da9d6cb2e6af7ba4e58f382b7559bda9",
+ "manifest_sha256": "2751d13fecde4ef11cf7c8cf676c156c4d80f56ba9aaf31a0a5d716aab01a426",
+ "generated_at": "2026-10-07T11:58:16+03:00",
+ "elapsed_seconds": 332
+}
