@@ -80,16 +80,16 @@ class FakeConn:
     def UserName(self) -> str:
         return self.user
 
-    def NewObject(self, name: str) -> Any:
+    def NewObject(self, name: str, *args: Any) -> Any:
         self.new_objects.append(name)
         if name == "Query":
             return FakeQuery(self)
         if name == "Array":
             return _Array()
+        if name == "TypeDescription":  # the live connector has no Type(); this is the route that works
+            type_name = args[0]
+            return SimpleNamespace(Types=lambda: SimpleNamespace(Get=lambda _index: type_name))
         raise AssertionError(f"unexpected NewObject {name}")
-
-    def Type(self, name: str) -> str:
-        return name
 
     def XMLValue(self, type_name: str, text: str) -> FakeRef:
         return FakeRef(text, type_name)
