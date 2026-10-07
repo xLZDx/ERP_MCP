@@ -175,6 +175,24 @@ def test_changed_fingerprints_void_equality(tmp_path):
     assert manifest["fingerprints_stable"] is False and manifest["result"]["equal"] is False
 
 
+def test_differing_metadata_fingerprints_void_equality(tmp_path):
+    clone = make_base(tmp_path, "clone_a")
+    ref = make_base(tmp_path, "reference")
+    manifest = run_parity(context=ctx(com_metadata_fingerprint="z" * 64), com_base_path=clone,
+                          reference_path=ref, odata_fetch=Spy([row()]), com_fetch=Spy([row()]))
+    assert manifest["fingerprints_stable"] is False and manifest["result"]["equal"] is False
+
+
+def test_empty_run_identity_is_refused_before_any_fetch(tmp_path):
+    clone = make_base(tmp_path, "clone_a")
+    ref = make_base(tmp_path, "reference")
+    odata, com = Spy([row()]), Spy([row()])
+    with pytest.raises(ParityRefused):
+        run_parity(context=ctx(run_id=""), com_base_path=clone, reference_path=ref,
+                   odata_fetch=odata, com_fetch=com)
+    assert odata.calls == 0 and com.calls == 0
+
+
 def test_compare_equal_ignores_order_and_field_naming():
     odata = [row(refs=(REF_A, None, None)), row(refs=(REF_B, None, None), debit="2.5")]
     com = [row(refs=(REF_B, None, None), debit="2.50"), row(refs=(REF_A, None, None), d="debit")]

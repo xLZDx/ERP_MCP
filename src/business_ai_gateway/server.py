@@ -812,7 +812,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                     or len(raw_rows) > settings.max_rows
                 ):
                     raise AnalyticsBalanceError("SOURCE_PAGE_INVALID")
-                truncated = page["has_more"]
+                # a full page is never presented as complete, whatever the source flag says
+                truncated = page["has_more"] or len(raw_rows) >= settings.max_rows
                 rows = normalize_odata_balance_rows(
                     raw_rows, mapping, company_external_ref=company.external_ref
                 )
@@ -830,7 +831,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                         binding_version=binding.version,
                         source_id=source.id,
                         as_of=datetime.fromisoformat(arguments["Period"]),
-                        company_external_ref=company.external_ref,
+                        company_external_ref=str(uuid.UUID(company.external_ref)),
                         account_keys=tuple(
                             str(uuid.UUID(item["account_key"])) for item in mapping["accounts"]
                         ),
@@ -847,9 +848,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                     or len(response.rows) > max_rows
                 ):
                     raise AnalyticsBalanceError("COM_PROVENANCE_MISMATCH")
-                truncated = response.truncated
-                rows = normalize_com_balance_rows(list(response.rows), mapping)
+                truncated = response.truncated or len(response.rows) >= max_rows
+                rows = normalize_com_balance_rows(
+                    list(response.rows), mapping, company_external_ref=company.external_ref
+                )
                 adapter_kind = "COM_BRIDGE"
+            provenance = profile_provenance(profile)  # may raise: build it before the success audit
             response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
             detail = f"route={decision.route};reason={decision.reason}"
             if decision.binding is not None:
@@ -884,7 +888,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "route_reason": decision.reason,
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             code = getattr(exc, "code", type(exc).__name__)

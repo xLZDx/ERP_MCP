@@ -7,7 +7,7 @@ request  {"binding_id": str, "binding_version": int, "source_id": str, "as_of": 
           "company_external_ref": str, "account_keys": [guid, ...] (1..16), "max_rows": int (1..5000)}
 response {"binding_id": str, "binding_version": int, "source_id": str,
           "base_identity": {"clone_identity": str, "metadata_fingerprint": 64 hex},
-          "rows": [{"account_key": guid,
+          "rows": [{"account_key": guid, "company_ref": guid (must equal the requested company),
                     "analytics": [{"ref": guid | null, "type": "Catalog.<Name>" | null}] * 3,
                     "debit": decimal string, "credit": decimal string, "currency_ref": guid | null}],
           "truncated": bool}

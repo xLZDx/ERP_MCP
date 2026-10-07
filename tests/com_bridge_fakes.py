@@ -45,11 +45,11 @@ class FakeSelection:
 
 
 def make_row(account: str = ACCOUNT_A, subs=None, debit: Any = Decimal("10.50"), credit: Any = 0,
-             currency: str | None = None, kinds=None) -> SimpleNamespace:
+             currency: str | None = None, kinds=None, company: str = COMPANY) -> SimpleNamespace:
     subs = subs if subs is not None else [CP_REF, None, None]
     kinds = kinds or ["Справочник.Контрагенты", None, None]
     refs = [FakeRef(g, k) if g is not None else None for g, k in zip(subs, kinds, strict=True)]
-    return SimpleNamespace(Счет=FakeRef(account, "ПланСчетов.Хозрасчетный"), Субконто1=refs[0], Субконто2=refs[1], Субконто3=refs[2], Валюта=FakeRef(currency, "Справочник.Валюты") if currency else FakeRef(CURRENCY, "Справочник.Валюты", False), Дт=debit, Кт=credit)
+    return SimpleNamespace(Счет=FakeRef(account, "ПланСчетов.Хозрасчетный"), Организация=FakeRef(company, "Справочник.Организации"), Субконто1=refs[0], Субконто2=refs[1], Субконто3=refs[2], Валюта=FakeRef(currency, "Справочник.Валюты") if currency else FakeRef(CURRENCY, "Справочник.Валюты", False), Дт=debit, Кт=credit)
 
 
 class FakeQuery:
@@ -108,7 +108,8 @@ class _Array(list):
 
 class FakeRuntime:
     def __init__(self, rows=None, fail_connect: bool = False, block: threading.Event | None = None,
-                 user: str = "reader_user"):
+                 user: str = "reader_user", block_only: str | None = None):
+        self.block_only = block_only  # when set, only this base path is blocked by ``block``
         self.rows = rows if rows is not None else [make_row()]
         self.fail_connect = fail_connect
         self.block = block
@@ -123,7 +124,8 @@ class FakeRuntime:
         self.connects.append({"base_path": base_path, "user": user})
         if self.fail_connect:
             raise OSError(f"cannot open {base_path} with password {password}")
-        conn = FakeConn(self.rows, self.user, self.block)
+        blocked = self.block if self.block_only in (None, base_path) else None
+        conn = FakeConn(self.rows, self.user, blocked)
         self.conns.append(conn)
         return conn
 

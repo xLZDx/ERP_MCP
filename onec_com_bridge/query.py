@@ -17,7 +17,8 @@ from .errors import COM_INTERNAL, BridgeFault
 # fields СуммаРазвернутыйОстатокДт/Кт equal OData's split balance exactly (СуммаОстатокДт/Кт would put a debit
 # balance as a negative credit, so they must not be used).
 BALANCE_QUERY_TEMPLATE = (
-    "ВЫБРАТЬ Остатки.Счет КАК Счет, Остатки.Субконто1 КАК Субконто1, Остатки.Субконто2 КАК Субконто2, "
+    "ВЫБРАТЬ Остатки.Счет КАК Счет, Остатки.Организация КАК Организация, "
+    "Остатки.Субконто1 КАК Субконто1, Остатки.Субконто2 КАК Субконто2, "
     "Остатки.Субконто3 КАК Субконто3, Остатки.Валюта КАК Валюта, "
     "Остатки.СуммаРазвернутыйОстатокДт КАК Дт, Остатки.СуммаРазвернутыйОстатокКт КАК Кт "
     "ИЗ РегистрБухгалтерии.Хозрасчетный.Остатки(&Период, Счет В (&Счета), , Организация = &Организация) "
@@ -95,7 +96,7 @@ class AnalyticsBalanceQuery:
             if len(rows) >= max_rows:
                 truncated = True
                 break
-            rows.append(self._row(conn, selection, requested))
+            rows.append(self._row(conn, selection, requested, company_ref))
         return rows, truncated
 
     @staticmethod
@@ -104,12 +105,16 @@ class AnalyticsBalanceQuery:
         return conn.XMLValue(conn.NewObject("TypeDescription", type_name).Types().Get(0), key)
 
     # Live-confirmed on the disposable clone (reader): column access, XMLString GUIDs and Metadata().FullName() kinds.
-    def _row(self, conn: Any, selection: Any, requested: set[str]) -> dict[str, Any]:
+    def _row(self, conn: Any, selection: Any, requested: set[str], company_ref: str) -> dict[str, Any]:
         account_key = self._guid(conn, selection.Счет)
         if account_key is None or account_key not in requested:
             raise _fail()  # a row outside the requested account set is never returned
+        row_company = self._guid(conn, selection.Организация)
+        if row_company != company_ref.lower():
+            raise _fail()  # a row of another company (or without one) is never returned
         return {
             "account_key": account_key,
+            "company_ref": row_company,
             "analytics": [
                 self._analytics(conn, selection.Субконто1),
                 self._analytics(conn, selection.Субконто2),

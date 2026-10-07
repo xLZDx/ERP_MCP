@@ -58,7 +58,7 @@ def odata_row(**over) -> dict:
 
 def com_row(**over) -> dict:
     row = {
-        "account_key": KEY1,
+        "account_key": KEY1, "company_ref": COMPANY,
         "analytics": [{"ref": REF1, "type": "Catalog.Контрагенты"},
                       {"ref": None, "type": None}, {"ref": None, "type": None}],
         "debit": "10.50", "credit": "0.00", "currency_ref": None,
@@ -184,7 +184,7 @@ def test_odata_normalisation_canonical_shape_and_split_balances():
 
 def test_com_normalisation_equals_odata_normalisation():
     odata = normalize_odata_balance_rows([odata_row()], good_mapping(), company_external_ref=COMPANY)
-    com = normalize_com_balance_rows([com_row()], good_mapping())
+    com = normalize_com_balance_rows([com_row()], good_mapping(), company_external_ref=COMPANY)
     assert odata == com
 
 
@@ -225,7 +225,8 @@ def test_account_outside_set_fails_closed():
     for rows, fn in (
         ([odata_row(Account_Key=other)], lambda r: normalize_odata_balance_rows(
             r, good_mapping(), company_external_ref=COMPANY)),
-        ([com_row(account_key=other)], lambda r: normalize_com_balance_rows(r, good_mapping())),
+        ([com_row(account_key=other)], lambda r: normalize_com_balance_rows(
+            r, good_mapping(), company_external_ref=COMPANY)),
     ):
         with pytest.raises(AnalyticsBalanceError) as err:
             fn(rows)
@@ -240,7 +241,7 @@ def test_expected_type_mismatch_fails_closed():
     bad = com_row()
     bad["analytics"][0]["type"] = "Catalog.Номенклатура"
     with pytest.raises(AnalyticsBalanceError):
-        normalize_com_balance_rows([bad], good_mapping())
+        normalize_com_balance_rows([bad], good_mapping(), company_external_ref=COMPANY)
 
 
 def test_missing_field_fails_closed():
@@ -249,17 +250,41 @@ def test_missing_field_fails_closed():
     with pytest.raises(AnalyticsBalanceError):
         normalize_odata_balance_rows([row], good_mapping(), company_external_ref=COMPANY)
     with pytest.raises(AnalyticsBalanceError):
-        normalize_com_balance_rows([{"account_key": KEY1}], good_mapping())
+        normalize_com_balance_rows([{"account_key": KEY1}], good_mapping(), company_external_ref=COMPANY)
 
 
-def test_company_mismatch_fails_closed_and_missing_company_field_is_ignored():
+def test_company_mismatch_fails_closed_on_both_routes():
     with pytest.raises(AnalyticsBalanceError) as err:
         normalize_odata_balance_rows(
             [odata_row(Организация_Key=OTHER_COMPANY)], good_mapping(), company_external_ref=COMPANY)
     assert err.value.code == "COMPANY_SCOPE_MISMATCH"
+    with pytest.raises(AnalyticsBalanceError) as err:
+        normalize_com_balance_rows(
+            [com_row(company_ref=OTHER_COMPANY)], good_mapping(), company_external_ref=COMPANY)
+    assert err.value.code == "COMPANY_SCOPE_MISMATCH"
+
+
+def test_missing_company_field_fails_closed_on_both_routes():
     row = odata_row()
     del row["Организация_Key"]
-    assert normalize_odata_balance_rows([row], good_mapping(), company_external_ref=COMPANY)
+    with pytest.raises(AnalyticsBalanceError) as err:
+        normalize_odata_balance_rows([row], good_mapping(), company_external_ref=COMPANY)
+    assert err.value.code == "SOURCE_RESPONSE_INVALID"
+    com = com_row()
+    del com["company_ref"]
+    with pytest.raises(AnalyticsBalanceError) as err:
+        normalize_com_balance_rows([com], good_mapping(), company_external_ref=COMPANY)
+    assert err.value.code == "SOURCE_RESPONSE_INVALID"
+    with pytest.raises(AnalyticsBalanceError):
+        normalize_com_balance_rows(
+            [com_row(company_ref=None)], good_mapping(), company_external_ref=COMPANY)
+
+
+@pytest.mark.parametrize("value", ["1_000", " 1", "1 ", "0x10", "+1", "1e999", "١٢٣", "NaN", "-Infinity"])
+def test_decimal_rejects_malformed_numbers(value):
+    with pytest.raises(AnalyticsBalanceError):
+        normalize_odata_balance_rows(
+            [odata_row(СуммаDebitBalance=value)], good_mapping(), company_external_ref=COMPANY)
 
 
 def test_non_list_and_non_object_rows_fail_closed():

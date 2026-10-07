@@ -61,7 +61,7 @@
 </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
 </section>
 <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=ba43973ae6c4787b5fec7d81063fd88e628df46cc0ff26df831bd78f8a0049eb -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=c79d9ef51d172fd173b00f56715e0d835be72da1cfc82cd48e4ad9e4efd66913 -->
 <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
 
 <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
@@ -3494,7 +3494,7 @@ storage and retrying with a new request; never bypass audit or replay a read as 
     </article>
 <article class="doc-card searchable" id="doc-threat-model" data-cat="security" data-title="Threat Model">
       <div class="doc-head"><div><span class="eyebrow">Безопасность</span><h2>Threat Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=11eb4b9a6f363a34f82d0f844314af24be0f9bc3bf323f96faddb55ed0bbc4fa DOC_RENDER_SHA256=78ce9c4035989e4db7547f09064b73dfacc4303fc2175e216f4ce4aed54b1cbe -->
+      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=5f0210ae282f4d246965fb41a7cf222d780a6683eaa76ddb1af9c018060b48ff DOC_RENDER_SHA256=7069f5fefc9148382518cefdd3fd4cefa48ab78e4de2dcfdf49d011120ec74cb -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Threat Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -3734,7 +3734,7 @@ explicit operator rebaseline.</p>
 <tr>
 <td>Information disclosure: cross-company rows</td>
 <td>Company A reads company B through a shared base</td>
-<td>Company reference must be in the binding's allowed set, checked before any COM call; the bridge filters by the company dimension; rows whose company differs fail closed on both routes</td>
+<td>Company reference must be in the binding's allowed set, checked before any COM call; the bridge filters by the company dimension, selects it in every row and fails closed on a row of another company; the gateway client and normalizer compare each row's company again; an OData row without the company property is refused</td>
 </tr>
 <tr>
 <td>Information disclosure: silent fallback hides a real failure</td>
@@ -3759,7 +3759,12 @@ explicit operator rebaseline.</p>
 <tr>
 <td>Denial of service</td>
 <td>Large balance sets or COM license exhaustion</td>
-<td>Row cap, timeout, one connection per binding, bounded accounts and analytics slots; production licensing topology is an open item</td>
+<td>Row cap, timeout, one connection per binding, bounded accounts and analytics slots; after a timeout the binding stays poisoned (immediate <code>COM_UNAVAILABLE</code>, no second 1C session) until the abandoned query returns; at most two requests per binding are admitted so a slow binding cannot starve the others; the body cap is checked on <code>Content-Length</code> before the body is read; production licensing topology is an open item</td>
+</tr>
+<tr>
+<td>Spoofing: bridge identity is configuration, not attestation</td>
+<td><code>clone_identity</code> and <code>metadata_fingerprint</code> come from the operator's bridge file and are not recomputed; the bridge does not itself refuse the reference clone path</td>
+<td>Operator attestation: the binding is approved by the operator, the gateway compares the echoed identity with its own binding, the COM route serves only the fixed register and company field, and production binding review must confirm the base path is not the reference clone</td>
 </tr>
 </tbody>
 </table>

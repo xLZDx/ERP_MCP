@@ -132,6 +132,38 @@ def test_available_routes_odata_and_never_consults_bindings():
     assert (decision.route, decision.binding) == ("odata", None)
 
 
+def test_com_route_refuses_a_mapping_the_bridge_does_not_query():
+    mapping = good_mapping()
+    mapping["company_scope"]["field"] = "Company_Key"
+    with pytest.raises(ComRouteUnsupported) as err:
+        select_route(make_caps("UNSUPPORTED"), mapping, (make_binding(),),
+                     source=SOURCE, company_external_ref=COMPANY)
+    assert err.value.reason == "com_mapping_not_served_by_bridge"
+    # OData is unaffected by the bridge's fixed shape
+    assert select_route(make_caps("AVAILABLE"), mapping, boom,
+                        source=SOURCE, company_external_ref=COMPANY).route == "odata"
+
+
+@pytest.mark.parametrize("as_of", ["0001-01-01T00:00:00+00:00", "1899-12-31T23:59:59+00:00",
+                                   "2101-01-01T00:00:00+00:00"])
+async def test_out_of_range_as_of_rejected_before_any_call(as_of):
+    mcp, audit, onec, com, company = build("UNSUPPORTED", binding=make_binding())
+    with pytest.raises(UnexpectedToolError):
+        await call(mcp, company, as_of=as_of)
+    onec.register_read.assert_not_awaited()
+    assert com.calls == [] and audit.events[-1]["outcome"] == "error"
+
+
+async def test_uppercase_external_ref_is_canonicalised_for_the_bridge():
+    mcp, _a, _o, com, company = build("UNSUPPORTED", ext_ref=COMPANY.upper(), binding=make_binding(),
+                                      com=FakeCom(ComBalanceResponse(
+                                          binding_id="bind-1", binding_version=3, source_id="source-1",
+                                          clone_identity="clone-A", metadata_fingerprint=META,
+                                          rows=(com_row(),), truncated=False)))
+    await call(mcp, company)
+    assert com.calls[0].company_external_ref == COMPANY
+
+
 def test_unsupported_with_matching_binding_routes_com():
     binding = make_binding()
     decision = select_route(make_caps("UNSUPPORTED"), good_mapping(), (binding,),
@@ -254,6 +286,8 @@ def test_loader_rejects_duplicate_keys_duplicate_sources_and_bad_pin(tmp_path):
 class FakeCom:
     def __init__(self, response=None, error=None):
         self.calls = []
+        self.factory_calls = 0
+        self.bindings_calls = 0
         self.response = response
         self.error = error
 
@@ -267,10 +301,11 @@ class FakeCom:
 
 
 def build(state="AVAILABLE", *, binding=None, com=None, odata_result=None, odata_error=None,
-          drift="STABLE", fingerprint=META, mapping=None, source_denied=False):
-    company = UUID(COMPANY)
+          drift="STABLE", fingerprint=META, mapping=None, source_denied=False,
+          internal_id=COMPANY, ext_ref=COMPANY):
+    company = UUID(internal_id)
     registry = TestRegistry()
-    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=COMPANY))
+    registry.require_company = AsyncMock(return_value=SimpleNamespace(external_ref=ext_ref))
     registry.save_capabilities = AsyncMock(return_value={"drift_status": drift})
     registry.require_semantic_mapping = AsyncMock(return_value={
         "mapping": mapping or good_mapping(), "profile_kind": "VALIDATED_NATIVE",
@@ -292,11 +327,16 @@ def build(state="AVAILABLE", *, binding=None, com=None, odata_result=None, odata
     com_client = com or FakeCom()
 
     async def factory():
+        com_client.factory_calls += 1
         return com_client
+
+    def bindings():
+        com_client.bindings_calls += 1
+        return (binding,) if binding else ()
 
     runtime = SimpleNamespace(
         audit=audit, registry=registry, rate_limit=SimpleNamespace(check=AsyncMock()), onec=onec,
-        com_bindings=lambda: (binding,) if binding else (), com_client=factory)
+        com_bindings=bindings, com_client=factory)
     return build_mcp(Settings(), runtime), audit, onec, com_client, company
 
 
@@ -320,7 +360,7 @@ async def test_available_uses_odata_and_reports_route():
     kwargs = onec.register_read.await_args.kwargs
     assert kwargs["method"] == "balance" and kwargs["top"] == Settings().max_rows
     assert set(kwargs["arguments"]) == {"Period", "Condition", "AccountCondition"}
-    assert com.calls == []
+    assert com.calls == [] and com.factory_calls == 0 and com.bindings_calls == 0
     assert audit.events[-1]["outcome"] == "success"
     assert audit.events[-1]["detail_code"] == "route=odata;reason=capability_available"
 
@@ -351,7 +391,7 @@ async def test_odata_error_never_falls_back_to_com(error):
     with pytest.raises(UnexpectedToolError):
         await call(mcp, company)
     onec.register_read.assert_awaited_once()
-    assert com.calls == []
+    assert com.calls == [] and com.factory_calls == 0 and com.bindings_calls == 0
     last = audit.events[-1]
     assert last["outcome"] in {"error", "denied"} and "route=odata" in last["detail_code"]
 
@@ -370,6 +410,65 @@ async def test_metadata_drift_stops_before_any_data_call():
         await call(mcp, company)
     onec.register_read.assert_not_awaited()
     assert com.calls == [] and audit.events[-1]["outcome"] == "denied"
+
+
+async def test_drift_on_unsupported_route_stops_before_binding_and_com():
+    mcp, audit, onec, com, company = build("UNSUPPORTED", binding=make_binding(), drift="DRIFTED")
+    with pytest.raises(UnexpectedToolError):
+        await call(mcp, company)
+    onec.register_read.assert_not_awaited()
+    assert com.calls == [] and com.factory_calls == 0 and com.bindings_calls == 0
+    assert audit.events[-1]["outcome"] == "denied"
+    assert "MetadataDriftUnacknowledged" in audit.events[-1]["detail_code"]
+
+
+@pytest.mark.parametrize("state,route", [("AVAILABLE", "odata"), ("UNSUPPORTED", "com")])
+async def test_acknowledged_drift_proceeds(state, route):
+    mcp, _a, _o, _c, company = build(state, binding=make_binding(), drift="ACKNOWLEDGED")
+    assert payload(await call(mcp, company))["route"] == route
+
+
+async def test_company_external_ref_not_internal_id_reaches_both_routes():
+    internal, ext = "99999999-9999-4999-8999-999999999999", COMPANY
+    result = {"value": [odata_row()], "page": {"has_more": False}}
+    mcp, _a, onec, _c, company = build("AVAILABLE", internal_id=internal, ext_ref=ext, odata_result=result)
+    await call(mcp, company)
+    condition = onec.register_read.await_args.kwargs["arguments"]["Condition"]
+    assert ext in condition and internal not in condition
+    mcp, _a, _o, com, company = build(
+        "UNSUPPORTED", internal_id=internal, ext_ref=ext, binding=make_binding())
+    await call(mcp, company)
+    assert com.calls[0].company_external_ref == ext
+
+
+async def test_foreign_company_row_fails_closed_through_the_tool():
+    result = {"value": [odata_row(Организация_Key=OTHER_COMPANY)], "page": {"has_more": False}}
+    mcp, audit, _o, com, company = build("AVAILABLE", odata_result=result, binding=make_binding())
+    with pytest.raises(UnexpectedToolError):
+        await call(mcp, company)
+    assert audit.events[-1]["outcome"] == "error"
+    assert "COMPANY_SCOPE_MISMATCH" in audit.events[-1]["detail_code"]
+    assert com.calls == []
+    bad = ComBalanceResponse(binding_id="bind-1", binding_version=3, source_id="source-1",
+                             clone_identity="clone-A", metadata_fingerprint=META,
+                             rows=(com_row(company_ref=OTHER_COMPANY),), truncated=False)
+    mcp, audit, *_rest, company = build("UNSUPPORTED", binding=make_binding(), com=FakeCom(bad))
+    with pytest.raises(UnexpectedToolError):
+        await call(mcp, company)
+    assert audit.events[-1]["outcome"] == "error"
+    assert "COMPANY_SCOPE_MISMATCH" in audit.events[-1]["detail_code"]
+
+
+async def test_full_page_is_never_reported_complete():
+    cap = Settings().max_rows
+    result = {"value": [odata_row()] * cap, "page": {"has_more": False}}
+    mcp, _a, _o, _c, company = build("AVAILABLE", odata_result=result)
+    assert payload(await call(mcp, company))["truncated"] is True
+    full = ComBalanceResponse(binding_id="bind-1", binding_version=3, source_id="source-1",
+                              clone_identity="clone-A", metadata_fingerprint=META,
+                              rows=(com_row(),) * min(cap, 5000), truncated=False)
+    mcp, _a, _o, _c, company = build("UNSUPPORTED", binding=make_binding(), com=FakeCom(full))
+    assert payload(await call(mcp, company))["truncated"] is True
 
 
 async def test_unknown_capability_fails_closed():
@@ -460,6 +559,23 @@ async def test_com_response_provenance_mismatch_fails_closed():
     assert len(com.calls) == 1 and audit.events[-1]["outcome"] == "error"
 
 
+@pytest.mark.parametrize("field,value", [
+    ("binding_id", "other"), ("source_id", "source-2"),
+    ("clone_identity", "clone-B"), ("metadata_fingerprint", OTHER_META),
+])
+async def test_com_provenance_mismatch_per_field_fails_closed(field, value):
+    values = {"binding_id": "bind-1", "binding_version": 3, "source_id": "source-1",
+              "clone_identity": "clone-A", "metadata_fingerprint": META,
+              "rows": (com_row(),), "truncated": False}
+    values[field] = value
+    mcp, audit, _o, com, company = build(
+        "UNSUPPORTED", binding=make_binding(), com=FakeCom(ComBalanceResponse(**values)))
+    with pytest.raises(UnexpectedToolError):
+        await call(mcp, company)
+    assert len(com.calls) == 1 and audit.events[-1]["outcome"] == "error"
+    assert "COM_PROVENANCE_MISMATCH" in audit.events[-1]["detail_code"]
+
+
 async def test_com_bridge_error_fails_closed_without_odata():
     mcp, audit, onec, _c, company = build(
         "UNSUPPORTED", binding=make_binding(), com=FakeCom(error=ConnectionError("down")))
@@ -479,9 +595,11 @@ async def test_row_outside_account_set_fails_closed_on_both_routes():
     bad = ComBalanceResponse(binding_id="bind-1", binding_version=3, source_id="source-1",
                              clone_identity="clone-A", metadata_fingerprint=META,
                              rows=(com_row(account_key=other),), truncated=False)
-    mcp, audit, *_rest, company = build("UNSUPPORTED", binding=make_binding(), com=FakeCom(bad))
+    mcp, audit, _o, com, company = build("UNSUPPORTED", binding=make_binding(), com=FakeCom(bad))
     with pytest.raises(UnexpectedToolError):
         await call(mcp, company)
+    assert len(com.calls) == 1 and audit.events[-1]["outcome"] == "error"
+    assert "SOURCE_RESPONSE_INVALID" in audit.events[-1]["detail_code"]
 
 
 async def test_source_acl_denial_is_audited_and_stops_before_capabilities():

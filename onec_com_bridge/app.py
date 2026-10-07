@@ -63,6 +63,8 @@ class BalanceRequest(BaseModel):
         parsed = dt.datetime.fromisoformat(value)
         if parsed.tzinfo is None or parsed.utcoffset() is None:
             raise ValueError("as_of needs an explicit offset")
+        if not 1990 <= parsed.year <= 2100:
+            raise ValueError("as_of is outside the supported range")
         return value
 
     @field_validator("account_keys")
@@ -120,6 +122,9 @@ def create_app(
         if not authorised(request):
             return _error(COM_UNAUTHORIZED)
         try:
+            declared = request.headers.get("content-length", "")
+            if not declared.isdigit() or int(declared) > MAX_BODY_BYTES:
+                raise BridgeFault(COM_BAD_REQUEST)  # refused before any byte of the body is read
             body = await request.body()
             if len(body) > MAX_BODY_BYTES:
                 raise BridgeFault(COM_BAD_REQUEST)

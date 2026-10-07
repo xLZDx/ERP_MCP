@@ -152,7 +152,7 @@ class ComBridgeClient:
         if not isinstance(rows, list) or not isinstance(truncated, bool) or len(rows) > request.max_rows:
             raise _invalid()
         requested = set(request.account_keys)
-        clean = tuple(ComBridgeClient._row(row, requested) for row in rows)
+        clean = tuple(ComBridgeClient._row(row, requested, request.company_external_ref) for row in rows)
         return ComBalanceResponse(
             binding_id=request.binding_id,
             binding_version=request.binding_version,
@@ -164,9 +164,10 @@ class ComBridgeClient:
         )
 
     @staticmethod
-    def _row(row: Any, requested: set[str]) -> dict[str, Any]:
+    def _row(row: Any, requested: set[str], company: str) -> dict[str, Any]:
         if not isinstance(row, dict) or set(row) != {
             "account_key",
+            "company_ref",
             "analytics",
             "debit",
             "credit",
@@ -179,6 +180,8 @@ class ComBridgeClient:
         if (
             not isinstance(account, str)
             or account not in requested
+            or not isinstance(row["company_ref"], str)
+            or row["company_ref"].lower() != company.lower()
             or not isinstance(analytics, list)
             or len(analytics) != ANALYTICS_SLOTS
             or not all(isinstance(row[k], str) and _DECIMAL.match(row[k]) for k in ("debit", "credit"))
@@ -203,6 +206,7 @@ class ComBridgeClient:
                 raise _invalid()
         return {
             "account_key": account,
+            "company_ref": row["company_ref"].lower(),
             "analytics": slots,
             "debit": row["debit"],
             "credit": row["credit"],

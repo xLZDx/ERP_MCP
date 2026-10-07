@@ -39,6 +39,11 @@ ANALYTICS_ROLES = frozenset(
 ABSENT_EVIDENCE_KIND = "metadata-function-import-absent-or-not-read-only"
 MAX_BINDINGS_FILE_BYTES = 128_000
 ZERO_GUID = "00000000-0000-0000-0000-000000000000"
+AS_OF_MIN_YEAR = 1990
+AS_OF_MAX_YEAR = 2100
+# The bridge runs one code-owned template on this register and company dimension only (ADR-0008 section 7).
+COM_FIXED_ENTITY_SET = "AccountingRegister_Хозрасчетный"
+COM_FIXED_COMPANY_FIELD = "Организация_Key"
 
 _GUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\Z")
 _CODE = re.compile(r"[0-9A-Za-z._\-\u0080-￿]{1,32}\Z")
@@ -176,6 +181,8 @@ def build_analytics_balance_arguments(
         raise ValueError("as_of must be an ISO-8601 timestamp") from exc
     if point.tzinfo is None or point.utcoffset() is None:
         raise ValueError("as_of must include an explicit timezone")
+    if not AS_OF_MIN_YEAR <= point.year <= AS_OF_MAX_YEAR:
+        raise ValueError("as_of is outside the supported range")
     field = mapping["account_field"]
     condition = " or ".join(
         f"{field} eq guid'{UUID(item['account_key'])!s}'" for item in mapping["accounts"]
@@ -193,18 +200,28 @@ def build_analytics_balance_arguments(
 
 # ---------------------------------------------------------------- canonical rows
 
+_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\Z")
+_AMOUNT_CONTEXT_DIGITS = 60
+
+
 def _decimal(value: Any) -> str:
     if isinstance(value, bool) or value is None:
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
+    text = str(value)
+    if not _NUMBER.fullmatch(text):  # rejects "1_000", "NaN", "Infinity", whitespace and hex forms
+        raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
     try:
-        number = Decimal(str(value))
+        number = Decimal(text)
     except (InvalidOperation, ValueError):
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID") from None
-    if not number.is_finite():
+    if not number.is_finite() or number.adjusted() >= _AMOUNT_CONTEXT_DIGITS:
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
     if number == 0:
         return "0"
-    return format(number.normalize(), "f")
+    text = format(number, "f")  # exact, no context rounding
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
 
 
 def _guid_or_none(value: Any) -> str | None:
@@ -266,16 +283,14 @@ def normalize_odata_balance_rows(
     for row in rows:
         if not isinstance(row, dict):
             raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
-        needed = [mapping["account_field"], *mapping["amount_fields"].values()]
+        needed = [mapping["account_field"], scope["field"], *mapping["amount_fields"].values()]
         for slot in slots:
             needed += [slot["ref_field"], slot["type_field"]]
         if currency_field:
             needed.append(currency_field)
         if any(name not in row for name in needed):
             raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
-        if scope["field"] in row and not _same_company(
-            row[scope["field"]], company_external_ref, scope["value_type"]
-        ):
+        if not _same_company(row[scope["field"]], company_external_ref, scope["value_type"]):
             raise AnalyticsBalanceError("COMPANY_SCOPE_MISMATCH")
         key = _guid_or_none(row[mapping["account_field"]])
         if key is None or key not in accounts:
@@ -296,7 +311,9 @@ def normalize_odata_balance_rows(
     return out
 
 
-def normalize_com_balance_rows(response_rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
+def normalize_com_balance_rows(
+    response_rows: Any, mapping: dict[str, Any], *, company_external_ref: str
+) -> list[dict[str, Any]]:
     validate_analytics_balance_mapping(mapping)
     if not isinstance(response_rows, (list, tuple)):
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
@@ -306,12 +323,14 @@ def normalize_com_balance_rows(response_rows: Any, mapping: dict[str, Any]) -> l
     for row in response_rows:
         if (
             not isinstance(row, dict)
-            or not {"account_key", "analytics", "debit", "credit", "currency_ref"} <= set(row)
+            or not {"account_key", "company_ref", "analytics", "debit", "credit", "currency_ref"} <= set(row)
             or not isinstance(row["analytics"], list) or len(row["analytics"]) != MAX_SLOTS
             or any(not isinstance(item, dict) or not {"ref", "type"} <= set(item)
                    for item in row["analytics"])
         ):
             raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
+        if not _same_company(row["company_ref"], company_external_ref, "guid"):
+            raise AnalyticsBalanceError("COMPANY_SCOPE_MISMATCH")
         key = _guid_or_none(row["account_key"])
         if key is None or key not in accounts:
             raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
@@ -545,4 +564,9 @@ def select_route(
         if exc.code == "COM_COMPANY_NOT_ALLOWED":
             raise
         raise ComRouteUnsupported(exc.code.lower()) from None
+    if (
+        register_set != COM_FIXED_ENTITY_SET
+        or mapping["company_scope"]["field"] != COM_FIXED_COMPANY_FIELD
+    ):
+        raise ComRouteUnsupported("com_mapping_not_served_by_bridge")
     return RouteDecision("com", "capability_unsupported_binding_approved", binding)

@@ -50,7 +50,7 @@ def good_envelope() -> dict:
         "binding_id": "bind-1", "binding_version": 3, "source_id": "src-1",
         "base_identity": {"clone_identity": "clone-a", "metadata_fingerprint": FINGERPRINT},
         "rows": [{
-            "account_key": ACCOUNT_A,
+            "account_key": ACCOUNT_A, "company_ref": COMPANY,
             "analytics": [{"ref": CP_REF, "type": "Catalog.Контрагенты"}, {"ref": None, "type": None},
                           {"ref": None, "type": None}],
             "debit": "1.5", "credit": "0", "currency_ref": None,
@@ -172,6 +172,9 @@ async def test_echo_mismatch_is_binding_mismatch(envelope):
         _mutated(["rows", 0, "currency_ref"], "nope"),
         _mutated(["rows", 0, "extra"], 1),
         _mutated(["rows", 0, "currency_ref"], None, delete=True),
+        _mutated(["rows", 0, "company_ref"], "22222222-2222-2222-2222-222222222222"),
+        _mutated(["rows", 0, "company_ref"], None),
+        _mutated(["rows", 0, "company_ref"], None, delete=True),
     ],
 )
 async def test_malformed_response_rejected(envelope):

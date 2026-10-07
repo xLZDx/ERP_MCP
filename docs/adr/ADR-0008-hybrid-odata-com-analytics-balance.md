@@ -92,8 +92,11 @@ Mapping (`account.balance_by_analytics`), validated at confirmation and at runti
 Canonical row: `account` (code from the profile), `account_key`, `analytics` (list of `{slot, role, ref, type}` with
 `type` normalised to `Catalog.<Name>` style), `balance_debit`, `balance_credit` (decimal strings), `currency_ref`.
 Response: `rows`, `row_count`, `truncated`, `as_of`, `route`, `route_reason`, profile and metadata provenance.
-A row whose account is outside the approved set, or whose company dimension differs from the requested company, fails
-closed (`COMPANY_SCOPE_MISMATCH` / `SOURCE_RESPONSE_INVALID`). If the source page information is absent or
+A row whose account is outside the approved set, whose company dimension differs from the requested company, or that
+carries no company dimension at all, fails closed (`COMPANY_SCOPE_MISMATCH` / `SOURCE_RESPONSE_INVALID`) on both routes.
+A page that is exactly as large as the cap is reported `truncated: true` even when the source says it is complete.
+The COM route serves only the register and company field the bridge template queries (`AccountingRegister_Хозрасчетный`,
+`Организация_Key`); any other mapping answers `CAPABILITY_UNSUPPORTED`. `as_of` is limited to the years 1990-2100. If the source page information is absent or
 inconsistent the call fails closed; a truncated page is returned with `truncated: true` and is never presented as
 complete.
 
@@ -102,7 +105,8 @@ complete.
 `POST /v1/balance_by_analytics` with `Authorization: Bearer <token>` and JSON body
 `{binding_id, binding_version, source_id, as_of, company_external_ref, account_keys[], max_rows}` →
 `{binding_id, binding_version, source_id, base_identity:{clone_identity, metadata_fingerprint}, rows:[{account_key,
-analytics:[{ref,type}×3], debit, credit, currency_ref}], truncated}`. `GET /v1/identity` returns the binding identity
+company_ref, analytics:[{ref,type}×3], debit, credit, currency_ref}], truncated}`; `company_ref` must equal the
+requested company on every row (the bridge and the gateway both compare it). `GET /v1/identity` returns the binding identity
 without business data. The bridge holds its own binding table (id → source, version, base location, reader secret
 reference, allowed companies) and refuses any request that does not match it exactly.
 

@@ -1,12 +1,17 @@
 """One connection per binding: lazy, reader-only, serialised by a lock, executed in a dedicated worker thread with a
-per-call timeout. A timeout or connection fault marks the connection unhealthy and abandons the worker."""
+per-call timeout. A timeout or connection fault marks the connection unhealthy and abandons the worker.
+
+A call that timed out may still be running inside 1C: while it is, the binding is poisoned and answers
+``COM_UNAVAILABLE`` at once, so a retry loop can never open a second 1C session (one licence) for the same binding. At
+most ``MAX_INFLIGHT`` requests per binding are admitted (one running, one waiting), so a slow binding cannot occupy the
+shared thread pool and starve the others."""
 from __future__ import annotations
 
 import datetime as dt
 import logging
 import threading
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +22,9 @@ from .query import AnalyticsBalanceQuery
 from .runtime import ComRuntime
 
 log = logging.getLogger("onec_com_bridge")
+
+MAX_INFLIGHT = 2
+MAX_LOCK_WAIT_SECONDS = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,12 +64,26 @@ class BindingSession:
         self._timeout = timeout_seconds
         self._query = query or AnalyticsBalanceQuery()
         self._lock = threading.Lock()
+        self._admission = threading.Semaphore(MAX_INFLIGHT)
         self._worker: _Worker | None = None
+        self._abandoned: Future | None = None
 
     def fetch(self, job: BalanceJob) -> tuple[list[dict[str, Any]], bool]:
-        if not self._lock.acquire(timeout=self._timeout):
+        if not self._admission.acquire(blocking=False):
+            raise BridgeFault(COM_UNAVAILABLE)  # fail fast: never queue behind a slow binding
+        try:
+            return self._fetch_admitted(job)
+        finally:
+            self._admission.release()
+
+    def _fetch_admitted(self, job: BalanceJob) -> tuple[list[dict[str, Any]], bool]:
+        if not self._lock.acquire(timeout=min(self._timeout, MAX_LOCK_WAIT_SECONDS)):
             raise BridgeFault(COM_TIMEOUT)
         try:
+            if self._abandoned is not None:
+                if not self._abandoned.done():
+                    raise BridgeFault(COM_UNAVAILABLE)  # the timed-out query still holds the old 1C session
+                self._abandoned = None
             if self._worker is None:
                 self._worker = _Worker(self._runtime)
             worker = self._worker
@@ -69,6 +91,7 @@ class BindingSession:
             try:
                 return future.result(timeout=self._timeout)
             except FutureTimeout:
+                self._abandoned = future
                 self._drop(worker)
                 raise BridgeFault(COM_TIMEOUT) from None
             except BridgeFault as fault:

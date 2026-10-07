@@ -55,6 +55,18 @@ Changing the source base URL, credential identity, configuration or metadata fin
 binding until re-approval; change `version` in both places together. The caller can never supply a path, secret
 reference, user, route or query text: the request has exactly the fields of the ADR wire contract.
 
+## Behaviour after a timeout, admission and identity
+
+- A call that exceeds `call_timeout_seconds` answers `COM_TIMEOUT`. The query may still run inside 1C, so the binding
+  stays poisoned: every request answers `COM_UNAVAILABLE` at once and no second 1C session (licence) is opened until the
+  abandoned query returns. Then the next request opens a fresh connection.
+- At most two requests per binding are admitted (one running, one waiting). Further requests get `COM_UNAVAILABLE`
+  immediately, so a slow binding never occupies the shared thread pool. Retry with back-off.
+- A request body is refused on `Content-Length` (64 KiB cap) before it is read; `as_of` must be in 1990-2100.
+- Every row carries `company_ref`; the bridge fails closed on a row of another company and the gateway compares it again.
+- `clone_identity` and `metadata_fingerprint` are operator attestation. The bridge does not refuse the reference clone
+  path itself: confirm when approving a binding that `base_path` is a disposable clone or the intended client base.
+
 ## Endpoints
 
 `POST /v1/balance_by_analytics` (bearer), `GET /v1/identity?binding_id=` (bearer; ids, clone identity and

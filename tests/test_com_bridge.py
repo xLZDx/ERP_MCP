@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import hashlib
 import json
 import threading
+import time
 from pathlib import Path
 
 import httpx
@@ -186,7 +188,7 @@ async def test_success_wire_shape_and_parameters_only():
     assert body["base_identity"] == {"clone_identity": "clone-a", "metadata_fingerprint": FINGERPRINT}
     assert body["truncated"] is False
     assert body["rows"][0] == {
-        "account_key": ACCOUNT_A,
+        "account_key": ACCOUNT_A, "company_ref": COMPANY,
         "analytics": [
             {"ref": CP_REF, "type": "Catalog.Контрагенты"},
             {"ref": CONTRACT_REF, "type": "Document.Договор"},
@@ -278,10 +280,76 @@ async def test_timeout_marks_connection_unhealthy():
             assert response.json() == {"error": {"code": "COM_TIMEOUT"}}
             gate.set()
             runtime.block = None
-            assert (await post(c, good_request())).status_code == 200
+            for _ in range(100):  # the abandoned query finishes on its own thread; then the binding recovers
+                if (response := await post(c, good_request())).status_code == 200:
+                    break
+                await asyncio.sleep(0.05)
+            assert response.status_code == 200
         assert len(runtime.connects) == 2  # a fresh connection after the timeout
     finally:
         gate.set()
+
+
+async def test_timed_out_binding_is_poisoned_and_never_opens_a_second_session():
+    gate = threading.Event()
+    runtime = FakeRuntime(block=gate)
+    try:
+        async with client(runtime, call_timeout_seconds=0.3) as c:
+            assert (await post(c, good_request())).status_code == 504
+            started = time.monotonic()
+            for _ in range(5):  # a retry loop while the abandoned query still runs inside 1C
+                response = await post(c, good_request())
+                assert response.status_code == 503
+                assert response.json() == {"error": {"code": "COM_UNAVAILABLE"}}
+            assert time.monotonic() - started < 0.25  # fail fast, no waiting for the lock or the timeout
+            assert len(runtime.connects) == 1  # still only the first 1C session
+    finally:
+        gate.set()
+
+
+async def test_slow_binding_does_not_block_another_binding():
+    gate = threading.Event()
+    second = binding_dict(binding_id="bind-2", source_id="src-2", base_path="C:\\clones\\clone_b",
+                          clone_identity="clone-b")
+    runtime = FakeRuntime(block=gate, block_only="C:\\clones\\clone_a")
+    try:
+        async with client(runtime, call_timeout_seconds=3, bindings=[binding_dict(), second]) as c:
+            slow = [asyncio.create_task(post(c, good_request())) for _ in range(4)]
+            await asyncio.sleep(0.2)
+            started = time.monotonic()
+            other = await post(c, good_request(binding_id="bind-2", source_id="src-2"))
+            assert other.status_code == 200 and time.monotonic() - started < 1.0
+            overflow = [t for t in slow if t.done()]
+            assert overflow, "requests beyond the per-binding admission limit must be refused at once"
+            assert all(t.result().status_code == 503 for t in overflow)
+            gate.set()
+            await asyncio.gather(*slow)
+    finally:
+        gate.set()
+
+
+@pytest.mark.parametrize("as_of", ["0001-01-01T00:00:00+00:00", "1899-12-31T23:59:59+00:00",
+                                   "2101-01-01T00:00:00+00:00"])
+async def test_out_of_range_as_of_is_a_bad_request_without_a_connection(as_of):
+    runtime = FakeRuntime()
+    async with client(runtime) as c:
+        response = await post(c, good_request(as_of=as_of))
+    assert response.status_code == 400 and runtime.connects == []
+
+
+async def test_oversized_body_is_refused_on_content_length_without_reading_it():
+    runtime = FakeRuntime()
+    async with client(runtime) as c:
+        response = await c.post("/v1/balance_by_analytics", content=b"x" * 200_000, headers=AUTH)
+    assert response.status_code == 400 and runtime.connects == []
+
+
+async def test_row_of_another_company_fails_closed():
+    runtime = FakeRuntime(rows=[make_row(company=OTHER_COMPANY)])
+    async with client(runtime) as c:
+        response = await post(c, good_request())
+    assert response.status_code == 500
+    assert response.json() == {"error": {"code": "COM_INTERNAL"}}
 
 
 async def test_identity_endpoint_has_no_business_data():
@@ -300,7 +368,7 @@ async def test_identity_endpoint_has_no_business_data():
 # --- static guarantees -------------------------------------------------------------------------------------------
 def test_template_is_pinned_and_split_amount_fields():
     digest = hashlib.sha256(bridge_query.BALANCE_QUERY_TEMPLATE.encode("utf-8")).hexdigest()
-    assert digest == "ee4d135cc74b590074d926e460237f19f1bb617340ff403cf18a634cd4d84603"
+    assert digest == "931b4fd3c195734dd4ad21eedbb0d3f574f1fafa9f1394af03ef1055a10bf066"
     assert "СуммаРазвернутыйОстатокДт" in bridge_query.BALANCE_QUERY_TEMPLATE
     assert "&Период" in bridge_query.BALANCE_QUERY_TEMPLATE
 
