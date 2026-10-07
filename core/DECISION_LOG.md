@@ -175,3 +175,20 @@ Append-only. One dated entry per durable decision, evidence or refusal that futu
 
 - Evidence: full pytest with own postgres:16-alpine + redis:7-alpine and ERP_MCP_REQUIRE_DB_TESTS=1: 1196 passed, 228 skipped (baseline 1189 + 7 new tests; skips are env-gated e2e/functional/private); ruff, compileall, scripts/verify_admin_ui.py (real Chromium, page CSP enforced) and check_document_consistency pass. test_admin_api double updated for the new `mutations` attribute used by the rejected-bearer audit. Engineering checkpoint fingerprint and report markers re-pinned.
 - Not verified live: the live admin E2E suite could not start because the shared compose volume erpmcp-e2e-pgdata holds a password from an earlier environment (InvalidPasswordError in envctl ensure-roles); fixing it needs `down.ps1 -Purge` (volume deletion), left to the operator. Note: a leftover ignored .e2e/ directory makes the unit suite activate the e2e fixtures and fail massively; keep it out of the worktree when running the full suite.
+
+## 2026-10-07 - Scope dispositions for SC01-SC12 and integration of lane branches
+
+- Decision: SC04/05/07/09/10/11/12 close through a test-only synthetic fixture profile provider (hard-denied
+  in production, non-test environments and non-synthetic sources; never native evidence); SC01-SC03 close
+  through new receivable_aging/payable_aging (frozen scope SS3.3 AR/AP aging, scope-preserving wiring);
+  SC06 (VAT) is EXTERNAL-GATE (VAT views only when a validated profile exists); SC08 (duplicate-counterparty
+  detection) is outside the frozen scope and stays NOT IMPLEMENTED pending an explicit operator rebaseline.
+- Decision: source-level tools (source_health, onec_*) need a source-wide grant; the baseline seed keeps
+  user_company_one company-scoped, and the manual/E2E packs use an explicit temporary source-wide grant
+  (operator step) for those cases only. A company-only grant never opens source-level tools or other companies.
+- Decision: lane branches (PR #13-#18) are integrated by merge commits (full history, no squash).
+- Decision: down.ps1 removes .e2e/env.json (the READY marker) so plain pytest never runs tests/e2e against a
+  stopped environment; the Admin product defects P1-P6/P8 found by the Admin E2E suite were fixed on
+  fix/admin-defects (strict CSP kept, no migration).
+- Evidence: Functional Tester run d8f322b: 73 passed, 3 skipped (needs-oidc-identity), 2 xfailed (SC06, SC08);
+  product remediation suite 1189 passed; admin-defects suite 1196 passed (own PG/Redis).
