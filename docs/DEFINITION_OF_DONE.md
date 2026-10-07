@@ -220,6 +220,11 @@ Before the operator considers lifting/rebaselining the freeze:
 - deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;
 - Command Center and normative docs match exact release evidence.
 
+SC08 rebaseline 2026-10-07: no production DoD gate change; SC08 adds one read-only candidate tool
+whose evidence is synthetic L1 only and never native reconciliation. See the explicit operator
+rebaseline in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1 and the
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
 ## Final terminal condition
 
 **PRODUCTION GO** only when D0–D18 mandatory gates are green for the target environment.

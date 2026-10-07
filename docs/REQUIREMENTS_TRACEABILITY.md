@@ -39,6 +39,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | OPS-2 | Source offboarding safe | Integration §10 | D17 |
 | OPS-3 | Deterministic release preflight and non-destructive rollback manifest | Release Operations / Rollback runbook | D15–D18 |
 | SCOPE-1 | No new product scope while operator freeze is active | Scope Freeze Baseline, Governance §2A | D0 + freeze closure |
+| SC08-1 | Operator rebaseline 2026-10-07: SC08 `duplicate-counterparty` as one read-only tool `counterparty_duplicate_candidates` (`accounting.read`, no merge/write, synthetic L1 only). Evidence status: PLANNED (not yet executed) | [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md), Scope Freeze §8.1, TDD FR-E | D9 (read-only/synthetic only); planned: tests/test_duplicate_counterparties_unit.py, tests/test_sc08_duplicate_counterparty_chain.py, tests/functional/test_10_scenarios_sc01_sc12.py (SC08 cases), tests/e2e/user/test_u18_functional_tester_suite.py (U18 oracle), manual pack U18 step |
 | DAD-1 | Six accountant-selected read-only checks | DAD Requirements Coverage §8, DAD rule engine | D9 + DAD acceptance |
 | DAD-2 | Invoice/e-factura read-only reconciliation | DAD Requirements Coverage §11/§27, External Evidence Plane | D9/D11 |
 | DAD-3 | Versioned applicability-aware month-close rule packs | TDD FR-G, Data Model §10B | D9/D11 |

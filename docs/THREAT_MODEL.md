@@ -213,6 +213,19 @@ Controls:
 - package/tool inventory negative tests;
 - no generic arbitrary mutation API.
 
+## SC08 duplicate-counterparty candidate tool (explicit operator rebaseline 2026-10-07)
+
+Tool `counterparty_duplicate_candidates` is a name-based, read-only candidate detector; semantics are
+frozen in [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
+| Threat (STRIDE) | Risk | Controls |
+|---|---|---|
+| Information disclosure: counterparty names/codes leak | Names/codes reach unauthorised callers or telemetry | Returned only to callers authorised for source/company + `accounting.read`; never in audit rows, logs, metrics or evidence artifacts |
+| Information disclosure: company-scope over-disclosure / false positive | Catalog has no company dimension; a pair from another company is shown | Activity-first two-phase scoping: catalog rows without company activity are never returned or counted |
+| Tampering / elevation: merge or write | Candidate output used to mutate 1C | No merge/write capability; `merge_count` literal 0; read-only OData verbs only; no write verb reaches Fake1C or the sidecar |
+| Tampering: partial result presented as complete | Truncated read yields a misleading FINDING | Truncation fails closed: INCONCLUSIVE, never a partial FINDING |
+| Spoofing of evidence: fixture profile | Synthetic profile mistaken for real mapping | Fixture profile is test-only (`BAG_ENVIRONMENT=test`, hash-pinned); production fails closed with zero upstream reads; evidence is L1, never native reconciliation |
+
 ## Scope-freeze control
 
 Scope expansion is itself a governance risk because it can delay closure and bypass threat/evidence

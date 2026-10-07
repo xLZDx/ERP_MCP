@@ -183,6 +183,32 @@ Semantic tools must be transport-independent. Initial target domains:
 
 Mappings are per semantic profile, not universal hard-coded account numbers.
 
+#### FR-E SC08 duplicate-counterparty candidates (explicit operator rebaseline 2026-10-07)
+
+Exactly one read-only tool, `counterparty_duplicate_candidates` (concept
+`counterparty.duplicate_candidates`, permission `accounting.read`, no migration, no merge/write
+capability, no tax-id matching, never native reconciliation). Detection semantics are frozen in
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md); this section only restates the acceptance
+obligations (same mutation cases as contract §12). Record: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1.
+Each rule below MUST fail a test when broken independently:
+
+- case, whitespace, NFKC and punctuation/underscore variants of one name group together; different
+  names do not;
+- blank and punctuation-only names are excluded;
+- the same `Ref_Key` twice is `COUNTERPARTY_FACT_INVALID`;
+- two- and three-member groups are produced;
+- a catalog counterparty without company activity is not returned;
+- company two does not see company one's pair;
+- null-counterparty activity rows are ignored;
+- activity truncation stops before the catalog read;
+- catalog truncation is INCONCLUSIVE with no partial FINDING;
+- shuffled input and duplicated activity rows give an identical result; `group_id` is stable;
+- `merge_count` is 0 in every branch;
+- no write verb reaches Fake1C or the sidecar;
+- no counterparty name appears in audit rows or the gateway log;
+- production/no-profile fails closed with zero upstream reads;
+- `accounting.read` denial is audited with zero upstream reads.
+
 ### FR-F Audit
 
 Record at minimum:

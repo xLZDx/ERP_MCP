@@ -47,6 +47,16 @@ Scope-preserving work is allowed when necessary to close accepted scope:
 If a proposed task cannot cite an existing requirement/gate, it is treated as scope expansion and
 MUST NOT start until operator rebaseline.
 
+### Recorded operator rebaselines
+
+- **2026-10-07 — SC08 `duplicate-counterparty` (explicit operator rebaseline).** Authority: the
+  operator's explicit answer "implement". Scope: exactly one read-only MCP tool
+  `counterparty_duplicate_candidates` (permission `accounting.read`, no migration, no write/merge
+  capability, no tax-id matching, no native reconciliation claim). Production deployment stays NO-GO.
+  Record: `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1; frozen detection semantics:
+  [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md). Changing those semantics needs a new
+  amendment (A3) approved by GPT-PM.
+
 ## 3. Change classes
 
 ### C0 — Documentation/non-behavioral

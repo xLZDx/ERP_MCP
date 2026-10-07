@@ -143,6 +143,13 @@ literals; upstream presets provide no universal cash-register candidate. `accoun
 is a bounded listing, not a full trace. AR/AP aging, cash-flow reconciliation, tax and complete
 posting semantics remain unavailable pending configuration-specific profiles and native reports.
 
+SC08 `duplicate-counterparty` is promoted into the current execution scope by the explicit operator
+rebaseline of 2026-10-07 (`docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1) as exactly one read-only
+tool, `counterparty_duplicate_candidates` (`accounting.read`, no migration, no merge/write, no tax-id
+matching, synthetic L1 evidence only, never native reconciliation). Semantics are frozen in
+[SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md). Deferred lanes are unchanged and production
+stays NO-GO.
+
 Deliver canonical tools:
 - organization/company discovery;
 - sales/purchases;

@@ -398,7 +398,7 @@ an existing frozen requirement is scope-preserving.</p>
     </article>
 <article class="doc-card searchable" id="doc-tdd" data-cat="core" data-title="TDD">
       <div class="doc-head"><div><span class="eyebrow">Требования</span><h2>TDD</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/TDD.md DOC_SOURCE_SHA256=9c300e1bba9fc58f5ea6f3d712b7068dbb84c2aa91473b15cd676b0a0eb7d2cd DOC_RENDER_SHA256=5b6b031e53d337cde9193ea16166c96e790a7baf9b56ed516dbc2901b8fea05b -->
+      <div class="md"><!-- DOC_SOURCE=docs/TDD.md DOC_SOURCE_SHA256=855c6986d490274936e7cbe39e7476968eccc547a228d6ff091f491f527ca93f DOC_RENDER_SHA256=cb69e74730cc39a959b0927b4bee3bf9f449187773edb7eee50a5008cd6d8ceb -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Technical Design Document — ERP_MCP 1C-first Production MVP</h1>
 <p><strong>Version:</strong> 1.1
@@ -545,6 +545,31 @@ contract.</p>
 - VAT/tax summary where the configuration supports a verified mapping;
 - anomaly/reconciliation helpers.</p>
 <p>Mappings are per semantic profile, not universal hard-coded account numbers.</p>
+<h4>FR-E SC08 duplicate-counterparty candidates (explicit operator rebaseline 2026-10-07)</h4>
+<p>Exactly one read-only tool, <code>counterparty_duplicate_candidates</code> (concept
+<code>counterparty.duplicate_candidates</code>, permission <code>accounting.read</code>, no migration, no merge/write
+capability, no tax-id matching, never native reconciliation). Detection semantics are frozen in
+<a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>; this section only restates the acceptance
+obligations (same mutation cases as contract §12). Record: <code>docs/SCOPE_FREEZE_BASELINE_2026-10-06.md</code> §8.1.
+Each rule below MUST fail a test when broken independently:</p>
+<ul>
+<li>case, whitespace, NFKC and punctuation/underscore variants of one name group together; different
+  names do not;</li>
+<li>blank and punctuation-only names are excluded;</li>
+<li>the same <code>Ref_Key</code> twice is <code>COUNTERPARTY_FACT_INVALID</code>;</li>
+<li>two- and three-member groups are produced;</li>
+<li>a catalog counterparty without company activity is not returned;</li>
+<li>company two does not see company one's pair;</li>
+<li>null-counterparty activity rows are ignored;</li>
+<li>activity truncation stops before the catalog read;</li>
+<li>catalog truncation is INCONCLUSIVE with no partial FINDING;</li>
+<li>shuffled input and duplicated activity rows give an identical result; <code>group_id</code> is stable;</li>
+<li><code>merge_count</code> is 0 in every branch;</li>
+<li>no write verb reaches Fake1C or the sidecar;</li>
+<li>no counterparty name appears in audit rows or the gateway log;</li>
+<li>production/no-profile fails closed with zero upstream reads;</li>
+<li><code>accounting.read</code> denial is audited with zero upstream reads.</li>
+</ul>
 <h3>FR-F Audit</h3>
 <p>Record at minimum:
 - event ID/time;
@@ -769,7 +794,7 @@ before new product scope is admitted.</p>
 </tbody>
 </table>
 </div>
-<!-- DOC_SOURCE=docs/MASTER_PLAN.md DOC_SOURCE_SHA256=0720ea46ae55b5743aecd9c4d868c693c047ee922b2c97879dc77a0c75afc154 DOC_RENDER_SHA256=ef71569d3bfc5fc09576573d318efd31e1162ce7e893709f0e4fe0ccd0690229 -->
+<!-- DOC_SOURCE=docs/MASTER_PLAN.md DOC_SOURCE_SHA256=9c626e88463b84017ba66ed8523c828b8270d1d23564153f7a419c4b12a04a7e DOC_RENDER_SHA256=629883f602a933e83984d3b0dd5eb50ffd803deb0c5f76714675449c8dc4ff8a -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Master Plan</h1>
 <p><strong>Version:</strong> 1.1
@@ -942,6 +967,12 @@ validated source/company profile confirms the exact register, fields, timezone a
 literals; upstream presets provide no universal cash-register candidate. <code>accounting_posting_rows</code>
 is a bounded listing, not a full trace. AR/AP aging, cash-flow reconciliation, tax and complete
 posting semantics remain unavailable pending configuration-specific profiles and native reports.</p>
+<p>SC08 <code>duplicate-counterparty</code> is promoted into the current execution scope by the explicit operator
+rebaseline of 2026-10-07 (<code>docs/SCOPE_FREEZE_BASELINE_2026-10-06.md</code> §8.1) as exactly one read-only
+tool, <code>counterparty_duplicate_candidates</code> (<code>accounting.read</code>, no migration, no merge/write, no tax-id
+matching, synthetic L1 evidence only, never native reconciliation). Semantics are frozen in
+<a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>. Deferred lanes are unchanged and production
+stays NO-GO.</p>
 <p>Deliver canonical tools:
 - organization/company discovery;
 - sales/purchases;
@@ -1489,7 +1520,7 @@ Index approval windows bound read authorization, not physical/legal retention gu
     </article>
 <article class="doc-card searchable" id="doc-governance" data-cat="governance" data-title="Governance">
       <div class="doc-head"><div><span class="eyebrow">Управление</span><h2>Governance</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/GOVERNANCE.md DOC_SOURCE_SHA256=ce7ae86478e7267919b5d3e6b1a0259d12c896a9b51124fb7a9262ef73c89071 DOC_RENDER_SHA256=a7089c404d72010fbc50113d9c448b05f50b7e56fc8e3b269768048cb251f64f -->
+      <div class="md"><!-- DOC_SOURCE=docs/GOVERNANCE.md DOC_SOURCE_SHA256=98f372c105f515bb369f59b5e8e92c2a38077523269e5f7f8e2997e4b7fe2297 DOC_RENDER_SHA256=7bcddd023ce77762564a144720239ab95c505e9da932a7de21cf0046915aae39 -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Engineering Governance</h1>
 <p><strong>Version:</strong> 1.1
@@ -1531,6 +1562,16 @@ normative baseline, the conflict must be resolved through an explicit governance
 </ul>
 <p>If a proposed task cannot cite an existing requirement/gate, it is treated as scope expansion and
 MUST NOT start until operator rebaseline.</p>
+<h3>Recorded operator rebaselines</h3>
+<ul>
+<li><strong>2026-10-07 — SC08 <code>duplicate-counterparty</code> (explicit operator rebaseline).</strong> Authority: the
+  operator's explicit answer "implement". Scope: exactly one read-only MCP tool
+  <code>counterparty_duplicate_candidates</code> (permission <code>accounting.read</code>, no migration, no write/merge
+  capability, no tax-id matching, no native reconciliation claim). Production deployment stays NO-GO.
+  Record: <code>docs/SCOPE_FREEZE_BASELINE_2026-10-06.md</code> §8.1; frozen detection semantics:
+  <a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>. Changing those semantics needs a new
+  amendment (A3) approved by GPT-PM.</li>
+</ul>
 <h2>3. Change classes</h2>
 <h3>C0 — Documentation/non-behavioral</h3>
 <p>Examples: typo, diagram, comment, evidence link.</p>
@@ -1653,7 +1694,7 @@ rollback affecting customer access.</p>
     </article>
 <article class="doc-card searchable" id="doc-definition-of-done" data-cat="gates" data-title="Definition of Done">
       <div class="doc-head"><div><span class="eyebrow">Гейты</span><h2>Definition of Done</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/DEFINITION_OF_DONE.md DOC_SOURCE_SHA256=0360d4f5f6177c66ae64f419241f2869fe0720cb9e573ab25ba152f12cf9a7c2 DOC_RENDER_SHA256=a1f63da63d5b15f5e6985cacb4d225397707654f86183b53cbf1b0655db1ebb7 -->
+      <div class="md"><!-- DOC_SOURCE=docs/DEFINITION_OF_DONE.md DOC_SOURCE_SHA256=95f249a69398ec08d2707eca7c48d99a90708a56aa96af9f40cf2b9ed4221f2e DOC_RENDER_SHA256=0029f9de3fb01b973cb35fa10d00fd9406e11b8273eeb3ae97231c69a594f52b -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Definition of Done — 1C Production MVP</h1>
 <p><strong>Version:</strong> 1.1
@@ -1853,6 +1894,10 @@ profile, and the broader frozen DAD scenario families must reach their declared 
 <li>deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;</li>
 <li>Command Center and normative docs match exact release evidence.</li>
 </ul>
+<p>SC08 rebaseline 2026-10-07: no production DoD gate change; SC08 adds one read-only candidate tool
+whose evidence is synthetic L1 only and never native reconciliation. See the explicit operator
+rebaseline in <code>SCOPE_FREEZE_BASELINE_2026-10-06.md</code> §8.1 and the
+<a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>.</p>
 <h2>Final terminal condition</h2>
 <p><strong>PRODUCTION GO</strong> only when D0–D18 mandatory gates are green for the target environment.</p>
 <p>Allowed intermediate labels:
@@ -3429,7 +3474,7 @@ storage and retrying with a new request; never bypass audit or replay a read as 
     </article>
 <article class="doc-card searchable" id="doc-threat-model" data-cat="security" data-title="Threat Model">
       <div class="doc-head"><div><span class="eyebrow">Безопасность</span><h2>Threat Model</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=161113f42c32611658884893f3afc42f8ea93e33a2c221bc4ccb0b0905ee5b0f DOC_RENDER_SHA256=cfa453aa964cb291757d258f8a4fc421a91c21bf2bb6a81e664609297617a76c -->
+      <div class="md"><!-- DOC_SOURCE=docs/THREAT_MODEL.md DOC_SOURCE_SHA256=ef21e6e77786edad9ddf8f269ce36cdfd7bc90fed4411fe4812acc507f90e8aa DOC_RENDER_SHA256=f1633ec4f7f53ec49ba189fb3097b19af572475ed6620dd38da36d8eaeacacca -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>ERP_MCP Threat Model</h1>
 <p><strong>Version:</strong> 1.1
@@ -3600,6 +3645,45 @@ designated for testing.</p>
 - no production tool registration;
 - package/tool inventory negative tests;
 - no generic arbitrary mutation API.</p>
+<h2>SC08 duplicate-counterparty candidate tool (explicit operator rebaseline 2026-10-07)</h2>
+<p>Tool <code>counterparty_duplicate_candidates</code> is a name-based, read-only candidate detector; semantics are
+frozen in <a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Threat (STRIDE)</th>
+<th>Risk</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Information disclosure: counterparty names/codes leak</td>
+<td>Names/codes reach unauthorised callers or telemetry</td>
+<td>Returned only to callers authorised for source/company + <code>accounting.read</code>; never in audit rows, logs, metrics or evidence artifacts</td>
+</tr>
+<tr>
+<td>Information disclosure: company-scope over-disclosure / false positive</td>
+<td>Catalog has no company dimension; a pair from another company is shown</td>
+<td>Activity-first two-phase scoping: catalog rows without company activity are never returned or counted</td>
+</tr>
+<tr>
+<td>Tampering / elevation: merge or write</td>
+<td>Candidate output used to mutate 1C</td>
+<td>No merge/write capability; <code>merge_count</code> literal 0; read-only OData verbs only; no write verb reaches Fake1C or the sidecar</td>
+</tr>
+<tr>
+<td>Tampering: partial result presented as complete</td>
+<td>Truncated read yields a misleading FINDING</td>
+<td>Truncation fails closed: INCONCLUSIVE, never a partial FINDING</td>
+</tr>
+<tr>
+<td>Spoofing of evidence: fixture profile</td>
+<td>Synthetic profile mistaken for real mapping</td>
+<td>Fixture profile is test-only (<code>BAG_ENVIRONMENT=test</code>, hash-pinned); production fails closed with zero upstream reads; evidence is L1, never native reconciliation</td>
+</tr>
+</tbody>
+</table>
 <h2>Scope-freeze control</h2>
 <p>Scope expansion is itself a governance risk because it can delay closure and bypass threat/evidence
 analysis.</p>
@@ -3609,7 +3693,7 @@ explicit operator rebaseline.</p>
     </article>
 <article class="doc-card searchable" id="doc-requirements-traceability" data-cat="core" data-title="Requirements Traceability">
       <div class="doc-head"><div><span class="eyebrow">Трассировка</span><h2>Requirements Traceability</h2></div><a class="toplink" href="#top">↑ вверх</a></div>
-      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=c2dc69222257ab51559dae46b91977f8e61d11ef378b890412d14144cd24eb0a DOC_RENDER_SHA256=df7f29aa9b56cfe798e7839697d2ed956191bf274d660df38eb6d183fbe856d4 -->
+      <div class="md"><!-- DOC_SOURCE=docs/REQUIREMENTS_TRACEABILITY.md DOC_SOURCE_SHA256=678d355234baa4323cc548a4776d8f29f9c8d39154afcacd5ecf78a7ed36cc6c DOC_RENDER_SHA256=0db02f44607eaf198c1f2c9154b3789b48cf1626d62d78f92f4b9d81b6c51a7d -->
 <!-- NORMATIVE_SOURCE_BEGIN -->
 <h1>Requirements Traceability Matrix</h1>
 <p><strong>Version:</strong> 1.1
@@ -3816,6 +3900,12 @@ explicit operator rebaseline.</p>
 <td>No new product scope while operator freeze is active</td>
 <td>Scope Freeze Baseline, Governance §2A</td>
 <td>D0 + freeze closure</td>
+</tr>
+<tr>
+<td>SC08-1</td>
+<td>Operator rebaseline 2026-10-07: SC08 <code>duplicate-counterparty</code> as one read-only tool <code>counterparty_duplicate_candidates</code> (<code>accounting.read</code>, no merge/write, synthetic L1 only). Evidence status: PLANNED (not yet executed)</td>
+<td><a href="SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md">SC08 contract</a>, Scope Freeze §8.1, TDD FR-E</td>
+<td>D9 (read-only/synthetic only); planned: tests/test_duplicate_counterparties_unit.py, tests/test_sc08_duplicate_counterparty_chain.py, tests/functional/test_10_scenarios_sc01_sc12.py (SC08 cases), tests/e2e/user/test_u18_functional_tester_suite.py (U18 oracle), manual pack U18 step</td>
 </tr>
 <tr>
 <td>DAD-1</td>
