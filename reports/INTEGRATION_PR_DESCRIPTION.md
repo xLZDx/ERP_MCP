@@ -1,14 +1,15 @@
-## Release-candidate snapshot — 2026-10-07 (code evidence `d7e578e`)
+## Release-candidate snapshot — 2026-10-07 (code evidence `abe290f`)
 
 Local/automated E2E: GO. Code release candidate: GO. Owner manual User and Admin acceptance: PENDING.
 External production gates: listed in `reports/ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`. Production
 deployment: NO-GO. PR #11 stays Draft and is the only merge path to `main`. The exact final head SHA
 and hosted CI run ID are in the PR #11 body/comment (not tracked, so no commit follows a green run).
 
-Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full pytest 1230 passed /
-232 skipped (dispositions in the ledger); E2E smoke 29; User U01-U18 52 passed, 0 skipped (U18 = 10 of 12 scenarios PASS + SC06/SC08 declared in Amendment A1, not 12/12); Admin
-A01-A54 87 passed + 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped /
-2 xfailed (SC06 external gate, SC08 needs operator rebaseline). All E2E/FT evidence is synthetic L1
+Local evidence on the exact code: 31/31 verification-matrix steps exit 0; full pytest 1438 passed /
+238 skipped (dispositions in the ledger); E2E smoke 29; User U01-U18 53 passed, 0 skipped (U18 = 11 of 12 scenarios PASS + SC06 EXTERNAL-GATE declared, Amendment A2 PROPOSED until GPT-PM approves; not 12/12); Admin
+A01-A54 87 passed + 1 declared EXTERNAL-GATE skip; Functional Tester 83 tests: 79 passed / 3 skipped /
+1 xfailed (SC06 external gate), SC08 cases PASS, 23 public tools. Local sprint-end reviewers: no BLOCKER (see
+`core/DECISION_LOG.md`). The real-reference L2-B lane is not executed yet (next lane). All E2E/FT evidence is synthetic L1
 (Fake1C, fake OData sidecar, test-only IdP); it is not native 1C or production evidence. Manual packs:
 `docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`.
 

@@ -122,26 +122,30 @@ Terminal engineering disposition: **local actionable closure achieved**.
 Production disposition remains **NO-GO** until the three external gates above
 are completed by operator/customer/platform owners.
 
-## E2E and Functional Tester program closure — code evidence `d7e578e` (2026-10-07)
+## E2E and Functional Tester program closure — code evidence `abe290f` (2026-10-07, SC08 sprint)
 
-Supersedes the `fd11cec` counts above for local evidence. Hosted CI for the exact final head is
+Supersedes the `d7e578e` and `fd11cec` counts for local evidence (SC08 duplicate-counterparty is now
+implemented). Local sprint-end reviewers (security, silent-failure, test-adequacy): no BLOCKER; closable
+findings closed in `abe290f`; accepted items are in `core/DECISION_LOG.md` entry "2026-10-07 - SC08
+sprint-end local reviewers: findings triaged". Amendment A2 of `docs/E2E_ACCEPTANCE_CONTRACT.md` stays
+PROPOSED until GPT-PM approves it. The real-reference L2-B lane is NOT executed yet (planned next lane). Hosted CI for the exact final head is
 **PENDING** here by design: the final head SHA and hosted run ID are recorded only in the PR #11
 body/comment, so no tracked commit follows a green hosted run.
 
-| Evidence | Result (local, exact code `d7e578e`) |
+| Evidence | Result (local, exact code `abe290f`) |
 |---|---|
 | Local verification matrix | 31/31 steps exit 0 (ruff, bandit, compileall, migrations 001-014, scenarios, preflight, Admin UI browser contract, fault/RSV/perf/security/SSRF/mutation harnesses, fresh migrate, schema, privileges, ACL/fan-out load, PostgreSQL restore drill, pool benchmark, full pytest, document consistency) |
-| Full pytest (PG16 + Redis, `ERP_MCP_REQUIRE_DB_TESTS=1`) | 1230 passed / 232 skipped |
+| Full pytest (PG16 + Redis, `ERP_MCP_REQUIRE_DB_TESTS=1`) | 1438 passed / 238 skipped (previous 1230 / 232); new SC08 unit+chain+wiring tests: 208 collected |
 | E2E smoke | 29 passed, 0 skipped (16 environment checks + 13 skip-policy tests) |
-| User E2E U01-U18 | 52 passed, 0 skipped; U18 = 10 of 12 scenarios PASS + SC06 EXTERNAL-GATE + SC08 NOT IMPLEMENTED declared in Amendment A1 of `docs/E2E_ACCEPTANCE_CONTRACT.md` (not 12/12) |
+| User E2E U01-U18 | 53 passed, 0 skipped; U18 = 11 of 12 scenarios PASS + SC06 EXTERNAL-GATE declared (Amendment A2 of `docs/E2E_ACCEPTANCE_CONTRACT.md`, PROPOSED; SC08 is a real PASS; not 12/12) |
 | Admin E2E A01-A54 | 87 passed, 1 skipped (declared EXTERNAL-GATE) |
-| Functional Tester SC01-SC12 | 73 passed, 3 skipped, 2 xfailed, 0 failed (see `reports/FUNCTIONAL_TESTER_SC01_SC12.md`) |
-| Fake1C / sidecar upstream traffic during FT | Fake1C 17 GET + 1 HEAD; sidecar 57 `/v1/read` + 5 `/v1/capabilities/registers`; no write verbs |
+| Functional Tester SC01-SC12 | 83 tests: 79 passed, 3 skipped, 1 xfailed (SC06), 0 failed/errors; 23 public tools (new `counterparty_duplicate_candidates`); SC08 cases all PASSED (see `reports/FUNCTIONAL_TESTER_SC01_SC12.md`) |
+| Fake1C / sidecar upstream traffic during FT | Fake1C 17 GET + 1 HEAD; sidecar 66 `/v1/read` + 5 `/v1/capabilities/registers`; no write verbs (counted from the FT recorder logs excluding `/__ft__`) |
 
 All E2E and FT evidence is synthetic L1 (Fake1C, fake OData sidecar, test-only IdP, synthetic fixture
 profiles). It is not native 1C, not L2 reconciliation and not production evidence.
 
-### Skip disposition (232 pytest skips)
+### Skip disposition (238 pytest skips; same environment-gated classes as the earlier 232, counts below are from that earlier breakdown)
 
 | Count | Disposition | Reason |
 |---|---|---|
@@ -152,11 +156,11 @@ profiles). It is not native 1C, not L2 reconciliation and not production evidenc
 | 1 | EXTERNAL-NATIVE-RSV | Native metadata lifecycle needs explicit disposable native opt-in; executed separately and PASS. |
 | 1 (E2E Admin) | EXTERNAL-GATE | Validated profile requires ten native reconciliation references. |
 | 3 (FT) | COVERED-BY-E2E | OIDC identity tests of the dev-mode FT stack; the same behaviour runs in the OIDC E2E user suite. |
-| 2 (FT xfail) | SC06 EXTERNAL-GATE (VAT only with a validated profile); SC08 NOT IMPLEMENTED (outside the freeze, needs operator rebaseline) | Not faked. |
+| 1 (FT xfail) | SC06 EXTERNAL-GATE (VAT only with a validated profile). SC08 is implemented and PASSES (earlier "NOT IMPLEMENTED" xfail retired by the operator rebaseline). | Not faked. |
 
 ### Remaining owner/external gates
 
 Owner manual acceptance (`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`): PENDING.
 External: native 1C/RSV business-report reconciliation and ten native report references, private Ferma
 snapshot, deployed production-like IdP/secrets/OData/RSV, retention/backup/DR/PITR, customer pilot.
-Operator decision: SC08 duplicate counterparties requires a scope rebaseline. Production deployment: NO-GO.
+SC08 duplicate counterparties: implemented under the operator rebaseline (synthetic L1 only). Production deployment: NO-GO.

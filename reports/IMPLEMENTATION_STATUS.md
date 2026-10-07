@@ -506,7 +506,16 @@ NO-GO; PR #11 remains OPEN/Draft.
   intentionally unperformed.
 - Readiness: `DEV READY` for the implemented bootstrap/control-plane scope only; no production claim.
 
-## E2E, Functional Tester and release-candidate closure — 2026-10-07
+## SC08 sprint local evidence — 2026-10-07
+
+Code evidence `abe290f` (local; hosted CI for the exact final head is recorded only in PR #11).
+Verification matrix 31/31 exit 0; full pytest 1438 passed / 238 skipped; E2E smoke 29, User U01-U18 53
+passed (U18 = 11 of 12 scenarios PASS + SC06 EXTERNAL-GATE declared, Amendment A2 PROPOSED, not 12/12),
+Admin A01-A54 87 + 1 declared EXTERNAL-GATE skip; Functional Tester 83 tests = 79 passed / 3 skipped /
+1 xfailed (SC06), SC08 PASS. Local reviewers: no BLOCKER (`core/DECISION_LOG.md`). Production NO-GO; DoD
+PARTIAL; real-reference L2-B lane not executed yet.
+
+## E2E, Functional Tester and release-candidate closure — 2026-10-07 (earlier, code `d7e578e`)
 
 Code evidence `d7e578e` (local; hosted CI for the exact final head is recorded only in PR #11).
 Verification matrix 31/31 exit 0; full pytest 1230 passed / 232 skipped (dispositions in

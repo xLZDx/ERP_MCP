@@ -56,8 +56,8 @@ and stays Draft.
 
 Current merge blocker: human manual User and Admin acceptance has not yet been run
 (`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`; the disposable environment
-with the test IdP is started by `scripts/e2e/up.ps1`). Automated local E2E (smoke 29, User 52 [U18 = 10 of 12 + 2 declared, Amendment A1],
-Admin 87 + 1 declared EXTERNAL-GATE skip) and the Functional Tester rerun (73 passed / 3 skipped /
-2 xfailed) pass on code evidence `d7e578e`; hosted CI and the exact final head are recorded in the
+with the test IdP is started by `scripts/e2e/up.ps1`). Automated local E2E (smoke 29, User 53 [U18 = 11 of 12 + SC06 declared, Amendment A2 PROPOSED],
+Admin 87 + 1 declared EXTERNAL-GATE skip) and the Functional Tester rerun (79 passed / 3 skipped /
+1 xfailed) pass on code evidence `abe290f` (full pytest 1438 passed / 238 skipped); hosted CI and the exact final head are recorded in the
 PR #11 body. Real 1C/native-report, deployed DR/retention and customer-pilot gates stay external
 and are not satisfied by the local suites. Production deployment: NO-GO.

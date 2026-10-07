@@ -1,7 +1,7 @@
 # Functional Tester report — SC01–SC12
 
-Candidate: `integration/1c-mvp-production-candidate`, code evidence head `d7e578e`
-(Functional Tester worktree fast-forwarded to exactly this head; `git status` clean after the run).
+Candidate: `integration/1c-mvp-production-candidate`, code evidence head `abe290f`
+(fresh private stack; run evidence kept outside the repo, `ft-final6`).
 Date: 2026-10-07. Suite: `tests/functional/**` (black-box, public MCP tools only).
 
 ## Evidence level — read this first
@@ -14,15 +14,15 @@ test-only synthetic fixture profile provider (`profile_kind=SYNTHETIC_FIXTURE`, 
 
 ## Result
 
-73 passed, 3 skipped, 2 xfailed, 0 failed, 0 errors (78 tests, 213.58 s). Identical to the earlier
-run at `d8f322b`. The first attempt on this head ran with no stack environment loaded and skipped all 78
-tests; it is not a result for the code and was discarded (cause: the suite reads only `FT_*` variables
-written by `scripts/ft/setup.ps1`).
+79 passed, 3 skipped, 1 xfailed, 0 failed, 0 errors (83 tests, 297.08 s). 12 positive-contract cases =
+11 PASS + SC06 xfail. 23 public tools (new: `counterparty_duplicate_candidates`). Earlier runs
+(`d7e578e`, 78 tests: 73/3/2) are history.
 
-**Acceptance status: 10 of 12 scenarios PASS, 2 declared dispositions** (SC06 EXTERNAL-GATE, SC08 NOT
-IMPLEMENTED), per Amendment A1 of `docs/E2E_ACCEPTANCE_CONTRACT.md`. This is not 12/12, and the
-declared dispositions are not counted as PASS. SC08 needs an operator scope rebaseline; SC06 needs a
-validated profile (ten native report references).
+**Acceptance status: 11 of 12 scenarios PASS, 1 declared disposition** (SC06 EXTERNAL-GATE), per
+Amendment A2 of `docs/E2E_ACCEPTANCE_CONTRACT.md` (PROPOSED until GPT-PM approves; A1 text kept as
+history). This is not 12/12, and the declared disposition is not counted as PASS. SC08 is implemented
+(operator rebaseline) and PASSES on synthetic L1 data only; SC06 needs a validated profile (ten native
+report references).
 
 ## Scenario matrix
 
@@ -38,7 +38,7 @@ company isolation, request correlation and company scope in audit.
 | SC05 | PASS | PASS | PASS | PASS | PASS |
 | SC06 | XFAIL (EXTERNAL-GATE) | PASS | PASS | n/a | PASS |
 | SC07 | PASS | PASS | PASS | PASS | PASS |
-| SC08 | XFAIL (NOT IMPLEMENTED) | n/a | n/a | n/a | n/a |
+| SC08 | PASS | PASS | PASS | PASS | PASS |
 | SC09 | PASS | PASS | PASS | PASS | PASS |
 | SC10 | PASS | PASS | PASS | PASS | PASS |
 | SC11 | PASS | PASS | PASS | PASS | PASS |
@@ -52,18 +52,16 @@ unknown source and company/source mismatch, unsupported entities fail closed, mu
 discovery (exact reviewed read-only tool set, source and both companies listed, synthetic-only metadata,
 result bounds).
 
-The same suite also passed with identical counts (73/3/2/0) on the previous candidate code `8283403`
-(Fake1C 14 GET + 1 HEAD, sidecar 57 read + 4 capabilities). The upstream request totals differ between
-the two runs by +3 Fake1C and +1 sidecar; the Functional Tester attributes this to the gateway's 60 s
-OData metadata cache (inference from request timing, not an isolated measurement). In both runs only
-GET/HEAD reached Fake1C and only the two read-only POST paths reached the sidecar.
+SC08 cases all PASSED: positive, wrong-company-denied, unsupported-capability, company-isolation,
+truncated-scan-is-inconclusive, request-correlation. (Columns above for SC08 summarise these cases; the
+audit column is the request-correlation case.) Earlier runs on `8283403` and `d7e578e` showed only
+GET/HEAD at Fake1C and only the two read-only POST paths at the sidecar, as in this run.
 
 ## Skips and expected failures (exact dispositions)
 
 | Test | Reason string | Disposition |
 |---|---|---|
 | SC06 positive (xfail) | EXTERNAL-GATE SC06 (vat-mixed): VAT/tax views exist only when a source/company profile is validated (freeze 3.3); no VAT tool or fixture profile exists | EXTERNAL-GATE: validated profile needs ten native report references. |
-| SC08 positive (xfail) | NOT IMPLEMENTED SC08 (duplicate-counterparty): detection is outside the frozen scope | Needs an explicit operator scope rebaseline. Not implemented, not faked. |
 | `test_oidc_identity_without_grants_is_denied` | needs-oidc-identity: set FT_BEARER_TOKEN_NO_ACCESS | The FT stack is dev mode without an IdP. The same behaviour is exercised in the OIDC E2E user suite (identity `user_no_access`). |
 | `test_oidc_company_two_identity_cannot_read_company_one` | needs-oidc-identity: set FT_BEARER_TOKEN_COMPANY_TWO | Same: covered by the OIDC E2E user suite (identity `user_company_two`). |
 | `test_business_capability_denied_for_identity_without_capability` | needs-oidc-identity + business-capability enforcement environment (E2E) | Same: covered by the E2E user/admin suites with enforcement enabled. |
@@ -75,7 +73,7 @@ Recorded after the whole run (`/__ft__/requests`):
 | Recorder | Requests | Breakdown |
 |---|---|---|
 | Fake1C | 18 | 17 GET, 1 HEAD, 0 write verbs |
-| OData sidecar | 62 | 62 POST: 57 `/v1/read`, 5 `/v1/capabilities/registers` |
+| OData sidecar | 71 | 71 POST: 66 `/v1/read`, 5 `/v1/capabilities/registers` |
 
 Whole-run hygiene tests (4/4 PASS): only GET/HEAD reached 1C; the sidecar saw only the two read-only
 protocol paths; audit rows contain no tokens, credentials or raw accounting rows; the gateway log contains
@@ -83,6 +81,7 @@ no tokens, credentials or raw accounting rows (scan ran, not skipped).
 
 ## Not verified here
 
-OIDC and capability-enforcement paths of the FT stack (covered by the E2E suites instead), SC06 and SC08
-behaviour, native reconciliation of any figure. The recorder counts are per process lifetime and were not
-cross-checked against the gateway log.
+OIDC and capability-enforcement paths of the FT stack (covered by the E2E suites instead), SC06
+behaviour, native reconciliation of any figure. Traffic counts above were counted from `fake1c.log` and
+`sidecar.log` (excluding the `/__ft__` recorder endpoints); `case_evidence.json` "ALL" reports 17 upstream
+and 71 sidecar requests, so the 1 HEAD is counted only in the log tally. Not cross-checked against the gateway log.

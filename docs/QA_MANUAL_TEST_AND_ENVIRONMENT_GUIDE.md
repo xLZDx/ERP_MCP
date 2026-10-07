@@ -5,12 +5,12 @@ This guide prepares local synthetic L1 testing and two separate manual suites.
 Fake1C evidence is synthetic contract evidence; it is never native 1C reconciliation.
 Automated setup of sections 2 and 4: see [E2E_ENVIRONMENT.md](E2E_ENVIRONMENT.md).
 
-**Update 2026-10-07 (code evidence `d7e578e`).** The disposable environment, test-only OIDC IdP and
+**Update 2026-10-07 (code evidence `abe290f`).** The disposable environment, test-only OIDC IdP and
 identities are now provisioned by `scripts/e2e/up.ps1` (see E2E_ENVIRONMENT.md). The two manual suites
 have dedicated step-by-step packs: [MANUAL_ACCEPTANCE_USER.md](MANUAL_ACCEPTANCE_USER.md) and
 [MANUAL_ACCEPTANCE_ADMIN.md](MANUAL_ACCEPTANCE_ADMIN.md). The automated equivalents pass locally
-(User U01-U18 52 with U18 = 11 of 12 scenarios PASS + SC06 declared (Amendment A2: SC08 is implemented by `counterparty_duplicate_candidates` per `SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md`; SC06 is the only declared disposition), Admin A01-A54 87 + 1 declared EXTERNAL-GATE skip, Functional Tester SC01-SC12
-73 passed / 3 skipped / 2 xfailed); owner manual acceptance remains PENDING and none of this is
+(User U01-U18 53 with U18 = 11 of 12 scenarios PASS + SC06 declared (Amendment A2: SC08 is implemented by `counterparty_duplicate_candidates` per `SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md`; SC06 is the only declared disposition), Admin A01-A54 87 + 1 declared EXTERNAL-GATE skip, Functional Tester SC01-SC12
+79 passed / 3 skipped / 1 xfailed); owner manual acceptance remains PENDING and none of this is
 native 1C or production evidence.
 
 ## 1. What is ready and what is needed

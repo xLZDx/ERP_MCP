@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — финальный handoff релиз-кандидата (2026-10-07)</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}.info{color:var(--info);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — финальный handoff релиз-кандидата</h1>
+<div class="sub">Дата: 2026-10-07 · PR #11 (Draft) · ветка <code>integration/1c-mvp-production-candidate</code> · код-коммит спринта SC08: <code>abe290f</code></div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; integration/1c-mvp-production-candidate @ abe290f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<main>
+
+<h2>1. Итог одной строкой</h2>
+<div class="card">
+<p><span class="ok">LOCAL/AUTOMATED E2E: GO</span> · <span class="ok">CODE RELEASE CANDIDATE: GO</span> ·
+<span class="warn">OWNER MANUAL USER и ADMIN ACCEPTANCE: PENDING</span> ·
+<span class="warn">EXTERNAL PRODUCTION GATES: открыты</span> · <span class="bad">PRODUCTION DEPLOYMENT: NO-GO</span></p>
+<p>PR #11 остаётся Draft. Утверждения «PRODUCTION GO» в этом отчёте нет и быть не может.</p>
+<p>Всё доказательство синтетическое (L1): Fake1C, fake OData sidecar, тестовый OIDC IdP. Это не нативная 1С и не продакшн. Реальная база 1С в текущее доказательство не входит (см. раздел 10).</p>
+<p><b>Спринт SC08:</b> определение дублей контрагентов теперь РЕАЛИЗОВАНО как read-only инструмент <code>counterparty_duplicate_candidates</code> (всего 23 публичных инструмента). Единственный заявленный EXTERNAL-GATE xfail — SC06. U18 = 11 из 12 PASS + SC06 заявлен, никогда не 12/12.</p>
+</div>
+
+<h2>2. Точные идентификаторы</h2>
+<div class="wrap"><table>
+<tr><th>Что</th><th>Значение</th></tr>
+<tr><td>Код-коммит спринта SC08</td><td><code>abe290f</code> — все локальные результаты ниже получены на нём (факты, локально)</td></tr>
+<tr><td>Hosted CI на <code>abe290f</code></td><td><span class="warn">PENDING</span>. Результат hosted CI и итоговый GPT-PM end review для этого head будут записаны в теле PR #11, когда завершатся. Номера прогонов и финальный SHA head здесь не приводятся намеренно.</td></tr>
+<tr><td>Контракт SC08</td><td>Замороженный контракт <code>docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md</code>; Amendment A2 — <span class="warn">PROPOSED</span> до утверждения GPT-PM</td></tr>
+<tr><td>Предыдущий зафиксированный head (история)</td><td><code>c7377eb</code> (hosted run 37566217916 — success, GPT-PM APPROVE). Это доказательство относится к прежнему состоянию (без SC08) и не переносится на <code>abe290f</code>.</td></tr>
+<tr><td>PR #11</td><td>OPEN, Draft; lane-PR #13–#18 и #12 — MERGED; main, PR #2–#10 и feature/admin-control-center-design не мержились; исторические ветки не удалялись</td></tr>
+</table></div>
+
+<h2>3. Плановые пункты: Planned / Definition of Done / Status / Tail</h2>
+<div class="wrap"><table>
+<tr><th>Пункт</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr>
+<tr><td>Замороженный контракт</td><td>U01–U18, A01–A54 до реализации</td><td>Контракт закоммичен, изменения только через amendment</td><td class="ok">DONE</td><td>Amendment A1 утверждена GPT-PM; Amendment A2 (SC08) — PROPOSED, ждёт GPT-PM</td></tr>
+<tr><td>Воспроизводимое E2E-окружение</td><td>scripts/e2e up/status/test/reset/down, PG16, Redis, Fake1C, gateway, test IdP, Admin UI, только localhost</td><td>up→smoke→user→admin→down -Purge зелёные подряд</td><td class="ok">DONE</td><td>—</td></tr>
+<tr><td>SC08: дубли контрагентов</td><td>Минимальный read-only инструмент <code>counterparty_duplicate_candidates</code> по замороженному контракту</td><td>Инструмент реализован, SC08-кейсы PASS, U18-оракул обновлён</td><td class="ok">DONE (локально)</td><td>Amendment A2 PROPOSED до одобрения GPT-PM; hosted CI и GPT-PM end review на head — PENDING (запись в теле PR #11)</td></tr>
+<tr><td>Functional Tester SC01–SC12</td><td>Независимые black-box тесты через публичные MCP-инструменты</td><td>11 PASS + SC06 как заявленный EXTERNAL-GATE</td><td class="warn">PARTIAL (по определению)</td><td>11 из 12 PASS; SC06 EXTERNAL-GATE (нужен валидированный профиль и десять нативных отчётов)</td></tr>
+<tr><td>User E2E U01–U18</td><td>Автоматические проверки пользователя</td><td>0 skipped, U18 согласно контракту</td><td class="ok">DONE (с оговоркой)</td><td>U18 = 11 из 12 PASS + SC06 заявлен, не 12/12</td></tr>
+<tr><td>Admin E2E A01–A54</td><td>Браузер/API, роли, CSRF, идемпотентность, аудит</td><td>0 unexpected skips</td><td class="ok">DONE</td><td>1 заявленный EXTERNAL-GATE skip (валидация профиля требует десять нативных отчётов)</td></tr>
+<tr><td>Безопасная локальная 1С/RSV</td><td>Метаданные и lifecycle на одноразовой базе; reveal/execute_query/generic query выключены</td><td>Live RSV и native lifecycle PASS</td><td class="ok">DONE</td><td>Последний live-запуск на 067b688; adapters/ с тех пор не менялся; бизнес-чтения на нативной базе — EXTERNAL (см. раздел 10)</td></tr>
+<tr><td>Полная локальная матрица</td><td>31 шаг + pytest с PG/Redis</td><td>31/31 exit 0, skips с диспозициями</td><td class="ok">DONE</td><td>pytest 1438 passed / 238 skipped; E2E smoke 29</td></tr>
+<tr><td>Перезапуск FT на финальном коде</td><td>Тот же код, что у матрицы</td><td>Гигиена чистая, 0 failed</td><td class="ok">DONE</td><td>83 теста: 79 passed, 3 skipped, 1 xfail (SC06), 0 failed; гигиена 4/4</td></tr>
+<tr><td>Два ручных пакета приёмки</td><td>Отдельно для пользователя и администратора</td><td>Пошаговые документы, зарегистрированы в индексе</td><td class="ok">DONE (документы)</td><td>Сама приёмка владельцем — PENDING</td></tr>
+<tr><td>Подготовка merge</td><td>Hosted CI зелёный и GPT-PM APPROVE на точном head</td><td>Зелёный CI + APPROVE на точном head</td><td class="warn">PENDING для <code>abe290f</code></td><td>Мерж не выполняется: PR остаётся Draft до ручной приёмки</td></tr>
+<tr><td>Внутренние ревьюеры (sonnet-medium)</td><td>Security, silent-failure, test adequacy перед GPT-PM</td><td>Блокеров нет, все закрываемые находки закрыты</td><td class="ok">DONE</td><td>Принятые ограничения записаны в core/DECISION_LOG.md (см. раздел 6)</td></tr>
+</table></div>
+
+<h2>4. Локальные результаты (код abe290f; факты, локально)</h2>
+<div class="wrap"><table>
+<tr><th>Проверка</th><th>Результат</th></tr>
+<tr><td>Матрица проверок</td><td>31/31 шагов exit 0 (ruff, bandit, compileall, миграции, сценарии, preflight, браузерный контракт Admin UI, fault/RSV/perf/security/SSRF/mutation, fresh migrate, schema, privileges, ACL и fan-out load, restore drill, pool benchmark, pytest, консистентность документов)</td></tr>
+<tr><td>pytest (PG16 + Redis, ERP_MCP_REQUIRE_DB_TESTS=1)</td><td><b>1438 passed / 238 skipped</b> (классы, зависящие от окружения, выполняются в собственных плоскостях)</td></tr>
+<tr><td>E2E smoke</td><td>29 passed, 0 skipped</td></tr>
+<tr><td>User E2E U01–U18</td><td>53 passed, 0 skipped</td></tr>
+<tr><td>Admin E2E A01–A54</td><td>87 passed, 1 skipped (заявленный EXTERNAL-GATE)</td></tr>
+<tr><td>Functional Tester</td><td>83 теста = 79 passed, 3 skipped (только dev-mode/OIDC), 1 xfail (SC06), 0 failed; все SC08-кейсы PASS; гигиена 4/4</td></tr>
+<tr><td>Безопасность</td><td>security regression, SSRF fuzz, mutation pack, scan артефактов — PASS; локальные ревьюеры блокеров не нашли</td></tr>
+<tr><td>Hosted CI</td><td><span class="warn">PENDING</span> для <code>abe290f</code> — не является локальным доказательством</td></tr>
+</table></div>
+
+<h2>5. Диспозиция 238 skip</h2>
+<div class="wrap"><table>
+<tr><th>Класс</th><th>Причина</th></tr>
+<tr><td>LIVE-STACK-GATED</td><td>выполняются в собственных плоскостях через scripts/e2e и scripts/ft, результаты выше</td></tr>
+<tr><td>EXTERNAL-PRIVATE-FERMA</td><td>нет одобренного приватного снимка Ferma</td></tr>
+<tr><td>EXTERNAL-REAL-1C</td><td>ONEC_TEST_BASE_URL не задан в синтетической плоскости</td></tr>
+<tr><td>EXTERNAL-NATIVE-RSV</td><td>live metadata и native lifecycle: запускаются отдельно и проходят</td></tr>
+</table></div>
+<p class="sub">Классы те же, что в предыдущей версии отчёта; поштучная разбивка для 238 в этом отчёте не пересчитывалась.</p>
+
+<h2>6. Ревью и принятые ограничения</h2>
+<div class="card">
+<p><b>Локальные sonnet-medium ревьюеры (security, silent-failure, test adequacy):</b> BLOCKER нет; все закрываемые находки закрыты.</p>
+<p><b>ACCEPTED LIMITATION:</b> пустой скан активности компаний возвращает PASS согласно контракту; чтобы это изменить, нужна Amendment A3. Вопрос вынесен на GPT-PM; запись — в <code>core/DECISION_LOG.md</code>.</p>
+<p><b>Предыдущие находки GPT-PM (история, закрыты на c7377eb):</b> BLOCKER — fingerprint чекпойнта зависел от окончаний строк (исправлено: CRLF→LF, тесты добавлены); MAJOR — оракул U18 против замороженного контракта (оформлена Amendment A1).</p>
+</div>
+
+<h2>7. Решения владельца и дальнейшая работа</h2>
+<div class="card">
+<ul>
+<li><b>SC08:</b> оператор выбрал «реализовать» — реализовано (раздел 1). Осталось: одобрение Amendment A2 в GPT-PM, hosted CI и GPT-PM end review на точном head (результат — в теле PR #11).</li>
+<li><b>Ручная приёмка:</b> окружение — <code>scripts\e2e\up.ps1</code>; пакеты <code>docs/MANUAL_ACCEPTANCE_USER.md</code> и <code>docs/MANUAL_ACCEPTANCE_ADMIN.md</code>.</li>
+<li><b>Очистка (история):</b> по разрешению владельца удалены 36 harness-контейнеров (<code>erp-pool-*</code>, <code>erpmcp-restore-*</code>, <code>erp-fault-*</code>); остальные группы контейнеров не трогались.</li>
+</ul>
+</div>
+
+<h2>8. Внешние gates (не закрываются локально)</h2>
+<div class="card">
+<ul>
+<li>Нативная сверка 1С/RSV и десять нативных референсных отчётов (снимает и SC06).</li>
+<li>Приватный снимок Ferma.</li>
+<li>Production-like IdP, секреты, OData и RSV.</li>
+<li>Retention, backup, DR, PITR.</li>
+<li>Пилот у заказчика.</li>
+</ul>
+</div>
+
+<h2>9. Следующее действие владельца</h2>
+<div class="card">
+<p>Поднять окружение, пройти ручные пакеты User и Admin на актуальном head PR #11 (его SHA и статус hosted CI смотреть в теле PR #11), зафиксировать результаты. PR #11 не переводить из Draft и не мержить до этого.</p>
+</div>
+
+<h2>10. Следующая линия: реальная эталонная база 1С 818HA (L2-B)</h2>
+<div class="card">
+<p><span class="warn">НЕ ВЫПОЛНЕНО.</span> Это план, а не результат; в текущее доказательство эта линия не входит.</p>
+<p>Оператор предоставил реальную локальную копию 1С: неизменяемый поставленный дамп (SHA проверяется в реальной линии), одноразовые клоны и локальный OData.</p>
+<p>План после этого спринта:</p>
+<ul>
+<li>финализировать выделенный read-only reader (владелец один раз вводит пароль администратора одноразового клона интерактивно);</li>
+<li>регистрация реального источника;</li>
+<li>обнаружение компаний;</li>
+<li>нативная сверка NR-01..NR-10;</li>
+<li>21 счёт-фактура (invoices);</li>
+<li>правила закрытия месяца;</li>
+<li>тесты ACL, отказов и drift;</li>
+<li>отдельный отчёт REAL-1C-818HA.</li>
+</ul>
+<p>Fake1C и синтетические данные никогда не выдаются за нативную 1С или продакшн.</p>
+</div>
+
+<h2>11. Где что лежит (полные локальные пути)</h2>
+<div class="card">
+<ul>
+<li>Репозиторий: <code>D:\Repo\ERP_MCP-integration-candidate</code></li>
+<li>Отчёты: <code>D:\Repo\ERP_MCP-integration-candidate\reports\</code> (этот файл — <code>ERP_MCP_RC_HANDOFF_2026-10-07.ru.html</code>, английская копия — <code>ERP_MCP_RC_HANDOFF_2026-10-07.html</code>)</li>
+<li>Контракт SC08: <code>D:\Repo\ERP_MCP-integration-candidate\docs\SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md</code></li>
+<li>Журнал решений и принятые ограничения: <code>D:\Repo\ERP_MCP-integration-candidate\core\DECISION_LOG.md</code></li>
+<li>Ручная приёмка: <code>D:\Repo\ERP_MCP-integration-candidate\docs\MANUAL_ACCEPTANCE_USER.md</code>, <code>D:\Repo\ERP_MCP-integration-candidate\docs\MANUAL_ACCEPTANCE_ADMIN.md</code></li>
+<li>Запуск окружения: <code>D:\Repo\ERP_MCP-integration-candidate\scripts\e2e\up.ps1</code></li>
+<li>Hosted CI и GPT-PM end review для текущего head: тело PR #11</li>
+</ul>
+</div>
+
+</main>
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

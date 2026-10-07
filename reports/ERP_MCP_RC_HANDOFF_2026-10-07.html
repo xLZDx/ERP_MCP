@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — release-candidate handoff (2026-10-07)</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}.info{color:var(--info);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — release-candidate handoff</h1>
+<div class="sub">Date: 2026-10-07 · PR #11 (Draft) · branch <code>integration/1c-mvp-production-candidate</code> · SC08 sprint code commit: <code>abe290f</code></div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; integration/1c-mvp-production-candidate @ abe290f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<main>
+
+<h2>1. One-line summary</h2>
+<div class="card">
+<p><span class="ok">LOCAL/AUTOMATED E2E: GO</span> · <span class="ok">CODE RELEASE CANDIDATE: GO</span> ·
+<span class="warn">OWNER MANUAL USER and ADMIN ACCEPTANCE: PENDING</span> ·
+<span class="warn">EXTERNAL PRODUCTION GATES: open</span> · <span class="bad">PRODUCTION DEPLOYMENT: NO-GO</span></p>
+<p>PR #11 remains Draft. This report contains no "PRODUCTION GO" claim and cannot be read as one.</p>
+<p>All evidence is synthetic (L1): Fake1C, a fake OData sidecar, a test OIDC IdP. It is not native 1C and not production. The real 1C database is not part of the current evidence (see section 10).</p>
+<p><b>SC08 sprint:</b> duplicate-counterparty detection is now IMPLEMENTED as the read-only tool <code>counterparty_duplicate_candidates</code> (23 public tools in total). SC06 is the only declared EXTERNAL-GATE xfail. U18 = 11 of 12 PASS + SC06 declared, never 12/12.</p>
+</div>
+
+<h2>2. Exact identifiers</h2>
+<div class="wrap"><table>
+<tr><th>What</th><th>Value</th></tr>
+<tr><td>SC08 sprint code commit</td><td><code>abe290f</code> — all local results below were obtained on it (facts, local)</td></tr>
+<tr><td>Hosted CI on <code>abe290f</code></td><td><span class="warn">PENDING</span>. The hosted CI result and the final GPT-PM end review for this head will be recorded in the PR #11 body when they complete. Run IDs and the final head SHA are intentionally not given here.</td></tr>
+<tr><td>SC08 contract</td><td>Frozen contract <code>docs/SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md</code>; Amendment A2 is <span class="warn">PROPOSED</span> until GPT-PM approves</td></tr>
+<tr><td>Previously recorded head (history)</td><td><code>c7377eb</code> (hosted run 37566217916 — success, GPT-PM APPROVE). That evidence belongs to the earlier state (without SC08) and does not transfer to <code>abe290f</code>.</td></tr>
+<tr><td>PR #11</td><td>OPEN, Draft; lane PRs #13–#18 and #12 — MERGED; main, PRs #2–#10 and feature/admin-control-center-design were not merged; historical branches were not deleted</td></tr>
+</table></div>
+
+<h2>3. Planned items: Planned / Definition of Done / Status / Tail</h2>
+<div class="wrap"><table>
+<tr><th>Item</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr>
+<tr><td>Frozen contract</td><td>U01–U18, A01–A54 before implementation</td><td>Contract committed, changes only via amendment</td><td class="ok">DONE</td><td>Amendment A1 approved by GPT-PM; Amendment A2 (SC08) is PROPOSED, awaiting GPT-PM</td></tr>
+<tr><td>Reproducible E2E environment</td><td>scripts/e2e up/status/test/reset/down, PG16, Redis, Fake1C, gateway, test IdP, Admin UI, localhost only</td><td>up→smoke→user→admin→down -Purge green in a row</td><td class="ok">DONE</td><td>—</td></tr>
+<tr><td>SC08: duplicate counterparties</td><td>Minimal read-only tool <code>counterparty_duplicate_candidates</code> per the frozen contract</td><td>Tool implemented, SC08 cases PASS, U18 oracle updated</td><td class="ok">DONE (local)</td><td>Amendment A2 PROPOSED until GPT-PM approval; hosted CI and GPT-PM end review for the head — PENDING (recorded in the PR #11 body)</td></tr>
+<tr><td>Functional Tester SC01–SC12</td><td>Independent black-box tests through public MCP tools</td><td>11 PASS + SC06 as a declared EXTERNAL-GATE</td><td class="warn">PARTIAL (by definition)</td><td>11 of 12 PASS; SC06 EXTERNAL-GATE (needs a validated profile and ten native reports)</td></tr>
+<tr><td>User E2E U01–U18</td><td>Automated user checks</td><td>0 skipped, U18 per the contract</td><td class="ok">DONE (with caveat)</td><td>U18 = 11 of 12 PASS + SC06 declared, not 12/12</td></tr>
+<tr><td>Admin E2E A01–A54</td><td>Browser/API, roles, CSRF, idempotency, audit</td><td>0 unexpected skips</td><td class="ok">DONE</td><td>1 declared EXTERNAL-GATE skip (profile validation requires ten native reports)</td></tr>
+<tr><td>Safe local 1C/RSV</td><td>Metadata and lifecycle on a disposable database; reveal/execute_query/generic query disabled</td><td>Live RSV and native lifecycle PASS</td><td class="ok">DONE</td><td>Last live run on 067b688; adapters/ unchanged since; business reads on a native database are EXTERNAL (see section 10)</td></tr>
+<tr><td>Full local matrix</td><td>31 steps + pytest with PG/Redis</td><td>31/31 exit 0, skips with dispositions</td><td class="ok">DONE</td><td>pytest 1438 passed / 238 skipped; E2E smoke 29</td></tr>
+<tr><td>FT rerun on final code</td><td>Same code as the matrix</td><td>Hygiene clean, 0 failed</td><td class="ok">DONE</td><td>83 tests: 79 passed, 3 skipped, 1 xfail (SC06), 0 failed; hygiene 4/4</td></tr>
+<tr><td>Two manual acceptance packs</td><td>Separate for user and administrator</td><td>Step-by-step documents, registered in the index</td><td class="ok">DONE (documents)</td><td>Owner acceptance itself — PENDING</td></tr>
+<tr><td>Merge preparation</td><td>Hosted CI green and GPT-PM APPROVE on the exact head</td><td>Green CI + APPROVE on the exact head</td><td class="warn">PENDING for <code>abe290f</code></td><td>No merge is performed: PR stays Draft until manual acceptance</td></tr>
+<tr><td>Internal reviewers (sonnet-medium)</td><td>Security, silent-failure, test adequacy before GPT-PM</td><td>No blockers, all closable findings closed</td><td class="ok">DONE</td><td>Accepted limitations recorded in core/DECISION_LOG.md (see section 6)</td></tr>
+</table></div>
+
+<h2>4. Local results (code abe290f; facts, local)</h2>
+<div class="wrap"><table>
+<tr><th>Check</th><th>Result</th></tr>
+<tr><td>Check matrix</td><td>31/31 steps exit 0 (ruff, bandit, compileall, migrations, scenarios, preflight, Admin UI browser contract, fault/RSV/perf/security/SSRF/mutation, fresh migrate, schema, privileges, ACL and fan-out load, restore drill, pool benchmark, pytest, document consistency)</td></tr>
+<tr><td>pytest (PG16 + Redis, ERP_MCP_REQUIRE_DB_TESTS=1)</td><td><b>1438 passed / 238 skipped</b> (environment-gated classes are executed in their own planes)</td></tr>
+<tr><td>E2E smoke</td><td>29 passed, 0 skipped</td></tr>
+<tr><td>User E2E U01–U18</td><td>53 passed, 0 skipped</td></tr>
+<tr><td>Admin E2E A01–A54</td><td>87 passed, 1 skipped (declared EXTERNAL-GATE)</td></tr>
+<tr><td>Functional Tester</td><td>83 tests = 79 passed, 3 skipped (dev-mode/OIDC only), 1 xfail (SC06), 0 failed; all SC08 cases PASS; hygiene 4/4</td></tr>
+<tr><td>Security</td><td>security regression, SSRF fuzz, mutation pack, artifact scan — PASS; local reviewers found no blockers</td></tr>
+<tr><td>Hosted CI</td><td><span class="warn">PENDING</span> for <code>abe290f</code> — not local evidence</td></tr>
+</table></div>
+
+<h2>5. Disposition of 238 skips</h2>
+<div class="wrap"><table>
+<tr><th>Class</th><th>Reason</th></tr>
+<tr><td>LIVE-STACK-GATED</td><td>executed in their own planes via scripts/e2e and scripts/ft, results above</td></tr>
+<tr><td>EXTERNAL-PRIVATE-FERMA</td><td>no approved private Ferma snapshot</td></tr>
+<tr><td>EXTERNAL-REAL-1C</td><td>ONEC_TEST_BASE_URL is not set in the synthetic plane</td></tr>
+<tr><td>EXTERNAL-NATIVE-RSV</td><td>live metadata and native lifecycle: run separately and pass</td></tr>
+</table></div>
+<p class="sub">The classes are the same as in the previous version of this report; the per-class counts for 238 were not recomputed here.</p>
+
+<h2>6. Review and accepted limitations</h2>
+<div class="card">
+<p><b>Local sonnet-medium reviewers (security, silent-failure, test adequacy):</b> no BLOCKER; all closable findings closed.</p>
+<p><b>ACCEPTED LIMITATION:</b> an empty company activity scan returns PASS per the contract; changing that needs Amendment A3. Surfaced for GPT-PM; recorded in <code>core/DECISION_LOG.md</code>.</p>
+<p><b>Earlier GPT-PM findings (history, closed at c7377eb):</b> BLOCKER — checkpoint fingerprint depended on line endings (fixed: CRLF→LF, tests added); MAJOR — U18 oracle versus the frozen contract (Amendment A1 filed).</p>
+</div>
+
+<h2>7. Owner decisions and further work</h2>
+<div class="card">
+<ul>
+<li><b>SC08:</b> the operator chose "implement" — implemented (section 1). Remaining: GPT-PM approval of Amendment A2, hosted CI and GPT-PM end review on the exact head (result goes into the PR #11 body).</li>
+<li><b>Manual acceptance:</b> environment — <code>scripts\e2e\up.ps1</code>; packs <code>docs/MANUAL_ACCEPTANCE_USER.md</code> and <code>docs/MANUAL_ACCEPTANCE_ADMIN.md</code>.</li>
+<li><b>Cleanup (history):</b> with owner permission, 36 harness containers were removed (<code>erp-pool-*</code>, <code>erpmcp-restore-*</code>, <code>erp-fault-*</code>); other container groups were not touched.</li>
+</ul>
+</div>
+
+<h2>8. External gates (not closable locally)</h2>
+<div class="card">
+<ul>
+<li>Native 1C/RSV reconciliation and ten native reference reports (also lifts SC06).</li>
+<li>Private Ferma snapshot.</li>
+<li>Production-like IdP, secrets, OData and RSV.</li>
+<li>Retention, backup, DR, PITR.</li>
+<li>Customer pilot.</li>
+</ul>
+</div>
+
+<h2>9. Owner's next action</h2>
+<div class="card">
+<p>Bring up the environment, walk the User and Admin manual packs on the current PR #11 head (see the PR #11 body for its SHA and hosted CI status), and record the results. Do not move PR #11 out of Draft or merge it before that.</p>
+</div>
+
+<h2>10. Next lane: real 1C reference database 818HA (L2-B)</h2>
+<div class="card">
+<p><span class="warn">NOT EXECUTED.</span> This is a plan, not a result; this lane is not part of the current evidence.</p>
+<p>The operator supplied a real local 1C copy: an immutable supplied dump (SHA verified in the real lane), disposable clones and a local OData.</p>
+<p>Planned after this sprint:</p>
+<ul>
+<li>finalize the dedicated read-only reader (the owner types the disposable-clone admin password once, interactively);</li>
+<li>real-source registration;</li>
+<li>company discovery;</li>
+<li>native reconciliation NR-01..NR-10;</li>
+<li>21 invoices;</li>
+<li>month-close rules;</li>
+<li>ACL, failure and drift tests;</li>
+<li>a separate REAL-1C-818HA report.</li>
+</ul>
+<p>Fake1C and synthetic data are never presented as native 1C or production.</p>
+</div>
+
+<h2>11. Where to find things (full local paths)</h2>
+<div class="card">
+<ul>
+<li>Repository: <code>D:\Repo\ERP_MCP-integration-candidate</code></li>
+<li>Reports: <code>D:\Repo\ERP_MCP-integration-candidate\reports\</code> (Russian file — <code>ERP_MCP_RC_HANDOFF_2026-10-07.ru.html</code>, English copy — <code>ERP_MCP_RC_HANDOFF_2026-10-07.html</code>)</li>
+<li>SC08 contract: <code>D:\Repo\ERP_MCP-integration-candidate\docs\SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md</code></li>
+<li>Decision log and accepted limitations: <code>D:\Repo\ERP_MCP-integration-candidate\core\DECISION_LOG.md</code></li>
+<li>Manual acceptance: <code>D:\Repo\ERP_MCP-integration-candidate\docs\MANUAL_ACCEPTANCE_USER.md</code>, <code>D:\Repo\ERP_MCP-integration-candidate\docs\MANUAL_ACCEPTANCE_ADMIN.md</code></li>
+<li>Environment startup: <code>D:\Repo\ERP_MCP-integration-candidate\scripts\e2e\up.ps1</code></li>
+<li>Hosted CI and GPT-PM end review for the current head: PR #11 body</li>
+</ul>
+</div>
+
+</main>
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
