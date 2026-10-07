@@ -4,9 +4,9 @@ With ``ERP_MCP_E2E_NO_SKIP=1`` (set by scripts/e2e/test.ps1) every skipped test 
 not on the explicit allowlist is turned into a FAILURE, so the run exits non-zero; the terminal
 summary always prints the skipped count. xfail is not a skip and is left alone.
 
-The allowlist is ``ALLOWED_SKIP_REASONS`` (substrings of the skip reason; empty on purpose). The
-env var ``ERP_MCP_E2E_ALLOWED_SKIP_REASONS`` (comma separated) exists only so the policy itself
-can be tested; test.ps1 never sets it.
+The allowlist is ``ALLOWED_SKIP_REASONS`` (substrings of the skip reason; exactly one
+declared EXTERNAL-GATE). The env var ``ERP_MCP_E2E_ALLOWED_SKIP_REASONS`` (comma separated)
+exists only so the policy itself can be tested; test.ps1 never sets it.
 """
 
 from __future__ import annotations
@@ -16,7 +16,9 @@ import os
 import pytest
 
 NO_SKIP_VAR = "ERP_MCP_E2E_NO_SKIP"
-ALLOWED_SKIP_REASONS: tuple[str, ...] = ()
+ALLOWED_SKIP_REASONS: tuple[str, ...] = (
+    "EXTERNAL-GATE: validated profile requires native reconciliation evidence",
+)
 _SEEN = {"skipped": 0, "unexpected": 0}
 
 

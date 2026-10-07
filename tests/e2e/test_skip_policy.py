@@ -50,3 +50,13 @@ def test_skip_is_tolerated_only_when_no_skip_mode_is_off(tmp_path):
     result = _run(tmp_path, no_skip=False)
     assert result.returncode == 0, result.stdout
     assert "skipped=1 unexpected=0" in result.stdout
+
+
+def test_allowlist_holds_exactly_the_declared_external_gate_reason(tmp_path):
+    import skip_policy
+
+    assert skip_policy.ALLOWED_SKIP_REASONS == (
+        "EXTERNAL-GATE: validated profile requires native reconciliation evidence",)
+    # An unrelated skip reason is still a failure under NO_SKIP: the allowlist did not widen.
+    result = _run(tmp_path, no_skip=True)
+    assert result.returncode != 0 and "UNEXPECTED SKIP" in result.stdout

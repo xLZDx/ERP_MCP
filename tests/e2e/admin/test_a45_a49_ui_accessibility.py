@@ -31,8 +31,10 @@ PAGES = {
     "audit": "Audit & evidence",
 }
 DESCRIBE_JS = """() => { const e = document.activeElement; if (!e) return 'none';
+  const all = Array.from(document.querySelectorAll('*')); const r = e.getBoundingClientRect();
   return e.tagName + '#' + (e.id || '') + '[' + ((e.getAttribute('aria-label') || e.innerText
-  || e.value || '') + '').trim().slice(0, 40) + ']'; }"""
+  || e.value || '') + '').trim().slice(0, 40) + ']@' + all.indexOf(e) + ':' +
+  Math.round(r.top) + ',' + Math.round(r.left); }"""
 LAYOUT_JS = """() => {
   const vw = document.documentElement.clientWidth, bad = [];
   for (const e of document.querySelectorAll('button, a[href], input, select, textarea')) {

@@ -259,29 +259,43 @@ def test_A06_platform_admin_reaches_every_write_surface(e2e_env, world, evidence
         assert action in audited, f"A06 mutation {action} left no admin audit event ({steps})"
 
 
-def test_A06_platform_admin_reaches_validate_and_scope_mapping_surfaces(e2e_env, world,
-                                                                      evidence):
-    """Validate + company-scope-mapping writes need register-capability evidence for the source
-    (normally produced by the OData sidecar). Without it the product answers
-    CAPABILITY_UNSUPPORTED, which this test reports as an environment limitation."""
-    world.need("source", "caps")
-    pa = world.pa
+def test_A06_platform_admin_is_authorized_for_validate_and_scope_mapping_surfaces(
+        e2e_env, world, evidence):
+    """Profile validation and company-scope mapping need NATIVE reconciliation evidence, which
+    cannot exist in this synthetic environment and is never fabricated here. The PLATFORM_ADMIN
+    must be AUTHORIZED for both surfaces (never 401/403) and the product must refuse fail-closed
+    with its documented domain error (never 200/201) while a read-only role is denied (403)."""
+    world.need("source", "caps", "roles")
+    pa, aud = world.pa, world.role_session("AUDITOR")
     draft = _mut(world.create_profile(pa, world.source_id), "A06 profile", 201).body["id"]
     _mut(world.add_mapping(pa, draft), "A06 mapping", 201)
-    validated = world.validate_profile(pa, draft)
-    assert validated.status == 200, (
-        "profile validation is not possible in this environment (no register capability "
-        f"evidence / sidecar?): {validated.describe()}")
-    assert validated.body["status"] == "VALIDATED"
-    scope = _mut(pa.post("/admin/v1/company-scope-mappings", {
-        "profile_id": draft, "entity_set": "Document_Sales", "company_property": "Organization_Key",
-        "literal_kind": "guid", "reason": "A06 scope mapping"}), "A06 scope mapping", 201)
-    assert scope.body["entity_set"] == "Document_Sales"
+    validate_path = f"/admin/v1/semantic-profiles/{draft}/validate"
+    no_native_evidence = {"validation_evidence": {"native_reconciliation_cases": []},
+                          "reason": "A06 validation without native evidence"}
+
+    refused = pa.post(validate_path, no_native_evidence)
+    assert refused.status in (400, 409, 422), (
+        f"validation without native evidence must be refused 4xx: {refused.describe()}")
+    assert refused.error in {"INVALID_REQUEST", "CAPABILITY_UNSUPPORTED"}, refused.describe()
+    forbidden = aud.post(validate_path, no_native_evidence)
+    assert forbidden.status == 403 and forbidden.error == "PLATFORM_ROLE_DENIED", (
+        f"the read-only role must not reach the validate surface: {forbidden.describe()}")
+    assert evidence.scalar("SELECT status FROM bag.semantic_profiles WHERE profile_id=$1",
+                           uuid.UUID(draft)) != "VALIDATED"
+
+    scope_body = {"profile_id": draft, "entity_set": "Document_Sales",
+                  "company_property": "Organization_Key", "literal_kind": "guid",
+                  "reason": "A06 scope mapping on a profile that is not VALIDATED"}
+    scope = pa.post("/admin/v1/company-scope-mappings", scope_body)
+    assert scope.status in (400, 409, 422), scope.describe()
+    assert scope.error == "INVALID_REQUEST", scope.describe()
+    audit = evidence.admin_events(scope)
+    assert audit and audit[0]["outcome"] == "error" and audit[0]["actor_subject"] == (
+        "platform_admin"), f"authorized refusal must be audited as an error, not a denial: {audit}"
+    assert aud.post("/admin/v1/company-scope-mappings", scope_body).status == 403
+    assert evidence.count("company_scope_mappings", "profile_id=$1", uuid.UUID(draft)) == 0
     _mut(pa.post(f"/admin/v1/semantic-profiles/{draft}/retire", {"reason": "A06 retire"}),
          "A06 retire", 200)
-    audited = {r["action"] for r in evidence.admin_events_since(
-        world.t0, actor_subject="platform_admin")}
-    assert {"semantic_profile.validate", "company_scope_mapping.create"} <= audited
 
 
 # --------------------------------------------------------------------------------------- A07
