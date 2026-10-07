@@ -20,6 +20,8 @@ param(
     [string]$ProfilesFile = '',
     [string]$TestbedDir = 'D:\ERP_MCP_Testbed\real1c_e2e',
     [string]$Python = 'D:\Repo\ERP_MCP-integration-candidate\.venv\Scripts\python.exe',
+    [switch]$ReaderFromDpapi,
+    [string]$ReaderSecretFile = 'D:\secrets\erp_mcp\test_reader_password.dpapi',
     [switch]$Stop
 )
 $ErrorActionPreference = 'Stop'
@@ -45,6 +47,18 @@ if (Get-Listener $Port) { throw "port $Port is already in use" }
 if (-not (Test-Path $Python)) { throw "python not found: $Python" }
 . (Join-Path $TestbedDir 'env.ps1')   # BAG_* for the real1c testbed (contains secrets; stays in this process)
 
+if ($ReaderFromDpapi) {
+    # Same identity and file the project's real-1C lane uses: DPAPI (CurrentUser) blob, decrypted in
+    # this process only. Works only under the Windows account that created the blob.
+    if (-not (Test-Path -LiteralPath $ReaderSecretFile)) { throw "DPAPI reader secret not found: $ReaderSecretFile" }
+    Add-Type -AssemblyName System.Security
+    $blob = [System.IO.File]::ReadAllBytes($ReaderSecretFile)
+    $plain = [System.Security.Cryptography.ProtectedData]::Unprotect(
+        $blob, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+    $env:ERP_MCP_818HA_USER = 'ERP_MCP_TEST_READER'
+    $env:ERP_MCP_818HA_PASSWORD = [System.Text.Encoding]::UTF8.GetString($plain)
+    [Array]::Clear($plain, 0, $plain.Length)
+}
 if (-not $env:ERP_MCP_818HA_USER) {
     $env:ERP_MCP_818HA_USER = Read-Host 'ERP_MCP_818HA_USER (1C reader login)'
 }

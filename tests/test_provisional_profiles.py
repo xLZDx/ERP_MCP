@@ -227,3 +227,26 @@ async def test_without_a_provider_the_original_refusal_is_unchanged(company_id):
 
     with pytest.raises(SemanticProfileUnavailable, match=f"no validated {CONCEPT} profile"):
         await registry.require_semantic_mapping(SOURCE, company_id, CONCEPT)
+
+
+# ------------------------------------------------------------------ the committed real-source profile
+
+
+def test_committed_real_source_profile_loads_and_passes_the_runtime_validator():
+    import hashlib
+    from pathlib import Path
+
+    from business_ai_gateway.analytics_balance import validate_analytics_balance_mapping
+
+    path = Path(__file__).resolve().parents[1] / "testbed" / "real1c" / "provisional_profiles_818ha.json"
+    provider = ProvisionalProfiles(path, hashlib.sha256(path.read_bytes()).hexdigest(), environment="test")
+    company = uuid.UUID("3e31afc5-351f-4f36-8074-99129fa3d911")
+
+    mapping = provider.lookup(SOURCE, company, "account.balance_by_analytics")
+
+    assert validate_analytics_balance_mapping(mapping) == ("AccountingRegister_Хозрасчетный", "balance")
+    assert [item["code"] for item in mapping["accounts"]] == ["521.1"]
+    assert mapping["amount_fields"] == {"debit": "СуммаSplittedBalanceDr", "credit": "СуммаSplittedBalanceCr"}
+    assert provider.reconciliation["native_reconciliation"] == "NOT_RUN"
+    with pytest.raises(SemanticProfileUnavailable):  # nothing else is granted
+        provider.lookup(SOURCE, company, "payable.balance")

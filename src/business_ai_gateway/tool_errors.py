@@ -22,6 +22,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.shared.exceptions import MCPError
 
+from .analytics_balance import AnalyticsBalanceDenied, AnalyticsBalanceError
 from .audit import AuditUnavailable, current_request_correlation_id
 from .compatibility import CapabilityUnsupported, MetadataDriftUnacknowledged
 from .semantic import SemanticProfileUnavailable
@@ -73,6 +74,17 @@ def classify(exc: BaseException) -> ToolFailure:
         return ToolFailure(
             getattr(exc, "code", "CAPABILITY_UNSUPPORTED"), "capability", False,
             redact(exc) if str(exc) else "The source does not support this operation.",
+        )
+    if isinstance(exc, AnalyticsBalanceDenied):
+        return ToolFailure(
+            exc.code, "capability", False,
+            f"The analytics balance route was refused before any data call ({exc.code}).",
+        )
+    if isinstance(exc, AnalyticsBalanceError):
+        # The code is a fixed machine string; the 1C response content is never echoed.
+        return ToolFailure(
+            exc.code, "source_response", False,
+            f"The source response failed validation ({exc.code}); no figures were returned.",
         )
     if isinstance(exc, PermissionError):
         # Deliberately text-free: the reason (unknown source vs. no grant vs. other company) must not leak.

@@ -1,0 +1,73 @@
+{
+  "fixture_id": "real-818ha-provisional-v1",
+  "reconciliation": {
+    "basis": "independent reconstruction from AccountingRegister_Хозрасчетный_RecordType postings (active entries, organization 818 HA SRL, 521.1 credit minus debit); not a native 1C report",
+    "native_reconciliation": "NOT_RUN",
+    "spot_checks": "native Balance rows for 521.1 on 2026-08-31 matched two independently reconstructed supplier positions (credit 90230.56; overpayment -264.60)"
+  },
+  "review": {
+    "column_evidence": "native Balance/BalanceAndTurnovers columns read live from the real publication as ERP_MCP_TEST_READER on 2026-10-07 (top=3, read-only)",
+    "decision": "operator decision 2026-10-07, option 1: serve results labelled UNVALIDATED_INDEPENDENT_RECONCILIATION",
+    "kind": "PROVISIONAL_REAL_SOURCE"
+  },
+  "schema_version": 1,
+  "sources": {
+    "onec-818ha-reference": {
+      "companies": {
+        "3e31afc5-351f-4f36-8074-99129fa3d911": {
+          "concepts": {
+            "account.balance_by_analytics": {
+              "account_field": "Account_Key",
+              "accounts": [
+                {
+                  "account_key": "5659a91f-5098-11ee-aa2f-d85ed30dc416",
+                  "code": "521.1"
+                }
+              ],
+              "amount_fields": {
+                "credit": "СуммаSplittedBalanceCr",
+                "debit": "СуммаSplittedBalanceDr"
+              },
+              "analytics": [
+                {
+                  "expected_type": "Catalog.Контрагенты",
+                  "ref_field": "ExtDimension1",
+                  "role": "counterparty",
+                  "slot": 1,
+                  "type_field": "ExtDimension1_Type"
+                },
+                {
+                  "expected_type": "Catalog.ДоговорыКонтрагентов",
+                  "ref_field": "ExtDimension2",
+                  "role": "contract",
+                  "slot": 2,
+                  "type_field": "ExtDimension2_Type"
+                },
+                {
+                  "ref_field": "ExtDimension3",
+                  "role": "other",
+                  "slot": 3,
+                  "type_field": "ExtDimension3_Type"
+                }
+              ],
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "currency_field": "Валюта_Key",
+              "entity_set": "AccountingRegister_Хозрасчетный",
+              "method": "balance",
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccountingRegister_Хозрасчетный",
+                  "method": "balance"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "metadata_fingerprint": "56337576ddf06821456a7ab4701a619f9c2457e3e1757c723dcc8907196ebbeb"
+    }
+  }
+}

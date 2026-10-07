@@ -225,7 +225,9 @@ def _decimal(value: Any) -> str:
 
 
 def _guid_or_none(value: Any) -> str | None:
-    if value is None:
+    # 1C returns "" (with an Undefined type) for a subconto slot that is not set; that is "absent",
+    # not malformed. Any other non-GUID text still fails closed.
+    if value is None or value == "":
         return None
     if not isinstance(value, str) or not _GUID.fullmatch(value):
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
