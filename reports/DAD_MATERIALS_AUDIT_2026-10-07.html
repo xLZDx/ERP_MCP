@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DAD materials audit and coverage gaps</title><style>
+:root{--bg:#f6f7f4;--fg:#1d2420;--mut:#5b655f;--line:#d7dcd5;--acc:#1f5f4a;--card:#ffffff;--warn:#8a4b00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151a17;--fg:#e6ebe7;--mut:#9aa59e;--line:#2c3631;--acc:#6bc4a0;--card:#1c231f;--warn:#e0a45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151a17;--fg:#e6ebe7;--mut:#9aa59e;--line:#2c3631;--acc:#6bc4a0;--card:#1c231f;--warn:#e0a45a;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif;padding-inline:max(16px,4vw)}
+main,header{max-width:1040px;margin-inline:auto}header{padding-block:28px 8px}h1{font-size:1.7rem;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.15rem;margin:32px 0 10px;color:var(--acc)}p{max-width:75ch}.lead{color:var(--mut)}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:560px}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}tr:last-child td{border-bottom:0}
+.gap{border-left:3px solid var(--warn);padding:6px 12px;margin:10px 0;background:var(--card)}.gap b{color:var(--warn)}
+ol,ul{max-width:75ch;padding-left:22px}li{margin:4px 0}footer{padding-block:24px 40px;color:var(--mut);font-size:.85rem}
+</style></head><body><header><h1>DAD materials audit and coverage gaps</h1><p class="lead">Every link of the document &#x27;History and context 1C MCP&#x27; was checked, the documents were compared with what ERP_MCP already covers, and the real base was used to see which reports the 1C engine produces on its own. No business figures are included here; they stay in private evidence outside Git.</p></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-native-reports</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; feature/real1c-native-report-capture @ ffb1ecf</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end --><main><h2>1. Links of the document</h2><div class="wrap"><table><thead><tr><th>Material</th><th>Result</th><th>What it contains</th></tr></thead><tbody><tr><td>Task list (docx)</td><td>Opened</td><td>8 read-only tasks and 2 write tasks for after the read-only stage</td></tr><tr><td>Pilot questions (PDF)</td><td>Opened</td><td>Month-close process and technical requests for the base</td></tr><tr><td>1C base copy (ZIP, about 2.6 GB)</td><td>Reachable, not downloaded again</td><td>Already restored as the reference copy; the comparison uses it</td></tr><tr><td>Spreadsheet &#x27;Verificare balanta&#x27; (xlsx)</td><td>Opened</td><td>The accountant&#x27;s procedure: 172 account rows with checks and required documents</td></tr><tr><td>Accountant answers screenshot (jpeg)</td><td>Direct link needs a sign-in</td><td>The six checks are recorded in the coverage document</td></tr><tr><td>Month-close verification report (PDF)</td><td>Opened</td><td>A calculation from records of the base copy, not a native 1C report</td></tr><tr><td>E-invoice folder</td><td>Listing opened</td><td>21 invoice PDFs</td></tr><tr><td>Invoice reconciliation, 1C write check and statistics (3 PDFs)</td><td>Opened</td><td>Invoice mismatches and the history of the write pilot (write is out of the current scope)</td></tr><tr><td>Diadoc example</td><td>Not opened automatically</td><td>External sample service; the site blocks automated requests</td></tr></tbody></table></div><h2>2. The needed reports: what the 1C engine gives</h2><p>The DAD materials contain no native 1C UI reports (everything in the folder was produced by our calculations). The real base copy was therefore asked what the same engine can produce. All runs used disposable copies under the read-only account; the reference copy was not opened.</p><div class="wrap"><table><thead><tr><th>Report or query</th><th>Result</th><th>What it supports</th></tr></thead><tbody><tr><td>Income and expenses (standard report)</td><td>Generated, has data</td><td>Month revenue of account 611; check against the DAD report</td></tr><tr><td>Income and expenses by document</td><td>Generated, 1571 rows</td><td>Document list for invoice analysis (NR-08, NR-10)</td></tr><tr><td>Cash balances</td><td>Generated, one total</td><td>Total only; does not give cash 241.1 by day (NR-07)</td></tr><tr><td>Goods balances and movements</td><td>Generated, no data rows</td><td>Does not cover stock 211: it is kept differently</td></tr><tr><td>Supplier debt, settlements</td><td>Generated, no data rows</td><td>Confirms the finding: supplier settlements live on account 521, not in such a register</td></tr><tr><td>Accounts balance-and-turnover query (1C engine)</td><td>Works on the copy, 66 accounts with data</td><td>Gives trial-balance data for NR-02, NR-03, NR-04, NR-07; class NATIVE_COM_QUERY, comparison only</td></tr></tbody></table></div><p class="lead">The standard trial balance and account card are empty through an external connection (their logic lives in an interactive form). For the figures we checked, a query over the accounting register works.</p><h2>3. The DAD month-close report against the base copy</h2><p>The DAD report was built from records extracted from the base. Against the 1C engine&#x27;s turnovers and balances, accounts 216.1, 241.1, 611.1, 711.1, 821 and 521.1 agree. Account 811.1 does not agree (August turnover, opening and closing balance) and the total August turnover differs too. The cause is not established. Hypotheses: period boundaries and time zone, or the active-record filter. Product conclusion: totals must not be rebuilt from posting rows; balance-and-turnover virtual tables are needed, as in `accounting_balance_and_turnovers`.</p><h2>4. What is covered and what is not</h2><div class="wrap"><table><thead><tr><th>DAD requirement</th><th>Status</th><th>Comment</th></tr></thead><tbody><tr><td>Read-only, 30–150 companies per user, grant and revoke without restart</td><td>Covered (synthetic), live proof partial</td><td>The real copy is one base with one organisation; scale and isolation are proven on synthetic data</td></tr><tr><td>Repair when the AI reads wrongly</td><td>Partial</td><td>Metadata drift and profiles exist; a tested profile rebuild runbook is still needed</td></tr><tr><td>Task 2: quick answers (debts, VAT, who owes)</td><td>Partial</td><td>Account totals work. Per-counterparty data is reachable through OData but there is no ready tool (gap A). VAT is not covered</td></tr><tr><td>The accountant&#x27;s six checks</td><td>Partial</td><td>An internal engine exists. Not run on the real copy: 211 by item and warehouse, 241 by day (see gap C)</td></tr><tr><td>The accountant&#x27;s table, 172 account rows</td><td>Not covered as a rule pack</td><td>A versioned rule pack with applicability conditions is needed; 172 code branches must not be written</td></tr><tr><td>Task 1: month-close analysis with proposals</td><td>Closed by the customer&#x27;s decision</td><td>The customer dropped the month-close report; the rules stay on the roadmap</td></tr><tr><td>Task 3: P&amp;L, cash flow, balance sheet</td><td>Internal contract, no public tools</td><td>Account profiles must be approved and reconciled with native reports</td></tr><tr><td>Tasks 4–8 (tax, bank, customs, payroll, reconciliation acts)</td><td>Not covered</td><td>External evidence is needed: statements, declarations, acts. Without it the result is EVIDENCE_REQUIRED, not PASS</td></tr><tr><td>Invoices (21 PDFs)</td><td>Reconciliation logic exists, source not connected</td><td>PDF/XML parsing and live collection are needed</td></tr><tr><td>Writing to 1C (invoices, payments, cash)</td><td>Deferred</td><td>The customer returned to read-only; writing only as a separate product</td></tr></tbody></table></div><h2>5. Gaps found in this review</h2><div class="gap"><b>A.</b> Corrected after verification. This item used to say that analytics per counterparty is unreachable: that was wrong, only the entity list had been checked, not the functions. On the published OData the accounting register functions Balance and RecordsWithExtDimensions work and return analytics (counterparty, contract) and balances by it. What is missing is a tool: the current accounting_balance_and_turnovers returns seven canonical fields without analytics. Operator decision: a hybrid, OData as the primary route and COM as the fallback for bases where analytics is not published.</div><div class="gap"><b>B.</b> The DAD report disagrees with the engine on account 811.1 and on the total turnover; the cause is not found (section 3). Until it is explained, nothing can be said about the 811.1 balance for August.</div><div class="gap"><b>C.</b> Checks by item and warehouse (211) and by day (241) need queries with analytics and by day. They were not run on the real copy yet. This is the next step for NR-05..NR-07.</div><div class="gap"><b>D.</b> Native UI reports from the accountant are still needed for the ten cases; engine queries are comparison only and do not replace them.</div><div class="gap"><b>E.</b> The source document contains a plaintext login and password of the test copy. In ERP_MCP it is a secret reference only; the password must not be copied into Git, reports or prompts. Rotating it is recommended if the copy is used more widely.</div><h2>6. Recommendation for payable_balance</h2><ol><li>Do not look for a settlements accumulation register: this configuration has none.</li><li>Define payable_balance through an account-based profile: 521 as debt, 224 and 544 as advances and other. The approved profile owns the account numbers, not the code.</li><li>The account total is already confirmed: the gateway answer equals the engine query for 521.1.</li><li>Take the per-supplier split from register balances of account 521 with the counterparty analytics (OData Balance, COM fallback), not from the sum of receipt documents: offsets and prepayments are invisible that way.</li><li>Keep debt aging unavailable. Acceptance: a trial balance for 521 from the 1C interface prepared by the accountant.</li></ol><h2>7. Next steps</h2><ol><li>Build the balance-with-analytics tool: OData as the primary route, COM as the fallback (operator decision), with a parity check of the two routes on a disposable copy.</li><li>Run 211 by item and warehouse and 241 by day on a disposable copy.</li><li>Explain the 811.1 difference on the base copy (period and active-record filter).</li><li>Build the rule pack from the accountant&#x27;s table, starting with rules that rely on approved profiles.</li><li>After merging the integration branch updates into PR #20, obtain a fresh APPROVE on the new head.</li></ol></main><footer>ERP_MCP, 2026-10-07</footer>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

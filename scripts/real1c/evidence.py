@@ -1,6 +1,6 @@
 """Evidence classes and the validate-guard.
 
-Policy: NATIVE_COM_QUERY is a comparison-only class. It can never reach
+Policy: NATIVE_COM_QUERY and NATIVE_ENGINE_REPORT are comparison-only classes. They can never reach
 ``scripts/semantic_profiles.py`` validate and can never yield VALIDATED_NATIVE,
 PROFILE_EVIDENCE_ON_FILE or PROFILE_VALIDATED. Only genuine native 1C UI
 reports (NATIVE_UI_REPORT, each with a 64-hex report sha256) count, and at
@@ -17,6 +17,7 @@ EVIDENCE_CLASSES = frozenset(
     {
         "GATEWAY_OBSERVATION",
         "NATIVE_COM_QUERY",
+        "NATIVE_ENGINE_REPORT",
         "CONTROL_PLANE_ROWS",
         "REPO_STATIC",
         "NATIVE_UI_REPORT",

@@ -9,7 +9,9 @@ param([switch]$Purge)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
-foreach ($name in 'gateway', 'idp', 'sidecar', 'fake1c') { Stop-E2eComponent $name }
+foreach ($name in 'gateway', 'idp', 'sidecar', 'fake1c') {
+    if ($script:ProcessComponents -contains $name) { Stop-E2eComponent $name }
+}
 # env.json is the READY marker: a stopped environment must not make plain pytest run tests/e2e.
 $ready = Join-Path $script:E2eDir 'env.json'
 if (Test-Path $ready) { Remove-Item -Force $ready }
