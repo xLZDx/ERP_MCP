@@ -68,3 +68,18 @@ def test_every_data_act_target_is_registered_in_the_delegated_dispatcher():
     used = set(re.findall(r"data-act=\"(\w+)\"", javascript))
     used |= set(re.findall(r"modal\([^\n]*?,'(\w+)'\)", javascript))
     assert used and used <= registered, sorted(used - registered)
+
+
+def test_row_action_buttons_have_row_specific_accessible_names():
+    javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
+    # Visible labels repeat on every row ("Edit / disable", "Revoke"); each button must carry an
+    # aria-label that starts with the visible label and names the row target (WCAG 2.5.3, 2.4.6).
+    assert "function rowLabel(label,item)" in javascript
+    assert "return label+': '+name" in javascript
+    operation = javascript[javascript.index("function operationButton"):]
+    operation = operation[: operation.index("\n}")]
+    assert "aria-label=\"'+esc(rowLabel(label,item))" in operation
+    evidence = javascript[javascript.index("function evidenceButton"):]
+    evidence = evidence[: evidence.index("\n")]
+    assert "aria-label=\"'+esc(rowLabel('Evidence',item))" in evidence
+

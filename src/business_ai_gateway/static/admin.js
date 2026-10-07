@@ -95,7 +95,7 @@ function permitted(role,source){return state.me?.mutations_enabled&&state.me.rol
 function globalSourceAdmin(){return state.me?.roles.some(r=>['PLATFORM_ADMIN','SOURCE_ADMIN'].includes(r.role)&&!r.source_id)}
 function operationButton(label,op,item,role,gate=true){
  if(!permitted(role,item.source_id)||!gate)return '';
- const index=state.records.push(item)-1;return '<button class="btn" data-op="'+op+'" data-record="'+index+'">'+label+'</button> ';
+ const index=state.records.push(item)-1;return '<button class="btn" data-op="'+op+'" data-record="'+index+'" aria-label="'+esc(rowLabel(label,item))+'">'+label+'</button> ';
 }
 function policyState(item){return item.revoked_at?'Revoked':item.expires_at&&Date.parse(item.expires_at)<=Date.now()?'Expired':'Active'}
 table=function(title,items,cols){
@@ -145,7 +145,10 @@ function focusMainHeading(){const a=document.activeElement;if(document.querySele
 function pageBack(){state.offset=Math.max(0,state.offset-50);render()}function pageNext(){state.offset+=50;render()}
 function labelForms(){document.querySelectorAll('.field').forEach(f=>{const label=f.querySelector('label'),input=f.querySelector('input,select,textarea');if(label&&input){if(!input.id)input.id='field-'+crypto.randomUUID();label.htmlFor=input.id}})}
 function inputField(name,label,type='text',options=null){return {name,label,type,options}}
-function evidenceButton(item){const index=state.records.push(item)-1;return '<button class="btn" data-op="profile-evidence" data-record="'+index+'">Evidence</button> '}
+function evidenceButton(item){const index=state.records.push(item)-1;return '<button class="btn" data-op="profile-evidence" data-record="'+index+'" aria-label="'+esc(rowLabel('Evidence',item))+'">Evidence</button> '}
+// Row action buttons share visible labels; give each a row-specific accessible name that starts
+// with the visible label (WCAG 2.5.3) and ends with the target's identifier.
+function rowLabel(label,item){const name=item.display_name||item.profile_name||item.principal_id||item.capability_key||item.source_id||'';const id=item.grant_id||item.binding_id||item.assignment_id||item.override_id||item.company_id||item.profile_id||item.source_id||'';return label+': '+name+(id&&id!==name?' ('+id+')':'')}
 const principalFields=()=>[inputField('principal_kind','Principal kind','select',['subject','group']),inputField('principal_id','Stable IdP principal ID')];
 const scopeFields=()=>[inputField('source_id','Source ID'),inputField('company_id','Company UUID (optional)')];
 const expiryField=()=>inputField('expires_at','Expiry (optional, ISO timestamp with timezone)');
