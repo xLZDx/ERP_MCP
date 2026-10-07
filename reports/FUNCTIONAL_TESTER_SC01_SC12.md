@@ -19,6 +19,11 @@ run at `d8f322b`. The first attempt on this head ran with no stack environment l
 tests; it is not a result for the code and was discarded (cause: the suite reads only `FT_*` variables
 written by `scripts/ft/setup.ps1`).
 
+**Acceptance status: 10 of 12 scenarios PASS, 2 declared dispositions** (SC06 EXTERNAL-GATE, SC08 NOT
+IMPLEMENTED), per Amendment A1 of `docs/E2E_ACCEPTANCE_CONTRACT.md`. This is not 12/12, and the
+declared dispositions are not counted as PASS. SC08 needs an operator scope rebaseline; SC06 needs a
+validated profile (ten native report references).
+
 ## Scenario matrix
 
 Columns: positive contract, wrong company denied before upstream, unsupported capability fails closed,

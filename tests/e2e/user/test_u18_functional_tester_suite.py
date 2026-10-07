@@ -7,7 +7,9 @@ expectation (pytest counts xfail as "skipped", so a bare `skipped == 0` check ca
 * SC01..SC12 each appear in `test_scenario_positive_contract`;
 * SC01-SC05, SC07, SC09-SC12 PASSED (no skipped/xfail/failure/error element);
 * SC06 is the ONLY allowed xfail "EXTERNAL-GATE" and SC08 the ONLY allowed xfail
-  "NOT IMPLEMENTED" (both by design, see the Functional Tester decision log);
+  "NOT IMPLEMENTED" (Amendment A1 of docs/E2E_ACCEPTANCE_CONTRACT.md: U18 is reported as
+  10 of 12 PASS plus these two declared dispositions, never as 12/12; an unexpected pass of
+  either also fails U18 so the declaration must then be retired);
 * every other test case passed: no failure, no error and no skip, EXCEPT the two dev-mode-only
   cases in `ALLOWED_SKIPS` (they revoke/re-add the dev principal's grant with scripts/admin.py and
   are skipped by design whenever a bearer token is configured; the same grant lifecycle is

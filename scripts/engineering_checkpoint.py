@@ -33,7 +33,9 @@ def implementation_fingerprint(root: Path) -> str:
         if path.is_symlink():
             raise ValueError("implementation inventory contains a symlink")
         content = path.read_bytes()
-        if path.suffix in TEXT or path.name == "Dockerfile":
+        # Any text file (known extension, Dockerfile, or no NUL byte, e.g. .ps1/.sh/.sql/.css) is hashed
+        # with LF endings so a Windows CRLF checkout and a Linux checkout fingerprint the same Git content.
+        if path.suffix in TEXT or path.name == "Dockerfile" or b"\0" not in content:
             content = content.replace(b"\r\n", b"\n")
         digest.update(path.relative_to(root).as_posix().encode() + b"\0")
         digest.update(hashlib.sha256(content).digest())

@@ -29,6 +29,28 @@ def test_checkpoint_accepts_matching_content_and_line_endings(tmp_path):
     check_checkpoint(tmp_path)
 
 
+@pytest.mark.parametrize("name", ["script.ps1", "script.sh", "query.sql", "style.css", "NOEXT"])
+def test_fingerprint_is_line_ending_independent_for_every_text_file(tmp_path, name):
+    # A Windows CRLF checkout and a Linux LF checkout of the same Git content must agree,
+    # including text formats that are not in the extension list (PowerShell, shell, SQL, CSS).
+    (tmp_path / "src").mkdir()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / name).write_bytes(b"line one\nline two\n")
+    lf = implementation_fingerprint(tmp_path)
+    (tmp_path / "scripts" / name).write_bytes(b"line one\r\nline two\r\n")
+    assert implementation_fingerprint(tmp_path) == lf
+    (tmp_path / "scripts" / name).write_bytes(b"line one\nline TWO\n")
+    assert implementation_fingerprint(tmp_path) != lf
+
+
+def test_fingerprint_does_not_rewrite_binary_content(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "blob.bin").write_bytes(b"\x00\r\n\x01")
+    first = implementation_fingerprint(tmp_path)
+    (tmp_path / "src" / "blob.bin").write_bytes(b"\x00\n\x01")
+    assert implementation_fingerprint(tmp_path) != first
+
+
 def test_checkpoint_rejects_source_drift(tmp_path):
     prepare(tmp_path)
     (tmp_path / "src/fixture.py").write_text("value = 2\n")

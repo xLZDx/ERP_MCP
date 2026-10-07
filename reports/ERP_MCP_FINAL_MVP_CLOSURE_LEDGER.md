@@ -133,7 +133,7 @@ body/comment, so no tracked commit follows a green hosted run.
 | Local verification matrix | 31/31 steps exit 0 (ruff, bandit, compileall, migrations 001-014, scenarios, preflight, Admin UI browser contract, fault/RSV/perf/security/SSRF/mutation harnesses, fresh migrate, schema, privileges, ACL/fan-out load, PostgreSQL restore drill, pool benchmark, full pytest, document consistency) |
 | Full pytest (PG16 + Redis, `ERP_MCP_REQUIRE_DB_TESTS=1`) | 1224 passed / 232 skipped |
 | E2E smoke | 29 passed, 0 skipped (16 environment checks + 13 skip-policy tests) |
-| User E2E U01-U18 | 52 passed, 0 skipped |
+| User E2E U01-U18 | 52 passed, 0 skipped; U18 = 10 of 12 scenarios PASS + SC06 EXTERNAL-GATE + SC08 NOT IMPLEMENTED declared in Amendment A1 of `docs/E2E_ACCEPTANCE_CONTRACT.md` (not 12/12) |
 | Admin E2E A01-A54 | 87 passed, 1 skipped (declared EXTERNAL-GATE) |
 | Functional Tester SC01-SC12 | 73 passed, 3 skipped, 2 xfailed, 0 failed (see `reports/FUNCTIONAL_TESTER_SC01_SC12.md`) |
 | Fake1C / sidecar upstream traffic during FT | Fake1C 17 GET + 1 HEAD; sidecar 57 `/v1/read` + 5 `/v1/capabilities/registers`; no write verbs |

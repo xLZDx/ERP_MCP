@@ -1,7 +1,7 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=1ebfc1f2a0877c96ec53a48eca12b286d159b8f7d5217f011cc4986541961e9e -->
+<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=1f3ba08cf93730b04872994bb8543709c87fd230b97db8cf8b7ee70583efa0d6 -->
 
 ## Capability observation boundary — 2026-10-06
 
@@ -510,7 +510,7 @@ NO-GO; PR #11 remains OPEN/Draft.
 
 Code evidence `0f0c031` (local; hosted CI for the exact final head is recorded only in PR #11).
 Verification matrix 31/31 exit 0; full pytest 1224 passed / 232 skipped (dispositions in
-`ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`); E2E smoke 29, User U01-U18 52 (0 skipped), Admin A01-A54 87 +
+`ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`); E2E smoke 29, User U01-U18 52 passed (U18 = 10 of 12 scenarios PASS + SC06/SC08 declared per Amendment A1 of the E2E contract, not 12/12), Admin A01-A54 87 +
 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped / 2 xfailed
 (`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: PENDING.
 Production decision: NO-GO; DoD: PARTIAL; external gates unchanged.

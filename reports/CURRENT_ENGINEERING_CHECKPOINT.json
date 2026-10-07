@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "batch_id": "CAPABILITY_BOUNDARY_20261006",
-  "implementation_sha256": "1ebfc1f2a0877c96ec53a48eca12b286d159b8f7d5217f011cc4986541961e9e",
+  "implementation_sha256": "1f3ba08cf93730b04872994bb8543709c87fd230b97db8cf8b7ee70583efa0d6",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
@@ -23,7 +23,7 @@
   "local_e2e": {
     "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
     "smoke": {"passed": 29, "skipped": 0},
-    "user_u01_u18": {"passed": 52, "skipped": 0},
+    "user_u01_u18": {"passed": 52, "skipped": 0, "u18_disposition": "10 of 12 SC PASS; SC06 EXTERNAL-GATE and SC08 NOT IMPLEMENTED declared in Amendment A1, not 12/12"},
     "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
     "functional_tester_sc01_sc12": {"passed": 73, "skipped": 3, "xfailed": 2, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE", "SC08 NOT IMPLEMENTED (needs operator rebaseline)"]}
   },
