@@ -47,9 +47,24 @@ if ($BundleZip) {
     New-Item -Path $artifactDir -ItemType Directory -Force | Out-Null
     Copy-Item -LiteralPath $BundleZip -Destination $zipTarget
     Expand-Archive -LiteralPath $zipTarget -DestinationPath $extractDir
-    # Verify every manifest item in the extracted package via its own published
-    # local spec tests before treating the extracted files as complete.
-    Write-Host '[phase2] archive copied and extracted; verify manifest with the spec validator before commit'
+    $packageDir = Join-Path $extractDir 'ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08'
+    $manifest = Join-Path $packageDir 'MANIFEST.sha256'
+    if (-not (Test-Path -LiteralPath $manifest)) { throw 'BUNDLE_MANIFEST_MISSING' }
+    $entries = @(Get-Content -LiteralPath $manifest)
+    if ($entries.Count -lt 30) { throw 'BUNDLE_MANIFEST_TOO_SHORT' }
+    foreach ($entry in $entries) {
+        if ($entry -cnotmatch '^([a-f0-9]{64})  (.+)$') { throw 'INVALID_MANIFEST_ENTRY' }
+        $expected = $Matches[1]
+        $relative = $Matches[2]
+        if ($relative -match '(^[\\/]|^[A-Za-z]:|(^|[\\/])\.\.([\\/]|$))') {
+            throw 'MANIFEST_UNSAFE_PATH'
+        }
+        $targetFile = Join-Path $packageDir $relative
+        if (-not (Test-Path -LiteralPath $targetFile -PathType Leaf)) { throw 'MANIFEST_FILE_MISSING' }
+        $digest = (Get-FileHash -LiteralPath $targetFile -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($digest -ne $expected) { throw 'MANIFEST_HASH_MISMATCH' }
+    }
+    Write-Host ('[phase2] archive verified: ' + $entries.Count + ' manifest entries')
     if ($PublishBundle) {
         & $Git -C $Destination add -- 'docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip' 'docs/phase2/spec-v0.1'
         if ($LASTEXITCODE -ne 0) { throw 'STAGE_FAILED' }
