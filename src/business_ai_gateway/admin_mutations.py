@@ -179,6 +179,16 @@ class AdminMutationService:
         )
         if row is None or row["command_name"] != command or row["request_fingerprint"] != request_fp:
             raise AdminConflict("idempotency key already used for another request")
+        if row["outcome"] == "error":
+            # A failed attempt rolled back its domain write (only the reservation and audit row
+            # survive), so the same key + same payload may be retried: re-arm the reservation.
+            # A different payload/command was already rejected above.
+            await conn.execute(
+                """UPDATE bag.admin_idempotency SET outcome='pending', detail_code=NULL, updated_at=now()
+                   WHERE actor_subject=$1 AND idempotency_key=$2 AND outcome='error'""",
+                actor.subject, key,
+            )
+            return None
         if row["outcome"] != "success":
             raise AdminConflict("prior idempotency outcome is not successful")
         result = row["result_json"]

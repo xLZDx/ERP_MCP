@@ -130,6 +130,7 @@ async def test_authenticate_returns_401_when_token_verifier_returns_none():
 
     api = object.__new__(AdminAPI)
     api.sessions = None
+    api.mutations = None
     api.verifier = SimpleNamespace(verify_token=AsyncMock(return_value=None))
     request = Request({
         "type": "http", "method": "GET", "path": "/admin/v1/me", "query_string": b"",

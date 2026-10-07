@@ -9,6 +9,8 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 ORIGIN = "https://admin.test"
+CSP = ("default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; "
+       "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 COMPANY = "11111111-1111-4111-8111-111111111111"
 PROFILE = "22222222-2222-4222-8222-222222222222"
 GRANT = "33333333-3333-4333-8333-333333333333"
@@ -18,6 +20,9 @@ async def verify():
     html = Path("src/business_ai_gateway/static/admin.html").read_text(encoding="utf-8")
     javascript = Path("src/business_ai_gateway/static/admin.js").read_text(encoding="utf-8")
     requests, errors = [], []
+    import re
+    inline = re.findall(r"(?<![\w.])on[a-z]{3,}\s*=\s*\\?[\"']", html + javascript)
+    assert not inline, f"inline event-handler attributes are blocked by the page CSP: {inline}"
     source = {"source_id": "source-1", "display_name": "<img src=x onerror=alert(1)>", "kind": "onec_auto",
               "read_only": True, "enabled": True, "row_version": 1, "base_url": "https://approved.test/odata",
               "username_secret_ref": "USER_REF", "password_secret_ref": "PASS_REF", "tags": []}
@@ -50,6 +55,8 @@ async def verify():
         browser = await playwright.chromium.launch(**options)
         page = await browser.new_page(viewport={"width": 1280, "height": 900})
         page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append("CSP violation: " + msg.text[:200])
+                if "Content Security Policy" in msg.text else None)
         attempts = 0
 
         async def route_handler(route):
@@ -57,7 +64,9 @@ async def verify():
             request = route.request
             path = request.url.split(ORIGIN, 1)[-1].split("?", 1)[0]
             if path == "/admin/":
-                await route.fulfill(status=200, content_type="text/html", body=html)
+                # Serve the page with the exact CSP the gateway sends so inline handlers fail here.
+                await route.fulfill(status=200, content_type="text/html", body=html,
+                                    headers={"Content-Security-Policy": CSP})
                 return
             if path == "/admin/static/admin.js":
                 await route.fulfill(status=200, content_type="text/javascript", body=javascript)
@@ -84,6 +93,7 @@ async def verify():
         await page.get_by_role("heading", name="Overview", exact=True).wait_for()
         await page.get_by_role("button", name="Access policies").click()
         await page.get_by_role("button", name="Create grant").click()
+        await page.get_by_role("dialog").wait_for()
         await page.get_by_label("Stable IdP principal ID").fill("employee")
         await page.get_by_label("Source ID", exact=True).fill("source-1")
         await page.get_by_label("Reason", exact=True).fill("Browser contract test")

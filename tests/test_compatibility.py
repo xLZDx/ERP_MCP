@@ -209,3 +209,27 @@ async def test_capability_and_metadata_cache_expiry_observes_schema_drift():
     assert third.metadata_fingerprint != second.metadata_fingerprint
     assert detector.calls == 3
     assert (await adapter.metadata(relocated)).names == {"Catalog_Items_v3"}
+
+
+@pytest.mark.asyncio
+async def test_html_metadata_response_gets_no_fingerprint():
+    """An HTML 200 for $metadata is a failed observation, not new metadata truth (P4)."""
+
+    def handler(_request):
+        return httpx.Response(200, content=b"<html>this is not OData metadata</html>",
+                              headers={"content-type": "text/html"})
+
+    client = OneCReadClient(
+        timeout_seconds=5,
+        max_response_bytes=100000,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        detector = OneCCapabilityDetector(client=client, secrets=NoSecrets())
+        caps, index = await detector.detect(source())
+        assert index is None
+        assert caps.metadata_supported is False
+        assert caps.metadata_fingerprint is None
+        assert caps.compatibility_status == CompatibilityStatus.UNSUPPORTED
+    finally:
+        await client.close()
