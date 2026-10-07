@@ -30,7 +30,7 @@ replace the human step: nobody compared it with what the 1C client shows.
 
 ## 4. Capture rules
 
-1. Use the disposable reference clone and the reference period 2026-08-01..2026-08-31 (copy date 2026-09-15).
+1. Take the numbers from the reference data (copy date 2026-09-15) and the reference period 2026-08-01..2026-08-31 (copy date 2026-09-15).
 2. Record the report name, filters, analytics and generation timestamp for every case.
 3. Export the native report (XLSX or MXL) or keep enough native UI evidence to reproduce the value.
 4. Hash the file: `Get-FileHash -Algorithm SHA256 <file>`.
@@ -52,11 +52,18 @@ python -m scripts.real1c.native_engine_reports [--report <name>]
   accounting register or chart of accounts is writable and the reader has no Administration right. The sweep is recorded in the
   run manifest (`reader_write_rights`) and the run is refused if the reader may write documents, accounting registers or charts
   of accounts, or administer the configuration. Removing the remaining rights is an operator decision on the clone.
-- Gates before any report: reader write denial on the disposable probe clone must be `PASS_WRITE_DENIED` (only a genuine 1C
-  rights refusal counts; any other error is inconclusive and refuses the run); the reference
+- Where reports run: on a **disposable report clone**, never on the reference clone. At the start of each run the generator
+  copies the idle write-probe clone (`818HA_negative_write_probe_v2`, about 4 GB) to `818HA_report_gen_<yyyymmdd_hhmmss>`
+  next to it, refuses a copy whose source changed during the copy, and never reuses or deletes a report clone (old copies are
+  removed by the operator). The reference clone `818HA_test_ready` is not opened at all (`reference_clone_opened: false` in the
+  run manifest). Reason: a standard report runs configuration code and the reader is not write-free, so whatever a report does
+  must land on a throw-away copy.
+- Gates before any report, all on the report clone: reader write denial must be `PASS_WRITE_DENIED` (a rolled-back write
+  attempt; only a genuine 1C rights refusal counts, any other error is inconclusive and refuses the run); the reference
   manifest hash is verified; the metadata fingerprint and every table count the reader can read must equal the reference
-  manifest baseline; after the run the readable fingerprint must be identical. The reader cannot read every table, so the
-  manifest records the coverage (`fingerprint_coverage`). Any mismatch voids the outputs.
+  manifest baseline (so the numbers describe the reference data); after the run the readable fingerprint of the clone must be
+  identical. The reader cannot read every table, so the manifest records the coverage (`fingerprint_coverage`). Any mismatch
+  voids the outputs. Nothing is claimed about the reference clone itself.
 - Allowlisted reports (data composition route): `ДоходыРасходы`, `ДоходыИРасходыПоДокументам`, `ОстаткиДенежныхСредств`,
   `ОстаткиТоваров`, `ДвижениеТоваров`, `ЗадолженностьПоставщикам`, `ВзаиморасчетыСКонтрагентами`.
 - Module-driven standard reports (trial balance, account card, account turnovers, `КнигаПокупок_МД`) return an empty sheet when

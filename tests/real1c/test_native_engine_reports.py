@@ -24,6 +24,14 @@ from scripts.real1c.evidence import (
 
 SHA = "b" * 64
 PRE = "c" * 64
+
+
+@pytest.fixture(autouse=True)
+def _never_copy_a_real_clone(monkeypatch):
+    """No unit test may start a 4 GB file copy; tests that need a copy pass their own copier."""
+    def refuse(source, target):
+        raise AssertionError("a unit test tried to copy a real clone")
+    monkeypatch.setattr(ner, "_copy_clone", refuse)
 META = "d" * 64
 
 
@@ -199,7 +207,7 @@ def test_environment_cannot_switch_the_user(monkeypatch):
     seen = []
     conn = FakeConn()
     connector = lambda: type("C", (), {"Connect": lambda _s, text: (seen.append(text), conn)[1]})()
-    session = ner.connect_reader(ner.REFERENCE_CLONE, connector=connector)
+    session = ner.connect_reader(ner.PROBE_CLONE, connector=connector)
     assert session.user == ner.READER_USER
     assert f'Usr="{ner.READER_USER}"' in seen[0] and "Admin_1C" not in seen[0]
 
@@ -209,7 +217,15 @@ def test_a_connection_that_is_not_the_reader_is_refused(monkeypatch):
     conn = FakeConn(user="Admin_1C")
     connector = lambda: type("C", (), {"Connect": lambda _s, text: conn})()
     with pytest.raises(ner.GeneratorRefused):
+        ner.connect_reader(ner.PROBE_CLONE, connector=connector)
+
+
+def test_the_reference_clone_is_never_opened(monkeypatch):
+    monkeypatch.setattr(ner, "_reader_password", Mock(side_effect=AssertionError("secret must not be read")))
+    connector = Mock()
+    with pytest.raises(ner.GeneratorRefused):
         ner.connect_reader(ner.REFERENCE_CLONE, connector=connector)
+    connector.assert_not_called()
 
 
 # ---------------------------------------------------------------- write-denial preflight
@@ -303,6 +319,8 @@ def _fp(content, unreadable="u" * 64, per_table=None):
 
 def _patch_run(monkeypatch, conn, *, pre=PRE, post=PRE, baseline=None, post_unreadable="u" * 64, root=None):
     monkeypatch.setattr(ner, "_reader_password", lambda: "pw")
+    monkeypatch.setattr(ner, "prepare_report_clone",
+                        lambda run_id, copier=None: ner.WORKING_DIR / f"{ner.REPORT_CLONE_PREFIX}{run_id}")
     if root is not None:
         monkeypatch.setattr(ner, "PRIVATE_ROOT", root)
     monkeypatch.setattr(ner, "verify_reference_manifest", lambda path: {
@@ -322,7 +340,7 @@ def test_full_run_records_hashes_and_marks_the_class_non_validating(monkeypatch,
     conn = FakeConn()
     record = _run(tmp_path, _patch_run(monkeypatch, conn, root=tmp_path), reports=["ДоходыРасходы", "ОстаткиТоваров"])
     assert record["evidence_class"] == "NATIVE_ENGINE_REPORT" and record["validating"] is False
-    assert record["identity"] == ner.READER_USER and record["preflight_probe_clone"] == "PASS_WRITE_DENIED"
+    assert record["identity"] == ner.READER_USER and record["preflight_report_clone"] == "PASS_WRITE_DENIED"
     assert record["evidence_valid"] is True
     assert [r["status"] for r in record["reports"]] == ["GENERATED", "GENERATED"]
     files = sorted((tmp_path / "run_20261007_120000").glob("*.xlsx"))
@@ -459,6 +477,8 @@ def test_a_reader_that_can_fingerprint_no_table_cannot_start_a_run(monkeypatch, 
     conn = FakeConn()
     monkeypatch.setattr(ner, "PRIVATE_ROOT", tmp_path)
     monkeypatch.setattr(ner, "_reader_password", lambda: "pw")
+    monkeypatch.setattr(ner, "prepare_report_clone",
+                        lambda run_id, copier=None: ner.WORKING_DIR / f"{ner.REPORT_CLONE_PREFIX}{run_id}")
     monkeypatch.setattr(ner, "verify_reference_manifest", lambda path: {
         "metadata_fingerprint": META, "private": {"per_table_counts": {"Catalogs.X": 3}}})
     monkeypatch.setattr(ner, "readable_fingerprint", lambda c: _fp(PRE, per_table={}))
@@ -530,14 +550,16 @@ def test_a_connect_error_is_wrapped_without_its_text(monkeypatch):
             raise RuntimeError("bad connection string: " + text)
 
     with pytest.raises(ner.GeneratorRefused) as err:
-        ner.connect_reader(ner.REFERENCE_CLONE, connector=lambda: Boom())
+        ner.connect_reader(ner.PROBE_CLONE, connector=lambda: Boom())
     assert "s3cret-pw" not in str(err.value) and err.value.__cause__ is None
 
 
 def test_the_probe_clone_must_not_resolve_to_the_reference_clone(monkeypatch):
     monkeypatch.setattr(ner, "PROBE_CLONE", ner.REFERENCE_CLONE)
     with pytest.raises(ner.GeneratorRefused):
-        ner.connect_reader(ner.REFERENCE_CLONE, connector=Mock())
+        ner.connect_reader(ner.WORKING_DIR / (ner.REPORT_CLONE_PREFIX + "20261007_120000"), connector=Mock())
+    with pytest.raises(ner.GeneratorRefused):
+        ner.prepare_report_clone("20261007_120000", copier=Mock())
 
 
 def test_an_output_root_outside_the_private_root_is_refused(tmp_path):
@@ -556,4 +578,73 @@ def test_a_manifest_without_a_baseline_is_refused(monkeypatch, tmp_path):
 
 def test_the_evidence_basis_says_what_was_actually_compared(monkeypatch, tmp_path):
     record = _run(tmp_path, _patch_run(monkeypatch, FakeConn(), root=tmp_path), reports=["ДоходыРасходы"])
-    assert "row counts unchanged on 1 readable tables" in record["evidence_basis"]
+    assert "1 readable tables" in record["evidence_basis"] and "nothing is claimed about the reference clone" in record["evidence_basis"]
+
+
+# ---------------------------------------------------------------- disposable report clone (sprint-end MAJOR 1)
+def test_a_run_executes_on_a_report_clone_and_never_opens_the_reference(monkeypatch, tmp_path):
+    conn = FakeConn()
+    seen = []
+    connector = _patch_run(monkeypatch, conn, root=tmp_path)
+    inner = connector()
+    monkeypatch.setattr(inner.__class__, "Connect", lambda _s, text: (seen.append(text), conn)[1])
+    record = _run(tmp_path, lambda: inner, reports=["ДоходыРасходы"])
+    assert len(seen) == 1 and ner.REPORT_CLONE_PREFIX in seen[0] and "818HA_test_ready" not in seen[0]
+    assert record["reference_clone_opened"] is False and record["report_clone"] == "818HA_report_gen_20261007_120000"
+    assert "disposable" in record["execution_target"] and record["preflight_report_clone"] == "PASS_WRITE_DENIED"
+    assert conn.tx == ["begin", "rollback"]
+
+
+def test_the_preflight_failing_on_the_report_clone_stops_before_any_report(monkeypatch, tmp_path):
+    conn = FakeConn(write_denied=False)
+    with pytest.raises(ner.GeneratorRefused):
+        _run(tmp_path, _patch_run(monkeypatch, conn, root=tmp_path), reports=["ДоходыРасходы"])
+    assert conn.created == [] and conn.tx[-1] == "rollback"
+
+
+def test_prepare_report_clone_copies_the_probe_into_a_fresh_directory(monkeypatch, tmp_path):
+    monkeypatch.setattr(ner, "WORKING_DIR", tmp_path)
+    monkeypatch.setattr(ner, "_db_stamp", lambda clone: (4_100_000_000, 7))
+    monkeypatch.setattr(ner, "_assert_distinct_clones", lambda base: None)
+    copies = []
+    target = ner.prepare_report_clone("20261007_120000", copier=lambda src, dst: copies.append((src, dst)))
+    assert copies == [(ner.PROBE_CLONE, target)]
+    assert target == tmp_path / "818HA_report_gen_20261007_120000" and not target.exists()
+
+
+@pytest.mark.parametrize("run_id", ["", "x", "2026-10-07", "20261007_120000/../x", "20261007_1200"])
+def test_prepare_report_clone_rejects_a_bad_run_id(run_id):
+    copier = Mock()
+    with pytest.raises(ner.GeneratorRefused):
+        ner.prepare_report_clone(run_id, copier=copier)
+    copier.assert_not_called()
+
+
+def test_prepare_report_clone_never_reuses_or_deletes_an_existing_clone(monkeypatch, tmp_path):
+    monkeypatch.setattr(ner, "WORKING_DIR", tmp_path)
+    monkeypatch.setattr(ner, "_assert_distinct_clones", lambda base: None)
+    (tmp_path / "818HA_report_gen_20261007_120000").mkdir()
+    removed = Mock()
+    monkeypatch.setattr(ner.shutil, "rmtree", removed)
+    copier = Mock()
+    with pytest.raises(ner.GeneratorRefused):
+        ner.prepare_report_clone("20261007_120000", copier=copier)
+    copier.assert_not_called()
+    removed.assert_not_called()
+
+
+def test_a_probe_clone_that_changes_during_the_copy_is_not_trusted(monkeypatch, tmp_path):
+    monkeypatch.setattr(ner, "WORKING_DIR", tmp_path)
+    stamps = iter([(1, 1), (1, 2)])
+    monkeypatch.setattr(ner, "_db_stamp", lambda clone: next(stamps))
+    monkeypatch.setattr(ner, "_assert_distinct_clones", lambda base: None)
+    with pytest.raises(ner.GeneratorRefused):
+        ner.prepare_report_clone("20261007_120000", copier=lambda src, dst: None)
+
+
+def test_only_probe_and_report_clones_are_disposable():
+    assert ner._is_disposable(ner.PROBE_CLONE)
+    assert ner._is_disposable(ner.WORKING_DIR / "818HA_report_gen_20261007_120000")
+    assert not ner._is_disposable(ner.REFERENCE_CLONE)
+    assert not ner._is_disposable(ner.WORKING_DIR / "818HA_reference_ro")
+    assert not ner._is_disposable(ner.WORKING_DIR / "other" / "818HA_report_gen_20261007_120000")
