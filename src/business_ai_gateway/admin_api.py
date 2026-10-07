@@ -32,6 +32,7 @@ from .admin_probe import (
 )
 from .admin_session import AdminSessionManager
 from .auth import JWTTokenVerifier
+from .compatibility import CapabilityUnsupported
 from .models import source_from_record
 from .principal import claim_groups
 from .rate_limit import RateLimitExceeded
@@ -835,6 +836,9 @@ class AdminAPI:
             status_code = 400
         elif isinstance(exc, SourceEgressDenied):
             status_code = 403
+        elif isinstance(exc, CapabilityUnsupported):
+            # A domain refusal (no positive capability evidence), not a server fault.
+            status_code = 409
         else:
             status_code = 500
         code = getattr(exc, "code", "INVALID_REQUEST" if status_code == 400 else "ADMIN_DEPENDENCY_FAILED")

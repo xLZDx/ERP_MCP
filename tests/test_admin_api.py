@@ -150,3 +150,18 @@ def test_global_auditor_is_global_read_context():
     )
 
     assert ctx.source_scope() is None
+
+
+def test_capability_refusal_is_a_conflict_not_a_server_fault():
+    import json
+
+    from business_ai_gateway.admin_api import AdminAPI
+    from business_ai_gateway.compatibility import CapabilityUnsupported
+
+    refusal = AdminAPI._mutation_error(CapabilityUnsupported("unconfirmed register capability"))
+    assert refusal.status_code == 409
+    assert json.loads(refusal.body) == {"error": "CAPABILITY_UNSUPPORTED"}
+    # Unmapped exceptions must still fail as server faults with a sanitized code.
+    fault = AdminAPI._mutation_error(RuntimeError("boom"))
+    assert fault.status_code == 500
+    assert json.loads(fault.body) == {"error": "ADMIN_DEPENDENCY_FAILED"}
