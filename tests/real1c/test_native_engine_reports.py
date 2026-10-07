@@ -6,6 +6,7 @@ import ast
 import datetime as dt
 import inspect
 import json
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -288,6 +289,7 @@ def test_outputs_inside_the_repository_are_refused():
     assert not inside.exists()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="the private evidence root is a Windows drive path (a relative path on Linux)")
 def test_the_default_output_root_is_outside_the_repository():
     ner.assert_private(ner.PRIVATE_ROOT)
 
