@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 133 tracked paths, 7 local-only paths.
+Inventory: 143 tracked paths, 7 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -19,7 +19,7 @@ Inventory: 133 tracked paths, 7 local-only paths.
 | CLAUDE.md | Other | "ERP_MCP Claude project guidance" |
 | CODEX.md | Other | "ERP_MCP Codex workspace notes" |
 | CONTRIBUTING.md | Other | "Contributing to ERP_MCP" |
-| README.md | Other | "ERP_MCP" |
+| README.md | Other | "ERP_MCP" / "ERP_MCP — secure, read-only AI gateway for 1C" |
 | SECURITY.md | Other | "Security model" |
 | SKILLS.md | Other | "ERP_MCP skills and operating playbook" |
 | THIRD_PARTY_NOTICES.md | Other | "Third-party notices" |
@@ -38,6 +38,7 @@ Inventory: 133 tracked paths, 7 local-only paths.
 | docs/ARCHITECTURE.md | Design | "ERP_MCP Architecture" |
 | docs/CHATGPT_MCP_INTEGRATION.md | Other | "ChatGPT ↔ ERP_MCP integration" |
 | docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md | Other | "Плагин ERP_MCP_REAL1 в ChatGPT: как пользоваться после восстановления" |
+| docs/CLIENT_SAFETY_REVIEW_2026-10-08.md | Other | "ERP_MCP Client Safety Review — 2026-10-08" |
 | docs/COMPATIBILITY.md | Other | "1C compatibility and capability negotiation" |
 | docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md | Other | "DAD 1C MCP — Source Requirements & Scenario Coverage" |
 | docs/DATA_MODEL.md | Design | "ERP_MCP Data Model" |
@@ -49,7 +50,9 @@ Inventory: 133 tracked paths, 7 local-only paths.
 | docs/FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md | Other | "Ferma → 1C Synthetic Testbed & Reconciliation — Implementation Blueprint" |
 | docs/FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md | Other | "Autonomous assignment for Functional Tester" |
 | docs/GOVERNANCE.md | Other | "ERP_MCP Engineering Governance" |
+| docs/INSTALLATION_GUIDE_RU.md | Other | "ERP_MCP — пошаговая установка (Release 1)" |
 | docs/INTEGRATION.md | Other | "ERP_MCP Integration Contract" |
+| docs/LESSONS_LEARNED_RU.md | Other | "ERP_MCP Release 1 — lessons learned и практические ограничения" |
 | docs/MANUAL_ACCEPTANCE_ADMIN.md | Other | "Manual acceptance — ADMIN Control Center" |
 | docs/MANUAL_ACCEPTANCE_USER.md | Other | "Manual acceptance — SIMPLE USER (data-plane)" |
 | docs/MASTER_PLAN.md | Plan | "ERP_MCP Master Plan" |
@@ -96,13 +99,20 @@ Inventory: 133 tracked paths, 7 local-only paths.
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
 | docs/phase2/CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
 | docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "Phase 2 — ADR proposals, решения, риски и источники" |
+| docs/phase2/DECISION_LOG.md | Phase 2 design | "Phase 2 decision and evidence log" |
+| docs/phase2/EVIDENCE_MATRIX.md | Phase 2 design | "Phase 2 evidence matrix" |
+| docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md | Phase 2 design | "G1 PostgreSQL Living Registry — implementation note" |
+| docs/phase2/G1_OPERATOR_BACKLOG.md | Phase 2 design | "G1 blockers and operator handoff — 2026-10-08" |
 | docs/phase2/IMPLEMENTATION_CHECKPOINT_2026-10-08.md | Phase 2 design | "ERP_MCP Phase 2 — autonomous implementation checkpoint" |
 | docs/phase2/IMPLEMENTATION_SLICE_2026-10-08.md | Phase 2 design | "Phase 2 implementation slice: observed model, temporal history and connector contracts" |
+| docs/phase2/IMPLEMENTATION_STATUS.md | Phase 2 design | "Phase 2 Implementation Status — 2026-10-08" |
 | docs/phase2/NATIVE_REPORT_PROTOCOL_RU.md | Phase 2 design | "Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod" |
+| docs/phase2/OPERATOR_BACKLOG.md | Phase 2 design | "Phase 2 operator backlog" |
 | docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/STORIES_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 историй и acceptance mapping" |
+| docs/phase2/TASK_LEDGER.md | Phase 2 design | "Phase 2 Task Ledger — initial evidence-only inventory" |
 | docs/phase2/TDD_PHASE2_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
 | docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
 | docs/phase2/WORKSTATION_VERIFICATION_2026-10-08.md | Phase 2 design | "Phase 2 workstation isolation verification — 2026-10-08" |
