@@ -38,7 +38,7 @@ function Assert-True([bool]$Value, [string]$Message) {{
 """
     completed = subprocess.run(
         [POWERSHELL, "-NoProfile", "-NonInteractive", "-Command", prefix + body],
-        stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=20,
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=20, check=False,
     )
     assert completed.returncode == 0, completed.stderr[-2500:]
     assert "synthetic-unit-test-value" not in completed.stdout

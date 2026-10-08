@@ -38,7 +38,7 @@ function Assert-True([bool]$Value, [string]$Message) {{ if (-not $Value) {{ thro
 """
     completed = subprocess.run(
         [POWERSHELL, "-NoProfile", "-NonInteractive", "-Command", prefix + body],
-        stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=40,
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=40, check=False,
     )
     assert completed.returncode == 0, completed.stderr[-2500:] + completed.stdout[-1500:]
     for stream in (completed.stdout, completed.stderr):
@@ -128,7 +128,7 @@ def run_reset(real1c: str) -> subprocess.CompletedProcess:
     command = (f"$env:E2E_DIR = '{ROOT / 'scripts'}'; $env:E2E_REAL1C = '{real1c}'; $env:E2E_PORT_OFFSET = '3000'; "
                f"$env:E2E_PROJECT_SUFFIX = '-real1c'; & '{script}'")
     return subprocess.run([POWERSHELL, "-NoProfile", "-NonInteractive", "-Command", command],
-                          stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=40)
+                          stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", timeout=40, check=False)
 
 
 def test_reset_is_refused_on_the_real_profile_before_any_side_effect():
