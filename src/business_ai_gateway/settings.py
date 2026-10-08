@@ -88,6 +88,10 @@ class Settings(BaseSettings):
         default=None, pattern=r'^[a-f0-9]{64}$'
     )
 
+    # Test-only allow-list of source ids whose profile may be validated by labelled machine two-source
+    # reconciliation (evidence_basis.py). Hard-denied outside the test environment; never native proof.
+    machine_reconciled_sources: str = ""
+
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
     gcp_project_id: str | None = None
@@ -115,6 +119,16 @@ class Settings(BaseSettings):
             if host.strip()
         )
 
+    @property
+    def machine_reconciled_source_items(self) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                item.strip()
+                for item in self.machine_reconciled_sources.split(",")
+                if item.strip()
+            )
+        )
+
     @staticmethod
     def _cidr_items(value: str | None) -> tuple[str, ...]:
         return tuple(item.strip() for item in (value or "").split(",") if item.strip())
@@ -129,6 +143,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if self.machine_reconciled_source_items:
+            if self.environment != "test":
+                raise ValueError("MACHINE_RECONCILED_SOURCES_REQUIRE_TEST_ENVIRONMENT")
+            if any(
+                not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", item)
+                for item in self.machine_reconciled_source_items
+            ):
+                raise ValueError("MACHINE_RECONCILED_SOURCES_INVALID")
         if self.synthetic_fixture_profiles_file or self.synthetic_fixture_profiles_sha256:
             if self.environment == "production":
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")

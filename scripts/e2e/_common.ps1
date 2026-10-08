@@ -57,6 +57,10 @@ function Resolve-E2eTopology {
 }
 Resolve-E2eTopology
 
+# Functions only (no credential is read on import). Used by the real local 1C profile to give the gateway
+# its dedicated read-only reader pair at launch.
+. (Join-Path $script:Root 'scripts\real1c\reader_environment.ps1')
+
 function Write-Step([string]$Message) { Write-Host ('[e2e] ' + $Message) }
 
 function Invoke-Native {
@@ -128,6 +132,39 @@ function Clear-E2eSecretEnv {
     Get-ChildItem Env: | Where-Object {
         $_.Name -like 'BAG_*' -or $_.Name -like 'FAKE1C_*' -or $_.Name -like 'FAKE_SIDECAR_*' } |
         ForEach-Object { Remove-Item ('Env:' + $_.Name) }
+}
+
+function Test-E2eGatewayNeedsReader([string]$Name) {
+    # Only the gateway of the real local 1C profile talks to the reference base with the reader pair.
+    return ($script:Real1c -and $Name -eq 'gateway')
+}
+
+function Assert-E2eReaderAvailable {
+    # Fail-closed pre-flight: prove the reader secret can be loaded BEFORE a working gateway is stopped.
+    # Nothing is returned or printed; the decrypted value only lives inside the helper's own scope.
+    if (-not (Test-818HAReferenceState -StateDirectory $script:E2eDir)) {
+        throw 'ERP_READER_STATE_MISMATCH: the real-1C gateway may only run from the reference lane state directory.'
+    }
+    # Run the very same validation the launch performs (test/env lane, no partial pair, approved identity,
+    # loadable and well-formed secret) with an empty action, then drop the temporary BAG_* environment.
+    Import-E2eEnv
+    try { Invoke-818HAReaderEnvironment -Action { } | Out-Null } finally { Clear-E2eSecretEnv }
+}
+
+function Invoke-WithoutAmbientSecrets {
+    # The gateway must not inherit unrelated credentials of the operator's shell. Variables that look
+    # like credentials and are neither BAG_* nor part of the reader pair are removed for the launch only
+    # and restored afterwards in this process.
+    param([Parameter(Mandatory = $true)][scriptblock]$Action)
+    $pattern = '(?i)(TOKEN|SECRET|PASSW|CREDENTIAL|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|APP_PASSWORD)'
+    $keep = '^(BAG_|E2E_|FAKE|ERP_MCP_818HA_)'
+    $saved = @{}
+    foreach ($item in @(Get-ChildItem Env:)) {
+        if ($item.Name -match $pattern -and $item.Name -notmatch $keep) { $saved[$item.Name] = $item.Value }
+    }
+    foreach ($name in $saved.Keys) { Remove-Item ('Env:' + $name) -ErrorAction SilentlyContinue }
+    try { & $Action }
+    finally { foreach ($name in $saved.Keys) { Set-Item -Path ('Env:' + $name) -Value $saved[$name] } }
 }
 
 function Get-ListenerInfo([int]$Port) {
@@ -286,14 +323,26 @@ function Start-E2eComponent {
     $out = Join-Path $script:E2eDir ('logs\' + $Name + '.out.log')
     $err = Join-Path $script:E2eDir ('logs\' + $Name + '.err.log')
     if ($Name -in 'gateway', 'sidecar') { Import-E2eEnv }
+    # Test lane only: the single source whose profile may be served from labelled machine two-source evidence
+    # (ADR-0008 section 8; never native proof). Absent for every other profile and for production.
+    if ($Name -eq 'gateway' -and $script:Real1c) { $env:BAG_MACHINE_RECONCILED_SOURCES = 'onec-818ha-reference' }
     if ($Name -eq 'idp') { $env:E2E_IDP_CONFIG = (Join-Path $script:E2eDir 'idp-config.json') }
     # Launch through cmd.exe via ShellExecute (no -Redirect*): the service must NOT inherit the
     # caller's stdout/stderr pipes, otherwise a caller reading our output waits for EOF forever.
     $arguments = (Get-ComponentCommand $Name) -join ' '
     $commandLine = '/c ""' + $script:Py + '" ' + $arguments + ' > "' + $out + '" 2> "' + $err + '""'
-    try {
-        $process = Start-Process -FilePath $env:ComSpec -ArgumentList $commandLine `
+    $launch = {
+        Start-Process -FilePath $env:ComSpec -ArgumentList $commandLine `
             -WorkingDirectory $script:Root -WindowStyle Hidden -PassThru
+    }
+    try {
+        if (Test-E2eGatewayNeedsReader $Name) {
+            # Real local 1C profile: the reader pair must be in the gateway's environment before the child
+            # starts, both variables together, otherwise nothing is launched (ERP_READER_* errors).
+            $process = Invoke-818HAReaderEnvironment -Action { Invoke-WithoutAmbientSecrets -Action $launch }
+        } else {
+            $process = & $launch
+        }
     } finally {
         Clear-E2eSecretEnv
         Remove-Item Env:E2E_IDP_CONFIG -ErrorAction SilentlyContinue

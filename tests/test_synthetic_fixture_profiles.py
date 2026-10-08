@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import UnexpectedToolError
 from business_ai_gateway.fixture_profiles import SyntheticFixtureProfiles
 from business_ai_gateway.registry import Registry
 from business_ai_gateway.runtime import Runtime
-from business_ai_gateway.semantic import SemanticProfileUnavailable, canonical_fingerprint
+from business_ai_gateway.semantic import SemanticProfileUnavailable, capability_evidence_fingerprint
 from business_ai_gateway.settings import Settings
 from scripts import synthetic_fixture_profiles as fixture_gen
 from tests.sc_stack import (
@@ -283,7 +283,7 @@ async def test_validated_db_profile_always_wins_over_fixture_and_fixture_never_a
                  preset_upstream_sha, created_by)
                VALUES($1,$2,$3,'bp30','db-native',1,'DRAFT',$4,$5,'profile-db','r','s','test')""",
             profile_id, stack.source_id, stack.companies[ORG_ONE], cap["metadata_fingerprint"],
-            canonical_fingerprint(caps))
+            capability_evidence_fingerprint(caps))
         await pool.execute(
             "INSERT INTO bag.semantic_mappings(mapping_id, profile_id, canonical_concept, "
             "mapping_json, mapping_status, confidence) VALUES($1,$2,'inventory.movements',"
