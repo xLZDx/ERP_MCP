@@ -26,11 +26,11 @@ def test_valid_candidate_is_unattested_only():
 
 
 def test_unknown_folder_membership_is_not_automatically_allowed():
-    batch = DriveChangeProjector(
+    projector = DriveChangeProjector(
         connection_id="conn-1", drive_id="d1", file_scope_allowed=lambda _: None
-    ).prepare(page(changes=(change(),)), stored_cursor="c1")
-    assert batch.candidates == ()
-    assert batch.denied_changes == 1
+    )
+    with pytest.raises(ValueError, match="FOLDER_MEMBERSHIP_UNVERIFIED"):
+        projector.prepare(page(changes=(change(),)), stored_cursor="c1")
 
 
 def test_cross_drive_event_does_not_leak_file():

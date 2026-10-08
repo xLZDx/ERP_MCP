@@ -92,7 +92,10 @@ class DriveChangeProjector:
                 denied += 1
                 continue
             authorized = self._scope_allowed(item.file_id)
-            # None means membership unknown; cannot infer it from the folder name.
+            # Unknown membership cannot be silently skipped and checkpointed;
+            # the job must pause until ACL/ancestry is proven or resnapshotted.
+            if authorized is None:
+                raise ValueError("FOLDER_MEMBERSHIP_UNVERIFIED")
             if authorized is not True:
                 denied += 1
                 continue

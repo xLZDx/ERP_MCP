@@ -133,11 +133,11 @@ async def test_file_with_unknown_membership_remains_unattested_and_unindexed():
     http, connector = build_client(lambda req: httpx.Response(200,json=changes_payload()))
     async with http:
         result = await connector.fetch_page(identity=IDENTITY,saved_cursor="c1")
-    batch = DriveChangeProjector(
+    projector = DriveChangeProjector(
         connection_id="conn-1", drive_id="shared-1", file_scope_allowed=lambda f: None
-    ).prepare(result, stored_cursor="c1")
-    assert batch.candidates == ()
-    assert batch.denied_changes == 1
+    )
+    with pytest.raises(ValueError, match="FOLDER_MEMBERSHIP_UNVERIFIED"):
+        projector.prepare(result, stored_cursor="c1")
 
 
 @pytest.mark.asyncio
