@@ -92,6 +92,22 @@ def test_guard_blocked_resume_keeps_state_and_counter(final):
     asyncio.run(go())
 
 
+@pytest.mark.parametrize("final", ["PAUSED", "QUARANTINED"])
+def test_guard_empty_connection_list_never_resumes_a_revoked_source(final):
+    """No connection to read means no probe of the scope: reject instead of resuming."""
+    async def go():
+        living, sched = await setup("c1")
+        paused(sched)
+        if final == "QUARANTINED":
+            sched.machine.quarantine("q")
+        await living.revoke_scope(WORKER, SCOPE)
+        with pytest.raises(ValueError, match="CONNECTION_IDS_REQUIRED"):
+            await call(sched, living, ResnapshotTracker(), [], 1)
+        assert sched.machine.state is SourceState(final)
+        assert sched.counter.consecutive_failures == 1
+    asyncio.run(go())
+
+
 def test_guard_other_port_error_propagates_without_resume():
     class Broken:
         async def scope_epoch(self, scope):

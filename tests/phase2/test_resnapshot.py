@@ -71,23 +71,61 @@ def test_classify_cursor_lost_feeds_tracker():
 def test_guard_only_ok_complete_clears(kind):
     t = ResnapshotTracker()
     t.require("c1", R.CURSOR_LOST, 1)
-    assert t.complete("c1", kind, 1, 1) is False
+    assert t.complete("c1", kind, 1, 1, snapshot_token=t.begin_snapshot()) is False
     assert t.is_required("c1")
 
 
 def test_guard_stale_epoch_complete_does_not_clear():
     t = ResnapshotTracker()
     t.require("c1", R.SCOPE_EPOCH_CHANGED, 2)
-    assert t.complete("c1", K.OK_COMPLETE, 1, 2) is False
+    assert t.complete("c1", K.OK_COMPLETE, 1, 2, snapshot_token=t.begin_snapshot()) is False
     assert t.is_required("c1")
 
 
 def test_ok_complete_at_current_epoch_clears():
     t = ResnapshotTracker()
     t.require("c1", R.CURSOR_LOST, 2)
-    assert t.complete("c1", K.OK_COMPLETE, 2, 2) is True
+    token = t.begin_snapshot()
+    assert t.complete("c1", K.OK_COMPLETE, 2, 2, snapshot_token=token) is True
     assert t.incremental_allowed("c1")
-    assert t.complete("c1", K.OK_COMPLETE, 2, 2) is False  # nothing left to clear
+    assert t.complete("c1", K.OK_COMPLETE, 2, 2, snapshot_token=token) is False  # nothing left
+
+
+def test_guard_complete_started_before_the_requirement_never_clears():
+    """A late or replayed complete whose capture began before the loss was recorded is stale."""
+    t = ResnapshotTracker()
+    token = t.begin_snapshot()            # snapshot capture starts ...
+    t.require("c1", R.CURSOR_LOST, 2)     # ... then the cursor loss is recorded
+    assert t.complete("c1", K.OK_COMPLETE, 2, 2, snapshot_token=token) is False
+    assert t.is_required("c1")
+    # a snapshot that began after the requirement does clear it
+    assert t.complete("c1", K.OK_COMPLETE, 2, 2, snapshot_token=t.begin_snapshot()) is True
+
+
+def test_guard_complete_with_epoch_older_than_recorded_never_clears():
+    t = ResnapshotTracker()
+    t.require("c1", R.SCOPE_EPOCH_CHANGED, 3)        # e.g. restored store recorded epoch 3
+    token = t.begin_snapshot()
+    assert t.complete("c1", K.OK_COMPLETE, 2, 2, snapshot_token=token) is False
+    assert t.is_required("c1")
+
+
+def test_guard_imported_requirement_is_not_cleared_by_an_older_token():
+    old = ResnapshotTracker()
+    token = old.begin_snapshot()
+    fresh = ResnapshotTracker()
+    fresh.import_state(ResnapshotState((("c1", R.CURSOR_LOST, 1),)))
+    assert fresh.complete("c1", K.OK_COMPLETE, 1, 1, snapshot_token=token) is False
+    assert fresh.is_required("c1")
+
+
+@pytest.mark.parametrize("bad", [-1, True, "1", None, 1.0])
+def test_complete_rejects_a_bad_snapshot_token(bad):
+    t = ResnapshotTracker()
+    t.require("c1", R.CURSOR_LOST, 1)
+    with pytest.raises(ValueError, match="SNAPSHOT_TOKEN_INVALID"):
+        t.complete("c1", K.OK_COMPLETE, 1, 1, snapshot_token=bad)
+    assert t.is_required("c1")
 
 
 def test_guard_reason_not_downgraded():
@@ -139,6 +177,19 @@ def test_guard_revalidate_blocked_requires_nothing():
         with pytest.raises(ResnapshotBlocked) as ei:
             await reval(t, living, ["c1", "c2"], 1)
         assert ei.value.code == "RESNAPSHOT_BLOCKED" and "SCOPE" not in str(ei.value)
+        assert t.required_connections() == ()
+    run(go())
+
+
+@pytest.mark.parametrize("empty", [[], (), iter(())])
+def test_guard_empty_connection_list_is_rejected_not_validated(empty):
+    """scope_epoch is a plain read: an empty list would 'validate' a revoked scope."""
+    async def go():
+        living = await living_with_cursor("c1")
+        await living.revoke_scope(WORKER, SCOPE)
+        t = ResnapshotTracker()
+        with pytest.raises(ValueError, match="CONNECTION_IDS_REQUIRED"):
+            await reval(t, living, empty, 1)
         assert t.required_connections() == ()
     run(go())
 
