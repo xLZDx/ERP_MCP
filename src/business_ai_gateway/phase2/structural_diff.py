@@ -43,6 +43,8 @@ class ObservedDiff:
         if (not isinstance(self.tenant_id, str) or not self.tenant_id.strip()
                 or not isinstance(self.source_id, str) or not self.source_id.strip()):
             raise ValueError("PHASE2_DIFF_SCOPE_INVALID")
+        if type(self.trust_level) is not str or self.trust_level != "OBSERVED_ONLY":
+            raise ValueError("PHASE2_TRUST_LEVEL_FORBIDDEN")
         differs = self.previous_structural_sha256 != self.observed_structural_sha256
         if not differs and (self.changes or self.unattributed_structural_change):
             raise ValueError("PHASE2_INCONSISTENT_DIFF")
