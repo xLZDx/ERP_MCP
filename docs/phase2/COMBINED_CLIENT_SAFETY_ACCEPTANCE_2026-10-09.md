@@ -44,3 +44,7 @@ This branch does **not** merge or overwrite working-tree edits in `D:\Repo\ERP_M
 Strict scheduler lease/backoff/poison policy numeric validation added after the initial combination. Tests reproduced 10 invalid-number acceptance failures and 6 huge-number/timedelta-overflow failures before mitigation. New final local result after this source change: **778 passed / 180 skipped**, Ruff PASS, compileall PASS. Earlier **760 PASS / 180 SKIP** remains accurate for the prior HEAD only. Full details: `SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md`.
 
 **DR-01 remains OPEN:** accepted vs observed hash semantics in `drift.classify` require the architecture/acceptance authority to decide; no silent change to a preexisting test contract. This is an additional reason Release 2 stays NO-GO.
+
+## DR-01 — observed versus accepted model (engineering closed)
+
+The offline drift classifier no longer changes the accepted hash on a complete scan, and its first observation cannot self-approve. Added explicit observed candidate hash; four RED test cases passed after correction. Local suite after code change: **780 PASS / 180 SKIP**, Ruff PASS. See `DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md`. Live integration and independent acceptance remain NOT_RUN; do not infer a production-ready living model.

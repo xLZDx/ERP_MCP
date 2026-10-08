@@ -1,5 +1,9 @@
 # Phase 2 Implementation Status — 2026-10-08
 
+## Isolated safety hardening, 2026-10-09 (unmerged, unapproved for release)
+
+A separate branch `hardening/phase2-client-safety-combined-20261009` from `a00d16a` implements source-type limits, trusted evidence label guards, stale attestation preflight, scheduler bounded numeric input and DR-01 accepted/observed hash separation. Current locally measured offline test evidence: **780 passed / 180 skipped**, Ruff PASS. The 180 skipped integration/external cases are NOT_RUN on this branch; original G1 PostgreSQL 65 PASS evidence applies to a prior reviewed HEAD only. Production **NO-GO**, G0–G7 product acceptance not closed. Detailed reviews: `COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md` and `DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md`. Do not conflate this with Release 1 or with the uncommitted work in the separate active Phase 2 worktree.
+
 Release 2: **NO-GO**. Product acceptance: **NOT_RUN**. No gate G0–G7 has passed.
 
 ## Verified scope (single source of truth for this file)

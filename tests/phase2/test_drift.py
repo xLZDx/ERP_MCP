@@ -35,11 +35,17 @@ def test_failures_never_drift_never_remove_never_move_baseline(kind, previous):
     assert decision.baseline_established is False
 
 
-def test_complete_capture_with_different_hash_is_drift_and_advances_baseline():
+def test_complete_capture_with_different_hash_is_drift_and_preserves_accepted_head():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H2), H1)
     assert decision.events == (E.STRUCTURAL_DRIFT,)
-    assert decision.accepted_hash == H2
+    assert decision.accepted_hash == H1
+    assert decision.observed_hash == H2
+    assert decision.baseline_established is False
     assert decision.removal_permitted is True
+    # A second observation of the same unapproved candidate must still be drift.
+    assert classify(CaptureOutcome(K.OK_COMPLETE, H2), decision.accepted_hash).events == (E.STRUCTURAL_DRIFT,)
+    # A separately authorized head change (represented by a new accepted hash) is quiet.
+    assert classify(CaptureOutcome(K.OK_COMPLETE, H2), H2).events == ()
 
 
 def test_complete_capture_with_same_hash_is_quiet():
@@ -48,11 +54,13 @@ def test_complete_capture_with_same_hash_is_quiet():
     assert decision.accepted_hash == H1
 
 
-def test_first_complete_capture_establishes_baseline_without_drift():
+def test_first_complete_capture_is_observation_not_automatic_acceptance():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H1), None)
     assert decision.events == ()
-    assert decision.accepted_hash == H1
-    assert decision.baseline_established is True
+    assert decision.accepted_hash is None
+    assert decision.observed_hash == H1
+    assert decision.baseline_established is False
+    assert decision.removal_permitted is False
 
 
 def test_schema_changed_with_hash_is_compared_not_assumed_drift():
@@ -141,3 +149,17 @@ def test_counter_rejects_invalid_state(args):
 def test_counter_rejects_non_enum_kind():
     with pytest.raises(TypeError, match="OUTCOME_KIND_INVALID"):
         FailureCounter().advance("TIMEOUT")  # type: ignore[arg-type]
+
+
+def test_failed_and_incomplete_captures_have_no_observed_candidate():
+    for kind in NON_DRIFT_KINDS:
+        decision = classify(CaptureOutcome(kind), H1)
+        assert decision.accepted_hash == H1
+        assert decision.observed_hash is None
+
+
+def test_complete_matching_hash_is_observed_but_does_not_promote():
+    decision = classify(CaptureOutcome(K.OK_COMPLETE, H1), H1)
+    assert decision.accepted_hash == H1
+    assert decision.observed_hash == H1
+    assert decision.events == ()

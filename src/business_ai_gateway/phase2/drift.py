@@ -75,9 +75,13 @@ class CaptureOutcome:
 @dataclass(frozen=True, slots=True)
 class DriftDecision:
     events: tuple[DriftEventKind, ...]
-    accepted_hash: str | None  # hash to keep as the accepted baseline after this outcome
+    # Caller-supplied, independently accepted hash. Observation never updates this.
+    accepted_hash: str | None
+    # Candidate observed by a complete capture; never an approval instruction.
+    observed_hash: str | None = None
+    # Legacy flag: a scan alone must not mark an accepted baseline established.
     baseline_established: bool = False
-    # Removal inference is allowed only after a complete successful capture.
+    # Only candidate-level removal inference, never authority to delete or accept.
     removal_permitted: bool = False
 
 
@@ -96,10 +100,14 @@ def classify(outcome: CaptureOutcome, previous_accepted_hash: str | None) -> Dri
         # A claimed complete capture without a hash cannot be compared: re-snapshot.
         return DriftDecision((DriftEventKind.RESNAPSHOT_REQUIRED,), previous_accepted_hash)
     if previous_accepted_hash is None:
-        return DriftDecision((), current, baseline_established=True, removal_permitted=True)
+        # First observation is a candidate, not a trusted accepted model.
+        return DriftDecision((), None, observed_hash=current)
     if current != previous_accepted_hash:
-        return DriftDecision((DriftEventKind.STRUCTURAL_DRIFT,), current, removal_permitted=True)
-    return DriftDecision((), previous_accepted_hash, removal_permitted=True)
+        # Signal observed drift without promoting the accepted baseline.
+        return DriftDecision((DriftEventKind.STRUCTURAL_DRIFT,), previous_accepted_hash,
+                             observed_hash=current, removal_permitted=True)
+    return DriftDecision((), previous_accepted_hash, observed_hash=current,
+                         removal_permitted=True)
 
 
 @dataclass(frozen=True, slots=True)
