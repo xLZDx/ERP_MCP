@@ -116,6 +116,11 @@ def ensure_auditor_source_grant(env: LaneEnv, access_admin: AdminSession) -> str
 def repair_auditor_source_grant() -> str:
     """Opt-in repair for an already bootstrapped disposable real-1C test instance."""
     env = LaneEnv.load()
+    # Reject an unsafe environment before opening an Admin session.
+    if env.raw.get("environment") != "test" or env.raw.get("real1c") is not True:
+        raise RuntimeError("AUDITOR_GRANT_REQUIRES_DISPOSABLE_REAL1C_TEST")
+    if env.raw.get("seed_mode") != "bootstrap-only":
+        raise RuntimeError("AUDITOR_GRANT_REQUIRES_BOOTSTRAP_ONLY")
     access_admin = AdminSession(env, "access_admin")
     try:
         return ensure_auditor_source_grant(env, access_admin)
