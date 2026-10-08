@@ -20,6 +20,7 @@ BEGIN
  PERFORM living.assert_scope(t,s);
  PERFORM 1 FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  UPDATE living.jobs SET
   state=CASE WHEN attempt>=max_attempts THEN 'FAILED' ELSE 'PENDING' END,
   lease_owner=NULL,lease_until=NULL,
@@ -42,6 +43,7 @@ BEGIN
  SELECT status,scope_epoch INTO src_status,src_epoch FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF src_status IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  PERFORM living.reap_expired_jobs(t,s);
  -- Source lock is held: a live RUNNING job of this source means unavailable (not a raw 23505).
@@ -78,6 +80,7 @@ BEGIN
  SELECT status,scope_epoch INTO src_status,src_epoch FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF src_status IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  UPDATE living.jobs SET lease_until=clock_timestamp()+make_interval(secs=>lease_seconds)
  WHERE tenant_id=t AND source_id=s AND job_id=j
@@ -101,6 +104,7 @@ BEGIN
  SELECT status,scope_epoch INTO src_status,src_epoch FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF src_status IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  UPDATE living.jobs SET state=completed_state,lease_owner=NULL,lease_until=NULL,
   last_error=CASE WHEN completed_state='SUCCEEDED' THEN NULL ELSE err END
@@ -152,6 +156,7 @@ BEGIN
  SELECT status,scope_epoch INTO src_status,src_epoch FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF src_status IS DISTINCT FROM 'ACTIVE' OR src_epoch IS DISTINCT FROM expected_epoch THEN
   RAISE EXCEPTION 'SCOPE_REVOKED';
  END IF;

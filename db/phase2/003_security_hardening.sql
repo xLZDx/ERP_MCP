@@ -276,6 +276,7 @@ BEGIN
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  IF NOT living.is_trusted_reviewer(t,s,observer) THEN RAISE EXCEPTION 'REVIEWER_NOT_TRUSTED'; END IF;
  SELECT kind,digest INTO rev_kind,rev_digest FROM living.observations
@@ -316,6 +317,7 @@ BEGIN
  IF p_attestation_id IS NULL THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  SELECT * INTO att FROM living.attestations
   WHERE tenant_id=t AND source_id=s AND attestation_id=p_attestation_id FOR UPDATE;
@@ -351,6 +353,7 @@ BEGIN
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  -- Replay: same acceptance_id with identical arguments returns the recorded version.
  SELECT * INTO ev FROM living.acceptance_events
@@ -501,6 +504,7 @@ BEGIN
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  UPDATE living.outbox SET status='FAILED', lease_owner=NULL, lease_until=NULL
   WHERE tenant_id=t AND source_id=s AND status='PENDING' AND attempts>=p_max_attempts
@@ -538,6 +542,7 @@ BEGIN
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  SELECT * INTO ob FROM living.outbox
   WHERE tenant_id=t AND source_id=s AND connection_id=c AND event_id=p_event_id FOR UPDATE;
@@ -563,7 +568,8 @@ BEGIN
    'set_scope','assert_scope','enqueue_job','acquire_job','renew_lease','finish_job',
    'reap_expired_jobs','commit_cursor_page','ingest_observation','create_cursor','create_head',
    'promote_head','record_attestation','revoke_attestation','add_role_scope','rebase_scope',
-   'claim_outbox','finish_outbox','set_trusted_reviewer','role_scope_epoch_bump')
+   'claim_outbox','finish_outbox','set_trusted_reviewer','role_scope_epoch_bump',
+   'recheck_scope_locked')
  LOOP
   EXECUTE format('ALTER FUNCTION %s SECURITY DEFINER SET search_path = pg_catalog, pg_temp',f.sig);
  END LOOP;

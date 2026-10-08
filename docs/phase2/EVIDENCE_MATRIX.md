@@ -16,6 +16,10 @@ Environment of all rows: Windows, `D:\Repo\ERP_MCP-phase2`, project venv, no CI 
 | 2026-10-08 | worktree on a8b5b4d with the GPT-PM remediation batch (committed as the next commit) | `pytest -q tests/phase2` | 326 passed, 25 skipped, exit 0 | measured | - |
 | 2026-10-08 | same tree | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg | 25 passed | measured | - |
 | 2026-10-08 | same tree | `ruff check src/business_ai_gateway/phase2 tests/phase2` | exit 0 | measured | - |
+| 2026-10-08 | d3c3f60 | GPT-PM verification round | 7 of 8 FIXED, MAJOR-02 PARTIAL, VERDICT REJECT for push | review | next rows |
+| 2026-10-08 | worktree on d3c3f60 with the MAJOR-02 revoke-barrier fix (committed as the next commit) | `pytest -q tests/phase2` | 326 passed, 49 skipped, exit 0 | measured | - |
+| 2026-10-08 | same tree | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg | 49 passed (24 new two-session revoke cases) | measured | - |
+| 2026-10-08 | same tree | `ruff check src/business_ai_gateway/phase2 tests/phase2` | exit 0 | measured | - |
 | 2026-10-08 | 9b4fc0c | six local Sonnet reviews + verification round | findings in DECISION_LOG.md D-001 | review | - |
 
 Not run (explicit): backup/restore, kill -9 mid-page crash test, capacity 30/50/100/150 sources, mutation check of every guard, Release 1 regression, full-repo pytest/ruff, GitHub CI.
