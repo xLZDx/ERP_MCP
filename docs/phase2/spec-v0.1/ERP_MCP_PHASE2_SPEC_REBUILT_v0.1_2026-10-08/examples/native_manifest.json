@@ -1,0 +1,8 @@
+{
+  "source_id": "synthetic-source",
+  "company_id": "00000000-0000-4000-8000-000000000001",
+  "report_name": "SYNTHETIC DEMO ONLY",
+  "period": "2026-01",
+  "artifact_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "evidence_status": "UNATTESTED"
+}

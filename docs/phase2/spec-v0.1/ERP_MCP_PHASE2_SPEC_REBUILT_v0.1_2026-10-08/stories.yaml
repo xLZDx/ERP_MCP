@@ -1,0 +1,288 @@
+- id: R2-US-001
+  stage: S0/P0
+  title: Владелец фиксирует R1/R2 boundary и baseline
+  requirements:
+  - R2-REQ-01
+  status: PLANNED
+- id: R2-US-002
+  stage: S0/P0
+  title: Архитектор проверяет actual PDCC/ERP/Ferma reuse
+  requirements:
+  - R2-REQ-04
+  status: PLANNED
+- id: R2-US-003
+  stage: S1/P0
+  title: Connector engineer использует bounded read-only SDK
+  requirements:
+  - R2-REQ-03
+  status: PLANNED
+- id: R2-US-004
+  stage: S1/P0
+  title: Admin задаёт tenant/company membership
+  requirements:
+  - R2-REQ-02
+  status: PLANNED
+- id: R2-US-005
+  stage: S1/P0
+  title: Owner отзывает доступ без stale disclosure
+  requirements:
+  - R2-REQ-02
+  status: PLANNED
+- id: R2-US-006
+  stage: S1/P0
+  title: Operator запускает jobs с safe secret provider
+  requirements:
+  - R2-REQ-03
+  status: PLANNED
+- id: R2-US-007
+  stage: S3/P0
+  title: Integrator получает разрешённый 1C baseline
+  requirements:
+  - R2-REQ-05
+  status: PLANNED
+- id: R2-US-008
+  stage: S3/P0
+  title: Data architect отличает XML formatting от schema drift
+  requirements:
+  - R2-REQ-06
+  status: PLANNED
+- id: R2-US-009
+  stage: S3/P0
+  title: Operator сохраняет принятую истину при сбое scan
+  requirements:
+  - R2-REQ-05
+  status: PLANNED
+- id: R2-US-010
+  stage: S2/P0
+  title: DB engineer хранит immutable temporal ledger
+  requirements:
+  - R2-REQ-09
+  status: PLANNED
+- id: R2-US-011
+  stage: S2/P0
+  title: Auditor различает known/effective time
+  requirements:
+  - R2-REQ-09
+  status: PLANNED
+- id: R2-US-012
+  stage: S3/P0
+  title: Auditor видит gaps/completeness
+  requirements:
+  - R2-REQ-05
+  status: PLANNED
+- id: R2-US-013
+  stage: S4/P0
+  title: Domain engineer строит taxonomy/LDM
+  requirements:
+  - R2-REQ-08
+  status: PLANNED
+- id: R2-US-014
+  stage: S4/P1
+  title: Accountant различает supplier aliases
+  requirements:
+  - R2-REQ-08
+  status: PLANNED
+- id: R2-US-015
+  stage: S4/P0
+  title: Architect вычисляет impact closure
+  requirements:
+  - R2-REQ-10
+  status: PLANNED
+- id: R2-US-016
+  stage: S4/P0
+  title: Model approver принимает head с CAS
+  requirements:
+  - R2-REQ-07
+  status: PLANNED
+- id: R2-US-017
+  stage: S2/P0
+  title: SRE исключает двойного writer
+  requirements:
+  - R2-REQ-11
+  status: PLANNED
+- id: R2-US-018
+  stage: S2/P0
+  title: Connector engineer сохраняет cursor/outbox
+  requirements:
+  - R2-REQ-11
+  status: PLANNED
+- id: R2-US-019
+  stage: S3/P0
+  title: SRE ограничивает physical backend
+  requirements:
+  - R2-REQ-11
+  status: PLANNED
+- id: R2-US-020
+  stage: S3/P1
+  title: Operator pause/reconnect/quarantine
+  requirements:
+  - R2-REQ-03
+  status: PLANNED
+- id: R2-US-021
+  stage: S5/P0
+  title: Accountant получает manual native UI baseline
+  requirements:
+  - R2-REQ-13
+  status: PLANNED
+- id: R2-US-022
+  stage: S5/P0
+  title: Capture operator автоматизирует штатный UI
+  requirements:
+  - R2-REQ-13
+  status: PLANNED
+- id: R2-US-023
+  stage: S6/P1
+  title: 1C engineer квалифицирует standard engine/batch
+  requirements:
+  - R2-REQ-14
+  status: PLANNED
+- id: R2-US-024
+  stage: S5/P0
+  title: Data owner выдаёт bounded capture permit
+  requirements:
+  - R2-REQ-15
+  status: PLANNED
+- id: R2-US-025
+  stage: S5/P0
+  title: Security reviewer доказывает side-effect boundary
+  requirements:
+  - R2-REQ-15
+  status: PLANNED
+- id: R2-US-026
+  stage: S5/P0
+  title: Custodian хранит immutable private originals
+  requirements:
+  - R2-REQ-16
+  status: PLANNED
+- id: R2-US-027
+  stage: S5/P0
+  title: Security engineer изолирует parsers
+  requirements:
+  - R2-REQ-17
+  status: PLANNED
+- id: R2-US-028
+  stage: S6/P0
+  title: Independent accountant подписывает evidence
+  requirements:
+  - R2-REQ-16
+  status: PLANNED
+- id: R2-US-029
+  stage: S6/P0
+  title: Tester сравнивает candidate без public bypass
+  requirements:
+  - R2-REQ-16
+  status: PLANNED
+- id: R2-US-030
+  stage: S6/P0
+  title: Accountant сверяет 521.1 all-six и строки
+  requirements:
+  - R2-REQ-18
+  status: PLANNED
+- id: R2-US-031
+  stage: S6/P0
+  title: Domain engineer поддерживает account-based AP
+  requirements:
+  - R2-REQ-18
+  status: PLANNED
+- id: R2-US-032
+  stage: S6/P0
+  title: Company user получает posted MOLDRETAIL receipts
+  requirements:
+  - R2-REQ-18
+  status: PLANNED
+- id: R2-US-033
+  stage: S6/P0
+  title: Auditor сравнивает один data state
+  requirements:
+  - R2-REQ-18
+  status: PLANNED
+- id: R2-US-034
+  stage: S6/P0
+  title: Product owner задаёт operation validation
+  requirements:
+  - R2-REQ-21
+  status: PLANNED
+- id: R2-US-035
+  stage: S7/P0
+  title: Drive owner разрешает actual narrow corpus
+  requirements:
+  - R2-REQ-12
+  status: PLANNED
+- id: R2-US-036
+  stage: S7/P0
+  title: Connector engineer обновляет Drive catalog
+  requirements:
+  - R2-REQ-12
+  status: PLANNED
+- id: R2-US-037
+  stage: S7/P0
+  title: Auditor отслеживает revisions/moves/revoke
+  requirements:
+  - R2-REQ-12
+  status: PLANNED
+- id: R2-US-038
+  stage: S7/P1
+  title: SRE обрабатывает auth expiry/watch
+  requirements:
+  - R2-REQ-12
+  status: PLANNED
+- id: R2-US-039
+  stage: S8/P1
+  title: Accountant разбирает discrepancies
+  requirements:
+  - R2-REQ-22
+  status: PLANNED
+- id: R2-US-040
+  stage: S8/P1
+  title: Auditor читает timeline/coverage UI
+  requirements:
+  - R2-REQ-07
+  status: PLANNED
+- id: R2-US-041
+  stage: S8/P0
+  title: API engineer безопасно выдаёт jobs/results
+  requirements:
+  - R2-REQ-26
+  status: PLANNED
+- id: R2-US-042
+  stage: S10/P0
+  title: Prod owner разрешает qualified canary
+  requirements:
+  - R2-REQ-15
+  status: PLANNED
+- id: R2-US-043
+  stage: S9/P0
+  title: Performance tester измеряет capacity
+  requirements:
+  - R2-REQ-23
+  status: PLANNED
+- id: R2-US-044
+  stage: S9/P0
+  title: SRE проверяет faults/alerts/recovery
+  requirements:
+  - R2-REQ-24
+  status: PLANNED
+- id: R2-US-045
+  stage: S9/P0
+  title: Release engineer вводит R2 без порчи R1
+  requirements:
+  - R2-REQ-25
+  status: PLANNED
+- id: R2-US-046
+  stage: S9/P0
+  title: Privacy/ops owner управляет retention/restore
+  requirements:
+  - R2-REQ-17
+  status: PLANNED
+- id: R2-US-047
+  stage: FOLLOW_ON/P2
+  title: Owner включает дополнительные PDCC providers
+  requirements:
+  - R2-REQ-04
+  status: PLANNED
+- id: R2-US-048
+  stage: S10/P0
+  title: Release owner принимает exact candidate
+  requirements:
+  - R2-REQ-01
+  status: PLANNED

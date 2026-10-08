@@ -1,0 +1,9 @@
+{
+  "event_id": "00000000-0000-4000-8000-000000000002",
+  "source_id": "synthetic-source",
+  "recorded_at": "2026-01-01T12:00:00Z",
+  "observed_at": "2026-01-01T11:59:50Z",
+  "source_effective_at": null,
+  "payload_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "status": "OBSERVED"
+}

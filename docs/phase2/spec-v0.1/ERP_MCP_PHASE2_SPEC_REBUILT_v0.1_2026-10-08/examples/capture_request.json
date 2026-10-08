@@ -1,0 +1,9 @@
+{
+  "source_id": "synthetic-source",
+  "company_id": "00000000-0000-4000-8000-000000000001",
+  "recipe_id": "ui_trial_balance",
+  "recipe_version": 1,
+  "scope_epoch": 1,
+  "idempotency_key": "synthetic-0001",
+  "environment": "DEV_REFERENCE"
+}

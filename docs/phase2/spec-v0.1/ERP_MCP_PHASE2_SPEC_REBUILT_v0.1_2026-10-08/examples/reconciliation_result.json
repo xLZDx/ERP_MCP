@@ -1,0 +1,11 @@
+{
+  "source_id": "synthetic-source",
+  "company_id": "00000000-0000-4000-8000-000000000001",
+  "status": "NOT_RUN",
+  "opening_debit": "0.00",
+  "opening_credit": "100.00",
+  "turnover_debit": "20.00",
+  "turnover_credit": "5.00",
+  "closing_debit": "0.00",
+  "closing_credit": "85.00"
+}
