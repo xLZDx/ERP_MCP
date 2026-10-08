@@ -186,7 +186,8 @@ Machine evidence is bound end to end (GPT-PM review, 2026-10-08):
   Removing the labels therefore cannot turn it into native evidence.
 - Each run record's parameters are exactly `as_of`, `account`, `source_id`, `company_id`, equal to the authorized
   scope (account from the confirmed mapping). Each artifact embeds the same values as `context`, and its rows may
-  only use the authorized accounts and analytics roles.
+  only use the authorized accounts and must carry exactly the complete set of analytics roles of the confirmed
+  mapping (a subset, such as counterparty totals without the contract, is refused on either side).
 - Rows are a closed typed schema: `currency_ref` is text (the empty string means none; null/false/0 are refused),
   analytics slots are exactly `{type, ref}` strings, and a role is not repeated within a row.
 

@@ -197,3 +197,14 @@ def test_rows_must_stay_inside_the_authorized_accounts_and_roles():
     employee["analytics"] = [{"type": "employee", "ref": "e-1"}]
     with pytest.raises(mr.MachineReconciliationError, match="invalid analytics slot"):
         mr.compare_rows([employee], [employee], allowed_accounts=ACCOUNTS, allowed_roles=ROLES)
+
+
+@pytest.mark.parametrize("kept", ["counterparty", "contract"])
+def test_rows_must_cover_the_complete_authorized_projection(kept):
+    full = _row()
+    reduced = _row()
+    reduced["analytics"] = [slot for slot in reduced["analytics"] if slot["type"] == kept]
+    for rows_a, rows_b in (([reduced], [reduced]), ([full], [reduced]), ([reduced], [full])):
+        with pytest.raises(mr.MachineReconciliationError, match="authorized analytics projection"):
+            mr.compare_rows(rows_a, rows_b, allowed_accounts=ACCOUNTS, allowed_roles=ROLES)
+    assert mr.compare_rows([full], [full], allowed_accounts=ACCOUNTS, allowed_roles=ROLES)["row_count"] == 1
