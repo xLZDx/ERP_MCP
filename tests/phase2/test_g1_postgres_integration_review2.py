@@ -14,6 +14,7 @@ from test_g1_postgres_integration_hardening import (  # (env is an imported pyte
     FUTURE,
     INGEST,
     OBS_AT,
+    REC,
     _seed_outbox,
     attest,
     call,
@@ -219,3 +220,102 @@ async def test_m2_role_scope_change_bumps_epoch_and_old_context_cannot_commit(en
     finally:
         await o.close()
 
+
+# ---- MAJOR-02: every mutating API re-validates scope AFTER taking the source lock ----
+async def _cat_observation(c):
+    sql = INGEST
+    args = (uuid.uuid4(), "oX", uuid.uuid4(), D1, None, OBS_AT, None, "{}")
+    return "living_worker", sql, args, "SELECT count(*) FROM living.observations", (0, 1)
+
+
+async def _cat_job(c):
+    sql = "SELECT living.enqueue_job('A','s1',$1,'k',$2,'i1','{}'::jsonb)"
+    return "living_worker", sql, (uuid.uuid4(), D1), "SELECT count(*) FROM living.jobs", (0, 1)
+
+
+async def _cat_cursor_commit(c):
+    await call(c, "living_worker", "SELECT living.create_cursor('A','s1','conn','p0')")
+    j = uuid.uuid4()
+    await call(c, "living_worker", "SELECT living.enqueue_job('A','s1',$1,'k',$2,'i1','{}'::jsonb)", j, D1)
+    f = await call(c, "living_worker", "SELECT living.acquire_job('A','s1',$1,'w',60)", j)
+    return ("living_worker", COMMIT, (j, f, "p0", 0, "p1", "[]"),
+            "SELECT version FROM living.cursors", (0, 1))
+
+
+async def _cat_head_create(c):
+    return ("living_promoter", "SELECT living.create_head('A','s1','m1')", (),
+            "SELECT count(*) FROM living.accepted_heads", (0, 1))
+
+
+async def _cat_promote(c):
+    rev = uuid.uuid4()
+    await ingest(c, "o1", rev)
+    await attest(c, rev)
+    await call(c, "living_promoter", "SELECT living.create_head('A','s1','m1')")
+    return ("living_promoter", PROMOTE, (rev, uuid.uuid4(), "ev1"),
+            "SELECT version FROM living.accepted_heads", (0, 1))
+
+
+async def _cat_attestation(c):
+    rev = uuid.uuid4()
+    await ingest(c, "o1", rev)
+    args = (uuid.uuid4(), rev, "prop", "ev1", ev_digest(D1, "ev1"), "APPROVE", FUTURE)
+    return "living_worker", REC, args, "SELECT count(*) FROM living.attestations", (0, 1)
+
+
+async def _cat_claim(c):
+    await c.fetchval("SELECT living.add_role_scope('living_publisher','A','s1')")
+    await _seed_outbox(c, 1)
+    return ("living_publisher", "SELECT event_id FROM living.claim_outbox('A','s1',1,60,5)", (),
+            "SELECT claim_generation FROM living.outbox", (0, 1))
+
+
+async def _cat_finish(c):
+    await c.fetchval("SELECT living.add_role_scope('living_publisher','A','s1')")
+    await _seed_outbox(c, 1)
+    async with scope(c, "living_publisher"):
+        await c.fetch("SELECT event_id FROM living.claim_outbox('A','s1',1,60,5)")
+    return ("living_publisher", "SELECT living.finish_outbox('A','s1','conn','e0',1,true,5)", (),
+            "SELECT status FROM living.outbox", ("PENDING", "DELIVERED"))
+
+
+CATEGORIES = {"observation": _cat_observation, "job": _cat_job, "cursor_commit": _cat_cursor_commit,
+              "head_create": _cat_head_create, "promote": _cat_promote,
+              "attestation": _cat_attestation, "outbox_claim": _cat_claim,
+              "outbox_finish": _cat_finish}
+
+
+@pytest.mark.parametrize("mode", ["control", "revoke_other_grant", "revoke_own_grant"])
+@pytest.mark.parametrize("category", sorted(CATEGORIES))
+async def test_major02_scope_rechecked_after_source_lock(env, category, mode):
+    c, o = env.conn, await env.connect()
+    try:
+        role, sql, args, probe, (before, after) = await CATEGORIES[category](c)
+        await o.fetchval("SELECT living.add_role_scope('living_reader','A','s1')")
+        assert await o.fetchval(probe) == before
+        tx = c.transaction()  # session 1: passes set_scope at epoch e ...
+        await tx.start()
+        await c.execute(f"SET LOCAL ROLE {role}")
+        await c.fetchval("SELECT living.set_scope('A','s1',NULL)")
+        otx = o.transaction()  # session 2: holds the source row lock, uncommitted
+        await otx.start()
+        if mode == "control":
+            await o.execute("SELECT 1 FROM living.sources WHERE source_id='s1' FOR UPDATE")
+        else:
+            who = "living_reader" if mode == "revoke_other_grant" else role
+            await o.execute("DELETE FROM living.role_scope WHERE role_name=$1", who)
+        task = asyncio.ensure_future(c.fetchval(sql, *args))
+        await asyncio.sleep(0.7)
+        assert not task.done(), "API must be blocked on the source lock after passing assert_scope"
+        await otx.commit()  # ... session 2 commits while session 1 waits
+        if mode == "control":
+            await asyncio.wait_for(task, 15)
+            await tx.commit()
+            assert await o.fetchval(probe) == after
+        else:
+            code = "SCOPE_REVOKED" if mode == "revoke_other_grant" else "SCOPE_NOT_GRANTED"
+            await fails(code, asyncio.wait_for(task, 15))
+            await tx.rollback()
+            assert await o.fetchval(probe) == before  # no change
+    finally:
+        await o.close()

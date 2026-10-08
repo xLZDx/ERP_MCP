@@ -259,6 +259,16 @@ BEGIN
  END IF;
 END $fn$;
 
+-- Internal helper, called by every mutating API immediately AFTER it took its source row lock
+-- (row lock): re-validates status, the CURRENT scope_epoch and the caller's grant with a
+-- fresh snapshot, so a revocation that committed while the API waited for the lock is honoured.
+-- Lock order stays source -> job -> cursor -> outbox.
+CREATE OR REPLACE FUNCTION living.recheck_scope_locked(t text, s text) RETURNS void
+LANGUAGE plpgsql VOLATILE AS $fn$
+BEGIN
+ PERFORM living.assert_scope(t,s);
+END $fn$;
+
 -- Authenticated caller identity: the SET ROLE value when present, else session_user.
 -- Not changed by SECURITY DEFINER switching, so definer APIs can see who called them.
 CREATE OR REPLACE FUNCTION living.caller_role() RETURNS text LANGUAGE sql STABLE AS $fn$
@@ -402,6 +412,7 @@ BEGIN
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  -- Per-(tenant,source) ingest-order lock, held to commit: ingest_seq, recorded_at and commit
  -- order agree for a source, so "known at k" is a true prefix of the ingest_seq order.
@@ -437,6 +448,7 @@ BEGIN
  IF m IS NULL OR m='' THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  INSERT INTO living.accepted_heads(tenant_id,source_id,model_key) VALUES(t,s,m)
   ON CONFLICT DO NOTHING;
@@ -452,6 +464,7 @@ BEGIN
  SELECT status,scope_epoch INTO st,ep FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  INSERT INTO living.cursors(tenant_id,source_id,connection_id,cursor_value,scope_epoch)
   VALUES(t,s,c,initial_cursor,ep) ON CONFLICT DO NOTHING;
@@ -475,6 +488,7 @@ BEGIN
  SELECT status,scope_epoch INTO st,ep FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ PERFORM living.recheck_scope_locked(t,s);
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(t||'/'||s||'/'||p_idempotency_key,0));
  SELECT * INTO ex FROM living.jobs
