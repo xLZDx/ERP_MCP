@@ -128,6 +128,9 @@ def compare_posted_purchases(
         return PurchaseComparison(PurchaseResultKind.INCONCLUSIVE, "NATIVE_LISTING_UNQUALIFIED")
     if not _listing_qualified(gateway):
         return PurchaseComparison(PurchaseResultKind.INCONCLUSIVE, "GATEWAY_LISTING_UNQUALIFIED")
+    if not native.documents and not gateway.documents:
+        # Two empty listings prove nothing (same rule as reconciliation.py: no rows).
+        return PurchaseComparison(PurchaseResultKind.INCONCLUSIVE, "PURCHASE_BOTH_LISTINGS_EMPTY")
     a = {d.doc_ref: d for d in native.documents}
     b = {d.doc_ref: d for d in gateway.documents}
     differences: list[PurchaseDifference] = []

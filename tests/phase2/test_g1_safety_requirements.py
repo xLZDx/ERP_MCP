@@ -1,6 +1,7 @@
 """Release gate guards: unresolved security contracts must never be mistaken for a pass.
 
-These tests are static preflight requirements; real PostgreSQL integration remains mandatory.
+These tests are static preflight lint over the SQL text; real PostgreSQL integration remains
+mandatory (see test_g1_postgres_integration.py). Nothing here is executed on PostgreSQL.
 """
 from pathlib import Path
 

@@ -3,8 +3,19 @@ from dataclasses import replace
 
 import pytest
 
-from business_ai_gateway.phase2.structural_diff import ChangeKind, diff_observed
-from business_ai_gateway.phase2.structural_hash import fingerprint_edmx
+from business_ai_gateway.phase2.structural_diff import (
+    ChangeKind,
+    ObjectChange,
+    ObservedDiff,
+    diff_observed,
+)
+from business_ai_gateway.phase2.structural_hash import fingerprint_edmx as _fingerprint_edmx
+
+
+def fingerprint_edmx(xml, **kwargs):
+    kwargs.setdefault("tenant_id", "t1")
+    kwargs.setdefault("source_id", "s1")
+    return _fingerprint_edmx(xml, **kwargs)
 
 PRE = b'<edmx:Edmx xmlns:edmx="urn:edmx" xmlns:e="urn:edm" Version="1"><edmx:DataServices><e:Schema Namespace="Sample">'
 POST = b'</e:Schema></edmx:DataServices></edmx:Edmx>'
@@ -79,7 +90,7 @@ def test_results_are_deterministically_ordered():
 
 def test_canonicalizer_version_mismatch_is_refused():
     a = snapshot()
-    b = replace(a, canonicalizer_version="edmx-structural-v2")
+    b = replace(a, canonicalizer_version="edmx-structural-v3")
     with pytest.raises(ValueError, match="VERSION_MISMATCH"):
         diff_observed(a, b)
 
@@ -104,3 +115,76 @@ def test_duplicate_identity_is_refused():
     b = replace(a, objects=a.objects + (a.objects[0],))
     with pytest.raises(ValueError, match="DUPLICATE_OBJECT_ID"):
         diff_observed(a, b)
+
+
+def test_root_attribute_change_is_unattributed_so_impact_is_unknown():
+    a = fingerprint_edmx(edmx())
+    b = fingerprint_edmx(edmx().replace(b'Version="1"', b'Version="2"'))
+    result = diff_observed(a, b)
+    assert result.has_changes
+    assert result.changes == ()
+    assert result.unattributed_structural_change is True
+
+
+def test_unattributed_change_survives_next_to_named_object_change():
+    a = fingerprint_edmx(edmx())
+    changed = edmx(fields=b'<e:Property Name="Code" Type="Edm.String" MaxLength="11"/>')
+    b = fingerprint_edmx(changed.replace(b'Version="1"', b'Version="2"'))
+    result = diff_observed(a, b)
+    assert [c.qualified_name for c in result.changes] == ["Sample::EntityType::Person"]
+    assert result.unattributed_structural_change is True
+
+
+def test_pure_named_change_is_not_unattributed():
+    a = snapshot()
+    b = snapshot(fields=b'<e:Property Name="Code" Type="Edm.String" MaxLength="11"/>')
+    assert diff_observed(a, b).unattributed_structural_change is False
+
+
+def test_unnamed_schema_child_change_is_unattributed():
+    result = diff_observed(snapshot(), snapshot(extra=b'<e:Annotations Target="Sample.Person"/>'))
+    assert result.unattributed_structural_change is True
+
+
+def test_diff_carries_scope_and_refuses_cross_scope():
+    a = fingerprint_edmx(edmx(), tenant_id="t1", source_id="s1")
+    same = diff_observed(a, a)
+    assert (same.tenant_id, same.source_id) == ("t1", "s1")
+    other_tenant = fingerprint_edmx(edmx(), tenant_id="t2", source_id="s1")
+    other_source = fingerprint_edmx(edmx(), tenant_id="t1", source_id="s2")
+    with pytest.raises(ValueError, match="PHASE2_SCOPE_MISMATCH"):
+        diff_observed(a, other_tenant)
+    with pytest.raises(ValueError, match="PHASE2_SCOPE_MISMATCH"):
+        diff_observed(a, other_source)
+
+
+def _od(prev="a", obs="a", changes=(), unattributed=False):
+    return ObservedDiff(
+        tenant_id="t1", source_id="s1", canonicalizer_version="edmx-structural-v2",
+        previous_raw_sha256="a" * 64, observed_raw_sha256="b" * 64,
+        previous_structural_sha256=prev * 64, observed_structural_sha256=obs * 64,
+        changes=tuple(changes), unattributed_structural_change=unattributed,
+    )
+
+
+def test_observed_diff_post_init_rejects_inconsistent_hashes():
+    change = ObjectChange("X", ChangeKind.ADDED, None, "c" * 64)
+    with pytest.raises(ValueError, match="PHASE2_INCONSISTENT_DIFF"):
+        _od(changes=[change])  # equal hashes but a change
+    with pytest.raises(ValueError, match="PHASE2_INCONSISTENT_DIFF"):
+        _od(unattributed=True)  # equal hashes but unattributed flag
+    with pytest.raises(ValueError, match="PHASE2_INCONSISTENT_DIFF"):
+        _od(obs="b")  # hashes differ but nothing explains it
+    assert _od().has_changes is False
+    assert _od(obs="b", changes=[change]).has_changes is True
+    assert _od(obs="b", unattributed=True).has_changes is True
+
+
+def test_observed_diff_requires_scope():
+    with pytest.raises(ValueError, match="PHASE2_DIFF_SCOPE_INVALID"):
+        ObservedDiff(
+            tenant_id="", source_id="s1", canonicalizer_version="v",
+            previous_raw_sha256="a", observed_raw_sha256="a",
+            previous_structural_sha256="a", observed_structural_sha256="a",
+            changes=(), unattributed_structural_change=False,
+        )

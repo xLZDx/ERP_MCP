@@ -115,7 +115,14 @@ def test_doc_name_number_change_detected():
     assert r.differences[0].field=="number"
 
 
-def test_empty_complete_lists_equal_with_evaluation_only():
+def test_two_empty_complete_listings_are_inconclusive_not_match():
     r=compare_posted_purchases(listing(docs=()), listing(docs=()))
-    assert r.state is PurchaseResultKind.MATCH
+    assert r.state is PurchaseResultKind.INCONCLUSIVE
+    assert r.reason_code=="PURCHASE_BOTH_LISTINGS_EMPTY"
+    assert r.differences==()
     assert r.authority=="EVALUATION_ONLY"
+
+
+def test_one_empty_listing_is_still_a_mismatch():
+    r=compare_posted_purchases(listing(docs=()), listing())
+    assert r.state is PurchaseResultKind.MISMATCH

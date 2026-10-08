@@ -7,9 +7,11 @@ OAuth and future-folder membership must be independently qualified.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
-from collections.abc import Awaitable, Callable
+import math
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,10 +21,31 @@ from .drive_changes import DriveChange, DriveChangeKind, DrivePage
 
 _API_BASE = "https://www.googleapis.com/drive/v3/changes"
 _MAX_BYTES = 2_000_000
+_MAX_ERROR_BODY_BYTES = 65_536
+_RATE_LIMIT_REASONS = frozenset({"rateLimitExceeded", "userRateLimitExceeded"})
 
 
 def _opaque_token(value: object) -> bool:
     return type(value) is str and 1 <= len(value) <= 2048 and all(32 <= ord(c) < 127 for c in value)
+
+
+async def _is_rate_limit_body(response: httpx.Response) -> bool:
+    """True only for a 403 whose Google error reason is a rate-limit reason."""
+    body = bytearray()
+    async for chunk in response.aiter_bytes():
+        body.extend(chunk)
+        if len(body) > _MAX_ERROR_BODY_BYTES:
+            return False
+    try:
+        value = json.loads(bytes(body))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    error = value.get("error") if isinstance(value, dict) else None
+    errors = error.get("errors") if isinstance(error, dict) else None
+    if not isinstance(errors, list):
+        return False
+    return any(isinstance(item, dict) and item.get("reason") in _RATE_LIMIT_REASONS
+               for item in errors)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,9 +67,12 @@ class DriveIdentity:
 
 
 class DriveTransportError(RuntimeError):
-    def __init__(self, code: str) -> None:
+    """Sanitized transport failure: only a code, never URLs, headers or tokens."""
+
+    def __init__(self, code: str, *, retryable: bool = False) -> None:
         super().__init__(code)
         self.code = code
+        self.retryable = retryable
 
 
 class GoogleDriveChangesReader:
@@ -58,23 +84,93 @@ class GoogleDriveChangesReader:
         *,
         resolve_access_token: Callable[[DriveIdentity], Awaitable[str]],
         authorize_connection: Callable[[DriveIdentity], Awaitable[bool]],
+        audit: Callable[[str, Mapping[str, str]], Awaitable[None]],
+        request_timeout_seconds: float = 30.0,
+        callback_timeout_seconds: float = 10.0,
     ):
         if not isinstance(client, httpx.AsyncClient) or not callable(resolve_access_token):
             raise TypeError("DRIVE_CLIENT_CONFIGURATION_REQUIRED")
         if not callable(authorize_connection):
             raise TypeError("DRIVE_AUTHORIZER_REQUIRED")
+        if not callable(audit):
+            raise TypeError("DRIVE_AUDIT_REQUIRED")
+        for seconds in (request_timeout_seconds, callback_timeout_seconds):
+            if type(seconds) not in (int, float) or not math.isfinite(seconds) or seconds <= 0:
+                raise ValueError("DRIVE_TIMEOUT_INVALID")
+        self._callback_timeout = float(callback_timeout_seconds)
+        self._audit = audit
+        self._timeout = float(request_timeout_seconds)
         self._client = client
         self._resolve_token = resolve_access_token
         self._authorize = authorize_connection
+
+    async def _read_body(self, params: dict[str, str], token: str) -> bytearray:
+        async with self._client.stream(
+            "GET", _API_BASE, params=params,
+            headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
+            follow_redirects=False,
+        ) as response:
+            status = response.status_code
+            if status == 403 and await _is_rate_limit_body(response):
+                raise DriveTransportError("RATE_LIMITED", retryable=True)
+            if status in (401, 403):
+                raise DriveTransportError("AUTH_REQUIRED_OR_DENIED")
+            if status == 410:
+                raise DriveTransportError("CURSOR_INVALID")
+            if status == 429:
+                raise DriveTransportError("RATE_LIMITED", retryable=True)
+            if status != 200:
+                raise DriveTransportError("DRIVE_UPSTREAM_ERROR", retryable=status >= 500)
+            if response.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+                raise DriveTransportError("INVALID_CONTENT_TYPE")
+            content = bytearray()
+            async for chunk in response.aiter_bytes():
+                content.extend(chunk)
+                if len(content) > _MAX_BYTES:
+                    raise DriveTransportError("RESPONSE_TOO_LARGE")
+            return content
 
     async def fetch_page(
         self, *, identity: DriveIdentity, saved_cursor: str
     ) -> DrivePage:
         if not _opaque_token(saved_cursor):
             raise DriveTransportError("INVALID_CURSOR")
-        if not await self._authorize(identity):
+        # Every trusted callback is bounded: a hung callback must not hang the job.
+        timed_out = False
+        granted: object = None
+        try:
+            async with asyncio.timeout(self._callback_timeout):
+                granted = await self._authorize(identity)
+        except TimeoutError:
+            timed_out = True
+        if timed_out:
+            raise DriveTransportError("DRIVE_TIMEOUT", retryable=True)
+        if granted is not True:
             raise PermissionError("DRIVE_ACCESS_DENIED")
-        token = await self._resolve_token(identity)
+        audit_failed = False
+        try:
+            async with asyncio.timeout(self._callback_timeout):
+                await self._audit("drive.changes.fetch", {
+                    "connection_id": identity.connection_id,
+                    "scope_epoch": str(identity.scope_epoch),
+                    "drive_id": identity.drive_id or "",
+                })
+        except TimeoutError:
+            timed_out = True
+        except Exception:  # noqa: BLE001 - any audit-sink failure must fail closed
+            audit_failed = True
+        if timed_out:
+            raise DriveTransportError("DRIVE_TIMEOUT", retryable=True)
+        if audit_failed:
+            raise PermissionError("AUDIT_WRITE_FAILED")
+        token: object = None
+        try:
+            async with asyncio.timeout(self._callback_timeout):
+                token = await self._resolve_token(identity)
+        except TimeoutError:
+            timed_out = True
+        if timed_out:
+            raise DriveTransportError("DRIVE_TIMEOUT", retryable=True)
         if (
             type(token) is not str or not token or len(token) > 4096
             or any(ord(c) < 33 or ord(c) > 126 for c in token)
@@ -85,38 +181,25 @@ class GoogleDriveChangesReader:
             "pageSize": "100",
             "fields": (
                 "nextPageToken,newStartPageToken,"
-                "changes(changeType,fileId,removed,time,file(id,headRevisionId,version,mimeType,trashed),driveId)"
+                "changes(changeType,fileId,removed,time,file(id,headRevisionId,version,mimeType,trashed,parents),driveId)"
             ),
             "supportsAllDrives": "true",
             "includeItemsFromAllDrives": "true",
         }
         if identity.drive_id is not None:
             params["driveId"] = identity.drive_id
+        failure: str | None = None
         try:
-            async with self._client.stream(
-                "GET", _API_BASE, params=params,
-                headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
-                follow_redirects=False,
-            ) as response:
-                if response.status_code in (401, 403):
-                    raise DriveTransportError("AUTH_REQUIRED_OR_DENIED")
-                if response.status_code == 410:
-                    raise DriveTransportError("CURSOR_INVALID")
-                if response.status_code == 429:
-                    raise DriveTransportError("RATE_LIMITED")
-                if response.status_code != 200:
-                    raise DriveTransportError("DRIVE_UPSTREAM_ERROR")
-                if response.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
-                    raise DriveTransportError("INVALID_CONTENT_TYPE")
-                content = bytearray()
-                async for chunk in response.aiter_bytes():
-                    content.extend(chunk)
-                    if len(content) > _MAX_BYTES:
-                        raise DriveTransportError("RESPONSE_TOO_LARGE")
-        except httpx.TimeoutException as exc:
-            raise DriveTransportError("DRIVE_TIMEOUT") from exc
-        except httpx.RequestError as exc:
-            raise DriveTransportError("DRIVE_NETWORK_ERROR") from exc
+            async with asyncio.timeout(self._timeout):
+                content = await self._read_body(params, token)
+        except (TimeoutError, httpx.TimeoutException):
+            failure = "DRIVE_TIMEOUT"
+        except httpx.RequestError:
+            failure = "DRIVE_NETWORK_ERROR"
+        if failure is not None:
+            # Raised outside the except block so neither __cause__ nor __context__
+            # keeps the httpx exception, whose message may echo request details.
+            raise DriveTransportError(failure, retryable=True)
         try:
             value: Any = json.loads(content)
         except (ValueError, UnicodeDecodeError) as exc:
@@ -143,7 +226,17 @@ class GoogleDriveChangesReader:
             ):
                 raise DriveTransportError("DRIVE_MALFORMED_RESPONSE")
             revision = None
+            mime_type = None
+            parents: tuple[str, ...] = ()
             if isinstance(file_metadata, dict):
+                mime_type = file_metadata.get("mimeType")
+                if mime_type is not None and (not isinstance(mime_type, str) or len(mime_type) > 255):
+                    raise DriveTransportError("DRIVE_MALFORMED_RESPONSE")
+                raw_parents = file_metadata.get("parents", [])
+                if (not isinstance(raw_parents, list) or len(raw_parents) > 100
+                        or any(not isinstance(x, str) or not x or len(x) > 1024 for x in raw_parents)):
+                    raise DriveTransportError("DRIVE_MALFORMED_RESPONSE")
+                parents = tuple(raw_parents)
                 revision = file_metadata.get("headRevisionId")
                 if revision is None and file_metadata.get("version") is not None:
                     revision = str(file_metadata["version"])
@@ -154,8 +247,15 @@ class GoogleDriveChangesReader:
             removed = row.get("removed") is True or (
                 isinstance(file_metadata, dict) and file_metadata.get("trashed") is True
             )
+            # driveId is never defaulted from the identity: an absent value stays None.
+            row_drive_id = row.get("driveId")
+            if row_drive_id is not None and (
+                not isinstance(row_drive_id, str) or not row_drive_id or len(row_drive_id) > 1024
+            ):
+                raise DriveTransportError("DRIVE_MALFORMED_RESPONSE")
             kind = (
                 DriveChangeKind.UNKNOWN if change_type != "file"
+                or (identity.drive_id is not None and row_drive_id is None)
                 else DriveChangeKind.REMOVED if removed
                 else DriveChangeKind.UPSERT if isinstance(file_metadata, dict)
                 else DriveChangeKind.UNKNOWN
@@ -169,7 +269,7 @@ class GoogleDriveChangesReader:
             changes.append(DriveChange(
                 change_id=hashlib.sha256(event_material).hexdigest(),
                 file_id=file_id, revision_id=revision, kind=kind,
-                drive_id=row.get("driveId", identity.drive_id),
+                drive_id=row_drive_id, mime_type=mime_type, parents=parents,
             ))
         next_page = value.get("nextPageToken")
         next_start = value.get("newStartPageToken")
