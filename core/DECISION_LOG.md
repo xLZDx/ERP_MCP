@@ -367,4 +367,6 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 
 - Re-pinned the engineering checkpoint again after the whitespace fix (clean export of a161ede; concurrent uncommitted edits of another session excluded).
 
+- GPT-PM verification round 3 of the exact head 862ce44: VERDICT APPROVE, no BLOCKER/MAJOR (M-01, M-02, M-03 all closed). The reviewer reproduced on its own PostgreSQL 16: 69 targeted tests pass; full projection validates, any subset of mapped roles on side A, B or both is rejected with the profile left NEEDS_VALIDATION (no VALIDATED event) and recovers on restoring complete artifacts. The reviewer did not itself inspect the 196 real-lane rows or the live HTTP call; those are this session's measurements. Push and PR follow under rules v3 (one PR for the sprint; outbound range = 12 own commits 4a21a01..862ce44, no foreign OAuth paths). This log entry is a documentation-only commit on top of the approved head.
+
 - Sprint report (EN and RU) extended with the traceability row R21 and RUN-7 for the round-2 fix; reports are outside the implementation fingerprint, so no re-pin is needed.
