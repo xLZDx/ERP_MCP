@@ -43,3 +43,20 @@ Backup/restore: `pg_dump -Fc` of a populated database restored with `pg_restore 
 Not run (explicit): capacity 30/50/100/150 sources, mutation check of guards outside the table above, Release 1 regression, full-repo pytest/ruff, GitHub CI.
 
 Statements elsewhere that SQL was "never executed" or PostgreSQL tests "NOT_RUN" describe 9b4fc0c and are superseded by the rows above.
+
+## 2026-10-09 — isolated client-safety HEAD, live disposable PostgreSQL subset
+
+| Date | Source HEAD | Exact selection | Result | Limitation |
+| --- | --- | --- | --- | --- |
+| 2026-10-09 | `edc8d9dad9e1b9d6e388c044473ab7ebb6f8bedc` | `pytest -q tests/phase2/test_g1_postgres_integration.py tests/phase2/test_g1_postgres_integration_hardening.py tests/phase2/test_g1_postgres_integration_review2.py tests/phase2/test_ports_contract.py` with `ERP_PHASE2_REQUIRE_PG=1` and test-only DSN bound to `erp-phase2-test-pg` on `127.0.0.1:55712` | **280 passed, 0 failed, exit 0**, 335.05 s. Local log: `var/g1-safe-integration-20261009.log` | Concurrent isolated Phase 2 PostgreSQL testing from another worktree was detected. This selection intentionally **excludes** crash/SIGKILL, restore and guard-mutation files; prior G1 evidence for those applies to historical SHA only. Formal G1 exit approval NOT_RUN. |
+
+The credential was obtained in the test process from the disposable container's existing configuration and was neither printed nor committed. The test suite created and cleaned only its own temporary test databases. No Release 1 service, customer 1C or production database was targeted. Local integration PASS does not confer G1/G7 release authority.
+
+## 2026-10-09 — Release 1 compatibility and combined SCH-02 (additional rows)
+
+| Date | Code HEAD | Scope | Result | Qualification |
+| --- | --- | --- | --- | --- |
+| 2026-10-09 | `edc8d9dad9e1b9d6e388c044473ab7ebb6f8bedc` | R1 compatibility, `pytest -q tests --ignore=tests/phase2 -k 'not test_fault_injection_and_runbook_artifacts_are_present'` | **1925 passed, 343 skipped, 1 deselected, exit 0**, 400.42 s; `var/r1-compatibility-20261009.log` | The engineering-checkpoint integrity gate was deliberately deselected because R1 fingerprint includes Phase 2 code and has not been governed/re-pinned for R2. This is **not** a complete R1 release gate. |
+| 2026-10-09 | `07dddbc792a62ad8b2e26a8fc2ef5020e226c588` | Integrated Phase 2 safety including SCH-02 adapter exception redaction, `pytest -q tests/phase2`, Ruff and `compileall` | **782 passed, 180 skipped, exit 0**; Ruff PASS, compileall PASS | Offline only; skipped PostgreSQL/real source/Drive cases remain NOT_RUN on this head. Earlier 280 PostgreSQL PASS belongs to `edc8d9d`, whose DB/SQL code is unchanged by SCH-02. |
+
+No status in this evidence matrix upgrades G0–G7 or permits production launch. Other Phase 2 worktrees have parallel edits and must not be overwritten by this branch.

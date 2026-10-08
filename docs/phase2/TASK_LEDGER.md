@@ -1,5 +1,7 @@
 # Phase 2 Task Ledger — initial evidence-only inventory
 
+> **2026-10-09 update:** This row-by-row table is an initial, conservative inventory and its historic base SHA/status are not the current integration result. For engineering evidence use `EVIDENCE_MATRIX.md`, `IMPLEMENTATION_STATUS.md` and `TERMINAL_ACCEPTANCE_LEDGER_2026-10-09.md`. Offline S1–S4 code and the isolated safety branch do **not** mark user stories DONE or G0–G7 PASS without exact-head end-to-end acceptance. Product release remains NO-GO.
+
 Date: 2026-10-08. Source of story IDs/dependencies: `STORIES_PHASE2_RU.md`.
 No story marked VERIFIED or DONE without exact-head end-to-end acceptance.
 `IMPLEMENTED_UNVERIFIED` indicates only partial supporting logic found in source/checkpoint, **not** a complete implemented story.

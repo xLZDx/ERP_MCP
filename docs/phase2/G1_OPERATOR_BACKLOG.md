@@ -1,5 +1,7 @@
 # G1 blockers and operator handoff — 2026-10-08
 
+> **2026-10-09 current supplement:** On isolated code HEAD `edc8d9d`, **280 selected SQL/port integration tests passed** against the authorized disposable PostgreSQL 16; see `EVIDENCE_MATRIX.md`. Historical claims below that SQL was not applied or all PostgreSQL tests are NOT_RUN are superseded. The latest combined safety code (`07dddbc`) has not received a separate G1 full exit review; capacity, exact-head crash/restore evidence, and independent DB/security approval remain OPEN. G1 is not formally PASS.
+
 > **SUPERSEDED 2026-10-08 (partly).** Statements below that SQL was never applied or PostgreSQL tests are NOT_RUN describe the state of commit 9b4fc0c. Current evidence: `EVIDENCE_MATRIX.md` (SQL executed on a disposable PostgreSQL 16, 20 integration tests green on e71d4ff; GPT-PM REJECT of a8b5b4d open).
 
 

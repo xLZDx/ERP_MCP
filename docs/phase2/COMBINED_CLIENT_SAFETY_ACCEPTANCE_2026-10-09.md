@@ -48,3 +48,7 @@ Strict scheduler lease/backoff/poison policy numeric validation added after the 
 ## DR-01 — observed versus accepted model (engineering closed)
 
 The offline drift classifier no longer changes the accepted hash on a complete scan, and its first observation cannot self-approve. Added explicit observed candidate hash; four RED test cases passed after correction. Local suite after code change: **780 PASS / 180 SKIP**, Ruff PASS. See `DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md`. Live integration and independent acceptance remain NOT_RUN; do not infer a production-ready living model.
+
+## Integrated SCH-02 and exact local code-head check
+
+SCH-02 from isolated `aed0948` was cherry-picked as `07dddbc`, preserving other Phase 2 fixes. It replaces external work exception text with a fixed code in retry/poison/lease-loss results; redacted values cannot be persisted in the test job `last_error` contract. RED and GREEN tests documented in `SCHEDULER_ERROR_REDACTION_REVIEW_2026-10-09.md`. On combined code HEAD `07dddbc` offline pytest **782 PASS / 180 SKIP**, Ruff/compileall PASS; R1 compatibility and G1 SQL subsets were validated on predecessor code HEAD `edc8d9d` and do not grant release exit.

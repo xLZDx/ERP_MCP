@@ -1,5 +1,7 @@
 # Phase 2 operator backlog
 
+> **2026-10-09 reconciliation:** The historical rows below record earlier blockers but OB-02 was resolved by the dedicated Phase 2 ChatGPT/PM Bridge binding (D-003), OB-03 by the disposable PostgreSQL test container (D-002), and OB-05 by isolation of R2 from R1 with R1 merges into the R2 branch. The pending mechanical Rosetta plan-go state in D-006/D-007 and exact-head review remain separate governance concerns. Other owner-required items are enumerated in `TERMINAL_ACCEPTANCE_LEDGER_2026-10-09.md`; do not close them through tests alone.
+
 Date: 2026-10-08. Branch: `phase2/living-model-connectors-reconciliation`. Release 2 status: **NO-GO**.
 Only items that engineering cannot close without the operator. G1-specific blockers stay in `G1_OPERATOR_BACKLOG.md`.
 
