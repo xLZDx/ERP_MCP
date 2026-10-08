@@ -24,6 +24,10 @@ Environment of all rows: Windows, `D:\Repo\ERP_MCP-phase2`, project venv, no CI 
 | 2026-10-08 | same tree | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg | 65 passed (16 new: restore 1, crash 5, guard mutations 10) | measured | - |
 | 2026-10-08 | same tree | `ruff check src/business_ai_gateway/phase2 tests/phase2` | exit 0 | measured | - |
 | 2026-10-08 | 9b4fc0c | six local Sonnet reviews + verification round | findings in DECISION_LOG.md D-001 | review | - |
+| 2026-10-09 | a00d16a + remediation batch (committed as the next commit) | `pytest -q tests/phase2` | 904 passed, 217 skipped, exit 0 | measured | - |
+| 2026-10-09 | same tree | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg | 217 passed, exit 0 (65 G1 + 115 S1-S4 contract + 37 review additions) | measured | - |
+| 2026-10-09 | same tree | `ruff check src/business_ai_gateway/phase2 tests/phase2` | All checks passed | measured | - |
+| 2026-10-09 | a00d16a | four narrow reviewers (test adequacy, python, silent failure, reliability) | 0 BLOCKER, MAJORs fixed in one batch (D-009) | review | rows above |
 
 ## Guard mutation table (RED = guard removed in a throwaway database lets the forbidden action through; GREEN = baseline refuses it)
 

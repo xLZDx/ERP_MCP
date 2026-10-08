@@ -79,6 +79,10 @@ class DriftDecision:
     baseline_established: bool = False
     # Removal inference is allowed only after a complete successful capture.
     removal_permitted: bool = False
+    # Newly observed hash awaiting promotion. Set only together with STRUCTURAL_DRIFT;
+    # classify() never advances accepted_hash on drift, only an explicit promotion does,
+    # so a lost event/persist cannot make the drift vanish on the next identical capture.
+    candidate_hash: str | None = None
 
 
 def classify(outcome: CaptureOutcome, previous_accepted_hash: str | None) -> DriftDecision:
@@ -98,7 +102,8 @@ def classify(outcome: CaptureOutcome, previous_accepted_hash: str | None) -> Dri
     if previous_accepted_hash is None:
         return DriftDecision((), current, baseline_established=True, removal_permitted=True)
     if current != previous_accepted_hash:
-        return DriftDecision((DriftEventKind.STRUCTURAL_DRIFT,), current, removal_permitted=True)
+        return DriftDecision((DriftEventKind.STRUCTURAL_DRIFT,), previous_accepted_hash,
+                             removal_permitted=True, candidate_hash=current)
     return DriftDecision((), previous_accepted_hash, removal_permitted=True)
 
 

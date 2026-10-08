@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
@@ -27,6 +28,7 @@ from uuid import UUID
 from .temporal import EventKind
 
 __all__ = [
+    "OMITTED",
     "AcceptanceView",
     "CommitResult",
     "CursorOutboxPort",
@@ -43,9 +45,12 @@ __all__ = [
     "OutboxRow",
     "PortError",
     "Scope",
+    "check_aware",
+    "check_scope_type",
     "event_digest",
     "evidence_digest",
     "jsonb_text",
+    "normalize_json",
     "page_digest",
 ]
 
@@ -57,6 +62,25 @@ class PortError(Exception):
         super().__init__(code if not detail else f"{code}: {detail}")
         self.code = code
         self.detail = detail
+
+    def __reduce__(self):
+        # Default Exception pickling replays ``args`` (the joined message) into ``__init__`` and
+        # would turn "CODE: detail" into the code. Keep code and detail apart across processes.
+        return (type(self), (self.code, self.detail))
+
+
+class _Omitted:
+    """Type of ``OMITTED``: an argument the caller did not pass (SQL ``DEFAULT``), as opposed to None (SQL NULL)."""
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "OMITTED"
+
+    def __reduce__(self):
+        return "OMITTED"
+
+
+OMITTED = _Omitted()
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,7 +155,9 @@ class OutboxRow:
     connection_id: str
     event_id: str
     event_digest: str
-    content: dict[str, Any] = field(compare=True)
+    # Excluded from eq/hash so the frozen row is hashable (a dict is not); ``event_digest`` is a
+    # SHA-256 over exactly this content, so two rows with equal digests carry equal content.
+    content: dict[str, Any] = field(compare=False)
     status: str
     attempts: int
     lease_owner: str | None
@@ -170,7 +196,9 @@ class LedgerPort(Protocol):
         self, actor: str, scope: Scope, observation_id: UUID | None, object_id: str | None,
         revision_id: UUID | None, kind: str | None, digest: str | None,
         source_effective_at: datetime | None, observed_at: datetime | None,
-        supersedes: UUID | None = None, provenance: dict[str, Any] | None = None) -> UUID: ...
+        supersedes: UUID | None = None,
+        provenance: dict[str, Any] | None | _Omitted = OMITTED) -> UUID:
+        """``provenance`` omitted = SQL default ``{}``; an explicit None is SQL NULL = INVALID_OBSERVATION."""
 
     async def as_known_at(self, actor: str, scope: Scope, k: datetime) -> tuple[KnownRow, ...]: ...
 
@@ -184,7 +212,8 @@ class JobQueuePort(Protocol):
 
     async def enqueue_job(self, actor: str, scope: Scope, job_id: UUID | None, job_kind: str | None,
                           request_digest: str | None, idempotency_key: str | None,
-                          payload: dict[str, Any] | None = None) -> UUID: ...
+                          payload: dict[str, Any] | None | _Omitted = OMITTED) -> UUID:
+        """``payload`` omitted = SQL default ``{}``; an explicit None is SQL NULL = INVALID_JOB."""
 
     async def acquire_job(self, actor: str, scope: Scope, job_id: UUID | None, worker: str | None,
                           lease_seconds: int | None) -> int:
@@ -260,6 +289,49 @@ class HeadAttestationPort(Protocol):
 
 
 # --------------------------------------------------------------------------- pure helpers
+def check_aware(**values: Any) -> None:
+    """Port contract: every datetime argument is timezone-aware (naive -> ``NAIVE_DATETIME``).
+
+    Shared by the fake and the SQL adapter so a naive value is a typed rejection on both sides and
+    never a TypeError (fake) or a silent local-time reinterpretation (driver).
+    """
+    for name, value in values.items():
+        if isinstance(value, datetime) and value.utcoffset() is None:
+            raise PortError("NAIVE_DATETIME", name)
+
+
+def check_scope_type(scope: Any) -> None:
+    """A non-Scope or empty tenant/source is ``INVALID_ARGUMENT`` (SQL ``set_scope`` rejects it first)."""
+    if (not isinstance(scope, Scope) or not isinstance(scope.tenant_id, str)
+            or not isinstance(scope.source_id, str) or not scope.tenant_id or not scope.source_id):
+        raise PortError("INVALID_ARGUMENT", "scope")
+
+
+def normalize_json(value: Any) -> Any:
+    """Strict JSON model of a jsonb argument; returns a deep copy (tuples become lists).
+
+    Allowed: None, bool, int, finite float, str, list/tuple, dict with str keys. Anything else
+    (non-str keys, sets, bytes, datetimes, NaN/inf, ...) is ``INVALID_JSON``: ``json.dumps`` would
+    either raise a TypeError or silently coerce (``{1: "a"}`` becomes ``{"1": "a"}``).
+    """
+    if value is None or isinstance(value, (bool, str, int)):
+        return value
+    if isinstance(value, float):
+        if math.isnan(value) or value in (float("inf"), float("-inf")):
+            raise PortError("INVALID_JSON", "non-finite number")
+        return value
+    if isinstance(value, (list, tuple)):
+        return [normalize_json(v) for v in value]
+    if isinstance(value, dict):
+        out = {}
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise PortError("INVALID_JSON", f"non-string key {type(k).__name__}")
+            out[k] = normalize_json(v)
+        return out
+    raise PortError("INVALID_JSON", type(value).__name__)
+
+
 def _json_str(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 

@@ -35,29 +35,73 @@ def test_failures_never_drift_never_remove_never_move_baseline(kind, previous):
     assert decision.baseline_established is False
 
 
-def test_complete_capture_with_different_hash_is_drift_and_advances_baseline():
+def test_complete_capture_with_different_hash_is_drift_and_keeps_baseline_with_candidate():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H2), H1)
     assert decision.events == (E.STRUCTURAL_DRIFT,)
-    assert decision.accepted_hash == H2
+    assert decision.accepted_hash == H1  # only a promotion may advance the baseline
+    assert decision.candidate_hash == H2
     assert decision.removal_permitted is True
+    assert decision.baseline_established is False
+
+
+def test_repeat_identical_capture_after_drift_is_drift_again():
+    # Regression: a lost event/persist after the first drift must not make the drift vanish.
+    accepted = H1
+    first = classify(CaptureOutcome(K.OK_COMPLETE, H2), accepted)
+    accepted = first.accepted_hash  # caller persists accepted_hash only; event was lost
+    second = classify(CaptureOutcome(K.OK_COMPLETE, H2), accepted)
+    assert second.events == (E.STRUCTURAL_DRIFT,)
+    assert second.candidate_hash == H2
+    assert second.accepted_hash == H1
 
 
 def test_complete_capture_with_same_hash_is_quiet():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H1), H1)
     assert decision.events == ()
     assert decision.accepted_hash == H1
+    assert decision.candidate_hash is None
+    assert decision.removal_permitted is True
+    assert decision.baseline_established is False
 
 
 def test_first_complete_capture_establishes_baseline_without_drift():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H1), None)
     assert decision.events == ()
     assert decision.accepted_hash == H1
+    assert decision.candidate_hash is None
     assert decision.baseline_established is True
+    assert decision.removal_permitted is True
 
 
 def test_schema_changed_with_hash_is_compared_not_assumed_drift():
-    assert classify(CaptureOutcome(K.SCHEMA_CHANGED, H1), H1).events == ()
-    assert classify(CaptureOutcome(K.SCHEMA_CHANGED, H2), H1).events == (E.STRUCTURAL_DRIFT,)
+    same = classify(CaptureOutcome(K.SCHEMA_CHANGED, H1), H1)
+    assert same.events == ()
+    assert same.removal_permitted is True
+    changed = classify(CaptureOutcome(K.SCHEMA_CHANGED, H2), H1)
+    assert changed.events == (E.STRUCTURAL_DRIFT,)
+    assert changed.accepted_hash == H1
+    assert changed.candidate_hash == H2
+    assert changed.removal_permitted is True
+
+
+def test_failures_never_carry_a_candidate_hash():
+    for kind in NON_DRIFT_KINDS:
+        assert classify(CaptureOutcome(kind), H1).candidate_hash is None
+
+
+def test_tc027_timeout_then_complete_same_hash_gives_no_drift_and_no_new_version():
+    accepted = H1
+    timeout = classify(CaptureOutcome(K.TIMEOUT), accepted)
+    assert timeout.events == (E.SOURCE_UNAVAILABLE,)
+    assert timeout.accepted_hash == H1
+    assert timeout.removal_permitted is False
+    accepted = timeout.accepted_hash
+    after = classify(CaptureOutcome(K.OK_COMPLETE, H1), accepted)
+    assert after.events == ()
+    assert E.STRUCTURAL_DRIFT not in after.events
+    assert after.candidate_hash is None  # nothing to promote: no new version
+    assert after.accepted_hash == H1
+    assert after.baseline_established is False
 
 
 def test_schema_changed_or_complete_without_hash_requires_resnapshot_and_keeps_baseline():
@@ -122,12 +166,13 @@ def test_partial_is_neutral_neither_failure_nor_reset():
 
 
 def test_counter_does_not_mutate_drift_state_and_is_immutable():
-    before = classify(CaptureOutcome(K.TIMEOUT), H1)
     counter = FailureCounter(threshold=1).advance(K.TIMEOUT)
-    after = classify(CaptureOutcome(K.TIMEOUT), H1)
     assert counter.escalate is True
-    assert before == after
-    assert after.accepted_hash == H1
+    # Escalation is a separate value: a drift decision never changes with failure count.
+    decision = classify(CaptureOutcome(K.TIMEOUT), H1)
+    assert decision.events == (E.SOURCE_UNAVAILABLE,)
+    assert decision.accepted_hash == H1
+    assert counter.consecutive_failures == 1
     with pytest.raises(AttributeError):
         counter.consecutive_failures = 0  # type: ignore[misc]
 

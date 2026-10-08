@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 import asyncpg
 
 from business_ai_gateway.phase2.ports import (
+    OMITTED,
     AcceptanceView,
     CommitResult,
     CursorView,
@@ -22,12 +23,24 @@ from business_ai_gateway.phase2.ports import (
     Observation,
     OutboxRow,
     PortError,
+    Scope,
+    check_aware,
+    check_scope_type,
+    normalize_json,
 )
 
 _CODE = re.compile(r"[A-Z][A-Z0-9_]+")
 _IDENT = re.compile(r"[a-z][a-z0-9_]*")
 _SQLSTATE = {"23514": "CHECK_VIOLATION", "23505": "UNIQUE_VIOLATION", "23503": "FK_VIOLATION",
-             "42501": "PERMISSION_DENIED"}
+             "42501": "PERMISSION_DENIED",
+             "22021": "INVALID_TEXT", "22P05": "INVALID_TEXT", "42704": "ROLE_NOT_FOUND"}
+
+
+def _jsonb_arg(value):
+    """Python value -> jsonb parameter. OMITTED = SQL DEFAULT '{}', None = SQL NULL."""
+    if value is OMITTED:
+        return "{}"
+    return None if value is None else json.dumps(normalize_json(value))
 
 
 def to_port_error(e: asyncpg.PostgresError) -> PortError:
@@ -66,6 +79,7 @@ class SqlLiving:
     # ------------------------------------------------------------------ plumbing
     @asynccontextmanager
     async def _scoped(self, actor, scope):
+        check_scope_type(scope)
         assert _IDENT.fullmatch(actor), actor
         async with self.conn.transaction():
             await self.conn.execute(f'SET LOCAL ROLE "{actor}"')
@@ -74,6 +88,7 @@ class SqlLiving:
             yield
 
     async def _val(self, actor, scope, sql, *args):
+        check_aware(**{f"arg{i}": a for i, a in enumerate(args)})
         try:
             async with self._scoped(actor, scope):
                 return await self.conn.fetchval(sql, scope.tenant_id, scope.source_id, *args)
@@ -81,6 +96,7 @@ class SqlLiving:
             raise to_port_error(e) from None
 
     async def _rows(self, actor, scope, sql, *args):
+        check_aware(**{f"arg{i}": a for i, a in enumerate(args)})
         try:
             async with self._scoped(actor, scope):
                 return await self.conn.fetch(sql, scope.tenant_id, scope.source_id, *args)
@@ -105,13 +121,13 @@ class SqlLiving:
 
     async def ingest_observation(self, actor, scope, observation_id, object_id, revision_id, kind,
                                  digest, source_effective_at, observed_at, supersedes=None,
-                                 provenance=None):
+                                 provenance=OMITTED):
         return await self._val(
             actor, scope,
             "SELECT living.ingest_observation($1,$2,$3::uuid,$4,$5::uuid,$6,$7,$8::timestamptz,"
             "$9::timestamptz,$10::uuid,$11::jsonb)",
             observation_id, object_id, revision_id, kind, digest, source_effective_at, observed_at,
-            supersedes, json.dumps({} if provenance is None else provenance))
+            supersedes, _jsonb_arg(provenance))
 
     async def as_known_at(self, actor, scope, k):
         rows = await self._rows(actor, scope, "SELECT * FROM living.as_known_at($1,$2,$3)", k)
@@ -125,11 +141,11 @@ class SqlLiving:
 
     # ------------------------------------------------------------------ jobs
     async def enqueue_job(self, actor, scope, job_id, job_kind, request_digest, idempotency_key,
-                          payload=None):
+                          payload=OMITTED):
         return await self._val(
             actor, scope, "SELECT living.enqueue_job($1,$2,$3::uuid,$4,$5,$6,$7::jsonb)",
             job_id, job_kind, request_digest, idempotency_key,
-            json.dumps({} if payload is None else payload))
+            _jsonb_arg(payload))
 
     async def acquire_job(self, actor, scope, job_id, worker, lease_seconds):
         return await self._val(actor, scope, "SELECT living.acquire_job($1,$2,$3::uuid,$4,$5)",
@@ -171,7 +187,7 @@ class SqlLiving:
                 actor, scope,
                 "SELECT living.commit_cursor_page($1,$2,$3,$4::uuid,$5,$6,$7,$8,$9,$10,$11::jsonb)",
                 connection_id, job_id, worker, fence, prior_cursor, prior_version, expected_epoch,
-                new_cursor, None if events is None else json.dumps(events))
+                new_cursor, _jsonb_arg(events))
         finally:
             self.conn.remove_log_listener(listener)
         return CommitResult(version, any("CURSOR_ALREADY_APPLIED" in n for n in notices))
@@ -225,15 +241,23 @@ class SqlLiving:
                                attestation_id)
 
     async def set_trusted_reviewer(self, role, scope, active, expires_at):
+        check_aware(expires_at=expires_at)
+        if not isinstance(scope, Scope):
+            raise PortError("INVALID_ARGUMENT", "scope")
         await self._admin("SELECT living.set_trusted_reviewer($1,$2,$3,$4,$5)", role,
                           scope.tenant_id, scope.source_id, active, expires_at)
 
     async def define_actor(self, name, member_of):
         assert _IDENT.fullmatch(name) and all(_IDENT.fullmatch(p) for p in member_of)
-        if not await self.conn.fetchval("SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=$1", name):
-            await self.conn.execute(f'CREATE ROLE "{name}" NOLOGIN')
-        for parent in member_of:
-            await self.conn.execute(f'GRANT "{parent}" TO "{name}"')
+        try:
+            async with self.conn.transaction():
+                if not await self.conn.fetchval(
+                        "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=$1", name):
+                    await self.conn.execute(f'CREATE ROLE "{name}" NOLOGIN')
+                for parent in member_of:
+                    await self.conn.execute(f'GRANT "{parent}" TO "{name}"')
+        except asyncpg.PostgresError as e:
+            raise to_port_error(e) from None
 
     async def get_head(self, actor, scope, model_key):
         rows = await self._rows(
@@ -250,6 +274,30 @@ class SqlLiving:
                                     r["independent_evidence_ref"]) for r in rows)
 
     # ------------------------------------------------------------------ test support
+    async def bump_scope_epoch(self, scope) -> int:
+        """Real mechanism: a role_scope UPDATE fires living.role_scope_epoch_bump (+1 for that source)."""
+        n = await self.conn.fetchval(
+            "WITH u AS (UPDATE living.role_scope SET company_id=company_id WHERE tenant_id=$1 AND "
+            "source_id=$2 AND role_name=(SELECT min(role_name) FROM living.role_scope WHERE "
+            "tenant_id=$1 AND source_id=$2) RETURNING 1) SELECT count(*) FROM u",
+            scope.tenant_id, scope.source_id)
+        if n != 1:
+            raise PortError("SOURCE_NOT_FOUND", "no role_scope row to touch")
+        return await self.scope_epoch(scope)
+
+    async def grant_scope(self, role, scope) -> None:
+        await self._admin("SELECT living.add_role_scope($1,$2,$3,NULL)", role, scope.tenant_id,
+                          scope.source_id)
+
+    async def revoke_scope(self, role, scope) -> None:
+        await self.conn.execute("DELETE FROM living.role_scope WHERE role_name=$1 AND "
+                                "tenant_id=$2 AND source_id=$3", role, scope.tenant_id,
+                                scope.source_id)
+
+    async def rebase_scope(self, scope) -> int:
+        return await self._admin("SELECT living.rebase_scope($1,$2)", scope.tenant_id,
+                                 scope.source_id)
+
     async def warp(self, seconds: float) -> None:
         """Move job and outbox leases / run times ``seconds`` into the past (a clock jump forward).
 
