@@ -42,3 +42,16 @@ Operator decisions: (1) no CI and no pytest suites are run as gates; (2) Phase 2
 **Open decisions for the operator.** OB-01 (G0/rebaseline), OB-02 (ChatGPT conversation for Phase 2), OB-03 (disposable PostgreSQL), OB-04 (source registry reuse), OB-05 (R1 fingerprint/CI isolation). See `OPERATOR_BACKLOG.md`.
 
 **Status impact.** `IMPLEMENTATION_STATUS.md` and `TASK_LEDGER.md` refreshed to this evidence. G1 stays BLOCKED / IMPLEMENTED_UNVERIFIED. Release 2 stays NO-GO.
+
+## 2026-10-08 - D-003: GPT-PM plan APPROVE, sweep REJECT of a8b5b4d, remediation
+
+PM Bridge: Phase 2 registered as erp_mcp-phase2 on a new ChatGPT conversation supplied by the operator (the bridge cannot create the first chat for an unregistered project; one conversation cannot serve two projects). Plan erp_mcp-phase2-2026-10-08T19-20-52-493Z-75918d (hash a1ba0886...) APPROVED by GPT-PM, GO bound. Adversarial sweep on exact head a8b5b4d: **VERDICT: REJECT** (3 BLOCKER, 5 MAJOR, 6 hypotheses to test, NOT_RUN items do not block a push of the isolated branch but block release; push needs a new exact-head APPROVE).
+
+Handling (every finding was first reproduced against the code or the real database):
+- BLOCKER-01 commit_cursor_page replay with a different batch: fixed (page digest, CONFLICTING_PAGE_REPLAY). BLOCKER-02 outbox claim without fence: fixed (claim_generation, authenticated identity). BLOCKER-03 recorded_at vs commit: fixed by a documented settled-horizon rule (knowledge_horizon, KNOWLEDGE_HORIZON_NOT_SETTLED); the same query no longer changes its answer after a late commit.
+- MAJOR-01 attestation authenticity: trusted_reviewers, evidence digest bound to the revision digest, decision, expiry, revocation, re-checked in promote_head (still a database-level contract, not external cryptographic proof). MAJOR-02 revoke barrier: role_scope changes bump scope_epoch atomically. MAJOR-03 audit of denied attempts and actor: done for Drive and 1C discovery. MAJOR-04 discovery concurrency: BackendId budget slot plus semaphore. MAJOR-05 documentation drift: EVIDENCE_MATRIX.md and a doc lint test.
+- Also closed: F4, F9.
+
+Residual, stated honestly: an API that passed assert_scope just before a concurrent revoke commits is only re-checked under the source lock in commit_cursor_page; the horizon is pessimistic while an ingest is in flight; asyncio.to_thread work cannot be cancelled mid-fingerprint; the budget is single-process; backup/restore, kill -9 mid-page, capacity and mutation checks are still NOT_RUN; the hypotheses H-01..H-06 are covered only by the tests listed in EVIDENCE_MATRIX.
+
+Evidence: see EVIDENCE_MATRIX.md (326 passed/25 skipped without a DSN, 25 integration passed on the disposable PostgreSQL 16, ruff exit 0). Next: bounded GPT-PM verification of these fixes and direct regressions; push only after a correlated APPROVE on the new exact head.

@@ -22,6 +22,7 @@ MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
 FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql")
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
+FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
 
 
 class Env:
@@ -60,6 +61,9 @@ async def env():
           INSERT INTO living.role_scope(role_name,tenant_id,source_id) VALUES
             ('living_worker','A','s1'),('living_promoter','A','s1');
         """)
+        # M1: evidence is accepted only from an owner-managed trusted reviewer role.
+        await conn.execute(
+            "SELECT living.set_trusted_reviewer('living_worker','A','s1',true,$1)", FUTURE)
         e.conn = conn
         yield e
     finally:
@@ -88,6 +92,20 @@ async def fails(needle, coro, exc=asyncpg.PostgresError):
     return ei.value
 
 
+def ev_digest(revision_digest, evidence):
+    """Evidence digest bound to the exact revision content (see 003 record_attestation)."""
+    return hashlib.sha256(f"{revision_digest}:{evidence}".encode()).hexdigest()
+
+
+REC = "SELECT living.record_attestation('A','s1',$1,$2,$3,$4,$5,$6,$7)"
+
+
+async def attest(conn, rev, proposer="prop", evidence="ev1", digest=D1, att=None, decision="APPROVE",
+                 expires=FUTURE, role="living_worker", bound_to=None):
+    return await call(conn, role, REC, att or uuid.uuid4(), rev, proposer, evidence,
+                      ev_digest(bound_to or digest, evidence), decision, expires)
+
+
 INGEST = ("SELECT living.ingest_observation('A','s1',$1::uuid,$2,$3::uuid,'OBSERVED',$4,"
           "$5::timestamptz,$6::timestamptz,$7::uuid,$8::jsonb)")
 
@@ -112,7 +130,14 @@ async def snapshot(conn):
         " c.relrowsecurity, c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n"
         " ON n.oid=c.relnamespace WHERE n.nspname='living' AND c.relkind='r' ORDER BY 1")
     mig = await conn.fetch("SELECT version,checksum FROM living.schema_migrations ORDER BY 1")
-    return [[tuple(r) for r in x] for x in (fn, pol, rel, mig)]
+    trg = await conn.fetch(
+        "SELECT tgrelid::regclass::text AS t, tgname, tgenabled, pg_get_triggerdef(oid) AS d"
+        " FROM pg_trigger WHERE NOT tgisinternal AND tgrelid::regclass::text LIKE 'living.%'"
+        " ORDER BY 1,2")
+    col = await conn.fetch(
+        "SELECT table_name,column_name,data_type,is_nullable,column_default FROM"
+        " information_schema.columns WHERE table_schema='living' ORDER BY 1,ordinal_position")
+    return [[tuple(r) for r in x] for x in (fn, pol, rel, mig, trg, col)]
 
 
 # ---- N-1 / N-11 ----
@@ -122,7 +147,7 @@ async def test_n1_reapply_001_002_after_003_equals_single_pass(env):
     assert all(r[1] for r in before[0] if "set_scope" in r[0] or "promote_head" in r[0])
     for f in ("001_living_registry.sql", "002_job_cursor_functions.sql",
               "003_security_hardening.sql", "001_living_registry.sql",
-              "002_job_cursor_functions.sql"):
+              "002_job_cursor_functions.sql", "003_security_hardening.sql"):
         await apply_file(c, f)
     assert await snapshot(c) == before
     policies = {r[1] for r in before[1]}
@@ -152,8 +177,7 @@ async def test_n2_dual_duty_login_cannot_promote(env):
         await c.execute(f"GRANT living_worker, living_promoter TO {dual}")
         rev = uuid.uuid4()
         await ingest(c, "o1", rev)
-        await call(c, "living_worker", "SELECT living.record_attestation('A','s1',$1,$2,'prop','ev1')",
-                   uuid.uuid4(), rev)
+        await attest(c, rev)
         await call(c, "living_promoter", "SELECT living.create_head('A','s1','m1')")
         promote = "SELECT living.promote_head('A','s1','m1',0,$1,$2,'ev1')"
         async with c.transaction():
@@ -243,11 +267,10 @@ async def test_n7_retry_and_replay_compare_all_columns(env):
     await fails("CONFLICTING_OBSERVATION", ingest(c, "o1", rev, eff=eff))
     await fails("CONFLICTING_OBSERVATION", ingest(c, "o1", rev, prov='{"x":1}'))
     att = uuid.uuid4()
-    rec = "SELECT living.record_attestation('A','s1',$1,$2,$3,'ev1')"
-    await call(c, "living_worker", rec, att, rev, "prop")
-    await call(c, "living_worker", rec, att, rev, "prop")  # identical replay
-    await fails("CONFLICTING_ATTESTATION", call(c, "living_worker", rec, att, rev, "other"))
-    await fails("CONFLICTING_ATTESTATION", call(c, "living_worker", rec, uuid.uuid4(), rev, "prop"))
+    await attest(c, rev, "prop", att=att)
+    await attest(c, rev, "prop", att=att)  # identical replay
+    await fails("CONFLICTING_ATTESTATION", attest(c, rev, "other", att=att))
+    await fails("CONFLICTING_ATTESTATION", attest(c, rev, "prop"))  # new id, same revision+evidence
     await call(c, "living_promoter", "SELECT living.create_head('A','s1','m1')")
     promote = "SELECT living.promote_head('A','s1','m1',0,$1,$2,'ev1')"
     acc = uuid.uuid4()
@@ -271,24 +294,25 @@ async def test_n8_outbox_claim_finish_lease_attempts_and_skip_locked(env):
     c = env.conn
     await c.fetchval("SELECT living.add_role_scope('living_publisher','A','s1')")
     await _seed_outbox(c, 3)
-    claim = "SELECT event_id,attempts FROM living.claim_outbox('A','s1',$1,$2,60,$3)"
+    claim = "SELECT event_id,attempts,claim_generation FROM living.claim_outbox('A','s1',$1,60,$2)"
     fin = "SELECT living.finish_outbox('A','s1','conn',$1,$2,$3,$4)"
 
-    async def claim_rows(conn, pub, limit, mx=5):
+    async def claim_rows(conn, limit, mx=5):
         async with scope(conn, "living_publisher"):
-            return await conn.fetch(claim, pub, limit, mx)
+            return await conn.fetch(claim, limit, mx)
 
-    first = await claim_rows(c, "p1", 2)
+    first = await claim_rows(c, 2)
     assert [r["event_id"] for r in first] == ["e0", "e1"] and all(r["attempts"] == 1 for r in first)
-    assert [r["event_id"] for r in await claim_rows(c, "p2", 5)] == ["e2"]  # leased rows skipped
-    await call(c, "living_publisher", fin, "e0", "p1", True, 5)
+    assert all(r["claim_generation"] == 1 for r in first)
+    assert [r["event_id"] for r in await claim_rows(c, 5)] == ["e2"]  # leased rows skipped
+    await call(c, "living_publisher", fin, "e0", 1, True, 5)
     assert await c.fetchval("SELECT status FROM living.outbox WHERE event_id='e0'") == "DELIVERED"
-    await fails("OUTBOX_INVALID_TRANSITION", call(c, "living_publisher", fin, "e0", "p1", True, 5))
-    await fails("STALE_OUTBOX_LEASE", call(c, "living_publisher", fin, "e1", "p2", True, 5))
-    await call(c, "living_publisher", fin, "e1", "p1", False, 1)  # attempts(1) >= cap(1)
+    await fails("OUTBOX_INVALID_TRANSITION", call(c, "living_publisher", fin, "e0", 1, True, 5))
+    await fails("STALE_OUTBOX_LEASE", call(c, "living_publisher", fin, "e1", 7, True, 5))  # wrong fence
+    await call(c, "living_publisher", fin, "e1", 1, False, 1)  # attempts(1) >= cap(1)
     assert await c.fetchval("SELECT status FROM living.outbox WHERE event_id='e1'") == "FAILED"
     await fails("permission denied", call(c, "living_worker", "SELECT * FROM living.claim_outbox("
-                                          "'A','s1','w',1,60,5)"))
+                                          "'A','s1',1,60,5)"))
     await fails("OUTBOX_INVALID_TRANSITION", c.execute(
         "UPDATE living.outbox SET status='PENDING' WHERE event_id='e0'"))
 
@@ -298,16 +322,16 @@ async def test_n8_concurrent_claims_do_not_overlap(env):
     await c.fetchval("SELECT living.add_role_scope('living_publisher','A','s1')")
     await _seed_outbox(c, 2)
     b = await env.connect()
-    claim = "SELECT event_id FROM living.claim_outbox('A','s1',$1,1,60,5)"
+    claim = "SELECT event_id FROM living.claim_outbox('A','s1',1,60,5)"
     try:
         ta, tb = c.transaction(), b.transaction()
         await ta.start()
         await tb.start()
         got = []
-        for conn, pub, tx in ((c, "p1", ta), (b, "p2", tb)):
+        for conn, tx in ((c, ta), (b, tb)):
             await conn.execute("SET LOCAL ROLE living_publisher")
             await conn.fetchval("SELECT living.set_scope('A','s1',NULL)")
-            got.append([r["event_id"] for r in await asyncio.wait_for(conn.fetch(claim, pub), 10)])
+            got.append([r["event_id"] for r in await asyncio.wait_for(conn.fetch(claim), 10)])
         await ta.commit()
         await tb.commit()
         assert sorted(got[0] + got[1]) == ["e0", "e1"], got

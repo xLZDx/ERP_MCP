@@ -200,3 +200,16 @@ def test_reordered_property_ref_changes_hash():
     a = fingerprint_edmx(keyed(b'Code', b'Date'))
     b = fingerprint_edmx(keyed(b'Date', b'Code'))
     assert a.structural_sha256 != b.structural_sha256
+
+
+def test_node_count_limit_is_coded_value_error():
+    items = b"".join(b'<EntityType Name="T%d"/>' % i for i in range(20))
+    xml = (b'<Edmx xmlns="http://schemas.microsoft.com/ado/2007/06/edmx"><DataServices>'
+           b'<Schema Namespace="N">' + items +
+           b'<EntityContainer Name="C"><EntitySet Name="S" EntityType="N.T0"/>'
+           b'</EntityContainer></Schema></DataServices></Edmx>')
+    assert fingerprint_edmx(xml, max_nodes=100).objects
+    with pytest.raises(ValueError, match="EDMX_NODE_LIMIT_EXCEEDED"):
+        fingerprint_edmx(xml, max_nodes=10)
+    with pytest.raises(ValueError, match="EDMX_NODE_LIMIT_INVALID"):
+        fingerprint_edmx(xml, max_nodes=0)

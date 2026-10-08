@@ -280,9 +280,14 @@ async def test_two_session_concurrent_promote_has_one_winner(env):
     await ingest(c, "o1", rev, digest=DA, eff=_dt(2024, 1, 1))
     async with scope(c, "living_promoter"):
         await c.fetchval("SELECT living.create_head('A','s1','m')")
+    import hashlib
+    far = _dt(2099, 1, 1)
+    # M1: evidence counts only from an owner-managed trusted reviewer and is bound to the revision digest
+    await c.execute("SELECT living.set_trusted_reviewer('living_worker','A','s1',true,$1)", far)
     async with scope(c, "living_worker"):
-        await c.fetchval("SELECT living.record_attestation('A','s1',$1,$2,'proposer-x','ev1')",
-                         uuid.uuid4(), rev)
+        await c.fetchval("SELECT living.record_attestation('A','s1',$1,$2,'proposer-x','ev1',$3,"
+                         "'APPROVE',$4)", uuid.uuid4(), rev,
+                         hashlib.sha256(f"{DA}:ev1".encode()).hexdigest(), far)
     # the worker cannot promote at all
     async with scope(c, "living_worker"):
         await raises(c.fetchval("SELECT living.promote_head('A','s1','m',0,$1,$2,'ev1')",

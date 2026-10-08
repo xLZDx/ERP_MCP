@@ -3,7 +3,14 @@ import threading
 import pytest
 
 from business_ai_gateway.phase2 import onec_discovery
-from business_ai_gateway.phase2.onec_discovery import OneCMetadataDiscovery
+from business_ai_gateway.phase2.backend_budget import (
+    BackendCapacityError,
+    BackendId,
+    PhysicalBackendBudget,
+)
+from business_ai_gateway.phase2.onec_discovery import OneCFetchError, OneCMetadataDiscovery
+
+BID = BackendId.normalize("onec-db-1")
 
 XML = (b'<e:Edmx xmlns:e="urn:edmx" xmlns:m="urn:edm"><e:DataServices>'
        b'<m:Schema Namespace="Demo"><m:EntityType Name="Org"/><m:EntityType Name="Secret"/>'
@@ -20,10 +27,11 @@ def _allow_all(subject, source_id, qualified_name, *, tenant_id):
     return True
 
 
-def make(allowed, fetch, *, audit=_audit_ok, entity_allowed=_allow_all, **kw):
+def make(allowed, fetch, *, audit=_audit_ok, entity_allowed=_allow_all, budget=None, **kw):
     return OneCMetadataDiscovery(
         allow_source_metadata=allowed, fetch_registered_metadata=fetch,
-        audit=audit, entity_allowed=entity_allowed, **kw,
+        audit=audit, entity_allowed=entity_allowed,
+        backend_budget=budget or PhysicalBackendBudget(per_backend_limit=4, total_limit=8), **kw,
     )
 
 
@@ -48,7 +56,7 @@ async def test_allowlisted_source_only_and_observed_only():
         return XML
 
     client = make(allowed, fetch)
-    result = await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    result = await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                                   tenant_id="t1")
     assert result.trust == "OBSERVED_ONLY"
     assert result.fingerprint.structural_sha256
@@ -66,7 +74,7 @@ async def test_size_limit_is_passed_to_fetch_contract():
         return XML
 
     client = make(_allow, fetch, max_metadata_bytes=1_000_000)
-    await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                          tenant_id="t1")
     assert seen == [1_000_000]
 
@@ -85,14 +93,16 @@ async def test_company_reader_without_source_grant_never_dispatches():
     audits = []
 
     async def audit(event, details):
-        audits.append(event)
+        audits.append((event, dict(details)))
 
     client = make(denied, fetch, audit=audit)
     with pytest.raises(PermissionError, match="SOURCE_METADATA_ACCESS_DENIED"):
-        await client.observe(authenticated_subject="company_user", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="company_user", source_id="onec-reference",
                              tenant_id="t1")
     assert calls == []
-    assert audits == []
+    assert audits == [("onec.metadata.fetch", {
+        "subject": "company_user", "tenant_id": "t1", "source_id": "onec-reference",
+        "outcome": "denied", "reason": "SOURCE_METADATA_ACCESS_DENIED"})]
 
 
 @pytest.mark.asyncio
@@ -109,7 +119,7 @@ async def test_acl_result_must_be_exactly_true(acl_result):
 
     client = make(allowed, fetch)
     with pytest.raises(PermissionError, match="SOURCE_METADATA_ACCESS_DENIED"):
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t1")
     assert calls == []
 
@@ -125,7 +135,7 @@ async def test_non_string_source_id_is_permission_error_not_type_error(source_id
 
     client = make(allowed, _fetch_xml)
     with pytest.raises(PermissionError, match="INVALID_SCOPE"):
-        await client.observe(authenticated_subject="auditor", source_id=source_id,
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id=source_id,
                              tenant_id="t1")
     assert calls == []
 
@@ -136,7 +146,7 @@ async def test_non_string_source_id_is_permission_error_not_type_error(source_id
 async def test_invalid_subject_or_tenant_is_permission_error(subject, tenant):
     client = make(_allow, _fetch_xml)
     with pytest.raises(PermissionError, match="INVALID_SCOPE"):
-        await client.observe(authenticated_subject=subject, source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject=subject, source_id="onec-reference",
                              tenant_id=tenant)
 
 
@@ -154,7 +164,7 @@ async def test_arbitrary_url_denied_before_authorization():
 
     client = make(allowed, fetch)
     with pytest.raises(PermissionError, match="INVALID_SCOPE"):
-        await client.observe(authenticated_subject="auditor", source_id="http://evil.test/",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="http://evil.test/",
                              tenant_id="t1")
     assert calls == []
 
@@ -166,7 +176,7 @@ async def test_invalid_metadata_not_observed_or_accepted():
 
     client = make(_allow, fetch)
     with pytest.raises(ValueError, match="NOT_EDMX"):
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t1")
 
 
@@ -174,7 +184,7 @@ async def test_invalid_metadata_not_observed_or_accepted():
 async def test_oversized_metadata_fails_closed():
     client = make(_allow, _fetch_xml, max_metadata_bytes=15)
     with pytest.raises(ValueError, match="EDMX_SIZE_INVALID"):
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t1")
 
 
@@ -190,7 +200,7 @@ async def test_fingerprint_runs_off_the_event_loop_thread(monkeypatch):
 
     monkeypatch.setattr(onec_discovery, "fingerprint_edmx", spy)
     client = make(_allow, _fetch_xml)
-    await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                          tenant_id="t1")
     assert len(seen) == 1
     assert seen[0] != main_thread
@@ -208,11 +218,12 @@ async def test_audit_written_before_adapter_is_called():
         return XML
 
     client = make(_allow, fetch, audit=audit)
-    await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                          tenant_id="t1")
     assert [o[0] for o in order] == ["audit", "fetch"]
     assert order[0][1] == "onec.metadata.fetch"
-    assert order[0][2] == {"subject": "auditor", "tenant_id": "t1", "source_id": "onec-reference"}
+    assert order[0][2] == {"subject": "auditor", "tenant_id": "t1", "source_id": "onec-reference",
+                           "outcome": "allowed", "reason": "AUTHORIZED"}
 
 
 @pytest.mark.asyncio
@@ -228,7 +239,7 @@ async def test_audit_write_failure_is_fail_closed():
 
     client = make(_allow, fetch, audit=audit)
     with pytest.raises(PermissionError, match="AUDIT_WRITE_FAILED") as info:
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t1")
     assert info.value.__cause__ is None and info.value.__context__ is None
     assert calls == []
@@ -252,7 +263,7 @@ async def test_objects_are_filtered_by_entity_allowed_before_return():
         return "Secret" not in qualified_name
 
     client = make(_allow, _fetch_xml, entity_allowed=entity_allowed)
-    result = await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    result = await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                                   tenant_id="t1")
     names = [name for name, _ in result.fingerprint.objects]
     assert "Demo::EntityType::Org" in names
@@ -266,7 +277,7 @@ async def test_objects_are_filtered_by_entity_allowed_before_return():
 @pytest.mark.parametrize("verdict", [1, "yes", None, object()])
 async def test_entity_allowed_result_must_be_exactly_true(verdict):
     client = make(_allow, _fetch_xml, entity_allowed=lambda s, src, n, *, tenant_id: verdict)
-    result = await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    result = await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                                   tenant_id="t1")
     assert result.fingerprint.objects == ()
     assert result.withheld_objects > 0
@@ -289,7 +300,7 @@ async def test_tenant_is_passed_to_every_callback():
         return True
 
     await make(allowed, fetch, entity_allowed=entity).observe(
-        authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
+        backend_id=BID, authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
     assert {t for _, t in seen} == {"t1"}
     assert {k for k, _ in seen} == {"allow", "fetch", "entity"}
 
@@ -307,7 +318,7 @@ async def test_grant_for_other_tenant_is_denied_without_fetch():
 
     client = make(allowed, fetch)
     with pytest.raises(PermissionError, match="SOURCE_METADATA_ACCESS_DENIED"):
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t2")
     assert calls == []
 
@@ -327,7 +338,7 @@ async def test_unstripped_scope_is_invalid_before_audit_and_fetch(tenant, source
 
     with pytest.raises(PermissionError, match="INVALID_SCOPE"):
         await make(_allow, fetch, audit=audit).observe(
-            authenticated_subject="auditor", source_id=source, tenant_id=tenant)
+            backend_id=BID, authenticated_subject="auditor", source_id=source, tenant_id=tenant)
     assert calls == []
 
 
@@ -337,7 +348,7 @@ async def test_filtered_view_is_partial_and_hides_whole_document_hashes():
     full = fingerprint_edmx(XML, tenant_id="t1", source_id="onec-reference")
     client = make(_allow, _fetch_xml,
                   entity_allowed=lambda s, src, n, *, tenant_id: "Secret" not in n)
-    result = await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+    result = await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                                   tenant_id="t1")
     fp = result.fingerprint
     assert result.completeness == "PARTIAL_ACL_FILTERED"
@@ -345,7 +356,7 @@ async def test_filtered_view_is_partial_and_hides_whole_document_hashes():
     assert {fp.raw_sha256, fp.structural_sha256, fp.residual_sha256}.isdisjoint(
         {full.raw_sha256, full.structural_sha256, full.residual_sha256})
     unfiltered = await make(_allow, _fetch_xml).observe(
-        authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
+        backend_id=BID, authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
     assert unfiltered.completeness == "COMPLETE" and not unfiltered.fingerprint.acl_filtered
 
 
@@ -360,7 +371,7 @@ async def test_visible_and_hidden_change_together_is_unknown_impact():
         return state["xml"]
 
     client = make(_allow, fetch, entity_allowed=lambda s, src, n, *, tenant_id: "Secret" not in n)
-    kw = {"authenticated_subject": "auditor", "source_id": "onec-reference", "tenant_id": "t1"}
+    kw = {"backend_id": BID, "authenticated_subject": "auditor", "source_id": "onec-reference", "tenant_id": "t1"}
     before = (await client.observe(**kw)).fingerprint
     state["xml"] = xml2
     after = (await client.observe(**kw)).fingerprint
@@ -378,7 +389,7 @@ async def test_fetch_timeout_has_stable_code():
 
     client = make(_allow, slow, fetch_timeout_seconds=0.05)
     with pytest.raises(onec_discovery.OneCFetchError) as info:
-        await client.observe(authenticated_subject="auditor", source_id="onec-reference",
+        await client.observe(backend_id=BID, authenticated_subject="auditor", source_id="onec-reference",
                              tenant_id="t1")
     assert info.value.code == "ONEC_FETCH_TIMEOUT"
 
@@ -395,7 +406,129 @@ async def test_hanging_audit_or_acl_callback_fails_closed():
 
     with pytest.raises(PermissionError, match="AUDIT_WRITE_FAILED"):
         await make(_allow, _fetch_xml, audit=hang_audit, callback_timeout_seconds=0.05).observe(
-            authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
+            backend_id=BID, authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
     with pytest.raises(PermissionError, match="SOURCE_METADATA_ACCESS_DENIED"):
         await make(hang_allow, _fetch_xml, callback_timeout_seconds=0.05).observe(
-            authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
+            backend_id=BID, authenticated_subject="auditor", source_id="onec-reference", tenant_id="t1")
+
+
+KW = {"backend_id": BID, "authenticated_subject": "auditor", "source_id": "onec-reference",
+      "tenant_id": "t1"}
+
+
+@pytest.mark.asyncio
+async def test_every_outcome_is_audited_without_secrets():
+    records = []
+
+    async def audit(event, details):
+        records.append(dict(details))
+
+    async def boom_fetch(source, max_bytes, *, tenant_id):
+        raise OneCFetchError("ONEC_DOWN")
+
+    async def bad_allow(subject, source, *, tenant_id):
+        raise RuntimeError("acl exploded secret-token")
+
+    await make(_allow, _fetch_xml, audit=audit).observe(**KW)
+    with pytest.raises(OneCFetchError):
+        await make(_allow, boom_fetch, audit=audit).observe(**KW)
+    with pytest.raises(RuntimeError):
+        await make(bad_allow, _fetch_xml, audit=audit).observe(**KW)
+    outcomes = [(r["outcome"], r["reason"]) for r in records]
+    assert outcomes == [("allowed", "AUTHORIZED"), ("allowed", "AUTHORIZED"),
+                        ("error", "ONEC_DOWN"), ("error", "AUTHORIZATION_ERROR")]
+    assert all(r["subject"] == "auditor" for r in records)
+    assert "secret-token" not in repr(records)
+
+
+@pytest.mark.asyncio
+async def test_burst_never_exceeds_backend_budget_and_releases_slots():
+    import asyncio
+
+    gate = asyncio.Event()
+    state = {"now": 0, "peak": 0, "calls": 0}
+
+    async def fetch(source, max_bytes, *, tenant_id):
+        state["calls"] += 1
+        state["now"] += 1
+        state["peak"] = max(state["peak"], state["now"])
+        try:
+            await gate.wait()
+            return XML
+        finally:
+            state["now"] -= 1
+
+    budget = PhysicalBackendBudget(per_backend_limit=2, total_limit=2)
+    client = make(_allow, fetch, budget=budget)
+    tasks = [asyncio.create_task(client.observe(**KW)) for _ in range(6)]
+    await asyncio.sleep(0.1)
+    gate.set()
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    ok = [r for r in results if not isinstance(r, BaseException)]
+    capped = [r for r in results if isinstance(r, BackendCapacityError)]
+    assert len(ok) == 2 and len(capped) == 4
+    assert state["peak"] == 2 and state["calls"] == 2
+    assert budget.active_total == 0
+
+
+@pytest.mark.asyncio
+async def test_cancel_and_error_release_backend_slot():
+    import asyncio
+
+    budget = PhysicalBackendBudget(per_backend_limit=1, total_limit=1)
+
+    async def hang(source, max_bytes, *, tenant_id):
+        await asyncio.sleep(30)
+
+    task = asyncio.create_task(make(_allow, hang, budget=budget).observe(**KW))
+    await asyncio.sleep(0.05)
+    assert budget.active_total == 1
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert budget.active_total == 0
+
+    async def boom(source, max_bytes, *, tenant_id):
+        raise OneCFetchError("X")
+
+    with pytest.raises(OneCFetchError):
+        await make(_allow, boom, budget=budget).observe(**KW)
+    assert budget.active_total == 0
+
+
+@pytest.mark.asyncio
+async def test_untrusted_backend_identity_is_refused_before_fetch():
+    calls = []
+
+    async def fetch(source, max_bytes, *, tenant_id):
+        calls.append(source)
+        return XML
+
+    with pytest.raises(BackendCapacityError, match="UNVERIFIED_BACKEND_IDENTITY"):
+        await make(_allow, fetch).observe(**{**KW, "backend_id": "onec-db-1"})
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_fingerprint_threads_are_bounded_by_semaphore(monkeypatch):
+    import asyncio
+
+    lock = threading.Lock()
+    state = {"now": 0, "peak": 0}
+
+    def slow_fingerprint(raw, **kw):
+        import time
+        with lock:
+            state["now"] += 1
+            state["peak"] = max(state["peak"], state["now"])
+        time.sleep(0.1)
+        with lock:
+            state["now"] -= 1
+        return real(raw, **kw)
+
+    real = onec_discovery.fingerprint_edmx
+    monkeypatch.setattr(onec_discovery, "fingerprint_edmx", slow_fingerprint)
+    client = make(_allow, _fetch_xml, max_concurrent_fingerprints=1,
+                  budget=PhysicalBackendBudget(per_backend_limit=6, total_limit=6))
+    await asyncio.gather(*[client.observe(**KW) for _ in range(4)])
+    assert state["peak"] == 1

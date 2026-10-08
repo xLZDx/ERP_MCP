@@ -2,7 +2,8 @@
 -- Fixed lock order in every function: source -> job -> cursor -> outbox.
 -- Error codes: INVALID_ARGUMENT, INVALID_LEASE, SOURCE_NOT_FOUND, SCOPE_REVOKED,
 -- JOB_UNAVAILABLE, STALE_JOB_FENCE, CURSOR_NOT_FOUND, STALE_CURSOR_OR_SCOPE,
--- CURSOR_ALREADY_APPLIED (NOTICE; call is an idempotent no-op), CONFLICTING_EVENT_DIGEST.
+-- CURSOR_ALREADY_APPLIED (NOTICE; identical page replay is an idempotent no-op), CONFLICTING_PAGE_REPLAY
+-- (same cursor transition replayed with a different page), CONFLICTING_EVENT_DIGEST.
 -- The source row is locked FOR UPDATE in every API (one mode, so no SHARE->UPDATE upgrade deadlocks).
 -- Whole-file guard: re-running this file after it is recorded is a no-op (keeps 003 hardening).
 BEGIN;
@@ -119,7 +120,7 @@ DECLARE
  next_version bigint; item jsonb; eid text; edigest text;
  src_status text; src_epoch bigint;
  j_state text; j_owner text; j_fence bigint; j_until timestamptz; j_epoch bigint;
- cur_value text; cur_version bigint; cur_epoch bigint;
+ cur_value text; cur_version bigint; cur_epoch bigint; cur_digest text; page_digest text;
 BEGIN
  PERFORM living.assert_scope(t,s);
  IF c IS NULL OR c='' OR p_job_id IS NULL OR p_worker IS NULL OR p_fence IS NULL
@@ -144,6 +145,9 @@ BEGIN
    RAISE EXCEPTION 'INVALID_OUTBOX_EVENT';
   END IF;
  END LOOP;
+ -- Canonical page digest: jsonb text is key-sorted/normalised, so equal pages give equal digests.
+ page_digest := encode(sha256(convert_to(jsonb_build_object('prior',prior_cursor,'new',new_cursor,
+   'events',page_events)::text,'UTF8')),'hex');
  -- 1. source
  SELECT status,scope_epoch INTO src_status,src_epoch FROM living.sources
   WHERE tenant_id=t AND source_id=s FOR UPDATE;
@@ -162,18 +166,20 @@ BEGIN
   RAISE EXCEPTION 'STALE_JOB_FENCE';
  END IF;
  -- 3. cursor
- SELECT cursor_value,version,scope_epoch INTO cur_value,cur_version,cur_epoch
+ SELECT cursor_value,version,scope_epoch,last_page_digest INTO cur_value,cur_version,cur_epoch,cur_digest
   FROM living.cursors WHERE tenant_id=t AND source_id=s AND connection_id=c FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CURSOR_NOT_FOUND'; END IF;
  IF cur_epoch IS DISTINCT FROM expected_epoch THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
  IF cur_value IS NOT DISTINCT FROM new_cursor AND cur_version IS NOT DISTINCT FROM prior_version+1 THEN
+  -- Replay is idempotent ONLY for the identical page; any other batch would be silently lost.
+  IF cur_digest IS DISTINCT FROM page_digest THEN RAISE EXCEPTION 'CONFLICTING_PAGE_REPLAY'; END IF;
   RAISE NOTICE 'CURSOR_ALREADY_APPLIED';
   RETURN cur_version;
  END IF;
  IF cur_value IS DISTINCT FROM prior_cursor OR cur_version IS DISTINCT FROM prior_version THEN
   RAISE EXCEPTION 'STALE_CURSOR_OR_SCOPE';
  END IF;
- UPDATE living.cursors SET cursor_value=new_cursor,version=version+1
+ UPDATE living.cursors SET cursor_value=new_cursor,version=version+1,last_page_digest=page_digest
   WHERE tenant_id=t AND source_id=s AND connection_id=c
   RETURNING version INTO next_version;
  -- 4. outbox
