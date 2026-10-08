@@ -418,3 +418,42 @@ def test_config_validation():
         SchedulerConfig(lease_seconds=30, renew_margin_seconds=30)
     with pytest.raises(ValueError):
         SchedulerConfig(poison_after=0)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("lease_seconds", True), ("lease_seconds", 1.5),
+    ("poison_after", True), ("poison_after", 2.5),
+    ("quarantine_after_pauses", True), ("quarantine_after_pauses", 1.5),
+    ("renew_margin_seconds", False),
+    ("backoff_base", float("inf")), ("backoff_cap", float("inf")),
+])
+def test_scheduler_config_rejects_unbounded_or_untyped_limits(field, value):
+    with pytest.raises(ValueError):
+        SchedulerConfig(**{field: value})
+
+
+@pytest.mark.parametrize("base,cap,jitter", [
+    (float("inf"), 10, 0.5),
+    (1, float("inf"), 0.5),
+    (1, 10, False),
+])
+def test_backoff_rejects_unbounded_or_boolean_inputs(base, cap, jitter):
+    with pytest.raises(ValueError):
+        backoff_delay(0, base, cap, lambda: jitter)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("backoff_base", 10**400),
+    ("backoff_cap", 10**400),
+    ("renew_margin_seconds", 10**400),
+    ("backoff_cap", 10**20),
+])
+def test_scheduler_config_rejects_overflowing_delay_numbers(field, value):
+    with pytest.raises(ValueError):
+        SchedulerConfig(**{field: value})
+
+
+@pytest.mark.parametrize("base,cap", [(10**400, 10), (1, 10**400)])
+def test_backoff_rejects_integer_values_too_large_for_floats(base, cap):
+    with pytest.raises(ValueError):
+        backoff_delay(0, base, cap, lambda: 0.5)

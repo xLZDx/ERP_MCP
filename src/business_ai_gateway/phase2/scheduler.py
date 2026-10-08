@@ -21,6 +21,7 @@ scheduler-side backoff gate. POISONED is a scheduler-level terminal marker over 
 """
 from __future__ import annotations
 
+import math
 from collections.abc import Awaitable, Callable
 from contextlib import ExitStack
 from dataclasses import dataclass
@@ -39,6 +40,20 @@ __all__ = [
 ]
 
 _MAX_EXPONENT: Final = 62
+_MAX_DELAY_SECONDS: Final = timedelta.max.total_seconds()
+
+
+def _bounded_number(value: object) -> bool:
+    """Numeric scheduler input representable as a finite, safe timedelta in seconds."""
+    if type(value) not in (int, float):
+        return False
+    try:
+        as_float = float(value)
+    except (OverflowError, ValueError):
+        return False
+    return math.isfinite(as_float) and abs(as_float) <= _MAX_DELAY_SECONDS
+
+
 _SUCCESS_KINDS: Final = frozenset({
     CaptureOutcomeKind.OK_COMPLETE, CaptureOutcomeKind.OK_PARTIAL,
     CaptureOutcomeKind.SCHEMA_CHANGED,
@@ -55,13 +70,13 @@ def backoff_delay(attempt: int, base: float, cap: float,
     """
     if type(attempt) is not int or attempt < 0:
         raise ValueError("BACKOFF_ATTEMPT_INVALID")
-    if not isinstance(base, (int, float)) or isinstance(base, bool) or not base > 0:
+    if not _bounded_number(base) or base <= 0:
         raise ValueError("BACKOFF_BASE_INVALID")
-    if not isinstance(cap, (int, float)) or isinstance(cap, bool) or not cap > 0:
+    if not _bounded_number(cap) or cap <= 0:
         raise ValueError("BACKOFF_CAP_INVALID")
     ceiling = min(float(cap), float(base) * float(2 ** min(attempt, _MAX_EXPONENT)))
     jitter = jitter_source()
-    if not isinstance(jitter, (int, float)) or not 0.0 <= jitter < 1.0:
+    if not _bounded_number(jitter) or not 0.0 <= jitter < 1.0:
         raise ValueError("BACKOFF_JITTER_INVALID")
     return min(float(cap), ceiling * (0.5 + 0.5 * float(jitter)))
 
@@ -147,13 +162,18 @@ class SchedulerConfig:
     quarantine_after_pauses: int = 3
 
     def __post_init__(self) -> None:
-        if not 1 <= self.lease_seconds <= 300:
+        if type(self.lease_seconds) is not int or not 1 <= self.lease_seconds <= 300:
             raise ValueError("LEASE_SECONDS_INVALID")
-        if not 0 <= self.renew_margin_seconds < self.lease_seconds:
+        if (not _bounded_number(self.renew_margin_seconds)
+                or not 0 <= self.renew_margin_seconds < self.lease_seconds):
             raise ValueError("RENEW_MARGIN_INVALID")
-        if self.poison_after < 1 or self.quarantine_after_pauses < 1:
+        if (type(self.poison_after) is not int or self.poison_after < 1
+                or type(self.quarantine_after_pauses) is not int
+                or self.quarantine_after_pauses < 1):
             raise ValueError("SCHEDULER_LIMIT_INVALID")
-        if not self.backoff_base > 0 or not self.backoff_cap > 0:
+        if (not _bounded_number(self.backoff_base)
+                or not _bounded_number(self.backoff_cap)
+                or self.backoff_base <= 0 or self.backoff_cap <= 0):
             raise ValueError("BACKOFF_CONFIG_INVALID")
 
 

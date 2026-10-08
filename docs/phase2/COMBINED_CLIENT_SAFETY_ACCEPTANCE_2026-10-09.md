@@ -38,3 +38,9 @@ This branch does **not** merge or overwrite working-tree edits in `D:\Repo\ERP_M
 - **No push, PR, merge to main, production cutover or client-facing promise of completed automation until separate exact-head approvals and real evidence.**
 
 **Local engineering terminal condition:** patches implemented, reviewed and individually/in combination green; clean isolated branch. **Program terminal condition:** not met, because external acceptance and deployment gates remain.
+
+## Further safety patch on this combined branch — SCH-01
+
+Strict scheduler lease/backoff/poison policy numeric validation added after the initial combination. Tests reproduced 10 invalid-number acceptance failures and 6 huge-number/timedelta-overflow failures before mitigation. New final local result after this source change: **778 passed / 180 skipped**, Ruff PASS, compileall PASS. Earlier **760 PASS / 180 SKIP** remains accurate for the prior HEAD only. Full details: `SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md`.
+
+**DR-01 remains OPEN:** accepted vs observed hash semantics in `drift.classify` require the architecture/acceptance authority to decide; no silent change to a preexisting test contract. This is an additional reason Release 2 stays NO-GO.
