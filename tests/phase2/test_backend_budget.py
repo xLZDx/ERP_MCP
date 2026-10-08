@@ -214,3 +214,23 @@ def test_zero_width_and_unlisted_characters_are_rejected(raw):
 def test_constructor_refuses_non_canonical_value():
     with pytest.raises(BackendCapacityError, match="NOT_NORMALIZED"):
         BackendId(FULLWIDTH_DB)
+
+
+@pytest.mark.parametrize(
+    ("per_backend", "total"),
+    [
+        (True, 2), (1, True),
+        (1.5, 2), (1, 2.0),
+        (1, float("inf")), (float("inf"), float("inf")),
+    ],
+)
+def test_capacity_configuration_rejects_noninteger_or_unbounded_limits(per_backend, total):
+    with pytest.raises(ValueError, match="INVALID_BUDGET"):
+        PhysicalBackendBudget(per_backend_limit=per_backend, total_limit=total)
+
+
+def test_capacity_configuration_accepts_minimal_integer_budget():
+    budget = PhysicalBackendBudget(per_backend_limit=1, total_limit=1)
+    with budget.reserve(trusted_backend_id=bid("physical-1")):
+        assert budget.active_total == 1
+    assert budget.active_total == 0

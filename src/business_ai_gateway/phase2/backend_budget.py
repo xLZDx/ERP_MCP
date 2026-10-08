@@ -59,7 +59,8 @@ class BackendId:
 
 class PhysicalBackendBudget:
     def __init__(self, *, per_backend_limit: int, total_limit: int) -> None:
-        if not 1 <= per_backend_limit <= total_limit:
+        if (type(per_backend_limit) is not int or type(total_limit) is not int
+                or not 1 <= per_backend_limit <= total_limit):
             raise ValueError("INVALID_BUDGET")
         self.per_backend_limit = per_backend_limit
         self.total_limit = total_limit
