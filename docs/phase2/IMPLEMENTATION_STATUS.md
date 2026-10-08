@@ -5,23 +5,27 @@ Release 2: **NO-GO**. Product acceptance: **NOT_RUN**. No gate G0–G7 has passe
 ## Verified scope (single source of truth for this file)
 
 - Repository: `D:\Repo\ERP_MCP-phase2`, branch `phase2/living-model-connectors-reconciliation`.
-- Base HEAD: `9b4fc0cc365f0066cb120531025ced0cf9240516` (local; ahead of origin by 1 commit, push not performed). The remediation described below is a working-tree change on top of this HEAD until committed; the committing SHA is recorded in `DECISION_LOG.md`.
+- Head: `45a7b1a2a519acc5392f4d57f2191df04a117fc1`, **pushed** to `origin/phase2/living-model-connectors-reconciliation` on 2026-10-08 after a correlated GPT-PM APPROVE (push only; no merge, no release). Earlier checkpoint `9b4fc0c` is historical.
 - Release 1 checkout, production gateway, 1C, PostgreSQL and OAuth were not modified.
-- Execution evidence (local, offline): `pytest -q tests\phase2` → **326 passed, 25 skipped**, exit 0; `ruff check src\business_ai_gateway\phase2 tests\phase2` → exit 0; `compileall` → exit 0. Without a DSN the 25 PostgreSQL integration tests are skipped (`NOT_RUN`). **They were run on a disposable PostgreSQL 16 (docker container `erp-phase2-test-pg`, 127.0.0.1:55712, no volumes, random password, isolated from the R1 containers): `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` → 25 passed on the head after the GPT-PM remediation batch (20 passed on e71d4ff)** (first run 16 passed / 4 failed; all four were wrong test expectations, not security defects: FK checked before the TRUNCATE guard, role-granted tenant visible under GUC spoof, helper returned the wrong id, head created in a rolled-back transaction; tests fixed, no SQL change). Migrations 001-003 apply cleanly in order. Not yet covered: backup/restore, crash-kill mid-page, load/capacity, mutation check that each test fails when its guard is removed. R1 regression suite: **NOT_RUN**.
+- Execution evidence (local, offline): `pytest -q tests\phase2` → **326 passed, 49 skipped**, exit 0; `ruff check src\business_ai_gateway\phase2 tests\phase2` → exit 0. Without a DSN the 49 PostgreSQL integration tests are skipped (`NOT_RUN`). **They were run on a disposable PostgreSQL 16 (docker container `erp-phase2-test-pg`, 127.0.0.1:55712, no volumes, random password, isolated from the R1 containers): `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` → 49 passed on head 45a7b1a (25 on d3c3f60, 20 on e71d4ff)** (first run 16 passed / 4 failed; all four were wrong test expectations, not security defects: FK checked before the TRUNCATE guard, role-granted tenant visible under GUC spoof, helper returned the wrong id, head created in a rolled-back transaction; tests fixed, no SQL change). Migrations 001-003 apply cleanly in order. Not yet covered: backup/restore, crash-kill mid-page, load/capacity, mutation check that each test fails when its guard is removed. R1 regression suite: **NOT_RUN**.
 - Earlier figures in other documents (23/74/122/125/128/133 tests, HEAD `68e4f97`) are historical and superseded by this section.
 
-## GPT-PM (2026-10-08)`n`nPlan APPROVED; adversarial sweep of a8b5b4d returned **REJECT** (3 BLOCKER, 5 MAJOR); all eight were reproduced and fixed in the next commit. Awaiting the bounded GPT-PM verification; push only after a correlated APPROVE on the new exact head. Evidence: `EVIDENCE_MATRIX.md`; decisions: `DECISION_LOG.md` D-003.`n`n## Independent review round 1 (2026-10-08, read-only, local Sonnet agents)
+## GPT-PM (2026-10-08)
+
+Plan APPROVED. Adversarial sweep of a8b5b4d: **REJECT** (3 BLOCKER, 5 MAJOR), all reproduced and fixed. Verification round 1 on d3c3f60: 7 of 8 FIXED, MAJOR-02 PARTIAL. Verification round 2 on 45a7b1a: MAJOR-02 FIXED, no new BLOCKER/MAJOR, **APPROVE for push only**; pushed. Rosetta closure review: APPROVE for plan steps 1-5 only; step 6 (S0-S10 continuation) NOT DONE and not approved. G1 NOT PASSED; Release 2 NO-GO. Evidence: `EVIDENCE_MATRIX.md`; decisions: `DECISION_LOG.md` D-003..D-005.
+
+## Independent review round 1 (2026-10-08, read-only, local Sonnet agents)
 
 Six reviewers (database, security, Python, test adequacy, reliability, architecture) on `9b4fc0c` found, among others: tenant isolation bound to a client-settable GUC; unauthenticated `promote_head` bypassable by direct DML; client-controlled `recorded_at`; `commit_cursor_page` advancing the cursor on NULL events and not fenced by the job lease; no roles / PUBLIC EXECUTE open; TRUNCATE not guarded; GAP events masking OBSERVED heads; Drive removals and unknown changes silently dropped; EDMX structural hash ignoring unnamed content; truthy ACL result and no audit before connector calls; backend-id aliases bypassing the budget; static SQL text tests counted as evidence.
 
-Remediation rewrote `db/phase2/001`/`002`, added `003_security_hardening.sql`, fixed the Python modules above and replaced decorative tests with behavioral ones. A verification round (fixes plus regressions) found further issues (SQL N-1..N-11, Python F1..F9, test gaps), all fixed in the same commit except those listed as open in `DECISION_LOG.md` D-001. **All SQL remains unexecuted; the fixes of the verification round have not had an independent re-review.**
+Remediation rewrote `db/phase2/001`/`002`, added `003_security_hardening.sql`, fixed the Python modules above and replaced decorative tests with behavioral ones. A local verification round found further issues (SQL N-1..N-11, Python F1..F9, test gaps), fixed in `02bad1c`/`d3c3f60`. The SQL is executed on the disposable PostgreSQL 16 (see above) and the final fixes were independently re-reviewed by GPT-PM (rounds 1-2).
 
 ## Gate status
 
 | Gate | Status | Evidence gap / unblocker |
 | --- | --- | --- |
 | G0 | BLOCKED | Scope rebaseline / explicit authority (OB-01), donor inventory and licenses (OB-15) |
-| G1 | BLOCKED (IMPLEMENTED_UNVERIFIED) | SQL drafted and statically reviewed only; needs authorized disposable PostgreSQL (OB-03) for roles/RLS/immutability/CAS/fencing/outbox/backup tests |
+| G1 | NOT PASSED (IN_PROGRESS) | SQL executed on a disposable PostgreSQL 16 with 49 integration tests green and GPT-PM push APPROVE; still open: backup/restore, kill -9 mid-page, capacity, mutation checks, final G1 exit review |
 | G2 | NOT_STARTED | Authenticated source-wide 1C observation and bounded worker (OB-10) |
 | G3 | BLOCKED | Authentic native report and independent accountant attestation (OB-11) |
 | G4 | BLOCKED | ERP_MCP-owned narrow Drive OAuth (OB-12) |
