@@ -155,14 +155,15 @@ class GoogleDriveChangesReader:
                 isinstance(file_metadata, dict) and file_metadata.get("trashed") is True
             )
             kind = (
-                DriveChangeKind.UNKNOWN if change_type == "drive"
+                DriveChangeKind.UNKNOWN if change_type != "file"
                 else DriveChangeKind.REMOVED if removed
                 else DriveChangeKind.UPSERT if isinstance(file_metadata, dict)
                 else DriveChangeKind.UNKNOWN
             )
             # This ID is deterministic on replay of the SAME provider page only.
             event_material = json.dumps(
-                [identity.connection_id, saved_cursor, ordinal, file_id, change_time, kind],
+                [identity.connection_id, identity.user_or_drive_id, identity.scope_epoch,
+                 saved_cursor, ordinal, file_id, change_time, kind],
                 ensure_ascii=True, separators=(",", ":"),
             ).encode()
             changes.append(DriveChange(
