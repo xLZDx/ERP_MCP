@@ -74,7 +74,8 @@ def _check_epoch(epoch: object) -> None:
 
 class ResnapshotTracker:
     def __init__(self, state: ResnapshotState | None = None) -> None:
-        self._required: dict[str, tuple[ResnapshotReason, int]] = {}
+        self._required: dict[str, tuple[ResnapshotReason, int, int]] = {}
+        self._seq = 0  # monotonic order of requirements; a snapshot may clear only older ones
         if state is not None:
             self.import_state(state)
 
@@ -98,7 +99,9 @@ class ResnapshotTracker:
         if not isinstance(reason, ResnapshotReason):
             raise TypeError("RESNAPSHOT_REASON_INVALID")
         _check_epoch(epoch)
-        self._required.setdefault(connection_id, (reason, epoch))  # first reason wins
+        if connection_id not in self._required:  # first reason wins
+            self._seq += 1
+            self._required[connection_id] = (reason, epoch, self._seq)
 
     def observe_decision(self, connection_id: str, decision: DriftDecision, epoch: int) -> bool:
         """True when this decision requires (or keeps requiring) a resnapshot."""
@@ -109,17 +112,33 @@ class ResnapshotTracker:
             return True
         return False
 
+    def begin_snapshot(self) -> int:
+        """Ordering marker: take it BEFORE a snapshot capture starts and pass it to ``complete``."""
+        return self._seq
+
     def complete(self, connection_id: str, outcome_kind: CaptureOutcomeKind, epoch: int,
-                 current_epoch: int) -> bool:
-        """Clear the requirement for a complete snapshot at the current epoch; True when cleared."""
+                 current_epoch: int, *, snapshot_token: int) -> bool:
+        """Clear the requirement for a complete snapshot at the current epoch; True when cleared.
+
+        Ordering fence: the snapshot clears only requirements recorded BEFORE it began
+        (``snapshot_token`` from ``begin_snapshot``). A late or replayed complete that started
+        before the requirement was recorded, or whose epoch is older than the recorded one,
+        never clears it. Imported requirements get a fresh order, so a token taken before an
+        import cannot clear them (conservative).
+        """
         _check_id(connection_id)
         if not isinstance(outcome_kind, CaptureOutcomeKind):
             raise TypeError("OUTCOME_KIND_INVALID")
         _check_epoch(epoch)
         _check_epoch(current_epoch)
-        if connection_id not in self._required:
+        if type(snapshot_token) is not int or snapshot_token < 0:
+            raise ValueError("SNAPSHOT_TOKEN_INVALID")
+        entry = self._required.get(connection_id)
+        if entry is None:
             return False
-        if outcome_kind is not CaptureOutcomeKind.OK_COMPLETE or epoch != current_epoch:
+        _reason, stored_epoch, stored_seq = entry
+        if (outcome_kind is not CaptureOutcomeKind.OK_COMPLETE or epoch != current_epoch
+                or epoch < stored_epoch or snapshot_token < stored_seq):
             return False
         del self._required[connection_id]
         return True
@@ -130,6 +149,10 @@ class ResnapshotTracker:
         """Revalidate after a restart/resume; returns the connections now required (sorted)."""
         _check_epoch(recorded_epoch)
         ids = tuple(connection_ids)
+        if not ids:
+            # scope_epoch is a plain read: only a cursor read reveals a revoked scope, so an empty
+            # list would "validate" a revoked source and let it resume.
+            raise ValueError("CONNECTION_IDS_REQUIRED")
         for connection_id in ids:
             _check_id(connection_id)
         found: dict[str, ResnapshotReason] = {}
@@ -154,7 +177,7 @@ class ResnapshotTracker:
     # ------------------------------------------------------------------ persistence
     def export_state(self) -> ResnapshotState:
         return ResnapshotState(tuple(
-            (c, r, e) for c, (r, e) in sorted(self._required.items())))
+            (c, r, e) for c, (r, e, _seq) in sorted(self._required.items())))
 
     def import_state(self, state: ResnapshotState) -> None:
         """Validate completely, then MERGE: pending requirements are never cleared or rewritten."""
@@ -175,4 +198,6 @@ class ResnapshotTracker:
                 raise ValueError(_INVALID)
             seen.add(connection_id)
         for connection_id, reason, epoch in entries:
-            self._required.setdefault(connection_id, (reason, epoch))
+            if connection_id not in self._required:
+                self._seq += 1
+                self._required[connection_id] = (reason, epoch, self._seq)
