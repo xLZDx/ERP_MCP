@@ -210,6 +210,9 @@ if (process.argv.includes('--check')) {
   } else {
     console.log(`${REGISTRY_REL} is current.`);
   }
+} else if (unreadable.length > 0) {
+  console.log(`${unreadable.length} untracked Markdown path(s) could not be inspected; refusing to write an incomplete registry.`);
+  process.exitCode = 1;
 } else {
   mkdirSync(dirname(OUT), { recursive: true });
   assertOutputContained();
