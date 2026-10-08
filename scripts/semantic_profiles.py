@@ -647,8 +647,21 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
                 "metadata_fingerprint": profile["metadata_fingerprint"],
                 "capability_fingerprint": profile["capability_fingerprint"],
                 "case_count": len(cases),
+                **_evidence_audit_details(validation_evidence),
             },
         )
+
+
+def _evidence_audit_details(validation_evidence: dict[str, Any]) -> dict[str, Any]:
+    """Audit fields that tell a human-native validation apart from a machine two-source one."""
+    basis = validation_evidence.get("evidence_basis", "NATIVE")
+    details: dict[str, Any] = {"evidence_basis": basis}
+    if basis != "NATIVE":
+        details["authorized_by"] = sorted(
+            {c["authorized_by"] for c in validation_evidence["native_reconciliation_cases"]}
+        )
+        details["evidence_manifest_fingerprint"] = validation_evidence.get("evidence_manifest_fingerprint")
+    return details
 
 
 async def retire_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> None:
@@ -674,6 +687,67 @@ async def retire_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> 
         )
 
 
+async def reverify_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> bool:
+    """Re-prove a VALIDATED machine profile against its private artifacts and Rosetta plan.
+
+    The gateway only re-checks the stored evidence structure at runtime; this operator command is the kill
+    switch for changed artifacts or a revoked plan.  A failed proof moves the profile to STALE (audited) and
+    returns False; a profile that still verifies is left untouched and True is returned.
+    """
+    if Settings().environment != "test":
+        raise ValueError("machine two-source re-verification is test-environment only")
+    if not args.artifacts_root or not args.plans_dir:
+        raise ValueError("--artifacts-root and --plans-dir are required to re-verify machine evidence")
+    profile_id = uuid.UUID(args.profile_id)
+    async with conn.transaction():
+        profile = await conn.fetchrow(
+            "SELECT * FROM bag.semantic_profiles WHERE profile_id=$1 FOR UPDATE", profile_id
+        )
+        if profile is None or profile["status"] != "VALIDATED":
+            raise ValueError("only a validated profile can be re-verified")
+        evidence = _json_value(profile["validation_evidence_json"])
+        if not isinstance(evidence, dict) or evidence.get("evidence_basis") != BASIS_MACHINE:
+            raise ValueError("only a machine-reconciled profile carries artifacts to re-verify")
+        mapping_row = await conn.fetchrow(
+            "SELECT mapping_json FROM bag.semantic_mappings WHERE profile_id=$1 AND canonical_concept=$2",
+            profile_id,
+            ANALYTICS_BALANCE_CONCEPT,
+        )
+        failure = None
+        try:
+            if mapping_row is None:
+                raise ValueError("the analytics-balance mapping is missing")
+            machine_reconciliation.verify_all(
+                evidence,
+                artifacts_root=Path(args.artifacts_root),
+                plans_dir=Path(args.plans_dir),
+                scope_sha256=evidence["machine_scope"]["authorization_scope_sha256"],
+                mapping=_json_value(mapping_row["mapping_json"]),
+            )
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            failure = f"{type(exc).__name__}: {exc}"
+        if failure is None:
+            return True
+        await conn.execute(
+            "UPDATE bag.semantic_profiles SET status='STALE' WHERE profile_id=$1 AND status='VALIDATED'",
+            profile_id,
+        )
+        # The event vocabulary has no dedicated action; the reason code in the details carries the cause.
+        await _record_event(
+            conn,
+            profile_id=profile_id,
+            actor=args.actor,
+            action="MAPPING_CHANGED_INVALIDATED",
+            details={
+                "reason": "MACHINE_REVERIFY_FAILED",
+                "detail": failure[:500],
+                "profile_fingerprint": profile["profile_fingerprint"],
+                **_evidence_audit_details(evidence),
+            },
+        )
+        return False
+
+
 async def _run(args: argparse.Namespace) -> None:
     settings = Settings()
     dsn = settings.admin_database_url
@@ -682,6 +756,7 @@ async def _run(args: argparse.Namespace) -> None:
             "production semantic profile administration requires BAG_ADMIN_DATABASE_URL"
         )
     conn = await asyncpg.connect(dsn or settings.database_url)
+    reverify_failed = False
     try:
         if args.command == "create":
             print(await create_profile(args, conn))
@@ -693,10 +768,15 @@ async def _run(args: argparse.Namespace) -> None:
             await validate_profile(args, conn)
         elif args.command == "retire":
             await retire_profile(args, conn)
+        elif args.command == "reverify" and not await reverify_profile(args, conn):
+            print("MACHINE_REVERIFY_FAILED: the profile was marked STALE")
+            reverify_failed = True
     except CapabilityUnsupported as exc:
         raise RuntimeError(f"{exc.code}: {exc}") from exc
     finally:
         await conn.close()
+    if reverify_failed:
+        raise SystemExit(2)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -733,6 +813,14 @@ def parser() -> argparse.ArgumentParser:
     retire = commands.add_parser("retire")
     retire.add_argument("--profile-id", required=True)
     retire.add_argument("--actor", required=True)
+
+    reverify = commands.add_parser(
+        "reverify", help="re-prove a validated machine profile; exits 2 and marks it STALE when it no longer holds"
+    )
+    reverify.add_argument("--profile-id", required=True)
+    reverify.add_argument("--actor", required=True)
+    reverify.add_argument("--artifacts-root", required=True)
+    reverify.add_argument("--plans-dir", required=True)
     return root
 
 
