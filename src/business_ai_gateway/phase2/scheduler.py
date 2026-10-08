@@ -277,11 +277,13 @@ class SourceScheduler:
             handle = LeaseHandle(self, job_id, fence, view.lease_until)
             try:
                 outcome = await work(handle)
-            except LeaseLost as exc:
-                return RunResult(RunStatus.LEASE_LOST, detail=str(exc))
-            except Exception as exc:  # noqa: BLE001 - work failure is data for the failure policy
+            except LeaseLost:
+                # Work callbacks may carry secrets in their exception messages.
+                return RunResult(RunStatus.LEASE_LOST, detail="LEASE_LOST")
+            except Exception:  # noqa: BLE001 - work failure is data for the failure policy
+                # Never persist/return the raw adapter exception text, even on poison.
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
-                                          f"{type(exc).__name__}: {exc}")
+                                          "WORK_EXCEPTION")
             if outcome in _SUCCESS_KINDS:
                 return await self._succeeded(job_id, handle, outcome)
             return await self._failed(job_id, handle, outcome, outcome.value)
