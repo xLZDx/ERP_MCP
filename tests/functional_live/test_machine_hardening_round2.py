@@ -248,3 +248,22 @@ async def test_portfolio_probe_raises_when_source_upsert_fails(monkeypatch):
     lane = SimpleNamespace(env=SimpleNamespace(dsn=lambda role: f"postgresql://{role}@localhost/x"))
     with pytest.raises(RuntimeError, match="source-upsert failed"):
         await probes.probe_portfolio(lane, companies=2)
+
+
+# ---------------------------------------------------------------- F-6 (list)
+
+
+@pytest.mark.asyncio
+async def test_profile_list_exposes_the_evidence_basis(tmp_path, machine_env, monkeypatch):
+    from business_ai_gateway.admin_api import AdminRepository
+
+    async with _Tx() as conn:
+        (tmp_path / "m").mkdir()
+        (tmp_path / "n").mkdir()
+        _, _, machine_id = await _validated(conn, tmp_path / "m", monkeypatch)
+        _, _, native_id = await _native_validated(conn, tmp_path / "n")
+        ctx = SimpleNamespace(source_scope=lambda *roles: None, selected_source=None, page_limit=None, page_offset=0)
+        items = await AdminRepository(ConnectionDatabase(conn)).list_profiles(ctx)
+        basis = {item["profile_id"]: item["evidence_basis"] for item in items}
+        assert basis[str(machine_id)] == "MACHINE"
+        assert basis[str(native_id)] == "NATIVE"
