@@ -132,8 +132,12 @@ const worktreeRoots = git(['worktree', 'list', '--porcelain'])
   .filter((line) => line.startsWith('worktree '))
   .map((line) => resolve(line.slice('worktree '.length)));
 const localOnly = new Set();
+const unreadable = [];
 for (const root of worktreeRoots) {
-  if (!existsSync(root)) continue;
+  if (!existsSync(root)) {
+    console.warn(`warning: attached worktree root is missing, its untracked Markdown is not inventoried: ${root}`);
+    continue;
+  }
   const realRoot = realpathSync(root);
   const listed = gitIn(root, ['ls-files', '--others', '--exclude-standard', '-z', '--', '*.md']).split('\0');
   for (const rel of listed) {
@@ -141,10 +145,18 @@ for (const root of worktreeRoots) {
     if (rel.split('/').some((segment) => NEVER_READ_DIRS.has(segment))) continue;
     const full = join(root, ...rel.split('/'));
     try {
-      if (lstatSync(full).isSymbolicLink()) continue;
+      if (lstatSync(full).isSymbolicLink()) {
+        console.warn(`warning: symlink skipped: ${full}`);
+        continue;
+      }
       const real = realpathSync(full);
-      if (real !== realRoot && !real.startsWith(realRoot + sep)) continue;
-    } catch {
+      if (real !== realRoot && !real.startsWith(realRoot + sep)) {
+        console.warn(`warning: path escapes its worktree and is skipped: ${full}`);
+        continue;
+      }
+    } catch (error) {
+      unreadable.push(full);
+      console.warn(`warning: untracked Markdown could not be inspected and is not inventoried: ${full} (${error.code ?? error.message})`);
       continue;
     }
     localOnly.add(relative(root, full).split(sep).join('/'));
@@ -187,6 +199,10 @@ for (const [name, id] of refs) console.log(`  ${id} ${name}`);
 
 assertOutputContained();
 if (process.argv.includes('--check')) {
+  if (unreadable.length > 0) {
+    console.log(`${unreadable.length} untracked Markdown path(s) could not be inspected; the local-only inventory is not reliable.`);
+    process.exitCode = 1;
+  }
   const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').replaceAll('\r\n', '\n') : '';
   if (current !== body) {
     console.log(`${REGISTRY_REL} is stale: regenerate it.`);
@@ -194,6 +210,9 @@ if (process.argv.includes('--check')) {
   } else {
     console.log(`${REGISTRY_REL} is current.`);
   }
+} else if (unreadable.length > 0) {
+  console.log(`${unreadable.length} untracked Markdown path(s) could not be inspected; refusing to write an incomplete registry.`);
+  process.exitCode = 1;
 } else {
   mkdirSync(dirname(OUT), { recursive: true });
   assertOutputContained();
