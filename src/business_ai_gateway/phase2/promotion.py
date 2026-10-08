@@ -227,17 +227,19 @@ class PromotionService:
         except PortError as exc:  # typed SQL rejection: the transaction rolled back, nothing written
             outcome = _PORT_CODES.get(exc.code)
             if outcome is None:
-                return PromotionResult(Outcome.FAILED_CLOSED, code=exc.code)
+                return PromotionResult(Outcome.FAILED_CLOSED, code="PORT_ERROR")
             return PromotionResult(outcome, code=exc.code)
-        except Exception as exc:  # noqa: BLE001 - the commit may have happened; class name only
-            return PromotionResult(Outcome.INDETERMINATE, code=type(exc).__name__)
+        except Exception:  # noqa: BLE001 - commit may have happened, never echo exception
+            return PromotionResult(Outcome.INDETERMINATE, code="PROMOTION_INDETERMINATE")
         if type(version) is not int or version != expected_version + 1:
             return PromotionResult(Outcome.INDETERMINATE, code="UNEXPECTED_VERSION")
         return PromotionResult(success, new_version=version)
 
     @staticmethod
     def _failed(exc: Exception) -> PromotionResult:
-        code = exc.code if isinstance(exc, PortError) else type(exc).__name__
+        # A trusted port still must not expose arbitrary error text or class names.
+        code = (exc.code if isinstance(exc, PortError) and exc.code in _PORT_CODES
+                else "PROMOTION_FAILED")
         return PromotionResult(Outcome.FAILED_CLOSED, code=code)
 
 

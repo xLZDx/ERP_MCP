@@ -1,5 +1,7 @@
 # Phase 2 — convergence hardening and adversarial review (2026-10-09)
 
+> **Later security continuation:** This document records the first 940-PASS code batch. See `CONVERGENCE_FINAL_SECURITY_REVIEW_2026-10-09.md` for the three additional failure-code leakage regressions, later 943-PASS evidence and current release NO-GO.
+
 **Branch:** `hardening/phase2-convergence-reviewed-20261009`. **Base:** `d1f87bc` plus the already-reviewed backend-budget, comparison trust and observed-metadata changes from the prior safety worktree (committed parent `c54be14`). This branch is isolated; active R2 and R1 worktrees are not modified.
 
 ## Remediations reviewed

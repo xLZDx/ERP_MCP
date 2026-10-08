@@ -356,7 +356,7 @@ async def test_port_typed_unknown_error_fails_closed_nothing_written():
     before = await w.snapshot()
     w.port.fail_with = PortError("SOMETHING_NEW")
     res = await w.promote(rev, ev)
-    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "SOMETHING_NEW")
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "PORT_ERROR")
     assert await w.snapshot() == before
 
 
@@ -365,7 +365,7 @@ async def test_untyped_write_exception_is_indeterminate_without_message_leak():
     rev, ev, _ = await w.attest(1)
     w.port.fail_with = ConnectionError("postgres://user:secret@host/db down")
     res = await w.promote(rev, ev)
-    assert (res.outcome, res.code, res.new_version) == (Outcome.INDETERMINATE, "ConnectionError", None)
+    assert (res.outcome, res.code, res.new_version) == (Outcome.INDETERMINATE, "PROMOTION_INDETERMINATE", None)
     assert not res.ok and "secret" not in repr(res)
 
 
@@ -710,3 +710,40 @@ async def test_converged_preflight_requires_literal_true_reviewer_grant():
     result = await w.promote(rev, ev)
     await assert_rejected(w, before, result, Outcome.REJECTED_UNTRUSTED)
     assert result.code == "REVIEWER_NOT_TRUSTED"
+
+
+async def test_promotion_does_not_echo_exception_class_metadata():
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    canary = "INTERNAL_CANARY_DO_NOT_EXPOSE"
+    CustomFailure = type("ServiceError_" + canary, (Exception,), {})
+    w.port.fail_with = CustomFailure("failed")
+    result = await w.promote(revision, evidence)
+    assert result.outcome is Outcome.INDETERMINATE
+    assert result.code == "PROMOTION_INDETERMINATE"
+    assert canary not in repr(result)
+    assert result.new_version is None
+
+
+async def test_prewrite_exception_class_is_not_exposed():
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    marker = "INTERNAL_CANARY_DO_NOT_EXPOSE"
+    CustomFailure = type("BeforeWrite_" + marker, (Exception,), {})
+    w.reader.raises = CustomFailure("failed")
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.FAILED_CLOSED)
+    assert result.code == "PROMOTION_FAILED"
+    assert marker not in repr(result)
+
+
+async def test_unknown_port_code_is_never_passed_to_client():
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    w.port.fail_with = PortError("INTERNAL_CANARY_DO_NOT_EXPOSE")
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.FAILED_CLOSED, port_reached=True)
+    assert result.code == "PORT_ERROR"
+    assert "INTERNAL_CANARY_DO_NOT_EXPOSE" not in repr(result)
