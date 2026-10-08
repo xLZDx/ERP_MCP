@@ -14,9 +14,13 @@
  *
  * Inventory contract
  *   - Git-backed rows: one per distinct tracked path whose name ends in the case-sensitive ".md" over all
- *     refs/heads and refs/remotes (symbolic HEAD refs and tags excluded). Title = sorted, de-duplicated
- *     first-heading variants of that path over all scanned refs, joined by " / ". No ref names, counts per
- *     ref, version counts or absolute locations are written.
+ *     refs/heads and refs/remotes (symbolic refs and tags excluded; tracked symlinks, mode 120000, excluded).
+ *     Each ref is read through the object id captured at scan start. Title cell = sorted, de-duplicated
+ *     first-heading variants of that path over all scanned refs, each JSON-quoted and joined by " / " (empty
+ *     cell = no heading anywhere), so different variant sets can never render identically. The whole blob is
+ *     searched for the first heading and a blob that cannot be read aborts generation. No ref names, counts
+ *     per ref, version counts or absolute locations are written.
+ *   - Output safety: the registry file and governance/ must be real (non-link) paths inside the repository.
  *   - Local-only rows: repo-relative paths of untracked, non-ignored ".md" files per worktree
  *     (git ls-files --others --exclude-standard). Symlinks/junctions and paths resolving outside their
  *     worktree are skipped; dependency/build directories are never read; headings are never published.
@@ -56,43 +60,66 @@ const KINDS = [
 ];
 const kindOf = (path) => KINDS.find(([re]) => re.test(path))?.[1] ?? 'Other';
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-const esc = (text) => text.replaceAll('|', '\\|');
+const esc = (text) =>
+  text.replaceAll('|', '\\|').replaceAll('\n', '\\n').replaceAll('\r', '\\r').replaceAll('\t', '\\t');
+/** Unambiguous title cell: empty only when the sole variant is "no heading"; otherwise every variant is JSON-quoted. */
+const titleCell = (variants) => {
+  const all = [...variants].sort(byCodePoint);
+  return all.length === 1 && all[0] === '' ? '' : all.map((title) => JSON.stringify(title)).join(' / ');
+};
+
+/** Refuse to read or write through links: the output file and its parent must be real paths inside the repository. */
+const isLink = (path) => {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
+};
+const assertOutputContained = () => {
+  const realRepo = realpathSync(REPO);
+  const dir = dirname(OUT);
+  if (isLink(dir)) throw new Error('governance/ is a link; refusing to use it');
+  if (existsSync(dir)) {
+    const realDir = realpathSync(dir);
+    if (realDir !== realRepo && !realDir.startsWith(realRepo + sep)) throw new Error('output directory escapes the repository');
+  }
+  if (isLink(OUT) || (existsSync(OUT) && !lstatSync(OUT).isFile())) {
+    throw new Error(`${REGISTRY_REL} is not a regular file; refusing to use it`);
+  }
+};
 
 // ---- scanned refs (all local and remote branches; tags and symbolic HEADs excluded) ----
-const refs = git(['for-each-ref', '--format=%(refname)\t%(objectname)', 'refs/heads', 'refs/remotes'])
+const refs = git(['for-each-ref', '--format=%(refname)\t%(objectname)\t%(symref)', 'refs/heads', 'refs/remotes'])
   .split('\n')
   .filter(Boolean)
   .map((line) => line.split('\t'))
-  .filter(([name]) => !name.endsWith('/HEAD'))
+  .filter(([, , symref]) => !symref)
+  .map(([name, id]) => [name, id])
   .sort((a, b) => byCodePoint(a[0], b[0]));
 
 // ---- git-backed inventory ----
 const titleByBlob = new Map();
 const titleOf = (blob) => {
   if (titleByBlob.has(blob)) return titleByBlob.get(blob);
-  let title = '';
-  try {
-    const head = execFileSync('git', ['cat-file', 'blob', blob], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
-      .subarray(0, 4000)
-      .toString('utf8');
-    title = /^#[ \t]+(.+)$/mu.exec(head)?.[1]?.trim() ?? '';
-  } catch {
-    title = '';
-  }
+  // The whole blob is searched, and an unreadable blob aborts generation: it is never reported as "no heading".
+  const text = execFileSync('git', ['cat-file', 'blob', blob], { cwd: REPO, maxBuffer: 512 * 1024 * 1024 }).toString('utf8');
+  const title = /^#[ \t]+(.+)$/mu.exec(text)?.[1]?.trim() ?? '';
   titleByBlob.set(blob, title);
   return title;
 };
 
 /** @type {Map<string, Set<string>>} path -> distinct title variants */
 const tracked = new Map();
-for (const [ref] of refs) {
-  const records = git(['ls-tree', '-r', '-z', '--full-tree', ref]).split('\0');
+for (const [, id] of refs) {
+  // Each ref is read through the object id captured above, so the printed ref list matches the scanned trees.
+  const records = git(['ls-tree', '-r', '-z', '--full-tree', id]).split('\0');
   for (const record of records) {
     const tab = record.indexOf('\t');
     if (tab < 0) continue;
-    const [, type, blob] = record.slice(0, tab).split(' ');
+    const [mode, type, blob] = record.slice(0, tab).split(' ');
     const path = record.slice(tab + 1);
-    if (type !== 'blob' || !path.endsWith('.md') || path === REGISTRY_REL) continue;
+    if (type !== 'blob' || mode === '120000' || !path.endsWith('.md') || path === REGISTRY_REL) continue;
     const variants = tracked.get(path) ?? new Set();
     variants.add(titleOf(blob));
     tracked.set(path, variants);
@@ -135,7 +162,8 @@ const lines = [
   '',
   'Scope: every Markdown file (case-sensitive `.md`) on all local and remote branches, plus untracked Markdown paths',
   'of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/build directories. Titles are',
-  'the first heading of tracked blobs; a path with several heading variants over the scanned refs lists all of them.',
+  'the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists',
+  'all of them; an empty cell means the document has no heading.',
   '',
   `Inventory: ${rows.length} tracked paths, ${localOnly.size} local-only paths.`,
   '',
@@ -143,12 +171,9 @@ const lines = [
   '',
   '| Path | Kind | Title |',
   '| --- | --- | --- |',
-  ...rows.map(([path, variants]) => {
-    const titles = [...variants].filter(Boolean).sort(byCodePoint).join(' / ');
-    return `| ${esc(path)} | ${kindOf(path)} | ${esc(titles)} |`;
-  }),
+  ...rows.map(([path, variants]) => `| ${esc(path)} | ${kindOf(path)} | ${esc(titleCell(variants))} |`),
   '',
-  '## Markdown outside git history (untracked in an attached worktree; paths only)',
+  '## Markdown untracked in at least one attached worktree (paths only)',
   '',
   '| Path |',
   '| --- |',
@@ -160,6 +185,7 @@ const body = lines.join('\n');
 console.log(`scanned ${refs.length} refs:`);
 for (const [name, id] of refs) console.log(`  ${id} ${name}`);
 
+assertOutputContained();
 if (process.argv.includes('--check')) {
   const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').replaceAll('\r\n', '\n') : '';
   if (current !== body) {
@@ -170,6 +196,7 @@ if (process.argv.includes('--check')) {
   }
 } else {
   mkdirSync(dirname(OUT), { recursive: true });
+  assertOutputContained();
   writeFileSync(OUT, body, 'utf8');
   console.log(`wrote ${REGISTRY_REL}: ${rows.length} tracked paths, ${localOnly.size} local-only.`);
 }
