@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import math
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -49,7 +49,8 @@ from uuid import UUID
 
 from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget
 from .drift import CaptureOutcomeKind, FailureCounter
-from .ports import JobQueuePort, PortError, Scope
+from .ports import CursorOutboxPort, JobQueuePort, LedgerPort, PortError, Scope
+from .resnapshot import ResnapshotTracker
 
 __all__ = [
     "IllegalTransition", "LeaseHandle", "LeaseLost", "RunResult", "RunStatus", "SchedulerConfig",
@@ -330,6 +331,19 @@ class SourceScheduler:
         """Explicit operator resume; also clears the consecutive-failure counter."""
         self.machine.resume(by)
         self.counter = FailureCounter(0, self.counter.threshold)
+
+    async def resume_revalidated(self, by: str, *, tracker: ResnapshotTracker, ledger: LedgerPort,
+                                 cursors: CursorOutboxPort, connection_ids: Iterable[str],
+                                 recorded_epoch: int) -> tuple[str, ...]:
+        """Revalidate scope epoch and cursors FIRST, then resume; returns connections to resnapshot.
+
+        ``ResnapshotBlocked`` propagates before anything changes: the source keeps its current
+        non-ACTIVE state and the failure counter is not reset. ``resume`` itself is unchanged.
+        """
+        required = await tracker.revalidate(
+            ledger, cursors, self._actor, self._scope, connection_ids, recorded_epoch)
+        self.resume(by)
+        return required
 
     def _delay(self, n: int) -> timedelta:
         return timedelta(seconds=backoff_delay(

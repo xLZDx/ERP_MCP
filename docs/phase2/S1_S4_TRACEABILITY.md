@@ -21,3 +21,13 @@ Evidence for every row: `pytest -q tests/phase2` = 950 passed / 219 skipped with
 ## Not claimed
 
 Real multi-process concurrency of the scheduler, capacity 30/50/100/150, Release 1 regression, CI, a kill timed inside COMMIT, and any production wiring are `NOT_RUN`. Fake-versus-SQL divergences left in the backlog: collation order of `as_known_at`, identity sequence gaps after a rolled-back call, `deepcopy` cost per call, single-event-loop assumption.
+
+## Follow-up (2026-10-09, D-012)
+
+| Story | Requirement | Test | Assertion that would fail if broken | Result | Status |
+| --- | --- | --- | --- | --- | --- |
+| R2-US-012 (TC036) | A cursor-loss decision requires a new snapshot; only a COMPLETE capture at the current scope epoch clears it | `test_resnapshot.py` | PARTIAL / failure / stale-epoch complete leave the requirement; first reason never downgraded | pass (fake) | IMPLEMENTED_UNVERIFIED (no capture loop calls it yet) |
+| R2-US-020 (TC060) | Resume revalidates scope epoch and cursors before leaving PAUSED/QUARANTINED | `test_scheduler_resume.py`, `test_resnapshot.py` | revoked scope leaves the source non-ACTIVE with the counter untouched; changed epoch / missing cursor require a resnapshot | pass (fake) | IMPLEMENTED_UNVERIFIED |
+| R2-US-012 (TC035) | A-B-A epoch return | `test_resnapshot.py::test_aba_epoch_returning_to_recorded_value_is_not_noticed` | pins the real behaviour: 1->2->1 is NOT noticed against a recorded 1 | pass | LIMITATION documented, not solved |
+| R2-US-020 (TC059) | Source isolation | `test_scheduler_fairness.py` | poison / pause / quarantine of source A leave source B runnable; a foreign job id is JOB_MISSING | pass | IMPLEMENTED_UNVERIFIED |
+| R2-US-019 (TC057) | Fairness under budget saturation | `test_scheduler_fairness.py` | bounded retry delay and `starved` flag hold; the tests also pin that a fresh source can overtake a long-deferred one (8 rounds) | pass | PARTIAL - fairness NOT guaranteed (no queue/aging), finding for a later gate |
