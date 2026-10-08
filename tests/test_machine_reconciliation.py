@@ -208,3 +208,67 @@ def test_rows_must_cover_the_complete_authorized_projection(kept):
         with pytest.raises(mr.MachineReconciliationError, match="authorized analytics projection"):
             mr.compare_rows(rows_a, rows_b, allowed_accounts=ACCOUNTS, allowed_roles=ROLES)
     assert mr.compare_rows([full], [full], allowed_accounts=ACCOUNTS, allowed_roles=ROLES)["row_count"] == 1
+
+
+def test_credit_only_difference_and_debit_credit_swap_fail():
+    with pytest.raises(mr.MachineReconciliationError, match="differ"):
+        mr.compare_rows([_row(credit="0.00")], [_row(credit="1.00")])
+    with pytest.raises(mr.MachineReconciliationError, match="differ"):
+        mr.compare_rows([_row(debit="100.00", credit="5.00")], [_row(debit="5.00", credit="100.00")])
+
+
+def test_plan_approver_must_be_exactly_gpt_pm(tmp_path):
+    approval = {"approved_by": "NOT GPT-PM", "verdict": "APPROVE", "correlated": True, "approved_plan_hash": PLAN_HASH}
+    with pytest.raises(mr.MachineReconciliationError, match="approved, correlated, current"):
+        mr.verify_plan_authority(AUTHORITY, scope_sha256=SCOPE, plans_dir=_plan(tmp_path, approval=approval))
+
+
+def test_malformed_plan_file_is_a_verification_error_not_a_crash(tmp_path):
+    (tmp_path / f"{PLAN_ID}.json").write_text("{ not json", encoding="utf-8")
+    with pytest.raises(mr.MachineReconciliationError, match="cannot be read as JSON"):
+        mr.verify_plan_authority(AUTHORITY, scope_sha256=SCOPE, plans_dir=tmp_path)
+
+
+MAPPING = {"accounts": [{"code": "521.1"}], "analytics": [{"role": "counterparty"}, {"role": "contract"}]}
+
+
+def _ten_cases(tmp_path: Path, authority_for=lambda index: AUTHORITY):
+    cases = []
+    for index in range(1, 11):
+        sub = tmp_path / f"c{index}"
+        sub.mkdir()
+        case = _case(sub)
+        case["native_report_ref"] = f"machine-artifact:c{index}/case-1"
+        case["authorized_by"] = authority_for(index)
+        cases.append(case)
+    return {"native_reconciliation_cases": cases}
+
+
+def test_verify_all_accepts_ten_cases_with_one_approved_authority(tmp_path):
+    evidence = _ten_cases(tmp_path)
+    (tmp_path / "plans_ok").mkdir()
+    plans = _plan(tmp_path / "plans_ok")
+    result = mr.verify_all(evidence, artifacts_root=tmp_path, plans_dir=plans, scope_sha256=SCOPE, mapping=MAPPING)
+    assert result["cases"] == 10 and result["row_counts"] == [1] * 10
+
+
+def test_verify_all_refuses_a_case_citing_an_unapproved_plan(tmp_path):
+    other = f"ROSETTA_PLAN:erp_mcp-test-2026-10-08T00-00-00-000Z-999999:{'d' * 64}"
+    evidence = _ten_cases(tmp_path, lambda index: other if index == 7 else AUTHORITY)
+    (tmp_path / "plans_ok").mkdir()
+    with pytest.raises(mr.MachineReconciliationError, match="exactly once"):
+        mr.verify_all(
+            evidence, artifacts_root=tmp_path, plans_dir=_plan(tmp_path / "plans_ok"), scope_sha256=SCOPE,
+            mapping=MAPPING,
+        )
+
+
+def test_verify_all_refuses_empty_and_short_case_lists(tmp_path):
+    (tmp_path / "plans_ok").mkdir()
+    plans = _plan(tmp_path / "plans_ok")
+    for cases in ([], _ten_cases(tmp_path)["native_reconciliation_cases"][:9]):
+        with pytest.raises(mr.MachineReconciliationError, match="at least"):
+            mr.verify_all(
+                {"native_reconciliation_cases": cases}, artifacts_root=tmp_path, plans_dir=plans,
+                scope_sha256=SCOPE, mapping=MAPPING,
+            )
