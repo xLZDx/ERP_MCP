@@ -95,7 +95,7 @@ async def run() -> int:
                     "audit=" + str(detail),
                     flush=True,
                 )
-            except Exception as exc:  # explicit test failure, never print secrets, tokens, URLs or responses
+            except Exception as exc:  # noqa: BLE001 - record failures without exposing private transport data
                 print("FAIL", check.principal, check.tool, type(exc).__name__, flush=True)
                 ok = False
             passed += int(ok)
