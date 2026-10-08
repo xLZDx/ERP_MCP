@@ -140,6 +140,10 @@ class SqlLiving:
         return tuple(EffectiveRow(_obs(r), r["effective_unknown"], r["revoked"]) for r in rows)
 
     # ------------------------------------------------------------------ jobs
+    # NOTE: get_job / get_cursor / get_head / list_outbox / list_acceptances below add their own
+    # tenant_id/source_id predicates to the SQL. Isolation assertions made THROUGH them therefore do
+    # not prove row-level security; RLS is proven only by a raw, unfiltered SELECT as the
+    # unprivileged role (see test_rls_hides_other_tenants_from_an_unfiltered_select).
     async def enqueue_job(self, actor, scope, job_id, job_kind, request_digest, idempotency_key,
                           payload=OMITTED):
         return await self._val(

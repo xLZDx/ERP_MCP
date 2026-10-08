@@ -121,6 +121,16 @@ _PORT_CODES: dict[str, Outcome] = {
 }
 
 
+# Codes meaning the caller may not read acceptances; the guards that follow still reject or fail closed.
+_NO_READ_RIGHT = frozenset({"PERMISSION_DENIED", "SCOPE_NOT_GRANTED", "SCOPE_REVOKED"})
+
+# Typed SQL rejections raised before anything is written; any other code at the write call is ambiguous.
+_ROLLED_BACK_CODES = frozenset({
+    "SCOPE_REVOKED", "SCOPE_NOT_GRANTED", "SOURCE_NOT_FOUND", "INVALID_ARGUMENT",
+    "CHECK_VIOLATION", "SQL_40001", "SQL_40P01",
+})
+
+
 def _is_digest(value: object) -> bool:
     return (isinstance(value, str) and len(value) == 64
             and all(c in "0123456789abcdef" for c in value))
@@ -180,7 +190,9 @@ class PromotionService:
         # Idempotent replay (mirrors living.promote_head): decided before any time-dependent guard.
         try:
             accepted = await self._port.list_acceptances(approver, scope)
-        except PortError:
+        except PortError as exc:
+            if exc.code not in _NO_READ_RIGHT:
+                raise  # transient read failure: never mask a possibly committed promotion as a rejection
             accepted = ()  # no read right: the normal guards below still fail closed / reject
         recorded = next((a for a in accepted if a.acceptance_id == acceptance_id), None)
         if recorded is not None:
@@ -222,9 +234,12 @@ class PromotionService:
                 evidence.evidence_ref)
         except PortError as exc:  # typed SQL rejection: the transaction rolled back, nothing written
             outcome = _PORT_CODES.get(exc.code)
-            if outcome is None:
+            if outcome is not None:
+                return PromotionResult(outcome, code=exc.code)
+            if exc.code in _ROLLED_BACK_CODES:
                 return PromotionResult(Outcome.FAILED_CLOSED, code=exc.code)
-            return PromotionResult(outcome, code=exc.code)
+            # unknown code (e.g. a connection error while committing): the commit may have landed
+            return PromotionResult(Outcome.INDETERMINATE, code=exc.code)
         except Exception as exc:  # noqa: BLE001 - the commit may have happened; class name only
             return PromotionResult(Outcome.INDETERMINATE, code=type(exc).__name__)
         if type(version) is not int or version != expected_version + 1:

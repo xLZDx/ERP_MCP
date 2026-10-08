@@ -4,8 +4,9 @@ Time comes from the fake store clock and jitter from a fixed/seeded source, so e
 deterministic. Each ``test_guard_*`` pins one guard so that removing the guard turns it red.
 """
 import asyncio
+import dataclasses
 import random
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -922,3 +923,169 @@ async def test_guard_cancelled_work_abandons_lease_gates_and_reraises():
     assert sched.not_before(job) >= view.lease_until
     assert sched.counter.consecutive_failures == 0
     assert budget.active_total == 0
+
+
+# --------------------------------------------------------------------------- failure path: who holds the job
+async def takeover(living, holder):
+    """Inside w1's work: its lease expires, the job is reaped, then ``holder`` acquires it."""
+    living.clock.advance(61)
+    await living.reap_expired_jobs(WORKER, SCOPE)
+    living.clock.advance(1000)
+    await living.acquire_job(WORKER, SCOPE, job_uuid(1), holder, 60)
+
+
+@pytest.mark.parametrize("poison_after", [5, 1])
+@pytest.mark.parametrize("holder", ["w2", "w1"])  # other worker / same worker, newer fence
+async def test_guard_failure_after_reacquire_by_another_fence_is_lost_not_adopted(
+        holder, poison_after):
+    living, _, sched = make(config=SchedulerConfig(poison_after=poison_after),
+                            counter=FailureCounter(0, 100))
+    job = await enqueue(living, 1)
+    seen = {}
+
+    async def work(handle):
+        seen["handle"], seen["until"] = handle, handle.lease_until
+        await takeover(living, holder)
+        return TIMEOUT
+
+    result = await sched.run_job(job, work)
+    assert result.status is RunStatus.LEASE_LOST and result.detail == "STALE_JOB_FENCE"
+    assert result.not_before is None and sched.not_before(job) is None
+    assert sched.counter.consecutive_failures == 0
+    assert not sched.is_poisoned(job) and sched.machine.state is SourceState.ACTIVE
+    assert seen["handle"].lease_until == seen["until"]  # the new holder's lease was not adopted
+    view = await living.get_job(WORKER, SCOPE, job)
+    assert view.state == "RUNNING" and view.lease_owner == holder and view.fence == 2
+    assert view.last_error == "LEASE_EXPIRED"  # not POISONED: and not finished by w1
+
+
+async def test_guard_failure_adopts_own_renewed_lease_until_from_the_port():
+    living, _, sched = make(counter=FailureCounter(0, 100))
+    job = await enqueue(living, 1)
+
+    async def work(handle):
+        living.clock.advance(50)
+        await living.renew_lease(WORKER, SCOPE, job, "w1", handle.fence, 60)  # until t+110
+        living.clock.advance(20)  # t+70: past the handle's stale t+60, inside the real lease
+        return TIMEOUT
+
+    result = await sched.run_job(job, work)
+    assert result.status is RunStatus.RETRY_SCHEDULED
+    assert sched.counter.consecutive_failures == 1
+
+
+@pytest.mark.parametrize("poison_after", [5, 1])
+@pytest.mark.parametrize("change", [{"lease_owner": "w2"}, {"state": "CANCELLED"}])
+async def test_guard_failure_with_foreign_owner_on_same_fence_is_lost_not_counted(
+        poison_after, change):
+    living = InMemoryLiving()
+    job = await enqueue(living, 1)
+    sched = flaky(living)
+    sched.config = SchedulerConfig(poison_after=poison_after)
+    sched.counter = FailureCounter(0, 100)
+    real = sched._port._inner.get_job
+    calls = {"n": 0}
+
+    async def get_job(*args, **kwargs):
+        view = await real(*args, **kwargs)
+        calls["n"] += 1
+        return view if calls["n"] == 1 else dataclasses.replace(view, **change)
+    sched._port.get_job = get_job
+    result = await sched.run_job(job, timeout)
+    assert result.status is RunStatus.LEASE_LOST and result.detail == "STALE_JOB_FENCE"
+    assert sched.counter.consecutive_failures == 0
+    assert not sched.is_poisoned(job) and sched.not_before(job) is None
+    assert (await living.get_job(WORKER, SCOPE, job)).last_error is None
+
+
+@pytest.mark.parametrize("poison_after, status", [
+    (5, RunStatus.LEASE_LOST), (1, RunStatus.POISONED)])
+async def test_guard_failure_after_own_lease_expiry_without_reap_is_counted(poison_after, status):
+    living, _, sched = make(config=SchedulerConfig(poison_after=poison_after),
+                            counter=FailureCounter(0, 100))
+    job = await enqueue(living, 1)
+    seen = {}
+
+    async def work(handle):
+        seen["until"] = handle.lease_until
+        living.clock.advance(61)  # expired, nobody reaped: the port still shows w1 RUNNING
+        return TIMEOUT
+
+    result = await sched.run_job(job, work)
+    assert result.status is status and result.detail == "LEASE_EXPIRED"
+    assert sched.counter.consecutive_failures == 1
+    view = await living.get_job(WORKER, SCOPE, job)
+    assert view.state == "RUNNING" and view.lease_owner == "w1"  # never finished under expiry
+    if status is RunStatus.LEASE_LOST:
+        assert result.not_before >= seen["until"] + timedelta(seconds=2)
+        assert sched.not_before(job) == result.not_before and not sched.is_poisoned(job)
+    else:
+        assert sched.is_poisoned(job) and sched.machine.state is SourceState.PAUSED
+
+
+async def test_guard_poison_finish_port_error_does_not_poison_and_is_gated():
+    living = InMemoryLiving()
+    job = await enqueue(living, 1)
+    _, _, sched = make(FlakyPort(living, finish_job=PortError("DB_DOWN", "postgresql://u:pw@h/db")),
+                       config=SchedulerConfig(poison_after=1), counter=FailureCounter(0, 100))
+    result = await sched.run_job(job, timeout)
+    assert result.status is RunStatus.LEASE_LOST and result.detail == "DB_DOWN"
+    assert "pw" not in repr(result)
+    assert not sched.is_poisoned(job) and sched.machine.state is SourceState.ACTIVE
+    assert sched.counter.consecutive_failures == 0  # nothing was written, nothing was accounted
+    assert result.not_before is not None and sched.not_before(job) == result.not_before
+    view = await living.get_job(WORKER, SCOPE, job)
+    assert view.state == "RUNNING" and view.last_error is None
+
+
+# --------------------------------------------------------------------------- import_state contract
+async def test_guard_import_state_merges_poison_and_never_unpoisons():
+    living, _, sched = make(config=SchedulerConfig(poison_after=1), counter=FailureCounter(0, 100))
+    job = await enqueue(living, 1)
+    assert (await sched.run_job(job, timeout)).status is RunStatus.POISONED
+    sched.import_state(SchedulerState())  # stale snapshot taken before the poisoning
+    assert sched.is_poisoned(job)
+    other = job_uuid(2)
+    sched.import_state(SchedulerState(poisoned=frozenset({other})))
+    assert sched.is_poisoned(job) and sched.is_poisoned(other)
+    assert (await sched.run_job(job, forbidden)).status is RunStatus.POISONED
+
+
+AWARE = datetime(2030, 1, 1, tzinfo=UTC)
+BAD_STATES = [
+    SchedulerState(poisoned=frozenset({"not-a-uuid"})),
+    SchedulerState(poisoned=frozenset({1})),
+    SchedulerState(poisoned=5),
+    SchedulerState(not_before=((job_uuid(1), datetime(2030, 1, 1)),)),  # noqa: DTZ001 - naive on purpose
+    SchedulerState(not_before=(("job", AWARE),)),
+    SchedulerState(not_before=((job_uuid(1), "2030-01-01"),)),
+    SchedulerState(not_before=(job_uuid(1),)),
+    SchedulerState(not_before=5),
+    SchedulerState(pause_count=-1), SchedulerState(pause_count=True),
+    SchedulerState(pause_count=1.0),
+    SchedulerState(consecutive_failures=-1), SchedulerState(consecutive_failures=True),
+    SchedulerState(failure_threshold=-1), SchedulerState(failure_threshold=0),
+    SchedulerState(failure_threshold=True),
+]
+
+
+@pytest.mark.parametrize("bad", BAD_STATES)
+async def test_guard_import_state_rejects_invalid_snapshot_atomically(bad):
+    living, _, sched = make()
+    job = await enqueue(living, 1)
+    sched.import_state(SchedulerState(pause_count=1, poisoned=frozenset({job}),
+                                      not_before=((job, AWARE),)))
+    before = sched.export_state()
+    with pytest.raises(ValueError, match="^SCHEDULER_STATE_INVALID$"):
+        sched.import_state(bad)
+    assert sched.export_state() == before
+    with pytest.raises(ValueError, match="^SCHEDULER_STATE_INVALID$"):
+        make(living, state=bad)
+
+
+def test_import_state_accepts_valid_snapshot():
+    _, _, sched = make(state=SchedulerState(
+        source_state=SourceState.PAUSED, pause_count=2, consecutive_failures=1,
+        poisoned=frozenset({job_uuid(3)}), not_before=((job_uuid(4), AWARE),)))
+    assert sched.machine.state is SourceState.PAUSED and sched.machine.pause_count == 2
+    assert sched.is_poisoned(job_uuid(3)) and sched.not_before(job_uuid(4)) == AWARE

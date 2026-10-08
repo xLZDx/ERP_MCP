@@ -356,8 +356,55 @@ async def test_port_typed_unknown_error_fails_closed_nothing_written():
     before = await w.snapshot()
     w.port.fail_with = PortError("SOMETHING_NEW")
     res = await w.promote(rev, ev)
-    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "SOMETHING_NEW")
+    # an unknown code at the write call may be a connection error during COMMIT: ambiguous, not "nothing written"
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "SOMETHING_NEW")
     assert await w.snapshot() == before
+
+
+@pytest.mark.parametrize("code", ["SCOPE_REVOKED", "SOURCE_NOT_FOUND", "CHECK_VIOLATION", "SQL_40001", "SQL_40P01"])
+async def test_known_rolled_back_write_codes_are_failed_closed(code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = PortError(code)
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, code)
+
+
+@pytest.mark.parametrize("code", ["SQL_08006", "SQL_57P01", "SQL_53300"])
+async def test_connection_class_write_errors_are_indeterminate(code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = PortError(code)
+    res = await w.promote(rev, ev)
+    assert res.outcome is Outcome.INDETERMINATE and not res.ok
+
+
+async def test_transient_replay_read_failure_never_masks_a_committed_promotion_as_rejected():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    acc = uid(900)
+    w.port.raise_after_commit = TimeoutError("response lost")
+    assert (await w.promote(rev, ev, acc=acc)).outcome is Outcome.INDETERMINATE
+    w.port.raise_after_commit = None
+
+    async def transient(*_a, **_k):
+        raise PortError("SQL_40001")
+    w.port.list_acceptances = transient
+    res = await w.promote(rev, ev, acc=acc)
+    # the head already advanced: a REJECTED_CAS/EXPIRED/REVOKED here would be a false failure
+    assert res.outcome is Outcome.FAILED_CLOSED and res.code == "SQL_40001"
+
+
+@pytest.mark.parametrize("code", ["PERMISSION_DENIED", "SCOPE_NOT_GRANTED", "SCOPE_REVOKED"])
+async def test_no_read_right_on_acceptances_falls_through_to_the_guards(code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+
+    async def denied(*_a, **_k):
+        raise PortError(code)
+    w.port.list_acceptances = denied
+    res = await w.promote(rev, ev)
+    assert res.outcome is not Outcome.INDETERMINATE and w.port.promote_calls <= 1
 
 
 async def test_untyped_write_exception_is_indeterminate_without_message_leak():

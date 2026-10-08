@@ -285,17 +285,35 @@ class SourceScheduler:
             frozenset(self._poisoned), tuple(sorted(self._not_before.items())))
 
     def import_state(self, state: SchedulerState) -> None:
-        """Replace the in-memory state with a persisted snapshot (QUARANTINED stays QUARANTINED)."""
+        """Restore a persisted snapshot (QUARANTINED stays QUARANTINED).
+
+        The input is validated completely before anything is changed (``ValueError`` with the fixed
+        code ``SCHEDULER_STATE_INVALID``). Poison is MERGED with the live local set: a stale
+        snapshot never un-poisons a job.
+        """
         if not isinstance(state, SchedulerState) or not isinstance(state.source_state, SourceState):
             raise TypeError("SCHEDULER_STATE_INVALID")
-        if type(state.pause_count) is not int or state.pause_count < 0:
+        for count in (state.pause_count, state.consecutive_failures, state.failure_threshold):
+            if type(count) is not int or count < 0:
+                raise ValueError("SCHEDULER_STATE_INVALID")
+        try:
+            poisoned = set(state.poisoned)
+            gates = dict(state.not_before)
+        except (TypeError, ValueError):
+            raise ValueError("SCHEDULER_STATE_INVALID") from None
+        if not all(type(j) is UUID for j in poisoned) or not all(
+                type(j) is UUID and isinstance(at, datetime) and at.utcoffset() is not None
+                for j, at in gates.items()):
             raise ValueError("SCHEDULER_STATE_INVALID")
-        counter = FailureCounter(state.consecutive_failures, state.failure_threshold)
+        try:
+            counter = FailureCounter(state.consecutive_failures, state.failure_threshold)
+        except (TypeError, ValueError):
+            raise ValueError("SCHEDULER_STATE_INVALID") from None
         machine = SourceStateMachine(state.source_state)
         machine.reason, machine.pause_count = str(state.reason), state.pause_count
         self.machine, self.counter = machine, counter
-        self._poisoned = set(state.poisoned)
-        self._not_before = dict(state.not_before)
+        self._poisoned |= poisoned
+        self._not_before = gates
         self._deferrals = {}
 
     def is_poisoned(self, job_id: UUID) -> bool:
@@ -487,6 +505,10 @@ class SourceScheduler:
             return self._port_trouble(job_id, handle, _code(exc.code))
         if (view is None or view.fence != handle.fence or view.state != "RUNNING"
                 or view.lease_owner != self._worker):
+            if view is not None and view.state == "RUNNING":
+                # Another fence/worker holds the job now: not our lease, nothing to account, and
+                # its lease_until must never be adopted.
+                return RunResult(RunStatus.LEASE_LOST, detail="STALE_JOB_FENCE")
             return self._lease_lost(job_id, handle, "STALE_JOB_FENCE")
         if view.lease_until is not None:
             handle.lease_until = view.lease_until
