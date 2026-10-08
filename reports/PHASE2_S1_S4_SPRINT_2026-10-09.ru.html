@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — срез S1–S4: итоги спринта</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — срез S1–S4: итоги спринта</h1>
+<div class="sub">Дата: 2026-10-09 · ветка phase2/living-model-connectors-reconciliation · head 5000043 (запушен, GPT-PM APPROVE на этом head) · план Rosetta erp_mcp-phase2-2026-10-08T21-01-00-999Z-be6a8e · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5000043</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Срез S1–S4 реализован, проверен и опубликован</span> (push <code>df92cc8..5000043</code>, без merge и релиза). Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: срез — это изолированные модули на портах, ничего не подключено к Release 1.</p>
+<ul>
+<li>Без DSN: <b>950 passed, 219 skipped</b>. На одноразовом PostgreSQL 16 (<code>erp-phase2-test-pg</code>): <b>219 integration passed</b>. <code>ruff</code> чистый. Запуски выполнены мной на точном дереве коммита.</li>
+<li>Два независимых круга узких ревьюеров (Sonnet 5.5): 0 BLOCKER, несколько MAJOR в каждом круге — все исправлены одним пакетом на круг. Финальная проверка GPT-PM на точном head: APPROVE, новых BLOCKER/MAJOR нет.</li>
+<li>Ни одной пользовательской истории не присвоен статус DONE: максимум <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Порты (Protocol) и in-memory фейки; общий контрактный набор, который также идёт против реального SQL</td><td>Один тестовый код против fake и SQL; пропуск SQL-варианта при REQUIRE_PG=1 валит прогон</td><td class="ok">DONE (код и тесты)</td><td>Косметические расхождения fake/SQL в бэклоге: порядок по collation, разрывы identity-последовательностей, стоимость deepcopy</td></tr>
+<tr><td>2</td><td>Connector SDK: конверт запроса/ответа, fail-closed валидация</td><td>Запрет URL/SQL/credential-полей, SNAPSHOT_ONLY, ответ обязан совпадать с запросом</td><td class="ok">DONE</td><td>Реальные коннекторы не подключены (вне плана)</td></tr>
+<tr><td>3</td><td>Scheduler: backoff с jitter, lease через порт, poison, пауза/карантин, бюджет backend</td><td>Детерминированные тесты, по гарду — тест, который падает при его удалении</td><td class="warn">PARTIAL</td><td>Реальная многопроцессная конкурентность не проверена; сохранение снимка состояния — на вызывающем коде; fairness (TC057) и изоляция источников (TC059) не покрыты</td></tr>
+<tr><td>4</td><td>Failure-vs-drift: сбой источника не даёт структурного дрейфа; resnapshot после потери курсора</td><td>Timeout/outage/denied/partial никогда не дают STRUCTURAL_DRIFT и не удаляют объекты</td><td class="warn">PARTIAL</td><td>Классификация готова, но <code>RESNAPSHOT_REQUIRED</code> никто не потребляет; <code>resume</code> не перепроверяет scope и курсор (TC035/036/060)</td></tr>
+<tr><td>5</td><td>Promotion: CAS ожидаемого head, независимый approver, evidence, откат без восстановления отозванных прав</td><td>Типизированный исход на каждый гард, replay безопасен</td><td class="ok">DONE (код и тесты)</td><td>Replay выполняется раньше проверки NOT_A_PROMOTER, которую SQL делает первой; replay возвращает метку успеха вызывающего без сверки с записанным видом</td></tr>
+<tr><td>6</td><td>Локальные тесты, узкое ревью агентами, проверка GPT-PM на точном head, затем push</td><td>Согласие агентов, APPROVE на точном head, push только после него</td><td class="ok">DONE</td><td>—</td></tr>
+</tbody></table></div>
+
+<h2>Матрица трассируемости тестов</h2>
+<p class="sub">Требование → тест → утверждение → запуск → результат → найденный дефект и исправление. Полная версия в репозитории: <code>docs/phase2/S1_S4_TRACEABILITY.md</code>. Таблицы мутаций гардов (promotion 12/12, scheduler 26/26 и 14/14, SDK и drift — все RED) приведены по отчётам агентов и мной не перезапускались, кроме двух гардов promotion (RED/GREEN, хэш файла совпал).</p>
+<div class="wrap"><table>
+<thead><tr><th>История</th><th>Требование</th><th>Тест</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Дефект / исправление</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-003</td><td>Строгий fail-closed конверт</td><td>test_connector_sdk.py</td><td>Точный код ValidationError на каждый запрещённый класс полей</td><td>offline</td><td class="ok">pass</td><td>COMPLETE при наличии next_cursor принимался; сырой ключ попадал в сообщение; scope_epoch без границы — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-004</td><td>Отзыв scope и изоляция тенантов</td><td>test_ports_contract.py (scope-epoch, cross-scope, права, сырой SELECT под RLS)</td><td>SCOPE_REVOKED / SCOPE_NOT_GRANTED / PERMISSION_DENIED на каждый вызов; чужие строки невидимы</td><td>offline + PG</td><td class="ok">pass</td><td>Не было теста на портовом уровне — добавлен; код неизвестного актора в fake приведён к SQL</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-009</td><td>Сбой не равен дрейфу</td><td>test_drift.py, test_scheduler.py (все виды исходов)</td><td>STRUCTURAL_DRIFT только при COMPLETE с другим hash; removal_permitted=False иначе</td><td>offline</td><td class="ok">pass</td><td>Дрейф сдвигал принятый hash вместе с событием — теперь candidate_hash, принятый hash остаётся прежним</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-011</td><td>Битемпоральные чтения, горизонт знания</td><td>test_ports_contract.py (as_known_at, as_effective_at)</td><td>Одинаковый результат у fake и SQL</td><td>offline + PG</td><td class="ok">pass</td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-012</td><td>Потеря курсора, GAP</td><td>test_drift.py, контрактные тесты replay</td><td>CURSOR_LOST → RESNAPSHOT_REQUIRED; конфликтный replay отвергается</td><td>offline + PG</td><td class="warn">pass (только классификация)</td><td>Потребителя события нет</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-013, 015</td><td>(не покрыты срезом)</td><td>—</td><td>—</td><td>—</td><td class="bad">нет</td><td>—</td><td>NOT_IMPLEMENTED</td></tr>
+<tr><td>R2-US-016</td><td>CAS, независимость, evidence, откат, replay</td><td>test_promotion.py (94), контрактные тесты promote/attestation</td><td>Типизированный исход на гард; replay с тем же acceptance_id возвращает записанную версию; неоднозначный коммит — INDETERMINATE</td><td>offline + PG</td><td class="ok">pass</td><td>Replay был недостижим; транзиентная ошибка чтения маскировала коммит; неизвестный код записи считался «ничего не записано» — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-017</td><td>Один писатель на источник: lease, fence, reap, poison</td><td>test_scheduler.py (143), SQL-гонки на двух соединениях</td><td>Ровно один победитель; устаревший fence — LEASE_LOST без finish; poison на min(poison_after, max_attempts)</td><td>offline + PG</td><td class="ok">pass</td><td>Результат work не проверялся; сырой текст исключения писался в last_error; потеря lease не учитывалась; воркер, потерявший lease, засчитывал сбой источнику — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-019</td><td>Бюджет backend, отказ откладывает</td><td>test_scheduler.py, test_backend_budget.py</td><td>DEFERRED_BUDGET оставляет job в PENDING с attempt 0</td><td>offline</td><td class="ok">pass</td><td>Откладывание было неограниченным — ограничено и наблюдаемо</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-020</td><td>Пауза/карантин, рестарт не снимает карантин</td><td>test_scheduler.py (SchedulerState export/import)</td><td>QUARANTINED переживает экспорт/импорт; импорт валидируется и никогда не снимает пометку poison с job</td><td>offline</td><td class="ok">pass</td><td>Состояние было только в памяти — добавлен снимок (хранит вызывающий код)</td><td>PARTIAL</td></tr>
+</tbody></table></div>
+
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Круг 1</b> (a00d16a; тесты, python, тихие сбои, надёжность): 0 BLOCKER; MAJOR — недостижимый replay, неоднозначный коммит, непроверенный результат work и сырые ошибки, poison против max_attempts, потеря lease без учёта, состояние в памяти, COMPLETE с next_cursor, дрейф сдвигает baseline, тихо пропускаемый SQL-вариант, нет тестов scope-epoch и гонок. Исправлено пакетом d1f87bc.</li>
+<li><b>Круг 2</b> (d1f87bc; регрессии и адекватность тестов): 0 BLOCKER; исправлено в 5000043 — транзиентная ошибка чтения replay, неизвестный код записи, воркер без lease засчитывает сбой, валидация и слияние при импорте состояния, тесты защиты от пропуска и RLS.</li>
+<li><b>GPT-PM</b> на точном head 5000043: APPROVE, новых BLOCKER/MAJOR нет; разрешён только push.</li>
+<li>Процессные сбои: агенты упирались в лимит ходов, два остались без отчёта после перезапуска сессии; один записал литеральный NUL-байт в <code>fakes.py</code> (поймано по ошибке сбора тестов). Их результат принят только по моим прогонам.</li>
+</ul>
+
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Реальная многопроцессная конкурентность scheduler, ёмкость 30/50/100/150, регрессия Release 1, CI (решение оператора: не гоняем), kill в момент COMMIT, восстановление в другой кластер или версию.</li>
+<li>Шаги G0, G2–G7 и зависящие от оператора пункты (источники 1С/Drive, OAuth, бухгалтерская сверка) не затронуты.</li>
+</ul>
+
+<h2>Следующие шаги</h2>
+<ul>
+<li>Без участия оператора: потребитель <code>RESNAPSHOT_REQUIRED</code>, перепроверка scope и курсора в <code>resume</code>, недостающие тесты (fairness, изоляция источников), закрытие остаточных пунктов promotion.</li>
+<li>Решение по выходу из G1 (ёмкость, kill в момент COMMIT) — отдельный гейт.</li>
+</ul>
+
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
