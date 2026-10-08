@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "batch_id": "CAPABILITY_BOUNDARY_20261006",
-  "implementation_sha256": "636e8649db4cd1503f26ef3f65ea4373726de71e79bec79c233b89fcb64f4528",
+  "batch_id": "REAL1C_L2_INSTALL_20261009",
+  "implementation_sha256": "311b3ac64aac5a1d0bd33d3a568a4555040884a257cc790dde67127ac1f8262d",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "code_evidence_sha": "abe290f",
-  "code_evidence_note": "Local counts below were measured on the exact code of this commit. The final head SHA and hosted CI run for the closing-documents commit are recorded only in the PR #11 body/comment.",
+  "code_evidence_sha": "6571cda",
+  "code_evidence_note": "The 2026-10-09 focused + real-1C L2 checks were executed on the exact code candidate 6571cda with doc-only checkpoint continuation. Historical complete-suite counts and hosted runs below refer to their original earlier revisions, not this candidate.",
   "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_verified_hosted_run": 37519186079,
   "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
   "last_failed_hosted_run": 37518882269,
-  "hosted_status_at_snapshot": "PENDING_FOR_CODE_EVIDENCE_abe290f",
+  "hosted_status_at_snapshot": "PENDING_CURRENT_HEAD",
   "last_local_full_suite": {
     "passed": 1438,
     "skipped": 238,
@@ -21,13 +21,36 @@
   },
   "local_e2e": {
     "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
-    "smoke": {"passed": 29, "skipped": 0},
-    "user_u01_u18": {"passed": 53, "skipped": 0, "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"},
-    "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
-    "functional_tester_sc01_sc12": {"tests": 83, "passed": 79, "skipped": 3, "xfailed": 1, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE"]}
+    "smoke": {
+      "passed": 29,
+      "skipped": 0
+    },
+    "user_u01_u18": {
+      "passed": 53,
+      "skipped": 0,
+      "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"
+    },
+    "admin_a01_a54": {
+      "passed": 87,
+      "skipped": 1,
+      "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"
+    },
+    "functional_tester_sc01_sc12": {
+      "tests": 83,
+      "passed": 79,
+      "skipped": 3,
+      "xfailed": 1,
+      "failed": 0,
+      "xfail": [
+        "SC06 EXTERNAL-GATE"
+      ]
+    }
   },
   "manual_owner_acceptance": "PENDING",
-  "local_matrix_steps": {"total": 31, "exit_zero": 31},
+  "local_matrix_steps": {
+    "total": 31,
+    "exit_zero": 31
+  },
   "focused_tests": {
     "settlement_and_existing_aging": 34,
     "financial_statement_contracts": 32,
@@ -65,5 +88,19 @@
       "skipped": 0
     }
   },
-  "current_full_suite_status": "PASS"
+  "current_full_suite_status": "NOT_RERUN_ON_CURRENT_HEAD",
+  "fresh_install_l2": {
+    "date": "2026-10-09",
+    "scope": "DISPOSABLE_WINDOWS_REAL_1C_TEST_ONLY",
+    "repository_base_commit": "6c9e4a0",
+    "patch_code_evidence": "6571cda",
+    "metadata_entitysets": 920,
+    "source_level_mcp_checks_passed": 7,
+    "source_level_mcp_checks_total": 7,
+    "mcp_negative_access_detail": "AccessDenied",
+    "reader_secret_exposure": "NOT_PERFORMED",
+    "native_accounting_reconciliation": "NOT_RUN",
+    "unix_deployment": "NOT_RUN",
+    "evidence_report": "reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md"
+  }
 }

@@ -1,7 +1,18 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=636e8649db4cd1503f26ef3f65ea4373726de71e79bec79c233b89fcb64f4528 -->
+## Release 1 isolated fresh-install proof ? 2026-10-09
+
+A fresh GitHub main clone on the existing Windows engineering host completed locked dependency
+installation, isolated PostgreSQL/Redis migrations, real 1C metadata discovery (920 EntitySets),
+and 7/7 L2 MCP metadata/ACL cases after the disposable test-only auditor source grant was
+provisioned separately from its Admin role. A ComSpec fallback fixes noninteractive startup.
+These checks do not establish native accounting reconciliation or a production/Unix release.
+See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
+Production NO-GO, DoD PARTIAL; full suite on the new exact code still requires CI evidence.
+
+
+<!-- ENGINEERING_CHECKPOINT=REAL1C_L2_INSTALL_20261009 ENGINEERING_IMPLEMENTATION=311b3ac64aac5a1d0bd33d3a568a4555040884a257cc790dde67127ac1f8262d -->
 
 ## Capability observation boundary — 2026-10-06
 
