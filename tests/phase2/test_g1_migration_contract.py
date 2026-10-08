@@ -91,3 +91,22 @@ def test_g1_migrations_are_whole_file_guarded():
         assert "EXECUTE $body$" in sql and "$body$;\nEND IF;\nEND $mig$;" in sql, name
         if not name.startswith("003"):  # 003 keeps FOR SHARE only in the publisher claim/finish APIs
             assert "FOR SHARE" not in sql, name
+
+
+def test_g1_review2_fragments_declared():
+    """Static preflight lint: review-2 mechanisms are present in the SQL text."""
+    sql = {n: (MIGRATIONS / n).read_text(encoding="utf-8")
+           for n in ("001_living_registry.sql", "002_job_cursor_functions.sql",
+                     "003_security_hardening.sql")}
+    for fragment in ("KNOWLEDGE-TIME SEMANTICS", "KNOWLEDGE_HORIZON_NOT_SETTLED",
+                     "living.knowledge_horizon", "last_page_digest"):
+        assert fragment in sql["001_living_registry.sql"], fragment
+    for fragment in ("CONFLICTING_PAGE_REPLAY", "last_page_digest"):
+        assert fragment in sql["002_job_cursor_functions.sql"], fragment
+    s3 = sql["003_security_hardening.sql"]
+    for fragment in ("claim_generation", "living.trusted_reviewers", "REVIEWER_NOT_TRUSTED",
+                     "EVIDENCE_REVOKED", "EVIDENCE_EXPIRED", "EVIDENCE_DIGEST_MISMATCH",
+                     "EVIDENCE_NOT_APPROVED", "living.revoke_attestation",
+                     "living.role_scope_epoch_bump", "living.set_trusted_reviewer"):
+        assert fragment in s3, fragment
+    assert "p_publisher" not in s3  # lease identity is living.caller_role(), not a free string

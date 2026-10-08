@@ -19,6 +19,7 @@ _UNORDERED_CHILDREN = frozenset({
     "Edmx", "DataServices", "Schema", "EntityType", "ComplexType", "EntityContainer",
 })
 _MAX_DEPTH = 64
+_MAX_NODES = 500_000
 
 
 def _local(tag: str) -> str:
@@ -116,7 +117,8 @@ class StructuralFingerprint:
 
 
 def fingerprint_edmx(
-    xml: bytes, *, tenant_id: str, source_id: str, max_bytes: int = 20_000_000
+    xml: bytes, *, tenant_id: str, source_id: str, max_bytes: int = 20_000_000,
+    max_nodes: int = _MAX_NODES,
 ) -> StructuralFingerprint:
     """Produce immutable, non-authoritative metadata evidence.
 
@@ -127,6 +129,8 @@ def fingerprint_edmx(
         raise ValueError("FINGERPRINT_SCOPE_INVALID")
     if not isinstance(xml, bytes) or not xml or len(xml) > max_bytes:
         raise ValueError("EDMX_SIZE_INVALID")
+    if max_nodes < 1:
+        raise ValueError("EDMX_NODE_LIMIT_INVALID")
     try:
         root = ET.fromstring(xml)
     except DefusedXmlException as exc:
@@ -137,6 +141,10 @@ def fingerprint_edmx(
         raise ValueError("EDMX_DEPTH_EXCEEDED") from exc
     if _local(root.tag) != "Edmx":
         raise ValueError("NOT_EDMX")
+    # Bound work before the (twice-run) recursive canonicalization: count nodes iteratively.
+    for count, _ in enumerate(root.iter(), 1):
+        if count > max_nodes:
+            raise ValueError("EDMX_NODE_LIMIT_EXCEEDED")
     try:
         tree = _canonical(root)
         residual = _canonical(root, mask_named_schema_children=True)

@@ -3,6 +3,20 @@
 -- trusted server after OAuth and ACL checks, never by client-provided SQL.
 -- The applier MUST first run: SELECT set_config('living.migration_checksum', '<sha256 of this file>', false);
 -- Revision rule: a revision_id names exactly one observation row inside a (tenant, source) scope.
+-- KNOWLEDGE-TIME SEMANTICS: "known at k" means observations.recorded_at <= k, where recorded_at is the
+-- DATABASE clock (clock_timestamp() in the insert trigger), never client data. recorded_at is taken at
+-- INSERT but a row only becomes visible at COMMIT, so a raw recorded_at<=k filter is not stable while an
+-- ingest is in flight. Stability is enforced by a settled-horizon rule: ingest_observation holds a
+-- per-(tenant,source) advisory lock until commit (so at most one ingest per source is in flight and
+-- ingest_seq, recorded_at and commit order agree), and as_known_at / as_effective_at call
+-- living.knowledge_horizon(t,s) first and raise KNOWLEDGE_HORIZON_NOT_SETTLED for any k later than the
+-- horizon. Horizon = now (taken BEFORE the in-flight probe) when no foreign ingest holds the lock,
+-- else the newest committed recorded_at minus 1 microsecond (-infinity when the source has no row).
+-- Consequence: a query that returns an answer never returns a different answer after a later commit.
+-- Callers may query least(k, living.knowledge_horizon(t,s)). The rule needs READ COMMITTED (each
+-- statement of the volatile read APIs takes a snapshot after the probe); other isolation levels are
+-- rejected. Only ingest_observation is a supported writer of observations (direct INSERT by the
+-- migration owner bypasses the lock and is outside the guarantee).
 BEGIN;
 CREATE SCHEMA IF NOT EXISTS living;
 CREATE TABLE IF NOT EXISTS living.schema_migrations(
@@ -178,6 +192,8 @@ CREATE TABLE IF NOT EXISTS living.cursors(
  tenant_id text NOT NULL,source_id text NOT NULL,connection_id text NOT NULL,
  cursor_value text NOT NULL,version bigint NOT NULL DEFAULT 0 CHECK(version>=0),
  scope_epoch bigint NOT NULL CHECK(scope_epoch>=0),
+ -- sha256 of the last committed page (prior cursor, new cursor, events); replay is allowed only for an identical page.
+ last_page_digest text CHECK(last_page_digest IS NULL OR last_page_digest ~ '^[a-f0-9]{64}$'),
  PRIMARY KEY(tenant_id,source_id,connection_id),
  FOREIGN KEY(tenant_id,source_id) REFERENCES living.sources
 );
@@ -267,6 +283,36 @@ DROP TRIGGER IF EXISTS accepted_heads_guard ON living.accepted_heads;
 CREATE TRIGGER accepted_heads_guard BEFORE INSERT OR UPDATE ON living.accepted_heads
  FOR EACH ROW EXECUTE FUNCTION living.accepted_heads_guard();
 
+-- Settled knowledge horizon (see the header). VOLATILE on purpose: the clock is read BEFORE the
+-- in-flight probe, and the caller's next statement then takes a fresh snapshot AFTER the probe.
+-- The probe looks at the advisory lock ingest_observation holds (pg_locks, no lock is taken here).
+CREATE OR REPLACE FUNCTION living.knowledge_horizon(t text,s text) RETURNS timestamptz
+LANGUAGE plpgsql VOLATILE SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE c timestamptz; key bigint; inflight boolean; newest timestamptz;
+BEGIN
+ c := clock_timestamp();
+ key := hashtextextended('ingest:'||t||'/'||s,0);
+ SELECT EXISTS(SELECT 1 FROM pg_catalog.pg_locks l
+   WHERE l.locktype='advisory' AND l.granted AND l.objsubid=1
+    AND l.pid IS DISTINCT FROM pg_backend_pid()
+    AND l.database=(SELECT d.oid FROM pg_catalog.pg_database d WHERE d.datname=current_database())
+    AND l.classid::bigint=((key >> 32) & 4294967295) AND l.objid::bigint=(key & 4294967295))
+  INTO inflight;
+ IF NOT inflight THEN RETURN c; END IF;
+ SELECT max(o.recorded_at) INTO newest FROM living.observations o
+  WHERE o.tenant_id=t AND o.source_id=s;
+ IF newest IS NULL THEN RETURN '-infinity'::timestamptz; END IF;
+ RETURN newest - interval '1 microsecond';
+END $fn$;
+CREATE OR REPLACE FUNCTION living.assert_knowledge_settled(t text,s text,k timestamptz) RETURNS void
+LANGUAGE plpgsql VOLATILE SET search_path = pg_catalog, pg_temp AS $fn$
+BEGIN
+ IF current_setting('transaction_isolation') <> 'read committed'
+  OR k > living.knowledge_horizon(t,s) THEN
+  RAISE EXCEPTION 'KNOWLEDGE_HORIZON_NOT_SETTLED';
+ END IF;
+END $fn$;
+
 -- Bitemporal reads. Ordering tiebreak is ingest_seq (server-assigned), never client data.
 -- as_known_at: per object the latest OBSERVED row known at k; `available` is false when a later
 -- non-OBSERVED row (GAP / SOURCE_UNAVAILABLE / ATTESTATION_REVOKED) exists, but never hides the OBSERVED row.
@@ -277,7 +323,11 @@ RETURNS TABLE(
  kind text, digest text, source_effective_at timestamptz, observed_at timestamptz,
  recorded_at timestamptz, ingest_seq bigint, supersedes uuid,
  available boolean, latest_kind text, revoked boolean)
-LANGUAGE sql STABLE STRICT AS $fn$
+LANGUAGE plpgsql VOLATILE STRICT AS $fn$
+#variable_conflict use_column
+BEGIN
+ PERFORM living.assert_knowledge_settled(t,s,k);
+ RETURN QUERY
  WITH r AS (
   SELECT o.tenant_id, o.source_id, o.observation_id, o.object_id, o.revision_id, o.kind,
    o.digest, o.source_effective_at, o.observed_at, o.recorded_at, o.ingest_seq, o.supersedes,
@@ -295,8 +345,8 @@ LANGUAGE sql STABLE STRICT AS $fn$
    AND rv.ingest_seq>r.ingest_seq) AS revoked
  FROM r JOIN lat ON lat.object_id=r.object_id
  WHERE r.rn_head=1
- ORDER BY r.object_id
-$fn$;
+ ORDER BY r.object_id;
+END $fn$;
 -- as_effective_at: per object the OBSERVED row with the greatest source_effective_at<=v among rows
 -- known at k (effective_unknown=false), PLUS the latest OBSERVED row whose source_effective_at is
 -- NULL (effective_unknown=true) so undated rows are flagged, never silently dropped.
@@ -306,7 +356,11 @@ RETURNS TABLE(
  kind text, digest text, source_effective_at timestamptz, observed_at timestamptz,
  recorded_at timestamptz, ingest_seq bigint, supersedes uuid,
  effective_unknown boolean, revoked boolean)
-LANGUAGE sql STABLE STRICT AS $fn$
+LANGUAGE plpgsql VOLATILE STRICT AS $fn$
+#variable_conflict use_column
+BEGIN
+ PERFORM living.assert_knowledge_settled(t,s,k);
+ RETURN QUERY
  WITH known AS (
   SELECT o.tenant_id, o.source_id, o.observation_id, o.object_id, o.revision_id, o.kind,
    o.digest, o.source_effective_at, o.observed_at, o.recorded_at, o.ingest_seq, o.supersedes
@@ -328,8 +382,8 @@ LANGUAGE sql STABLE STRICT AS $fn$
   EXISTS(SELECT 1 FROM known rv WHERE rv.object_id=p.object_id AND rv.kind='ATTESTATION_REVOKED'
    AND rv.ingest_seq>p.ingest_seq) AS revoked
  FROM picked p
- ORDER BY p.object_id, p.effective_unknown
-$fn$;
+ ORDER BY p.object_id, p.effective_unknown;
+END $fn$;
 -- revoked: an ATTESTATION_REVOKED row for the same object recorded (<=k) after the returned row;
 -- it applies in every slice regardless of source_effective_at. provenance is never returned here.
 

@@ -8,6 +8,7 @@ OAuth and future-folder membership must be independently qualified.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import math
@@ -130,9 +131,30 @@ class GoogleDriveChangesReader:
                     raise DriveTransportError("RESPONSE_TOO_LARGE")
             return content
 
+    async def _emit(self, actor: str, identity: DriveIdentity, outcome: str, reason: str) -> None:
+        async with asyncio.timeout(self._callback_timeout):
+            await self._audit("drive.changes.fetch", {
+                "actor": actor,
+                "connection_id": identity.connection_id,
+                "scope_epoch": str(identity.scope_epoch),
+                "drive_id": identity.drive_id or "",
+                "outcome": outcome,
+                "reason": reason,
+            })
+
+    async def _emit_best_effort(
+        self, actor: str, identity: DriveIdentity, outcome: str, reason: str
+    ) -> None:
+        """Terminal-outcome record: the request already fails, so a sink error is swallowed."""
+        with contextlib.suppress(Exception):
+            await self._emit(actor, identity, outcome, reason)
+
     async def fetch_page(
-        self, *, identity: DriveIdentity, saved_cursor: str
+        self, *, actor: str, identity: DriveIdentity, saved_cursor: str
     ) -> DrivePage:
+        """`actor` is the trusted, already-authenticated initiator supplied by the caller."""
+        if not isinstance(actor, str) or not actor.strip():
+            raise PermissionError("DRIVE_ACTOR_REQUIRED")
         if not _opaque_token(saved_cursor):
             raise DriveTransportError("INVALID_CURSOR")
         # Every trusted callback is bounded: a hung callback must not hang the job.
@@ -143,18 +165,18 @@ class GoogleDriveChangesReader:
                 granted = await self._authorize(identity)
         except TimeoutError:
             timed_out = True
+        except Exception:
+            await self._emit_best_effort(actor, identity, "error", "AUTHORIZATION_ERROR")
+            raise
         if timed_out:
+            await self._emit_best_effort(actor, identity, "error", "AUTHORIZATION_TIMEOUT")
             raise DriveTransportError("DRIVE_TIMEOUT", retryable=True)
         if granted is not True:
+            await self._emit_best_effort(actor, identity, "denied", "DRIVE_ACCESS_DENIED")
             raise PermissionError("DRIVE_ACCESS_DENIED")
         audit_failed = False
         try:
-            async with asyncio.timeout(self._callback_timeout):
-                await self._audit("drive.changes.fetch", {
-                    "connection_id": identity.connection_id,
-                    "scope_epoch": str(identity.scope_epoch),
-                    "drive_id": identity.drive_id or "",
-                })
+            await self._emit(actor, identity, "allowed", "AUTHORIZED")
         except TimeoutError:
             timed_out = True
         except Exception:  # noqa: BLE001 - any audit-sink failure must fail closed
@@ -163,6 +185,15 @@ class GoogleDriveChangesReader:
             raise DriveTransportError("DRIVE_TIMEOUT", retryable=True)
         if audit_failed:
             raise PermissionError("AUDIT_WRITE_FAILED")
+        try:
+            return await self._fetch_authorized(identity, saved_cursor)
+        except Exception as exc:
+            code = exc.code if isinstance(exc, DriveTransportError) else type(exc).__name__
+            await self._emit_best_effort(actor, identity, "error", code)
+            raise
+
+    async def _fetch_authorized(self, identity: DriveIdentity, saved_cursor: str) -> DrivePage:
+        timed_out = False
         token: object = None
         try:
             async with asyncio.timeout(self._callback_timeout):

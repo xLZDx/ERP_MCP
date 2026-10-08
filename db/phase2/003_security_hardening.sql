@@ -12,6 +12,23 @@
 -- of both living_worker and living_promoter is rejected as an approver (APPROVER_NOT_INDEPENDENT),
 -- and an approver that equals / is a member of / contains the attestation observer or proposer
 -- role is rejected too. A proposer that is free text and not a role is compared by name only.
+-- Attestation trust (M1): evidence is accepted only from a TRUSTED REVIEWER (owner-managed
+-- living.trusted_reviewers: role, tenant+source, active, expires_at; managed through
+-- living.set_trusted_reviewer, no direct DML for runtime roles). An attestation carries decision
+-- (APPROVE|REJECT), expires_at, an evidence_digest = sha256(revision_digest || ':' || evidence_ref)
+-- that binds the evidence to the exact revision content, and revoked_at (set only through
+-- living.revoke_attestation; every other column stays immutable). promote_head re-verifies all of it
+-- at promotion time: absent / REJECT / expired / revoked / forged-digest evidence, or an observer that
+-- is no longer a trusted reviewer, cannot promote.
+-- Scope revocation (M2): any DELETE/UPDATE/TRUNCATE of living.role_scope bumps living.sources.scope_epoch
+-- in the same statement, so contexts opened by set_scope earlier are refused (SCOPE_REVOKED) at their
+-- next mutation or commit. Pure INSERTs only widen access and do not bump. Jobs/cursors queued under the
+-- old epoch need living.rebase_scope. Residual: an API that passed assert_scope just before a concurrent
+-- revocation commits is only re-checked under the source lock by commit_cursor_page (expected_epoch);
+-- the next call of any API is refused.
+-- Outbox leases (B2): claim_outbox/finish_outbox identify the publisher by the authenticated caller
+-- (living.caller_role()), never by a caller-supplied name, and every claim gets a monotonic
+-- claim_generation fence that finish_outbox must present.
 -- Whole-file guard: re-running this file (or 001/002 after it) never changes the hardened state.
 BEGIN;
 DO $mig$
@@ -46,6 +63,36 @@ CREATE TABLE IF NOT EXISTS living.role_scope(
 );
 CREATE UNIQUE INDEX IF NOT EXISTS role_scope_uniq
  ON living.role_scope(role_name,tenant_id,source_id,coalesce(company_id,''));
+CREATE OR REPLACE FUNCTION living.role_scope_epoch_bump() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+BEGIN
+ IF TG_LEVEL='STATEMENT' THEN
+  UPDATE living.sources SET scope_epoch=scope_epoch+1;
+  RETURN NULL;
+ END IF;
+ UPDATE living.sources SET scope_epoch=scope_epoch+1
+  WHERE tenant_id=OLD.tenant_id AND source_id=OLD.source_id;
+ IF TG_OP='UPDATE' AND (NEW.tenant_id,NEW.source_id) IS DISTINCT FROM (OLD.tenant_id,OLD.source_id) THEN
+  UPDATE living.sources SET scope_epoch=scope_epoch+1
+   WHERE tenant_id=NEW.tenant_id AND source_id=NEW.source_id;
+ END IF;
+ RETURN NULL;
+END $fn$;
+DROP TRIGGER IF EXISTS role_scope_epoch_bump ON living.role_scope;
+CREATE TRIGGER role_scope_epoch_bump AFTER DELETE OR UPDATE ON living.role_scope
+ FOR EACH ROW EXECUTE FUNCTION living.role_scope_epoch_bump();
+DROP TRIGGER IF EXISTS role_scope_epoch_bump_truncate ON living.role_scope;
+CREATE TRIGGER role_scope_epoch_bump_truncate BEFORE TRUNCATE ON living.role_scope
+ FOR EACH STATEMENT EXECUTE FUNCTION living.role_scope_epoch_bump();
+-- Owner-managed trust list: who may issue promotion evidence for a (tenant, source).
+CREATE TABLE IF NOT EXISTS living.trusted_reviewers(
+ role_name text NOT NULL CHECK(length(role_name)>0),
+ tenant_id text NOT NULL, source_id text NOT NULL,
+ active boolean NOT NULL DEFAULT true,
+ expires_at timestamptz NOT NULL,
+ PRIMARY KEY(role_name,tenant_id,source_id),
+ FOREIGN KEY(tenant_id,source_id) REFERENCES living.sources
+);
 -- Independent evidence for promotions. observer = authenticated recorder; proposer = who proposed.
 CREATE TABLE IF NOT EXISTS living.attestations(
  tenant_id text NOT NULL, source_id text NOT NULL, attestation_id uuid NOT NULL,
@@ -53,13 +100,31 @@ CREATE TABLE IF NOT EXISTS living.attestations(
  observer_subject text NOT NULL CHECK(length(observer_subject)>0),
  evidence_ref text NOT NULL CHECK(length(evidence_ref)>0),
  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ -- NULL digest / expiry can only come from a direct owner INSERT and never promotes.
+ evidence_digest text CHECK(evidence_digest IS NULL OR evidence_digest ~ '^[a-f0-9]{64}$'),
+ decision text NOT NULL DEFAULT 'APPROVE' CHECK(decision IN ('APPROVE','REJECT')),
+ expires_at timestamptz,
+ revoked_at timestamptz,
  PRIMARY KEY(tenant_id,source_id,attestation_id),
  UNIQUE(tenant_id,source_id,revision_id,evidence_ref),
  FOREIGN KEY(tenant_id,source_id,revision_id)
  REFERENCES living.observations(tenant_id,source_id,revision_id)
 );
+-- Only revocation (revoked_at NULL -> value, by living_owner code) may change an attestation row.
+CREATE OR REPLACE FUNCTION living.attestations_guard_update() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL AND current_user = 'living_owner'
+  AND (to_jsonb(NEW) - 'revoked_at') = (to_jsonb(OLD) - 'revoked_at') THEN
+  RETURN NEW;
+ END IF;
+ RAISE EXCEPTION 'IMMUTABLE_LEDGER';
+END $fn$;
 DROP TRIGGER IF EXISTS attestations_immutable ON living.attestations;
-CREATE TRIGGER attestations_immutable BEFORE UPDATE OR DELETE ON living.attestations
+CREATE TRIGGER attestations_immutable BEFORE UPDATE ON living.attestations
+ FOR EACH ROW EXECUTE FUNCTION living.attestations_guard_update();
+DROP TRIGGER IF EXISTS attestations_no_delete ON living.attestations;
+CREATE TRIGGER attestations_no_delete BEFORE DELETE ON living.attestations
  FOR EACH ROW EXECUTE FUNCTION living.reject_immutable_mutation();
 DROP TRIGGER IF EXISTS attestations_no_truncate ON living.attestations;
 CREATE TRIGGER attestations_no_truncate BEFORE TRUNCATE ON living.attestations
@@ -154,31 +219,115 @@ BEGIN
  RETURN NEW;
 END $fn$;
 
+-- Trust check (called by definer APIs only; no EXECUTE for runtime roles).
+CREATE OR REPLACE FUNCTION living.is_trusted_reviewer(t text, s text, who text) RETURNS boolean
+LANGUAGE plpgsql AS $fn$
+DECLARE tr record;
+BEGIN
+ IF who IS NULL OR who='' OR NOT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=who) THEN
+  RETURN false;
+ END IF;
+ FOR tr IN SELECT role_name FROM living.trusted_reviewers
+   WHERE tenant_id=t AND source_id=s AND active AND expires_at>clock_timestamp() LOOP
+  IF EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=tr.role_name)
+   AND pg_has_role(who::name, tr.role_name::name, 'USAGE') THEN
+   RETURN true;
+  END IF;
+ END LOOP;
+ RETURN false;
+END $fn$;
+
+CREATE OR REPLACE FUNCTION living.set_trusted_reviewer(
+ p_role text, t text, s text, p_active boolean, p_expires_at timestamptz
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+BEGIN
+ IF NOT pg_has_role(living.caller_role()::name,'living_owner','USAGE') THEN
+  RAISE EXCEPTION 'NOT_OWNER';
+ END IF;
+ IF p_role IS NULL OR p_role='' OR t IS NULL OR s IS NULL OR p_active IS NULL
+  OR p_expires_at IS NULL THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=p_role) THEN
+  RAISE EXCEPTION 'ROLE_NOT_FOUND';
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM living.sources WHERE tenant_id=t AND source_id=s) THEN
+  RAISE EXCEPTION 'SOURCE_NOT_FOUND';
+ END IF;
+ INSERT INTO living.trusted_reviewers(role_name,tenant_id,source_id,active,expires_at)
+  VALUES(p_role,t,s,p_active,p_expires_at)
+  ON CONFLICT(role_name,tenant_id,source_id) DO UPDATE
+   SET active=EXCLUDED.active, expires_at=EXCLUDED.expires_at;
+END $fn$;
+
+-- The caller must be a trusted reviewer for the scope. p_evidence_digest must equal
+-- sha256(revision_digest || ':' || p_evidence) so the evidence is bound to the exact revision.
 CREATE OR REPLACE FUNCTION living.record_attestation(
- t text, s text, p_attestation_id uuid, p_revision uuid, p_proposer text, p_evidence text
+ t text, s text, p_attestation_id uuid, p_revision uuid, p_proposer text, p_evidence text,
+ p_evidence_digest text, p_decision text, p_expires_at timestamptz
 ) RETURNS uuid LANGUAGE plpgsql AS $fn$
-DECLARE st text; observer text;
+DECLARE st text; observer text; rev_kind text; rev_digest text; ex living.attestations%ROWTYPE;
 BEGIN
  PERFORM living.assert_scope(t,s);
  observer := living.caller_role();
  IF p_attestation_id IS NULL OR p_revision IS NULL OR p_proposer IS NULL OR p_proposer=''
-  OR p_evidence IS NULL OR p_evidence='' THEN
+  OR p_evidence IS NULL OR p_evidence='' OR p_expires_at IS NULL
+  OR p_evidence_digest IS NULL OR p_evidence_digest !~ '^[a-f0-9]{64}$'
+  OR p_decision IS NULL OR p_decision NOT IN ('APPROVE','REJECT') THEN
   RAISE EXCEPTION 'INVALID_ARGUMENT';
  END IF;
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
  IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
- INSERT INTO living.attestations(tenant_id,source_id,attestation_id,revision_id,
-  proposer_subject,observer_subject,evidence_ref)
- VALUES(t,s,p_attestation_id,p_revision,p_proposer,observer,p_evidence)
- ON CONFLICT DO NOTHING;
- IF NOT FOUND AND NOT EXISTS(SELECT 1 FROM living.attestations
-   WHERE tenant_id=t AND source_id=s AND attestation_id=p_attestation_id
-    AND revision_id=p_revision AND proposer_subject=p_proposer
-    AND observer_subject=observer AND evidence_ref=p_evidence) THEN
+ IF NOT living.is_trusted_reviewer(t,s,observer) THEN RAISE EXCEPTION 'REVIEWER_NOT_TRUSTED'; END IF;
+ SELECT kind,digest INTO rev_kind,rev_digest FROM living.observations
+  WHERE tenant_id=t AND source_id=s AND revision_id=p_revision;
+ IF rev_kind IS DISTINCT FROM 'OBSERVED' THEN RAISE EXCEPTION 'REVISION_NOT_OBSERVED'; END IF;
+ IF p_evidence_digest IS DISTINCT FROM
+    encode(sha256(convert_to(rev_digest||':'||p_evidence,'UTF8')),'hex') THEN
+  RAISE EXCEPTION 'EVIDENCE_DIGEST_MISMATCH';
+ END IF;
+ SELECT * INTO ex FROM living.attestations
+  WHERE tenant_id=t AND source_id=s AND attestation_id=p_attestation_id;
+ IF FOUND THEN
+  IF ex.revision_id=p_revision AND ex.proposer_subject=p_proposer
+   AND ex.observer_subject=observer AND ex.evidence_ref=p_evidence
+   AND ex.evidence_digest=p_evidence_digest AND ex.decision=p_decision
+   AND ex.expires_at IS NOT DISTINCT FROM p_expires_at THEN
+   RETURN p_attestation_id;
+  END IF;
   RAISE EXCEPTION 'CONFLICTING_ATTESTATION';
  END IF;
+ IF p_expires_at <= clock_timestamp() THEN RAISE EXCEPTION 'EVIDENCE_EXPIRED'; END IF;
+ INSERT INTO living.attestations(tenant_id,source_id,attestation_id,revision_id,
+  proposer_subject,observer_subject,evidence_ref,evidence_digest,decision,expires_at)
+ VALUES(t,s,p_attestation_id,p_revision,p_proposer,observer,p_evidence,p_evidence_digest,
+  p_decision,p_expires_at)
+ ON CONFLICT DO NOTHING;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CONFLICTING_ATTESTATION'; END IF;
  RETURN p_attestation_id;
+END $fn$;
+
+-- Revocation: only the recording observer or a living_promoter member; irreversible.
+CREATE OR REPLACE FUNCTION living.revoke_attestation(t text, s text, p_attestation_id uuid)
+RETURNS timestamptz LANGUAGE plpgsql AS $fn$
+DECLARE st text; who text; att living.attestations%ROWTYPE; ts timestamptz;
+BEGIN
+ PERFORM living.assert_scope(t,s);
+ who := living.caller_role();
+ IF p_attestation_id IS NULL THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
+ SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'SOURCE_NOT_FOUND'; END IF;
+ IF st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SCOPE_REVOKED'; END IF;
+ SELECT * INTO att FROM living.attestations
+  WHERE tenant_id=t AND source_id=s AND attestation_id=p_attestation_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'EVIDENCE_NOT_FOUND'; END IF;
+ IF who IS DISTINCT FROM att.observer_subject
+  AND NOT pg_has_role(who::name,'living_promoter','USAGE') THEN
+  RAISE EXCEPTION 'NOT_AUTHORIZED';
+ END IF;
+ IF att.revoked_at IS NOT NULL THEN RETURN att.revoked_at; END IF;
+ UPDATE living.attestations SET revoked_at=clock_timestamp()
+  WHERE tenant_id=t AND source_id=s AND attestation_id=p_attestation_id RETURNING revoked_at INTO ts;
+ RETURN ts;
 END $fn$;
 
 -- Final promote_head: approver = authenticated caller (never a parameter), must be a
@@ -189,7 +338,7 @@ CREATE OR REPLACE FUNCTION living.promote_head(
  acceptance uuid,evidence text
 ) RETURNS bigint LANGUAGE plpgsql AS $fn$
 DECLARE new_version bigint; approver text; st text; obs text; prop text; rev_kind text;
- ev living.acceptance_events%ROWTYPE; sess_super boolean;
+ ev living.acceptance_events%ROWTYPE; sess_super boolean; att living.attestations%ROWTYPE; rev_digest text;
 BEGIN
  PERFORM living.assert_scope(t,s);
  approver := living.caller_role();
@@ -221,12 +370,13 @@ BEGIN
   OR (NOT sess_super AND pg_has_role(session_user,'living_worker','MEMBER')) THEN
   RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
  END IF;
- SELECT kind INTO rev_kind FROM living.observations
+ SELECT kind,digest INTO rev_kind,rev_digest FROM living.observations
   WHERE tenant_id=t AND source_id=s AND revision_id=new_revision;
  IF rev_kind IS DISTINCT FROM 'OBSERVED' THEN RAISE EXCEPTION 'REVISION_NOT_OBSERVED'; END IF;
- SELECT observer_subject,proposer_subject INTO obs,prop FROM living.attestations
+ SELECT * INTO att FROM living.attestations
   WHERE tenant_id=t AND source_id=s AND revision_id=new_revision AND evidence_ref=evidence;
  IF NOT FOUND THEN RAISE EXCEPTION 'EVIDENCE_NOT_FOUND'; END IF;
+ obs := att.observer_subject; prop := att.proposer_subject;
  IF approver IS NOT DISTINCT FROM obs OR approver IS NOT DISTINCT FROM prop
   OR (NOT sess_super AND (session_user::text IS NOT DISTINCT FROM obs
                           OR session_user::text IS NOT DISTINCT FROM prop))
@@ -237,6 +387,17 @@ BEGIN
           OR (NOT sess_super AND pg_has_role(session_user, r.oid, 'MEMBER')))) THEN
   RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
  END IF;
+ -- Evidence validity (re-verified at promotion time, under the source lock).
+ IF att.decision IS DISTINCT FROM 'APPROVE' THEN RAISE EXCEPTION 'EVIDENCE_NOT_APPROVED'; END IF;
+ IF att.revoked_at IS NOT NULL THEN RAISE EXCEPTION 'EVIDENCE_REVOKED'; END IF;
+ IF att.expires_at IS NULL OR att.expires_at <= clock_timestamp() THEN
+  RAISE EXCEPTION 'EVIDENCE_EXPIRED';
+ END IF;
+ IF att.evidence_digest IS DISTINCT FROM
+    encode(sha256(convert_to(rev_digest||':'||evidence,'UTF8')),'hex') THEN
+  RAISE EXCEPTION 'EVIDENCE_DIGEST_MISMATCH';
+ END IF;
+ IF NOT living.is_trusted_reviewer(t,s,obs) THEN RAISE EXCEPTION 'REVIEWER_NOT_TRUSTED'; END IF;
  PERFORM set_config('living.promoting','on',true);
  UPDATE living.accepted_heads SET revision_id=new_revision,version=version+1,
   updated_at=clock_timestamp()
@@ -297,6 +458,7 @@ END $fn$;
 -- Outbox delivery: lease columns, guarded transitions, claim / finish APIs for living_publisher.
 ALTER TABLE living.outbox ADD COLUMN IF NOT EXISTS lease_owner text;
 ALTER TABLE living.outbox ADD COLUMN IF NOT EXISTS lease_until timestamptz;
+ALTER TABLE living.outbox ADD COLUMN IF NOT EXISTS claim_generation bigint NOT NULL DEFAULT 0 CHECK(claim_generation>=0);
 CREATE OR REPLACE FUNCTION living.outbox_guard_update() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
 BEGIN
@@ -312,23 +474,27 @@ BEGIN
  IF OLD.status IN ('DELIVERED','FAILED') AND NEW.status IS DISTINCT FROM OLD.status THEN
   RAISE EXCEPTION 'OUTBOX_INVALID_TRANSITION';
  END IF;
- IF NEW.attempts < OLD.attempts THEN RAISE EXCEPTION 'OUTBOX_INVALID_TRANSITION'; END IF;
+ IF NEW.attempts < OLD.attempts OR NEW.claim_generation < OLD.claim_generation THEN
+  RAISE EXCEPTION 'OUTBOX_INVALID_TRANSITION';
+ END IF;
  RETURN NEW;
 END $fn$;
 
--- Claims up to p_limit PENDING events (FOR UPDATE SKIP LOCKED, seq order) with a lease and
--- attempts+1. Events whose lease expired become claimable again; exhausted ones turn FAILED.
--- Source lock is FOR SHARE here ONLY (many publishers in parallel); this API never upgrades it,
--- so use it as the only living API in its transaction.
+-- Claims up to p_limit PENDING events (FOR UPDATE SKIP LOCKED, seq order) with a lease, attempts+1
+-- and claim_generation+1 (the per-claim fence returned in the row). The lease owner is the
+-- authenticated caller (living.caller_role()). Events whose lease expired become claimable again;
+-- exhausted ones turn FAILED. Source lock is FOR SHARE here ONLY (many publishers in parallel); this
+-- API never upgrades it, so use it as the only living API in its transaction.
 CREATE OR REPLACE FUNCTION living.claim_outbox(
- t text, s text, p_publisher text, p_limit integer, p_lease_seconds integer,
+ t text, s text, p_limit integer, p_lease_seconds integer,
  p_max_attempts integer DEFAULT 5
 ) RETURNS SETOF living.outbox LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp AS $fn$
-DECLARE st text;
+DECLARE st text; who text;
 BEGIN
  PERFORM living.assert_scope(t,s);
- IF p_publisher IS NULL OR p_publisher='' OR p_limit IS NULL OR p_limit<1 OR p_limit>1000
+ who := living.caller_role();
+ IF who IS NULL OR who='' OR p_limit IS NULL OR p_limit<1 OR p_limit>1000
   OR p_lease_seconds IS NULL OR p_lease_seconds<1 OR p_lease_seconds>300
   OR p_max_attempts IS NULL OR p_max_attempts<1 OR p_max_attempts>20 THEN
   RAISE EXCEPTION 'INVALID_ARGUMENT';
@@ -346,7 +512,8 @@ BEGIN
    AND ob.attempts<p_max_attempts
    AND (ob.lease_until IS NULL OR ob.lease_until<=clock_timestamp())
   ORDER BY ob.seq LIMIT p_limit FOR UPDATE SKIP LOCKED)
- UPDATE living.outbox o SET attempts=o.attempts+1, lease_owner=p_publisher,
+ UPDATE living.outbox o SET attempts=o.attempts+1, lease_owner=who,
+  claim_generation=o.claim_generation+1,
   lease_until=clock_timestamp()+make_interval(secs=>p_lease_seconds)
  FROM c
  WHERE o.tenant_id=c.tenant_id AND o.source_id=c.source_id
@@ -355,15 +522,17 @@ BEGIN
 END $fn$;
 
 -- Completes one claimed event: delivered -> DELIVERED; failed -> PENDING again (or FAILED once
--- attempts reach p_max_attempts). Requires the live lease held by p_publisher.
+-- attempts reach p_max_attempts). Requires the live lease, held by the authenticated caller, AND the
+-- claim_generation returned by that claim: an older claim of the same row can never finish it.
 CREATE OR REPLACE FUNCTION living.finish_outbox(
- t text, s text, c text, p_event_id text, p_publisher text, p_delivered boolean,
+ t text, s text, c text, p_event_id text, p_generation bigint, p_delivered boolean,
  p_max_attempts integer DEFAULT 5
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
-DECLARE st text; ob living.outbox%ROWTYPE;
+DECLARE st text; who text; ob living.outbox%ROWTYPE;
 BEGIN
  PERFORM living.assert_scope(t,s);
- IF c IS NULL OR p_event_id IS NULL OR p_publisher IS NULL OR p_delivered IS NULL
+ who := living.caller_role();
+ IF c IS NULL OR p_event_id IS NULL OR p_generation IS NULL OR p_delivered IS NULL
   OR p_max_attempts IS NULL OR p_max_attempts<1 THEN
   RAISE EXCEPTION 'INVALID_ARGUMENT';
  END IF;
@@ -374,8 +543,8 @@ BEGIN
   WHERE tenant_id=t AND source_id=s AND connection_id=c AND event_id=p_event_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'OUTBOX_EVENT_NOT_FOUND'; END IF;
  IF ob.status IS DISTINCT FROM 'PENDING' THEN RAISE EXCEPTION 'OUTBOX_INVALID_TRANSITION'; END IF;
- IF ob.lease_owner IS DISTINCT FROM p_publisher OR ob.lease_until IS NULL
-  OR ob.lease_until<=clock_timestamp() THEN
+ IF ob.lease_owner IS DISTINCT FROM who OR ob.claim_generation IS DISTINCT FROM p_generation
+  OR ob.lease_until IS NULL OR ob.lease_until<=clock_timestamp() THEN
   RAISE EXCEPTION 'STALE_OUTBOX_LEASE';
  END IF;
  UPDATE living.outbox SET lease_owner=NULL, lease_until=NULL,
@@ -393,8 +562,8 @@ BEGIN
   WHERE n.nspname='living' AND p.proname IN (
    'set_scope','assert_scope','enqueue_job','acquire_job','renew_lease','finish_job',
    'reap_expired_jobs','commit_cursor_page','ingest_observation','create_cursor','create_head',
-   'promote_head','record_attestation','add_role_scope','rebase_scope','claim_outbox',
-   'finish_outbox')
+   'promote_head','record_attestation','revoke_attestation','add_role_scope','rebase_scope',
+   'claim_outbox','finish_outbox','set_trusted_reviewer','role_scope_epoch_bump')
  LOOP
   EXECUTE format('ALTER FUNCTION %s SECURITY DEFINER SET search_path = pg_catalog, pg_temp',f.sig);
  END LOOP;
@@ -429,19 +598,23 @@ GRANT USAGE ON SCHEMA living TO living_worker, living_reader, living_promoter, l
 -- role_scope and the owner-only admin APIs: no direct DML for anybody but living_owner.
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON living.role_scope
  FROM PUBLIC, living_worker, living_reader, living_promoter, living_publisher;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON living.trusted_reviewers
+ FROM PUBLIC, living_worker, living_reader, living_promoter, living_publisher;
 REVOKE EXECUTE ON FUNCTION living.add_role_scope(text,text,text,text),
- living.rebase_scope(text,text)
+ living.rebase_scope(text,text), living.set_trusted_reviewer(text,text,text,boolean,timestamptz),
+ living.is_trusted_reviewer(text,text,text)
  FROM PUBLIC, living_worker, living_reader, living_promoter, living_publisher;
 GRANT EXECUTE ON FUNCTION living.add_role_scope(text,text,text,text),
- living.rebase_scope(text,text) TO living_owner;
+ living.rebase_scope(text,text), living.set_trusted_reviewer(text,text,text,boolean,timestamptz),
+ living.is_trusted_reviewer(text,text,text) TO living_owner;
 -- Runtime roles get read access only (RLS-filtered); every write goes through definer functions.
 GRANT SELECT ON living.tenants, living.sources, living.accepted_heads, living.acceptance_events,
  living.role_scope TO living_worker, living_reader, living_promoter;
 GRANT SELECT ON living.tenants, living.sources, living.role_scope TO living_publisher;
 GRANT EXECUTE ON FUNCTION living.caller_role(), living.row_in_scope(text,text,text),
  living.tenant_in_scope(text), living.set_scope(text,text,text),
- living.claim_outbox(text,text,text,integer,integer,integer),
- living.finish_outbox(text,text,text,text,text,boolean,integer)
+ living.claim_outbox(text,text,integer,integer,integer),
+ living.finish_outbox(text,text,text,text,bigint,boolean,integer)
  TO living_publisher;
 GRANT SELECT ON living.jobs, living.cursors, living.outbox, living.attestations,
  living.observations TO living_worker;
@@ -454,7 +627,8 @@ GRANT SELECT(tenant_id,source_id,observation_id,object_id,revision_id,kind,diges
 GRANT EXECUTE ON FUNCTION living.caller_role(), living.row_in_scope(text,text,text),
  living.tenant_in_scope(text), living.set_scope(text,text,text),
  living.as_known_at(text,text,timestamptz),
- living.as_effective_at(text,text,timestamptz,timestamptz)
+ living.as_effective_at(text,text,timestamptz,timestamptz),
+ living.knowledge_horizon(text,text), living.assert_knowledge_settled(text,text,timestamptz)
  TO living_worker, living_reader, living_promoter;
 GRANT EXECUTE ON FUNCTION
  living.enqueue_job(text,text,uuid,text,text,text,jsonb),
@@ -465,11 +639,13 @@ GRANT EXECUTE ON FUNCTION
  living.commit_cursor_page(text,text,text,uuid,text,bigint,text,bigint,bigint,text,jsonb),
  living.ingest_observation(text,text,uuid,text,uuid,text,text,timestamptz,timestamptz,uuid,jsonb),
  living.create_cursor(text,text,text,text),
- living.record_attestation(text,text,uuid,uuid,text,text)
+ living.record_attestation(text,text,uuid,uuid,text,text,text,text,timestamptz),
+ living.revoke_attestation(text,text,uuid)
  TO living_worker;
 GRANT EXECUTE ON FUNCTION
  living.promote_head(text,text,text,bigint,uuid,uuid,text),
- living.create_head(text,text,text)
+ living.create_head(text,text,text),
+ living.revoke_attestation(text,text,uuid)
  TO living_promoter;
 
 -- RLS: tenants and every scoped table; owner role keeps full access for definer code.
@@ -478,7 +654,7 @@ DECLARE tbl text;
 BEGIN
  FOREACH tbl IN ARRAY ARRAY[
   'tenants','sources','observations','accepted_heads','acceptance_events','jobs','cursors',
-  'outbox','attestations','role_scope'
+  'outbox','attestations','role_scope','trusted_reviewers'
  ] LOOP
   EXECUTE format('ALTER TABLE living.%I ENABLE ROW LEVEL SECURITY',tbl);
   EXECUTE format('ALTER TABLE living.%I FORCE ROW LEVEL SECURITY',tbl);
