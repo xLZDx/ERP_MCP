@@ -508,3 +508,96 @@ async def test_rollback_failure_fails_closed(where):
         w.port.list_acceptances = broken
     res = await w.rollback(1, e1, expected=2)
     await assert_rejected(w, before, res, Outcome.FAILED_CLOSED)
+
+
+# P-M1: the read-side attestation must be bound to the requested revision/ref
+# before the service crosses the write-port boundary.
+async def test_preflight_stale_attestation_for_other_revision_never_calls_write_port():
+    w = await world()
+    revision_a, evidence_a, _ = await w.attest(1)
+    revision_b, _, _ = await w.attest(2)
+    w.reader.stale = await w.reader.find_attestation(SCOPE, revision_a, evidence_a.evidence_ref)
+    before = await w.snapshot()
+    result = await w.promote(revision_b, evidence_a)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "EVIDENCE_IDENTITY_MISMATCH"
+
+
+async def test_preflight_stale_attestation_for_other_ref_never_calls_write_port():
+    from dataclasses import replace
+
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    original = await w.reader.find_attestation(SCOPE, revision, evidence.evidence_ref)
+    assert original is not None
+    w.reader.stale = replace(original, evidence_ref="unrelated-ref")
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "EVIDENCE_IDENTITY_MISMATCH"
+
+
+class _ForgedEquality:
+    def __eq__(self, _other):
+        return True
+
+    def __ne__(self, _other):
+        return False
+
+
+@pytest.mark.parametrize("bad_field", ["revision_id", "evidence_ref", "attestation_id"])
+async def test_preflight_rejects_noncanonical_attestation_identity_before_write(bad_field):
+    from dataclasses import replace
+
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    genuine = await w.reader.find_attestation(SCOPE, revision, evidence.evidence_ref)
+    assert genuine is not None
+    w.reader.stale = replace(genuine, **{bad_field: _ForgedEquality()})
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "EVIDENCE_IDENTITY_MISMATCH"
+
+
+async def test_preflight_rejects_reader_result_with_invalid_view_shape():
+    from types import SimpleNamespace
+
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    w.reader.stale = SimpleNamespace(decision="APPROVE", revision_id=revision,
+                                     evidence_ref=evidence.evidence_ref)
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "EVIDENCE_IDENTITY_MISMATCH"
+
+
+@pytest.mark.parametrize("field", ["decision", "evidence_digest"])
+async def test_preflight_forged_attestation_claim_never_calls_write_port(field):
+    from dataclasses import replace
+
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+    genuine = await w.reader.find_attestation(SCOPE, revision, evidence.evidence_ref)
+    assert genuine is not None
+    w.reader.stale = replace(genuine, **{field: _ForgedEquality()})
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == ("EVIDENCE_NOT_APPROVED" if field == "decision"
+                           else "EVIDENCE_DIGEST_MISMATCH")
+
+
+async def test_preflight_truthy_nonbool_reviewer_grant_never_calls_write_port():
+    w = await world()
+    revision, evidence, _ = await w.attest(1)
+
+    async def invalid_grant(_scope, _subject):
+        return "trusted"
+
+    w.reader.is_trusted_reviewer = invalid_grant
+    before = await w.snapshot()
+    result = await w.promote(revision, evidence)
+    await assert_rejected(w, before, result, Outcome.REJECTED_UNTRUSTED)
+    assert result.code == "REVIEWER_NOT_TRUSTED"
