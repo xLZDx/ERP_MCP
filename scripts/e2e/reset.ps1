@@ -9,6 +9,10 @@ param([ValidateSet('baseline', 'bootstrap-only', 'none')][string]$Seed)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
+if ($script:Real1c) {
+    # reset drops the bag schema and re-seeds: that would erase the real lane's sources, grants and profiles.
+    throw 'REAL1C_RESET_REFUSED: reset.ps1 drops the schema and is not allowed on the real local 1C profile (E2E_REAL1C=1).'
+}
 if (-not (Test-Path (Join-Path $script:E2eDir 'secrets.json'))) { throw 'not initialised; run up.ps1' }
 if (-not $Seed) { $Seed = Get-SeedMode }
 if (-not $Seed) { $Seed = 'baseline' }
