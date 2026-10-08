@@ -2,7 +2,7 @@
 
 [**Русский**](#о-проекте) · [**English**](#english-overview) · [**Install / Установка**](docs/INSTALLATION_GUIDE_RU.md) · [**Lessons learned**](docs/LESSONS_LEARNED_RU.md)
 
-> **Release 1 (ERP_MCP v1):** active read-only 1C gateway; implementation and acceptance are ongoing. **Not generally approved for production.**  
+> **Release 1 (ERP_MCP v1):** active read-only 1C gateway; implementation and acceptance are ongoing. **Not generally approved for production.**
 > **Phase 2 (ERP_MCP v2 / Living Model):** **🚧 Work in progress.** Architecture and requirements are documented, and development is carried out separately. Phase 2 is **not a completed or generally available feature of `main`**.
 
 ERP_MCP exposes governed, auditable access to 1C through the [Model Context Protocol](https://modelcontextprotocol.io/). The goal is **reliable accounting answers within explicit access boundaries**, not uncontrolled AI access to a database. It separates a public read-only MCP data plane from administrator operations and supports an eventual shared connector/control architecture for other systems.
