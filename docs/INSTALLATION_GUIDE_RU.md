@@ -197,7 +197,10 @@ Invoke-WebRequest http://127.0.0.1:8000/readyz -UseBasicParsing
 ```powershell
 $env:E2E_DIR = 'PATH_TO_YOUR_DISPOSABLE_REAL1C_E2E_DIR'
 python -m scripts.real1c.lane_setup --repair-auditor-grant
+python -m scripts.real1c.verify_install
 ```
+
+Команда `verify_install` только читает: проверяет два позитивных вызова к реальной 1С, пять негативных ACL случаев и их audit evidence. Успех — `REAL1C_L2_INSTALL_SMOKE 7/7 PASS`. Скрипт отказывает вне disposable loopback test profile.
 
 Не используйте эту команду для общей установки, произвольных клиентских источников или production. Она проверяет test/real1c/bootstrap-only профиль и работает через Admin API, а не прямой UPDATE ACL. При первом запуске в удалённой/noninteractive Windows PowerShell среде `ComSpec` может отсутствовать; общий E2E helper теперь проверяет наличие `%SystemRoot%\\System32\\cmd.exe` и корректно устанавливает путь для запуска дочерних процессов. **Не** меняйте глобальные security settings ради этого.
 
