@@ -724,7 +724,7 @@ async def reverify_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
                 scope_sha256=evidence["machine_scope"]["authorization_scope_sha256"],
                 mapping=_json_value(mapping_row["mapping_json"]),
             )
-        except (OSError, ValueError, KeyError, TypeError) as exc:
+        except Exception as exc:  # noqa: BLE001 - a kill switch must fail closed on any verification error
             failure = f"{type(exc).__name__}: {exc}"
         if failure is None:
             return True
