@@ -21,6 +21,8 @@ from business_ai_gateway.evidence_basis import (
     MACHINE_METHOD_B,
     MACHINE_REFERENCE_PREFIX,
     EvidenceBasisError,
+    authorized_accounts,
+    authorized_roles,
     parse_authority,
 )
 
@@ -74,7 +76,9 @@ def verify_plan_authority(authority: str, *, scope_sha256: str, plans_dir: Path)
     return {"plan_id": plan_id, "plan_hash": plan_hash}
 
 
-def _read_artifact(path: Path, *, expected_sha256: str, run_id: str, method: str, side: str, as_of: str):
+def _read_artifact(
+    path: Path, *, expected_sha256: str, run_id: str, method: str, side: str, as_of: str, parameters: dict[str, Any]
+):
     raw = path.read_bytes()
     if hashlib.sha256(raw).hexdigest() != expected_sha256:
         raise MachineReconciliationError(f"artifact digest mismatch for side {side}")
@@ -87,6 +91,8 @@ def _read_artifact(path: Path, *, expected_sha256: str, run_id: str, method: str
         or data.get("as_of") != as_of
     ):
         raise MachineReconciliationError(f"artifact for side {side} does not embed its own run id, method or as_of")
+    if data.get("context") != parameters:
+        raise MachineReconciliationError(f"artifact for side {side} does not embed the run record parameters")
     if data.get("truncated") is not False:
         raise MachineReconciliationError(f"artifact for side {side} is truncated or does not say otherwise")
     rows = data.get("rows")
@@ -95,20 +101,42 @@ def _read_artifact(path: Path, *, expected_sha256: str, run_id: str, method: str
     return rows
 
 
-def _row_map(rows: list[Any], side: str) -> dict[tuple, tuple[Decimal, Decimal]]:
+def _nonempty_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _row_map(
+    rows: list[Any],
+    side: str,
+    allowed_accounts: frozenset[str] | None = None,
+    allowed_roles: frozenset[str] | None = None,
+) -> dict[tuple, tuple[Decimal, Decimal]]:
+    """Typed canonical rows only: a missing currency is the empty string, never null/false/0."""
     result: dict[tuple, tuple[Decimal, Decimal]] = {}
     for row in rows:
         if not isinstance(row, dict) or set(row) != _ROW_KEYS:
             raise MachineReconciliationError(f"side {side} has a malformed row")
+        if not _nonempty_text(row["account"]) or (allowed_accounts is not None and row["account"] not in allowed_accounts):
+            raise MachineReconciliationError(f"side {side} has a row outside the authorized accounts")
+        if not isinstance(row["currency_ref"], str):
+            raise MachineReconciliationError(f"side {side} has a currency reference that is not text")
         analytics = row["analytics"]
         if not isinstance(analytics, list) or not analytics:
             raise MachineReconciliationError(f"side {side} has a row without analytics")
         slots = []
         for slot in analytics:
-            if not isinstance(slot, dict) or not slot.get("type") or not slot.get("ref"):
-                raise MachineReconciliationError(f"side {side} has an incomplete analytics slot")
-            slots.append((str(slot["type"]), str(slot["ref"])))
-        key = (str(row["account"]), tuple(slots), str(row["currency_ref"] or ""))
+            if (
+                not isinstance(slot, dict)
+                or set(slot) != {"type", "ref"}
+                or not _nonempty_text(slot["type"])
+                or not _nonempty_text(slot["ref"])
+                or (allowed_roles is not None and slot["type"] not in allowed_roles)
+            ):
+                raise MachineReconciliationError(f"side {side} has an invalid analytics slot")
+            slots.append((slot["type"], slot["ref"]))
+        if len({kind for kind, _ in slots}) != len(slots):
+            raise MachineReconciliationError(f"side {side} repeats an analytics role in one row")
+        key = (row["account"], tuple(slots), row["currency_ref"])
         if key in result:
             raise MachineReconciliationError(f"side {side} repeats a row key")
         result[key] = (
@@ -118,9 +146,16 @@ def _row_map(rows: list[Any], side: str) -> dict[tuple, tuple[Decimal, Decimal]]
     return result
 
 
-def compare_rows(rows_a: list[Any], rows_b: list[Any]) -> dict[str, Any]:
+def compare_rows(
+    rows_a: list[Any],
+    rows_b: list[Any],
+    *,
+    allowed_accounts: frozenset[str] | None = None,
+    allowed_roles: frozenset[str] | None = None,
+) -> dict[str, Any]:
     """Exact comparison; any missing key, extra key or one-cent difference fails the whole case."""
-    map_a, map_b = _row_map(rows_a, "A"), _row_map(rows_b, "B")
+    map_a = _row_map(rows_a, "A", allowed_accounts, allowed_roles)
+    map_b = _row_map(rows_b, "B", allowed_accounts, allowed_roles)
     if set(map_a) != set(map_b):
         raise MachineReconciliationError("the two sides do not cover the same row keys")
     for key, value in map_a.items():
@@ -133,7 +168,13 @@ def compare_rows(rows_a: list[Any], rows_b: list[Any]) -> dict[str, Any]:
     }
 
 
-def verify_case_artifacts(case: dict[str, Any], artifacts_root: Path) -> dict[str, Any]:
+def verify_case_artifacts(
+    case: dict[str, Any],
+    artifacts_root: Path,
+    *,
+    allowed_accounts: frozenset[str] | None = None,
+    allowed_roles: frozenset[str] | None = None,
+) -> dict[str, Any]:
     reference = case.get("native_report_ref")
     if not isinstance(reference, str) or not reference.startswith(MACHINE_REFERENCE_PREFIX):
         raise EvidenceBasisError("machine case reference must use the machine-artifact: form")
@@ -154,16 +195,20 @@ def verify_case_artifacts(case: dict[str, Any], artifacts_root: Path) -> dict[st
             method=method,
             side=side,
             as_of=case["as_of"],
+            parameters=record["parameters"],
         )
-    return compare_rows(rows["A"], rows["B"])
+    return compare_rows(rows["A"], rows["B"], allowed_accounts=allowed_accounts, allowed_roles=allowed_roles)
 
 
 def verify_all(
-    evidence: dict[str, Any], *, artifacts_root: Path, plans_dir: Path, scope_sha256: str
+    evidence: dict[str, Any], *, artifacts_root: Path, plans_dir: Path, scope_sha256: str, mapping: dict[str, Any]
 ) -> dict[str, Any]:
+    accounts, roles = authorized_accounts(mapping), authorized_roles(mapping)
     cases = evidence["native_reconciliation_cases"]
     authority = verify_plan_authority(
         cases[0]["authorized_by"], scope_sha256=scope_sha256, plans_dir=plans_dir
     )
-    summaries = [verify_case_artifacts(case, artifacts_root) for case in cases]
+    summaries = [
+        verify_case_artifacts(case, artifacts_root, allowed_accounts=accounts, allowed_roles=roles) for case in cases
+    ]
     return {"authority": authority, "cases": len(cases), "row_counts": [s["row_count"] for s in summaries]}

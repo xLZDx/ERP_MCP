@@ -43,7 +43,7 @@ def _record(side: str, method: str, as_of: str) -> dict:
         "side": side,
         "source_identity": f"source-{side}",
         "method": method,
-        "parameters": {"as_of": as_of, "account": "521.1"},
+        "parameters": {"as_of": as_of, "account": "521.1", "source_id": SOURCE, "company_id": COMPANY},
         "snapshot": {"kind": "database_copy", "identity": f"snap-{side}"},
         "started_at": "2026-10-08T10:00:00+00:00",
         "finished_at": "2026-10-08T10:00:05+00:00",
@@ -268,3 +268,54 @@ def test_uniqueness_compares_instants_and_uuids_not_spellings():
     evidence["native_reconciliation_cases"][1]["run_record_a"]["run_id"] = "{" + reused + "}"
     with pytest.raises(EvidenceBasisError):
         _check(evidence)
+
+
+def _strip_machine_markers(evidence: dict) -> dict:
+    """The legacy-shaped copy of a machine manifest: top-level and per-case labels removed, the rest kept."""
+    stripped = copy.deepcopy(evidence)
+    stripped.pop("machine_scope")
+    stripped.pop("evidence_basis")
+    for case in stripped["native_reconciliation_cases"]:
+        case.pop("evidence_class")
+    return stripped
+
+
+def test_machine_origin_cannot_be_laundered_into_native_by_removing_labels():
+    from business_ai_gateway.semantic import is_machine_shaped_case
+
+    stripped = _strip_machine_markers(_machine_evidence())
+    assert all(is_machine_shaped_case(case) for case in stripped["native_reconciliation_cases"])
+    with pytest.raises(ValueError):
+        validate_native_reconciliation_evidence(stripped)  # the native normaliser refuses machine-origin cases
+    with pytest.raises(EvidenceBasisError):
+        stored_evidence_basis(stripped)  # machine-classified, but no machine scope: refused, never NATIVE
+    with pytest.raises(EvidenceBasisError):
+        require_native_basis(stripped)
+    # the normalised stored shape keeps only the reserved reference, which alone is enough
+    normalised = {"native_reconciliation_cases": [{"case_id": f"c{i}", "native_report_ref": "machine-artifact:case-0"}
+                                                  for i in range(10)]}
+    with pytest.raises(EvidenceBasisError):
+        require_native_basis(normalised)
+
+
+def test_native_label_with_machine_markers_is_a_contradiction():
+    evidence = _machine_evidence()
+    evidence["native_reconciliation_cases"][0]["evidence_class"] = "NATIVE_UI_REPORT"
+    with pytest.raises(EvidenceBasisError):
+        _check(evidence)
+
+
+@pytest.mark.parametrize(
+    "parameter",
+    [{"source_id": "another-source"}, {"company_id": "22222222-2222-2222-2222-222222222222"}, {"account": "521.2"},
+     {"extra": "x"}],
+)
+def test_run_parameters_must_be_bound_to_the_authorized_scope_on_both_sides(parameter):
+    for side in ("run_record_a", "run_record_b"):
+        evidence = _machine_evidence()
+        for case in evidence["native_reconciliation_cases"]:
+            case[side]["parameters"].update(parameter)
+            other = "run_record_b" if side == "run_record_a" else "run_record_a"
+            case[other]["parameters"].update(parameter)  # equal on both sides must still be refused
+        with pytest.raises(EvidenceBasisError):
+            _check(evidence)

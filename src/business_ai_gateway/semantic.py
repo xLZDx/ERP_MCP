@@ -237,6 +237,20 @@ def canonical_fingerprint(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+MACHINE_REFERENCE_PREFIX = "machine-artifact:"
+MACHINE_ONLY_CASE_KEYS = frozenset({"comparison_kind", "run_record_a", "run_record_b"})
+
+
+def is_machine_shaped_case(case: Any) -> bool:
+    """A case that carries machine-only markers or a reserved machine reference, whatever class it declares."""
+    if not isinstance(case, dict):
+        return False
+    reference = case.get("native_report_ref")
+    return bool(MACHINE_ONLY_CASE_KEYS & set(case)) or (
+        isinstance(reference, str) and reference.startswith(MACHINE_REFERENCE_PREFIX)
+    )
+
+
 _NATIVE_EVIDENCE_CLASS = "NATIVE_UI_REPORT"
 _MACHINE_EVIDENCE_CLASS = "MACHINE_TWO_SOURCE_RECONCILIATION"
 
@@ -272,6 +286,8 @@ def validate_native_reconciliation_evidence(
     for case in cases:
         if not isinstance(case, dict) or case.get("status") != "PASS":
             raise ValueError("every native reconciliation case must have status PASS")
+        if not allow_machine and is_machine_shaped_case(case):
+            raise ValueError("machine-origin markers are not accepted as native evidence")
         evidence_class = case.get("evidence_class")
         if evidence_class not in (None, _NATIVE_EVIDENCE_CLASS) and not (
             allow_machine and evidence_class == _MACHINE_EVIDENCE_CLASS

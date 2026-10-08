@@ -23,7 +23,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from .semantic import canonical_fingerprint
+from .semantic import MACHINE_REFERENCE_PREFIX, canonical_fingerprint, is_machine_shaped_case
 
 NATIVE_UI_CLASS = "NATIVE_UI_REPORT"
 MACHINE_EVIDENCE_CLASS = "MACHINE_TWO_SOURCE_RECONCILIATION"
@@ -31,7 +31,6 @@ BASIS_NATIVE = "NATIVE"
 BASIS_MACHINE = "MACHINE"
 BASIS_MIXED = "MIXED"
 MACHINE_COMPARISON_KIND = "cross_copy_comparison"  # ADR-0008 section 8: different physical copies are never parity proof
-MACHINE_REFERENCE_PREFIX = "machine-artifact:"
 MACHINE_METHOD_A = "onec_query_com_v8"
 MACHINE_METHOD_B = "mcp_tool_accounting_balance_by_analytics"
 MACHINE_MIN_CASES = 10
@@ -78,6 +77,8 @@ NATIVE_ONLY_SQL = """
         ) AS ec(item)
    WHERE jsonb_typeof(ec.item) IS DISTINCT FROM 'object'
       OR (ec.item ? 'evidence_class' AND ec.item->>'evidence_class' IS DISTINCT FROM 'NATIVE_UI_REPORT')
+      OR coalesce(ec.item->>'native_report_ref', '') LIKE 'machine-artifact:%'
+      OR ec.item ?| array['comparison_kind', 'run_record_a', 'run_record_b']
  )
 """
 
@@ -108,10 +109,17 @@ def _cases(evidence: dict[str, Any]) -> list[dict[str, Any]]:
 
 def case_class(case: dict[str, Any]) -> str:
     value = case.get("evidence_class")
+    shaped = is_machine_shaped_case(case)
     if value is None:
-        return NATIVE_UI_CLASS  # legacy cases never carried a class and were native
-    if value in (NATIVE_UI_CLASS, MACHINE_EVIDENCE_CLASS):
-        return value
+        # Legacy cases never carried a class and were native; a case that still shows machine markers or a
+        # reserved machine reference is machine evidence, whatever its label says.
+        return MACHINE_EVIDENCE_CLASS if shaped else NATIVE_UI_CLASS
+    if value == NATIVE_UI_CLASS:
+        if shaped:
+            raise EvidenceBasisError("a native-labelled case carries machine-origin markers")
+        return NATIVE_UI_CLASS
+    if value == MACHINE_EVIDENCE_CLASS:
+        return MACHINE_EVIDENCE_CLASS
     raise EvidenceBasisError("unknown evidence class")
 
 
@@ -191,7 +199,35 @@ def _timestamp(value: Any, label: str) -> datetime:
     return parsed
 
 
-def _run_record(record: Any, *, side: str, method: str, case_as_of: str) -> dict[str, Any]:
+RUN_PARAMETER_KEYS = frozenset({"as_of", "account", "source_id", "company_id"})
+
+
+def authorized_accounts(mapping: dict[str, Any]) -> frozenset[str]:
+    accounts = mapping.get("accounts") if isinstance(mapping, dict) else None
+    codes = {a.get("code") for a in accounts or [] if isinstance(a, dict)}
+    if not codes or any(not isinstance(code, str) or not code for code in codes):
+        raise EvidenceBasisError("mapping has no authorized account codes")
+    return frozenset(codes)
+
+
+def authorized_roles(mapping: dict[str, Any]) -> frozenset[str]:
+    slots = mapping.get("analytics") if isinstance(mapping, dict) else None
+    roles = {a.get("role") for a in slots or [] if isinstance(a, dict)}
+    if not roles or any(not isinstance(role, str) or not role for role in roles):
+        raise EvidenceBasisError("mapping has no authorized analytics roles")
+    return frozenset(roles)
+
+
+def _run_record(
+    record: Any,
+    *,
+    side: str,
+    method: str,
+    case_as_of: str,
+    source_id: str,
+    company_id: str,
+    accounts: frozenset[str],
+) -> dict[str, Any]:
     if not isinstance(record, dict) or set(record) != RUN_RECORD_KEYS:
         raise EvidenceBasisError(f"run record {side} has missing or unexpected fields")
     if record["side"] != side or record["method"] != method:
@@ -206,8 +242,15 @@ def _run_record(record: Any, *, side: str, method: str, case_as_of: str) -> dict
         if not isinstance(record[key], str) or not record[key].strip():
             raise EvidenceBasisError(f"run record {side} has an empty {key}")
     parameters = record["parameters"]
-    if not isinstance(parameters, dict) or parameters.get("as_of") != case_as_of:
-        raise EvidenceBasisError(f"run record {side} parameters do not match the case as_of")
+    if (
+        not isinstance(parameters, dict)
+        or set(parameters) != RUN_PARAMETER_KEYS
+        or parameters["as_of"] != case_as_of
+        or parameters["source_id"] != source_id
+        or parameters["company_id"] != company_id
+        or parameters["account"] not in accounts
+    ):
+        raise EvidenceBasisError(f"run record {side} parameters are not bound to the authorized scope")
     snapshot = record["snapshot"]
     if not isinstance(snapshot, dict) or not snapshot.get("identity") or not snapshot.get("kind"):
         raise EvidenceBasisError(f"run record {side} has no snapshot identity")
@@ -261,6 +304,7 @@ def check_machine_evidence_structure(
     }
     if scope != expected:
         raise EvidenceBasisError("machine scope is not bound to this source, company, mapping or fingerprints")
+    accounts = authorized_accounts(mapping)
     cases = _cases(evidence)
     if len(cases) < MACHINE_MIN_CASES:
         raise EvidenceBasisError("fewer than ten machine cases")
@@ -284,8 +328,9 @@ def check_machine_evidence_structure(
         case_ids.add(case_id)
         as_ofs.add(instant)
         parse_authority(case.get("authorized_by"))
-        record_a = _run_record(case.get("run_record_a"), side="A", method=MACHINE_METHOD_A, case_as_of=as_of)
-        record_b = _run_record(case.get("run_record_b"), side="B", method=MACHINE_METHOD_B, case_as_of=as_of)
+        bound = {"case_as_of": as_of, "source_id": source_id, "company_id": company_id, "accounts": accounts}
+        record_a = _run_record(case.get("run_record_a"), side="A", method=MACHINE_METHOD_A, **bound)
+        record_b = _run_record(case.get("run_record_b"), side="B", method=MACHINE_METHOD_B, **bound)
         if record_a["run_id"] == record_b["run_id"] or record_a["method"] == record_b["method"]:
             raise EvidenceBasisError("the two sides need independent run ids and methods")
         if record_a["parameters"] != record_b["parameters"]:

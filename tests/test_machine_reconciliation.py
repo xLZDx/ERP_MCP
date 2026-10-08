@@ -58,9 +58,14 @@ def test_duplicate_key_on_one_side_fails():
         mr.compare_rows([_row(), _row()], [_row()])
 
 
+PARAMS = {"as_of": "2025-01-31T23:59:59+00:00", "account": "521.1", "source_id": "src-1", "company_id": "co-1"}
+ACCOUNTS = frozenset({"521.1"})
+ROLES = frozenset({"counterparty", "contract"})
+
+
 def _write_side(directory: Path, side: str, method: str, **payload_changes):
     payload = {"run_id": f"run-{side.lower()}", "method": method, "side": side,
-               "as_of": "2025-01-31T23:59:59+00:00", "truncated": False, "rows": [_row()]}
+               "as_of": "2025-01-31T23:59:59+00:00", "truncated": False, "context": dict(PARAMS), "rows": [_row()]}
     payload.update(payload_changes)
     raw = json.dumps(payload).encode()
     (directory / mr.ARTIFACT_FILES[side]).write_bytes(raw)
@@ -75,8 +80,8 @@ def _case(tmp_path: Path, **side_b_changes):
     return {
         "as_of": "2025-01-31T23:59:59+00:00",
         "native_report_ref": "machine-artifact:case-1",
-        "run_record_a": {"run_id": "run-a", "artifact_sha256": digest_a},
-        "run_record_b": {"run_id": "run-b", "artifact_sha256": digest_b},
+        "run_record_a": {"run_id": "run-a", "artifact_sha256": digest_a, "parameters": dict(PARAMS)},
+        "run_record_b": {"run_id": "run-b", "artifact_sha256": digest_b, "parameters": dict(PARAMS)},
     }
 
 
@@ -157,3 +162,38 @@ def test_plan_authority_refusals(tmp_path, changes):
 def test_unknown_plan_is_refused(tmp_path):
     with pytest.raises(mr.MachineReconciliationError, match="exactly once"):
         mr.verify_plan_authority(AUTHORITY, scope_sha256=SCOPE, plans_dir=tmp_path)
+
+
+def test_artifact_context_must_equal_the_run_record_parameters(tmp_path):
+    foreign = dict(PARAMS, company_id="co-2")
+    with pytest.raises(mr.MachineReconciliationError, match="parameters"):
+        mr.verify_case_artifacts(_case(tmp_path, context=foreign), tmp_path)
+
+
+def test_currency_must_be_text_and_missing_is_only_the_empty_string():
+    for bad in (None, False, 0):
+        with pytest.raises(mr.MachineReconciliationError, match="not text"):
+            mr.compare_rows([_row(currency=None)], [_row(currency=bad)])
+    assert mr.compare_rows([_row(currency="")], [_row(currency="")])["row_count"] == 1
+
+
+def test_analytics_slots_are_a_closed_schema():
+    extra = _row()
+    extra["analytics"][0]["role"] = "other"
+    with pytest.raises(mr.MachineReconciliationError, match="invalid analytics slot"):
+        mr.compare_rows([extra], [extra])
+    repeated = _row()
+    repeated["analytics"].append({"type": "counterparty", "ref": "cp-9"})
+    with pytest.raises(mr.MachineReconciliationError, match="repeats an analytics role"):
+        mr.compare_rows([repeated], [repeated])
+
+
+def test_rows_must_stay_inside_the_authorized_accounts_and_roles():
+    foreign_account = _row()
+    foreign_account["account"] = "521.2"
+    with pytest.raises(mr.MachineReconciliationError, match="authorized accounts"):
+        mr.compare_rows([foreign_account], [foreign_account], allowed_accounts=ACCOUNTS, allowed_roles=ROLES)
+    employee = _row()
+    employee["analytics"] = [{"type": "employee", "ref": "e-1"}]
+    with pytest.raises(mr.MachineReconciliationError, match="invalid analytics slot"):
+        mr.compare_rows([employee], [employee], allowed_accounts=ACCOUNTS, allowed_roles=ROLES)

@@ -53,13 +53,13 @@ def _row(ref: str, debit: str) -> dict:
     }
 
 
-def _run_record(side: str, method: str, as_of: str, digest: str, run_id: str) -> dict:
+def _run_record(side: str, method: str, as_of: str, digest: str, run_id: str, parameters: dict) -> dict:
     return {
         "run_id": run_id,
         "side": side,
         "source_identity": f"source-{side}",
         "method": method,
-        "parameters": {"as_of": as_of, "account": "521.1"},
+        "parameters": parameters,
         "snapshot": {"kind": "database_copy", "identity": f"snapshot-{side}"},
         "started_at": "2026-10-08T10:00:00+00:00",
         "finished_at": "2026-10-08T10:00:05+00:00",
@@ -68,10 +68,11 @@ def _run_record(side: str, method: str, as_of: str, digest: str, run_id: str) ->
     }
 
 
-def _build_cases(root: Path, *, tamper_case: int | None = None) -> list[dict]:
+def _build_cases(root: Path, source_id: str, company_id, *, tamper_case: int | None = None) -> list[dict]:
     cases = []
     for index in range(10):
         as_of = f"2025-{index + 1:02d}-28T23:59:59+00:00"
+        parameters = {"as_of": as_of, "account": "521.1", "source_id": source_id, "company_id": str(company_id)}
         directory = root / f"case-{index}"
         directory.mkdir(parents=True)
         digests, run_ids = {}, {}
@@ -83,6 +84,7 @@ def _build_cases(root: Path, *, tamper_case: int | None = None) -> list[dict]:
                 "side": side,
                 "as_of": as_of,
                 "truncated": False,
+                "context": parameters,
                 "rows": [_row("cp-1", f"{100 + index}.00"), _row("cp-2", "5.50")],
             }
             raw = json.dumps(payload).encode()
@@ -100,8 +102,8 @@ def _build_cases(root: Path, *, tamper_case: int | None = None) -> list[dict]:
                 "comparison_kind": "cross_copy_comparison",
                 "native_report_ref": f"machine-artifact:case-{index}",
                 "authorized_by": f"ROSETTA_PLAN:{PLAN_ID}:{PLAN_HASH}",
-                "run_record_a": _run_record("A", mr.MACHINE_METHOD_A, as_of, digests["A"], run_ids["A"]),
-                "run_record_b": _run_record("B", mr.MACHINE_METHOD_B, as_of, digests["B"], run_ids["B"]),
+                "run_record_a": _run_record("A", mr.MACHINE_METHOD_A, as_of, digests["A"], run_ids["A"], parameters),
+                "run_record_b": _run_record("B", mr.MACHINE_METHOD_B, as_of, digests["B"], run_ids["B"], parameters),
             }
         )
     return cases
@@ -209,7 +211,7 @@ async def _manifest(conn, tmp_path: Path, source_id, company_id, profile_id, **c
     )
     stored = json.loads(stored) if isinstance(stored, str) else stored
     manifest = {
-        "native_reconciliation_cases": _build_cases(tmp_path / "artifacts", **case_options),
+        "native_reconciliation_cases": _build_cases(tmp_path / "artifacts", source_id, company_id, **case_options),
         "evidence_basis": "MACHINE",
         "machine_scope": {
             "source_id": source_id,
@@ -360,9 +362,9 @@ async def test_native_only_consumers_refuse_the_machine_profile(tmp_path, machin
             conn, ctx=ctx, kind="subject", principal_id="s", source_id=source_id,
             entity_set="Document_X", limit=50, offset=0,
         )
-        assert "mapping_candidate" not in json.dumps(explained, default=str) or '"mapping_candidate": true' not in json.dumps(
-            explained, default=str
-        ).lower()
+        text = json.dumps(explained, default=str)
+        assert "company_operation" in text  # the company row is present ...
+        assert "mapping_candidate_requires_live_checks" not in text  # ... and the machine profile is no candidate
     finally:
         await tx.rollback()
         await conn.close()
@@ -473,6 +475,32 @@ async def test_cli_refuses_machine_evidence_outside_its_limits(tmp_path, machine
             monkeypatch.setenv("BAG_ENVIRONMENT", "development")
         with pytest.raises((ValueError, mr.MachineReconciliationError)):
             await validate_profile(args, conn)
+        await conn.execute("RESET ROLE")
+        status = await conn.fetchval("SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id)
+        assert status != "VALIDATED"
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_cli_refuses_a_legacy_shaped_machine_manifest(tmp_path, machine_env, monkeypatch):
+    """Removing every label must not turn machine-origin cases into native evidence (GPT-PM M-01)."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    try:
+        source_id, company_id, profile_id = await _profile(conn, tmp_path)
+        monkeypatch.setenv("BAG_MACHINE_RECONCILED_SOURCES", source_id)
+        evidence_path = await _manifest(conn, tmp_path, source_id, company_id, profile_id)
+        manifest = json.loads(evidence_path.read_text(encoding="utf-8"))
+        manifest.pop("machine_scope")
+        manifest.pop("evidence_basis")
+        for case in manifest["native_reconciliation_cases"]:
+            case.pop("evidence_class")
+        evidence_path.write_text(json.dumps(manifest), encoding="utf-8")
+        with pytest.raises(ValueError):
+            await validate_profile(_validate_args(profile_id, evidence_path, tmp_path), conn)
         await conn.execute("RESET ROLE")
         status = await conn.fetchval("SELECT status FROM bag.semantic_profiles WHERE profile_id=$1", profile_id)
         assert status != "VALIDATED"

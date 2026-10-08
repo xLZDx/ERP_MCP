@@ -38,6 +38,7 @@ from business_ai_gateway.semantic import (
     canonical_fingerprint,
     capability_evidence_fingerprint,
     find_configuration_preset,
+    is_machine_shaped_case,
     require_profile_capabilities,
     validate_account_turnovers_mapping,
     validate_accounting_posting_rows_mapping,
@@ -488,7 +489,10 @@ def _is_machine_manifest(evidence: dict[str, Any]) -> bool:
     cases = evidence.get("native_reconciliation_cases")
     return "machine_scope" in evidence or "evidence_basis" in evidence or (
         isinstance(cases, list)
-        and any(isinstance(c, dict) and c.get("evidence_class") == MACHINE_EVIDENCE_CLASS for c in cases)
+        and any(
+            isinstance(c, dict) and (c.get("evidence_class") == MACHINE_EVIDENCE_CLASS or is_machine_shaped_case(c))
+            for c in cases
+        )
     )
 
 
@@ -533,6 +537,7 @@ def _machine_validation_evidence(
         artifacts_root=Path(args.artifacts_root),
         plans_dir=Path(args.plans_dir),
         scope_sha256=evidence_input["machine_scope"]["authorization_scope_sha256"],
+        mapping=mapping,
     )
     validate_native_reconciliation_evidence(evidence_input, allow_machine=True)
     return {

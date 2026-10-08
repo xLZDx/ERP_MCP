@@ -178,5 +178,17 @@ A profile may be validated from ten labelled **machine two-source reconciliation
 - Responses carry `profile_kind = VALIDATED_MACHINE_RECONCILED`, `evidence_level = PROFILE_VALIDATED_MACHINE`,
   `native_reconciliation = MACHINE_TWO_SOURCE` and the warning `MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT`.
 
+Machine evidence is bound end to end (GPT-PM review, 2026-10-08):
+
+- A case that carries machine-origin markers (`comparison_kind`, `run_record_*`) or the reserved reference prefix
+  `machine-artifact:` is machine evidence whatever label it declares. The native validators refuse it, the stored
+  classifier treats it as machine (and refuses it without a machine scope), and the native-only SQL excludes it.
+  Removing the labels therefore cannot turn it into native evidence.
+- Each run record's parameters are exactly `as_of`, `account`, `source_id`, `company_id`, equal to the authorized
+  scope (account from the confirmed mapping). Each artifact embeds the same values as `context`, and its rows may
+  only use the authorized accounts and analytics roles.
+- Rows are a closed typed schema: `currency_ref` is text (the empty string means none; null/false/0 are refused),
+  analytics slots are exactly `{type, ref}` strings, and a role is not repeated within a row.
+
 The capability fingerprint a profile is bound to ignores the probe stamp `discovered_at`; it records when the source
 was probed, not what it supports, and including it made every profile stale after the next probe of a live source.
