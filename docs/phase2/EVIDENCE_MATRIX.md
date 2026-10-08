@@ -32,6 +32,10 @@ Environment of all rows: Windows, `D:\Repo\ERP_MCP-phase2`, project venv, no CI 
 | 2026-10-09 | same tree | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg | 219 passed, exit 0 | measured | - |
 | 2026-10-09 | same tree | `ruff check src/business_ai_gateway/phase2 tests/phase2` | All checks passed | measured | - |
 | 2026-10-09 | d1f87bc | verification round (regressions, test adequacy) | 0 BLOCKER, MAJORs fixed in one batch (D-010) | review | rows above |
+| 2026-10-09 | 58edae1 (code head; evidence rows ride in the next doc-only commit) | `pytest -q tests/phase2` | 1030 passed, 219 skipped, exit 0 | measured | - |
+| 2026-10-09 | 58edae1 | `ERP_PHASE2_REQUIRE_PG=1 pytest -m integration` on erp-phase2-test-pg (clean tree, head verified) | 219 passed, exit 0 | measured | - |
+| 2026-10-09 | 58edae1 | `ruff check src/business_ai_gateway/phase2 tests/phase2` | All checks passed | measured | - |
+| 2026-10-09 | 94e2605 | narrow code-reviewer on resnapshot / resume_revalidated / fairness tests | 0 BLOCKER, 2 MAJOR fixed in 58edae1 (D-013), mutation-checked | review | rows above |
 
 ## Guard mutation table (RED = guard removed in a throwaway database lets the forbidden action through; GREEN = baseline refuses it)
 
