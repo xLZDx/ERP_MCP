@@ -104,3 +104,26 @@ def test_does_not_reuse_company_scoped_or_revoked_grants():
     access.post.return_value = SimpleNamespace(status_code=201, json=lambda: {"id": "fresh"})
     assert ensure_auditor_source_grant(env, access) == "fresh"
     access.post.assert_called_once()
+
+def test_smoke_tool_enforces_real1c_loopback_and_exact_negative_coverage():
+    from scripts.real1c.verify_install import CHECKS, ensure_disposable
+
+    assert len(CHECKS) == 7
+    assert sum(case.should_allow for case in CHECKS) == 2
+    assert all(case.source_id == SOURCE_REAL for case in CHECKS if case.should_allow)
+    assert {case.source_id for case in CHECKS if not case.should_allow} >= {SOURCE_DRIFT, "onec-818ha-down"}
+    safe = {
+        "environment": "test", "real1c": True, "seed_mode": "bootstrap-only",
+        "host": "127.0.0.1", "project": "erpmcp-e2e-installreal-20261009",
+        "urls": {"gateway": "http://127.0.0.1:28500"},
+    }
+    ensure_disposable(SimpleNamespace(raw=safe))
+    for unsafe in (
+        {**safe, "environment": "production"},
+        {**safe, "real1c": False},
+        {**safe, "host": "192.0.2.2"},
+        {**safe, "project": "production"},
+        {**safe, "urls": {"gateway": "https://example.com"}},
+    ):
+        with pytest.raises(RuntimeError, match="DISPOSABLE_LOOPBACK_TEST"):
+            ensure_disposable(SimpleNamespace(raw=unsafe))
