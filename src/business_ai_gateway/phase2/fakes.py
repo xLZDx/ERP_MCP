@@ -12,20 +12,31 @@ Atomicity: every scoped call runs on a snapshot of the state that is restored wh
 raises, exactly like a SQL transaction that aborts (for example ``acquire_job`` rolls back the reap
 it did before raising ``JOB_UNAVAILABLE``).
 
-Not modelled (out of scope of this gate): scope-epoch bumps / suspended sources, row-level security
-between tenants, company scoping, the settled-horizon race with a concurrent in-flight ingest,
-session_user checks (the SQL skips them for a superuser session), floats inside hashed events.
+Scope epochs: ``bump_scope_epoch`` / ``rebase_scope`` / ``grant_scope`` / ``revoke_scope`` are
+test-support mirrors of the owner-only SQL paths (role_scope change trigger, ``living.rebase_scope``,
+``living.add_role_scope``). Sources are isolated per ``Scope``: a scope never sees another's rows.
+
+Concurrency: the fake is single-event-loop only. Each call runs to completion without awaiting, so
+there is no interleaving to model; the SQL-only race tests in test_ports_contract.py cover real
+concurrent transactions.
+
+Not modelled (out of scope of this gate): suspended sources (status != ACTIVE), row-level security
+inside one scope, company scoping, the settled-horizon race with a concurrent in-flight ingest,
+session_user checks (the SQL skips them for a superuser session), floats inside hashed events
+(rejected as UNSUPPORTED_JSONB_VALUE because their jsonb digest cannot be reproduced here).
 """
 from __future__ import annotations
 
 import copy
 import functools
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from .ports import (
+    OMITTED,
     AcceptanceView,
     CommitResult,
     CursorView,
@@ -38,8 +49,11 @@ from .ports import (
     OutboxRow,
     PortError,
     Scope,
+    check_aware,
+    check_scope_type,
     event_digest,
     jsonb_text,
+    normalize_json,
     page_digest,
 )
 from .ports import evidence_digest as _evidence_digest
@@ -78,6 +92,51 @@ def _is_digest(value: object) -> bool:
 
 def _text(value: object) -> str:
     return "" if value is None else value if isinstance(value, str) else jsonb_text(value)
+
+
+def _octets(value: object) -> int:
+    """octet_length(value::text); floats (not reproducible byte-exactly) use json.dumps."""
+    try:
+        text = jsonb_text(value)
+    except TypeError:
+        text = json.dumps(value, ensure_ascii=False)
+    return len(text.encode("utf-8"))
+
+
+def _jeq(a: object, b: object) -> bool:
+    """jsonb equality: ``1`` and ``true`` differ (Python ``==`` says equal), 1 equals 1.0, key order is
+    irrelevant, array order matters."""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return isinstance(a, bool) and isinstance(b, bool) and a == b
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_jeq(a[k], b[k]) for k in a)
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        return len(a) == len(b) and all(_jeq(x, y) for x, y in zip(a, b, strict=True))
+    if isinstance(a, (dict, list, tuple)) or isinstance(b, (dict, list, tuple)):
+        return False
+    if isinstance(a, str) or isinstance(b, str):
+        return isinstance(a, str) and isinstance(b, str) and a == b
+    return a == b  # None, int, float (1 == 1.0 as in jsonb numeric)
+
+
+def _has_nul(value: object) -> bool:
+    if isinstance(value, str):
+        return "\x00" in value
+    if isinstance(value, dict):
+        return any(_has_nul(k) or _has_nul(v) for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_has_nul(v) for v in value)
+    return False
+
+
+def _prep(value: object) -> object:
+    """Client-side argument model shared with the SQL adapter: aware datetimes, strict JSON."""
+    if isinstance(value, datetime):
+        check_aware(value=value)
+        return value
+    if isinstance(value, (dict, list, tuple)):
+        return normalize_json(value)
+    return value
 
 
 @dataclass
@@ -160,9 +219,14 @@ def _op(*grants: str):
     def deco(fn):
         @functools.wraps(fn)
         async def wrapper(self, actor, scope, *args, **kwargs):
+            check_scope_type(scope)
+            args = tuple(_prep(a) for a in args)
+            kwargs = {k: _prep(v) for k, v in kwargs.items()}
             snapshot = copy.deepcopy(self._st)
             try:
                 src = self._enter(actor, scope, grants)
+                if _has_nul(args) or _has_nul(tuple(kwargs.values())):
+                    _fail("INVALID_TEXT")
                 return fn(self, actor, scope, src, *args, **kwargs)
             except Exception:
                 self._st = snapshot
@@ -189,6 +253,8 @@ class InMemoryLiving:
                 self._st.role_scope.add((role, scope))
         self._st.sources.setdefault(scope, _Source())
         self._st.sources[scope].trusted[WORKER] = (True, _FUTURE)
+        for extra in (Scope("A", "s3"), Scope("B", "s1")):  # exist but nobody is granted (as in SQL seed)
+            self._st.sources.setdefault(extra, _Source())
 
     def _member(self, who: str, role: str) -> bool:
         if who == role:
@@ -205,6 +271,8 @@ class InMemoryLiving:
         return False
 
     def _enter(self, actor: str, scope: Scope, grants: tuple[str, ...]) -> _Source:
+        if not any(self._member(actor, r) for r in (WORKER, READER, PROMOTER, PUBLISHER, OWNER)):
+            _fail("PERMISSION_DENIED")  # no EXECUTE on living.set_scope / USAGE on the schema
         src = self._st.sources.get(scope)
         if src is None or not any(sc == scope and self._member(actor, r)
                                   for r, sc in self._st.role_scope):
@@ -214,25 +282,62 @@ class InMemoryLiving:
         return src
 
     async def define_actor(self, name: str, member_of: tuple[str, ...]) -> None:
-        for parent in member_of:
-            if parent not in self._st.roles:
-                raise KeyError(parent)
+        if not isinstance(name, str) or not name or any(
+                not isinstance(p, str) or p not in self._st.roles for p in member_of):
+            _fail("ROLE_NOT_FOUND" if isinstance(name, str) and name else "INVALID_ARGUMENT")
         self._st.roles.setdefault(name, set()).update(member_of)
+
+    # ---- test support: owner-only administration (SQL: add_role_scope / role_scope DML / rebase_scope)
+    async def bump_scope_epoch(self, scope: Scope) -> int:
+        """Mirror of a role_scope UPDATE/DELETE: the source's scope_epoch rises by exactly 1."""
+        src = self._st.sources.get(scope)
+        if src is None:
+            _fail("SOURCE_NOT_FOUND")
+        src.epoch += 1
+        return src.epoch
+
+    async def grant_scope(self, role: str, scope: Scope) -> None:
+        if role not in self._st.roles:
+            _fail("ROLE_NOT_FOUND")
+        if scope not in self._st.sources:
+            _fail("SOURCE_NOT_FOUND")
+        self._st.role_scope.add((role, scope))
+
+    async def revoke_scope(self, role: str, scope: Scope) -> None:
+        """DELETE FROM role_scope: also bumps the epoch (SQL trigger)."""
+        if (role, scope) in self._st.role_scope:
+            self._st.role_scope.discard((role, scope))
+            await self.bump_scope_epoch(scope)
+
+    async def rebase_scope(self, scope: Scope) -> int:
+        """living.rebase_scope: re-point cursors and PENDING jobs at the current epoch; returns rows changed."""
+        src = self._st.sources.get(scope)
+        if src is None:
+            _fail("SOURCE_NOT_FOUND")
+        n = 0
+        for c in src.cursors.values():
+            if c.scope_epoch != src.epoch:
+                c.scope_epoch, n = src.epoch, n + 1
+        for j in src.jobs.values():
+            if j.state == "PENDING" and j.scope_epoch != src.epoch:
+                j.scope_epoch, n = src.epoch, n + 1
+        return n
 
     async def now(self) -> datetime:
         return self.clock.now()
 
-    async def scope_epoch(self, scope: Scope) -> int:
-        return self._st.sources[scope].epoch
+    async def scope_epoch(self, scope: Scope) -> int | None:
+        src = self._st.sources.get(scope)
+        return None if src is None else src.epoch
 
     # ------------------------------------------------------------------ ledger
     @_op(WORKER)
     def ingest_observation(self, actor, scope, src, observation_id, object_id, revision_id, kind,
                            digest, source_effective_at, observed_at, supersedes=None,
-                           provenance=None):
-        provenance = {} if provenance is None else provenance
+                           provenance=OMITTED):
+        provenance = {} if provenance is OMITTED else provenance
         if (observation_id is None or object_id is None or object_id == "" or revision_id is None
-                or kind is None or observed_at is None):
+                or kind is None or observed_at is None or provenance is None):
             _fail("INVALID_OBSERVATION")
         for _o, _p in src.obs:
             if _o.revision_id == revision_id:
@@ -246,7 +351,7 @@ class InMemoryLiving:
             if ex.object_id != object_id or ex.kind != kind:
                 _fail("REVISION_REUSED")
             if (ex.source_effective_at != source_effective_at or ex.observed_at != observed_at
-                    or ex.supersedes != supersedes or ex_prov != provenance):
+                    or ex.supersedes != supersedes or not _jeq(ex_prov, provenance)):
                 _fail("CONFLICTING_OBSERVATION")
             return ex.observation_id
         recorded_at = self.clock.now()
@@ -256,7 +361,7 @@ class InMemoryLiving:
                 _fail("SUPERSEDES_OBJECT_MISMATCH")
         if (kind not in _KINDS or observed_at > recorded_at
                 or (kind == "OBSERVED" and not _is_digest(digest))
-                or len(jsonb_text(provenance).encode("utf-8")) > 65536):
+                or _octets(provenance) > 65536):
             _fail("CHECK_VIOLATION")
         if any(o.observation_id == observation_id for o, _ in src.obs):
             _fail("UNIQUE_VIOLATION")
@@ -325,9 +430,9 @@ class InMemoryLiving:
 
     @_op(WORKER)
     def enqueue_job(self, actor, scope, src, job_id, job_kind, request_digest, idempotency_key,
-                    payload=None):
-        payload = {} if payload is None else payload
-        if (job_id is None or not job_kind or not idempotency_key
+                    payload=OMITTED):
+        payload = {} if payload is OMITTED else payload
+        if (job_id is None or not job_kind or not idempotency_key or payload is None
                 or not _is_digest(request_digest)):
             _fail("INVALID_JOB")
         ex = next((j for j in src.jobs.values() if j.key == idempotency_key), None)
@@ -339,7 +444,7 @@ class InMemoryLiving:
             return ex.job_id
         if job_id in src.jobs:
             _fail("UNIQUE_VIOLATION")
-        if len(jsonb_text(payload).encode("utf-8")) > 65536:
+        if _octets(payload) > 65536:
             _fail("CHECK_VIOLATION")
         src.jobs[job_id] = _Job(job_id, job_kind, request_digest, idempotency_key, src.epoch,
                                 next_run_at=self.clock.now(), payload=copy.deepcopy(payload))
@@ -426,15 +531,18 @@ class InMemoryLiving:
                 or prior_cursor is None or prior_version is None or expected_epoch is None):
             _fail("INVALID_ARGUMENT")
         if (not new_cursor or not isinstance(events, list) or len(events) > 1000
-                or len(jsonb_text(events).encode("utf-8")) > 4194304):
+                or _octets(events) > 4194304):
             _fail("INVALID_CURSOR_BATCH")
-        for item in events:
-            if (not isinstance(item, dict) or _text(item.get("event_id")) == ""
-                    or len(jsonb_text(item).encode("utf-8")) > 262144
-                    or not _is_digest(item.get("digest"))
-                    or item["digest"] != event_digest(item)):
-                _fail("INVALID_OUTBOX_EVENT")
-        digest = page_digest(prior_cursor, new_cursor, events)
+        try:
+            for item in events:
+                if (not isinstance(item, dict) or _text(item.get("event_id")) == ""
+                        or _octets(item) > 262144
+                        or not _is_digest(item.get("digest"))
+                        or item["digest"] != event_digest(item)):
+                    _fail("INVALID_OUTBOX_EVENT")
+            digest = page_digest(prior_cursor, new_cursor, events)
+        except TypeError:  # a float: its jsonb text (hence digest) cannot be reproduced here
+            _fail("UNSUPPORTED_JSONB_VALUE")
         if src.epoch != expected_epoch:
             _fail("SCOPE_REVOKED")
         j = src.jobs.get(job_id)
@@ -464,7 +572,7 @@ class InMemoryLiving:
                 self._st.outbox_seq += 1
                 src.outbox[(connection_id, eid)] = _Outbox(
                     self._st.outbox_seq, connection_id, eid, edigest, copy.deepcopy(item))
-            elif ex.event_digest != edigest or ex.content != item:
+            elif ex.event_digest != edigest or not _jeq(ex.content, item):
                 _fail("CONFLICTING_EVENT_DIGEST")
         return CommitResult(cur.version, False)
 
@@ -526,7 +634,8 @@ class InMemoryLiving:
                    and self._member(who, role) for role, (active, expires) in src.trusted.items())
 
     async def set_trusted_reviewer(self, role, scope, active, expires_at) -> None:
-        if not role or scope is None or active is None or expires_at is None:
+        check_aware(expires_at=expires_at)
+        if not role or not isinstance(scope, Scope) or active is None or expires_at is None:
             _fail("INVALID_ARGUMENT")
         if role not in self._st.roles:
             _fail("ROLE_NOT_FOUND")

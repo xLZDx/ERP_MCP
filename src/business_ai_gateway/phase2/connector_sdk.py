@@ -7,6 +7,7 @@ ValidationError listing every reason found (not only the first).
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -14,6 +15,9 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
+from .drift import CaptureOutcomeKind
+
+_MAX_SCOPE_EPOCH = 2**63 - 1
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _OPAQUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.=-]{0,511}$")
 _VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}$")
@@ -111,6 +115,8 @@ def _check_scope(source_id: object, tenant_id: object, scope_epoch: object,
         reasons.append("scope_epoch:NOT_AN_INTEGER")
     elif scope_epoch < 0:
         reasons.append("scope_epoch:NEGATIVE")
+    elif scope_epoch > _MAX_SCOPE_EPOCH:
+        reasons.append("scope_epoch:TOO_LARGE")
     if not isinstance(capture_mode, CaptureMode):
         reasons.append("capture_mode:UNKNOWN_MODE")
 
@@ -148,6 +154,8 @@ class Provenance:
         _check_text("content_digest", self.content_digest, _DIGEST, reasons)
         _check_text("page_cursor", self.page_cursor, _OPAQUE, reasons, optional=True)
         _check_text("next_cursor", self.next_cursor, _OPAQUE, reasons, optional=True)
+        if self.next_cursor is not None and self.next_cursor == self.page_cursor:
+            reasons.append("next_cursor:SAME_AS_PAGE_CURSOR")  # would loop the pager forever
         if reasons:
             raise ValidationError(reasons)
 
@@ -168,6 +176,9 @@ class CaptureResponse:
             reasons.append("completeness:UNKNOWN_VALUE")
         if not isinstance(self.provenance, Provenance):
             reasons.append("provenance:NOT_PROVENANCE")
+        elif (self.completeness is Completeness.COMPLETE
+              and self.provenance.next_cursor is not None):
+            reasons.append("completeness:COMPLETE_WITH_NEXT_CURSOR")
         if reasons:
             raise ValidationError(reasons)
 
@@ -192,10 +203,25 @@ _PROVENANCE_FIELDS = frozenset({
     "page_cursor", "next_cursor"})
 
 
+_SAFE_KEY_LABEL = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+
+
+def _key_label(index: int, key: object) -> str:
+    """Printable label for a rejected key. Never echoes arbitrary key text: a key may itself
+    carry a secret (e.g. 'password=hunter2'), so only short plain identifiers are echoed
+    and only when they do not look like credential/URL/SQL material; anything else is
+    replaced by its position and a short digest prefix."""
+    text = str(key)
+    if _SAFE_KEY_LABEL.fullmatch(text) and _forbidden_value(text) is None:
+        return text
+    digest = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:8]
+    return f"key[{index}]#{digest}"
+
+
 def _scan_keys(data: Mapping[str, Any], allowed: frozenset[str], prefix: str,
                reasons: list[str]) -> None:
-    for key in data:
-        label = f"{prefix}{key}"
+    for index, key in enumerate(data):
+        label = f"{prefix}{_key_label(index, key)}"
         if forbidden_key(key):
             reasons.append(f"{label}:FORBIDDEN_FIELD")
         elif key not in allowed:
@@ -307,12 +333,42 @@ def validate_exchange(request: CaptureRequest, response: CaptureResponse) -> Cap
     ]
     if request.page_cursor != response.provenance.page_cursor:
         reasons.append("page_cursor:RESPONSE_MISMATCH")
+    # Re-checked here (not only in CaptureResponse) so a response built around __post_init__
+    # can never be accepted as a complete capture while still pointing at a next page.
+    if (response.completeness is Completeness.COMPLETE
+            and response.provenance.next_cursor is not None):
+        reasons.append("completeness:COMPLETE_WITH_NEXT_CURSOR")
     if reasons:
         raise ValidationError(reasons)
     return response
 
 
+def response_to_outcome(response: CaptureResponse) -> CaptureOutcomeKind:
+    """The ONE audited mapping from a validated response to a drift capture outcome.
+
+    COMPLETE -> OK_COMPLETE; PARTIAL -> OK_PARTIAL (a GAP, never removal/drift).
+    UNKNOWN -> OK_PARTIAL as well: an unknown completeness is treated as a gap, so it can
+    never become a complete capture, never permits removal inference and never moves the
+    accepted structural baseline. Anything else (including a non-response) is rejected.
+    """
+    if not isinstance(response, CaptureResponse):
+        raise ValidationError(["response:WRONG_TYPE"])
+    completeness = response.completeness
+    if completeness is Completeness.COMPLETE:
+        return CaptureOutcomeKind.OK_COMPLETE
+    if completeness in (Completeness.PARTIAL, Completeness.UNKNOWN):
+        return CaptureOutcomeKind.OK_PARTIAL
+    raise ValidationError(["completeness:UNKNOWN_VALUE"])
+
+
 def checked_capture_page(connector: ConnectorContract, request: CaptureRequest) -> CaptureResponse:
-    """Call a connector and fail closed on a malformed or foreign response."""
+    """Call a connector and fail closed on a malformed or foreign response.
+
+    SYNCHRONOUS and BLOCKING: runs connector.capture_page on the calling thread with no
+    timeout or cancellation of its own; callers in an event loop must run it in a worker
+    thread and enforce their own deadline. A connector exception propagates unchanged
+    (it is not converted into a response); a non-CaptureResponse return value is rejected
+    with exchange:WRONG_TYPES.
+    """
     response = connector.capture_page(request)
     return validate_exchange(request, response)

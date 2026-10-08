@@ -9,11 +9,19 @@ SQL is the source of truth: a failing ``fake`` variant means the fake is wrong.
 Mutation-style rule: each guard has at least one test whose only failure cause is that guard, with
 the specific error code asserted, so removing the guard from the fake (or from the SQL) turns that
 test red. Time: the fake uses an injected clock; for SQL, ``h.warp`` moves job/outbox leases into
-the past and ``h.sleep_real`` waits (only for attestation expiry, which is immutable in SQL).
+the past and ``h.sleep_until`` waits until the STORE clock passes a timestamp (only for attestation /
+reviewer expiry, which cannot be warped in SQL), so slow setup can never make a test flaky.
+
+Scope epochs: ``bump_scope_epoch`` / ``grant_scope`` / ``revoke_scope`` / ``rebase_scope`` exist on
+both implementations (SQL: the real role_scope trigger and the owner-only living.* functions).
+The two-connection race tests at the bottom are SQL-only; they hold the source row lock from a
+third connection until both racers are provably blocked on it, so the overlap is real, not timing.
 """
 import asyncio
+import pickle
 import uuid
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from _pg_harness import require_dsn, throwaway_db
@@ -21,10 +29,12 @@ from _sql_ports import SqlLiving
 
 from business_ai_gateway.phase2.fakes import FakeClock, InMemoryLiving
 from business_ai_gateway.phase2.ports import (
+    OMITTED,
     CursorOutboxPort,
     HeadAttestationPort,
     JobQueuePort,
     LedgerPort,
+    OutboxRow,
     PortError,
     Scope,
     event_digest,
@@ -33,7 +43,9 @@ from business_ai_gateway.phase2.ports import (
 )
 
 S = Scope("A", "s1")
-W, P, PUB = "living_worker", "living_promoter", "living_publisher"
+S3, B = Scope("A", "s3"), Scope("B", "s1")  # sources that exist in the seed but nobody is granted
+W, P, PUB, R = "living_worker", "living_promoter", "living_publisher", "living_reader"
+PAST = datetime(2020, 1, 1, tzinfo=UTC)
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
 E1, E2 = datetime(2024, 1, 1, tzinfo=UTC), datetime(2024, 2, 1, tzinfo=UTC)
@@ -41,8 +53,8 @@ FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
 
 
 class Harness:
-    def __init__(self, kind, ports):
-        self.kind, self.p = kind, ports
+    def __init__(self, kind, ports, db=None):
+        self.kind, self.p, self.db = kind, ports, db
 
     async def warp(self, seconds):
         if self.kind == "fake":
@@ -50,11 +62,13 @@ class Harness:
         else:
             await self.p.warp(seconds)
 
-    async def sleep_real(self, seconds):
-        if self.kind == "fake":
-            self.p.clock.advance(seconds)
-        else:
-            await asyncio.sleep(seconds)
+    async def sleep_until(self, ts):
+        """Return once the store clock is strictly after ``ts`` (fake: jump; SQL: wait the remainder)."""
+        while (remaining := (ts - await self.p.now()).total_seconds()) >= 0:
+            if self.kind == "fake":
+                self.p.clock.advance(remaining + 0.01)
+            else:
+                await asyncio.sleep(remaining + 0.02)
 
 
 @pytest.fixture(params=["fake", pytest.param("sql", marks=pytest.mark.integration)])
@@ -64,7 +78,7 @@ async def h(request):
         return
     dsn = require_dsn()
     async with throwaway_db(dsn) as db:
-        yield Harness("sql", SqlLiving(db.conn))
+        yield Harness("sql", SqlLiving(db.conn), db)
 
 
 async def rejected(code, awaitable):
@@ -75,7 +89,7 @@ async def rejected(code, awaitable):
 
 
 async def ing(h, obj, rev=None, kind="OBSERVED", digest=D1, eff=None, supersedes=None, obs_id=None,
-              observed_at=OBS_AT, prov=None):
+              observed_at=OBS_AT, prov=OMITTED):
     obs_id, rev = obs_id or uuid.uuid4(), rev or uuid.uuid4()
     got = await h.p.ingest_observation(W, S, obs_id, obj, rev, kind, digest, eff, observed_at,
                                        supersedes, prov)
@@ -723,11 +737,27 @@ async def test_promote_rejects_revoked_evidence(h):
     assert (await p.get_head(P, S, "m1")).version == 0
 
 
+async def attested_expiring(h, window=1.5, **kw):
+    """`attested` with an attestation that expires ``window`` s from the STORE clock.
+
+    Setup slower than the window would make record_attestation itself raise EVIDENCE_EXPIRED; retry
+    with a 4x/16x window instead of flaking. Returns (revision, attestation id, expires_at).
+    """
+    for w in (window, window * 4, window * 16):
+        expires = (await h.p.now()) + timedelta(seconds=w)
+        try:
+            rev, att = await attested(h, expires=expires, **kw)
+            return rev, att, expires
+        except PortError as e:
+            if e.code != "EVIDENCE_EXPIRED":
+                raise
+    raise AssertionError("test setup is slower than a 24 s attestation window")
+
+
 async def test_promote_rejects_expired_evidence(h):
     p = h.p
-    expires = (await p.now()) + timedelta(milliseconds=1500)
-    rev, _ = await attested(h, expires=expires)
-    await h.sleep_real(1.8)
+    rev, _, expires = await attested_expiring(h)
+    await h.sleep_until(expires)
     await rejected("EVIDENCE_EXPIRED", p.promote_head(P, S, "m1", 0, rev, uuid.uuid4(), "ev1"))
     assert (await p.get_head(P, S, "m1")).version == 0
 
@@ -805,3 +835,513 @@ async def test_set_trusted_reviewer_validates_its_arguments(h):
                    p.set_trusted_reviewer(W, Scope("A", "missing"), True, FUTURE))
     await rejected("INVALID_ARGUMENT", p.set_trusted_reviewer("", S, True, FUTURE))
     await rejected("INVALID_ARGUMENT", p.set_trusted_reviewer(W, S, None, FUTURE))
+
+
+# =============================================================================== reviewer trust window
+async def test_a_trust_window_that_is_already_over_trusts_nobody(h):
+    p = h.p
+    _, rev = await ing(h, "o1", digest=D1)
+    await p.set_trusted_reviewer(W, S, True, PAST)
+    await rejected("REVIEWER_NOT_TRUSTED", p.record_attestation(
+        W, S, uuid.uuid4(), rev, "prop", "ev1", evidence_digest(D1, "ev1"), "APPROVE", FUTURE))
+    await p.set_trusted_reviewer(W, S, True, FUTURE)
+    await p.record_attestation(W, S, uuid.uuid4(), rev, "prop", "ev1", evidence_digest(D1, "ev1"),
+                               "APPROVE", FUTURE)
+
+
+async def test_trust_that_expires_after_recording_blocks_the_promotion(h):
+    p = h.p
+    rev, _ = await attested(h)                                    # trusted until FUTURE
+    expires = (await p.now()) + timedelta(seconds=1.5)
+    await p.set_trusted_reviewer(W, S, True, expires)
+    await h.sleep_until(expires)                                  # store clock is past the window
+    await rejected("REVIEWER_NOT_TRUSTED", p.promote_head(P, S, "m1", 0, rev, uuid.uuid4(), "ev1"))
+    _, other = await ing(h, "o2", digest=D2)
+    await rejected("REVIEWER_NOT_TRUSTED", p.record_attestation(
+        W, S, uuid.uuid4(), other, "prop", "ev2", evidence_digest(D2, "ev2"), "APPROVE", FUTURE))
+    await p.set_trusted_reviewer(W, S, True, FUTURE)
+    assert await p.promote_head(P, S, "m1", 0, rev, uuid.uuid4(), "ev1") == 1
+
+
+# =============================================================================== permission matrix
+@pytest.mark.parametrize("actor", [R, P, PUB])
+async def test_only_workers_may_ingest(h, actor):
+    await rejected("PERMISSION_DENIED", h.p.ingest_observation(
+        actor, S, uuid.uuid4(), "o1", uuid.uuid4(), "OBSERVED", D1, None, OBS_AT))
+    assert await h.p.as_known_at(W, S, await h.p.now()) == ()
+
+
+@pytest.mark.parametrize("actor", [R, P, PUB])
+async def test_only_workers_may_record_attestations(h, actor):
+    _, rev = await ing(h, "o1", digest=D1)
+    await rejected("PERMISSION_DENIED", h.p.record_attestation(
+        actor, S, uuid.uuid4(), rev, "prop", "ev1", evidence_digest(D1, "ev1"), "APPROVE", FUTURE))
+
+
+async def test_readers_read_the_ledger_and_heads_but_nothing_else(h):
+    p = h.p
+    rev, _ = await attested(h)
+    k = await p.now()
+    assert [r.observation.object_id for r in await p.as_known_at(R, S, k)] == ["o1"]   # positive
+    assert [r.observation.object_id for r in await p.as_effective_at(R, S, E2, k)] == ["o1"]
+    assert (await p.get_head(R, S, "m1")).version == 0
+    assert await p.list_acceptances(R, S) == ()
+    j = uuid.uuid4()
+    await rejected("PERMISSION_DENIED", p.enqueue_job(R, S, j, "sync", "c" * 64, "k"))
+    await rejected("PERMISSION_DENIED", p.get_job(R, S, j))
+    await rejected("PERMISSION_DENIED", p.create_cursor(R, S, "conn", "p0"))
+    await rejected("PERMISSION_DENIED", p.create_head(R, S, "m2"))
+    await rejected("PERMISSION_DENIED", p.promote_head(R, S, "m1", 0, rev, uuid.uuid4(), "ev1"))
+    await rejected("PERMISSION_DENIED", p.revoke_attestation(R, S, uuid.uuid4()))
+    await rejected("PERMISSION_DENIED", p.claim_outbox(R, S, 1, 30))
+    await rejected("PERMISSION_DENIED", p.list_outbox(R, S))
+
+
+async def test_publishers_cannot_read_or_write_the_ledger(h):
+    p = h.p
+    await rejected("PERMISSION_DENIED", p.as_known_at(PUB, S, await p.now()))
+    await rejected("PERMISSION_DENIED", p.get_head(PUB, S, "m1"))
+    await rejected("PERMISSION_DENIED", p.get_job(PUB, S, uuid.uuid4()))
+
+
+async def test_an_actor_outside_every_runtime_role_is_permission_denied(h):
+    p = h.p
+    await p.define_actor("p2c_nobody", ())
+    await rejected("PERMISSION_DENIED", p.as_known_at("p2c_nobody", S, await p.now()))
+    await rejected("PERMISSION_DENIED", p.enqueue_job("p2c_nobody", S, uuid.uuid4(), "k", "c" * 64, "x"))
+
+
+# =============================================================================== tenant / scope isolation
+@pytest.mark.parametrize("scope", [S3, B, Scope("A", "missing"), Scope("Z", "z")],
+                         ids=["same-tenant-other-source", "other-tenant", "no-source", "no-tenant"])
+async def test_an_ungranted_scope_is_scope_not_granted_for_every_runtime_role(h, scope):
+    p = h.p
+    k = await p.now()
+    await rejected("SCOPE_NOT_GRANTED", p.as_known_at(W, scope, k))
+    await rejected("SCOPE_NOT_GRANTED", p.as_known_at(R, scope, k))
+    await rejected("SCOPE_NOT_GRANTED", p.get_head(P, scope, "m1"))
+    await rejected("SCOPE_NOT_GRANTED", p.claim_outbox(PUB, scope, 1, 30))
+    await rejected("SCOPE_NOT_GRANTED", p.ingest_observation(
+        W, scope, uuid.uuid4(), "o1", uuid.uuid4(), "OBSERVED", D1, None, OBS_AT))
+    await rejected("SCOPE_NOT_GRANTED", p.enqueue_job(W, scope, uuid.uuid4(), "k", "c" * 64, "x"))
+    await rejected("SCOPE_NOT_GRANTED", p.create_cursor(W, scope, "conn", "p0"))
+
+
+async def test_scope_must_be_a_complete_scope(h):
+    for bad in (Scope("", "s1"), Scope("A", ""), None):
+        await rejected("INVALID_ARGUMENT", h.p.as_known_at(W, bad, await h.p.now()))
+
+
+async def test_revoking_a_grant_denies_the_role_and_bumps_the_epoch(h):
+    p = h.p
+    e0 = await p.scope_epoch(S)
+    await p.revoke_scope(W, S)
+    assert await p.scope_epoch(S) == e0 + 1
+    await rejected("SCOPE_NOT_GRANTED", p.as_known_at(W, S, await p.now()))
+    assert await p.as_known_at(R, S, await p.now()) == ()          # other roles keep their grants
+    await p.grant_scope(W, S)
+    assert await p.scope_epoch(S) == e0 + 1                        # granting does not bump
+    assert await p.as_known_at(W, S, await p.now()) == ()
+
+
+async def test_scope_epoch_of_an_unknown_source_is_none(h):
+    assert await h.p.scope_epoch(Scope("A", "missing")) is None
+
+
+async def test_scope_b_cannot_read_write_or_promote_scope_a_data(h):
+    p = h.p
+    await p.grant_scope(W, B)
+    await p.grant_scope(P, B)
+    await p.set_trusted_reviewer(W, B, True, FUTURE)
+    rev_a, att_a = await attested(h)                                      # scope A, model m1
+    job_a, _ = await start_job(h, key="shared-key")
+    await p.create_cursor(W, S, "conn", "p0")
+    got_b = await p.ingest_observation(W, B, uuid.uuid4(), "o1", uuid.uuid4(), "OBSERVED", D2,
+                                       None, OBS_AT)                      # same object id in B
+    k = await p.now()
+    # reads: each scope sees only its own row
+    (row_a,) = await p.as_known_at(W, S, k)
+    assert (row_a.observation.revision_id, row_a.observation.digest) == (rev_a, D1)
+    (row_b,) = await p.as_known_at(W, B, k)
+    assert (row_b.observation.observation_id, row_b.observation.digest) == (got_b, D2)
+    # jobs / cursors / idempotency keys are per scope
+    assert await p.get_job(W, B, job_a) is None and await p.get_cursor(W, B, "conn") is None
+    job_b = uuid.uuid4()
+    assert await p.enqueue_job(W, B, job_b, "sync", "c" * 64, "shared-key") == job_b
+    assert await p.get_job(W, S, job_b) is None
+    await rejected("JOB_UNAVAILABLE", p.acquire_job(W, B, job_a, "w1", 30))
+    await rejected("STALE_JOB_FENCE", p.finish_job(W, B, job_a, "w1", 1, "SUCCEEDED"))
+    assert (await p.get_job(W, S, job_a)).state == "RUNNING"
+    # writes that reference scope A data from scope B
+    dig = evidence_digest(D1, "ev1")
+    await rejected("REVISION_NOT_OBSERVED",
+                   p.record_attestation(W, B, uuid.uuid4(), rev_a, "prop", "ev1", dig, "APPROVE", FUTURE))
+    await rejected("EVIDENCE_NOT_FOUND", p.revoke_attestation(W, B, att_a))
+    await p.create_head(P, B, "m1")
+    await rejected("REVISION_NOT_OBSERVED", p.promote_head(P, B, "m1", 0, rev_a, uuid.uuid4(), "ev1"))
+    assert (await p.get_head(P, B, "m1")).version == 0 and await p.list_acceptances(P, B) == ()
+    # the publisher has no grant on B at all, and A's untouched state is intact
+    await rejected("SCOPE_NOT_GRANTED", p.claim_outbox(PUB, B, 1, 30))
+    assert (await p.get_head(P, S, "m1")).version == 0
+    assert await p.promote_head(P, S, "m1", 0, rev_a, uuid.uuid4(), "ev1") == 1
+
+
+async def test_a_scope_epoch_bump_is_per_source(h):
+    p = h.p
+    await p.grant_scope(W, B)
+    eb = await p.scope_epoch(B)
+    ea = await p.scope_epoch(S)
+    assert await p.bump_scope_epoch(S) == ea + 1
+    assert await p.scope_epoch(B) == eb
+    await p.create_cursor(W, B, "conn", "p0")                       # B is unaffected
+    j = uuid.uuid4()
+    assert await p.enqueue_job(W, B, j, "sync", "c" * 64, "kb") == j
+    assert await p.acquire_job(W, B, j, "w1", 30) == 1
+
+
+# =============================================================================== scope-epoch revocation
+async def test_a_stale_epoch_cannot_commit_renew_finish_or_replay(h):
+    p = h.p
+    await p.create_cursor(W, S, "conn", "p0")
+    j, f = await start_job(h, key="k1", lease=60)                    # RUNNING under the old epoch
+    e0 = await p.scope_epoch(S)
+    assert await p.bump_scope_epoch(S) == e0 + 1
+    # a replayed enqueue of work queued under the old epoch is never current work again
+    await rejected("SCOPE_REVOKED", p.enqueue_job(W, S, uuid.uuid4(), "sync", "c" * 64, "k1"))
+    fresh = uuid.uuid4()
+    assert await p.enqueue_job(W, S, fresh, "sync", "c" * 64, "k-new") == fresh   # new work is fine
+    # the holder of the old-epoch job loses renew / finish (no row matches the current epoch)
+    await rejected("STALE_JOB_FENCE", p.renew_lease(W, S, j, "w1", f, 30))
+    await rejected("STALE_JOB_FENCE", p.finish_job(W, S, j, "w1", f, "SUCCEEDED"))
+    # commits: stale expected epoch, and the current epoch with an old-epoch job
+    await rejected("SCOPE_REVOKED", commit(h, j, f, [ev("e1")], epoch=e0))
+    await rejected("SCOPE_REVOKED", commit(h, j, f, [ev("e1")], epoch=e0 + 1))
+    cur = await p.get_cursor(W, S, "conn")
+    assert (cur.cursor_value, cur.version, cur.scope_epoch) == ("p0", 0, e0)
+    assert await p.list_outbox(W, S) == ()
+    assert await p.as_known_at(R, S, await p.now()) == ()            # reads re-enter at the new epoch
+
+
+async def test_acquire_of_a_job_queued_under_an_old_epoch_is_scope_revoked(h):
+    p = h.p
+    j = uuid.uuid4()
+    await p.enqueue_job(W, S, j, "sync", "c" * 64, "k1")
+    await p.bump_scope_epoch(S)
+    await rejected("SCOPE_REVOKED", p.acquire_job(W, S, j, "w1", 30))
+    assert (await p.get_job(W, S, j)).state == "PENDING"
+
+
+async def test_rebase_scope_repoints_cursors_and_pending_jobs_so_work_resumes(h):
+    p = h.p
+    await p.create_cursor(W, S, "conn", "p0")
+    await start_job(h, key="k1", lease=10)
+    pend = uuid.uuid4()
+    await p.enqueue_job(W, S, pend, "sync", "c" * 64, "k2")
+    e1 = await p.bump_scope_epoch(S)
+    await h.warp(11)
+    assert await p.reap_expired_jobs(W, S) == 1                        # old holder is gone
+    await h.warp(3)
+    await rejected("SCOPE_REVOKED", p.acquire_job(W, S, pend, "w1", 30))
+    assert await p.rebase_scope(S) == 3                                # cursor + both PENDING jobs
+    assert await p.rebase_scope(S) == 0
+    f2 = await p.acquire_job(W, S, pend, "w1", 30)
+    res = await commit(h, pend, f2, [ev("e1")], epoch=e1)
+    assert (res.version, res.replayed) == (1, False)
+    assert (await p.get_cursor(W, S, "conn")).scope_epoch == e1
+
+
+# =============================================================================== fake == SQL divergences
+async def test_an_explicit_null_provenance_or_payload_is_invalid_but_omitting_it_is_not(h):
+    p = h.p
+    await rejected("INVALID_OBSERVATION", ing(h, "o1", prov=None))
+    await rejected("INVALID_JOB", p.enqueue_job(W, S, uuid.uuid4(), "sync", "c" * 64, "k", None))
+    await ing(h, "o1")
+    assert await p.enqueue_job(W, S, (j := uuid.uuid4()), "sync", "c" * 64, "k") == j
+
+
+async def test_provenance_equality_is_jsonb_not_python(h):
+    first, rev = await ing(h, "o1", prov={"a": 1, "b": [1, 2]})
+    again, _ = await ing(h, "o1", rev=rev, prov={"b": [1, 2], "a": 1.0})        # key order, 1 == 1.0
+    assert again == first
+    await rejected("CONFLICTING_OBSERVATION", ing(h, "o1", rev=rev, prov={"a": True, "b": [1, 2]}))
+    await rejected("CONFLICTING_OBSERVATION", ing(h, "o1", rev=rev, prov={"a": 1, "b": [2, 1]}))
+
+
+async def test_provenance_and_payload_accept_floats_and_nested_json(h):
+    await ing(h, "o1", prov={"x": 1.5, "y": [None, {"z": "é"}]})
+    j = uuid.uuid4()
+    assert await h.p.enqueue_job(W, S, j, "sync", "c" * 64, "k", {"w": 0.25}) == j
+
+
+async def test_naive_datetimes_are_a_typed_rejection(h):
+    p = h.p
+    naive = datetime(2024, 1, 2)  # noqa: DTZ001 - naive on purpose
+    await rejected("NAIVE_DATETIME", ing(h, "o1", observed_at=naive))
+    await rejected("NAIVE_DATETIME", ing(h, "o1", eff=naive))
+    await rejected("NAIVE_DATETIME", p.as_known_at(W, S, naive))
+    await rejected("NAIVE_DATETIME", p.as_effective_at(W, S, naive, await p.now()))
+    await rejected("NAIVE_DATETIME", p.set_trusted_reviewer(W, S, True, naive))
+    _, rev = await ing(h, "o2", digest=D1)
+    await rejected("NAIVE_DATETIME", p.record_attestation(
+        W, S, uuid.uuid4(), rev, "prop", "ev1", evidence_digest(D1, "ev1"), "APPROVE", naive))
+
+
+async def test_non_json_arguments_are_a_typed_rejection(h):
+    p = h.p
+    await rejected("INVALID_JSON", ing(h, "o1", prov={1: "a"}))
+    await rejected("INVALID_JSON", ing(h, "o1", prov={"a": {1, 2}}))
+    await rejected("INVALID_JSON", ing(h, "o1", prov={"a": float("nan")}))
+    await rejected("INVALID_JSON", p.enqueue_job(W, S, uuid.uuid4(), "sync", "c" * 64, "k", {"a": object()}))
+    await p.create_cursor(W, S, "conn", "p0")
+    j, f = await start_job(h)
+    bad = {"event_id": "e1", 1: "x", "digest": "0" * 64}
+    await rejected("INVALID_JSON", commit(h, j, f, [bad]))
+    await rejected("INVALID_JSON", commit(h, j, f, [{"event_id": "e1", "when": datetime(2024, 1, 1, tzinfo=UTC)}]))
+    assert (await p.get_cursor(W, S, "conn")).version == 0
+
+
+async def test_a_nul_character_is_rejected_in_text_and_in_json(h):
+    p = h.p
+    await rejected("INVALID_TEXT", ing(h, "o\x001"))
+    await rejected("INVALID_TEXT", ing(h, "o1", prov={"k": "a\x00b"}))
+    await rejected("INVALID_TEXT", ing(h, "o1", prov={"a\x00": 1}))
+    await rejected("INVALID_TEXT", p.enqueue_job(W, S, uuid.uuid4(), "sync", "c" * 64, "k\x00"))
+    assert await p.as_known_at(W, S, await p.now()) == ()
+
+
+async def test_define_actor_and_trusted_reviewer_reject_bad_arguments_with_port_errors(h):
+    p = h.p
+    await rejected("ROLE_NOT_FOUND", p.define_actor("p2c_orphan", ("p2c_no_such_parent",)))
+    await rejected("INVALID_ARGUMENT", p.set_trusted_reviewer(W, None, True, FUTURE))
+
+
+async def test_outbox_rows_are_hashable_and_compare_by_digest(h):
+    p = h.p
+    await outbox_with_events(h, "e1", "e2")
+    rows = await p.list_outbox(W, S)
+    assert len({*rows, *await p.list_outbox(W, S)}) == 2
+    assert {rows[0]: 1}[rows[0]] == 1
+
+
+def test_port_error_survives_pickling_with_code_and_detail():
+    err = pickle.loads(pickle.dumps(PortError("STALE_JOB_FENCE", "lease lost")))
+    assert (err.code, err.detail, str(err)) == ("STALE_JOB_FENCE", "lease lost",
+                                                "STALE_JOB_FENCE: lease lost")
+    bare = pickle.loads(pickle.dumps(PortError("X")))
+    assert (bare.code, bare.detail) == ("X", "")
+
+
+def test_omitted_is_a_stable_singleton():
+    assert pickle.loads(pickle.dumps(OMITTED)) is OMITTED and repr(OMITTED) == "OMITTED"
+
+
+def test_outbox_row_without_comparing_content_is_hashable():
+    row = OutboxRow(1, "c", "e", "d" * 64, {"a": 1}, "PENDING", 0, None, None, 0)
+    assert hash(row) == hash(OutboxRow(1, "c", "e", "d" * 64, {"a": 2}, "PENDING", 0, None, None, 0))
+
+
+# =============================================================================== REQUIRE_PG session guard
+def _report(nodeid, outcome, *, when="call", marks=("integration",), wasxfail=False,
+            where="tests/phase2/test_x.py"):
+    rep = SimpleNamespace(nodeid=nodeid, when=when, skipped=outcome == "skipped",
+                          passed=outcome == "passed", failed=outcome == "failed",
+                          location=(where, 1, "t"), keywords={m: 1 for m in marks})
+    if wasxfail:
+        rep.wasxfail = "reason"
+    return rep
+
+
+def _item(nodeid, variant):
+    return SimpleNamespace(nodeid=nodeid, callspec=SimpleNamespace(params={"h": variant}))
+
+
+@pytest.fixture
+def guard(request):
+    return request.config._phase2_guard_cls()
+
+
+C = "tests/phase2/test_ports_contract.py"
+
+
+def test_guard_flags_a_skipped_integration_item_even_in_the_sql_contract(guard):
+    guard.observe(_report(f"{C}::test_a[sql]", "skipped", when="setup", where=C))
+    assert "test_a[sql] (skipped)" in guard.problems()[0]
+
+
+def test_guard_flags_an_xfailed_integration_item(guard):
+    guard.observe(_report("tests/phase2/test_x.py::t", "skipped", wasxfail=True))
+    assert "(xfailed)" in guard.problems()[0]
+
+
+def test_guard_ignores_skips_that_are_not_phase2_integration(guard):
+    guard.observe(_report("tests/phase2/test_x.py::t", "skipped", marks=()))
+    guard.observe(_report("tests/other/test_x.py::t", "skipped", where="tests/other/test_x.py"))
+    assert guard.problems() == []
+
+
+def test_guard_flags_deselected_integration_items(guard):
+    class Item(SimpleNamespace):
+        def get_closest_marker(self, name):
+            return object() if name == "integration" else None
+    from pathlib import Path
+    guard.deselected([Item(nodeid="n::t", path=Path(__file__))])
+    assert guard.problems() and "(deselected)" in guard.problems()[0]
+
+
+def test_sentinel_requires_as_many_sql_contract_items_as_fake_items(guard):
+    guard.plan([_item(f"{C}::t{i}[fake]", "fake") for i in range(3)]
+               + [_item("tests/phase2/test_other.py::t[fake]", "fake")])
+    for i in range(2):
+        guard.observe(_report(f"{C}::t{i}[sql]", "passed", where=C))
+    guard.observe(_report(f"{C}::t2[fake]", "passed", where=C, marks=()))          # fake never counts
+    guard.observe(_report(f"{C}::t2[sql]", "passed", when="setup", where=C))       # setup is not a run
+    assert "only 2 [sql] contract items executed but 3 [fake]" in guard.problems()[0]
+    guard.observe(_report(f"{C}::t2[sql]", "failed", where=C))                     # a failure ran
+    assert guard.problems() == []
+
+
+def test_sentinel_counts_parametrised_sql_ids_in_any_position(guard):
+    guard.plan([_item(f"{C}::t[x-fake]", "fake"), _item(f"{C}::t[fake-y]", "fake")])
+    guard.observe(_report(f"{C}::t[x-sql]", "passed", where=C))
+    assert guard.problems()
+    guard.observe(_report(f"{C}::t[sql-y]", "passed", where=C))
+    assert guard.problems() == []
+
+
+# =============================================================================== SQL-only concurrency
+@pytest.fixture
+async def race_db():
+    """(port on connection 1, port on connection 2, lock connection) over one throwaway database."""
+    dsn = require_dsn()
+    async with throwaway_db(dsn) as db:
+        c2, c3 = await db.connect(), await db.connect()
+        try:
+            yield SqlLiving(db.conn), SqlLiving(c2), c3
+        finally:
+            await c2.close()
+            await c3.close()
+
+
+async def _blocked_on_a_lock(locker, conns, timeout=30.0):
+    pids = [c.get_server_pid() for c in conns]
+    end = asyncio.get_running_loop().time() + timeout
+    while await locker.fetchval(
+            "SELECT count(*) FROM pg_stat_activity WHERE pid=ANY($1::int[]) "
+            "AND wait_event_type='Lock'", pids) != len(pids):
+        assert asyncio.get_running_loop().time() < end, "racers never blocked on the source lock"
+        await asyncio.sleep(0.02)
+
+
+async def race(race_db, make_a, make_b):
+    """Run ``make_a(port1)`` and ``make_b(port2)`` truly concurrently on two connections.
+
+    A third connection holds the source row lock (``FOR UPDATE``); both calls are started, and the
+    lock is released only when pg_stat_activity shows BOTH waiting on a lock, so the two
+    transactions are guaranteed to overlap and are serialised by PostgreSQL itself.
+    """
+    one, two, locker = race_db
+    tasks = []
+    try:
+        async with locker.transaction():
+            await locker.execute("SELECT 1 FROM living.sources WHERE tenant_id=$1 AND source_id=$2 "
+                                 "FOR UPDATE", S.tenant_id, S.source_id)
+            tasks = [asyncio.ensure_future(make_a(one)), asyncio.ensure_future(make_b(two))]
+            await _blocked_on_a_lock(locker, [one.conn, two.conn])
+    except BaseException:
+        for t in tasks:
+            t.cancel()
+        raise
+    return await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def one_winner(results, loser_code):
+    wins = [r for r in results if not isinstance(r, BaseException)]
+    losses = [r for r in results if isinstance(r, BaseException)]
+    assert len(wins) == 1 and len(losses) == 1, results
+    assert isinstance(losses[0], PortError) and losses[0].code == loser_code, losses[0]
+    return wins[0], results.index(wins[0])
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("same_job", [True, False], ids=["same-job", "two-jobs"])
+async def test_race_two_acquires_of_one_source_give_exactly_one_fence(race_db, same_job):
+    one, _two, _ = race_db
+    j1, j2 = uuid.uuid4(), uuid.uuid4()
+    await one.enqueue_job(W, S, j1, "sync", "c" * 64, "k1")
+    await one.enqueue_job(W, S, j2, "sync", "c" * 64, "k2")
+    results = await race(race_db, lambda c: c.acquire_job(W, S, j1, "w1", 30),
+                         lambda c: c.acquire_job(W, S, j1 if same_job else j2, "w2", 30))
+    fence, _ = one_winner(results, "JOB_UNAVAILABLE")
+    assert fence == 1
+    states = sorted([(await one.get_job(W, S, j)).state for j in (j1, j2)])
+    assert states == ["PENDING", "RUNNING"]
+
+
+@pytest.mark.integration
+async def test_race_two_promotions_at_the_same_expected_version_give_exactly_one_head(race_db):
+    one, _two, _ = race_db
+    await one.define_actor("p2c_pa", (P,))
+    await one.define_actor("p2c_pb", (P,))
+    rev = uuid.uuid4()
+    await one.ingest_observation(W, S, uuid.uuid4(), "o1", rev, "OBSERVED", D1, E1, OBS_AT)
+    await one.create_head(P, S, "m1")
+    await one.record_attestation(W, S, uuid.uuid4(), rev, "prop", "ev1", evidence_digest(D1, "ev1"),
+                                 "APPROVE", FUTURE)
+    results = await race(race_db,
+                         lambda c: c.promote_head("p2c_pa", S, "m1", 0, rev, uuid.uuid4(), "ev1"),
+                         lambda c: c.promote_head("p2c_pb", S, "m1", 0, rev, uuid.uuid4(), "ev1"))
+    version, idx = one_winner(results, "STALE_ACCEPTED_HEAD")
+    assert version == 1 and (await one.get_head(P, S, "m1")).version == 1
+    (acc,) = await one.list_acceptances(P, S)
+    assert acc.approver_subject == ("p2c_pa", "p2c_pb")[idx]
+
+
+async def _cursor_ready(one):
+    await one.create_cursor(W, S, "conn", "p0")
+    j = uuid.uuid4()
+    await one.enqueue_job(W, S, j, "sync", "c" * 64, "k1")
+    return j, await one.acquire_job(W, S, j, "w1", 120), await one.scope_epoch(S)
+
+
+@pytest.mark.integration
+async def test_race_two_commits_from_the_same_prior_cursor_give_exactly_one_advance(race_db):
+    one, _two, _ = race_db
+    j, f, ep = await _cursor_ready(one)
+
+    def page(new, eid):
+        return lambda c: c.commit_cursor_page(W, S, "conn", j, "w1", f, "p0", 0, ep, new, [ev(eid)])
+    results = await race(race_db, page("pa", "ea"), page("pb", "eb"))
+    res, idx = one_winner(results, "STALE_CURSOR_OR_SCOPE")
+    won, eid = (("pa", "ea"), ("pb", "eb"))[idx]
+    assert (res.version, res.replayed) == (1, False)
+    cur = await one.get_cursor(W, S, "conn")
+    assert (cur.cursor_value, cur.version) == (won, 1)
+    assert [r.event_id for r in await one.list_outbox(W, S)] == [eid]       # loser wrote nothing
+
+
+@pytest.mark.integration
+async def test_race_two_identical_commits_apply_once_and_replay_once(race_db):
+    one, _two, _ = race_db
+    j, f, ep = await _cursor_ready(one)
+    events = [ev("e1"), ev("e2")]
+
+    def page(c):
+        return c.commit_cursor_page(W, S, "conn", j, "w1", f, "p0", 0, ep, "p1", events)
+    results = await race(race_db, page, page)
+    assert all(isinstance(r, type(results[0])) and not isinstance(r, BaseException) for r in results)
+    assert sorted((r.version, r.replayed) for r in results) == [(1, False), (1, True)]
+    assert [r.event_id for r in await one.list_outbox(W, S)] == ["e1", "e2"]
+
+
+@pytest.mark.integration
+async def test_race_two_publishers_never_claim_the_same_event(race_db):
+    one, _two, _ = race_db
+    await one.define_actor("p2c_pub_a", (PUB,))
+    await one.define_actor("p2c_pub_b", (PUB,))
+    j, f, ep = await _cursor_ready(one)
+    await one.commit_cursor_page(W, S, "conn", j, "w1", f, "p0", 0, ep, "p1", [ev("e1"), ev("e2")])
+    results = await race(race_db, lambda c: c.claim_outbox("p2c_pub_a", S, 1, 60),
+                         lambda c: c.claim_outbox("p2c_pub_b", S, 1, 60))
+    assert all(not isinstance(r, BaseException) and len(r) == 1 for r in results), results
+    assert sorted(r[0].event_id for r in results) == ["e1", "e2"]
+    assert {r[0].claim_generation for r in results} == {1}

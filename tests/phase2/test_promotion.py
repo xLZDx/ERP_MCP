@@ -36,12 +36,16 @@ class SpyPort:
         self._inner = inner
         self.promote_calls = 0
         self.fail_with: Exception | None = None
+        self.raise_after_commit: Exception | None = None  # commit lands, response is lost
 
     async def promote_head(self, *args, **kwargs):
         self.promote_calls += 1
         if self.fail_with is not None:
             raise self.fail_with
-        return await self._inner.promote_head(*args, **kwargs)
+        version = await self._inner.promote_head(*args, **kwargs)
+        if self.raise_after_commit is not None:
+            raise self.raise_after_commit
+        return version
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
@@ -215,8 +219,8 @@ async def test_non_promoter_approver_is_rejected_by_port_and_typed():
     rev, ev, _ = await w.attest(1)
     before = await w.snapshot()
     res = await w.promote(rev, ev, approver="stranger-with-worker-role")
-    # the unknown actor cannot even read the head: fails closed, nothing written
-    assert res.outcome is Outcome.FAILED_CLOSED and res.code == "SCOPE_NOT_GRANTED"
+    # the unknown actor has no EXECUTE on living.set_scope (as in SQL): fails closed, nothing written
+    assert res.outcome is Outcome.FAILED_CLOSED and res.code == "PERMISSION_DENIED"
     assert await w.snapshot() == before and w.port.promote_calls == 0
     await w.living.define_actor("plain-worker", (WORKER,))
     res = await w.promote(rev, ev, approver="plain-worker")
@@ -346,16 +350,163 @@ async def test_reader_failure_fails_closed(exc):
     await assert_rejected(w, before, res, Outcome.FAILED_CLOSED)
 
 
-@pytest.mark.parametrize("exc, code", [(PortError("SOMETHING_NEW"), "SOMETHING_NEW"),
-                                       (ConnectionError("down"), "ConnectionError")])
-async def test_port_write_failure_fails_closed(exc, code):
+async def test_port_typed_unknown_error_fails_closed_nothing_written():
     w = await world()
     rev, ev, _ = await w.attest(1)
     before = await w.snapshot()
-    w.port.fail_with = exc
+    w.port.fail_with = PortError("SOMETHING_NEW")
     res = await w.promote(rev, ev)
-    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, code)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "SOMETHING_NEW")
     assert await w.snapshot() == before
+
+
+async def test_untyped_write_exception_is_indeterminate_without_message_leak():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = ConnectionError("postgres://user:secret@host/db down")
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code, res.new_version) == (Outcome.INDETERMINATE, "ConnectionError", None)
+    assert not res.ok and "secret" not in repr(res)
+
+
+async def test_failure_before_write_is_failed_closed_not_indeterminate():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.reader.raises = ConnectionError("down")
+    res = await w.promote(rev, ev)
+    assert res.outcome is Outcome.FAILED_CLOSED and w.port.promote_calls == 0
+
+
+@pytest.mark.parametrize("returned", [0, 2, 7, "1", None])
+async def test_unexpected_returned_version_is_indeterminate(returned):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+
+    async def odd(*_a, **_k):
+        return returned
+    w.port.promote_head = odd
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.new_version) == (Outcome.INDETERMINATE, None)
+    assert res.code == "UNEXPECTED_VERSION"
+
+
+# --------------------------------------------------------------------------- idempotent replay
+async def commit_then_lose_response(w, rev, ev, acc):
+    w.port.raise_after_commit = TimeoutError("response lost")
+    res = await w.promote(rev, ev, acc=acc)
+    assert res.outcome is Outcome.INDETERMINATE
+    w.port.raise_after_commit = None
+    head, _ = await w.snapshot()
+    assert head.version == 1                              # the commit really happened
+
+
+async def test_replay_after_lost_response_returns_recorded_version():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    await commit_then_lose_response(w, rev, ev, uid(77))
+    before = await w.snapshot()
+    res = await w.promote(rev, ev, acc=uid(77))           # head is now v1, expected still 0
+    assert (res.outcome, res.new_version) == (Outcome.PROMOTED, 1)
+    assert await w.snapshot() == before
+
+
+@pytest.mark.parametrize("mutate", ["expire", "revoke"])
+async def test_replay_wins_even_if_attestation_expired_or_revoked_in_between(mutate):
+    w = await world()
+    rev, ev, att_id = await w.attest(1, ttl=60)
+    await commit_then_lose_response(w, rev, ev, uid(77))
+    if mutate == "expire":
+        w.clock.advance(120)
+    else:
+        await w.living.revoke_attestation(OBSERVER, SCOPE, att_id)
+    res = await w.promote(rev, ev, acc=uid(77))
+    assert (res.outcome, res.new_version) == (Outcome.PROMOTED, 1)
+
+
+@pytest.mark.parametrize("change", ["model", "expected", "revision", "approver", "evidence"])
+async def test_same_acceptance_id_with_different_arguments_is_typed_rejection(change):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    r2, e2, _ = await w.attest(2)
+    await w.living.create_head(PROMOTER, SCOPE, "model/y")
+    assert (await w.promote(rev, ev, acc=uid(77))).ok
+    before = await w.snapshot()
+    args = {"model": MODEL, "expected": 0, "rev": rev, "approver": APPROVER, "ev": ev}
+    args.update({"model": {"model": "model/y"}, "expected": {"expected": 1},
+                 "revision": {"rev": r2, "ev": e2}, "approver": {"approver": "prom2"},
+                 "evidence": {"ev": Evidence(ev.revision_digest, "other-ref")}}[change])
+    res = await w.svc.promote(SCOPE, args["model"], args["rev"], args["expected"], REQUESTER,
+                              args["approver"], args["ev"], uid(77))
+    assert res.outcome is Outcome.REJECTED_ACCEPTANCE_ID and res.new_version is None
+    assert w.port.promote_calls == w.mark                  # service guard, port never reached
+    assert await w.snapshot() == before
+
+
+async def test_rollback_replay_after_lost_response_returns_recorded_version():
+    w = await world()
+    _r1, e1, a1, *_ = await two_versions(w)
+    w.port.raise_after_commit = TimeoutError("response lost")
+    res = await w.svc.rollback(SCOPE, MODEL, 1, 2, REQUESTER, APPROVER, e1, uid(88))
+    assert res.outcome is Outcome.INDETERMINATE
+    w.port.raise_after_commit = None
+    await w.living.revoke_attestation(OBSERVER, SCOPE, a1)   # rights gone in between
+    before = await w.snapshot()
+    res = await w.svc.rollback(SCOPE, MODEL, 1, 2, REQUESTER, APPROVER, e1, uid(88))
+    assert (res.outcome, res.new_version) == (Outcome.ROLLED_BACK, 3)
+    assert await w.snapshot() == before
+
+
+async def test_rollback_same_acceptance_id_different_arguments_is_rejected():
+    w = await world()
+    _r1, e1, *_ = await two_versions(w)
+    assert (await w.svc.rollback(SCOPE, MODEL, 1, 2, REQUESTER, APPROVER, e1, uid(88))).ok
+    before = await w.snapshot()
+    res = await w.svc.rollback(SCOPE, MODEL, 1, 3, REQUESTER, APPROVER, e1, uid(88))
+    assert res.outcome is Outcome.REJECTED_ACCEPTANCE_ID and w.port.promote_calls == w.mark
+    assert await w.snapshot() == before
+
+
+# --------------------------------------------------------------------------- races from the port
+@pytest.mark.parametrize("code, outcome", [
+    ("STALE_ACCEPTED_HEAD", Outcome.REJECTED_CAS),
+    ("APPROVER_NOT_INDEPENDENT", Outcome.REJECTED_SELF_APPROVAL),
+])
+async def test_port_race_codes_are_typed(code, outcome):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    before = await w.snapshot()
+    w.port.fail_with = PortError(code)
+    res = await w.promote(rev, ev)
+    await assert_rejected(w, before, res, outcome, port_reached=True)
+    assert res.code == code
+
+
+@pytest.mark.parametrize("make", [
+    lambda v: AttestationView(v.attestation_id, uid(999), v.proposer, v.observer, v.evidence_ref,
+                              v.evidence_digest, v.decision, v.expires_at, v.revoked_at),
+    lambda v: AttestationView(v.attestation_id, v.revision_id, v.proposer, v.observer, "other",
+                              v.evidence_digest, v.decision, v.expires_at, v.revoked_at),
+])
+async def test_guard_attestation_returned_for_other_revision_or_ref_is_refused(make):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.reader.stale = make(await w.reader.find_attestation(SCOPE, rev, ev.evidence_ref))
+    before = await w.snapshot()
+    res = await w.promote(rev, ev)
+    await assert_rejected(w, before, res, Outcome.REJECTED_EVIDENCE)
+    assert res.code == "ATTESTATION_MISMATCH"
+
+
+async def test_guard_non_ascii_attestation_digest_is_mismatch_not_crash():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    v = await w.reader.find_attestation(SCOPE, rev, ev.evidence_ref)
+    w.reader.stale = AttestationView(v.attestation_id, v.revision_id, v.proposer, v.observer,
+                                     v.evidence_ref, "é" * 64, v.decision, v.expires_at, None)
+    before = await w.snapshot()
+    res = await w.promote(rev, ev)
+    await assert_rejected(w, before, res, Outcome.REJECTED_EVIDENCE)
+    assert res.code == "EVIDENCE_DIGEST_MISMATCH"
 
 
 async def test_port_rechecks_when_reader_view_is_stale():

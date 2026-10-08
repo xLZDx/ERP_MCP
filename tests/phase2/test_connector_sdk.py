@@ -18,8 +18,11 @@ from business_ai_gateway.phase2.connector_sdk import (
     checked_capture_page,
     parse_request,
     parse_response,
+    response_to_outcome,
     validate_exchange,
 )
+from business_ai_gateway.phase2.drift import CaptureOutcome, classify
+from business_ai_gateway.phase2.drift import CaptureOutcomeKind as K
 
 NOW = datetime(2026, 10, 9, 12, 0, tzinfo=UTC)
 DIGEST = "c" * 64
@@ -72,8 +75,10 @@ def test_valid_request_and_response_round_trip():
     assert request.capture_mode is CaptureMode.SNAPSHOT_ONLY
     assert request.page_cursor == "cur_1=="
     response = parse_response(resp_map(prov_map(
-        observed_at="2026-10-09T12:00:00Z", page_cursor="cur_1==", next_cursor="cur_2")))
-    assert response.completeness is Completeness.COMPLETE
+        observed_at="2026-10-09T12:00:00Z", page_cursor="cur_1==", next_cursor="cur_2"),
+        completeness="PARTIAL"))
+    assert response.completeness is Completeness.PARTIAL
+    assert response.provenance.next_cursor == "cur_2"
     assert response.provenance.observed_at == NOW
     assert validate_exchange(request, response) is response
 
@@ -236,6 +241,16 @@ def test_unknown_non_secret_fields_rejected_everywhere():
     ("x'; --", "SQL_VALUE"),
     ("password=hunter2", "CREDENTIAL_VALUE"),
     ("Bearer abc123", "CREDENTIAL_VALUE"),
+    ("insert into t values", "SQL_VALUE"),
+    ("update t set a", "SQL_VALUE"),
+    ("delete from t", "SQL_VALUE"),
+    ("x union select y", "SQL_VALUE"),
+    ("exec sp_who", "SQL_VALUE"),
+    ("execute sp_who", "SQL_VALUE"),
+    ("a/*c", "SQL_VALUE"),
+    ("basic QWxhZGRpbjpvcGVu", "CREDENTIAL_VALUE"),
+    ("token:abc", "CREDENTIAL_VALUE"),
+    ("api_key=k", "CREDENTIAL_VALUE"),
 ])
 @pytest.mark.parametrize("where", ["source_id", "tenant_id", "page_cursor"])
 def test_url_sql_credential_values_rejected_in_request_fields(where, value, code):
@@ -301,6 +316,99 @@ class _Fake:
 
     def health(self, *, source_id, tenant_id):
         return HealthState.OK
+
+
+def test_complete_with_next_cursor_rejected_in_parse_and_construction():
+    prov = prov_map(next_cursor="cur_2")
+    assert "completeness:COMPLETE_WITH_NEXT_CURSOR" in reasons_of(
+        parse_response, resp_map(prov, completeness="COMPLETE"))
+    assert "completeness:COMPLETE_WITH_NEXT_CURSOR" in reasons_of(
+        lambda: make_response(provenance=Provenance("c", "1", NOW, DIGEST, next_cursor="n1")))
+    # PARTIAL / UNKNOWN with a next cursor remain legal; COMPLETE without one is legal.
+    for value in ("PARTIAL", "UNKNOWN"):
+        assert parse_response(resp_map(prov, completeness=value)).provenance.next_cursor == "cur_2"
+    assert parse_response(resp_map()).completeness is Completeness.COMPLETE
+
+
+def test_validate_exchange_rechecks_complete_with_next_cursor():
+    # A response built around __post_init__ must still be blocked at the exchange boundary.
+    bad = object.__new__(CaptureResponse)
+    for name, value in (("source_id", "src-1"), ("tenant_id", "tenant-1"), ("scope_epoch", 3),
+                        ("capture_mode", CaptureMode.SNAPSHOT_ONLY),
+                        ("completeness", Completeness.COMPLETE),
+                        ("provenance", Provenance("c", "1", NOW, DIGEST, next_cursor="n1"))):
+        object.__setattr__(bad, name, value)
+    assert "completeness:COMPLETE_WITH_NEXT_CURSOR" in reasons_of(
+        validate_exchange, make_request(), bad)
+
+
+def test_response_to_outcome_maps_every_completeness():
+    assert response_to_outcome(make_response(completeness=Completeness.COMPLETE)) is K.OK_COMPLETE
+    assert response_to_outcome(make_response(completeness=Completeness.PARTIAL)) is K.OK_PARTIAL
+    unknown = response_to_outcome(make_response(completeness=Completeness.UNKNOWN))
+    assert unknown is K.OK_PARTIAL
+    assert unknown is not K.OK_COMPLETE
+    assert classify(CaptureOutcome(unknown), "a" * 64).removal_permitted is False
+
+
+def test_response_to_outcome_rejects_non_response_and_covers_all_enum_values():
+    assert reasons_of(response_to_outcome, resp_map()) == ("response:WRONG_TYPE",)
+    forged = make_response()
+    object.__setattr__(forged, "completeness", "COMPLETE")  # str is not the enum member
+    assert reasons_of(response_to_outcome, forged) == ("completeness:UNKNOWN_VALUE",)
+    # Every Completeness member has a defined, non-failing mapping.
+    for member in Completeness:
+        assert isinstance(response_to_outcome(make_response(completeness=member)), K)
+
+
+def test_next_cursor_must_differ_from_page_cursor():
+    assert "provenance.next_cursor:SAME_AS_PAGE_CURSOR" in reasons_of(
+        parse_response, resp_map(prov_map(page_cursor="c1", next_cursor="c1"), completeness="PARTIAL"))
+    assert parse_response(resp_map(prov_map(page_cursor="c1", next_cursor="c2"),
+                                   completeness="PARTIAL")).provenance.next_cursor == "c2"
+
+
+def test_scope_epoch_upper_bound():
+    assert parse_request(req_map(scope_epoch=2**63 - 1)).scope_epoch == 2**63 - 1
+    assert "scope_epoch:TOO_LARGE" in reasons_of(parse_request, req_map(scope_epoch=2**63))
+
+
+def test_naive_iso_string_observed_at_rejected():
+    assert "provenance.observed_at:NAIVE_TIMESTAMP" in reasons_of(
+        parse_response, resp_map(prov_map(observed_at="2026-10-09T12:00:00")))
+
+
+@pytest.mark.parametrize("key", ["password=hunter2", "token: abc123", "secret key hunter2", "x" * 200 + "password"])
+def test_rejected_keys_are_not_echoed_raw(key):
+    for fn, data in ((parse_request, req_map(**{key: "v"})), (parse_response, resp_map(**{key: "v"})),
+                     (parse_response, resp_map(prov_map(**{key: "v"})))):
+        reasons = reasons_of(fn, data)
+        joined = " ".join(reasons)
+        assert "hunter2" not in joined and "abc123" not in joined and "x" * 65 not in joined
+        assert any(r.startswith(("key[", "provenance.key[")) and "#" in r for r in reasons)
+        assert any(r.endswith(":FORBIDDEN_FIELD") for r in reasons)
+
+
+def test_unknown_odd_key_is_hashed_and_plain_key_is_echoed():
+    reasons = reasons_of(parse_request, req_map(**{"weird key!": 1, "extra": 1}))
+    assert "extra:UNKNOWN_FIELD" in reasons
+    assert not any("weird" in r for r in reasons)
+    assert any(r.startswith("key[") and r.endswith(":UNKNOWN_FIELD") for r in reasons)
+
+
+class _Raising(_Fake):
+    def capture_page(self, request):
+        raise TimeoutError("boom")
+
+
+def test_checked_capture_page_rejects_raw_dict_return():
+    assert reasons_of(checked_capture_page, _Fake(resp_map()), make_request()) == (
+        "exchange:WRONG_TYPES",)
+
+
+def test_checked_capture_page_propagates_connector_exception_unchanged():
+    with pytest.raises(TimeoutError, match="boom"):
+        checked_capture_page(_Raising(None), make_request())
 
 
 def test_checked_capture_page_passes_matching_and_blocks_foreign_response():

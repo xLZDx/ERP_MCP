@@ -6,17 +6,24 @@ authority; this service is the fail-closed pre-flight that gives every outcome a
 guarantees that a rejected request never reaches the port's write call.
 
 Guard order (first failure wins; nothing is written before every guard has passed):
-input -> requester/approver independence -> evidence shape -> attestation lookup -> decision ->
-revocation -> expiry -> digest recomputed from the presented evidence -> observer trust -> approver
-independence from attestation observer/proposer -> head CAS -> single atomic ``promote_head``.
+input -> requester/approver independence -> evidence shape -> idempotent replay (acceptance_id
+already recorded: identical arguments return the recorded version, different ones are
+REJECTED_ACCEPTANCE_ID; this runs before any time-dependent guard so a retry after a lost response
+still sees the recorded success) -> attestation lookup (must match revision and evidence_ref) ->
+decision -> revocation -> expiry -> digest recomputed from the presented evidence (constant-time
+compare) -> observer trust -> approver independence from attestation observer/proposer -> head CAS
+-> single atomic ``promote_head``.
 
 Rollback never mutates history: it promotes the content of an earlier accepted version as a NEW
 head version. It does not restore rights: an attestation revoked after the original promotion
 stays revoked, so a rollback needs evidence that is valid *now* (fresh approval when the original
-one was revoked or expired). Any unexpected error fails closed as ``FAILED_CLOSED``.
+one was revoked or expired). An unexpected error BEFORE the write call fails closed as
+``FAILED_CLOSED`` (nothing written); a non-PortError raised at or after the write call is
+``INDETERMINATE`` (the commit may have happened; retrying with the same acceptance_id is safe).
 """
 from __future__ import annotations
 
+import hmac
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -46,6 +53,7 @@ class Outcome(StrEnum):
     REJECTED_TARGET = "REJECTED_TARGET"
     REJECTED_ACCEPTANCE_ID = "REJECTED_ACCEPTANCE_ID"
     FAILED_CLOSED = "FAILED_CLOSED"
+    INDETERMINATE = "INDETERMINATE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,12 +153,9 @@ class PromotionService:
             approver_id = normalize_identity(approver)
             if not approver_id:
                 return PromotionResult(Outcome.REJECTED_INPUT, code="IDENTITY_REQUIRED")
-            head = await self._port.get_head(approver, scope, model_key)
-            if head is None or head.version != expected_version:
-                return PromotionResult(Outcome.REJECTED_CAS, code="STALE_ACCEPTED_HEAD")
             target = _accepted_at(await self._port.list_acceptances(approver, scope), model_key,
                                   to_version)
-            if target is None or target.accepted_revision == head.revision_id:
+            if target is None:
                 return PromotionResult(Outcome.REJECTED_TARGET, code="ROLLBACK_TARGET_UNKNOWN")
             return await self._run(scope, model_key, target.accepted_revision, expected_version,
                                    requester, approver, evidence, acceptance_id,
@@ -172,7 +177,28 @@ class PromotionService:
         if (not isinstance(evidence, Evidence) or not _is_digest(evidence.revision_digest)
                 or not isinstance(evidence.evidence_ref, str) or not evidence.evidence_ref.strip()):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_REQUIRED")
+        # Idempotent replay (mirrors living.promote_head): decided before any time-dependent guard.
+        try:
+            accepted = await self._port.list_acceptances(approver, scope)
+        except PortError:
+            accepted = ()  # no read right: the normal guards below still fail closed / reject
+        recorded = next((a for a in accepted if a.acceptance_id == acceptance_id), None)
+        if recorded is not None:
+            if (recorded.model_key == model_key and recorded.from_version == expected_version
+                    and recorded.accepted_revision == candidate
+                    and recorded.approver_subject == approver
+                    and recorded.independent_evidence_ref == evidence.evidence_ref):
+                return PromotionResult(success, new_version=recorded.to_version)
+            return PromotionResult(Outcome.REJECTED_ACCEPTANCE_ID, code="ACCEPTANCE_ID_REUSED")
+        if success is Outcome.ROLLED_BACK:
+            head = await self._port.get_head(approver, scope, model_key)
+            if (head is not None and head.version == expected_version
+                    and head.revision_id == candidate):
+                return PromotionResult(Outcome.REJECTED_TARGET, code="ROLLBACK_TARGET_UNKNOWN")
         att = await self._reader.find_attestation(scope, candidate, evidence.evidence_ref)
+        if att is not None and (att.revision_id != candidate
+                                or att.evidence_ref != evidence.evidence_ref):
+            return PromotionResult(Outcome.REJECTED_EVIDENCE, code="ATTESTATION_MISMATCH")
         if att is None or att.decision != "APPROVE":
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_NOT_APPROVED")
         if att.revoked_at is not None:
@@ -180,7 +206,8 @@ class PromotionService:
         if att.expires_at <= self._clock():
             return PromotionResult(Outcome.REJECTED_EXPIRED, code="EVIDENCE_EXPIRED")
         recomputed = evidence_digest(evidence.revision_digest, evidence.evidence_ref)
-        if att.evidence_digest != recomputed:
+        if not isinstance(att.evidence_digest, str) or not hmac.compare_digest(
+                att.evidence_digest.encode("utf-8"), recomputed.encode("utf-8")):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_DIGEST_MISMATCH")
         if not await self._reader.is_trusted_reviewer(scope, att.observer):
             return PromotionResult(Outcome.REJECTED_UNTRUSTED, code="REVIEWER_NOT_TRUSTED")
@@ -193,11 +220,15 @@ class PromotionService:
             version = await self._port.promote_head(
                 approver, scope, model_key, expected_version, candidate, acceptance_id,
                 evidence.evidence_ref)
-        except PortError as exc:
+        except PortError as exc:  # typed SQL rejection: the transaction rolled back, nothing written
             outcome = _PORT_CODES.get(exc.code)
             if outcome is None:
                 return PromotionResult(Outcome.FAILED_CLOSED, code=exc.code)
             return PromotionResult(outcome, code=exc.code)
+        except Exception as exc:  # noqa: BLE001 - the commit may have happened; class name only
+            return PromotionResult(Outcome.INDETERMINATE, code=type(exc).__name__)
+        if type(version) is not int or version != expected_version + 1:
+            return PromotionResult(Outcome.INDETERMINATE, code="UNEXPECTED_VERSION")
         return PromotionResult(success, new_version=version)
 
     @staticmethod
