@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "batch_id": "CAPABILITY_BOUNDARY_20261006",
-  "implementation_sha256": "26f5692e90789e827c8418da2a86cc88f9357270c726f0e774ea6769cad07db3",
+  "implementation_sha256": "636e8649db4cd1503f26ef3f65ea4373726de71e79bec79c233b89fcb64f4528",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
