@@ -137,6 +137,10 @@ class Comparison:
     differences: tuple[Difference, ...]
     authority: str = "EVALUATION_ONLY"
 
+    def __post_init__(self) -> None:
+        if type(self.authority) is not str or self.authority != "EVALUATION_ONLY":
+            raise ValueError("RECONCILIATION_AUTHORITY_FORBIDDEN")
+
 
 def _aggregates_consistent(statement: LedgerStatement, tolerance: Decimal) -> bool:
     if not statement.complete or not statement.rows:

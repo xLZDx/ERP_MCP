@@ -102,6 +102,10 @@ class PurchaseComparison:
     differences: tuple[PurchaseDifference, ...] = ()
     authority: str = "EVALUATION_ONLY"
 
+    def __post_init__(self) -> None:
+        if type(self.authority) is not str or self.authority != "EVALUATION_ONLY":
+            raise ValueError("PURCHASE_AUTHORITY_FORBIDDEN")
+
 
 def _listing_qualified(listing: PurchaseListing) -> bool:
     if not listing.complete:
