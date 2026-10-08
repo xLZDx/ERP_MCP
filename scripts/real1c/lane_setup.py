@@ -78,6 +78,51 @@ def post_ok(label: str, response, expect: int) -> dict:
     return body
 
 
+def ensure_auditor_source_grant(env: LaneEnv, access_admin: AdminSession) -> str:
+    """Grant metadata test-reader access to the auditor for ONE disposable 1C source only.
+
+    Admin AUDITOR is not a data-plane grant. Never widen production rights or
+    assign all_sources. This helper is deliberately restricted to the real-1C E2E
+    fixture and is idempotent for an active exact-source grant.
+    """
+    if env.raw.get("environment") != "test" or env.raw.get("real1c") is not True:
+        raise RuntimeError("AUDITOR_GRANT_REQUIRES_DISPOSABLE_REAL1C_TEST")
+    if env.raw.get("seed_mode") != "bootstrap-only":
+        raise RuntimeError("AUDITOR_GRANT_REQUIRES_BOOTSTRAP_ONLY")
+    subject = env.raw["identities"]["auditor"]["sub"]
+    response = access_admin.get("/admin/v1/grants")
+    if response.status_code != 200:
+        raise RuntimeError("AUDITOR_GRANT_LIST_UNAVAILABLE")
+    for grant in response.json().get("items", []):
+        if (grant.get("principal_kind") == "subject"
+                and grant.get("principal_id") == subject
+                and grant.get("source_id") == SOURCE_REAL
+                and grant.get("company_id") is None
+                and grant.get("all_sources") is False
+                and grant.get("effect") == "allow"
+                and grant.get("revoked_at") is None
+                and grant.get("expires_at") is None):
+            print("[ok] auditor real-1C source grant: already present")
+            return str(grant["grant_id"])
+
+    grant = post_ok("auditor -> real-1C source (test-only)", access_admin.post("/admin/v1/grants", {
+        "principal_kind": "subject", "principal_id": subject, "source_id": SOURCE_REAL,
+        "company_id": None, "all_sources": False, "effect": "allow",
+        "reason": "real-1C L2 isolated auditor metadata/health positive test",
+    }), 201)
+    return str(grant["id"])
+
+
+def repair_auditor_source_grant() -> str:
+    """Opt-in repair for an already bootstrapped disposable real-1C test instance."""
+    env = LaneEnv.load()
+    access_admin = AdminSession(env, "access_admin")
+    try:
+        return ensure_auditor_source_grant(env, access_admin)
+    finally:
+        access_admin.close()
+
+
 def main(odata_user: str, odata_password: str) -> dict:
     env = LaneEnv.load()
     orgs = discover_real_organisations(odata_user, odata_password)
@@ -147,7 +192,8 @@ def main(odata_user: str, odata_password: str) -> dict:
     g2 = post_ok("grant user_company_two -> synthetic company", aa.post("/admin/v1/grants", {
         "principal_kind": "subject", "principal_id": sub("user_company_two"), "source_id": SOURCE_REAL,
         "company_id": synth_company["id"], "effect": "allow", "reason": f"{REASON}: grant synthetic company"}), 201)
-    state["grants"] = {"user_company_one": g1["id"], "user_company_two": g2["id"]}
+    state["grants"] = {"user_company_one": g1["id"], "user_company_two": g2["id"],
+                       "auditor_source": ensure_auditor_source_grant(env, aa)}
     for s in (pa, su, aa):
         s.close()
     return state
@@ -162,4 +208,9 @@ def _reader_credentials() -> tuple[str, str]:
 
 
 if __name__ == "__main__":
-    print(json.dumps(main(*_reader_credentials()), ensure_ascii=False)[:1500])
+    if sys.argv[1:] == ["--repair-auditor-grant"]:
+        print("isolated real-1C auditor source grant id:", repair_auditor_source_grant())
+    elif not sys.argv[1:]:
+        print(json.dumps(main(*_reader_credentials()), ensure_ascii=False)[:1500])
+    else:
+        raise SystemExit("usage: python -m scripts.real1c.lane_setup [--repair-auditor-grant]")
