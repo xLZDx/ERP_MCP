@@ -360,7 +360,7 @@ async def test_work_exception_is_a_failure_not_a_crash():
         raise RuntimeError("source exploded")
 
     result = await sched.run_job(job, boom)
-    assert result.status is RunStatus.RETRY_SCHEDULED and "source exploded" in result.detail
+    assert result.status is RunStatus.RETRY_SCHEDULED and result.detail == "WORK_EXCEPTION"
     assert sched.counter.consecutive_failures == 1
 
 
@@ -457,3 +457,33 @@ def test_scheduler_config_rejects_overflowing_delay_numbers(field, value):
 def test_backoff_rejects_integer_values_too_large_for_floats(base, cap):
     with pytest.raises(ValueError):
         backoff_delay(0, base, cap, lambda: 0.5)
+
+
+async def test_work_exception_does_not_leak_secret_to_result_or_persistent_job():
+    secret = "Authorization: Bearer canary-secret-do-not-log"
+    living, _, sched = make(config=SchedulerConfig(poison_after=1))
+    job = await enqueue(living, 12)
+
+    async def unsafe_work(_handle):
+        raise RuntimeError(secret)
+
+    result = await sched.run_job(job, unsafe_work)
+    assert result.status is RunStatus.POISONED
+    assert result.detail == "WORK_EXCEPTION"
+    view = await living.get_job(WORKER, SCOPE, job)
+    assert view.last_error == "POISONED: WORK_EXCEPTION"
+    assert secret not in result.detail and secret not in (view.last_error or "")
+
+
+async def test_untrusted_lease_lost_message_is_not_returned():
+    from business_ai_gateway.phase2.scheduler import LeaseLost
+
+    living, _, sched = make()
+    job = await enqueue(living, 13)
+
+    async def unsafe_work(_handle):
+        raise LeaseLost("Bearer canary-secret-do-not-log")
+
+    result = await sched.run_job(job, unsafe_work)
+    assert result.status is RunStatus.LEASE_LOST
+    assert result.detail == "LEASE_LOST"
