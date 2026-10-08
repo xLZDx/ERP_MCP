@@ -1,6 +1,7 @@
 """Guard against promoting offline comparison/observation metadata by construction."""
 import pytest
 
+from business_ai_gateway.phase2.onec_discovery import ObservedMetadata
 from business_ai_gateway.phase2.purchase_reconciliation import (
     PurchaseComparison,
     PurchaseResultKind,
@@ -11,6 +12,7 @@ from business_ai_gateway.phase2.structural_diff import (
     ObjectChange,
     ObservedDiff,
 )
+from business_ai_gateway.phase2.structural_hash import StructuralFingerprint
 
 
 @pytest.mark.parametrize("authority", ["VALIDATED", "NATIVE_PASS", ""])
@@ -70,3 +72,26 @@ def test_nonstring_trust_spoof_cannot_promote_observed_diff():
             unattributed_structural_change=False,
             trust_level=_AlwaysEqual(),
         )
+
+
+@pytest.mark.parametrize("trust", ["VALIDATED", "ACCEPTED", _AlwaysEqual()])
+def test_onec_observed_metadata_refuses_approval_label(trust):
+    fingerprint = StructuralFingerprint(
+        canonicalizer_version="edmx-structural-v2",
+        raw_sha256="a" * 64, structural_sha256="b" * 64,
+        objects=(), residual_sha256="c" * 64,
+        tenant_id="tenant-a", source_id="onec-a",
+    )
+    with pytest.raises(ValueError, match="PHASE2_METADATA_TRUST_FORBIDDEN"):
+        ObservedMetadata(source_id="onec-a", fingerprint=fingerprint, trust=trust)
+
+
+def test_onec_observed_metadata_keeps_default_observation_only():
+    fingerprint = StructuralFingerprint(
+        canonicalizer_version="edmx-structural-v2",
+        raw_sha256="a" * 64, structural_sha256="b" * 64,
+        objects=(), residual_sha256="c" * 64,
+        tenant_id="tenant-a", source_id="onec-a",
+    )
+    result = ObservedMetadata(source_id="onec-a", fingerprint=fingerprint)
+    assert result.trust == "OBSERVED_ONLY"

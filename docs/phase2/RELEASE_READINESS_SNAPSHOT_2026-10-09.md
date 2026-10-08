@@ -12,9 +12,9 @@
 ## Current evidence
 
 - R2 committed source baseline: `9cb66343456c37e914fb473dc5aa0f03cf0ea325` at branch creation; original Phase 2 worktree contains other uncommitted files, deliberately untouched.
-- This review branch commits: `4c74af8` (strict physical-backend budget types) and `406a8bd` (strict reference trust labels).
-- Six budget misconfiguration cases and twelve authority/trust-spoof cases were demonstrated failing before their repairs, then passing afterward.
-- On final local isolated Phase 2 code: **345 passed / 65 skipped**; Ruff **PASS**. The skipped 65 PostgreSQL tests are **NOT_RUN on this new HEAD**. Earlier 65 PostgreSQL integration passes on `df92cc8` do not transfer by assertion.
+- Earlier safety commits: `4c74af8` (strict physical-backend budget types), `406a8bd` (strict reference trust labels) and `875bcc9` (initial readiness snapshot). This addendum extends the metadata-observation guard.
+- Six budget misconfiguration cases and fifteen authority/trust-spoof cases were demonstrated failing before their repairs, then passing afterward; an additional positive trust-compatibility case remains green.
+- On final local isolated Phase 2 code: **349 passed / 65 skipped**; Ruff **PASS**. The skipped 65 PostgreSQL tests are **NOT_RUN on this new HEAD**. Earlier 65 PostgreSQL integration passes on `df92cc8` do not transfer by assertion.
 - G1 restore/crash/guard-mutation evidence in `EVIDENCE_MATRIX.md` was reviewed and approved for *push* on `df92cc8`, not G1 release exit. G0–G7 are not all PASS.
 - The in-memory ledger, per-process budget, callback-based 1C and Google Drive clients, and comparison classes are not wired end-to-end production workflows.
 
