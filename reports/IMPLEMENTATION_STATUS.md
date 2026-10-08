@@ -1,18 +1,21 @@
 
 # ERP_MCP implementation status
 
-## Release 1 isolated fresh-install proof ? 2026-10-09
+## Verified first-install L2 gateway and ACL — 2026-10-09
 
-A fresh GitHub main clone on the existing Windows engineering host completed locked dependency
-installation, isolated PostgreSQL/Redis migrations, real 1C metadata discovery (920 EntitySets),
-and 7/7 L2 MCP metadata/ACL cases after the disposable test-only auditor source grant was
-provisioned separately from its Admin role. A ComSpec fallback fixes noninteractive startup.
-These checks do not establish native accounting reconciliation or a production/Unix release.
-See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
-Production NO-GO, DoD PARTIAL; full suite on the new exact code still requires CI evidence.
+On the exact pre-merge R1 installation candidate a clean GitHub clone on an
+existing Windows engineering host reached genuine read-only 1C metadata and
+passed seven MCP source-access/metadata checks (two positive, five denied).
+ComSpec startup and the disposable real-1C auditor source-grant bootstrap were
+repaired, with fail-closed and idempotence regression checks.
+The concurrently published main machine-profile/functional changes are
+preserved in this merged tree, but the combined head still requires exact-head
+hosted CI / fresh test confirmation. This does not prove native accounting or
+Unix/production GO. See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
+Production NO-GO; DoD PARTIAL.
 
 
-<!-- ENGINEERING_CHECKPOINT=REAL1C_L2_INSTALL_20261009 ENGINEERING_IMPLEMENTATION=311b3ac64aac5a1d0bd33d3a568a4555040884a257cc790dde67127ac1f8262d -->
+<!-- ENGINEERING_CHECKPOINT=MERGED_REAL1C_L2_INSTALL_20261009 ENGINEERING_IMPLEMENTATION=6697a70710e5161b64f7c8f2c5bfa689f3a1424063cd7a654d4de8bc714899ba -->
 
 ## Capability observation boundary — 2026-10-06
 

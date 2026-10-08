@@ -67,6 +67,8 @@ _AUTHORITY = re.compile(r"^ROSETTA_PLAN:([A-Za-z0-9_.\-]{8,200}):([0-9a-f]{64})$
 NATIVE_ONLY_SQL = """
  jsonb_typeof(p.validation_evidence_json) = 'object'
  AND jsonb_typeof(p.validation_evidence_json->'native_reconciliation_cases') = 'array'
+ AND CASE WHEN jsonb_typeof(p.validation_evidence_json->'native_reconciliation_cases') = 'array'
+          THEN jsonb_array_length(p.validation_evidence_json->'native_reconciliation_cases') ELSE 0 END > 0
  AND NOT (p.validation_evidence_json ? 'machine_scope')
  AND coalesce(p.validation_evidence_json->>'evidence_basis', 'NATIVE') = 'NATIVE'
  AND NOT EXISTS (
