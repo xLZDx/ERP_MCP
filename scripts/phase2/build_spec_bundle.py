@@ -181,7 +181,7 @@ def main():
             for case in cases
         )).rstrip() + "\n")
     with (PACKAGE / "traceability.csv").open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["test_id", "story_id", "requirement_id", "expected", "actual_status"])
         for case in cases:
             for req in case["requirements"]:
@@ -215,7 +215,12 @@ def main():
     with zipfile.ZipFile(ARCHIVE, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
         for file in sorted(PACKAGE.rglob("*")):
             if file.is_file():
-                zipf.write(file, f"{NAME}/{file.relative_to(PACKAGE).as_posix()}")
+                arcname = f"{NAME}/{file.relative_to(PACKAGE).as_posix()}"
+                info = zipfile.ZipInfo(arcname, date_time=(2026, 10, 8, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = 0o644 << 16
+                zipf.writestr(info, file.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
     with zipfile.ZipFile(ARCHIVE) as zipf:
         if zipf.testzip() is not None:
             raise RuntimeError("ARCHIVE_CRC_FAILURE")

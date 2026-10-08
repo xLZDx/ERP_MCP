@@ -1,50 +1,42 @@
-# Phase 2 isolated branch: handoff and precise status
+# Phase 2 — Isolation and Windows checkout handoff (2026-10-08)
 
-## Source of truth
+## Verified completed
 
-Branch: phase2/living-model-connectors-reconciliation
-Based on GitHub main commit 94f4cee5842776d0b8810cf3f38e2682a701002a. A Git branch includes the entire committed repository tree; it does NOT include staged or unstaged changes in another worktree.
-Do not merge R2 into main/Release 1 or run Phase 2 migrations against R1.
-Do not edit Phase 1 worktree, running gateway, 1C source, tunnel, IdP, PostgreSQL or services as part of this setup.
+- GitHub: `xLZDx/ERP_MCP`, branch `phase2/living-model-connectors-reconciliation`.
+- Branch original base: main `94f4cee5842776d0b8810cf3f38e2682a701002a`.
+- Separate Windows checkout **created using Remote Desktop Commander**: `D:\Repo\ERP_MCP-phase2`.
+- The new checkout uses its OWN `.venv` built from `uv.lock`. The prior R1 worktree `D:\Repo\ERP_MCP-integration-candidate` was not switched, reset, stashed, committed, or used to run Phase 2 tests.
+- Phase 2 documentation, OBSERVED-only EDMX structural hash candidate, test suite, catalogues and rebuilt archive are committed and pushed in the Phase 2 branch.
+- Branch archive: `docs/phase2/artifacts/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip`.
+- Archive SHA-256 is computed by the deterministic builder and verified with `Get-FileHash`; the hash is intentionally not embedded here to avoid a circular package checksum.
+- Generator: `scripts/phase2/build_spec_bundle.py`. Generated directory: `docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/`.
+- Windows tests: **23 PASS** for Phase 2 isolated code/specifications; Ruff lint **PASS**. These are NOT live ERP/1C acceptance.
+- Current pushed change: `719ee83` followed by this documentation status update.
 
-## Windows separate clone
+## Important difference between archives
 
-A non-destructive clone helper is at scripts/phase2/bootstrap-local.ps1 in this branch and D:\Repo\ERP_MCP_PHASE2_SETUP.ps1 on the operator workstation.
-Desired isolated checkout: D:\Repo\ERP_MCP-phase2.
-An already existing destination is checked; no deletion, reset, force-push or overwrite is allowed.
+The exact ORIGINAL ZIP attached to the earlier ChatGPT conversation contains 38 files, 180452 bytes and SHA-256
+`e1ab5e1d8e96307a57536c82ce132a7591b41b2e3adf71e8b7c1e7adc2703963`.
+That exact binary was *not* transferred to the Windows workstation. Desktop Commander provides no direct binary transfer from the ChatGPT sandbox. Never claim the rebuilt ZIP is byte-for-byte identical to it.
 
-**Current execution limitation:** the connected DC_MCP exposes file access and selected Git operations but NOT arbitrary git clone/PowerShell process execution. Remote Phase 2 branch was created and populated through the GitHub connector. The Windows isolated clone must be executed with the supplied helper in a PowerShell session; do not claim it exists until checked.
+Instead, the new isolated checkout contains a **reproducibly rebuilt** spec archive from the actual reviewed Phase 2 docs, with 28 requirements, 48 stories, 144 Gherkin cases, machine-readable catalogs, four schemas, examples and SHA manifest. The rebuilt archive has a distinct file name and checksum.
 
-From Windows PowerShell:
-    & 'D:\Repo\ERP_MCP_PHASE2_SETUP.ps1'
+If the exact original attachment is required, it can be imported later as a separately labeled artifact after downloading it through the ChatGPT interface and verifying its expected SHA; do not overwrite this rebuilt archive.
 
-The full original 38-file ZIP exists as an attachment to the ChatGPT conversation, NOT on the Windows workstation or in this Git branch yet. The separate setup script accepts a locally downloaded, SHA-256-verified copy:
-    & 'D:\Repo\ERP_MCP_PHASE2_SETUP.ps1' -BundleZip 'D:\Downloads\ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip' -PublishBundle
+## Current limits and gates
 
-Expected SHA-256: e1ab5e1d8e96307a57536c82ce132a7591b41b2e3adf71e8b7c1e7adc2703963.
-The script refuses inconsistent archive bytes and existing destinations.
+- R1 remains scoped/frozen and production GO cannot be inferred from R2 work.
+- No Phase 2 migration was run against R1, no additional grant issued, no 1C base modified, no existing gateway/IdP/tunnel process stopped.
+- The Phase 2 code is an isolated development slice, NOT the completed full Release 2.
+- The 144 scenarios in the project catalog are `NOT_RUN`; G0–G7 remain pending.
+- No arbitrary 1C COM/SQL or Windows executor is exposed to MCP data readers.
+- Future merge direction: finish R1; review R1 main -> R2; test R2 staging on isolated DB/services; canary with approval; switch by deployment routing/feature flags, NOT simply switching a branch under the live gateway.
 
-## Implemented on the isolated branch (S1 candidate only)
+## Next work
 
-- src/business_ai_gateway/phase2/structural_hash.py: pure bounded, defensive EDMX OBSERVED fingerprinting, raw and normalized structural digests, per-object digests. No R1 import / no runtime hook / no DB migration / no approved model promotion.
-- tests/phase2/test_structural_hash.py: 10 focused unit checks for formatting stability, meaningful property changes and malformed XML.
-- Existing Phase 2 TDD, S0-S10 plan, stories, tests and native report protocol under docs/phase2/.
-- Product acceptance scenarios remain NOT_RUN. Passing 10 isolated unit checks is not acceptance of real 1C metadata or production connectivity.
-
-## Next implementation tasks, in order
-
-1. S0 governance/ADR and exact-base donor/license/security inventory; decide R1 gate separation.
-2. Run these Phase 2 tests on isolated checkout and fix any environment-specific issues, without touching R1:
-   PYTHONPATH=src python -m pytest -q tests/phase2/test_structural_hash.py
-3. Expand canonicalizer to real OData v3 fixtures with structural parity and proper exact namespace coverage. Store only OBSERVED, not accepted.
-4. Add append-only bitemporal registry in new additive migration behind disabled feature flag; real Postgres roles/FK/RLS/transaction tests.
-5. Add impact dependency graph and staged acceptance after explicit governance authorization.
-6. Qualify one real 1C native report from an approved disposable copy; no production write probes or arbitrary COM.
-7. Add 1C/Drive connectors and reconciliation workflow with independent accounting evidence; run separately scoped load and security tests.
-
-## Explicitly still pending
-
-- Independent Windows clone (helper prepared, not executed).
-- Exact original ZIP copied into Windows and committed in branch (requires obtaining the conversation attachment on the Windows machine).
-- Real Phase 2 product tests, real native evidence, deployment, operations and production qualification.
-- No Phase 2 changes have been merged into main.
+1. Qualify real OData v3 EDMX canonicalization and handle known ordering/namespace/collision cases.
+2. Approve Phase 2 scope/ADR before introducing DB changes; implement OBSERVED append-only time/event registry behind default-off flag.
+3. Add verified dependency graph and ACCEPTED promotion policy; independent accounting evidence is required.
+4. Build a native report UI recipe on an authorized disposable 1C copy and independent 521.1 comparison; never fabricate PASS.
+5. Evaluate Drive least-privilege auth/new-files/revisions, port only audited PDCC connector contracts.
+6. Add real source + PostgreSQL security/functional/load tests and a controlled R2 canary before any migration or switch.

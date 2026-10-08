@@ -18,11 +18,11 @@
 
 В чате предоставлен ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip: 38 файлов, расширенная редакция документов, offline HTML, requirements/stories/test_cases YAML, traceability.csv, 144 Gherkin scenarios, 4 JSON Schemas, synthetic examples и executable SPEC/L0 tests.
 
-Архив не скопирован и не распакован на Windows. До распаковки нельзя считать companion YAML/schemas/tests уже присутствующими в этом каталоге. Для обычного сохранения и распаковки подходит новый подкаталог docs\phase2\spec-v0.1\, без перезаписи existing files.
+На Windows **создана отдельная рабочая копия** `D:\Repo\ERP_MCP-phase2`. В ней уже сохранён `docs\phase2\spec-v0.1\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08\` с YAML/JSON Schema/Gherkin/traceability и отдельный `docs\phase2\artifacts\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip`. Это **пересобранный из текущих документов** пакет, а не исходный ZIP из ChatGPT; его точный SHA проверяется генератором `scripts\phase2\build_spec_bundle.py`.
 
 ## Проверка
 
-В контейнере подготовки реально выполнены 35 SPEC/L0 checks: все PASS, без skipped. Product tests144, реальные 1С/Drive/PostgreSQL/UI/COM/native/prod проверки — NOT_RUN. Gherkin step implementations ещё нужно разработать. JSON Schema не доказывает genuine artifact, actual permissions или independent attestation.
+В контейнере подготовки первоначально выполнены 35 SPEC/L0 checks: все PASS. В **изолированной Windows-копии Phase 2** дополнительно выполнены 23 новых офлайн-теста: PASS, и Ruff lint: PASS. Product tests144, реальные 1С/Drive/PostgreSQL/UI/COM/native/prod проверки — NOT_RUN. Gherkin step implementations ещё нужно разработать. JSON Schema не доказывает genuine artifact, actual permissions или independent attestation.
 
 HTML прошёл статическую проверку структуры/ссылок/отсутствия внешних render resources. Визуальный browser run не выполнен: managed Chromium заблокировал file navigation; ограничения не обходились. Подробнее — PACKAGE_COMPLETION_RU.md.
 
@@ -34,4 +34,4 @@ HTML прошёл статическую проверку структуры/с�
 
 ## Статус
 
-Документационный пакет завершён для review. Реализация Phase2 не запускалась. R1 code/config/migrations/permissions не менялись этим этапом. Нет commit/push/merge, рестартов, нагрузки или удаления; сторонние изменения не тронуты.
+Документационный пакет и первый изолированный кодовый срез Phase 2 созданы и запушены **только** в `phase2/living-model-connectors-reconciliation`. R1 code/config/migrations/permissions не менялись этим этапом, merge в `main` не производился, services/1C не перезапускались, посторонние рабочие изменения не тронуты. Статус и план дальнейшего переключения — `BRANCH_ISOLATION_AND_HANDOFF.md`, `CUTOVER_PLAN_RU.md`.
