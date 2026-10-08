@@ -23,9 +23,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import asyncpg
 import pytest
 from _pg_harness import require_dsn, throwaway_db
-from _sql_ports import SqlLiving
+from _sql_ports import SqlLiving, to_port_error
 
 from business_ai_gateway.phase2.fakes import FakeClock, InMemoryLiving
 from business_ai_gateway.phase2.ports import (
@@ -1345,3 +1346,38 @@ async def test_race_two_publishers_never_claim_the_same_event(race_db):
     assert all(not isinstance(r, BaseException) and len(r) == 1 for r in results), results
     assert sorted(r[0].event_id for r in results) == ["e1", "e2"]
     assert {r[0].claim_generation for r in results} == {1}
+
+
+# =============================================================================== raw SQL guards
+@pytest.mark.integration
+async def test_unique_index_allows_only_one_running_job_per_source_even_without_acquire_job():
+    """jobs_one_running_per_source itself (acquire_job's EXISTS check would mask it)."""
+    async with throwaway_db(require_dsn()) as db:
+        ins = ("INSERT INTO living.jobs(tenant_id,source_id,job_id,job_kind,request_digest,"
+               "idempotency_key,state,lease_owner,lease_until,scope_epoch) VALUES('A','s1',$1,"
+               "'sync',$2,$3,'RUNNING','w',clock_timestamp()+interval '1 minute',0)")
+        await db.conn.execute(ins, uuid.uuid4(), "c" * 64, "u1")
+        with pytest.raises(PortError) as ei:
+            async with db.conn.transaction():
+                try:
+                    await db.conn.execute(ins, uuid.uuid4(), "c" * 64, "u2")
+                except asyncpg.PostgresError as e:
+                    raise to_port_error(e) from None
+        assert ei.value.code == "UNIQUE_VIOLATION", ei.value
+        assert "jobs_one_running_per_source" in str(ei.value)
+
+
+@pytest.mark.integration
+async def test_rls_hides_other_tenants_from_an_unfiltered_select():
+    """Raw SELECT (no tenant/source predicate) as the unprivileged role sees only its own scope."""
+    async with throwaway_db(require_dsn()) as db:
+        ins = ("INSERT INTO living.jobs(tenant_id,source_id,job_id,job_kind,request_digest,"
+               "idempotency_key,scope_epoch) VALUES($1,$2,$3,'sync',$4,$5,0)")
+        for t, s in (("A", "s1"), ("B", "s1"), ("A", "s3")):
+            await db.conn.execute(ins, t, s, uuid.uuid4(), "c" * 64, "k")
+        assert await db.conn.fetchval("SELECT count(*) FROM living.jobs") == 3  # owner sees all
+        async with db.conn.transaction():
+            await db.conn.execute(f'SET LOCAL ROLE "{W}"')
+            await db.conn.fetchval("SELECT living.set_scope($1,$2,$3)", "A", "s1", None)
+            rows = await db.conn.fetch("SELECT tenant_id, source_id FROM living.jobs")
+        assert [(r["tenant_id"], r["source_id"]) for r in rows] == [("A", "s1")]
