@@ -98,11 +98,11 @@ async def ingest(conn, obj, rev, kind="OBSERVED", digest=None, eff=None, superse
                  t="A", s="s1", obs_id=None):
     obs_id = obs_id or uuid.uuid4()
     async with scope(conn, "living_worker", t, s):
-        await conn.fetchval(
+        # the function returns the stored observation id (the existing one on an idempotent retry)
+        return await conn.fetchval(
             "SELECT living.ingest_observation($1,$2,$3::uuid,$4,$5::uuid,$6,$7,$8::timestamptz,"
             "$9::timestamptz,$10::uuid,'{}'::jsonb)",
             t, s, obs_id, obj, rev, kind, digest, eff, _dt(2024, 1, 2), supersedes)
-    return obs_id
 
 
 async def seed_direct(conn, t, s, obj):
@@ -133,7 +133,8 @@ async def test_runtime_roles_cannot_update_delete_truncate_or_insert(env):
                 await raises(c.execute(stmt), exc=asyncpg.InsufficientPrivilegeError)
     # even the privileged applier cannot rewrite or truncate the ledger
     await raises(c.execute("UPDATE living.observations SET object_id='x'"), "IMMUTABLE_LEDGER")
-    await raises(c.execute("TRUNCATE living.observations"), "IMMUTABLE_LEDGER")
+    # plain TRUNCATE is stopped earlier by the foreign key from accepted_heads; CASCADE reaches the guard
+    await raises(c.execute("TRUNCATE living.observations CASCADE"), "IMMUTABLE_LEDGER")
 
 
 async def test_cross_tenant_source_company_reads_empty_and_provenance_hidden(env):
@@ -167,7 +168,9 @@ async def test_guc_spoof_returns_nothing(env):
                             "set_config('living.source_id',$2,true)", t, s)
             assert await c.fetchval("SELECT count(*) FROM living.observations") == 0
             assert await c.fetchval("SELECT count(*) FROM living.sources") == 0
-            assert await c.fetchval("SELECT count(*) FROM living.tenants") == 0
+            # the spoofed tenant is never visible; only the role's own granted tenant A may be
+            seen = {r[0] for r in await c.fetch("SELECT tenant_id FROM living.tenants")}
+            assert seen <= {"A"} and t not in (seen - {"A"})
     async with c.transaction():  # spoof without set_scope: mutating APIs refuse too
         await c.execute("SET LOCAL ROLE living_worker")
         await c.execute("SELECT set_config('living.tenant_id','B',true),"
@@ -324,6 +327,8 @@ async def test_promote_requires_independent_approver_and_blocks_direct_head_chan
     await ingest(c, "o1", rev, digest=DA, eff=_dt(2024, 1, 1))
     async with scope(c, "living_promoter"):
         await c.fetchval("SELECT living.create_head('A','s1','m')")
+    # a caught error aborts its transaction, so the failing call gets its own scope
+    async with scope(c, "living_promoter"):
         await raises(c.fetchval("SELECT living.promote_head('A','s1','m',0,$1,$2,'nope')",
                                 rev, uuid.uuid4()), "EVIDENCE_NOT_FOUND")
     # attestation whose observer is the approver itself

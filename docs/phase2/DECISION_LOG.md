@@ -2,6 +2,12 @@
 
 Append-only. Each entry is a durable decision, piece of evidence or refusal that a new developer needs. Newest last.
 
+## 2026-10-08 — D-002: first real PostgreSQL run, operator decisions
+
+Operator (2026-10-08): PostgreSQL and Docker exist on this machine, create a disposable instance (I had wrongly concluded none existed from a PATH-only check; Docker Desktop is installed but not on PATH). Own container `erp-phase2-test-pg` (postgres:16-alpine, 127.0.0.1:55712, `--rm`, no volume, random password kept only in the session scratchpad) was started; the existing R1 containers were not touched. Result: migrations 001-003 apply, 20/20 integration tests pass after fixing four wrong test expectations (see IMPLEMENTATION_STATUS). G1 moves from "SQL never executed" to "SQL executed on a disposable DB, integration subset green"; G1 is still not PASS (no backup/restore, crash/kill, capacity, mutation checks, GPT-PM and independent review of the final head).
+
+Operator decisions: (1) no CI and no pytest suites are run as gates; (2) Phase 2 is not mixed with R1 (OB-05 answered: R2 stays isolated), but the latest R1 updates are pulled into this branch by merge (R1 itself is never modified); (3) the independent reviewer is GPT-PM, so the local re-review requested earlier is replaced by the GPT-PM sweep once OB-02 is resolved.
+
 ## 2026-10-08 — D-001: multi-reviewer round on HEAD 9b4fc0c, remediation and verification round
 
 **Decision.** Before any further S0–S10 work, the whole Phase 2 tree was reviewed by six read-only local reviewers (Sonnet; database, security, Python, test adequacy, reliability, architecture), remediated in one batch, then re-reviewed (SQL, Python+security, test adequacy; fixes and regressions only). Operator instruction: "run the whole project through local agents and GPT before going further". Local agents were authorized for this run by that instruction.
