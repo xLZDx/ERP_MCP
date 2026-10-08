@@ -1,0 +1,145 @@
+test_id,story_id,requirement_id,expected,actual_status
+R2-TC-001,R2-US-001,R2-REQ-01,R1 неизменён,NOT_RUN
+R2-TC-002,R2-US-001,R2-REQ-01,defect R1 нельзя скрыть backlog,NOT_RUN
+R2-TC-003,R2-US-001,R2-REQ-01,moving head не выдан за deployed proof,NOT_RUN
+R2-TC-004,R2-US-002,R2-REQ-04,pin path/SHA/license,NOT_RUN
+R2-TC-005,R2-US-002,R2-REQ-04,.gitkeep не ready,NOT_RUN
+R2-TC-006,R2-US-002,R2-REQ-04,donor writes не exposed,NOT_RUN
+R2-TC-007,R2-US-003,R2-REQ-03,typed scope/provenance result,NOT_RUN
+R2-TC-008,R2-US-003,R2-REQ-03,arbitrary URL/sql/command denied,NOT_RUN
+R2-TC-009,R2-US-003,R2-REQ-03,unsupported changes=SNAPSHOT_ONLY,NOT_RUN
+R2-TC-010,R2-US-004,R2-REQ-02,read своей компании,NOT_RUN
+R2-TC-011,R2-US-004,R2-REQ-02,cross-tenant FK/API denied,NOT_RUN
+R2-TC-012,R2-US-004,R2-REQ-02,company-only не получает global metadata,NOT_RUN
+R2-TC-013,R2-US-005,R2-REQ-02,revoke blocks jobs/epoch,NOT_RUN
+R2-TC-014,R2-US-005,R2-REQ-02,revoke до выдачи denies result,NOT_RUN
+R2-TC-015,R2-US-005,R2-REQ-02,reconnect не resurrect старые grants,NOT_RUN
+R2-TC-016,R2-US-006,R2-REQ-03,no log/argv leakage,NOT_RUN
+R2-TC-017,R2-US-006,R2-REQ-03,missing pair preflight denies без gateway stop,NOT_RUN
+R2-TC-018,R2-US-006,R2-REQ-03,rotation использует новую version,NOT_RUN
+R2-TC-019,R2-US-007,R2-REQ-05,full coverage/digests,NOT_RUN
+R2-TC-020,R2-US-007,R2-REQ-05,direct SQL forbidden,NOT_RUN
+R2-TC-021,R2-US-007,R2-REQ-05,racing source yields partial/consistency warning,NOT_RUN
+R2-TC-022,R2-US-008,R2-REQ-06,whitespace structural hash equal,NOT_RUN
+R2-TC-023,R2-US-008,R2-REQ-06,type/scale change diff,NOT_RUN
+R2-TC-024,R2-US-008,R2-REQ-06,namespaces не colliding,NOT_RUN
+R2-TC-025,R2-US-009,R2-REQ-05,timeout≠new schema,NOT_RUN
+R2-TC-026,R2-US-009,R2-REQ-05,partial не удаляет objects,NOT_RUN
+R2-TC-027,R2-US-009,R2-REQ-05,recovery без fake version/auto trust,NOT_RUN
+R2-TC-028,R2-US-010,R2-REQ-09,append+projection sequence,NOT_RUN
+R2-TC-029,R2-US-010,R2-REQ-09,UPDATE/DELETE denied SQL roles,NOT_RUN
+R2-TC-030,R2-US-010,R2-REQ-09,replay identical,NOT_RUN
+R2-TC-031,R2-US-011,R2-REQ-09,корректные two-time views,NOT_RUN
+R2-TC-032,R2-US-011,R2-REQ-09,unknown не polling timestamp,NOT_RUN
+R2-TC-033,R2-US-011,R2-REQ-09,late supersession сохраняет прежнее знание,NOT_RUN
+R2-TC-034,R2-US-012,R2-REQ-05,SNAPSHOT_ONLY interval,NOT_RUN
+R2-TC-035,R2-US-012,R2-REQ-05,A-B-A не выдумывается,NOT_RUN
+R2-TC-036,R2-US-012,R2-REQ-05,cursor loss -> controlled resnapshot+gap,NOT_RUN
+R2-TC-037,R2-US-013,R2-REQ-08,scoped candidate edges,NOT_RUN
+R2-TC-038,R2-US-013,R2-REQ-08,LLM cannot validate,NOT_RUN
+R2-TC-039,R2-US-013,R2-REQ-08,versioned semantics/old links retained,NOT_RUN
+R2-TC-040,R2-US-014,R2-REQ-08,exact scoped ref match,NOT_RUN
+R2-TC-041,R2-US-014,R2-REQ-08,same-name cross-company no merge,NOT_RUN
+R2-TC-042,R2-US-014,R2-REQ-08,ambiguity human resolution,NOT_RUN
+R2-TC-043,R2-US-015,R2-REQ-10,affected tool blocked,NOT_RUN
+R2-TC-044,R2-US-015,R2-REQ-10,unknown graph conservative deny,NOT_RUN
+R2-TC-045,R2-US-015,R2-REQ-10,remove/recreate не rename,NOT_RUN
+R2-TC-046,R2-US-016,R2-REQ-07,evidence+expected head commit,NOT_RUN
+R2-TC-047,R2-US-016,R2-REQ-07,stale reviewer409,NOT_RUN
+R2-TC-048,R2-US-016,R2-REQ-07,incompatible rollback denied,NOT_RUN
+R2-TC-049,R2-US-017,R2-REQ-11,один lease/fence,NOT_RUN
+R2-TC-050,R2-US-017,R2-REQ-11,stale worker commit denied,NOT_RUN
+R2-TC-051,R2-US-017,R2-REQ-11,crash reclaim no duplicates,NOT_RUN
+R2-TC-052,R2-US-018,R2-REQ-11,atomic page+cursor,NOT_RUN
+R2-TC-053,R2-US-018,R2-REQ-11,crash replay no loss,NOT_RUN
+R2-TC-054,R2-US-018,R2-REQ-11,same ID/different digest conflict,NOT_RUN
+R2-TC-055,R2-US-019,R2-REQ-11,shared budget across source aliases,NOT_RUN
+R2-TC-056,R2-US-019,R2-REQ-11,bounded overload,NOT_RUN
+R2-TC-057,R2-US-019,R2-REQ-11,interactive/background fairness,NOT_RUN
+R2-TC-058,R2-US-020,R2-REQ-03,no new jobs on pause,NOT_RUN
+R2-TC-059,R2-US-020,R2-REQ-03,poison source изолирован,NOT_RUN
+R2-TC-060,R2-US-020,R2-REQ-03,resume revalidates scope/cursor,NOT_RUN
+R2-TC-061,R2-US-021,R2-REQ-13,original+manifest UNATTESTED,NOT_RUN
+R2-TC-062,R2-US-021,R2-REQ-13,partial screenshot incomplete,NOT_RUN
+R2-TC-063,R2-US-021,R2-REQ-13,edited XLSX digest rejected,NOT_RUN
+R2-TC-064,R2-US-022,R2-REQ-13,manual/UI equivalence,NOT_RUN
+R2-TC-065,R2-US-022,R2-REQ-13,wrong base denied,NOT_RUN
+R2-TC-066,R2-US-022,R2-REQ-13,"selector/modal drift fail, no guessed clicks",NOT_RUN
+R2-TC-067,R2-US-023,R2-REQ-14,qualified object provenance,NOT_RUN
+R2-TC-068,R2-US-023,R2-REQ-14,empty COM не zero,NOT_RUN
+R2-TC-069,R2-US-023,R2-REQ-14,untrusted EPF denied,NOT_RUN
+R2-TC-070,R2-US-024,R2-REQ-15,scope/window/mode admission,NOT_RUN
+R2-TC-071,R2-US-024,R2-REQ-15,prod defaultOFF/expired denied,NOT_RUN
+R2-TC-072,R2-US-024,R2-REQ-15,same idem/different params409,NOT_RUN
+R2-TC-073,R2-US-025,R2-REQ-15,no business writes/coverage,NOT_RUN
+R2-TC-074,R2-US-025,R2-REQ-15,admin/posting requirement disqualifies,NOT_RUN
+R2-TC-075,R2-US-025,R2-REQ-15,reset/write-probe prod denied,NOT_RUN
+R2-TC-076,R2-US-026,R2-REQ-16,opaque version+digest,NOT_RUN
+R2-TC-077,R2-US-026,R2-REQ-16,nonexistent blob/hash not evidence,NOT_RUN
+R2-TC-078,R2-US-026,R2-REQ-16,current ACL on historical artifact,NOT_RUN
+R2-TC-079,R2-US-027,R2-REQ-17,values-only parse,NOT_RUN
+R2-TC-080,R2-US-027,R2-REQ-17,macro/entity/zipbomb denied,NOT_RUN
+R2-TC-081,R2-US-027,R2-REQ-17,"bounded timeout/memory, no truncated PASS",NOT_RUN
+R2-TC-082,R2-US-028,R2-REQ-16,exact revision+policy attestation,NOT_RUN
+R2-TC-083,R2-US-028,R2-REQ-16,self-sign/fake PASS denied,NOT_RUN
+R2-TC-084,R2-US-028,R2-REQ-16,"revoke current validity, preserve history",NOT_RUN
+R2-TC-085,R2-US-029,R2-REQ-16,scoped EVALUATION_ONLY,NOT_RUN
+R2-TC-086,R2-US-029,R2-REQ-16,unauthorized runner denied,NOT_RUN
+R2-TC-087,R2-US-029,R2-REQ-16,canonical replay после acceptance,NOT_RUN
+R2-TC-088,R2-US-030,R2-REQ-18,all-required MATCH,NOT_RUN
+R2-TC-089,R2-US-030,R2-REQ-18,equal closing с ошибками opening/turnover MISMATCH,NOT_RUN
+R2-TC-090,R2-US-030,R2-REQ-18,contract sides/netting отдельно,NOT_RUN
+R2-TC-091,R2-US-031,R2-REQ-18,ledger strategy qualified,NOT_RUN
+R2-TC-092,R2-US-031,R2-REQ-18,absent register not fabricated,NOT_RUN
+R2-TC-093,R2-US-031,R2-REQ-18,balance alone no aging,NOT_RUN
+R2-TC-094,R2-US-032,R2-REQ-18,identity/company/Posted correct,NOT_RUN
+R2-TC-095,R2-US-032,R2-REQ-18,unposted/deleted exclusions,NOT_RUN
+R2-TC-096,R2-US-032,R2-REQ-18,complete pagination/alias proof,NOT_RUN
+R2-TC-097,R2-US-033,R2-REQ-18,immutable snapshot proven,NOT_RUN
+R2-TC-098,R2-US-033,R2-REQ-18,concurrent correction INCONCLUSIVE,NOT_RUN
+R2-TC-099,R2-US-033,R2-REQ-18,backdated rerun supersedes не overwrite,NOT_RUN
+R2-TC-100,R2-US-034,R2-REQ-21,claims/evidence coverage,NOT_RUN
+R2-TC-101,R2-US-034,R2-REQ-21,ten duplicate cases rejected,NOT_RUN
+R2-TC-102,R2-US-034,R2-REQ-21,purchases validated не открывает AP и не меняет R1,NOT_RUN
+R2-TC-103,R2-US-035,R2-REQ-12,scoped access proven,NOT_RUN
+R2-TC-104,R2-US-035,R2-REQ-12,folder/newchild PoC,NOT_RUN
+R2-TC-105,R2-US-035,R2-REQ-12,broad OAuth не называется folder isolation,NOT_RUN
+R2-TC-106,R2-US-036,R2-REQ-12,starttoken-before-baseline catchup,NOT_RUN
+R2-TC-107,R2-US-036,R2-REQ-12,shared-drive namespaces,NOT_RUN
+R2-TC-108,R2-US-036,R2-REQ-12,lost cursor gap/resnapshot,NOT_RUN
+R2-TC-109,R2-US-037,R2-REQ-12,newrevision UNATTESTED oldPASS historical,NOT_RUN
+R2-TC-110,R2-US-037,R2-REQ-12,shortcut/move scope escape denied,NOT_RUN
+R2-TC-111,R2-US-037,R2-REQ-12,removal no guessed replacement,NOT_RUN
+R2-TC-112,R2-US-038,R2-REQ-12,invalid_grant AUTH_REQUIRED,NOT_RUN
+R2-TC-113,R2-US-038,R2-REQ-12,notifications только hint,NOT_RUN
+R2-TC-114,R2-US-038,R2-REQ-12,polling корректен без watch,NOT_RUN
+R2-TC-115,R2-US-039,R2-REQ-22,row/fragment/owner/delta,NOT_RUN
+R2-TC-116,R2-US-039,R2-REQ-22,original numbers immutable,NOT_RUN
+R2-TC-117,R2-US-039,R2-REQ-22,new evidence -> new run,NOT_RUN
+R2-TC-118,R2-US-040,R2-REQ-07,known/effective labels,NOT_RUN
+R2-TC-119,R2-US-040,R2-REQ-07,historical !=live green,NOT_RUN
+R2-TC-120,R2-US-040,R2-REQ-07,diff/evidence scoped,NOT_RUN
+R2-TC-121,R2-US-041,R2-REQ-26,safe reason+annotation,NOT_RUN
+R2-TC-122,R2-US-041,R2-REQ-26,CSRF/idem403/409,NOT_RUN
+R2-TC-123,R2-US-041,R2-REQ-26,отказ не обходится rawCOM/DC,NOT_RUN
+R2-TC-124,R2-US-042,R2-REQ-15,exact scope capture/compare,NOT_RUN
+R2-TC-125,R2-US-042,R2-REQ-15,devPASS не prod approval,NOT_RUN
+R2-TC-126,R2-US-042,R2-REQ-15,kill-switch owned job,NOT_RUN
+R2-TC-127,R2-US-043,R2-REQ-23,sessions vs active grid,NOT_RUN
+R2-TC-128,R2-US-043,R2-REQ-23,profile refusals not throughput,NOT_RUN
+R2-TC-129,R2-US-043,R2-REQ-23,background interference/budget,NOT_RUN
+R2-TC-130,R2-US-044,R2-REQ-24,audit down fail-closed,NOT_RUN
+R2-TC-131,R2-US-044,R2-REQ-24,replica/network429 no duplicates,NOT_RUN
+R2-TC-132,R2-US-044,R2-REQ-24,alert fired+recovered,NOT_RUN
+R2-TC-133,R2-US-045,R2-REQ-25,additive shadow regressions,NOT_RUN
+R2-TC-134,R2-US-045,R2-REQ-25,destructive rollback denied,NOT_RUN
+R2-TC-135,R2-US-045,R2-REQ-25,switch rollback no revoked grant resurrection,NOT_RUN
+R2-TC-136,R2-US-046,R2-REQ-17,restored FKs/digests/heads,NOT_RUN
+R2-TC-137,R2-US-046,R2-REQ-17,export masking/tenant/formula safety,NOT_RUN
+R2-TC-138,R2-US-046,R2-REQ-17,hold/no unapproved deletion,NOT_RUN
+R2-TC-139,R2-US-047,R2-REQ-04,adapter contract qualification,NOT_RUN
+R2-TC-140,R2-US-047,R2-REQ-04,personal corpus creep denied,NOT_RUN
+R2-TC-141,R2-US-047,R2-REQ-04,pin upgrade retests,NOT_RUN
+R2-TC-142,R2-US-048,R2-REQ-01,manifest/IDs/actual results,NOT_RUN
+R2-TC-143,R2-US-048,R2-REQ-01,NOT_RUN cannot release PASS,NOT_RUN
+R2-TC-144,R2-US-048,R2-REQ-01,separate user/admin/prod UAT,NOT_RUN

@@ -1,0 +1,912 @@
+- id: R2-TC-001
+  story: R2-US-001
+  requirements: &id001
+  - R2-REQ-01
+  kind: positive
+  expectation: R1 неизменён
+  actual_status: NOT_RUN
+- id: R2-TC-002
+  story: R2-US-001
+  requirements: *id001
+  kind: negative
+  expectation: defect R1 нельзя скрыть backlog
+  actual_status: NOT_RUN
+- id: R2-TC-003
+  story: R2-US-001
+  requirements: *id001
+  kind: boundary_recovery
+  expectation: moving head не выдан за deployed proof
+  actual_status: NOT_RUN
+- id: R2-TC-004
+  story: R2-US-002
+  requirements: &id002
+  - R2-REQ-04
+  kind: positive
+  expectation: pin path/SHA/license
+  actual_status: NOT_RUN
+- id: R2-TC-005
+  story: R2-US-002
+  requirements: *id002
+  kind: negative
+  expectation: .gitkeep не ready
+  actual_status: NOT_RUN
+- id: R2-TC-006
+  story: R2-US-002
+  requirements: *id002
+  kind: boundary_recovery
+  expectation: donor writes не exposed
+  actual_status: NOT_RUN
+- id: R2-TC-007
+  story: R2-US-003
+  requirements: &id003
+  - R2-REQ-03
+  kind: positive
+  expectation: typed scope/provenance result
+  actual_status: NOT_RUN
+- id: R2-TC-008
+  story: R2-US-003
+  requirements: *id003
+  kind: negative
+  expectation: arbitrary URL/sql/command denied
+  actual_status: NOT_RUN
+- id: R2-TC-009
+  story: R2-US-003
+  requirements: *id003
+  kind: boundary_recovery
+  expectation: unsupported changes=SNAPSHOT_ONLY
+  actual_status: NOT_RUN
+- id: R2-TC-010
+  story: R2-US-004
+  requirements: &id004
+  - R2-REQ-02
+  kind: positive
+  expectation: read своей компании
+  actual_status: NOT_RUN
+- id: R2-TC-011
+  story: R2-US-004
+  requirements: *id004
+  kind: negative
+  expectation: cross-tenant FK/API denied
+  actual_status: NOT_RUN
+- id: R2-TC-012
+  story: R2-US-004
+  requirements: *id004
+  kind: boundary_recovery
+  expectation: company-only не получает global metadata
+  actual_status: NOT_RUN
+- id: R2-TC-013
+  story: R2-US-005
+  requirements: &id005
+  - R2-REQ-02
+  kind: positive
+  expectation: revoke blocks jobs/epoch
+  actual_status: NOT_RUN
+- id: R2-TC-014
+  story: R2-US-005
+  requirements: *id005
+  kind: negative
+  expectation: revoke до выдачи denies result
+  actual_status: NOT_RUN
+- id: R2-TC-015
+  story: R2-US-005
+  requirements: *id005
+  kind: boundary_recovery
+  expectation: reconnect не resurrect старые grants
+  actual_status: NOT_RUN
+- id: R2-TC-016
+  story: R2-US-006
+  requirements: &id006
+  - R2-REQ-03
+  kind: positive
+  expectation: no log/argv leakage
+  actual_status: NOT_RUN
+- id: R2-TC-017
+  story: R2-US-006
+  requirements: *id006
+  kind: negative
+  expectation: missing pair preflight denies без gateway stop
+  actual_status: NOT_RUN
+- id: R2-TC-018
+  story: R2-US-006
+  requirements: *id006
+  kind: boundary_recovery
+  expectation: rotation использует новую version
+  actual_status: NOT_RUN
+- id: R2-TC-019
+  story: R2-US-007
+  requirements: &id007
+  - R2-REQ-05
+  kind: positive
+  expectation: full coverage/digests
+  actual_status: NOT_RUN
+- id: R2-TC-020
+  story: R2-US-007
+  requirements: *id007
+  kind: negative
+  expectation: direct SQL forbidden
+  actual_status: NOT_RUN
+- id: R2-TC-021
+  story: R2-US-007
+  requirements: *id007
+  kind: boundary_recovery
+  expectation: racing source yields partial/consistency warning
+  actual_status: NOT_RUN
+- id: R2-TC-022
+  story: R2-US-008
+  requirements: &id008
+  - R2-REQ-06
+  kind: positive
+  expectation: whitespace structural hash equal
+  actual_status: NOT_RUN
+- id: R2-TC-023
+  story: R2-US-008
+  requirements: *id008
+  kind: negative
+  expectation: type/scale change diff
+  actual_status: NOT_RUN
+- id: R2-TC-024
+  story: R2-US-008
+  requirements: *id008
+  kind: boundary_recovery
+  expectation: namespaces не colliding
+  actual_status: NOT_RUN
+- id: R2-TC-025
+  story: R2-US-009
+  requirements: &id009
+  - R2-REQ-05
+  kind: positive
+  expectation: timeout≠new schema
+  actual_status: NOT_RUN
+- id: R2-TC-026
+  story: R2-US-009
+  requirements: *id009
+  kind: negative
+  expectation: partial не удаляет objects
+  actual_status: NOT_RUN
+- id: R2-TC-027
+  story: R2-US-009
+  requirements: *id009
+  kind: boundary_recovery
+  expectation: recovery без fake version/auto trust
+  actual_status: NOT_RUN
+- id: R2-TC-028
+  story: R2-US-010
+  requirements: &id010
+  - R2-REQ-09
+  kind: positive
+  expectation: append+projection sequence
+  actual_status: NOT_RUN
+- id: R2-TC-029
+  story: R2-US-010
+  requirements: *id010
+  kind: negative
+  expectation: UPDATE/DELETE denied SQL roles
+  actual_status: NOT_RUN
+- id: R2-TC-030
+  story: R2-US-010
+  requirements: *id010
+  kind: boundary_recovery
+  expectation: replay identical
+  actual_status: NOT_RUN
+- id: R2-TC-031
+  story: R2-US-011
+  requirements: &id011
+  - R2-REQ-09
+  kind: positive
+  expectation: корректные two-time views
+  actual_status: NOT_RUN
+- id: R2-TC-032
+  story: R2-US-011
+  requirements: *id011
+  kind: negative
+  expectation: unknown не polling timestamp
+  actual_status: NOT_RUN
+- id: R2-TC-033
+  story: R2-US-011
+  requirements: *id011
+  kind: boundary_recovery
+  expectation: late supersession сохраняет прежнее знание
+  actual_status: NOT_RUN
+- id: R2-TC-034
+  story: R2-US-012
+  requirements: &id012
+  - R2-REQ-05
+  kind: positive
+  expectation: SNAPSHOT_ONLY interval
+  actual_status: NOT_RUN
+- id: R2-TC-035
+  story: R2-US-012
+  requirements: *id012
+  kind: negative
+  expectation: A-B-A не выдумывается
+  actual_status: NOT_RUN
+- id: R2-TC-036
+  story: R2-US-012
+  requirements: *id012
+  kind: boundary_recovery
+  expectation: cursor loss -> controlled resnapshot+gap
+  actual_status: NOT_RUN
+- id: R2-TC-037
+  story: R2-US-013
+  requirements: &id013
+  - R2-REQ-08
+  kind: positive
+  expectation: scoped candidate edges
+  actual_status: NOT_RUN
+- id: R2-TC-038
+  story: R2-US-013
+  requirements: *id013
+  kind: negative
+  expectation: LLM cannot validate
+  actual_status: NOT_RUN
+- id: R2-TC-039
+  story: R2-US-013
+  requirements: *id013
+  kind: boundary_recovery
+  expectation: versioned semantics/old links retained
+  actual_status: NOT_RUN
+- id: R2-TC-040
+  story: R2-US-014
+  requirements: &id014
+  - R2-REQ-08
+  kind: positive
+  expectation: exact scoped ref match
+  actual_status: NOT_RUN
+- id: R2-TC-041
+  story: R2-US-014
+  requirements: *id014
+  kind: negative
+  expectation: same-name cross-company no merge
+  actual_status: NOT_RUN
+- id: R2-TC-042
+  story: R2-US-014
+  requirements: *id014
+  kind: boundary_recovery
+  expectation: ambiguity human resolution
+  actual_status: NOT_RUN
+- id: R2-TC-043
+  story: R2-US-015
+  requirements: &id015
+  - R2-REQ-10
+  kind: positive
+  expectation: affected tool blocked
+  actual_status: NOT_RUN
+- id: R2-TC-044
+  story: R2-US-015
+  requirements: *id015
+  kind: negative
+  expectation: unknown graph conservative deny
+  actual_status: NOT_RUN
+- id: R2-TC-045
+  story: R2-US-015
+  requirements: *id015
+  kind: boundary_recovery
+  expectation: remove/recreate не rename
+  actual_status: NOT_RUN
+- id: R2-TC-046
+  story: R2-US-016
+  requirements: &id016
+  - R2-REQ-07
+  kind: positive
+  expectation: evidence+expected head commit
+  actual_status: NOT_RUN
+- id: R2-TC-047
+  story: R2-US-016
+  requirements: *id016
+  kind: negative
+  expectation: stale reviewer409
+  actual_status: NOT_RUN
+- id: R2-TC-048
+  story: R2-US-016
+  requirements: *id016
+  kind: boundary_recovery
+  expectation: incompatible rollback denied
+  actual_status: NOT_RUN
+- id: R2-TC-049
+  story: R2-US-017
+  requirements: &id017
+  - R2-REQ-11
+  kind: positive
+  expectation: один lease/fence
+  actual_status: NOT_RUN
+- id: R2-TC-050
+  story: R2-US-017
+  requirements: *id017
+  kind: negative
+  expectation: stale worker commit denied
+  actual_status: NOT_RUN
+- id: R2-TC-051
+  story: R2-US-017
+  requirements: *id017
+  kind: boundary_recovery
+  expectation: crash reclaim no duplicates
+  actual_status: NOT_RUN
+- id: R2-TC-052
+  story: R2-US-018
+  requirements: &id018
+  - R2-REQ-11
+  kind: positive
+  expectation: atomic page+cursor
+  actual_status: NOT_RUN
+- id: R2-TC-053
+  story: R2-US-018
+  requirements: *id018
+  kind: negative
+  expectation: crash replay no loss
+  actual_status: NOT_RUN
+- id: R2-TC-054
+  story: R2-US-018
+  requirements: *id018
+  kind: boundary_recovery
+  expectation: same ID/different digest conflict
+  actual_status: NOT_RUN
+- id: R2-TC-055
+  story: R2-US-019
+  requirements: &id019
+  - R2-REQ-11
+  kind: positive
+  expectation: shared budget across source aliases
+  actual_status: NOT_RUN
+- id: R2-TC-056
+  story: R2-US-019
+  requirements: *id019
+  kind: negative
+  expectation: bounded overload
+  actual_status: NOT_RUN
+- id: R2-TC-057
+  story: R2-US-019
+  requirements: *id019
+  kind: boundary_recovery
+  expectation: interactive/background fairness
+  actual_status: NOT_RUN
+- id: R2-TC-058
+  story: R2-US-020
+  requirements: &id020
+  - R2-REQ-03
+  kind: positive
+  expectation: no new jobs on pause
+  actual_status: NOT_RUN
+- id: R2-TC-059
+  story: R2-US-020
+  requirements: *id020
+  kind: negative
+  expectation: poison source изолирован
+  actual_status: NOT_RUN
+- id: R2-TC-060
+  story: R2-US-020
+  requirements: *id020
+  kind: boundary_recovery
+  expectation: resume revalidates scope/cursor
+  actual_status: NOT_RUN
+- id: R2-TC-061
+  story: R2-US-021
+  requirements: &id021
+  - R2-REQ-13
+  kind: positive
+  expectation: original+manifest UNATTESTED
+  actual_status: NOT_RUN
+- id: R2-TC-062
+  story: R2-US-021
+  requirements: *id021
+  kind: negative
+  expectation: partial screenshot incomplete
+  actual_status: NOT_RUN
+- id: R2-TC-063
+  story: R2-US-021
+  requirements: *id021
+  kind: boundary_recovery
+  expectation: edited XLSX digest rejected
+  actual_status: NOT_RUN
+- id: R2-TC-064
+  story: R2-US-022
+  requirements: &id022
+  - R2-REQ-13
+  kind: positive
+  expectation: manual/UI equivalence
+  actual_status: NOT_RUN
+- id: R2-TC-065
+  story: R2-US-022
+  requirements: *id022
+  kind: negative
+  expectation: wrong base denied
+  actual_status: NOT_RUN
+- id: R2-TC-066
+  story: R2-US-022
+  requirements: *id022
+  kind: boundary_recovery
+  expectation: selector/modal drift fail, no guessed clicks
+  actual_status: NOT_RUN
+- id: R2-TC-067
+  story: R2-US-023
+  requirements: &id023
+  - R2-REQ-14
+  kind: positive
+  expectation: qualified object provenance
+  actual_status: NOT_RUN
+- id: R2-TC-068
+  story: R2-US-023
+  requirements: *id023
+  kind: negative
+  expectation: empty COM не zero
+  actual_status: NOT_RUN
+- id: R2-TC-069
+  story: R2-US-023
+  requirements: *id023
+  kind: boundary_recovery
+  expectation: untrusted EPF denied
+  actual_status: NOT_RUN
+- id: R2-TC-070
+  story: R2-US-024
+  requirements: &id024
+  - R2-REQ-15
+  kind: positive
+  expectation: scope/window/mode admission
+  actual_status: NOT_RUN
+- id: R2-TC-071
+  story: R2-US-024
+  requirements: *id024
+  kind: negative
+  expectation: prod defaultOFF/expired denied
+  actual_status: NOT_RUN
+- id: R2-TC-072
+  story: R2-US-024
+  requirements: *id024
+  kind: boundary_recovery
+  expectation: same idem/different params409
+  actual_status: NOT_RUN
+- id: R2-TC-073
+  story: R2-US-025
+  requirements: &id025
+  - R2-REQ-15
+  kind: positive
+  expectation: no business writes/coverage
+  actual_status: NOT_RUN
+- id: R2-TC-074
+  story: R2-US-025
+  requirements: *id025
+  kind: negative
+  expectation: admin/posting requirement disqualifies
+  actual_status: NOT_RUN
+- id: R2-TC-075
+  story: R2-US-025
+  requirements: *id025
+  kind: boundary_recovery
+  expectation: reset/write-probe prod denied
+  actual_status: NOT_RUN
+- id: R2-TC-076
+  story: R2-US-026
+  requirements: &id026
+  - R2-REQ-16
+  kind: positive
+  expectation: opaque version+digest
+  actual_status: NOT_RUN
+- id: R2-TC-077
+  story: R2-US-026
+  requirements: *id026
+  kind: negative
+  expectation: nonexistent blob/hash not evidence
+  actual_status: NOT_RUN
+- id: R2-TC-078
+  story: R2-US-026
+  requirements: *id026
+  kind: boundary_recovery
+  expectation: current ACL on historical artifact
+  actual_status: NOT_RUN
+- id: R2-TC-079
+  story: R2-US-027
+  requirements: &id027
+  - R2-REQ-17
+  kind: positive
+  expectation: values-only parse
+  actual_status: NOT_RUN
+- id: R2-TC-080
+  story: R2-US-027
+  requirements: *id027
+  kind: negative
+  expectation: macro/entity/zipbomb denied
+  actual_status: NOT_RUN
+- id: R2-TC-081
+  story: R2-US-027
+  requirements: *id027
+  kind: boundary_recovery
+  expectation: bounded timeout/memory, no truncated PASS
+  actual_status: NOT_RUN
+- id: R2-TC-082
+  story: R2-US-028
+  requirements: &id028
+  - R2-REQ-16
+  kind: positive
+  expectation: exact revision+policy attestation
+  actual_status: NOT_RUN
+- id: R2-TC-083
+  story: R2-US-028
+  requirements: *id028
+  kind: negative
+  expectation: self-sign/fake PASS denied
+  actual_status: NOT_RUN
+- id: R2-TC-084
+  story: R2-US-028
+  requirements: *id028
+  kind: boundary_recovery
+  expectation: revoke current validity, preserve history
+  actual_status: NOT_RUN
+- id: R2-TC-085
+  story: R2-US-029
+  requirements: &id029
+  - R2-REQ-16
+  kind: positive
+  expectation: scoped EVALUATION_ONLY
+  actual_status: NOT_RUN
+- id: R2-TC-086
+  story: R2-US-029
+  requirements: *id029
+  kind: negative
+  expectation: unauthorized runner denied
+  actual_status: NOT_RUN
+- id: R2-TC-087
+  story: R2-US-029
+  requirements: *id029
+  kind: boundary_recovery
+  expectation: canonical replay после acceptance
+  actual_status: NOT_RUN
+- id: R2-TC-088
+  story: R2-US-030
+  requirements: &id030
+  - R2-REQ-18
+  kind: positive
+  expectation: all-required MATCH
+  actual_status: NOT_RUN
+- id: R2-TC-089
+  story: R2-US-030
+  requirements: *id030
+  kind: negative
+  expectation: equal closing с ошибками opening/turnover MISMATCH
+  actual_status: NOT_RUN
+- id: R2-TC-090
+  story: R2-US-030
+  requirements: *id030
+  kind: boundary_recovery
+  expectation: contract sides/netting отдельно
+  actual_status: NOT_RUN
+- id: R2-TC-091
+  story: R2-US-031
+  requirements: &id031
+  - R2-REQ-18
+  kind: positive
+  expectation: ledger strategy qualified
+  actual_status: NOT_RUN
+- id: R2-TC-092
+  story: R2-US-031
+  requirements: *id031
+  kind: negative
+  expectation: absent register not fabricated
+  actual_status: NOT_RUN
+- id: R2-TC-093
+  story: R2-US-031
+  requirements: *id031
+  kind: boundary_recovery
+  expectation: balance alone no aging
+  actual_status: NOT_RUN
+- id: R2-TC-094
+  story: R2-US-032
+  requirements: &id032
+  - R2-REQ-18
+  kind: positive
+  expectation: identity/company/Posted correct
+  actual_status: NOT_RUN
+- id: R2-TC-095
+  story: R2-US-032
+  requirements: *id032
+  kind: negative
+  expectation: unposted/deleted exclusions
+  actual_status: NOT_RUN
+- id: R2-TC-096
+  story: R2-US-032
+  requirements: *id032
+  kind: boundary_recovery
+  expectation: complete pagination/alias proof
+  actual_status: NOT_RUN
+- id: R2-TC-097
+  story: R2-US-033
+  requirements: &id033
+  - R2-REQ-18
+  kind: positive
+  expectation: immutable snapshot proven
+  actual_status: NOT_RUN
+- id: R2-TC-098
+  story: R2-US-033
+  requirements: *id033
+  kind: negative
+  expectation: concurrent correction INCONCLUSIVE
+  actual_status: NOT_RUN
+- id: R2-TC-099
+  story: R2-US-033
+  requirements: *id033
+  kind: boundary_recovery
+  expectation: backdated rerun supersedes не overwrite
+  actual_status: NOT_RUN
+- id: R2-TC-100
+  story: R2-US-034
+  requirements: &id034
+  - R2-REQ-21
+  kind: positive
+  expectation: claims/evidence coverage
+  actual_status: NOT_RUN
+- id: R2-TC-101
+  story: R2-US-034
+  requirements: *id034
+  kind: negative
+  expectation: ten duplicate cases rejected
+  actual_status: NOT_RUN
+- id: R2-TC-102
+  story: R2-US-034
+  requirements: *id034
+  kind: boundary_recovery
+  expectation: purchases validated не открывает AP и не меняет R1
+  actual_status: NOT_RUN
+- id: R2-TC-103
+  story: R2-US-035
+  requirements: &id035
+  - R2-REQ-12
+  kind: positive
+  expectation: scoped access proven
+  actual_status: NOT_RUN
+- id: R2-TC-104
+  story: R2-US-035
+  requirements: *id035
+  kind: negative
+  expectation: folder/newchild PoC
+  actual_status: NOT_RUN
+- id: R2-TC-105
+  story: R2-US-035
+  requirements: *id035
+  kind: boundary_recovery
+  expectation: broad OAuth не называется folder isolation
+  actual_status: NOT_RUN
+- id: R2-TC-106
+  story: R2-US-036
+  requirements: &id036
+  - R2-REQ-12
+  kind: positive
+  expectation: starttoken-before-baseline catchup
+  actual_status: NOT_RUN
+- id: R2-TC-107
+  story: R2-US-036
+  requirements: *id036
+  kind: negative
+  expectation: shared-drive namespaces
+  actual_status: NOT_RUN
+- id: R2-TC-108
+  story: R2-US-036
+  requirements: *id036
+  kind: boundary_recovery
+  expectation: lost cursor gap/resnapshot
+  actual_status: NOT_RUN
+- id: R2-TC-109
+  story: R2-US-037
+  requirements: &id037
+  - R2-REQ-12
+  kind: positive
+  expectation: newrevision UNATTESTED oldPASS historical
+  actual_status: NOT_RUN
+- id: R2-TC-110
+  story: R2-US-037
+  requirements: *id037
+  kind: negative
+  expectation: shortcut/move scope escape denied
+  actual_status: NOT_RUN
+- id: R2-TC-111
+  story: R2-US-037
+  requirements: *id037
+  kind: boundary_recovery
+  expectation: removal no guessed replacement
+  actual_status: NOT_RUN
+- id: R2-TC-112
+  story: R2-US-038
+  requirements: &id038
+  - R2-REQ-12
+  kind: positive
+  expectation: invalid_grant AUTH_REQUIRED
+  actual_status: NOT_RUN
+- id: R2-TC-113
+  story: R2-US-038
+  requirements: *id038
+  kind: negative
+  expectation: notifications только hint
+  actual_status: NOT_RUN
+- id: R2-TC-114
+  story: R2-US-038
+  requirements: *id038
+  kind: boundary_recovery
+  expectation: polling корректен без watch
+  actual_status: NOT_RUN
+- id: R2-TC-115
+  story: R2-US-039
+  requirements: &id039
+  - R2-REQ-22
+  kind: positive
+  expectation: row/fragment/owner/delta
+  actual_status: NOT_RUN
+- id: R2-TC-116
+  story: R2-US-039
+  requirements: *id039
+  kind: negative
+  expectation: original numbers immutable
+  actual_status: NOT_RUN
+- id: R2-TC-117
+  story: R2-US-039
+  requirements: *id039
+  kind: boundary_recovery
+  expectation: new evidence -> new run
+  actual_status: NOT_RUN
+- id: R2-TC-118
+  story: R2-US-040
+  requirements: &id040
+  - R2-REQ-07
+  kind: positive
+  expectation: known/effective labels
+  actual_status: NOT_RUN
+- id: R2-TC-119
+  story: R2-US-040
+  requirements: *id040
+  kind: negative
+  expectation: historical !=live green
+  actual_status: NOT_RUN
+- id: R2-TC-120
+  story: R2-US-040
+  requirements: *id040
+  kind: boundary_recovery
+  expectation: diff/evidence scoped
+  actual_status: NOT_RUN
+- id: R2-TC-121
+  story: R2-US-041
+  requirements: &id041
+  - R2-REQ-26
+  kind: positive
+  expectation: safe reason+annotation
+  actual_status: NOT_RUN
+- id: R2-TC-122
+  story: R2-US-041
+  requirements: *id041
+  kind: negative
+  expectation: CSRF/idem403/409
+  actual_status: NOT_RUN
+- id: R2-TC-123
+  story: R2-US-041
+  requirements: *id041
+  kind: boundary_recovery
+  expectation: отказ не обходится rawCOM/DC
+  actual_status: NOT_RUN
+- id: R2-TC-124
+  story: R2-US-042
+  requirements: &id042
+  - R2-REQ-15
+  kind: positive
+  expectation: exact scope capture/compare
+  actual_status: NOT_RUN
+- id: R2-TC-125
+  story: R2-US-042
+  requirements: *id042
+  kind: negative
+  expectation: devPASS не prod approval
+  actual_status: NOT_RUN
+- id: R2-TC-126
+  story: R2-US-042
+  requirements: *id042
+  kind: boundary_recovery
+  expectation: kill-switch owned job
+  actual_status: NOT_RUN
+- id: R2-TC-127
+  story: R2-US-043
+  requirements: &id043
+  - R2-REQ-23
+  kind: positive
+  expectation: sessions vs active grid
+  actual_status: NOT_RUN
+- id: R2-TC-128
+  story: R2-US-043
+  requirements: *id043
+  kind: negative
+  expectation: profile refusals not throughput
+  actual_status: NOT_RUN
+- id: R2-TC-129
+  story: R2-US-043
+  requirements: *id043
+  kind: boundary_recovery
+  expectation: background interference/budget
+  actual_status: NOT_RUN
+- id: R2-TC-130
+  story: R2-US-044
+  requirements: &id044
+  - R2-REQ-24
+  kind: positive
+  expectation: audit down fail-closed
+  actual_status: NOT_RUN
+- id: R2-TC-131
+  story: R2-US-044
+  requirements: *id044
+  kind: negative
+  expectation: replica/network429 no duplicates
+  actual_status: NOT_RUN
+- id: R2-TC-132
+  story: R2-US-044
+  requirements: *id044
+  kind: boundary_recovery
+  expectation: alert fired+recovered
+  actual_status: NOT_RUN
+- id: R2-TC-133
+  story: R2-US-045
+  requirements: &id045
+  - R2-REQ-25
+  kind: positive
+  expectation: additive shadow regressions
+  actual_status: NOT_RUN
+- id: R2-TC-134
+  story: R2-US-045
+  requirements: *id045
+  kind: negative
+  expectation: destructive rollback denied
+  actual_status: NOT_RUN
+- id: R2-TC-135
+  story: R2-US-045
+  requirements: *id045
+  kind: boundary_recovery
+  expectation: switch rollback no revoked grant resurrection
+  actual_status: NOT_RUN
+- id: R2-TC-136
+  story: R2-US-046
+  requirements: &id046
+  - R2-REQ-17
+  kind: positive
+  expectation: restored FKs/digests/heads
+  actual_status: NOT_RUN
+- id: R2-TC-137
+  story: R2-US-046
+  requirements: *id046
+  kind: negative
+  expectation: export masking/tenant/formula safety
+  actual_status: NOT_RUN
+- id: R2-TC-138
+  story: R2-US-046
+  requirements: *id046
+  kind: boundary_recovery
+  expectation: hold/no unapproved deletion
+  actual_status: NOT_RUN
+- id: R2-TC-139
+  story: R2-US-047
+  requirements: &id047
+  - R2-REQ-04
+  kind: positive
+  expectation: adapter contract qualification
+  actual_status: NOT_RUN
+- id: R2-TC-140
+  story: R2-US-047
+  requirements: *id047
+  kind: negative
+  expectation: personal corpus creep denied
+  actual_status: NOT_RUN
+- id: R2-TC-141
+  story: R2-US-047
+  requirements: *id047
+  kind: boundary_recovery
+  expectation: pin upgrade retests
+  actual_status: NOT_RUN
+- id: R2-TC-142
+  story: R2-US-048
+  requirements: &id048
+  - R2-REQ-01
+  kind: positive
+  expectation: manifest/IDs/actual results
+  actual_status: NOT_RUN
+- id: R2-TC-143
+  story: R2-US-048
+  requirements: *id048
+  kind: negative
+  expectation: NOT_RUN cannot release PASS
+  actual_status: NOT_RUN
+- id: R2-TC-144
+  story: R2-US-048
+  requirements: *id048
+  kind: boundary_recovery
+  expectation: separate user/admin/prod UAT
+  actual_status: NOT_RUN

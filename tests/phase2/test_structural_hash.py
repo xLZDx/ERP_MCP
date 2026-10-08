@@ -1,5 +1,9 @@
 """Isolated tests for the Phase 2 OBSERVED metadata fingerprint helper."""
+from xml.etree.ElementTree import ParseError
+
 import pytest
+from defusedxml.common import DefusedXmlException
+
 from business_ai_gateway.phase2.structural_hash import fingerprint_edmx
 
 PREFIX = b'<edmx:Edmx xmlns:edmx="urn:edmx" xmlns:e="urn:edm" Version="1"><edmx:DataServices><e:Schema Namespace="Sample">'
@@ -42,7 +46,7 @@ def test_object_added_changes_hash_without_prior_object_change():
 
 @pytest.mark.parametrize('payload', [b'', b'<html/>', b'<edmx:Edmx xmlns:edmx="urn:edmx"/>', b'<!DOCTYPE a [<!ENTITY x SYSTEM "file:///etc/passwd">]><a>&x;</a>'])
 def test_bad_edmx_fails_closed(payload):
-    with pytest.raises(Exception):
+    with pytest.raises((ValueError, ParseError, DefusedXmlException)):
         fingerprint_edmx(payload)
 
 

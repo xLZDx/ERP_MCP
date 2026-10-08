@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "company_id",
+    "recipe_id",
+    "recipe_version",
+    "scope_epoch",
+    "idempotency_key",
+    "environment"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "company_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recipe_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recipe_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "scope_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 8
+    },
+    "environment": {
+      "enum": [
+        "DEV_REFERENCE",
+        "STAGING",
+        "PROD"
+      ]
+    }
+  }
+}

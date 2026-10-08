@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "company_id",
+    "report_name",
+    "period",
+    "artifact_sha256",
+    "evidence_status"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "company_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "report_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidence_status": {
+      "enum": [
+        "UNATTESTED",
+        "ORIGIN_VERIFIED",
+        "ATTESTED",
+        "REVOKED"
+      ]
+    }
+  }
+}

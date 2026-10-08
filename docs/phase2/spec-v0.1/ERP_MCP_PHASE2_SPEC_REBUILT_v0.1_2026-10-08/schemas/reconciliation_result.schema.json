@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "company_id",
+    "status",
+    "opening_debit",
+    "opening_credit",
+    "turnover_debit",
+    "turnover_credit",
+    "closing_debit",
+    "closing_credit"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "company_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "enum": [
+        "MATCH",
+        "MISMATCH",
+        "INCONCLUSIVE",
+        "NOT_RUN"
+      ]
+    },
+    "opening_debit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    },
+    "opening_credit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    },
+    "turnover_debit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    },
+    "turnover_credit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    },
+    "closing_debit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    },
+    "closing_credit": {
+      "type": "string",
+      "pattern": "^-?\\d+\\.\\d{2}$"
+    }
+  }
+}

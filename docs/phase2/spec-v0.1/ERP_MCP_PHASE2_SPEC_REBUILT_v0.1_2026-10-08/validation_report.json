@@ -1,0 +1,10 @@
+{
+  "package": "ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08",
+  "scope": "SPEC_L0_ONLY",
+  "requirements": 28,
+  "stories": 48,
+  "product_cases": 144,
+  "product_tests": "NOT_RUN",
+  "native_1c": "NOT_RUN",
+  "production": "NOT_RUN"
+}
