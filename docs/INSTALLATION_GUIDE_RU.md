@@ -190,11 +190,33 @@ Invoke-WebRequest http://127.0.0.1:8000/readyz -UseBasicParsing
 
 8. Сверьте метаданные, capability profile и десять независимых штатных отчётов 1С по соответствующему source/company/configuration. Если профиль `UNVALIDATED`, нет native evidence или доступ истёк — это **блокировка**, а не разрешение угадать числа. См. [Semantic Profiles](SEMANTIC_PROFILES.md), [Native report capture](NATIVE_REPORT_CAPTURE_RUNBOOK.md) и [MVP acceptance](MVP_SCOPE.md).
 
+### Проверенный real-1C testbed: отдельный auditor grant (только L2/E2E)
+
+Для имеющегося *disposable* real-1C тестового стенда с `E2E_REAL1C=1`, `-Seed bootstrap-only` и корректным `E2E_DIR` исходный `scripts.real1c.lane_setup` регистрирует тестовый source и теперь отдельно назначает **data-plane** source-wide grant пользователю `auditor` **только** на `onec-818ha-reference`. Административная роль `AUDITOR` сама по себе не предоставляет права на чтение источника. Другие source IDs не получают grant. Для уже созданного disposable стенда есть idempotent команда:
+
+```powershell
+$env:E2E_DIR = 'PATH_TO_YOUR_DISPOSABLE_REAL1C_E2E_DIR'
+python -m scripts.real1c.lane_setup --repair-auditor-grant
+python -m scripts.real1c.verify_install
+```
+
+Команда `verify_install` только читает: проверяет два позитивных вызова к реальной 1С, пять негативных ACL случаев и их audit evidence. Успех — `REAL1C_L2_INSTALL_SMOKE 7/7 PASS`. Скрипт отказывает вне disposable loopback test profile.
+
+Не используйте эту команду для общей установки, произвольных клиентских источников или production. Она проверяет test/real1c/bootstrap-only профиль и работает через Admin API, а не прямой UPDATE ACL. При первом запуске в удалённой/noninteractive Windows PowerShell среде `ComSpec` может отсутствовать; общий E2E helper теперь проверяет наличие `%SystemRoot%\\System32\\cmd.exe` и корректно устанавливает путь для запуска дочерних процессов. **Не** меняйте глобальные security settings ради этого.
+
+Реальные результаты именно чистого клона на существующем Windows-хосте: [отчёт 2026-10-09](../reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md). Верифицирована связь с реальной 1С и **7/7** source-level MCP ACL/metadata checks; не подтверждены бухгалтерская native reconciliation, новый физический компьютер и production Unix.
+
 ### Дополнительно: COM / RSV bridge на Windows
 
 COM является отдельным, более чувствительным вариантом для некоторых поддерживаемых конфигураций. Требует установленной лицензированной 1С и `V83.COMConnector`; на Windows возможна per-user регистрация через официальные компоненты. Смотрите [RSV Data Bridge](runbooks/RSV_DATA_BRIDGE.md) и [опыт локальной настройки](../reports/LOCAL_1C_SETUP_HANDOFF.md).
 
 **Запрещено считать безопасными по умолчанию** `execute_query`, `reveal`, generic business query или прямое выставление RSV MCP наружу. Пока нет доказанной неизменяемой company-boundary и zero-write, бизнес-операции COM должны оставаться `CAPABILITY_UNSUPPORTED`.
+
+### Следующий этап: Unix/Linux gateway, Windows/1C остаётся отдельным
+
+После успешного Windows L2 smoke **не переносите COM/RSV bridge на Linux**. Для Linux/Unix разверните только ERP_MCP gateway и его зависимости; подключайтесь к уже разрешённой публикации 1С через отдельный приватный TLS/VPN-сегмент. Для запуска нужны одобренные host/SSH-доступ, сетевые ACL, публично доступный браузеру production IdP, TLS сертификаты, runtime secret provider, PostgreSQL роли и независимая приёмка. `E2E_REAL1C=1` — тестовый Windows-профиль, не инструкция к production Unix.
+
+Локальная проверка на Windows не подтверждает Unix deployment. До наличия конкретного авторизованного Unix target нельзя объявлять этот этап пройденным или обещать production GO. Развёртывание и восстановление делайте по [production runbook](../deploy/PRODUCTION.md) и [rollback](../deploy/ROLLBACK.md).
 
 ## 6. Подключение ChatGPT (только отдельный синтетический пример)
 

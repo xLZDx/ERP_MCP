@@ -115,6 +115,10 @@ uv run --locked uvicorn business_ai_gateway.app:app --host 127.0.0.1 --port 8000
 
 Этот endpoint намеренно **test-only**, OAuth на нём отключён **только** для synthetic data. Для реальной базы нужен production OAuth, private network, реальные grants и approved native evidence. См. [ChatGPT ↔ ERP_MCP integration](docs/CHATGPT_MCP_INTEGRATION.md) и [русский runbook](docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md).
 
+## Фактическая проверка чистой установки (09.10.2026)
+
+На существующем Windows 11 инженерном компьютере выполнен свежий `git clone main`, установлены зависимости, подняты отдельные PostgreSQL/Redis и test-only gateway. Настоящая 1С ответила на авторизованный `$metadata`; после корректного тестового bootstrap роли и source grant выполнены **7/7** MCP ACL/metadata smoke-проверок. **Это не L3/production approval и не тест на новом физическом компьютере.** См. [реальный отчёт L2](reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
+
 ## English overview
 
 **ERP_MCP Release 1** is a 1C-first read-only MCP gateway with registered sources, scoped permissions, OAuth/OIDC, audit, controlled OData capability routing, security limits, and configuration-specific semantic accounting tools. It supports synthetic local tests and authorized real-1C validation. **It is not yet generally production-approved.**

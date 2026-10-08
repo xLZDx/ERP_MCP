@@ -76,6 +76,12 @@
 
 См. [Phase 2 overview](phase2/README.md), [Phase 2 plan](phase2/PLAN_PHASE2_RU.md).
 
+## 13. Чистый Windows install: отдельно проверить ComSpec и source grants
+
+**Урок из выполненной 09.10.2026 установки:** `Start-Process -FilePath $env:ComSpec` может получить пустой аргумент в удалённой noninteractive PowerShell. Теперь E2E helper проверяет штатный `cmd.exe` и восстанавливает `ComSpec` в процессе. Это не повод снижать ExecutionPolicy или отключать ACL.
+
+**Второй подтверждённый случай:** test `AUDITOR` platform role успешно создавалась, но новый отдельный тестовый DB не имел data-plane source grant. `source_health`/ `onec_capabilities` выдали `AccessDenied` — корректную защиту, а не сломанную capability-схему. Ограниченный тестовый bootstrap для конкретного real1c source и idempotent repair позволяют проверить позитивный кейс. На реальном тестовом источнике **7/7** позитивных и негативных checks прошли. [Отчёт](../reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
+
 ## Чек-лист перед любым публичным заявлением «готово»
 
 - Назван exact Git SHA, версия конфигурации и тип окружения.

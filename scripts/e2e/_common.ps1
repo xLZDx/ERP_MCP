@@ -10,6 +10,16 @@
 
 Set-StrictMode -Version 2.0
 
+# Remote/non-interactive Windows shells can omit ComSpec. Start-Process below uses
+# cmd.exe explicitly for detached services; fail closed when it is unavailable.
+if (-not $env:ComSpec) {
+    $cmdExe = Join-Path $env:SystemRoot 'System32\cmd.exe'
+    if (-not (Test-Path -LiteralPath $cmdExe -PathType Leaf)) {
+        throw 'E2E_CMD_EXE_NOT_FOUND'
+    }
+    $env:ComSpec = $cmdExe
+}
+
 $script:Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:E2eDir = Join-Path $script:Root '.e2e'
 if ($env:E2E_DIR) { $script:E2eDir = $env:E2E_DIR }

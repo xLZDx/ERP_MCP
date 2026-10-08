@@ -1,7 +1,21 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=4f6ffdd62e731c89f49e47e7063ad9277e8057c96581ef74e42b5073f3664398 -->
+## Verified first-install L2 gateway and ACL — 2026-10-09
+
+On the exact pre-merge R1 installation candidate a clean GitHub clone on an
+existing Windows engineering host reached genuine read-only 1C metadata and
+passed seven MCP source-access/metadata checks (two positive, five denied).
+ComSpec startup and the disposable real-1C auditor source-grant bootstrap were
+repaired, with fail-closed and idempotence regression checks.
+The concurrently published main machine-profile/functional changes are
+preserved in this merged tree, but the combined head still requires exact-head
+hosted CI / fresh test confirmation. This does not prove native accounting or
+Unix/production GO. See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
+Production NO-GO; DoD PARTIAL.
+
+
+<!-- ENGINEERING_CHECKPOINT=MERGED_REAL1C_L2_INSTALL_20261009 ENGINEERING_IMPLEMENTATION=ab936f125b6663443ec6b293d4abce2f225035c082c2c3edb013aa82eae78200 -->
 
 ## Capability observation boundary — 2026-10-06
 
