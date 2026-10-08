@@ -363,4 +363,6 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 
 - Re-pinned the engineering checkpoint after the GPT-PM round-2 fix (clean export of 8e8d4ae; concurrent uncommitted edits of another session excluded).
 
+- Fixed a whitespace slip (`key =(`) introduced by the round-2 edit in scripts/real1c/machine_reconciliation.py; the checkpoint is re-pinned again on the clean export of that commit (see the next entry). No behavior change.
+
 - Sprint report (EN and RU) extended with the traceability row R21 and RUN-7 for the round-2 fix; reports are outside the implementation fingerprint, so no re-pin is needed.

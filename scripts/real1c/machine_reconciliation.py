@@ -138,7 +138,7 @@ def _row_map(
             raise MachineReconciliationError(f"side {side} repeats an analytics role in one row")
         if allowed_roles is not None and {kind for kind, _ in slots} != allowed_roles:
             raise MachineReconciliationError(f"side {side} does not cover the authorized analytics projection")
-        key =(row["account"], tuple(slots), row["currency_ref"])
+        key = (row["account"], tuple(slots), row["currency_ref"])
         if key in result:
             raise MachineReconciliationError(f"side {side} repeats a row key")
         result[key] = (
