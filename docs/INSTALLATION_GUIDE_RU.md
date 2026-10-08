@@ -212,6 +212,12 @@ COM является отдельным, более чувствительным
 
 **Запрещено считать безопасными по умолчанию** `execute_query`, `reveal`, generic business query или прямое выставление RSV MCP наружу. Пока нет доказанной неизменяемой company-boundary и zero-write, бизнес-операции COM должны оставаться `CAPABILITY_UNSUPPORTED`.
 
+### Следующий этап: Unix/Linux gateway, Windows/1C остаётся отдельным
+
+После успешного Windows L2 smoke **не переносите COM/RSV bridge на Linux**. Для Linux/Unix разверните только ERP_MCP gateway и его зависимости; подключайтесь к уже разрешённой публикации 1С через отдельный приватный TLS/VPN-сегмент. Для запуска нужны одобренные host/SSH-доступ, сетевые ACL, публично доступный браузеру production IdP, TLS сертификаты, runtime secret provider, PostgreSQL роли и независимая приёмка. `E2E_REAL1C=1` — тестовый Windows-профиль, не инструкция к production Unix.
+
+Локальная проверка на Windows не подтверждает Unix deployment. До наличия конкретного авторизованного Unix target нельзя объявлять этот этап пройденным или обещать production GO. Развёртывание и восстановление делайте по [production runbook](../deploy/PRODUCTION.md) и [rollback](../deploy/ROLLBACK.md).
+
 ## 6. Подключение ChatGPT (только отдельный синтетический пример)
 
 Чтобы проверить MCP-интеграцию **без настоящих данных**, в новом чистом клоне Windows:
