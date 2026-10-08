@@ -196,20 +196,24 @@ class PromotionService:
                     and head.revision_id == candidate):
                 return PromotionResult(Outcome.REJECTED_TARGET, code="ROLLBACK_TARGET_UNKNOWN")
         att = await self._reader.find_attestation(scope, candidate, evidence.evidence_ref)
-        if att is not None and (att.revision_id != candidate
-                                or att.evidence_ref != evidence.evidence_ref):
+        if att is not None and (
+                type(att) is not AttestationView
+                or type(att.attestation_id) is not UUID
+                or type(att.revision_id) is not UUID or att.revision_id != candidate
+                or type(att.evidence_ref) is not str
+                or att.evidence_ref != evidence.evidence_ref):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="ATTESTATION_MISMATCH")
-        if att is None or att.decision != "APPROVE":
+        if att is None or type(att.decision) is not str or att.decision != "APPROVE":
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_NOT_APPROVED")
         if att.revoked_at is not None:
             return PromotionResult(Outcome.REJECTED_REVOKED, code="EVIDENCE_REVOKED")
         if att.expires_at <= self._clock():
             return PromotionResult(Outcome.REJECTED_EXPIRED, code="EVIDENCE_EXPIRED")
         recomputed = evidence_digest(evidence.revision_digest, evidence.evidence_ref)
-        if not isinstance(att.evidence_digest, str) or not hmac.compare_digest(
+        if type(att.evidence_digest) is not str or not hmac.compare_digest(
                 att.evidence_digest.encode("utf-8"), recomputed.encode("utf-8")):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_DIGEST_MISMATCH")
-        if not await self._reader.is_trusted_reviewer(scope, att.observer):
+        if await self._reader.is_trusted_reviewer(scope, att.observer) is not True:
             return PromotionResult(Outcome.REJECTED_UNTRUSTED, code="REVIEWER_NOT_TRUSTED")
         if approver_id in (normalize_identity(att.observer), normalize_identity(att.proposer)):
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")

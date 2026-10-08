@@ -363,7 +363,7 @@ async def test_work_exception_is_a_failure_not_a_crash():
 
     result = await sched.run_job(job, boom)
     assert result.status is RunStatus.RETRY_SCHEDULED
-    assert result.detail == "WORK_EXCEPTION:RuntimeError"
+    assert result.detail == "WORK_EXCEPTION"
     assert sched.counter.consecutive_failures == 1
 
 
@@ -533,9 +533,9 @@ async def test_guard_secret_exception_text_is_never_persisted_or_returned(poison
     view = await living.get_job(WORKER, SCOPE, job)
     blob = f"{result!r} {view!r}"
     assert "hunter2" not in blob and "abc123" not in blob and "postgresql" not in blob
-    assert result.detail == "WORK_EXCEPTION:ConnectionError"
+    assert result.detail == "WORK_EXCEPTION"
     if poison_after == 1:
-        assert view.last_error == "POISONED: WORK_EXCEPTION:ConnectionError"
+        assert view.last_error == "POISONED: WORK_EXCEPTION"
 
 
 # --------------------------------------------------------------------------- poison threshold
@@ -922,3 +922,36 @@ async def test_guard_cancelled_work_abandons_lease_gates_and_reraises():
     assert sched.not_before(job) >= view.lease_until
     assert sched.counter.consecutive_failures == 0
     assert budget.active_total == 0
+
+
+@pytest.mark.parametrize("base,cap,jitter", [
+    (float("inf"), 10, 0.5), (1, float("inf"), 0.5),
+    (1, 10, False), (10**400, 10, 0.5),
+])
+def test_converged_backoff_rejects_nonfinite_or_boolean_data(base, cap, jitter):
+    with pytest.raises(ValueError):
+        backoff_delay(0, base, cap, lambda: jitter)
+
+
+@pytest.mark.parametrize("field", ["renew_margin_seconds", "backoff_base", "deferral_cap_seconds"])
+def test_converged_scheduler_rejects_integer_overflow_at_configuration(field):
+    with pytest.raises(ValueError):
+        SchedulerConfig(**{field: 10**400})
+
+
+async def test_exception_class_name_must_not_escape_to_job_results():
+    # A third-party adapter could construct an exception type with a secret-like class name.
+    secret = "CANARY_SECRET_12345"
+    EvilError = type("Authorization_Bearer_" + secret, (Exception,), {})
+    living, _, sched = make(config=SchedulerConfig(poison_after=1))
+    job = await enqueue(living, 10042)
+
+    async def unsafe_work(_handle):
+        raise EvilError("failed")
+
+    result = await sched.run_job(job, unsafe_work)
+    assert result.status is RunStatus.POISONED
+    assert result.detail == "WORK_EXCEPTION"
+    view = await living.get_job(WORKER, SCOPE, job)
+    assert view.last_error == "POISONED: WORK_EXCEPTION"
+    assert secret not in result.detail and secret not in (view.last_error or "")

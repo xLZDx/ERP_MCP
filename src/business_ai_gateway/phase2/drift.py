@@ -100,7 +100,9 @@ def classify(outcome: CaptureOutcome, previous_accepted_hash: str | None) -> Dri
         # A claimed complete capture without a hash cannot be compared: re-snapshot.
         return DriftDecision((DriftEventKind.RESNAPSHOT_REQUIRED,), previous_accepted_hash)
     if previous_accepted_hash is None:
-        return DriftDecision((), current, baseline_established=True, removal_permitted=True)
+        # A first complete observation is only a proposed baseline: independent
+        # acceptance through the head/attestation port is required before use.
+        return DriftDecision((), None, candidate_hash=current)
     if current != previous_accepted_hash:
         return DriftDecision((DriftEventKind.STRUCTURAL_DRIFT,), previous_accepted_hash,
                              removal_permitted=True, candidate_hash=current)

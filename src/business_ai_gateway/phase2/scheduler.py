@@ -18,7 +18,7 @@ Responsibilities
 
 Failure accounting: every outcome of ``work`` is accounted. A value that is not a
 ``CaptureOutcomeKind`` is the failure ``WORK_RETURNED_INVALID``; a raised exception is recorded only
-as ``WORK_EXCEPTION:<ClassName>`` (raw exception text can carry URLs, DSNs or credentials and is
+as fixed ``WORK_EXCEPTION`` (raw exceptions and type names can carry credentials and are
 never persisted or returned). An own-lease expiry is counted as a TIMEOUT failure, gated and
 poison-eligible; a stale fence caused by someone else is a lost lease that is not counted.
 
@@ -58,6 +58,19 @@ __all__ = [
 
 _MAX_EXPONENT: Final = 62
 _MAX_SECONDS: Final = 10_000_000.0
+
+
+def _finite_builtin_number(value: object) -> float | None:
+    """Accept only concrete finite numeric input, without huge-int overflow."""
+    if type(value) not in (int, float):
+        return None
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 _COMPLETE_KINDS: Final = frozenset({
     CaptureOutcomeKind.OK_COMPLETE, CaptureOutcomeKind.SCHEMA_CHANGED,
 })
@@ -76,15 +89,17 @@ def backoff_delay(attempt: int, base: float, cap: float,
     """
     if type(attempt) is not int or attempt < 0:
         raise ValueError("BACKOFF_ATTEMPT_INVALID")
-    if not isinstance(base, (int, float)) or isinstance(base, bool) or not base > 0:
+    base_number = _finite_builtin_number(base)
+    if base_number is None or not 0 < base_number <= _MAX_SECONDS:
         raise ValueError("BACKOFF_BASE_INVALID")
-    if not isinstance(cap, (int, float)) or isinstance(cap, bool) or not cap > 0:
+    cap_number = _finite_builtin_number(cap)
+    if cap_number is None or not 0 < cap_number <= _MAX_SECONDS:
         raise ValueError("BACKOFF_CAP_INVALID")
-    ceiling = min(float(cap), float(base) * float(2 ** min(attempt, _MAX_EXPONENT)))
-    jitter = jitter_source()
-    if not isinstance(jitter, (int, float)) or not 0.0 <= jitter < 1.0:
+    jitter_number = _finite_builtin_number(jitter_source())
+    if jitter_number is None or not 0.0 <= jitter_number < 1.0:
         raise ValueError("BACKOFF_JITTER_INVALID")
-    return min(float(cap), ceiling * (0.5 + 0.5 * float(jitter)))
+    ceiling = min(cap_number, base_number * float(2 ** min(attempt, _MAX_EXPONENT)))
+    return min(cap_number, ceiling * (0.5 + 0.5 * jitter_number))
 
 
 # --------------------------------------------------------------------------- source state machine
@@ -170,9 +185,9 @@ def _check_int(value: object, name: str, lo: int, hi: int) -> None:
 
 
 def _check_float(value: object, name: str, lo: float, hi: float, *, lo_open: bool) -> None:
-    if (isinstance(value, bool) or not isinstance(value, (int, float))
-            or not math.isfinite(value) or value > hi
-            or (value <= lo if lo_open else value < lo)):
+    number = _finite_builtin_number(value)
+    if (number is None or number > hi
+            or (number <= lo if lo_open else number < lo)):
         raise ValueError(name)
 
 
@@ -377,9 +392,9 @@ class SourceScheduler:
             except asyncio.CancelledError:
                 self._gate_for_abandoned(job_id, handle, self._clock())
                 raise
-            except Exception as exc:  # noqa: BLE001 - work failure is data for the failure policy
+            except Exception:  # noqa: BLE001 - work failure is data for the failure policy
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
-                                          f"WORK_EXCEPTION:{type(exc).__name__[:64]}")
+                                          "WORK_EXCEPTION")
             if not isinstance(outcome, CaptureOutcomeKind):
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
                                           "WORK_RETURNED_INVALID")

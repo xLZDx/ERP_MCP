@@ -659,3 +659,54 @@ async def test_rollback_failure_fails_closed(where):
         w.port.list_acceptances = broken
     res = await w.rollback(1, e1, expected=2)
     await assert_rejected(w, before, res, Outcome.FAILED_CLOSED)
+
+
+class _ForgedEquality:
+    def __eq__(self, _other):
+        return True
+
+    def __ne__(self, _other):
+        return False
+
+
+@pytest.mark.parametrize("field", ["revision_id", "evidence_ref", "attestation_id"])
+async def test_converged_preflight_rejects_malformed_attestation_identity(field):
+    from dataclasses import replace
+
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    genuine = await w.reader.find_attestation(SCOPE, rev, ev.evidence_ref)
+    assert genuine is not None
+    w.reader.stale = replace(genuine, **{field: _ForgedEquality()})
+    before = await w.snapshot()
+    result = await w.promote(rev, ev)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "ATTESTATION_MISMATCH"
+
+
+async def test_converged_preflight_rejects_forged_approval_object():
+    from dataclasses import replace
+
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    genuine = await w.reader.find_attestation(SCOPE, rev, ev.evidence_ref)
+    assert genuine is not None
+    w.reader.stale = replace(genuine, decision=_ForgedEquality())
+    before = await w.snapshot()
+    result = await w.promote(rev, ev)
+    await assert_rejected(w, before, result, Outcome.REJECTED_EVIDENCE)
+    assert result.code == "EVIDENCE_NOT_APPROVED"
+
+
+async def test_converged_preflight_requires_literal_true_reviewer_grant():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+
+    async def nonboolean_grant(_scope, _subject):
+        return "trusted"
+
+    w.reader.is_trusted_reviewer = nonboolean_grant
+    before = await w.snapshot()
+    result = await w.promote(rev, ev)
+    await assert_rejected(w, before, result, Outcome.REJECTED_UNTRUSTED)
+    assert result.code == "REVIEWER_NOT_TRUSTED"
