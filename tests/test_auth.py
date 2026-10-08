@@ -115,3 +115,22 @@ def test_jwks_validation_error_fails_closed(auth_setup):
     verifier._jwks = FailedJWKS()
 
     assert verifier._verify_sync(token_for(private_key)) is None
+
+
+@pytest.mark.parametrize("client_claims", [
+    {"azp": None},
+    {"azp": "   "},
+    {"azp": ["spoofed"]},
+    {"azp": {"client": "spoofed"}},
+    {"azp": None, "client_id": 123},
+])
+def test_missing_or_malformed_client_identity_fails_closed(auth_setup, client_claims):
+    verifier, private_key = auth_setup
+    assert verifier._verify_sync(token_for(private_key, **client_claims)) is None
+
+
+def test_valid_explicit_client_id_is_accepted(auth_setup):
+    verifier, private_key = auth_setup
+    result = verifier._verify_sync(token_for(private_key, azp=None, client_id="mcp-client-8"))
+    assert result is not None
+    assert result.client_id == "mcp-client-8"
