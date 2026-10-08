@@ -1,0 +1,50 @@
+{
+  "package": "ERP_MCP_PHASE2_SPEC",
+  "version": "0.1",
+  "specification_date": "2026-10-08",
+  "status": "DRAFT_FOR_REVIEW",
+  "execution_environment": "Isolated ChatGPT preparation container; not the Windows workstation or 1C runtime",
+  "scope": "SPEC_L0_ONLY",
+  "spec_checks": {
+    "status": "PASS",
+    "tests": 35,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "catalogue": {
+    "requirements": 28,
+    "stories": 48,
+    "product_acceptance_cases": 144,
+    "json_schemas": 4,
+    "package_files": 38
+  },
+  "product_tests_status": "NOT_RUN",
+  "gherkin_step_implementations": "NOT_IMPLEMENTED",
+  "native_1c_reconciliation": "NOT_RUN",
+  "windows_local_spec_test_run": "NOT_RUN",
+  "production_tests": "NOT_RUN",
+  "prod_authorized": false,
+  "html_validation": {
+    "static_dom": "PASS",
+    "navigation_targets": "PASS",
+    "external_render_resources": 0,
+    "visual_browser_check": "NOT_RUN",
+    "reason": "Managed Chromium refused file navigation with ERR_BLOCKED_BY_ADMINISTRATOR; no policy bypass attempted"
+  },
+  "archive": {
+    "filename": "ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip",
+    "location": "Provided as an attachment in this ChatGPT conversation; not copied or extracted to the Windows workstation",
+    "size_bytes": 180452,
+    "sha256": "e1ab5e1d8e96307a57536c82ce132a7591b41b2e3adf71e8b7c1e7adc2703963",
+    "crc_test": "PASS",
+    "recorded_input_digests_match": true,
+    "is_trusted_digital_signature": false
+  },
+  "limitations": [
+    "JSON Schema checks shape, not real authentication, provenance, permissions or evidence authenticity.",
+    "No calls to 1C, Google Drive, PostgreSQL, UI, COM or credential stores were made by the specification tests.",
+    "The archive contains synthetic fixtures only; user-supplied accounting values are not Git/package fixtures.",
+    "No R1 runtime/configuration/migration/grants changes, restarts, commit, push, merge or deletion were performed as part of this documentation completion."
+  ]
+}
