@@ -130,3 +130,13 @@ the ten-case evidence set; failure leaves the profile unvalidated. Note that `pa
 accumulation register of settlements with counterparties; none was found among the 76 accumulation registers of the 818HA
 configuration (supplier settlements are booked on account 521 in the accounting register, whose published OData record has no
 sub-account fields for the counterparty). The mapping decision belongs to the operator.
+
+## Alternative to ten human reports: machine two-source cases (test lane)
+
+When the operator authorizes it by an approved Rosetta plan, ten month-end cases for account 521.1 can be built by
+machine: side A is a hand-written 1C query through COM on a disposable report clone, side B is the production tool
+code. Both sides write private artifacts (`side_a.json`, `side_b.json` per case) with a run record each (run id,
+method, parameters, snapshot, times, artifact digest, code identity). Compare exactly in decimals, without rounding.
+Validate only through `scripts/semantic_profiles.py validate --artifacts-root ... --plans-dir ...` with
+`BAG_MACHINE_RECONCILED_SOURCES` set to the one source. Human native reports remain the stronger evidence and are not
+replaced by this; see `docs/SEMANTIC_PROFILES.md`.
