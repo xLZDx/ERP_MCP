@@ -1,13 +1,16 @@
 
+import dataclasses
+
 import pytest
 
 from business_ai_gateway.phase2.model_graph import Dependency, DependencyGraph
 from business_ai_gateway.phase2.structural_diff import ChangeKind, ObjectChange, ObservedDiff
 
 
-def diff(*objects, unattributed=False, changed=True):
+def diff(*objects, unattributed=False, changed=True, tenant="tenant-1", source="source-1"):
     return ObservedDiff(
-        canonicalizer_version="edmx-structural-v1",
+        tenant_id=tenant, source_id=source,
+        canonicalizer_version="edmx-structural-v2",
         previous_raw_sha256="a" * 64,
         observed_raw_sha256="b" * 64,
         previous_structural_sha256="a" * 64,
@@ -98,4 +101,20 @@ def test_graph_rejects_cycle_self_edge():
 def test_dependency_edges_do_not_approve_model():
     result = graph().affected(diff(("Purchase", ChangeKind.MODIFIED)))
     assert result.affected_operations == {"purchase_documents"}
-    assert not hasattr(result, "approved_model")
+    assert result.reason == "SCOPED_IMPACT"
+    # The result is evidence only: no approval/acceptance field exists on it.
+    assert {f.name for f in dataclasses.fields(result)} == {
+        "tenant_id", "source_id", "affected_operations", "unaffected_operations",
+        "unknown_impact", "reason",
+    }
+
+
+@pytest.mark.parametrize("tenant,source", [("tenant-2", "source-1"), ("tenant-1", "source-2")])
+def test_diff_from_another_scope_is_rejected(tenant, source):
+    with pytest.raises(ValueError, match="DIFF_SCOPE_MISMATCH"):
+        graph().affected(diff(("Purchase", ChangeKind.MODIFIED), tenant=tenant, source=source))
+
+
+def test_no_change_diff_from_another_scope_is_still_rejected():
+    with pytest.raises(ValueError, match="DIFF_SCOPE_MISMATCH"):
+        graph().affected(diff(changed=False, tenant="other"))

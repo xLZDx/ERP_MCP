@@ -1,52 +1,44 @@
 # Phase 2 Implementation Status — 2026-10-08
 
-## Verified inspection scope
+Release 2: **NO-GO**. Product acceptance: **NOT_RUN**. No gate G0–G7 has passed.
 
-- Workstation: authorized Remote Desktop Commander device Razer.
-- Repository: `D:\Repo\ERP_MCP-phase2`.
-- Branch: `phase2/living-model-connectors-reconciliation` (confirmed by Git).
-- HEAD: `68e4f97331ef5449a7f872e8070c55bbac17cd23` (confirmed by Git).
-- Release 1 checkout, active gateway, production 1C, PostgreSQL and OAuth were not intentionally modified by this inspection.
-- Git status/diff commands did not return usable output via Remote Desktop Commander process sessions; working tree cleanliness and push synchronization remain **UNVERIFIED**.
+## Verified scope (single source of truth for this file)
 
-## Baseline from checkpoint (not freshly re-executed)
+- Repository: `D:\Repo\ERP_MCP-phase2`, branch `phase2/living-model-connectors-reconciliation`.
+- Base HEAD: `9b4fc0cc365f0066cb120531025ced0cf9240516` (local; ahead of origin by 1 commit, push not performed). The remediation described below is a working-tree change on top of this HEAD until committed; the committing SHA is recorded in `DECISION_LOG.md`.
+- Release 1 checkout, production gateway, 1C, PostgreSQL and OAuth were not modified.
+- Execution evidence (local, offline): `pytest -q tests\phase2` → **310 passed, 20 skipped**, exit 0; `ruff check src\business_ai_gateway\phase2 tests\phase2` → exit 0; `compileall` → exit 0. The 20 skipped tests are PostgreSQL integration tests, status **NOT_RUN** (`ERP_PHASE2_TEST_DSN` not set). Nothing was executed on PostgreSQL. R1 regression suite: **NOT_RUN**.
+- Earlier figures in other documents (23/74/122/125/128/133 tests, HEAD `68e4f97`) are historical and superseded by this section.
 
-- 28 requirements, 48 stories, 144 product acceptance cases; product acceptance **NOT_RUN**.
-- Previous checkpoint reported 122 isolated Phase 2 unit/mock tests PASS and Ruff PASS. This session did **not** rerun tests.
-- Source modules inspected: `temporal.py` contains only an in-memory reference ledger; `drive_changes.py` prepares candidates for a future transactional durable commit and does not itself persist them.
-- No durable PostgreSQL schema or real 1C/Drive integration verified in this session.
+## Independent review round 1 (2026-10-08, read-only, local Sonnet agents)
+
+Six reviewers (database, security, Python, test adequacy, reliability, architecture) on `9b4fc0c` found, among others: tenant isolation bound to a client-settable GUC; unauthenticated `promote_head` bypassable by direct DML; client-controlled `recorded_at`; `commit_cursor_page` advancing the cursor on NULL events and not fenced by the job lease; no roles / PUBLIC EXECUTE open; TRUNCATE not guarded; GAP events masking OBSERVED heads; Drive removals and unknown changes silently dropped; EDMX structural hash ignoring unnamed content; truthy ACL result and no audit before connector calls; backend-id aliases bypassing the budget; static SQL text tests counted as evidence.
+
+Remediation rewrote `db/phase2/001`/`002`, added `003_security_hardening.sql`, fixed the Python modules above and replaced decorative tests with behavioral ones. A verification round (fixes plus regressions) found further issues (SQL N-1..N-11, Python F1..F9, test gaps), all fixed in the same commit except those listed as open in `DECISION_LOG.md` D-001. **All SQL remains unexecuted; the fixes of the verification round have not had an independent re-review.**
 
 ## Gate status
 
 | Gate | Status | Evidence gap / unblocker |
 | --- | --- | --- |
-| G0 | BLOCKED | Explicit scope/architecture/security authority, donor inventory and licenses |
-| G1 | NOT_STARTED/UNVERIFIED | Separate disposable PostgreSQL database, migrations, roles/RLS/FKs, replay, CAS, cursor/outbox, negative tests |
-| G2 | NOT_STARTED/UNVERIFIED | Authenticated source-wide 1C observation and bounded worker with evidence |
-| G3 | BLOCKED | Authentic native 1C report, origin/parameters, independent accountant attestation |
-| G4 | BLOCKED | ERP_MCP-owned narrow Google Drive OAuth credentials and scope PoC |
-| G5 | NOT_STARTED | Admin reconciliation UI and real user/admin acceptance |
-| G6 | BLOCKED | Production-specific permission, qualified canary, capacity, chaos, recovery proof |
-| G7 | BLOCKED | All gates, exact-head manifest and authorized release approval |
+| G0 | BLOCKED | Scope rebaseline / explicit authority (OB-01), donor inventory and licenses (OB-15) |
+| G1 | BLOCKED (IMPLEMENTED_UNVERIFIED) | SQL drafted and statically reviewed only; needs authorized disposable PostgreSQL (OB-03) for roles/RLS/immutability/CAS/fencing/outbox/backup tests |
+| G2 | NOT_STARTED | Authenticated source-wide 1C observation and bounded worker (OB-10) |
+| G3 | BLOCKED | Authentic native report and independent accountant attestation (OB-11) |
+| G4 | BLOCKED | ERP_MCP-owned narrow Drive OAuth (OB-12) |
+| G5 | NOT_STARTED | Admin workbench and real user/admin acceptance |
+| G6 | BLOCKED | Production permission, canary, capacity, chaos, recovery (OB-14) |
+| G7 | BLOCKED | All gates, exact-head manifest, release-owner approval (OB-21) |
 
-## Critical next engineering actions
+## What the code is and is not
 
-1. Restore reliable Git status/diff and command output; do not commit over unknown local edits.
-2. Review `docs/phase2/STORIES_PHASE2_RU.md` dependencies as source of truth and trace requirements to tests.
-3. Implement migration source for isolated R2 PostgreSQL only, then apply on explicitly verified disposable DB, validate RLS/immutability/FK and restore.
-4. Add transactionally durable observations, accepted-head CAS and Drive cursor/outbox, lease/fencing and ACL tests.
-5. Execute unit, integration and full security checks, record actual outputs, only then commit/push and classify stories as VERIFIED/DONE.
+- Python modules in `src/business_ai_gateway/phase2/` are isolated, unwired reference implementations (no R1 imports them). `temporal.py` is an in-memory ledger; `backend_budget.py` is single-process; `drive_*` and `onec_discovery.py` take injected callbacks; reconciliation modules are EVALUATION_ONLY comparators.
+- SQL under `db/phase2/` is **not deployable** until executed and reviewed on a disposable PostgreSQL. Static SQL contract tests are preflight lint, not G1 evidence.
+- Operator-only blockers: `OPERATOR_BACKLOG.md` and `G1_OPERATOR_BACKLOG.md`.
 
-No R2 production GO. No claimed accounting PASS from numeric comparisons alone.
+## Next engineering actions (without operator input)
 
-## Current G1 status (autonomous continuation, 2026-10-08)
+1. Close the verification review findings; commit with a detail file.
+2. Slices without PostgreSQL: persistence ports and fakes, connector SDK envelope, scheduler/failure-vs-drift logic, promotion service on a port.
+3. After OB-02/OB-03: GPT-PM sweep, PostgreSQL integration run with `ERP_PHASE2_REQUIRE_PG=1`, restore/role/RLS evidence.
 
-G1 remains **BLOCKED / IMPLEMENTED_UNVERIFIED**, despite **125/125 Python tests PASS** and **Ruff PASS**. These checks are not SQL execution. The third hardening SQL write was blocked by Remote Desktop Commander policy and not bypassed. The first two draft migrations have unresolved security issues detailed in `G1_IMPLEMENTATION_NOTE_2026-10-08.md`; do not apply or expose them. No verified disposable PostgreSQL database/role isolation, no negative RLS test, no load/recovery proof. This is a safe terminal blocker for the G1 DB-application lane, not release completion.
-
-## Latest local execution checkpoint
-
-- Phase 2 pytest: **133 passed in 3.38s** (offline, not DB integration).
-- Phase 2 Ruff: **All checks passed** after code style fixes.
-- R2-US-019 now has a tested in-process physical backend budget reference; distributed identity and shared cross-replica budgeting remain open.
-- G1 remains blocked by prohibited SQL security-hardening write and absent verified isolated database/roles; drafted migrations are NOT DEPLOYABLE.
-- Product acceptance cases remain NOT_RUN; no claim of R2 GO.
+No R2 production GO. No accounting PASS from numeric comparisons alone.

@@ -63,6 +63,7 @@ def test_different_source_snapshot_is_inconclusive():
 def test_missing_page_cannot_be_pass():
     result=compare_statements(statement(),statement(complete=False),policy=POLICY)
     assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code=="GATEWAY_INCOMPLETE_OR_INCONSISTENT"
 
 def test_missing_analytic_row_is_mismatch_even_if_totals_agree():
     b=balance()
@@ -115,3 +116,61 @@ def test_report_revision_not_an_automatic_attestation():
     result=compare_statements(statement(revision="untrusted-native"),statement(revision="mcp"),policy=POLICY)
     assert result.state is ComparisonState.MATCH
     assert result.authority=="EVALUATION_ONLY"
+
+TOL = TolerancePolicy("tol-v1", D("0.01"))
+
+@pytest.mark.parametrize("native_close,gateway_close,state", [
+    ("24.00", "24.01", ComparisonState.MATCH),      # exactly tolerance, gateway higher
+    ("24.01", "24.00", ComparisonState.MATCH),      # exactly tolerance, gateway lower
+    ("24.00", "24.011", ComparisonState.MISMATCH),  # tolerance + 0.001, gateway higher
+    ("24.011", "24.00", ComparisonState.MISMATCH),  # tolerance + 0.001, gateway lower
+])
+def test_tolerance_boundary_both_directions(native_close, gateway_close, state):
+    a=statement(balance(close_c=native_close))
+    b=statement(balance(close_c=gateway_close))
+    result=compare_statements(a,b,policy=TOL)
+    assert result.state is state
+    if state is ComparisonState.MISMATCH:
+        assert {x.measure for x in result.differences}=={"closing_credit"}
+        assert result.reason_code=="VALUES_DIFFER"
+
+def test_arithmetic_ignores_ambient_decimal_precision():
+    import decimal
+    big = balance(open_c="12345678.91", close_c="12345678.91", turn_d="0", turn_c="0")
+    a=statement(big)
+    with decimal.localcontext() as ctx:
+        ctx.prec = 4
+        result=compare_statements(a,a,policy=POLICY)
+    assert result.state is ComparisonState.MATCH
+    assert result.reason_code=="ALL_SIX_AND_ROWS_EQUAL"
+
+def test_tolerance_boundary_with_low_ambient_precision():
+    import decimal
+    a=statement(balance(close_c="12345678.90"))
+    b=statement(balance(close_c="12345678.91"))
+    with decimal.localcontext() as ctx:
+        ctx.prec = 4
+        assert compare_statements(a,b,policy=TOL).state is ComparisonState.MATCH
+        b2=statement(balance(close_c="12345678.911"))
+        assert compare_statements(a,b2,policy=TOL).state is ComparisonState.MISMATCH
+
+def test_seventy_digit_decimal_is_inconclusive_precision_exceeded():
+    huge = "1" * 70
+    a=statement(balance(open_c=huge, close_c=huge, turn_d="0", turn_c="0"))
+    result=compare_statements(a,a,policy=POLICY)
+    assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code=="DECIMAL_PRECISION_EXCEEDED"
+
+def test_both_statements_with_empty_rows_are_inconclusive_native_side():
+    a=statement(rows=())
+    b=statement(rows=())
+    result=compare_statements(a,b,policy=POLICY)
+    assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code=="NATIVE_INCOMPLETE_OR_INCONSISTENT"
+
+def test_native_side_totals_not_matching_rows_is_native_inconsistent():
+    good=statement()
+    bad=replace(statement(balance(turn_d="4")),rows=good.rows)
+    result=compare_statements(bad,good,policy=POLICY)
+    assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code=="NATIVE_INCOMPLETE_OR_INCONSISTENT"

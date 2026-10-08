@@ -77,6 +77,8 @@ class DependencyGraph:
     def affected(self, change: ObservedDiff) -> ImpactResult:
         if not isinstance(change, ObservedDiff) or change.trust_level != "OBSERVED_ONLY":
             raise ValueError("UNTRUSTED_OR_INVALID_DIFF")
+        if (change.tenant_id, change.source_id) != (self.tenant_id, self.source_id):
+            raise ValueError("DIFF_SCOPE_MISMATCH")
         if not change.has_changes:
             return ImpactResult(self.tenant_id, self.source_id, frozenset(),
                                 self.known_operations, False, "NO_STRUCTURAL_CHANGE")

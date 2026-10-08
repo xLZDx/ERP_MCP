@@ -45,7 +45,7 @@ testpaths = ["tests"]
 pythonpath = [".", "src"]
 asyncio_mode = "auto"
 markers = [
-  "integration: tests that require a real external 1C test instance",
+  "integration: tests that require an external system: a real 1C test instance or a disposable PostgreSQL (ERP_PHASE2_TEST_DSN)",
   "e2e: end-to-end tests against the disposable local environment (scripts/e2e/up.ps1)",
   "smoke: fast environment smoke checks",
   "user: data-plane user E2E suite",

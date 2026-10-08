@@ -8,8 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Context, Decimal, Inexact, localcontext
 from enum import StrEnum
+
+# Fixed, ambient-independent context: enough digits that 1C amounts are summed and
+# compared exactly; Inexact is trapped so silent rounding can never decide a verdict.
+_EXACT = Context(prec=60, Emin=-999_999, Emax=999_999)
+_EXACT.traps[Inexact] = True
 
 
 def _money(value: Decimal) -> Decimal:
@@ -154,6 +159,16 @@ def compare_statements(
     The caller must separately attest native provenance, independent origin and
     exact source snapshot consistency. Numeric MATCH is NEVER native PASS.
     """
+    try:
+        with localcontext(_EXACT):
+            return _compare(native, gateway, policy)
+    except ArithmeticError:
+        # Values beyond the fixed exact precision cannot be compared without rounding.
+        return Comparison(ComparisonState.INCONCLUSIVE, "DECIMAL_PRECISION_EXCEEDED",
+                          policy.policy_id, ())
+
+
+def _compare(native: LedgerStatement, gateway: LedgerStatement, policy: TolerancePolicy) -> Comparison:
     if native.scope != gateway.scope:
         return Comparison(ComparisonState.INCONCLUSIVE, "SCOPE_MISMATCH", policy.policy_id, ())
     if native.snapshot_ref != gateway.snapshot_ref:

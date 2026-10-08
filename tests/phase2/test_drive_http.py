@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 import pytest
 
@@ -28,16 +30,24 @@ def changes_payload(*, next_page=None, end="next-token", items=None):
     return payload
 
 
-def build_client(callback, *, authorized=True, token="test-token"):
+def build_client(callback, *, authorized=True, token="test-token", audit_calls=None,
+                 audit_error=None, timeout=30.0):
     async def acl(identity):
         return authorized
 
     async def secret(identity):
         return token
 
+    async def audit(event, details):
+        if audit_error is not None:
+            raise audit_error
+        if audit_calls is not None:
+            audit_calls.append((event, dict(details)))
+
     http = httpx.AsyncClient(transport=httpx.MockTransport(callback))
     return http, GoogleDriveChangesReader(
-        http, resolve_access_token=secret, authorize_connection=acl
+        http, resolve_access_token=secret, authorize_connection=acl, audit=audit,
+        request_timeout_seconds=timeout,
     )
 
 
@@ -99,7 +109,12 @@ async def test_scope_denied_before_token_and_network():
     http = httpx.AsyncClient(transport=httpx.MockTransport(
         lambda req: pytest.fail("NETWORK_CALLED_WITHOUT_PERMISSION")
     ))
-    connector = GoogleDriveChangesReader(http, resolve_access_token=secret, authorize_connection=acl)
+    async def audit(event, details):
+        calls.append("audit")
+
+    connector = GoogleDriveChangesReader(
+        http, resolve_access_token=secret, authorize_connection=acl, audit=audit
+    )
     async with http:
         with pytest.raises(PermissionError, match="DRIVE_ACCESS_DENIED"):
             await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
@@ -125,7 +140,10 @@ async def test_removed_or_shared_drive_event_not_a_document_candidate():
         file_scope_allowed=lambda f: True,
     ).prepare(result, stored_cursor="c1")
     assert projected.candidates == ()
-    assert projected.denied_changes == 2
+    assert [(t.file_id, t.reason) for t in projected.tombstones] == [("f1", "REMOVED")]
+    assert projected.unknown_changes == 1
+    assert projected.denied_changes == 0
+    assert projected.requires_gap_or_pause is True
 
 
 @pytest.mark.asyncio
@@ -154,19 +172,27 @@ async def test_drive_http_failures_are_sanitized(status,code):
 
 
 @pytest.mark.asyncio
+async def test_small_response_is_accepted():
+    http, connector = build_client(
+        lambda req: httpx.Response(200, json=changes_payload(items=[]))
+    )
+    async with http:
+        page = await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert page.changes == ()
+    assert page.new_start_page_token == "next-token"
+
+
+@pytest.mark.asyncio
 async def test_large_response_rejected():
     http, connector = build_client(
-        lambda req: httpx.Response(200, json=changes_payload(items=[]), content=None)
-    )
-    async with http:
-        await connector.fetch_page(identity=IDENTITY,saved_cursor="c1")
-    http, connector = build_client(
         lambda req: httpx.Response(200, content=b" " * 2_100_000,
-                                   headers={"content-type":"application/json"})
+                                   headers={"content-type": "application/json"})
     )
     async with http:
-        with pytest.raises(DriveTransportError,match="RESPONSE_TOO_LARGE"):
-            await connector.fetch_page(identity=IDENTITY,saved_cursor="c1")
+        with pytest.raises(DriveTransportError, match="RESPONSE_TOO_LARGE") as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert info.value.code == "RESPONSE_TOO_LARGE"
+    assert info.value.retryable is False
 
 
 @pytest.mark.asyncio
@@ -196,3 +222,304 @@ async def test_missing_continuation_is_denied():
     async with http:
         with pytest.raises(DriveTransportError,match="DRIVE_INVALID_CONTINUATION"):
             await connector.fetch_page(identity=IDENTITY,saved_cursor="c1")
+
+
+def _error_body(reason):
+    return {"error": {"code": 403, "errors": [{"reason": reason}]}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reason", ["rateLimitExceeded", "userRateLimitExceeded"])
+async def test_403_rate_limit_reason_is_retryable(reason):
+    http, connector = build_client(lambda req: httpx.Response(403, json=_error_body(reason)))
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert info.value.code == "RATE_LIMITED"
+    assert info.value.retryable is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status,body", [
+    (403, None),
+    (403, _error_body("forbidden")),
+    (403, "not json"),
+    (401, _error_body("rateLimitExceeded")),
+])
+async def test_plain_403_and_401_stay_permanent(status, body):
+    if body is None:
+        response = httpx.Response(status)
+    elif isinstance(body, str):
+        response = httpx.Response(status, content=body.encode(),
+                                  headers={"content-type": "text/plain"})
+    else:
+        response = httpx.Response(status, json=body)
+    http, connector = build_client(lambda req: response)
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert info.value.code == "AUTH_REQUIRED_OR_DENIED"
+    assert info.value.retryable is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status,code,retryable", [
+    (429, "RATE_LIMITED", True), (503, "DRIVE_UPSTREAM_ERROR", True),
+    (302, "DRIVE_UPSTREAM_ERROR", False), (410, "CURSOR_INVALID", False),
+])
+async def test_retryable_flag_per_status(status, code, retryable):
+    http, connector = build_client(lambda req: httpx.Response(status))
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert (info.value.code, info.value.retryable) == (code, retryable)
+
+
+def test_transport_error_default_is_not_retryable():
+    assert DriveTransportError("X").retryable is False
+    assert DriveTransportError("X", retryable=True).retryable is True
+
+
+@pytest.mark.asyncio
+async def test_slow_upstream_hits_configurable_timeout():
+    async def slow(req):
+        await asyncio.sleep(5)
+        return httpx.Response(200, json=changes_payload())
+
+    http, connector = build_client(slow, timeout=0.05)
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await asyncio.wait_for(
+                connector.fetch_page(identity=IDENTITY, saved_cursor="c1"), timeout=3
+            )
+    assert info.value.code == "DRIVE_TIMEOUT"
+    assert info.value.retryable is True
+
+
+@pytest.mark.parametrize("value", [0, -1, None, "5", float("nan")])
+def test_invalid_timeout_configuration_rejected(value):
+    with pytest.raises(ValueError, match="TIMEOUT"):
+        build_client(lambda req: httpx.Response(200), timeout=value)
+
+
+SECRET = "ya29.SECRET-token-value"
+
+
+def _chain(exc):
+    seen = []
+    while exc is not None and exc not in seen:
+        seen.append(exc)
+        exc = exc.__cause__ or exc.__context__
+    return seen
+
+
+def _raise(exc):
+    def handler(req):
+        raise exc
+    return handler
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("handler", [
+    lambda req: httpx.Response(401), lambda req: httpx.Response(403),
+    lambda req: httpx.Response(429), lambda req: httpx.Response(503),
+    lambda req: httpx.Response(200, content=b"{" + SECRET.encode(),
+                               headers={"content-type": "application/json"}),
+    _raise(httpx.ConnectError("boom " + SECRET)),
+    _raise(httpx.ReadTimeout("slow " + SECRET)),
+])
+async def test_token_never_appears_in_exception_text_or_chain(handler):
+    http, connector = build_client(handler, token=SECRET)
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    chain = _chain(info.value)
+    assert chain[0] is info.value
+    for exc in chain:
+        assert SECRET not in str(exc)
+        assert SECRET not in repr(exc)
+        assert SECRET not in repr(exc.args)
+
+
+@pytest.mark.asyncio
+async def test_malformed_token_is_rejected_without_echo():
+    bad = "bad token with spaces " + SECRET
+    http, connector = build_client(lambda req: pytest.fail("NO_NETWORK"), token=bad)
+    async with http:
+        with pytest.raises(DriveTransportError) as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert info.value.code == "AUTH_REQUIRED"
+    assert SECRET not in str(info.value) and SECRET not in repr(info.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("acl_result", [1, "yes", object(), None, False])
+async def test_acl_result_must_be_exactly_true(acl_result):
+    http, connector = build_client(lambda req: pytest.fail("NO_NETWORK"), authorized=acl_result)
+    async with http:
+        with pytest.raises(PermissionError, match="DRIVE_ACCESS_DENIED"):
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+
+
+@pytest.mark.asyncio
+async def test_audit_is_written_before_network_call():
+    order = []
+    audit_calls = []
+
+    def handler(req):
+        order.append(("network", len(audit_calls)))
+        return httpx.Response(200, json=changes_payload())
+
+    http, connector = build_client(handler, audit_calls=audit_calls)
+    async with http:
+        await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert order == [("network", 1)]
+    assert audit_calls[0][0] == "drive.changes.fetch"
+    assert audit_calls[0][1]["connection_id"] == "conn-1"
+    assert "test-token" not in repr(audit_calls)
+
+
+@pytest.mark.asyncio
+async def test_audit_failure_is_fail_closed_before_network_and_token():
+    tokens = []
+
+    async def acl(identity):
+        return True
+
+    async def secret(identity):
+        tokens.append("token")
+        return "tok"
+
+    async def audit(event, details):
+        raise OSError("audit sink down")
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda req: pytest.fail("NETWORK_CALLED_WITHOUT_AUDIT")
+    ))
+    connector = GoogleDriveChangesReader(
+        http, resolve_access_token=secret, authorize_connection=acl, audit=audit
+    )
+    async with http:
+        with pytest.raises(PermissionError, match="AUDIT_WRITE_FAILED") as info:
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert info.value.__cause__ is None and info.value.__context__ is None
+    assert tokens == []
+
+
+def test_audit_callback_is_mandatory():
+    http = httpx.AsyncClient()
+
+    async def acl(identity):
+        return True
+
+    async def secret(identity):
+        return "t"
+
+    with pytest.raises(TypeError):
+        GoogleDriveChangesReader(http, resolve_access_token=secret, authorize_connection=acl)
+    with pytest.raises(TypeError, match="AUDIT"):
+        GoogleDriveChangesReader(http, resolve_access_token=secret,
+                                 authorize_connection=acl, audit=None)
+
+
+@pytest.mark.asyncio
+async def test_mime_type_and_parents_are_carried_and_requested():
+    seen = []
+    items = [{"changeType": "file", "fileId": "fo1", "driveId": "shared-1", "time": "t",
+              "file": {"id": "fo1", "version": "1", "trashed": False,
+                       "mimeType": "application/vnd.google-apps.folder",
+                       "parents": ["root-1"]}}]
+
+    def handler(req):
+        seen.append(req.url.params["fields"])
+        return httpx.Response(200, json=changes_payload(items=items))
+
+    http, connector = build_client(handler)
+    async with http:
+        page = await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert "mimeType" in seen[0] and "parents" in seen[0]
+    assert page.changes[0].mime_type == "application/vnd.google-apps.folder"
+    assert page.changes[0].parents == ("root-1",)
+
+
+@pytest.mark.asyncio
+async def test_missing_drive_id_is_not_silently_taken_from_identity():
+    items = [{"changeType": "file", "fileId": "f9", "time": "t",
+              "file": {"id": "f9", "version": "1", "trashed": False}}]
+    http, connector = build_client(lambda req: httpx.Response(200, json=changes_payload(items=items)))
+    async with http:
+        page = await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert page.changes[0].drive_id is None
+    assert page.changes[0].kind == DriveChangeKind.UNKNOWN
+    batch = DriveChangeProjector(
+        connection_id="conn-1", drive_id="shared-1", file_scope_allowed=lambda f: True
+    ).prepare(page, stored_cursor="c1")
+    assert batch.candidates == () and batch.unknown_changes == 1
+    assert batch.requires_gap_or_pause is True
+
+
+@pytest.mark.asyncio
+async def test_empty_drive_id_is_malformed():
+    items = [{"changeType": "file", "fileId": "f9", "driveId": "", "time": "t",
+              "file": {"id": "f9", "version": "1"}}]
+    http, connector = build_client(lambda req: httpx.Response(200, json=changes_payload(items=items)))
+    async with http:
+        with pytest.raises(DriveTransportError, match="DRIVE_MALFORMED_RESPONSE"):
+            await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+
+
+@pytest.mark.asyncio
+async def test_trashed_file_without_removed_flag_is_removed_tombstone_not_candidate():
+    items = [{"changeType": "file", "fileId": "f1", "time": "2026-10-08T08:00:00Z",
+              "driveId": "shared-1",
+              "file": {"id": "f1", "version": "3", "trashed": True}}]
+    http, connector = build_client(lambda req: httpx.Response(
+        200, json=changes_payload(items=items)
+    ))
+    async with http:
+        result = await connector.fetch_page(identity=IDENTITY, saved_cursor="c1")
+    assert [c.kind for c in result.changes] == [DriveChangeKind.REMOVED]
+    projected = DriveChangeProjector(
+        connection_id=IDENTITY.connection_id, drive_id=IDENTITY.drive_id,
+        file_scope_allowed=lambda f: True,
+    ).prepare(result, stored_cursor="c1")
+    assert projected.candidates == ()
+    assert [(t.file_id, t.reason) for t in projected.tombstones] == [("f1", "REMOVED")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hang", ["acl", "audit", "token"])
+async def test_hanging_trusted_callback_times_out_without_network(hang):
+    calls = []
+
+    async def slow():
+        await asyncio.sleep(5)
+
+    async def acl(identity):
+        if hang == "acl":
+            await slow()
+        return True
+
+    async def secret(identity):
+        if hang == "token":
+            await slow()
+        return "test-token"
+
+    async def audit(event, details):
+        if hang == "audit":
+            await slow()
+
+    def handler(req):
+        calls.append(req)
+        return httpx.Response(200, json=changes_payload())
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    reader = GoogleDriveChangesReader(
+        http, resolve_access_token=secret, authorize_connection=acl, audit=audit,
+        callback_timeout_seconds=0.05,
+    )
+    with pytest.raises(DriveTransportError) as info:
+        await reader.fetch_page(identity=IDENTITY, saved_cursor="cur")
+    assert info.value.code == "DRIVE_TIMEOUT" and info.value.retryable
+    assert calls == []
+    await http.aclose()
