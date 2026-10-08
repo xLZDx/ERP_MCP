@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 143 tracked paths, 7 local-only paths.
+Inventory: 144 tracked paths, 7 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -138,6 +138,7 @@ Inventory: 143 tracked paths, 7 local-only paths.
 | reports/ERP_MCP_INDEPENDENT_CONSENSUS_AUDIT_2026-10-06.md | Report | "ERP_MCP — Independent Consensus Audit Snapshot (2026-10-06)" |
 | reports/ERP_MCP_NON_ADMIN_FINDINGS_2026-10-06.md | Report | "ERP_MCP — NON-ADMIN FINDINGS BACKLOG" |
 | reports/EXECUTION_LOG.md | Report | "Autonomous engineering execution log" |
+| reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md | Report | "ERP_MCP Release 1 — fresh GitHub install with real local 1C (L2)" |
 | reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md | Report | "Functional Tester report REAL-1C-818HA" |
 | reports/FUNCTIONAL_TESTER_SC01_SC12.md | Report | "Functional Tester report — SC01–SC12" |
 | reports/IMPLEMENTATION_GAP_ANALYSIS.md | Report | "ERP_MCP implementation gap analysis" |
