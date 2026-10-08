@@ -1,9 +1,9 @@
 # ERP_MCP Release 1 — fresh GitHub install with real local 1C (L2)
 
-**Executed:** 2026-10-09 (Europe/Chisinau).  
-**Type:** authorized isolated Windows 11 engineering workstation; fresh repository clone, **not a new physical computer**.  
-**Source baseline:** public `main` at `6c9e4a001301f90325558c630c72dd6ed16296ec`.  
-**Remediation candidate:** `fix/e2e-comspec-first-install-20261009`.  
+**Executed:** 2026-10-09 (Europe/Chisinau).
+**Type:** authorized isolated Windows 11 engineering workstation; fresh repository clone, **not a new physical computer**.
+**Source baseline:** public `main` at `6c9e4a001301f90325558c630c72dd6ed16296ec`.
+**Remediation candidate:** `fix/e2e-comspec-first-install-20261009`.
 **Scope:** install, isolated PostgreSQL/Redis, test IdP/MCP gateway, registered real 1C reference, read-only metadata and data-plane ACL. **No 1C writes or native accounting sign-off.**
 
 ## Fresh install / isolation
