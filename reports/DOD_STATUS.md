@@ -1,7 +1,16 @@
+<!-- ENGINEERING_CHECKPOINT=CLIENT_SAFETY_20261009 ENGINEERING_IMPLEMENTATION=9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2 -->
 
 # Definition of Done status
 
 <!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=27a12ada68c7f84160545740ecbc5adc567d042fcd2ff06eb60baad701a7bc3c -->
+
+## Final local client-safety validation — 2026-10-09
+
+Full local suite on the isolated worktree: **1934 passed, 343 skipped, 0 failed**; a prior execution reported one transient fault-harness failure, retained for investigation. No hosted exact-HEAD or live customer 1C/IdP confirmation. DoD remains PARTIAL; production NO-GO.
+
+## OAuth client identity hardening — 2026-10-09
+
+The new OAuth client-identity guard, negative tests, broad offline regression (1933 passed, 343 skipped, checkpoint gate separately re-verified), and fingerprint-bound reports are local engineering evidence only. No fresh hosted/production IdP or native 1C approval was obtained. **DoD remains PARTIAL; Production NO-GO.**
 
 ## Capability observation boundary — 2026-10-06
 

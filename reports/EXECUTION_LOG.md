@@ -1,3 +1,4 @@
+<!-- ENGINEERING_CHECKPOINT=CLIENT_SAFETY_20261009 ENGINEERING_IMPLEMENTATION=9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2 -->
 # Autonomous engineering execution log
 
 <!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=27a12ada68c7f84160545740ecbc5adc567d042fcd2ff06eb60baad701a7bc3c -->
@@ -553,3 +554,11 @@ Verification matrix 31/31 exit 0; full pytest 1230 passed / 232 skipped (disposi
 Production decision: NO-GO; DoD: PARTIAL; external gates unchanged.
 
 2026-10-07 real-reference L2 lane (818HA clone, read-only, code `1864bd9`): 130 catalogue stories dispositioned (CAPABILITY_UNSUPPORTED 25, EVIDENCE_REQUIRED 29, FINDING 4, INCONCLUSIVE 2, PASS 6, REFUSED-WRITE 6, SEMANTIC_PROFILE_UNVALIDATED 58); supplementary: ACL:PASS 7, INV:EVIDENCE_REQUIRED 21, NR:EVIDENCE_REQUIRED 9, NR:INCONCLUSIVE 1, RL2:FINDING 1, RL2:PASS 9, RULE:CAPABILITY_UNSUPPORTED 90, RULE:EVIDENCE_REQUIRED 90, SYS:FINDING 5, SYS:PASS 2. No semantic profile is validated: COM comparisons are NATIVE_COM_QUERY context only and at least ten genuine native UI reports are still owed by the owner. Evidence: `reports/real1c/` (summary, per-test details ru/en; exact figures kept privately outside Git), `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`. Hosted CI for the exact head: PENDING. Owner manual acceptance: PENDING. Production decision: NO-GO.
+
+## 2026-10-09 — OAuth client-identity hardening in isolated worktree
+
+Base `40317f0`, isolated `hardening/client-safety-20261008`; code/test commits `84e6804`, `c25b6a9`. Missing/non-string OAuth client identity is denied; backward-compatible valid `client_id`/`azp`/`appid` exercised. Full broad local suite minus re-pin gate: 1933 passed, 343 skipped, 1 deselected. Fresh checkpoint implementation fingerprint `9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2`; post-re-pin 41 checkpoint/evidence tests and report reference gate PASS. No exact-head hosted CI, real IdP or real 1C evidence. DoD PARTIAL / Production NO-GO; main and production untouched.
+
+## 2026-10-09 — complete local retest and retained flaky incident
+
+After the checkpoint was re-pinned, first full local pytest: 1933 passed, 343 skipped, 1 failed (nested fault/recovery harness). Its focused repeat passed and the independent fault runner exercised 11 passing tests with `timed_out=false`. A second entire local pytest passed 1934 with 343 external-gated skips and no failures (387.78s). Original failed run retained in `var/full-final-run.log`, PASS in `var/full-final-retry.log`. Engineering evidence only, no hosted exact-head verification; DoD PARTIAL / Production NO-GO.

@@ -134,3 +134,17 @@ def test_valid_explicit_client_id_is_accepted(auth_setup):
     result = verifier._verify_sync(token_for(private_key, azp=None, client_id="mcp-client-8"))
     assert result is not None
     assert result.client_id == "mcp-client-8"
+
+
+def test_legacy_appid_client_claim_remains_accepted(auth_setup):
+    verifier, private_key = auth_setup
+    token = token_for(private_key, azp=None, appid="trusted-app-client")
+    result = verifier._verify_sync(token)
+    assert result is not None
+    assert result.client_id == "trusted-app-client"
+
+
+def test_blank_primary_client_identity_does_not_fall_back(auth_setup):
+    verifier, private_key = auth_setup
+    token = token_for(private_key, client_id="   ", azp="trusted-client")
+    assert verifier._verify_sync(token) is None
