@@ -82,6 +82,13 @@ NATIVE_ONLY_SQL = """
  )
 """
 
+_NATIVE_ONLY_PLACEHOLDER = "__NATIVE_ONLY_SQL__"
+
+
+def with_native_only(query: str) -> str:
+    """Substitute the constant native-only predicate for its placeholder; no runtime value is ever spliced in."""
+    return query.replace(_NATIVE_ONLY_PLACEHOLDER, NATIVE_ONLY_SQL)
+
 
 class EvidenceBasisError(ValueError):
     """The stored or supplied evidence is unknown, incomplete or contradictory."""
