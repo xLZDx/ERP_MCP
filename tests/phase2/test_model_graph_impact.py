@@ -161,18 +161,40 @@ def test_tc044_incomplete_graph_denies_every_change_kind(kind):
     assert r.blocked_operations == {"op_a", "op_x"} and r.unknown_impact
 
 
-def test_tc044_unknown_operation_never_appears_as_unaffected():
-    # A caller must allow only ops in unaffected_operations; an operation the
-    # graph does not know can never be in that set.
-    for g, d in [
-        (chain_graph(), diff(("C", ChangeKind.MODIFIED))),
-        (chain_graph(), diff(("Zzz", ChangeKind.REMOVED))),
-        (chain_graph(), diff(unattributed=True)),
-        (chain_graph(), diff(changed=False)),
-    ]:
-        r = g.affected(d)
-        assert "never_declared_op" not in r.unaffected_operations
-        assert "never_declared_op" not in r.affected_operations
+@pytest.mark.parametrize("d", [
+    diff(("C", ChangeKind.MODIFIED)),
+    diff(("Zzz", ChangeKind.REMOVED)),
+    diff(unattributed=True),
+    diff(changed=False),
+])
+def test_tc044_blocked_and_unaffected_partition_exactly_the_known_operations(d):
+    # A caller allows only ops in unaffected_operations; blocked | unaffected must be exactly the
+    # known inventory (disjoint), so an undeclared operation can never be reported as unaffected.
+    r = chain_graph().affected(d)
+    assert r.blocked_operations | r.unaffected_operations == ALL
+    assert r.blocked_operations & r.unaffected_operations == frozenset()
+    assert "never_declared_op" not in r.unaffected_operations
+
+
+def _gate_allows(graph, observed, operation):
+    """Caller contract: allow only when affected() returned and the op is explicitly unaffected.
+
+    Any exception (scope mismatch, untrusted diff) is a DENY, never 'no impact'.
+    """
+    try:
+        return operation in graph.affected(observed).unaffected_operations
+    except ValueError:
+        return False
+
+
+def test_tc044_scope_mismatch_raises_and_gate_treats_it_as_deny():
+    g = chain_graph()
+    foreign = diff(changed=False, tenant="tenant-2")  # would be 'no impact' if scope were ignored
+    with pytest.raises(ValueError, match="DIFF_SCOPE_MISMATCH"):
+        g.affected(foreign)
+    assert _gate_allows(g, foreign, "op_x") is False
+    assert _gate_allows(g, diff(changed=False), "op_x") is True  # positive control, same scope
+    assert _gate_allows(g, diff(changed=False), "never_declared_op") is False
 
 
 @pytest.mark.parametrize("kind", [ChangeKind.MODIFIED, ChangeKind.REMOVED])

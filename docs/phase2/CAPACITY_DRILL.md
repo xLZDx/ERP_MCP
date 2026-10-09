@@ -1,7 +1,7 @@
 # Phase 2 capacity drill (S4b E5)
 
 Status: MEASUREMENT on a disposable local container. Not a capacity guarantee, not the G1 exit decision.
-Code head at measurement: working tree on top of 70f7cf7; the same files are committed in the sprint S4b commit (see D-015).
+Code head at measurement: measured on a working tree on top of 70f7cf7 (the drill code at that time is identical to the committed drill in 223a30f; later review fixes to the script - deadlines, redaction, local-host guard, --keep-db/--events, p99 gating - were NOT part of the measured runs and do not change the measured operations).
 
 ## Method
 
@@ -11,7 +11,8 @@ Code head at measurement: working tree on top of 70f7cf7; the same files are com
 2. Inserts N sources (tenant `A`, `d0000`..), one `living_worker` role_scope per source, one cursor (`conn`, value `p0`) and one job per source (untimed setup).
 3. Starts M worker OS processes (separate Python interpreters; DSN passed only through the environment). Each connects, prints READY and blocks on stdin; the parent releases all with one write each (start barrier), so wall time covers only the work.
 4. Sources are partitioned round-robin across workers. Per source a worker runs: `acquire_job` -> `commit_cursor_page` x P (2 deterministic events per page, digests matching the in-database recomputation) -> `finish_job(SUCCEEDED)`. Every call is one transaction with `SET LOCAL ROLE living_worker` + `living.set_scope`; latency is wall time of that transaction (client side, includes the round trips).
-5. The parent samples `pg_stat_activity` every 0.1 s for backends waiting on a Lock, then recounts in the database.
+5. The parent samples `pg_stat_activity` about every 0.1 s (sampling spacing is approximate) for backends waiting on a Lock, then recounts in the database, including the expected distinct event-id set per source.
+6. Safety: the worker phase has a deadline (120 s + 0.5 s x sources x pages); on timeout, an EOF on a worker's start barrier, or any parent failure the workers are killed and reaped, and the exit code is non-zero. The DSN, its password and user are redacted from stored errors and output. Non-local DSN hosts are refused unless `ERP_PHASE2_DRILL_ALLOW_REMOTE=1`. `--keep-db --db-name g1x_...` keeps the database for an independent recount (the caller drops it); `--events` sets events per page.
 
 Parameters for all rows: workers=8, pages=3, events_per_page=2, lease 120 s.
 
@@ -19,9 +20,11 @@ Parameters for all rows: workers=8, pages=3, events_per_page=2, lease 120 s.
 
 Single local docker `postgres:16-alpine` container (`erp-phase2-test-pg`, 127.0.0.1:55712), Windows 11 host, Python 3.14.3, asyncpg. Client processes and the database share one machine. Not production, no network hop, no tuning.
 
-## Results (measured; raw JSON in the session scratch directory, not in the repo)
+## Results (informational single noisy runs; raw JSON not committed)
 
-| Sources | Operations | Wall s | ops/s | pages/s | acquire p50/p95/p99 ms | commit p50/p95/p99 ms | finish p50/p95/p99 ms | Errors | Lock-wait samples with waiters |
+Sample counts per operation: 30 / 50 / 100 / 150 (one acquire, one finish per source; P x sources commits = 90 / 150 / 300 / 450). The p99 column is the maximum of the sample for counts below 100 (the script now emits `p99_ms: null` below 100 samples) and is only a rough percentile at 100-450.
+
+| Sources | Operations | Wall s | ops/s | pages/s | acquire p50/p95/p99 ms | commit p50/p95/p99 ms | finish p50/p95/p99 ms | Errors | Lock waiters seen (samples with a waiter / samples taken, ~100 ms spacing) |
 |---|---|---|---|---|---|---|---|---|---|
 | 30 | 150 | 1.088 | 137.93 | 82.76 | 46.6 / 127.6 / 132.0 | 35.2 / 91.1 / 109.9 | 31.5 / 64.6 / 76.0 | 0 | 0 of 8 |
 | 50 | 250 | 3.443 | 72.60 | 43.56 | 89.7 / 155.2 / 234.1 | 69.1 / 217.3 / 307.2 | 78.4 / 226.8 / 283.5 | 0 | 0 of 25 |
@@ -34,7 +37,8 @@ Each row is ONE run (no repetition). Throughput is not monotonic in N (100 sourc
 
 - pages committed: `sum(cursors.version)` == N x P (90 / 150 / 300 / 450) and every cursor is at version P with value `pP`
 - outbox rows == N x P x 2 (180 / 300 / 600 / 900) and `count(DISTINCT event_id)` equals the row count (no duplicates)
-- all N jobs `SUCCEEDED`, `fence = 1` and `attempt = 1` for every job, no job still holding a lease (no fence violation, no double acquisition)
+- the expected distinct event-id set per source (`dNNNN-pP-eE`) is present, not just the totals
+- all N jobs `SUCCEEDED`, `fence = 1` and `attempt = 1` for every job, no job still holding a lease (no fence violation in this disjoint-source run; double acquisition is NOT exercised here - same-job acquisition races are covered only by `tests/phase2/test_g1_concurrency_mp.py`, not by the drill)
 - worker error count == 0 (every SQL error and every non-zero worker exit is recorded)
 - the script exits 0 only if all of the above hold; `tests/phase2/test_g1_capacity_smoke.py` re-derives the expected numbers independently at 5 sources / 2 workers / 3 pages.
 
@@ -42,7 +46,7 @@ Each row is ONE run (no repetition). Throughput is not monotonic in N (100 sourc
 
 - Not a production capacity guarantee: one container on a developer Windows host, default Postgres settings, no concurrent real workload.
 - Not a multi-host or networked test; no latency across a real network, no connection pooler, no replica.
-- Sources are disjoint across workers, so this drill does NOT exercise same-source contention (that is covered separately by `tests/phase2/test_g1_concurrency_mp.py`); zero lock waits observed here says nothing about contended sources.
+- Sources are disjoint across workers, so this drill does NOT exercise same-source contention (that is covered separately by `tests/phase2/test_g1_concurrency_mp.py`); "no lock waiter seen in K samples at ~100 ms spacing" (K = 8 / 25 / 43 / 44 here) says nothing about contended sources and does not prove that no lock wait happened between samples.
 - Single run per size, no warm-up, no confidence intervals; percentiles at these sample counts (30-450 per operation) are coarse, p99 is essentially the max.
 - Only 3 pages of 2 events per source: not a test of large pages, long histories, outbox publishing, retention, vacuum or table growth.
 - Not the G1 exit decision. That belongs to the gate review, which also requires the other G1 evidence.

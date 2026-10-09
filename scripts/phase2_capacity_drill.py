@@ -6,24 +6,34 @@ loops over its sources: acquire_job -> commit_cursor_page (P pages, K small dete
 finish_job, timing each call. Finally the parent recounts in the database and writes a JSON report.
 
 The DSN is read from ERP_PHASE2_TEST_DSN (superuser DSN of erp-phase2-test-pg). It is passed to the
-worker processes only through the environment, never argv, and is never written to the report.
+worker processes only through the environment, never argv, and is never written to the report: the DSN,
+its password and its user name are redacted from every stored error text and from the final output.
+Only local hosts (localhost, 127.0.0.1, ::1) are accepted unless ERP_PHASE2_DRILL_ALLOW_REMOTE=1.
 
     ERP_PHASE2_TEST_DSN=... python scripts/phase2_capacity_drill.py --sources 30 --workers 8 \
         --pages 3 --out drill_30.json
 
-Exit code 0 only when every recount invariant holds and there were zero errors.
+--keep-db [--db-name g1x_<name>] keeps the database (name reported as ``kept_database``) so a caller
+can recount independently; the caller then owns the DROP.
+
+Exit code 0 only when every recount invariant holds and there were zero errors; a worker phase that
+exceeds its deadline kills the workers and exits non-zero.
 This is a MEASUREMENT on a disposable local container, not a production capacity guarantee.
 """
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
 import platform
+import re
 import sys
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 import asyncpg
 
@@ -34,6 +44,9 @@ TENANT = "A"
 CONN_ID = "conn"
 LEASE_SECONDS = 120
 EVENTS_PER_PAGE = 2
+COMMAND_TIMEOUT = 60
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+MIN_COUNT_FOR_P99 = 100
 
 
 def source_id(i: int) -> str:
@@ -44,11 +57,15 @@ def job_id(sid: str) -> uuid.UUID:
     return uuid.uuid5(uuid.NAMESPACE_OID, "capacity-drill-job-" + sid)
 
 
+def event_id(sid: str, p: int, e: int) -> str:
+    return f"{sid}-p{p}-e{e}"
+
+
 def page_json(sid: str, p: int, k: int = EVENTS_PER_PAGE) -> str:
     """Events whose digest equals the one living.commit_cursor_page recomputes from the jsonb text."""
     events = []
     for e in range(k):
-        eid = f"{sid}-p{p}-e{e}"
+        eid = event_id(sid, p, e)
         # jsonb text form: keys ordered by length then bytes, ': ' and ', ' separators.
         text = f'{{"n": {p}, "event_id": "{eid}"}}'
         events.append({"event_id": eid, "n": p, "digest": hashlib.sha256(text.encode()).hexdigest()})
@@ -67,15 +84,66 @@ def stats(samples_s: list) -> dict:
     if not ms:
         return {"count": 0}
     return {"count": len(ms), "p50_ms": round(pct(ms, 50), 3), "p95_ms": round(pct(ms, 95), 3),
-            "p99_ms": round(pct(ms, 99), 3), "max_ms": round(ms[-1], 3),
-            "mean_ms": round(sum(ms) / len(ms), 3)}
+            # p99 of fewer than 100 samples is just the max: do not publish it as a percentile
+            "p99_ms": round(pct(ms, 99), 3) if len(ms) >= MIN_COUNT_FOR_P99 else None,
+            "max_ms": round(ms[-1], 3), "mean_ms": round(sum(ms) / len(ms), 3)}
+
+
+def parse_range(spec: str) -> range:
+    """'start:stop:step' (the worker's source indices)."""
+    start, stop, step = (int(x) for x in spec.split(":"))
+    if step < 1:
+        raise ValueError("step must be >= 1")
+    return range(start, stop, step)
+
+
+# ------------------------------------------------------------------------------------ safety
+def _kv_host(dsn: str):
+    m = re.search(r"(?:^|\s)host\s*=\s*('([^']*)'|(\S+))", dsn)
+    return (m.group(2) if m and m.group(2) is not None else m.group(3)) if m else None
+
+
+def dsn_host(dsn: str):
+    if "://" in dsn:
+        return urlsplit(dsn).hostname
+    return _kv_host(dsn)
+
+
+def host_allowed(dsn: str) -> bool:
+    if os.environ.get("ERP_PHASE2_DRILL_ALLOW_REMOTE") == "1":
+        return True
+    host = dsn_host(dsn)
+    return host is None or host.lower() in LOCAL_HOSTS  # no host = libpq default (local)
+
+
+def secrets_of(dsn: str) -> list:
+    out = {dsn}
+    if "://" in dsn:
+        u = urlsplit(dsn)
+        for s in (u.password, unquote(u.password or ""), u.username, unquote(u.username or "")):
+            if s and len(s) >= 3:
+                out.add(s)
+    else:
+        for m in re.finditer(r"(?:^|\s)(?:password|user)\s*=\s*('([^']*)'|(\S+))", dsn):
+            s = m.group(2) if m.group(2) is not None else m.group(3)
+            if s and len(s) >= 3:
+                out.add(s)
+    return sorted(out, key=len, reverse=True)
+
+
+def redact(text, dsn: str) -> str:
+    text = str(text)
+    for s in secrets_of(dsn):
+        text = text.replace(s, "***")
+    return text
 
 
 # ------------------------------------------------------------------------------------ worker mode
-async def worker_main(db: str, indices: list, pages: int, wname: str) -> None:
+async def worker_main(db: str, indices: range, pages: int, wname: str, k: int) -> int:
     lat = {"acquire_job": [], "commit_cursor_page": [], "finish_job": []}
     errors = []
-    c = await asyncpg.connect(os.environ["ERP_PHASE2_TEST_DSN"], database=db, timeout=30)
+    c = await asyncpg.connect(os.environ["ERP_PHASE2_TEST_DSN"], database=db, timeout=30,
+                              command_timeout=COMMAND_TIMEOUT)
 
     async def timed(op, sid, sql, *args):
         t0 = time.perf_counter()
@@ -86,12 +154,16 @@ async def worker_main(db: str, indices: list, pages: int, wname: str) -> None:
                 res = await c.fetchval(sql, *args)
             lat[op].append(time.perf_counter() - t0)
             return res
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, TimeoutError) as e:
             errors.append({"op": op, "source": sid, "error": str(e).splitlines()[0][:200]})
             return None
 
     print("READY", flush=True)
-    sys.stdin.readline()  # start barrier: the parent writes one line to every worker at once
+    go = sys.stdin.readline()  # start barrier: the parent writes one line to every worker at once
+    if not go.strip():  # EOF / empty line = the parent is gone or aborted: never count it as GO
+        print("worker aborted: stdin closed before GO", file=sys.stderr, flush=True)
+        await c.close()
+        return 3
     for i in indices:
         sid = source_id(i)
         jid = job_id(sid)
@@ -106,7 +178,10 @@ async def worker_main(db: str, indices: list, pages: int, wname: str) -> None:
             v = await timed("commit_cursor_page", sid,
                             "SELECT living.commit_cursor_page($1,$2,$3,$4::uuid,$5,$6,$7,$8,$9,$10,"
                             "$11::jsonb)", TENANT, sid, CONN_ID, jid, wname, fence, f"p{p - 1}",
-                            p - 1, epoch, f"p{p}", page_json(sid, p))
+                            p - 1, epoch, f"p{p}", page_json(sid, p, k))
+            if v is not None and v != p:
+                errors.append({"op": "commit_cursor_page", "source": sid,
+                               "error": f"committed version {v} differs from expected page {p}"})
             if v != p:
                 ok = False
                 break
@@ -115,6 +190,7 @@ async def worker_main(db: str, indices: list, pages: int, wname: str) -> None:
                         TENANT, sid, jid, wname, fence, "SUCCEEDED", None)
     await c.close()
     print("RESULT " + json.dumps({"latencies": lat, "errors": errors}), flush=True)
+    return 0
 
 
 # ------------------------------------------------------------------------------------ parent mode
@@ -135,8 +211,35 @@ async def setup(db, n: int) -> None:
                              sid, job_id(sid), "c" * 64, "k-" + sid)
 
 
+@asynccontextmanager
+async def drill_db(dsn: str, keep: bool, name):
+    """Throwaway database; with keep=True it is NOT dropped (the caller owns the DROP)."""
+    from _pg_harness import DB_PREFIX, Db, admin_connect, apply_files, new_name, throwaway_db
+
+    if not keep:
+        async with throwaway_db(dsn, seed=False) as db:
+            yield db
+        return
+    name = name or new_name()
+    if not name.startswith(DB_PREFIX) or not re.fullmatch(r"[a-z0-9_]{5,40}", name):
+        raise ValueError(f"--db-name must match {DB_PREFIX}[a-z0-9_]+")
+    admin = await admin_connect(dsn)
+    try:
+        await admin.execute(f'CREATE DATABASE "{name}"')
+    finally:
+        await admin.close()
+    db = Db(dsn, name)
+    db.conn = await db.connect()
+    try:
+        await apply_files(db.conn)
+        yield db
+    finally:
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(db.conn.close(), 5)
+
+
 async def sample_lock_waits(dsn, dbname, stop: asyncio.Event, out: dict) -> None:
-    c = await asyncpg.connect(dsn, database=dbname, timeout=30)
+    c = await asyncpg.connect(dsn, database=dbname, timeout=30, command_timeout=COMMAND_TIMEOUT)
     try:
         while not stop.is_set():
             n = await c.fetchval("SELECT count(*) FROM pg_stat_activity WHERE datname=$1 AND "
@@ -154,6 +257,12 @@ async def sample_lock_waits(dsn, dbname, stop: asyncio.Event, out: dict) -> None
 
 async def recount(c, n: int, pages: int, k: int) -> dict:
     exp_pages, exp_events = n * pages, n * pages * k
+    expected = {source_id(i): sorted(event_id(source_id(i), p, e)
+                                     for p in range(1, pages + 1) for e in range(k))
+                for i in range(n)}
+    got = {r["source_id"]: sorted(r["ids"]) for r in await c.fetch(
+        "SELECT source_id, array_agg(event_id) AS ids FROM living.outbox GROUP BY source_id")}
+    mismatched = sorted(s for s in set(expected) | set(got) if expected.get(s) != got.get(s))
     r = {
         "expected_pages": exp_pages, "expected_outbox_rows": exp_events,
         "cursor_version_sum": await c.fetchval("SELECT coalesce(sum(version),0)::bigint FROM living.cursors"),
@@ -163,6 +272,8 @@ async def recount(c, n: int, pages: int, k: int) -> dict:
         "outbox_rows": await c.fetchval("SELECT count(*) FROM living.outbox"),
         "outbox_distinct_event_ids": await c.fetchval(
             "SELECT count(DISTINCT event_id) FROM living.outbox"),
+        "sources_with_unexpected_event_set": len(mismatched),
+        "unexpected_event_set_sample": mismatched[:10],
         "jobs_succeeded": await c.fetchval("SELECT count(*) FROM living.jobs WHERE state='SUCCEEDED'"),
         "jobs_total": await c.fetchval("SELECT count(*) FROM living.jobs"),
         "jobs_with_fence_not_1": await c.fetchval(
@@ -179,6 +290,7 @@ def invariants(rc: dict, n: int, errors: list) -> dict:
         "all_cursors_at_final_page": rc["cursors_at_final_page"] == n,
         "outbox_rows_equals_expected": rc["outbox_rows"] == rc["expected_outbox_rows"],
         "no_duplicate_event_ids": rc["outbox_distinct_event_ids"] == rc["outbox_rows"],
+        "expected_event_ids_per_source": rc["sources_with_unexpected_event_set"] == 0,
         "all_jobs_succeeded": rc["jobs_succeeded"] == n and rc["jobs_total"] == n,
         "no_fence_violation": rc["jobs_with_fence_not_1"] == 0 and rc["jobs_still_leased"] == 0,
         "zero_errors": len(errors) == 0,
@@ -187,33 +299,41 @@ def invariants(rc: dict, n: int, errors: list) -> dict:
     return inv
 
 
-async def run_drill(dsn: str, n: int, workers: int, pages: int) -> dict:
-    from _pg_harness import throwaway_db  # reuse the existing disposable-database helper
+async def _kill_and_wait(procs) -> None:
+    for p in procs:
+        if p.returncode is None:
+            with contextlib.suppress(ProcessLookupError, OSError):
+                p.kill()
+    for p in procs:
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(p.wait(), 15)
 
+
+async def run_drill(dsn: str, n: int, workers: int, pages: int, keep: bool = False,
+                    db_name=None, k: int = EVENTS_PER_PAGE) -> dict:
     workers = max(1, min(workers, n))
-    async with throwaway_db(dsn, seed=False) as db:
+    deadline = 120 + n * pages * 0.5  # seconds for the whole worker phase
+    async with drill_db(dsn, keep, db_name) as db:
         await setup(db, n)
         env = dict(os.environ, ERP_PHASE2_TEST_DSN=dsn)  # DSN only via environment
         procs = []
-        for w in range(workers):
-            idx = ",".join(str(i) for i in range(w, n, workers))
-            procs.append(await asyncio.create_subprocess_exec(
-                sys.executable, os.path.abspath(__file__), "--worker", "--db", db.name,
-                "--indices", idx, "--pages", str(pages), "--wname", f"drill-w{w}", env=env,
-                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE))
+        stop = asyncio.Event()
+        sampler = None
+        lock = {"samples": 0, "max_concurrent_lock_waiters": 0, "samples_with_waiters": 0,
+                "sample_interval_s": 0.1}
         try:
+            for w in range(workers):
+                procs.append(await asyncio.create_subprocess_exec(
+                    sys.executable, os.path.abspath(__file__), "--worker", "--db", db.name,
+                    "--indices", f"{w}:{n}:{workers}", "--pages", str(pages),
+                    "--wname", f"drill-w{w}", "--events", str(k), env=env,
+                    stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE))
             for p in procs:
                 line = await asyncio.wait_for(p.stdout.readline(), 120)
                 if line.strip() != b"READY":
                     raise RuntimeError("worker did not become ready: " + repr(line))
-            lock = {"samples": 0, "max_concurrent_lock_waiters": 0, "samples_with_waiters": 0}
-            stop = asyncio.Event()
             sampler = asyncio.create_task(sample_lock_waits(dsn, db.name, stop, lock))
-            t0 = time.perf_counter()
-            for p in procs:
-                p.stdin.write(b"GO\n")
-                await p.stdin.drain()
             ends = []
 
             async def finish(p):
@@ -221,33 +341,49 @@ async def run_drill(dsn: str, n: int, workers: int, pages: int) -> dict:
                 ends.append(time.perf_counter())
                 return p.returncode, out.decode(errors="replace"), err.decode(errors="replace")
 
-            results = await asyncio.gather(*(finish(p) for p in procs))
+            t0 = time.perf_counter()
+            for p in procs:  # a BrokenPipe here still reaches the cleanup in `finally`
+                p.stdin.write(b"GO\n")
+                await p.stdin.drain()
+            try:
+                results = await asyncio.wait_for(asyncio.gather(*(finish(p) for p in procs)),
+                                                 deadline)
+            except TimeoutError:
+                raise RuntimeError(f"worker phase exceeded its {deadline:.0f}s deadline; "
+                                   "workers killed") from None
             wall = max(ends) - t0
             stop.set()
             await sampler
         finally:
-            for p in procs:
-                if p.returncode is None:
-                    p.kill()
+            stop.set()
+            if sampler is not None:
+                sampler.cancel()
+                with contextlib.suppress(BaseException):
+                    await sampler
+            await _kill_and_wait(procs)  # kill AND reap every worker before the database goes away
         lat = {"acquire_job": [], "commit_cursor_page": [], "finish_job": []}
         errors = []
         for rc_, out, err in results:
             res = [ln for ln in out.splitlines() if ln.startswith("RESULT ")]
             if rc_ != 0 or not res:
-                errors.append({"op": "worker_process", "error": f"exit={rc_} stderr={err[-300:]}"})
+                errors.append({"op": "worker_process",
+                               "error": f"exit={rc_} stderr={redact(err[-300:], dsn)}"})
                 continue
             body = json.loads(res[0][7:])
-            errors.extend(body["errors"])
+            errors.extend({**e, "error": redact(e.get("error", ""), dsn)} for e in body["errors"])
             for op, vals in body["latencies"].items():
                 lat[op].extend(vals)
-        rc = await recount(db.conn, n, pages, EVENTS_PER_PAGE)
+        rc = await recount(db.conn, n, pages, k)
+        kept = db.name if keep else None
     inv = invariants(rc, n, errors)
     total_ops = sum(len(v) for v in lat.values())
     return {
         "params": {"sources": n, "workers": workers, "pages": pages,
-                   "events_per_page": EVENTS_PER_PAGE, "lease_seconds": LEASE_SECONDS},
+                   "events_per_page": k, "lease_seconds": LEASE_SECONDS,
+                   "worker_phase_deadline_s": deadline},
         "environment": {"python": platform.python_version(), "platform": platform.platform(),
                         "database": "disposable PostgreSQL container (not production)"},
+        "kept_database": kept,
         "wall_seconds": round(wall, 3),
         "total_timed_operations": total_ops,
         "throughput_ops_per_s": round(total_ops / wall, 2) if wall else None,
@@ -261,12 +397,23 @@ async def run_drill(dsn: str, n: int, workers: int, pages: int) -> dict:
     }
 
 
+def _emit(report: dict, out, dsn: str) -> None:
+    text = redact(json.dumps(report, indent=2), dsn)  # final defence against a leaked secret
+    if out:
+        Path(out).write_text(text + "\n", encoding="utf-8")
+    print(text)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--sources", type=int, default=30)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--pages", type=int, default=3)
+    ap.add_argument("--events", type=int, default=EVENTS_PER_PAGE, help="events per page")
     ap.add_argument("--out", type=str, default=None)
+    ap.add_argument("--keep-db", action="store_true",
+                    help="do not drop the throwaway database (caller recounts and drops it)")
+    ap.add_argument("--db-name", type=str, default=None, help="name for --keep-db (g1x_...)")
     ap.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--db", type=str, help=argparse.SUPPRESS)
     ap.add_argument("--indices", type=str, help=argparse.SUPPRESS)
@@ -277,16 +424,30 @@ def main(argv=None) -> int:
         print("ERP_PHASE2_TEST_DSN is not set", file=sys.stderr)
         return 2
     if a.worker:
-        asyncio.run(worker_main(a.db, [int(x) for x in a.indices.split(",") if x], a.pages, a.wname))
-        return 0
-    if a.sources < 1 or a.workers < 1 or a.pages < 1:
-        print("--sources, --workers and --pages must be >= 1", file=sys.stderr)
+        return asyncio.run(worker_main(a.db, parse_range(a.indices), a.pages, a.wname, a.events))
+    if a.sources < 1 or a.workers < 1 or a.pages < 1 or a.events < 1:
+        print("--sources, --workers, --pages and --events must be >= 1", file=sys.stderr)
         return 2
-    report = asyncio.run(run_drill(dsn, a.sources, a.workers, a.pages))
-    text = json.dumps(report, indent=2)
-    if a.out:
-        Path(a.out).write_text(text + "\n", encoding="utf-8")
-    print(text)
+    if a.db_name and not a.keep_db:
+        print("--db-name requires --keep-db", file=sys.stderr)
+        return 2
+    if not host_allowed(dsn):
+        print("refusing a non-local database host (set ERP_PHASE2_DRILL_ALLOW_REMOTE=1 to override)",
+              file=sys.stderr)
+        return 2
+
+    async def go() -> dict:
+        pre = await asyncpg.connect(dsn, timeout=10)  # fail fast on a bad DSN/password, no retries
+        await pre.close()
+        return await run_drill(dsn, a.sources, a.workers, a.pages, a.keep_db, a.db_name, a.events)
+
+    try:
+        report = asyncio.run(go())
+    except Exception as e:  # noqa: BLE001 - report a redacted message, never the raw DSN/password
+        msg = redact(f"{type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}", dsn)
+        _emit({"error": msg, "invariants": {"all_ok": False}}, a.out, dsn)
+        return 1
+    _emit(report, a.out, dsn)
     return 0 if report["invariants"]["all_ok"] else 1
 
 

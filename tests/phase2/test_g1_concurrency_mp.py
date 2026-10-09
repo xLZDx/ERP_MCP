@@ -1,6 +1,10 @@
 # ruff: noqa: C408
 """G1 multi-process concurrency tests (S4b E4): REAL OS processes against the disposable PostgreSQL.
 
+Racing scenarios use a real gate: the parent holds an exclusive advisory lock, every child blocks on a
+shared one inside its open transaction right after GO, and one unlock releases them together; each
+child reports its execution window (database clock) and the test asserts the windows overlap.
+
 Needs ERP_PHASE2_TEST_DSN. Without it: skip NOT_RUN, or fail when ERP_PHASE2_REQUIRE_PG=1.
 
 Each scenario prepares a throwaway database in the parent, then starts child Python processes that
@@ -27,20 +31,30 @@ async def main():
     a = json.loads(sys.argv[1])
     c = await asyncpg.connect(os.environ["ERP_PHASE2_TEST_DSN"], database=a["db"], timeout=30)
 
+    win = {}
+    now = "SELECT extract(epoch FROM clock_timestamp())::float8"
+
     async def scoped(sql, *args):
         async with c.transaction():
             await c.execute("SET LOCAL ROLE living_worker")
             await c.fetchval("SELECT living.set_scope('A','s1',NULL)")
+            if a.get("gate"):  # blocks until the parent releases its exclusive advisory lock
+                await c.fetchval("SELECT pg_advisory_xact_lock_shared($1)", a["gate"])
+                win["t0"] = await c.fetchval(now)  # database clock: comparable across processes
             return await c.fetchval(sql, *args)
 
     async def attempt(sql, *args):
         try:
-            return {"ok": await scoped(sql, *args)}
+            out = {"ok": await scoped(sql, *args)}
         except asyncpg.PostgresError as e:
-            return {"err": str(e).splitlines()[0]}
+            out = {"err": str(e).splitlines()[0]}
+        if a.get("gate"):
+            out["win"] = [win.get("t0"), await c.fetchval(now)]
+        return out
 
     print("READY", flush=True)
-    sys.stdin.readline()
+    if not sys.stdin.readline().strip():  # EOF / empty line = parent gone: abort, never count as GO
+        sys.exit(3)
     op = a["op"]
     if op in ("acquire", "acquire_hold"):
         out = await attempt("SELECT living.acquire_job('A','s1',$1::uuid,$2,$3)",
@@ -73,9 +87,23 @@ asyncio.run(main())
 '''
 
 
+GATE = 424242  # advisory-lock key the parent holds exclusively while the racing children queue up
+
+
 class Child:
     def __init__(self, proc):
         self.proc = proc
+        self._err = bytearray()
+        # drain stderr continuously so a chatty child can never block on a full pipe
+        self._drain = asyncio.create_task(self._pump())
+
+    async def _pump(self):
+        while chunk := await self.proc.stderr.read(4096):
+            self._err += chunk
+            del self._err[:-4000]
+
+    def stderr_tail(self):
+        return bytes(self._err[-800:])
 
     @classmethod
     async def start(cls, dsn, **args):
@@ -85,9 +113,23 @@ class Child:
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
         child = cls(proc)
-        line = await asyncio.wait_for(proc.stdout.readline(), 90)
-        assert line.strip() == b"READY", (line, await _stderr(proc))
+        try:
+            line = await asyncio.wait_for(proc.stdout.readline(), 90)
+            assert line.strip() == b"READY", (line, child.stderr_tail())
+        except BaseException:
+            await child.kill()  # never leak a started process on any start failure
+            raise
         return child
+
+    async def kill(self):
+        if self.proc.returncode is None:
+            try:
+                self.proc.kill()
+            except ProcessLookupError:
+                pass
+        await self.proc.wait()
+        self._drain.cancel()
+        await asyncio.gather(self._drain, return_exceptions=True)
 
     async def go(self):
         self.proc.stdin.write(b"GO\n")
@@ -95,31 +137,58 @@ class Child:
 
     async def result(self, timeout=90):
         line = await asyncio.wait_for(self.proc.stdout.readline(), timeout)
-        assert line.startswith(b"RESULT "), (line, await _stderr(self.proc))
+        assert line.startswith(b"RESULT "), (line, self.stderr_tail())
         return json.loads(line[7:])
 
 
-async def _stderr(proc):
-    if proc.returncode is None:
-        return b"<running>"
-    return (await proc.stderr.read())[-800:]
-
-
 async def _start_all(dsn, specs):
-    return list(await asyncio.gather(*(Child.start(dsn, **s) for s in specs)))
+    res = await asyncio.gather(*(Child.start(dsn, **s) for s in specs), return_exceptions=True)
+    started = [r for r in res if isinstance(r, Child)]
+    failed = [r for r in res if isinstance(r, BaseException)]
+    if failed:
+        await _reap_children(started)
+        raise failed[0]
+    return started
 
 
-async def _release_all(children):
-    for ch in children:  # all released back to back; every child is already connected and waiting
-        await ch.go()
-    return await asyncio.gather(*(ch.result() for ch in children))
+def _clean(result):
+    return {k: v for k, v in result.items() if k != "win"}
+
+
+async def _release_all(children, db):
+    """Real contention: the parent holds an exclusive advisory lock; every child blocks on it (inside
+    its open transaction) right after GO. Once all are queued, one unlock releases them together.
+    Returns the raw results (with execution windows); assertions must not depend on arrival order."""
+    c = db.conn
+    await c.execute("SELECT pg_advisory_lock($1)", GATE)
+    held = True
+    try:
+        for ch in children:
+            await ch.go()
+        for _ in range(600):  # bounded: up to ~30 s for all children to queue on the gate
+            waiting = await c.fetchval(
+                "SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND NOT granted AND "
+                "database=(SELECT oid FROM pg_database WHERE datname=current_database())")
+            if waiting == len(children):
+                break
+            await asyncio.sleep(0.05)
+        else:
+            raise AssertionError(f"only {waiting} of {len(children)} children queued on the gate")
+        await c.execute("SELECT pg_advisory_unlock($1)", GATE)
+        held = False
+        results = await asyncio.gather(*(ch.result() for ch in children))
+    finally:
+        if held:
+            await c.execute("SELECT pg_advisory_unlock($1)", GATE)
+    wins = [r["win"] for r in results]
+    assert all(w[0] is not None for w in wins), results
+    # the racing calls really overlapped: the latest start precedes the earliest end
+    assert max(w[0] for w in wins) < min(w[1] for w in wins), wins
+    return results
 
 
 async def _reap_children(children):
-    for ch in children:
-        if ch.proc.returncode is None:
-            ch.proc.kill()
-    await asyncio.gather(*(ch.proc.wait() for ch in children))
+    await asyncio.gather(*(ch.kill() for ch in children), return_exceptions=True)
 
 
 async def _enqueue(c, key="k1"):
@@ -135,9 +204,9 @@ async def test_six_processes_acquire_same_job_exactly_one_wins():
     async with throwaway_db(dsn) as db:
         j = await _enqueue(db.conn)
         children = await _start_all(dsn, [dict(db=db.name, op="acquire", job=str(j), worker=f"w{i}",
-                                               lease=60) for i in range(6)])
+                                               lease=60, gate=GATE) for i in range(6)])
         try:
-            results = await _release_all(children)
+            results = await _release_all(children, db)
         finally:
             await _reap_children(children)
         winners = [r for r in results if "ok" in r]
@@ -156,10 +225,10 @@ async def test_killed_lease_holder_is_reaped_and_its_old_fence_is_dead():
         c = db.conn
         j = await _enqueue(c)
         ep = await source_epoch(c)
-        (dead,) = await _start_all(dsn, [dict(db=db.name, op="acquire_hold", job=str(j),
-                                              worker="w-dead", lease=1)])
-        live = None
+        dead = live = None
         try:
+            (dead,) = await _start_all(dsn, [dict(db=db.name, op="acquire_hold", job=str(j),
+                                                  worker="w-dead", lease=1)])
             await dead.go()
             first = await dead.result()
             assert first == {"ok": 1}, first
@@ -168,14 +237,15 @@ async def test_killed_lease_holder_is_reaped_and_its_old_fence_is_dead():
             dead.proc.kill()  # hard kill (TerminateProcess/SIGKILL) while the lease is held
             await dead.proc.wait()
             assert dead.proc.returncode != 0
-            # a second process reaps once the 1s lease expires (bounded wait inside the child)
+            # a second process takes over once the 1s lease expires (bounded wait inside the child);
+            # acquire_job may reclaim the expired lease itself, so the reap count is not asserted
             (live,) = await _start_all(dsn, [dict(db=db.name, op="reap_acquire", job=str(j),
                                                   worker="w-live", lease=120, deadline=40)])
             await live.go()
             second = await live.result(timeout=60)
         finally:
             await _reap_children([x for x in (dead, live) if x is not None])
-        assert second["ok"] == 2 and second["reaped"] >= 1, second
+        assert second["ok"] == 2, second  # the new holder has fence 2; the dead one's fence 1 is dead
         # the dead holder's fence (1) is rejected by finish_job and commit_cursor_page
         for sql, args in (
             ("SELECT living.finish_job('A','s1',$1,'w-dead',1,'SUCCEEDED',NULL)", (j,)),
@@ -195,10 +265,10 @@ async def test_killed_lease_holder_is_reaped_and_its_old_fence_is_dead():
 
 async def _race_commit(dsn, db, j, f, ep, specs):
     children = await _start_all(dsn, [dict(db=db.name, op="commit", job=str(j), worker="w1",
-                                           fence=f, prior="p0", version=0, epoch=ep, **s)
+                                           fence=f, prior="p0", version=0, epoch=ep, gate=GATE, **s)
                                       for s in specs])
     try:
-        return await _release_all(children)
+        return await _release_all(children, db)
     finally:
         await _reap_children(children)
 
@@ -216,7 +286,7 @@ async def test_two_processes_commit_same_prior_cursor_different_pages_one_wins()
         errs = [r for r in results if "err" in r]
         assert len(oks) == 1 and oks[0]["ok"] == 1, results
         assert len(errs) == 1 and errs[0]["err"] == "STALE_CURSOR_OR_SCOPE", results
-        winner = "pa" if results[0] == oks[0] else "pb"
+        winner = "pa" if results[0] is oks[0] else "pb"
         want = ["a1", "a2"] if winner == "pa" else ["b1", "b2", "b3"]
         got = [r[0] for r in await c.fetch("SELECT event_id FROM living.outbox ORDER BY seq")]
         assert got == want  # only the winner's events; nothing of the loser, no duplicates
@@ -233,7 +303,8 @@ async def test_two_processes_commit_identical_page_is_applied_once():
         pg = await page(c, "e1", "e2")
         results = await _race_commit(dsn, db, j, f, ep, [dict(new="p1", events=pg),
                                                          dict(new="p1", events=pg)])
-        assert results == [{"ok": 1}, {"ok": 1}], results  # one applies, one idempotent replay
+        # one applies, one is an idempotent replay (either order)
+        assert [_clean(r) for r in results] == [{"ok": 1}, {"ok": 1}], results
         got = [r[0] for r in await c.fetch("SELECT event_id FROM living.outbox ORDER BY seq")]
         assert got == ["e1", "e2"]
         assert await c.fetchval("SELECT count(DISTINCT event_id) FROM living.outbox") == 2
