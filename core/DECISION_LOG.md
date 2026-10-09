@@ -435,3 +435,7 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - Trivy on the published Release 1 image: 12 MEDIUM OS findings, 4 unique CVEs, all in glibc-2.44/locale-posix/ld-linux r7. Python dependencies scanned clean.
 - Approved remediation candidate: new immutable public Chainguard Python runtime digest b6248c85ba9b97e1e61b30197f309cc4d21661f889fefa5268f0a7bc530dad46 (Python 3.14.8). Standalone base image Trivy: zero findings.
 - Runtime Dockerfile and CI provenance pin updated together. No Trivy bypass, severity downgrade, ignorefile or production API/grant mutation. Exact-head full gateway scan and CI still gate this change. Release 1 production NO-GO; DoD PARTIAL.
+
+## 2026-10-09 — Staging branch re-pinned after merging main
+
+- deploy/vps-staging now contains main (hardening rounds 1-2, Phase 2 docs, glibc image pin) and the integration branch (supplier-debt runtime, tunnel audience fix). Conflicts were only checkpoint markers (kept the integration side), the Dockerfile (took main's newer digest) and the decision log (kept both). Engineering fingerprint re-pinned on a clean git archive export: b68e581fd42ceedcb184f2499c33d32d7fb7e5ddb993eb7963713ff8a810a71b.
