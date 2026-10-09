@@ -1,4 +1,8 @@
-"""R2-US-029 / TC085-087: evaluation runner (permit + registered runner + scope; EVALUATION_ONLY)."""
+"""R2-US-029 / TC085-087: evaluation runner (permit + registered runner + scope).
+
+Claim covered for the mode flag: runner output is LABELLED non-promotable (mode EVALUATION_ONLY,
+promotable False). These tests do not prove that downstream code refuses to promote it.
+"""
 from __future__ import annotations
 
 import inspect
@@ -57,10 +61,12 @@ def _statement(tenant: str = "t1", source: str = "s1", amount: str = "10",
 
 class _Env:
     def __init__(self, *, max_uses: int | None = None, mode: CaptureMode = CaptureMode.READ_SNAPSHOT,
-                 tenant: str = "t1", source: str = "s1") -> None:
+                 tenant: str = "t1", source: str = "s1", compare: object = None) -> None:
         owners = {("t1", "s1"): frozenset({"owner"}), ("t2", "s2"): frozenset({"owner"})}
-        self.store = PermitStore(lambda: T0, owners=owners)
-        self.runner = EvaluationRunner(self.store, {("t1", "s1"): frozenset({"runner-1"})})
+        self.now = T0
+        self.store = PermitStore(lambda: self.now, owners=owners)
+        self.runner = EvaluationRunner(self.store, {("t1", "s1"): frozenset({"runner-1"})},
+                                       compare=compare)  # type: ignore[arg-type]
         self.permit_id = self.issue(tenant, source, mode, max_uses)
 
     def issue(self, tenant: str, source: str, mode: CaptureMode = CaptureMode.READ_SNAPSHOT,
@@ -102,7 +108,7 @@ def _assert_denied(res: EvaluationResult, code: str) -> None:
 
 # ---- TC085: scoped permit ---------------------------------------------------------------------
 
-def test_valid_request_computes_evaluation_only_and_not_promotable() -> None:
+def test_valid_request_computes_and_output_is_labelled_non_promotable() -> None:
     env = _Env()
     res = env.runner.run(env.request())
     assert res.status is EvaluationStatus.COMPUTED and res.code == "COMPUTED"
@@ -116,7 +122,7 @@ def test_valid_request_computes_evaluation_only_and_not_promotable() -> None:
         res.mode = "ACCEPTED"  # type: ignore[misc]
 
 
-def test_mismatch_and_inconclusive_results_are_also_evaluation_only() -> None:
+def test_mismatch_and_inconclusive_results_are_also_labelled_non_promotable() -> None:
     env = _Env()
     mism = env.runner.run(env.request(gateway=_statement(amount="11")))
     assert mism.comparison is not None and mism.comparison.state is ComparisonState.MISMATCH
@@ -127,32 +133,32 @@ def test_mismatch_and_inconclusive_results_are_also_evaluation_only() -> None:
 
 
 def test_out_of_scope_permit_is_denied_and_compare_not_called() -> None:
-    env = _Env(tenant="t2", source="s2")  # a real permit, but for another scope
     spy = _Spy()
-    res = env.runner.run(env.request(), spy)
+    env = _Env(tenant="t2", source="s2", compare=spy)  # a real permit, but for another scope
+    res = env.runner.run(env.request())
     _assert_denied(res, "PERMIT_DENIED")
     assert spy.calls == 0
 
 
 def test_unknown_permit_id_is_denied() -> None:
-    env = _Env()
     spy = _Spy()
-    _assert_denied(env.runner.run(env.request(permit_id="nope"), spy), "PERMIT_DENIED")
+    env = _Env(compare=spy)
+    _assert_denied(env.runner.run(env.request(permit_id="nope")), "PERMIT_DENIED")
     assert spy.calls == 0
 
 
 def test_wrong_mode_permit_is_denied_and_compare_not_called() -> None:
-    env = _Env(mode=CaptureMode.READ_INCREMENTAL)
     spy = _Spy()
-    _assert_denied(env.runner.run(env.request(), spy), "PERMIT_DENIED")
+    env = _Env(mode=CaptureMode.READ_INCREMENTAL, compare=spy)
+    _assert_denied(env.runner.run(env.request()), "PERMIT_DENIED")
     assert spy.calls == 0
 
 
 @pytest.mark.parametrize("over", [{"params_digest": "b" * 64}, {"requester": "someone-else"}])
 def test_params_or_requester_mismatch_is_denied(over: dict[str, str]) -> None:
-    env = _Env()
     spy = _Spy()
-    _assert_denied(env.runner.run(env.request(**over), spy), "PERMIT_DENIED")
+    env = _Env(compare=spy)
+    _assert_denied(env.runner.run(env.request(**over)), "PERMIT_DENIED")
     assert spy.calls == 0
 
 
@@ -162,10 +168,33 @@ def test_exhausted_permit_is_denied_on_second_run() -> None:
     _assert_denied(env.runner.run(env.request()), "PERMIT_DENIED")
 
 
+def test_expired_permit_is_denied_and_compare_not_called() -> None:
+    spy = _Spy()
+    env = _Env(compare=spy)
+    env.now = T0 + timedelta(hours=2)  # past the permit window (T0 + 1h)
+    _assert_denied(env.runner.run(env.request()), "PERMIT_DENIED")
+    assert spy.calls == 0 and env.admits() == 0
+
+
+def test_revoked_permit_is_denied_and_compare_not_called() -> None:
+    spy = _Spy()
+    env = _Env(compare=spy)
+    assert env.runner.run(env.request()).status is EvaluationStatus.COMPUTED
+    assert env.store.revoke(env.permit_id, "t1", OWNER).revoked
+    _assert_denied(env.runner.run(env.request()), "PERMIT_DENIED")
+    assert spy.calls == 1  # only the pre-revocation run computed
+
+
 def test_all_permit_denials_share_one_code() -> None:
     env = _Env()
     other = _Env(mode=CaptureMode.READ_INCREMENTAL)
+    expired = _Env()
+    expired.now = T0 + timedelta(hours=2)
+    revoked = _Env()
+    assert revoked.store.revoke(revoked.permit_id, "t1", OWNER).revoked
     codes = {
+        expired.runner.run(expired.request()).code,
+        revoked.runner.run(revoked.request()).code,
         env.runner.run(env.request(permit_id="nope")).code,
         env.runner.run(env.request(params_digest="c" * 64)).code,
         other.runner.run(other.request()).code,
@@ -176,9 +205,9 @@ def test_all_permit_denials_share_one_code() -> None:
 # ---- TC086: registered runner ------------------------------------------------------------------
 
 def test_unregistered_runner_is_denied_and_nothing_computed_or_burned() -> None:
-    env = _Env(max_uses=1)
     spy = _Spy()
-    _assert_denied(env.runner.run(env.request(runner_id="intruder"), spy), "RUNNER_NOT_REGISTERED")
+    env = _Env(max_uses=1, compare=spy)
+    _assert_denied(env.runner.run(env.request(runner_id="intruder")), "RUNNER_NOT_REGISTERED")
     assert spy.calls == 0
     assert env.admits() == 0
     assert not any(e.kind == "ADMIT" for e in env.store.audit())  # permit store not even consulted
@@ -188,9 +217,9 @@ def test_unregistered_runner_is_denied_and_nothing_computed_or_burned() -> None:
 
 def test_default_registry_is_empty_so_everything_is_denied() -> None:
     env = _Env()
-    runner = EvaluationRunner(env.store)
     spy = _Spy()
-    _assert_denied(runner.run(env.request(), spy), "RUNNER_NOT_REGISTERED")
+    runner = EvaluationRunner(env.store, compare=spy)
+    _assert_denied(runner.run(env.request()), "RUNNER_NOT_REGISTERED")
     assert spy.calls == 0
 
 
@@ -217,10 +246,10 @@ def test_runner_id_with_invisible_char_is_not_registered() -> None:
 @pytest.mark.parametrize("scope", [("t2", "s1"), ("t1", "s2")])
 def test_statement_scope_mismatch_denied_before_permit_is_burned(which: str,
                                                                  scope: tuple[str, str]) -> None:
-    env = _Env(max_uses=1)
     spy = _Spy()
+    env = _Env(max_uses=1, compare=spy)
     bad = _statement(tenant=scope[0], source=scope[1])
-    _assert_denied(env.runner.run(env.request(**{which: bad}), spy), "SCOPE_MISMATCH")
+    _assert_denied(env.runner.run(env.request(**{which: bad})), "SCOPE_MISMATCH")
     assert spy.calls == 0
     assert not any(e.kind == "ADMIT" for e in env.store.audit())
     # permit use survived: a correct request still succeeds with max_uses=1
@@ -302,28 +331,42 @@ def test_changed_policy_changes_digest_for_tolerated_difference() -> None:
 # ---- compute-stage hardening -------------------------------------------------------------------
 
 def test_compare_raising_is_masked() -> None:
-    env = _Env()
-
     def boom(n: LedgerStatement, g: LedgerStatement) -> Comparison:
         raise RuntimeError("SECRET-TEXT-123")
 
-    res = env.runner.run(env.request(), boom)
+    env = _Env(compare=boom)
+    res = env.runner.run(env.request())
     _assert_denied(res, "COMPUTE_FAILED")
     assert "SECRET" not in repr(res)
 
 
 def test_compare_returning_wrong_type_or_foreign_authority_is_rejected() -> None:
-    env = _Env()
-    _assert_denied(env.runner.run(env.request(), lambda n, g: "MATCH"), "COMPUTE_FAILED")  # type: ignore[arg-type,return-value]
+    env = _Env(compare=lambda n, g: "MATCH")
+    _assert_denied(env.runner.run(env.request()), "COMPUTE_FAILED")
     promoted = Comparison(ComparisonState.MATCH, "X", "p", (), authority="PROMOTED")
-    _assert_denied(env.runner.run(env.request(), lambda n, g: promoted), "COMPUTE_FAILED")
+    env2 = _Env(compare=lambda n, g: promoted)
+    _assert_denied(env2.runner.run(env2.request()), "COMPUTE_FAILED")
 
 
-def test_injected_compare_runs_only_after_all_checks() -> None:
-    env = _Env()
+def test_constructor_comparator_runs_only_after_all_checks() -> None:
     spy = _Spy()
-    res = env.runner.run(env.request(), spy)
+    env = _Env(compare=spy)
+    res = env.runner.run(env.request())
     assert spy.calls == 1 and res.status is EvaluationStatus.COMPUTED
+
+
+def test_forged_comparison_cannot_be_injected_through_run() -> None:
+    env = _Env()
+    assert list(inspect.signature(EvaluationRunner.run).parameters) == ["self", "request"]
+    forged = Comparison(ComparisonState.MATCH, "FORGED", "p", ())
+    with pytest.raises(TypeError):
+        env.runner.run(env.request(), lambda n, g: forged)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        env.runner.run(env.request(), compare=lambda n, g: forged)  # type: ignore[call-arg]
+    # the default comparator decides: a real mismatch stays a mismatch
+    res = env.runner.run(env.request(gateway=_statement(amount="11")))
+    assert res.comparison is not None and res.comparison.state is ComparisonState.MISMATCH
+    assert res.comparison.reason_code != "FORGED"
 
 
 # ---- no public bypass (__all__ audit) ----------------------------------------------------------
@@ -362,9 +405,9 @@ def test_non_request_values_never_raise(junk: object) -> None:
                                    "params_digest", "requester", "native", "gateway"])
 @pytest.mark.parametrize("junk", [None, 7, b"b", object(), ["x"]])
 def test_wrong_field_types_never_raise(field: str, junk: object) -> None:
-    env = _Env()
     spy = _Spy()
-    res = env.runner.run(env.request(**{field: junk}), spy)
+    env = _Env(compare=spy)
+    res = env.runner.run(env.request(**{field: junk}))
     _assert_denied(res, "INVALID_INPUT")
     assert spy.calls == 0
 
@@ -387,10 +430,10 @@ def test_request_subclass_and_uninitialised_instance_never_raise() -> None:
     _assert_denied(env.runner.run(empty), "INVALID_INPUT")
 
 
-def test_non_callable_compare_never_raises() -> None:
-    env = _Env()
-    _assert_denied(env.runner.run(env.request(), "nope"), "INVALID_INPUT")  # type: ignore[arg-type]
-    assert env.admits() == 0
+def test_non_callable_constructor_comparator_is_rejected() -> None:
+    store = PermitStore(lambda: T0)
+    with pytest.raises(TypeError):
+        EvaluationRunner(store, compare="nope")  # type: ignore[arg-type]
 
 
 def test_hostile_statement_scope_fails_closed_without_permit_use() -> None:

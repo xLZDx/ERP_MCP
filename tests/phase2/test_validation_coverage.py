@@ -54,7 +54,7 @@ def test_tc100_uncovered_claim_makes_matrix_incomplete_and_refused():
     r = build([claim("c1"), claim("c2", cap="sales")], [ev("e1")], [Link("c1", "e1")])
     assert r.status is CoverageStatus.INCOMPLETE and r.code is CoverageCode.UNCOVERED_CLAIM
     assert not r.accepted and r.uncovered == ("c2",)
-    assert not capability_enabled(r, "purchases") and not capability_enabled(r, "sales")
+    assert not capability_enabled(r, S, "purchases") and not capability_enabled(r, S, "sales")
 
 
 @pytest.mark.parametrize("verdict", [EvidenceVerdict.FAIL, EvidenceVerdict.NOT_RUN])
@@ -148,31 +148,33 @@ def test_tc101_same_digest_in_different_scopes_is_not_a_duplicate():
 def test_tc102_purchases_validated_opens_nothing_for_ap():
     r = build([claim("c1", cap="purchases")], [ev()], [Link("c1", "e1")])
     assert r.accepted
-    assert capability_enabled(r, "purchases")
+    assert capability_enabled(r, S, "purchases")
     for other in ("ap.account_based", "ap", "purchases.receipts", "purch", "sales", "", None, 5):
-        assert not capability_enabled(r, other)
+        assert not capability_enabled(r, S, other)
 
 
 def test_tc102_ap_claim_is_refused_even_with_passing_evidence():
     r = build([claim("c1", cap="purchases"), claim("c2", cap="ap.account_based")],
               [ev("e1", 1, "s1"), ev("e2", 2, "s2")], [Link("c1", "e1"), Link("c2", "e2")])
     assert r.status is CoverageStatus.REFUSED and r.code is CoverageCode.CAPABILITY_NOT_OPENED
-    assert not capability_enabled(r, "ap.account_based") and not capability_enabled(r, "purchases")
+    assert not capability_enabled(r, S, "ap.account_based") and not capability_enabled(r, S, "purchases")
 
 
 def test_tc102_purchases_evidence_cannot_back_an_ap_claim():
-    r = build([claim("c1", cap="purchases"), claim("c2", cap="ap")], [ev()],
+    r = build([claim("c1", cap="purchases"), claim("c2", cap="ap.other")], [ev()],
               [Link("c1", "e1"), Link("c2", "e1")])
     assert r.code is CoverageCode.EVIDENCE_SHARED_ACROSS_CAPABILITIES
 
 
 def test_tc102_enabled_requires_an_accepted_matrix_of_the_right_type():
     partial = build([claim("c1"), claim("c2", cap="sales")], [ev()], [Link("c1", "e1")])
-    assert not capability_enabled(partial, "purchases")
-    assert not capability_enabled({"rows": ()}, "purchases")
+    assert not capability_enabled(partial, S, "purchases")
+    assert not capability_enabled({"rows": ()}, S, "purchases")
 
 
-def test_tc102_module_has_no_write_path_to_release_1():
+def test_tc102_static_proxy_imports_and_calls_only_no_write_primitives():
+    # STATIC PROXY ONLY: an AST scan of imports/calls/attributes. It does not prove absence of a
+    # write path (aliasing, getattr, indirect calls are not detected); it only guards the obvious.
     tree = ast.parse(Path(vc.__file__).read_text(encoding="utf-8"))
     stdlib_ok = {"__future__", "hashlib", "dataclasses", "enum"}
     imported: list[tuple[int, str]] = []
@@ -191,3 +193,112 @@ def test_tc102_module_has_no_write_path_to_release_1():
     assert not called & banned_calls
     attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     assert not attrs & {"write_text", "write_bytes", "execute", "executemany", "commit", "import_module"}
+
+
+# ---------------------------------------------------------------- review-fix batch
+@pytest.mark.parametrize("cap", [
+    "ap.account_based", "ap.account_based.invoices", "ap.account_based.", "ap", "AP.Account_Based.X",
+    ".ap.account_based", "ap..account_based",
+])
+def test_reserved_capability_family_is_refused_and_never_enabled(cap):
+    r = build([claim("c1", cap="purchases"), claim("c2", cap=cap)],
+              [ev("e1", 1, "s1"), ev("e2", 2, "s2")], [Link("c1", "e1"), Link("c2", "e2")])
+    assert r.status is CoverageStatus.REFUSED and r.code is CoverageCode.CAPABILITY_NOT_OPENED
+    ok = build([claim("c1", cap="purchases")], [ev()], [Link("c1", "e1")])
+    assert ok.accepted and not capability_enabled(ok, S, cap)
+
+
+@pytest.mark.parametrize("verdicts", [[PASS, EvidenceVerdict.FAIL], [PASS, EvidenceVerdict.NOT_RUN]])
+def test_pass_beside_non_pass_link_is_never_complete(verdicts):
+    r = build([claim()], [ev("e1", 1, "s1", verdict=verdicts[0]), ev("e2", 2, "s2", verdict=verdicts[1])],
+              [Link("c1", "e1"), Link("c1", "e2")])
+    assert r.status is CoverageStatus.INCOMPLETE and r.code is CoverageCode.NON_PASS_LINK
+    assert not r.accepted and r.non_pass == ("c1",) and r.rows[0].evidence_ids == ("e1",)
+    assert not capability_enabled(r, S, "purchases")
+
+
+def _good():
+    return build([claim("c1"), claim("c2", cap="sales")], [ev("e1", 1, "s1"), ev("e2", 2, "s2")],
+                 [Link("c1", "e1"), Link("c2", "e2")])
+
+
+def _forged(rows, base=None):
+    base = base or _good()
+    return vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, tuple(rows), (), base.digest)
+
+
+def test_capability_enabled_rejects_hand_built_forged_results():
+    good = _good()
+    assert capability_enabled(good, S, "purchases")
+    row = good.rows[0]
+    # forged status over rows that were never verified: digest mismatch
+    assert not capability_enabled(vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK), S, "purchases")
+    assert not capability_enabled(_forged([row]), S, "purchases")  # row dropped, stale digest
+    import dataclasses
+    swapped = dataclasses.replace(row, capability="payroll")
+    assert not capability_enabled(_forged([swapped, good.rows[1]]), S, "payroll")
+    tampered_ev = dataclasses.replace(row, evidence_digests=(h(99),))
+    assert not capability_enabled(_forged([tampered_ev, good.rows[1]]), S, "purchases")
+    # consistent digest but reserved capability in a row
+    res_row = dataclasses.replace(row, capability="ap.account_based.invoices")
+    forged = vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, (res_row,), (),
+                             vc._matrix_digest((res_row,)))
+    assert not capability_enabled(forged, S, "ap.account_based.invoices")
+    # consistent digest but duplicate claim ids
+    dup = vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, (row, row), (),
+                          vc._matrix_digest((row, row)))
+    assert not capability_enabled(dup, S, "purchases")
+    # consistent digest but empty evidence
+    bare = dataclasses.replace(row, evidence_ids=(), evidence_digests=(), evidence_sources=())
+    forged = vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, (bare,), (),
+                             vc._matrix_digest((bare,)))
+    assert not capability_enabled(forged, S, "purchases")
+
+
+def test_digest_binds_scope_evidence_digest_source_and_is_order_independent():
+    base = build([claim()], [ev("e1", 1, "s1")], [Link("c1", "e1")])
+    other_tenant = build([claim(scope=ClaimScope("t2", "companyA"))],
+                         [ev("e1", 1, "s1", scope=ClaimScope("t2", "companyA"))], [Link("c1", "e1")])
+    other_company = build([claim(scope=S2)], [ev("e1", 1, "s1", scope=S2)], [Link("c1", "e1")])
+    assert len({base.digest, other_tenant.digest, other_company.digest}) == 3
+    assert build([claim()], [ev("e1", 2, "s1")], [Link("c1", "e1")]).digest != base.digest
+    assert build([claim()], [ev("e1", 1, "s9")], [Link("c1", "e1")]).digest != base.digest
+    a = build([claim("c1"), claim("c2", cap="sales")], [ev("e1", 1, "s1"), ev("e2", 2, "s2")],
+              [Link("c1", "e1"), Link("c2", "e2")])
+    b = build([claim("c2", cap="sales"), claim("c1")], [ev("e2", 2, "s2"), ev("e1", 1, "s1")],
+              [Link("c2", "e2"), Link("c1", "e1")])
+    assert a.digest == b.digest and a.accepted and b.accepted
+
+
+def test_digest_binds_verdict_and_claim_text():
+    base = build([claim()], [ev()], [Link("c1", "e1")])
+    failed = build([claim()], [ev(verdict=EvidenceVerdict.FAIL)], [Link("c1", "e1")])
+    mixed = build([claim()], [ev("e1", 1, "s1"), ev("e2", 2, "s2", verdict=EvidenceVerdict.FAIL)],
+                  [Link("c1", "e1"), Link("c1", "e2")])
+    solo = build([claim()], [ev("e1", 1, "s1")], [Link("c1", "e1")])
+    assert len({base.digest, failed.digest, mixed.digest}) == 3 and mixed.digest != solo.digest
+    assert build([claim(cap="sales")], [ev()], [Link("c1", "e1")]).digest != base.digest
+    assert build([claim(op="reconcile")], [ev()], [Link("c1", "e1")]).digest != base.digest
+    assert build([claim("c9")], [ev()], [Link("c9", "e1")]).digest != base.digest
+
+
+def test_scope_a_coverage_does_not_enable_scope_b():
+    r = build([claim("c1", scope=S), claim("c2", cap="sales", scope=S2)],
+              [ev("e1", 1, "s1", scope=S), ev("e2", 2, "s2", scope=S2)],
+              [Link("c1", "e1"), Link("c2", "e2")])
+    assert r.accepted
+    assert capability_enabled(r, S, "purchases") and capability_enabled(r, S2, "sales")
+    assert not capability_enabled(r, S2, "purchases") and not capability_enabled(r, S, "sales")
+    assert not capability_enabled(r, ClaimScope("t2", "companyA"), "purchases")
+    assert not capability_enabled(r, None, "purchases") and not capability_enabled(r, ("t1", "companyA"), "purchases")
+    assert not capability_enabled(r, ClaimScope("", "x"), "purchases")
+
+
+@pytest.mark.parametrize("cap", ["ap.account_bаsed", "аp.account_based.invoices"])
+def test_reserved_mixed_script_lookalike_is_refused_never_enabled(cap):
+    # mixed-script spoofs are refused earlier as invalid identities (CLAIM_INVALID); the skeleton
+    # form in _is_reserved is a defence-in-depth layer behind that and is not separately reachable.
+    r = build([claim("c1", cap=cap)], [ev()], [Link("c1", "e1")])
+    assert r.status is CoverageStatus.REFUSED and not r.accepted
+    ok = build([claim("c1", cap="purchases")], [ev()], [Link("c1", "e1")])
+    assert not capability_enabled(ok, S, cap)

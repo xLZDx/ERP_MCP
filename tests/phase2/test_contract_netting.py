@@ -95,8 +95,72 @@ def test_floats_nan_and_negative_sides_are_rejected():
         ContractSides("A", "X", 1.0, Decimal(0))  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="FINITE_DECIMAL_REQUIRED"):
         ContractSides("A", "X", Decimal("NaN"), Decimal(0))
-    with pytest.raises(ValueError, match="SIDE_AMOUNT_NEGATIVE"):
-        ContractSides("A", "X", Decimal(0), Decimal(-1))
+    with pytest.raises(ValueError, match="ROW_ANALYTIC_REF_REQUIRED"):
+        ContractSides(5, "X", Decimal(0), Decimal(0))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("side", ["native", "gateway"])
+def test_negative_side_is_inconclusive_negative_side_not_an_exception(side):
+    # Documented storno mapping: a reversal is a positive amount on the opposite side; a negative
+    # side amount would let a netted figure through, so the verdict is INCONCLUSIVE/NEGATIVE_SIDE.
+    good = (cs("A", "X", "1", "0"),)
+    for bad in ((cs("A", "X", "-1", "0"),), (cs("A", "X", "1", "-0.01"),)):
+        native, gateway = (bad, good) if side == "native" else (good, bad)
+        result = compare_contract_sides(native, gateway, policy=POLICY)
+        assert result.state is ComparisonState.INCONCLUSIVE
+        assert result.reason_code == "NEGATIVE_SIDE"
+        assert result.sides == ()
+
+
+@pytest.mark.parametrize("native,gateway", [
+    ([cs("A", "X", "1", "0")], (cs("A", "X", "1", "0"),)),
+    ((cs("A", "X", "1", "0"),), [cs("A", "X", "1", "0")]),
+    (None, (cs("A", "X", "1", "0"),)),
+    ((cs("A", "X", "1", "0"),), "rows"),
+    (("not-a-row",), (cs("A", "X", "1", "0"),)),
+    ((cs("A", "X", "1", "0"),), (None,)),
+    ((cs("A", "X", "1", "0"), object()), (cs("A", "X", "1", "0"),)),
+    ((("A", "X", Decimal(1), Decimal(0)),), (cs("A", "X", "1", "0"),)),
+])
+def test_wrong_container_or_item_type_is_inconclusive_never_attribute_error(native, gateway):
+    result = compare_contract_sides(native, gateway, policy=POLICY)  # type: ignore[arg-type]
+    assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code == "CONTRACT_SIDES_INVALID"
+
+
+@pytest.mark.parametrize("ref", [None, "", "  ", "-", " - ", "--", "Unknown", " UNKNOWN ", "N/A", "n/A",
+                                 "None", "NULL", "?", "	"])
+def test_unknown_contract_variants_are_inconclusive(ref):
+    for rows in ((ContractSides("A", ref, Decimal(1), Decimal(0)),),
+                 (ContractSides(ref, "X", Decimal(1), Decimal(0)),)):
+        result = compare_contract_sides(rows, rows, policy=POLICY)
+        assert (result.state, result.reason_code) == (ComparisonState.INCONCLUSIVE, "UNKNOWN_CONTRACT")
+
+
+def test_case_and_whitespace_variants_are_the_same_contract():
+    native = (cs("Acme", "C-1", "5", "2"),)
+    gateway = (cs("  acme ", "c-1  ", "5", "2"),)
+    result = compare_contract_sides(native, gateway, policy=POLICY)
+    assert result.state is ComparisonState.MATCH
+    assert [(s.counterparty_ref, s.contract_ref) for s in result.sides] == [("Acme", "C-1")] * 2
+    # the same contract spelled two ways inside one side is a duplicate, not two contracts
+    dup = (cs("Acme", "C-1", "5", "0"), cs(" ACME", "c-1 ", "0", "2"))
+    again = compare_contract_sides(dup, native, policy=POLICY)
+    assert (again.state, again.reason_code) == (ComparisonState.INCONCLUSIVE, "DUPLICATE_CONTRACT")
+
+
+def test_same_contract_under_different_counterparties_is_two_contracts():
+    native = (cs("A", "X", "10", "0"), cs("B", "X", "0", "10"))
+    swapped = (cs("A", "X", "0", "10"), cs("B", "X", "10", "0"))
+    result = compare_contract_sides(native, swapped, policy=POLICY)
+    assert result.net_native == result.net_gateway == Decimal(0)
+    assert result.state is ComparisonState.MISMATCH
+    assert {(s.counterparty_ref, s.side) for s in result.sides if not s.equal} == {
+        ("A", "debit"), ("A", "credit"), ("B", "debit"), ("B", "credit")}
+    assert compare_contract_sides(native, native, policy=POLICY).state is ComparisonState.MATCH
+    # a counterparty present on one side only is a different contract set, not a collapse onto X
+    only_a = compare_contract_sides(native, (cs("A", "X", "10", "0"),), policy=POLICY)
+    assert (only_a.state, only_a.reason_code) == (ComparisonState.INCONCLUSIVE, "CONTRACT_SET_MISMATCH")
 
 
 def test_decimal_exact_no_float_rounding_and_ambient_precision_ignored():

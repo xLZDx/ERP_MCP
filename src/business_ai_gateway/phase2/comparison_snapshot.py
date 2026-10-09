@@ -3,9 +3,16 @@
 A comparison runs against an immutable snapshot identified by a canonical-JSON sha256 content
 digest and a known-at instant. Both sides must reference the same snapshot, and each side reports
 the digest it actually read; if the source changed between the two reads (a concurrent correction)
-the run is INCONCLUSIVE with a reason, never PASS. A rerun (including a backdated one) is a NEW
-run that supersedes the earlier one in the listing; the earlier record is never overwritten or
-deleted and its numbers stay exactly as recorded.
+the run is INCONCLUSIVE with a reason, never PASS. Each side's reported numbers must equal the
+snapshot's own projection ``payload["values"][side]`` (side is "native" or "gateway"), so a side
+cannot report numbers the frozen data state does not contain. A rerun (including a backdated one)
+is a NEW run chained to the previous head via ``rerun_of``; the earlier record is never
+overwritten or deleted and its numbers stay exactly as recorded.
+
+Supersession rule: a comparison key has ONE chain. A first run needs no ``rerun_of``; any later
+run for the same (tenant, key) must name the current chain head in ``rerun_of`` (otherwise
+RERUN_REQUIRED). ``current(tenant, key)`` is the latest DECISIVE run (PASS or FAIL); an
+INCONCLUSIVE rerun is listed as LATEST_ATTEMPT but never hides the last decisive result.
 
 Pure in-memory, thread-safe, injectable clock. A PASS here is numeric equality on one data state
 only; it is NOT native evidence attestation or validation approval.
@@ -54,7 +61,10 @@ class ComparisonState(StrEnum):
 def _utc(value: object) -> datetime:
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise ComparisonSnapshotError("TIMEZONE_REQUIRED")
-    return value.astimezone(UTC)
+    try:
+        return value.astimezone(UTC)
+    except (OverflowError, ValueError):
+        raise ComparisonSnapshotError("TIMESTAMP_OUT_OF_RANGE") from None
 
 
 def _dec(value: object) -> Decimal:
@@ -84,12 +94,15 @@ def _encode(value: object, depth: int = 0) -> object:
     if isinstance(value, Decimal):
         return {"$dec": _dec_text(value)}
     if isinstance(value, datetime):
-        return {"$ts": _utc(value).strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
+        return {"$ts": _stamp(_utc(value))}
     if isinstance(value, Mapping):
         out: dict[str, object] = {}
         for key, item in value.items():
             if not isinstance(key, str):
                 raise ComparisonSnapshotError("PAYLOAD_KEY_NOT_TEXT")
+            if key.startswith("$"):
+                # "$dec"/"$ts" are the encoder's own type tags; a user key must not forge them.
+                raise ComparisonSnapshotError("PAYLOAD_KEY_RESERVED")
             out[key] = _encode(item, depth + 1)
         return out
     if isinstance(value, (list, tuple)):
@@ -100,8 +113,20 @@ def _encode(value: object, depth: int = 0) -> object:
 
 def canonical_json(payload: object) -> str:
     """Sorted-key, compact, ASCII JSON; Decimals normalised, datetimes aware-UTC."""
-    return json.dumps(_encode(payload), sort_keys=True, ensure_ascii=True, separators=(",", ":"),
-                      allow_nan=False)
+    encoded = _encode(payload)
+    try:
+        return json.dumps(encoded, sort_keys=True, ensure_ascii=True, separators=(",", ":"),
+                          allow_nan=False)
+    except (ValueError, OverflowError, RecursionError):
+        # e.g. an int beyond the interpreter's digit limit
+        raise ComparisonSnapshotError("PAYLOAD_UNENCODABLE") from None
+
+
+def _stamp(instant: datetime) -> str:
+    try:
+        return instant.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    except (OverflowError, ValueError):
+        raise ComparisonSnapshotError("TIMESTAMP_OUT_OF_RANGE") from None
 
 
 def _sha(text: str) -> str:
@@ -147,7 +172,7 @@ class SnapshotStore:
             raise ComparisonSnapshotError("KNOWN_AT_IN_FUTURE")
         text = canonical_json(payload)
         digest = _sha(text)
-        stamp = instant.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        stamp = _stamp(instant)
         snapshot_id = "snap-" + _sha(json.dumps([tenant, digest, stamp]))[:24]
         with self._lock:
             existing = self._items.get((tenant, snapshot_id))
@@ -194,7 +219,10 @@ class RunRecord:
 @dataclass(frozen=True, slots=True)
 class RunView:
     record: RunRecord
-    status: str  # "CURRENT" or "SUPERSEDED"
+    # CURRENT = the latest decisive (PASS/FAIL) run, i.e. ``RunLedger.current``; LATEST_ATTEMPT =
+    # the chain head when it is INCONCLUSIVE; SUPERSEDED = everything else. ``superseded_by`` is the
+    # raw chain relation and may be set on a CURRENT run hidden behind an INCONCLUSIVE rerun.
+    status: str
     superseded_by: str | None
 
 
@@ -207,6 +235,30 @@ def _values(read: SideRead) -> tuple[tuple[str, Decimal], ...]:
             raise ComparisonSnapshotError("SIDE_READ_INVALID")
         out.append((key, _dec(value)))
     return tuple(sorted(out, key=lambda kv: kv[0]))
+
+
+def _projection(snap: Snapshot, side: str) -> dict[str, Decimal] | None:
+    """The numbers the frozen snapshot holds for one side, or None when it holds none."""
+    try:
+        doc = json.loads(snap.canonical)
+    except ValueError:
+        return None
+    values = doc.get("values") if isinstance(doc, dict) else None
+    part = values.get(side) if isinstance(values, dict) else None
+    if not isinstance(part, dict):
+        return None
+    out: dict[str, Decimal] = {}
+    for key, item in part.items():
+        if not (isinstance(item, dict) and set(item) == {"$dec"} and isinstance(item["$dec"], str)):
+            return None
+        try:
+            out[key] = Decimal(item["$dec"])
+        except ArithmeticError:
+            return None
+    return out
+
+
+_DECISIVE = frozenset({ComparisonState.PASS, ComparisonState.FAIL})
 
 
 class RunLedger:
@@ -223,12 +275,22 @@ class RunLedger:
         tenant = _ident(tenant_id, "TENANT_REQUIRED")
         key = _ident(comparison_key, "COMPARISON_KEY_REQUIRED")
         snap_ref = _ident(snapshot_id, "SNAPSHOT_REF_REQUIRED")
-        n_vals, g_vals = _values(native), _values(gateway)
-        recorded_at = self._store.now()
+        if not isinstance(native, SideRead) or not isinstance(gateway, SideRead):
+            raise ComparisonSnapshotError("SIDE_READ_INVALID")
+        if native is gateway or native.values is gateway.values:
+            raise ComparisonSnapshotError("SIDE_READS_IDENTICAL")
+        if native.side != "native" or gateway.side != "gateway":
+            raise ComparisonSnapshotError("SIDE_LABEL_INVALID")
+        n_vals, g_vals = _values(native), _values(gateway)  # copies: later caller mutation is inert
         snap = self._store.get(tenant, snap_ref)
         state, reason, diffs = self._decide(snap, snap_ref, native, gateway, n_vals, g_vals)
         with self._lock:
-            if rerun_of is not None:
+            recorded_at = self._store.now()
+            head = self._head(tenant, key)
+            if rerun_of is None:
+                if head is not None:
+                    raise ComparisonSnapshotError("RERUN_REQUIRED")
+            else:
                 prior = self._find(tenant, rerun_of)
                 if prior is None or prior.comparison_key != key:
                     raise ComparisonSnapshotError("RERUN_TARGET_UNKNOWN")
@@ -264,6 +326,11 @@ class RunLedger:
         if not n_vals or not g_vals:
             return inc, "NO_OBSERVATIONS", ()
         n_map, g_map = dict(n_vals), dict(g_vals)
+        n_proj, g_proj = _projection(snap, "native"), _projection(snap, "gateway")
+        if n_proj is None or g_proj is None:
+            return inc, "SNAPSHOT_VALUES_MISSING", ()
+        if n_map != n_proj or g_map != g_proj:
+            return inc, "SIDE_VALUES_NOT_IN_SNAPSHOT", ()
         diffs = tuple(k for k in sorted(n_map.keys() | g_map.keys()) if n_map.get(k) != g_map.get(k))
         if diffs:
             return ComparisonState.FAIL, "VALUES_DIFFER", diffs
@@ -275,6 +342,24 @@ class RunLedger:
                 return rec
         return None
 
+    def _chain(self, tenant: str, key: str) -> list[RunRecord]:
+        return [r for r in self._runs if r.tenant_id == tenant and r.comparison_key == key]
+
+    def _head(self, tenant: str, key: str) -> RunRecord | None:
+        chain = self._chain(tenant, key)
+        return chain[-1] if chain else None
+
+    def _current(self, tenant: str, key: str) -> RunRecord | None:
+        for rec in reversed(self._chain(tenant, key)):
+            if rec.state in _DECISIVE:
+                return rec
+        return None
+
+    def current(self, tenant_id: str, comparison_key: str) -> RunRecord | None:
+        """The latest decisive (PASS/FAIL) run for the key; None when no run was decisive."""
+        with self._lock:
+            return self._current(exact_text(tenant_id), exact_text(comparison_key))
+
     def get(self, tenant_id: str, run_id: str) -> RunRecord | None:
         with self._lock:
             return self._find(exact_text(tenant_id), exact_text(run_id))
@@ -282,7 +367,16 @@ class RunLedger:
     def list_runs(self, tenant_id: str, comparison_key: str) -> tuple[RunView, ...]:
         tenant, key = exact_text(tenant_id), exact_text(comparison_key)
         with self._lock:
-            return tuple(
-                RunView(r, "SUPERSEDED" if r.run_id in self._superseded_by else "CURRENT",
-                        self._superseded_by.get(r.run_id))
-                for r in self._runs if r.tenant_id == tenant and r.comparison_key == key)
+            chain = self._chain(tenant, key)
+            current = self._current(tenant, key)
+            head = chain[-1] if chain else None
+            views = []
+            for r in chain:
+                if r is current:
+                    status = "CURRENT"
+                elif r is head:
+                    status = "LATEST_ATTEMPT"
+                else:
+                    status = "SUPERSEDED"
+                views.append(RunView(r, status, self._superseded_by.get(r.run_id)))
+            return tuple(views)
