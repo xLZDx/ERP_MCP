@@ -313,7 +313,7 @@ jobs:
         run: >-
           uv run --locked python scripts/write_image_provenance.py
           --image erp-mcp-gateway:ci
-          --base-image "build=python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8;runtime=cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84"
+          --base-image "build=python:3.14-slim-trixie@sha256:3353bb7e9ae99c7cce6cad2b2f2b174e8f22813ac43e3b13e7a742627d2b01d8;runtime=cgr.dev/chainguard/python:latest@sha256:b6248c85ba9b97e1e61b30197f309cc4d21661f889fefa5268f0a7bc530dad46"
           --lock requirements-runtime.lock
           --sbom ${{ runner.temp }}/erp-mcp-gateway.cdx.json
           --output ${{ runner.temp }}/erp-mcp-gateway-provenance.json
