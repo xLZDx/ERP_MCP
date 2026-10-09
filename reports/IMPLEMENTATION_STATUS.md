@@ -1,6 +1,19 @@
 
 # ERP_MCP implementation status
 
+## Gateway runtime glibc remediation — 2026-10-09
+
+The pinned Chainguard Python runtime used in Release 1 gateway Dockerfile
+contained 12 Trivy MEDIUM findings (four distinct CVEs repeated across
+glibc-2.44, locale-posix and ld-linux packages at 2.44-r7). Refreshing the
+digest-only runtime base to the verified published Chainguard Python 3.14.8
+image removes the vulnerable r7 base. The Python project/runtime locks and
+all authorization, accounting, and audit logic remain unchanged. The new
+gateway image and exact-head hosted Trivy/CI must be confirmed independently
+before declaring this release slice fully closed. Production remains
+NO-GO and DoD PARTIAL pending unrelated native and operator gates.
+
+
 ## Verified first-install L2 gateway and ACL — 2026-10-09
 
 On the exact pre-merge R1 installation candidate a clean GitHub clone on an
@@ -15,7 +28,7 @@ Unix/production GO. See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
 Production NO-GO; DoD PARTIAL.
 
 
-<!-- ENGINEERING_CHECKPOINT=MERGED_REAL1C_L2_INSTALL_20261009 ENGINEERING_IMPLEMENTATION=ab936f125b6663443ec6b293d4abce2f225035c082c2c3edb013aa82eae78200 -->
+<!-- ENGINEERING_CHECKPOINT=CHG_RUNTIME_GLIBC_CVE_20261009 ENGINEERING_IMPLEMENTATION=7c31736e5241b89dad9d3b7a4cc6b2220cd46fbe3703298eb1df80d63cd388f0 -->
 
 ## Capability observation boundary — 2026-10-06
 

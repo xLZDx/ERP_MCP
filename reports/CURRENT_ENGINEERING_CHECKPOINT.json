@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "batch_id": "MERGED_REAL1C_L2_INSTALL_20261009",
-  "implementation_sha256": "ab936f125b6663443ec6b293d4abce2f225035c082c2c3edb013aa82eae78200",
+  "batch_id": "CHG_RUNTIME_GLIBC_CVE_20261009",
+  "implementation_sha256": "7c31736e5241b89dad9d3b7a4cc6b2220cd46fbe3703298eb1df80d63cd388f0",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
   "code_evidence_sha": "abe290f",
-  "code_evidence_note": "Combined exact-content fingerprint after preserving the main machine-profile implementation and merging the Release 1 L2 install repair. Previously recorded full-suite and hosted evidence refer to their original prior revisions; new combined CI remains pending. No native accounting or production GO inferred.",
+  "code_evidence_note": "Real 1C L2 acceptance is historical to its recorded commit. Runtime base glibc repair applies to the exact candidate with updated Dockerfile and provenance pin. Trivy and hosted CI must be verified on the final head. Previous whole-suite/hosted counts remain historical.",
   "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_verified_hosted_run": 37519186079,
   "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
   "last_failed_hosted_run": 37518882269,
-  "hosted_status_at_snapshot": "PENDING_COMBINED_HEAD",
+  "hosted_status_at_snapshot": "PENDING_CURRENT_RUNTIME_IMAGE_CI",
   "last_local_full_suite": {
     "passed": 1438,
     "skipped": 238,
@@ -88,7 +88,7 @@
       "skipped": 0
     }
   },
-  "current_full_suite_status": "NOT_RERUN_ON_COMBINED_HEAD",
+  "current_full_suite_status": "NOT_RERUN_ON_CURRENT_IMAGE_HEAD",
   "fresh_install_l2": {
     "date": "2026-10-09",
     "source_baseline_commit": "6c9e4a0",
@@ -102,5 +102,16 @@
     "native_accounting_reconciliation": "NOT_RUN",
     "unix_deployment": "NOT_RUN",
     "evidence_report": "reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md"
+  },
+  "runtime_image_security": {
+    "date": "2026-10-09",
+    "old_runtime_digest": "b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84",
+    "new_runtime_digest": "b6248c85ba9b97e1e61b30197f309cc4d21661f889fefa5268f0a7bc530dad46",
+    "old_os_findings": 12,
+    "old_unique_cves": 4,
+    "new_base_findings": 0,
+    "new_full_gateway_scan": "LOCAL_TRIVY_ZERO_FINDINGS_HOSTED_CI_PENDING",
+    "native_accounting_reconciliation": "NOT_IMPLIED",
+    "production_decision": "NO-GO"
   }
 }
