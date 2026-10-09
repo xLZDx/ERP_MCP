@@ -6,7 +6,7 @@ WORKDIR /build
 COPY requirements-runtime.lock ./
 RUN python -m pip install --require-hashes --target=/runtime-deps -r requirements-runtime.lock
 
-FROM cgr.dev/chainguard/python:latest@sha256:b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84
+FROM cgr.dev/chainguard/python:latest@sha256:95b155651d82460ced732db7ddd81f0888267d8cc9fc97d9f0e993deac398d07
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src:/usr/lib/python3.14/site-packages
 WORKDIR /app
 COPY --from=dependencies /runtime-deps/ /usr/lib/python3.14/site-packages/
