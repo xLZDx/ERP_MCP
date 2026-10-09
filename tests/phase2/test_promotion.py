@@ -357,7 +357,7 @@ async def test_port_typed_unknown_error_fails_closed_nothing_written():
     w.port.fail_with = PortError("SOMETHING_NEW")
     res = await w.promote(rev, ev)
     # an unknown code at the write call may be a connection error during COMMIT: ambiguous, not "nothing written"
-    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "SOMETHING_NEW")
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "WRITE_RESULT_UNKNOWN")
     assert await w.snapshot() == before
 
 
@@ -412,7 +412,7 @@ async def test_untyped_write_exception_is_indeterminate_without_message_leak():
     rev, ev, _ = await w.attest(1)
     w.port.fail_with = ConnectionError("postgres://user:secret@host/db down")
     res = await w.promote(rev, ev)
-    assert (res.outcome, res.code, res.new_version) == (Outcome.INDETERMINATE, "ConnectionError", None)
+    assert (res.outcome, res.code, res.new_version) == (Outcome.INDETERMINATE, "WRITE_EXCEPTION", None)
     assert not res.ok and "secret" not in repr(res)
 
 
@@ -706,3 +706,59 @@ async def test_rollback_failure_fails_closed(where):
         w.port.list_acceptances = broken
     res = await w.rollback(1, e1, expected=2)
     await assert_rejected(w, before, res, Outcome.FAILED_CLOSED)
+
+# ------------------------------------------------ Issue #28: fixed outward codes, strict reviewer answer
+class _Weird(Exception):
+    pass
+
+
+async def test_dynamic_exception_class_name_is_never_returned_at_the_write_call():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = type("Evil Name<script>", (Exception,), {})("x")
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "WRITE_EXCEPTION")
+    assert "Evil" not in repr(res)
+
+
+@pytest.mark.parametrize("code", ["postgres://u:p@h/db", "SOMETHING_NEW", "x" * 500])
+async def test_unknown_port_code_at_the_write_call_is_sanitised_and_stays_indeterminate(code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = PortError(code)
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "WRITE_RESULT_UNKNOWN")
+    assert code not in repr(res)
+
+
+async def test_prewrite_exception_class_name_is_not_echoed():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.reader.raises = _Weird("secret-token")
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "PREWRITE_FAILURE")
+    assert "_Weird" not in repr(res) and "secret" not in repr(res)
+
+
+async def test_prewrite_unknown_port_code_is_sanitised_but_known_codes_survive():
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.reader.raises = PortError("postgres://u:p@h/db")
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "PREWRITE_PORT_ERROR")
+    w.reader.raises = PortError("SQL_40001")
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "SQL_40001")
+
+
+@pytest.mark.parametrize("answer", [1, "yes", object(), [True], None])
+async def test_truthy_non_boolean_reviewer_answer_is_not_approval(answer):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    before = await w.snapshot()
+
+    async def weird(scope, subject):
+        return answer
+    w.reader.is_trusted_reviewer = weird
+    res = await w.promote(rev, ev)
+    await assert_rejected(w, before, res, Outcome.REJECTED_UNTRUSTED)

@@ -338,3 +338,52 @@ def test_invalid_entry_after_valid_one_applies_nothing():
 def test_state_is_frozen():
     with pytest.raises(dataclasses.FrozenInstanceError):
         ResnapshotState().required = ()  # type: ignore[misc]
+
+# ------------------------------------------------ Issue #33: the returned cursor must be the requested one
+class _CursorLiar:
+    """Cursor port that answers every get_cursor with a prepared object; ledger/real reads delegate."""
+
+    def __init__(self, living, answer):
+        self._living, self._answer = living, answer
+
+    async def get_cursor(self, actor, scope, connection_id):
+        await self._living.get_cursor(actor, scope, connection_id)  # keep the real scope check
+        return self._answer(connection_id)
+
+
+@pytest.mark.parametrize("make", [
+    lambda real: dataclasses.replace(real, connection_id="someone-else"),   # another connection's cursor
+    lambda real: object(),                                                   # malformed object
+    lambda real: {"connection_id": real.connection_id, "scope_epoch": real.scope_epoch},
+])
+def test_guard_revalidate_rejects_a_cursor_that_is_not_the_requested_one(make):
+    async def go():
+        living = await living_with_cursor("c1")
+        real = await living.get_cursor(WORKER, SCOPE, "c1")
+        t = ResnapshotTracker()
+        liar = _CursorLiar(living, lambda _cid: make(real))
+        required = await t.revalidate(living, liar, WORKER, SCOPE, ["c1"], 1)
+        return required, t.reason("c1")
+    required, reason = run(go())
+    assert required == ("c1",) and reason is R.CURSOR_MISSING
+
+
+@pytest.mark.parametrize("bad_epoch", [True, 1.0, "1", None])
+def test_guard_revalidate_requires_a_literal_int_cursor_epoch(bad_epoch):
+    async def go():
+        living = await living_with_cursor("c1")
+        real = await living.get_cursor(WORKER, SCOPE, "c1")
+        t = ResnapshotTracker()
+        liar = _CursorLiar(living, lambda _cid: dataclasses.replace(real, scope_epoch=bad_epoch))
+        required = await t.revalidate(living, liar, WORKER, SCOPE, ["c1"], 1)
+        return required, t.reason("c1")
+    required, reason = run(go())
+    assert required == ("c1",) and reason is R.SCOPE_EPOCH_CHANGED
+
+
+def test_revalidate_accepts_the_genuine_cursor_positive_control():
+    async def go():
+        living = await living_with_cursor("c1")
+        t = ResnapshotTracker()
+        return await t.revalidate(living, living, WORKER, SCOPE, ["c1"], 1)
+    assert run(go()) == ()
