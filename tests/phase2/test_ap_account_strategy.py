@@ -1,8 +1,9 @@
 """R2-US-031 / TC091-TC093: explicit account-based AP strategy, absent register, balance-only."""
 import ast
+import contextlib
 import dataclasses
 from datetime import UTC, date, datetime
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,24 @@ def qualified():
 
 
 def item(ref, doc, due, amount) -> OpenItem:
-    return OpenItem(ref, doc, due, Decimal(amount))
+    return OpenItem(ref, doc, due, Decimal(amount), currency="MDL", company="MOLDRETAIL")
+
+
+def _total(rows):
+    with contextlib.suppress(Exception):  # hostile rows: the aging itself must refuse them
+        if all(type(r.amount) is Decimal and r.amount.is_finite() for r in rows):
+            with localcontext(Context(prec=100)):
+                return sum((r.amount for r in rows), Decimal(0))
+    return Decimal(0)
+
+
+_UNSET = object()
+
+
+def age(rows, as_of=_UNSET, strat=None, total="auto"):
+    """compute_aging with the (mandatory) declared total defaulting to the exact row sum."""
+    return compute_aging(strat if strat is not None else qualified(), rows,
+                         ASOF if as_of is _UNSET else as_of, _total(rows) if total == "auto" else total)
 
 
 # ------------------------------------------------------------------ TC091
@@ -160,8 +178,6 @@ def test_tc092_absent_settlements_register_is_first_class_result():
     assert r.reason is Reason.REGISTER_NOT_IN_SOURCE
     assert r.strategy is Strategy.SETTLEMENTS_REGISTER
     assert r.missing == (InputName.REGISTER,)
-    # no fallback: the source does have a usable ledger register, still ABSENT
-    assert qualify_strategy(LEDGER, inputs(), source()).state is StrategyState.QUALIFIED
 
 
 def test_tc092_absent_builds_no_balance_and_no_aging_and_digest_is_stable_and_distinct():
@@ -173,7 +189,7 @@ def test_tc092_absent_builds_no_balance_and_no_aging_and_digest_is_stable_and_di
     assert view.state is ApViewState.ABSENT
     assert view.balance is None
     assert view.aging_state is AgingState.NOT_AVAILABLE
-    aging = compute_aging(absent, (item("D1", date(2026, 1, 1), date(2026, 2, 1), "10"),), date(2026, 3, 1))
+    aging = age((item("D1", date(2026, 1, 1), date(2026, 2, 1), "10"),), date(2026, 3, 1), strat=absent)
     assert aging.state is AgingState.NOT_AVAILABLE
     assert aging.reason is Reason.STRATEGY_NOT_QUALIFIED
     assert aging.open_total is None and aging.buckets == ()
@@ -234,7 +250,7 @@ def test_tc093_aging_buckets_sum_to_open_total():
         item("D4", date(2026, 2, 1), date(2026, 4, 20), "400.40"),   # 71 days
         item("D5", date(2025, 11, 1), date(2026, 1, 1), "500.50"),   # 180 days
     )
-    r = compute_aging(qualified(), rows, as_of, Decimal("1501.50"))
+    r = age(rows, as_of, total=Decimal("1501.50"))
     assert r.state is AgingState.AVAILABLE and r.reason is Reason.AGING_COMPUTED
     assert dict(r.buckets) == {
         AgingBucket.CURRENT: Decimal("100.10"), AgingBucket.D1_30: Decimal("200.20"),
@@ -255,7 +271,7 @@ def test_tc093_aging_buckets_sum_to_open_total():
 def test_tc093_bucket_boundary_days(days_past_due, bucket):
     as_of = date(2026, 12, 31)
     due = date.fromordinal(as_of.toordinal() - days_past_due)
-    r = compute_aging(qualified(), (item("D", date(2025, 1, 1), due, "7"),), as_of)
+    r = age((item("D", date(2025, 1, 1), due, "7"),), as_of)
     assert r.state is AgingState.AVAILABLE
     assert dict(r.buckets)[bucket] == Decimal(7)
     assert sum(1 for _, v in r.buckets if v) == 1
@@ -266,9 +282,9 @@ def test_tc093_one_missing_date_refuses_the_whole_aging(missing_doc):
     rows = (
         item("D1", date(2026, 1, 1), date(2026, 2, 1), "10"),
         OpenItem("D2", None if missing_doc else date(2026, 1, 1), date(2026, 2, 1) if missing_doc else None,
-                 Decimal(20)),
+                 Decimal(20), "MDL", "MOLDRETAIL"),
     )
-    r = compute_aging(qualified(), rows, date(2026, 6, 1))
+    r = age(rows, date(2026, 6, 1))
     assert r.state is AgingState.NOT_AVAILABLE
     assert r.reason is Reason.DATE_MISSING
     assert r.buckets == () and r.open_total is None  # no partial aging for the good row
@@ -277,9 +293,9 @@ def test_tc093_one_missing_date_refuses_the_whole_aging(missing_doc):
 def test_tc093_aging_requires_qualified_strategy():
     rows = (item("D1", date(2026, 1, 1), date(2026, 2, 1), "10"),)
     bad = qualify_strategy("nope", inputs(), source())
-    r = compute_aging(bad, rows, date(2026, 6, 1))
+    r = age(rows, date(2026, 6, 1), strat=bad)
     assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.STRATEGY_NOT_QUALIFIED)
-    assert compute_aging("qualified", rows, date(2026, 6, 1)).reason is Reason.STRATEGY_NOT_QUALIFIED
+    assert compute_aging("qualified", rows, date(2026, 6, 1), Decimal(10)).reason         is Reason.STRATEGY_NOT_QUALIFIED
 
 
 # ------------------------------------------------------------------ aging policy, hostile input
@@ -294,21 +310,21 @@ D0, DUE, ASOF = date(2026, 1, 1), date(2026, 2, 1), date(2026, 6, 1)
     ((item("D", D0, DUE, "1"), item(" d ", D0, DUE, "2")), Reason.DUPLICATE_ITEM),
     ((item("D", D0, DUE, "1"), item("Ｄ", D0, DUE, "2")), Reason.DUPLICATE_ITEM),  # fullwidth D
     ((item("", D0, DUE, "1"),), Reason.ITEM_REF_INVALID),
-    ((OpenItem(5, D0, DUE, Decimal(1)),), Reason.ITEM_REF_INVALID),
+    ((OpenItem(5, D0, DUE, Decimal(1), "MDL", "MOLDRETAIL"),), Reason.ITEM_REF_INVALID),
     ((item("a\u200bb", D0, DUE, "1"),), Reason.ITEM_REF_INVALID),
     ((item("D", D0, DUE, "-0.01"),), Reason.NEGATIVE_AMOUNT),
-    ((OpenItem("D", D0, DUE, 1.5),), Reason.AMOUNT_INVALID),
-    ((OpenItem("D", D0, DUE, 10),), Reason.AMOUNT_INVALID),
-    ((OpenItem("D", D0, DUE, True),), Reason.AMOUNT_INVALID),
-    ((OpenItem("D", D0, DUE, Decimal("NaN")),), Reason.AMOUNT_INVALID),
-    ((OpenItem("D", D0, DUE, Decimal("Infinity")),), Reason.AMOUNT_INVALID),
-    ((OpenItem("D", D0, DUE, Decimal("1E+999")),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, 1.5, "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, 10, "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, True, "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, Decimal("NaN"), "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, Decimal("Infinity"), "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
+    ((OpenItem("D", D0, DUE, Decimal("1E+999"), "MDL", "MOLDRETAIL"),), Reason.AMOUNT_INVALID),
     ((item("D", DUE, D0, "1"),), Reason.DATE_ORDER_INVALID),                    # due before document
     ((item("D", date(2026, 7, 1), date(2026, 8, 1), "1"),), Reason.DATE_ORDER_INVALID),  # after as_of
-    ((OpenItem("D", "2026-01-01", DUE, Decimal(1)),), Reason.DATE_INVALID),
+    ((OpenItem("D", "2026-01-01", DUE, Decimal(1), "MDL", "MOLDRETAIL"),), Reason.DATE_INVALID),
 ])
 def test_aging_refusals_have_fixed_codes(rows, reason):
-    r = compute_aging(qualified(), rows, ASOF)
+    r = age(rows, ASOF)
     assert r.state is AgingState.NOT_AVAILABLE
     assert r.reason is reason
     assert r.buckets == ()
@@ -318,66 +334,67 @@ def test_timezone_naive_and_aware_datetimes_are_refused_not_coerced():
     naive = datetime(2026, 1, 1, 0, 0)  # noqa: DTZ001 - naive on purpose
     aware = datetime(2026, 1, 1, 23, 30, tzinfo=UTC)
     for bad in (naive, aware):
-        assert compute_aging(qualified(), (OpenItem("D", bad, DUE, Decimal(1)),), ASOF).reason \
+        assert age((OpenItem("D", bad, DUE, Decimal(1), "MDL", "MOLDRETAIL"),), ASOF).reason \
             is Reason.DATE_INVALID
-        assert compute_aging(qualified(), (OpenItem("D", D0, bad, Decimal(1)),), ASOF).reason \
+        assert age((OpenItem("D", D0, bad, Decimal(1), "MDL", "MOLDRETAIL"),), ASOF).reason \
             is Reason.DATE_INVALID
-        assert compute_aging(qualified(), (item("D", D0, DUE, "1"),), bad).reason is Reason.DATE_INVALID
+        assert age((item("D", D0, DUE, "1"),), bad).reason is Reason.DATE_INVALID
         assert qualify_strategy(LEDGER, inputs(period_from=bad), source()).reason is Reason.INPUT_INVALID
         assert qualify_strategy(LEDGER, inputs(), source(covered_from=bad)).reason is Reason.INPUT_INVALID
 
 
 @pytest.mark.parametrize("as_of", [None, "2026-06-01", 20260601])
 def test_as_of_must_be_a_plain_date(as_of):
-    r = compute_aging(qualified(), (item("D", D0, DUE, "1"),), as_of)
+    r = age((item("D", D0, DUE, "1"),), as_of)
     assert r.reason is Reason.DATE_INVALID and r.as_of is None
 
 
 def test_zero_amount_row_is_allowed_and_same_day_due_is_valid():
-    r = compute_aging(qualified(), (item("D", D0, D0, "0"), item("E", D0, ASOF, "5")), ASOF)
+    r = age((item("D", D0, D0, "0"), item("E", D0, ASOF, "5")), ASOF)
     assert r.state is AgingState.AVAILABLE
     assert r.open_total == Decimal(5)
 
 
 def test_declared_total_must_equal_row_sum_exactly():
     rows = (item("D", D0, DUE, "10.00"), item("E", D0, DUE, "0.01"))
-    assert compute_aging(qualified(), rows, ASOF, Decimal("10.01")).state is AgingState.AVAILABLE
-    off = compute_aging(qualified(), rows, ASOF, Decimal("10.02"))
+    assert age(rows, total=Decimal("10.01")).state is AgingState.AVAILABLE
+    off = age(rows, total=Decimal("10.02"))
     assert (off.state, off.reason) == (AgingState.NOT_AVAILABLE, Reason.TOTAL_MISMATCH)
-    assert compute_aging(qualified(), rows, ASOF, 10.01).reason is Reason.AMOUNT_INVALID
+    assert age(rows, total=10.01).reason is Reason.AMOUNT_INVALID
 
 
 def test_exactness_no_float_rounding_on_many_small_amounts():
     rows = tuple(item(f"D{i}", D0, DUE, "0.1") for i in range(1000))
-    r = compute_aging(qualified(), rows, ASOF)
+    r = age(rows, ASOF)
     assert r.open_total == Decimal("100.0")
     assert all(isinstance(v, Decimal) for _, v in r.buckets)
 
 
-def test_precision_overflow_is_a_refusal_not_an_exception():
+def test_wide_amounts_sum_exactly_without_rounding():
     big = Decimal("9" * 30)
-    rows = tuple(OpenItem(f"D{i}", D0, DUE, big) for i in range(3))
-    r = compute_aging(qualified(), rows, ASOF)
-    assert r.state is AgingState.AVAILABLE  # 30 digits sum fits the 60-digit exact context
+    rows = tuple(OpenItem(f"D{i}", D0, DUE, big, "MDL", "MOLDRETAIL") for i in range(3))
+    r = age(rows)
+    assert r.state is AgingState.AVAILABLE and r.open_total == Decimal(3 * 10**30 - 3)
     wide = Decimal("1." + "1" * 8)
-    assert compute_aging(qualified(), (OpenItem("D", D0, DUE, wide),), ASOF).state is AgingState.AVAILABLE
+    one = age((OpenItem("D", D0, DUE, wide, "MDL", "MOLDRETAIL"),))
+    assert one.state is AgingState.AVAILABLE and one.open_total == wide
 
 
 def test_too_many_items_refused():
     rows = (item("D", D0, DUE, "1"),) * (mod.MAX_ITEMS + 1)
-    assert compute_aging(qualified(), rows, ASOF).reason is Reason.TOO_MANY_ITEMS
+    assert age(rows, ASOF).reason is Reason.TOO_MANY_ITEMS
 
 
 def test_aging_digest_deterministic_order_independent_and_input_sensitive():
     a, b = item("A", D0, DUE, "1"), item("B", D0, DUE, "2")
-    base = compute_aging(qualified(), (a, b), ASOF)
-    assert base.digest == compute_aging(qualified(), (b, a), ASOF).digest
-    assert base.digest != compute_aging(qualified(), (a, item("B", D0, DUE, "3")), ASOF).digest
-    assert base.digest != compute_aging(qualified(), (a, b), date(2026, 6, 2)).digest
-    assert base.digest != compute_aging(qualified(), (a, item("B", D0, date(2026, 2, 2), "2")), ASOF).digest
-    refused = compute_aging(qualified(), (), ASOF)
+    base = age((a, b), ASOF)
+    assert base.digest == age((b, a), ASOF).digest
+    assert base.digest != age((a, item("B", D0, DUE, "3")), ASOF).digest
+    assert base.digest != age((a, b), date(2026, 6, 2)).digest
+    assert base.digest != age((a, item("B", D0, date(2026, 2, 2), "2")), ASOF).digest
+    refused = age((), ASOF)
     assert refused.digest != base.digest
-    assert refused.digest == compute_aging(qualified(), (), ASOF).digest
+    assert refused.digest == age((), ASOF).digest
 
 
 # ------------------------------------------------------------------ hostile types
@@ -399,8 +416,8 @@ def test_hostile_arguments_never_raise(hostile):
     assert make_balance_view(hostile, Decimal(1)).state is ApViewState.INPUT_INVALID
     assert make_balance_view(qualified(), hostile).balance is None
     assert compute_aging(hostile, hostile, hostile).state is AgingState.NOT_AVAILABLE
-    assert compute_aging(qualified(), hostile, ASOF).state is AgingState.NOT_AVAILABLE
-    assert compute_aging(qualified(), (hostile,), ASOF).state is AgingState.NOT_AVAILABLE
+    assert age(hostile, ASOF).state is AgingState.NOT_AVAILABLE
+    assert age((hostile,), ASOF).state is AgingState.NOT_AVAILABLE
 
 
 @pytest.mark.parametrize("field", ["accounting_registers", "account_codes", "analytics_keys",
@@ -430,12 +447,12 @@ def test_refusal_never_echoes_caller_text():
         assert secret not in blob and secret.lower() not in blob
     view = make_balance_view(qualify_strategy(secret, inputs(), source()), Decimal(1))
     assert secret not in repr(view)
-    assert secret not in repr(compute_aging(qualified(), (item(secret, D0, DUE, "-1"),), ASOF))
+    assert secret not in repr(age((item(secret, D0, DUE, "-1"),), ASOF))
 
 
 def test_results_are_frozen_slotted_dataclasses():
     for obj in (qualified(), make_balance_view(qualified(), Decimal(1)),
-                compute_aging(qualified(), (item("D", D0, DUE, "1"),), ASOF), source(), inputs(),
+                age((item("D", D0, DUE, "1"),), ASOF), source(), inputs(),
                 item("D", D0, DUE, "1")):
         assert dataclasses.is_dataclass(obj)
         assert not hasattr(obj, "__dict__")
@@ -458,7 +475,186 @@ def test_module_has_no_write_network_file_db_imports_and_no_validation_coverage(
     assert "float(" not in Path(mod.__file__).read_text(encoding="utf-8")
 
 
-def test_validation_coverage_still_refuses_ap_account_based():
-    from business_ai_gateway.phase2.validation_coverage import RESERVED_CAPABILITIES
+def test_validation_coverage_never_enables_ap_account_based_from_a_strategy_result():
+    from business_ai_gateway.phase2.validation_coverage import (
+        RESERVED_CAPABILITIES,
+        capability_enabled,
+    )
     assert "ap.account_based" in RESERVED_CAPABILITIES
+    for result in (qualified(), make_balance_view(qualified(), Decimal(1))):
+        assert capability_enabled(result, object(), "ap.account_based") is False
     assert not hasattr(mod, "capability_enabled")
+
+
+# ------------------------------------------------------------------ S6b review fixes
+
+class _Liar(str):
+    def __eq__(self, other):
+        return True
+
+    __hash__ = str.__hash__
+
+
+def test_str_subclass_with_lying_eq_is_not_a_strategy_name():
+    r = qualify_strategy(_Liar("whatever"), inputs(), source())
+    assert r.reason is Reason.UNKNOWN_STRATEGY and r.strategy is None
+
+
+def test_qualified_result_carries_normalised_declared_inputs():
+    r = qualify_strategy(LEDGER, inputs(company=" moldretail ", currency="mdl",
+                                        account_codes=("60.02", "60.01")), source())
+    assert (r.register, r.company, r.currency) == ("хозрасчетный", "moldretail", "mdl")
+    assert r.account_codes == ("60.01", "60.02") and r.analytics_keys == ("договор", "контрагент")
+    assert (r.period_from, r.period_until) == (P_FROM, P_UNTIL)
+    refused = qualify_strategy(LEDGER, inputs(company="other"), source())
+    assert refused.company == "" and refused.period_from is None  # refusals carry no caller text
+
+
+def test_qualified_digest_covers_the_source_description():
+    base = qualified().digest
+    assert qualify_strategy(LEDGER, inputs(), source(currencies=("MDL", "EUR"))).digest != base
+    assert qualify_strategy(LEDGER, inputs(), source(covered_until=date(2029, 1, 1))).digest != base
+    assert qualify_strategy(LEDGER, inputs(), source(account_codes=("60.01", "60.02", "60.03"))).digest != base
+
+
+def test_mixed_script_company_and_register_are_refused_not_matched():
+    mixed_company = "\u041cOLDRETAIL"  # Cyrillic EM + Latin OLDRETAIL
+    r = qualify_strategy(LEDGER, inputs(company=mixed_company), source())
+    assert r.reason is Reason.INPUT_NOT_DECLARED and r.missing == (InputName.COMPANY,)
+    mixed_register = "\u0425ozraschet"  # Cyrillic Kha + Latin
+    r = qualify_strategy(LEDGER, inputs(register=mixed_register), source(accounting_registers=(mixed_register,)))
+    assert r.reason is Reason.INPUT_INVALID  # the source entry itself is mixed-script
+    r = qualify_strategy(LEDGER, inputs(register=mixed_register), source())
+    assert r.reason is Reason.INPUT_NOT_DECLARED and r.missing == (InputName.REGISTER,)
+    r = qualify_strategy(LEDGER, inputs(), source(companies=(mixed_company,)))
+    assert r.reason is Reason.INPUT_INVALID
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("companies", ("MoldRetail", "MOLDRETAIL")),
+    ("currencies", ("MDL", "mdl")),
+    ("accounting_registers", ("Хозрасчетный", "ХОЗРАСЧЕТНЫЙ")),
+])
+def test_case_colliding_source_entries_are_refused(field, value):
+    assert qualify_strategy(LEDGER, inputs(), source(**{field: value})).reason is Reason.INPUT_INVALID
+
+
+def test_exact_duplicate_source_entries_are_harmless():
+    ok = qualify_strategy(LEDGER, inputs(), source(companies=("MOLDRETAIL", "MOLDRETAIL")))
+    assert ok.state is StrategyState.QUALIFIED
+
+
+@pytest.mark.parametrize(("src_kw", "missing"), [
+    ({"covered_until": P_UNTIL}, None),                          # period_until == covered_until
+    ({"covered_until": date(2026, 12, 31)}, InputName.PERIOD),   # covered one day short
+    ({"covered_from": P_FROM}, None),                            # period_from == covered_from
+    ({"covered_from": date(2026, 1, 2)}, InputName.PERIOD),      # covered starts one day late
+])
+def test_period_boundary_equality(src_kw, missing):
+    r = qualify_strategy(LEDGER, inputs(), source(**src_kw))
+    if missing is None:
+        assert r.state is StrategyState.QUALIFIED
+    else:
+        assert r.state is StrategyState.UNQUALIFIED and r.missing == (missing,)
+
+
+def test_settlements_register_present_but_company_currency_period_missing_is_unqualified():
+    src = source(settlements_registers=("Расчеты",), companies=(), currencies=(),
+                 covered_from=None, covered_until=None)
+    r = qualify_strategy(SETTLE, inputs(register="Расчеты"), src)
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_NOT_IN_SOURCE
+    assert r.missing == (InputName.COMPANY, InputName.CURRENCY, InputName.PERIOD)
+
+
+def test_settlements_strategy_validates_only_the_fields_it_uses():
+    src = source(settlements_registers=("Расчеты",), account_codes=("", 5), analytics_keys="bad")
+    decl = inputs(register="Расчеты", account_codes="bad", analytics_keys=(None,))
+    r = qualify_strategy(SETTLE, decl, src)
+    assert r.state is StrategyState.QUALIFIED
+    assert r.account_codes == () and r.analytics_keys == ()
+    # the ledger strategy does use them
+    assert qualify_strategy(LEDGER, decl, source()).reason is Reason.INPUT_INVALID
+
+
+def test_malformed_settlements_description_is_input_invalid_not_absent():
+    assert qualify_strategy(SETTLE, inputs(register="X"), source(settlements_registers="X")).reason \
+        is Reason.INPUT_INVALID
+    assert qualify_strategy(SETTLE, inputs(register="X"), source(companies=("",))).reason \
+        is Reason.INPUT_INVALID
+
+
+def test_balance_digest_is_exact_beyond_28_significant_digits():
+    a = Decimal("1" * 30 + "." + "1" * 8)          # 38 significant digits, the allowed maximum
+    b = Decimal("1" * 30 + "." + "1" * 7 + "2")
+    va, vb = make_balance_view(qualified(), a), make_balance_view(qualified(), b)
+    assert va.state is ApViewState.BALANCE_ONLY and vb.state is ApViewState.BALANCE_ONLY
+    assert va.digest != vb.digest
+    assert mod._dec_text(a) == "1" * 30 + "." + "1" * 8
+
+
+def test_balance_view_carries_the_strategy_company_and_currency():
+    v = make_balance_view(qualify_strategy(LEDGER, inputs(company="MoldRetail", currency="Mdl"), source()),
+                          Decimal(5))
+    assert (v.company, v.currency) == ("moldretail", "mdl")
+    eur = qualify_strategy(LEDGER, inputs(currency="EUR"), source(currencies=("MDL", "EUR")))
+    mdl = qualify_strategy(LEDGER, inputs(), source(currencies=("MDL", "EUR")))
+    assert make_balance_view(eur, Decimal(5)).currency == "eur"
+    assert make_balance_view(eur, Decimal(5)).digest != make_balance_view(mdl, Decimal(5)).digest
+
+
+def test_hand_built_qualified_result_without_bound_inputs_is_refused():
+    bare = dataclasses.replace(qualified(), company="", currency="")
+    assert make_balance_view(bare, Decimal(1)).state is ApViewState.UNQUALIFIED
+    assert age((item("D", D0, DUE, "1"),), strat=bare).reason is Reason.STRATEGY_NOT_QUALIFIED
+    no_period = dataclasses.replace(qualified(), period_until=None)
+    assert age((item("D", D0, DUE, "1"),), strat=no_period).reason is Reason.STRATEGY_NOT_QUALIFIED
+
+
+@pytest.mark.parametrize(("company", "currency"), [
+    ("OTHER", "MDL"), ("MOLDRETAIL", "EUR"), ("", "MDL"), ("MOLDRETAIL", ""), (None, "MDL"),
+])
+def test_open_item_company_and_currency_must_match_the_strategy(company, currency):
+    row = OpenItem("D", D0, DUE, Decimal(1), currency, company)
+    r = age((item("A", D0, DUE, "1"), row), total=Decimal(2))
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.ITEM_SCOPE_MISMATCH)
+    assert r.buckets == ()
+
+
+def test_open_item_scope_is_compared_after_normalisation():
+    row = OpenItem("D", D0, DUE, Decimal(1), " mdl ", "MoldRetail")
+    assert age((row,)).state is AgingState.AVAILABLE
+
+
+@pytest.mark.parametrize(("as_of", "ok"), [
+    (P_FROM, True), (date(2026, 12, 31), True), (P_UNTIL, False), (date(2027, 6, 1), False),
+    (date(2025, 12, 31), False),
+])
+def test_as_of_must_lie_in_the_half_open_strategy_period(as_of, ok):
+    r = age((OpenItem("D", P_FROM, P_FROM, Decimal(1), "MDL", "MOLDRETAIL"),), as_of)
+    if ok:
+        assert r.state is AgingState.AVAILABLE
+    else:
+        assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.AS_OF_OUT_OF_PERIOD)
+
+
+def test_declared_total_is_mandatory_for_an_available_aging():
+    rows = (item("D", D0, DUE, "10"),)
+    r = compute_aging(qualified(), rows, ASOF)
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.DECLARED_TOTAL_REQUIRED)
+    assert r.buckets == () and r.open_total is None
+    assert compute_aging(qualified(), rows, ASOF, None).reason is Reason.DECLARED_TOTAL_REQUIRED
+    assert compute_aging(qualified(), rows, ASOF, Decimal(10)).state is AgingState.AVAILABLE
+
+
+def test_several_instalments_of_one_document_are_allowed_same_due_date_is_a_duplicate():
+    inst = (item("INV-1", D0, date(2026, 3, 1), "10"), item("INV-1", D0, date(2026, 4, 1), "20"))
+    r = age(inst)
+    assert r.state is AgingState.AVAILABLE and r.open_total == Decimal(30)
+    dup = age((item("INV-1", D0, DUE, "10"), item(" inv-1 ", D0, DUE, "20")))
+    assert dup.reason is Reason.DUPLICATE_ITEM
+
+
+def test_aging_digest_is_bound_to_the_strategy():
+    rows = (item("D", D0, DUE, "1"),)
+    other = qualify_strategy(LEDGER, inputs(), source(currencies=("MDL", "EUR")))
+    assert age(rows).digest != age(rows, strat=other).digest

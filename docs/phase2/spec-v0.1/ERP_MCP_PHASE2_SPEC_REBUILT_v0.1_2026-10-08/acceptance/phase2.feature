@@ -541,37 +541,37 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate contract sides/netting отдельно
 
-  @not_implemented @R2TC091
+  @not_implemented @offline_fixture_coverage_only @R2TC091
   Scenario: R2-TC-091 ledger strategy qualified
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate ledger strategy qualified
 
-  @not_implemented @R2TC092
+  @not_implemented @offline_fixture_coverage_only @R2TC092
   Scenario: R2-TC-092 absent register not fabricated
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate absent register not fabricated
 
-  @not_implemented @R2TC093
+  @not_implemented @offline_fixture_coverage_only @R2TC093
   Scenario: R2-TC-093 balance alone no aging
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate balance alone no aging
 
-  @not_implemented @R2TC094
+  @not_implemented @offline_fixture_coverage_only @R2TC094
   Scenario: R2-TC-094 identity/company/Posted correct
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate identity/company/Posted correct
 
-  @not_implemented @R2TC095
+  @not_implemented @offline_fixture_coverage_only @R2TC095
   Scenario: R2-TC-095 unposted/deleted exclusions
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate unposted/deleted exclusions
 
-  @not_implemented @R2TC096
+  @not_implemented @offline_fixture_coverage_only @R2TC096
   Scenario: R2-TC-096 complete pagination/alias proof
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised

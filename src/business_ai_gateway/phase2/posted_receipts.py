@@ -12,15 +12,31 @@ Rules
 - A page is validated atomically before it is merged. A row with a missing/blank/ambiguous identity
   (see ``_identity``), a non-bool posted flag, a naive timestamp or a non-finite amount refuses the
   whole page (no listing is surfaced); the row is never skipped.
+- Direction is ENFORCED, not asserted: the port receives the direction and every page carries a
+  source-native document kind per row (``Page.kinds``, parallel to ``documents``). A page without a
+  well-formed kind per row is refused (PAGE_DIRECTION_UNPROVEN); a row whose kind is not RECEIPT
+  (sale, return, ...) is never kept and is counted under WRONG_DIRECTION.
+- The alias scope is resolved through the shared normalisation (NFKC + casefold). To stop a request
+  scope that differs only in case/form from the registered one from resolving, tenant and company
+  must already be canonical (``clean_identity(x) == x``, i.e. lower-case) or the request is refused
+  with ALIAS_SCOPE_VIOLATION. A missing supplier reference is refused (ALIAS_NOT_FOUND) BEFORE the
+  resolver is called: names alone never resolve and must not enqueue review items.
 - Kept rows: exact company, counterparty, currency, period [from, until), Posted, not deletion-marked.
   Every other row is counted under exactly ONE reason, first match wins in this order:
-  WRONG_COMPANY, WRONG_COUNTERPARTY, WRONG_CURRENCY, OUT_OF_PERIOD, DELETED, UNPOSTED.
+  WRONG_DIRECTION, WRONG_COMPANY, WRONG_COUNTERPARTY, WRONG_CURRENCY, OUT_OF_PERIOD, DELETED, UNPOSTED.
 - COMPLETE only when a terminal page (no next token) was reached, the token chain was contiguous
   (no blank/repeated/regressed token, optional ``page_index`` gap-free), no ``doc_ref`` repeated in
   any page (kept or excluded), the snapshot ref never changed, and page/row counts stayed within the
   hard bounds. Otherwise ``complete=False`` plus a reason code; the retriever, not the port, decides.
+  A single terminal page with zero rows and no ``page_index`` is EMPTY_UNPROVEN (not complete).
+- When the source itself is unreliable (bad page, duplicate, snapshot change, token/page-chain
+  defect) no listing is surfaced (``_NO_LISTING``); only honest truncation (SOURCE_ERROR,
+  PAGE_LIMIT_HIT, ROW_LIMIT_HIT) keeps the validated earlier pages as an INCOMPLETE listing.
 - The proof digest binds alias, company, counterparty, currency, period, direction, source id,
-  snapshot ref, page tokens, exclusion counts and the canonical digest of the returned listing.
+  snapshot ref, page tokens, exclusion counts and the canonical digest of the returned listing
+  (which itself binds the direction). The digest is an INTEGRITY check against accidental or
+  partial tampering, NOT authenticity: anyone can recompute it, so the assessment re-validates the
+  proof content as well (see ``_completeness``).
 - Reason codes are fixed constants; caller or source text is never echoed into them.
 
 RESIDUAL RISK: the port is trusted to honour the scope it is given only as far as the per-row checks
@@ -35,8 +51,15 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Final, Protocol
 
-from ._identity import exact_text
-from .aliases import AliasOutcome, AliasResolver, AliasScope, Reference, ResolveQuery
+from ._identity import clean_identity, exact_text
+from .aliases import (
+    AliasOutcome,
+    AliasResolver,
+    AliasScope,
+    Reference,
+    ResolutionResult,
+    ResolveQuery,
+)
 from .comparison_snapshot import canonical_digest
 from .purchase_reconciliation import (
     PurchaseDifference,
@@ -67,7 +90,8 @@ __all__ = [
 
 MAX_PAGES: Final = 100
 MAX_ROWS: Final = 10_000
-_MAX_DECIMAL_EXPONENT: Final = 100
+_MAX_ADJUSTED: Final = 30  # same bounds as ap_account_strategy._amount_ok
+_MIN_EXPONENT: Final = -8
 _AUTHORITY: Final = "EVALUATION_ONLY"
 
 
@@ -77,6 +101,7 @@ class Direction(StrEnum):
 
 
 class ExclusionReason(StrEnum):
+    WRONG_DIRECTION = "WRONG_DIRECTION"
     UNPOSTED = "UNPOSTED"
     DELETED = "DELETED"
     WRONG_COMPANY = "WRONG_COMPANY"
@@ -86,7 +111,7 @@ class ExclusionReason(StrEnum):
 
 
 _EXCLUSION_ORDER: Final = (
-    ExclusionReason.UNPOSTED, ExclusionReason.DELETED, ExclusionReason.WRONG_COMPANY,
+    ExclusionReason.WRONG_DIRECTION, ExclusionReason.UNPOSTED, ExclusionReason.DELETED, ExclusionReason.WRONG_COMPANY,
     ExclusionReason.WRONG_COUNTERPARTY, ExclusionReason.WRONG_CURRENCY,
     ExclusionReason.OUT_OF_PERIOD,
 )
@@ -114,6 +139,8 @@ class RetrievalReason(StrEnum):
     PAGE_IDENTITY_INVALID = "PAGE_IDENTITY_INVALID"
     PAGE_POSTED_FLAG_UNQUALIFIED = "PAGE_POSTED_FLAG_UNQUALIFIED"
     PAGE_ROW_INVALID = "PAGE_ROW_INVALID"
+    PAGE_DIRECTION_UNPROVEN = "PAGE_DIRECTION_UNPROVEN"
+    EMPTY_UNPROVEN = "EMPTY_UNPROVEN"
     SNAPSHOT_REF_INVALID = "SNAPSHOT_REF_INVALID"
     SNAPSHOT_CHANGED = "SNAPSHOT_CHANGED"
     TOKEN_MISSING = "TOKEN_MISSING"
@@ -131,24 +158,33 @@ class RetrievalReason(StrEnum):
 _NO_LISTING: Final = frozenset({
     RetrievalReason.PAGE_INVALID, RetrievalReason.PAGE_IDENTITY_INVALID,
     RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED, RetrievalReason.PAGE_ROW_INVALID,
+    RetrievalReason.PAGE_DIRECTION_UNPROVEN,
     RetrievalReason.SNAPSHOT_REF_INVALID, RetrievalReason.PROOF_UNAVAILABLE,
     RetrievalReason.INTERNAL_ERROR,
+    RetrievalReason.DUPLICATE_DOCUMENT, RetrievalReason.SNAPSHOT_CHANGED,
+    RetrievalReason.PAGE_GAP, RetrievalReason.TOKEN_MISSING, RetrievalReason.TOKEN_REPEATED,
+    RetrievalReason.TOKEN_REGRESSED,
 })
 
 
 @dataclass(frozen=True, slots=True)
 class Page:
-    """One page served by the source. ``page_index`` is optional (0-based) extra chain evidence."""
+    """One page served by the source. ``page_index`` is optional (0-based) extra chain evidence.
+    ``kinds`` is the source-native document kind of each row (parallel to ``documents``, same
+    length); ``PurchaseDocument`` carries no direction, so this is where it is proven."""
     documents: tuple[PurchaseDocument, ...]
     next_token: str | None
     snapshot_ref: str
     page_index: int | None = None
+    kinds: tuple[str, ...] | None = None
 
 
 class PageSource(Protocol):
     """Read-only port. Raises anything on failure; the retriever maps it to SOURCE_ERROR."""
 
-    def fetch_page(self, scope: PurchaseScope, continuation_token: str | None) -> Page: ...
+    def fetch_page(
+        self, scope: PurchaseScope, direction: Direction, continuation_token: str | None,
+    ) -> Page: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,8 +250,8 @@ def _aware(value: object) -> bool:
 
 
 def _amount_ok(value: object) -> bool:
-    return (type(value) is Decimal and value.is_finite()
-            and abs(value.adjusted()) <= _MAX_DECIMAL_EXPONENT)
+    return (type(value) is Decimal and value.is_finite() and value.adjusted() <= _MAX_ADJUSTED
+            and value.as_tuple().exponent >= _MIN_EXPONENT)  # type: ignore[operator]
 
 
 def _doc_payload(doc: PurchaseDocument) -> dict[str, object]:
@@ -239,7 +275,7 @@ def _scope_payload(scope: PurchaseScope) -> dict[str, object]:
 def _listing_digest(listing: PurchaseListing) -> str:
     return canonical_digest({
         "scope": _scope_payload(listing.scope), "snapshot_ref": listing.snapshot_ref,
-        "complete": listing.complete,
+        "complete": listing.complete, "direction": Direction.RECEIPT.value,
         "documents": [_doc_payload(d) for d in sorted(listing.documents, key=lambda d: d.doc_ref)],
     })
 
@@ -259,7 +295,10 @@ def _proof_payload(p: ReceiptsProof) -> dict[str, object]:
     }
 
 
-def _classify(doc: PurchaseDocument, scope: PurchaseScope) -> ExclusionReason | None:
+def _classify(doc: PurchaseDocument, scope: PurchaseScope,
+              kind: str = Direction.RECEIPT.value) -> ExclusionReason | None:
+    if kind != Direction.RECEIPT.value:
+        return ExclusionReason.WRONG_DIRECTION
     if doc.company_ref != scope.company_ref:
         return ExclusionReason.WRONG_COMPANY
     if doc.counterparty_ref != scope.counterparty_ref:
@@ -349,6 +388,13 @@ class PostedReceiptsRetriever:
         ref = request.supplier_reference
         if ref is not None and type(ref) is not Reference:
             return _refused(RetrievalReason.ALIAS_REJECTED)
+        # the resolver normalises the scope (NFKC + casefold): only an already-canonical tenant and
+        # company may reach it, otherwise "ACME" would silently resolve inside "acme"
+        if (clean_identity(scope.tenant_id) != scope.tenant_id
+                or clean_identity(scope.company_ref) != scope.company_ref):
+            return _refused(RetrievalReason.ALIAS_SCOPE_VIOLATION)
+        if ref is None:  # names never resolve; the resolver (side effects, not thread-safe) is not called
+            return _refused(RetrievalReason.ALIAS_NOT_FOUND)
         try:
             resolved = self._resolver.resolve(
                 AliasScope(scope.tenant_id, scope.company_ref),
@@ -356,9 +402,11 @@ class PostedReceiptsRetriever:
             )
         except Exception:  # noqa: BLE001 - fixed code only, no text leak
             return _refused(RetrievalReason.ALIAS_REJECTED)
+        if type(resolved) is not ResolutionResult:
+            return _refused(RetrievalReason.ALIAS_REJECTED)
         if resolved.outcome is not AliasOutcome.RESOLVED:
             return _refused(_ALIAS_REASONS.get(resolved.outcome, RetrievalReason.ALIAS_REJECTED))
-        if resolved.entity_id != scope.counterparty_ref or ref is None:
+        if resolved.entity_id != scope.counterparty_ref:
             return _refused(RetrievalReason.ALIAS_COUNTERPARTY_MISMATCH)
         return self._walk(scope, resolved.entity_id, ref, max_pages, max_rows)
 
@@ -382,24 +430,26 @@ class PostedReceiptsRetriever:
                 break
             tokens.append(token)
             try:
-                page = self._source.fetch_page(scope, token)
+                page = self._source.fetch_page(scope, Direction.RECEIPT, token)
             except Exception:  # noqa: BLE001 - fixed code only, no text leak
                 reason = RetrievalReason.SOURCE_ERROR
                 break
-            reason, page_kept, page_counts, page_refs = self._accept_page(
+            reason, page_kept, page_counts, page_refs, n_rows = self._accept_page(
                 page, scope, snapshot, pages, token, seen_tokens, seen_refs, rows, max_rows,
             )
             if reason is not RetrievalReason.OK:
                 break
             snapshot = page.snapshot_ref
             pages += 1
-            rows += len(page.documents)
+            rows += n_rows
             kept.extend(page_kept)
             seen_refs |= page_refs
             for r, n in page_counts.items():
                 counts[r] += n
             if page.next_token is None:
                 terminal = True
+                if rows == 0 and pages == 1 and page.page_index is None:
+                    reason = RetrievalReason.EMPTY_UNPROVEN  # nothing proves the source is empty
                 break
             if token is not None:
                 seen_tokens.add(token)
@@ -415,14 +465,16 @@ class PostedReceiptsRetriever:
     def _accept_page(
         page: object, scope: PurchaseScope, snapshot: str | None, pages: int, token: str | None,
         seen_tokens: set[str], seen_refs: set[str], rows: int, max_rows: int,
-    ) -> tuple[RetrievalReason, list[PurchaseDocument], dict[ExclusionReason, int], set[str]]:
-        none: tuple[list[PurchaseDocument], dict[ExclusionReason, int], set[str]] = ([], {}, set())
+    ) -> tuple[RetrievalReason, list[PurchaseDocument], dict[ExclusionReason, int], set[str], int]:
+        none: tuple[list[PurchaseDocument], dict[ExclusionReason, int], set[str], int] = (
+            [], {}, set(), 0)
 
         def stop(r: RetrievalReason):
             return (r, *none)
 
         if type(page) is not Page or type(page.documents) not in (tuple, list):
             return stop(RetrievalReason.PAGE_INVALID)
+        docs = tuple(page.documents)  # one snapshot of the (possibly mutable) row container
         if not _strict(page.snapshot_ref):
             return stop(RetrievalReason.SNAPSHOT_REF_INVALID)
         if snapshot is not None and page.snapshot_ref != snapshot:
@@ -443,26 +495,31 @@ class PostedReceiptsRetriever:
                 return stop(RetrievalReason.TOKEN_REPEATED)
             if nxt in seen_tokens:
                 return stop(RetrievalReason.TOKEN_REGRESSED)
-        if rows + len(page.documents) > max_rows:
+        if rows + len(docs) > max_rows:
             return stop(RetrievalReason.ROW_LIMIT_HIT)
-        for doc in page.documents:
+        kinds = page.kinds
+        if (type(kinds) not in (tuple, list) or len(kinds) != len(docs)
+                or not all(_strict(k) for k in kinds)):
+            return stop(RetrievalReason.PAGE_DIRECTION_UNPROVEN)
+        kinds = tuple(kinds)
+        for doc in docs:
             bad = _check_row(doc)
             if bad is not None:
                 return stop(bad)
         page_refs: set[str] = set()
-        for doc in page.documents:
+        for doc in docs:
             if doc.doc_ref in seen_refs or doc.doc_ref in page_refs:
                 return stop(RetrievalReason.DUPLICATE_DOCUMENT)
             page_refs.add(doc.doc_ref)
         page_kept: list[PurchaseDocument] = []
         page_counts = {r: 0 for r in _EXCLUSION_ORDER}
-        for doc in page.documents:
-            why = _classify(doc, scope)
+        for doc, kind in zip(docs, kinds, strict=True):
+            why = _classify(doc, scope, kind)
             if why is None:
                 page_kept.append(doc)
             else:
                 page_counts[why] += 1
-        return RetrievalReason.OK, page_kept, page_counts, page_refs
+        return RetrievalReason.OK, page_kept, page_counts, page_refs, len(docs)
 
     @staticmethod
     def _finish(
@@ -487,7 +544,9 @@ class PostedReceiptsRetriever:
             )
             proof = replace(draft, digest=canonical_digest(_proof_payload(draft)))
         except Exception:  # noqa: BLE001 - fixed code only, no text leak
-            return _refused(RetrievalReason.PROOF_UNAVAILABLE)
+            # keep the original stop reason; PROOF_UNAVAILABLE only when nothing else went wrong
+            return _refused(reason if reason is not RetrievalReason.OK
+                            else RetrievalReason.PROOF_UNAVAILABLE)
         return RetrievalResult(complete, reason, listing, proof)
 
 
@@ -516,7 +575,34 @@ class ReceiptsAssessment:
     authority: str = _AUTHORITY
 
 
+def _tokens_ok(tokens: object, pages: object) -> bool:
+    if type(tokens) is not tuple or type(pages) is not int or pages != len(tokens):
+        return False
+    if not 1 <= pages <= MAX_PAGES or tokens[0] is not None:
+        return False
+    rest = tokens[1:]
+    return all(_strict(t) for t in rest) and len(set(rest)) == len(rest)
+
+
+def _counts_ok(proof: ReceiptsProof) -> bool:
+    ex = proof.exclusions
+    if type(ex) is not tuple or len(ex) != len(_EXCLUSION_ORDER):
+        return False
+    for item, expect in zip(ex, _EXCLUSION_ORDER, strict=True):
+        if type(item) is not tuple or len(item) != 2:
+            return False
+        name, n = item
+        if name != expect.value or type(n) is not int or n < 0:
+            return False
+    seen, kept = proof.rows_seen, proof.kept_count
+    return (type(seen) is int and type(kept) is int and kept >= 0
+            and seen == kept + sum(n for _, n in ex) and seen <= MAX_ROWS)
+
+
 def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
+    """COMPLETE only for a result whose proof CONTENT is internally consistent and whose rows are
+    re-validated. The digests are an integrity check, not authenticity: a caller can recompute them
+    for a forged result, so every digest-bound field is cross-checked against the listing as well."""
     inc = CompletenessVerdict.INCOMPLETE
     if type(result) is not RetrievalResult:
         return inc, "RESULT_INVALID"
@@ -540,21 +626,43 @@ def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
                 s.company_ref, s.counterparty_ref, s.currency, s.source_id, s.tenant_id,
                 s.from_inclusive, s.until_exclusive, listing.snapshot_ref):
             return inc, "PROOF_SCOPE_MISMATCH"
-        if any(_classify(d, s) is not None for d in listing.documents):
+        docs = tuple(listing.documents)
+        if (proof.direction != Direction.RECEIPT.value or proof.reason != RetrievalReason.OK.value
+                or proof.kept_count != len(docs) or not _counts_ok(proof)
+                or not _tokens_ok(proof.page_tokens, proof.pages_fetched)
+                or len({getattr(d, "doc_ref", None) for d in docs}) != len(docs)):
+            return inc, "PROOF_CONTENT_INCONSISTENT"
+        if any(_check_row(d) is not None for d in docs):
+            return inc, "PROOF_ROW_INVALID"
+        if any(_classify(d, s) is not None for d in docs):
             return inc, "DOCUMENT_OUT_OF_SCOPE"
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
         return inc, "PROOF_UNVERIFIABLE"
     return CompletenessVerdict.COMPLETE, "PAGINATION_PROVEN_COMPLETE"
 
 
+def _safe_digest(listing: object) -> str | None:
+    try:
+        return _listing_digest(listing) if type(listing) is PurchaseListing else None  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001 - fixed code only, no text leak
+        return None
+
+
 def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
-    """Compare the retrieved gateway listing with the native journal listing; three verdicts."""
+    """Compare the retrieved gateway listing with the native journal listing; three verdicts.
+
+    Correctness is only assessed against a gateway listing proven COMPLETE; otherwise it is
+    INCONCLUSIVE (GATEWAY_NOT_PROVEN_COMPLETE) and the discrepancy NOT_ASSESSABLE, so a partial or
+    forged result can never show MATCH/NONE. The assessment digest binds the proof digest, both
+    listing digests, the snapshot ref and the scope."""
     completeness, c_reason = _completeness(result)
     correctness = PurchaseResultKind.INCONCLUSIVE
     k_reason = "GATEWAY_LISTING_MISSING"
     differences: tuple[PurchaseDifference, ...] = ()
     gateway = result.listing if type(result) is RetrievalResult else None
-    if type(native) is not PurchaseListing:
+    if completeness is CompletenessVerdict.INCOMPLETE:
+        k_reason = "GATEWAY_NOT_PROVEN_COMPLETE"
+    elif type(native) is not PurchaseListing:
         k_reason = "NATIVE_LISTING_UNQUALIFIED"
     elif type(gateway) is PurchaseListing:
         try:
@@ -568,11 +676,21 @@ def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
         discrepancy = DiscrepancyVerdict.NONE
     else:
         discrepancy = DiscrepancyVerdict.NOT_ASSESSABLE
+    proof = result.proof if type(result) is RetrievalResult else None
+    try:
+        scope_bound = _scope_payload(gateway.scope) if type(gateway) is PurchaseListing else None
+    except Exception:  # noqa: BLE001 - fixed code only, no text leak
+        scope_bound = None
     digest = canonical_digest({
         "completeness": completeness.value, "completeness_reason": c_reason,
         "correctness": correctness.value, "correctness_reason": k_reason,
         "discrepancy": discrepancy.value,
         "differences": [[d.doc_ref, d.field, d.expected, d.actual] for d in differences],
+        "proof_digest": proof.digest if type(proof) is ReceiptsProof else None,
+        "gateway_listing_digest": _safe_digest(gateway),
+        "native_listing_digest": _safe_digest(native),
+        "snapshot_ref": gateway.snapshot_ref if type(gateway) is PurchaseListing else None,
+        "scope": scope_bound,
         "authority": _AUTHORITY,
     })
     return ReceiptsAssessment(

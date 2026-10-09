@@ -7,9 +7,18 @@ from decimal import Decimal
 
 import pytest
 
+from business_ai_gateway.phase2 import posted_receipts
+from business_ai_gateway.phase2.aliases import (
+    AliasOutcome,
+    AliasResolver,
+    AliasScope,
+    ResolutionResult,
+    SupplierEntity,
+)
 from business_ai_gateway.phase2.posted_receipts import (
     Direction,
     ExclusionReason,
+    Page,
     PostedReceiptsRetriever,
     ReceiptsRequest,
     RetrievalReason,
@@ -17,11 +26,13 @@ from business_ai_gateway.phase2.posted_receipts import (
 from business_ai_gateway.phase2.purchase_reconciliation import (
     PurchaseListing,
     PurchaseResultKind,
+    PurchaseScope,
     compare_posted_purchases,
 )
 from tests.phase2._receipts_helpers import (
     COMPANY,
     FROM,
+    REF,
     SNAP,
     UNTIL,
     VENDOR,
@@ -48,9 +59,9 @@ def test_tc094_only_requested_company_and_counterparty_returned_identity_round_t
     mine = doc("d-1", number="150", amount="41.20")
     rows = [
         mine,
-        doc("d-2", company="OTHER-CO"),
+        doc("d-2", company="other-co"),
         doc("d-3", vendor="OTHER-VENDOR"),
-        doc("d-1x", company="OTHER-CO", number="150"),  # same number, other company
+        doc("d-1x", company="other-co", number="150"),  # same number, other company
     ]
     r, src = retriever({None: page(rows)})
     res = r.retrieve(request())
@@ -90,16 +101,19 @@ def test_tc095_each_exclusion_counted_under_its_own_reason_and_never_listed():
         doc("currency", currency="EUR"),
         doc("before", at=datetime(2026, 7, 31, 23, 59, 59, tzinfo=FROM.tzinfo)),
         doc("until", at=UNTIL),  # [from, until): the upper bound is excluded
+        doc("sale"),
+        doc("return"),
     ]
-    r, _ = retriever({None: page(rows)})
+    kinds = ("RECEIPT",) * 8 + ("SALE", "RETURN")
+    r, _ = retriever({None: page(rows, kinds=kinds)})
     res = r.retrieve(request())
     assert [d.doc_ref for d in res.listing.documents] == ["keep"]
     c = counts(res)
     assert c == {
-        "UNPOSTED": 1, "DELETED": 1, "WRONG_COMPANY": 1, "WRONG_COUNTERPARTY": 1,
-        "WRONG_CURRENCY": 1, "OUT_OF_PERIOD": 2,
+        "WRONG_DIRECTION": 2, "UNPOSTED": 1, "DELETED": 1, "WRONG_COMPANY": 1,
+        "WRONG_COUNTERPARTY": 1, "WRONG_CURRENCY": 1, "OUT_OF_PERIOD": 2,
     }
-    assert res.proof.rows_seen == 8 and res.proof.kept_count == 1
+    assert res.proof.rows_seen == 10 and res.proof.kept_count == 1
     assert sum(c.values()) + res.proof.kept_count == res.proof.rows_seen  # nothing dropped silently
 
 
@@ -111,18 +125,39 @@ def test_tc095_lower_bound_is_inclusive_and_excluded_amounts_are_not_in_the_list
     assert sum(d.amount for d in res.listing.documents) == Decimal(1)
 
 
-def test_tc095_precedence_is_deterministic_one_reason_per_document():
-    both = doc("x", posted=False, deleted=True)
-    wrong = doc("y", company="OTHER", posted=False, deleted=True, currency="EUR")
-    res = retriever({None: page([both, wrong])})[0].retrieve(request())
-    assert counts(res)["DELETED"] == 1 and counts(res)["UNPOSTED"] == 0
-    assert counts(res)["WRONG_COMPANY"] == 1 and counts(res)["WRONG_CURRENCY"] == 0
+_PRECEDENCE = [
+    # (reason, row kind, field changes): row i violates reason i AND every later one
+    ("WRONG_DIRECTION", "SALE", {"company": "OTHER", "vendor": "OTHER", "currency": "EUR",
+                                 "at": datetime(2026, 1, 1, tzinfo=FROM.tzinfo),
+                                 "deleted": True, "posted": False}),
+    ("WRONG_COMPANY", "RECEIPT", {"company": "OTHER", "vendor": "OTHER", "currency": "EUR",
+                                  "at": datetime(2026, 1, 1, tzinfo=FROM.tzinfo),
+                                  "deleted": True, "posted": False}),
+    ("WRONG_COUNTERPARTY", "RECEIPT", {"vendor": "OTHER", "currency": "EUR",
+                                       "at": datetime(2026, 1, 1, tzinfo=FROM.tzinfo),
+                                       "deleted": True, "posted": False}),
+    ("WRONG_CURRENCY", "RECEIPT", {"currency": "EUR",
+                                   "at": datetime(2026, 1, 1, tzinfo=FROM.tzinfo),
+                                   "deleted": True, "posted": False}),
+    ("OUT_OF_PERIOD", "RECEIPT", {"at": datetime(2026, 1, 1, tzinfo=FROM.tzinfo),
+                                  "deleted": True, "posted": False}),
+    ("DELETED", "RECEIPT", {"deleted": True, "posted": False}),
+    ("UNPOSTED", "RECEIPT", {"posted": False}),
+]
 
 
-def test_all_six_reasons_always_present_in_the_proof_even_when_zero():
+@pytest.mark.parametrize("reason,kind,changes", _PRECEDENCE, ids=[p[0] for p in _PRECEDENCE])
+def test_tc095_precedence_is_deterministic_one_reason_per_document(reason, kind, changes):
+    row = doc("x", **changes)
+    res = retriever({None: page([row], kinds=(kind,))})[0].retrieve(request())
+    assert res.listing.documents == ()
+    assert {k: v for k, v in counts(res).items() if v} == {reason: 1}  # exactly ONE reason
+
+
+def test_all_seven_reasons_always_present_in_the_proof_even_when_zero():
     res = retriever({None: page([doc("a")])})[0].retrieve(request())
     assert [k for k, _ in res.proof.exclusions] == [e.value for e in (
-        ExclusionReason.UNPOSTED, ExclusionReason.DELETED, ExclusionReason.WRONG_COMPANY,
+        ExclusionReason.WRONG_DIRECTION, ExclusionReason.UNPOSTED, ExclusionReason.DELETED, ExclusionReason.WRONG_COMPANY,
         ExclusionReason.WRONG_COUNTERPARTY, ExclusionReason.WRONG_CURRENCY,
         ExclusionReason.OUT_OF_PERIOD)]
     assert all(v == 0 for _, v in res.proof.exclusions)
@@ -155,6 +190,10 @@ def test_all_rows_excluded_is_an_empty_complete_listing_that_proves_nothing_down
     ({"amount": Decimal("Infinity")}, RetrievalReason.PAGE_ROW_INVALID),
     ({"amount": 41.2}, RetrievalReason.PAGE_ROW_INVALID),  # float never accepted
     ({"amount": Decimal("1E+500")}, RetrievalReason.PAGE_ROW_INVALID),
+    ({"amount": Decimal("1E+31")}, RetrievalReason.PAGE_ROW_INVALID),  # above ap _MAX_ADJUSTED
+    ({"amount": Decimal("1E-9")}, RetrievalReason.PAGE_ROW_INVALID),  # finer than 8 decimals
+    ({"amount": Decimal("1E-500")}, RetrievalReason.PAGE_ROW_INVALID),
+    ({"amount": Decimal("1" * 60)}, RetrievalReason.PAGE_ROW_INVALID),  # absurd digit count
 ])
 def test_bad_row_refuses_the_whole_page_and_surfaces_no_listing(changes, reason):
     rows = [doc("good"), forge(doc("bad"), **changes)]
@@ -165,6 +204,12 @@ def test_bad_row_refuses_the_whole_page_and_surfaces_no_listing(changes, reason)
     assert res.proof.reason == reason.value
 
 
+@pytest.mark.parametrize("amount", ["1E+30", "0.00000001", "-1E+30", "0"])
+def test_amount_at_the_documented_bounds_is_accepted(amount):
+    res = retriever({None: page([doc("a", amount=amount)])})[0].retrieve(request())
+    assert res.complete is True
+
+
 def test_non_document_row_and_malformed_page_are_refused_not_raised():
     for bad in ([object()], [None], [{"doc_ref": "x"}]):
         res = retriever({None: page(bad)})[0].retrieve(request())
@@ -172,6 +217,36 @@ def test_non_document_row_and_malformed_page_are_refused_not_raised():
     for bad_page in (None, "page", {"documents": ()}, 5):
         res = retriever({None: bad_page})[0].retrieve(request())
         assert res.reason is RetrievalReason.PAGE_INVALID and res.complete is False
+
+
+# -- direction is enforced from the source-native kind ----------------------------------------------
+def test_direction_is_passed_to_the_port_on_every_page():
+    r, src = retriever({None: page([doc("a")], "tok-1", SNAP, 0),
+                        "tok-1": page([doc("b")], None, SNAP, 1)})
+    assert r.retrieve(request()).complete is True
+    assert src.directions == [Direction.RECEIPT, Direction.RECEIPT]
+
+
+def test_sale_and_return_rows_are_never_kept_and_are_counted_as_wrong_direction():
+    rows = [doc("r"), doc("s"), doc("ret")]
+    res = retriever({None: page(rows, kinds=("RECEIPT", "SALE", "RETURN"))})[0].retrieve(request())
+    assert [d.doc_ref for d in res.listing.documents] == ["r"]
+    assert counts(res)["WRONG_DIRECTION"] == 2 and res.proof.rows_seen == 3
+    assert res.complete is True  # the exclusion is counted, the page is still honest
+
+
+@pytest.mark.parametrize("kinds", [
+    None, (), ("RECEIPT", "RECEIPT"), ("",), (" RECEIPT",), (None,), (1,), ("RECEI\u200bPT",), "R",
+])
+def test_page_without_a_well_formed_kind_per_row_is_refused_and_surfaces_no_listing(kinds):
+    res = retriever({None: Page((doc("a"),), None, SNAP, None, kinds)})[0].retrieve(request())
+    assert res.reason is RetrievalReason.PAGE_DIRECTION_UNPROVEN and res.complete is False
+    assert res.listing is None and res.proof.listing_digest is None
+
+
+def test_a_lowercase_kind_is_not_a_receipt():
+    res = retriever({None: page([doc("a")], kinds=("receipt",))})[0].retrieve(request())
+    assert res.listing.documents == () and counts(res)["WRONG_DIRECTION"] == 1
 
 
 def test_hostile_next_token_and_snapshot_are_refused():
@@ -255,16 +330,18 @@ def test_bad_collaborators_are_refused_not_raised():
 
 def test_reason_codes_never_echo_caller_input():
     r, src = retriever({None: page([doc("a")])})
-    attempts = [
+    requests = [
         request(direction=HOSTILE),
         request(sc=forge_scope(scope(), currency=HOSTILE)),
         request(sc=forge_scope(scope(), company_ref=HOSTILE)),
+        request(sc=forge_scope(scope(), tenant_id=HOSTILE)),
         request(name=HOSTILE, ref=None),
-        r.retrieve(HOSTILE),
+        HOSTILE,
     ]
-    for att in attempts:
-        res = att if hasattr(att, "reason") else r.retrieve(att)
-        assert HOSTILE not in repr(res.reason) and HOSTILE not in str(res.reason.value)
+    for req in requests:
+        res = r.retrieve(req)
+        assert res.complete is False
+        assert HOSTILE not in repr(res)  # the whole result, not just the reason
     assert src.calls == []
 
 
@@ -273,6 +350,101 @@ def test_source_exception_text_is_not_echoed():
     res = r.retrieve(request())
     assert res.reason is RetrievalReason.SOURCE_ERROR
     assert HOSTILE not in repr(res)
+
+
+# -- alias scope / resolver hygiene ----------------------------------------------------------------
+def _scoped_resolver(tenant, company):
+    res = AliasResolver(clock=lambda: datetime(2026, 10, 10, tzinfo=FROM.tzinfo))
+    res.add_entity(SupplierEntity(VENDOR, AliasScope(tenant, company), "Moldretail SRL", (REF,)))
+    return res
+
+
+def _purchase_scope(tenant, company):
+    return PurchaseScope(tenant, "onec-reference", company, VENDOR, FROM, UNTIL, "MDL")
+
+
+def test_canonical_lowercase_tenant_and_company_still_resolve():
+    src = FakeSource({None: page([doc("a", company="acme")])})
+    out = PostedReceiptsRetriever(src, _scoped_resolver("acme", "acme")).retrieve(
+        request(sc=_purchase_scope("acme", "acme")))
+    assert out.complete is True
+
+
+@pytest.mark.parametrize("tenant,company", [("ACME", "acme"), ("acme", "ACME"), ("Acme", "Acme")])
+def test_non_canonical_tenant_or_company_never_resolves_inside_the_casefolded_scope(tenant, company):
+    src = FakeSource({None: page([doc("a", company=company)])})
+    out = PostedReceiptsRetriever(src, _scoped_resolver("acme", "acme")).retrieve(
+        request(sc=_purchase_scope(tenant, company)))
+    assert out.reason is RetrievalReason.ALIAS_SCOPE_VIOLATION and out.complete is False
+    assert out.listing is None and out.proof is None and src.calls == []
+
+
+def test_resolver_scope_violation_outcome_maps_to_alias_scope_violation():
+    class Violating(AliasResolver):
+        def resolve(self, scope_, query):
+            return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
+
+    src = FakeSource({None: page([doc("a")])})
+    out = PostedReceiptsRetriever(src, Violating(clock=lambda: FROM)).retrieve(request())
+    assert out.reason is RetrievalReason.ALIAS_SCOPE_VIOLATION and src.calls == []
+
+
+def test_missing_reference_is_refused_before_the_resolver_is_called():
+    calls = []
+
+    class Spy(AliasResolver):
+        def resolve(self, scope_, query):
+            calls.append(query)
+            return ResolutionResult(AliasOutcome.NOT_FOUND)
+
+    src = FakeSource({None: page([doc("a")])})
+    out = PostedReceiptsRetriever(src, Spy(clock=lambda: FROM)).retrieve(
+        request(ref=None, name="Moldretail SRL"))
+    assert out.reason is RetrievalReason.ALIAS_NOT_FOUND and out.proof is None
+    assert calls == [] and src.calls == []
+
+
+def test_a_resolver_returning_a_look_alike_result_is_rejected():
+    from types import SimpleNamespace
+
+    class Fake(AliasResolver):
+        def resolve(self, scope_, query):
+            return SimpleNamespace(outcome=AliasOutcome.RESOLVED, entity_id=VENDOR)
+
+    src = FakeSource({None: page([doc("a")])})
+    out = PostedReceiptsRetriever(src, Fake(clock=lambda: FROM)).retrieve(request())
+    assert out.reason is RetrievalReason.ALIAS_REJECTED and src.calls == []
+
+
+# -- empty pages / proof failure -------------------------------------------------------------------
+def test_single_empty_terminal_page_without_page_index_is_not_complete():
+    res = retriever({None: page([])})[0].retrieve(request())
+    assert res.reason is RetrievalReason.EMPTY_UNPROVEN and res.complete is False
+    assert res.proof.complete is False and res.listing.complete is False
+
+
+def test_empty_terminal_page_with_page_index_zero_is_complete():
+    res = retriever({None: page([], None, SNAP, 0)})[0].retrieve(request())
+    assert res.complete is True and res.reason is RetrievalReason.OK
+
+
+def test_proof_failure_keeps_the_original_stop_reason(monkeypatch):
+    def boom(_payload):
+        raise RuntimeError(HOSTILE)
+
+    monkeypatch.setattr(posted_receipts, "canonical_digest", boom)
+    res = retriever({None: RuntimeError("down")})[0].retrieve(request())
+    assert res.reason is RetrievalReason.SOURCE_ERROR and res.complete is False
+    assert res.proof is None and res.listing is None and HOSTILE not in repr(res)
+    ok = retriever({None: page([doc("a")])})[0].retrieve(request())
+    assert ok.reason is RetrievalReason.PROOF_UNAVAILABLE and ok.complete is False
+
+
+def test_unscripted_token_is_a_test_script_error_not_a_source_error():
+    from tests.phase2._receipts_helpers import UnscriptedTokenError
+    src = FakeSource({})
+    with pytest.raises(UnscriptedTokenError):
+        src.fetch_page(scope(), Direction.RECEIPT, "nope")
 
 
 def test_retrieval_is_read_only_scope_passed_unchanged_and_result_frozen():
