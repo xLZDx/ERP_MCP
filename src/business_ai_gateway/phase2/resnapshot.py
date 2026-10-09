@@ -33,7 +33,7 @@ from enum import StrEnum
 from typing import Final
 
 from .drift import CaptureOutcomeKind, DriftDecision, DriftEventKind
-from .ports import CursorOutboxPort, LedgerPort, PortError, Scope
+from .ports import CursorOutboxPort, CursorView, LedgerPort, PortError, Scope
 
 __all__ = ["ResnapshotBlocked", "ResnapshotReason", "ResnapshotState", "ResnapshotTracker"]
 
@@ -164,9 +164,10 @@ class ResnapshotTracker:
                 cursor = await cursors.get_cursor(actor, scope, connection_id)
                 if epoch_changed:
                     found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
-                elif cursor is None:
+                elif type(cursor) is not CursorView or cursor.connection_id != connection_id:
+                    # None, a malformed object or another connection's cursor is no cursor at all
                     found[connection_id] = ResnapshotReason.CURSOR_MISSING
-                elif cursor.scope_epoch != live:
+                elif type(cursor.scope_epoch) is not int or cursor.scope_epoch != live:
                     # the cursor was bound to an older scope epoch (no rebase since the change)
                     found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
         except PortError as exc:

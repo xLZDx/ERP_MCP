@@ -24,6 +24,7 @@ one was revoked or expired). An unexpected error BEFORE the write call fails clo
 from __future__ import annotations
 
 import hmac
+import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -131,6 +132,20 @@ _ROLLED_BACK_CODES = frozenset({
 })
 
 
+_SQL_STATE_CODE = re.compile(r"^SQL_[0-9A-Z]{5}$")
+
+
+def _safe_code(code: object, fallback: str) -> str:
+    """Outward error code: only known promotion/SQL-state codes pass; anything else is a fixed code.
+
+    A raw exception class name or an arbitrary code text (possibly attacker- or database-controlled)
+    is never returned to the caller."""
+    if type(code) is str and (code in _PORT_CODES or code in _ROLLED_BACK_CODES
+                              or code in _NO_READ_RIGHT or _SQL_STATE_CODE.fullmatch(code)):
+        return code
+    return fallback
+
+
 def _is_digest(value: object) -> bool:
     return (isinstance(value, str) and len(value) == 64
             and all(c in "0123456789abcdef" for c in value))
@@ -221,7 +236,7 @@ class PromotionService:
         if not isinstance(att.evidence_digest, str) or not hmac.compare_digest(
                 att.evidence_digest.encode("utf-8"), recomputed.encode("utf-8")):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_DIGEST_MISMATCH")
-        if not await self._reader.is_trusted_reviewer(scope, att.observer):
+        if await self._reader.is_trusted_reviewer(scope, att.observer) is not True:
             return PromotionResult(Outcome.REJECTED_UNTRUSTED, code="REVIEWER_NOT_TRUSTED")
         if approver_id in (normalize_identity(att.observer), normalize_identity(att.proposer)):
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
@@ -237,18 +252,20 @@ class PromotionService:
             if outcome is not None:
                 return PromotionResult(outcome, code=exc.code)
             if exc.code in _ROLLED_BACK_CODES:
-                return PromotionResult(Outcome.FAILED_CLOSED, code=exc.code)
+                return PromotionResult(Outcome.FAILED_CLOSED, code=_safe_code(exc.code, "PORT_REJECTED"))
             # unknown code (e.g. a connection error while committing): the commit may have landed
-            return PromotionResult(Outcome.INDETERMINATE, code=exc.code)
-        except Exception as exc:  # noqa: BLE001 - the commit may have happened; class name only
-            return PromotionResult(Outcome.INDETERMINATE, code=type(exc).__name__)
+            return PromotionResult(Outcome.INDETERMINATE,
+                                   code=_safe_code(exc.code, "WRITE_RESULT_UNKNOWN"))
+        except Exception:  # noqa: BLE001 - the commit may have happened; fixed code, no class name
+            return PromotionResult(Outcome.INDETERMINATE, code="WRITE_EXCEPTION")
         if type(version) is not int or version != expected_version + 1:
             return PromotionResult(Outcome.INDETERMINATE, code="UNEXPECTED_VERSION")
         return PromotionResult(success, new_version=version)
 
     @staticmethod
     def _failed(exc: Exception) -> PromotionResult:
-        code = exc.code if isinstance(exc, PortError) else type(exc).__name__
+        code = (_safe_code(exc.code, "PREWRITE_PORT_ERROR") if isinstance(exc, PortError)
+                else "PREWRITE_FAILURE")
         return PromotionResult(Outcome.FAILED_CLOSED, code=code)
 
 

@@ -69,3 +69,5 @@ D-017 fix (capacity drill cluster identity): `test_g1_capacity_smoke.py` 6 passe
 ## Sprint S5 (D-018), 2026-10-09
 
 Measured on the S5 fix commit tree (parent eeafb82): offline `tests/phase2` 1567 passed / 229 skipped; ruff clean on src, tests/phase2 and scripts; no NUL bytes. No database code in this sprint, so no integration run. Covered: TC070-081 plus the review batch (random permit ids, owner registry, params/requester binding, max_uses; vault digest validation, locking, media type; boundary registry freeze and bounds; parser JSON IPC, cross-sheet bounds, namespace and active-part denials, shared identity spoofing). Not run (explicit): mutation checks (operator ban), Release 1 regression, GitHub CI, the POSIX-only RLIMIT memory test (skipped on Windows, the child memory bound is NOT enforced here), real UI / COM (US-021..023 are S5b).
+
+D-019 (issues #28/#33): offline tests/phase2 1586 passed / 229 skipped, ruff clean, no NUL bytes; promotion 105 and resnapshot tests green. The PostgreSQL integration run on the commit carrying this entry is recorded in the follow-up evidence line. Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.
