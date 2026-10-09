@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S5: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S5: итоги</h1>
+<div class="sub">Дата: 2026-10-09 · ветка phase2/living-model-connectors-reconciliation · head af9f287 (запушен; GPT-PM APPROVE на этом head) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ af9f287</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S5 реализован, проверен и опубликован</span> (push <code>6f80219..af9f287</code>, без merge в main и релиза). Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: четыре новых модуля изолированы, к Release 1 ничего не подключено.</p>
+<ul>
+<li>Без DSN: <b>1641 passed, 229 skipped</b>. На одноразовом PostgreSQL: <b>229 integration passed</b> на родительском head 90a3d8b; повтор на af9f287 запущен, результат дописывается отдельно (SQL в этих правках не менялся, GPT-PM принял это как ограничение). <code>ruff</code> чистый, NUL-байтов нет.</li>
+<li>Сверка ревью: три ревьюера конца спринта (0 BLOCKER, около 18 MAJOR) → пакет ebbd2c9; проверка исправлений двумя ревьюерами (0 BLOCKER, 4 новых MAJOR, около 15 MINOR) → пакет af9f287; GPT-PM на af9f287: 0 BLOCKER, 0 MAJOR, <b>APPROVE</b>.</li>
+<li>Заодно закрыты дефекты из GitHub issues #28 (promotion: ответ ревьюера только <code>True</code>, фиксированные внешние коды ошибок) и #33 (resnapshot: курсор обязан быть запрошенным и нужного типа). Они переподтверждены на этой ветке по коду, ветки параллельной сессии не сливались.</li>
+<li>Запрет оператора на мутации соблюдён; ни одной истории не присвоен DONE, максимум <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-024 разрешение на захват</td><td>Scope/окно/режим, prod по умолчанию выключен, идемпотентность с конфликтом, выдаёт зарегистрированный человек-владелец</td><td><span class="ok">DONE (код и тесты, in-memory)</span></td><td>Владельцы и вид актора задаёт вызывающий код; хранилище в памяти; нет аутентифицированного принципала</td></tr>
+<tr><td>E2</td><td>R2-US-025 граница побочных эффектов</td><td>Только READ из allow-list, админ/проведение дисквалифицируют, сброс и пробы записи в prod запрещены</td><td><span class="ok">DONE (код и тесты)</span></td><td>Реестр операций иллюстративный; имена канонизируются, исполнитель обязан использовать каноническое имя</td></tr>
+<tr><td>E3</td><td>R2-US-026 неизменяемые оригиналы</td><td>Случайный идентификатор версии, дубликат идемпотентен, чужой/выдуманный хэш не доказательство, права по текущему ACL</td><td><span class="ok">DONE (код и тесты, in-memory)</span></td><td>Нет реального хранилища и шифрования; xlsx не входит в список типов; админы общие для хранилища</td></tr>
+<tr><td>E4</td><td>R2-US-027 изоляция парсера</td><td>Только значения, макросы/DTD/внешние ссылки/zip-бомба отказ, границы без обрезанного PASS</td><td><span class="warn">PARTIAL</span></td><td>Лимит памяти дочернего процесса не работает на Windows; run_isolated — не песочница; переменные окружения на миг скрыты от других потоков</td></tr>
+<tr><td>—</td><td>Issues #28 и #33</td><td>Фиксированные внешние коды, ответ ревьюера только True, проверка курсора</td><td><span class="ok">DONE</span></td><td>Параллельные ветки с теми же исправлениями не слиты; issues оставлены открытыми для владельца</td></tr>
+<tr><td>—</td><td>R2-US-021/022/023 (реальный UI и COM)</td><td>—</td><td><span class="bad">NOT_STARTED</span></td><td>Перенесены в S5b: нужны реальный интерфейс 1С и COM</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S5). Мутации не запускались по запрету оператора.</p>
+<div class="wrap"><table>
+<thead><tr><th>История</th><th>Требование</th><th>Тест</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Дефект / исправление</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-024 (TC070-072)</td><td>Разрешение: scope, окно, режим; prod выключен; ключ идемпотентности</td><td>test_capture_permit.py</td><td>Каждое нарушение scope/режима/окна по отдельности отказано при рабочем контроле; границы окна точные; тот же ключ с другими параметрами — конфликт; выдаёт только зарегистрированный владелец</td><td>offline</td><td><span class="ok">pass</span></td><td>Выводимый идентификатор разрешения и оракул между тенантами, строка вместо набора владельцев, вытеснение аудита проверками — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-025 (TC073-075)</td><td>Только READ из allow-list; права; пробы в prod</td><td>test_side_effect_boundary.py</td><td>Неклассифицированная операция и пустой план отказаны; админ/проведение/неизвестные права дисквалифицируют; приёмы с регистром, пробелами, нулевой шириной не превращают WRITE в READ</td><td>offline</td><td><span class="ok">pass</span></td><td>Реестр можно было создать изменяемым; лимиты длины и размера плана; враждебный __repr__ — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-026 (TC076-078)</td><td>Неизменяемые оригиналы, доказательство, текущий ACL</td><td>test_artifact_vault.py</td><td>Идентификатор не содержит хэш; подделанная/хэш-только ссылка не доказательство с неотличимыми кодами; после отзыва та же историческая ссылка отказана; 16 параллельных put дают одну версию</td><td>offline</td><td><span class="ok">pass</span></td><td>Падение на суррогате в хэше, строка в admins, нет блокировки, неограниченный аудит — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-027 (TC079-081)</td><td>Только значения; макросы/DTD/внешние ссылки/zip-бомба; границы</td><td>test_safe_parser.py</td><td>Текст формулы не попадает в результат; каждый класс враждебных входов отказан своим кодом без листов; каждая граница даёт BOUND_EXCEEDED без частичных данных</td><td>offline</td><td><span class="ok">pass</span></td><td>pickle от дочернего процесса заменён JSON; усиление по строкам/листам/тексту; подмена атрибутов пространства имён; зависание при неполном ответе — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Идентичность (общий слой)</td><td>Невидимые символы, смешение алфавитов</td><td>test_identity.py</td><td>Селекторы вариантов, смесь латиницы/кириллицы/греческого, приватные и неназначенные символы — не идентичность; same_person видит кириллическую «alice»</td><td>offline</td><td><span class="ok">pass</span></td><td>Слабая нормализация в promotion — заменена строгой</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Issues #28, #33</td><td>Фиксированные коды; курсор запрошенный</td><td>test_promotion.py, test_resnapshot.py</td><td>Класс исключения и неизвестный код не уходят наружу; ответ ревьюера не True — отказ; чужой/кривой курсор требует resnapshot</td><td>offline + PG</td><td><span class="ok">pass</span></td><td>Воспроизведено чтением кода на этой ветке</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Ревью конца спринта</b> (eeafb82; тесты, python, безопасность): 0 BLOCKER, около 18 MAJOR — исправлено пакетом ebbd2c9.</li>
+<li><b>Проверка исправлений</b> (90a3d8b; python и безопасность): 0 BLOCKER, все прежние MAJOR подтверждены закрытыми, 4 новых MAJOR и около 15 MINOR — исправлено пакетом af9f287.</li>
+<li><b>GPT-PM, af9f287:</b> 0 BLOCKER, 0 MAJOR, APPROVE; открытые ограничения отнесены к дорожной карте, <code>run_isolated</code> не называть песочницей.</li>
+<li><b>Процесс:</b> первая попытка обратиться к GPT-PM упёрлась в «устаревшую» сессию PM Bridge (отправка заблокирована политикой, обходной флаг не использовался); после восстановления запрос ушёл один раз на финальный head.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Прогоны мутаций (запрет оператора), регрессия Release 1, GitHub CI (решение оператора), POSIX-тест лимита памяти (пропущен на Windows), интеграционный прогон на af9f287 к моменту push ещё не завершён.</li>
+<li>Шаги G0, G2–G7 и зависящие от оператора пункты (источники 1С/Drive, OAuth, бухгалтерская сверка) не затронуты.</li>
+</ul>
+<h2>Следующие шаги</h2>
+<ul>
+<li>S5b: история R2-US-021/022/023 после появления реального интерфейса и COM; связка парсер + хранилище (тип xlsx); принуждение permit/boundary в цикле захвата.</li>
+<li>Привязка акторов к аутентифицированному принципалу и долговечный аудит; решение по справедливости очереди планировщика.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
