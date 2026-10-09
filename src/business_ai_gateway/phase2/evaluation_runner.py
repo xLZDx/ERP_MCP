@@ -50,6 +50,7 @@ from .capture_permit import CaptureMode, PermitStore
 from .reconciliation import (
     BalanceSix,
     Comparison,
+    LedgerRow,
     LedgerStatement,
     TolerancePolicy,
     compare_statements,
@@ -150,6 +151,14 @@ def _digest(tenant: str, source: str, params_digest: str, request: EvaluationReq
     return hashlib.sha256(text.encode("ascii")).hexdigest()
 
 
+def _statement_shape_ok(st: LedgerStatement) -> bool:
+    """Nested schema check (scope is judged separately so a hostile scope stays SCOPE_MISMATCH)."""
+    return (type(st.complete) is bool
+            and type(st.totals) is BalanceSix
+            and type(st.rows) is tuple
+            and all(type(r) is LedgerRow and type(r.balance) is BalanceSix for r in st.rows))
+
+
 def _shape_ok(request: object) -> bool:
     if type(request) is not EvaluationRequest:
         return False
@@ -158,7 +167,9 @@ def _shape_ok(request: object) -> bool:
                  request.params_digest, request.requester)
         return (all(type(t) is str for t in texts)
                 and type(request.native) is LedgerStatement
-                and type(request.gateway) is LedgerStatement)
+                and type(request.gateway) is LedgerStatement
+                and _statement_shape_ok(request.native)
+                and _statement_shape_ok(request.gateway))
     except Exception:  # noqa: BLE001 - e.g. an instance built without __init__: unset slots
         return False
 

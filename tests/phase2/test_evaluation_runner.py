@@ -492,3 +492,44 @@ def test_registry_is_copied_at_construction() -> None:
     reg[("t1", "s1")] = frozenset({"intruder"})
     _assert_denied(runner.run(env.request(runner_id="intruder")), "RUNNER_NOT_REGISTERED")
     assert runner.run(env.request()).status is EvaluationStatus.COMPUTED
+
+
+# ---- nested LedgerStatement schema is validated before any permit is consumed --------------------
+
+def _corrupt(st: LedgerStatement, field: str, value: object) -> LedgerStatement:
+    object.__setattr__(st, field, value)  # frozen+slots dataclass bypass
+    return st
+
+
+@pytest.mark.parametrize("which", ["native", "gateway"])
+@pytest.mark.parametrize("flag", ["false", "False", "true", 1, 0, None])
+def test_non_bool_complete_is_invalid_input_and_permit_not_burned(which: str, flag: object) -> None:
+    spy = _Spy()
+    env = _Env(max_uses=1, compare=spy)
+    bad = _corrupt(_statement(), "complete", flag)
+    _assert_denied(env.runner.run(env.request(**{which: bad})), "INVALID_INPUT")
+    assert spy.calls == 0 and env.admits() == 0
+    assert not any(e.kind == "ADMIT" for e in env.store.audit())
+    assert env.runner.run(env.request()).status is EvaluationStatus.COMPUTED
+
+
+@pytest.mark.parametrize("which", ["native", "gateway"])
+@pytest.mark.parametrize("field,junk", [
+    ("rows", None), ("rows", [1]), ("rows", ("not-a-row",)), ("rows", (object(),)),
+    ("totals", None), ("totals", (1, 2)),
+])
+def test_malformed_nested_rows_or_totals_are_invalid_input_and_permit_not_burned(
+        which: str, field: str, junk: object) -> None:
+    spy = _Spy()
+    env = _Env(max_uses=1, compare=spy)
+    bad = _corrupt(_statement(), field, junk)
+    _assert_denied(env.runner.run(env.request(**{which: bad})), "INVALID_INPUT")
+    assert spy.calls == 0 and env.admits() == 0
+
+
+def test_row_with_non_balance_is_invalid_input_and_permit_not_burned() -> None:
+    env = _Env(max_uses=1)
+    bad = _statement()
+    _corrupt(bad.rows[0], "balance", "x")
+    _assert_denied(env.runner.run(env.request(native=bad)), "INVALID_INPUT")
+    assert env.admits() == 0

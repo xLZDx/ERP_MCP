@@ -97,6 +97,8 @@ class LedgerStatement:
     def __post_init__(self) -> None:
         if not self.snapshot_ref or not self.report_revision:
             raise ValueError("REPRODUCIBLE_SOURCE_SNAPSHOT_REQUIRED")
+        if type(self.complete) is not bool:
+            raise ValueError("COMPLETE_FLAG_BOOL_REQUIRED")
         seen: set[tuple[str, str]] = set()
         for row in self.rows:
             key = (row.counterparty_ref, row.contract_ref)
@@ -139,7 +141,7 @@ class Comparison:
 
 
 def _aggregates_consistent(statement: LedgerStatement, tolerance: Decimal) -> bool:
-    if not statement.complete or not statement.rows:
+    if statement.complete is not True or not statement.rows:
         return False
     for name, reported in statement.totals.items():
         computed = sum((getattr(row.balance, name) for row in statement.rows), Decimal(0))

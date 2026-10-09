@@ -378,6 +378,22 @@ def test_revoked_attestation_is_never_valid_via_check_current():
     assert not hasattr(store, "check")
 
 
+def test_m01_check_current_revoked_stays_revoked_when_clock_moves_backwards():
+    store, clk = make()
+    att = signed(store)  # signed 12:00
+    clk.now = T0 + timedelta(minutes=10)
+    assert store.revoke(att.attestation_id, "tenant-a", ACC).revoked  # revoked 12:10
+    for back in (timedelta(minutes=5), timedelta(0), timedelta(minutes=-5), timedelta(hours=-3)):
+        clk.now = T0 + back  # 12:05, 12:00 (signing instant), before signing
+        res = chk(store, att)
+        assert (res.valid, res.code) == (False, "REVOKED")
+    # point-in-time semantics are unchanged: before the revocation instant it was historically valid
+    before = chk(store, att, at=T0 + timedelta(minutes=5))
+    assert (before.valid, before.code) == (True, "VALID_HISTORICAL")
+    assert chk(store, att, at=T0 + timedelta(minutes=10)).code == "REVOKED"
+    assert chk(store, att, at=T0 - timedelta(seconds=1)).code == "NOT_YET_VALID"
+
+
 def test_check_as_of_never_returns_the_gating_valid_code():
     store, _ = make()
     att = signed(store)

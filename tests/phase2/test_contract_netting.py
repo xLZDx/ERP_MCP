@@ -181,3 +181,35 @@ def test_precision_overflow_is_inconclusive():
     result = compare_contract_sides(rows, rows, policy=POLICY)
     assert result.state is ComparisonState.INCONCLUSIVE
     assert result.reason_code == "DECIMAL_PRECISION_EXCEEDED"
+
+
+ZERO_GUID_VARIANTS = [
+    "00000000-0000-0000-0000-000000000000",
+    "{00000000-0000-0000-0000-000000000000}",
+    "(00000000-0000-0000-0000-000000000000)",
+    "00000000000000000000000000000000",
+    "{00000000000000000000000000000000}",
+    " 00000000-0000-0000-0000-000000000000 ",
+]
+
+
+@pytest.mark.parametrize("ref", ZERO_GUID_VARIANTS)
+def test_1c_empty_reference_zero_guid_is_unknown_contract(ref):
+    for rows in ((ContractSides("A", ref, Decimal(5), Decimal(0)),),
+                 (ContractSides(ref, "X", Decimal(5), Decimal(0)),)):
+        result = compare_contract_sides(rows, rows, policy=POLICY)
+        assert (result.state, result.reason_code) == (ComparisonState.INCONCLUSIVE, "UNKNOWN_CONTRACT")
+
+
+def test_zero_guid_on_one_side_only_is_inconclusive_and_not_merged_with_other_missing_refs():
+    zero = (ContractSides("A", "00000000-0000-0000-0000-000000000000", Decimal(5), Decimal(0)),)
+    blank = (ContractSides("A", "", Decimal(5), Decimal(0)),)
+    for native, gateway in ((zero, blank), (blank, zero), (zero, zero)):
+        result = compare_contract_sides(native, gateway, policy=POLICY)
+        assert (result.state, result.reason_code) == (ComparisonState.INCONCLUSIVE, "UNKNOWN_CONTRACT")
+
+
+def test_non_zero_guid_is_a_normal_contract():
+    ref = "00000000-0000-0000-0000-000000000001"
+    rows = (ContractSides("A", ref, Decimal(5), Decimal(0)),)
+    assert compare_contract_sides(rows, rows, policy=POLICY).state is ComparisonState.MATCH

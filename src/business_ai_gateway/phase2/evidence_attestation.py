@@ -301,7 +301,7 @@ class AttestationStore:
         with self._lock:
             now = self._now()
             result, subject = self._check(attestation_id, tenant_id, revision_digest,
-                                          policy_version, policy_digest, now, "VALID")
+                                          policy_version, policy_digest, now, "VALID", current=True)
             self._append_locked("CHECK", "", subject, result.code, now)
         return result
 
@@ -326,7 +326,8 @@ class AttestationStore:
         return result
 
     def _check(self, attestation_id: str, tenant_id: str, revision_digest: str, policy_version: str,
-               policy_digest: str, when: datetime | None, ok_code: str) -> tuple[CheckResult, str]:
+               policy_digest: str, when: datetime | None, ok_code: str,
+               current: bool = False) -> tuple[CheckResult, str]:
         """Caller holds ``self._lock``."""
         att = self._items.get(attestation_id) if type(attestation_id) is str else None
         tenant = clean_identity(tenant_id)
@@ -339,6 +340,10 @@ class AttestationStore:
             return CheckResult(False, "POLICY_VERSION_MISMATCH"), sid
         if type(policy_digest) is not str or policy_digest != att.policy_digest:
             return CheckResult(False, "POLICY_DIGEST_MISMATCH"), sid
+        if current and att.revoked_at is not None:
+            # A recorded revocation is final for CURRENT evidence, whatever the clock now says
+            # (a regressed clock must not resurrect a revoked attestation).
+            return CheckResult(False, "REVOKED"), sid
         if when is None:
             return CheckResult(False, "TIME_INVALID"), sid
         if when < att.signed_at:

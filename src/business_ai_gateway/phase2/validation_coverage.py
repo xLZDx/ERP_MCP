@@ -21,9 +21,20 @@ Rules
   matrix is INCOMPLETE with NON_PASS_LINK (the claim ids are listed in ``non_pass``).
 - Scope: a matrix may span scopes (each row carries its scope key); ``capability_enabled`` therefore
   takes the scope (tenant, company) and answers True only for a covered claim of THAT scope.
-- ``capability_enabled`` does not trust a MatrixResult: it re-validates the rows (types, reserved,
-  duplicates/overlap, evidence present, no non-PASS link) and recomputes the digest from the rows.
-  The digest is an integrity check against hand-built/tampered rows, not a signature.
+- ``capability_enabled`` / ``operation_covered`` do not trust a MatrixResult: they re-validate the rows
+  (types, reserved, duplicates/overlap, evidence present, no non-PASS link) with the same structural
+  evidence checks as ``build_matrix`` (evidence id/digest/source never shared across rows, operations,
+  capabilities or inside one row; parallel tuples consistent and normalized) and recompute the digest.
+  The digest is INTEGRITY (detects accidental/naive tampering), NOT AUTHENTICITY: it is an unkeyed
+  hash anyone can recompute, and a finished result carries no original inputs, so wholly synthetic but
+  structurally consistent evidence cannot be told from genuine evidence here. Authenticity of a
+  MatrixResult must come from the trusted caller that built it with ``build_matrix`` (and from
+  attestation, E1), never from this check.
+- Gates: ``operation_covered(result, scope, capability, operation)`` is THE operation-scoped gate
+  (exact match on the row's capability and operation, no inheritance between read/validate/post/...).
+  ``capability_enabled`` is capability-only and is NOT an operation gate: it answers whether the
+  capability has at least one covered claim; in an accepted matrix every claim is covered by
+  construction, so it means "the capability is claimed and fully covered", not "any operation is OK".
 - The digest binds, per row, scope key, claim id, capability, operation, every PASS evidence
   (id, artifact digest, source_ref) and non-PASS link ids; rows are sorted, so order does not matter.
 - Ten duplicate/overlap cases, each with its OWN fixed code (first violation in this order wins):
@@ -54,7 +65,7 @@ from ._identity import clean_identity, exact_text, scope_key, skeleton, stable_k
 __all__ = [
     "RESERVED_CAPABILITIES", "Claim", "ClaimScope", "CoverageCode", "CoverageStatus",
     "Evidence", "EvidenceVerdict", "Link", "MatrixResult", "MatrixRow", "build_matrix",
-    "capability_enabled",
+    "capability_enabled", "operation_covered",
 ]
 
 RESERVED_CAPABILITIES = frozenset({"ap.account_based"})
@@ -342,7 +353,30 @@ def _row_sound(row: object) -> bool:
     n = len(row.evidence_ids)
     if n == 0 or len(row.evidence_digests) != n or len(row.evidence_sources) != n or row.non_pass_ids:
         return False
-    return all(_valid_digest(d) for d in row.evidence_digests) and all(row.evidence_sources)
+    if not all(_valid_digest(d) for d in row.evidence_digests):
+        return False
+    if not all(e and exact_text(e) == e for e in row.evidence_ids):
+        return False
+    if not all(s and clean_identity(s) == s for s in row.evidence_sources):
+        return False
+    # evidence is unique inside one row (same checks as _evidence_dups, scope is the row's)
+    return (len(set(row.evidence_ids)) == n and len(set(row.evidence_digests)) == n
+            and len(set(row.evidence_sources)) == n)
+
+
+def _evidence_unshared(rows: tuple[MatrixRow, ...]) -> bool:
+    """No evidence id, or (scope, digest)/(scope, source), is used by more than one row."""
+    ids: set[str] = set()
+    digests: set[tuple[tuple[str, str], str]] = set()
+    sources: set[tuple[tuple[str, str], str]] = set()
+    for r in rows:
+        for eid, dg, src in zip(r.evidence_ids, r.evidence_digests, r.evidence_sources):
+            if eid in ids or (r.scope, dg) in digests or (r.scope, src) in sources:
+                return False
+            ids.add(eid)
+            digests.add((r.scope, dg))
+            sources.add((r.scope, src))
+    return True
 
 
 def _result_sound(result: object) -> bool:
@@ -353,19 +387,44 @@ def _result_sound(result: object) -> bool:
     if type(result.rows) is not tuple or not result.rows or not all(_row_sound(r) for r in result.rows):
         return False
     claims = [(r.claim_id, r.scope, r.capability, r.operation) for r in result.rows]
-    if _claim_dups(claims) is not None:
+    if _claim_dups(claims) is not None or not _evidence_unshared(result.rows):
         return False
     return result.digest == _matrix_digest(result.rows)
 
 
-def capability_enabled(result: object, scope: object, capability: object) -> bool:
-    """True only for the EXACT capability of a covered claim of the EXACT scope in a sound, accepted
-    matrix.
-
-    No parent/child, prefix, sibling or cross-scope inheritance; reserved capabilities are never
-    enabled; a forged/tampered MatrixResult (rows or digest do not verify) enables nothing."""
+def _covered(result: object, scope: object, capability: object, operation: object | None) -> bool:
     cap = clean_identity(capability)
     key = scope.key() if type(scope) is ClaimScope else None
     if not cap or not key or _is_reserved(cap) or not _result_sound(result):
         return False
-    return any(r.capability == cap and r.scope == key for r in result.rows)  # type: ignore[attr-defined]
+    op = None
+    if operation is not None:
+        op = clean_identity(operation)
+        if not op:
+            return False
+    return any(  # type: ignore[attr-defined]
+        r.capability == cap and r.scope == key and (op is None or r.operation == op)
+        for r in result.rows
+    )
+
+
+def capability_enabled(result: object, scope: object, capability: object) -> bool:
+    """CAPABILITY-ONLY check, NOT an operation gate: True when the EXACT capability has a covered
+    claim of the EXACT scope in a sound, accepted matrix. Coverage of ``purchases/read`` therefore
+    answers True here although ``purchases/post`` is not covered; use ``operation_covered`` to gate
+    an operation.
+
+    No parent/child, prefix, sibling or cross-scope inheritance; reserved capabilities are never
+    enabled; a forged/tampered MatrixResult (rows, evidence structure or digest do not verify)
+    enables nothing. The digest is integrity, not authenticity (see module docstring)."""
+    return _covered(result, scope, capability, None)
+
+
+def operation_covered(result: object, scope: object, capability: object, operation: object) -> bool:
+    """Operation-scoped gate: True only when the sound, accepted matrix has a covered claim whose
+    scope, capability AND operation all match exactly (after identity normalization). No inheritance
+    between operations (read does not cover validate/post/...), no parent/child capability, no
+    cross-scope; reserved capabilities are never covered; a missing/blank operation is False."""
+    if operation is None:
+        return False
+    return _covered(result, scope, capability, operation)
