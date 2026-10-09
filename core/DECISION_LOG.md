@@ -418,3 +418,9 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - 2026-10-09 PR #26 (fix/e2e-comspec-first-install-20261009, real-1C L2 install repair) reconciled with main after the machine-profile hardening PRs #27, #30, #31, #32 (operator order: merge). Conflicts were confined to the engineering-checkpoint files (marker lines in the status reports, both dashboard copies, CURRENT_ENGINEERING_CHECKPOINT.json) and core/DECISION_LOG.md: the PR side of the checkpoint markers was kept (batch MERGED_REAL1C_L2_INSTALL_20261009), both decision-log sides were kept; no source or test file conflicted. The implementation fingerprint is re-pinned in the next commit on a clean export of this merge commit. The 1 935 PASS / 343 SKIPPED full local run and the hosted run reported for 81aa0a2 predate this merge and are not claimed for the merged tree.
 
 - Re-pinned the engineering checkpoint of PR #26 after merging main (clean git archive export of 642ff13, implementation fingerprint ab936f125b6663443ec6b293d4abce2f225035c082c2c3edb013aa82eae78200).
+
+## 2026-10-09 — Pinned runtime image glibc vulnerability remediation
+
+- Trivy on the published Release 1 image: 12 MEDIUM OS findings, 4 unique CVEs, all in glibc-2.44/locale-posix/ld-linux r7. Python dependencies scanned clean.
+- Approved remediation candidate: new immutable public Chainguard Python runtime digest b6248c85ba9b97e1e61b30197f309cc4d21661f889fefa5268f0a7bc530dad46 (Python 3.14.8). Standalone base image Trivy: zero findings.
+- Runtime Dockerfile and CI provenance pin updated together. No Trivy bypass, severity downgrade, ignorefile or production API/grant mutation. Exact-head full gateway scan and CI still gate this change. Release 1 production NO-GO; DoD PARTIAL.
