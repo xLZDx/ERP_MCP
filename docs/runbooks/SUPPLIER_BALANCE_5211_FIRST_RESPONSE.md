@@ -1,0 +1,81 @@
+# Supplier payable snapshot: account 521.1 (read-only, first-response workflow)
+
+Status: **implemented in isolated branch**; not a general AP or overdue-aging approval.
+Scope: ERP_MCP, current validated-machine reference source `onec-818ha-reference`, company 818 HA SRL.
+Do **not** confuse the real-1C reference *clone* with a confirmed current production 1C base.
+
+## What the first answer must include
+
+1. Resolve **source/company** from `sources_list` / `companies_list`. No invented IDs.
+2. `source_health` must be healthy; `onec_capabilities` compatible and stable.
+3. For 521.1, call `accounting_balance_by_analytics` with a **timezone-aware end-of-day** `as_of`.
+   Example August Moldova: `2026-08-31T23:59:59+03:00`. Bare `2026-08-31` is invalid.
+4. If the result includes `supplier_summary.status == COMPLETE`, present the list,
+   `balance_credit` (what is recorded as payable) and `balance_debit` (advances/overpayments)
+   **in separate columns**. Never silently net credits against debits across contracts,
+   documents, currencies, or suppliers.
+5. The `supplier_summary` exists only for an **exact single-account mapping to 521.1**
+   with a stable validated profile and non-truncated source response. Catalog names are read
+   only using the independently authorized and audited `onec_read` tool. If the raw-catalog
+   grant is missing, return allowed supplier refs with `supplier_name = null`, never bypass ACL.
+6. Always label the result `ACCOUNT_521_1_ONLY` and repeat evidence level/native status
+   from the underlying analytics tool. `PROFILE_VALIDATED_MACHINE` is **not** a signed native
+   UI account-card / supplier-reconciliation report.
+7. Missing rows, missing currency confirmation, stale profile, denied raw catalog, incomplete
+   page, unknown source, or missing evidence are **not** reported as zero or as global AP.
+   For a full AP report, include other confirmed vendor-liability accounts only with their own
+   exact validated mappings; do not infer 521.1 is all supplier debt.
+
+## Root-cause analysis (2026-10-09)
+
+PostgreSQL `bag.audit_events` on `onec-818ha-reference`:
+- `payable_balance`: `SEMANTIC_PROFILE_UNVALIDATED` because **`payable.balance`**
+  is not mapped and validated for the real 818HA company.
+- `payable_aging`: `SEMANTIC_PROFILE_UNVALIDATED` because **`payable.open_items`**
+  has no independently confirmed open-invoice/payment/allocation/due-date semantic profile.
+- `accounting_balance_by_analytics`: the previously supplied date-only `as_of`
+  generated a `ValueError`. An RFC3339 local-end-of-day timestamp succeeded.
+- There is one **VALIDATED / MACHINE** profile, `real-1c-818ha-521-1-machine`, with
+  only `account.balance_by_analytics` mapped `CONFIRMED`. The OData metadata is `STABLE`.
+- MCP error envelopes had obscured domain-specific codes as generic `INVALID_ARGUMENT`;
+  the operator should read audit `detail_code` before proposing any waiver or role change.
+
+`payable.balance` and `payable.open_items` must not be made VALIDATED by changing status,
+reusing the 521.1 profile, turning off security, or fabricating native UI evidence.
+
+## Live read-only verification (2026-10-09)
+
+For `818HA_test_ready`, 31.08.2026 23:59:59 +03:
+- 15 account-analytics rows, `truncated = false`, 10 distinct counterparty GUIDs.
+- 10/10 names resolved through an authorized `onec_read` call.
+- 521.1 gross credit: **638948.76** (currency code not independently verified).
+- 521.1 gross debit: **15899.09**.
+- Gateway provenance: `evidence_level=PROFILE_VALIDATED_MACHINE`,
+  `native_reconciliation=MACHINE_TWO_SOURCE`, no native sign-off inferred.
+The above are historical testbed observations, not hardcoded product values or fixture data.
+
+## Proper completion of the other two semantic tools
+
+- **`payable_balance`**: choose the confirmed 1C register/virtual table and **company +
+  counterparty + contract + currency** columns, verify all opening balances and period logic,
+  create an exact mapping and run approved reconciliation evidence against native 1C reports.
+- **`payable_aging`**: confirm document-level open items and allocations, due-date semantics,
+  partially paid invoices, unapplied advances, multiple currencies and snapshot completeness.
+  Aging buckets must reconcile to independently verified open-item totals. If no such source
+  is proven, return `SEMANTIC_PROFILE_UNVALIDATED` with a remediation reason.
+- **User-facing errors**: distinguish schema/capability unavailability, missing exact profile,
+  invalid date-time offset and genuine transport errors, while keeping private DB errors hidden.
+- **Production**: validate the intended live base, accountant reports and controls before
+  directing these tools to a non-clone source.
+
+## Regression checks
+
+```powershell
+$env:PYTHONPATH = 'D:\Repo\ERP_MCP-supplier-debt-report\src'
+D:\Repo\ERP_MCP-integration-candidate\.venv\Scripts\python.exe -m pytest -q tests/test_supplier_debt_summary.py tests/test_supplier_debt_mcp_integration.py tests/test_analytics_balance_routing.py tests/test_server_audit.py
+```
+
+Verify data controls: exact account-only scope, company ACL, extra raw catalog ACL+durable audit,
+no cross-currency sum, null contract tolerated, no total on truncated page, no amount inflation.
+MCP code changes require deployment/restart and server tool discovery on the target integration,
+not merely a local green test.

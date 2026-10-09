@@ -85,6 +85,7 @@ from .settlement_collector import (
     evaluate_open_items,
     parse_as_of,
 )
+from .supplier_debt_summary import summarize_supplier_5211, supplier_refs
 
 CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,
@@ -96,7 +97,12 @@ CHATGPT_SERVER_INSTRUCTIONS = (
     "ERP_MCP is a read-only ERP/1C data gateway. Use only sources and companies returned for "
     "the authenticated principal. Never invent identifiers, broaden company scope, request or "
     "expose credentials, or imply that synthetic/test evidence is native 1C reconciliation. "
-    "If a capability/profile is unavailable, report the refusal instead of guessing business data."
+    "For supplier balances on account 521.1, first try accounting_balance_by_analytics "
+    "with an explicit timezone offset in as_of; if supplier_summary is COMPLETE, show "
+    "each counterparty credit and debit separately, and state the account-only and "
+    "machine-evidence limitations. Never silently net advances, invent dates, or "
+    "treat this report as payable aging. If a capability/profile is unavailable, "
+    "report the refusal instead of guessing business data."
 )
 
 BUSINESS_CAPABILITY_BY_TOOL = {
@@ -768,10 +774,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def accounting_balance_by_analytics(
         source_id: str, company_id: str, as_of: str
     ) -> dict[str, Any]:
-        """Read company-scoped account balances by analytics via its validated profile.
+        """Read validated account balances by analytics. as_of requires ISO 8601 with offset.
 
-        The route (OData or COM) is decided server-side from capability evidence; the caller
-        cannot choose or influence it.
+        Example: 2026-08-31T23:59:59+03:00 for end of August in Moldova.
+        When the validated profile covers only account 521.1, returns a supplier_summary
+        with counterparty names and SEPARATE gross debit and credit balances. This is NOT
+        total AP across all accounts or an aging report. Machine-validated evidence is
+        never represented as a human-signed 1C report. OData vs COM is selected server-side.
         """
         tool = "accounting_balance_by_analytics"
         started = time.monotonic()
@@ -874,7 +883,72 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 )
                 adapter_kind = "COM_BRIDGE"
             provenance = profile_provenance(profile)  # may raise: build it before the success audit
-            response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
+            supplier_summary = None
+            # A safe presentation of the EXISTING validated 521.1 analytics profile.
+            # This does not authorize a missing payable.balance / payable.open_items profile.
+            mapped_accounts = mapping.get("accounts", [])
+            is_exact_5211_profile = (
+                isinstance(mapped_accounts, list) and len(mapped_accounts) == 1
+                and isinstance(mapped_accounts[0], dict)
+                and mapped_accounts[0].get("code") == "521.1"
+            )
+            if (is_exact_5211_profile and rows
+                    and all(isinstance(r, dict) and r.get("account") == "521.1" for r in rows)):
+                names: dict[str, str] = {}
+                name_lookup_status = "NOT_RUN"
+                if not truncated and len(rows) < settings.max_rows:
+                    try:
+                        refs = supplier_refs(rows)
+                        if not source.entity_allowed("Catalog_Контрагенты"):
+                            name_lookup_status = "DENIED_BY_SOURCE_POLICY"
+                        elif refs:
+                            predicate = " or ".join(
+                                f"Ref_Key eq guid'{ref}'" for ref in refs
+                            )  # all GUIDs validated by UUID before entering the query
+                            # Invoke the independently ACL/role/rate/audit guarded raw tool.
+                            # An accounting grant alone MUST NOT confer catalog-read rights.
+                            cat = await onec_read(
+                                source_id=source_id, entity_set="Catalog_Контрагенты",
+                                select=["Ref_Key", "Description"],
+                                filter_expr=predicate, orderby=None, expand=None,
+                                top=min(len(refs) + 1, settings.max_rows), skip=0,
+                            )
+                            cp = cat.get("page") if isinstance(cat, dict) else None
+                            cv = cat.get("value") if isinstance(cat, dict) else None
+                            if (isinstance(cp, dict) and cp.get("has_more") is False
+                                    and cp.get("truncated") is False
+                                    and isinstance(cv, list)):
+                                names = {
+                                    item["Ref_Key"]: item["Description"]
+                                    for item in cv if isinstance(item, dict)
+                                    and item.get("Ref_Key") in refs
+                                    and isinstance(item.get("Description"), str)
+                                }
+                                name_lookup_status = (
+                                    "COMPLETE" if len(names) == len(refs) else "PARTIAL"
+                                )
+                            else:
+                                name_lookup_status = "INCOMPLETE"
+                    except AuditUnavailable:
+                        # Never turn a failed durable audit into an apparently successful read.
+                        raise
+                    except Exception:  # noqa: BLE001 -- optional name lookup is guarded by its own raw-tool ACL/audit
+                        # The guarded raw read may lack authorization; never bypass it.
+                        # Ledger analytics stays accessible, but supplier names are withheld.
+                        name_lookup_status = "UNAVAILABLE_OR_NOT_AUTHORIZED"
+                try:
+                    supplier_summary = summarize_supplier_5211(
+                        rows, names=names, truncated=truncated, max_rows=settings.max_rows
+                    )
+                except (ValueError, TypeError):
+                    supplier_summary = {
+                        "account": "521.1", "status": "UNAVAILABLE",
+                        "reason": "SOURCE_DATA_INVALID",
+                    }
+                supplier_summary["name_lookup_status"] = name_lookup_status
+            response_bytes = len(json.dumps(
+                {"rows": rows, "supplier_summary": supplier_summary}, ensure_ascii=False,
+            ).encode("utf-8"))
             detail = f"route={decision.route};reason={decision.reason}"
             if decision.binding is not None:
                 detail += f";binding={decision.binding.binding_id}@{decision.binding.version}"
@@ -903,6 +977,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "as_of": arguments["Period"],
                 "rows": rows,
                 "row_count": len(rows),
+                "supplier_summary": supplier_summary,
                 "truncated": truncated,
                 "route": decision.route,
                 "route_reason": decision.reason,
@@ -1707,7 +1782,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
-        """Read point-in-time payable balances; this tool does not compute aging buckets."""
+        """Read payables ONLY with separately validated payable.balance semantics.
+
+        If no exact mapping is validated, fail closed; do not silently substitute 521.1
+        for all supplier liabilities. For an account-521.1-only snapshot, use
+        accounting_balance_by_analytics with an offset-aware as_of timestamp.
+        """
         return await read_settlement_balance(
             source_id,
             company_id,
@@ -1846,7 +1926,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def payable_aging(
         source_id: str, company_id: str, as_of: str, top: int = 2000
     ) -> dict[str, Any]:
-        """Aging of open payable items from a confirmed settlement record set (read-only)."""
+        """Aging ONLY with independently validated payable.open_items records.
+
+        Confirm due dates, document/payment allocations and complete opening items.
+        Account 521.1 balances cannot by themselves prove overdue days or aging.
+        """
         return await read_open_items_aging(
             source_id, company_id, as_of, concept=PAYABLE_OPEN_ITEMS_CONCEPT,
             tool_name="payable_aging", top=top,
