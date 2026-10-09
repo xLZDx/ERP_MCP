@@ -54,6 +54,31 @@ def supplier_refs(rows: list[dict[str, Any]]) -> list[str]:
     return sorted(refs)
 
 
+def supplier_filter_batches(
+    refs: list[str], *, max_filter_chars: int
+) -> list[tuple[list[str], str]]:
+    """Bound exact-key OData filters; no arbitrary selectors or untrusted raw text."""
+    groups: list[tuple[list[str], str]] = []
+    selected: list[str] = []
+    parts: list[str] = []
+    size = 0
+    for raw in refs:
+        ref = _uuid(raw)
+        clause = f"Ref_Key eq guid'{ref}'"
+        if len(clause) > max_filter_chars:
+            raise ValueError("SUPPLIER_CATALOG_FILTER_LIMIT")
+        additional = len(clause) + (4 if parts else 0)
+        if parts and size + additional > max_filter_chars:
+            groups.append((selected, " or ".join(parts)))
+            selected, parts, size = [], [], 0
+        selected.append(ref)
+        parts.append(clause)
+        size += len(clause) + (4 if len(parts) > 1 else 0)
+    if parts:
+        groups.append((selected, " or ".join(parts)))
+    return groups
+
+
 def _sum_amounts(items: list[dict[str, Any]], field: str) -> str:
     total = Decimal(0)
     for item in items:

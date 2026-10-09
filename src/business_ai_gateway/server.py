@@ -85,7 +85,7 @@ from .settlement_collector import (
     evaluate_open_items,
     parse_as_of,
 )
-from .supplier_debt_summary import summarize_supplier_5211, supplier_refs
+from .supplier_debt_summary import summarize_supplier_5211, supplier_filter_batches, supplier_refs
 
 CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,
@@ -904,38 +904,66 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                         if not source.entity_allowed("Catalog_Контрагенты"):
                             name_lookup_status = "DENIED_BY_SOURCE_POLICY"
                         elif refs:
-                            predicate = " or ".join(
-                                f"Ref_Key eq guid'{ref}'" for ref in refs
-                            )  # all GUIDs validated by UUID before entering the query
-                            # Invoke the independently ACL/role/rate/audit guarded raw tool.
-                            # An accounting grant alone MUST NOT confer catalog-read rights.
-                            cat = await onec_read(
-                                source_id=source_id, entity_set="Catalog_Контрагенты",
-                                select=["Ref_Key", "Description"],
-                                filter_expr=predicate, orderby=None, expand=None,
-                                top=min(len(refs) + 1, settings.max_rows), skip=0,
-                            )
-                            cp = cat.get("page") if isinstance(cat, dict) else None
-                            cv = cat.get("value") if isinstance(cat, dict) else None
-                            if (isinstance(cp, dict) and cp.get("has_more") is False
-                                    and cp.get("truncated") is False
-                                    and isinstance(cv, list)):
-                                names = {
-                                    item["Ref_Key"]: item["Description"]
-                                    for item in cv if isinstance(item, dict)
-                                    and item.get("Ref_Key") in refs
-                                    and isinstance(item.get("Description"), str)
-                                }
-                                name_lookup_status = (
-                                    "COMPLETE" if len(names) == len(refs) else "PARTIAL"
+                            # Every subquery inherits the independently enforced raw catalog
+                            # ACL, rate limiter and durable pre-dispatch/completion audit.
+                            incomplete = False
+                            for batch_refs, predicate in supplier_filter_batches(
+                                refs, max_filter_chars=settings.max_filter_chars
+                            ):
+                                top = min(len(batch_refs) + 1, settings.max_rows)
+                                cat = await onec_read(
+                                    source_id=source_id, entity_set="Catalog_Контрагенты",
+                                    select=["Ref_Key", "Description"],
+                                    filter_expr=predicate, orderby=None, expand=None,
+                                    top=top, skip=0,
                                 )
-                            else:
-                                name_lookup_status = "INCOMPLETE"
+                                cp = cat.get("page") if isinstance(cat, dict) else None
+                                cv = cat.get("value") if isinstance(cat, dict) else cat
+                                if not isinstance(cv, list) or len(cv) > top:
+                                    raise AnalyticsBalanceError("SUPPLIER_CATALOG_RESPONSE_INVALID")
+                                if isinstance(cp, dict):
+                                    page_complete = (
+                                        cp.get("has_more") is False
+                                        and cp.get("truncated") is False
+                                    )
+                                else:
+                                    # Direct OData/Atom has no page envelope. The exact GUID
+                                    # query requests one extra row to detect truncation.
+                                    page_complete = cp is None and len(cv) < top
+                                if not page_complete:
+                                    incomplete = True
+                                    break
+                                allowed_refs = set(batch_refs)
+                                for item in cv:
+                                    if (not isinstance(item, dict)
+                                            or not isinstance(item.get("Ref_Key"), str)
+                                            or not isinstance(item.get("Description"), str)):
+                                        raise AnalyticsBalanceError("SUPPLIER_CATALOG_RESPONSE_INVALID")
+                                    try:
+                                        canonical_ref = str(uuid.UUID(item["Ref_Key"]))
+                                    except ValueError as exc:
+                                        raise AnalyticsBalanceError(
+                                            "SUPPLIER_CATALOG_RESPONSE_INVALID"
+                                        ) from exc
+                                    name = item["Description"]
+                                    if (canonical_ref not in allowed_refs
+                                            or len(name.encode("utf-8")) > 4096
+                                            or (canonical_ref in names
+                                                and names[canonical_ref] != name)):
+                                        raise AnalyticsBalanceError(
+                                            "SUPPLIER_CATALOG_RESPONSE_INVALID"
+                                        )
+                                    names[canonical_ref] = name
+                            name_lookup_status = (
+                                "INCOMPLETE" if incomplete else
+                                "COMPLETE" if len(names) == len(refs) else "PARTIAL"
+                            )
                     except AuditUnavailable:
                         # Never turn a failed durable audit into an apparently successful read.
                         raise
                     except PermissionError:
-                        # Expected catalog access denial: retain authorized ledger IDs only.
+                        # A mid-batch policy revocation cannot disclose names from earlier batches.
+                        names.clear()
                         name_lookup_status = "DENIED_BY_POLICY"
                     # Other failures (including mandatory audit append or metadata drift)
                     # must fail closed, never become a misleading successful report.
@@ -949,9 +977,26 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                         "reason": "SOURCE_DATA_INVALID",
                     }
                 supplier_summary["name_lookup_status"] = name_lookup_status
+            response_payload = {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ANALYTICS_BALANCE_CONCEPT,
+                "as_of": arguments["Period"],
+                "rows": rows,
+                "row_count": len(rows),
+                "supplier_summary": supplier_summary,
+                "truncated": truncated,
+                "route": decision.route,
+                "route_reason": decision.reason,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **provenance,
+            }
             response_bytes = len(json.dumps(
-                {"rows": rows, "supplier_summary": supplier_summary}, ensure_ascii=False,
+                response_payload, ensure_ascii=False,
             ).encode("utf-8"))
+            if response_bytes > settings.max_response_bytes:
+                raise AnalyticsBalanceError("RESPONSE_TOO_LARGE")
             detail = f"route={decision.route};reason={decision.reason}"
             if decision.binding is not None:
                 detail += f";binding={decision.binding.binding_id}@{decision.binding.version}"
@@ -973,21 +1018,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 response_bytes=response_bytes,
                 truncated=truncated,
             )
-            return {
-                "source_id": source_id,
-                "company_id": str(parsed_company_id),
-                "concept": ANALYTICS_BALANCE_CONCEPT,
-                "as_of": arguments["Period"],
-                "rows": rows,
-                "row_count": len(rows),
-                "supplier_summary": supplier_summary,
-                "truncated": truncated,
-                "route": decision.route,
-                "route_reason": decision.reason,
-                "profile_fingerprint": profile["profile_fingerprint"],
-                "metadata_fingerprint": capabilities.metadata_fingerprint,
-                **provenance,
-            }
+            return response_payload
         except Exception as exc:
             code = getattr(exc, "code", type(exc).__name__)
             detail = str(code)

@@ -4,6 +4,27 @@ Status: **implemented in isolated branch**; not a general AP or overdue-aging ap
 Scope: ERP_MCP, current validated-machine reference source `onec-818ha-reference`, company 818 HA SRL.
 Do **not** confuse the real-1C reference *clone* with a confirmed current production 1C base.
 
+## Frozen requirement / Definition of Done trace
+
+This is **not a new semantic accounting tool, scope rebaseline, or general AP feature**:
+it is a bounded first-response presentation of the existing `HYB-1`
+(`accounting_balance_by_analytics`, explicitly frozen under ADR-0008 and the
+2026-10-07 operator rebaseline). All additional business scopes remain deferred
+under `SCOPE-1` until their own requirements and acceptance are approved.
+
+| Existing requirement | Applied behavior | DoD impact |
+|---|---|---|
+| `HYB-1`, `FR-E1`, `FR-E2` | Only the exact validated 521.1 account profile; source-controlled OData/COM routing, no universal accounts | `D7` capability, `D9` machine-level only; native UI approval still **OPEN** |
+| `FR-D1`, `NFR-R2` | Bounded GUID-filter batches, row/pagination completeness, combined response byte cap, no unbounded fallback | `D8` bounded read, `D14` robustness tests |
+| `FR-A2`, `FR-B1` | Server-side source/company ACL and independent raw catalog entitlement for names | `D3` isolation; unauthorized names withheld |
+| `FR-F1`, `NFR-S1` | Separate durable access/completion audit for every catalog batch, unexpected audit failures block the answer | `D11` fail-closed audit |
+| `NFR-S3`, `TEST-REF-1` | Read-only 818HA reference clone; no posted entries, no arbitrary 1C code or native-proof claims | `D5` read-only; `D9` native sign-off **OPEN** |
+| `SCOPE-1` | No new `payable.balance` / `payable.open_items` privileges or unproven semantic mapping | `D0` trace updated; `D16` production **NO-GO** |
+
+These rows identify gates **advanced by code and tests**, not closed: signed native
+1C reports, complete supplier accounts, aging reconciliation, production access
+and operator release approval remain separate external gates.
+
 ## What the first answer must include
 
 1. Resolve **source/company** from `sources_list` / `companies_list`. No invented IDs.
@@ -67,6 +88,26 @@ The above are historical testbed observations, not hardcoded product values or f
   invalid date-time offset and genuine transport errors, while keeping private DB errors hidden.
 - **Production**: validate the intended live base, accountant reports and controls before
   directing these tools to a non-clone source.
+
+## Review remediation — 2026-10-09
+
+One independent review sweep on the first PR head identified five findings,
+all addressed in the same bounded follow-up:
+- **P1 trace:** frozen requirement `HYB-1` and related FR/NFR IDs explicitly map
+  to DoD gates above; no new product scope or premature D9/production closure.
+- **P2 filter size:** exact GUID-name lookups are split into independently audited
+  batches that never exceed the configured `max_filter_chars`.
+- **P2 response envelopes:** sidecar `page` flags are honored; direct OData/Atom
+  responses without `page` use the strictly bounded `top = requested refs + 1`.
+  No truncated name result is labelled complete.
+- **P2 GUID case:** returned catalog references are canonicalized with UUID parsing
+  and checked against the exact requested set; unrequested/invalid refs fail closed.
+- **P2 combined response:** the complete response, not just upstream rows, must
+  fit `max_response_bytes` before a success audit/return.
+
+Tests cover 150 suppliers, pageless returns, uppercase GUIDs, malformed/unrequested
+refs, mid-batch authorization revocation, and oversized combined JSON.
+The preceding first-response accounting totals are not hardcoded by the feature.
 
 ## Security gate repair (2026-10-09)
 
