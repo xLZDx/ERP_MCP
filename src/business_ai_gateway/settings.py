@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     oauth_enabled: bool = False
     oauth_issuer: str | None = None
     oauth_audience: str | None = None
+    oauth_additional_audiences: str = ""
     oauth_required_scope: str = "onec:read"
     oauth_jwks_url: str | None = None
     oauth_algorithms: str = "RS256"
@@ -108,6 +109,16 @@ class Settings(BaseSettings):
     @property
     def oauth_algorithm_list(self) -> list[str]:
         return [x.strip() for x in self.oauth_algorithms.split(",") if x.strip()]
+
+    @property
+    def oauth_audience_list(self) -> tuple[str, ...]:
+        values = [self.oauth_audience] if self.oauth_audience else []
+        values.extend(
+            item.strip()
+            for item in self.oauth_additional_audiences.split(",")
+            if item.strip()
+        )
+        return tuple(dict.fromkeys(values))
 
     @property
     def source_host_allowlist_items(self) -> tuple[str, ...]:

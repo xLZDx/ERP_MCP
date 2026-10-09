@@ -378,3 +378,9 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - Re-pinned the engineering checkpoint after the lint fix (clean export of e147719; concurrent uncommitted edits of another session excluded). The phase-2 documents that had sat untracked in this worktree were moved out of it at the operator's request; they live only on branch docs/phase2-design-package-v0.1 (PR #23). The other session's OAuth edits remain untouched in the worktree (operator: test data, to be cleaned later).
 
 - Sprint report (EN and RU) extended with the traceability row R21 and RUN-7 for the round-2 fix; reports are outside the implementation fingerprint, so no re-pin is needed.
+
+## 2026-10-09 — ChatGPT connector accepts the tunnel resource audience
+
+- Symptom: ChatGPT showed Reconnect for ERP_MCP_REAL1 (connection expired), and a second Reconnect after the first. The tunnel and the public test IdP were healthy.
+- Root cause (reproduced with the ChatGPT auth-code flow): ChatGPT tokens carry aud = the OpenAI tunnel resource URL; the gateway accepted only http://127.0.0.1:21000/mcp, so tunnel traffic got 401 invalid_token. The lane env already exported BAG_OAUTH_ADDITIONAL_AUDIENCES but the code ignored it.
+- Fix: Settings.oauth_additional_audiences (comma-separated) and oauth_audience_list used by JWTTokenVerifier; envctl registers the tunnel resource for the erp-mcp-chatgpt test client. Test: tests/test_auth.py::test_additional_audience_is_accepted. Test-lane only; no production grant or API change. Supersedes the uncommitted copy of these edits in the integration-candidate worktree.
