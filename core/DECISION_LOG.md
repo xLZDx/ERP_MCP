@@ -439,3 +439,9 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 ## 2026-10-09 — Staging branch re-pinned after merging main
 
 - deploy/vps-staging now contains main (hardening rounds 1-2, Phase 2 docs, glibc image pin) and the integration branch (supplier-debt runtime, tunnel audience fix). Conflicts were only checkpoint markers (kept the integration side), the Dockerfile (took main's newer digest) and the decision log (kept both). Engineering fingerprint re-pinned on a clean git archive export: b68e581fd42ceedcb184f2499c33d32d7fb7e5ddb993eb7963713ff8a810a71b.
+
+## 2026-10-09 — Windows Task Scheduler autostart for the real-1C lane
+
+- Operator order: the MCP lane and the 1C test environment must come up by themselves after a reboot of this machine. Scheduled task `ERP_MCP_Lane_Autostart` (at logon, 1 min delay, repeated every 5 min as a watchdog) runs `D:\ERP_MCP_Testbedeal1c_e2eutostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is idempotent: Docker Desktop and lane PostgreSQL/Redis, Apache with the 1C OData publication, lane proxies 8191-8193, real sidecar 21768, the IdP quick tunnel, IdP 21080, gateway 21000 and the ChatGPT tunnel-client are started only when missing.
+- Evidence: with apache, proxy 8193 and the sidecar killed, one task run restored all three (log lines apache/lane proxy/real sidecar started: True); gateway pid unchanged on a no-op pass. A cold start after a real reboot is not yet exercised.
+- Limitation: the IdP is published through a Cloudflare quick tunnel; a new host after reboot is written into env.ps1 and idp-config.json by the script, but ChatGPT must press Reconnect once. Needs an interactive Windows logon (DPAPI key, Docker Desktop are per-user). No production change.
