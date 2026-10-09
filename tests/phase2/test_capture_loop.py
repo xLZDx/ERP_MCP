@@ -63,7 +63,7 @@ class FakeConnector:
 
 
 def req(epoch=0):
-    return CaptureRequest("src-1", "ten-1", epoch)
+    return CaptureRequest("s1", "A", epoch)
 
 
 async def build(connector, *, epoch=0, jobs=1):
@@ -247,3 +247,60 @@ async def test_guard_lost_lease_at_finish_applies_no_clear_and_no_hash():
     assert res.run.status is not RunStatus.SUCCEEDED
     assert not res.cleared and tracker.is_required(CONN)
     assert loop.accepted_hash(CONN) is None
+
+async def test_partial_capture_is_captured_without_hash_and_leaves_baseline_alone():
+    conn = FakeConnector((Completeness.COMPLETE, H1), (Completeness.PARTIAL, H2))
+    living, sched, tracker, loop = await build(conn, jobs=2)
+    first = await loop.capture_step(job(1), CONN, req(), snapshot=True)
+    assert first.accepted_hash == H1
+    res = await loop.capture_step(job(2), CONN, req())
+    assert res.status is CaptureStatus.CAPTURED and res.run.status is RunStatus.SUCCEEDED
+    assert res.outcome_kind is CaptureOutcomeKind.OK_PARTIAL
+    assert DriftEventKind.GAP in res.events and DriftEventKind.STRUCTURAL_DRIFT not in res.events
+    assert res.accepted_hash == H1 and res.candidate_hash is None and not res.cleared
+
+
+async def test_request_for_another_scope_is_rejected_before_any_work():
+    conn = FakeConnector()
+    living, sched, tracker, loop = await build(conn)
+    for bad in (CaptureRequest("s2", "A", 0), CaptureRequest("s1", "B", 0)):
+        with pytest.raises(ValueError, match="REQUEST_SCOPE_MISMATCH"):
+            await loop.capture_step(job(), CONN, bad, snapshot=True)
+    assert conn.calls == 0 and not tracker.is_required(CONN)
+
+
+async def test_snapshot_with_a_page_cursor_is_rejected_and_does_not_clear():
+    conn = FakeConnector()
+    living, sched, tracker, loop = await build(conn)
+    tracker.require(CONN, ResnapshotReason.CURSOR_LOST, 0)
+    with pytest.raises(ValueError, match="SNAPSHOT_REQUIRES_FIRST_PAGE"):
+        await loop.capture_step(job(), CONN, CaptureRequest("s1", "A", 0, page_cursor="pg2"),
+                                snapshot=True)
+    assert conn.calls == 0 and tracker.is_required(CONN)
+
+
+async def test_connector_that_outlives_the_deadline_is_a_timeout_not_a_hang():
+    import threading
+    release = threading.Event()
+    conn = FakeConnector(on_call=lambda: release.wait(5))
+    living, sched, tracker, _ = await build(conn)
+    loop = CaptureLoop(sched, tracker, conn, living, SCOPE, connector_timeout=0.05)
+    try:
+        res = await loop.capture_step(job(), CONN, req(), snapshot=True)
+    finally:
+        release.set()
+    assert res.outcome_kind is CaptureOutcomeKind.TIMEOUT and res.status is CaptureStatus.FAILED
+    assert not res.cleared
+
+
+async def test_ledger_error_after_success_keeps_requirement_and_returns_typed_result():
+    from business_ai_gateway.phase2.ports import PortError
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn)
+    tracker.require(CONN, ResnapshotReason.CURSOR_LOST, 0)
+
+    async def boom(_scope):
+        raise PortError("SQL_08006")
+    living.scope_epoch = boom
+    res = await loop.capture_step(job(), CONN, req(), snapshot=True)
+    assert res.status is CaptureStatus.CAPTURED and not res.cleared and res.resnapshot_required

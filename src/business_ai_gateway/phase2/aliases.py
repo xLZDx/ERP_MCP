@@ -2,26 +2,34 @@
 
 Rules
 - Every entity and alias lives in exactly one scope (tenant_id + company_id). Resolution never
-  crosses a scope: the same display name in two companies/tenants is two entities.
+  crosses a scope: the same display name in two companies/tenants is two entities. Entities are
+  keyed by (scope, entity_id), so the same entity_id may exist in several scopes and registering
+  one never reveals whether another scope uses it.
+- Scope parts are normalised exactly like the taxonomy module (NFKC + casefold + strip); any
+  control / format / separator / blank-glyph character makes an identity invalid (see ``_identity``).
 - RESOLVED needs an EXACT namespaced reference match (compared after trimming only, case-sensitive,
   never fuzzy) inside the queried scope and exactly one matching entity.
 - Two or more candidates -> AMBIGUOUS: the candidate ids are returned and ONE resolution-queue item
   is created (repeated resolves reuse it). The resolver never picks and never merges.
 - Display-name similarity (NFKC + casefold + trim) can only fill ``suggestions`` / make a queue
   item; it never produces RESOLVED.
-- ``resolve_ambiguity`` is the only way a human decision is recorded. It needs a non-blank HUMAN
-  approver, is idempotent for the same choice, refuses a conflicting second choice, and only
-  records who/when (injected clock). It does not merge entities or touch aliases.
+- The queue is scope-bound: ``queue_items(scope)`` lists only that scope and
+  ``resolve_ambiguity(scope, item_id, ...)`` treats another scope's item exactly like an unknown one.
+  It is the only way a human decision is recorded: non-blank HUMAN approver, idempotent for the
+  same choice (the replay does NOT reveal the first approver), conflicting second choice refused,
+  only records who/when (injected clock). It does not merge entities or touch aliases.
 - Result codes are fixed constants; caller-supplied text is never echoed into them.
+- RESIDUAL RISK: the approver kind is caller-asserted; there is no authenticated principal binding.
 """
 from __future__ import annotations
 
 import hashlib
-import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+
+from ._identity import clean_identity, exact_text, scope_key, stable_key
 
 __all__ = [
     "ActorKind", "AliasOutcome", "AliasRecord", "AliasResolver", "AliasScope", "Approver",
@@ -51,14 +59,8 @@ class ActorKind(StrEnum):
 
 
 def normalize_name(value: object) -> str:
-    """NFKC + casefold + trim for display names; '' means unusable."""
-    if not isinstance(value, str):
-        return ""
-    return unicodedata.normalize("NFKC", value).strip().casefold()
-
-
-def _trim(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
+    """NFKC + casefold + trim for display names; '' means unusable (incl. invisible chars)."""
+    return clean_identity(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,11 +69,14 @@ class AliasScope:
     company_id: str
 
     def valid(self) -> bool:
-        return (isinstance(self.tenant_id, str) and isinstance(self.company_id, str)
-                and bool(self.tenant_id.strip()) and bool(self.company_id.strip()))
+        return self.key() is not None
 
-    def key(self) -> tuple[str, str]:
-        return (self.tenant_id.strip(), self.company_id.strip())
+    def key(self) -> tuple[str, str] | None:
+        return scope_key(self.tenant_id, self.company_id)
+
+
+def _skey(scope: object) -> tuple[str, str] | None:
+    return scope.key() if type(scope) is AliasScope else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,10 +86,14 @@ class Reference:
     value: str
 
     def valid(self) -> bool:
-        return bool(_trim(self.namespace)) and bool(_trim(self.value))
+        return bool(exact_text(self.namespace)) and bool(exact_text(self.value))
 
     def key(self) -> tuple[str, str]:
-        return (_trim(self.namespace), _trim(self.value))
+        return (exact_text(self.namespace), exact_text(self.value))
+
+
+def _ref_ok(ref: object) -> bool:
+    return type(ref) is Reference and ref.valid()
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,49 +169,64 @@ class DecisionResult:
         return self.outcome is AliasOutcome.DECIDED
 
 
+def _scope_bad() -> ResolutionResult:
+    return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
+
+
 @dataclass(slots=True)
 class AliasResolver:
     clock: Callable[[], datetime]
-    _entities: dict[str, SupplierEntity] = field(default_factory=dict)
+    _entities: dict[tuple[tuple[str, str], str], SupplierEntity] = field(default_factory=dict)
     _aliases: list[AliasRecord] = field(default_factory=list)
     _queue: dict[str, QueueItem] = field(default_factory=dict)
 
     # -- registration -------------------------------------------------------------------------
     def add_entity(self, entity: SupplierEntity) -> ResolutionResult:
-        if not isinstance(entity.scope, AliasScope) or not entity.scope.valid():
-            return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
-        if (not _trim(entity.entity_id) or not normalize_name(entity.canonical_name)
-                or not all(isinstance(r, Reference) and r.valid() for r in entity.references)):
+        if type(entity) is not SupplierEntity:
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_INVALID")
-        if entity.entity_id in self._entities:
+        skey = _skey(entity.scope)
+        if skey is None:
+            return _scope_bad()
+        refs = entity.references
+        if (not isinstance(entity.entity_id, str) or not exact_text(entity.entity_id)
+                or not normalize_name(entity.canonical_name)
+                or not isinstance(refs, (tuple, list))
+                or not all(_ref_ok(r) for r in tuple(refs))):
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_INVALID")
+        key = (skey, entity.entity_id)
+        if key in self._entities:
             return ResolutionResult(AliasOutcome.REJECTED_DUPLICATE, code="ENTITY_EXISTS")
-        self._entities[entity.entity_id] = entity
+        self._entities[key] = SupplierEntity(entity.entity_id, entity.scope,
+                                             entity.canonical_name, tuple(refs))
         return ResolutionResult(AliasOutcome.OK, entity_id=entity.entity_id)
 
     def add_alias(self, alias: AliasRecord) -> ResolutionResult:
-        if not isinstance(alias.scope, AliasScope) or not alias.scope.valid():
-            return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
-        ent = self._entities.get(alias.entity_id)
-        if ent is None:
+        if type(alias) is not AliasRecord:
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ALIAS_INVALID")
+        skey = _skey(alias.scope)
+        if skey is None:
+            return _scope_bad()
+        if not isinstance(alias.entity_id, str) or (skey, alias.entity_id) not in self._entities:
+            # also covers an entity that exists only in another scope: no cross-scope oracle
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_UNKNOWN")
-        if ent.scope.key() != alias.scope.key():
-            return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="ALIAS_SCOPE_MISMATCH")
         has_text = bool(normalize_name(alias.alias_text))
-        has_ref = alias.reference is not None and alias.reference.valid()
-        if (not has_text and not has_ref) or not _trim(alias.provenance) or (
-                alias.reference is not None and not alias.reference.valid()):
+        has_ref = _ref_ok(alias.reference)
+        if (not has_text and not has_ref) or not exact_text(alias.provenance) or (
+                alias.reference is not None and not has_ref):
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ALIAS_INVALID")
         self._aliases.append(alias)
         return ResolutionResult(AliasOutcome.OK, entity_id=alias.entity_id)
 
     # -- resolution ---------------------------------------------------------------------------
     def resolve(self, scope: AliasScope, query: ResolveQuery) -> ResolutionResult:
-        if not isinstance(scope, AliasScope) or not scope.valid():
-            return ResolutionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
-        skey = scope.key()
-        in_scope = [e for e in self._entities.values() if e.scope.key() == skey]
+        skey = _skey(scope)
+        if skey is None:
+            return _scope_bad()
+        if type(query) is not ResolveQuery:
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="QUERY_INVALID")
+        in_scope = [e for (k, _), e in self._entities.items() if k == skey]
         ref = query.reference
-        if ref is not None and not ref.valid():
+        if ref is not None and not _ref_ok(ref):
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="REFERENCE_INVALID")
         ref_hits: set[str] = set()
         if ref is not None:
@@ -211,7 +235,7 @@ class AliasResolver:
                 if any(r.key() == rk for r in e.references):
                     ref_hits.add(e.entity_id)
             for a in self._aliases:
-                if a.scope.key() == skey and a.reference is not None and a.reference.key() == rk:
+                if _skey(a.scope) == skey and a.reference is not None and a.reference.key() == rk:
                     ref_hits.add(a.entity_id)
         name_hits = self._name_hits(skey, in_scope, query.name)
         if len(ref_hits) == 1:
@@ -225,21 +249,21 @@ class AliasResolver:
                                 code="NO_EXACT_REFERENCE")
 
     def _name_hits(self, skey: tuple[str, str], in_scope: list[SupplierEntity],
-                   name: str) -> set[str]:
+                   name: object) -> set[str]:
         n = normalize_name(name)
         if not n:
             return set()
         hits = {e.entity_id for e in in_scope if normalize_name(e.canonical_name) == n}
         for a in self._aliases:
-            if a.scope.key() == skey and normalize_name(a.alias_text) == n:
+            if _skey(a.scope) == skey and normalize_name(a.alias_text) == n:
                 hits.add(a.entity_id)
         return hits
 
     def _ambiguous(self, scope: AliasScope, candidates: set[str],
                    suggestions: set[str]) -> ResolutionResult:
         cands = tuple(sorted(candidates))
-        digest = hashlib.sha256(
-            "\x1f".join([*scope.key(), *cands]).encode("utf-8")).hexdigest()[:24]
+        skey = scope.key()
+        digest = hashlib.sha256(stable_key(*skey, *cands).encode("utf-8")).hexdigest()[:24]
         item_id = f"RQ-{digest}"
         if item_id not in self._queue:
             self._queue[item_id] = QueueItem(item_id, scope, cands,
@@ -248,27 +272,37 @@ class AliasResolver:
                                 code="AMBIGUOUS_CANDIDATES")
 
     # -- queue / human decision ---------------------------------------------------------------
-    def queue_items(self) -> tuple[QueueItem, ...]:
-        return tuple(self._queue.values())
+    def queue_items(self, scope: AliasScope) -> tuple[QueueItem, ...]:
+        """Queue items of exactly this scope; empty for an invalid scope."""
+        skey = _skey(scope)
+        if skey is None:
+            return ()
+        return tuple(i for i in self._queue.values() if _skey(i.scope) == skey)
 
-    def resolve_ambiguity(self, item_id: str, chosen_entity_id: str, approver: Approver,
-                          reason: str) -> DecisionResult:
+    def resolve_ambiguity(self, scope: AliasScope, item_id: str, chosen_entity_id: str,
+                          approver: Approver, reason: str) -> DecisionResult:
+        skey = _skey(scope)
+        if skey is None:
+            return DecisionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
         item = self._queue.get(item_id) if isinstance(item_id, str) else None
-        if item is None:
+        if item is None or _skey(item.scope) != skey:
+            # another scope's item is indistinguishable from a missing one
             return DecisionResult(AliasOutcome.UNKNOWN_ITEM, code="ITEM_UNKNOWN")
-        if (not isinstance(approver, Approver) or approver.kind is not ActorKind.HUMAN
+        if (type(approver) is not Approver or approver.kind is not ActorKind.HUMAN
                 or not normalize_name(approver.identity)):
             return DecisionResult(AliasOutcome.REJECTED_APPROVER, code="APPROVER_NOT_HUMAN")
-        if not _trim(reason):
+        why = exact_text(reason)
+        if not why:
             return DecisionResult(AliasOutcome.REJECTED_INPUT, code="REASON_REQUIRED")
-        if chosen_entity_id not in item.candidate_ids:
+        if not isinstance(chosen_entity_id, str) or chosen_entity_id not in item.candidate_ids:
             return DecisionResult(AliasOutcome.REJECTED_CHOICE, code="CHOICE_NOT_CANDIDATE")
         if item.decision is not None:
             if item.decision.chosen_entity_id == chosen_entity_id:
-                return DecisionResult(AliasOutcome.DECIDED, item.decision, replay=True)
+                first = item.decision
+                masked = Decision(first.chosen_entity_id, "", "", first.decided_at)
+                return DecisionResult(AliasOutcome.DECIDED, masked, replay=True)
             return DecisionResult(AliasOutcome.REJECTED_CONFLICT, code="DECISION_CONFLICT")
-        decision = Decision(chosen_entity_id, approver.identity.strip(), reason.strip(),
-                            self.clock())
-        self._queue[item_id] = QueueItem(item.item_id, item.scope, item.candidate_ids,
-                                         item.suggestions, decision)
+        decision = Decision(chosen_entity_id, exact_text(approver.identity), why, self.clock())
+        self._queue[item.item_id] = QueueItem(item.item_id, item.scope, item.candidate_ids,
+                                              item.suggestions, decision)
         return DecisionResult(AliasOutcome.DECIDED, decision)

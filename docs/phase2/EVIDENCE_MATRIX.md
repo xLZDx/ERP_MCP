@@ -59,3 +59,7 @@ Backup/restore: `pg_dump -Fc` of a populated database restored with `pg_restore 
 Not run (explicit): capacity 30/50/100/150 sources, mutation check of guards outside the table above, Release 1 regression, full-repo pytest/ruff, GitHub CI.
 
 Statements elsewhere that SQL was "never executed" or PostgreSQL tests "NOT_RUN" describe 9b4fc0c and are superseded by the rows above.
+
+## Sprint S4b review batch (D-016), 2026-10-09
+
+Measured on the S4b fix commit tree (parent 223a30f): offline `tests/phase2` 1231 passed / 226 skipped; integration (`-m integration`, disposable PostgreSQL, REQUIRE_PG=1) 226 passed, 1231 deselected, exit 0; ruff clean on src, tests/phase2 and the drill script; no NUL bytes. Earlier run on 223a30f before the fixes: 224 integration passed. Covered: capture loop (PARTIAL no longer crashes, scope binding, first-page snapshot, timeout, ledger error), taxonomy/aliases hardening, real-process contention with asserted window overlap, drill failure-path cleanup and secret redaction, independent recount. Not run (explicit): mutation checks (operator ban), Release 1 regression, GitHub CI, full-repo pytest, drill failure paths for the new deadline/kill code (only the happy and bad-password paths executed), capacity re-measurement after the script fixes.

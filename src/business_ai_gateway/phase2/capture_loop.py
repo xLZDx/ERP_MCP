@@ -23,11 +23,17 @@ Rules
 - Typed connector failures are raised as ``ConnectorFailure(kind)``; ``TimeoutError`` is a TIMEOUT;
   any other exception is an OUTAGE recorded by the scheduler as ``WORK_EXCEPTION:<ClassName>``.
   Raw exception text is never stored or returned.
-- The response ``content_digest`` is used as the structural hash handed to ``drift.classify``.
+- The response ``content_digest`` is used as the structural hash handed to ``drift.classify`` ONLY for
+  an ``OK_COMPLETE`` outcome; a partial/unknown capture carries no hash (drift rejects one).
+- ``snapshot=True`` requires a request without ``page_cursor`` (first page); the request must carry
+  the loop's own tenant/source. The connector call runs on a dedicated bounded executor under
+  ``connector_timeout``; a call that outlives it is a TIMEOUT and its late result is discarded (the
+  worker thread cannot be cancelled and is a known gap).
 """
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Final
@@ -47,7 +53,7 @@ from .drift import (
     DriftEventKind,
     classify,
 )
-from .ports import LedgerPort, Scope
+from .ports import LedgerPort, PortError, Scope
 from .resnapshot import ResnapshotReason, ResnapshotTracker
 from .scheduler import LeaseHandle, RunResult, RunStatus, SourceScheduler
 
@@ -96,7 +102,13 @@ class _Refused(Exception):
 
 class CaptureLoop:
     def __init__(self, scheduler: SourceScheduler, tracker: ResnapshotTracker,
-                 connector: ConnectorContract, ledger: LedgerPort, scope: Scope) -> None:
+                 connector: ConnectorContract, ledger: LedgerPort, scope: Scope, *,
+                 connector_timeout: float = 30.0, max_threads: int = 4) -> None:
+        if not (isinstance(connector_timeout, (int, float)) and connector_timeout > 0):
+            raise ValueError("CONNECTOR_TIMEOUT_INVALID")
+        self._timeout = float(connector_timeout)
+        self._executor = ThreadPoolExecutor(max_workers=max_threads,
+                                            thread_name_prefix="capture-connector")
         self._sched, self._tracker, self._connector = scheduler, tracker, connector
         self._ledger, self._scope = ledger, scope
         self._accepted: dict[str, str] = {}
@@ -115,17 +127,22 @@ class CaptureLoop:
 
     async def capture_step(self, job_id: UUID, connection_id: str, request: CaptureRequest, *,
                            snapshot: bool = False) -> CaptureResult:
+        if request.tenant_id != self._scope.tenant_id or request.source_id != self._scope.source_id:
+            raise ValueError("REQUEST_SCOPE_MISMATCH")
+        if snapshot and request.page_cursor is not None:
+            raise ValueError("SNAPSHOT_REQUIRES_FIRST_PAGE")
         if self._tracker.is_required(connection_id) and not snapshot:
             return self._result(CaptureStatus.RESNAPSHOT_REQUIRED, connection_id)
         state: dict[str, Any] = {"invalid": False, "refused": False}
 
         async def work(handle: LeaseHandle) -> CaptureOutcomeKind:
+            await handle.ensure_fresh()
+            # re-check with no await between here and the connector call
             if self._tracker.is_required(connection_id) and not snapshot:
                 state["refused"] = True
                 raise _Refused
             token = self._tracker.begin_snapshot() if snapshot else None
             state["token"] = token
-            await handle.ensure_fresh()
             kind, digest = await self._call(request, state)
             if kind is None:  # SDK-invalid response
                 state["invalid"] = True
@@ -153,7 +170,10 @@ class CaptureLoop:
             if decision.accepted_hash is not None:
                 self._accepted[connection_id] = decision.accepted_hash
             if snapshot and state.get("token") is not None:
-                live = await self._ledger.scope_epoch(self._scope)
+                try:
+                    live = await self._ledger.scope_epoch(self._scope)
+                except PortError:
+                    live = None  # cannot prove the epoch: keep the requirement (conservative)
                 if type(live) is int:
                     cleared = self._tracker.complete(
                         connection_id, kind, request.scope_epoch, live,
@@ -165,8 +185,14 @@ class CaptureLoop:
                     state: dict[str, Any]) -> tuple[CaptureOutcomeKind | None, str | None]:
         """(kind, digest); kind None = SDK-invalid. Typed failures are returned as kinds."""
         try:
-            response = await asyncio.to_thread(checked_capture_page, self._connector, request)
-            return response_to_outcome(response), response.provenance.content_digest
+            response = await asyncio.wait_for(
+                asyncio.get_running_loop().run_in_executor(
+                    self._executor, checked_capture_page, self._connector, request),
+                self._timeout)
+            kind = response_to_outcome(response)
+            digest = (response.provenance.content_digest
+                      if kind is CaptureOutcomeKind.OK_COMPLETE else None)
+            return kind, digest
         except ValidationError:
             return None, None
         except ConnectorFailure as exc:
