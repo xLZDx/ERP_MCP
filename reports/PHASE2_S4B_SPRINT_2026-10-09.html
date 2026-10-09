@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S4b: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S4b: results</h1>
+<div class="sub">Date: 2026-10-09 · branch phase2/living-model-connectors-reconciliation · head 6f80219 (pushed; GPT-PM APPROVE on a2219b0 and on merge 6f80219) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6f80219</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S4b is implemented, verified and published</span> (push <code>2614779..6f80219</code>, no merge to main, no release). Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: everything is isolated modules, nothing is wired into Release 1.</p>
+<ul>
+<li>Without a DSN: <b>1232 passed, 228 skipped</b>. On the disposable PostgreSQL 16: <b>226 integration passed</b> (on 03da6aa; afterwards only the capacity drill script and its smoke test changed — that set: 6 passed). <code>ruff</code> clean, no NUL bytes.</li>
+<li>Three narrow reviewers (Sonnet 5.5): 1 BLOCKER and about 15 MAJOR — fixed in one batch (03da6aa). GPT-PM: REJECT on 03da6aa (1 MAJOR — the drill did not prove the DSN points at the disposable container) → fixed in a2219b0 → APPROVE; then APPROVE on merge 6f80219.</li>
+<li>The operator's mutation ban was respected: neither I nor the agents ran mutations in this sprint's checks; kill tables from implementation agents are not evidence.</li>
+<li>No story is DONE: the ceiling is <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-013 taxonomy/LDM candidates</td><td>Edges CANDIDATE only, LLM/automation cannot accept, independent approver, new versions keep old ones</td><td><span class="warn">PARTIAL</span></td><td>No concept accept/reject API; actor kind is caller-asserted (RULE only via a policy_ref registry); in-memory store</td></tr>
+<tr><td>E1</td><td>R2-US-014 supplier aliases</td><td>Exact scoped match, no cross-company merge, ambiguity goes to a human queue</td><td><span class="ok">DONE (code and tests, in-memory)</span></td><td>In-memory store, no locking</td></tr>
+<tr><td>E2</td><td>R2-US-015 impact closure (TC043–045)</td><td>Tests on the existing model_graph.py</td><td><span class="ok">DONE</span></td><td>No defect found in the module</td></tr>
+<tr><td>E3</td><td>Capture loop enforces the resnapshot tracker</td><td>Incremental capture refused while required; only a complete snapshot at the live epoch clears</td><td><span class="warn">PARTIAL</span></td><td>Accepted hash in memory; content_digest used as structural hash; run_job bypasses the loop; connector thread cannot be cancelled after the deadline</td></tr>
+<tr><td>E4</td><td>Multi-process concurrency on PostgreSQL</td><td>Real processes, one winner, killed lease holder, stale fence</td><td><span class="ok">DONE (code and tests)</span></td><td>One machine, local container; execution-window overlap is asserted</td></tr>
+<tr><td>E5</td><td>Capacity drill 30/50/100/150</td><td>Reproducible script, independent recount, cluster check</td><td><span class="warn">PARTIAL</span></td><td>Numbers are single noisy runs, not a guarantee; failure paths of the new deadline were not exercised; measured before the script fixes</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S4b section). Mutations were not run (operator ban).</p>
+<div class="wrap"><table>
+<thead><tr><th>Story</th><th>Requirement</th><th>Test</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Defect / fix</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-013</td><td>Edges/concepts CANDIDATE only, scoped, LLM cannot accept, versions</td><td>test_taxonomy.py (72)</td><td>Foreign scope invisible; LLM/AUTOMATION accept refused; self-approval refused; RULE only via registry; version n+1 keeps old ones</td><td>offline</td><td><span class="ok">pass</span></td><td>Cross-tenant id collisions, invisible characters in identity, RULE accepted on any string — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-014</td><td>Alias by exact scoped reference; ambiguity to a human</td><td>test_aliases.py (56)</td><td>Near-miss reference does not resolve; same name in two companies stays two entities; two candidates give AMBIGUOUS and ONE queue item</td><td>offline</td><td><span class="ok">pass</span></td><td>Queue and entity_id were global across tenants — scope-bound</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-015</td><td>Impact closure, unknown graph denies, remove+recreate is not a rename</td><td>test_model_graph_impact.py (44)</td><td>blocked | unaffected = known operations; foreign scope raises DIFF_SCOPE_MISMATCH (callers treat it as deny)</td><td>offline</td><td><span class="ok">pass</span></td><td>A vacuous test was replaced</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-009/012</td><td>Capture loop: incremental refused while required, cleared by a complete snapshot</td><td>test_capture_loop.py (24)</td><td>Connector not called while required; PARTIAL/timeout/older epoch do not clear; PARTIAL gives CAPTURED with no hash</td><td>offline</td><td><span class="ok">pass</span></td><td>BLOCKER: PARTIAL crashed work (hash on an incomplete outcome); request scope binding; connector timeout; ledger error after success</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-017</td><td>One lease holder across real processes</td><td>test_g1_concurrency_mp.py (4)</td><td>One fence among six processes; fence 2 after the kill, fence 1 gets STALE_JOB_FENCE; one winner; identical page applied once; execution windows overlap</td><td>PG</td><td><span class="ok">pass</span></td><td>The start barrier did not create contention; child processes leaked — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Drill</td><td>30/50/100/150 sources; run safety</td><td>phase2_capacity_drill.py, test_g1_capacity_smoke.py (6)</td><td>Independent recount from the test's own connection; password absent from output; another cluster/remote host refused before CREATE DATABASE</td><td>PG</td><td><span class="ok">pass</span></td><td>GPT-PM MAJOR: cluster identity was not verified — system_identifier check, no override</td><td>MEASUREMENT</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>Sprint-end review</b> (223a30f; python, tests, reliability): 1 BLOCKER (PARTIAL crashes the work callable) and about 15 MAJOR — scope binding, id collisions, invisible identity characters, RULE policy registry, re-check after ensure_fresh, connector timeout, drill process cleanup, real contention in tests. Fixed in 03da6aa.</li>
+<li><b>GPT-PM, 03da6aa:</b> REJECT, MAJOR-01 — the capacity drill checked only the hostname (and had an ALLOW_REMOTE switch) without proving the target is erp-phase2-test-pg. Reproduced by reading the code; fixed in a2219b0 (system_identifier before CREATE DATABASE, workers re-check, override removed).</li>
+<li><b>GPT-PM, a2219b0:</b> APPROVE; two MINOR notes: the worker opens a connection before the identity check, and the handed-over identifier is not a cryptographic proof.</li>
+<li><b>Push was rejected</b> (origin moved: main merges). A plain merge was made (the only conflict was core/DECISION_LOG.md, entries from both sides kept), the S4b files are byte-identical to the approved ones; GPT-PM APPROVE on merge 6f80219; no force push.</li>
+<li><b>Note:</b> three small local result files <code>docs/phase2/g1_*_local.txt</code> were committed by my broad git add; history is not rewritten.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Mutation runs (operator ban), Release 1 regression, GitHub CI (operator decision), a full integration run after the drill fix (only the drill changed), failure paths of the drill deadline, a capacity re-measurement after the script fixes.</li>
+<li>Steps G0, G2–G7 and operator-dependent items (1C/Drive sources, OAuth, accountant reconciliation) are untouched.</li>
+</ul>
+<h2>Next steps</h2>
+<ul>
+<li>Without the operator: queue/aging fairness decision; capture loop with a real structural hash and a persistent baseline; concept accept/reject; binding actors to an authenticated principal.</li>
+<li>The G1 exit decision is a separate gate; Release 2 stays NO-GO.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

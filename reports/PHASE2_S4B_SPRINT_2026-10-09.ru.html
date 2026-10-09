@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S4b: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S4b: итоги</h1>
+<div class="sub">Дата: 2026-10-09 · ветка phase2/living-model-connectors-reconciliation · head 6f80219 (запушен; GPT-PM APPROVE на a2219b0 и на merge 6f80219) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6f80219</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S4b реализован, проверен и опубликован</span> (push <code>2614779..6f80219</code>, без merge в main и релиза). Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: всё — изолированные модули, ничего не подключено к Release 1.</p>
+<ul>
+<li>Без DSN: <b>1232 passed, 228 skipped</b>. На одноразовом PostgreSQL 16: <b>226 integration passed</b> (на 03da6aa; после этого менялись только скрипт ёмкости и его smoke-тест — тот набор: 6 passed). <code>ruff</code> чистый, NUL-байтов нет.</li>
+<li>Три узких ревьюера (Sonnet 5.5): 1 BLOCKER и около 15 MAJOR — исправлены одним пакетом (03da6aa). GPT-PM: REJECT на 03da6aa (1 MAJOR — drill не проверял, что DSN указывает на одноразовый контейнер) → исправлено в a2219b0 → APPROVE; затем APPROVE на merge 6f80219.</li>
+<li>Запрет оператора на мутации соблюдён: ни я, ни агенты их не запускали в проверках спринта; таблицы «убитых мутантов» от агентов реализации не считаются доказательством.</li>
+<li>Ни одной истории не присвоен DONE: максимум <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-013 кандидаты таксономии/LDM</td><td>Рёбра только CANDIDATE, LLM/automation не принимает, независимый approver, новые версии не затирают старые</td><td><span class="warn">PARTIAL</span></td><td>Нет API accept/reject для концептов; вид актора задаёт вызывающий (RULE — только по реестру policy_ref); хранилище в памяти</td></tr>
+<tr><td>E1</td><td>R2-US-014 алиасы поставщиков</td><td>Точное совпадение внутри scope, без слияния между компаниями, неоднозначность — в очередь человеку</td><td><span class="ok">DONE (код и тесты, in-memory)</span></td><td>Хранилище в памяти, без блокировок</td></tr>
+<tr><td>E2</td><td>R2-US-015 замыкание влияния (TC043–045)</td><td>Тесты на существующем model_graph.py</td><td><span class="ok">DONE</span></td><td>Дефектов в модуле не найдено</td></tr>
+<tr><td>E3</td><td>Capture loop принуждает tracker resnapshot</td><td>Инкрементальный захват отказывается при требовании; очищает только полный снимок на живой эпохе</td><td><span class="warn">PARTIAL</span></td><td>Базовый хэш в памяти; content_digest используется как структурный хэш; run_job обходит цикл; поток коннектора нельзя отменить после дедлайна</td></tr>
+<tr><td>E4</td><td>Многопроцессная конкурентность на PostgreSQL</td><td>Реальные процессы, один победитель, убитый держатель lease, устаревший fence</td><td><span class="ok">DONE (код и тесты)</span></td><td>Одна машина, локальный контейнер; перекрытие окон выполнения проверяется</td></tr>
+<tr><td>E5</td><td>Drill ёмкости 30/50/100/150</td><td>Воспроизводимый скрипт, независимый пересчёт, проверка кластера</td><td><span class="warn">PARTIAL</span></td><td>Числа — одиночные шумные замеры, не гарантия; пути отказа нового дедлайна не прогонялись; замеры сделаны до правок скрипта</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S4b). Мутации не запускались по запрету оператора.</p>
+<div class="wrap"><table>
+<thead><tr><th>История</th><th>Требование</th><th>Тест</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Дефект / исправление</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-013</td><td>Рёбра/концепты — только CANDIDATE, scope, LLM не принимает, версии</td><td>test_taxonomy.py (72)</td><td>Чужой scope не виден; LLM/AUTOMATION accept отказан; самопринятие отказано; RULE только по реестру; версия n+1 сохраняет старые</td><td>offline</td><td><span class="ok">pass</span></td><td>Коллизии id между тенантами, невидимые символы в идентичности, RULE принимал по любой строке — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-014</td><td>Алиас по точной ссылке в scope; неоднозначность — человеку</td><td>test_aliases.py (56)</td><td>Похожая ссылка не резолвится; одинаковое имя в двух компаниях — две сущности; два кандидата → AMBIGUOUS и ОДИН элемент очереди</td><td>offline</td><td><span class="ok">pass</span></td><td>Очередь и entity_id были глобальны между тенантами — привязаны к scope</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-015</td><td>Замыкание влияния, неизвестный граф — отказ, remove+recreate ≠ rename</td><td>test_model_graph_impact.py (44)</td><td>blocked | unaffected = известные операции; чужой scope бросает DIFF_SCOPE_MISMATCH (вызывающий трактует как отказ)</td><td>offline</td><td><span class="ok">pass</span></td><td>Пустой (вакуумный) тест заменён</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-009/012</td><td>Цикл захвата: отказ инкремента при требовании, очистка полным снимком</td><td>test_capture_loop.py (24)</td><td>Коннектор не вызывается пока требование; PARTIAL/timeout/старая эпоха не очищают; PARTIAL даёт CAPTURED без хэша</td><td>offline</td><td><span class="ok">pass</span></td><td>BLOCKER: PARTIAL ронял work (хэш у неполного исхода); привязка запроса к scope; таймаут коннектора; ошибка леджера после успеха</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-017</td><td>Один держатель lease между реальными процессами</td><td>test_g1_concurrency_mp.py (4)</td><td>Один fence из шести процессов; fence 2 после убийства, fence 1 → STALE_JOB_FENCE; один победитель; идентичная страница применяется один раз; окна выполнения перекрываются</td><td>PG</td><td><span class="ok">pass</span></td><td>Барьер старта не создавал конкуренции; утечка дочерних процессов — исправлено</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Drill</td><td>30/50/100/150 источников; безопасность запуска</td><td>phase2_capacity_drill.py, test_g1_capacity_smoke.py (6)</td><td>Независимый пересчёт из своего соединения; пароль не в выводе; чужой кластер/удалённый хост отказан до CREATE DATABASE</td><td>PG</td><td><span class="ok">pass</span></td><td>MAJOR GPT-PM: не проверялась идентичность кластера — system_identifier + отказ без override</td><td>MEASUREMENT</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Ревью конца спринта</b> (223a30f; python, тесты, надёжность): 1 BLOCKER (PARTIAL роняет work-callable) и около 15 MAJOR — привязка к scope, коллизии id, невидимые символы в идентичности, реестр политик RULE, перепроверка после ensure_fresh, таймаут коннектора, чистка процессов drill, настоящая конкуренция в тестах. Исправлено пакетом 03da6aa.</li>
+<li><b>GPT-PM, 03da6aa:</b> REJECT, MAJOR-01 — capacity drill проверял только hostname (и имел переключатель ALLOW_REMOTE), не доказывая, что это erp-phase2-test-pg. Воспроизведено чтением кода; исправлено в a2219b0 (system_identifier до CREATE DATABASE, воркеры перепроверяют, переключатель удалён).</li>
+<li><b>GPT-PM, a2219b0:</b> APPROVE; два MINOR: воркер открывает соединение до проверки идентичности, а переданный идентификатор — не криптографическое подтверждение.</li>
+<li><b>Push отклонён</b> (origin ушёл вперёд: слияния main). Выполнен обычный merge (конфликт только в core/DECISION_LOG.md, записи сохранены с обеих сторон), файлы S4b байт-в-байт совпадают с одобренными; GPT-PM APPROVE на merge 6f80219; push без force.</li>
+<li><b>Замечание:</b> три маленьких локальных файла <code>docs/phase2/g1_*_local.txt</code> попали в коммиты из-за моего широкого git add; историю не переписываю.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Прогоны мутаций (запрет оператора), регрессия Release 1, GitHub CI (решение оператора), полный интеграционный прогон после правки drill (менялся только drill), пути отказа дедлайна drill и повторный замер ёмкости после правок скрипта.</li>
+<li>Шаги G0, G2–G7 и зависящие от оператора пункты (источники 1С/Drive, OAuth, бухгалтерская сверка) не затронуты.</li>
+</ul>
+<h2>Следующие шаги</h2>
+<ul>
+<li>Без оператора: справедливость очереди (queue/aging) и решение по ней; цикл захвата с настоящим структурным хэшем и устойчивым базовым хэшем; accept/reject для концептов; привязка актора к аутентифицированному принципалу.</li>
+<li>Решение по выходу из G1 — отдельный гейт; Release 2 остаётся NO-GO.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
