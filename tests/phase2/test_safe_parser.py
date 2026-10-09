@@ -960,3 +960,81 @@ def test_run_isolated_start_failure_is_child_aborted(monkeypatch, error):
 
     monkeypatch.setattr(sp.multiprocessing, "get_context", lambda _method: FakeContext())
     assert_bound(run_isolated(b"x"), sp.CHILD_ABORTED)
+
+
+# --- reply read under the deadline; environment scrub is non-clobbering -----------
+def _partial_frame_child(conn, _data, _limits, _memory):
+    import time
+
+    # Raw partial frame: header announces 64 bytes, only 2 follow, then stall.
+    if sys.platform == "win32":
+        import _winapi
+
+        _winapi.WriteFile(conn.fileno(), b"\x00\x00\x00\x40ab")
+    else:
+        import os
+
+        os.write(conn.fileno(), b"\x00\x00\x00\x40ab")
+    time.sleep(60)
+
+
+def test_run_isolated_stalled_partial_reply_times_out_and_kills_child():
+    import time
+
+    start = time.monotonic()
+    result = run_isolated(b"x", timeout_s=1.0, _child_target=_partial_frame_child)
+    elapsed = time.monotonic() - start
+    assert_bound(result, sp.TIMEOUT)
+    assert elapsed < 10.0
+    assert multiprocessing.active_children() == []
+
+
+def test_scrubbed_environment_keeps_concurrent_writes_and_restores_removed(monkeypatch):
+    import threading
+
+    monkeypatch.setenv("SP_TEST_SECRET", "hunter2")
+    monkeypatch.setenv("SP_TEST_REWRITTEN", "old")
+    monkeypatch.delenv("SP_TEST_NEW", raising=False)
+
+    def writer():
+        sp.os.environ["SP_TEST_NEW"] = "fresh"
+        sp.os.environ["SP_TEST_REWRITTEN"] = "newer"
+
+    with sp._scrubbed_environment():
+        assert "SP_TEST_SECRET" not in sp.os.environ
+        t = threading.Thread(target=writer)
+        t.start()
+        t.join()
+    assert sp.os.environ["SP_TEST_SECRET"] == "hunter2"
+    assert sp.os.environ["SP_TEST_NEW"] == "fresh"
+    assert sp.os.environ["SP_TEST_REWRITTEN"] == "newer"
+    monkeypatch.delenv("SP_TEST_NEW")
+
+
+def test_scrubbed_environment_exception_leaves_environment_intact(monkeypatch):
+    monkeypatch.setenv("SP_TEST_SECRET", "hunter2")
+    before = dict(sp.os.environ)
+    with pytest.raises(RuntimeError), sp._scrubbed_environment():
+        assert "SP_TEST_SECRET" not in sp.os.environ
+        raise RuntimeError("start failed")
+    assert dict(sp.os.environ) == before
+
+
+def test_scrubbed_environment_interrupt_during_removal_is_undone(monkeypatch):
+    monkeypatch.setenv("SP_TEST_A", "1")
+    monkeypatch.setenv("SP_TEST_B", "2")
+    before = dict(sp.os.environ)
+    real_pop = sp.os.environ.pop
+    calls = {"n": 0}
+
+    def flaky_pop(key, *default):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise KeyboardInterrupt
+        return real_pop(key, *default)
+
+    with monkeypatch.context() as inner:
+        inner.setattr(sp.os.environ, "pop", flaky_pop)
+        with pytest.raises(KeyboardInterrupt), sp._scrubbed_environment():
+            pass
+    assert dict(sp.os.environ) == before

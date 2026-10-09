@@ -192,7 +192,7 @@ async def test_guard_approver_independent_of_requester(requester):
     ("obs1", "obs1", "prop1"),
     (" OBS1 ", "obs1", "prop1"),
     ("prop1", "obs1", "prop1"),
-    ("PROP1 ", "obs1", "prop1"),
+    ("PROP1 ", "obs1", "prop1"),
 ])
 async def test_guard_approver_independent_of_observer_and_proposer(approver, observer, proposer):
     w = await world()
@@ -202,6 +202,30 @@ async def test_guard_approver_independent_of_observer_and_proposer(approver, obs
     res = await w.promote(rev, ev, approver=approver)
     await assert_rejected(w, before, res, Outcome.REJECTED_SELF_APPROVAL)
     assert res.code == "APPROVER_NOT_INDEPENDENT"
+
+
+@pytest.mark.parametrize("requester, approver", [
+    (REQUESTER, "pro\u200bm1"), ("pro\u200bm1", APPROVER), (REQUESTER, "prom1" + chr(0x202E) + ""), ("a\tb", APPROVER)])
+async def test_identity_invalid_after_strict_cleaning_is_blank_never_a_distinct_person(requester, approver):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    before = await w.snapshot()
+    res = await w.promote(rev, ev, requester=requester, approver=approver)
+    await assert_rejected(w, before, res, Outcome.REJECTED_INPUT)
+    assert res.code == "INVALID_ARGUMENT"
+
+
+@pytest.mark.parametrize("sql_code", ["SQL_28P01", "SQL_42501", "SQL_XXXXX"])
+async def test_non_allow_listed_sql_state_maps_to_sql_error(sql_code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    w.port.fail_with = PortError(sql_code)
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "SQL_ERROR")
+    w.port.fail_with = None
+    w.reader.raises = PortError(sql_code)
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "SQL_ERROR")
 
 
 @pytest.mark.parametrize("requester, approver", [("", APPROVER), (REQUESTER, ""), ("  ", APPROVER),
@@ -729,6 +753,35 @@ async def test_unknown_port_code_at_the_write_call_is_sanitised_and_stays_indete
     res = await w.promote(rev, ev)
     assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "WRITE_RESULT_UNKNOWN")
     assert code not in repr(res)
+
+
+@pytest.mark.parametrize("code", [[], None, {}, 5])
+async def test_non_text_port_code_at_the_write_call_is_indeterminate_not_a_crash(code):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    err = PortError("X")
+    err.code = code
+    w.port.fail_with = err
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.INDETERMINATE, "WRITE_RESULT_UNKNOWN")
+
+
+@pytest.mark.parametrize("code", [[], None, {}, 5])
+@pytest.mark.parametrize("where", ["reader", "list_acceptances"])
+async def test_non_text_port_code_before_the_write_is_failed_closed(code, where):
+    w = await world()
+    rev, ev, _ = await w.attest(1)
+    err = PortError("X")
+    err.code = code
+    if where == "reader":
+        w.reader.raises = err
+    else:
+        async def bad(*_a, **_k):
+            raise err
+        w.port.list_acceptances = bad
+    res = await w.promote(rev, ev)
+    assert (res.outcome, res.code) == (Outcome.FAILED_CLOSED, "PREWRITE_PORT_ERROR")
+    assert w.port.promote_calls == 0
 
 
 async def test_prewrite_exception_class_name_is_not_echoed():

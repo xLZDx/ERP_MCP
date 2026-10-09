@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import hmac
 import re
-import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -33,6 +32,7 @@ from enum import StrEnum
 from typing import Protocol, runtime_checkable
 from uuid import UUID
 
+from ._identity import clean_identity
 from .ports import AcceptanceView, HeadAttestationPort, PortError, Scope, evidence_digest
 
 __all__ = [
@@ -99,10 +99,9 @@ class AttestationReader(Protocol):
 
 
 def normalize_identity(value: object) -> str:
-    """NFKC + casefold + trim; empty string means 'no usable identity'."""
-    if not isinstance(value, str):
-        return ""
-    return unicodedata.normalize("NFKC", value).strip().casefold()
+    """Strict identity normalisation (``_identity.clean_identity``: NFKC + casefold + trim, zero-width
+    and other format/control characters make it invalid); empty string means 'no usable identity'."""
+    return clean_identity(value)
 
 
 _PORT_CODES: dict[str, Outcome] = {
@@ -133,16 +132,23 @@ _ROLLED_BACK_CODES = frozenset({
 
 
 _SQL_STATE_CODE = re.compile(r"^SQL_[0-9A-Z]{5}$")
+# SQL states this module handles: serialization/deadlock (rolled back) and the connection class
+# (08xxx, 57P01 admin shutdown, 53300 too many connections: indeterminate at the write call).
+_SQL_STATE_ALLOWED = re.compile(r"^SQL_(40001|40P01|08[0-9A-Z]{3}|57P01|53300)$")
 
 
 def _safe_code(code: object, fallback: str) -> str:
-    """Outward error code: only known promotion/SQL-state codes pass; anything else is a fixed code.
+    """Outward error code: only known promotion codes and allow-listed SQL states pass.
 
-    A raw exception class name or an arbitrary code text (possibly attacker- or database-controlled)
-    is never returned to the caller."""
-    if type(code) is str and (code in _PORT_CODES or code in _ROLLED_BACK_CODES
-                              or code in _NO_READ_RIGHT or _SQL_STATE_CODE.fullmatch(code)):
+    Any other well-formed SQL state is the fixed ``SQL_ERROR``; a raw exception class name or an
+    arbitrary code text (possibly attacker- or database-controlled) is never returned."""
+    if type(code) is not str:
+        return fallback
+    if (code in _PORT_CODES or code in _ROLLED_BACK_CODES or code in _NO_READ_RIGHT
+            or _SQL_STATE_ALLOWED.fullmatch(code)):
         return code
+    if _SQL_STATE_CODE.fullmatch(code):
+        return "SQL_ERROR"
     return fallback
 
 
@@ -206,7 +212,7 @@ class PromotionService:
         try:
             accepted = await self._port.list_acceptances(approver, scope)
         except PortError as exc:
-            if exc.code not in _NO_READ_RIGHT:
+            if type(exc.code) is not str or exc.code not in _NO_READ_RIGHT:
                 raise  # transient read failure: never mask a possibly committed promotion as a rejection
             accepted = ()  # no read right: the normal guards below still fail closed / reject
         recorded = next((a for a in accepted if a.acceptance_id == acceptance_id), None)
@@ -238,7 +244,10 @@ class PromotionService:
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_DIGEST_MISMATCH")
         if await self._reader.is_trusted_reviewer(scope, att.observer) is not True:
             return PromotionResult(Outcome.REJECTED_UNTRUSTED, code="REVIEWER_NOT_TRUSTED")
-        if approver_id in (normalize_identity(att.observer), normalize_identity(att.proposer)):
+        observer_id, proposer_id = normalize_identity(att.observer), normalize_identity(att.proposer)
+        if not observer_id or not proposer_id:  # an invalid id is never a distinct person
+            return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
+        if approver_id in (observer_id, proposer_id):
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
         head = await self._port.get_head(approver, scope, model_key)
         if head is None or head.version != expected_version:
@@ -248,6 +257,8 @@ class PromotionService:
                 approver, scope, model_key, expected_version, candidate, acceptance_id,
                 evidence.evidence_ref)
         except PortError as exc:  # typed SQL rejection: the transaction rolled back, nothing written
+            if type(exc.code) is not str:  # unhashable/non-text code: never raise, the commit may have landed
+                return PromotionResult(Outcome.INDETERMINATE, code="WRITE_RESULT_UNKNOWN")
             outcome = _PORT_CODES.get(exc.code)
             if outcome is not None:
                 return PromotionResult(outcome, code=exc.code)

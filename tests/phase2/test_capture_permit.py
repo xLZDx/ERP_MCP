@@ -233,7 +233,7 @@ def test_tc071_prod_default_off_at_issue_and_at_use() -> None:
     on, _ = make(prod_enabled=True)
     p = issued(on, prod, "k-prod")
     assert adm(on, p.permit_id).allowed
-    assert on.set_prod_enabled(False)
+    assert on.set_prod_enabled(False, OWNER)
     res2 = adm(on, p.permit_id)
     assert (res2.allowed, res2.code) == (False, "PROD_DISABLED")
     assert on.set_prod_enabled("yes") is False  # type: ignore[arg-type]
@@ -345,7 +345,7 @@ def test_replay_after_revoke_or_prod_disable_is_refused_not_live() -> None:
     on, _ = make(prod_enabled=True)
     issued(on, prod, "kp")
     assert on.issue("kp", prod, OWNER).status is IssueStatus.REPLAYED
-    on.set_prod_enabled(False)
+    on.set_prod_enabled(False, OWNER)
     res2 = on.issue("kp", prod, OWNER)
     assert (res2.status, res2.permit, res2.code) == (IssueStatus.REFUSED, None, "PROD_DISABLED")
     assert on.count() == 1
@@ -375,7 +375,7 @@ def test_admit_case_variants_and_precedence_order() -> None:
     prod = replace(REQ, environment=Environment.PROD)
     on, c2 = make(prod_enabled=True)
     pp = issued(on, prod, "kp")
-    on.set_prod_enabled(False)
+    on.set_prod_enabled(False, OWNER)
     c2.now = T1 + timedelta(hours=1)
     assert adm(on, pp.permit_id).code == "PROD_DISABLED"
     assert adm(on, pp.permit_id, mode=INCR).code == "MODE_MISMATCH"
@@ -478,16 +478,107 @@ def test_revoke_denied_when_issuer_no_longer_registered_owner() -> None:
 
 def test_audit_prod_flag_actor_normalised_and_non_bool_not_audited() -> None:
     store, clock = make()
-    assert store.set_prod_enabled(True, actor=" Admin-1 ")
-    assert store.set_prod_enabled("yes", actor="x") is False  # type: ignore[arg-type]
-    assert store.set_prod_enabled(False)
+    admin = Issuer(IssuerKind.HUMAN, " Admin-1 ")
+    store, clock = make(prod_admins={"admin-1", "a" * 200})
+    assert store.set_prod_enabled(True, admin)
+    assert store.set_prod_enabled("yes", admin) is False  # type: ignore[arg-type]
+    assert store.set_prod_enabled(False, OWNER)  # a registered owner of some scope may toggle too
     assert store.audit() == (
         AuditEntry("PROD_FLAG", "admin-1", "", "True", T0),
-        AuditEntry("PROD_FLAG", "", "", "False", T0),
+        AuditEntry("PROD_FLAG", "owner-1", "", "False", T0),
     )
     clock.now = T1
-    store.set_prod_enabled(True, actor="a" * 500)
+    store.set_prod_enabled(True, Issuer(IssuerKind.HUMAN, "a" * 200))
     assert store.audit()[-1].actor == "a" * 128 and store.audit()[-1].at == T1
+
+
+@pytest.mark.parametrize("by", [None, "owner-1", Issuer(IssuerKind.LLM, "owner-1"),
+                                Issuer(IssuerKind.AUTOMATION, "admin-1"),
+                                Issuer(IssuerKind.HUMAN, "stranger"), Issuer(IssuerKind.HUMAN, "")])
+def test_set_prod_enabled_denied_for_non_admins_unchanged_and_audited(by) -> None:
+    store, _ = make(prod_admins={"admin-1"})
+    assert store.set_prod_enabled(True, by) is False  # type: ignore[arg-type]
+    assert store.audit() == (AuditEntry("PROD_FLAG", store.audit()[0].actor, "", "PROD_FLAG_DENIED", T0),)
+    assert store.issue("k", replace(REQ, environment=Environment.PROD), OWNER).code == "PROD_DISABLED"
+    assert PermitStore(Clock()).set_prod_enabled(True, OWNER) is False  # empty registry: nobody
+    with pytest.raises(ValueError):
+        PermitStore(Clock(), prod_admins="admin-1")  # type: ignore[arg-type]
+
+
+def test_max_uses_is_bounded_before_formatting_and_audited() -> None:
+    store, _ = make()
+    for bad in (10**5000, 10**9 + 1, -(10**5000)):
+        res = store.issue("k", replace(REQ, max_uses=bad), OWNER)
+        assert (res.status, res.permit, res.code) == (IssueStatus.REFUSED, None, "MAX_USES_INVALID")
+    assert [e.value for e in store.audit()] == ["MAX_USES_INVALID"] * 3
+    assert store.issue("k", replace(REQ, max_uses=10**9), OWNER).status is IssueStatus.ISSUED
+
+
+def test_owners_and_id_collections_reject_str_bytes_and_non_str_items() -> None:
+    for bad in ("alice", b"alice", bytearray(b"a"), 5, None, {"a": 1}, {1, 2}, ["a", 1], {"a", b"b"}):
+        with pytest.raises(ValueError):
+            PermitStore(Clock(), owners={("t", "s"): bad})  # type: ignore[dict-item]
+    ok = PermitStore(Clock(), owners={("t", "s"): ["alice"]})
+    assert ok.issue("k", replace(REQ, tenant_id="t", source_id="s"), Issuer(IssuerKind.HUMAN, "alice")).status \
+        is IssueStatus.ISSUED
+
+
+def test_security_audit_entries_survive_admit_flooding_and_drops_are_counted() -> None:
+    store, _ = make(max_audit=5, prod_admins={"admin-1"})
+    store.set_prod_enabled(True, Issuer(IssuerKind.HUMAN, "admin-1"))
+    p = issued(store)
+    for _ in range(50):
+        adm(store, "f" * 32)
+    log = store.audit()
+    kinds = [e.kind for e in log]
+    assert kinds[:2] == ["PROD_FLAG", "ISSUE"] or {"PROD_FLAG", "ISSUE"} <= set(kinds)
+    assert any(e.kind == "ISSUE" and e.subject == p.permit_id for e in log)
+    assert sum(k == "ADMIT" for k in kinds) == 5 and store.dropped_admits() == 45
+    store.revoke(p.permit_id, "tenant-a", OWNER)
+    for _ in range(50):
+        adm(store, "f" * 32)
+    assert [e.kind for e in store.audit()].count("REVOKE") == 1
+
+
+def test_audit_order_equals_decision_order_and_clock_read_inside_the_lock() -> None:
+    seen: list[bool] = []
+    holder: dict[str, PermitStore] = {}
+
+    def clock() -> datetime:
+        seen.append(holder["s"]._lock.locked())
+        return T0
+
+    store = PermitStore(clock, owners=OWNERS)
+    holder["s"] = store
+    p = store.issue("k", REQ, OWNER).permit
+    assert p is not None
+    seen.clear()
+    adm(store, p.permit_id)
+    store.revoke(p.permit_id, "tenant-a", OWNER)
+    store.set_prod_enabled(True, OWNER)
+    assert seen == [True, True, True]
+    assert [e.kind for e in store.audit()] == ["ISSUE", "ADMIT", "REVOKE", "PROD_FLAG"]
+
+
+def test_id_source_may_call_store_methods_without_deadlock() -> None:
+    holder: dict[str, PermitStore] = {}
+    counter = iter(range(100))
+
+    def ids() -> str:
+        holder["s"].count()
+        holder["s"].audit()
+        return f"id-{next(counter)}"
+
+    store = PermitStore(Clock(), owners=OWNERS, id_source=ids)
+    holder["s"] = store
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        res = ex.submit(store.issue, "k", REQ, OWNER).result(timeout=5)
+    assert res.status is IssueStatus.ISSUED and res.permit is not None and res.permit.permit_id == "id-0"
+    # colliding candidates are retried (bounded) and re-checked under the lock
+    seq = iter(["id-0", "id-0", "fresh"])
+    store2 = PermitStore(Clock(), owners=OWNERS, id_source=lambda: next(seq))
+    issued(store2, REQ, "a")
+    assert store2.issue("b", REQ, OWNER).permit.permit_id == "fresh"  # type: ignore[union-attr]
 
 
 def test_audit_records_issue_admit_revoke_outcomes_with_fixed_codes() -> None:
@@ -513,13 +604,13 @@ def test_audit_records_issue_admit_revoke_outcomes_with_fixed_codes() -> None:
 
 
 def test_audit_is_bounded_drops_oldest_and_returns_a_copy() -> None:
-    store, _ = make(max_audit=3)
+    store, _ = make(max_audit=3, prod_admins={f"actor-{i}" for i in range(5)})
     for i in range(5):
-        store.set_prod_enabled(i % 2 == 0, actor=f"actor-{i}")
+        store.set_prod_enabled(i % 2 == 0, Issuer(IssuerKind.HUMAN, f"actor-{i}"))
     log = store.audit()
     assert isinstance(log, tuple) and [e.actor for e in log] == ["actor-2", "actor-3", "actor-4"]
     adm(store, "f" * 32)
-    assert len(store.audit()) == 3 and store.audit()[0].actor == "actor-3"
+    assert len(store.audit()) == 4 and store.audit()[0].actor == "actor-2"  # admit log is separate
     assert len(log) == 3  # the earlier copy is unaffected
 
 

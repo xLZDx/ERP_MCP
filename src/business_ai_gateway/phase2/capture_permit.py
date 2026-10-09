@@ -60,6 +60,7 @@ __all__ = [
 _HEX = frozenset("0123456789abcdef")
 _MAX_ID_LEN = 128
 _ID_ATTEMPTS = 8
+_MAX_USES_CAP = 10**9
 
 
 class CaptureMode(StrEnum):
@@ -182,6 +183,7 @@ class PermitStore:
         owners: Mapping[tuple[str, str], frozenset[str]] | None = None,
         id_source: Callable[[], str] | None = None,
         max_audit: int = 1000,
+        prod_admins: frozenset[str] | set[str] | list[str] | tuple[str, ...] = (),
     ) -> None:
         if not callable(clock):
             raise TypeError("clock must be callable")
@@ -193,8 +195,15 @@ class PermitStore:
             raise TypeError("id_source must be callable")
         if type(max_audit) is not int or max_audit <= 0:
             raise ValueError("max_audit must be a positive int")
+        if type(prod_admins) not in (set, frozenset, list, tuple) or any(
+                type(x) is not str for x in prod_admins):
+            raise ValueError("prod_admins must be a set/frozenset/list/tuple of str ids")
+        self._prod_admins = frozenset(i for i in (clean_identity(x) for x in prod_admins) if i)
         registry: dict[tuple[str, str], frozenset[str]] = {}
         for scope, ids in (owners or {}).items():
+            # a str/bytes value would be iterated per character: reject it (and any non-collection)
+            if type(ids) not in (set, frozenset, list, tuple) or any(type(x) is not str for x in ids):
+                raise ValueError("owners values must be a set/frozenset/list/tuple of str ids")
             tenant, source = (clean_identity(part) for part in scope)
             clean = frozenset(i for i in (clean_identity(x) for x in ids) if i)
             if not tenant or not source:
@@ -211,7 +220,12 @@ class PermitStore:
         self._uses: dict[str, int] = {}
         # (tenant, idem key) -> (fingerprint, permit)
         self._by_key: dict[str, tuple[str, CapturePermit]] = {}
-        self._audit: deque[AuditEntry] = deque(maxlen=max_audit)
+        # ADMIT entries (attacker-floodable with unknown ids) live in their own bounded log so they can
+        # never evict the security-relevant PROD_FLAG / ISSUE / REVOKE entries. (seq, entry) pairs.
+        self._audit: deque[tuple[int, AuditEntry]] = deque(maxlen=max_audit)
+        self._audit_admit: deque[tuple[int, AuditEntry]] = deque(maxlen=max_audit)
+        self._audit_seq = 0
+        self._dropped_admits = 0
 
     def _now(self) -> datetime | None:
         try:
@@ -219,22 +233,47 @@ class PermitStore:
         except Exception:  # noqa: BLE001 - a broken clock must fail closed, never leak text
             return None
 
-    def _record(self, kind: str, actor: str, subject: str, value: str, at: datetime | None) -> None:
+    def _append_locked(self, kind: str, actor: str, subject: str, value: str,
+                       at: datetime | None) -> None:
+        """Caller holds ``self._lock``."""
+        self._audit_seq += 1
+        log = self._audit_admit if kind == "ADMIT" else self._audit
+        if log is self._audit_admit and len(log) == log.maxlen:
+            self._dropped_admits += 1
+        log.append((self._audit_seq, AuditEntry(kind, actor, subject, value, at)))
+
+    def _record(self, kind: str, actor: str, subject: str, value: str) -> None:
+        """Audit a stateless outcome; the clock is read inside the lock."""
         with self._lock:
-            self._audit.append(AuditEntry(kind, actor, subject, value, at))
+            self._append_locked(kind, actor, subject, value, self._now())
 
     def audit(self) -> tuple[AuditEntry, ...]:
+        """Both logs merged in decision order (at most ``2 * max_audit`` entries)."""
         with self._lock:
-            return tuple(self._audit)
+            return tuple(e for _, e in sorted((*self._audit, *self._audit_admit),
+                                              key=lambda pair: pair[0]))
 
-    def set_prod_enabled(self, enabled: bool, actor: str = "") -> bool:
-        """Policy toggle; returns False (unchanged, not audited) for a non-bool value."""
+    def dropped_admits(self) -> int:
+        """Number of ADMIT audit entries evicted from the bounded admit log."""
+        with self._lock:
+            return self._dropped_admits
+
+    def set_prod_enabled(self, enabled: bool, by: Issuer | None = None) -> bool:
+        """Policy toggle. Only a HUMAN ``Issuer`` that is a ``prod_admins`` member or a registered owner
+        of at least one scope may change the flag; anyone else gets False, the flag is unchanged and the
+        attempt is audited (``PROD_FLAG_DENIED``). A non-bool value returns False and is not audited."""
         if type(enabled) is not bool:
             return False
-        at = self._now()
+        who = _ident(by.issuer_id) if type(by) is Issuer else ""
         with self._lock:
+            allowed = (type(by) is Issuer and by.kind is IssuerKind.HUMAN and bool(who) and (
+                clean_identity(by.issuer_id) in self._prod_admins
+                or any(clean_identity(by.issuer_id) in ids for ids in self._owners.values())))
+            if not allowed:
+                self._append_locked("PROD_FLAG", who, "", "PROD_FLAG_DENIED", self._now())
+                return False
             self._prod_enabled = enabled
-            self._audit.append(AuditEntry("PROD_FLAG", _ident(actor), "", str(enabled), at))
+            self._append_locked("PROD_FLAG", who, "", str(enabled), self._now())
         return True
 
     def count(self) -> int:
@@ -243,16 +282,79 @@ class PermitStore:
             return len(self._permits)
 
     def issue(self, idempotency_key: str, request: PermitRequest, issuer: Issuer) -> IssueResult:
-        at = self._now()
-        result = self._issue(idempotency_key, request, issuer)
         actor = _ident(issuer.issuer_id) if type(issuer) is Issuer else ""
-        subject = result.permit.permit_id if result.permit is not None else ""
-        self._record("ISSUE", actor, subject, result.code, at)
+        result, recorded = self._issue(idempotency_key, request, issuer, actor)
+        if not recorded:  # stateless refusal: order against other decisions is irrelevant
+            self._record("ISSUE", actor, "", result.code)
         return result
 
-    def _issue(self, idempotency_key: str, request: PermitRequest, issuer: Issuer) -> IssueResult:
+    def _issue(self, idempotency_key: str, request: PermitRequest, issuer: Issuer,
+               actor: str) -> tuple[IssueResult, bool]:
+        """Returns (result, audited). Stateful outcomes are audited under the decision's own lock."""
+        early = self._validate(idempotency_key, request, issuer)
+        if early is not None:
+            return early, False
         key = exact_text(idempotency_key)
-        if not key:
+        issuer_id = clean_identity(issuer.issuer_id)
+        tenant = clean_identity(request.tenant_id)
+        source = clean_identity(request.source_id)
+        requester = clean_identity(request.requester)
+        max_uses = request.max_uses
+        not_before = _aware(request.not_before)
+        not_after = _aware(request.not_after)
+        if not_before is None or not_after is None:  # unreachable after _validate; fail closed anyway
+            return _refused("WINDOW_INVALID"), False
+
+        fingerprint = stable_key(
+            tenant, source, request.mode.value, request.environment.value,
+            not_before.isoformat(), not_after.isoformat(), request.params_digest,
+            requester, issuer_id, str(max_uses),
+        )
+        idem_scope = stable_key(tenant, key)
+
+        def fin(result: IssueResult) -> tuple[IssueResult, bool]:  # caller holds the lock
+            subject = result.permit.permit_id if result.permit is not None else ""
+            self._append_locked("ISSUE", actor, subject, result.code, self._now())
+            return result, True
+
+        # id_source runs OUTSIDE the lock (it may call count()/audit()); the idempotency decision and
+        # the collision check are re-made under the lock on every pass.
+        candidate = ""
+        for _ in range(_ID_ATTEMPTS + 1):
+            with self._lock:
+                known = self._by_key.get(idem_scope)
+                if known is not None:
+                    if known[0] == fingerprint:
+                        if known[1].permit_id in self._revoked:
+                            return fin(_refused("PERMIT_REVOKED"))
+                        if known[1].environment is Environment.PROD and not self._prod_enabled:
+                            return fin(_refused("PROD_DISABLED"))
+                        return fin(IssueResult(IssueStatus.REPLAYED, known[1], "REPLAYED"))
+                    return fin(_refused("IDEMPOTENCY_CONFLICT"))
+                if request.environment is Environment.PROD and not self._prod_enabled:
+                    return fin(_refused("PROD_DISABLED"))
+                if candidate and candidate not in self._permits:
+                    permit = CapturePermit(
+                        permit_id=candidate,
+                        tenant_id=tenant, source_id=source, mode=request.mode,
+                        environment=request.environment, not_before=not_before,
+                        not_after=not_after, params_digest=request.params_digest,
+                        issuer=issuer_id, requester=requester, max_uses=max_uses,
+                    )
+                    self._permits[candidate] = permit
+                    self._by_key[idem_scope] = (fingerprint, permit)
+                    return fin(IssueResult(IssueStatus.ISSUED, permit, "ISSUED"))
+            try:
+                got = self._id_source()
+            except Exception:  # noqa: BLE001 - a broken id source fails closed
+                break
+            candidate = got if type(got) is str and got else ""
+        with self._lock:
+            return fin(_refused("ID_UNAVAILABLE"))
+
+    def _validate(self, idempotency_key: str, request: PermitRequest, issuer: Issuer) -> IssueResult | None:
+        """Stateless refusals (None = valid)."""
+        if not exact_text(idempotency_key):
             return _refused("IDEMPOTENCY_KEY_INVALID")
         if type(request) is not PermitRequest:
             return _refused("REQUEST_INVALID")
@@ -281,7 +383,8 @@ class PermitStore:
         if not _digest_ok(request.params_digest):
             return _refused("DIGEST_INVALID")
         max_uses = request.max_uses
-        if max_uses is not None and (type(max_uses) is not int or max_uses <= 0):
+        # type and magnitude are checked before any str()/formatting of the value (huge ints are costly)
+        if max_uses is not None and (type(max_uses) is not int or not 0 < max_uses <= _MAX_USES_CAP):
             return _refused("MAX_USES_INVALID")
         if issuer_id == requester:
             return _refused("ISSUER_IS_REQUESTER")
@@ -289,46 +392,7 @@ class PermitStore:
             return _refused("WINDOW_INVALID")
         if issuer_id not in self._owners.get((tenant, source), frozenset()):
             return _refused("ISSUER_NOT_OWNER")
-
-        fingerprint = stable_key(
-            tenant, source, request.mode.value, request.environment.value,
-            not_before.isoformat(), not_after.isoformat(), request.params_digest,
-            requester, issuer_id, str(max_uses),
-        )
-        idem_scope = stable_key(tenant, key)
-        with self._lock:
-            known = self._by_key.get(idem_scope)
-            if known is not None:
-                if known[0] == fingerprint:
-                    if known[1].permit_id in self._revoked:
-                        return _refused("PERMIT_REVOKED")
-                    if known[1].environment is Environment.PROD and not self._prod_enabled:
-                        return _refused("PROD_DISABLED")
-                    return IssueResult(IssueStatus.REPLAYED, known[1], "REPLAYED")
-                return _refused("IDEMPOTENCY_CONFLICT")
-            if request.environment is Environment.PROD and not self._prod_enabled:
-                return _refused("PROD_DISABLED")
-            permit_id = ""
-            for _ in range(_ID_ATTEMPTS):
-                try:
-                    candidate = self._id_source()
-                except Exception:  # noqa: BLE001 - a broken id source fails closed
-                    break
-                if type(candidate) is str and candidate and candidate not in self._permits:
-                    permit_id = candidate
-                    break
-            if not permit_id:
-                return _refused("ID_UNAVAILABLE")
-            permit = CapturePermit(
-                permit_id=permit_id,
-                tenant_id=tenant, source_id=source, mode=request.mode,
-                environment=request.environment, not_before=not_before, not_after=not_after,
-                params_digest=request.params_digest, issuer=issuer_id, requester=requester,
-                max_uses=max_uses,
-            )
-            self._permits[permit_id] = permit
-            self._by_key[idem_scope] = (fingerprint, permit)
-            return IssueResult(IssueStatus.ISSUED, permit, "ISSUED")
+        return None
 
     def admit(
         self,
@@ -340,20 +404,23 @@ class PermitStore:
         requester: str,
     ) -> AdmitResult:
         """Decide using the injected clock only; a success consumes one use."""
-        at = self._now()
-        result, subject = self._admit(permit_id, tenant_id, source_id, mode, params_digest,
-                                      requester, at)
-        self._record("ADMIT", _ident(requester), subject, result.code, at)
+        actor = _ident(requester)
+        with self._lock:  # clock read, decision and audit entry share one critical section
+            now = self._now()
+            result, subject = self._admit(permit_id, tenant_id, source_id, mode, params_digest,
+                                          requester, now)
+            self._append_locked("ADMIT", actor, subject, result.code, now)
         return result
 
     def _admit(
         self, permit_id: str, tenant_id: str, source_id: str, mode: CaptureMode,
         params_digest: str, requester: str, now: datetime | None,
     ) -> tuple[AdmitResult, str]:
+        """Caller holds ``self._lock``."""
         not_admittable = AdmitResult(False, "PERMIT_NOT_ADMITTABLE")
         tenant = clean_identity(tenant_id)
         source = clean_identity(source_id)
-        with self._lock:
+        if True:
             permit = self._permits.get(permit_id) if type(permit_id) is str else None
             if (permit is None or not tenant or not source or tenant != permit.tenant_id
                     or source != permit.source_id or permit.permit_id in self._revoked):
@@ -381,19 +448,20 @@ class PermitStore:
             return AdmitResult(True, "ADMITTED"), sid
 
     def revoke(self, permit_id: str, tenant_id: str, by: Issuer) -> RevokeResult:
-        at = self._now()
-        result, subject = self._revoke(permit_id, tenant_id, by)
         actor = _ident(by.issuer_id) if type(by) is Issuer else ""
-        self._record("REVOKE", actor, subject, result.code, at)
+        with self._lock:
+            result, subject = self._revoke(permit_id, tenant_id, by)
+            self._append_locked("REVOKE", actor, subject, result.code, self._now())
         return result
 
     def _revoke(self, permit_id: str, tenant_id: str, by: Issuer) -> tuple[RevokeResult, str]:
+        """Caller holds ``self._lock``."""
         denied = (RevokeResult(False, "REVOKE_DENIED"), "")
         if type(permit_id) is not str or type(by) is not Issuer or by.kind is not IssuerKind.HUMAN:
             return denied
         who = clean_identity(by.issuer_id)
         tenant = clean_identity(tenant_id)
-        with self._lock:
+        if True:
             permit = self._permits.get(permit_id)
             if (permit is None or not who or who != permit.issuer
                     or not tenant or tenant != permit.tenant_id
