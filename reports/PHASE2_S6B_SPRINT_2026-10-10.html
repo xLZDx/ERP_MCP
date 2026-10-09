@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S6b: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S6b: results</h1>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 508aa0d, review batch 855e398 + verification fixes (GPT-PM pending; not pushed) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 855e398</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S6b is implemented and verified offline</span> (code 508aa0d, review batch 855e398, verification fixes). Bounded verification by two reviewers found one MAJOR in code (a str subclass in the row kind could spoof the RECEIPT direction gate; fixed with exact-type checks and two regression tests seen red first) and two MAJORs in test strength (scope mismatch tested on one of eight fields; two non-isolated content guards; fixed). <span class="warn">GPT-PM pending, not pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: <code>ap_account_strategy.py</code> and <code>posted_receipts.py</code> run on fixtures and are not wired into Release 1; <code>ap.account_based</code> stays closed.</p>
+<ul>
+<li>Tests: offline <code>tests/phase2</code> — <b>2392 passed, 229 skipped</b>; <code>ruff</code> clean. Run with the project <code>.venv</code> python.</li>
+<li>Per-file counts: AP — 173; posted_receipts — 99 / 68 / 48 (main, pagination, assessment); boundaries — 7.</li>
+<li>Review: four read-only reviewers — 0 BLOCKER; MAJORs fixed in one batch, 855e398.</li>
+<li>Stories: US-031 and US-032 — ceiling <code>IMPLEMENTED_UNVERIFIED</code>; TC091-096 covered offline over fixtures.</li>
+<li>The operator mutation ban was respected; CI and the Release 1 regression were not run.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-031 account-based AP strategy for 818HA (module <code>ap_account_strategy.py</code>)</td><td>AP only through an explicit named strategy; an absent register is not fabricated; a balance gives no aging; aging only from open items with dates</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real 818HA source description; ap.account_based closed</td></tr>
+<tr><td>E2</td><td>R2-US-032 posted receipts retrieval: identity/company/Posted (module <code>posted_receipts.py</code>)</td><td>Only requested company/counterparty/currency/period, Posted, not deletion-marked; exclusions counted by reason</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real MOLDRETAIL data</td></tr>
+<tr><td>E3</td><td>R2-US-032 complete pagination and alias/source proof</td><td>Completeness proven only by a terminal page and a contiguous chain; any failure is complete=False with a reason; proof digest</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>A page skipped without page_index is undetectable</td></tr>
+<tr><td>E4</td><td>R2-US-032 separate completeness / correctness / discrepancy assessment</td><td>Three independent verdicts; EVALUATION_ONLY; incomplete gives INCONCLUSIVE</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No persistence or promotion</td></tr>
+<tr><td>E5</td><td>Traceability, docs sync, boundaries</td><td>AST boundary test; ap.account_based still REFUSED</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST is a static proxy</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix (TC091-096 and boundaries)</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S6b section). Mutations were not run (operator ban). The Result column means an offline run over fixtures; the number in parentheses is the test count of the file. One file can cover several TCs.</p>
+<div class="wrap"><table>
+<thead><tr><th>Test case</th><th>Requirement</th><th>Test file</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Known gap</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-031 / TC091</td><td>AP only through an explicit named strategy; qualified only when every declared input is present</td><td>test_ap_account_strategy.py (173)</td><td>Each declared input missing alone (register, account code, analytics key, company, currency, period outside coverage) is UNQUALIFIED with that input listed; an unknown or near-miss strategy name gives UNKNOWN_STRATEGY and no number</td><td>offline</td><td><span class="ok">pass</span></td><td>No real 818HA source description; digests are integrity, not authenticity</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-031 / TC092</td><td>An absent settlements register is not fabricated</td><td>test_ap_account_strategy.py (173)</td><td>No settlements register is ABSENT with no balance or aging and no fallback strategy; the digest is stable and differs from a qualified one; hostile types never raise</td><td>offline</td><td><span class="ok">pass</span></td><td>In-memory fixtures; ap.account_based stays closed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-031 / TC093</td><td>A balance alone gives no aging</td><td>test_ap_account_strategy.py (173)</td><td>A balance gives BALANCE_ONLY with aging NOT_AVAILABLE; one missing date, a negative amount, a duplicate item or a total mismatch refuses the whole aging; buckets sum exactly to the open total; aging is bound to qualified inputs</td><td>offline</td><td><span class="ok">pass</span></td><td>No real open-item rows</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC094</td><td>Only requested company/counterparty documents, Posted, exact source-native identity</td><td>test_posted_receipts.py (99)</td><td>A same-number document of another company and a wrong counterparty/currency are excluded and never reach the listing; a blank/ambiguous identity or non-bool posted flag refuses the whole page; wrong direction/currency/period refused before any fetch; only the RECEIPT direction is accepted</td><td>offline</td><td><span class="ok">pass</span></td><td>No real MOLDRETAIL data or native journal</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC095</td><td>Unposted, deletion-marked and out-of-period documents are excluded with a reason</td><td>test_posted_receipts.py (99)</td><td>Each exclusion is counted under exactly one reason (UNPOSTED, DELETED, OUT_OF_PERIOD, WRONG_*); an excluded document never reaches the listing or totals</td><td>offline</td><td><span class="ok">pass</span></td><td>Fake page source</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC096 (пагинация / pagination)</td><td>Complete pagination plus alias/company/currency/period/direction/source proof</td><td>test_posted_receipts_pagination.py (68)</td><td>A three-page chain is complete with a proof digest; page limit, repeated/missing/regressed token, page gap, a duplicate document across pages, snapshot change and a source error on page 2 each give complete=False with their own reason; an AMBIGUOUS/NOT_FOUND alias fetches nothing; an alias in another company is invisible (canonical alias scope); proof content cross-checks; the digest is deterministic and changes with any input</td><td>offline</td><td><span class="ok">pass</span></td><td>A page skipped under a valid token without page_index is undetectable; no real paginated source</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC096 (оценка / assessment)</td><td>Completeness, correctness and discrepancy are separate verdicts</td><td>test_posted_receipts_assessment.py (48)</td><td>complete+MATCH, complete+MISMATCH with differences by doc_ref/field, incomplete+INCONCLUSIVE for a listing that would otherwise match, NATIVE_LISTING_UNQUALIFIED, scope/snapshot mismatch gives INCONCLUSIVE; a forged proof or listing cannot claim COMPLETE; the assessment is bound by digest; incomplete inputs force INCONCLUSIVE; flipping one input flips only its own verdict</td><td>offline</td><td><span class="ok">pass</span></td><td>EVALUATION_ONLY; no persistence, no promotion</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S6b boundaries (E5)</td><td>New modules are pure; ap.account_based is still refused</td><td>test_s6b_boundaries.py (7)</td><td>AST allow-list (stdlib and relative Phase 2 modules only), no open/exec/eval/connect/urlopen/write_text calls; a scanner self-check on a hostile snippet; build_matrix with an ap.account_based claim and PASS evidence is REFUSED / CAPABILITY_NOT_OPENED</td><td>offline</td><td><span class="ok">pass</span></td><td>AST scan is a static proxy: aliasing/getattr are not detected</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>S6b review round</b> (code 508aa0d; four read-only reviewers): 0 BLOCKER; MAJORs fixed in one batch, 855e398.</li>
+<li>Fixed: enforced RECEIPT direction, proof content cross-checks, bound assessment digest, forced INCONCLUSIVE when inputs are incomplete, canonical alias scope, AP aging bound to qualified inputs.</li>
+<li><b>Honest note:</b> the fix agents wrote the fixes before the regression tests, so the new tests were not seen red (mutation runs are banned by the operator). Their strength rests on their assertions only.</li>
+<li><b>GPT-PM:</b> pending; no push without APPROVE on the exact head.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Real 1C read grant; a real paginated source; MOLDRETAIL data; the accountant attestation; native report bytes.</li>
+<li>PostgreSQL integration run; GitHub CI; Release 1 regression.</li>
+<li>Mutation runs (operator ban).</li>
+</ul>
+<h2>Known residuals and next steps</h2>
+<ul>
+<li>Residual risks: a page skipped under a valid token without page_index is undetectable; digests are integrity, not authenticity; uppercase 1C company codes are refused for alias resolution; everything is verified over fixtures only.</li>
+<li><code>ap.account_based</code> stays closed; Release 2 is NO-GO, G1 is NOT PASSED.</li>
+<li>Next: GPT-PM on the exact head; after APPROVE, a plain push; then real G2/G3 data from the operator.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
