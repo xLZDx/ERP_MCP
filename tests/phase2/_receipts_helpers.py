@@ -24,7 +24,7 @@ from business_ai_gateway.phase2.purchase_reconciliation import (
 FROM = datetime(2026, 8, 1, tzinfo=UTC)
 UNTIL = datetime(2026, 9, 1, tzinfo=UTC)
 INSIDE = datetime(2026, 8, 15, tzinfo=UTC)
-COMPANY = "818HA"
+COMPANY = "818ha"  # the alias scope key is casefolded: tenant/company must be canonical
 VENDOR = "MOLDRETAIL-REF"
 SNAP = "snap-1"
 REF = Reference("erp_code", VENDOR)
@@ -67,19 +67,31 @@ def request(*, sc=None, direction=Direction.RECEIPT, ref=REF, name=""):
     return ReceiptsRequest(sc or scope(), direction, ref, name)
 
 
-def page(docs, nxt=None, snap=SNAP, index=None):
-    return Page(tuple(docs), nxt, snap, index)
+def page(docs, nxt=None, snap=SNAP, index=None, kinds=None):
+    """Kinds default to RECEIPT for every row (the source-native document kind)."""
+    docs = tuple(docs)
+    return Page(docs, nxt, snap, index, ("RECEIPT",) * len(docs) if kinds is None else kinds)
+
+
+class UnscriptedTokenError(AssertionError):
+    """The retriever asked for a token the test did not script."""
 
 
 class FakeSource:
-    """Serves ``script[token]``; a script value that is an Exception is raised. Records calls."""
+    """Serves ``script[token]``; a script value that is an Exception is raised. Records calls
+    (``calls``: scope + token, ``directions``: the direction passed to the port). An unscripted
+    token fails with a distinct AssertionError (it is a test-script bug, not a source error)."""
 
     def __init__(self, script):
         self.script = script
         self.calls: list[tuple[PurchaseScope, str | None]] = []
+        self.directions: list[object] = []
 
-    def fetch_page(self, sc, continuation_token):
+    def fetch_page(self, sc, direction, continuation_token):
         self.calls.append((sc, continuation_token))
+        self.directions.append(direction)
+        if continuation_token not in self.script:
+            raise UnscriptedTokenError(continuation_token)
         item = self.script[continuation_token]
         if isinstance(item, BaseException):
             raise item

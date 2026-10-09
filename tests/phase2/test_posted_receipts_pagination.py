@@ -3,6 +3,7 @@ ending is complete=False with its own reason code; alias/direction/currency/peri
 before any fetch; the proof digest is deterministic and sensitive to every bound input."""
 from __future__ import annotations
 
+from dataclasses import fields, replace
 from datetime import UTC, datetime
 
 import pytest
@@ -13,12 +14,15 @@ from business_ai_gateway.phase2.aliases import (
     Reference,
     SupplierEntity,
 )
+from business_ai_gateway.phase2.comparison_snapshot import canonical_digest
 from business_ai_gateway.phase2.posted_receipts import (
     MAX_PAGES,
     MAX_ROWS,
     Direction,
     PostedReceiptsRetriever,
+    ReceiptsProof,
     RetrievalReason,
+    _proof_payload,
 )
 from business_ai_gateway.phase2.purchase_reconciliation import (
     PurchaseListing,
@@ -35,6 +39,7 @@ from tests.phase2._receipts_helpers import (
     VENDOR,
     FakeSource,
     doc,
+    forge,
     page,
     request,
     resolver,
@@ -122,6 +127,11 @@ STOPPED = {
 }
 
 
+# honest truncation keeps the validated earlier pages as an INCOMPLETE listing; every other stop
+# means the source itself is unreliable and no listing is surfaced at all
+_PARTIAL = {"source_error_page_2", "source_error_base_text"}
+
+
 @pytest.mark.parametrize("name", sorted(STOPPED))
 def test_tc096_stopped_chain_is_not_complete_and_carries_its_reason(name):
     script, reason = STOPPED[name]
@@ -129,15 +139,68 @@ def test_tc096_stopped_chain_is_not_complete_and_carries_its_reason(name):
     assert res.complete is False and res.reason is reason
     assert res.proof.complete is False and res.proof.reason == reason.value
     assert res.proof.terminal_page_reached is False
-    if res.listing is not None:
-        assert res.listing.complete is False  # a partial listing is never presented as complete
+    if name in _PARTIAL:
+        assert res.listing is not None and res.listing.complete is False
+        assert res.proof.listing_digest is not None
+    else:
+        assert res.listing is None and res.proof.listing_digest is None
+
+
+def test_unreliable_source_reasons_are_never_given_a_partial_listing():
+    from business_ai_gateway.phase2.posted_receipts import _NO_LISTING
+    for r in (RetrievalReason.DUPLICATE_DOCUMENT, RetrievalReason.SNAPSHOT_CHANGED,
+              RetrievalReason.PAGE_GAP, RetrievalReason.TOKEN_MISSING,
+              RetrievalReason.TOKEN_REPEATED, RetrievalReason.TOKEN_REGRESSED,
+              RetrievalReason.PAGE_DIRECTION_UNPROVEN):
+        assert r in _NO_LISTING
+    for r in (RetrievalReason.SOURCE_ERROR, RetrievalReason.PAGE_LIMIT_HIT,
+              RetrievalReason.ROW_LIMIT_HIT):
+        assert r not in _NO_LISTING
 
 
 def test_stopped_chain_keeps_only_validated_earlier_pages_and_never_the_offending_page():
-    script, _ = STOPPED["duplicate_across_pages"]
+    script, _ = STOPPED["source_error_page_2"]
     res, _ = run(script)
     assert [d.doc_ref for d in res.listing.documents] == ["d-1"]
     assert res.proof.pages_fetched == 1 and res.proof.rows_seen == 1
+
+
+@pytest.mark.parametrize("second,reason", [
+    (page([forge(doc("d-2"), posted=1)]), RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED),
+    (page([forge(doc("d-2"), doc_ref="")]), RetrievalReason.PAGE_IDENTITY_INVALID),
+    (page([doc("d-2")], None, ""), RetrievalReason.SNAPSHOT_REF_INVALID),
+    (page([doc("d-2")], None, "snap-2", 1), RetrievalReason.SNAPSHOT_CHANGED),
+    (page([doc("d-1")], None, SNAP, 1), RetrievalReason.DUPLICATE_DOCUMENT),
+    (page([doc("d-2")], None, SNAP, 5), RetrievalReason.PAGE_GAP),
+    (page([doc("d-2")], None, SNAP, 1, kinds=()), RetrievalReason.PAGE_DIRECTION_UNPROVEN),
+], ids=["posted_flag", "blank_doc_ref", "blank_snapshot", "snapshot_changed", "duplicate",
+        "gap", "no_kind"])
+def test_valid_first_page_then_unreliable_second_page_surfaces_no_listing(second, reason):
+    res, src = run({None: page([doc("d-1")], "tok-1", SNAP, 0), "tok-1": second})
+    assert res.reason is reason and res.complete is False
+    assert res.listing is None  # the valid page 1 is not surfaced from an unreliable chain
+    assert res.proof.listing_digest is None and res.proof.reason == reason.value
+    assert res.proof.pages_fetched == 1 and res.proof.rows_seen == 1
+    assert [t for _, t in src.calls] == [None, "tok-1"]
+
+
+def test_page_index_must_be_an_int():
+    for bad in ("0", 0.0, True, [0]):
+        res, _ = run({None: page([doc("d-1")], None, SNAP, bad)})
+        assert res.reason is RetrievalReason.PAGE_INVALID and res.complete is False
+        assert res.listing is None
+
+
+def test_residual_risk_pin_without_page_index_a_silently_skipped_page_is_complete():
+    # RESIDUAL RISK (documented in the module docstring): with no page_index the retriever cannot
+    # tell that the source silently dropped a page behind a valid-looking token. This pins the
+    # CURRENT behaviour so a change is a conscious decision; with page_index the same skip is
+    # PAGE_GAP (see "page_gap" above).
+    res, _ = run({None: page([doc("d-1")], "tok-1"), "tok-1": page([doc("d-9")])})
+    assert res.complete is True and res.reason is RetrievalReason.OK
+    res, _ = run({None: page([doc("d-1")], "tok-1", SNAP, 0),
+                  "tok-1": page([doc("d-9")], None, SNAP, 2)})
+    assert res.complete is False and res.reason is RetrievalReason.PAGE_GAP
 
 
 def test_partial_listing_is_inconclusive_downstream_even_if_it_would_otherwise_match():
@@ -161,6 +224,7 @@ def test_page_limit_hit_is_not_complete():
     assert res.reason is RetrievalReason.PAGE_LIMIT_HIT and res.complete is False
     assert len(src.calls) == 2  # the third page is never requested
     assert res.listing.complete is False and res.proof.pages_fetched == 2
+    assert [d.doc_ref for d in res.listing.documents] == ["d-1", "d-2", "d-3"]
 
 
 def test_page_limit_exactly_enough_for_a_terminal_page_is_complete():
@@ -180,7 +244,7 @@ def test_endless_chain_terminates_at_the_hard_page_bound():
     class Endless:
         calls = 0
 
-        def fetch_page(self, sc, token):
+        def fetch_page(self, sc, direction, token):
             Endless.calls += 1
             return page([doc(f"d-{Endless.calls}")], f"tok-{Endless.calls}")
 
@@ -201,13 +265,15 @@ def test_exact_reference_resolves_and_is_bound_in_the_proof():
     assert res.proof.alias_entity_id == VENDOR and len(src.calls) == 3
 
 
-def test_name_matching_two_entities_in_company_scope_is_ambiguous_and_nothing_is_fetched():
+def test_name_only_request_is_refused_before_the_resolver_and_enqueues_nothing():
     scope_ = AliasScope("t", COMPANY)
     extra = (SupplierEntity("OTHER-1", scope_, "Twin SRL"), SupplierEntity("OTHER-2", scope_, "twin srl"))
-    r, src = retriever(three_pages(), extra_entities=extra)
-    res = r.retrieve(request(ref=None, name="TWIN SRL"))
-    assert res.reason is RetrievalReason.ALIAS_AMBIGUOUS and res.complete is False
+    res_ = resolver(extra_entities=extra)
+    src = FakeSource(three_pages())
+    res = PostedReceiptsRetriever(src, res_).retrieve(request(ref=None, name="TWIN SRL"))
+    assert res.reason is RetrievalReason.ALIAS_NOT_FOUND and res.complete is False
     assert res.listing is None and res.proof is None and src.calls == []
+    assert res_.queue_items(scope_) == ()  # no review item / side effect from a name-only request
 
 
 def test_reference_shared_by_two_entities_is_ambiguous_and_nothing_is_fetched():
@@ -227,18 +293,18 @@ def test_name_alone_never_resolves():
 
 
 def test_same_alias_in_another_company_is_not_visible():
-    # the supplier is registered only under company 818HA; ask for company OTHER-CO
-    r, src = retriever({None: page([doc("a", company="OTHER-CO")])})
-    res = r.retrieve(request(sc=scope(company="OTHER-CO")))
+    # the supplier is registered only under company 818HA; ask for company other-co
+    r, src = retriever({None: page([doc("a", company="other-co")])})
+    res = r.retrieve(request(sc=scope(company="other-co")))
     assert res.reason is RetrievalReason.ALIAS_NOT_FOUND and src.calls == []
 
 
 def test_same_reference_in_two_companies_resolves_each_in_its_own_scope():
     res_ = resolver(extra_entities=(
-        SupplierEntity(VENDOR, AliasScope("t", "OTHER-CO"), "Moldretail SRL", (REF,)),))
-    src = FakeSource({None: page([doc("a", company="OTHER-CO")])})
-    out = PostedReceiptsRetriever(src, res_).retrieve(request(sc=scope(company="OTHER-CO")))
-    assert out.complete and out.proof.company_ref == "OTHER-CO"
+        SupplierEntity(VENDOR, AliasScope("t", "other-co"), "Moldretail SRL", (REF,)),))
+    src = FakeSource({None: page([doc("a", company="other-co")])})
+    out = PostedReceiptsRetriever(src, res_).retrieve(request(sc=scope(company="other-co")))
+    assert out.complete and out.proof.company_ref == "other-co"
 
 
 def test_other_tenant_is_not_visible():
@@ -321,6 +387,30 @@ def test_any_changed_page_token_filter_or_identity_changes_the_digest():
     r, _ = retriever(three_pages())
     eur = r.retrieve(request(sc=scope(currency="EUR")))
     assert eur.proof.digest != base and eur.proof.currency == "EUR"  # the currency filter
+
+
+_CHANGED = {
+    "alias_entity_id": "X", "alias_namespace": "other_ns", "alias_value": "OTHER",
+    "tenant_id": "t2", "company_ref": "c2", "counterparty_ref": "v2", "currency": "EUR",
+    "from_inclusive": datetime(2026, 7, 1, tzinfo=UTC), "until_exclusive": datetime(2026, 10, 1, tzinfo=UTC),
+    "direction": "SALE", "source_id": "other-src", "snapshot_ref": "snap-9",
+    "page_tokens": (None, "tok-1"), "pages_fetched": 9, "rows_seen": 99, "kept_count": 99,
+    "exclusions": (("WRONG_DIRECTION", 1),), "terminal_page_reached": False, "complete": False,
+    "reason": "PAGE_LIMIT_HIT", "listing_digest": "0" * 64,
+}
+
+
+def test_every_proof_field_except_the_digest_is_covered_by_the_sensitivity_table():
+    assert set(_CHANGED) == {f.name for f in fields(ReceiptsProof)} - {"digest"}
+    assert set(_proof_payload(run(three_pages())[0].proof)) == set(_CHANGED)
+
+
+@pytest.mark.parametrize("field", sorted(_CHANGED))
+def test_changing_one_bound_proof_field_alone_changes_the_digest(field):
+    proof = run(three_pages())[0].proof
+    assert getattr(proof, field) != _CHANGED[field]
+    other = replace(proof, **{field: _CHANGED[field]})
+    assert canonical_digest(_proof_payload(other)) != proof.digest
 
 
 def test_scope_changes_change_the_digest():
