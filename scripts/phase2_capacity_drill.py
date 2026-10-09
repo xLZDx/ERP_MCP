@@ -8,7 +8,10 @@ finish_job, timing each call. Finally the parent recounts in the database and wr
 The DSN is read from ERP_PHASE2_TEST_DSN (superuser DSN of erp-phase2-test-pg). It is passed to the
 worker processes only through the environment, never argv, and is never written to the report: the DSN,
 its password and its user name are redacted from every stored error text and from the final output.
-Only local hosts (localhost, 127.0.0.1, ::1) are accepted unless ERP_PHASE2_DRILL_ALLOW_REMOTE=1.
+Only local hosts (localhost, 127.0.0.1, ::1) are accepted, and BEFORE any database is created the
+cluster behind the DSN must be proven to be the container erp-phase2-test-pg (same
+pg_control_system().system_identifier as `docker exec`); there is no override. Every worker re-checks
+that identifier (passed by the parent through the environment) before it touches the database.
 
     ERP_PHASE2_TEST_DSN=... python scripts/phase2_capacity_drill.py --sources 30 --workers 8 \
         --pages 3 --out drill_30.json
@@ -109,9 +112,45 @@ def dsn_host(dsn: str):
     return _kv_host(dsn)
 
 
+class ClusterIdentityError(RuntimeError):
+    """The DSN does not provably point at the disposable test container (fail closed)."""
+
+
+async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -> int:
+    """Return the system_identifier of the cluster behind the DSN, only if it is the test container.
+
+    Runs BEFORE any CREATE DATABASE. ``connect`` / ``container_identifier`` are test seams; the
+    defaults ask the DSN and ``docker exec`` into the hard-coded container."""
+    from _pg_harness import CONTAINER, container_exec, docker
+
+    async def default_ident() -> int:
+        r = container_exec("psql", "-U", "postgres", "-Atc",
+                           "SELECT system_identifier FROM pg_control_system()")
+        if r.returncode != 0:
+            raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
+        return int(r.stdout.decode().strip())
+
+    try:
+        if container_identifier is None:
+            ps = docker("ps", "--filter", f"name=^{CONTAINER}$", "--format", "{{.Names}}", timeout=30)
+            if ps.returncode != 0 or ps.stdout.decode().split() != [CONTAINER]:
+                raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+        conn = await (connect or (lambda: asyncpg.connect(dsn, timeout=10)))()
+        try:
+            via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
+        finally:
+            await conn.close()
+        via_container = await (container_identifier or default_ident)()
+    except ClusterIdentityError:
+        raise
+    except Exception as e:  # any failure to prove identity is a refusal
+        raise ClusterIdentityError("CLUSTER_IDENTITY_CHECK_FAILED:" + type(e).__name__) from e
+    if type(via_dsn) is not int or via_dsn != via_container:
+        raise ClusterIdentityError("DSN_IS_NOT_THE_TEST_CONTAINER")
+    return via_dsn
+
+
 def host_allowed(dsn: str) -> bool:
-    if os.environ.get("ERP_PHASE2_DRILL_ALLOW_REMOTE") == "1":
-        return True
     host = dsn_host(dsn)
     return host is None or host.lower() in LOCAL_HOSTS  # no host = libpq default (local)
 
@@ -144,6 +183,12 @@ async def worker_main(db: str, indices: range, pages: int, wname: str, k: int) -
     errors = []
     c = await asyncpg.connect(os.environ["ERP_PHASE2_TEST_DSN"], database=db, timeout=30,
                               command_timeout=COMMAND_TIMEOUT)
+    expected = os.environ.get("ERP_PHASE2_DRILL_SYSID", "")
+    if not expected.isdigit() or int(expected) != await c.fetchval(
+            "SELECT system_identifier FROM pg_control_system()"):
+        await c.close()
+        print("worker: cluster identity not confirmed by the parent", file=sys.stderr)
+        return 4
 
     async def timed(op, sid, sql, *args):
         t0 = time.perf_counter()
@@ -309,13 +354,14 @@ async def _kill_and_wait(procs) -> None:
             await asyncio.wait_for(p.wait(), 15)
 
 
-async def run_drill(dsn: str, n: int, workers: int, pages: int, keep: bool = False,
+async def run_drill(dsn: str, sysid: int, n: int, workers: int, pages: int, keep: bool = False,
                     db_name=None, k: int = EVENTS_PER_PAGE) -> dict:
     workers = max(1, min(workers, n))
     deadline = 120 + n * pages * 0.5  # seconds for the whole worker phase
     async with drill_db(dsn, keep, db_name) as db:
         await setup(db, n)
-        env = dict(os.environ, ERP_PHASE2_TEST_DSN=dsn)  # DSN only via environment
+        env = dict(os.environ, ERP_PHASE2_TEST_DSN=dsn,  # DSN only via environment
+                   ERP_PHASE2_DRILL_SYSID=str(sysid))
         procs = []
         stop = asyncio.Event()
         sampler = None
@@ -432,17 +478,19 @@ def main(argv=None) -> int:
         print("--db-name requires --keep-db", file=sys.stderr)
         return 2
     if not host_allowed(dsn):
-        print("refusing a non-local database host (set ERP_PHASE2_DRILL_ALLOW_REMOTE=1 to override)",
+        print("refusing a non-local database host",
               file=sys.stderr)
         return 2
 
     async def go() -> dict:
-        pre = await asyncpg.connect(dsn, timeout=10)  # fail fast on a bad DSN/password, no retries
-        await pre.close()
-        return await run_drill(dsn, a.sources, a.workers, a.pages, a.keep_db, a.db_name, a.events)
+        sysid = await verify_cluster(dsn)  # fail closed before any database is created
+        return await run_drill(dsn, sysid, a.sources, a.workers, a.pages, a.keep_db, a.db_name, a.events)
 
     try:
         report = asyncio.run(go())
+    except ClusterIdentityError as e:
+        _emit({"error": redact(str(e), dsn), "invariants": {"all_ok": False}}, a.out, dsn)
+        return 2
     except Exception as e:  # noqa: BLE001 - report a redacted message, never the raw DSN/password
         msg = redact(f"{type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}", dsn)
         _emit({"error": msg, "invariants": {"all_ok": False}}, a.out, dsn)

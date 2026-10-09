@@ -6,6 +6,7 @@ The expected numbers are derived here from the parameters, independently of the 
 --keep-db --db-name, then the test counts cursors/outbox/jobs itself and drops the database), so a
 drill that loses or duplicates a page/event turns this test red.
 """
+import importlib.util
 import json
 import os
 import subprocess
@@ -27,8 +28,8 @@ def _secrets(dsn):
     return [s for s in {u.password, unquote(u.password or ""), u.username, dsn} if s and len(s) >= 3]
 
 
-def _run(dsn, *args):
-    env = dict(os.environ, ERP_PHASE2_TEST_DSN=dsn)  # DSN only via the environment
+def _run(dsn, *args, extra_env=None):
+    env = dict(os.environ, ERP_PHASE2_TEST_DSN=dsn, **(extra_env or {}))  # DSN only via the environment
     return subprocess.run([sys.executable, str(SCRIPT), *args], env=env, capture_output=True,
                           text=True, timeout=600, check=False)
 
@@ -109,12 +110,71 @@ def test_capacity_drill_bad_password_exits_nonzero_and_never_leaks_it(tmp_path):
         assert secret not in shown
 
 
-def test_capacity_drill_refuses_remote_host_without_override():
+def _drill_module():
+    spec = importlib.util.spec_from_file_location("phase2_capacity_drill_under_test", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_capacity_drill_refuses_remote_host_even_with_the_old_override():
     dsn = require_dsn()
     u = urlsplit(dsn)
     if not u.hostname:
         pytest.skip("NOT_RUN: DSN has no host")
     remote = dsn.replace(u.hostname, "db.example.invalid", 1)
-    r = _run(remote, "--sources", "1", "--workers", "1", "--pages", "1")
-    assert r.returncode == 2 and "non-local" in r.stderr
+    r = _run(remote, "--sources", "1", "--workers", "1", "--pages", "1",
+             extra_env={"ERP_PHASE2_DRILL_ALLOW_REMOTE": "1"})
+    assert r.returncode == 2 and "non-local" in r.stderr  # the override no longer exists
     assert "db.example.invalid" not in r.stdout
+
+
+class _FakeConn:
+    def __init__(self, ident):
+        self._ident = ident
+
+    async def fetchval(self, _sql):
+        return self._ident
+
+    async def close(self):
+        pass
+
+
+async def test_verify_cluster_accepts_only_the_container_cluster():
+    mod = _drill_module()
+
+    async def container():
+        return 7001
+
+    async def good():
+        return _FakeConn(7001)
+
+    async def other_cluster():
+        return _FakeConn(9999)  # another local PostgreSQL (for example Release 1's)
+
+    async def unreachable():
+        raise OSError("connection refused")
+
+    async def container_unknown():
+        raise RuntimeError("docker exec failed")
+
+    assert await mod.verify_cluster("x", connect=good, container_identifier=container) == 7001
+    for conn_factory, ident in ((other_cluster, container), (unreachable, container),
+                                (good, container_unknown)):
+        with pytest.raises(mod.ClusterIdentityError):
+            await mod.verify_cluster("x", connect=conn_factory, container_identifier=ident)
+
+
+async def test_verify_cluster_real_dsn_matches_the_test_container():
+    dsn = require_dsn()
+    mod = _drill_module()
+    assert type(await mod.verify_cluster(dsn)) is int
+
+
+def test_worker_with_a_wrong_cluster_identity_exits_before_touching_anything():
+    dsn = require_dsn()
+    r = _run(dsn, "--worker", "--db", "postgres", "--indices", "0:0:1", "--pages", "1",
+             extra_env={"ERP_PHASE2_DRILL_SYSID": "1"})
+    assert r.returncode == 4 and "RESULT" not in r.stdout and "READY" not in r.stdout
+    r2 = _run(dsn, "--worker", "--db", "postgres", "--indices", "0:0:1", "--pages", "1")
+    assert r2.returncode == 4  # no identity supplied by a parent: refused too
