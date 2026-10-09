@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S6: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S6: итоги</h1>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · head 3b37937 (код c4b13f4 + пакет ревью; не запушен, GPT-PM ожидается) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 3b37937</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S6 реализован и проверен офлайн</span> (коммиты c4b13f4 и 3b37937), <span class="warn">GPT-PM ожидается, push не выполнен</span>. Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: пять модулей работают на фикстурах и в памяти и не подключены к Release 1.</p>
+<ul>
+<li>Тесты: <b>307 офлайн-тестов passed</b> по файлам S6 и <code>test_reconciliation.py</code>; <code>ruff</code> чистый. Запуск через python из <code>.venv</code>, потому что в системном <code>py</code> нет <code>asyncpg</code>.</li>
+<li>Ревью: три ревьюера (безопасность, функциональные тесты, python/домен) — 0 BLOCKER; все MAJOR и MINOR исправлены одним пакетом 3b37937.</li>
+<li>Истории: US-028, US-029, US-030, US-033, US-034 — максимум <code>IMPLEMENTED_UNVERIFIED</code>; US-031 и US-032 перенесены в S6b.</li>
+<li>Запрет оператора на мутации соблюдён; CI и регрессия Release 1 не запускались.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-028 подпись доказательства</td><td>Подпись привязана к ревизии и политике; подписывает независимый человек-бухгалтер; отзыв сохраняет историю</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Идентичность задаёт вызывающий код; не подключено к promotion</td></tr>
+<tr><td>E2</td><td>R2-US-029 раннер оценки</td><td>Только через зарегистрированный раннер с допускающим разрешением; EVALUATION_ONLY; воспроизводимый дайджест</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Режим READ_SNAPSHOT переиспользован; id раннера задаёт вызывающий код</td></tr>
+<tr><td>E3</td><td>R2-US-030 счёт 521.1: шесть остатков и стороны договоров</td><td>MATCH только при всех шести остатках и строках; +x/-x не сворачиваются</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реальных байтов 521.1; ROW_MISSING = MISMATCH</td></tr>
+<tr><td>E4</td><td>R2-US-033 неизменяемые снимки</td><td>Одно состояние данных, коррекция = INCONCLUSIVE, повтор заменяет без перезаписи</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Хранилище в памяти</td></tr>
+<tr><td>E5</td><td>R2-US-034 покрытие валидации</td><td>Утверждение без PASS-доказательства отвергается; десять дублей; без наследования</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Имя возможности согласовать с US-031</td></tr>
+<tr><td>—</td><td>R2-US-031 и R2-US-032</td><td>—</td><td><span class="bad">NOT_STARTED</span></td><td>Перенесены в S6b: нужны реальная семантика источника и постраничный источник</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов (TC082-102)</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S6). TC091-096 относятся к US-031/032 и не реализованы. Мутации не запускались по запрету оператора. «Результат» — офлайн-прогон на фикстурах.</p>
+<div class="wrap"><table>
+<thead><tr><th>Тест-кейс</th><th>Требование</th><th>Файл теста</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Известный пробел</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-028 / TC082</td><td>Подпись привязана к одной ревизии и версии политики</td><td>test_evidence_attestation.py</td><td>Изменённый дайджест ревизии или политики аннулирует подпись</td><td>offline</td><td><span class="ok">pass</span></td><td>Идентичность задаёт вызывающий код; дайджесты не сверяются с реальными байтами</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-028 / TC083</td><td>Подписывает только независимый человек-бухгалтер</td><td>test_evidence_attestation.py</td><td>Подписант = автор/заказчик (регистр, полная ширина, омоглифы), LLM/автоматизация и поддельный PASS отказаны, ничего не записано</td><td>offline</td><td><span class="ok">pass</span></td><td>Не подключено к promotion</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-028 / TC084</td><td>Отзыв прекращает текущую силу, история остаётся</td><td>test_evidence_attestation.py</td><td>Действует за микросекунду до отзыва, REVOKED в момент отзыва, история перечислена как историческая</td><td>offline</td><td><span class="ok">pass</span></td><td>Хранилище в памяти</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC085</td><td>Сравнение кандидата только в EVALUATION_ONLY для точного scope</td><td>test_evaluation_runner.py</td><td>Разрешение вне scope или не того режима отказано, compare не вызван; несовпадение scope не сжигает разрешение</td><td>offline</td><td><span class="ok">pass</span></td><td>Переиспользован режим READ_SNAPSHOT</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC086</td><td>Незарегистрированный раннер не считает</td><td>test_evaluation_runner.py</td><td>Незарегистрированный раннер отказан, вычисление не выполнялось</td><td>offline</td><td><span class="ok">pass</span></td><td>Идентификатор раннера задаёт вызывающий код</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC087</td><td>Канонический повтор даёт тот же дайджест; результат не продвигается сам</td><td>test_evaluation_runner.py</td><td>Те же входы дают тот же result_digest; изменённая сумма/снимок/параметры меняют его; результат помечен EVALUATION_ONLY</td><td>offline</td><td><span class="ok">pass</span></td><td>Хранилище в памяти</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC088</td><td>MATCH только при всех шести остатках и всех строках</td><td>test_reconciliation_521.py</td><td>Каждый из шести остатков по отдельности даёт MISMATCH; отсутствующий остаток/строка не MATCH</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальных байтов 521.1; ROW_MISSING = MISMATCH, а не INCONCLUSIVE</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC089</td><td>Равное закрытие при неверном начале/обороте — MISMATCH</td><td>test_reconciliation_521.py, test_reconciliation.py</td><td>Равный закрывающий остаток при неверном начальном или обороте — MISMATCH</td><td>offline</td><td><span class="ok">pass</span></td><td>Фикстуры, не реальный отчёт</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC090</td><td>Стороны договоров сравниваются раздельно</td><td>test_contract_netting.py</td><td>+x и -x по двум договорам не сворачиваются в MATCH; неизвестный договор — INCONCLUSIVE</td><td>offline</td><td><span class="ok">pass</span></td><td>Новый модуль, не подключён</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC097</td><td>Неизменяемый снимок доказан дайджестом</td><td>test_comparison_snapshot.py</td><td>Изменённая фикстура меняет дайджест; кодирование снимка инъективно; значения сторон привязаны к снимку</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет персистентности</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC098</td><td>Коррекция между чтениями — INCONCLUSIVE</td><td>test_comparison_snapshot.py</td><td>Разные дайджесты у сторон дают INCONCLUSIVE с причиной, никогда PASS</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет персистентности</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC099</td><td>Повтор задним числом заменяет, не перезаписывая</td><td>test_comparison_snapshot.py</td><td>Оригинальная запись не меняется и помечена SUPERSEDED; одна текущая запись на ключ сравнения</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет персистентности</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC100</td><td>Каждое утверждение требует PASS-доказательства</td><td>test_validation_coverage.py</td><td>Непокрытое утверждение даёт INCOMPLETE; ссылки не-PASS и подделанная матрица отвергаются</td><td>offline</td><td><span class="ok">pass</span></td><td>Зарезервированное имя возможности нужно согласовать с US-031 (S6b)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC101</td><td>Десять дублирующих случаев отказаны разными кодами</td><td>test_validation_coverage.py</td><td>Десять кодов отказа попарно различны</td><td>offline</td><td><span class="ok">pass</span></td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC102</td><td>Нет наследования между утверждениями и записи в Release 1</td><td>test_validation_coverage.py</td><td>Закупки не включают ap.account_based; AST-аудит не находит путей записи в Release 1; capability_enabled учитывает scope</td><td>offline</td><td><span class="ok">pass</span></td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Раунд ревью S6</b> (код c4b13f4; безопасность, функциональные тесты, python/домен): 0 BLOCKER; все MAJOR и MINOR исправлены в 3b37937.</li>
+<li>Исправлено: сравнение без вызова компаратора на каждый запрос в раннере, разделение check_current и check_as_of, инъективное кодирование снимка, значения сторон привязаны к снимку, одна текущая запись на ключ сравнения, зарезервированное семейство возможностей и не-PASS ссылки в покрытии, отказ подделанной матрицы, capability_enabled с учётом scope.</li>
+<li><b>GPT-PM:</b> ожидается, запрос на точном head ещё не отправлен; без APPROVE push не выполняется.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>US-031 и US-032 (перенесены в S6b); реальные байты 521.1; подпись бухгалтера; права чтения 1С — действия оператора.</li>
+<li>GitHub CI; регрессия Release 1; прогоны мутаций (запрет оператора).</li>
+<li>Интеграционный прогон на PostgreSQL для S6 не запускался: модули работают в памяти и SQL не затрагивают.</li>
+</ul>
+<h2>Известные пробелы и следующие шаги</h2>
+<ul>
+<li>Известные пробелы: хранилища в памяти; идентичность задаёт вызывающий код; режим разрешения READ_SNAPSHOT переиспользован; модули не подключены к promotion и Release 1.</li>
+<li>GPT-PM по точному head; после APPROVE — обычный push.</li>
+<li>S6b: US-031 (AP по счетам) и US-032 (проведённые поступления, пагинация), согласование имени возможности; затем реальные данные G2/G3 от оператора.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

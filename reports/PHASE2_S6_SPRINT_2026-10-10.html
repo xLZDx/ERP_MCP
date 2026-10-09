@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S6: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S6: results</h1>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · head 3b37937 (code c4b13f4 + review batch; not pushed, GPT-PM pending) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 3b37937</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S6 is implemented and verified offline</span> (commits c4b13f4 and 3b37937), <span class="warn">GPT-PM pending, not pushed</span>. Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: the five modules run on fixtures and in memory and are not wired into Release 1.</p>
+<ul>
+<li>Tests: <b>307 offline tests passed</b> across the S6 files and <code>test_reconciliation.py</code>; <code>ruff</code> clean. Run with the <code>.venv</code> python because the system <code>py</code> lacks <code>asyncpg</code>.</li>
+<li>Review: three reviewers (security, functional tests, python/domain) — 0 BLOCKER; all MAJOR and MINOR fixed in one batch, 3b37937.</li>
+<li>Stories: US-028, US-029, US-030, US-033, US-034 — ceiling <code>IMPLEMENTED_UNVERIFIED</code>; US-031 and US-032 moved to S6b.</li>
+<li>The operator mutation ban was respected; CI and the Release 1 regression were not run.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-028 evidence attestation</td><td>Signature binds revision and policy; only an independent human accountant signs; revoke keeps history</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Caller-asserted identity; not wired into promotion</td></tr>
+<tr><td>E2</td><td>R2-US-029 evaluation runner</td><td>Only through a registered runner with an admitting permit; EVALUATION_ONLY; reproducible digest</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>READ_SNAPSHOT permit mode reused; runner id caller-asserted</td></tr>
+<tr><td>E3</td><td>R2-US-030 account 521.1: six balances and contract sides</td><td>MATCH only when all six balances and rows match; +x/-x do not net</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real 521.1 bytes; ROW_MISSING is MISMATCH</td></tr>
+<tr><td>E4</td><td>R2-US-033 immutable snapshots</td><td>One data state, a correction is INCONCLUSIVE, a rerun supersedes without overwrite</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>In-memory store</td></tr>
+<tr><td>E5</td><td>R2-US-034 validation coverage</td><td>A claim without PASS evidence is rejected; ten duplicates; no inheritance</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Capability name to reconcile with US-031</td></tr>
+<tr><td>—</td><td>R2-US-031 and R2-US-032</td><td>—</td><td><span class="bad">NOT_STARTED</span></td><td>Moved to S6b: need real source semantics and a paginated source</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix (TC082-102)</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S6 section). TC091-096 belong to US-031/032 and are not implemented. Mutations were not run (operator ban). The Result column means an offline run over fixtures.</p>
+<div class="wrap"><table>
+<thead><tr><th>Test case</th><th>Requirement</th><th>Test file</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Known gap</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-028 / TC082</td><td>Signature binds one revision and one policy version</td><td>test_evidence_attestation.py</td><td>A changed revision or policy digest invalidates the signature</td><td>offline</td><td><span class="ok">pass</span></td><td>Caller-asserted identity; digests not checked against real bytes</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-028 / TC083</td><td>Only an independent human accountant signs</td><td>test_evidence_attestation.py</td><td>Signer equal to proposer/requester (case, fullwidth, lookalikes), LLM/automation and a fake PASS denied, nothing recorded</td><td>offline</td><td><span class="ok">pass</span></td><td>Not wired into promotion</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-028 / TC084</td><td>Revoke ends current validity, history stays</td><td>test_evidence_attestation.py</td><td>Valid one microsecond before revoke, REVOKED at the instant, history listed as historical</td><td>offline</td><td><span class="ok">pass</span></td><td>In-memory store</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC085</td><td>Candidate comparison only in EVALUATION_ONLY for the exact scope</td><td>test_evaluation_runner.py</td><td>Out-of-scope or wrong-mode permit denied with compare not called; a scope mismatch does not burn the permit</td><td>offline</td><td><span class="ok">pass</span></td><td>READ_SNAPSHOT permit mode reused</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC086</td><td>An unregistered runner computes nothing</td><td>test_evaluation_runner.py</td><td>Unregistered runner denied, nothing computed</td><td>offline</td><td><span class="ok">pass</span></td><td>Runner id is caller-asserted</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-029 / TC087</td><td>Canonical replay gives the same digest; result is never self-promotable</td><td>test_evaluation_runner.py</td><td>Same inputs give the same result_digest; a changed amount/snapshot/params changes it; result marked EVALUATION_ONLY</td><td>offline</td><td><span class="ok">pass</span></td><td>In-memory</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC088</td><td>MATCH only when all six balances and every row match</td><td>test_reconciliation_521.py</td><td>Each of six balances differing alone is MISMATCH; a missing balance/row is never MATCH</td><td>offline</td><td><span class="ok">pass</span></td><td>No real 521.1 bytes; ROW_MISSING is MISMATCH, not INCONCLUSIVE</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC089</td><td>Equal closing with wrong opening/turnover is MISMATCH</td><td>test_reconciliation_521.py, test_reconciliation.py</td><td>Equal closing balance with a wrong opening or turnover is MISMATCH</td><td>offline</td><td><span class="ok">pass</span></td><td>Fixtures, not a real report</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-030 / TC090</td><td>Contract sides are compared separately</td><td>test_contract_netting.py</td><td>+x and -x across two contracts never net to MATCH; an unknown contract is INCONCLUSIVE</td><td>offline</td><td><span class="ok">pass</span></td><td>New module, not wired in</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC097</td><td>Immutable snapshot proven by digest</td><td>test_comparison_snapshot.py</td><td>A mutated fixture changes the digest; snapshot encoding is injective; side values bound to the snapshot</td><td>offline</td><td><span class="ok">pass</span></td><td>No persistence</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC098</td><td>A correction between reads is INCONCLUSIVE</td><td>test_comparison_snapshot.py</td><td>Differing digests between sides give INCONCLUSIVE with a reason, never PASS</td><td>offline</td><td><span class="ok">pass</span></td><td>No persistence</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-033 / TC099</td><td>Backdated rerun supersedes without overwrite</td><td>test_comparison_snapshot.py</td><td>The original record is unchanged and marked SUPERSEDED; a single current run per comparison key</td><td>offline</td><td><span class="ok">pass</span></td><td>No persistence</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC100</td><td>Every claim needs PASS evidence</td><td>test_validation_coverage.py</td><td>An uncovered claim gives INCOMPLETE; non-PASS links and a forged matrix are rejected</td><td>offline</td><td><span class="ok">pass</span></td><td>Reserved capability name to reconcile with US-031 (S6b)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC101</td><td>Ten duplicate cases rejected with distinct codes</td><td>test_validation_coverage.py</td><td>The ten rejection codes are pairwise distinct</td><td>offline</td><td><span class="ok">pass</span></td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-034 / TC102</td><td>No cross-claim inheritance, no write path to Release 1</td><td>test_validation_coverage.py</td><td>Purchases evidence never enables ap.account_based; AST audit finds no write path to Release 1; capability_enabled is scope-aware</td><td>offline</td><td><span class="ok">pass</span></td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>S6 review round</b> (code c4b13f4; security, functional tests, python/domain): 0 BLOCKER; every MAJOR and MINOR fixed in 3b37937.</li>
+<li>Fixed: no per-call comparator in the runner, check_current vs check_as_of split, injective snapshot encoding, side values bound to the snapshot, a single current run per comparison key, reserved capability family and non-PASS links in coverage, forged-matrix rejection, scope-aware capability_enabled.</li>
+<li><b>GPT-PM:</b> pending; the request on the exact head has not been sent; no push without APPROVE.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>US-031 and US-032 (moved to S6b); real 521.1 bytes; the accountant signature; 1C read grants — operator items.</li>
+<li>GitHub CI; Release 1 regression; mutation runs (operator ban).</li>
+<li>No PostgreSQL integration run for S6: the modules are in-memory and touch no SQL.</li>
+</ul>
+<h2>Known gaps and next steps</h2>
+<ul>
+<li>Known gaps: in-memory stores; caller-asserted identity; the READ_SNAPSHOT permit mode is reused; modules are not wired into promotion or Release 1.</li>
+<li>GPT-PM on the exact head; after APPROVE, a plain push.</li>
+<li>S6b: US-031 (account-based AP) and US-032 (posted receipts, pagination), reconcile the capability name; then real G2/G3 data from the operator.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
