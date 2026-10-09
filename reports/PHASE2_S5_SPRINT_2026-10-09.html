@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S5: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S5: results</h1>
+<div class="sub">Date: 2026-10-09 · branch phase2/living-model-connectors-reconciliation · head af9f287 (pushed; GPT-PM APPROVE on this head) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ af9f287</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S5 is implemented, verified and published</span> (push <code>6f80219..af9f287</code>, no merge to main, no release). Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: the four new modules are isolated and nothing is wired into Release 1.</p>
+<ul>
+<li>Without a DSN: <b>1641 passed, 229 skipped</b>. On the disposable PostgreSQL: <b>229 integration passed</b> on the parent head 90a3d8b; a re-run on af9f287 was started and is recorded separately (no SQL changed in these edits; GPT-PM accepted this as an evidence limit). <code>ruff</code> clean, no NUL bytes.</li>
+<li>Review chain: three sprint-end reviewers (0 BLOCKER, ~18 MAJOR) → batch ebbd2c9; verification by two reviewers (0 BLOCKER, 4 new MAJOR, ~15 MINOR) → batch af9f287; GPT-PM on af9f287: 0 BLOCKER, 0 MAJOR, <b>APPROVE</b>.</li>
+<li>GitHub issues #28 (promotion: reviewer answer must be <code>True</code>, fixed outward error codes) and #33 (resnapshot: the cursor must be the requested one of the right type) were re-verified on this branch by reading the code and fixed here; the parallel session's branches were not merged.</li>
+<li>The operator's mutation ban was respected; no story is DONE, the ceiling is <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-024 capture permit</td><td>Scope/window/mode, prod default OFF, idempotency with conflict, issued by a registered human owner</td><td><span class="ok">DONE (code and tests, in-memory)</span></td><td>Owners and actor kinds are caller-supplied; in-memory store; no authenticated principal</td></tr>
+<tr><td>E2</td><td>R2-US-025 side-effect boundary</td><td>READ-only allow-list, admin/posting disqualify, reset and write probes denied in prod</td><td><span class="ok">DONE (code and tests)</span></td><td>Illustrative registry; names are canonicalised, executors must use the canonical name</td></tr>
+<tr><td>E3</td><td>R2-US-026 immutable originals</td><td>Random version id, idempotent duplicates, forged/hash-only claims are not evidence, current ACL on reads</td><td><span class="ok">DONE (code and tests, in-memory)</span></td><td>No real storage/encryption; xlsx not in the media allow-list; vault-wide admins</td></tr>
+<tr><td>E4</td><td>R2-US-027 parser isolation</td><td>Values only, macros/DTD/external links/zip bombs denied, bounds without a truncated PASS</td><td><span class="warn">PARTIAL</span></td><td>Child memory bound not enforced on Windows; run_isolated is not a sandbox; other threads can briefly see scrubbed environment variables</td></tr>
+<tr><td>—</td><td>Issues #28 and #33</td><td>Fixed outward codes, reviewer answer exactly True, cursor identity check</td><td><span class="ok">DONE</span></td><td>Parallel branches with the same fixes not merged; issues left open for the owner</td></tr>
+<tr><td>—</td><td>R2-US-021/022/023 (real UI and COM)</td><td>—</td><td><span class="bad">NOT_STARTED</span></td><td>Deferred to S5b: need the real 1C UI and COM</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S5 section). Mutations were not run (operator ban).</p>
+<div class="wrap"><table>
+<thead><tr><th>Story</th><th>Requirement</th><th>Test</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Defect / fix</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-024 (TC070-072)</td><td>Permit: scope, window, mode; prod off; idempotency key</td><td>test_capture_permit.py</td><td>Each scope/mode/window violation alone is denied with a working control; exact window boundaries; same key + different params conflicts; only a registered owner issues</td><td>offline</td><td><span class="ok">pass</span></td><td>Derivable permit id and cross-tenant oracle, bare-string owners, audit eviction by admits — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-025 (TC073-075)</td><td>READ-only allow-list; rights; probes in prod</td><td>test_side_effect_boundary.py</td><td>Unclassified operation and empty plan denied; admin/posting/unknown rights disqualify; case, padding, zero-width tricks never turn WRITE into READ</td><td>offline</td><td><span class="ok">pass</span></td><td>Registry could be built mutable; length and plan-size limits; hostile __repr__ — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-026 (TC076-078)</td><td>Immutable originals, evidence, current ACL</td><td>test_artifact_vault.py</td><td>Id carries no digest; forged/hash-only refs are not evidence with indistinguishable codes; after revoke the same historical ref is denied; 16 parallel puts give one version</td><td>offline</td><td><span class="ok">pass</span></td><td>Crash on a surrogate digest, bare-string admins, no lock, unbounded audit — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-027 (TC079-081)</td><td>Values only; macros/DTD/external links/zip bombs; bounds</td><td>test_safe_parser.py</td><td>Formula text never appears; each hostile class denied with its exact code and no sheets; each bound gives BOUND_EXCEEDED with no partial data</td><td>offline</td><td><span class="ok">pass</span></td><td>pickle from the child replaced by JSON; row/sheet/text amplification; namespace attribute shadowing; hang on a partial reply — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Identity (shared)</td><td>Invisible characters, mixed scripts</td><td>test_identity.py</td><td>Variation selectors, Latin/Cyrillic/Greek mixes, private and unassigned code points are not identities; same_person sees the Cyrillic 'alice'</td><td>offline</td><td><span class="ok">pass</span></td><td>Weak normaliser in promotion replaced by the strict one</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>Issues #28, #33</td><td>Fixed codes; the requested cursor</td><td>test_promotion.py, test_resnapshot.py</td><td>Exception class and unknown code do not leave the module; reviewer answer not True is a rejection; a foreign or malformed cursor forces a resnapshot</td><td>offline + PG</td><td><span class="ok">pass</span></td><td>Reproduced by reading the code on this branch</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>Sprint-end review</b> (eeafb82; tests, python, security): 0 BLOCKER, ~18 MAJOR — fixed in ebbd2c9.</li>
+<li><b>Fix verification</b> (90a3d8b; python and security): 0 BLOCKER, every earlier MAJOR confirmed closed, 4 new MAJOR and ~15 MINOR — fixed in af9f287.</li>
+<li><b>GPT-PM, af9f287:</b> 0 BLOCKER, 0 MAJOR, APPROVE; open limits classed as roadmap, run_isolated must not be called a sandbox.</li>
+<li><b>Process:</b> the first attempt to reach GPT-PM hit a stale PM Bridge session (sending blocked by policy, the break-glass flag was not used); once restored, the request went out once on the final head.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Mutation runs (operator ban), Release 1 regression, GitHub CI (operator decision), the POSIX memory-limit test (skipped on Windows), the integration run on af9f287 was not finished at push time.</li>
+<li>Steps G0, G2–G7 and operator-dependent items (1C/Drive sources, OAuth, accountant reconciliation) are untouched.</li>
+</ul>
+<h2>Next steps</h2>
+<ul>
+<li>S5b: R2-US-021/022/023 once the real UI and COM are available; parser + vault integration (xlsx type); enforcing permit/boundary inside the capture loop.</li>
+<li>Binding actors to an authenticated principal and a durable audit; the scheduler fairness decision.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
