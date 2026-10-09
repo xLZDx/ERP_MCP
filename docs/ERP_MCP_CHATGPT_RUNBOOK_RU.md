@@ -1,228 +1,189 @@
-# ERP_MCP ↔ ChatGPT — краткий runbook
+# ERP_MCP ↔ ChatGPT — Secure Tunnel Runbook
 
-Обновлено: 2026-10-07
+**Historical checkpoint:** Updated October 7, 2026. The endpoint IDs and local topology below describe a configuration at that date; they are **not proof of the current live deployment**. Always re-check the actual connection, identity and authorization before operational use.
 
-## 1. Текущий локальный статус
+## 1. Recorded Local Topology
 
-Репозиторий:
-`D:\Repo\ERP_MCP-chatgpt`
+| Item | Historical value |
+| --- | --- |
+| Repository | \`D:\Repo\ERP_MCP-chatgpt\` |
+| Git branch | \`feature/chatgpt-mcp-integration\` |
+| OpenAI tunnel | \`tunnel_6ac64553de90819188eaf83bc540eb7a\` |
+| Tunnel profile | \`erp-mcp-local\` |
+| MCP target in \`.chatgpt\tunnel.json\` | \`http://127.0.0.1:21000/mcp\` |
 
-Git branch:
-`feature/chatgpt-mcp-integration`
+**Stale evidence warning:** \`.chatgpt\tunnel-health.json\` contained a health snapshot for an **older endpoint, \`18100/mcp\`**. It cannot confirm availability of \`21000/mcp\`. Validate the target independently on the current exact configuration.
 
-Текущий OpenAI tunnel:
-`tunnel_6ac64553de90819188eaf83bc540eb7a`
+Use DC_MCP as a separate workstation/repository administration channel, **not** as a required proxy for normal ERP business queries.
 
-Tunnel profile:
-`erp-mcp-local`
+Intended read-only data path:
 
-Текущий MCP target из `.chatgpt\tunnel.json`:
-`http://127.0.0.1:21000/mcp`
+\`\`\`text
+ChatGPT -> OpenAI Secure MCP Tunnel -> tunnel-client -> ERP_MCP -> authorized 1C
+\`\`\`
 
-ВАЖНО: файл `.chatgpt\tunnel-health.json` содержит старый health snapshot, снятый для предыдущего endpoint `18100/mcp`. Его нельзя считать подтверждением текущего `21000/mcp`. Перед использованием текущий endpoint нужно перепроверить отдельно.
+## 2. Minimum Infrastructure Requirements
 
-DC_MCP:
-использовать как отдельный административный канал к локальному ПК/репозиториям. Не использовать его как обязательную прокладку для рабочих ERP-запросов.
+ERP_MCP does **not** need to run on the same physical server as 1C.
 
-Целевой рабочий data path:
-ChatGPT → OpenAI Secure MCP Tunnel → tunnel-client → ERP_MCP → 1С
+1. The \`tunnel-client\` host needs authorized connectivity to ERP_MCP.
+2. ERP_MCP needs separately authorized read access to the 1C source.
+3. The Secure MCP Tunnel connects ChatGPT to the private network path.
+4. Neither 1C nor ERP_MCP needs to be directly exposed to the public internet.
+5. Production financial data must remain protected by OAuth, source ACL and company ACL.
+6. The ChatGPT MCP business-data tool surface must be read-only.
 
-## 2. Что действительно требуется
+## 3. Deployment Topologies
 
-ERP_MCP НЕ обязан стоять на том же сервере, где физически находится база 1С.
+### Option A — Single Windows Host
 
-Требования простые:
+Components on one host: 1C, ERP_MCP and \`tunnel-client\`.
 
-1. Хост с `tunnel-client` должен иметь доступ к ERP_MCP.
-2. ERP_MCP должен иметь разрешённый доступ к 1С.
-3. Между ChatGPT и локальной сетью используется Secure MCP Tunnel.
-4. 1С и ERP_MCP не требуется публиковать напрямую в интернет.
-5. Для реальной финансовой базы production-доступ должен сохранять OAuth / source ACL / company ACL.
-6. MCP-инструменты ChatGPT должны оставаться read-only.
+\`\`\`text
+ChatGPT -> Secure MCP Tunnel -> tunnel-client -> localhost ERP_MCP -> 1C
+\`\`\`
 
-## 3. Варианты размещения
+**Advantages:** Minimal topology and firewall rules; straightforward diagnostics.
 
-### Вариант A — всё на одном Windows-сервере
+**Trade-offs:** Greater component coupling and shared upgrade/load impact.
 
-На одном хосте:
-- 1С
-- ERP_MCP
-- tunnel-client
+### Option B — Two Servers (Preferred Design)
 
-Схема:
-ChatGPT → Secure MCP Tunnel → tunnel-client → localhost ERP_MCP → 1С
+**Server A:** 1C.  
+**Server B:** ERP_MCP plus \`tunnel-client\`.
 
-Плюсы:
-- минимальная сложность;
-- минимум firewall правил;
-- простой troubleshooting.
+\`\`\`text
+ChatGPT -> Secure MCP Tunnel -> Server B: tunnel-client
+        -> ERP_MCP -> private LAN -> Server A: 1C
+\`\`\`
 
-Минусы:
-- компоненты сильнее связаны;
-- обновления/нагрузка делят один хост.
+**Advantages:** Cleaner security boundary; ERP_MCP can be upgraded independently; 1C stays private; the tunnel client is close to the MCP endpoint.
 
-### Вариант B — рекомендуемый
+This was the preferred architecture for the original deployment design, **not a claim that it has already been installed**.
 
-Server A:
-- 1С
+### Option C — Three Separate Servers
 
-Server B:
-- ERP_MCP
-- tunnel-client
+**Server A:** 1C.  
+**Server B:** ERP_MCP.  
+**Server C:** \`tunnel-client\`.
 
-Схема:
-ChatGPT → Secure MCP Tunnel → Server B: tunnel-client → ERP_MCP → private LAN → Server A: 1С
+\`\`\`text
+ChatGPT -> Secure MCP Tunnel -> Server C
+        -> private MCP -> Server B
+        -> private 1C -> Server A
+\`\`\`
 
-Плюсы:
-- хороший security boundary;
-- ERP_MCP можно обновлять отдельно от 1С;
-- 1С остаётся полностью приватной;
-- tunnel-client находится рядом с MCP endpoint.
+Use only when infrastructure policies require a separate edge/connector host. The extra network, DNS, firewall and TLS boundaries increase failure and diagnostic complexity.
 
-Это рекомендуемый вариант для твоей архитектуры.
+## 4. OpenAI Tunnel Prerequisites
 
-### Вариант C — всё раздельно
+A Secure MCP Tunnel requires:
+- A valid \`tunnel_id\` and securely provisioned runtime API key.
+- The required Tunnels Read and Use permissions for runtime/operator identities.
+- A tunnel bound to the intended ChatGPT workspace.
+- Outbound HTTPS connectivity from \`tunnel-client\` to OpenAI.
+- Network reachability from \`tunnel-client\` to the authorized private MCP endpoint.
 
-Server A:
-- 1С
+Creating or editing the tunnel separately requires Tunnels Read and Manage permissions.
 
-Server B:
-- ERP_MCP
+Historical reference links (verify current platform UI and availability):
+- [Tunnels](https://platform.openai.com/settings/organization/tunnels)
+- [API Keys](https://platform.openai.com/settings/organization/api-keys)
+- [Roles](https://platform.openai.com/settings/organization/people/roles)
+- [Secure MCP Tunnel Documentation](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+- [Custom MCP Server](https://developers.openai.com/api/docs/guides/custom-mcp-server)
 
-Server C:
-- tunnel-client
+## 5. OAuth for Real 1C
 
-Схема:
-ChatGPT → Secure MCP Tunnel → Server C → private MCP → Server B → private 1С → Server A
+The Secure MCP Tunnel protects a private transport path. **It does not replace ERP_MCP authorization.**
 
-Использовать только если инфраструктура требует отдельный edge/connector host.
+\`\`\`text
+ChatGPT -> Tunnel -> ERP_MCP -> validated OAuth identity
+        -> source ACL -> company ACL -> 1C
+\`\`\`
 
-Минусы:
-- больше сетевых зависимостей;
-- больше firewall/DNS/TLS точек отказа;
-- сложнее диагностика.
+OAuth discovery may traverse the tunnel, but the browser-facing authorization server does **not** automatically become publicly accessible merely because the MCP endpoint is tunneled.
 
-## 4. OpenAI — что нужно
+Where ERP_MCP uses OAuth:
+- The authorization server must be reachable by the participant in the browser authorization flow.
+- Alternatively, use a qualified, browser-accessible OAuth identity provider.
+- **Never disable OAuth on a production financial endpoint as a convenience workaround.**
 
-Для Secure MCP Tunnel нужны:
+## 6. Read-Only MCP Surface
 
-- `tunnel_id`;
-- Runtime API Key;
-- права Tunnels Read + Use для runtime/оператора;
-- tunnel должен быть связан с нужным ChatGPT workspace;
-- `tunnel-client` должен иметь исходящий HTTPS-доступ к OpenAI;
-- `tunnel-client` должен видеть приватный MCP endpoint.
+ChatGPT should access only the approved, scope-validated read-only operations. Historical catalog examples:
 
-Для создания/редактирования tunnel нужны Tunnels Read + Manage.
+\`\`\`text
+sources_list
+companies_list
+source_health
+onec_capabilities
+onec_metadata_summary
+onec_find_entities
+onec_read
+accounting_balance_and_turnovers
+accounting_posting_rows
+payable_balance
+receivable_balance
+payable_aging
+receivable_aging
+inventory_balance
+inventory_movements
+bank_balance
+cash_movements
+sales_documents
+purchase_documents
+\`\`\`
 
-Официальные ссылки:
+The presence of a tool name does **not** prove authorization or that a real company's semantic profile is validated. Unqualified financial operations must remain denied.
 
-- Tunnels:
-  https://platform.openai.com/settings/organization/tunnels
-- API keys:
-  https://platform.openai.com/settings/organization/api-keys
-- Roles:
-  https://platform.openai.com/settings/organization/people/roles
-- Secure MCP Tunnel:
-  https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
-- Custom MCP server:
-  https://developers.openai.com/api/docs/guides/custom-mcp-server
+The Admin Control Center must remain separate from the public ChatGPT data plane.
 
-## 5. OAuth для реальной 1С
+## 7. Acceptance Checklist
 
-Secure MCP Tunnel защищает приватный транспорт, но не заменяет ERP_MCP authorization.
+Before declaring integration usable, verify all of the following on a pinned current configuration:
 
-Для реальной базы:
+1. ERP_MCP \`GET /healthz\` returns HTTP 200.
+2. ERP_MCP \`GET /readyz\` returns HTTP 200.
+3. MCP \`initialize\` succeeds.
+4. \`tools/list\` contains the expected read-only catalog.
+5. \`sources_list\` includes the intended **real** 1C source rather than only synthetic fixtures.
+6. \`companies_list\` includes **only** currently authorized organizations.
+7. A permitted accounting read returns genuine scoped data under a qualified semantic profile.
+8. Tunnel \`/healthz\` is healthy.
+9. Tunnel \`/readyz\` is ready.
+10. The ChatGPT custom MCP connection points to the approved tunnel.
+11. The intended \`@ERP_MCP\` tool connection is available in ChatGPT.
+12. The test request appears in the ERP_MCP audit log.
+13. Write and delete operations are absent from the public tool catalog.
+14. Real 1C credentials are not sent to ChatGPT or stored in tunnel profiles.
 
-ChatGPT
-→ Tunnel
-→ ERP_MCP
-→ OAuth identity
-→ source ACL
-→ company ACL
-→ 1С
+**HTTP health or availability alone does not establish accurate accounting values, a native report attestation, or production release approval.**
 
-OpenAI может проводить OAuth discovery через tunnel, но сам authorization server не становится автоматически публично доступным через tunnel.
+## 8. Separate Business and Administration Paths
 
-Поэтому если ERP_MCP использует OAuth:
-- authorization server должен быть доступен участнику browser OAuth flow;
-- либо нужно использовать подходящий публично-доступный OAuth provider;
-- нельзя просто выключать OAuth на production financial endpoint ради удобства.
+**Business data:**
+\`\`\`text
+ChatGPT -> OpenAI Secure MCP Tunnel -> tunnel-client
+        -> ERP_MCP -> authorized private 1C source
+\`\`\`
 
-## 6. Read-only граница
+**Workstation operations:**
+\`\`\`text
+ChatGPT -> approved DC_MCP or successor tools
+        -> Windows, Git, local files, diagnostics and maintenance
+\`\`\`
 
-Для ChatGPT ERP_MCP должен предоставлять только безопасные read-only tools.
+Keep these channels separate, with their own permissions, audit and revocation boundaries.
 
-Примеры:
-- sources_list
-- companies_list
-- source_health
-- onec_capabilities
-- onec_metadata_summary
-- onec_find_entities
-- onec_read
-- accounting_balance_and_turnovers
-- accounting_posting_rows
-- payable_balance
-- receivable_balance
-- payable_aging
-- receivable_aging
-- inventory_balance
-- inventory_movements
-- bank_balance
-- cash_movements
-- sales_documents
-- purchase_documents
+## 9. Historically Pending Verification
 
-Admin Control Center должен оставаться отдельным.
+The October 7 tunnel profile pointed to \`http://127.0.0.1:21000/mcp\`. The following were open checks:
 
-## 7. Финальная проверка
+- Verify that endpoint is truly the intended real-1C ERP_MCP gateway.
+- Confirm its actual OAuth/ACL mode, not a synthetic no-OAuth development configuration.
+- Confirm \`sources_list\` returns the authorized real source.
+- Confirm ChatGPT's MCP connection uses the intended approved tunnel rather than a stale profile.
+- Only after these pass, test a scoped accounting question such as: **"How much is owed to suppliers on account 521.1 as of August 31, 2026?"**
 
-Перед тем как считать интеграцию готовой:
-
-1. `GET /healthz` ERP_MCP → 200.
-2. `GET /readyz` ERP_MCP → 200.
-3. MCP initialize → PASS.
-4. tools/list → ожидаемый read-only catalog.
-5. `sources_list` → именно real 1C source, не synthetic fixture.
-6. `companies_list` → только разрешённые компании.
-7. Пробный accounting read → реальные данные.
-8. Tunnel `/healthz` → live.
-9. Tunnel `/readyz` → ready.
-10. ChatGPT custom MCP создан через Connection = Tunnel.
-11. В ChatGPT доступен отдельный `@ERP_MCP`.
-12. Запрос из ChatGPT появляется в ERP_MCP audit.
-13. Write/delete tools отсутствуют.
-14. Реальные 1С credentials не передаются в ChatGPT и не сохраняются в tunnel profile.
-
-## 8. Рекомендованная архитектура для тебя
-
-Рабочий канал ERP:
-
-ChatGPT
-→ OpenAI Secure MCP Tunnel
-→ tunnel-client
-→ ERP_MCP
-→ private 1С
-
-Административный канал:
-
-ChatGPT
-→ DC_MCP
-→ Windows / Git / локальные файлы / обслуживание
-
-Эти два канала лучше держать раздельно.
-
-## 9. Что проверить следующим шагом именно сейчас
-
-Текущий tunnel profile уже указывает на:
-`http://127.0.0.1:21000/mcp`
-
-Нужно проверить:
-- что `21000/mcp` — именно real-1C ERP_MCP endpoint;
-- что там включён правильный OAuth/ACL режим;
-- что `sources_list` возвращает real source;
-- что ChatGPT custom MCP использует именно tunnel `tunnel_6ac64553de90819188eaf83bc540eb7a`;
-- после этого сделать контрольный запрос:
-  «Сколько мы должны поставщикам по счёту 521.1 на 31.08.2026?»
-
+That financial answer additionally requires a verified source-specific accounting profile and independent native evidence. **This historical checklist must not be treated as a currently passing test run.**
