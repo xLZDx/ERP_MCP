@@ -276,7 +276,7 @@ Code evidence `d7e578e` (local; hosted CI for the exact final head is recorded o
 Verification matrix 31/31 exit 0; full pytest 1230 passed / 232 skipped (dispositions in
 `ERP_MCP_FINAL_MVP_CLOSURE_LEDGER.md`); E2E smoke 29, User U01-U18 52 passed (U18 = 10 of 12 scenarios PASS + SC06/SC08 declared per Amendment A1 of the E2E contract, not 12/12), Admin A01-A54 87 +
 1 declared EXTERNAL-GATE skip; Functional Tester SC01-SC12 73 passed / 3 skipped / 2 xfailed
-(`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: PENDING.
+(`FUNCTIONAL_TESTER_SC01_SC12.md`). Evidence is synthetic L1 only. Owner manual acceptance: APPROVED by the operator 2026-10-09 (synthetic L1 scope only).
 Production decision: NO-GO; DoD: PARTIAL; external gates unchanged.
 
 2026-10-07 real-reference L2 lane (818HA clone, read-only, code `1864bd9`): 130 catalogue stories dispositioned (CAPABILITY_UNSUPPORTED 25, EVIDENCE_REQUIRED 29, FINDING 4, INCONCLUSIVE 2, PASS 6, REFUSED-WRITE 6, SEMANTIC_PROFILE_UNVALIDATED 58); supplementary: ACL:PASS 7, INV:EVIDENCE_REQUIRED 21, NR:EVIDENCE_REQUIRED 9, NR:INCONCLUSIVE 1, RL2:FINDING 1, RL2:PASS 9, RULE:CAPABILITY_UNSUPPORTED 90, RULE:EVIDENCE_REQUIRED 90, SYS:FINDING 5, SYS:PASS 2. No semantic profile is validated: COM comparisons are NATIVE_COM_QUERY context only and at least ten genuine native UI reports are still owed by the owner. Evidence: `reports/real1c/` (summary, per-test details ru/en; exact figures kept privately outside Git), `reports/FUNCTIONAL_TESTER_REAL-1C-818HA.md`. Hosted CI for the exact head: PENDING. Owner manual acceptance: PENDING. Production decision: NO-GO.

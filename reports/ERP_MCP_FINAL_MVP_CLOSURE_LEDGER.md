@@ -160,7 +160,7 @@ profiles). It is not native 1C, not L2 reconciliation and not production evidenc
 
 ### Remaining owner/external gates
 
-Owner manual acceptance (`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`): PENDING.
+Owner manual acceptance (`docs/MANUAL_ACCEPTANCE_USER.md`, `docs/MANUAL_ACCEPTANCE_ADMIN.md`): APPROVED by the operator on 2026-10-09 (operator statement, recorded in core/DECISION_LOG.md; synthetic L1 scope, not native reconciliation, not production approval).
 External: native 1C/RSV business-report reconciliation and ten native report references, private Ferma
 snapshot, deployed production-like IdP/secrets/OData/RSV, retention/backup/DR/PITR, customer pilot.
 SC08 duplicate counterparties: implemented under the operator rebaseline (synthetic L1 only). Production deployment: NO-GO.

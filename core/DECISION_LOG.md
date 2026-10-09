@@ -384,3 +384,9 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - Symptom: ChatGPT showed Reconnect for ERP_MCP_REAL1 (connection expired), and a second Reconnect after the first. The tunnel and the public test IdP were healthy.
 - Root cause (reproduced with the ChatGPT auth-code flow): ChatGPT tokens carry aud = the OpenAI tunnel resource URL; the gateway accepted only http://127.0.0.1:21000/mcp, so tunnel traffic got 401 invalid_token. The lane env already exported BAG_OAUTH_ADDITIONAL_AUDIENCES but the code ignored it.
 - Fix: Settings.oauth_additional_audiences (comma-separated) and oauth_audience_list used by JWTTokenVerifier; envctl registers the tunnel resource for the erp-mcp-chatgpt test client. Test: tests/test_auth.py::test_additional_audience_is_accepted. Test-lane only; no production grant or API change. Supersedes the uncommitted copy of these edits in the integration-candidate worktree.
+
+## 2026-10-09 — Owner manual acceptance approved; VPS staging branch opened
+
+- Decision (operator, 2026-10-09): owner manual acceptance of `docs/MANUAL_ACCEPTANCE_USER.md` and `docs/MANUAL_ACCEPTANCE_ADMIN.md` is APPROVED. Scope is unchanged: synthetic L1 evidence; not native 1C reconciliation; not production approval. Production stays NO-GO; DoD stays PARTIAL.
+- Decision (operator): work toward a production-like deployment goes on branch `deploy/vps-staging` (from integration/1c-mvp-production-candidate 78493a3) so the working lane is not touched. Plan: native-report re-reconciliation, Ferma pinned snapshot, staging on VPS 167.86.75.163 (Ubuntu, CI host, shared load), 1C+DB move to a remote machine, backups/DR, self-healing.
+- Constraint found: onec_com_bridge needs Windows + 1C platform; the Linux VPS cannot host it. Windows VPS (path A) or Linux 1C platform (path B) is an operator/money decision; steps independent of it go first.
