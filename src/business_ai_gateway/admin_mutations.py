@@ -1747,6 +1747,7 @@ class AdminMutationService:
                         "metadata_fingerprint": profile["metadata_fingerprint"],
                         "capability_fingerprint": profile["capability_fingerprint"],
                         "case_count": len(cases),
+                        "evidence_basis": "NATIVE",
                     },
                     ensure_ascii=False,
                 ),

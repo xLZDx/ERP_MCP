@@ -376,7 +376,8 @@ class Registry:
             WHERE p.source_id=$1 AND p.company_id=$2
               AND p.status='VALIDATED'
               AND m.canonical_concept=$3
-            ORDER BY p.profile_version DESC
+            ORDER BY coalesce(p.validation_evidence_json ? 'machine_scope', false) ASC,
+                     p.profile_version DESC, p.validated_at DESC NULLS LAST, p.profile_id
             LIMIT 1
             """,
             source_id,

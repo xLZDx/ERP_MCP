@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "batch_id": "CAPABILITY_BOUNDARY_20261006",
-  "implementation_sha256": "27a12ada68c7f84160545740ecbc5adc567d042fcd2ff06eb60baad701a7bc3c",
+  "batch_id": "CHG_RUNTIME_GLIBC_CVE_20261009",
+  "implementation_sha256": "7c31736e5241b89dad9d3b7a4cc6b2220cd46fbe3703298eb1df80d63cd388f0",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
   "code_evidence_sha": "abe290f",
-  "code_evidence_note": "Local counts below were measured on the exact code of this commit. The final head SHA and hosted CI run for the closing-documents commit are recorded only in the PR #11 body/comment.",
+  "code_evidence_note": "Real 1C L2 acceptance is historical to its recorded commit. Runtime base glibc repair applies to the exact candidate with updated Dockerfile and provenance pin. Trivy and hosted CI must be verified on the final head. Previous whole-suite/hosted counts remain historical.",
   "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_verified_hosted_run": 37519186079,
   "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
   "last_failed_hosted_run": 37518882269,
-  "hosted_status_at_snapshot": "PENDING_FOR_CODE_EVIDENCE_abe290f",
+  "hosted_status_at_snapshot": "PENDING_CURRENT_RUNTIME_IMAGE_CI",
   "last_local_full_suite": {
     "passed": 1438,
     "skipped": 238,
@@ -21,13 +21,36 @@
   },
   "local_e2e": {
     "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
-    "smoke": {"passed": 29, "skipped": 0},
-    "user_u01_u18": {"passed": 53, "skipped": 0, "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"},
-    "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
-    "functional_tester_sc01_sc12": {"tests": 83, "passed": 79, "skipped": 3, "xfailed": 1, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE"]}
+    "smoke": {
+      "passed": 29,
+      "skipped": 0
+    },
+    "user_u01_u18": {
+      "passed": 53,
+      "skipped": 0,
+      "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"
+    },
+    "admin_a01_a54": {
+      "passed": 87,
+      "skipped": 1,
+      "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"
+    },
+    "functional_tester_sc01_sc12": {
+      "tests": 83,
+      "passed": 79,
+      "skipped": 3,
+      "xfailed": 1,
+      "failed": 0,
+      "xfail": [
+        "SC06 EXTERNAL-GATE"
+      ]
+    }
   },
   "manual_owner_acceptance": "PENDING",
-  "local_matrix_steps": {"total": 31, "exit_zero": 31},
+  "local_matrix_steps": {
+    "total": 31,
+    "exit_zero": 31
+  },
   "focused_tests": {
     "settlement_and_existing_aging": 34,
     "financial_statement_contracts": 32,
@@ -65,5 +88,30 @@
       "skipped": 0
     }
   },
-  "current_full_suite_status": "PASS"
+  "current_full_suite_status": "NOT_RERUN_ON_CURRENT_IMAGE_HEAD",
+  "fresh_install_l2": {
+    "date": "2026-10-09",
+    "source_baseline_commit": "6c9e4a0",
+    "previous_install_code_commit": "6571cda",
+    "merged_parent_main": "8c52950fa26427805435ff8491e2f999e0457d72",
+    "test_level": "ISOLATED_WINDOWS_REAL1C_L2",
+    "real_metadata_entitysets": 920,
+    "source_mcp_checks_passed": 7,
+    "source_mcp_checks_total": 7,
+    "negative_audit_code": "AccessDenied",
+    "native_accounting_reconciliation": "NOT_RUN",
+    "unix_deployment": "NOT_RUN",
+    "evidence_report": "reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md"
+  },
+  "runtime_image_security": {
+    "date": "2026-10-09",
+    "old_runtime_digest": "b7af1ae90e2fcfb5c32be03908e74d32fdfd64156c2b7c535bd3e497e7846d84",
+    "new_runtime_digest": "b6248c85ba9b97e1e61b30197f309cc4d21661f889fefa5268f0a7bc530dad46",
+    "old_os_findings": 12,
+    "old_unique_cves": 4,
+    "new_base_findings": 0,
+    "new_full_gateway_scan": "LOCAL_TRIVY_ZERO_FINDINGS_HOSTED_CI_PENDING",
+    "native_accounting_reconciliation": "NOT_IMPLIED",
+    "production_decision": "NO-GO"
+  }
 }
