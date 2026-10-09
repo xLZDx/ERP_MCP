@@ -13,7 +13,8 @@ the constructor so the verdict, not an exception, carries the reason).
 
 Contract references are matched after ``clean_identity`` (NFKC, casefold, strip of spaces), so
 ``"A"``/``" a "`` are one counterparty. None, blank, unreadable or placeholder values
-(``unknown``, ``n/a``, ``-``, ``none``, ``null`` ...) are unknown contracts.
+(``unknown``, ``n/a``, ``-``, ``none``, ``null`` ...) and the 1C empty reference (the all-zero
+GUID in any dash/brace form) are unknown contracts.
 """
 from __future__ import annotations
 
@@ -82,6 +83,14 @@ def _norm(ref: object) -> str:
     return clean_identity(ref) if isinstance(ref, str) else ""
 
 
+def _is_unknown_ref(norm: str) -> bool:
+    """Placeholder refs and the 1C empty reference (any all-zero GUID spelling) are unknown."""
+    if norm in UNKNOWN_CONTRACT_REFS:
+        return True
+    bare = norm.strip("{}()").replace("-", "")
+    return len(bare) == 32 and set(bare) == {"0"}
+
+
 def _index(items: object) -> dict[tuple[str, str], ContractSides] | str:
     if not isinstance(items, tuple):
         return "CONTRACT_SIDES_INVALID"
@@ -91,7 +100,7 @@ def _index(items: object) -> dict[tuple[str, str], ContractSides] | str:
                 or type(item.credit) is not Decimal):
             return "CONTRACT_SIDES_INVALID"
         cp, contract = _norm(item.counterparty_ref), _norm(item.contract_ref)
-        if cp in UNKNOWN_CONTRACT_REFS or contract in UNKNOWN_CONTRACT_REFS:
+        if _is_unknown_ref(cp) or _is_unknown_ref(contract):
             return "UNKNOWN_CONTRACT"
         if item.debit < 0 or item.credit < 0:
             return "NEGATIVE_SIDE"

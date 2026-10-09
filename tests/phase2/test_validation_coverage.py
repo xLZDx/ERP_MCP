@@ -302,3 +302,96 @@ def test_reserved_mixed_script_lookalike_is_refused_never_enabled(cap):
     assert r.status is CoverageStatus.REFUSED and not r.accepted
     ok = build([claim("c1", cap="purchases")], [ev()], [Link("c1", "e1")])
     assert not capability_enabled(ok, S, cap)
+
+
+# ---------------------------------------------------------------- GPT-PM M02 / M05 regressions
+def _resealed(rows):
+    rows = tuple(rows)
+    return vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, rows, (), vc._matrix_digest(rows))
+
+
+def test_m02_evidence_reused_across_rows_is_not_enabled_even_with_recomputed_digest():
+    import dataclasses
+    good = _good()
+    purchases, sales = good.rows
+    # forged: sales row reuses the purchases evidence (id, digest, source), digest recomputed publicly
+    forged_row = dataclasses.replace(
+        sales, capability="payroll", evidence_ids=purchases.evidence_ids,
+        evidence_digests=purchases.evidence_digests, evidence_sources=purchases.evidence_sources)
+    forged = _resealed([purchases, forged_row])
+    assert not capability_enabled(forged, S, "payroll")
+    assert not capability_enabled(forged, S, "purchases")
+
+
+def test_m02_same_digest_or_source_under_other_ids_across_rows_is_not_enabled():
+    import dataclasses
+    purchases, sales = _good().rows
+    same_digest = dataclasses.replace(sales, evidence_digests=purchases.evidence_digests)
+    same_source = dataclasses.replace(sales, evidence_sources=purchases.evidence_sources)
+    assert not capability_enabled(_resealed([purchases, same_digest]), S, "sales")
+    assert not capability_enabled(_resealed([purchases, same_source]), S, "sales")
+
+
+def test_m02_duplicate_evidence_id_inside_one_row_is_not_enabled():
+    import dataclasses
+    row = _good().rows[0]
+    dup = dataclasses.replace(
+        row, evidence_ids=row.evidence_ids * 2, evidence_digests=row.evidence_digests * 2,
+        evidence_sources=row.evidence_sources * 2)
+    assert not capability_enabled(_resealed([dup]), S, "purchases")
+
+
+def test_m02_same_evidence_id_with_conflicting_data_across_rows_is_not_enabled():
+    import dataclasses
+    purchases, sales = _good().rows
+    clash = dataclasses.replace(sales, evidence_ids=purchases.evidence_ids)
+    assert not capability_enabled(_resealed([purchases, clash]), S, "sales")
+
+
+def test_m02_row_with_blank_or_unclean_evidence_id_or_source_is_not_enabled():
+    import dataclasses
+    row = _good().rows[0]
+    for bad in (dataclasses.replace(row, evidence_ids=("",)),
+                dataclasses.replace(row, evidence_ids=(" e1 ",)),
+                dataclasses.replace(row, evidence_sources=(" S-1 ",))):
+        assert not capability_enabled(_resealed([bad]), S, "purchases")
+
+
+def test_m02_genuine_matrix_still_enabled_after_structural_recheck():
+    good = _good()
+    assert capability_enabled(good, S, "purchases") and capability_enabled(good, S, "sales")
+    assert capability_enabled(_resealed(good.rows), S, "purchases")
+
+
+def test_m05_capability_coverage_does_not_enable_other_operations():
+    r = build([claim("c1", cap="purchases", op="read")], [ev()], [Link("c1", "e1")])
+    assert r.accepted
+    assert vc.operation_covered(r, S, "purchases", "read")
+    for op in ("post", "validate", "write", "re", "read.x", "", None, 5):
+        assert not vc.operation_covered(r, S, "purchases", op)
+    assert not vc.operation_covered(r, S, "sales", "read")
+    assert not vc.operation_covered(r, S2, "purchases", "read")
+    assert not vc.operation_covered(r, None, "purchases", "read")
+
+
+def test_m05_operation_covered_is_exact_per_row_no_inheritance_between_operations():
+    r = build([claim("c1", cap="purchases", op="read"), claim("c2", cap="purchases", op="validate")],
+              [ev("e1", 1, "s1"), ev("e2", 2, "s2")], [Link("c1", "e1")])
+    assert not r.accepted  # validate uncovered: matrix incomplete, nothing enabled
+    assert not vc.operation_covered(r, S, "purchases", "read")
+    ok = build([claim("c1", cap="purchases", op="read"), claim("c2", cap="purchases", op="post")],
+               [ev("e1", 1, "s1"), ev("e2", 2, "s2")], [Link("c1", "e1"), Link("c2", "e2")])
+    assert ok.accepted
+    assert vc.operation_covered(ok, S, "purchases", " READ ") and vc.operation_covered(ok, S, "purchases", "post")
+    assert not vc.operation_covered(ok, S, "purchases", "validate")
+
+
+def test_m05_operation_covered_rejects_forged_and_reserved():
+    import dataclasses
+    row = _good().rows[0]
+    forged = vc.MatrixResult(CoverageStatus.COMPLETE, CoverageCode.OK, (row,), (), "0" * 64)
+    assert not vc.operation_covered(forged, S, "purchases", row.operation)
+    ok = build([claim("c1")], [ev()], [Link("c1", "e1")])
+    assert not vc.operation_covered(ok, S, "ap.account_based", "validate")
+    res_row = dataclasses.replace(ok.rows[0], capability="ap.account_based")
+    assert not vc.operation_covered(_resealed([res_row]), S, "ap.account_based", "validate")
