@@ -21,9 +21,9 @@ SCOPE = Scope("A", "s1")
 async def setup(*cursors):
     living = InMemoryLiving()
     await living.enqueue_job(WORKER, SCOPE, UUID(int=1), "sync", "a" * 64, "k")
-    for c in cursors:
-        await living.create_cursor(WORKER, SCOPE, c, "c0")
     await living.bump_scope_epoch(SCOPE)  # live epoch is 1 (a fresh source starts at 0)
+    for c in cursors:  # created AFTER the bump so they are bound to the live epoch
+        await living.create_cursor(WORKER, SCOPE, c, "c0")
     sched = SourceScheduler(
         living, actor=WORKER, scope=SCOPE, worker="w1", backend_id=BackendId.normalize("db-1"),
         budget=PhysicalBackendBudget(per_backend_limit=1, total_limit=4),
@@ -62,6 +62,19 @@ def test_guard_resume_reports_epoch_change_but_still_resumes():
         assert await call(sched, living, t, ["c1"], 1) == ("c1",)
         assert t.reason("c1") is ResnapshotReason.SCOPE_EPOCH_CHANGED
         assert sched.machine.state is SourceState.ACTIVE
+    asyncio.run(go())
+
+
+def test_guard_resume_reports_a_cursor_bound_to_an_older_epoch():
+    """live == recorded but the cursor was never rebased: the source resumes, the cursor must resnapshot."""
+    async def go():
+        living, sched = await setup("c1")
+        await living.bump_scope_epoch(SCOPE)       # live 2; the cursor stays bound to epoch 1
+        paused(sched)
+        t = ResnapshotTracker()
+        assert await call(sched, living, t, ["c1"], 2) == ("c1",)
+        assert t.reason("c1") is ResnapshotReason.SCOPE_EPOCH_CHANGED
+        assert t.incremental_allowed("c1") is False
     asyncio.run(go())
 
 

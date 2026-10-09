@@ -166,6 +166,9 @@ class ResnapshotTracker:
                     found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
                 elif cursor is None:
                     found[connection_id] = ResnapshotReason.CURSOR_MISSING
+                elif cursor.scope_epoch != live:
+                    # the cursor was bound to an older scope epoch (no rebase since the change)
+                    found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
         except PortError as exc:
             if exc.code in _BLOCK_CODES:
                 raise ResnapshotBlocked from None

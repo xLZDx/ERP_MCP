@@ -36,9 +36,9 @@ def run(coro):
 async def living_with_cursor(*names):
     living = InMemoryLiving()
     await living.enqueue_job(WORKER, SCOPE, __import__("uuid").UUID(int=1), "sync", "a" * 64, "k")
-    for n in names:
-        await living.create_cursor(WORKER, SCOPE, n, "c0")
     await living.bump_scope_epoch(SCOPE)  # live epoch is 1 (a fresh source starts at 0)
+    for n in names:  # cursors are created AFTER the bump so they are bound to the live epoch
+        await living.create_cursor(WORKER, SCOPE, n, "c0")
     return living
 
 
@@ -156,6 +156,44 @@ def test_guard_revalidate_epoch_change():
         await living.bump_scope_epoch(SCOPE)
         assert await reval(t, living, ["c1", "c2"], 1) == ("c1", "c2")
         assert t.reason("c1") is R.SCOPE_EPOCH_CHANGED
+    run(go())
+
+
+async def living_with_stale_cursor(cursor_epoch, live_epoch):
+    """A cursor bound to ``cursor_epoch`` while the source is at ``live_epoch`` (no rebase since)."""
+    living = InMemoryLiving()
+    await living.enqueue_job(WORKER, SCOPE, __import__("uuid").UUID(int=1), "sync", "a" * 64, "k")
+    for _ in range(cursor_epoch):
+        await living.bump_scope_epoch(SCOPE)
+    await living.create_cursor(WORKER, SCOPE, "c1", "c0")
+    for _ in range(live_epoch - cursor_epoch):
+        await living.bump_scope_epoch(SCOPE)
+    return living
+
+
+@pytest.mark.parametrize(("live", "recorded", "cursor", "expected"), [
+    (2, 2, 1, ("c1",)),   # live == recorded but the cursor is bound to an older epoch
+    (2, 2, 2, ()),        # everything consistent
+    (3, 2, 2, ("c1",)),   # live moved on after the record
+])
+def test_guard_revalidate_checks_the_cursor_scope_epoch(live, recorded, cursor, expected):
+    async def go():
+        living = await living_with_stale_cursor(cursor, live)
+        t = ResnapshotTracker()
+        assert await reval(t, living, ["c1"], recorded) == expected
+        assert t.incremental_allowed("c1") is (expected == ())
+        if expected:
+            assert t.reason("c1") is R.SCOPE_EPOCH_CHANGED
+    run(go())
+
+
+def test_guard_stale_cursor_is_noticed_per_connection():
+    async def go():
+        living = await living_with_stale_cursor(1, 2)
+        await living.create_cursor(WORKER, SCOPE, "c2", "c0")  # bound to the live epoch 2
+        t = ResnapshotTracker()
+        assert await reval(t, living, ["c1", "c2"], 2) == ("c1",)
+        assert t.incremental_allowed("c2")
     run(go())
 
 
