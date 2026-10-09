@@ -49,7 +49,9 @@ def signed(store: AttestationStore, request: AttestationRequest = REQ, signer: S
 
 
 def chk(store, att, rev=REV, ver=VER, pol=POL, tenant="tenant-a", at=None):
-    return store.check(att.attestation_id, tenant, rev, ver, pol, at)
+    if at is None:
+        return store.check_current(att.attestation_id, tenant, rev, ver, pol)
+    return store.check_as_of(att.attestation_id, tenant, rev, ver, pol, at)
 
 
 # ---------------------------------------------------------------- TC082
@@ -91,8 +93,8 @@ def test_tc082_wrong_or_unknown_tenant_and_id_share_one_code():
     store, _ = make()
     att = signed(store)
     assert chk(store, att, tenant="tenant-b").code == "ATTESTATION_NOT_VALID"
-    assert store.check("nope", "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"
-    assert store.check(None, "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"  # type: ignore[arg-type]
+    assert store.check_current("nope", "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"
+    assert store.check_current(None, "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"  # type: ignore[arg-type]
     # a wrong tenant with a wrong revision still reveals nothing about the attestation
     assert chk(store, att, tenant="tenant-b", rev=REV2).code == "ATTESTATION_NOT_VALID"
 
@@ -229,7 +231,7 @@ def test_tc083_fabricated_attestation_id_is_not_evidence():
     store, _ = make()
     store.sign(replace(REQ, requester="accountant-1"), ACC)  # denied
     for fake in ("PASS", "0" * 32, "", "accountant-1"):
-        assert store.check(fake, "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"
+        assert store.check_current(fake, "tenant-a", REV, VER, POL).code == "ATTESTATION_NOT_VALID"
 
 
 def test_tc083_denied_results_never_echo_caller_input():
@@ -237,7 +239,7 @@ def test_tc083_denied_results_never_echo_caller_input():
     secret = "SECRET-xyz-987"
     res = store.sign(replace(REQ, proposer=secret, requester=secret), Signer(SignerKind.LLM, secret))
     assert secret not in repr(res)
-    assert secret.casefold() not in repr(store.check(secret, secret, secret, secret, secret))
+    assert secret.casefold() not in repr(store.check_current(secret, secret, secret, secret, secret))
     assert secret.casefold() not in repr(store.revoke(secret, secret, Signer(SignerKind.HUMAN, secret)))
 
 
@@ -281,7 +283,8 @@ def test_tc084_revoke_valid_before_invalid_at_and_after_instant():
     assert (res.revoked, res.code) == (True, "REVOKED")
 
     before = revoked_at - timedelta(microseconds=1)
-    assert chk(store, att, at=before).valid is True
+    historical = chk(store, att, at=before)
+    assert (historical.valid, historical.code) == (True, "VALID_HISTORICAL")
     at = chk(store, att, at=revoked_at)
     assert (at.valid, at.code) == (False, "REVOKED")
     assert chk(store, att, at=revoked_at + timedelta(seconds=1)).code == "REVOKED"
@@ -291,7 +294,7 @@ def test_tc084_revoke_valid_before_invalid_at_and_after_instant():
     assert chk(store, att).code == "REVOKED"
     # not valid before it was signed either
     assert chk(store, att, at=T0 - timedelta(seconds=1)).code == "NOT_YET_VALID"
-    assert chk(store, att, at=T0).valid is True
+    assert chk(store, att, at=T0).code == "VALID_HISTORICAL"
 
 
 def test_tc084_history_preserved_and_labelled_historical():
@@ -357,6 +360,41 @@ def test_tc084_revoke_with_broken_clock_fails_closed():
     assert store.revoke(att.attestation_id, "tenant-a", ACC).code == "REVOKE_DENIED"
     assert store.history("tenant-a")[0].revoked_at is None
     assert chk(store, att).code == "TIME_INVALID"
+
+
+def test_revoked_attestation_is_never_valid_via_check_current():
+    store, clk = make()
+    att = signed(store)
+    assert chk(store, att).code == "VALID"
+    clk.now = T0 + timedelta(minutes=1)
+    assert store.revoke(att.attestation_id, "tenant-a", ACC).revoked
+    for delta in (0, 1, 3600, 86400 * 365):
+        clk.now = T0 + timedelta(minutes=1, seconds=delta)
+        res = chk(store, att)
+        assert (res.valid, res.code) == (False, "REVOKED")
+    # the point-in-time query cannot produce the gating code VALID, even for a time before revocation
+    past = chk(store, att, at=T0 + timedelta(seconds=30))
+    assert past.valid is True and past.code == "VALID_HISTORICAL"
+    assert not hasattr(store, "check")
+
+
+def test_check_as_of_never_returns_the_gating_valid_code():
+    store, _ = make()
+    att = signed(store)
+    for at in (T0, T0 + timedelta(days=1)):
+        assert chk(store, att, at=at).code == "VALID_HISTORICAL"
+    assert chk(store, att).code == "VALID"
+
+
+def test_revoke_clamps_revoked_at_to_signed_at_when_clock_goes_backwards():
+    store, clk = make()
+    att = signed(store)
+    clk.now = T0 - timedelta(hours=1)  # clock regressed before the signature
+    assert store.revoke(att.attestation_id, "tenant-a", ACC).revoked
+    rec = store.history("tenant-a")[0]
+    assert rec.revoked_at == T0 and rec.revoked_at >= rec.signed_at
+    clk.now = T0
+    assert chk(store, att).code == "REVOKED"
 
 
 def test_check_with_naive_explicit_time_is_invalid():

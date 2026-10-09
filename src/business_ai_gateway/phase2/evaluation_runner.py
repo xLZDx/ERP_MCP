@@ -11,22 +11,28 @@ fixed code and no caller input echoed:
 4. the capture permit admits the request (``PERMIT_DENIED``: one code for every permit denial, so a
    caller learns nothing about why).
 
-Only after all four does the injected ``compare`` run. The permit mode used is
-``CaptureMode.READ_SNAPSHOT`` (the closest existing member; capture_permit has no evaluation mode and
-is deliberately not extended). A permit use is consumed only by a successful admit, i.e. only after the
+Only after all four does the comparator run. The permit mode used is ``CaptureMode.READ_SNAPSHOT``.
+DECISION: READ_SNAPSHOT is the accepted permit mode for evaluation, because ``capture_permit`` has no
+EVALUATION_ONLY member and is deliberately not extended. A permit use is consumed only by a successful admit, i.e. only after the
 runner and scope checks passed.
 
 The result is always ``mode == "EVALUATION_ONLY"`` and ``promotable`` is always False (a read-only
 property): nothing here can produce an acceptance or attestation. There is no public function that
-compares without the checks; ``compare`` is injectable only via the constructor default or the ``run``
-keyword (``__all__`` is audited by the tests).
+compares without the checks; a custom comparator is trusted wiring supplied ONLY as the constructor
+argument ``compare``. ``run`` takes no comparator, so a caller of ``run`` cannot inject a result
+(``__all__`` is audited by the tests). The ``promotable`` flag only means: runner output is labelled
+non-promotable; it is not an enforcement of anything downstream.
 
 ``result_digest`` is sha256 over canonical JSON of the scope, params digest, both statements and the
 comparison. Decimals are normalised (``1.0`` == ``1.00``), rows are sorted by their analytic key (the
 statement model forbids duplicate keys and the comparator treats rows as a keyed set, so row order is
 not significant) and datetimes are rendered in UTC.
 
-KNOWN GAPS: the runner registry and permit store are process-local; ``runner_id`` is asserted by the
+KNOWN GAPS: ``params_digest`` is caller-asserted: it is matched against the permit but never verified
+against the data actually evaluated, so the permit does not constrain WHICH data (statements) are
+evaluated, only who may run which scope with which asserted params. The evaluation ``result_digest`` is
+not bound to any attestation (``evidence_attestation`` binds a revision digest, not this digest); that
+binding is a wiring item for a later gate. The runner registry and permit store are process-local; ``runner_id`` is asserted by the
 caller, not authenticated.
 """
 from __future__ import annotations
@@ -169,11 +175,14 @@ class EvaluationRunner:
         runners: Mapping[tuple[str, str], frozenset[str]] | None = None,
         *,
         policy: TolerancePolicy = _DEFAULT_POLICY,
+        compare: Callable[[LedgerStatement, LedgerStatement], Comparison] | None = None,
     ) -> None:
         if type(permits) is not PermitStore:
             raise TypeError("permits must be a PermitStore")
         if type(policy) is not TolerancePolicy:
             raise TypeError("policy must be a TolerancePolicy")
+        if compare is not None and not callable(compare):
+            raise TypeError("compare must be callable")
         registry: dict[tuple[str, str], frozenset[str]] = {}
         for scope, ids in (runners or {}).items():
             if type(ids) not in (set, frozenset, list, tuple) or any(type(x) is not str for x in ids):
@@ -188,17 +197,14 @@ class EvaluationRunner:
         self._permits = permits
         self._runners = registry
         self._policy = policy
+        self._compare = compare if compare is not None else self._default_compare
 
     def _default_compare(self, native: LedgerStatement, gateway: LedgerStatement) -> Comparison:
         return compare_statements(native, gateway, policy=self._policy)
 
-    def run(
-        self,
-        request: EvaluationRequest,
-        compare: Callable[[LedgerStatement, LedgerStatement], Comparison] | None = None,
-    ) -> EvaluationResult:
+    def run(self, request: EvaluationRequest) -> EvaluationResult:
         """Checks first, compute last; never raises, never echoes input, never promotable."""
-        if not _shape_ok(request) or (compare is not None and not callable(compare)):
+        if not _shape_ok(request):
             return _denied("INVALID_INPUT")
         tenant = clean_identity(request.tenant_id)
         source = clean_identity(request.source_id)
@@ -222,9 +228,8 @@ class EvaluationRunner:
             permitted = False
         if not permitted:
             return _denied("PERMIT_DENIED")
-        fn = compare if compare is not None else self._default_compare
         try:
-            comparison = fn(request.native, request.gateway)
+            comparison = self._compare(request.native, request.gateway)
             if type(comparison) is not Comparison or comparison.authority != EVALUATION_MODE:
                 return _denied("COMPUTE_FAILED")
             digest = _digest(tenant, source, request.params_digest, request, comparison)

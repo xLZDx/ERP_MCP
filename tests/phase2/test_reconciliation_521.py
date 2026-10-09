@@ -78,9 +78,17 @@ def test_tc088_row_difference_with_equal_totals_is_mismatch():
 def test_tc088_missing_or_extra_row_is_never_match():
     two = stmt((LedgerRow("A", "X", six()), LedgerRow("B", "Y", six())))
     one = stmt((LedgerRow("A", "X", six()),))
+    # Pinned current behaviour of reconciliation.py: a row present on one side only is
+    # MISMATCH / VALUES_DIFFER with a ROW_MISSING difference on that exact row key. The plan
+    # wording "missing row is INCONCLUSIVE" is NOT met by design (reconciliation.py is
+    # unchanged); a missing row is a proven difference, not an unknown.
     for native, gateway in ((two, one), (one, two)):
         result = compare_statements(native, gateway, policy=POLICY)
-        assert result.state is not ComparisonState.MATCH
+        assert result.state is ComparisonState.MISMATCH
+        assert result.reason_code == "VALUES_DIFFER"
+        missing = [d for d in result.differences if d.measure == "ROW_MISSING"]
+        assert [d.row_key for d in missing] == [("B", "Y")]
+        assert (missing[0].expected, missing[0].actual) == (None, None)
 
 
 def test_tc088_missing_balance_cannot_be_constructed():

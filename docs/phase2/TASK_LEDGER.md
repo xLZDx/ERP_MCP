@@ -33,13 +33,13 @@ No story marked VERIFIED or DONE without exact-head end-to-end acceptance.
 | R2-US-025 | S5 | IMPLEMENTED_UNVERIFIED | US-024 | side_effect_boundary.py (S5): READ allow-list, rights, prod probes; illustrative registry |
 | R2-US-026 | S5 | IMPLEMENTED_UNVERIFIED | US-010, US-004 | artifact_vault.py (S5): immutable versions, evidence verification, current ACL; in-memory, no real storage |
 | R2-US-027 | S5 | IMPLEMENTED_UNVERIFIED | US-026 | safe_parser.py (S5): values-only xlsx/csv with bounds; Windows child memory bound not enforced; not a sandbox |
-| R2-US-028 | S6 | NOT_STARTED | US-026, US-027 | No exact-head acceptance proof |
-| R2-US-029 | S6 | NOT_STARTED | US-015, US-024, US-027 | No exact-head acceptance proof |
-| R2-US-030 | S6 | IN_PROGRESS | US-021, US-029 | Numeric comparator only (EVALUATION_ONLY); no source, no netting/TC090, no policy pins |
+| R2-US-028 | S6 | IMPLEMENTED_UNVERIFIED | US-026, US-027 | c4b13f4: 40 offline tests; caller-asserted identity, not wired into promotion |
+| R2-US-029 | S6 | IMPLEMENTED_UNVERIFIED | US-015, US-024, US-027 | c4b13f4: 86 offline tests; in-memory, READ_SNAPSHOT permit mode |
+| R2-US-030 | S6 | IMPLEMENTED_UNVERIFIED | US-021, US-029 | c4b13f4: six-balance tests and contract netting (TC090); no real 521.1 source bytes |
 | R2-US-031 | S6 | NOT_STARTED | US-030 | No exact-head acceptance proof |
 | R2-US-032 | S6 | IN_PROGRESS | US-014, US-021, US-029 | Comparator only; no receipt retrieval, alias proof (TC096) or pagination |
-| R2-US-033 | S6 | NOT_STARTED | US-030 | No exact-head acceptance proof |
-| R2-US-034 | S6 | NOT_STARTED | US-028, US-030, US-031, US-032 | No exact-head acceptance proof |
+| R2-US-033 | S6 | IMPLEMENTED_UNVERIFIED | US-030 | c4b13f4: 24 offline tests; in-memory snapshots and runs |
+| R2-US-034 | S6 | IMPLEMENTED_UNVERIFIED | US-028, US-030, US-031, US-032 | c4b13f4: 37 offline tests; reserved ap.account_based |
 | R2-US-035 | S7 | NOT_STARTED | US-003, US-004, US-026 | No exact-head acceptance proof |
 | R2-US-036 | S7 | IN_PROGRESS | US-018, US-035 | Mock-HTTP changes reader/projector only; no OAuth, start-token baseline, shared-drive namespace or durable cursor (TC106/TC108 open) |
 | R2-US-037 | S7 | NOT_STARTED | US-005, US-036 | No exact-head acceptance proof |

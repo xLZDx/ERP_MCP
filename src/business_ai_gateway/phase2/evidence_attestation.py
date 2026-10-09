@@ -12,17 +12,23 @@ Rules:
   identity cleaning, so ``al\\u200bice`` or a Cyrillic lookalike does not pass as someone else).
 * Only ``AttestationDecision.PASS`` (the real enum member) is signable. A string, a look-alike object, a
   FAIL decision or a non-request object is denied and NOTHING is recorded (no attestation, no id).
-* ``check`` is the only validity gate. Tenant scope is checked FIRST and unknown id / wrong tenant both
+* ``check_current`` is the only gating entry: it takes NO caller time and uses the injected clock only.
+  ``check_as_of`` is a point-in-time historical query (audits, replay): its success code is
+  ``VALID_HISTORICAL``, never ``VALID``, so a gate that tests for ``VALID`` cannot be satisfied by a
+  caller-chosen time. Tenant scope is checked FIRST and unknown id / wrong tenant both
   return ``ATTESTATION_NOT_VALID`` so existence does not leak. Then revision digest -> policy version ->
   policy digest -> time. A signature over a different revision or policy is not evidence.
 * ``revoke`` ends CURRENT validity at the revocation instant: valid while ``signed_at <= at <
-  revoked_at``, invalid at and after ``revoked_at``. History is never deleted: ``history`` lists every
+  revoked_at``, invalid at and after ``revoked_at``. ``revoked_at`` is clamped to ``>= signed_at`` so
+  a backwards clock cannot create a revocation that predates the signature. History is never deleted: ``history`` lists every
   attestation (revoked ones with ``historical=True`` and their ``revoked_at``). Only the original
   signer may revoke; any other case returns the single code ``REVOKE_DENIED``.
 * Audit: append-only in-store log (fixed codes and normalised ids truncated to 128 chars), bounded to
   ``max_audit`` entries; ``audit()`` returns a tuple copy taken under the lock.
 
-KNOWN GAPS: signer kind and ids are asserted by the caller (no authenticated principal binding);
+KNOWN GAPS: an attestation is not bound to an evaluation ``result_digest`` (evaluation_runner output);
+that binding is a wiring item. The ``params_digest`` of an evaluation is caller-asserted and not part
+of this module. Signer kind and ids are asserted by the caller (no authenticated principal binding);
 the store is process-local and not persisted; digests are not verified against real revision or policy
 bytes; the audit is in memory only and bounded (not tamper-proof); a revocation uses the injected clock
 value and does not enforce clock monotonicity.
@@ -117,7 +123,7 @@ class RevokeResult:
 
 @dataclass(frozen=True, slots=True)
 class AuditEntry:
-    kind: str  # SIGN | CHECK | REVOKE
+    kind: str  # SIGN | CHECK | CHECK_AS_OF | REVOKE
     actor: str  # normalised actor id ('' when unusable)
     subject: str  # attestation id of a known attestation, else ''
     value: str  # fixed result code
@@ -280,29 +286,47 @@ class AttestationStore:
         return _denied("ID_UNAVAILABLE")
 
     # ----------------------------------------------------------------- check
-    def check(
+    def check_current(
         self,
         attestation_id: str,
         tenant_id: str,
         revision_digest: str,
         policy_version: str,
         policy_digest: str,
-        at: datetime | None = None,
     ) -> CheckResult:
-        """Is the attestation CURRENT evidence for exactly this revision and policy at ``at``?
+        """Is the attestation CURRENT evidence for exactly this revision and policy NOW (injected clock)?
 
-        ``at`` defaults to the injected clock; an explicit ``at`` must be aware (else ``TIME_INVALID``).
+        The only gating entry; success code ``VALID``. Accepts no caller-supplied time.
         """
         with self._lock:
             now = self._now()
-            when = now if at is None else _aware(at)
             result, subject = self._check(attestation_id, tenant_id, revision_digest,
-                                          policy_version, policy_digest, when)
+                                          policy_version, policy_digest, now, "VALID")
             self._append_locked("CHECK", "", subject, result.code, now)
         return result
 
+    def check_as_of(
+        self,
+        attestation_id: str,
+        tenant_id: str,
+        revision_digest: str,
+        policy_version: str,
+        policy_digest: str,
+        at: datetime,
+    ) -> CheckResult:
+        """Point-in-time historical query at an aware ``at`` (else ``TIME_INVALID``).
+
+        NOT a gate: success is ``VALID_HISTORICAL`` (valid=True at that instant only), never ``VALID``.
+        """
+        with self._lock:
+            now = self._now()
+            result, subject = self._check(attestation_id, tenant_id, revision_digest,
+                                          policy_version, policy_digest, _aware(at), "VALID_HISTORICAL")
+            self._append_locked("CHECK_AS_OF", "", subject, result.code, now)
+        return result
+
     def _check(self, attestation_id: str, tenant_id: str, revision_digest: str, policy_version: str,
-               policy_digest: str, when: datetime | None) -> tuple[CheckResult, str]:
+               policy_digest: str, when: datetime | None, ok_code: str) -> tuple[CheckResult, str]:
         """Caller holds ``self._lock``."""
         att = self._items.get(attestation_id) if type(attestation_id) is str else None
         tenant = clean_identity(tenant_id)
@@ -321,7 +345,7 @@ class AttestationStore:
             return CheckResult(False, "NOT_YET_VALID"), sid
         if att.revoked_at is not None and when >= att.revoked_at:
             return CheckResult(False, "REVOKED"), sid
-        return CheckResult(True, "VALID"), sid
+        return CheckResult(True, ok_code), sid
 
     # ---------------------------------------------------------------- revoke
     def revoke(self, attestation_id: str, tenant_id: str, by: Signer) -> RevokeResult:
@@ -344,7 +368,7 @@ class AttestationStore:
         if (att is None or not who or who != att.signer or not tenant or tenant != att.tenant_id
                 or att.revoked_at is not None or now is None):
             return denied
-        self._items[attestation_id] = replace(att, revoked_at=now)
+        self._items[attestation_id] = replace(att, revoked_at=max(now, att.signed_at))
         return RevokeResult(True, "REVOKED"), attestation_id
 
     # --------------------------------------------------------------- history
