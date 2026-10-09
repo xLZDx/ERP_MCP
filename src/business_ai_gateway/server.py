@@ -85,6 +85,7 @@ from .settlement_collector import (
     evaluate_open_items,
     parse_as_of,
 )
+from .supplier_debt_summary import summarize_supplier_5211, supplier_filter_batches, supplier_refs
 
 CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,
@@ -96,7 +97,12 @@ CHATGPT_SERVER_INSTRUCTIONS = (
     "ERP_MCP is a read-only ERP/1C data gateway. Use only sources and companies returned for "
     "the authenticated principal. Never invent identifiers, broaden company scope, request or "
     "expose credentials, or imply that synthetic/test evidence is native 1C reconciliation. "
-    "If a capability/profile is unavailable, report the refusal instead of guessing business data."
+    "For supplier balances on account 521.1, first try accounting_balance_by_analytics "
+    "with an explicit timezone offset in as_of; if supplier_summary is COMPLETE, show "
+    "each counterparty credit and debit separately, and state the account-only and "
+    "machine-evidence limitations. Never silently net advances, invent dates, or "
+    "treat this report as payable aging. If a capability/profile is unavailable, "
+    "report the refusal instead of guessing business data."
 )
 
 BUSINESS_CAPABILITY_BY_TOOL = {
@@ -768,10 +774,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def accounting_balance_by_analytics(
         source_id: str, company_id: str, as_of: str
     ) -> dict[str, Any]:
-        """Read company-scoped account balances by analytics via its validated profile.
+        """Read validated account balances by analytics. as_of requires ISO 8601 with offset.
 
-        The route (OData or COM) is decided server-side from capability evidence; the caller
-        cannot choose or influence it.
+        Example: 2026-08-31T23:59:59+03:00 for end of August in Moldova.
+        When the validated profile covers only account 521.1, returns a supplier_summary
+        with counterparty names and SEPARATE gross debit and credit balances. This is NOT
+        total AP across all accounts or an aging report. Machine-validated evidence is
+        never represented as a human-signed 1C report. OData vs COM is selected server-side.
         """
         tool = "accounting_balance_by_analytics"
         started = time.monotonic()
@@ -874,7 +883,120 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 )
                 adapter_kind = "COM_BRIDGE"
             provenance = profile_provenance(profile)  # may raise: build it before the success audit
-            response_bytes = len(json.dumps(rows, ensure_ascii=False).encode("utf-8"))
+            supplier_summary = None
+            # A safe presentation of the EXISTING validated 521.1 analytics profile.
+            # This does not authorize a missing payable.balance / payable.open_items profile.
+            mapped_accounts = mapping.get("accounts", [])
+            is_exact_5211_profile = (
+                isinstance(mapped_accounts, list) and len(mapped_accounts) == 1
+                and isinstance(mapped_accounts[0], dict)
+                and mapped_accounts[0].get("code") == "521.1"
+            )
+            if (is_exact_5211_profile
+                    and (not rows or all(
+                        isinstance(r, dict) and r.get("account") == "521.1" for r in rows
+                    ))):
+                names: dict[str, str] = {}
+                name_lookup_status = "NO_SUPPLIERS" if not rows else "NOT_RUN"
+                if rows and not truncated and len(rows) < settings.max_rows:
+                    try:
+                        refs = supplier_refs(rows)
+                        if not source.entity_allowed("Catalog_Контрагенты"):
+                            name_lookup_status = "DENIED_BY_SOURCE_POLICY"
+                        elif refs:
+                            # Every subquery inherits the independently enforced raw catalog
+                            # ACL, rate limiter and durable pre-dispatch/completion audit.
+                            incomplete = False
+                            for batch_refs, predicate in supplier_filter_batches(
+                                refs, max_filter_chars=settings.max_filter_chars
+                            ):
+                                top = min(len(batch_refs) + 1, settings.max_rows)
+                                cat = await onec_read(
+                                    source_id=source_id, entity_set="Catalog_Контрагенты",
+                                    select=["Ref_Key", "Description"],
+                                    filter_expr=predicate, orderby=None, expand=None,
+                                    top=top, skip=0,
+                                )
+                                cp = cat.get("page") if isinstance(cat, dict) else None
+                                cv = cat.get("value") if isinstance(cat, dict) else cat
+                                if not isinstance(cv, list) or len(cv) > top:
+                                    raise AnalyticsBalanceError("SUPPLIER_CATALOG_RESPONSE_INVALID")
+                                if isinstance(cp, dict):
+                                    page_complete = (
+                                        cp.get("has_more") is False
+                                        and cp.get("truncated") is False
+                                    )
+                                else:
+                                    # Direct OData/Atom has no page envelope. The exact GUID
+                                    # query requests one extra row to detect truncation.
+                                    page_complete = cp is None and len(cv) < top
+                                if not page_complete:
+                                    incomplete = True
+                                    break
+                                allowed_refs = set(batch_refs)
+                                for item in cv:
+                                    if (not isinstance(item, dict)
+                                            or not isinstance(item.get("Ref_Key"), str)
+                                            or not isinstance(item.get("Description"), str)):
+                                        raise AnalyticsBalanceError("SUPPLIER_CATALOG_RESPONSE_INVALID")
+                                    try:
+                                        canonical_ref = str(uuid.UUID(item["Ref_Key"]))
+                                    except ValueError as exc:
+                                        raise AnalyticsBalanceError(
+                                            "SUPPLIER_CATALOG_RESPONSE_INVALID"
+                                        ) from exc
+                                    name = item["Description"]
+                                    if (canonical_ref not in allowed_refs
+                                            or len(name.encode("utf-8")) > 4096
+                                            or (canonical_ref in names
+                                                and names[canonical_ref] != name)):
+                                        raise AnalyticsBalanceError(
+                                            "SUPPLIER_CATALOG_RESPONSE_INVALID"
+                                        )
+                                    names[canonical_ref] = name
+                            name_lookup_status = (
+                                "INCOMPLETE" if incomplete else
+                                "COMPLETE" if len(names) == len(refs) else "PARTIAL"
+                            )
+                    except AuditUnavailable:
+                        # Never turn a failed durable audit into an apparently successful read.
+                        raise
+                    except PermissionError:
+                        # A mid-batch policy revocation cannot disclose names from earlier batches.
+                        names.clear()
+                        name_lookup_status = "DENIED_BY_POLICY"
+                    # Other failures (including mandatory audit append or metadata drift)
+                    # must fail closed, never become a misleading successful report.
+                try:
+                    supplier_summary = summarize_supplier_5211(
+                        rows, names=names, truncated=truncated, max_rows=settings.max_rows
+                    )
+                except (ValueError, TypeError):
+                    supplier_summary = {
+                        "account": "521.1", "status": "UNAVAILABLE",
+                        "reason": "SOURCE_DATA_INVALID",
+                    }
+                supplier_summary["name_lookup_status"] = name_lookup_status
+            response_payload = {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": ANALYTICS_BALANCE_CONCEPT,
+                "as_of": arguments["Period"],
+                "rows": rows,
+                "row_count": len(rows),
+                "supplier_summary": supplier_summary,
+                "truncated": truncated,
+                "route": decision.route,
+                "route_reason": decision.reason,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **provenance,
+            }
+            response_bytes = len(json.dumps(
+                response_payload, ensure_ascii=False,
+            ).encode("utf-8"))
+            if response_bytes > settings.max_response_bytes:
+                raise AnalyticsBalanceError("RESPONSE_TOO_LARGE")
             detail = f"route={decision.route};reason={decision.reason}"
             if decision.binding is not None:
                 detail += f";binding={decision.binding.binding_id}@{decision.binding.version}"
@@ -896,20 +1018,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 response_bytes=response_bytes,
                 truncated=truncated,
             )
-            return {
-                "source_id": source_id,
-                "company_id": str(parsed_company_id),
-                "concept": ANALYTICS_BALANCE_CONCEPT,
-                "as_of": arguments["Period"],
-                "rows": rows,
-                "row_count": len(rows),
-                "truncated": truncated,
-                "route": decision.route,
-                "route_reason": decision.reason,
-                "profile_fingerprint": profile["profile_fingerprint"],
-                "metadata_fingerprint": capabilities.metadata_fingerprint,
-                **provenance,
-            }
+            return response_payload
         except Exception as exc:
             code = getattr(exc, "code", type(exc).__name__)
             detail = str(code)
@@ -1707,7 +1816,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
-        """Read point-in-time payable balances; this tool does not compute aging buckets."""
+        """Read payables ONLY with separately validated payable.balance semantics.
+
+        If no exact mapping is validated, fail closed; do not silently substitute 521.1
+        for all supplier liabilities. For an account-521.1-only snapshot, use
+        accounting_balance_by_analytics with an offset-aware as_of timestamp.
+        """
         return await read_settlement_balance(
             source_id,
             company_id,
@@ -1846,7 +1960,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def payable_aging(
         source_id: str, company_id: str, as_of: str, top: int = 2000
     ) -> dict[str, Any]:
-        """Aging of open payable items from a confirmed settlement record set (read-only)."""
+        """Aging ONLY with independently validated payable.open_items records.
+
+        Confirm due dates, document/payment allocations and complete opening items.
+        Account 521.1 balances cannot by themselves prove overdue days or aging.
+        """
         return await read_open_items_aging(
             source_id, company_id, as_of, concept=PAYABLE_OPEN_ITEMS_CONCEPT,
             tool_name="payable_aging", top=top,

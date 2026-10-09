@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "batch_id": "CAPABILITY_BOUNDARY_20261006",
-  "implementation_sha256": "27a12ada68c7f84160545740ecbc5adc567d042fcd2ff06eb60baad701a7bc3c",
+  "batch_id": "SUPPLIER_5211_REPORT_20261009",
+  "implementation_sha256": "e3c28e487c07ce61c674dfa5215f821fdfbc9ceb862a4b25b7f147ed172a9f14",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
   "pr_state": "DRAFT",
-  "code_evidence_sha": "abe290f",
-  "code_evidence_note": "Local counts below were measured on the exact code of this commit. The final head SHA and hosted CI run for the closing-documents commit are recorded only in the PR #11 body/comment.",
+  "code_evidence_sha": "3d160d3",
+  "code_evidence_note": "Parent 3d160d3, plus full five-finding review remediation: requirement/DoD trace, bounded catalog batches, page-less OData, canonical refs, complete MCP response size cap. Local regression 223 PASS, Ruff/Bandit/compileall PASS. Exact final head hosted CI and native UI accounting acceptance PENDING.",
   "last_verified_hosted_commit": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_verified_hosted_run": 37519186079,
   "last_verified_tested_merge": "fd11cec72325cb7128fb7c058a563045472e6306",
   "last_failed_hosted_commit": "f9a8bf27b8b125efe280b8e86970fa4f0f96056e",
   "last_failed_hosted_run": 37518882269,
-  "hosted_status_at_snapshot": "PENDING_FOR_CODE_EVIDENCE_abe290f",
+  "hosted_status_at_snapshot": "PENDING_PR35_FIVE_FINDING_REMEDIATION_EXACT_HEAD",
   "last_local_full_suite": {
     "passed": 1438,
     "skipped": 238,
@@ -21,13 +21,36 @@
   },
   "local_e2e": {
     "environment": "scripts/e2e up baseline; disposable localhost-only; Fake1C/sidecar/test IdP (synthetic, not native 1C)",
-    "smoke": {"passed": 29, "skipped": 0},
-    "user_u01_u18": {"passed": 53, "skipped": 0, "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"},
-    "admin_a01_a54": {"passed": 87, "skipped": 1, "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"},
-    "functional_tester_sc01_sc12": {"tests": 83, "passed": 79, "skipped": 3, "xfailed": 1, "failed": 0, "xfail": ["SC06 EXTERNAL-GATE"]}
+    "smoke": {
+      "passed": 29,
+      "skipped": 0
+    },
+    "user_u01_u18": {
+      "passed": 53,
+      "skipped": 0,
+      "u18_disposition": "11 of 12 SC PASS; SC06 EXTERNAL-GATE declared (Amendment A2, PROPOSED until GPT-PM approves), not 12/12"
+    },
+    "admin_a01_a54": {
+      "passed": 87,
+      "skipped": 1,
+      "skip_reason": "EXTERNAL-GATE: validated profile requires native reconciliation evidence"
+    },
+    "functional_tester_sc01_sc12": {
+      "tests": 83,
+      "passed": 79,
+      "skipped": 3,
+      "xfailed": 1,
+      "failed": 0,
+      "xfail": [
+        "SC06 EXTERNAL-GATE"
+      ]
+    }
   },
   "manual_owner_acceptance": "PENDING",
-  "local_matrix_steps": {"total": 31, "exit_zero": 31},
+  "local_matrix_steps": {
+    "total": 31,
+    "exit_zero": 31
+  },
   "focused_tests": {
     "settlement_and_existing_aging": 34,
     "financial_statement_contracts": 32,
@@ -65,5 +88,5 @@
       "skipped": 0
     }
   },
-  "current_full_suite_status": "PASS"
+  "current_full_suite_status": "PENDING_ON_NEW_FEATURE_HEAD"
 }
