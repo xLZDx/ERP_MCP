@@ -19,6 +19,7 @@ from typing import Any
 from business_ai_gateway.evidence_basis import (
     MACHINE_METHOD_A,
     MACHINE_METHOD_B,
+    MACHINE_MIN_CASES,
     MACHINE_REFERENCE_PREFIX,
     EvidenceBasisError,
     authorized_accounts,
@@ -55,7 +56,10 @@ def verify_plan_authority(authority: str, *, scope_sha256: str, plans_dir: Path)
     matches = [path for path in Path(plans_dir).glob("*.json") if path.stem == plan_id]
     if len(matches) != 1:
         raise MachineReconciliationError("the cited Rosetta plan was not found exactly once")
-    plan = json.loads(matches[0].read_text(encoding="utf-8"))
+    try:
+        plan = json.loads(matches[0].read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise MachineReconciliationError("the cited Rosetta plan cannot be read as JSON") from exc
     if not isinstance(plan, dict):
         raise MachineReconciliationError("the cited Rosetta plan is not an object")
     approval = plan.get("approval")
@@ -67,7 +71,7 @@ def verify_plan_authority(authority: str, *, scope_sha256: str, plans_dir: Path)
         or approval.get("verdict") != "APPROVE"
         or approval.get("correlated") is not True
         or approval.get("approved_plan_hash") != plan_hash
-        or "GPT-PM" not in str(approval.get("approved_by"))
+        or approval.get("approved_by") != "GPT-PM"
     ):
         raise MachineReconciliationError("the cited plan is not an approved, correlated, current plan")
     scope = str(plan.get("scope", ""))
@@ -207,9 +211,16 @@ def verify_all(
 ) -> dict[str, Any]:
     accounts, roles = authorized_accounts(mapping), authorized_roles(mapping)
     cases = evidence["native_reconciliation_cases"]
-    authority = verify_plan_authority(
-        cases[0]["authorized_by"], scope_sha256=scope_sha256, plans_dir=plans_dir
-    )
+    if not isinstance(cases, list) or len(cases) < MACHINE_MIN_CASES:
+        raise MachineReconciliationError(f"machine evidence needs at least {MACHINE_MIN_CASES} cases")
+    if any(not isinstance(case, dict) or not isinstance(case.get("authorized_by"), str) for case in cases):
+        raise MachineReconciliationError("every machine case must cite its authorizing Rosetta plan")
+    # Every distinct authority is verified, not only the first case's one.
+    authorities = [
+        verify_plan_authority(cited, scope_sha256=scope_sha256, plans_dir=plans_dir)
+        for cited in sorted({case["authorized_by"] for case in cases})
+    ]
+    authority = authorities[0]
     summaries = [
         verify_case_artifacts(case, artifacts_root, allowed_accounts=accounts, allowed_roles=roles) for case in cases
     ]
