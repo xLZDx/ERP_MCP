@@ -36,7 +36,17 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
                      AND p.status='VALIDATED' AND p.metadata_fingerprint=sc.metadata_fingerprint
                      AND sc.drift_status='STABLE' AND m.entity_set=$5
                      AND __NATIVE_ONLY_SQL__
-                 ) AS mapping_candidate
+                 ) AS mapping_candidate,
+                 EXISTS (
+                   SELECT 1 FROM bag.company_scope_mappings m
+                   JOIN bag.semantic_profiles p ON p.profile_id=m.profile_id
+                   JOIN bag.source_capabilities sc ON sc.source_id=p.source_id
+                   WHERE p.source_id=c.source_id AND (p.company_id=c.company_id OR p.company_id IS NULL)
+                     AND p.status='VALIDATED' AND p.metadata_fingerprint=sc.metadata_fingerprint
+                     AND sc.drift_status='STABLE' AND m.entity_set=$5
+                     AND p.validation_evidence_json ? 'machine_scope'
+                     AND NOT (__NATIVE_ONLY_SQL__)
+                 ) AS machine_only_mapping
           FROM bag.companies c JOIN bag.sources s ON s.source_id=c.source_id
           LEFT JOIN LATERAL (
             SELECT bool_or(a.effect='deny') AS has_deny,
@@ -93,7 +103,8 @@ async def explain_access(pool, *, ctx, kind, principal_id, source_id, entity_set
             "matching_grant_count": row["grant_count"],
             "grant_evidence_truncated": row["grant_count"] > 50,
             "company_operation": "mapping_candidate_requires_live_checks" if row["mapping_candidate"]
-                                 else "unsupported_or_stale_mapping",
+                                 else ("profile_not_native_validated" if row["machine_only_mapping"]
+                                       else "unsupported_or_stale_mapping"),
             "generic_onec_read": "requires_source_wide_grant",
         })
     return {

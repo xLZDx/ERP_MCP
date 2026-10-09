@@ -1,7 +1,34 @@
 
 # ERP_MCP implementation status
 
-<!-- ENGINEERING_CHECKPOINT=CAPABILITY_BOUNDARY_20261006 ENGINEERING_IMPLEMENTATION=27a12ada68c7f84160545740ecbc5adc567d042fcd2ff06eb60baad701a7bc3c -->
+## Gateway runtime glibc remediation — 2026-10-09
+
+The pinned Chainguard Python runtime used in Release 1 gateway Dockerfile
+contained 12 Trivy MEDIUM findings (four distinct CVEs repeated across
+glibc-2.44, locale-posix and ld-linux packages at 2.44-r7). Refreshing the
+digest-only runtime base to the verified published Chainguard Python 3.14.8
+image removes the vulnerable r7 base. The Python project/runtime locks and
+all authorization, accounting, and audit logic remain unchanged. The new
+gateway image and exact-head hosted Trivy/CI must be confirmed independently
+before declaring this release slice fully closed. Production remains
+NO-GO and DoD PARTIAL pending unrelated native and operator gates.
+
+
+## Verified first-install L2 gateway and ACL — 2026-10-09
+
+On the exact pre-merge R1 installation candidate a clean GitHub clone on an
+existing Windows engineering host reached genuine read-only 1C metadata and
+passed seven MCP source-access/metadata checks (two positive, five denied).
+ComSpec startup and the disposable real-1C auditor source-grant bootstrap were
+repaired, with fail-closed and idempotence regression checks.
+The concurrently published main machine-profile/functional changes are
+preserved in this merged tree, but the combined head still requires exact-head
+hosted CI / fresh test confirmation. This does not prove native accounting or
+Unix/production GO. See reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md.
+Production NO-GO; DoD PARTIAL.
+
+
+<!-- ENGINEERING_CHECKPOINT=CHG_RUNTIME_GLIBC_CVE_20261009 ENGINEERING_IMPLEMENTATION=0f2d27bbad9afb6450dd4d837dae75f8855318f5403377edd2eb4ec984538c0a -->
 
 ## Capability observation boundary — 2026-10-06
 
