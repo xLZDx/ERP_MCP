@@ -1,40 +1,41 @@
-# ERP_MCP — secure, read-only AI gateway for 1C
+# ERP_MCP — Secure, Read-Only AI Gateway for 1C
 
-[**Русский**](#о-проекте) · [**English**](#english-overview) · [**Install / Установка**](docs/INSTALLATION_GUIDE_RU.md) · [**Lessons learned**](docs/LESSONS_LEARNED_RU.md)
+[**Overview**](#overview) · [**Installation**](docs/INSTALLATION_GUIDE_RU.md) · [**Lessons Learned**](docs/LESSONS_LEARNED_RU.md) · [**Phase 2**](docs/phase2/README.md)
 
-> **Release 1 (ERP_MCP v1):** active read-only 1C gateway; implementation and acceptance are ongoing. **Not generally approved for production.**
-> **Phase 2 (ERP_MCP v2 / Living Model):** **🚧 Work in progress.** Architecture and requirements are documented, and development is carried out separately. Phase 2 is **not a completed or generally available feature of `main`**.
+> **Release 1 (ERP_MCP v1):** Active read-only gateway for 1C, with implementation and acceptance still in progress. **Not generally approved for production.**
+>
+> **Phase 2 (ERP_MCP v2 / Living Model):** **Work in progress.** Architecture and requirements are documented, and development is carried out separately. Phase 2 is **not a completed or generally available feature of `main`**.
 
-ERP_MCP exposes governed, auditable access to 1C through the [Model Context Protocol](https://modelcontextprotocol.io/). The goal is **reliable accounting answers within explicit access boundaries**, not uncontrolled AI access to a database. It separates a public read-only MCP data plane from administrator operations and supports an eventual shared connector/control architecture for other systems.
+ERP_MCP provides governed, auditable access to 1C systems through the [Model Context Protocol](https://modelcontextprotocol.io/). Its goal is **reliable accounting answers within explicit access boundaries**, not unrestricted AI access to databases. The public read-only MCP data plane is separate from administrator operations. A shared connector/control architecture for additional systems is planned.
 
-## О проекте
+## Overview
 
-**ERP_MCP 1 / Release 1** — MCP-шлюз для безопасного чтения данных из нескольких баз **1С:Предприятие**. Пользователь или AI-клиент работает с разрешёнными источниками и организациями; шлюз проверяет identity, ACL, capabilities, ограничения запросов и аудита. Конкретные бухгалтерские ответы доступны только при подтверждённом семантическом профиле и независимой сверке со штатными отчётами 1С.
+**ERP_MCP 1 / Release 1** is an MCP gateway for secure, read-only access to multiple **1C:Enterprise** databases. Users and AI clients can access only authorized sources and organizations. The gateway enforces identity, access control lists (ACLs), capability checks, query limits, and audit requirements. Specific accounting answers are available only when the semantic profile is confirmed and independently reconciled against native 1C reports.
 
-**ERP_MCP 2 / Phase 2** — следующий этап: постоянно актуализируемая модель подключённых источников, история их изменений, дополнительные коннекторы, управляемая автоматическая сверка и рабочее место для исследования расхождений. **Эти возможности сейчас в разработке**, а не в списке готовых функций релиза.
+**ERP_MCP 2 / Phase 2** is the next stage: a continuously updated model of connected sources, change history, additional connectors, governed automated reconciliation, and a workbench for investigating discrepancies. **These capabilities are under development** and must not be presented as released features.
 
-### Статус версий
+### Version Status
 
-| Функциональность | Release 1 / ERP_MCP v1 | Phase 2 / ERP_MCP v2 |
+| Capability | Release 1 / ERP_MCP v1 | Phase 2 / ERP_MCP v2 |
 | --- | --- | --- |
-| Разрешённые источники 1С, organizations/grants | Реализованы базовые control-plane механизмы; приёмка зависит от окружения | Наследует границы R1, не обходит их |
-| Read-only OData v3 / metadata / capability routing | Реализованы маршруты и защитные контракты; реальный профиль требует проверки | Наблюдения и детальные изменения возможностей по объектам **WIP** |
-| MCP tools / semantic accounting | Инструменты и exact-profile gates; поддержка зависит от конфигурации и native evidence | Перспектива расширенных validated операций **WIP** |
-| Admin Control Center, аудит, ограничения | Реализуемые и проверяемые части R1; полный release gate ещё открыт | Job/connector/workbench administration **WIP** |
-| Real 1C / COM / RSV fallback | Ограниченный, проверяемый metadata-first путь; dangerous business queries заблокированы | Квалифицированный native report capture **WIP** |
-| Независимая сверка со штатными отчётами 1С | Обязательное условие доверенных цифр и release GO; не заменяется L1 | Автоматизация сбора и сравнения + attestation **WIP** |
-| Living Model Registry, PDM/LDM, taxonomy | Не входит в поставляемый R1 runtime | **Проектируется и разрабатывается, не production-ready** |
-| Bitemporal history, diff/impact graph, adaptive jobs | Не заявлены как функции R1 | **WIP**, с отдельными validation gates |
-| Дополнительные источники (например, Drive) | Только зарезервированные adapter boundaries, не «подключено из коробки» | Connector framework и provider-specific qualification **WIP** |
-| Общий production GO | **NO-GO до закрытия обязательных gates** | **NO-GO / WIP** |
+| Authorized 1C sources, organizations, and grants | Core control-plane mechanisms implemented; acceptance is environment-specific | Inherits R1 access boundaries and must not bypass them |
+| Read-only OData v3, metadata, and capability routing | Routes and protective contracts implemented; actual profiles require validation | Fine-grained observations and per-object capability changes **WIP** |
+| MCP tools and semantic accounting | Tools with exact-profile gates; support depends on configuration and native evidence | Extended validated operations planned **WIP** |
+| Admin Control Center, audit, and limits | R1 components are being implemented and verified; the overall release gate is open | Job, connector, and workbench administration **WIP** |
+| Real 1C, COM, and RSV fallback | Limited, validated, metadata-first path; dangerous business queries are blocked | Qualified native-report capture **WIP** |
+| Independent reconciliation with native 1C reports | Mandatory for trustworthy amounts and release approval; L1 does not substitute for it | Governed capture, comparison, and independent attestation **WIP** |
+| Living Model Registry, PDM/LDM, taxonomy | Not shipped in the R1 runtime | **In design and development; not production-ready** |
+| Bitemporal history, diff/impact graph, adaptive jobs | Not claimed as R1 features | **WIP**, with separate validation gates |
+| Additional sources (for example, Drive) | Adapter boundaries reserved only; not connected out of the box | Connector framework and provider-specific qualification **WIP** |
+| Overall production approval | **NO-GO until required gates close** | **NO-GO / WIP** |
 
-Здесь **P0–P10** в [Master Plan R1](docs/MASTER_PLAN.md) — *инженерные этапы Release 1*, а **Phase 2 S0–S10** — *отдельная дорожная карта следующей версии*. Это разные шкалы, их не следует путать.
+**P0–P10** in the [Release 1 Master Plan](docs/MASTER_PLAN.md) are engineering stages for Release 1. **Phase 2 S0–S10** is a separate roadmap for the next version. These are different progress scales and must not be conflated.
 
-## Быстрый старт: установка из GitHub
+## Quick Start: Install from GitHub
 
-**Рекомендуемый первый опыт — полностью синтетический Fake1C стенд, без реальной бухгалтерской базы.**
+**Recommended first run: the fully synthetic Fake1C environment, without a real accounting database.**
 
-Потребуются Windows, Git, Python **3.12+**, [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker Desktop (Linux containers) и PowerShell 5.1/7.
+Prerequisites: Windows, Git, Python **3.12+**, [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker Desktop using Linux containers, and PowerShell 5.1 or 7.
 
 ```powershell
 git clone https://github.com/xLZDx/ERP_MCP.git
@@ -45,18 +46,19 @@ uv sync --locked --all-groups --extra dev
 .\scripts\e2e\test.ps1 -Suite smoke
 ```
 
-После успешного старта тестового окружения:
-- Проверка gateway: [http://127.0.0.1:18000/healthz](http://127.0.0.1:18000/healthz)
-- Admin UI: [http://127.0.0.1:18000/admin/](http://127.0.0.1:18000/admin/) (test IdP)
-- MCP endpoint: `http://127.0.0.1:18000/mcp` (это не HTML-сайт)
+After successfully starting the synthetic environment:
 
-Остановка **только своего** disposable-стенда: `.\scripts\e2e\down.ps1`. Не используйте `-Purge` без понимания удаления disposable data/volumes.
+- Gateway health: [http://127.0.0.1:18000/healthz](http://127.0.0.1:18000/healthz)
+- Admin UI: [http://127.0.0.1:18000/admin/](http://127.0.0.1:18000/admin/) (test identity provider)
+- MCP endpoint: `http://127.0.0.1:18000/mcp` (not an HTML website)
 
-**Полная инструкция с prerequisites, установкой Python/infra, настоящей тестовой 1С, ACL, OData, ChatGPT, troubleshooting и production checklists: [УСТАНОВКА ПО ШАГАМ →](docs/INSTALLATION_GUIDE_RU.md).**
+To stop **only your own** disposable environment, run `.\scripts\e2e\down.ps1`. Do not use `-Purge` unless you understand that it removes disposable data and volumes.
 
-**История ошибок и принятых ограничений: [LESSONS LEARNED →](docs/LESSONS_LEARNED_RU.md).**
+**Complete step-by-step guide:** [Installation Guide](docs/INSTALLATION_GUIDE_RU.md), including prerequisites, Python and infrastructure setup, a real test 1C instance, ACLs, OData, ChatGPT integration, troubleshooting, and production checklists.
 
-### Development-only gateway (без полного E2E)
+**Past issues and documented limitations:** [Lessons Learned](docs/LESSONS_LEARNED_RU.md).
+
+### Development-Only Gateway (without the full E2E environment)
 
 ```powershell
 Copy-Item .env.development.example .env
@@ -67,45 +69,45 @@ uv run --locked python scripts/doctor.py
 uv run --locked uvicorn business_ai_gateway.app:app --host 127.0.0.1 --port 8000
 ```
 
-Этот dev-профиль может содержать демонстрационные секреты и публикует локальные dev-порты. Он **не** является production deployment. Реальные источники подключайте только по [инструкции](docs/INSTALLATION_GUIDE_RU.md#5-подключение-своей-тестовой-базы-1с-l2-только-с-разрешения-владельца) и [production security contract](deploy/PRODUCTION.md).
+This development profile can contain demonstration secrets and exposes local development ports. It is **not** a production deployment. Connect real sources only according to the [installation guide](docs/INSTALLATION_GUIDE_RU.md) and the [production security contract](deploy/PRODUCTION.md).
 
-## Что входит в ERP_MCP 1
+## What ERP_MCP 1 Provides
 
-### Read-only MCP data plane
+### Read-Only MCP Data Plane
 
-- Управляемый список источников и компаний, source/company ACL, строгая проверка OAuth/OIDC в защищённом окружении.
-- Метаданные и capability negotiation по реально поддерживаемому поведению 1С; OData v3 + приватный pinned adapter/sidecar.
-- Ограничения строк, ответов, фильтров, времени, запросов и сетевых адресов; запросы только к заранее зарегистрированным источникам.
-- Read-only инструменты: `system_status`, `sources_list`, `companies_list`, `source_health`, `onec_capabilities`, `onec_metadata_summary`, `onec_find_entities`, `onec_read`.
-- Семантические функции учёта (включая обороты, продажи/покупки, денежные/складские и дебиторские/кредиторские представления) **только там, где подтверждены exact mapping, capability и native evidence**. Наличие исходного кода инструмента не означает, что он включён для произвольной базы.
+- Governed list of sources and companies, source/company ACLs, and strict OAuth/OIDC verification in a secured environment.
+- Metadata and capability negotiation based on actual 1C behavior; OData v3 and a private pinned adapter/sidecar.
+- Limits on rows, responses, filters, execution time, queries, and network addresses. Requests target only pre-registered sources.
+- Read-only tools: `system_status`, `sources_list`, `companies_list`, `source_health`, `onec_capabilities`, `onec_metadata_summary`, `onec_find_entities`, and `onec_read`.
+- Semantic accounting operations (including balances and turnovers, sales and purchases, cash and inventory, receivables and payables) **only where exact mappings, capabilities, and native evidence are confirmed**. A tool's presence in source code does not imply it is enabled for every database.
 
-### Security, administration and operations
+### Security, Administration, and Operations
 
-- Separate Admin Control Center + role/grant management; Admin mutation APIs **не** публикуются как общедоступные MCP tools.
-- PostgreSQL registry, grants и обязательный audit; Redis rate limits; secret providers и DB role split.
-- Тестовая стратегия **Fake1C (L1) → реальная одноразовая тестовая база 1С (L2) → production-parity environment (L3)**.
-- Приватный, ограниченный Windows/COM fallback для поддерживаемых сценариев; нельзя использовать его для произвольных AI SQL/COM команд.
-- Observability, fault/restore и release-evidence процедуры; production допуск зависит от закрытия security, accuracy и operations gates.
+- Separate Admin Control Center and role/grant management. Administrator mutation APIs are **not** exposed as public MCP tools.
+- PostgreSQL source registry, grants, mandatory audit, Redis rate limits, secret providers, and separate database roles.
+- Testing ladder: **Fake1C synthetic environment (L1) → authorized disposable real 1C test instance (L2) → production-parity environment (L3)**.
+- Restricted private Windows/COM fallback for supported use cases; never an unrestricted AI SQL/COM execution channel.
+- Observability, fault/restore, and release-evidence procedures. Production approval depends on closing security, accounting accuracy, and operations gates.
 
-См. [Security](SECURITY.md), [Architecture](docs/ARCHITECTURE.md), [Master Plan](docs/MASTER_PLAN.md), [Test Strategy](docs/TEST_STRATEGY.md), [Release Operations](docs/RELEASE_OPERATIONS.md).
+See [Security](SECURITY.md), [Architecture](docs/ARCHITECTURE.md), [Master Plan](docs/MASTER_PLAN.md), [Test Strategy](docs/TEST_STRATEGY.md), and [Release Operations](docs/RELEASE_OPERATIONS.md).
 
-## Что запланировано в ERP_MCP 2 (Phase 2) — 🚧 WIP
+## ERP_MCP 2 / Phase 2 Roadmap — Work in Progress
 
-- Connector SDK и безопасные источники с отдельными permissions/secret refs.
-- **Living Model Registry:** observed/accepted schema, PDM/LDM, taxonomy, canonical fingerprints.
-- PostgreSQL temporal/event history, CAS, leases, cursors и консервативная оценка влияния изменений.
-- Адаптивный мониторинг метаданных, разделение *source unavailable* и *schema drift*.
-- Настоящий native report capture 1C с проверкой provenance; независимая аттестация и автоматическое сравнение по подтверждённым scopes.
-- UI для истории, объяснений отклонений, разрешённого rerun и работы с исключениями.
-- Поэтапное расширение на внешних providers только после специальных permission/revocation/load gates.
+- Connector SDK and secure source integrations with separate permissions and secret references.
+- **Living Model Registry:** observed and accepted schema, PDM/LDM, taxonomy, and canonical fingerprints.
+- PostgreSQL temporal/event history, compare-and-swap, leases, cursors, and conservative change impact analysis.
+- Adaptive metadata monitoring that distinguishes *source unavailable* from *schema drift*.
+- Genuine native 1C report capture with verified provenance, independent attestation, and automated comparisons within approved scopes.
+- A workbench for history, discrepancy explanations, authorized reruns, and exception handling.
+- Incremental support for external providers, only after provider-specific permission, revocation, and load gates.
 
-**Это план и экспериментальная работа; не обещание, что функции доступны после `git clone main`.** Для production native capture требуется отдельное разрешение на конкретную базу, компанию, рецепт и окно выполнения.
+**This is a roadmap and experimental engineering work, not a promise that these features are available after cloning `main`.** Production native capture requires separate approval for the exact 1C database, company, capture procedure, and execution window.
 
-Документы: [Phase 2 README](docs/phase2/README.md) · [TDD](docs/phase2/TDD_PHASE2_RU.md) · [Roadmap S0–S10](docs/phase2/PLAN_PHASE2_RU.md) · [Acceptance](docs/phase2/TEST_PLAN_PHASE2_RU.md).
+References: [Phase 2 README](docs/phase2/README.md), [Technical Design](docs/phase2/TDD_PHASE2_RU.md), [S0–S10 Roadmap](docs/phase2/PLAN_PHASE2_RU.md), and [Acceptance/Test Plan](docs/phase2/TEST_PLAN_PHASE2_RU.md).
 
 ## ChatGPT / Secure MCP Tunnel
 
-Для демонстрации изолированного **Fake1C** через ChatGPT предусмотрены Windows launchers:
+Windows launchers are provided for connecting an isolated **Fake1C** demonstration to ChatGPT:
 
 ```powershell
 .\scripts\chatgpt\up.ps1
@@ -113,35 +115,29 @@ uv run --locked uvicorn business_ai_gateway.app:app --host 127.0.0.1 --port 8000
 .\scripts\chatgpt\install-tunnel-client.ps1
 ```
 
-Этот endpoint намеренно **test-only**, OAuth на нём отключён **только** для synthetic data. Для реальной базы нужен production OAuth, private network, реальные grants и approved native evidence. См. [ChatGPT ↔ ERP_MCP integration](docs/CHATGPT_MCP_INTEGRATION.md) и [русский runbook](docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md).
+This endpoint is deliberately **test-only**. OAuth is disabled **only** for synthetic data. A real database requires production OAuth, private networking, genuine grants, and approved native evidence. See [ChatGPT ↔ ERP_MCP Integration](docs/CHATGPT_MCP_INTEGRATION.md) and the [ChatGPT Runbook](docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md).
 
-## Фактическая проверка чистой установки (09.10.2026)
+## Verified Fresh Installation (October 9, 2026)
 
-На существующем Windows 11 инженерном компьютере выполнен свежий `git clone main`, установлены зависимости, подняты отдельные PostgreSQL/Redis и test-only gateway. Настоящая 1С ответила на авторизованный `$metadata`; после корректного тестового bootstrap роли и source grant выполнены **7/7** MCP ACL/metadata smoke-проверок. **Это не L3/production approval и не тест на новом физическом компьютере.** См. [реальный отчёт L2](reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
+On an existing Windows 11 engineering workstation, a fresh `git clone main` was executed, dependencies installed, and separate PostgreSQL/Redis and test-only gateway instances started. A real 1C instance responded to an authorized `$metadata` request. After the correct test bootstrap role and source grant were configured, **7/7 MCP ACL/metadata smoke checks passed**.
 
-## English overview
+**This is not L3/production approval and not proof of installation on a new physical computer.** See the [actual L2 verification report](reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
 
-**ERP_MCP Release 1** is a 1C-first read-only MCP gateway with registered sources, scoped permissions, OAuth/OIDC, audit, controlled OData capability routing, security limits, and configuration-specific semantic accounting tools. It supports synthetic local tests and authorized real-1C validation. **It is not yet generally production-approved.**
+## Additional Documentation
 
-**ERP_MCP Phase 2** is the **in-progress** Living Model / connector / history / reconciliation program. Its design includes scoped event history, drift-aware metadata discovery, independently verifiable 1C report evidence, and an operator workbench. **Do not assume these features ship in the main branch.**
-
-**New users:** start with the [step-by-step installation guide](docs/INSTALLATION_GUIDE_RU.md) and the [lessons learned](docs/LESSONS_LEARNED_RU.md). They explain the safe synthetic first run, the real-1C onboarding boundary, production prerequisites and known limitations.
-
-## Дополнительная документация
-
-| Раздел | Ссылка |
+| Topic | Link |
 | --- | --- |
-| Нормативный индекс и приоритет требований | [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) |
-| Подробная установка | [docs/INSTALLATION_GUIDE_RU.md](docs/INSTALLATION_GUIDE_RU.md) |
-| Ошибки и lessons learned | [docs/LESSONS_LEARNED_RU.md](docs/LESSONS_LEARNED_RU.md) |
-| Реальный тестовый стенд и L1/L2 | [docs/E2E_ENVIRONMENT.md](docs/E2E_ENVIRONMENT.md) |
-| Подключение ChatGPT | [docs/CHATGPT_MCP_INTEGRATION.md](docs/CHATGPT_MCP_INTEGRATION.md) |
-| Реальный Windows 1C/COM bridge | [docs/runbooks/RSV_DATA_BRIDGE.md](docs/runbooks/RSV_DATA_BRIDGE.md) |
-| Production deployment и rollback | [deploy/PRODUCTION.md](deploy/PRODUCTION.md) / [deploy/ROLLBACK.md](deploy/ROLLBACK.md) |
+| Normative document index and requirement precedence | [docs/DOCUMENT_INDEX.md](docs/DOCUMENT_INDEX.md) |
+| Detailed installation instructions | [docs/INSTALLATION_GUIDE_RU.md](docs/INSTALLATION_GUIDE_RU.md) |
+| Historical issues and lessons learned | [docs/LESSONS_LEARNED_RU.md](docs/LESSONS_LEARNED_RU.md) |
+| Real test environment and L1/L2 | [docs/E2E_ENVIRONMENT.md](docs/E2E_ENVIRONMENT.md) |
+| ChatGPT integration | [docs/CHATGPT_MCP_INTEGRATION.md](docs/CHATGPT_MCP_INTEGRATION.md) |
+| Windows 1C/COM bridge | [docs/runbooks/RSV_DATA_BRIDGE.md](docs/runbooks/RSV_DATA_BRIDGE.md) |
+| Production deployment and rollback | [deploy/PRODUCTION.md](deploy/PRODUCTION.md) / [deploy/ROLLBACK.md](deploy/ROLLBACK.md) |
 | Phase 2 (WIP) | [docs/phase2/README.md](docs/phase2/README.md) |
 | Engineering Command Center | [docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html](docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html) |
 | Upstream reuse and third-party licensing | [vendor/UPSTREAMS.md](vendor/UPSTREAMS.md) / [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 
 Contributions: [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
 
-**Release rule:** working code ≠ tested deployment ≠ accounting evidence ≠ formally approved production release.
+**Release rule:** Working code does not equal a tested deployment, accounting evidence, or formally approved production release.
