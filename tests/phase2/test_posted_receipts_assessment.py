@@ -221,11 +221,26 @@ def test_forged_proof_or_listing_cannot_claim_complete():
     assert _forged_verdict(res, replace(res, listing=other_scope)) == "PROOF_LISTING_DIGEST_MISMATCH"
 
 
-def test_consistently_resealed_forgery_with_a_different_scope_is_a_scope_mismatch():
+@pytest.mark.parametrize("field", [
+    "company_ref", "counterparty_ref", "currency", "source_id", "tenant_id", "from_inclusive",
+    "until_exclusive", "snapshot_ref"])
+def test_consistently_resealed_forgery_with_a_different_scope_is_a_scope_mismatch(field):
+    # the listing is changed in exactly one of the eight proof-bound fields; the listing digest and
+    # the proof digest are recomputed, so only the proof-vs-listing scope cross-check can fire
     res = get(three_pages())
-    other = replace(res.listing, scope=PurchaseScope(
-        "t", "onec-reference", COMPANY, VENDOR, FROM, datetime(2026, 9, 2, tzinfo=UTC), "MDL"))
-    assert _forged_verdict(res, reseal(res, listing=other)) == "PROOF_SCOPE_MISMATCH"
+    changed = {
+        "company_ref": "other-co", "counterparty_ref": "OTHER-VENDOR", "currency": "EUR",
+        "source_id": "other-source", "tenant_id": "other-tenant",
+        "from_inclusive": datetime(2026, 8, 2, tzinfo=UTC),
+        "until_exclusive": datetime(2026, 9, 2, tzinfo=UTC), "snapshot_ref": "snap-other",
+    }[field]
+    if field == "snapshot_ref":
+        other = replace(res.listing, snapshot_ref=changed)
+    else:
+        other = replace(res.listing, scope=replace(res.listing.scope, **{field: changed}))
+    forged = reseal(res, listing=other)
+    assert forged.proof.listing_digest == _listing_digest(other)  # digests are consistent
+    assert _forged_verdict(res, forged) == "PROOF_SCOPE_MISMATCH"
 
 
 def test_consistently_resealed_forgery_with_an_out_of_scope_row_is_refused():
@@ -258,6 +273,9 @@ def _exclusions(**counts):
     {"direction": "receipt"},
     {"reason": "PAGE_LIMIT_HIT"},
     {"kept_count": 3},
+    # sums are internally consistent (rows_seen == kept + exclusions) but the listing holds 4
+    # documents: only the `kept_count != len(docs)` guard can fire
+    {"kept_count": 3, "rows_seen": 3},
     {"rows_seen": 5},  # rows_seen != kept + exclusions
     {"rows_seen": MAX_ROWS + 1, "exclusions": _exclusions(UNPOSTED=MAX_ROWS - 3)},
     {"exclusions": _exclusions(UNPOSTED=1), "rows_seen": 4},  # sum(exclusions) mismatch
@@ -270,12 +288,29 @@ def _exclusions(**counts):
     {"page_tokens": (None, "tok-1", "")},  # blank token
     {"page_tokens": [None, "tok-1", "tok-2"]},  # not a tuple
     {"page_tokens": (None,) * 1 + tuple(f"t{i}" for i in range(100)), "pages_fetched": 101},
-], ids=["dir_sale", "dir_lower", "reason", "kept_count", "rows_seen", "rows_over_max",
+], ids=["dir_sale", "dir_lower", "reason", "kept_count", "kept_len_only", "rows_seen", "rows_over_max",
         "excl_sum", "excl_negative", "excl_short", "pages_mismatch", "pages_zero", "first_token",
         "repeat_token", "blank_token", "tokens_list", "pages_over_max"])
 def test_consistently_resealed_forgery_with_inconsistent_proof_content_is_refused(changes):
     res = get(three_pages())
     assert _forged_verdict(res, reseal(res, **changes)) == "PROOF_CONTENT_INCONSISTENT"
+
+
+def _forge_listing(base: PurchaseListing, **changes) -> PurchaseListing:
+    out = object.__new__(PurchaseListing)  # bypasses the duplicate-ref constructor validation
+    for name in PurchaseListing.__slots__:
+        object.__setattr__(out, name, changes.get(name, getattr(base, name)))
+    return out
+
+
+def test_consistently_resealed_forgery_with_a_duplicate_doc_ref_is_refused():
+    res = get(three_pages())
+    docs = (*res.listing.documents, res.listing.documents[0])
+    listing = _forge_listing(res.listing, documents=docs)
+    assert len(docs) == 5 and len({d.doc_ref for d in docs}) == 4
+    # kept_count/rows_seen match len(docs), so every other proof-content guard passes
+    forged = reseal(res, listing=listing, kept_count=5, rows_seen=5)
+    assert _forged_verdict(res, forged) == "PROOF_CONTENT_INCONSISTENT"
 
 
 def test_a_listing_with_a_duplicate_doc_ref_cannot_even_be_constructed():

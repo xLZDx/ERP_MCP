@@ -244,6 +244,31 @@ def test_page_without_a_well_formed_kind_per_row_is_refused_and_surfaces_no_list
     assert res.listing is None and res.proof.listing_digest is None
 
 
+class _LyingStr(str):
+    """A str subclass whose comparisons always claim 'RECEIPT' (spoofing attempt)."""
+
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+    __hash__ = str.__hash__
+
+
+def test_a_str_subclass_kind_cannot_pass_the_direction_gate():
+    sale = _LyingStr("SALE")
+    res = retriever({None: page([doc("a")], kinds=(sale,))})[0].retrieve(request())
+    assert res.reason is RetrievalReason.PAGE_DIRECTION_UNPROVEN and res.complete is False
+    assert res.listing is None and res.proof.listing_digest is None
+
+
+def test_a_str_subclass_in_a_document_field_is_refused():
+    row = doc("a", vendor=_LyingStr(VENDOR))
+    res = retriever({None: page([row], kinds=("RECEIPT",))})[0].retrieve(request())
+    assert res.reason is RetrievalReason.PAGE_IDENTITY_INVALID and res.listing is None
+
+
 def test_a_lowercase_kind_is_not_a_receipt():
     res = retriever({None: page([doc("a")], kinds=("receipt",))})[0].retrieve(request())
     assert res.listing.documents == () and counts(res)["WRONG_DIRECTION"] == 1

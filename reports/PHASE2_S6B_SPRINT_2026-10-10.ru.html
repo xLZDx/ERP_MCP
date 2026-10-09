@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S6b: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S6b: итоги</h1>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 508aa0d, пакет ревью 855e398 + исправления проверки (GPT-PM ожидается; не запушен) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 855e398</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S6b реализован и проверен офлайн</span> (код 508aa0d, пакет ревью 855e398, исправления проверки). Ограниченная проверка двумя ревьюерами нашла один MAJOR в коде (подкласс str в поле kind мог обмануть гейт направления RECEIPT; исправлено проверкой точного типа и двумя регрессионными тестами, красными на старом коде) и два MAJOR по силе тестов (scope проверялся по одному полю из восьми; два неизолированных случая; исправлено). <span class="warn">GPT-PM ожидается, push не выполнен.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: модули <code>ap_account_strategy.py</code> и <code>posted_receipts.py</code> работают на фикстурах и не подключены к Release 1; <code>ap.account_based</code> остаётся закрытым.</p>
+<ul>
+<li>Тесты: офлайн <code>tests/phase2</code> — <b>2392 passed, 229 skipped</b>; <code>ruff</code> чистый. Запуск через python из проектного <code>.venv</code>.</li>
+<li>Тесты по файлам: AP — 173; posted_receipts — 99 / 68 / 48 (основной, пагинация, оценка); границы — 7.</li>
+<li>Ревью: четыре read-only ревьюера — 0 BLOCKER; MAJOR исправлены одним пакетом 855e398.</li>
+<li>Истории: US-031 и US-032 — максимум <code>IMPLEMENTED_UNVERIFIED</code>; TC091-096 покрыты офлайн на фикстурах.</li>
+<li>Запрет оператора на мутации соблюдён; CI и регрессия Release 1 не запускались.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-031 стратегия AP по счетам для 818HA (модуль <code>ap_account_strategy.py</code>)</td><td>AP только через явную именованную стратегию; отсутствующий регистр не выдумывается; остаток без aging; aging только из открытых позиций с датами</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реального описания источника 818HA; ap.account_based закрыт</td></tr>
+<tr><td>E2</td><td>R2-US-032 получение проведённых поступлений: идентичность/компания/Posted (модуль <code>posted_receipts.py</code>)</td><td>Только запрошенные компания/контрагент/валюта/период, Posted, не помечены на удаление; исключения посчитаны по причинам</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реальных данных MOLDRETAIL</td></tr>
+<tr><td>E3</td><td>R2-US-032 полная пагинация и доказательство алиаса/источника</td><td>Полнота доказана только терминальной страницей и непрерывной цепочкой; любой сбой — complete=False с причиной; дайджест доказательства</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Пропуск страницы без page_index не обнаруживается</td></tr>
+<tr><td>E4</td><td>R2-US-032 раздельная оценка полноты, корректности и расхождений</td><td>Три независимых вердикта; EVALUATION_ONLY; неполное даёт INCONCLUSIVE</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет персистентности и promotion</td></tr>
+<tr><td>E5</td><td>Трассируемость, синхронизация документов, границы</td><td>AST-тест границ; ap.account_based по-прежнему REFUSED</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST — статический прокси</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов (TC091-096 и границы)</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S6b). Мутации не запускались по запрету оператора. «Результат» — офлайн-прогон на фикстурах; число в скобках — количество тестов в файле. Один файл может покрывать несколько TC.</p>
+<div class="wrap"><table>
+<thead><tr><th>Тест-кейс</th><th>Требование</th><th>Файл теста</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Известный пробел</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-031 / TC091</td><td>AP считается только через явную именованную стратегию; квалификация по объявленным входам</td><td>test_ap_account_strategy.py (173)</td><td>Отсутствие любого входа по отдельности (регистр, код счёта, ключ аналитики, компания, валюта, период вне покрытия) даёт UNQUALIFIED с перечнем входа; неизвестное или почти совпадающее имя стратегии даёт UNKNOWN_STRATEGY без числа</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реального описания источника 818HA; дайджесты — целостность, не подлинность</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-031 / TC092</td><td>Отсутствующий регистр расчётов не выдумывается</td><td>test_ap_account_strategy.py (173)</td><td>Нет регистра расчётов — ABSENT, без остатка и aging, без запасной стратегии; дайджест стабилен и отличается от квалифицированного; враждебные типы не вызывают исключений</td><td>offline</td><td><span class="ok">pass</span></td><td>Фикстуры в памяти; ap.account_based остаётся закрытым</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-031 / TC093</td><td>Остаток сам по себе не даёт aging</td><td>test_ap_account_strategy.py (173)</td><td>Остаток даёт BALANCE_ONLY, aging NOT_AVAILABLE; одна пропущенная дата, отрицательная сумма, дубль или расхождение итога отказывают весь aging; корзины в сумме точно равны открытому итогу; aging привязан к квалифицированным входам</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальных строк открытых позиций</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC094</td><td>Только документы запрошенной компании/контрагента, Posted, точная идентичность источника</td><td>test_posted_receipts.py (99)</td><td>Документ с тем же номером другой компании, чужой контрагент/валюта исключаются и не попадают в листинг; пустая/неоднозначная идентичность или не-bool признак проведения отказывают всю страницу; неверное направление/валюта/период отказаны до запроса; допускается только направление RECEIPT</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальных данных MOLDRETAIL и нативного журнала</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC095</td><td>Непроведённые, помеченные на удаление и вне периода документы исключаются с причиной</td><td>test_posted_receipts.py (99)</td><td>Каждое исключение учтено ровно под одной причиной (UNPOSTED, DELETED, OUT_OF_PERIOD, WRONG_*), исключённый документ не попадает в листинг и итоги</td><td>offline</td><td><span class="ok">pass</span></td><td>Фейковый источник страниц</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC096 (пагинация / pagination)</td><td>Полная пагинация плюс доказательство алиаса/компании/валюты/периода/направления/источника</td><td>test_posted_receipts_pagination.py (68)</td><td>Трёхстраничная цепочка полна и имеет дайджест доказательства; лимит страниц, повторный/пропущенный/регрессирующий токен, разрыв, дубль документа между страницами, смена снимка и ошибка источника на странице 2 дают complete=False со своей причиной; AMBIGUOUS/NOT_FOUND алиас ничего не запрашивает; алиас другой компании невидим (канонический scope алиаса); проверки содержимого доказательства; дайджест детерминирован и меняется от любого входа</td><td>offline</td><td><span class="ok">pass</span></td><td>Пропуск страницы под валидным токеном без page_index не обнаруживается; нет реального постраничного источника</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-032 / TC096 (оценка / assessment)</td><td>Полнота, корректность и расхождения — отдельные вердикты</td><td>test_posted_receipts_assessment.py (48)</td><td>complete+MATCH, complete+MISMATCH с расхождениями по doc_ref/полю, incomplete+INCONCLUSIVE для листинга, который иначе совпал бы, NATIVE_LISTING_UNQUALIFIED, несовпадение scope/снимка даёт INCONCLUSIVE; поддельное доказательство или листинг не может заявить COMPLETE; оценка привязана к дайджесту; неполные входы принудительно дают INCONCLUSIVE; смена одного входа меняет только свой вердикт</td><td>offline</td><td><span class="ok">pass</span></td><td>EVALUATION_ONLY; нет персистентности и promotion</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S6b boundaries (E5)</td><td>Новые модули чисты; ap.account_based по-прежнему закрыт</td><td>test_s6b_boundaries.py (7)</td><td>AST-список допустимых импортов (stdlib и относительные модули Phase 2), нет вызовов open/exec/eval/connect/urlopen/write_text; самопроверка сканера на враждебном фрагменте; build_matrix с утверждением ap.account_based и PASS-доказательством даёт REFUSED / CAPABILITY_NOT_OPENED</td><td>offline</td><td><span class="ok">pass</span></td><td>AST-скан — статический прокси: алиасинг и getattr не обнаруживаются</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Раунд ревью S6b</b> (код 508aa0d; четыре read-only ревьюера): 0 BLOCKER; MAJOR исправлены одним пакетом 855e398.</li>
+<li>Исправлено: принудительное направление RECEIPT, перекрёстные проверки содержимого доказательства, привязанный дайджест оценки, принудительный INCONCLUSIVE при неполных входах, канонический scope алиаса, aging AP привязан к квалифицированным входам.</li>
+<li><b>Честно:</b> агенты-исправители написали исправления до регрессионных тестов, поэтому новые тесты не наблюдались красными (мутации запрещены оператором). Их сила обоснована только утверждениями.</li>
+<li><b>GPT-PM:</b> ожидается; без APPROVE на точном head push не выполняется.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Реальные права чтения 1С; реальный постраничный источник; данные MOLDRETAIL; подпись бухгалтера; нативные байты отчётов.</li>
+<li>Интеграционный прогон на PostgreSQL; GitHub CI; регрессия Release 1.</li>
+<li>Прогоны мутаций (запрет оператора).</li>
+</ul>
+<h2>Известные пробелы и следующие шаги</h2>
+<ul>
+<li>Остаточные риски: пропуск страницы под валидным токеном без page_index не обнаруживается; дайджесты — целостность, а не подлинность; коды компаний 1С в верхнем регистре отвергаются при разрешении алиаса; всё проверено только на фикстурах.</li>
+<li><code>ap.account_based</code> остаётся закрытым; Release 2 — NO-GO, G1 — NOT PASSED.</li>
+<li>Дальше: ограниченная проверка и GPT-PM по точному head; после APPROVE — обычный push; затем реальные данные G2/G3 от оператора.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

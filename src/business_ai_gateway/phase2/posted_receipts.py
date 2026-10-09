@@ -236,8 +236,12 @@ def _refused(reason: RetrievalReason) -> RetrievalResult:
 
 # -- strict field checks ---------------------------------------------------------------------------
 def _strict(value: object) -> bool:
-    """A non-blank, already-clean identity: refused rather than repaired."""
-    return isinstance(value, str) and bool(value) and exact_text(value) == value
+    """A non-blank, already-clean identity: refused rather than repaired.
+
+    Exactly ``str`` (never a subclass): a subclass can lie in ``__eq__``/``__ne__`` and so spoof the
+    direction or identity comparisons that follow.
+    """
+    return type(value) is str and bool(value) and exact_text(value) == value
 
 
 def _currency_ok(value: object) -> bool:
