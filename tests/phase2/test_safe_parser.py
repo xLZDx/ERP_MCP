@@ -964,17 +964,34 @@ def test_run_isolated_start_failure_is_child_aborted(monkeypatch, error):
 
 # --- reply read under the deadline; environment scrub is non-clobbering -----------
 def _partial_frame_child(conn, _data, _limits, _memory):
+    """Stall mid-reply so the parent can only escape through its deadline.
+
+    POSIX: a raw partial length-prefixed frame (header announces 64 bytes, 2
+    follow), so ``recv_bytes`` blocks inside the body read.
+
+    Windows: ``multiprocessing`` pipes are message-mode named pipes with no
+    length header; one ``WriteFile`` is one COMPLETE message, so a "partial
+    frame" cannot be produced there. Writing those 6 bytes would be delivered
+    as a finished (undecodable) reply and the parent would answer
+    CHILD_ABORTED as soon as the child got that far, racing the 1 s deadline
+    against interpreter start-up (about 0.5-1.2 s with the venv launcher and
+    test-module import). So on Windows the child sends nothing at all, which
+    is a deterministic stall; see the next test for the short-message case.
+    """
     import time
 
-    # Raw partial frame: header announces 64 bytes, only 2 follow, then stall.
-    if sys.platform == "win32":
-        import _winapi
-
-        _winapi.WriteFile(conn.fileno(), b"\x00\x00\x00\x40ab")
-    else:
+    if sys.platform != "win32":
         import os
 
         os.write(conn.fileno(), b"\x00\x00\x00\x40ab")
+    time.sleep(60)
+
+
+def _short_message_child(conn, _data, _limits, _memory):
+    import _winapi
+    import time
+
+    _winapi.WriteFile(conn.fileno(), b"\x00\x00\x00\x40ab")
     time.sleep(60)
 
 
@@ -986,6 +1003,16 @@ def test_run_isolated_stalled_partial_reply_times_out_and_kills_child():
     elapsed = time.monotonic() - start
     assert_bound(result, sp.TIMEOUT)
     assert elapsed < 10.0
+    assert multiprocessing.active_children() == []
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="message-mode pipes are Windows-only")
+def test_run_isolated_windows_short_message_is_child_aborted_not_timeout():
+    # Root cause of the former flaky failure: on Windows a 6-byte WriteFile is a
+    # whole message, so an undecodable reply is CHILD_ABORTED (fail-closed), not
+    # a stalled read. Generous deadline: the child always answers well before it.
+    result = run_isolated(b"x", timeout_s=60.0, _child_target=_short_message_child)
+    assert_bound(result, sp.CHILD_ABORTED)
     assert multiprocessing.active_children() == []
 
 
