@@ -98,6 +98,26 @@ def test_invalid_or_under_scoped_tokens_are_denied(auth_setup, overrides):
     assert result is None
 
 
+def test_additional_audience_is_accepted():
+    private_key, public_key = make_keypair()
+    settings = Settings(
+        oauth_enabled=True,
+        oauth_issuer="https://identity.example.test/",
+        oauth_audience="https://mcp.example.test/mcp",
+        oauth_additional_audiences="https://api.openai.com/v1/mcp/tunnel_example",
+        oauth_jwks_url="https://identity.example.test/jwks",
+        oauth_required_scope="onec:read",
+    )
+    verifier = JWTTokenVerifier(settings)
+    verifier._jwks = FixedJWKS(public_key)
+
+    token = token_for(
+        private_key,
+        aud="https://api.openai.com/v1/mcp/tunnel_example",
+    )
+    assert verifier._verify_sync(token) is not None
+
+
 def test_bad_signature_is_denied(auth_setup):
     verifier, _private_key = auth_setup
     attacker_key, _attacker_public = make_keypair()
