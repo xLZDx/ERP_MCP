@@ -934,10 +934,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                     except AuditUnavailable:
                         # Never turn a failed durable audit into an apparently successful read.
                         raise
-                    except Exception:  # noqa: BLE001 -- optional name lookup is guarded by its own raw-tool ACL/audit
-                        # The guarded raw read may lack authorization; never bypass it.
-                        # Ledger analytics stays accessible, but supplier names are withheld.
-                        name_lookup_status = "UNAVAILABLE_OR_NOT_AUTHORIZED"
+                    except PermissionError:
+                        # Expected catalog access denial: retain authorized ledger IDs only.
+                        name_lookup_status = "DENIED_BY_POLICY"
+                    # Other failures (including mandatory audit append or metadata drift)
+                    # must fail closed, never become a misleading successful report.
                 try:
                     supplier_summary = summarize_supplier_5211(
                         rows, names=names, truncated=truncated, max_rows=settings.max_rows

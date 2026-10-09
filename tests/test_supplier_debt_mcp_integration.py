@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
+from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
 from tests.test_analytics_balance_mapping import REF1, good_mapping
 from tests.test_analytics_balance_routing import SOURCE, build, call, payload
@@ -48,10 +49,34 @@ async def test_raw_catalog_denied_still_returns_ledger_but_no_name(monkeypatch):
     result = payload(await call(mcp, company))
     summary = result["supplier_summary"]
     assert summary["status"] == "COMPLETE"
-    assert summary["name_lookup_status"] == "UNAVAILABLE_OR_NOT_AUTHORIZED"
+    assert summary["name_lookup_status"] == "DENIED_BY_POLICY"
     assert summary["suppliers"][0]["supplier_name"] is None
     onec.read.assert_not_awaited()
     assert any(e["tool"] == "onec_read" and e["outcome"] == "denied" for e in audit.events)
+
+
+
+@pytest.mark.asyncio
+async def test_name_lookup_audit_completion_failure_cannot_appear_as_success(monkeypatch):
+    monkeypatch.setattr(SOURCE, "entity_allowed", lambda _entity: True, raising=False)
+    mcp, audit, onec, _com, company = build("AVAILABLE", mapping=exact_5211_mapping())
+    onec.read = AsyncMock(return_value={
+        "value": [{"Ref_Key": REF1, "Description": "Known"}],
+        "page": {"has_more": False, "truncated": False},
+    })
+    original = audit.write
+
+    async def failed_catalog_completion(**event):
+        if (event.get("tool") == "onec_read" and event.get("outcome") == "success"
+                and event.get("detail_code") != "ACCESS_AUTHORIZED"):
+            raise RuntimeError("private-audit-failed")
+        await original(**event)
+
+    audit.write = failed_catalog_completion
+    with pytest.raises(UnexpectedToolError) as error:
+        await call(mcp, company)
+    assert "private-audit-failed" not in str(error.value)
+    assert onec.read.await_count == 1
 
 
 @pytest.mark.asyncio
