@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — спринт S6: итоги</h1>
-<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · head 3b37937 (код c4b13f4 + пакет ревью; не запушен, GPT-PM ожидается) · правила разработки v4</div>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · head c194760 (код c4b13f4 + пакет ревью + исправления M01–M05; запушен после GPT-PM APPROVE) · правила разработки v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Итог</h2>
 <div class="card">
-<p><span class="ok">Спринт S6 реализован и проверен офлайн</span> (коммиты c4b13f4 и 3b37937), <span class="warn">GPT-PM ожидается, push не выполнен</span>. Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: пять модулей работают на фикстурах и в памяти и не подключены к Release 1.</p>
+<p><span class="ok">Спринт S6 реализован и проверен офлайн</span> (коммиты c4b13f4, 3b37937, c194760), <span class="ok">запушен после GPT-PM APPROVE на c194760</span>; в офлайн-прогоне tests/phase2 один тест S5 (test_safe_parser, stalled partial reply) падает, причина разбирается. Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>: пять модулей работают на фикстурах и в памяти и не подключены к Release 1.</p>
 <ul>
 <li>Тесты: <b>307 офлайн-тестов passed</b> по файлам S6 и <code>test_reconciliation.py</code>; <code>ruff</code> чистый. Запуск через python из <code>.venv</code>, потому что в системном <code>py</code> нет <code>asyncpg</code>.</li>
 <li>Ревью: три ревьюера (безопасность, функциональные тесты, python/домен) — 0 BLOCKER; все MAJOR и MINOR исправлены одним пакетом 3b37937.</li>
@@ -106,7 +106,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li><b>Раунд ревью S6</b> (код c4b13f4; безопасность, функциональные тесты, python/домен): 0 BLOCKER; все MAJOR и MINOR исправлены в 3b37937.</li>
 <li>Исправлено: сравнение без вызова компаратора на каждый запрос в раннере, разделение check_current и check_as_of, инъективное кодирование снимка, значения сторон привязаны к снимку, одна текущая запись на ключ сравнения, зарезервированное семейство возможностей и не-PASS ссылки в покрытии, отказ подделанной матрицы, capability_enabled с учётом scope.</li>
-<li><b>GPT-PM:</b> ожидается, запрос на точном head ещё не отправлен; без APPROVE push не выполняется.</li>
+<li><b>GPT-PM:</b> раунд 1 на 1342b3a — REJECT (0 BLOCKER, 5 MAJOR M01–M05, все воспроизведены и исправлены); ограниченная перепроверка на c194760 — APPROVE (только push, не merge и не релиз). Итог офлайн-прогона: 1984 passed, 229 skipped, 1 failed (S5 test_safe_parser, CHILD_ABORTED вместо TIMEOUT).</li>
 </ul>
 <h2>Не запускалось (NOT_RUN) и не заявляется</h2>
 <ul>

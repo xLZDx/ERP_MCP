@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — sprint S6: results</h1>
-<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · head 3b37937 (code c4b13f4 + review batch; not pushed, GPT-PM pending) · development rules v4</div>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · head c194760 (code c4b13f4 + review batch + M01-M05 fixes; pushed after GPT-PM APPROVE) · development rules v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Summary</h2>
 <div class="card">
-<p><span class="ok">Sprint S6 is implemented and verified offline</span> (commits c4b13f4 and 3b37937), <span class="warn">GPT-PM pending, not pushed</span>. Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: the five modules run on fixtures and in memory and are not wired into Release 1.</p>
+<p><span class="ok">Sprint S6 is implemented and verified offline</span> (commits c4b13f4, 3b37937, c194760), <span class="ok">pushed after GPT-PM APPROVE on c194760</span>; in the offline tests/phase2 run one S5 test (test_safe_parser, stalled partial reply) fails and its cause is under investigation. Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>: the five modules run on fixtures and in memory and are not wired into Release 1.</p>
 <ul>
 <li>Tests: <b>307 offline tests passed</b> across the S6 files and <code>test_reconciliation.py</code>; <code>ruff</code> clean. Run with the <code>.venv</code> python because the system <code>py</code> lacks <code>asyncpg</code>.</li>
 <li>Review: three reviewers (security, functional tests, python/domain) — 0 BLOCKER; all MAJOR and MINOR fixed in one batch, 3b37937.</li>
@@ -106,7 +106,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li><b>S6 review round</b> (code c4b13f4; security, functional tests, python/domain): 0 BLOCKER; every MAJOR and MINOR fixed in 3b37937.</li>
 <li>Fixed: no per-call comparator in the runner, check_current vs check_as_of split, injective snapshot encoding, side values bound to the snapshot, a single current run per comparison key, reserved capability family and non-PASS links in coverage, forged-matrix rejection, scope-aware capability_enabled.</li>
-<li><b>GPT-PM:</b> pending; the request on the exact head has not been sent; no push without APPROVE.</li>
+<li><b>GPT-PM:</b> round 1 on 1342b3a - REJECT (0 BLOCKER, 5 MAJOR M01-M05, all reproduced and fixed); bounded verification on c194760 - APPROVE (push only, not merge or release). Offline result: 1984 passed, 229 skipped, 1 failed (S5 test_safe_parser, CHILD_ABORTED instead of TIMEOUT).</li>
 </ul>
 <h2>NOT_RUN and not claimed</h2>
 <ul>
