@@ -11,18 +11,34 @@ import unicodedata
 
 __all__ = ["clean_identity", "exact_text", "scope_key", "stable_key"]
 
-_BAD_CATEGORIES = frozenset({"Cc", "Cf", "Zl", "Zp", "Zs"})
+_BAD_CATEGORIES = frozenset({"Cc", "Cf", "Co", "Cs", "Cn", "Zl", "Zp", "Zs"})
+# default-ignorable combining marks (variation selectors etc.) are invisible but are category Mn
+_IGNORABLE_RANGES = (
+    (0x034F, 0x034F), (0x17B4, 0x17B5), (0x180B, 0x180F), (0xFE00, 0xFE0F),
+    (0xE0100, 0xE01EF),
+)
+# scripts whose letters are routinely confused with each other; mixing them in one identifier is refused
+_CONFUSABLE_SCRIPTS = ("LATIN", "CYRILLIC", "GREEK")
 # visually blank code points that are not in the categories above
 _BLANK_GLYPHS = frozenset("\u2800\u3164\u115f\u1160\uffa0")
 
 
 def _has_forbidden(text: str) -> bool:
+    scripts: set[str] = set()
     for ch in text:
         if ch in _BLANK_GLYPHS:
             return True
-        if ch != " " and unicodedata.category(ch) in _BAD_CATEGORIES:
+        cp = ord(ch)
+        if any(lo <= cp <= hi for lo, hi in _IGNORABLE_RANGES):
             return True
-    return False
+        category = unicodedata.category(ch)
+        if ch != " " and category in _BAD_CATEGORIES:
+            return True
+        if category[0] == "L":
+            head = unicodedata.name(ch, "").split(" ", 1)[0]
+            if head in _CONFUSABLE_SCRIPTS:
+                scripts.add(head)
+    return len(scripts) > 1
 
 
 def _visible(text: str) -> bool:

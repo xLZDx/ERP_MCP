@@ -10,29 +10,54 @@ Contract:
 * Hostile content is DENIED with a fixed code. Resource bounds produce
   BOUND_EXCEEDED with a bound code. Neither ever returns partial sheets and
   neither echoes file content (names, text, exception messages).
-* XML members are screened on raw bytes for DOCTYPE / ENTITY before any
-  parser sees them; expat additionally refuses DTD/entity declarations.
+* XML members are screened on raw bytes for DOCTYPE / ENTITY exactly once
+  (when the member is read) before any parser sees them; expat additionally
+  refuses DTD/entity declarations.
+* ``run_isolated`` never unpickles child output: the child sends a bounded
+  JSON document and the parent rebuilds the result with strict type checks.
 
 Known limits (documented, not hidden):
 * ``run_isolated`` enforces the wall-clock timeout everywhere. The address
   space bound is applied in the child only where ``resource.RLIMIT_AS``
   exists (POSIX). On Windows the memory bound is NOT enforced across the
-  process boundary; input / member / node limits are the protection there.
+  process boundary (NOT_RUN there); input / member / node / row / cell limits
+  are the protection on that platform.
+* The XML node budget is ``min(max_cells * 8 + 10000, member_bytes // 3 +
+  100)`` because an element needs at least 4 bytes; nodes use ``__slots__``
+  and lazily created containers. It bounds allocation, it is not a memory cap.
 * The raw DOCTYPE/ENTITY scan also rejects the literal text ``<!DOCTYPE`` or
   ``<!ENTITY`` inside CDATA (conservative false positive).
 * The per-member ratio check only applies to members of at least 4096 bytes.
+* Rows are bounded across all sheets of a workbook; padding rows implied by a
+  sparse ``r`` attribute are counted against ``max_cells``; the summed length
+  of every returned value is bounded by ``max_total_text_chars``.
+* ``DENIED``/``OK`` here means "values were (not) extracted safely"; it does
+  NOT mean the file is safe to open in Office. Relationships with an external
+  TargetMode (including hyperlinks) are denied outright, and nothing is ever
+  followed or fetched.
+* The central-directory entry count is compared with ``max_members`` from the
+  raw end-of-central-directory record before any per-entry object is built;
+  ZIP64 archives (count field 0xFFFF) fall back to ``zipfile`` and keep the
+  residual cost of building their entry list.
+* ``run_isolated`` is a crash / timeout boundary, NOT a sandbox: the child
+  runs with the caller's privileges (only the environment is scrubbed).
 """
 from __future__ import annotations
 
+import contextlib
 import csv
 import io
+import json
+import math
 import multiprocessing
+import os
 import re
+import threading
 import time
 import zipfile
 import zlib
-from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field, fields
 from enum import StrEnum
 from posixpath import normpath
 from xml.parsers import expat
@@ -56,20 +81,27 @@ class ParseLimits:
     max_cell_chars: int = 32_767
     deadline_seconds: float = 5.0
     max_xml_depth: int = 64
+    max_sheets: int = 64
+    max_total_text_chars: int = 5_000_000
 
     def __post_init__(self) -> None:
         for name in (
             "max_input_bytes", "max_members", "max_member_uncompressed",
             "max_total_uncompressed", "max_rows", "max_cells",
-            "max_cell_chars", "max_xml_depth",
+            "max_cell_chars", "max_xml_depth", "max_sheets", "max_total_text_chars",
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"{name} must be a positive int")
         for name in ("max_ratio", "deadline_seconds"):
             value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, int | float) or not value > 0:
-                raise ValueError(f"{name} must be a positive number")
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int | float)
+                or not math.isfinite(value)
+                or not value > 0
+            ):
+                raise ValueError(f"{name} must be a positive finite number")
 
 
 @dataclass(frozen=True)
@@ -119,10 +151,21 @@ BOUND_CELLS = "BOUND_CELLS"
 BOUND_CELL_CHARS = "BOUND_CELL_CHARS"
 BOUND_XML_DEPTH = "BOUND_XML_DEPTH"
 BOUND_XML_NODES = "BOUND_XML_NODES"
+BOUND_SHEETS = "BOUND_SHEETS"
+BOUND_TOTAL_TEXT = "BOUND_TOTAL_TEXT"
 BOUND_DEADLINE = "BOUND_DEADLINE"
 BOUND_MEMORY = "BOUND_MEMORY"
 TIMEOUT = "TIMEOUT"
 CHILD_ABORTED = "CHILD_ABORTED"
+
+_KNOWN_CODES = frozenset({
+    "OK", NOT_A_ZIP, ENCRYPTED_MEMBER, MACRO_PRESENT, EXTERNAL_LINK, XML_DTD_OR_ENTITY,
+    ZIP_BOMB_RATIO, TOO_MANY_MEMBERS, MEMBER_TOO_LARGE, PATH_TRAVERSAL_MEMBER,
+    MALFORMED_XML, UNSUPPORTED_FORMAT, INVALID_INPUT, PARSE_FAILED, CSV_NOT_UTF8,
+    CSV_NUL_BYTE, CSV_MALFORMED, BOUND_INPUT_BYTES, BOUND_ROWS, BOUND_CELLS,
+    BOUND_CELL_CHARS, BOUND_XML_DEPTH, BOUND_XML_NODES, BOUND_SHEETS, BOUND_TOTAL_TEXT, BOUND_DEADLINE,
+    BOUND_MEMORY, TIMEOUT, CHILD_ABORTED,
+})
 
 
 class _Deny(Exception):
@@ -156,6 +199,7 @@ class _Counters:
         self.cells = 0
         self.formula_cells = 0
         self.leading = 0
+        self.text = 0  # summed length of every returned value
 
     def freeze(self) -> ParseStats:
         return ParseStats(
@@ -164,18 +208,29 @@ class _Counters:
         )
 
 
-class _Node:
-    __slots__ = ("attrs", "children", "size", "tag", "text")
+_NO_ATTRS: dict[str, str] = {}  # shared, never mutated
+_NO_KIDS: tuple[_Node, ...] = ()
 
-    def __init__(self, tag: str, attrs: dict[str, str]) -> None:
+
+class _Node:
+    """Tree node; child / text containers are created only when needed."""
+
+    __slots__ = ("attrs", "kids", "ns", "parts", "size", "tag")
+
+    def __init__(self, tag: str, attrs: dict[str, str], ns: str = "") -> None:
         self.tag = tag
+        self.ns = ns
         self.attrs = attrs
-        self.children: list[_Node] = []
-        self.text: list[str] = []
+        self.kids: list[_Node] | None = None
+        self.parts: list[str] | None = None
         self.size = 0
 
+    @property
+    def children(self) -> list[_Node] | tuple[_Node, ...]:
+        return self.kids if self.kids is not None else _NO_KIDS
+
     def joined(self) -> str:
-        return "".join(self.text)
+        return "".join(self.parts) if self.parts else ""
 
     def child(self, tag: str) -> _Node | None:
         for node in self.children:
@@ -184,8 +239,11 @@ class _Node:
         return None
 
 
-def _local(name: str) -> str:
-    return name.rpartition(" ")[2]
+_MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_SECURITY_ATTRS = frozenset(
+    {"Type", "Target", "TargetMode", "ContentType", "PartName", "Extension", "Id", "id"}
+)
 
 
 _FORBIDDEN_ELEMENTS = frozenset(
@@ -195,6 +253,7 @@ _FORBIDDEN_ELEMENTS = frozenset(
 
 
 def _screen_xml(raw: bytes) -> None:
+    """Raw-byte DOCTYPE/ENTITY screen; callers run it once per member."""
     if b"\x00" in raw:  # UTF-16/32 would hide a DOCTYPE from the byte scan
         raise _Deny(MALFORMED_XML)
     upper = raw.upper()
@@ -204,11 +263,10 @@ def _screen_xml(raw: bytes) -> None:
 
 def _parse_xml(raw: bytes, limits: ParseLimits, budget: _Budget) -> _Node:
     """Parse already-screened XML into a small tree with hard budgets."""
-    _screen_xml(raw)
-    root = _Node("", {})
+    root = _Node("", _NO_ATTRS)
     stack = [root]
     count = 0
-    node_budget = limits.max_cells * 8 + 10_000
+    node_budget = min(limits.max_cells * 8 + 10_000, len(raw) // 3 + 100)
 
     def start(name: str, attrs: dict[str, str]) -> None:
         nonlocal count
@@ -219,11 +277,28 @@ def _parse_xml(raw: bytes, limits: ParseLimits, budget: _Budget) -> _Node:
             raise _Bound(BOUND_XML_NODES)
         if count % 256 == 0:
             budget.check()
-        tag = _local(name)
+        ns, _, tag = name.rpartition(" ")
         if tag in _FORBIDDEN_ELEMENTS:
             raise _Deny(EXTERNAL_LINK)
-        node = _Node(tag, {_local(k): v for k, v in attrs.items()})
-        stack[-1].children.append(node)
+        local_attrs = _NO_ATTRS
+        if attrs:
+            local_attrs = {}
+            for key, val in attrs.items():
+                key_ns, _, key_local = key.rpartition(" ")
+                # security-relevant attributes are accepted only unqualified
+                # (or r:id in the relationships namespace); a collision after
+                # namespace stripping would let the last one win.
+                if key_local in local_attrs or (
+                    key_ns and key_ns != _REL_NS and key_local in _SECURITY_ATTRS
+                ):
+                    raise _Deny(MALFORMED_XML)
+                local_attrs[key_local] = val
+        node = _Node(tag, local_attrs, ns)
+        parent = stack[-1]
+        if parent.kids is None:
+            parent.kids = [node]
+        else:
+            parent.kids.append(node)
         stack.append(node)
 
     def end(_name: str) -> None:
@@ -234,7 +309,10 @@ def _parse_xml(raw: bytes, limits: ParseLimits, budget: _Budget) -> _Node:
         node.size += len(data)
         if node.size > limits.max_cell_chars:
             raise _Bound(BOUND_CELL_CHARS)
-        node.text.append(data)
+        if node.parts is None:
+            node.parts = [data]
+        else:
+            node.parts.append(data)
 
     def refuse(*_args: object) -> None:
         raise _Deny(XML_DTD_OR_ENTITY)
@@ -266,7 +344,15 @@ def _text(node: _Node) -> str:
 
 _XML_SUFFIXES = (".xml", ".rels")
 _EXTERNAL_NAME_PARTS = ("oleobject", "/activex/", "externallink")
+_EXTERNAL_PREFIXES = (
+    "xl/externallinks/", "xl/embeddings/", "xl/connections", "xl/querytables/",
+    "xl/webextensions/",
+)
+_MACRO_NAME_PARTS = ("vbaproject", "macrosheet", "customui/")
+_EXTERNAL_TYPE_PARTS = ("connections", "querytable", "webextension")
+_MACRO_TYPE_PARTS = ("macrosheet", "ui/extensibility", "customui")
 _MIN_RATIO_SIZE = 4096
+_PRINTER_SETTINGS_PREFIX = "xl/printersettings/"
 
 
 def _check_name(name: str, seen: set[str]) -> None:
@@ -286,12 +372,26 @@ def _check_name(name: str, seen: set[str]) -> None:
     seen.add(key)
 
 
+def _check_entry_count(data: bytes, limits: ParseLimits) -> None:
+    """Compare the EOCD entry count with max_members before zipfile builds entries."""
+    pos = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 65_535))
+    if pos < 0 or pos + 12 > len(data):
+        return  # let zipfile classify it
+    total = int.from_bytes(data[pos + 10 : pos + 12], "little")
+    if total != 0xFFFF and total > limits.max_members:  # 0xFFFF = ZIP64 marker
+        raise _Deny(TOO_MANY_MEMBERS)
+
+
 def _check_directory(zf: zipfile.ZipFile, data_len: int, limits: ParseLimits) -> list[zipfile.ZipInfo]:
     infos = zf.infolist()
     if len(infos) > limits.max_members:
         raise _Deny(TOO_MANY_MEMBERS)
     seen: set[str] = set()
     for info in infos:
+        # zipfile rewrites os.sep to "/" on Windows; judge the raw name so every
+        # platform sees the same thing.
+        if "\\" in info.orig_filename:
+            raise _Deny(PATH_TRAVERSAL_MEMBER)
         _check_name(info.filename, seen)
     total = 0
     for info in infos:
@@ -300,14 +400,14 @@ def _check_directory(zf: zipfile.ZipFile, data_len: int, limits: ParseLimits) ->
             raise _Deny(ENCRYPTED_MEMBER)
         if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
             raise _Deny(UNSUPPORTED_FORMAT)
-        if "vbaproject" in low:
+        if any(part in low for part in _MACRO_NAME_PARTS) or low.startswith("customui"):
             raise _Deny(MACRO_PRESENT)
-        if low.startswith(("xl/externallinks/", "xl/embeddings/")) or any(
+        if low.startswith(_EXTERNAL_PREFIXES) or any(
             part in low for part in _EXTERNAL_NAME_PARTS
         ):
             raise _Deny(EXTERNAL_LINK)
-        if low.endswith(".bin"):
-            raise _Deny(MACRO_PRESENT)
+        if low.endswith(".bin") and not low.startswith(_PRINTER_SETTINGS_PREFIX):
+            raise _Deny(UNSUPPORTED_FORMAT)
         if info.file_size > limits.max_member_uncompressed:
             raise _Deny(MEMBER_TOO_LARGE)
         if info.file_size >= _MIN_RATIO_SIZE and (
@@ -321,7 +421,11 @@ def _check_directory(zf: zipfile.ZipFile, data_len: int, limits: ParseLimits) ->
 
 
 def _read_member(zf: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int) -> bytes:
-    """Read at most limit+1 bytes so a lying directory cannot bypass the cap."""
+    """Read at most limit+1 bytes so a lying directory cannot bypass the cap.
+
+    A decoded blob can never be larger than the directory size that already
+    passed the ratio check, so no second ratio check is needed here.
+    """
     try:
         with zf.open(info) as handle:
             blob = handle.read(limit + 1)
@@ -338,9 +442,12 @@ def _read_member(zf: zipfile.ZipFile, info: zipfile.ZipInfo, limit: int) -> byte
 def _check_content_types(root: _Node) -> None:
     for node in root.children:
         ctype = node.attrs.get("ContentType", "").lower()
-        if "macroenabled" in ctype or "vbaproject" in ctype:
+        if "macroenabled" in ctype or "vbaproject" in ctype or "macrosheet" in ctype:
             raise _Deny(MACRO_PRESENT)
-        if "oleobject" in ctype or "externallink" in ctype:
+        if (
+            "oleobject" in ctype or "externallink" in ctype or "activex" in ctype
+            or any(part in ctype for part in _EXTERNAL_TYPE_PARTS)
+        ):
             raise _Deny(EXTERNAL_LINK)
 
 
@@ -350,12 +457,27 @@ def _relationships(root: _Node) -> dict[str, tuple[str, str]]:
         if node.attrs.get("TargetMode", "").lower() == "external":
             raise _Deny(EXTERNAL_LINK)
         rtype = node.attrs.get("Type", "").lower()
-        if rtype.endswith("/vbaproject"):
+        if rtype.endswith("/vbaproject") or any(part in rtype for part in _MACRO_TYPE_PARTS):
             raise _Deny(MACRO_PRESENT)
-        if rtype.endswith(("/oleobject", "/externallink", "/externallinkpath")):
+        if (
+            rtype.endswith(("/oleobject", "/externallink", "/externallinkpath"))
+            or "activex" in rtype
+            or any(part in rtype for part in _EXTERNAL_TYPE_PARTS)
+        ):
             raise _Deny(EXTERNAL_LINK)
-        rels[node.attrs.get("Id", "")] = (rtype, node.attrs.get("Target", ""))
+        rid = node.attrs.get("Id", "")
+        if rid in rels:
+            raise _Deny(MALFORMED_XML)
+        rels[rid] = (rtype, node.attrs.get("Target", ""))
     return rels
+
+
+def _check_pivot_cache(root: _Node) -> None:
+    source = root.child("cacheSource")
+    if source is not None and (
+        source.attrs.get("type", "worksheet") != "worksheet" or "connectionId" in source.attrs
+    ):
+        raise _Deny(EXTERNAL_LINK)
 
 
 def _resolve(base_dir: str, target: str) -> str:
@@ -366,10 +488,11 @@ def _resolve(base_dir: str, target: str) -> str:
     return path
 
 
-_CELL_REF = re.compile(r"([A-Z]{1,3})[0-9]{1,7}")
+_CELL_REF = re.compile(r"([A-Z]{1,3})([0-9]{1,7})")
 
 
-def _column(ref: str) -> int:
+def _cell_ref(ref: str) -> tuple[int, int]:
+    """Return (zero-based column, row number) of an A1 reference."""
     match = _CELL_REF.fullmatch(ref)
     if match is None:
         raise _Deny(MALFORMED_XML)
@@ -378,7 +501,7 @@ def _column(ref: str) -> int:
         col = col * 26 + (ord(ch) - 64)
     if col > 16_384:
         raise _Deny(MALFORMED_XML)
-    return col - 1
+    return col - 1, int(match.group(2))
 
 
 def _cell_value(cell: _Node, sst: list[str], limits: ParseLimits, counters: _Counters) -> str | None:
@@ -393,7 +516,8 @@ def _cell_value(cell: _Node, sst: list[str], limits: ParseLimits, counters: _Cou
         v = cell.child("v")
         value = v.joined() if v is not None else None
         if kind == "s" and value is not None:
-            if not value.isascii() or not value.isdigit() or int(value) >= len(sst):
+            # length guard first: int() of a huge digit string raises ValueError
+            if len(value) > 10 or not value.isascii() or not value.isdigit() or int(value) >= len(sst):
                 raise _Deny(MALFORMED_XML)
             value = sst[int(value)]
     if value is not None and len(value) > limits.max_cell_chars:
@@ -406,40 +530,63 @@ def _sheet_rows(
 ) -> tuple[tuple[str | None, ...], ...]:
     if root.tag != "worksheet":
         raise _Deny(MALFORMED_XML)
+    if root.ns != _MAIN_NS:
+        raise _Deny(UNSUPPORTED_FORMAT)
     data = root.child("sheetData")
     rows: list[tuple[str | None, ...]] = []
     if data is None:
         return ()
+    if data.ns != _MAIN_NS:
+        raise _Deny(UNSUPPORTED_FORMAT)
+    base_rows = counters.rows  # rows already produced by earlier sheets
     last = 0
     for row in data.children:
         if row.tag != "row":
             continue
+        if row.ns != _MAIN_NS:
+            raise _Deny(UNSUPPORTED_FORMAT)
         budget.check()
         raw_r = row.attrs.get("r")
         if raw_r is None:
             number = last + 1
-        elif raw_r.isascii() and raw_r.isdigit():
+        elif raw_r.isascii() and raw_r.isdigit() and len(raw_r) <= 9:
             number = int(raw_r)
         else:
             raise _Deny(MALFORMED_XML)
         if number <= last:
             raise _Deny(MALFORMED_XML)
-        if number > limits.max_rows:
+        if base_rows + number > limits.max_rows:
             raise _Bound(BOUND_ROWS)
         sparse: dict[int, str | None] = {}
         nxt = 0
         for cell in row.children:
             if cell.tag != "c":
                 continue
+            if cell.ns != _MAIN_NS:
+                raise _Deny(UNSUPPORTED_FORMAT)
+            budget.check()
             ref = cell.attrs.get("r")
-            col = _column(ref) if ref is not None else nxt
+            if ref is None:
+                col = nxt
+            else:
+                col, ref_row = _cell_ref(ref)
+                if ref_row != number:
+                    raise _Deny(MALFORMED_XML)
+            if col < nxt:  # backwards or repeated column
+                raise _Deny(MALFORMED_XML)
             nxt = col + 1
-            sparse[col] = _cell_value(cell, sst, limits, counters)
+            value = _cell_value(cell, sst, limits, counters)
+            if value is not None:
+                counters.text += len(value)
+                if counters.text > limits.max_total_text_chars:
+                    raise _Bound(BOUND_TOTAL_TEXT)
+            sparse[col] = value
         width = max(sparse) + 1 if sparse else 0
-        counters.cells += width
+        gap = number - 1 - last
+        counters.cells += gap + width  # padding rows are not free
         if counters.cells > limits.max_cells:
             raise _Bound(BOUND_CELLS)
-        rows.extend(() for _ in range(number - 1 - last))
+        rows.extend(() for _ in range(gap))
         rows.append(tuple(sparse.get(i) for i in range(width)))
         last = number
     counters.rows += len(rows)
@@ -448,8 +595,8 @@ def _sheet_rows(
 
 def _parse_workbook(data: bytes, limits: ParseLimits, clock: Callable[[], float]) -> ParseResult:
     counters = _Counters()
-    budget = _Budget(limits, clock)
     try:
+        budget = _Budget(limits, clock)
         sheets = _workbook_sheets(data, limits, budget, counters)
     except _Deny as exc:
         return ParseResult(Status.DENIED, exc.code, (), counters.freeze())
@@ -469,6 +616,7 @@ def _workbook_sheets(
 ) -> tuple[SheetValues, ...]:
     if data[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
         raise _Deny(UNSUPPORTED_FORMAT)
+    _check_entry_count(data, limits)
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
     except (zipfile.BadZipFile, EOFError, OSError, ValueError):
@@ -486,13 +634,14 @@ def _workbook_sheets(
             blob = _read_member(zf, info, min(limits.max_member_uncompressed, remaining))
             remaining -= len(blob)
             counters.uncompressed += len(blob)
-            if len(blob) >= _MIN_RATIO_SIZE and len(blob) / max(info.compress_size, 1) > limits.max_ratio:
-                raise _Deny(ZIP_BOMB_RATIO)
-            _screen_xml(blob)
+            _screen_xml(blob)  # the only DTD screen; _parse_xml trusts it
             cache[info.filename] = blob
         for name, blob in cache.items():
-            if name.lower().endswith(".rels"):
+            low = name.lower()
+            if low.endswith(".rels"):
                 _relationships(_parse_xml(blob, limits, budget))
+            elif low.startswith("xl/pivotcache/pivotcachedefinition"):
+                _check_pivot_cache(_parse_xml(blob, limits, budget))
         if "[Content_Types].xml" not in cache:
             raise _Deny(UNSUPPORTED_FORMAT)
         _check_content_types(_parse_xml(cache["[Content_Types].xml"], limits, budget))
@@ -502,28 +651,38 @@ def _workbook_sheets(
         if "xl/_rels/workbook.xml.rels" in cache:
             rels = _relationships(_parse_xml(cache["xl/_rels/workbook.xml.rels"], limits, budget))
         sst: list[str] = []
-        for rtype, target in rels.values():
-            if rtype.endswith("/sharedstrings"):
-                part = _resolve("xl", target)
-                if part not in cache:
-                    raise _Deny(MALFORMED_XML)
-                tree = _parse_xml(cache[part], limits, budget)
-                for si in tree.children:
-                    budget.check()
-                    text = _text(si)
-                    if len(text) > limits.max_cell_chars:
-                        raise _Bound(BOUND_CELL_CHARS)
-                    sst.append(text)
+        sst_parts = [target for rtype, target in rels.values() if rtype.endswith("/sharedstrings")]
+        if len(sst_parts) > 1:
+            raise _Deny(MALFORMED_XML)
+        for target in sst_parts:
+            part = _resolve("xl", target)
+            if part not in cache:
+                raise _Deny(MALFORMED_XML)
+            tree = _parse_xml(cache[part], limits, budget)
+            for si in tree.children:
+                budget.check()  # per item: a huge table must not outrun the deadline
+                text = _text(si)
+                if len(text) > limits.max_cell_chars:
+                    raise _Bound(BOUND_CELL_CHARS)
+                sst.append(text)
         book = _parse_xml(cache["xl/workbook.xml"], limits, budget)
         listing = book.child("sheets")
+        entries = listing.children if listing is not None else ()
+        if len(entries) > limits.max_sheets:
+            raise _Bound(BOUND_SHEETS)
         out: list[SheetValues] = []
-        for sheet in listing.children if listing is not None else ():
+        used_parts: set[str] = set()
+        for sheet in entries:
+            budget.check()
             rid = sheet.attrs.get("id", "")
             if rid not in rels or not rels[rid][0].endswith("/worksheet"):
                 raise _Deny(MALFORMED_XML)
             part = _resolve("xl", rels[rid][1])
             if part not in cache or part not in by_name:
                 raise _Deny(MALFORMED_XML)
+            if part in used_parts:  # one part must not be re-materialised per sheet
+                raise _Deny(MALFORMED_XML)
+            used_parts.add(part)
             tree = _parse_xml(cache[part], limits, budget)
             rows = _sheet_rows(tree, sst, limits, budget, counters)
             out.append(SheetValues(sheet.attrs.get("name", ""), rows))
@@ -535,7 +694,8 @@ def _validate(data: object, limits: object, clock: object) -> ParseResult | byte
         return ParseResult(Status.DENIED, INVALID_INPUT)
     if not isinstance(data, bytes | bytearray | memoryview):
         return ParseResult(Status.DENIED, INVALID_INPUT)
-    if len(data) > limits.max_input_bytes:
+    size = data.nbytes if isinstance(data, memoryview) else len(data)
+    if size > limits.max_input_bytes:
         return ParseResult(Status.BOUND_EXCEEDED, BOUND_INPUT_BYTES)
     return bytes(data)
 
@@ -605,6 +765,9 @@ def _parse_csv(
             for value in record:
                 if len(value) > limits.max_cell_chars:
                     raise _Bound(BOUND_CELL_CHARS)
+                counters.text += len(value)
+                if counters.text > limits.max_total_text_chars:
+                    raise _Bound(BOUND_TOTAL_TEXT)
                 if value.startswith(_FORMULA_LEADS):
                     counters.leading += 1
             rows.append(tuple(record))
@@ -620,6 +783,71 @@ def _parse_csv(
 # --- process isolation -----------------------------------------------------
 
 _DEFAULT_CHILD_MEMORY = 1 << 30
+_MAX_PAYLOAD = 64 << 20  # bytes the parent will accept from the child
+_POLL_SLICE = 0.2
+
+
+def _encode_result(result: ParseResult) -> bytes:
+    doc = {
+        "status": result.status.value,
+        "code": result.code,
+        "sheets": [
+            {"name": sheet.name, "rows": [list(row) for row in sheet.rows]}
+            for sheet in result.sheets
+        ],
+        "stats": {f.name: getattr(result.stats, f.name) for f in fields(ParseStats)},
+    }
+    return json.dumps(doc, separators=(",", ":")).encode("ascii")
+
+
+def _is_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _build_result(doc: object) -> ParseResult:
+    """Strictly rebuild a ParseResult; raise ValueError on any deviation."""
+    if not isinstance(doc, dict) or set(doc) != {"status", "code", "sheets", "stats"}:
+        raise ValueError("shape")
+    status = Status(doc["status"])
+    code = doc["code"]
+    if not isinstance(code, str) or code not in _KNOWN_CODES:
+        raise ValueError("code")
+    if (status is Status.OK) != (code == "OK"):
+        raise ValueError("status/code")
+    names = [f.name for f in fields(ParseStats)]
+    raw_stats = doc["stats"]
+    if (
+        not isinstance(raw_stats, dict)
+        or set(raw_stats) != set(names)
+        or not all(_is_count(v) for v in raw_stats.values())
+    ):
+        raise ValueError("stats")
+    raw_sheets = doc["sheets"]
+    if not isinstance(raw_sheets, list) or (status is not Status.OK and raw_sheets):
+        raise ValueError("sheets")
+    sheets: list[SheetValues] = []
+    for raw in raw_sheets:
+        if (
+            not isinstance(raw, dict)
+            or set(raw) != {"name", "rows"}
+            or not isinstance(raw["name"], str)
+            or not isinstance(raw["rows"], list)
+        ):
+            raise ValueError("sheet")
+        rows: list[tuple[str | None, ...]] = []
+        for row in raw["rows"]:
+            if not isinstance(row, list) or not all(v is None or isinstance(v, str) for v in row):
+                raise ValueError("row")
+            rows.append(tuple(row))
+        sheets.append(SheetValues(raw["name"], tuple(rows)))
+    return ParseResult(status, code, tuple(sheets), ParseStats(**raw_stats))
+
+
+def _decode_result(payload: bytes) -> ParseResult | None:
+    try:
+        return _build_result(json.loads(payload.decode("ascii")))
+    except (ValueError, TypeError, RecursionError):
+        return None
 
 
 def _child_main(conn: object, data: bytes, limits: ParseLimits, memory_bytes: int) -> None:
@@ -628,13 +856,44 @@ def _child_main(conn: object, data: bytes, limits: ParseLimits, memory_bytes: in
             import resource  # POSIX only
 
             resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
-        except (ImportError, ValueError, OSError):
-            pass  # not enforced on this platform
-        result = parse_workbook(data, limits=limits)
+        except (ImportError, ValueError, OSError, OverflowError):
+            pass  # not enforced on this platform / for this value
+        payload = _encode_result(parse_workbook(data, limits=limits))
+        if len(payload) > _MAX_PAYLOAD:
+            payload = _encode_result(ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY))
     except MemoryError:
-        result = ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY)
-    conn.send(result)  # type: ignore[attr-defined]
+        payload = _encode_result(ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY))
+    conn.send_bytes(payload)  # type: ignore[attr-defined]
     conn.close()  # type: ignore[attr-defined]
+
+
+_ENV_KEEP = frozenset({
+    "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "PATH", "PATHEXT", "COMSPEC",
+    "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "HOME",
+})
+_ENV_LOCK = threading.Lock()
+
+
+@contextlib.contextmanager
+def _scrubbed_environment() -> Iterator[None]:
+    """Start the child with only what spawn needs; restore the parent afterwards.
+
+    os.environ is process-wide, so other threads briefly see the reduced
+    environment while the child is being created (serialised by a lock here).
+    """
+    with _ENV_LOCK:
+        saved = dict(os.environ)
+        os.environ.clear()
+        os.environ.update({k: v for k, v in saved.items() if k.upper() in _ENV_KEEP})
+        try:
+            yield
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
+
+
+def _aborted() -> ParseResult:
+    return ParseResult(Status.BOUND_EXCEEDED, CHILD_ABORTED)
 
 
 def run_isolated(
@@ -643,12 +902,23 @@ def run_isolated(
     limits: ParseLimits = ParseLimits(),  # noqa: B008 - frozen dataclass
     timeout_s: float = 10.0,
     memory_bytes: int = _DEFAULT_CHILD_MEMORY,
+    _child_target: Callable[..., None] = _child_main,
 ) -> ParseResult:
     """Run parse_workbook in a spawned child with a wall-clock timeout.
 
     The child is killed and reaped on timeout (code TIMEOUT). The timeout
-    includes interpreter start-up. Memory bound: RLIMIT_AS in the child on
+    includes interpreter start-up and the parent never waits past it. The
+    child sends bounded JSON (never pickle); anything that does not rebuild
+    strictly yields CHILD_ABORTED. Memory bound: RLIMIT_AS in the child on
     POSIX only; NOT enforced on Windows.
+
+    Windows uses ``spawn``: the calling program's ``__main__`` module must be
+    import-safe (``if __name__ == "__main__":`` guard) or the child re-runs it.
+    This is a crash / timeout boundary, NOT a sandbox: the child keeps the
+    caller's OS privileges and only receives a scrubbed environment (no
+    inherited secrets). Called from a daemonic process, where children are not
+    allowed, it returns CHILD_ABORTED instead of raising.
+    ``_child_target`` is a test seam; production callers leave the default.
     """
     checked = _validate(data, limits, time.monotonic)
     if isinstance(checked, ParseResult):
@@ -656,29 +926,53 @@ def run_isolated(
     if (
         isinstance(timeout_s, bool)
         or not isinstance(timeout_s, int | float)
+        or not math.isfinite(timeout_s)
         or not timeout_s > 0
         or isinstance(memory_bytes, bool)
         or not isinstance(memory_bytes, int)
         or memory_bytes <= 0
     ):
         return ParseResult(Status.DENIED, INVALID_INPUT)
+    deadline = time.monotonic() + timeout_s
     ctx = multiprocessing.get_context("spawn")
     parent, child = ctx.Pipe(duplex=False)
-    proc = ctx.Process(target=_child_main, args=(child, checked, limits, memory_bytes), daemon=True)
-    proc.start()
-    child.close()
+    proc = ctx.Process(target=_child_target, args=(child, checked, limits, memory_bytes), daemon=True)
+    started = False
     try:
-        if not parent.poll(timeout_s):
-            return ParseResult(Status.BOUND_EXCEEDED, TIMEOUT)
         try:
-            received = parent.recv()
+            with _scrubbed_environment():
+                proc.start()
+            started = True
+        except (OSError, AssertionError):  # BrokenPipeError; daemonic caller
+            return _aborted()
+        child.close()
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return ParseResult(Status.BOUND_EXCEEDED, TIMEOUT)
+            try:
+                if parent.poll(min(remaining, _POLL_SLICE)):
+                    break
+                if not proc.is_alive() and not parent.poll(0):
+                    return _aborted()
+            except (EOFError, OSError):  # Windows: broken pipe once the child is gone
+                return _aborted()
+        try:
+            payload = parent.recv_bytes(_MAX_PAYLOAD)
         except (EOFError, OSError):
-            return ParseResult(Status.BOUND_EXCEEDED, CHILD_ABORTED)
-        if not isinstance(received, ParseResult):
-            return ParseResult(Status.DENIED, PARSE_FAILED)
-        return replace(received)
+            return _aborted()
+        return _decode_result(payload) or _aborted()
     finally:
-        if proc.is_alive():
-            proc.kill()
-        proc.join(5.0)
-        parent.close()
+        if started:
+            if proc.is_alive():
+                proc.kill()
+            proc.join(5.0)
+        for conn in (parent, child):
+            try:
+                conn.close()
+            except OSError:
+                pass
+        try:
+            proc.close()
+        except ValueError:  # still running after kill+join: leave it to the daemon flag
+            pass

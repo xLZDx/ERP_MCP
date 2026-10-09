@@ -23,14 +23,24 @@ Rules
 - Result codes are fixed constants; caller input is never echoed.
 - RESIDUAL RISK / KNOWN GAPS: principals are caller-asserted (no authentication); in-memory only
   (no persistence, no encryption at rest); no retention or quota per scope; the size limit is the
-  only resource bound; the ACL and the audit trail are unbounded in memory.
+  only resource bound; the ACL and the audit trail are unbounded in memory (no rotation,
+  no cap: a long-lived vault grows without limit).
+- Clock: the audit ``at`` is the clock value only when it is a timezone-aware ``datetime``; a
+  failing clock, a non-datetime or a NAIVE datetime yields ``at=None`` (never guessed, never raises).
+- Media type: stored with the blob and returned in ``ReadResult``; a DUPLICATE put of the same
+  bytes in the same scope with a different media type is refused (MEDIA_TYPE_MISMATCH).
+- Concurrency: one re-entrant lock serialises put / ACL changes / reads / audit appends and the
+  ``audit()`` snapshot, so parallel identical puts yield one STORED and the rest DUPLICATE.
+- The version id is random; it is bound to the digest only through the stored record.
 """
 from __future__ import annotations
 
 import base64
 import hashlib
 import hmac
+import re
 import secrets
+import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
@@ -52,17 +62,16 @@ _ID_BYTES = 16
 # fixed result codes
 OK = "OK"
 DUPLICATE = "DUPLICATE"
-INVALID_INPUT = "INVALID_INPUT"
 INVALID_SCOPE = "INVALID_SCOPE"
 INVALID_PRINCIPAL = "INVALID_PRINCIPAL"
 MEDIA_TYPE_REFUSED = "MEDIA_TYPE_REFUSED"
+MEDIA_TYPE_MISMATCH = "MEDIA_TYPE_MISMATCH"
 CONTENT_TYPE_REFUSED = "CONTENT_TYPE_REFUSED"
 EMPTY_CONTENT = "EMPTY_CONTENT"
 CONTENT_TOO_LARGE = "CONTENT_TOO_LARGE"
 UPLOAD_NOT_ALLOWED = "UPLOAD_NOT_ALLOWED"
 ID_COLLISION = "ID_COLLISION"
 ID_SOURCE_INVALID = "ID_SOURCE_INVALID"
-CLOCK_INVALID = "CLOCK_INVALID"
 ADMIN_REQUIRED = "ADMIN_REQUIRED"
 ACCESS_DENIED = "ACCESS_DENIED"  # ONE code for unknown / mismatched / revoked / foreign scope
 NOT_EVIDENCE = "NOT_EVIDENCE"  # ONE code for every invalid evidence claim
@@ -120,6 +129,7 @@ class ReadResult:
     allowed: bool
     code: str
     content: bytes | None = None
+    media_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +164,14 @@ def _pkey(principal: object) -> str:
     return principal.key() if type(principal) is Principal else ""
 
 
+_DIGEST_RE = re.compile(r"[0-9a-f]{64}")
+
+
+def _is_digest(value: object) -> bool:
+    """True only for exactly 64 lowercase ASCII hex chars (no encoding step, so no exception)."""
+    return type(value) is str and _DIGEST_RE.fullmatch(value) is not None
+
+
 def _random_id() -> bytes:
     return secrets.token_bytes(_ID_BYTES)
 
@@ -174,7 +192,13 @@ class ArtifactVault:
         self._clock = clock
         self._max_bytes = max_bytes
         self._id_source = id_source
-        self._admins = frozenset(k for k in (clean_identity(a) for a in admins) if k)
+        if isinstance(admins, (str, bytes, bytearray)):
+            raise ValueError("admins must be an iterable of str")  # noqa: TRY004 - contract: ValueError
+        items = list(admins)
+        if any(type(a) is not str for a in items):
+            raise ValueError("admins must be an iterable of str")
+        self._lock = threading.RLock()
+        self._admins = frozenset(k for k in (clean_identity(a) for a in items) if k)
         self._records: dict[str, _Record] = {}
         self._by_digest: dict[tuple[tuple[str, str], str], str] = {}
         self._acl: dict[tuple[str, str], set[str]] = {}
@@ -187,7 +211,9 @@ class ArtifactVault:
             value = self._clock()
         except Exception:  # noqa: BLE001 - clock failures must not leak text
             return None
-        return value if type(value) is datetime else None
+        if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
+            return None
+        return value
 
     def _log(self, kind: AuditKind, scope: object, principal: object, code: str) -> None:
         self._audit.append(AuditEvent(kind, _skey(scope), _pkey(principal), code, self._now()))
@@ -202,6 +228,11 @@ class ArtifactVault:
     # --------------------------------------------------------------------- put
     def put(self, scope: ArtifactScope, content: bytes, uploader: Principal,
             media_type: str) -> PutResult:
+        with self._lock:
+            return self._put(scope, content, uploader, media_type)
+
+    def _put(self, scope: ArtifactScope, content: bytes, uploader: Principal,
+             media_type: str) -> PutResult:
         skey = _skey(scope)
         if skey is None:
             return self._refuse(scope, uploader, INVALID_SCOPE)
@@ -223,6 +254,8 @@ class ArtifactVault:
         if existing_id is not None:
             rec = self._records[existing_id]
             if rec.content == content and rec.scope == skey:
+                if rec.media_type != media_type:
+                    return self._refuse(scope, uploader, MEDIA_TYPE_MISMATCH)
                 ref = ArtifactRef(existing_id, digest, rec.size, scope)
                 self._log(AuditKind.PUT, scope, uploader, DUPLICATE)
                 return PutResult(PutStatus.DUPLICATE, ref, DUPLICATE)
@@ -252,6 +285,11 @@ class ArtifactVault:
         return self._change_acl(AuditKind.REVOKE, scope, principal, by_admin)
 
     def _change_acl(self, kind: AuditKind, scope: object, principal: object, by_admin: object) -> str:
+        with self._lock:
+            return self._change_acl_locked(kind, scope, principal, by_admin)
+
+    def _change_acl_locked(self, kind: AuditKind, scope: object, principal: object,
+                           by_admin: object) -> str:
         skey = _skey(scope)
         pkey = _pkey(principal)
         if skey is None:
@@ -277,7 +315,8 @@ class ArtifactVault:
 
     def acl_epoch(self, scope: ArtifactScope) -> int:
         skey = _skey(scope)
-        return self._epoch.get(skey, 0) if skey is not None else 0
+        with self._lock:
+            return self._epoch.get(skey, 0) if skey is not None else 0
 
     # -------------------------------------------------------------------- read
     def _lookup(self, ref: object, reader: object) -> _Record | None:
@@ -288,35 +327,37 @@ class ArtifactVault:
         rec = self._records.get(ref.version_id)
         if rec is None or rskey is None or rskey != rec.scope:
             return None
-        if type(ref.digest) is not str or type(ref.size) is not int or ref.size != rec.size:
+        if type(ref.size) is not int or ref.size != rec.size or not _is_digest(ref.digest):
             return None
-        if not hmac.compare_digest(ref.digest.encode("utf-8"), rec.digest.encode("ascii")):
+        if not hmac.compare_digest(ref.digest.encode("ascii"), rec.digest.encode("ascii")):
             return None
         return rec if self._has_access(rec.scope, _pkey(reader)) else None
 
     def read(self, ref: ArtifactRef, reader: Principal) -> ReadResult:
-        rec = self._lookup(ref, reader)
-        if rec is None:
-            self._log(AuditKind.DENY, getattr(ref, "scope", None), reader, ACCESS_DENIED)
-            return ReadResult(False, ACCESS_DENIED, None)
-        self._log(AuditKind.READ, ref.scope, reader, OK)
-        return ReadResult(True, OK, rec.content)
+        with self._lock:
+            rec = self._lookup(ref, reader)
+            if rec is None:
+                self._log(AuditKind.DENY, getattr(ref, "scope", None), reader, ACCESS_DENIED)
+                return ReadResult(False, ACCESS_DENIED, None, None)
+            self._log(AuditKind.READ, ref.scope, reader, OK)
+            return ReadResult(True, OK, rec.content, rec.media_type)
 
     def verify_evidence(self, ref: object, claimed_digest: str, reader: Principal) -> EvidenceResult:
-        rec = self._lookup(ref, reader)
-        ok = (
-            rec is not None
-            and type(claimed_digest) is str
-            and hmac.compare_digest(claimed_digest.encode("utf-8", "replace"),
-                                    rec.digest.encode("ascii"))
-        )
-        scope = getattr(ref, "scope", None)
-        if not ok:
-            self._log(AuditKind.DENY, scope, reader, NOT_EVIDENCE)
-            return EvidenceResult(False, NOT_EVIDENCE)
-        self._log(AuditKind.READ, scope, reader, OK)
-        return EvidenceResult(True, OK)
+        with self._lock:
+            rec = self._lookup(ref, reader)
+            ok = (
+                rec is not None
+                and _is_digest(claimed_digest)
+                and hmac.compare_digest(claimed_digest.encode("ascii"), rec.digest.encode("ascii"))
+            )
+            scope = getattr(ref, "scope", None)
+            if not ok:
+                self._log(AuditKind.DENY, scope, reader, NOT_EVIDENCE)
+                return EvidenceResult(False, NOT_EVIDENCE)
+            self._log(AuditKind.READ, scope, reader, OK)
+            return EvidenceResult(True, OK)
 
     # ------------------------------------------------------------------- audit
     def audit(self) -> tuple[AuditEvent, ...]:
-        return tuple(self._audit)
+        with self._lock:
+            return tuple(self._audit)

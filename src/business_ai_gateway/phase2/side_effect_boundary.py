@@ -15,9 +15,18 @@ Rules (fail closed, ALLOW-LIST only; nothing is ever classified by a deny-list):
   in PROD, ``PROBE_DENIED`` in NON_PROD.
 * Coverage lists EVERY declared operation exactly once in input order (duplicates collapse and are
   reported in ``duplicate_ops``; invalid names appear as the fixed placeholder ``<invalid>``).
-* Result codes are fixed strings and never echo caller input; wrong input types give
-  ``INVALID_INPUT`` instead of an exception. The registry is immutable after build and construction
-  rejects a name mapped to two classes.
+* Precedence of the single result code: invalid name -> non-READ class (first in input order) ->
+  rights -> probe. An empty ``required_rights`` is allowed (a plan that needs no rights).
+* Size bound: more than ``max_operations`` (default 1000, positive int) operations, probes or rights
+  -> ``PLAN_TOO_LARGE`` before any per-item work.
+* NARROW guarantee: result CODES are fixed strings and are never built from caller input. Normalised
+  names that pass the valid charset ARE returned by design in ``coverage``/``denied_ops``/
+  ``duplicate_ops``/``disqualifying_rights``; invalid names/rights only appear as ``<invalid>``.
+  Wrong input types give ``INVALID_INPUT`` instead of an exception.
+* The registry validates in ``__post_init__`` (canonical names only, no UNCLASSIFIED, class enum
+  only) and copies into a read-only mapping, so direct construction is as safe as ``from_entries``.
+* ``Environment`` is defined independently here and in ``capture_permit.py``; an enum member from the
+  other module is rejected (``INVALID_INPUT``) by design, convert explicitly at the call site.
 
 ``default_registry()`` is ILLUSTRATIVE only; the real operation inventory is an S5b / operator item.
 
@@ -37,6 +46,7 @@ from ._identity import clean_identity
 
 __all__ = [
     "DEFAULT_ALLOWED_READ_RIGHTS",
+    "DEFAULT_MAX_OPERATIONS",
     "DISQUALIFYING_RIGHTS",
     "BoundaryCode",
     "BoundaryDecision",
@@ -52,6 +62,7 @@ __all__ = [
 
 _NAME_RE = re.compile(r"[a-z0-9_.:-]+")
 INVALID_PLACEHOLDER = "<invalid>"
+DEFAULT_MAX_OPERATIONS = 1000
 
 DISQUALIFYING_RIGHTS = frozenset(
     {"admin", "administrator", "posting", "post", "full_access", "write", "supervisor"}
@@ -77,6 +88,7 @@ class Environment(StrEnum):
 class BoundaryCode(StrEnum):
     ALLOWED = "ALLOWED"
     INVALID_INPUT = "INVALID_INPUT"
+    PLAN_TOO_LARGE = "PLAN_TOO_LARGE"
     EMPTY_PLAN = "EMPTY_PLAN"
     OPERATION_NAME_INVALID = "OPERATION_NAME_INVALID"
     OPERATION_UNCLASSIFIED = "OPERATION_UNCLASSIFIED"
@@ -116,6 +128,18 @@ class OperationRegistry:
 
     entries: Mapping[str, OperationClass]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.entries, Mapping):
+            raise RegistryError("REGISTRY_INVALID")
+        built: dict[str, OperationClass] = {}
+        for name, klass in self.entries.items():
+            if type(name) is not str or not name or canonical_operation(name) != name:
+                raise RegistryError("REGISTRY_NAME_INVALID")
+            if type(klass) is not OperationClass or klass is OperationClass.UNCLASSIFIED:
+                raise RegistryError("REGISTRY_CLASS_INVALID")
+            built[name] = klass
+        object.__setattr__(self, "entries", MappingProxyType(built))
+
     @classmethod
     def from_entries(cls, entries: object) -> OperationRegistry:
         if isinstance(entries, (str, bytes)) or not isinstance(entries, Iterable):
@@ -133,7 +157,7 @@ class OperationRegistry:
             if name in built and built[name] is not klass:
                 raise RegistryError("REGISTRY_CONFLICT")
             built[name] = klass
-        return cls(MappingProxyType(built))
+        return cls(built)
 
     def classify(self, name: str) -> OperationClass:
         return self.entries.get(name, OperationClass.UNCLASSIFIED)
@@ -173,10 +197,6 @@ class BoundaryDecision:
     invalid_count: int = 0
 
 
-def _deny(code: BoundaryCode, **kw: object) -> BoundaryDecision:
-    return BoundaryDecision(False, code, **kw)  # type: ignore[arg-type]
-
-
 def _classify(raw: object, registry: OperationRegistry) -> tuple[str, OperationClass | None]:
     name = canonical_operation(raw)
     if not name:
@@ -188,24 +208,35 @@ def evaluate(
     plan: object,
     registry: object,
     allowed_read_rights: object = DEFAULT_ALLOWED_READ_RIGHTS,
+    max_operations: object = DEFAULT_MAX_OPERATIONS,
 ) -> BoundaryDecision:
     if (
         type(plan) is not CapturePlan
         or type(registry) is not OperationRegistry
         or type(allowed_read_rights) is not frozenset
+        or type(max_operations) is not int
+        or max_operations < 1
         or type(plan.operations) is not tuple
         or type(plan.probes) is not tuple
         or type(plan.required_rights) is not frozenset
         or type(plan.environment) is not Environment
     ):
-        return _deny(BoundaryCode.INVALID_INPUT)
+        return BoundaryDecision(False, BoundaryCode.INVALID_INPUT)
+    if (
+        len(plan.operations) > max_operations
+        or len(plan.probes) > max_operations
+        or len(plan.required_rights) > max_operations
+    ):
+        return BoundaryDecision(False, BoundaryCode.PLAN_TOO_LARGE)
     if not plan.operations:
-        return _deny(BoundaryCode.EMPTY_PLAN)
+        return BoundaryDecision(False, BoundaryCode.EMPTY_PLAN)
 
     coverage: list[tuple[str, OperationClass]] = []
     seen: set[str] = set()
     duplicates: list[str] = []
+    duplicate_set: set[str] = set()
     denied: list[str] = []
+    denied_set: set[str] = set()
     invalid = 0
     first_class_code: BoundaryCode | None = None
     for raw in plan.operations:
@@ -214,12 +245,14 @@ def evaluate(
             invalid += 1
             klass = OperationClass.UNCLASSIFIED
         if name in seen:
-            if name not in duplicates:
+            if name not in duplicate_set:
+                duplicate_set.add(name)
                 duplicates.append(name)
             continue
         seen.add(name)
         coverage.append((name, klass))
         if klass is not OperationClass.READ:
+            denied_set.add(name)
             denied.append(name)
             if first_class_code is None and name != INVALID_PLACEHOLDER:
                 first_class_code = _CLASS_CODE[klass]
@@ -243,7 +276,8 @@ def evaluate(
         name, klass = _classify(raw, registry)
         if klass is not OperationClass.READ:
             probe_denied = True
-            if name not in denied:
+            if name not in denied_set:
+                denied_set.add(name)
                 denied.append(name)
 
     if invalid:
