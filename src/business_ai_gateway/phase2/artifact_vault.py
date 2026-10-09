@@ -23,8 +23,11 @@ Rules
 - Result codes are fixed constants; caller input is never echoed.
 - RESIDUAL RISK / KNOWN GAPS: principals are caller-asserted (no authentication); in-memory only
   (no persistence, no encryption at rest); no retention or quota per scope; the size limit is the
-  only resource bound; the ACL and the audit trail are unbounded in memory (no rotation,
-  no cap: a long-lived vault grows without limit).
+  only resource bound; the ACL is unbounded in memory. The audit trail is bounded
+  (``max_audit``, default 1000, split between a mutation log for successful PUT / GRANT /
+  REVOKE and a general log for reads and denials); evicted events are only counted
+  (``audit_dropped()``), so the audit is a recent window, not a complete history. Audit scope
+  and principal keys are truncated to 128 characters.
 - Clock: the audit ``at`` is the clock value only when it is a timezone-aware ``datetime``; a
   failing clock, a non-datetime or a NAIVE datetime yields ``at=None`` (never guessed, never raises).
 - Media type: stored with the blob and returned in ``ReadResult``; a DUPLICATE put of the same
@@ -38,9 +41,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import itertools
 import re
 import secrets
 import threading
+from collections import deque
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
@@ -58,6 +63,7 @@ ALLOWED_MEDIA_TYPES = frozenset({
 })
 _ID_PREFIX = "av_"
 _ID_BYTES = 16
+_AUDIT_KEY_CHARS = 128  # normalised scope / principal text kept per audit event
 
 # fixed result codes
 OK = "OK"
@@ -90,6 +96,9 @@ class AuditKind(StrEnum):
     DENY = "DENY"
     GRANT = "GRANT"
     REVOKE = "REVOKE"
+
+
+_MUTATION_KINDS = frozenset({AuditKind.PUT, AuditKind.GRANT, AuditKind.REVOKE})
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +193,7 @@ class ArtifactVault:
         max_bytes: int = 5_000_000,
         id_source: Callable[[], bytes] = _random_id,
         admins: Iterable[str] = (),
+        max_audit: int = 1000,
     ) -> None:
         if not callable(clock) or not callable(id_source):
             raise TypeError("clock and id_source must be callable")
@@ -203,20 +213,42 @@ class ArtifactVault:
         self._by_digest: dict[tuple[tuple[str, str], str], str] = {}
         self._acl: dict[tuple[str, str], set[str]] = {}
         self._epoch: dict[tuple[str, str], int] = {}
-        self._audit: list[AuditEvent] = []
+        if type(max_audit) is not int or max_audit < 2:
+            raise ValueError("max_audit must be an int >= 2")
+        mut_cap = max(1, max_audit // 2)
+        # PUT / GRANT / REVOKE successes live in their own bounded log so a flood of
+        # denied reads can never evict them; total retained events <= max_audit.
+        self._audit_mut: deque[tuple[int, AuditEvent]] = deque(maxlen=mut_cap)
+        self._audit_gen: deque[tuple[int, AuditEvent]] = deque(maxlen=max_audit - mut_cap)
+        self._seq = 0
+        self._dropped = 0
 
     # ------------------------------------------------------------------ helpers
     def _now(self) -> datetime | None:
-        try:
+        try:  # the whole body: a hostile tzinfo may raise from utcoffset() after the mutation
             value = self._clock()
+            if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
+                return None
+            return value
         except Exception:  # noqa: BLE001 - clock failures must not leak text
             return None
-        if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
-            return None
-        return value
 
     def _log(self, kind: AuditKind, scope: object, principal: object, code: str) -> None:
-        self._audit.append(AuditEvent(kind, _skey(scope), _pkey(principal), code, self._now()))
+        skey = _skey(scope)
+        if skey is not None:
+            skey = (skey[0][:_AUDIT_KEY_CHARS], skey[1][:_AUDIT_KEY_CHARS])
+        event = AuditEvent(kind, skey, _pkey(principal)[:_AUDIT_KEY_CHARS], code, self._now())
+        self._seq += 1
+        log = self._audit_mut if kind in _MUTATION_KINDS and code in (OK, DUPLICATE, UNCHANGED) \
+            else self._audit_gen
+        if len(log) == log.maxlen:
+            self._dropped += 1
+        log.append((self._seq, event))
+
+    def audit_dropped(self) -> int:
+        """Number of audit events evicted by the bounded logs since construction."""
+        with self._lock:
+            return self._dropped
 
     def _has_access(self, skey: tuple[str, str], pkey: str) -> bool:
         return bool(pkey) and pkey in self._acl.get(skey, ())
@@ -360,4 +392,5 @@ class ArtifactVault:
     # ------------------------------------------------------------------- audit
     def audit(self) -> tuple[AuditEvent, ...]:
         with self._lock:
-            return tuple(self._audit)
+            merged = sorted(itertools.chain(self._audit_mut, self._audit_gen), key=lambda p: p[0])
+            return tuple(event for _, event in merged)

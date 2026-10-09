@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from ._identity import clean_identity
+from ._identity import MAX_TEXT_CHARS, clean_identity
 
 __all__ = [
     "DEFAULT_ALLOWED_READ_RIGHTS",
@@ -118,6 +118,8 @@ class RegistryError(ValueError):
 
 def canonical_operation(value: object) -> str:
     """Canonical operation name, or '' when not a str, forbidden chars, or not plain [a-z0-9_.:-]."""
+    if type(value) is str and len(value) > MAX_TEXT_CHARS:
+        return ""  # O(1) rejection before any per-character work
     name = clean_identity(value)
     return name if name and _NAME_RE.fullmatch(name) else ""
 
@@ -259,12 +261,17 @@ def evaluate(
 
     allowed_rights = {clean_identity(r) for r in allowed_read_rights} - {""}
     bad_rights: list[str] = []
-    for raw in sorted(plan.required_rights, key=repr):
+    # Only exact str elements are sorted (no repr() of caller objects); anything else is an
+    # invalid right and appears as the placeholder.
+    str_rights = sorted(r for r in plan.required_rights if type(r) is str)
+    non_str = len(plan.required_rights) - len(str_rights)
+    for raw in str_rights:
         right = clean_identity(raw)
-        if not right:
-            bad_rights.append(INVALID_PLACEHOLDER)
+        if not right or _NAME_RE.fullmatch(right) is None:
+            bad_rights.append(INVALID_PLACEHOLDER)  # never echo text outside the charset
         elif right in DISQUALIFYING_RIGHTS or right not in allowed_rights:
             bad_rights.append(right)
+    bad_rights.extend([INVALID_PLACEHOLDER] * non_str)
 
     probe_code = (
         BoundaryCode.PROBE_DENIED_IN_PROD

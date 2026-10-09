@@ -405,3 +405,57 @@ def test_revoking_one_principal_keeps_another():
     assert not v.read(ref, ALICE).allowed
     assert v.read(ref, BOB).content == b"hello"
     assert v.put(S1, b"by-bob", BOB, PDF).status is PutStatus.STORED
+
+
+# --- bounded audit, truncated keys, hostile tzinfo ----------------------------
+def test_denied_read_flood_is_bounded_and_grant_survives():
+    v = ready(max_audit=10)
+    r = put(v)
+    for _ in range(500):
+        assert not v.read(r.ref, BOB).allowed
+    events = v.audit()
+    assert len(events) <= 10
+    assert v.audit_dropped() >= 490
+    kinds = [e.kind for e in events]
+    assert AuditKind.GRANT in kinds and AuditKind.PUT in kinds
+    assert [e.kind for e in events if e.kind in (AuditKind.GRANT, AuditKind.PUT)] == [
+        AuditKind.GRANT, AuditKind.PUT,
+    ]  # chronological order preserved across the two logs
+
+
+@pytest.mark.parametrize("bad", [0, 1, True, 2.5, "10"])
+def test_max_audit_must_be_int_at_least_two(bad):
+    with pytest.raises(ValueError):
+        make(max_audit=bad)
+
+
+def test_long_principal_and_scope_keys_are_truncated_in_audit():
+    v = make()
+    long_id = "p" * 200  # valid (under the 256 identity cap) but over the 128 audit cap
+    assert v.grant(ArtifactScope(long_id, "s"), Principal(long_id), ADMIN) == av.OK
+    ev = v.audit()[-1]
+    assert ev.principal == "p" * 128
+    assert ev.scope == ("p" * 128, "s")
+    # a 1 MB id is not a valid identity at all: it never reaches the audit text
+    assert v.grant(S1, Principal("q" * 1_000_000), ADMIN) == av.INVALID_PRINCIPAL
+    assert v.audit()[-1].principal == ""
+
+
+class _RaisingTz(__import__("datetime").tzinfo):
+    def utcoffset(self, dt):
+        raise RuntimeError("boom")
+
+    def dst(self, dt):
+        return None
+
+    def tzname(self, dt):
+        return None
+
+
+def test_raising_tzinfo_clock_does_not_raise_after_mutation():
+    bad_now = datetime(2026, 1, 1, tzinfo=_RaisingTz())
+    v = ArtifactVault(lambda: bad_now, admins=["admin"])
+    assert v.grant(S1, ALICE, ADMIN) == av.OK
+    res = v.put(S1, b"data", ALICE, PDF)
+    assert res.status is PutStatus.STORED
+    assert [e.at for e in v.audit()] == [None, None]

@@ -303,3 +303,34 @@ def test_non_string_items_are_invalid_names_not_errors():
 def test_non_string_right_disqualifies_without_error():
     d = evaluate(plan(["list_catalogs"], rights={"read", 5}), REG)  # type: ignore[arg-type]
     assert not d.allowed and d.code is BoundaryCode.RIGHTS_DISQUALIFY
+
+
+# --- length cap, echo hygiene, hostile rights ---------------------------------
+def test_over_cap_operation_name_is_invalid_quickly():
+    from business_ai_gateway.phase2.side_effect_boundary import canonical_operation
+
+    assert canonical_operation("a" * 256) == "a" * 256
+    assert canonical_operation("a" * 257) == ""
+    assert canonical_operation("a" * 5_000_000) == ""
+    d = evaluate(plan(["read_document", "a" * 5_000_000]), REG)
+    assert d.code is BoundaryCode.OPERATION_NAME_INVALID
+    assert d.invalid_count == 1
+    assert ("<invalid>", OperationClass.UNCLASSIFIED) in d.coverage
+
+
+def test_over_cap_and_off_charset_rights_are_echoed_as_placeholder():
+    d = evaluate(plan(["read_document"], rights={"read", "x" * 300, "caf\u00e9 bar", "write"}), REG)
+    assert d.code is BoundaryCode.RIGHTS_DISQUALIFY
+    assert sorted(d.disqualifying_rights) == ["<invalid>", "<invalid>", "write"]
+    assert all(len(r) <= 256 for r in d.disqualifying_rights)
+
+
+def test_non_str_required_right_with_raising_repr_does_not_raise():
+    class Hostile:
+        def __repr__(self):
+            raise RuntimeError("boom")
+
+    d = evaluate(plan(["read_document"], rights={"read", Hostile(), 7}), REG)
+    assert not d.allowed
+    assert d.code is BoundaryCode.RIGHTS_DISQUALIFY
+    assert d.disqualifying_rights == ("<invalid>", "<invalid>")

@@ -878,18 +878,27 @@ _ENV_LOCK = threading.Lock()
 def _scrubbed_environment() -> Iterator[None]:
     """Start the child with only what spawn needs; restore the parent afterwards.
 
-    os.environ is process-wide, so other threads briefly see the reduced
-    environment while the child is being created (serialised by a lock here).
+    KNOWN LIMIT: ``multiprocessing`` spawn inherits ``os.environ``, which is
+    process-wide, so other threads still observe the removed variables while the
+    child is being created (reads of a scrubbed name see it missing). What is
+    guaranteed: kept variables are never touched; removal happens one key at a
+    time inside the ``try`` so an interrupt at any point is undone in ``finally``;
+    the restore uses ``setdefault`` so a value another thread wrote (or re-created)
+    during the window is kept, never overwritten by the stale snapshot.
     """
+    removed: dict[str, str] = {}
     with _ENV_LOCK:
-        saved = dict(os.environ)
-        os.environ.clear()
-        os.environ.update({k: v for k, v in saved.items() if k.upper() in _ENV_KEEP})
         try:
+            for key in list(os.environ):
+                if key.upper() in _ENV_KEEP:
+                    continue
+                value = os.environ.pop(key, None)
+                if value is not None:
+                    removed[key] = value
             yield
         finally:
-            os.environ.clear()
-            os.environ.update(saved)
+            for key, value in removed.items():
+                os.environ.setdefault(key, value)
 
 
 def _aborted() -> ParseResult:
@@ -938,6 +947,7 @@ def run_isolated(
     parent, child = ctx.Pipe(duplex=False)
     proc = ctx.Process(target=_child_target, args=(child, checked, limits, memory_bytes), daemon=True)
     started = False
+    reader: threading.Thread | None = None
     try:
         try:
             with _scrubbed_environment():
@@ -946,20 +956,24 @@ def run_isolated(
         except (OSError, AssertionError):  # BrokenPipeError; daemonic caller
             return _aborted()
         child.close()
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return ParseResult(Status.BOUND_EXCEEDED, TIMEOUT)
+        # The whole reply (header AND body) is read by a helper thread so a child
+        # that sends a partial frame and stalls cannot outlive the deadline: the
+        # parent only waits for the thread until the deadline, then kills the child.
+        box: list[bytes | None] = []
+
+        def _read() -> None:
             try:
-                if parent.poll(min(remaining, _POLL_SLICE)):
-                    break
-                if not proc.is_alive() and not parent.poll(0):
-                    return _aborted()
-            except (EOFError, OSError):  # Windows: broken pipe once the child is gone
-                return _aborted()
-        try:
-            payload = parent.recv_bytes(_MAX_PAYLOAD)
-        except (EOFError, OSError):
+                box.append(parent.recv_bytes(_MAX_PAYLOAD))
+            except Exception:  # noqa: BLE001 - EOF / broken pipe / oversize: no answer
+                box.append(None)
+
+        reader = threading.Thread(target=_read, name="safe-parser-reader", daemon=True)
+        reader.start()
+        reader.join(max(deadline - time.monotonic(), 0.0))
+        if not box:
+            return ParseResult(Status.BOUND_EXCEEDED, TIMEOUT)
+        payload = box[0]
+        if payload is None:
             return _aborted()
         return _decode_result(payload) or _aborted()
     finally:
@@ -967,7 +981,11 @@ def run_isolated(
             if proc.is_alive():
                 proc.kill()
             proc.join(5.0)
+        if reader is not None:
+            reader.join(2.0)  # the killed child's pipe end is gone, so recv returns
         for conn in (parent, child):
+            if conn is parent and reader is not None and reader.is_alive():
+                continue  # never close a handle another thread is blocked on
             try:
                 conn.close()
             except OSError:
