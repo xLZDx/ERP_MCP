@@ -68,6 +68,18 @@ The above are historical testbed observations, not hardcoded product values or f
 - **Production**: validate the intended live base, accountant reports and controls before
   directing these tools to a non-clone source.
 
+## Security gate repair (2026-10-09)
+
+The initial PR CI run failed the fail-closed security image scan, *not* accounting or
+pytest: the prior pinned Chainguard Wolfi runtime carried 14 Trivy MEDIUM findings
+in glibc 2.44-r7 and Python 3.14 prior to the patched 2026-10-08 build.
+The tested registry manifest index was re-pinned in the Dockerfile to
+`sha256:95b155651d82460ced732db7ddd81f0888267d8cc9fc97d9f0e993deac398d07`.
+The local Windows/Docker build was successful; a fresh Trivy 0.75.0 vulnerability
+scan of the rebuilt `erp-mcp-gateway:supplier5211-security` returned zero findings.
+No severity threshold or skip/ignore policy was lowered.
+Hosted image/SBOM and final PR CI remain separately required.
+
 ## Regression checks
 
 ```powershell

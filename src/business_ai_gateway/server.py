@@ -892,11 +892,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 and isinstance(mapped_accounts[0], dict)
                 and mapped_accounts[0].get("code") == "521.1"
             )
-            if (is_exact_5211_profile and rows
-                    and all(isinstance(r, dict) and r.get("account") == "521.1" for r in rows)):
+            if (is_exact_5211_profile
+                    and (not rows or all(
+                        isinstance(r, dict) and r.get("account") == "521.1" for r in rows
+                    ))):
                 names: dict[str, str] = {}
-                name_lookup_status = "NOT_RUN"
-                if not truncated and len(rows) < settings.max_rows:
+                name_lookup_status = "NO_SUPPLIERS" if not rows else "NOT_RUN"
+                if rows and not truncated and len(rows) < settings.max_rows:
                     try:
                         refs = supplier_refs(rows)
                         if not source.entity_allowed("Catalog_Контрагенты"):

@@ -55,6 +55,22 @@ async def test_raw_catalog_denied_still_returns_ledger_but_no_name(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_empty_complete_5211_returns_zero_in_first_response():
+    mcp, _audit, onec, _com, company = build(
+        "AVAILABLE", mapping=exact_5211_mapping(),
+        odata_result={"value": [], "page": {"has_more": False, "truncated": False}},
+    )
+    result = payload(await call(mcp, company))
+    summary = result["supplier_summary"]
+    assert summary["status"] == "COMPLETE"
+    assert summary["counterparty_count"] == 0
+    assert summary["total_balance_credit"] == "0"
+    assert summary["total_balance_debit"] == "0"
+    assert summary["name_lookup_status"] == "NO_SUPPLIERS"
+    assert not hasattr(onec, "read")
+
+
+@pytest.mark.asyncio
 async def test_many_account_profile_never_labels_partial_data_as_5211_report():
     mcp, _audit, _onec, _com, company = build("AVAILABLE", mapping=good_mapping())
     result = payload(await call(mcp, company))
