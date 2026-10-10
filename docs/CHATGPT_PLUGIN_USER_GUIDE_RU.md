@@ -9,7 +9,7 @@ The reference environment uses **read-only** access to an authorized 1C database
 | User request | Earlier documented behavior (must be revalidated today) |
 | --- | --- |
 | "Show ERP_MCP status" | Service status was available |
-| "Which sources can I access?" | The real \`onec-818ha-reference\` source and a separately labeled synthetic portfolio were listed |
+| "Which sources can I access?" | The real `onec-818ha-reference` source and a separately labeled synthetic portfolio were listed |
 | "Which companies are available on onec-818ha-reference?" | The authorized 818 HA SRL organization was shown |
 | "Check source health", "show capabilities", "find the Counterparty entity" | Not available to the referenced company-only account without the required source-wide permission |
 | Real company balances, turnovers, postings, accounts payable and aging | Blocked by semantic-profile validation until the required independent evidence exists |
@@ -18,7 +18,7 @@ The reference environment uses **read-only** access to an authorized 1C database
 
 ## 2. Asking Scoped Questions
 
-Specify the approved source \`onec-818ha-reference\` and choose the company from the authorized company list. Provide dates explicitly, for example, "as of August 31, 2026" or "for August 2026". The gateway is responsible for converting dates using the verified source time-zone semantics.
+Specify the approved source `onec-818ha-reference` and choose the company from the authorized company list. Provide dates explicitly, for example, "as of August 31, 2026" or "for August 2026". The gateway is responsible for converting dates using the verified source time-zone semantics.
 
 Example request **after a qualified accounting profile has been validated**:
 
@@ -44,14 +44,14 @@ Operator action: request independent native 1C reports through the approved acco
 
 ## 5. The Plugin Does Not Respond
 
-1. On the **authorized test workstation**, check the read-only health URL \`http://127.0.0.1:21000/healthz\`. A healthy test gateway should respond with HTTP 200. Health alone does not prove source authorization or accounting correctness.
-2. A historical troubleshooting procedure used the following **mutating test-environment restart** from \`D:\Repo\ERP_MCP-integration-candidate\`. This is preserved for provenance, **not authorization to run it now**:
+1. On the **authorized test workstation**, check the read-only health URL `http://127.0.0.1:21000/healthz`. A healthy test gateway should respond with HTTP 200. Health alone does not prove source authorization or accounting correctness.
+2. A historical troubleshooting procedure used the following **mutating test-environment restart** from `D:\Repo\ERP_MCP-integration-candidate`. This is preserved for provenance, **not authorization to run it now**:
 
-   \`\`\`powershell
+   ```powershell
    $env:E2E_DIR = 'D:\ERP_MCP_Testbed\real1c_e2e'
    $env:E2E_REAL1C = '1'
    .\scripts\e2e\fault.ps1 -Component gateway -Action restart
-   \`\`\`
+   ```
 
    A restart changes process state. **Run only after confirming the exact disposable environment, current owner approval, a controlled maintenance window and a rollback plan.** Never execute it against an unknown, shared or production gateway.
 
