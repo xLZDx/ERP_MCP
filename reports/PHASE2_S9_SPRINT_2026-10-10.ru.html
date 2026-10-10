@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S9: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S9: итоги</h1>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · head 6ee27f1 (GPT-PM APPROVE на этом head; push fa4852d..6ee27f1) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S9 реализован и проверен офлайн; GPT-PM APPROVE на head 6ee27f1, запушено (fa4852d..6ee27f1).</span> Потолок статуса — <span class="warn">IMPLEMENTED_UNVERIFIED</span>. G6-pre <span class="bad">НЕ ПРОЙДЕН</span> и офлайн оценён быть не может; Release 2 по-прежнему <span class="bad">NO-GO</span>. Двенадцать модулей (ops_types, capacity_model, capacity_interference, audit_gate, delivery_replay, alert_rules, release_migration, release_rollback, restore_verify, export_safety, retention_hold, g6_pre_readiness) — чистые функции решений над сценарными входами, без реальной нагрузки, восстановления, миграции и доставки алертов.</p>
+<ul>
+<li>Тесты: офлайн <code>tests/phase2</code> — <b>6126 passed, 229 skipped</b> (прогон оператора). Файлы S9 собраны (<code>--co -q</code>): ops_types 107, capacity_model 207, capacity_interference 102, audit_gate 57, delivery_replay 66, alert_rules 97, release_migration 135, release_sql_guard 84, release_rollback 133, restore_verify 155, export_safety 143, retention_hold 78, g6_pre_readiness 35, s9_boundaries 109, s9_scenarios 34 — всего 1542.</li>
+<li>Истории: R2-US-043..046 (TC127-138) — максимум <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+<li>Ревью: четыре внутренних прохода ревьюеров, единый пакет исправлений, ограниченная верификация; затем четыре раунда GPT-PM.</li>
+<li>GPT-PM: раунд 1 (head 292a62d) REJECT, 9 MAJOR (M01-M09); раунд 2 (23a055f) REJECT только M01; раунд 3 (92cc3d9) REJECT только M01 (фаза C); раунд 4 (6ee27f1) APPROVE.</li>
+<li>Запрет оператора на мутации соблюдён; CI, PostgreSQL, реальная нагрузка, регрессия Release 1 не запускались.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-043 модель ёмкости (<code>ops_types</code>, <code>capacity_model</code>, <code>capacity_interference</code>)</td><td>Четыре оси раздельны; отказы профиля не пропускная способность; точный коэффициент интерференции</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Данные сценарные, не измерения</td></tr>
+<tr><td>E2</td><td>R2-US-044 аудит, доставка, алерты (<code>audit_gate</code>, <code>delivery_replay</code>, <code>alert_rules</code>)</td><td>Fail closed при сбое аудита; ровно одна доставка при 429; алерт ровно один раз и восстановление</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реального приёмника/очереди/доставки</td></tr>
+<tr><td>E3</td><td>R2-US-045 релиз (<code>release_migration</code>, <code>release_rollback</code>)</td><td>Аддитивные теневые регрессии; деструктивный откат запрещён; отозванный грант не воскрешается</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Ничего не выполняется</td></tr>
+<tr><td>E4</td><td>R2-US-046 восстановление и экспорт (<code>restore_verify</code>, <code>export_safety</code>, <code>retention_hold</code>)</td><td>Каждый дефект восстановления — свой код; безопасный экспорт; hold блокирует удаление</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реального pg-восстановления, файла и удаления</td></tr>
+<tr><td>E5</td><td>Фасад G6-pre, границы, сценарии (<code>g6_pre_readiness</code>)</td><td>Слоты NOT_RUN по умолчанию; AST-границы; сквозные сценарии</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>G6-pre не оценивается офлайн</td></tr>
+<tr><td>Fix</td><td>Пакет исправлений по ревью и GPT-PM</td><td>M01-M09 закрыты; APPROVE на 6ee27f1</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Принятый backlog — ниже</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов (TC127-138)</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S9) и <code>docs/phase2/TEST_PLAN_PHASE2_RU.md</code>. Мутации не запускались по запрету оператора. «Результат» — офлайн-прогон на фикстурах; число в скобках — число собранных тестов в файле на текущем head. Один файл может покрывать несколько TC.</p>
+<div class="wrap"><table>
+<thead><tr><th>Тест-кейс</th><th>Требование</th><th>Файл теста</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Известный пробел</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-043 / TC127</td><td>Сессии, активные клиенты, источники и бэкенды — четыре разные оси</td><td>test_ops_types.py (107), test_capacity_model.py (207)</td><td>Ячейка 1000 сессий / 5 активных клиентов остаётся двумя числами; утверждение о сессиях без измерения активных клиентов — SESSIONS_NOT_ACTIVE_CLIENTS; сессий меньше активных клиентов — GRID_CELL_INCONSISTENT; нет числа бэкендов — BACKEND_COUNT_MISSING</td><td>offline</td><td><span class="ok">pass</span></td><td>Сценарные данные, не измерения</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-043 / TC128</td><td>Отказы профиля — не пропускная способность</td><td>test_capacity_model.py (207)</td><td>1000 мгновенных PROFILE_REFUSED плюс 100 медленных BUSINESS_OK дают пропускную способность и p95 только по этим 100 и REFUSALS_DOMINATE; p99 при менее чем 100 выборках — INSUFFICIENT_SAMPLES; float/bool/отрицательные/NaN значения отклоняются</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальной нагрузки</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-043 / TC129</td><td>Фоновая интерференция и бюджет</td><td>test_capacity_interference.py (102)</td><td>Коэффициент интерференции — точный Decimal против предложенной цели 0.20; нулевая или отсутствующая базовая линия — BASELINE_INVALID; политика, морящая фон голодом, отклоняется; алиасы бэкенда делят один счётчик; два потока не превышают общий лимит</td><td>offline</td><td><span class="ok">pass</span></td><td>Цели — параметризованные предложения, не измерения</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC130</td><td>Сбой аудита закрывает путь (fail closed)</td><td>test_audit_gate.py (57)</td><td>При недоступном, падающем, медленном или некорректном приёмнике журнал вызовов эффекта пуст, результат AUDIT_UNAVAILABLE; сбой завершения после эффекта — AUDIT_COMPLETION_PENDING без повтора эффекта и с обязательством в списке; классифицированное чтение проходит без шлюза</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реального приёмника аудита; дубли audit request id в рамках tenant (backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC131</td><td>429 реплики/сети без дублей</td><td>test_delivery_replay.py (66)</td><td>Сценарий 429/сеть/потерянный ack публикует каждое событие ровно один раз и по порядку; устаревшая заявка — STALE_CLAIM; курсор не проходит мимо недоставленного события; параллельные потоки дают одну публикацию на событие; шторм 429 у tenant A не задерживает tenant B</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальной очереди; срок аренды доставки не проверяется в _fenced (backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC132</td><td>Алерт сработал и восстановился</td><td>test_alert_rules.py (97)</td><td>Каждый тип правила срабатывает ровно один раз и восстанавливается ровно один раз за эпизод; дребезг внутри гистерезиса не создаёт второго события; тишина потока — NO_DATA; сбой доставки алерта остаётся видимым и недоставленным</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальной доставки алертов</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC133</td><td>Аддитивные теневые регрессии</td><td>test_release_migration.py (135), test_release_sql_guard.py (84)</td><td>Подсаженный DROP TABLE или шаг по объекту R1 никогда не ADDITIVE; один изменённый digest R1 — R1_REGRESSION; отсутствующее наблюдение — SHADOW_INCOMPLETE, не проход; реальные файлы db/phase2/001..003 содержат только аддитивные операторы живой схемы</td><td>offline</td><td><span class="ok">pass</span></td><td>Миграция не выполняется (только сканирование текста); confirm_release читает на момент времени (backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC134</td><td>Деструктивный откат запрещён</td><td>test_release_rollback.py (133)</td><td>Деструктивные и неклассифицированные шаги запрещают откат; нечитаемая живая голова — ROLLBACK_HEAD_INCOMPATIBLE; contract-очистка до окна отклоняется, регресс часов не сокращает окно; решение не исполняется (executed=False)</td><td>offline</td><td><span class="ok">pass</span></td><td>Только решение, откат не выполняется</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC135</td><td>Откат переключения не воскрешает отозванный грант</td><td>test_release_rollback.py (133)</td><td>Грант выдан, переключён, отозван, откат — остаётся не действующим, в том числе после второго отката или регресса часов; отозванная аттестация остаётся отозванной; действующие гранты берутся только из ТЕКУЩЕГО реестра; параллельные решения не показывают отозванный грант как действующий</td><td>offline</td><td><span class="ok">pass</span></td><td>Фейковый реестр грантов</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC136</td><td>Восстановленные FK, digest и головы</td><td>test_restore_verify.py (155)</td><td>Каждый внедрённый дефект получает свой код (COUNT/DIGEST/FK_ORPHAN по каждому ребру каталога/HEAD/SEQUENCE_GAP/ATTESTATION_STALE/SCOPE_FOREIGN); неполный манифест никогда не verified; в каталоге тринадцать рёбер, и каждый случай сироты отличим</td><td>offline</td><td><span class="ok">pass</span></td><td>Реальное pg-восстановление (test_g1_restore.py) — NOT_RUN без контейнера</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC137</td><td>Экспорт: маскирование, фильтр tenant, безопасность формул</td><td>test_export_safety.py (143)</td><td>Чужие строки отсутствуют, остаётся лишь непрозрачный флаг HIDDEN_BY_SCOPE; необъявленные колонки — COLUMN_UNCLASSIFIED и отсутствуют; ячейки с ведущей формулой в значениях и заголовках нейтрализуются, считаются и не вычисляются; значения, похожие на учётные данные, отклоняются</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реального файла экспорта</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC138</td><td>Legal hold, без неодобренного удаления</td><td>test_retention_hold.py (78)</td><td>Все условия выполнены — только план с executed=False; активный hold на уровне объекта, источника или tenant блокирует с HOLD_ACTIVE; hold после одобрения блокирует его; ровно на границе срок хранения истёк; AST не находит вызова удаления и литерала executed=True</td><td>offline</td><td><span class="ok">pass</span></td><td>Ничего не удаляется; утечка слота квоты в place_hold (backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / фасад готовности</td><td>Слоты доказательств G6-pre по умолчанию NOT_RUN</td><td>test_g6_pre_readiness.py (35)</td><td>Без корректной ссылки оператора каждый слот NOT_RUN; даже полный набор ссылок — не пройденный gate; ссылка на другой head оставляет слот NOT_RUN; в отчёте нет поля passed</td><td>offline</td><td><span class="ok">pass</span></td><td>Только оценка, gate оценить офлайн нельзя</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / границы</td><td>Модули S9 чистые, офлайн, только решения</td><td>test_s9_boundaries.py (109)</td><td>AST: только stdlib или одноточечные импорты пакета, нет Release 1/PDCC/сети/БД/COM, нет вызовов удаления, нет литерала executed=True, у каждого кода причины есть фиксированное следующее действие</td><td>offline</td><td><span class="ok">pass</span></td><td>AST — статический прокси</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / сценарии</td><td>Сквозная офлайн-цепочка между историями</td><td>test_s9_scenarios.py (34)</td><td>Цепочка над фейками с журналами вызовов и изоляцией по tenant</td><td>offline</td><td><span class="ok">pass</span></td><td>Часть тестов написана в том же проходе, что и код, и не наблюдалась красной</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Процесс и ревью</h2>
+<ul>
+<li><b>Внутреннее ревью:</b> четыре прохода ревьюеров, результаты объединены в один пакет исправлений, затем ограниченная верификация.</li>
+<li><b>GPT-PM:</b> раунд 1 — head 292a62d, REJECT, 9 MAJOR (M01-M09); раунд 2 — head 23a055f, REJECT только M01; раунд 3 — head 92cc3d9, REJECT только M01 (фаза C); раунд 4 — head 6ee27f1, APPROVE. Итоговый push: fa4852d..6ee27f1.</li>
+<li><b>Процесс:</b> часть тестов написана в том же проходе, что и код, и не наблюдалась красной. Прогонов мутаций нет (запрет оператора), обоснование тестов — по их утверждениям.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>G6-pre: реальные метрики нагрузки на сетке 30/50/100/150 источников, аварийные алармы, повторяемое восстановление. Gate НЕ ПРОЙДЕН и офлайн оценён быть не может.</li>
+<li>Реальная нагрузка 1С, реальный приёмник аудита и доставка алертов, исполнение миграций и отката на PostgreSQL, реальное backup/restore, реальный файл экспорта, retention-задание и любое удаление.</li>
+<li>Production-разрешение и canary; интеграция в рантайм или Release 1; GitHub CI; регрессия Release 1; прогоны мутаций (запрет оператора).</li>
+</ul>
+<h2>Известные пробелы, backlog и дела оператора</h2>
+<ul>
+<li>Принятый backlog: срок аренды доставки не проверяется в _fenced; утечка слота квоты в place_hold; confirm_release читает на момент времени; дубли audit request id в рамках tenant.</li>
+<li>Release 2 — NO-GO; G6-pre, G1, G4, G5 — NOT PASSED.</li>
+<li>За оператором: токен для MCP erp-mcp-818ha (сейчас 401); реальные данные 1С; аттестация бухгалтера (G3); Google OAuth (G4); UAT (G5); решения G0-G7; issues #28/#29/#33/#37; разрешение на canary S10.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — спринт S7: итоги</h1>
-<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 417bd87, пакет исправлений e410abc (GPT-PM ожидается; не запушен) · правила разработки v4</div>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 417bd87, пакет исправлений e410abc (GPT-PM: APPROVE на fa4852d (девять раундов, S7+S8), запушен) · правила разработки v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -52,7 +52,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
   <dl>
     <dt>Проект</dt><dd>ERP_MCP</dd>
     <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ e410abc</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Итог</h2>
 <div class="card">
-<p><span class="ok">Спринт S7 реализован и проверен офлайн</span> (код 417bd87, пакет исправлений e410abc). <span class="warn">GPT-PM ожидается, push не выполнен.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G4 открыт: девять модулей Drive (порт, фейк, OAuth consent, scope, baseline, курсор, ревизии, членство, состояние авторизации) работают в памяти на фейковом порте и не подключены к Release 1.</p>
+<p><span class="ok">Спринт S7 реализован и проверен офлайн</span> (код 417bd87, пакет исправлений e410abc). <span class="warn">GPT-PM: APPROVE на fa4852d (девять раундов по S7+S8), запушено.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G4 открыт: девять модулей Drive (порт, фейк, OAuth consent, scope, baseline, курсор, ревизии, членство, состояние авторизации) работают в памяти на фейковом порте и не подключены к Release 1.</p>
 <ul>
 <li>Тесты: офлайн <code>tests/phase2</code> — <b>3397 passed, 229 skipped</b>; <code>ruff</code> чистый. Запуск через python из проектного <code>.venv</code>.</li>
 <li>Новые файлы S7: port_fake 108, oauth 110, scope 116, baseline 52, cursor 56, revisions 47, membership 42, auth_state 41, hints 16, границы 50 и три файла исправлений (54 / 73 / 77).</li>
@@ -106,7 +106,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <li><b>Раунд ревью S7</b> (код 417bd87; четыре read-only ревьюера): 0 BLOCKER, около 14 MAJOR; все исправлены одним пакетом e410abc.</li>
 <li>Исправлено: отозванный scope и потеря lease больше не RETRYABLE; привязка lease к tenant; подделанный CursorLoad; применение corpus.drive_id; адаптеры seam к реальным ConsentManager и курсору; защита run_poll; дедупликация и повторная доставка оповещений; вытеснение состояний consent; инвалидация кэша по корню; лимит 1000 событий на коммит (PAGE_TOO_LARGE).</li>
 <li><b>Процесс:</b> в этот раз тесты писались до исправлений и наблюдались красными (около 100 новых тестов). Первые версии модулей S7 агенты писали без красных тестов — это отмечено в журнале.</li>
-<li><b>GPT-PM:</b> ожидается; без APPROVE push не выполняется.</li>
+<li><b>GPT-PM:</b> девять раундов по S7+S8, APPROVE на fa4852d, push выполнен.</li>
 </ul>
 <h2>Не запускалось (NOT_RUN) и не заявляется</h2>
 <ul>
@@ -118,7 +118,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li>Остаточные риски: дайджесты — целостность, а не подлинность; два типа MembershipResult и два типа корпуса; лимит текста 4 МиБ на коммит без предпроверки; живые состояния consent одного tenant на многих identity могут заполнить таблицу; всё в памяти.</li>
 <li>Release 2 — NO-GO, G1 — NOT PASSED, G4 открыт.</li>
-<li>Дальше: GPT-PM по точному head; после APPROVE — обычный push; затем S8 (Workbench/UAT). Реальные данные и OAuth остаются за оператором.</li>
+<li>Дальше: S8 и S9 выполнены (см. их отчёты). Реальные данные и OAuth остаются за оператором.</li>
 </ul>
 </main>
 

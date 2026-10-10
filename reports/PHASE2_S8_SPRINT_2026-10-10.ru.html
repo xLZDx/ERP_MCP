@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — спринт S8: итоги</h1>
-<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 080c76d, пакет исправлений 5f51d0f (GPT-PM ожидается; не запушен) · правила разработки v4</div>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 080c76d, пакет исправлений 5f51d0f (GPT-PM: APPROVE на fa4852d (девять раундов, S7+S8), запушен) · правила разработки v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -52,7 +52,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
   <dl>
     <dt>Проект</dt><dd>ERP_MCP</dd>
     <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5f51d0f</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Итог</h2>
 <div class="card">
-<p><span class="ok">Спринт S8 реализован и проверен офлайн</span> (код 080c76d, пакет исправлений 5f51d0f). <span class="warn">GPT-PM ожидается, push не выполнен.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G5 (UAT) открыт: семь модулей (типы, разбор расхождений, таймлайн, покрытие, безопасные ошибки, jobs/results API, фасад сессии) — это типизированные модели представления в памяти, без UI, HTTP и БД.</p>
+<p><span class="ok">Спринт S8 реализован и проверен офлайн</span> (код 080c76d, пакет исправлений 5f51d0f). <span class="warn">GPT-PM: APPROVE на fa4852d (девять раундов по S7+S8), запушено.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G5 (UAT) открыт: семь модулей (типы, разбор расхождений, таймлайн, покрытие, безопасные ошибки, jobs/results API, фасад сессии) — это типизированные модели представления в памяти, без UI, HTTP и БД.</p>
 <ul>
 <li>Тесты: офлайн <code>tests/phase2</code> — <b>4433 passed, 229 skipped</b>; <code>ruff</code> чистый.</li>
 <li>Файлы S8: types 91, review 129, timeline 204, coverage 197, safe_errors 65, jobs_api 67 + bypass 59, session 28, границы 59 и четыре файла исправлений (26 / 48 / 36 / 27).</li>
@@ -102,7 +102,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <li><b>Раунд ревью S8</b> (код 080c76d; четыре read-only ревьюера): 0 BLOCKER, 2 HIGH, около 10 MAJOR; исправлены одним пакетом 5f51d0f.</li>
 <li>Главное: изоляция по компании отсутствовала на путях карточек, аннотаций, перезапуска и постановки заданий; область зрителя собиралась самим вызывающим; перезапуск создавал run до отправки задания (повтор давал ложный STALE); глобальные квоты позволяли одному tenant заглушить остальных; атрибуции в таймлайне утекали между компаниями.</li>
 <li><b>Процесс:</b> часть потоков писала код раньше тестов (красные тесты наблюдались частично: G3 — 29 из 36), это отмечено в журнале.</li>
-<li><b>GPT-PM:</b> ожидается. Запрос по S7 застрял на сбое браузера PM Bridge (CHATGPT_RENDERER_STALLED); принудительный перезапуск — операторский break-glass, не применялся.</li>
+<li><b>GPT-PM:</b> девять раундов по S7+S8, APPROVE на fa4852d, push выполнен (ранее запрос застревал на сбое браузера PM Bridge).</li>
 </ul>
 <h2>Не запускалось (NOT_RUN) и не заявляется</h2>
 <ul>
@@ -114,7 +114,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li>Остаточные риски: card_digest — без ключа; перепроверка эпохи не атомарна; annotate без ключа идемпотентности; EFFECT_DONE истекает по обычному сроку хранения; фейковые id угадываемы; INCONCLUSIVE карточка не покрыта на уровне фасада.</li>
 <li>Release 2 — NO-GO, G1 — NOT PASSED, G5 открыт.</li>
-<li>Дальше: GPT-PM по S7 и S8 (после восстановления PM Bridge); после APPROVE — обычный push; затем S9. Реальный UAT остаётся за оператором.</li>
+<li>Дальше: S9 выполнен (см. отчёт S9). Реальный UAT остаётся за оператором.</li>
 </ul>
 </main>
 

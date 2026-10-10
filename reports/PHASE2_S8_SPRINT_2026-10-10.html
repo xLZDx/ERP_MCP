@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — sprint S8: results</h1>
-<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 080c76d, fix batch 5f51d0f (GPT-PM pending; not pushed) · development rules v4</div>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 080c76d, fix batch 5f51d0f (GPT-PM: APPROVE at fa4852d (nine rounds, S7+S8), pushed) · development rules v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -52,7 +52,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
   <dl>
     <dt>Project</dt><dd>ERP_MCP</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5f51d0f</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Summary</h2>
 <div class="card">
-<p><span class="ok">Sprint S8 is implemented and verified offline</span> (code 080c76d, fix batch 5f51d0f). <span class="warn">GPT-PM pending, not pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G5 (UAT) open: seven modules (types, discrepancy review, timeline, coverage, safe errors, jobs/results API, session facade) are typed in-memory view models, with no UI, HTTP or DB.</p>
+<p><span class="ok">Sprint S8 is implemented and verified offline</span> (code 080c76d, fix batch 5f51d0f). <span class="warn">GPT-PM: APPROVE at fa4852d (nine rounds on S7+S8), pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G5 (UAT) open: seven modules (types, discrepancy review, timeline, coverage, safe errors, jobs/results API, session facade) are typed in-memory view models, with no UI, HTTP or DB.</p>
 <ul>
 <li>Tests: offline <code>tests/phase2</code> — <b>4433 passed, 229 skipped</b>; <code>ruff</code> clean.</li>
 <li>S8 files: types 91, review 129, timeline 204, coverage 197, safe_errors 65, jobs_api 67 + bypass 59, session 28, boundaries 59 and four fix files (26 / 48 / 36 / 27).</li>
@@ -102,7 +102,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <li><b>S8 review round</b> (code 080c76d; four read-only reviewers): 0 BLOCKER, 2 HIGH, about 10 MAJOR; fixed in one batch, 5f51d0f.</li>
 <li>Main points: company isolation was missing on the cards, annotations, rerun and job enqueue paths; the viewer scope was assembled by the caller; a rerun created its run before the job was dispatched (a retry gave a false STALE); global quotas let one tenant starve the others; attestations in the timeline leaked across companies.</li>
 <li><b>Process:</b> some streams wrote code before tests (red tests were observed only partly: G3 29 of 36), recorded in the decision log.</li>
-<li><b>GPT-PM:</b> pending. The S7 request is stuck on a PM Bridge browser failure (CHATGPT_RENDERER_STALLED); a forced restart is an operator break-glass and was not used.</li>
+<li><b>GPT-PM:</b> nine rounds on S7+S8, APPROVE at fa4852d, pushed (an earlier request had stalled on a PM Bridge browser failure).</li>
 </ul>
 <h2>NOT_RUN and not claimed</h2>
 <ul>
@@ -114,7 +114,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li>Residual risks: card_digest is unkeyed; the epoch re-check is not atomic; annotate has no idempotency key; EFFECT_DONE entries expire with normal retention; fake ids are guessable; an INCONCLUSIVE card is not covered at facade level.</li>
 <li>Release 2 is NO-GO, G1 is NOT PASSED, G5 is open.</li>
-<li>Next: GPT-PM on S7 and S8 (after PM Bridge recovers); after APPROVE, a plain push; then S9. A real UAT stays with the operator.</li>
+<li>Next: S9 is done (see the S9 report). A real UAT stays with the operator.</li>
 </ul>
 </main>
 
