@@ -34,7 +34,7 @@ from .drive_changes import (
     DrivePage,
     PreparedDriveBatch,
 )
-from .drive_cursor import CursorCommitReceipt
+from .drive_cursor import DriveCursorStore
 from .drive_port import (
     MAX_CORPUS_ROOTS,
     DriveErrorCode,
@@ -195,7 +195,8 @@ class _CacheEntry:
 
 class MembershipChecker:
     def __init__(
-        self, port: DrivePort, identity: DrivePortIdentity, corpus: Corpus, scope_epoch: int
+        self, port: DrivePort, identity: DrivePortIdentity, corpus: Corpus, scope_epoch: int,
+        *, commit_store: object | None = None,
     ) -> None:
         try:
             sound = (
@@ -220,8 +221,10 @@ class MembershipChecker:
         self._cache: dict[str, _CacheEntry] = {}
         self._by_ancestor: dict[str, set[str]] = {}
         self._index_size = 0  # total (ancestor, file) pairs in _by_ancestor
-        # (preparation, roots, epoch) of the last PREPARED page: removed roots it re-qualified; applied only by accept_page
-        self._pending_reinstate: tuple[object, frozenset[str], int] | None = None
+        # (preparation, roots, epoch, stored cursor) of the last PREPARED page: removed roots it re-qualified; applied only by accept_page
+        self._pending_reinstate: tuple[object, frozenset[str], int, str] | None = None
+        # the cursor store whose commit receipts count as proof; without one nothing is ever reinstated
+        self._commit_store = commit_store if type(commit_store) is DriveCursorStore else None
         self._removed_roots: set[str] = set()  # roots a change feed reported removed/trashed
         self._lookups = 0  # port lookups so far (page budget)
 
@@ -595,7 +598,7 @@ class MembershipChecker:
             for fid in batch.requalify_folder_ids:
                 self.invalidate(fid)
             prepared = PagePreparation(PageStatus.PREPARED, PageReason.PAGE_PREPARED, batch, results)
-            self._pending_reinstate = (prepared, frozenset(reinstated), epoch) if reinstated else None
+            self._pending_reinstate = (prepared, frozenset(reinstated), epoch, stored_cursor) if reinstated else None
             return prepared
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
             return refused(PageReason.PAGE_PROJECTION_REFUSED)
@@ -612,8 +615,13 @@ class MembershipChecker:
         if pending is None or pending[0] is not preparation or pending[2] != self._epoch:
             return False
         batch = getattr(preparation, "batch", None)
-        if (type(receipt) is not CursorCommitReceipt or batch is None or not receipt.valid()
-                or receipt.token != batch.committable_cursor() or receipt.epoch != self._epoch):
+        store = self._commit_store
+        if store is None or batch is None:
+            return False
+        token = batch.committable_cursor()
+        # the receipt must be this bound store's acknowledgment of exactly this page's transaction: this
+        # connection, from the cursor the page was prepared against, to the cursor the batch may commit
+        if not store.receipt_matches(receipt, self._identity, pending[3], token, self._epoch):
             return False
         self._pending_reinstate = None
         for fid in pending[1]:

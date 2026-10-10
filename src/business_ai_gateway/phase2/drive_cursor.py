@@ -420,22 +420,16 @@ class CursorLoad:
 
 
 class CursorCommitReceipt:
-    """Acknowledgment that THIS store durably committed ``token`` as cursor ``version`` under ``epoch``.
+    """Opaque acknowledgment handle issued by ``DriveCursorStore.commit`` after a durable commit.
 
-    Only ``DriveCursorStore.commit`` issues one (it remembers the nonce); a receipt that was constructed
-    elsewhere, or by a lookalike store, does not verify."""
+    It carries NO evidence of its own (only a private nonce): what it proves lives in the issuing store's
+    registry and is checked through ``DriveCursorStore.receipt_matches``, which binds it to the exact
+    connection, prior cursor, committed cursor and epoch. Constructing one elsewhere proves nothing."""
 
-    __slots__ = ("_nonce", "_store", "epoch", "token", "version")
+    __slots__ = ("_nonce",)
 
-    def __init__(self, store: object, nonce: object, token: str, version: int, epoch: int) -> None:
-        self._store, self._nonce = store, nonce
-        self.token, self.version, self.epoch = token, version, epoch
-
-    def valid(self) -> bool:
-        store = getattr(self, "_store", None)
-        if type(store) is not DriveCursorStore:
-            return False
-        return store._issued.get(self._nonce) == (self.token, self.version, self.epoch)
+    def __init__(self, nonce: object) -> None:
+        self._nonce = nonce
 
     def __repr__(self) -> str:
         return "CursorCommitReceipt()"
@@ -573,7 +567,8 @@ class DriveCursorStore:
             raise ValueError("TRACKER_REQUIRED")
         self._cursors = cursors
         self._tracker = tracker
-        self._issued: dict[object, tuple[str, int, int]] = {}  # commit receipts this store handed out
+        # receipts this store handed out: nonce -> (namespace, tenant, connection, prior token, token, version, epoch)
+        self._issued: dict[object, tuple[str, str, str, str | None, str, int, int]] = {}
 
     @property
     def tracker(self) -> ResnapshotTracker:
@@ -734,9 +729,34 @@ class DriveCursorStore:
             nonce = object()
             while len(self._issued) >= _MAX_RECEIPTS:  # bounded: the oldest receipt expires first
                 del self._issued[next(iter(self._issued))]
-            self._issued[nonce] = (new.token, done.version, new.epoch)
-            done = replace(done, receipt=CursorCommitReceipt(self, nonce, new.token, done.version, new.epoch))
+            self._issued[nonce] = (new.namespace, new.tenant, new.connection_id, old.token, new.token,
+                                   done.version, new.epoch)
+            done = replace(done, receipt=CursorCommitReceipt(nonce))
         return done
+
+    def receipt_matches(self, receipt: object, identity: object, prior_cursor: object, token: object,
+                        epoch: object) -> bool:
+        """True only when ``receipt`` was issued by THIS store for a commit of exactly this connection
+        (namespace, tenant, connection), from ``prior_cursor`` to ``token``, under ``epoch``. Never raises."""
+        try:
+            if (type(receipt) is not CursorCommitReceipt or type(identity) is not DrivePortIdentity
+                    or type(token) is not str or type(epoch) is not int
+                    or not (prior_cursor is None or type(prior_cursor) is str)):
+                return False
+            nonce = receipt._nonce
+            if type(nonce) is not object:
+                return False
+            entry = self._issued.get(nonce)
+            if entry is None:
+                return False
+            namespace, tenant, connection, prior, committed, _version, committed_epoch = entry
+            parts = (identity.namespace, identity.tenant, identity.connection_id)
+            if any(type(p) is not str for p in parts):
+                return False
+            return ((namespace, tenant, connection) == parts and prior == prior_cursor
+                    and committed == token and committed_epoch == epoch)
+        except Exception:  # noqa: BLE001 - a malformed receipt is simply not proof
+            return False
 
     async def reset(self, identity: DrivePortIdentity, corpus: DriveCorpus, drive_epoch: int,
                     lease: DriveLease, load: CursorLoad) -> CursorLoad:
