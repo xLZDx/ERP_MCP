@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from ._identity import clean_identity, exact_text, scope_key, stable_key
+from ._identity import clean_identity, exact_text, is_empty_1c_ref, scope_key, stable_key
 
 __all__ = [
     "ActorKind", "AliasOutcome", "AliasRecord", "AliasResolver", "AliasScope", "Approver",
@@ -76,7 +76,12 @@ class AliasScope:
 
 
 def _skey(scope: object) -> tuple[str, str] | None:
-    return scope.key() if type(scope) is AliasScope else None
+    if type(scope) is not AliasScope:
+        return None
+    try:
+        return scope.key()
+    except Exception:  # noqa: BLE001 - unset slots / hostile attribute access: treat as invalid scope
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,14 +91,18 @@ class Reference:
     value: str
 
     def valid(self) -> bool:
-        return bool(exact_text(self.namespace)) and bool(exact_text(self.value))
+        return (bool(exact_text(self.namespace)) and bool(exact_text(self.value))
+                and not is_empty_1c_ref(exact_text(self.value)))
 
     def key(self) -> tuple[str, str]:
         return (exact_text(self.namespace), exact_text(self.value))
 
 
 def _ref_ok(ref: object) -> bool:
-    return type(ref) is Reference and ref.valid()
+    try:
+        return type(ref) is Reference and ref.valid()
+    except Exception:  # noqa: BLE001 - hostile/partially built object
+        return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,18 +196,20 @@ class AliasResolver:
         skey = _skey(entity.scope)
         if skey is None:
             return _scope_bad()
-        refs = entity.references
-        if (not isinstance(entity.entity_id, str) or not exact_text(entity.entity_id)
-                or not normalize_name(entity.canonical_name)
+        try:
+            entity_id, name, refs = entity.entity_id, entity.canonical_name, entity.references
+        except AttributeError:
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_INVALID")
+        if (type(entity_id) is not str or not exact_text(entity_id) or is_empty_1c_ref(entity_id)
+                or not normalize_name(name)
                 or not isinstance(refs, (tuple, list))
                 or not all(_ref_ok(r) for r in tuple(refs))):
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_INVALID")
-        key = (skey, entity.entity_id)
+        key = (skey, entity_id)
         if key in self._entities:
             return ResolutionResult(AliasOutcome.REJECTED_DUPLICATE, code="ENTITY_EXISTS")
-        self._entities[key] = SupplierEntity(entity.entity_id, entity.scope,
-                                             entity.canonical_name, tuple(refs))
-        return ResolutionResult(AliasOutcome.OK, entity_id=entity.entity_id)
+        self._entities[key] = SupplierEntity(entity_id, entity.scope, name, tuple(refs))
+        return ResolutionResult(AliasOutcome.OK, entity_id=entity_id)
 
     def add_alias(self, alias: AliasRecord) -> ResolutionResult:
         if type(alias) is not AliasRecord:
@@ -206,13 +217,18 @@ class AliasResolver:
         skey = _skey(alias.scope)
         if skey is None:
             return _scope_bad()
-        if not isinstance(alias.entity_id, str) or (skey, alias.entity_id) not in self._entities:
+        try:
+            entity_id, alias_text = alias.entity_id, alias.alias_text
+            reference, provenance = alias.reference, alias.provenance
+        except AttributeError:
+            return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ALIAS_INVALID")
+        if type(entity_id) is not str or (skey, entity_id) not in self._entities:
             # also covers an entity that exists only in another scope: no cross-scope oracle
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ENTITY_UNKNOWN")
-        has_text = bool(normalize_name(alias.alias_text))
-        has_ref = _ref_ok(alias.reference)
-        if (not has_text and not has_ref) or not exact_text(alias.provenance) or (
-                alias.reference is not None and not has_ref):
+        has_text = bool(normalize_name(alias_text))
+        has_ref = _ref_ok(reference)
+        if (not has_text and not has_ref) or not exact_text(provenance) or (
+                reference is not None and not has_ref):
             return ResolutionResult(AliasOutcome.REJECTED_INPUT, code="ALIAS_INVALID")
         self._aliases.append(alias)
         return ResolutionResult(AliasOutcome.OK, entity_id=alias.entity_id)
@@ -284,7 +300,7 @@ class AliasResolver:
         skey = _skey(scope)
         if skey is None:
             return DecisionResult(AliasOutcome.SCOPE_VIOLATION, code="SCOPE_INVALID")
-        item = self._queue.get(item_id) if isinstance(item_id, str) else None
+        item = self._queue.get(item_id) if type(item_id) is str else None
         if item is None or _skey(item.scope) != skey:
             # another scope's item is indistinguishable from a missing one
             return DecisionResult(AliasOutcome.UNKNOWN_ITEM, code="ITEM_UNKNOWN")
@@ -294,7 +310,8 @@ class AliasResolver:
         why = exact_text(reason)
         if not why:
             return DecisionResult(AliasOutcome.REJECTED_INPUT, code="REASON_REQUIRED")
-        if not isinstance(chosen_entity_id, str) or chosen_entity_id not in item.candidate_ids:
+        if type(chosen_entity_id) is not str or not any(
+                type(c) is str and str.__eq__(c, chosen_entity_id) is True for c in item.candidate_ids):
             return DecisionResult(AliasOutcome.REJECTED_CHOICE, code="CHOICE_NOT_CANDIDATE")
         if item.decision is not None:
             if item.decision.chosen_entity_id == chosen_entity_id:

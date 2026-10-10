@@ -882,3 +882,45 @@ def test_m09_hand_built_result_without_tenant_or_source_is_refused():
         bare = dataclasses.replace(qualified(), **{field: ""})
         assert make_balance_view(bare, Decimal(1)).state is ApViewState.UNQUALIFIED
         assert age((item("D", D0, DUE, "1"),), strat=bare).reason is Reason.STRATEGY_NOT_QUALIFIED
+
+
+# ------------------------------------------------------------------ same-root-cause sweep (NFKC / GUID spellings)
+
+FULLWIDTH_ZERO = "０" * 32
+GUID_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+
+
+@pytest.fixture
+def raw_ascii_empty_ref_check(monkeypatch):
+    """Stand-in for an empty-reference check that only sees ASCII spellings, so these tests prove the
+    module tests the NORMALISED form itself instead of leaning on the helper's folding."""
+    real = mod.is_empty_1c_ref
+    monkeypatch.setattr(mod, "is_empty_1c_ref", lambda v: type(v) is str and v.isascii() and real(v))
+
+
+def test_fullwidth_zero_guid_company_is_not_a_declared_identity(raw_ascii_empty_ref_check):
+    r = qualify_strategy(LEDGER, inputs(company=FULLWIDTH_ZERO), source(companies=(FULLWIDTH_ZERO,)))
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_INVALID
+
+
+def test_fullwidth_zero_guid_in_source_list_is_refused(raw_ascii_empty_ref_check):
+    r = qualify_strategy(LEDGER, inputs(), source(companies=("MOLDRETAIL", FULLWIDTH_ZERO)))
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_INVALID
+
+
+def test_fullwidth_zero_guid_document_reference_refuses_the_aging(raw_ascii_empty_ref_check):
+    r = age((item("D1", D0, DUE, "5"), item(FULLWIDTH_ZERO, D0, DUE, "10")), ASOF)
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.DOC_REF_EMPTY_1C)
+
+
+@pytest.mark.parametrize("spelling", [GUID_A.upper(), "{" + GUID_A + "}", GUID_A.replace("-", ""),
+                                      "".join(chr(ord(c) + 0xFEE0) if c.isdigit() else c for c in GUID_A)])
+def test_two_spellings_of_one_guid_due_the_same_day_are_a_duplicate_item(spelling):
+    rows = (item(GUID_A, D0, DUE, "5"), item(spelling, D0, DUE, "5"))
+    r = age(rows, ASOF, total=Decimal(10))
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.DUPLICATE_ITEM)
+
+
+def test_two_spellings_of_one_guid_with_different_due_dates_are_instalments():
+    rows = (item(GUID_A, D0, DUE, "5"), item("{" + GUID_A.upper() + "}", D0, date(2026, 5, 1), "5"))
+    assert age(rows, ASOF, total=Decimal(10)).state is AgingState.AVAILABLE

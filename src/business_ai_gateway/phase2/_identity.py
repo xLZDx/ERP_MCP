@@ -66,16 +66,16 @@ def _visible(text: str) -> bool:
 
 
 def exact_text(value: object) -> str:
-    """Trimmed, case-preserved text; '' when not a str, forbidden chars, or nothing visible."""
-    if not isinstance(value, str) or len(value) > MAX_TEXT_CHARS or _has_forbidden(value):
+    """Trimmed, case-preserved text; '' when not exactly a str, forbidden chars, or nothing visible."""
+    if type(value) is not str or len(value) > MAX_TEXT_CHARS or _has_forbidden(value):
         return ""
     out = value.strip(" ")
     return out if _visible(out) else ""
 
 
 def clean_identity(value: object) -> str:
-    """NFKC + casefold + strip; '' when not a str, forbidden chars (raw or normalised) or blank."""
-    if not isinstance(value, str) or len(value) > MAX_TEXT_CHARS or _has_forbidden(value):
+    """NFKC + casefold + strip; '' when not exactly a str, forbidden chars (raw or normalised) or blank."""
+    if type(value) is not str or len(value) > MAX_TEXT_CHARS or _has_forbidden(value):
         return ""
     norm = unicodedata.normalize("NFKC", value)
     if len(norm) > MAX_TEXT_CHARS or _has_forbidden(norm):
@@ -111,9 +111,10 @@ def canonical_guid(value: object) -> str | None:
     ``None`` for anything that is not exactly a ``str`` holding 32 hex digits, so callers can
     de-duplicate GUID-shaped identifiers without folding case-sensitive identifiers of other shapes.
     """
-    if type(value) is not str:
+    if type(value) is not str or len(value) > MAX_TEXT_CHARS:
         return None
-    text = value.strip()
+    # NFKC first: fullwidth / compatibility spellings of the same GUID are the same GUID
+    text = unicodedata.normalize("NFKC", value).strip()
     if len(text) >= 2 and text[0] + text[-1] in ("{}", "()"):
         text = text[1:-1]
     hexes = text.replace("-", "")

@@ -119,3 +119,35 @@ def test_canonical_guid_refuses_a_str_subclass():
     class Lying(str):
         pass
     assert canonical_guid(Lying("a1234567-89ab-4cde-8f01-1234567890ab")) is None
+
+
+def test_fullwidth_spellings_fold_to_the_same_guid_and_the_empty_reference():
+    zero = "０" * 8 + "-" + "０" * 4 + "-" + "０" * 4 + "-" + "０" * 4 + "-" + "０" * 12
+    assert is_empty_1c_ref(zero) is True
+    ascii_guid = "a1234567-89ab-4cde-8f01-1234567890ab"
+    wide = "".join(chr(ord(c) + 0xFEE0) if c.isalnum() and ord(c) < 128 else c for c in ascii_guid)
+    assert wide != ascii_guid and canonical_guid(wide) == ascii_guid
+
+
+def test_over_long_value_is_not_a_guid():
+    assert canonical_guid("0" * 100000) is None
+
+
+# ---- exact-type checks: a str subclass must not smuggle zero-width characters -------------------
+class _LyingStr(str):
+    """Hides the real content from iteration/len/strip so a naive check sees clean text."""
+    def __iter__(self):
+        return iter("alice")
+
+    def __len__(self):
+        return 5
+
+    def strip(self, chars=None):
+        return "alice"
+
+
+def test_str_subclass_with_zero_width_is_refused_by_exact_text_and_clean_identity():
+    hostile = _LyingStr("al\u200bice")
+    assert exact_text(hostile) == ""
+    assert clean_identity(hostile) == ""
+    assert scope_key(hostile, "co") is None
