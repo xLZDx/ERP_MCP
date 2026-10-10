@@ -368,7 +368,6 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
         # the minimum is a RESERVATION of physical capacity: whatever part phase A could not grant (writer / capture /
         # tenant caps defer it) stays held back from interactive work on that backend and from the shared total
         unmet = {b: max(0, min(min_bg, n) - guaranteed.get(b, 0)) for b, n in bg_demand.items()}
-        reserved = sum(unmet.values())
         served: set[str] = set()  # backends whose interactive work already got its first slot
         for i in interactive:  # phase B: interactive takes what the guarantee leaves
             backend = items[i][1]
@@ -377,8 +376,12 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
                    waiting + sum(unmet.values()))
             if ledger.granted[i]:
                 served.add(backend)
-        for i in background:  # phase C: remaining background demand
-            _grant(ledger, i, items[i], per_limit - ledger.backend.get(items[i][1], 0))
+        for i in background:  # phase C: remaining background demand; other backends' reservations stay held back
+            backend = items[i][1]
+            got = _grant(ledger, i, items[i], per_limit - ledger.backend.get(backend, 0),
+                         sum(unmet.values()) - unmet.get(backend, 0))
+            unmet[backend] = max(0, unmet.get(backend, 0) - got)  # extra background fills its own reservation first
+        reserved = sum(unmet.values())  # invariant: granted + reserved <= total_limit, per backend too
         allocations = tuple(
             Allocation(i, ledger.granted[i], items[i][4] - ledger.granted[i],
                        ledger.reason[i] if items[i][4] > ledger.granted[i] else None)
