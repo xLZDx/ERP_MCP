@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S8: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S8: итоги</h1>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 080c76d, пакет исправлений 5f51d0f (GPT-PM ожидается; не запушен) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5f51d0f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S8 реализован и проверен офлайн</span> (код 080c76d, пакет исправлений 5f51d0f). <span class="warn">GPT-PM ожидается, push не выполнен.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G5 (UAT) открыт: семь модулей (типы, разбор расхождений, таймлайн, покрытие, безопасные ошибки, jobs/results API, фасад сессии) — это типизированные модели представления в памяти, без UI, HTTP и БД.</p>
+<ul>
+<li>Тесты: офлайн <code>tests/phase2</code> — <b>4433 passed, 229 skipped</b>; <code>ruff</code> чистый.</li>
+<li>Файлы S8: types 91, review 129, timeline 204, coverage 197, safe_errors 65, jobs_api 67 + bypass 59, session 28, границы 59 и четыре файла исправлений (26 / 48 / 36 / 27).</li>
+<li>Ревью: четыре read-only ревьюера — 0 BLOCKER, 2 HIGH и около 10 MAJOR; исправлены одним пакетом, включая изоляцию по компании на всех путях реестра и проверку прав актора до эпохи.</li>
+<li>Истории: US-039..041 — максимум <code>IMPLEMENTED_UNVERIFIED</code>; TC115-123 покрыты офлайн на фикстурах.</li>
+<li>Запрет оператора на мутации соблюдён; CI, PostgreSQL, браузерный UAT и регрессия Release 1 не запускались.</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-039 разбор расхождений (<code>workbench_types</code>, <code>workbench_review</code>)</td><td>Карточки с точной дельтой; исходные числа неизменяемы; новое свидетельство — новый run; изоляция по компании</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет числа по строкам в реестре</td></tr>
+<tr><td>E2</td><td>R2-US-040 таймлайн и покрытие (<code>timeline_view</code>, <code>coverage_view</code>)</td><td>Две оси времени; зелёным бывает только LIVE_CURRENT; область зрителя без утечек</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реального UI</td></tr>
+<tr><td>E3</td><td>R2-US-041 безопасные ошибки и jobs/results (<code>safe_errors</code>, <code>jobs_api</code>)</td><td>Фиксированный порядок проверок; CSRF 403 / идемпотентность 409; отказ не обходится; квоты по tenant</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет HTTP/сессий/RBAC</td></tr>
+<tr><td>E4</td><td>Фасад сессии (<code>workbench_session</code>)</td><td>Без собственных решений; права актора до эпохи; сбой компонента — INTERNAL_REFUSED/DEPENDENCY_FAILED с событием</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>annotate без ключа идемпотентности</td></tr>
+<tr><td>E5</td><td>Трассируемость, документы, границы</td><td>AST-тест границ; метки фича-файла; матрица</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST — статический прокси</td></tr>
+<tr><td>Fix</td><td>Пакет исправлений по ревью</td><td>Все HIGH/MAJOR закрыты одним пакетом</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Принятые остатки — в журнале решений</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов (TC115-123)</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S8). Мутации не запускались по запрету оператора. «Результат» — офлайн-прогон на фикстурах; число в скобках — количество тестов в файле. Один файл может покрывать несколько TC.</p>
+<div class="wrap"><table>
+<thead><tr><th>Тест-кейс</th><th>Требование</th><th>Файл теста</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Известный пробел</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-039 / TC115</td><td>Карточка расхождения: строка, фрагмент, владелец, точная дельта</td><td>test_workbench_review.py (129), test_s8_fix_review.py (26)</td><td>FAIL-прогон с двумя расходящимися мерами даёт две карточки с точной Decimal-дельтой (без float и округления), владельцем и ссылкой на фрагмент; без владельца — OWNER_UNASSIGNED, без строк — ROW_DETAIL_UNAVAILABLE; переполнение точности — DELTA_PRECISION_EXCEEDED только для своей карточки; «нет прогона», PASS и INCONCLUSIVE различимы; чужая компания того же tenant и неизвестный ключ дают одинаковый NOT_IN_SCOPE</td><td>offline</td><td><span class="ok">pass</span></td><td>Числа сравнения по строкам проверяются только на самосогласованность (в реестре только меры)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-039 / TC116</td><td>Исходные числа неизменяемы</td><td>test_workbench_review.py (129), test_workbench_types.py (91)</td><td>После заметок, назначения и подтверждения числа и original_digest равны реестру; подделанная карточка — ORIGINAL_TAMPERED; запрос правки — ORIGINAL_NUMBERS_IMMUTABLE и не читает данные (не оракул существования); карточка из caller-сравнения не получает ORIGINAL_INTACT, если числа не сверяются с реестром (ORIGINAL_UNVERIFIABLE); сбой реестра не превращается в TAMPERED</td><td>offline</td><td><span class="ok">pass</span></td><td>card_digest — без ключа, это самосогласованность, а не подпись</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-039 / TC117</td><td>Новое свидетельство — новый run</td><td>test_workbench_review.py (129), test_workbench_session.py (28), test_s8_fix_session.py (27)</td><td>Перезапуск с новым снимком создаёт цепочку: старый run SUPERSEDED с теми же числами; тот же снимок — NO_NEW_EVIDENCE; не голова цепочки — RERUN_TARGET_STALE; check_rerun ничего не создаёт, commit_rerun создаёт run после резервирования; сбой dispatch и повтор с тем же ключом достраивает тот же run и никогда не даёт STALE; смена эпохи во время чтения — SCOPE_EPOCH_STALE без run</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет проверки источника на паузе и роли актора (нет внедрённого факта)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC118</td><td>Метки известного и эффективного времени</td><td>test_timeline_view.py (204), test_s8_fix_views.py (36)</td><td>Событие с source_effective_at и без него показывает обе метки; EFFECTIVE_UNKNOWN никогда не копирует recorded/observed; поздняя поправка сортируется по двум осям отдельно; разрыв виден как разрыв; tz должен быть именно UTC; будущая аттестация не показывается раньше времени</td><td>offline</td><td><span class="ok">pass</span></td><td>Фреш-окно и «источник на паузе» — внедрённые факты</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC119</td><td>Историческое не равно живому зелёному</td><td>test_timeline_view.py (204), test_coverage_view.py (197)</td><td>is_green истинно только для LIVE_CURRENT; для каждого из: superseded, смена ревизии, отозванная аттестация, устаревший, непокрытый, источник на паузе, без аттестации, неизвестный вход, а также событие GAP/SOURCE_UNAVAILABLE/ATTESTATION_REVOKED новее прогона — именованное не-зелёное значение с причиной; check_as_of не даёт зелёного; регресс часов не воскрешает отзыв</td><td>offline</td><td><span class="ok">pass</span></td><td>Событие уровня компании снижает все более старые прогоны компании (у события нет ключа прогона)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC120</td><td>Diff и свидетельства ограничены областью зрителя</td><td>test_coverage_view.py (197), test_timeline_view.py (204), test_s8_fix_views.py (36), test_s8_fix_session.py (27)</td><td>Чужие строки отсутствуют в выводе и repr, виден лишь непрозрачный флаг; аттестации только привязанные к прогонам зрителя; чужие дубли/висячие связи/мусор не меняют и не ломают вид; точное (не NFKC) совпадение tenant и компании до любого чтения; пустая матрица компании — INCOMPLETE/EMPTY_MATRIX; дайджест вида проверяется при построении; устаревшая эпоха — SCOPE_EPOCH_STALE</td><td>offline</td><td><span class="ok">pass</span></td><td>Строки матрицы сопоставляются по нормализованному scope_key</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC121</td><td>Безопасная причина и аннотации эндпоинтов</td><td>test_safe_errors.py (65), test_jobs_api.py (67), test_s8_fix_jobs_api.py (48)</td><td>Каждый отказ — фиксированная причина, следующее действие и correlation id; ядовитые строки, исключения и ссылки на секреты не попадают ни в одно поле и repr; таблицы сообщений покрывают все коды (проверка при импорте); таблица эндпоинтов помечает мутирующие и читающие; чужое задание — тот же NOT_FOUND, что и отсутствующее; незавершённое своё — 202/200 с состоянием</td><td>offline</td><td><span class="ok">pass</span></td><td>Фейковые correlation/job id последовательны и угадываемы</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC122</td><td>CSRF и идемпотентность: 403/409</td><td>test_jobs_api.py (67), test_jobs_api_bypass.py (59), test_s8_fix_jobs_api.py (48), test_workbench_session.py (28)</td><td>Нет/неверный/чужой/просроченный CSRF — 403 без вызовов dispatcher и записей идемпотентности; тот же ключ и дайджест — повтор без второго dispatch; тот же ключ и другой дайджест — 409; порядок проверок: сессия, CSRF, права, область/эпоха, граница, идемпотентность, dispatch; квоты по tenant и актору: заполненный tenant A не мешает tenant B; действие вне глобального замка; границы срока сессии и хранения проверены ровно по краю</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальных сессий, cookie, RBAC; JobQueuePort не вызывается</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC123</td><td>Отказ не обходится через raw COM/DC</td><td>test_jobs_api_bypass.py (59), test_s8_fix_jobs_api.py (48), test_s8_boundaries.py (59)</td><td>Отказанная операция остаётся отказанной при смене регистра, отступов, NFKC-двойников, невидимых символов, другого канала или алиаса — тот же фиксированный код и ноль вызовов dispatcher; имя операции выводится из вида задания, несовпадение — OPERATION_DENIED; capture только по политике (не по аргументу вызывающего); ни у одной сигнатуры нет параметра command/query/sql/raw/channel</td><td>offline</td><td><span class="ok">pass</span></td><td>AST-скан — статический прокси: алиасинг и getattr не обнаруживаются</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Раунд ревью S8</b> (код 080c76d; четыре read-only ревьюера): 0 BLOCKER, 2 HIGH, около 10 MAJOR; исправлены одним пакетом 5f51d0f.</li>
+<li>Главное: изоляция по компании отсутствовала на путях карточек, аннотаций, перезапуска и постановки заданий; область зрителя собиралась самим вызывающим; перезапуск создавал run до отправки задания (повтор давал ложный STALE); глобальные квоты позволяли одному tenant заглушить остальных; атрибуции в таймлайне утекали между компаниями.</li>
+<li><b>Процесс:</b> часть потоков писала код раньше тестов (красные тесты наблюдались частично: G3 — 29 из 36), это отмечено в журнале.</li>
+<li><b>GPT-PM:</b> ожидается. Запрос по S7 застрял на сбое браузера PM Bridge (CHATGPT_RENDERER_STALLED); принудительный перезапуск — операторский break-glass, не применялся.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Реальный UI и браузерный UAT (G5), реальные HTTP/cookie/сессии/CSRF, RBAC.</li>
+<li>Интеграционный прогон на PostgreSQL; GitHub CI; регрессия Release 1; реальный 1С.</li>
+<li>Прогоны мутаций (запрет оператора).</li>
+</ul>
+<h2>Известные пробелы и следующие шаги</h2>
+<ul>
+<li>Остаточные риски: card_digest — без ключа; перепроверка эпохи не атомарна; annotate без ключа идемпотентности; EFFECT_DONE истекает по обычному сроку хранения; фейковые id угадываемы; INCONCLUSIVE карточка не покрыта на уровне фасада.</li>
+<li>Release 2 — NO-GO, G1 — NOT PASSED, G5 открыт.</li>
+<li>Дальше: GPT-PM по S7 и S8 (после восстановления PM Bridge); после APPROVE — обычный push; затем S9. Реальный UAT остаётся за оператором.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

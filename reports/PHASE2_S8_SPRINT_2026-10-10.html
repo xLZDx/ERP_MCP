@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S8: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S8: results</h1>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 080c76d, fix batch 5f51d0f (GPT-PM pending; not pushed) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5f51d0f</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S8 is implemented and verified offline</span> (code 080c76d, fix batch 5f51d0f). <span class="warn">GPT-PM pending, not pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G5 (UAT) open: seven modules (types, discrepancy review, timeline, coverage, safe errors, jobs/results API, session facade) are typed in-memory view models, with no UI, HTTP or DB.</p>
+<ul>
+<li>Tests: offline <code>tests/phase2</code> — <b>4433 passed, 229 skipped</b>; <code>ruff</code> clean.</li>
+<li>S8 files: types 91, review 129, timeline 204, coverage 197, safe_errors 65, jobs_api 67 + bypass 59, session 28, boundaries 59 and four fix files (26 / 48 / 36 / 27).</li>
+<li>Review: four read-only reviewers — 0 BLOCKER, 2 HIGH and about 10 MAJOR; fixed in one batch, including company isolation on every ledger path and actor entitlement before the epoch.</li>
+<li>Stories: US-039..041 — ceiling <code>IMPLEMENTED_UNVERIFIED</code>; TC115-123 covered offline over fixtures.</li>
+<li>The operator mutation ban was respected; CI, PostgreSQL, browser UAT and the Release 1 regression were not run.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-039 discrepancy review (<code>workbench_types</code>, <code>workbench_review</code>)</td><td>Cards with exact deltas; original numbers immutable; new evidence is a new run; company isolation</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>The ledger has no row-level numbers</td></tr>
+<tr><td>E2</td><td>R2-US-040 timeline and coverage (<code>timeline_view</code>, <code>coverage_view</code>)</td><td>Two time axes; only LIVE_CURRENT can be green; viewer scope without leaks</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real UI</td></tr>
+<tr><td>E3</td><td>R2-US-041 safe errors and jobs/results (<code>safe_errors</code>, <code>jobs_api</code>)</td><td>Fixed check order; CSRF 403 / idempotency 409; refusal not bypassable; per-tenant quotas</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No HTTP/sessions/RBAC</td></tr>
+<tr><td>E4</td><td>Session facade (<code>workbench_session</code>)</td><td>No decisions of its own; actor entitlement before the epoch; a component failure is INTERNAL_REFUSED/DEPENDENCY_FAILED with an event</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>annotate has no idempotency key</td></tr>
+<tr><td>E5</td><td>Traceability, docs sync, boundaries</td><td>AST boundary test; feature-file tags; matrix</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST is a static proxy</td></tr>
+<tr><td>Fix</td><td>Review fix batch</td><td>All HIGH/MAJOR closed in one batch</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Accepted residuals are in the decision log</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix (TC115-123)</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S8 section). Mutations were not run (operator ban). The Result column means an offline run over fixtures; the number in parentheses is the test count of the file. One file can cover several TCs.</p>
+<div class="wrap"><table>
+<thead><tr><th>Test case</th><th>Requirement</th><th>Test file</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Known gap</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-039 / TC115</td><td>A discrepancy card: row, fragment, owner, exact delta</td><td>test_workbench_review.py (129), test_s8_fix_review.py (26)</td><td>A FAIL run with two differing measures yields two cards with exact Decimal deltas (no float, no rounding), the owner and the fragment ref; no owner is OWNER_UNASSIGNED, no rows is ROW_DETAIL_UNAVAILABLE; a precision overflow is DELTA_PRECISION_EXCEEDED for that card only; "no run", PASS and INCONCLUSIVE are distinguishable; another company of the same tenant and an unknown key give the identical NOT_IN_SCOPE</td><td>offline</td><td><span class="ok">pass</span></td><td>Row-level comparison numbers are only self-consistent (the ledger keeps measures only)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-039 / TC116</td><td>Original numbers are immutable</td><td>test_workbench_review.py (129), test_workbench_types.py (91)</td><td>After notes, assignment and acknowledgement the numbers and original_digest equal the ledger; a forged card is ORIGINAL_TAMPERED; an override request is ORIGINAL_NUMBERS_IMMUTABLE and reads no data (no existence oracle); a card built from a caller comparison never gets ORIGINAL_INTACT unless the numbers match the ledger (ORIGINAL_UNVERIFIABLE); a ledger fault is never TAMPERED</td><td>offline</td><td><span class="ok">pass</span></td><td>card_digest is unkeyed: self-consistency, not a signature</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-039 / TC117</td><td>New evidence creates a new run</td><td>test_workbench_review.py (129), test_workbench_session.py (28), test_s8_fix_session.py (27)</td><td>A rerun with a new snapshot chains a new run: the old run is SUPERSEDED with unchanged numbers; the same snapshot is NO_NEW_EVIDENCE; a non-head target is RERUN_TARGET_STALE; check_rerun creates nothing, commit_rerun creates the run after the reservation; a dispatch failure retried with the same key completes the same run and never answers STALE; an epoch change during the read is SCOPE_EPOCH_STALE with no run</td><td>offline</td><td><span class="ok">pass</span></td><td>No paused-source or actor-role check (no injected fact)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC118</td><td>Known and effective time labels</td><td>test_timeline_view.py (204), test_s8_fix_views.py (36)</td><td>An event with and without source_effective_at shows both labels; EFFECTIVE_UNKNOWN never copies recorded/observed; a late correction sorts separately on the two axes; a gap is visible as a gap; the tz must be exactly UTC; a future attestation is not shown early</td><td>offline</td><td><span class="ok">pass</span></td><td>The freshness window and the paused-source flag are injected facts</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC119</td><td>Historical is never live green</td><td>test_timeline_view.py (204), test_coverage_view.py (197)</td><td>is_green is true only for LIVE_CURRENT; each of: superseded, revision change, revoked attestation, stale, uncovered, source paused, unattested, unknown input, and a GAP/SOURCE_UNAVAILABLE/ATTESTATION_REVOKED event newer than the run gives a named non-green value with a reason; check_as_of never gives green; a clock regression does not resurrect a revoke</td><td>offline</td><td><span class="ok">pass</span></td><td>A company-level event downgrades all older runs of the company (events carry no run key)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-040 / TC120</td><td>Diff and evidence are scoped to the viewer</td><td>test_coverage_view.py (197), test_timeline_view.py (204), test_s8_fix_views.py (36), test_s8_fix_session.py (27)</td><td>Foreign rows are absent from output and repr, only an opaque flag remains; attestations only when bound to the viewer's runs; foreign duplicates/dangling links/junk neither change nor break the view; exact (not NFKC) tenant and company match before any read; a company with an empty matrix is INCOMPLETE/EMPTY_MATRIX; the view digest is verified on construction; a stale epoch is SCOPE_EPOCH_STALE</td><td>offline</td><td><span class="ok">pass</span></td><td>Matrix rows are matched by the normalized scope_key</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC121</td><td>A safe reason and endpoint annotations</td><td>test_safe_errors.py (65), test_jobs_api.py (67), test_s8_fix_jobs_api.py (48)</td><td>Every refusal is a fixed reason, next action and correlation id; poison strings, exceptions and secret refs reach no field or repr; message tables cover every code (import-time check); the endpoint table marks mutating and read endpoints; a foreign job is the same NOT_FOUND as a missing one; an own unfinished job is 202/200 with its state</td><td>offline</td><td><span class="ok">pass</span></td><td>Fake correlation/job ids are sequential and guessable</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC122</td><td>CSRF and idempotency: 403/409</td><td>test_jobs_api.py (67), test_jobs_api_bypass.py (59), test_s8_fix_jobs_api.py (48), test_workbench_session.py (28)</td><td>A missing/wrong/foreign/expired CSRF is 403 with no dispatcher calls and no idempotency records; the same key and digest replay without a second dispatch; the same key and a different digest is 409; check order: session, CSRF, entitlement, scope/epoch, boundary, idempotency, dispatch; per-tenant and per-actor quotas: a full tenant A does not affect tenant B; the action runs outside the global lock; the session lifetime and retention are pinned exactly at the edge</td><td>offline</td><td><span class="ok">pass</span></td><td>No real sessions, cookies or RBAC; JobQueuePort is not called</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-041 / TC123</td><td>A refusal cannot be bypassed via raw COM/DC</td><td>test_jobs_api_bypass.py (59), test_s8_fix_jobs_api.py (48), test_s8_boundaries.py (59)</td><td>A refused operation stays refused under case, padding, NFKC lookalikes, invisible characters, another channel or an alias — the same fixed code and zero dispatcher calls; the operation name is derived from the job kind, a mismatch is OPERATION_DENIED; capture only through policy (not a caller argument); no signature has a command/query/sql/raw/channel parameter</td><td>offline</td><td><span class="ok">pass</span></td><td>AST scan is a static proxy: aliasing/getattr are not detected</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>S8 review round</b> (code 080c76d; four read-only reviewers): 0 BLOCKER, 2 HIGH, about 10 MAJOR; fixed in one batch, 5f51d0f.</li>
+<li>Main points: company isolation was missing on the cards, annotations, rerun and job enqueue paths; the viewer scope was assembled by the caller; a rerun created its run before the job was dispatched (a retry gave a false STALE); global quotas let one tenant starve the others; attestations in the timeline leaked across companies.</li>
+<li><b>Process:</b> some streams wrote code before tests (red tests were observed only partly: G3 29 of 36), recorded in the decision log.</li>
+<li><b>GPT-PM:</b> pending. The S7 request is stuck on a PM Bridge browser failure (CHATGPT_RENDERER_STALLED); a forced restart is an operator break-glass and was not used.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Real UI and browser UAT (G5), real HTTP/cookie/session/CSRF, RBAC.</li>
+<li>PostgreSQL integration run; GitHub CI; Release 1 regression; real 1C.</li>
+<li>Mutation runs (operator ban).</li>
+</ul>
+<h2>Known residuals and next steps</h2>
+<ul>
+<li>Residual risks: card_digest is unkeyed; the epoch re-check is not atomic; annotate has no idempotency key; EFFECT_DONE entries expire with normal retention; fake ids are guessable; an INCONCLUSIVE card is not covered at facade level.</li>
+<li>Release 2 is NO-GO, G1 is NOT PASSED, G5 is open.</li>
+<li>Next: GPT-PM on S7 and S8 (after PM Bridge recovers); after APPROVE, a plain push; then S9. A real UAT stays with the operator.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
