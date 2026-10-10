@@ -23,6 +23,7 @@ socket import; hostile input never raises out of a public async method.
 """
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
@@ -74,6 +75,7 @@ MAX_ROOTS = MAX_CORPUS_ROOTS
 MAX_CACHE_ENTRIES = 100_000
 MAX_ANCESTORS_PER_ENTRY = 256  # visited ids kept per cached file (a hostile file may list 10,000 parents)
 MAX_ANCESTOR_INDEX_ENTRIES = 1_000_000  # total (ancestor, file) pairs of the invalidation index
+_PROVISIONAL: ContextVar[frozenset[tuple[int, str]]] = ContextVar("_PROVISIONAL", default=frozenset())
 MAX_LOOKUPS_PER_PAGE = 4_096  # port lookups one prepare_page may spend over all of its changes
 
 
@@ -219,7 +221,8 @@ class MembershipChecker:
         self._cache: dict[str, _CacheEntry] = {}
         self._by_ancestor: dict[str, set[str]] = {}
         self._index_size = 0  # total (ancestor, file) pairs in _by_ancestor
-        self._requalify: str | None = None  # a removed root being explicitly re-qualified by a feed UPSERT
+        # (preparation, roots) of the last PREPARED page: removed roots it re-qualified; applied only by accept_page
+        self._pending_reinstate: tuple[object, frozenset[str]] | None = None
         self._removed_roots: set[str] = set()  # roots a change feed reported removed/trashed
         self._lookups = 0  # port lookups so far (page budget)
 
@@ -407,8 +410,11 @@ class MembershipChecker:
         reported removed/trashed is not a root any more (it is fetched like any other folder).
         """
         visited: set[str] = {start.file_id}
-        live_roots = self._roots - self._removed_roots
-        if start.file_id in live_roots or (start.file_id in self._roots and start.file_id == self._requalify):
+        # A removed root is live again only inside the ONE prepare_page task that is re-qualifying it (context
+        # variable: a concurrent disclosure in another task never sees it) and, durably, after accept_page.
+        provisional = {fid for owner, fid in _PROVISIONAL.get() if owner == id(self)} & self._roots
+        live_roots = (self._roots - self._removed_roots) | provisional
+        if start.file_id in live_roots:
             # the caller already validated this fresh metadata (drive / trashed / shortcut); a root the feed
             # reported removed is reinstated by prepare_page only when this fresh read proves it live
             return "IN", visited
@@ -488,6 +494,7 @@ class MembershipChecker:
         try:
             if type(page) is not DrivePage or not is_valid_opaque_id(stored_cursor):
                 return refused(PageReason.INVALID_INPUT)
+            self._pending_reinstate = None  # a newer preparation replaces any unaccepted one
             epoch = self._epoch
             for change in page.changes:
                 if (
@@ -517,24 +524,26 @@ class MembershipChecker:
                 if change.file_id in self._roots and change.kind is DriveChangeKind.REMOVED:
                     self._removed_roots.add(change.file_id)
             resolved: dict[str, MembershipResult] = {}
+            reinstated: set[str] = set()
             spent_from = self._lookups
             for change in changed:
                 if change.kind is DriveChangeKind.UPSERT and change.file_id not in resolved:
                     if self._lookups - spent_from >= MAX_LOOKUPS_PER_PAGE:
                         return refused(PageReason.PAGE_LOOKUP_BUDGET_EXCEEDED, tuple(resolved.values()))
-                    # only this explicit re-qualification (fresh metadata of the root itself) may reinstate a
-                    # removed root; any other check of a removed root falls through to the ancestor walk
-                    self._requalify = change.file_id if change.file_id in self._removed_roots else None
-                    try:
-                        result = await self.check(change.file_id)
-                    finally:
-                        self._requalify = None
+                    # Only this explicit re-qualification (fresh metadata of the root itself) can make a removed
+                    # root live, and only PROVISIONALLY (this task, this page) until accept_page.
+                    requalifying = change.file_id in self._removed_roots
+                    if requalifying:
+                        _PROVISIONAL.set(_PROVISIONAL.get() | {(id(self), change.file_id)})
+                    result = await self.check(change.file_id)
                     resolved[change.file_id] = result
                     if change.file_id in self._roots:
                         if result.verdict is MembershipVerdict.REMOVED:
                             self._removed_roots.add(change.file_id)
-                        elif result.verdict is MembershipVerdict.IN_SCOPE:
-                            self._removed_roots.discard(change.file_id)
+                        if requalifying and result.verdict is MembershipVerdict.IN_SCOPE:
+                            reinstated.add(change.file_id)
+                        elif requalifying:
+                            _PROVISIONAL.set(_PROVISIONAL.get() - {(id(self), change.file_id)})
             for change in changed:
                 if change.file_id in self._roots:
                     self.invalidate(change.file_id)  # the root state may have changed while resolving
@@ -578,9 +587,30 @@ class MembershipChecker:
                 batch = replace(batch, tombstones=tombs)
             for fid in batch.requalify_folder_ids:
                 self.invalidate(fid)
-            return PagePreparation(PageStatus.PREPARED, PageReason.PAGE_PREPARED, batch, results)
+            prepared = PagePreparation(PageStatus.PREPARED, PageReason.PAGE_PREPARED, batch, results)
+            self._pending_reinstate = (prepared, frozenset(reinstated)) if reinstated else None
+            return prepared
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
             return refused(PageReason.PAGE_PROJECTION_REFUSED)
+        finally:
+            # nothing provisional outlives this call: forget the task-local view and every cache entry that
+            # was computed under it (durable reinstatement is accept_page's job, after the cursor is accepted)
+            for owner, fid in _PROVISIONAL.get():
+                if owner == id(self):
+                    self.invalidate(fid)
+            _PROVISIONAL.set(frozenset(x for x in _PROVISIONAL.get() if x[0] != id(self)))
+
+    def accept_page(self, preparation: object) -> bool:
+        """Call after the cursor commit of ``preparation`` succeeded: only now do removed roots that the page
+        re-qualified become live again. A refused, unknown, replaced or already accepted preparation does nothing."""
+        pending = self._pending_reinstate
+        if pending is None or pending[0] is not preparation:
+            return False
+        self._pending_reinstate = None
+        for fid in pending[1]:
+            self._removed_roots.discard(fid)
+            self.invalidate(fid)
+        return True
 
     def _in_drive(self, change: DriveChange) -> bool:
         drive = self._corpus.shared_drive_id
