@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from s7_receipts import receipt_for, receipt_for_token
 from test_s7_fix_scope_membership import (
     DriveChange,
     DriveChangeKind,
@@ -61,10 +62,10 @@ async def test_s7_m03_control_explicit_upsert_reinstates_the_root():
     assert await ck.authorize_disclosure("R") is False
     prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
     assert await ck.authorize_disclosure("R") is False  # provisional until the cursor is accepted
-    assert ck.accept_page(prep, prep.batch.committable_cursor()) is True
+    assert ck.accept_page(prep, await receipt_for(prep)) is True
     assert await ck.authorize_disclosure("R") is True
     assert await ck.authorize_disclosure("A") is True
-    assert ck.accept_page(prep, prep.batch.committable_cursor()) is False  # one-shot
+    assert ck.accept_page(prep, await receipt_for(prep)) is False  # one-shot
 
 
 async def test_s7_m03_refused_page_never_reinstates_the_root():
@@ -72,7 +73,7 @@ async def test_s7_m03_refused_page_never_reinstates_the_root():
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     bad = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "WRONG-CURSOR")
     assert bad.status is not PageStatus.PREPARED
-    assert ck.accept_page(bad, "T3") is False
+    assert ck.accept_page(bad, await receipt_for_token("T3")) is False
     assert await ck.authorize_disclosure("R") is False
     assert await ck.authorize_disclosure("A") is False
 
@@ -82,7 +83,7 @@ async def test_s7_m03_an_unaccepted_or_replaced_preparation_never_reinstates():
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     first = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
     await ck.prepare_page(_page([_up("c3", "A")], token="T3", nxt="T4"), "T3")  # replaces the first
-    assert ck.accept_page(first, first.batch.committable_cursor()) is False
+    assert ck.accept_page(first, await receipt_for(first)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -106,18 +107,24 @@ async def test_s7_m03_an_epoch_change_before_acceptance_invalidates_the_preparat
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
     assert ck.advance_epoch(1) is True
-    assert ck.accept_page(prep, prep.batch.committable_cursor()) is False
+    assert ck.accept_page(prep, await receipt_for(prep)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
-async def test_s7_m03_acceptance_needs_the_receipt_of_the_committed_cursor():
+async def test_s7_m03_acceptance_needs_a_receipt_issued_by_a_real_store_commit():
+    from business_ai_gateway.phase2.drive_cursor import CursorCommitReceipt
+
     ck = _ck(_world())
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
-    for receipt in (None, "", "T1", "SOMETHING-ELSE", 3):
+    computed = prep.batch.committable_cursor()  # computed from the preparation itself: not a commit proof
+    forged = object.__new__(CursorCommitReceipt)
+    lookalike = CursorCommitReceipt(object(), object(), computed, 1, 0)
+    for receipt in (None, "", computed, "T1", 3, forged, lookalike, await receipt_for_token("SOMETHING-ELSE")):
         assert ck.accept_page(prep, receipt) is False
     assert await ck.authorize_disclosure("R") is False
-    assert ck.accept_page(prep, prep.batch.committable_cursor()) is True
+    assert ck.accept_page(prep, await receipt_for(prep)) is True
+    assert await ck.authorize_disclosure("R") is True
 
 
 async def test_s7_m03_a_concurrent_disclosure_never_sees_the_provisional_root():
@@ -314,6 +321,70 @@ def test_s8_m05_the_public_retry_of_a_different_snapshot_stays_stale():
     out = env.rerun(run1.run_id, other.snapshot_id)
     assert getattr(out, "allowed", None) is False and out.reason_code is R.RERUN_TARGET_STALE
     assert len(env.ledger.list_runs("t1", RUN_KEY)) == 2
+
+
+def test_s8_m05_recovery_after_a_lost_ack_needs_no_new_audit_slot():
+    env, log, run1, s2 = _setup(max_per_run=1)
+    real, state = log._append, {"first": True}
+
+    def write_then_lose_ack(*args, **kwargs):
+        entry = real(*args, **kwargs)
+        if state["first"]:
+            state["first"] = False
+            raise RuntimeError("ack lost")
+        return entry
+
+    log._append = write_then_lose_ack
+    # the facade's own retry of the append absorbs a single lost ack; force both attempts to lose it
+    state["first"] = True
+    calls = {"n": 0}
+
+    def always_lose(*args, **kwargs):
+        calls["n"] += 1
+        entry = real(*args, **kwargs)
+        if calls["n"] <= 2:
+            raise RuntimeError("ack lost")
+        return entry
+
+    log._append = always_lose
+    first = env.rerun(run1.run_id, s2.snapshot_id)
+    assert getattr(first, "allowed", None) is False
+    assert len(log._entries[("t1", run1.run_id)]) == 1  # written; the quota (1) is now full
+    retry = env.rerun(run1.run_id, s2.snapshot_id)
+    assert getattr(retry, "allowed", None) is True, retry
+    assert len(env.ledger.list_runs("t1", RUN_KEY)) == 2
+    assert len(log._entries[("t1", run1.run_id)]) == 1
+    assert log._pending_get("t1", run1.run_id) is None
+
+
+def test_s8_m05_an_epoch_move_during_recovery_blocks_the_audit_effect():
+    env, log, run1, s2 = _setup(max_per_run=3)
+    epoch = [5]
+    kw = {"ownership": env.ownership, "current_epoch": lambda: epoch[0]}
+    plan = check_rerun(env.ledger, env.store, log, env.viewer, "t1", RUN_KEY, run1.run_id, s2.snapshot_id, **kw)
+    real, state = log._append, {"fail": 2}
+
+    def flaky(*args, **kwargs):
+        if state["fail"] > 0:
+            state["fail"] -= 1
+            raise RuntimeError("audit store down")
+        return real(*args, **kwargs)
+
+    log._append = flaky
+    assert type(commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader,
+                             actor_id="alice", **kw)) is SafeError
+    appended = []
+    log._append = lambda *a, **k: appended.append(a) or real(*a, **k)
+    real_now = log._now
+
+    def now_and_revoke():
+        epoch[0] = 6  # authorization moves after the gate, before the audit effect
+        return real_now()
+
+    log._now = now_and_revoke
+    out = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **kw)
+    assert type(out) is SafeError and out.reason_code is R.SCOPE_EPOCH_STALE
+    assert appended == [] and not log._entries.get(("t1", run1.run_id))
 
 
 # ----------------------------------------------------------------------------------------- S8 M06

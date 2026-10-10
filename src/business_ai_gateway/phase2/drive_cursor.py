@@ -285,6 +285,7 @@ _KEYS = frozenset({"v", "state", "ns", "tenant", "conn", "corpus", "epoch", "tok
 # of a fresh snapshot. A record without a marker is still encoded and decoded as v1 (compatible).
 _KEYS_V2 = _KEYS | {"snap"}
 _RECORD_VERSION_SNAP = 2
+_MAX_RECEIPTS = 4_096
 _MAX_SNAP = 2**(128 + 32) - 1  # 128-bit tracker generation << 32 | order token
 
 
@@ -418,12 +419,35 @@ class CursorLoad:
     port_code: str | None = None
 
 
+class CursorCommitReceipt:
+    """Acknowledgment that THIS store durably committed ``token`` as cursor ``version`` under ``epoch``.
+
+    Only ``DriveCursorStore.commit`` issues one (it remembers the nonce); a receipt that was constructed
+    elsewhere, or by a lookalike store, does not verify."""
+
+    __slots__ = ("_nonce", "_store", "epoch", "token", "version")
+
+    def __init__(self, store: object, nonce: object, token: str, version: int, epoch: int) -> None:
+        self._store, self._nonce = store, nonce
+        self.token, self.version, self.epoch = token, version, epoch
+
+    def valid(self) -> bool:
+        store = getattr(self, "_store", None)
+        if type(store) is not DriveCursorStore:
+            return False
+        return store._issued.get(self._nonce) == (self.token, self.version, self.epoch)
+
+    def __repr__(self) -> str:
+        return "CursorCommitReceipt()"
+
+
 @dataclass(frozen=True, slots=True)
 class StoreCommit:
     ok: bool
     replayed: bool
     version: int | None
     reason: CursorReason | None
+    receipt: CursorCommitReceipt | None = None
 
 
 _COMMIT_REASONS = {
@@ -549,6 +573,7 @@ class DriveCursorStore:
             raise ValueError("TRACKER_REQUIRED")
         self._cursors = cursors
         self._tracker = tracker
+        self._issued: dict[object, tuple[str, int, int]] = {}  # commit receipts this store handed out
 
     @property
     def tracker(self) -> ResnapshotTracker:
@@ -704,7 +729,14 @@ class DriveCursorStore:
             new_value = new.encode()
         except Exception:  # noqa: BLE001 - forged / hostile arguments
             return invalid
-        return await self._commit_raw(ident, lse, raw, version, new_value, events)
+        done = await self._commit_raw(ident, lse, raw, version, new_value, events)
+        if done.ok is True and type(done.version) is int and type(new.token) is str:
+            nonce = object()
+            while len(self._issued) >= _MAX_RECEIPTS:  # bounded: the oldest receipt expires first
+                del self._issued[next(iter(self._issued))]
+            self._issued[nonce] = (new.token, done.version, new.epoch)
+            done = replace(done, receipt=CursorCommitReceipt(self, nonce, new.token, done.version, new.epoch))
+        return done
 
     async def reset(self, identity: DrivePortIdentity, corpus: DriveCorpus, drive_epoch: int,
                     lease: DriveLease, load: CursorLoad) -> CursorLoad:

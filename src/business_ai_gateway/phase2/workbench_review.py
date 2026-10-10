@@ -610,6 +610,12 @@ class ReviewLog:
         with self._lock:
             return self._room(tenant, run_id)
 
+    def _audit_exists(self, tenant: str, prev_id: str, related_run_id: str) -> bool:
+        """True when the RERUN_REQUESTED audit entry for ``related_run_id`` is already written."""
+        with self._lock:
+            return any(e.kind is AnnotationKind.RERUN_REQUESTED and e.related_run_id == related_run_id
+                       for e in self._entries.get((tenant, prev_id), ()))
+
     def _pending_get(self, tenant: str, prev_id: str) -> tuple[str, str, str, str, str] | None:
         with self._lock:
             return self._pending.get((tenant, prev_id))
@@ -769,6 +775,8 @@ def _plan(led: RunLedger, snaps: SnapshotStore, review_log: object, scope: _Scop
     if prev is None or prev.comparison_key != key:
         raise _Refuse(ReasonCode.RERUN_TARGET_UNKNOWN)
     views = led.list_runs(tenant, key)
+    recoverable = False
+    pending = None
     if not views or views[-1].record.run_id != prev.run_id:
         # The one exception to "previous run must be the chain head": a run this very request already created
         # whose audit entry is still missing (recovery). Still pure; commit_rerun re-verifies run, actor, digest.
@@ -783,7 +791,9 @@ def _plan(led: RunLedger, snaps: SnapshotStore, review_log: object, scope: _Scop
         raise _Refuse(ReasonCode.NOT_FOUND)
     if snap.snapshot_id == prev.snapshot_id or snap.digest == prev.snapshot_digest:
         raise _Refuse(ReasonCode.NO_NEW_EVIDENCE)
-    if not review_log._has_room(tenant, prev.run_id):  # type: ignore[attr-defined]
+    # the quota only applies to a NEW audit entry; a recovery whose entry is already written needs no slot
+    written = recoverable and review_log._audit_exists(tenant, prev_id, pending[0])  # type: ignore[attr-defined]
+    if not written and not review_log._has_room(tenant, prev.run_id):  # type: ignore[attr-defined]
         raise _Refuse(ReasonCode.RATE_LIMITED)
     view = scope.viewer
     return RerunPlan(tenant, view.company_id, view.scope_epoch, key, prev.run_id, snap.snapshot_id, snap.digest)
@@ -845,12 +855,19 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
         # result, finishes THAT audit and never creates a second run.
         scope.gate(tenant, (("comparison_key", key), ("run_id", prev_id), ("snapshot_id", snap_id)))
         made = led.get(tenant, pending[0])
-        if made is not None and made.comparison_key == key and made.supersedes == prev_id                 and made.snapshot_id == snap_id:
+        if made is not None and made.comparison_key == key and made.supersedes == prev_id \
+                and made.snapshot_id == snap_id:
+            if review_log._audit_exists(tenant, prev_id, pending[0]):
+                # the audit entry was written but its acknowledgment was lost: reconcile, no new slot needed
+                scope.recheck_epoch()
+                review_log._pending_set(tenant, prev_id, None)
+                return _outcome(led, tenant, key, prev_id, pending[0])
             at = review_log._now()
             reservation = review_log._reserve(tenant, prev_id)
             if reservation is None:
                 raise _Refuse(ReasonCode.RATE_LIMITED)
             try:
+                scope.recheck_epoch()  # authorization may have moved since the gate: nothing is written then
                 return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, pending[0], actor)
             finally:
                 review_log._release(reservation)
@@ -909,6 +926,10 @@ def _finish_audit(led: RunLedger, review_log: ReviewLog, reservation: _Reservati
     if entry is None:
         raise _Refuse(ReasonCode.INTERNAL_REFUSED)  # pending marker stays: retry adopts the run
     review_log._pending_set(tenant, prev_id, None)
+    return _outcome(led, tenant, key, prev_id, run_id)
+
+
+def _outcome(led: RunLedger, tenant: str, key: str, prev_id: str, run_id: str) -> RerunOutcome:
     record = led.get(tenant, run_id)
     current = led.current(tenant, key)
     return RerunOutcome(prev_id, run_id, record.state.value,

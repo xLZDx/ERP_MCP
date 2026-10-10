@@ -34,6 +34,7 @@ from .drive_changes import (
     DrivePage,
     PreparedDriveBatch,
 )
+from .drive_cursor import CursorCommitReceipt
 from .drive_port import (
     MAX_CORPUS_ROOTS,
     DriveErrorCode,
@@ -599,17 +600,20 @@ class MembershipChecker:
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
             return refused(PageReason.PAGE_PROJECTION_REFUSED)
 
-    def accept_page(self, preparation: object, committed_cursor: object) -> bool:
-        """Call after the durable cursor commit of ``preparation`` succeeded, passing the cursor value that was
-        committed (the receipt): only now do removed roots the page re-qualified become live again.
+    def accept_page(self, preparation: object, receipt: object) -> bool:
+        """Call after the durable cursor commit of ``preparation`` succeeded, passing the
+        ``CursorCommitReceipt`` that ``DriveCursorStore.commit`` returned: only now do removed roots the page
+        re-qualified become live again.
 
         Nothing happens (False) for a refused, unknown, replaced, already accepted or stale-epoch preparation,
-        or when the receipt is not exactly the cursor this preparation's batch may commit."""
+        or unless the receipt was issued by a ``DriveCursorStore`` for exactly the cursor this preparation's
+        batch may commit, under this checker's epoch. A value computed from the preparation is not a receipt."""
         pending = self._pending_reinstate
         if pending is None or pending[0] is not preparation or pending[2] != self._epoch:
             return False
         batch = getattr(preparation, "batch", None)
-        if type(committed_cursor) is not str or batch is None or committed_cursor != batch.committable_cursor():
+        if (type(receipt) is not CursorCommitReceipt or batch is None or not receipt.valid()
+                or receipt.token != batch.committable_cursor() or receipt.epoch != self._epoch):
             return False
         self._pending_reinstate = None
         for fid in pending[1]:
