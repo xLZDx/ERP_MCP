@@ -512,3 +512,50 @@ def test_k2_a_total_limit_below_the_number_of_interactive_backends_is_refused():
     demand = [item(backend=f"db-{n}", source=f"s{n}") for n in (1, 2, 3)]
     policy = BudgetPolicy(min_background_slots=1, tenant_share_slots=4)
     assert plan_budget(policy, demand, budget(2, 2), ids()).reason is OpsReason.BACKEND_BUDGET_EXCEEDED
+
+
+# ---- S9-M01 round 2: the minimum is a RESERVATION of capacity, never consumed by interactive work -----------
+
+def test_s9_m01_r2_a_writer_deferred_by_its_source_cap_keeps_its_reserved_slot_on_the_other_backend():
+    demand = [item(tenant="t1", backend="db-1", source="w", work=W, count=1),
+              item(tenant="t1", backend="db-2", source="w", work=W, count=1),
+              item(tenant="t2", backend="db-1", source="i1", count=1),
+              item(tenant="t2", backend="db-2", source="i2", count=2)]
+    result = plan(demand, per=2, total=4, minimum=1, share=4)
+    assert [a.granted for a in result.allocations] == [1, 0, 1, 1]  # db-2 interactive leaves the reserved slot
+    assert result.background_reserved == 1 and result.background_granted == 1
+    assert result.allocations[1].reason is not None  # the writer was deferred by writer_per_source, visibly
+
+
+def test_s9_m01_r2_a_tenant_share_that_defers_the_minimum_keeps_the_remainder_reserved():
+    demand = [item(tenant="t1", source="b1", work=B, count=3)] + [
+        item(tenant=f"t{n}", source=f"i{n}", count=1) for n in (2, 3, 4)]
+    result = plan(demand, per=3, total=8, minimum=2, share=1)
+    assert result.allocations[0].granted == 1 and result.background_reserved == 1
+    assert result.interactive_granted == 1  # 3 per backend - 1 granted - 1 reserved
+
+
+def test_s9_m01_r2_a_capture_cap_that_defers_the_minimum_keeps_the_remainder_reserved():
+    demand = [item(source="c1", work=C, count=3), item(tenant="t2", source="i1", count=4)]
+    result = plan(demand, per=4, total=8, minimum=2, capture_per_backend=1)
+    assert result.allocations[0].granted == 1 and result.background_reserved == 1
+    assert result.allocations[1].granted == 2
+
+
+def test_s9_m01_r2_feasible_minimum_is_granted_and_nothing_stays_reserved():
+    demand = [item(source="b1", work=B, count=2), item(tenant="t2", source="i1", count=4)]
+    result = plan(demand, per=4, total=8, minimum=2)
+    assert result.allocations[0].granted == 2 and result.background_reserved == 0
+    assert result.allocations[1].granted == 2
+    again = plan(demand, per=4, total=8, minimum=2)
+    assert again.digest == result.digest  # the reservation is part of the digest, deterministically
+
+
+def test_s9_m01_r2_a_total_that_cannot_hold_every_reservation_is_refused():
+    demand = [item(tenant="t1", backend="db-1", source="w", work=W, count=1),
+              item(tenant="t1", backend="db-2", source="w", work=W, count=1),
+              item(tenant="t2", backend="db-1", source="i1", count=2),
+              item(tenant="t2", backend="db-2", source="i2", count=2)]
+    policy = BudgetPolicy(min_background_slots=1, tenant_share_slots=4)
+    out = plan_budget(policy, demand, budget(2, 3), ids())
+    assert out.reason is OpsReason.BACKEND_BUDGET_EXCEEDED
