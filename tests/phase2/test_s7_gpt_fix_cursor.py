@@ -186,7 +186,7 @@ async def test_m05_a_foreign_marker_from_another_tracker_restarts():
     assert env2.fake.count("get_start_page_token") == 1  # restarted from a new snapshot
 
 
-@pytest.mark.parametrize("snap", [True, -1, 2**63, "1", 1.0])
+@pytest.mark.parametrize("snap", [True, -1, 2**160, "1", 1.0])
 def test_m05_marker_validation_is_exact(snap):
     base = {"state": CursorState.BASELINING, "namespace": "account:A", "tenant": "t",
             "connection_id": "c", "corpus": "0" * 64, "epoch": 0, "token": "T"}

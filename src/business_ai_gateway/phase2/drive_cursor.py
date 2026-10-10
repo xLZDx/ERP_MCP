@@ -285,7 +285,7 @@ _KEYS = frozenset({"v", "state", "ns", "tenant", "conn", "corpus", "epoch", "tok
 # of a fresh snapshot. A record without a marker is still encoded and decoded as v1 (compatible).
 _KEYS_V2 = _KEYS | {"snap"}
 _RECORD_VERSION_SNAP = 2
-_MAX_SNAP = 2**63 - 1
+_MAX_SNAP = 2**(128 + 32) - 1  # 128-bit tracker generation << 32 | order token
 
 
 def _hex64(value: object) -> bool:

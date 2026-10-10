@@ -128,7 +128,9 @@ async def test_restored_root_is_trusted_again_after_an_upsert_change():
     ck = _ck(fake)
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     assert await ck.authorize_disclosure("A") is False
-    await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    assert await ck.authorize_disclosure("A") is False  # still provisional: the cursor is not accepted yet
+    assert ck.accept_page(prep) is True
     assert await ck.authorize_disclosure("A") is True
 
 

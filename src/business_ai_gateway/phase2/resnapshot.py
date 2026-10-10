@@ -28,6 +28,7 @@ does not claim to.
 from __future__ import annotations
 
 import secrets
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -73,11 +74,26 @@ def _check_epoch(epoch: object) -> None:
         raise ValueError("EPOCH_INVALID")
 
 
+_GENERATIONS_LOCK = threading.Lock()
+_GENERATIONS_ISSUED: set[int] = set()  # every generation id this process ever handed out (never evicted)
+
+
+def _new_generation() -> int:
+    """128-bit random tracker-generation id, unique within the process by construction (a repeated value is
+    skipped), and across processes except with probability 2**-128 (no durable counter exists to fence it)."""
+    with _GENERATIONS_LOCK:
+        while True:
+            candidate = secrets.randbits(128)
+            if candidate not in _GENERATIONS_ISSUED:
+                _GENERATIONS_ISSUED.add(candidate)
+                return candidate
+
+
 class ResnapshotTracker:
     def __init__(self, state: ResnapshotState | None = None) -> None:
         self._required: dict[str, tuple[ResnapshotReason, int, int]] = {}
         self._seq = 0  # monotonic order of requirements; a snapshot may clear only older ones
-        self._generation = secrets.randbits(30)  # identity of THIS tracker instance (process generation)
+        self._generation = _new_generation()  # identity of THIS tracker instance (process generation)
         if state is not None:
             self.import_state(state)
 

@@ -1271,6 +1271,14 @@ def _takes_dispatch_key(fn: object) -> bool:
     return bool(code.co_flags & 0x04) or code.co_argcount - bound >= 5
 
 
+def _require_fenced_dispatcher(ctx: ApiContext, corr: str) -> None:
+    """Refuse BEFORE any reservation or effect when the dispatcher cannot honour a dispatch key."""
+    dispatcher = ctx.dispatcher
+    if not (callable(getattr(dispatcher, "find", None)) and callable(getattr(dispatcher, "dispatch", None))
+            and _takes_dispatch_key(dispatcher.dispatch)):
+        raise _bad_output(ctx, ComponentName.DISPATCHER, corr)
+
+
 def _dispatch_ticket(ctx: ApiContext, corr: str, scope: ViewerScope, kind: JobKind, digest: str,
                      commit: RerunCommit | None = None, dispatch_key: str | None = None) -> JobTicket:
     dispatcher = ctx.dispatcher
@@ -1356,6 +1364,7 @@ def decide_enqueue(ctx: object, request: object, session: object, csrf_token: ob
         if not digest:
             _emit(ctx, EventKind.COMPONENT_OUTPUT_INVALID, ComponentName.DIGEST, corr)
             return _refuse(_R.INTERNAL_REFUSED, corr)
+        _require_fenced_dispatcher(ctx, corr)  # type: ignore[arg-type]
         status, value = ctx.idempotency.execute(  # type: ignore[attr-defined]
             scope.tenant_id, actor, Endpoint.ENQUEUE_JOB, request.idempotency_key,  # type: ignore[attr-defined]
             digest, now, lambda: _dispatch_ticket(  # type: ignore[arg-type]
@@ -1426,6 +1435,7 @@ def decide_rerun(ctx: object, request: object, session: object, csrf_token: obje
                 dispatch_key_for(scope.tenant_id, actor, Endpoint.RERUN, request.idempotency_key,  # type: ignore[attr-defined]
                                              digest))
 
+        _require_fenced_dispatcher(ctx, corr)  # type: ignore[arg-type]  # before the gate's effect step
         status, value = ctx.idempotency.execute(  # type: ignore[attr-defined]
             scope.tenant_id, actor, Endpoint.RERUN, request.idempotency_key,  # type: ignore[attr-defined]
             digest, now, action, complete)

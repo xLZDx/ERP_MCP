@@ -22,6 +22,7 @@ from test_s8_gpt_fix_session import _setup
 from business_ai_gateway.phase2.drive_baseline import DriveBaseline, DriveRunMode
 from business_ai_gateway.phase2.drive_cursor import DriveCursorStore, DriveLease
 from business_ai_gateway.phase2.drive_fake import FakeDrivePort
+from business_ai_gateway.phase2.drive_membership import PageStatus
 from business_ai_gateway.phase2.fakes import DEFAULT_SCOPE as SCOPE
 from business_ai_gateway.phase2.fakes import WORKER
 from business_ai_gateway.phase2.jobs_api import (
@@ -37,6 +38,7 @@ from business_ai_gateway.phase2.workbench_review import (
     check_rerun,
     commit_rerun,
 )
+from business_ai_gateway.phase2.workbench_types import FakeOwnership
 from business_ai_gateway.phase2.workbench_types import ReasonCode as R
 
 # ----------------------------------------------------------------------------------------- S7 M03
@@ -56,9 +58,42 @@ async def test_s7_m03_control_explicit_upsert_reinstates_the_root():
     ck = _ck(_world())
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     assert await ck.authorize_disclosure("R") is False
-    await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    assert await ck.authorize_disclosure("R") is False  # provisional until the cursor is accepted
+    assert ck.accept_page(prep) is True
     assert await ck.authorize_disclosure("R") is True
     assert await ck.authorize_disclosure("A") is True
+    assert ck.accept_page(prep) is False  # one-shot
+
+
+async def test_s7_m03_refused_page_never_reinstates_the_root():
+    ck = _ck(_world())
+    await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
+    bad = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "WRONG-CURSOR")
+    assert bad.status is not PageStatus.PREPARED
+    assert ck.accept_page(bad) is False
+    assert await ck.authorize_disclosure("R") is False
+    assert await ck.authorize_disclosure("A") is False
+
+
+async def test_s7_m03_an_unaccepted_or_replaced_preparation_never_reinstates():
+    ck = _ck(_world())
+    await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
+    first = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    await ck.prepare_page(_page([_up("c3", "A")], token="T3", nxt="T4"), "T3")  # replaces the first
+    assert ck.accept_page(first) is False
+    assert await ck.authorize_disclosure("R") is False
+
+
+async def test_s7_m03_a_concurrent_disclosure_never_sees_the_provisional_root():
+    import asyncio
+
+    ck = _ck(_world())
+    await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
+    task = asyncio.ensure_future(ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2"))
+    others = await asyncio.gather(ck.authorize_disclosure("R"), ck.authorize_disclosure("A"))
+    await task
+    assert others == [False, False]
 
 
 # ----------------------------------------------------------------------------------------- S7 M05
@@ -90,8 +125,20 @@ def test_s7_m05_marker_roundtrip_is_bound_to_the_generation():
     a, b = ResnapshotTracker(), ResnapshotTracker()
     marker = a.persistent_marker(3)
     assert a.token_from_marker(marker) == 3
-    assert b.token_from_marker(marker) is None or b._generation == a._generation
+    assert b.token_from_marker(marker) is None
     assert a.token_from_marker(None) is None and a.token_from_marker(True) is None
+
+
+def test_s7_m05_two_trackers_never_share_a_generation_even_if_the_random_source_repeats(monkeypatch):
+    import business_ai_gateway.phase2.resnapshot as rs
+
+    values = iter([7, 7, 7, 8])
+    monkeypatch.setattr(rs.secrets, "randbits", lambda bits: next(values))
+    rs._GENERATIONS_ISSUED.discard(7)
+    rs._GENERATIONS_ISSUED.discard(8)
+    a, b = ResnapshotTracker(), ResnapshotTracker()
+    assert a._generation != b._generation
+    assert b.token_from_marker(a.persistent_marker(2)) is None  # an old snapshot cannot clear b's requirement
 
 
 # ----------------------------------------------------------------------------------------- S8 M05
@@ -142,6 +189,65 @@ def test_s8_m05_one_transient_failure_is_absorbed_by_the_bounded_retry():
     assert len(env.ledger.list_runs("t1", RUN_KEY)) == 2
 
 
+def _failed_once(env, log, run1, s2):
+    kw = {"ownership": env.ownership, "current_epoch": lambda: 5}
+    plan = check_rerun(env.ledger, env.store, log, env.viewer, "t1", RUN_KEY, run1.run_id, s2.snapshot_id, **kw)
+    real, state = log._append, {"fail": 2}
+
+    def flaky(*args, **kwargs):
+        if state["fail"] > 0:
+            state["fail"] -= 1
+            raise RuntimeError("audit store down")
+        return real(*args, **kwargs)
+
+    log._append = flaky
+    out = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **kw)
+    assert type(out) is SafeError
+    log._append = real
+    return plan, kw
+
+
+def test_s8_m05_recovery_is_refused_after_the_ownership_or_epoch_is_revoked():
+    env, log, run1, s2 = _setup(max_per_run=3)
+    plan, _kw = _failed_once(env, log, run1, s2)
+    revoked = {"ownership": FakeOwnership(), "current_epoch": lambda: 5}
+    out = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **revoked)
+    assert type(out) is SafeError and out.reason_code is R.NOT_IN_SCOPE
+    moved = {"ownership": env.ownership, "current_epoch": lambda: 6}
+    out = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **moved)
+    assert type(out) is SafeError and not log._entries.get(("t1", run1.run_id))
+
+
+def test_s8_m05_recovery_is_bound_to_the_same_request_actor_and_snapshot():
+    env, log, run1, s2 = _setup(max_per_run=3)
+    plan, kw = _failed_once(env, log, run1, s2)
+    other = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="mallory", **kw)
+    assert type(other) is not RerunOutcome and not log._entries.get(("t1", run1.run_id))
+    own = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **kw)
+    assert type(own) is RerunOutcome and own.annotated is True
+
+
+def test_s8_m05_append_that_wrote_then_raised_does_not_duplicate_the_audit_entry():
+    env, log, run1, s2 = _setup(max_per_run=3)
+    kw = {"ownership": env.ownership, "current_epoch": lambda: 5}
+    plan = check_rerun(env.ledger, env.store, log, env.viewer, "t1", RUN_KEY, run1.run_id, s2.snapshot_id, **kw)
+    real, state = log._append, {"first": True}
+
+    def write_then_lose_ack(*args, **kwargs):
+        entry = real(*args, **kwargs)
+        if state["first"]:
+            state["first"] = False
+            raise RuntimeError("ack lost")
+        return entry
+
+    log._append = write_then_lose_ack
+    out = commit_rerun(env.ledger, env.store, log, env.viewer, plan, env.reader, actor_id="alice", **kw)
+    assert type(out) is RerunOutcome and out.annotated is True
+    entries = log._entries[("t1", run1.run_id)]
+    assert [e.kind for e in entries] == [AnnotationKind.RERUN_REQUESTED]  # exactly one
+    assert len(env.ledger.list_runs("t1", RUN_KEY)) == 2
+
+
 # ----------------------------------------------------------------------------------------- S8 M06
 
 
@@ -161,6 +267,14 @@ def test_s8_m06_a_legacy_dispatcher_is_refused_before_any_side_effect():
     assert retry.allowed is False
     assert env.dispatcher.call_count == 0  # never reached: no duplicate job is possible
     assert env.idem.record_count() == 0
+
+
+def test_s8_m06_a_legacy_dispatcher_is_refused_for_a_rerun_before_the_gate_commits():
+    env = JobsEnv(LegacyDispatcher())
+    out = env.rerun()
+    assert out.allowed is False and out.reason_code is R.DEPENDENCY_FAILED
+    assert env.gate.commits == 0 and env.gate.checks == 0
+    assert env.dispatcher.call_count == 0 and env.idem.record_count() == 0
 
 
 def test_s8_m06_control_a_key_aware_dispatcher_still_works():

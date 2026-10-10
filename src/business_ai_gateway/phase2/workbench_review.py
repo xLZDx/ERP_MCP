@@ -585,7 +585,8 @@ class ReviewLog:
         self._entries: dict[tuple[str, str], list[AnnotationEntry]] = {}
         self._tenant_count: dict[str, int] = {}
         self._count = 0
-        self._pending: dict[tuple[str, str], str] = {}  # (tenant, previous run) -> run awaiting its audit
+        self._pending: dict[tuple[str, str], tuple[str, str, str, str, str]] = {}  # (tenant, previous run) ->
+        # (new run id, comparison key, snapshot id, snapshot digest, actor) of a run awaiting its audit entry
         self._res_total = 0  # reserved-but-unwritten slots count against every quota
         self._res_tenant: dict[str, int] = {}
         self._res_run: dict[tuple[str, str], int] = {}
@@ -609,16 +610,17 @@ class ReviewLog:
         with self._lock:
             return self._room(tenant, run_id)
 
-    def _pending_get(self, tenant: str, prev_id: str) -> str | None:
+    def _pending_get(self, tenant: str, prev_id: str) -> tuple[str, str, str, str, str] | None:
         with self._lock:
             return self._pending.get((tenant, prev_id))
 
-    def _pending_set(self, tenant: str, prev_id: str, run_id: str | None) -> None:
+    def _pending_set(self, tenant: str, prev_id: str,
+                     record: tuple[str, str, str, str, str] | None) -> None:
         with self._lock:
-            if run_id is None:
+            if record is None:
                 self._pending.pop((tenant, prev_id), None)
             else:
-                self._pending[(tenant, prev_id)] = run_id
+                self._pending[(tenant, prev_id)] = record
 
     def _reserve(self, tenant: str, run_id: str) -> _Reservation | None:
         """Atomically take one slot for a later ``_append``; ``None`` when no room (nothing is held)."""
@@ -653,6 +655,12 @@ class ReviewLog:
                 assignee: str | None, related: str | None, at: datetime,
                 reservation: _Reservation | None = None) -> AnnotationEntry | None:
         with self._lock:
+            if kind is AnnotationKind.RERUN_REQUESTED and related is not None:
+                for known in self._entries.get((tenant, run_id), ()):
+                    if known.kind is kind and known.related_run_id == related:
+                        if reservation is not None:
+                            self._drop(reservation)
+                        return known  # the same operation (one audit entry per created run), never a duplicate
             if reservation is not None:
                 if (type(reservation) is not _Reservation or reservation.tenant != tenant
                         or reservation.run_id != run_id or not self._drop(reservation)):
@@ -823,17 +831,22 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
     if tenant != view.tenant_id or company != view.company_id or epoch != view.scope_epoch:
         raise _Refuse(ReasonCode.NOT_IN_SCOPE)
     pending = review_log._pending_get(tenant, prev_id)
-    if pending is not None and led.get(tenant, pending) is not None:
-        # A previous attempt created the run but its audit append failed: finish THAT audit (the new run is
-        # already current, so the plan would look stale) and never create a second run.
-        at = review_log._now()
-        reservation = review_log._reserve(tenant, prev_id)
-        if reservation is None:
-            raise _Refuse(ReasonCode.RATE_LIMITED)
-        try:
-            return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, pending, actor)
-        finally:
-            review_log._release(reservation)
+    if pending is not None and pending[1:] == (key, snap_id, digest, actor):
+        # A previous attempt of THIS request (same key, snapshot, evidence digest, actor) created the run but
+        # its audit append failed. The new run is already the chain head, so a plan would look stale: recovery
+        # re-checks tenant, epoch and ownership like any plan, verifies the run really is that request's
+        # result, finishes THAT audit and never creates a second run.
+        scope.gate(tenant, (("comparison_key", key), ("run_id", prev_id), ("snapshot_id", snap_id)))
+        made = led.get(tenant, pending[0])
+        if made is not None and made.comparison_key == key and made.supersedes == prev_id                 and made.snapshot_id == snap_id:
+            at = review_log._now()
+            reservation = review_log._reserve(tenant, prev_id)
+            if reservation is None:
+                raise _Refuse(ReasonCode.RATE_LIMITED)
+            try:
+                return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, pending[0], actor)
+            finally:
+                review_log._release(reservation)
     fresh = _plan(led, snaps, review_log, scope, tenant, key, prev_id, snap_id)  # the world may have moved
     if fresh.snapshot_digest != digest:
         raise _Refuse(ReasonCode.RERUN_TARGET_STALE)
@@ -844,14 +857,14 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
         raise _Refuse(ReasonCode.RATE_LIMITED)
     try:
         return _commit_reserved(led, review_log, scope, reader, reservation, at, tenant, key, prev_id,
-                                snap_id, actor)
+                                snap_id, digest, actor)
     finally:
         review_log._release(reservation)  # no-op once consumed by the append
 
 
 def _commit_reserved(led: RunLedger, review_log: ReviewLog, scope: _Scope, reader: object,
                      reservation: _Reservation, at: datetime, tenant: str, key: str, prev_id: str,
-                     snap_id: str, actor: str) -> RerunOutcome:
+                     snap_id: str, digest: str, actor: str) -> RerunOutcome:
     try:
         pair = reader(tenant, snap_id)  # type: ignore[operator]
     except Exception:  # noqa: BLE001 - public boundary: fixed refusal, never raise
@@ -863,7 +876,7 @@ def _commit_reserved(led: RunLedger, review_log: ReviewLog, scope: _Scope, reade
         record = led.run(tenant, key, pair[0], pair[1], snapshot_id=snap_id, rerun_of=prev_id)
     except ComparisonSnapshotError as err:
         raise _Refuse(_LEDGER_CODES.get(err.code, ReasonCode.DEPENDENCY_FAILED)) from None
-    review_log._pending_set(tenant, prev_id, record.run_id)  # durable-until-audited marker
+    review_log._pending_set(tenant, prev_id, (record.run_id, key, snap_id, digest, actor))  # until audited
     return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, record.run_id, actor)
 
 
