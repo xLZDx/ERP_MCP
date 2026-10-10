@@ -17,7 +17,12 @@ budget, ``max_sessions``, the Release 1 constants in ``R1_LIMITS``) anywhere -> 
 Refusals are not throughput (TC128): every ``RequestSample`` has one closed ``OutcomeClass``. Business
 throughput and business percentiles use ``BUSINESS_OK`` only; profile/ACL/budget/auth refusals have their
 own counters and their own latency percentiles. A refusal fraction above ``ReportPolicy.refusal_bound``
-adds the flags ``REFUSALS_DOMINATE`` and ``UNRELIABLE_REFUSALS``.
+adds the flags ``REFUSALS_DOMINATE`` and ``UNRELIABLE_REFUSALS``. TIMEOUT and BUSINESS_ERROR samples are also
+kept out of the business percentiles, so they get their own guard against survivorship: a TIMEOUT (or
+BUSINESS_ERROR) fraction above the same bound adds ``TIMEOUTS_DOMINATE`` (``BUSINESS_ERRORS_DOMINATE``) to
+``CapacityReport.failure_flags`` and ``UNRELIABLE_REFUSALS`` to ``flags`` (the throughput is then unreliable);
+timeouts have their own percentile set (``timeout_latency``). ``OPERATOR_REFERENCE`` additionally needs the
+injected ``OperatorAuthorityPort`` to authorize the actor for ``OPERATOR_REFERENCE_ACTION``.
 
 Percentiles are exact nearest-rank over integer microseconds: rank = ceil(p * n / 100), value =
 sorted[rank - 1]. Minimum samples: p50 >= 1, p95 >= 20, p99 >= 100, otherwise ``INSUFFICIENT_SAMPLES``
@@ -64,6 +69,7 @@ __all__ = [
     "MATRIX_SOURCES",
     "MAX_LATENCY_US",
     "MAX_SAMPLES",
+    "OPERATOR_REFERENCE_ACTION",
     "PERCENTILE_MIN_SAMPLES",
     "R1_LIMITS",
     "ActiveClientCount",
@@ -107,6 +113,10 @@ PERCENTILE_MIN_SAMPLES: Final = MappingProxyType({50: 1, 95: 20, 99: 100})
 _RATE_CTX: Final = Context(prec=40, rounding=ROUND_HALF_EVEN)
 _SIX_PLACES: Final = Decimal("0.000001")
 _ZERO_RATE: Final = Decimal("0.000000")
+OPERATOR_REFERENCE_ACTION: Final = "capacity.operator_reference"  # platform action checked for OPERATOR_REFERENCE
+FLAG_TIMEOUTS_DOMINATE: Final = "TIMEOUTS_DOMINATE"
+FLAG_BUSINESS_ERRORS_DOMINATE: Final = "BUSINESS_ERRORS_DOMINATE"
+_FAILURE_FLAG_NAMES: Final = frozenset({FLAG_TIMEOUTS_DOMINATE, FLAG_BUSINESS_ERRORS_DOMINATE})
 
 
 # --------------------------------------------------------------------------------------------------
@@ -408,6 +418,7 @@ class Summary:
     refused: int
     business: tuple[PercentileValue, PercentileValue, PercentileValue]
     refusal_latency: tuple[PercentileValue, PercentileValue, PercentileValue]
+    timeout_latency: tuple[PercentileValue, PercentileValue, PercentileValue]
 
     def count_of(self, outcome: OutcomeClass) -> int:
         return dict(self.counts).get(outcome.value, 0)
@@ -437,18 +448,23 @@ def _summarize(snap: tuple[RequestSample, ...]) -> Summary:
     counts = {c: 0 for c in OutcomeClass}
     ok_values: list[int] = []
     refused_values: list[int] = []
+    timeout_values: list[int] = []
     for sample in snap:
         counts[sample.outcome] += 1
         if sample.outcome is OutcomeClass.BUSINESS_OK:
             ok_values.append(sample.latency_us)
         elif sample.outcome in _REFUSAL_CLASSES:
             refused_values.append(sample.latency_us)
+        elif sample.outcome is OutcomeClass.TIMEOUT:
+            timeout_values.append(sample.latency_us)
     return Summary(
         total=len(snap), counts=tuple((c.value, counts[c]) for c in OutcomeClass),
         business_ok=counts[OutcomeClass.BUSINESS_OK], refused=len(refused_values),
         business=(percentile(ok_values, 50), percentile(ok_values, 95), percentile(ok_values, 99)),
         refusal_latency=(percentile(refused_values, 50), percentile(refused_values, 95),
-                         percentile(refused_values, 99)))
+                         percentile(refused_values, 99)),
+        timeout_latency=(percentile(timeout_values, 50), percentile(timeout_values, 95),
+                         percentile(timeout_values, 99)))
 
 
 def summarize(samples: object, ids: object) -> Summary | OpsRefusal:
@@ -513,7 +529,8 @@ class CapacityStore:
     """Per-tenant bounded report store. Ids come from ``report_ids``; owners are registered via a callable.
 
     ``register_owner(tenant_id, company_id, kind, ref)`` is called once per stored report with
-    ``kind="report_id"`` (for tests: ``FakeOwnership().add``). ``ids`` supplies refusal correlation ids.
+    ``kind="report_id"`` and MUST return exactly ``True`` once the owner row exists; any other answer (``None``,
+    ``False``, an exception) rolls the stored report back. ``ids`` supplies refusal correlation ids.
     """
 
     def __init__(self, per_tenant_cap: object, report_ids: object, register_owner: object, ids: object) -> None:
@@ -545,8 +562,10 @@ class CapacityStore:
         if refusal is not None:
             return refusal
         try:
-            self._register(scope.tenant_id, scope.company_id, "report_id", report.report_id)  # type: ignore[attr-defined,operator]
+            confirmed = self._register(scope.tenant_id, scope.company_id, "report_id", report.report_id)  # type: ignore[attr-defined,operator]
         except Exception:  # noqa: BLE001 - an unregistered report would be unreadable: undo, fail closed
+            confirmed = False
+        if confirmed is not True:  # exactly True: a silent no-op (None/False) must not leave a stored report
             self._map.remove(scope.tenant_id, report.report_id)  # type: ignore[attr-defined]
             return ops_refusal(OpsReason.DEPENDENCY_FAILED, self.ids)
         return None
@@ -558,10 +577,26 @@ class CapacityStore:
 # --------------------------------------------------------------------------------------------------
 # the report
 
+def _dominates(count: int, summary: Summary, bound: Decimal) -> bool:
+    return bool(summary.total) and Decimal(count) > _RATE_CTX.multiply(bound, Decimal(summary.total))
+
+
+def _failure_flags(summary: Summary, bound: Decimal) -> tuple[str, ...]:
+    """Separate guards against survivorship: timeouts / business errors are not in the business percentiles."""
+    out: list[str] = []
+    if _dominates(summary.count_of(OutcomeClass.TIMEOUT), summary, bound):
+        out.append(FLAG_TIMEOUTS_DOMINATE)
+    if _dominates(summary.count_of(OutcomeClass.BUSINESS_ERROR), summary, bound):
+        out.append(FLAG_BUSINESS_ERRORS_DOMINATE)
+    return tuple(out)
+
+
 def _flags(summary: Summary, bound: Decimal) -> tuple[OpsReason, ...]:
     flags: list[OpsReason] = []
-    if summary.total and Decimal(summary.refused) > _RATE_CTX.multiply(bound, Decimal(summary.total)):
+    if _dominates(summary.refused, summary, bound):
         flags += [OpsReason.REFUSALS_DOMINATE, OpsReason.UNRELIABLE_REFUSALS]
+    if _failure_flags(summary, bound) and OpsReason.UNRELIABLE_REFUSALS not in flags:
+        flags.append(OpsReason.UNRELIABLE_REFUSALS)  # closest existing code: the throughput verdict is unreliable
     if any(pv.reason is OpsReason.INSUFFICIENT_SAMPLES for pv in summary.business):
         flags.append(OpsReason.INSUFFICIENT_SAMPLES)
     return tuple(flags)
@@ -569,7 +604,8 @@ def _flags(summary: Summary, bound: Decimal) -> tuple[OpsReason, ...]:
 
 _PAYLOAD_FIELDS: Final = (
     "report_id", "grid", "created_at", "window_us", "total_samples", "counts", "business",
-    "refusal_latency", "throughput_per_s", "refusal_fraction", "flags", "basis",
+    "refusal_latency", "timeout_latency", "throughput_per_s", "refusal_fraction", "flags", "failure_flags",
+    "basis",
     "measurement_ref_digest", "authority",
 )
 
@@ -582,8 +618,10 @@ def _payload_of(f: dict[str, object]) -> dict[str, object]:
         "counts": [list(pair) for pair in f["counts"]],  # type: ignore[attr-defined]
         "business": [pv._payload() for pv in f["business"]],  # type: ignore[attr-defined]
         "refusal_latency": [pv._payload() for pv in f["refusal_latency"]],  # type: ignore[attr-defined]
+        "timeout_latency": [pv._payload() for pv in f["timeout_latency"]],  # type: ignore[attr-defined]
         "throughput_per_s": f["throughput_per_s"], "refusal_fraction": f["refusal_fraction"],
         "flags": [flag.value for flag in f["flags"]],  # type: ignore[attr-defined]
+        "failure_flags": list(f["failure_flags"]),  # type: ignore[call-overload]
         "basis": f["basis"].value,  # type: ignore[attr-defined]
         "measurement_ref_digest": f["measurement_ref_digest"], "authority": f["authority"],
     }
@@ -601,9 +639,11 @@ class CapacityReport:
     counts: tuple[tuple[str, int], ...]
     business: tuple[PercentileValue, PercentileValue, PercentileValue]
     refusal_latency: tuple[PercentileValue, PercentileValue, PercentileValue]
+    timeout_latency: tuple[PercentileValue, PercentileValue, PercentileValue]
     throughput_per_s: Decimal
     refusal_fraction: Decimal
     flags: tuple[OpsReason, ...]
+    failure_flags: tuple[str, ...]
     basis: Basis
     measurement_ref_digest: str | None
     digest: str
@@ -624,8 +664,12 @@ class CapacityReport:
                   and all(_valid_percentile_value(v) for v in self.business)
                   and type(self.refusal_latency) is tuple and len(self.refusal_latency) == 3
                   and all(_valid_percentile_value(v) for v in self.refusal_latency)
+                  and type(self.timeout_latency) is tuple and len(self.timeout_latency) == 3
+                  and all(_valid_percentile_value(v) for v in self.timeout_latency)
                   and is_exact_decimal(self.throughput_per_s) and is_exact_decimal(self.refusal_fraction)
                   and type(self.flags) is tuple and all(type(f) is OpsReason for f in self.flags)
+                  and type(self.failure_flags) is tuple
+                  and all(type(f) is str and f in _FAILURE_FLAG_NAMES for f in self.failure_flags)
                   and type(self.basis) is Basis
                   and (self.measurement_ref_digest is None or is_digest(self.measurement_ref_digest))
                   and (self.basis is Basis.OPERATOR_REFERENCE) is (self.measurement_ref_digest is not None)
@@ -645,8 +689,9 @@ def is_valid_report(value: object) -> bool:
         return False
     try:
         CapacityReport(value.report_id, value.grid, value.created_at, value.window_us, value.total_samples,
-                       value.counts, value.business, value.refusal_latency, value.throughput_per_s,
-                       value.refusal_fraction, value.flags, value.basis, value.measurement_ref_digest,
+                       value.counts, value.business, value.refusal_latency, value.timeout_latency,
+                       value.throughput_per_s, value.refusal_fraction, value.flags, value.failure_flags,
+                       value.basis, value.measurement_ref_digest,
                        value.digest, value.authority)
     except (ValueError, AttributeError):
         return False
@@ -671,14 +716,16 @@ def _basis_for(snap: tuple[RequestSample, ...], ref: object) -> tuple[Basis, str
 
 def build_report(scope: object, ownership: object, entitlement: object, store: object, grid_cell: object,
                  samples: object, policy: object, clock: object, *,
-                 measurement_ref: object = None) -> CapacityReport | OpsRefusal:
+                 measurement_ref: object = None, operator_authority: object = None) -> CapacityReport | OpsRefusal:
     """Build, store and return a ``CapacityReport`` for the scope's tenant, or a fixed ``OpsRefusal``.
 
     Fixed order: structure (cell, policy, clock, one-time sample snapshot, reference) -> entitlement ->
     ownership (no stored object is referenced when building) -> per-tenant quota -> compute. The tenant's
     report quota is advisory-checked first and enforced atomically by the store insert. Samples may carry
     ``OPERATOR_REFERENCE`` only together with a well-formed ``MeasurementRef``; otherwise the report is
-    stamped ``SCRIPTED_OFFLINE_FIXTURE``. Never raises.
+    stamped ``SCRIPTED_OFFLINE_FIXTURE``. Claiming ``OPERATOR_REFERENCE`` additionally needs
+    ``operator_authority.authorized(actor, OPERATOR_REFERENCE_ACTION)`` to be exactly ``True`` (checked after
+    entitlement/ownership/quota; ``NOT_AUTHORIZED`` otherwise, nothing is stored). Never raises.
     """
     if type(store) is not CapacityStore:
         return ops_refusal(OpsReason.INPUT_INVALID, None)
@@ -697,6 +744,16 @@ def build_report(scope: object, ownership: object, entitlement: object, store: o
                                     quota=lambda: store.has_room(scope.tenant_id))  # type: ignore[attr-defined]
         if refusal is not None:
             return refusal
+        if basis[0] is Basis.OPERATOR_REFERENCE:
+            if not callable(getattr(operator_authority, "authorized", None)):
+                return ops_refusal(OpsReason.NOT_AUTHORIZED, ids)
+            try:
+                allowed = operator_authority.authorized(  # type: ignore[attr-defined]
+                    scope.actor_id, OPERATOR_REFERENCE_ACTION)  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001
+                return ops_refusal(OpsReason.DEPENDENCY_FAILED, ids)
+            if allowed is not True:
+                return ops_refusal(OpsReason.NOT_AUTHORIZED, ids)
         created_at = _clock_now(clock)
         report_id = store._mint()
         if created_at is None or report_id is None:
@@ -709,8 +766,10 @@ def build_report(scope: object, ownership: object, entitlement: object, store: o
             "report_id": report_id, "grid": grid_cell, "created_at": created_at,
             "window_us": policy.window_us, "total_samples": summary.total,  # type: ignore[attr-defined]
             "counts": summary.counts, "business": summary.business,
-            "refusal_latency": summary.refusal_latency, "throughput_per_s": rate,
-            "refusal_fraction": fraction, "flags": _flags(summary, policy.refusal_bound),  # type: ignore[attr-defined]
+            "refusal_latency": summary.refusal_latency, "timeout_latency": summary.timeout_latency,
+            "throughput_per_s": rate, "refusal_fraction": fraction,
+            "flags": _flags(summary, policy.refusal_bound),  # type: ignore[attr-defined]
+            "failure_flags": _failure_flags(summary, policy.refusal_bound),  # type: ignore[attr-defined]
             "basis": basis[0], "measurement_ref_digest": basis[1], "authority": AUTHORITY,
         }
         digest = _digest_of(fields)

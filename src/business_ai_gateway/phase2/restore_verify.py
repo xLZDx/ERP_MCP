@@ -27,6 +27,12 @@ name; values are exact ``str``/``int``/``bool``/``None``/``UUID``/aware ``dateti
 bounded nested ``dict``/``list`` (jsonb). The ``attestations`` rows carry two extra columns, ``policy_version`` and
 ``policy_digest``, which bind the restored row to the policy it was judged under (the SQL table has none).
 
+``verify_restore`` refuses (``INPUT_INVALID``) a catalogue that is not a superset of ``LIVING_FK_CATALOGUE`` and the
+``report_digest`` binds a digest of the catalogue used. Attestation currency is judged only for the attestations the
+restored accepted heads rest on (``accepted_heads.revision_id``); older attestations are immutable history. The head
+check also requires ``version == max(to_version)`` of the head's events and an ``OBSERVED`` observation; a manifest
+with a duplicate primary key or duplicate ``(tenant, source, revision_id)`` is invalid.
+
 Honest limits: the manifests are built from caller rows, so a manifest is only as truthful as those rows (the
 real database restore proof stays ``tests/phase2/test_g1_restore.py``); the structural columns kept per row are
 not re-derived from the row digest by ``verify_restore`` (a hand-forged, self-consistent manifest is possible
@@ -70,9 +76,12 @@ MAX_TOTAL_ROWS: Final = 20_000
 MAX_COLUMNS: Final = 64
 MAX_CATALOGUE_EDGES: Final = 64
 MAX_SOURCES: Final = 64
-_MAX_TEXT: Final = 65_536
-_MAX_DEPTH: Final = 6
-_MAX_NODES: Final = 2_000
+# jsonb limits are aligned with the SQL ones (outbox.content <= 262144 bytes, provenance <= 65536 bytes): a legal
+# payload must never make a whole table unverifiable. Keys starting with "$" stay refused: the shared canonical
+# encoder reserves them as type tags ($dec/$ts), so such a row cannot be digested unambiguously.
+_MAX_TEXT: Final = 262_144
+_MAX_DEPTH: Final = 32
+_MAX_NODES: Final = 50_000
 _MAX_INT: Final = 2**63 - 1
 _IDENT: Final = re.compile(r"[a-z_][a-z0-9_]{0,62}")
 
@@ -100,7 +109,7 @@ TABLE_KEYS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType({
 })
 _NULLABLE_KEYS: Final = frozenset({("role_scope", "company_id")})
 _EXTRA_COLUMNS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType({
-    "observations": ("digest", "revision_id"),
+    "observations": ("digest", "kind", "revision_id"),
     "accepted_heads": ("model_key", "revision_id", "version"),
     "acceptance_events": ("accepted_revision", "model_key", "to_version"),
     "outbox": ("connection_id", "seq"),
@@ -318,6 +327,13 @@ def _view(value: object) -> _View | None:
                 return None
             if list(entries) != sorted(entries, key=lambda e: (e.key, e.digest)):
                 return None
+            if len({e.key for e in entries}) != len(entries):  # a duplicate primary key is never a real table
+                return None
+            if name == "observations" and {"tenant_id", "source_id", "revision_id"} <= set(columns):
+                at = {c: i for i, c in enumerate(columns)}  # UNIQUE(tenant_id, source_id, revision_id)
+                triples = {tuple(e.cols[at[c]][1] for c in ("tenant_id", "source_id", "revision_id")) for e in entries}
+                if len(triples) != len(entries):
+                    return None
             if tdigest != _table_digest(name, columns, entries):
                 return None
             seen[name] = (columns, entries, tdigest)
@@ -445,6 +461,8 @@ def build_manifest(scope: object, source_ids: object, rows: object, ownership: o
             return ops_refusal(OpsReason.INPUT_INVALID, ids)
         tenant = scope.tenant_id  # type: ignore[attr-defined]
         return _build(tenant, sources, tuple(rows.items()), edges)
+    except ValueError:  # the manifest itself is not a valid table set (duplicate key / revision_id)
+        return ops_refusal(OpsReason.INPUT_INVALID, ids)
     except _Quota:
         return ops_refusal(OpsReason.QUOTA_EXCEEDED, ids)
     except _Bad:
@@ -646,10 +664,16 @@ def _head(src: _View, res: _View) -> set[str]:
     heads = res.tables.get("accepted_heads")
     if heads is None:
         return bad
-    obs = {(c["tenant_id"], c["source_id"], c["revision_id"])
+    obs = {(c["tenant_id"], c["source_id"], c["revision_id"]): c["kind"]
            for c in (_cols(e) for e in res.tables.get("observations", ((), (), ""))[1])}
+    events = [_cols(e) for e in res.tables.get("acceptance_events", ((), (), ""))[1]]
     accepted = {(c["tenant_id"], c["source_id"], c["model_key"], c["to_version"]): c["accepted_revision"]
-                for c in (_cols(e) for e in res.tables.get("acceptance_events", ((), (), ""))[1])}
+                for c in events}
+    newest: dict[tuple[object, object, object], int] = {}
+    for c in events:
+        if type(c["to_version"]) is int:
+            group = (c["tenant_id"], c["source_id"], c["model_key"])
+            newest[group] = max(newest.get(group, 0), c["to_version"])  # type: ignore[arg-type]
     restored_heads = {}
     for entry in heads[1]:
         c = _cols(entry)
@@ -658,10 +682,11 @@ def _head(src: _View, res: _View) -> set[str]:
         if type(version) is not int or version < 0:
             bad.add("accepted_heads")
         elif version == 0:
-            if revision is not None:
+            if revision is not None or newest.get((c["tenant_id"], c["source_id"], c["model_key"]), 0) != 0:
                 bad.add("accepted_heads")
-        elif (revision is None or (c["tenant_id"], c["source_id"], revision) not in obs
-              or accepted.get((c["tenant_id"], c["source_id"], c["model_key"], version)) != revision):
+        elif (revision is None or obs.get((c["tenant_id"], c["source_id"], revision)) != "OBSERVED"
+              or accepted.get((c["tenant_id"], c["source_id"], c["model_key"], version)) != revision
+              or newest.get((c["tenant_id"], c["source_id"], c["model_key"]), 0) != version):
             bad.add("accepted_heads")
     source_heads = src.tables.get("accepted_heads")
     if source_heads is not None:
@@ -723,6 +748,11 @@ def _attestations(res: _View, port: object, now: datetime) -> set[str]:
     table = res.tables.get("attestations")
     if table is None:
         return set()
+    needed: set[tuple[object, object, object]] = set()  # revisions the accepted heads currently rest on
+    for entry in res.tables.get("accepted_heads", ((), (), ""))[1]:
+        h = _cols(entry)
+        if h["revision_id"] is not None:
+            needed.add((h["tenant_id"], h["source_id"], h["revision_id"]))
     obs_digest: dict[tuple[object, object, object], object] = {}
     for entry in res.tables.get("observations", ((), (), ""))[1]:
         c = _cols(entry)
@@ -730,6 +760,8 @@ def _attestations(res: _View, port: object, now: datetime) -> set[str]:
     stale = False
     for entry in table[1]:
         c = _cols(entry)
+        if (c["tenant_id"], c["source_id"], c["revision_id"]) not in needed:
+            continue  # history (immutable, accumulating): an old expired/revoked row does not fail a healthy restore
         digest = obs_digest.get((c["tenant_id"], c["source_id"], c["revision_id"]))
         locally_ok = (type(digest) is str and c["revoked_at"] is None and type(c["expires_at"]) is str
                       and type(c["policy_version"]) is str and type(c["policy_digest"]) is str
@@ -771,6 +803,8 @@ def verify_restore(scope: object, source_ids: object, source: object, restored: 
         src, res = _view(source), _view(restored)
         if edges is None or src is None or res is None or not callable(clock):
             return ops_refusal(OpsReason.INPUT_INVALID, ids)
+        if not set(LIVING_FK_CATALOGUE) <= set(edges):  # a caller may add edges, never drop the real ones
+            return ops_refusal(OpsReason.INPUT_INVALID, ids)
         tenant = scope.tenant_id  # type: ignore[attr-defined]
         if src.tenant != tenant or res.tenant != tenant or src.sources != sources or res.sources != sources:
             return ops_refusal(OpsReason.NOT_FOUND, ids)
@@ -798,7 +832,8 @@ def verify_restore(scope: object, source_ids: object, source: object, restored: 
                 _check(CheckName.ATTESTATION, att),
                 _check(CheckName.SCOPE, _scope(src) | _scope(res)),
             )
-        payload = {"v": 1, "source": src.digest, "restored": res.digest,
+        cat = sorted([e.child_table, list(e.child_columns), e.parent_table, list(e.parent_columns)] for e in set(edges))
+        payload = {"v": 2, "source": src.digest, "restored": res.digest, "catalogue": canonical_digest(cat),
                    "checks": [[c.name.value, c.ran, c.passed, [] if c.code is None else [c.code.value],
                                list(c.tables)] for c in checks]}
         return RestoreReport(checks, src.digest, res.digest, canonical_digest(payload))

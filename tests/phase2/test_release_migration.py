@@ -238,11 +238,26 @@ def test_rehearsal_refuses_a_non_additive_unit_with_the_class_code():
     refused(plan_rehearsal([both], [], IDS), OpsReason.DESTRUCTIVE)  # the worst class wins
 
 
-def test_rehearsal_does_not_judge_steps_of_an_already_recorded_version():
-    # record_migration returns false for it: the body never runs, so its steps are not rehearsed
+def test_rehearsal_classifies_the_steps_of_an_already_applied_version_too():
+    """G1: a destructive step behind an applied version still refuses (it would run when the version is re-played)."""
     unit = MigrationUnit("001", (), (step(StepKind.DROP_TABLE),))
-    plan = plan_rehearsal([unit], ["001"], IDS)
-    assert type(plan) is RehearsalPlan and plan.actions[0].apply is False
+    refused(plan_rehearsal([unit], ["001"], IDS), OpsReason.DESTRUCTIVE)
+    r1 = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
+    refused(plan_rehearsal([r1], ["001"], IDS), OpsReason.UNCLASSIFIED)
+    refused(plan_rehearsal([add("001"), unit], [], IDS), OpsReason.DESTRUCTIVE)  # the planned-earlier no-op case
+
+
+def test_plan_digest_binds_the_content_of_every_unit_applied_or_not():
+    a = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE),))
+    b = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX)))
+    c = MigrationUnit("001", (), (step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX),))  # same step count as `a`, different content
+    for applied in ([], ["001"]):
+        digests = {plan_rehearsal([u], applied, IDS).digest for u in (a, b, c)}
+        assert len(digests) == 3
+    assert plan_rehearsal([a], ["001"], IDS).digest != plan_rehearsal([a], [], IDS).digest
+    assert plan_rehearsal([a], [], IDS).digest == plan_rehearsal([a], [], IDS).digest
+    with pytest.raises(ValueError, match="REHEARSAL_ACTION_INVALID"):
+        RehearsalAction("001", True, 1, "not-a-digest")
 
 
 def test_rehearsal_a_hostile_unit_cannot_ride_behind_an_applied_version():

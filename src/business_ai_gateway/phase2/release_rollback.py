@@ -14,7 +14,13 @@ Fixed check order of ``decide_rollback`` (first failure wins, every failure is a
 6. CONTRACT steps: window not yet elapsed on the injected clock -> ``ROLLBACK_WINDOW_OPEN`` (a separate
    approval cannot shorten it; a clock regression only keeps it open longer, never shortens it); elapsed but
    without the separate contract approval -> ``CONTRACT_NOT_ALLOWED``
-7. effective grants computed from CURRENT state (see below); a failing dependency -> ``DEPENDENCY_FAILED``.
+7. effective grants computed from CURRENT state (see below); a failing dependency (registry, clock OR an
+   attestation store that cannot answer) -> ``DEPENDENCY_FAILED`` for the whole decision, never a truncated set.
+
+Only ``SWITCH_ONLY`` steps (and window-elapsed, separately approved ``CONTRACT`` cleanup) may appear in a rollback
+plan; ANY other class (additive ones such as GRANT/ADD_ROLE/INSERT_ROWS/HARDEN_PRIVILEGES included, because they
+could re-issue a right) gives ``ROLLBACK_DESTRUCTIVE_DENIED``. The contract approval must come from a
+``contract_approver_id`` DIFFERENT from the rollback operator (separation of duties).
 
 Rights and evidence are never resurrected (decision 15): ``effective_after_rollback`` reads the CURRENT
 ``GrantRegistry`` view (one atomic read, high-water clock inside the registry) and
@@ -37,6 +43,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Final, Protocol
 
+from ._identity import same_person
 from .comparison_snapshot import canonical_digest
 from .evidence_attestation import CheckResult
 from .ops_types import (
@@ -316,14 +323,17 @@ def _read_clock(clock: object) -> datetime | None:
         return None
 
 
-def _evidence_current(attestations: object, binding: AttestationBinding) -> bool:
+def _evidence_current(attestations: object, binding: AttestationBinding) -> bool | None:
+    """``True``/``False`` when the store ANSWERED (valid / not valid); ``None`` when it failed to answer."""
     try:
         res = attestations.check_current(  # type: ignore[attr-defined]
             binding.attestation_id, binding.tenant_id, binding.revision_digest,
             binding.policy_version, binding.policy_digest)
-        return type(res) is CheckResult and res.valid is True and res.code == "VALID"
-    except Exception:  # noqa: BLE001 - a store that cannot answer is not evidence
-        return False
+        if type(res) is not CheckResult:
+            return None
+        return res.valid is True and res.code == "VALID"
+    except Exception:  # noqa: BLE001 - a store that cannot answer is a dependency failure, not "not current"
+        return None
 
 
 def effective_after_rollback(grants: object, attestations: object, clock: object, ids: object,
@@ -366,10 +376,14 @@ def _effective(grants: object, attestations: object, now: datetime, ids: object,
                 causes[gid.value] = BlockCause.REVOKED
             elif entry.expired is not False or rec.credential_expires_at <= high:
                 causes[gid.value] = BlockCause.EXPIRED
-            elif rec.evidence is not None and not _evidence_current(attestations, rec.evidence):
-                causes[gid.value] = BlockCause.EVIDENCE_NOT_CURRENT
             else:
-                effective.append(gid)
+                current = True if rec.evidence is None else _evidence_current(attestations, rec.evidence)
+                if current is None:  # the store failed: the whole answer is unreliable, never a truncated set
+                    return ops_refusal(OpsReason.DEPENDENCY_FAILED, ids)
+                if current:
+                    effective.append(gid)
+                else:
+                    causes[gid.value] = BlockCause.EVIDENCE_NOT_CURRENT
         known = {e.record.grant_id.value for e in view.entries}
     except Exception:  # noqa: BLE001 - a forged entry/record: fail closed
         return ops_refusal(OpsReason.DEPENDENCY_FAILED, ids)
@@ -495,7 +509,8 @@ def _authorized(authority: object, actor_id: str, action: str) -> bool | None:
 
 def decide_rollback(actor_id: object, plan: object, release_state: object, *, grants: object,
                     attestations: object, authority: object, clock: Callable[[], datetime] | object,
-                    ids: object, switch_snapshot: object = None) -> RollbackDecision:
+                    ids: object, switch_snapshot: object = None,
+                    contract_approver_id: object = None) -> RollbackDecision:
     """Decide (never execute) a rollback; see the module docstring for the fixed check order.
 
     Allowed: ``allowed=True``, ``plan_digest`` set, ``executed=False`` and the effective grants computed
@@ -521,7 +536,9 @@ def decide_rollback(actor_id: object, plan: object, release_state: object, *, gr
     release_id, switched_at, window_seconds, live_head = state
     target, max_head, steps = parsed
     classes = [classify_step(s) for s in steps]
-    if any(c in (StepClass.DESTRUCTIVE, StepClass.UNCLASSIFIED) for c in classes):
+    # a rollback plan may only flip switches (and, after the window, approved contract cleanup): any additive step
+    # (GRANT, ADD_ROLE, INSERT_ROWS, HARDEN_PRIVILEGES ...) could re-issue a right and is refused like a destructive one
+    if any(c not in (StepClass.SWITCH_ONLY, StepClass.CONTRACT) for c in classes):
         return _deny(OpsReason.ROLLBACK_DESTRUCTIVE_DENIED, ids)
     if live_head > max_head:
         return _deny(OpsReason.ROLLBACK_HEAD_INCOMPATIBLE, ids)
@@ -532,7 +549,11 @@ def decide_rollback(actor_id: object, plan: object, release_state: object, *, gr
             window_open = True  # an unrepresentable end is never "elapsed"
         if window_open:
             return _deny(OpsReason.ROLLBACK_WINDOW_OPEN, ids)
-        approved = _authorized(authority, actor_id, ACTION_CONTRACT_APPROVE)  # type: ignore[arg-type]
+        # separation of duties: the contract approval comes from a DIFFERENT person than the rollback operator
+        if (not is_identity_text(contract_approver_id) or contract_approver_id == actor_id
+                or same_person(contract_approver_id, actor_id)):  # type: ignore[arg-type]
+            return _deny(OpsReason.CONTRACT_NOT_ALLOWED, ids)
+        approved = _authorized(authority, contract_approver_id, ACTION_CONTRACT_APPROVE)  # type: ignore[arg-type]
         if approved is None:
             return _deny(OpsReason.DEPENDENCY_FAILED, ids)
         if not approved:

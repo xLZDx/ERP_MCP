@@ -11,6 +11,7 @@ from business_ai_gateway.phase2.capacity_model import (
     MATRIX_ACTIVE_CLIENTS,
     MATRIX_SESSIONS,
     MATRIX_SOURCES,
+    OPERATOR_REFERENCE_ACTION,
     R1_LIMITS,
     ActiveClientCount,
     BackendCount,
@@ -46,6 +47,7 @@ from business_ai_gateway.phase2.ops_types import (
     Basis,
     FakeCorrelationSource,
     FakeEntitlements,
+    FakeOperatorAuthority,
     FakeOwnership,
     OpsReason,
     OpsRefusal,
@@ -100,8 +102,14 @@ class Env:
         self.owner, self.ent = FakeOwnership(), FakeEntitlements()
         self.ent.grant("t1", "a1", "c1")
         self.ent.grant("t2", "b1", "c9")
-        self.store = CapacityStore(cap, FakeCorrelationSource("RPT"), self.owner.add, FakeCorrelationSource())
+        self.store = CapacityStore(cap, FakeCorrelationSource("RPT"), self.register, FakeCorrelationSource())
         self.clock = FakeClock()
+        self.auth = FakeOperatorAuthority()
+
+    def register(self, tenant_id, company_id, kind, ref):
+        """Owner registration that CONFIRMS: FakeOwnership.add is silent on overflow, so ask owns() afterwards."""
+        self.owner.add(tenant_id, company_id, kind, ref)
+        return self.owner.owns(tenant_id, company_id, kind, ref)
 
     def entitled(self, tenant_id, actor_id, company_id):
         self.log.append(("entitled", tenant_id, actor_id, company_id))
@@ -112,6 +120,7 @@ class Env:
         return self.owner.owns(tenant_id, company_id, kind, ref)
 
     def build(self, scope, samples, grid=None, policy=None, **kw):
+        kw.setdefault("operator_authority", self.auth)
         return build_report(scope, self, self, self.store, grid or cell(), samples,
                             policy or ReportPolicy(window_us=10_000_000), self.clock, **kw)
 
@@ -608,6 +617,7 @@ def test_default_basis_is_scripted_and_operator_labelled_samples_without_a_refer
 
 def test_operator_reference_needs_a_well_formed_ref_and_operator_samples_and_still_has_no_proven_field():
     env = Env()
+    env.auth.allow("a1", OPERATOR_REFERENCE_ACTION)
     ref = MeasurementRef("RUN-2026-10-10", "a" * 64)
     operator = [RequestSample(OK, 100 + i, Basis.OPERATOR_REFERENCE) for i in range(30)]
     report = env.build(A1, operator, measurement_ref=ref)
@@ -802,3 +812,99 @@ def test_summarize_hostile_and_config_limit_inputs():
     assert summarize([forged], ids()).reason is OpsReason.INPUT_INVALID
     empty = summarize((), ids())
     assert empty.total == 0 and empty.business[0].reason is OpsReason.INSUFFICIENT_SAMPLES
+
+
+# ============================================================ review fixes (S9 stream 3)
+
+def test_j1_timeouts_dominating_flag_the_report_and_make_throughput_unreliable():
+    samples = [s(OK, 1000 + i) for i in range(100)] + [s(OutcomeClass.TIMEOUT, 5_000_000 + i) for i in range(10_000)]
+    report = Env().build(A1, samples)
+    assert type(report) is CapacityReport
+    assert "TIMEOUTS_DOMINATE" in report.failure_flags
+    assert OpsReason.UNRELIABLE_REFUSALS in report.flags
+    assert dict(report.counts)["TIMEOUT"] == 10_000 and dict(report.counts)["BUSINESS_OK"] == 100
+    # timeouts have their OWN percentile set and never leak into the business one
+    assert report.timeout_latency[1].value is not None and report.timeout_latency[1].value >= 5_000_000
+    assert report.business[1].value < 5_000_000
+    assert is_valid_report(report)
+
+
+def test_j1_business_errors_dominating_are_flagged_separately():
+    samples = [s(OK, 1000 + i) for i in range(100)] + [s(OutcomeClass.BUSINESS_ERROR, 10 + i) for i in range(1000)]
+    report = Env().build(A1, samples)
+    assert "BUSINESS_ERRORS_DOMINATE" in report.failure_flags and "TIMEOUTS_DOMINATE" not in report.failure_flags
+    assert OpsReason.UNRELIABLE_REFUSALS in report.flags
+
+
+def test_j1_a_healthy_mix_has_no_failure_flags_and_the_bound_is_strict():
+    ok_only = Env().build(A1, GOOD_SAMPLES)
+    assert ok_only.failure_flags == () and OpsReason.UNRELIABLE_REFUSALS not in ok_only.flags
+    half = [s(OK, 100 + i) for i in range(50)] + [s(OutcomeClass.TIMEOUT, 900 + i) for i in range(50)]
+    assert Env().build(A1, half).failure_flags == ()  # exactly at the 0.5 bound is not "dominating"
+    over = [s(OK, 100 + i) for i in range(49)] + [s(OutcomeClass.TIMEOUT, 900 + i) for i in range(51)]
+    assert Env().build(A1, over).failure_flags == ("TIMEOUTS_DOMINATE",)
+
+
+def test_j1_summary_exposes_timeout_percentiles_and_counts():
+    summary = summarize([s(OK, 1)] * 5 + [s(OutcomeClass.TIMEOUT, 7_000_000)] * 120, ids())
+    assert summary.count_of(OutcomeClass.TIMEOUT) == 120
+    assert summary.timeout_latency[2].value == 7_000_000
+    few = summarize([s(OutcomeClass.TIMEOUT, 5)] * 3, ids())
+    assert few.timeout_latency[1].reason is OpsReason.INSUFFICIENT_SAMPLES
+
+
+def test_j1_failure_flags_are_digest_bound():
+    samples = [s(OK, 1000)] * 10 + [s(OutcomeClass.TIMEOUT, 5)] * 100
+    report = Env().build(A1, samples)
+    assert is_valid_report(report)
+    with pytest.raises(ValueError, match="CAPACITY_REPORT_INVALID"):
+        dataclasses.replace(report, failure_flags=())  # digest no longer matches
+
+
+@pytest.mark.parametrize("answer", [None, False, 0, "yes"])
+def test_j2_owner_registration_that_does_not_confirm_rolls_the_report_back(answer):
+    env = Env()
+    env.store = CapacityStore(3, FakeCorrelationSource("RPT"), lambda *a: answer, FakeCorrelationSource())
+    result = env.build(A1, GOOD_SAMPLES)
+    assert type(result) is OpsRefusal and result.reason is OpsReason.DEPENDENCY_FAILED
+    assert env.store.count("t1") == 0
+
+
+def test_j2_ownership_overflow_never_leaves_a_stored_but_unreadable_report(monkeypatch):
+    import business_ai_gateway.phase2.workbench_types as wt
+
+    env = Env()
+    monkeypatch.setattr(wt, "_MAX_PORT_ROWS", 0)  # FakeOwnership.add now silently ignores every write
+    result = env.build(A1, GOOD_SAMPLES)
+    assert type(result) is OpsRefusal and result.reason is OpsReason.DEPENDENCY_FAILED
+    assert env.store.count("t1") == 0  # no quota-consuming report that read_report would answer NOT_FOUND for
+
+
+def test_j3_operator_reference_needs_an_authorized_actor():
+    ref = MeasurementRef("RUN-1", "a" * 64)
+    operator = [RequestSample(OK, 100 + i, Basis.OPERATOR_REFERENCE) for i in range(30)]
+    env = Env()
+    denied = env.build(A1, operator, measurement_ref=ref)
+    assert type(denied) is OpsRefusal and denied.reason is OpsReason.NOT_AUTHORIZED and env.store.count("t1") == 0
+    env.auth.allow("a1", OPERATOR_REFERENCE_ACTION)
+    env.auth.deny("a1", OPERATOR_REFERENCE_ACTION)  # deny wins
+    assert env.build(A1, operator, measurement_ref=ref).reason is OpsReason.NOT_AUTHORIZED
+    assert env.build(A1, operator, measurement_ref=ref, operator_authority=None).reason is OpsReason.NOT_AUTHORIZED
+    assert env.build(A1, operator, measurement_ref=ref, operator_authority=object()).reason is OpsReason.NOT_AUTHORIZED
+    ok = Env()
+    ok.auth.allow("a1", OPERATOR_REFERENCE_ACTION)
+    assert ok.build(A1, operator, measurement_ref=ref).basis is Basis.OPERATOR_REFERENCE
+    # an authority entry for another actor/action does not help
+    other = Env()
+    other.auth.allow("a1", "some.other.action")
+    other.auth.allow("zz", OPERATOR_REFERENCE_ACTION)
+    assert other.build(A1, operator, measurement_ref=ref).reason is OpsReason.NOT_AUTHORIZED
+
+
+def test_j3_entitlement_is_still_asked_before_operator_authority_and_scripted_needs_no_authority():
+    env = Env()
+    ref = MeasurementRef("RUN-1", "a" * 64)
+    operator = [RequestSample(OK, 100 + i, Basis.OPERATOR_REFERENCE) for i in range(30)]
+    stranger = env.build(OpsScope("t1", "c1", "stranger"), operator, measurement_ref=ref)
+    assert stranger.reason is OpsReason.NOT_ENTITLED
+    assert env.build(A1, GOOD_SAMPLES, operator_authority=None).basis is Basis.SCRIPTED_OFFLINE_FIXTURE

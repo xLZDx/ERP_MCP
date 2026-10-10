@@ -94,6 +94,7 @@ class Env:
         self.store = AttestationStore(self.clock, accountants={"t1": ["acct"]}, id_source=self._id)
         self.authority = FakeOperatorAuthority()
         self.authority.allow("op-1", ACTION_ROLLBACK)
+        self.approver = "op-2"  # a DIFFERENT person approves contract cleanup
         self.ids = FakeCorrelationSource()
         self.plan = RollbackPlan("v1", 5, (flag_step(),))
         self.state = ReleaseState("rel-1", T0, 3600, 3)
@@ -109,6 +110,8 @@ class Env:
         args = {"grants": self.registry, "attestations": self.store, "authority": self.authority,
                 "clock": self.clock, "ids": self.ids}
         args.update(kw)
+        if plan is not None:
+            args.setdefault("contract_approver_id", self.approver)
         return decide_rollback(actor, plan or self.plan, state or self.state, **args)
 
     def effective(self, snapshot=None):
@@ -151,16 +154,24 @@ def test_flag_flip_is_allowed_with_a_plan_digest_and_executed_false(env):
     assert d.executed is False and d.authority == AUTHORITY
 
 
-def test_additive_and_switch_steps_may_be_rolled_back_together(env):
+def test_additive_steps_are_not_allowed_in_a_rollback_plan(env):
     plan = RollbackPlan("v1", 5, (flag_step(), additive_step()))
-    assert env.decide(plan=plan).allowed is True
+    refused(env.decide(plan=plan), OpsReason.ROLLBACK_DESTRUCTIVE_DENIED)
+
+
+@pytest.mark.parametrize("kind", [StepKind.GRANT, StepKind.ADD_ROLE, StepKind.INSERT_ROWS, StepKind.HARDEN_PRIVILEGES])
+def test_a_rollback_plan_cannot_re_issue_rights_through_an_additive_step(env, kind):
+    """F1: a re-issued right would bypass 'rollback never resurrects rights'."""
+    for phase in Phase:
+        step = MigrationStep(phase, kind, SchemaName.LIVING, ObjectClass.TABLE)
+        refused(env.decide(plan=RollbackPlan("v1", 5, (flag_step(), step))), OpsReason.ROLLBACK_DESTRUCTIVE_DENIED)
 
 
 def test_plan_digest_is_deterministic_and_bound_to_plan_state_and_effective_grants(env):
     base = env.decide().plan_digest
     assert env.decide().plan_digest == base
     assert env.decide(plan=RollbackPlan("v2", 5, (flag_step(),))).plan_digest != base
-    assert env.decide(plan=RollbackPlan("v1", 5, (flag_step(), additive_step()))).plan_digest != base
+    assert env.decide(plan=RollbackPlan("v1", 5, (flag_step(), flag_step()))).plan_digest != base
     assert env.decide(state=ReleaseState("rel-1", T0, 3600, 4)).plan_digest != base
     env.grant("g-1")
     with_grant = env.decide().plan_digest
@@ -230,7 +241,7 @@ def contract_plan():
 
 
 def test_contract_cleanup_before_the_window_elapsed_is_refused_even_with_approval(env):
-    env.authority.allow("op-1", ACTION_CONTRACT_APPROVE)
+    env.authority.allow("op-2", ACTION_CONTRACT_APPROVE)
     env.now = T0 + timedelta(seconds=3599)
     refused(env.decide(plan=contract_plan()), OpsReason.ROLLBACK_WINDOW_OPEN)
 
@@ -238,14 +249,14 @@ def test_contract_cleanup_before_the_window_elapsed_is_refused_even_with_approva
 def test_contract_cleanup_after_the_window_needs_a_separate_approval(env):
     env.now = T0 + timedelta(seconds=3600)
     refused(env.decide(plan=contract_plan()), OpsReason.CONTRACT_NOT_ALLOWED)
-    env.authority.allow("op-1", ACTION_CONTRACT_APPROVE)
+    env.authority.allow("op-2", ACTION_CONTRACT_APPROVE)
     assert env.decide(plan=contract_plan()).allowed is True
-    env.authority.deny("op-1", ACTION_CONTRACT_APPROVE)  # deny wins again
+    env.authority.deny("op-2", ACTION_CONTRACT_APPROVE)  # deny wins again
     refused(env.decide(plan=contract_plan()), OpsReason.CONTRACT_NOT_ALLOWED)
 
 
 def test_clock_regression_never_shortens_the_rollback_window(env):
-    env.authority.allow("op-1", ACTION_CONTRACT_APPROVE)
+    env.authority.allow("op-2", ACTION_CONTRACT_APPROVE)
     env.now = T0 + timedelta(seconds=3600)
     assert env.decide(plan=contract_plan()).allowed is True
     env.now = T0 + timedelta(seconds=10)  # the clock jumps back: the window is open again, not shorter
@@ -255,7 +266,7 @@ def test_clock_regression_never_shortens_the_rollback_window(env):
 
 
 def test_window_arithmetic_overflow_keeps_the_window_open(env):
-    env.authority.allow("op-1", ACTION_CONTRACT_APPROVE)
+    env.authority.allow("op-2", ACTION_CONTRACT_APPROVE)
     state = ReleaseState("rel-1", datetime(9999, 12, 31, tzinfo=UTC), 3600, 3)
     refused(env.decide(plan=contract_plan(), state=state), OpsReason.ROLLBACK_WINDOW_OPEN)
 
@@ -334,6 +345,19 @@ def test_the_contract_approval_port_failing_denies(env):
             return True
 
     refused(env.decide(plan=contract_plan(), authority=Flaky()), OpsReason.DEPENDENCY_FAILED)
+
+
+def test_contract_approval_needs_a_different_person_than_the_rollback_operator(env):
+    """F3: separation of duties between the rollback authority and the contract approval."""
+    env.now = T0 + timedelta(seconds=3600)
+    env.authority.allow("op-2", ACTION_CONTRACT_APPROVE)
+    env.authority.allow("op-1", ACTION_CONTRACT_APPROVE)  # the operator holds the right too: still not enough
+    assert env.decide(plan=contract_plan()).allowed is True
+    refused(env.decide(plan=contract_plan(), contract_approver_id="op-1"), OpsReason.CONTRACT_NOT_ALLOWED)
+    refused(env.decide(plan=contract_plan(), contract_approver_id=None), OpsReason.CONTRACT_NOT_ALLOWED)
+    refused(env.decide(plan=contract_plan(), contract_approver_id="op\u200b1"), OpsReason.CONTRACT_NOT_ALLOWED)
+    refused(env.decide(plan=contract_plan(), contract_approver_id="nobody"), OpsReason.CONTRACT_NOT_ALLOWED)
+    assert env.decide().allowed is True  # no contract steps: no approver needed
 
 
 @pytest.mark.parametrize("actor", [None, 5, b"op-1", "", "   ", "op\x001", "op\u200b1", "x" * 10_000,
@@ -652,8 +676,21 @@ def test_a_store_that_fails_or_lies_gives_no_evidence(env):
         def check_current(self, *args):
             return type("R", (), {"valid": True, "code": "VALID"})()
 
-    for store in (Boom(), Liar(), Truthy(), None, object()):
-        assert effective_after_rollback(env.registry, store, env.clock, env.ids).effective == ()
+    for store in (Boom(), Liar(), Truthy(), None, object()):  # F2: a failing store is a dependency failure
+        out = effective_after_rollback(env.registry, store, env.clock, env.ids)
+        assert type(out) is OpsRefusal and out.reason is OpsReason.DEPENDENCY_FAILED
+        refused(env.decide(attestations=store), OpsReason.DEPENDENCY_FAILED)
+
+
+def test_a_store_that_answers_not_valid_is_not_a_failure(env):
+    att_id, binding = env.attest()
+    g = env.grant("g-1", evidence=binding)
+    other = env.grant("g-2")
+    env.revoke_attestation(att_id)
+    out = env.effective()
+    assert out.effective == (other,) and g not in out.effective
+    d = env.decide()
+    assert d.allowed is True and d.effective_grants == (other,)
 
 
 def test_a_grant_without_evidence_needs_none_and_a_late_grant_is_current(env):
@@ -881,7 +918,7 @@ def test_modules_contain_no_deletion_clock_or_io_calls(name):
 def test_modules_import_only_phase2_siblings_that_are_themselves_clean(name):
     tree = ast.parse((_SRC / name).read_text(encoding="utf-8"))
     siblings = {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.level == 1}
-    assert siblings <= {"comparison_snapshot", "evidence_attestation", "ops_types", "release_migration"}
+    assert siblings <= {"_identity", "comparison_snapshot", "evidence_attestation", "ops_types", "release_migration"}
 
 
 def test_module_level_has_no_mutable_ambient_state():

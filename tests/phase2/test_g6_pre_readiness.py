@@ -75,11 +75,11 @@ def test_a_subclass_reference_is_not_evidence():
     class Sub(OperatorEvidenceRef):
         pass
 
-    try:
-        sub = Sub(SlotKind.REPEATABLE_RESTORE_REHEARSAL, "R", DIGEST, "env", HEAD)
-    except Exception:  # noqa: BLE001 - slots dataclass subclassing may be refused outright
-        return
-    assert set(build_readiness([sub], HEAD).not_run) == set(SlotKind)
+    sub = Sub(SlotKind.REPEATABLE_RESTORE_REHEARSAL, "R", DIGEST, "env", HEAD)  # construction succeeds ...
+    assert type(sub) is not OperatorEvidenceRef
+    report = build_readiness([sub], HEAD)
+    assert type(report) is ReadinessReport
+    assert set(report.not_run) == set(SlotKind)  # ... but a subclass is never counted as evidence
 
 
 @pytest.mark.parametrize("fields", [

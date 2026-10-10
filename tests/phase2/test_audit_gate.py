@@ -77,14 +77,15 @@ def _ports():
 
 
 class Env:
-    def __init__(self, cap=1000, timeout=5):
+    def __init__(self, cap=1000, timeout=5, **kwargs):
         self.log = []
         self.clock = FakeClock()
         self.ports = _ports()
         self.sink1 = FakeAuditSink(self.clock, log=self.log, name="audit-t1")
         self.sink2 = FakeAuditSink(self.clock, log=self.log, name="audit-t2")
         self.gate = AuditGate(default_registry(), {"t1": self.sink1, "t2": self.sink2}, self.ports, self.ports,
-                              FakeCorrelationSource(), self.clock, timeout_seconds=timeout, unaudited_cap=cap)
+                              FakeCorrelationSource(), self.clock, timeout_seconds=timeout, unaudited_cap=cap,
+                              **kwargs)
         self.calls = []
 
     def effect(self, tag="e"):
@@ -411,6 +412,168 @@ def test_concurrent_distinct_requests_each_run_once_with_two_audit_records():
     assert sorted(env.calls) == sorted(f"REQ-{i}" for i in range(16))
     assert all(o.status is GateStatus.COMPLETED for o in outs)
     assert len(env.sink1.records) == 32
+
+
+# ---- S9 review fix batch: A1 request id memory ------------------------------------------------------
+
+def test_repeated_request_id_after_completion_pending_is_refused_and_the_obligation_stays():
+    env = Env()
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+    assert env.write().status is GateStatus.COMPLETION_PENDING
+    again = env.write()
+    assert again.status is GateStatus.REFUSED and again.reason is OpsReason.DUPLICATE_SUPPRESSED
+    assert again.effect_invoked is False and env.calls == ["REQ-1"]
+    report = env.gate.unaudited(S1)
+    assert report.pending_count == 1 and len(report.entries) == 1 and report.overflow_count == 0
+    assert report.entries[0].request_id == "REQ-1"
+    assert env.sink1.write_attempts.count(AuditPhase.INTENT) == 1  # no second intent record either
+
+
+def test_repeated_request_id_after_completed_effect_failed_and_reconcile_is_refused():
+    env = Env()
+    assert env.write(request_id="REQ-OK").status is GateStatus.COMPLETED
+    again = env.write(request_id="REQ-OK")
+    assert again.status is GateStatus.REFUSED and again.reason is OpsReason.DUPLICATE_SUPPRESSED
+
+    def boom():
+        raise RuntimeError(POISON)
+
+    assert env.gate.guarded_effect(S1, "REQ-BAD", "create_document", boom, REFS1).status is GateStatus.EFFECT_FAILED
+    ran = []
+    again = env.gate.guarded_effect(S1, "REQ-BAD", "create_document", lambda: ran.append(1), REFS1)
+    assert again.reason is OpsReason.DUPLICATE_SUPPRESSED and ran == []
+
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+    assert env.write(request_id="REQ-PEND").status is GateStatus.COMPLETION_PENDING
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, None)
+    assert env.gate.retry_completion(S1, "REQ-PEND").status is GateStatus.COMPLETED
+    after = env.write(request_id="REQ-PEND")
+    assert after.reason is OpsReason.DUPLICATE_SUPPRESSED
+    assert env.calls == ["REQ-OK", "REQ-PEND"]
+
+
+def test_request_id_in_flight_is_refused_before_a_second_effect():
+    env = Env()
+    inner = []
+
+    def effect():
+        env.calls.append("outer")
+        inner.append(env.write(S1, "REQ-1", effect=env.effect("inner")))
+
+    out = env.gate.guarded_effect(S1, "REQ-1", "create_document", effect, REFS1)
+    assert out.status is GateStatus.COMPLETED
+    assert inner[0].reason is OpsReason.DUPLICATE_SUPPRESSED and env.calls == ["outer"]
+
+
+def test_request_id_memory_is_per_tenant_bounded_and_never_evicts():
+    env = Env(request_cap=2)
+    assert env.write(request_id="R1").status is GateStatus.COMPLETED
+    assert env.write(request_id="R2").status is GateStatus.COMPLETED
+    full = env.write(request_id="R3")
+    assert full.status is GateStatus.REFUSED and full.reason is OpsReason.QUOTA_EXCEEDED
+    assert env.write(request_id="R1").reason is OpsReason.DUPLICATE_SUPPRESSED  # R1 was not evicted
+    assert env.write(S2, "R1", refs=REFS2).status is GateStatus.COMPLETED  # tenant 2 has its own memory
+    assert env.calls == ["R1", "R2", "R1"]
+
+
+def test_duplicate_suppressed_from_the_obligation_map_is_counted_not_lost():
+    env = Env()
+    completion = AuditRecord("t1", "c1", "a1", "REQ-1", "create_document", AuditPhase.COMPLETION,
+                             _RecordOutcome.SUCCEEDED)
+    env.gate._keep_obligation("t1", "c1", "REQ-1", "create_document", 1, False, completion)
+    env.gate._keep_obligation("t1", "c1", "REQ-1", "create_document", 1, False, completion)
+    report = env.gate.unaudited(S1)
+    assert len(report.entries) == 1 and report.overflow_count == 1 and report.pending_count == 2
+
+
+def test_request_cap_config_is_validated():
+    env = Env()
+    for bad in (0, True, 1.5, 10**9):
+        with pytest.raises(ValueError):
+            AuditGate(default_registry(), {"t1": env.sink1}, env.ports, env.ports, FakeCorrelationSource(),
+                      env.clock, request_cap=bad)
+
+
+# ---- A2: BaseException around the effect ------------------------------------------------------------
+
+@pytest.mark.parametrize("exc", [KeyboardInterrupt, SystemExit])
+def test_base_exception_in_the_effect_is_audited_then_reraised(exc):
+    env = Env()
+
+    def interrupted():
+        raise exc()
+
+    with pytest.raises(exc):
+        env.gate.guarded_effect(S1, "REQ-1", "create_document", interrupted, REFS1)
+    assert [r.outcome.value for r in env.sink1.records] == ["PENDING", "EFFECT_FAILED"]
+    assert env.write(request_id="REQ-1").reason is OpsReason.DUPLICATE_SUPPRESSED
+
+
+def test_base_exception_with_a_failing_completion_leaves_a_visible_obligation():
+    env = Env()
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+
+    def interrupted():
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        env.gate.guarded_effect(S1, "REQ-1", "create_document", interrupted, REFS1)
+    report = env.gate.unaudited(S1)
+    assert report.pending_count == 1 and report.entries[0].effect_failed is True
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, None)
+    assert env.gate.retry_completion(S1, "REQ-1").status is GateStatus.COMPLETED
+
+
+# ---- A3: obligations are owned by a company ---------------------------------------------------------
+
+S1B = OpsScope("t1", "c1b", "a1b")
+
+
+def _two_company_env():
+    env = Env()
+    env.ports.ent.grant("t1", "a1b", "c1b")
+    env.ports.owner.add("t1", "c1b", "source_id", "SRC-1B")
+    return env
+
+
+def test_foreign_company_request_and_unknown_request_give_the_identical_refusal():
+    foreign, unknown = _two_company_env(), _two_company_env()
+    foreign.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+    assert foreign.write().status is GateStatus.COMPLETION_PENDING  # obligation of company c1
+    foreign.ports.log.clear()
+    unknown.ports.log.clear()
+    attempts_before = list(foreign.sink1.write_attempts)
+    f = foreign.gate.retry_completion(S1B, "REQ-1")  # same tenant, other company
+    u = unknown.gate.retry_completion(S1B, "REQ-NOPE")
+    assert f.reason is u.reason is OpsReason.NOT_FOUND and f.status is u.status is GateStatus.REFUSED
+    assert foreign.ports.log == unknown.ports.log and foreign.sink1.write_attempts == attempts_before
+    assert unknown.sink1.write_attempts == []
+    foreign.sink1.set_phase_mode(AuditPhase.COMPLETION, None)
+    assert foreign.gate.retry_completion(S1, "REQ-1").status is GateStatus.COMPLETED  # the owner still can
+
+
+def test_unaudited_lists_only_the_callers_company_obligations():
+    env = _two_company_env()
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+    assert env.write(S1, "REQ-A", refs=REFS1).status is GateStatus.COMPLETION_PENDING
+    assert env.write(S1B, "REQ-B", refs=(("source_id", "SRC-1B"),)).status is GateStatus.COMPLETION_PENDING
+    assert [e.request_id for e in env.gate.unaudited(S1).entries] == ["REQ-A"]
+    assert [e.request_id for e in env.gate.unaudited(S1B).entries] == ["REQ-B"]
+    assert env.gate.unaudited(S1).pending_count == 1
+
+
+# ---- A4: unhashable reasons never raise TypeError ---------------------------------------------------
+
+def test_unhashable_reason_is_a_value_error_not_a_type_error():
+    corr = "CORR-000001"
+    for reason in (["x"], {"a": 1}, EvilStr("AUDIT_UNAVAILABLE")):
+        with pytest.raises(ValueError):
+            GateOutcome(GateStatus.REFUSED, reason, 0, 0, False, corr)
+    forged = object.__new__(GateOutcome)
+    for name, value in (("status", GateStatus.REFUSED), ("reason", ["x"]), ("correlation_id", corr),
+                        ("authority", "EVALUATION_ONLY")):
+        object.__setattr__(forged, name, value)
+    assert is_valid_gate_outcome(forged) is False
 
 
 # ---- value types and construction -------------------------------------------------------------------

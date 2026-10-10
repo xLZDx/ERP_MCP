@@ -757,73 +757,73 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate kill-switch owned job
 
-  @not_implemented @R2TC127
+  @not_implemented @offline_fixture_coverage_only @R2TC127
   Scenario: R2-TC-127 sessions vs active grid
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate sessions vs active grid
 
-  @not_implemented @R2TC128
+  @not_implemented @offline_fixture_coverage_only @R2TC128
   Scenario: R2-TC-128 profile refusals not throughput
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate profile refusals not throughput
 
-  @not_implemented @R2TC129
+  @not_implemented @offline_fixture_coverage_only @R2TC129
   Scenario: R2-TC-129 background interference/budget
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate background interference/budget
 
-  @not_implemented @R2TC130
+  @not_implemented @offline_fixture_coverage_only @R2TC130
   Scenario: R2-TC-130 audit down fail-closed
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate audit down fail-closed
 
-  @not_implemented @R2TC131
+  @not_implemented @offline_fixture_coverage_only @R2TC131
   Scenario: R2-TC-131 replica/network429 no duplicates
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate replica/network429 no duplicates
 
-  @not_implemented @R2TC132
+  @not_implemented @offline_fixture_coverage_only @R2TC132
   Scenario: R2-TC-132 alert fired+recovered
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate alert fired+recovered
 
-  @not_implemented @R2TC133
+  @not_implemented @offline_fixture_coverage_only @R2TC133
   Scenario: R2-TC-133 additive shadow regressions
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate additive shadow regressions
 
-  @not_implemented @R2TC134
+  @not_implemented @offline_fixture_coverage_only @R2TC134
   Scenario: R2-TC-134 destructive rollback denied
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate destructive rollback denied
 
-  @not_implemented @R2TC135
+  @not_implemented @offline_fixture_coverage_only @R2TC135
   Scenario: R2-TC-135 switch rollback no revoked grant resurrection
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate switch rollback no revoked grant resurrection
 
-  @not_implemented @R2TC136
+  @not_implemented @offline_fixture_coverage_only @R2TC136
   Scenario: R2-TC-136 restored FKs/digests/heads
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate restored FKs/digests/heads
 
-  @not_implemented @R2TC137
+  @not_implemented @offline_fixture_coverage_only @R2TC137
   Scenario: R2-TC-137 export masking/tenant/formula safety
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate export masking/tenant/formula safety
 
-  @not_implemented @R2TC138
+  @not_implemented @offline_fixture_coverage_only @R2TC138
   Scenario: R2-TC-138 hold/no unapproved deletion
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised

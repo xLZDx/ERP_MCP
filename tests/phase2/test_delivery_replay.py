@@ -18,6 +18,7 @@ from business_ai_gateway.phase2.delivery_replay import (
     ReplayPlanner,
     SinkKind,
     SinkResponse,
+    _with,
     deliver_pending,
 )
 from business_ai_gateway.phase2.ops_types import (
@@ -34,6 +35,7 @@ POISON = FakeDeliverySink.POISON
 T0 = datetime(2026, 3, 1, tzinfo=UTC)
 S1 = OpsScope("t1", "c1", "a1")
 S2 = OpsScope("t2", "c2", "a2")
+S1B = OpsScope("t1", "c1b", "a1b")  # a second company of tenant t1
 
 
 class EvilStr(str):
@@ -78,21 +80,39 @@ def ev(seq, conn="CON-1", eid=None, digest=None):
     return DeliveryEvent(conn, seq, eid, digest or dg(eid))
 
 
+class _Switch:
+    """The sink BOUND to the planner: forwards to env.sink (or a per-call override used by fault tests)."""
+
+    def __init__(self, env):
+        self.env = env
+        self.override = None
+
+    def publish(self, *args):
+        return (self.override or self.env.sink).publish(*args)
+
+
 class Env:
     def __init__(self, sink=None, **kwargs):
         self.ports = SpyPorts()
-        for t, c, a, s in (("t1", "c1", "a1", "SRC-1"), ("t2", "c2", "a2", "SRC-2")):
+        for t, c, a, s in (("t1", "c1", "a1", "SRC-1"), ("t2", "c2", "a2", "SRC-2"),
+                           ("t1", "c1b", "a1b", "SRC-1B"), ("t1", "c1", "a1", "SRC-1X")):
             self.ports.ent.grant(t, a, c)
             self.ports.owner.add(t, c, "source_id", s)
         self.clock = ManualClock()
         self.sink = sink or FakeDeliverySink()
-        self.planner = ReplayPlanner(self.ports, self.ports, FakeCorrelationSource(), self.clock, **kwargs)
+        self.switch = _Switch(self)
+        self.planner = ReplayPlanner(self.ports, self.ports, FakeCorrelationSource(), self.clock,
+                                     sinks={"t1": self.switch, "t2": self.switch}, **kwargs)
 
     def reg(self, events, scope=S1, source="SRC-1"):
         return self.planner.register(scope, source, events)
 
     def run(self, worker="W1", scope=S1, source="SRC-1", conn="CON-1", claim=None, sink="DEFAULT"):
-        return self.planner.deliver_pending(scope, worker, source, conn, self.sink if sink == "DEFAULT" else sink, claim)
+        self.switch.override = None if sink == "DEFAULT" else sink
+        try:
+            return self.planner.deliver_pending(scope, worker, source, conn, claim)
+        finally:
+            self.switch.override = None
 
     def drain(self, workers=("W1",), conn="CON-1", scope=S1, source="SRC-1", limit=60):
         outs = []
@@ -189,9 +209,7 @@ def test_retry_after_larger_than_the_cap_is_clamped():
 
 
 @pytest.mark.parametrize("response", [
-    SinkResponse(SinkKind.RATE_LIMITED, 10**9), SinkResponse(SinkKind.RATE_LIMITED, -1),
-    SinkResponse(SinkKind.RATE_LIMITED, True), SinkResponse("DELIVERED", 0), None, "DELIVERED", object(),
-    object.__new__(SinkResponse), RuntimeError(POISON),
+    SinkResponse("DELIVERED", 0), None, "DELIVERED", object(), object.__new__(SinkResponse), RuntimeError(POISON),
 ])
 def test_malformed_or_hostile_sink_answers_are_a_network_failure_not_a_delivery(response):
     env = Env()
@@ -412,8 +430,6 @@ def test_hostile_events_and_arguments_never_raise_and_change_nothing():
         assert type(env.planner.claim(S1, bad, "SRC-1", "CON-1")) is OpsRefusal
         assert env.run(worker=bad).status is DeliveryStatus.REFUSED
         assert env.run(conn=bad).status is DeliveryStatus.REFUSED
-    for bad in (None, 5, object(), "sink"):
-        assert env.run(sink=bad).status is DeliveryStatus.REFUSED
     assert env.run(scope=object.__new__(OpsScope)).status is DeliveryStatus.REFUSED
     assert env.planner.records(S1, "SRC-1", "CON-1") == () and env.sink.calls == []
 
@@ -475,8 +491,8 @@ def test_outcome_values_validate_and_carry_no_verdict():
 def test_module_function_requires_an_exact_planner():
     env = Env()
     env.reg([ev(1)])
-    assert type(deliver_pending(object(), S1, "W1", "SRC-1", "CON-1", env.sink)) is OpsRefusal
-    assert deliver_pending(env.planner, S1, "W1", "SRC-1", "CON-1", env.sink).status is DeliveryStatus.COMPLETE
+    assert type(deliver_pending(object(), S1, "W1", "SRC-1", "CON-1")) is OpsRefusal
+    assert deliver_pending(env.planner, S1, "W1", "SRC-1", "CON-1").status is DeliveryStatus.COMPLETE
 
 
 def test_sink_exception_text_never_reaches_any_output():
@@ -487,6 +503,190 @@ def test_sink_exception_text_never_reaches_any_output():
     assert out.reason is OpsReason.NETWORK_FAILURE
     blob = repr(out) + repr(env.planner.records(S1, "SRC-1", "CON-1")) + repr(env.planner)
     assert POISON not in blob and "ConnectionError" not in blob
+
+
+# ---- S9 review fix batch ----------------------------------------------------------------------------
+
+def test_two_sources_with_the_same_connection_id_stay_fully_separate():  # B1
+    env = Env()
+    a = env.reg([ev(1, eid="EVT-SAME"), ev(2, eid="EVT-A2")], S1, "SRC-1")
+    x = env.reg([ev(1, eid="EVT-SAME", digest=dg("other-content")), ev(2, eid="EVT-X2")], S1, "SRC-1X")  # same company
+    b = env.reg([ev(1, eid="EVT-SAME", digest=dg("third-content")), ev(2, eid="EVT-B2")], S1B, "SRC-1B")  # other company
+    for out in (a, x, b):
+        assert (out.accepted, out.replayed, out.conflicts, out.reason) == (2, 0, 0, None)
+    assert env.planner.quarantine_count(S1) == 0
+    assert [r.event_id for r in env.planner.records(S1, "SRC-1", "CON-1")] == ["EVT-SAME", "EVT-A2"]
+    assert [r.event_id for r in env.planner.records(S1, "SRC-1X", "CON-1")] == ["EVT-SAME", "EVT-X2"]
+    assert [r.event_id for r in env.planner.records(S1B, "SRC-1B", "CON-1")] == ["EVT-SAME", "EVT-B2"]
+    out = env.run(scope=S1B, source="SRC-1B")  # only B is delivered
+    assert out.status is DeliveryStatus.COMPLETE and out.delivered_count == 2 and out.cursor_seq == 2
+    assert {p[1] for p in env.sink.published} == {"SRC-1B"}
+    assert env.planner.cursor(S1, "SRC-1", "CON-1") == 0 and env.planner.cursor(S1, "SRC-1X", "CON-1") == 0
+    assert all(r.status is RecordStatus.PENDING for r in env.planner.records(S1, "SRC-1", "CON-1"))
+    assert env.run(source="SRC-1X").delivered_count == 2 and env.planner.cursor(S1, "SRC-1", "CON-1") == 0
+    assert env.run(source="SRC-1").delivered_count == 2
+    by_source = {(p[1], p[3]): p[4] for p in env.sink.published}
+    assert by_source[("SRC-1", "EVT-SAME")] == dg("EVT-SAME")
+    assert by_source[("SRC-1X", "EVT-SAME")] == dg("other-content")
+    assert by_source[("SRC-1B", "EVT-SAME")] == dg("third-content") and len(env.sink.published) == 6
+
+
+def test_the_sink_cannot_be_chosen_by_the_caller():  # B2
+    import inspect
+
+    assert "sink" not in inspect.signature(ReplayPlanner.deliver_pending).parameters
+    assert "sink" not in inspect.signature(deliver_pending).parameters
+    swallow = _FixedSink(SinkResponse(SinkKind.DELIVERED))
+    env = Env()
+    env.reg([ev(1)])
+    out = env.planner.deliver_pending(S1, "W1", "SRC-1", "CON-1", swallow)  # lands in the claim slot
+    assert out.status is DeliveryStatus.REFUSED and out.reason is OpsReason.INPUT_INVALID
+    assert swallow.calls == 0 and env.sink.calls == []
+    assert env.planner.records(S1, "SRC-1", "CON-1")[0].status is RecordStatus.PENDING
+
+
+def test_a_tenant_without_a_bound_sink_publishes_nothing_and_binding_is_validated():  # B2
+    env = Env()
+    env.ports.ent.grant("t3", "a3", "c3")
+    env.ports.owner.add("t3", "c3", "source_id", "SRC-3")
+    s3 = OpsScope("t3", "c3", "a3")
+    assert env.planner.register(s3, "SRC-3", [ev(1)]).accepted == 1
+    out = env.planner.deliver_pending(s3, "W1", "SRC-3", "CON-1")
+    assert out.status is DeliveryStatus.REFUSED and out.reason is OpsReason.DEPENDENCY_FAILED
+    p = SpyPorts()
+    for bad in ([], {"t1": object()}, {"": env.sink}, {EvilStr("t1"): env.sink}, {"t1": None}):
+        with pytest.raises(ValueError):
+            ReplayPlanner(p, p, FakeCorrelationSource(), ManualClock(), sinks=bad)
+    sinks = {"t1": env.sink}
+    planner = ReplayPlanner(env.ports, env.ports, FakeCorrelationSource(), env.clock, sinks=sinks)
+    sinks["t1"] = _FixedSink(SinkResponse(SinkKind.DELIVERED))  # later edits of the caller's dict change nothing
+    planner.register(S1, "SRC-1", [ev(1)])
+    assert planner.deliver_pending(S1, "W1", "SRC-1", "CON-1").delivered_count == 1
+    assert len(env.sink.published) == 1
+
+
+def test_a_record_write_is_a_compare_and_set_on_the_snapshot_that_was_read():  # B3
+    env = Env()
+    env.reg([ev(1)])
+    claim = env.planner.claim(S1, "W1", "SRC-1", "CON-1")
+    key = env.planner._rec_key("c1", "SRC-1", "CON-1", "EVT-CON-1-1")
+    ckey = env.planner._conn_key("c1", "SRC-1", "CON-1")
+    snapshot = env.planner._conn_recs("t1", "c1", "SRC-1", "CON-1")[0][1]
+    delivered = _with(snapshot, RecordStatus.DELIVERED, 1, None)
+    rolled_back = _with(snapshot, RecordStatus.PENDING, 1, T0 + timedelta(seconds=5))
+    assert env.planner._mark("t1", ckey, claim, key, delivered, snapshot) == "ok"
+    assert env.planner._mark("t1", ckey, claim, key, rolled_back, snapshot) == "conflict"  # same Claim, stale read
+    rec = env.planner.records(S1, "SRC-1", "CON-1")[0]
+    assert rec.status is RecordStatus.DELIVERED and rec.attempts == 1  # not rolled back, attempts not under-counted
+
+
+def test_a_lost_compare_and_set_mid_call_reports_a_retryable_refusal_with_the_real_counts():  # B3 + B6
+    env = Env()
+    env.reg([ev(1), ev(2), ev(3)])
+    claim = env.planner.claim(S1, "W1", "SRC-1", "CON-1")
+    key3 = env.planner._rec_key("c1", "SRC-1", "CON-1", "EVT-CON-1-3")
+    ckey = env.planner._conn_key("c1", "SRC-1", "CON-1")
+
+    def rival(tenant, source, connection, event_id):
+        if event_id == "EVT-CON-1-3":  # a second user of the same Claim finishes event 3 first
+            snap = env.planner._conn_recs("t1", "c1", "SRC-1", "CON-1")[2][1]
+            assert env.planner._mark("t1", ckey, claim, key3, _with(snap, RecordStatus.DELIVERED, 1, None),
+                                     snap) == "ok"
+
+    env.sink = FakeDeliverySink(on_publish=rival)
+    out = env.run(claim=claim)
+    assert out.status is DeliveryStatus.REFUSED and out.reason is OpsReason.INTERNAL_REFUSED
+    assert out.delivered_count == 2 and out.cursor_seq == 3  # the real count and the real cursor
+    assert [r.status for r in env.planner.records(S1, "SRC-1", "CON-1")] == [RecordStatus.DELIVERED] * 3
+    assert [r.attempts for r in env.planner.records(S1, "SRC-1", "CON-1")] == [1, 1, 1]
+
+
+def test_lock_contention_keeps_real_counts_and_reports_the_unreleased_lease():  # B6
+    env = Env()
+    env.reg([ev(1), ev(2)])
+    ckey = env.planner._conn_key("c1", "SRC-1", "CON-1")
+
+    fired = []
+
+    def hold_lock(tenant, source, connection, event_id):
+        if event_id == "EVT-CON-1-2" and not fired:
+            fired.append(1)
+            assert env.planner._locks.try_acquire("t1", ckey)  # contention starts after event 1 was marked
+
+    env.sink = FakeDeliverySink(on_publish=hold_lock)
+    out = env.run()
+    env.planner._locks.release("t1", ckey)
+    assert out.status is DeliveryStatus.REFUSED and out.reason is OpsReason.INTERNAL_REFUSED
+    assert out.delivered_count == 1 and out.cursor_seq == 1 and out.lease_released is False
+    again = env.run()  # the same worker may re-claim; the sink answers the re-publish with a duplicate ack
+    assert again.status is DeliveryStatus.COMPLETE and again.lease_released is True and again.cursor_seq == 2
+    assert [p[3] for p in env.sink.published] == ["EVT-CON-1-1", "EVT-CON-1-2"]
+
+
+def test_register_accepts_only_a_seq_above_the_highest_registered_one():  # B4
+    env = Env()
+    env.reg([ev(5)])
+    env.drain()
+    assert env.planner.cursor(S1, "SRC-1", "CON-1") == 5
+    for late in (ev(4, eid="EVT-LATE"), ev(5, eid="EVT-OTHER-5")):
+        out = env.reg([late])
+        assert (out.accepted, out.sequence_refused, out.reason) == (0, 1, OpsReason.INPUT_INVALID)
+    assert env.planner.cursor(S1, "SRC-1", "CON-1") == 5 and len(env.planner.records(S1, "SRC-1", "CON-1")) == 1
+    mixed = env.reg([ev(3, eid="EVT-3"), ev(6, eid="EVT-6"), ev(5)])  # 5 is a replay, 6 is new, 3 is late
+    assert (mixed.accepted, mixed.replayed, mixed.sequence_refused) == (1, 1, 1)
+    assert env.planner.cursor(S1, "SRC-1", "CON-1") == 5  # 6 is pending: the cursor did not move backwards
+    other = env.reg([ev(1, "CON-2")])  # another connection has its own high-water mark
+    assert other.accepted == 1
+
+
+def test_unknown_connection_is_not_found_and_creates_no_state():  # B4
+    env = Env()
+    assert env.planner.claim(S1, "W1", "SRC-1", "CON-NOPE").reason is OpsReason.NOT_FOUND
+    out = env.run(conn="CON-NOPE")
+    assert out.status is DeliveryStatus.REFUSED and out.reason is OpsReason.NOT_FOUND and env.sink.calls == []
+    assert env.planner._claims.count("t1") == 0
+    env.reg([ev(1, "CON-NOPE")])
+    assert env.planner.claim(S1, "W1", "SRC-1", "CON-NOPE").generation == 1  # no phantom claim row existed
+
+
+def test_a_429_stays_a_429_with_the_retry_after_clamped_to_the_maximum():  # B5
+    env = Env(max_delay=7200)
+    env.reg([ev(1)])
+    huge = env.run(sink=_FixedSink(SinkResponse(SinkKind.RATE_LIMITED, 10**9)))
+    assert huge.status is DeliveryStatus.WAITING and huge.reason is OpsReason.RATE_LIMITED
+    assert huge.next_retry_at == T0 + timedelta(seconds=3600)  # clamped to the 3600 s maximum, not retried at once
+    env.clock.adv(3600)
+    just_over = env.run(sink=_FixedSink(SinkResponse(SinkKind.RATE_LIMITED, 3601)))
+    assert just_over.reason is OpsReason.RATE_LIMITED and just_over.next_retry_at == env.clock.t + timedelta(seconds=3600)
+
+
+@pytest.mark.parametrize("garbage", [-1, True, "7", None, 1.5, 10**30])
+def test_a_garbage_retry_after_on_a_429_waits_the_maximum_backoff_never_zero(garbage):  # B5
+    env = Env(max_delay=300)
+    env.reg([ev(1)])
+    out = env.run(sink=_FixedSink(SinkResponse(SinkKind.RATE_LIMITED, garbage)))
+    assert out.status is DeliveryStatus.WAITING and out.reason is OpsReason.RATE_LIMITED
+    assert out.next_retry_at == T0 + timedelta(seconds=300)
+
+
+@pytest.mark.parametrize("kind", [SinkKind.DELIVERED, SinkKind.DUPLICATE_ACK])
+def test_a_delivered_answer_with_a_garbage_retry_after_is_still_delivered(kind):  # B5
+    env = Env()
+    env.reg([ev(1)])
+    out = env.run(sink=_FixedSink(SinkResponse(kind, "garbage")))
+    assert out.status is DeliveryStatus.COMPLETE and out.cursor_seq == 1
+    assert (out.delivered_count, out.duplicate_ack_count) == ((1, 0) if kind is SinkKind.DELIVERED else (0, 1))
+
+
+def test_unhashable_or_forged_reasons_raise_value_error_not_type_error():  # A4
+    corr = "CORR-000001"
+    for reason in (["x"], {"a": 1}, EvilStr("STALE_CLAIM")):
+        with pytest.raises(ValueError):
+            DeliveryOutcome(DeliveryStatus.STALE, reason, 0, 0, 0, None, corr)
+    with pytest.raises(ValueError):
+        DeliveryOutcome(DeliveryStatus.COMPLETE, None, 0, 0, 0, None, corr, lease_released=1)
+    with pytest.raises(ValueError):
+        RegisterOutcome(0, 0, 0, 0, None, corr, sequence_refused=1)  # a refused seq needs its reason
 
 
 # ---- import boundary --------------------------------------------------------------------------------

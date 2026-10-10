@@ -431,3 +431,56 @@ def test_two_tenants_never_exceed_their_shares_or_the_shared_limit_under_threads
     for t in threads:
         t.join()
     assert shared.active_total == 0 and gate.active("A", bid()) == 0 and gate.active("B", bid()) == 0
+
+
+# ============================================================ review fixes (S9 stream 3)
+
+@pytest.mark.parametrize("p", [50, 99])
+def test_k1_interference_requires_p95_percentile_values(p):
+    values = list(range(1000, 1200))
+    p95, other = percentile(values, 95), percentile(values, p)
+    # a wrong-p baseline is an unusable baseline; a wrong-p loaded value is invalid input; neither yields a verdict
+    for pair, reason in (((other, p95), OpsReason.BASELINE_INVALID), ((p95, other), OpsReason.INPUT_INVALID),
+                         ((other, other), OpsReason.BASELINE_INVALID)):
+        result = interference(*pair)
+        assert result.reason is reason and result.ratio is None, pair
+    assert interference(p95, p95).reason is OpsReason.WITHIN_TARGET
+
+
+def test_k1_a_forged_p_attribute_is_refused_too():
+    base = percentile(list(range(1000, 1200)), 95)
+    forged = object.__new__(PercentileValue)
+    for name, value in (("p", 95), ("n", 200), ("value", 1000), ("reason", None)):
+        object.__setattr__(forged, name, value)
+    object.__setattr__(forged, "p", 99)
+    assert interference(base, forged).reason is OpsReason.INPUT_INVALID
+
+
+def test_k2_interactive_keeps_a_slot_on_every_backend_even_with_a_large_background_minimum():
+    demand = [item(backend="db-1", source="s1", work=B, count=3), item(backend="db-2", source="s2", work=B, count=3),
+              item(backend="db-1", source="s3", count=1), item(backend="db-2", source="s4", count=1)]
+    result = plan(demand, per=3, total=4, minimum=2)
+    assert result.allocations[2].granted == 1 and result.allocations[3].granted == 1
+    assert result.interactive_granted == 2
+
+
+def test_k2_interactive_slot_is_kept_for_every_demand_order_and_budget_shape():
+    for per in (2, 3, 4):
+        for total in (2, 3, 4, 6, 8):
+            if total < per:
+                continue  # PhysicalBackendBudget needs total_limit >= per_backend_limit
+            for minimum in range(1, per):
+                bg = [item(backend=f"db-{n}", source=f"b{n}", work=B, count=per) for n in (1, 2)]
+                ia = [item(backend=f"db-{n}", source=f"i{n}", count=1) for n in (1, 2)]
+                for demand in (bg + ia, ia + bg, [bg[0], ia[1], bg[1], ia[0]]):
+                    result = plan(demand, per=per, total=total, minimum=minimum)
+                    for idx, entry in enumerate(demand):
+                        if entry.work is I:
+                            assert result.allocations[idx].granted >= 1, (per, total, minimum, idx)
+                    assert result.interactive_granted + result.background_granted <= total
+
+
+def test_k2_a_total_limit_below_the_number_of_interactive_backends_is_refused():
+    demand = [item(backend=f"db-{n}", source=f"s{n}") for n in (1, 2, 3)]
+    policy = BudgetPolicy(min_background_slots=1, tenant_share_slots=4)
+    assert plan_budget(policy, demand, budget(2, 2), ids()).reason is OpsReason.BACKEND_BUDGET_EXCEEDED
