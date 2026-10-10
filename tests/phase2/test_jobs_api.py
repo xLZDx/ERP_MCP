@@ -221,7 +221,7 @@ def test_poison_in_token_and_session_never_reaches_output(env):
 
 
 class RaisingDispatcher(FakeJobDispatcher):
-    def dispatch(self, tenant_id, company_id, kind, request_digest):
+    def dispatch(self, tenant_id, company_id, kind, request_digest, dispatch_key=None):
         raise RuntimeError(POISON)
 
 
