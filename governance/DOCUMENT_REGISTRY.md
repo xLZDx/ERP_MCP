@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 166 tracked paths, 3 local-only paths.
+Inventory: 166 tracked paths, 5 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -189,3 +189,5 @@ Inventory: 166 tracked paths, 3 local-only paths.
 | docs/phase2/ADR_G0_SOURCE_BINDING_PROPOSAL_2026-10-09.md |
 | docs/phase2/FULL_CLOSURE_BLOCKERS_2026-10-09.md |
 | docs/phase2/RESNAPSHOT_CURSOR_BINDING_REVIEW_2026-10-09.md |
+| docs/phase2/S10_RELEASE_HANDOFF.md |
+| docs/phase2/SPRINT_S10_PLAN.md |
