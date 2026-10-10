@@ -559,3 +559,68 @@ def test_s9_m01_r2_a_total_that_cannot_hold_every_reservation_is_refused():
     policy = BudgetPolicy(min_background_slots=1, tenant_share_slots=4)
     out = plan_budget(policy, demand, budget(2, 3), ids())
     assert out.reason is OpsReason.BACKEND_BUDGET_EXCEEDED
+
+
+# ---- S9-M01 round 3: phase C may not spend capacity that another backend's reservation still needs ------------
+
+def _invariants_hold(result, per, total):
+    granted_by_backend = {}
+    for allocation in result.allocations:
+        granted_by_backend[allocation.index] = allocation.granted
+    all_granted = result.interactive_granted + result.background_granted
+    return all_granted + result.background_reserved <= total
+
+
+def test_s9_m01_r3_background_only_reservation_is_not_spent_by_another_backends_phase_c():
+    demand = [item(backend="db-1", source="c1", work=C, count=2), item(backend="db-2", source="b1", work=B, count=3)]
+    result = plan(demand, per=3, total=4, minimum=2, share=6, capture_per_backend=1)
+    assert result.allocations[0].granted == 1 and result.allocations[1].granted == 2
+    assert result.background_reserved == 1
+    assert _invariants_hold(result, 3, 4)
+
+
+def test_s9_m01_r3_writer_reservation_is_not_spent_by_other_background_on_the_other_backend():
+    demand = [item(tenant="t1", backend="db-1", source="w", work=W, count=1),
+              item(tenant="t1", backend="db-2", source="w", work=W, count=1),
+              item(tenant="t3", backend="db-2", source="b2", work=B, count=2),
+              item(tenant="t2", backend="db-1", source="i1", count=1),
+              item(tenant="t2", backend="db-2", source="i2", count=1)]
+    result = plan(demand, per=3, total=4, minimum=1, share=6)
+    assert _invariants_hold(result, 3, 4)
+
+
+def test_s9_m01_r3_extra_background_on_the_reserving_backend_fills_its_own_reservation_first():
+    demand = [item(source="c1", work=C, count=1), item(source="b1", work=B, count=3)]
+    result = plan(demand, per=3, total=8, minimum=2, share=6, capture_per_backend=1)
+    assert result.allocations[0].granted == 1 and result.allocations[1].granted == 2
+    assert result.background_reserved == 0 and _invariants_hold(result, 3, 8)
+
+
+def test_s9_m01_r3_every_returned_plan_keeps_granted_plus_reserved_inside_the_limits_over_a_grid():
+    import itertools
+
+    checked = 0
+    for per, total, minimum, cap, b1, b2, i1, i2 in itertools.product(
+            (2, 3, 4), (3, 4, 6), (1, 2), (1, 2), (0, 1, 3), (0, 2, 3), (0, 1, 2), (0, 1, 3)):
+        if per > total:
+            continue  # PhysicalBackendBudget refuses it by construction
+        demand = []
+        for backend, count, work in (("db-1", b1, C), ("db-2", b2, B)):
+            if count:
+                demand.append(item(backend=backend, source=f"b-{backend}", work=work, count=count))
+        for backend, count in (("db-1", i1), ("db-2", i2)):
+            if count:
+                demand.append(item(tenant="t2", backend=backend, source=f"i-{backend}", count=count))
+        if not demand:
+            continue
+        policy = BudgetPolicy(min_background_slots=minimum, tenant_share_slots=6, capture_per_backend=cap)
+        result = plan_budget(policy, demand, budget(per, total), ids())
+        if type(result) is not BudgetPlan:
+            continue
+        checked += 1
+        assert _invariants_hold(result, per, total), (per, total, minimum, cap, b1, b2, i1, i2)
+        by_backend = {}
+        for allocation, entry in zip(result.allocations, demand, strict=True):
+            by_backend[entry.backend_id] = by_backend.get(entry.backend_id, 0) + allocation.granted
+        assert all(granted <= per for granted in by_backend.values())
+    assert checked > 500
