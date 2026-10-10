@@ -40,10 +40,10 @@ No story marked VERIFIED or DONE without exact-head end-to-end acceptance.
 | R2-US-032 | S6 | IMPLEMENTED_UNVERIFIED | US-014, US-021, US-029 | S6b code commit: posted_receipts.py, 122 offline tests (62+36+24) plus comparator; retrieval, alias proof, pagination, three-way assessment over fakes only; no real paginated source or MOLDRETAIL data |
 | R2-US-033 | S6 | IMPLEMENTED_UNVERIFIED | US-030 | c4b13f4: 24 offline tests; in-memory snapshots and runs |
 | R2-US-034 | S6 | IMPLEMENTED_UNVERIFIED | US-028, US-030, US-031, US-032 | c4b13f4: 37 offline tests; reserved ap.account_based |
-| R2-US-035 | S7 | NOT_STARTED | US-003, US-004, US-026 | No exact-head acceptance proof |
-| R2-US-036 | S7 | IN_PROGRESS | US-018, US-035 | Mock-HTTP changes reader/projector only; no OAuth, start-token baseline, shared-drive namespace or durable cursor (TC106/TC108 open) |
-| R2-US-037 | S7 | NOT_STARTED | US-005, US-036 | No exact-head acceptance proof |
-| R2-US-038 | S7 | NOT_STARTED | US-006, US-036 | No exact-head acceptance proof |
+| R2-US-035 | S7 | IMPLEMENTED_UNVERIFIED | US-003, US-004, US-026 | S7 code commit: drive_port.py, drive_fake.py, drive_oauth.py, drive_scope.py, 334 offline tests (108+110+116); scoped access, broad-never-isolation, ERP_MCP-owned fake consent over a scripted fake only; no real Google OAuth, tokens or new-child proof; G4 open |
+| R2-US-036 | S7 | IMPLEMENTED_UNVERIFIED | US-018, US-035 | S7 code commit: drive_baseline.py, drive_cursor.py, 109 offline tests (53+56, count as of drafting); start-token-first baseline, namespaces, durable fail-closed cursor over the existing cursor CAS port fake; no real changes.list behavior, no PostgreSQL for S7; G4 open |
+| R2-US-037 | S7 | IMPLEMENTED_UNVERIFIED | US-005, US-036 | S7 code commit: drive_revisions.py, drive_membership.py, 90 offline tests (48+42); new revision UNATTESTED / old PASS historical, scope escape denied, removal tombstone over fakes only; no real revision history; G4 open |
+| R2-US-038 | S7 | IMPLEMENTED_UNVERIFIED | US-006, US-036 | S7 code commit: drive_auth_state.py, 57 offline tests (41+16); AUTH_REQUIRED on invalid_grant/revoke, hint-only notifications, polling without watch over fakes only; no real Google auth or watch; G4 open |
 | R2-US-039 | S8 | NOT_STARTED | US-030, US-032, US-034 | No exact-head acceptance proof |
 | R2-US-040 | S8 | NOT_STARTED | US-011, US-016, US-037 | No exact-head acceptance proof |
 | R2-US-041 | S8 | NOT_STARTED | US-003, US-024, US-034 | No exact-head acceptance proof |

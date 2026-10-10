@@ -613,73 +613,73 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate purchases validated не открывает AP и не меняет R1
 
-  @not_implemented @R2TC103
+  @not_implemented @offline_fixture_coverage_only @R2TC103
   Scenario: R2-TC-103 scoped access proven
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate scoped access proven
 
-  @not_implemented @R2TC104
+  @not_implemented @offline_fixture_coverage_only @R2TC104
   Scenario: R2-TC-104 folder/newchild PoC
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate folder/newchild PoC
 
-  @not_implemented @R2TC105
+  @not_implemented @offline_fixture_coverage_only @R2TC105
   Scenario: R2-TC-105 broad OAuth не называется folder isolation
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate broad OAuth не называется folder isolation
 
-  @not_implemented @R2TC106
+  @not_implemented @offline_fixture_coverage_only @R2TC106
   Scenario: R2-TC-106 starttoken-before-baseline catchup
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate starttoken-before-baseline catchup
 
-  @not_implemented @R2TC107
+  @not_implemented @offline_fixture_coverage_only @R2TC107
   Scenario: R2-TC-107 shared-drive namespaces
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate shared-drive namespaces
 
-  @not_implemented @R2TC108
+  @not_implemented @offline_fixture_coverage_only @R2TC108
   Scenario: R2-TC-108 lost cursor gap/resnapshot
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate lost cursor gap/resnapshot
 
-  @not_implemented @R2TC109
+  @not_implemented @offline_fixture_coverage_only @R2TC109
   Scenario: R2-TC-109 newrevision UNATTESTED oldPASS historical
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate newrevision UNATTESTED oldPASS historical
 
-  @not_implemented @R2TC110
+  @not_implemented @offline_fixture_coverage_only @R2TC110
   Scenario: R2-TC-110 shortcut/move scope escape denied
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate shortcut/move scope escape denied
 
-  @not_implemented @R2TC111
+  @not_implemented @offline_fixture_coverage_only @R2TC111
   Scenario: R2-TC-111 removal no guessed replacement
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate removal no guessed replacement
 
-  @not_implemented @R2TC112
+  @not_implemented @offline_fixture_coverage_only @R2TC112
   Scenario: R2-TC-112 invalid_grant AUTH_REQUIRED
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate invalid_grant AUTH_REQUIRED
 
-  @not_implemented @R2TC113
+  @not_implemented @offline_fixture_coverage_only @R2TC113
   Scenario: R2-TC-113 notifications только hint
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate notifications только hint
 
-  @not_implemented @R2TC114
+  @not_implemented @offline_fixture_coverage_only @R2TC114
   Scenario: R2-TC-114 polling корректен без watch
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
