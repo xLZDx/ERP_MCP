@@ -585,6 +585,7 @@ class ReviewLog:
         self._entries: dict[tuple[str, str], list[AnnotationEntry]] = {}
         self._tenant_count: dict[str, int] = {}
         self._count = 0
+        self._pending: dict[tuple[str, str], str] = {}  # (tenant, previous run) -> run awaiting its audit
         self._res_total = 0  # reserved-but-unwritten slots count against every quota
         self._res_tenant: dict[str, int] = {}
         self._res_run: dict[tuple[str, str], int] = {}
@@ -607,6 +608,17 @@ class ReviewLog:
     def _has_room(self, tenant: str, run_id: str) -> bool:
         with self._lock:
             return self._room(tenant, run_id)
+
+    def _pending_get(self, tenant: str, prev_id: str) -> str | None:
+        with self._lock:
+            return self._pending.get((tenant, prev_id))
+
+    def _pending_set(self, tenant: str, prev_id: str, run_id: str | None) -> None:
+        with self._lock:
+            if run_id is None:
+                self._pending.pop((tenant, prev_id), None)
+            else:
+                self._pending[(tenant, prev_id)] = run_id
 
     def _reserve(self, tenant: str, run_id: str) -> _Reservation | None:
         """Atomically take one slot for a later ``_append``; ``None`` when no room (nothing is held)."""
@@ -810,6 +822,18 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
     view = scope.viewer
     if tenant != view.tenant_id or company != view.company_id or epoch != view.scope_epoch:
         raise _Refuse(ReasonCode.NOT_IN_SCOPE)
+    pending = review_log._pending_get(tenant, prev_id)
+    if pending is not None and led.get(tenant, pending) is not None:
+        # A previous attempt created the run but its audit append failed: finish THAT audit (the new run is
+        # already current, so the plan would look stale) and never create a second run.
+        at = review_log._now()
+        reservation = review_log._reserve(tenant, prev_id)
+        if reservation is None:
+            raise _Refuse(ReasonCode.RATE_LIMITED)
+        try:
+            return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, pending, actor)
+        finally:
+            review_log._release(reservation)
     fresh = _plan(led, snaps, review_log, scope, tenant, key, prev_id, snap_id)  # the world may have moved
     if fresh.snapshot_digest != digest:
         raise _Refuse(ReasonCode.RERUN_TARGET_STALE)
@@ -839,12 +863,35 @@ def _commit_reserved(led: RunLedger, review_log: ReviewLog, scope: _Scope, reade
         record = led.run(tenant, key, pair[0], pair[1], snapshot_id=snap_id, rerun_of=prev_id)
     except ComparisonSnapshotError as err:
         raise _Refuse(_LEDGER_CODES.get(err.code, ReasonCode.DEPENDENCY_FAILED)) from None
-    entry = review_log._append(tenant, prev_id, actor, AnnotationKind.RERUN_REQUESTED, _RERUN_NOTE, None,
-                               record.run_id, at, reservation)
-    if entry is None:  # unreachable while the reservation is held; never report success without the audit record
-        raise _Refuse(ReasonCode.INTERNAL_REFUSED)
+    review_log._pending_set(tenant, prev_id, record.run_id)  # durable-until-audited marker
+    return _finish_audit(led, review_log, reservation, at, tenant, key, prev_id, record.run_id, actor)
+
+
+def _finish_audit(led: RunLedger, review_log: ReviewLog, reservation: _Reservation, at: datetime,
+                  tenant: str, key: str, prev_id: str, run_id: str, actor: str) -> RerunOutcome:
+    """Append the audit entry for an already created run; one bounded retry, then a recoverable refusal.
+
+    The run is recorded as pending-audit until its entry exists, so a retry of the same rerun finishes the
+    audit for THAT run instead of creating another one (see ``_commit_reserved``)."""
+    entry = None
+    for attempt in range(2):
+        try:
+            entry = review_log._append(tenant, prev_id, actor, AnnotationKind.RERUN_REQUESTED, _RERUN_NOTE,
+                                       None, run_id, at, reservation)
+        except Exception:  # noqa: BLE001 - fixed refusal below; the pending marker keeps it recoverable
+            entry = None
+        if entry is not None:
+            break
+        if not reservation.live:
+            reservation = review_log._reserve(tenant, prev_id)
+            if reservation is None:
+                break
+    if entry is None:
+        raise _Refuse(ReasonCode.INTERNAL_REFUSED)  # pending marker stays: retry adopts the run
+    review_log._pending_set(tenant, prev_id, None)
+    record = led.get(tenant, run_id)
     current = led.current(tenant, key)
-    return RerunOutcome(prev_id, record.run_id, record.state.value,
+    return RerunOutcome(prev_id, run_id, record.state.value,
                         None if current is None else current.run_id, True)
 
 

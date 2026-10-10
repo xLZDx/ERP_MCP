@@ -219,6 +219,7 @@ class MembershipChecker:
         self._cache: dict[str, _CacheEntry] = {}
         self._by_ancestor: dict[str, set[str]] = {}
         self._index_size = 0  # total (ancestor, file) pairs in _by_ancestor
+        self._requalify: str | None = None  # a removed root being explicitly re-qualified by a feed UPSERT
         self._removed_roots: set[str] = set()  # roots a change feed reported removed/trashed
         self._lookups = 0  # port lookups so far (page budget)
 
@@ -407,7 +408,7 @@ class MembershipChecker:
         """
         visited: set[str] = {start.file_id}
         live_roots = self._roots - self._removed_roots
-        if start.file_id in self._roots:
+        if start.file_id in live_roots or (start.file_id in self._roots and start.file_id == self._requalify):
             # the caller already validated this fresh metadata (drive / trashed / shortcut); a root the feed
             # reported removed is reinstated by prepare_page only when this fresh read proves it live
             return "IN", visited
@@ -521,7 +522,13 @@ class MembershipChecker:
                 if change.kind is DriveChangeKind.UPSERT and change.file_id not in resolved:
                     if self._lookups - spent_from >= MAX_LOOKUPS_PER_PAGE:
                         return refused(PageReason.PAGE_LOOKUP_BUDGET_EXCEEDED, tuple(resolved.values()))
-                    result = await self.check(change.file_id)
+                    # only this explicit re-qualification (fresh metadata of the root itself) may reinstate a
+                    # removed root; any other check of a removed root falls through to the ancestor walk
+                    self._requalify = change.file_id if change.file_id in self._removed_roots else None
+                    try:
+                        result = await self.check(change.file_id)
+                    finally:
+                        self._requalify = None
                     resolved[change.file_id] = result
                     if change.file_id in self._roots:
                         if result.verdict is MembershipVerdict.REMOVED:

@@ -361,8 +361,8 @@ class DriveBaseline:
             # so a requirement recorded since then is never cleared by this older snapshot. A missing
             # or foreign (ahead of this tracker's order) marker cannot be trusted: restart from a
             # genuinely new snapshot instead of continuing.
-            marker = load.record.snap
-            if type(marker) is int and 0 <= marker <= snap:  # type: ignore[operator]
+            marker = tracker.token_from_marker(load.record.snap)
+            if marker is not None and marker <= snap:  # type: ignore[operator]
                 snap = marker
             else:
                 load = await store.reset(*args, load)
@@ -396,7 +396,8 @@ class DriveBaseline:
         rec: CursorRecord = ctx.load.record  # type: ignore[assignment]
         await self._commit(ctx, rec.evolve(
             state=CursorState.BASELINING, token=start.token, pos=None, seen=(),
-            snap=ctx.snap_token), [])
+            snap=None if ctx.snap_token is None
+            else self._store.tracker.persistent_marker(ctx.snap_token)), [])
         ctx.trace.append("TOKEN_PERSISTED")
 
     async def _baseline_page(self, ctx: _Ctx) -> None:

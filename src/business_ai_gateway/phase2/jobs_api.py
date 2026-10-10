@@ -1275,12 +1275,17 @@ def _dispatch_ticket(ctx: ApiContext, corr: str, scope: ViewerScope, kind: JobKi
                      commit: RerunCommit | None = None, dispatch_key: str | None = None) -> JobTicket:
     dispatcher = ctx.dispatcher
     job_id: object = None
-    if dispatch_key is not None and callable(getattr(dispatcher, "find", None)):
+    if dispatch_key is not None and not (callable(getattr(dispatcher, "find", None))
+                                         and _takes_dispatch_key(dispatcher.dispatch)):
+        # An unfenced (legacy 4-argument) dispatcher cannot make an idempotent mutation exactly-once after
+        # a lost reply: refuse BEFORE any side effect instead of risking a duplicate job.
+        raise _bad_output(ctx, ComponentName.DISPATCHER, corr)
+    if dispatch_key is not None:
         job_id = _guard(ctx, ComponentName.DISPATCHER, corr, dispatcher.find, dispatch_key)
         if job_id is not None and not _key_ok(job_id):
             raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # a garbage lookup answer: no new job
     if job_id is None:
-        if dispatch_key is not None and _takes_dispatch_key(dispatcher.dispatch):
+        if dispatch_key is not None:
             job_id = _guard(ctx, ComponentName.DISPATCHER, corr, dispatcher.dispatch,
                             scope.tenant_id, scope.company_id, kind, digest, dispatch_key)
         else:
@@ -1460,9 +1465,13 @@ def _read(ctx: object, viewer: object, session: object, job_id: object, want_res
             raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # type: ignore[arg-type]
         # Scope filter FIRST (exact plain-str reads): a foreign record, valid or malformed, is
         # indistinguishable from a missing one; only an in-scope record is validated in detail.
-        if (not _same_text(record.tenant_id, viewer.tenant_id)  # type: ignore[attr-defined]
-                or not _same_text(record.company_id, viewer.company_id)  # type: ignore[attr-defined]
-                or not _same_text(record.job_id, job_id)):
+        try:
+            in_scope = (_same_text(record.tenant_id, viewer.tenant_id)  # type: ignore[attr-defined]
+                        and _same_text(record.company_id, viewer.company_id)  # type: ignore[attr-defined]
+                        and _same_text(record.job_id, job_id))
+        except AttributeError:  # forged instance with unset slots: unverifiable ownership == not mine
+            in_scope = False
+        if not in_scope:
             return _refuse(_R.NOT_FOUND, corr)
         if not _record_ok(record):
             raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # type: ignore[arg-type]

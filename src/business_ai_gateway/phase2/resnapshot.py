@@ -27,6 +27,7 @@ does not claim to.
 """
 from __future__ import annotations
 
+import secrets
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -76,6 +77,7 @@ class ResnapshotTracker:
     def __init__(self, state: ResnapshotState | None = None) -> None:
         self._required: dict[str, tuple[ResnapshotReason, int, int]] = {}
         self._seq = 0  # monotonic order of requirements; a snapshot may clear only older ones
+        self._generation = secrets.randbits(30)  # identity of THIS tracker instance (process generation)
         if state is not None:
             self.import_state(state)
 
@@ -111,6 +113,19 @@ class ResnapshotTracker:
             self.require(connection_id, ResnapshotReason.CURSOR_LOST, epoch)
             return True
         return False
+
+    def persistent_marker(self, token: int) -> int:
+        """Marker to PERSIST for a snapshot token: binds the order to this tracker generation."""
+        if type(token) is not int or not 0 <= token < 2**32:
+            raise ValueError("SNAPSHOT_TOKEN_INVALID")
+        return (self._generation << 32) | token
+
+    def token_from_marker(self, marker: object) -> int | None:
+        """Order token of a persisted marker, or None when it was issued by another tracker generation
+        (a restart or a foreign process): such an order is not comparable with this tracker's."""
+        if type(marker) is not int or marker < 0 or (marker >> 32) != self._generation:
+            return None
+        return marker & 0xFFFFFFFF
 
     def begin_snapshot(self) -> int:
         """Ordering marker: take it BEFORE a snapshot capture starts and pass it to ``complete``."""

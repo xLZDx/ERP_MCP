@@ -153,11 +153,11 @@ class FlakyDispatcher(FakeJobDispatcher):
         super().__init__()
         self.fail_times = fail_times
 
-    def dispatch(self, tenant_id, company_id, kind, request_digest):
+    def dispatch(self, tenant_id, company_id, kind, request_digest, dispatch_key=None):
         if self.fail_times > 0:
             self.fail_times -= 1
             raise RuntimeError(POISON)
-        return super().dispatch(tenant_id, company_id, kind, request_digest)
+        return super().dispatch(tenant_id, company_id, kind, request_digest, dispatch_key)
 
 
 def test_dispatch_failure_then_retry_completes_the_same_run_never_stale():
@@ -604,8 +604,8 @@ def test_empty_request_digest_refuses_internal_with_no_dispatch(env, monkeypatch
 
 def test_invalid_job_id_from_dispatcher_cancels_the_orphan(env):
     class BadIds(FakeJobDispatcher):
-        def dispatch(self, tenant_id, company_id, kind, request_digest):
-            super().dispatch(tenant_id, company_id, kind, request_digest)
+        def dispatch(self, tenant_id, company_id, kind, request_digest, dispatch_key=None):
+            super().dispatch(tenant_id, company_id, kind, request_digest, dispatch_key)
             return "bad id with spaces"
 
     env.dispatcher = BadIds()
@@ -617,7 +617,7 @@ def test_invalid_job_id_from_dispatcher_cancels_the_orphan(env):
     assert "bad id" not in repr(d)
 
     class NoIds(FakeJobDispatcher):
-        def dispatch(self, *args):
+        def dispatch(self, *args, **kwargs):
             return 5
 
     env.ctx = dataclasses.replace(env.ctx, dispatcher=NoIds())

@@ -141,7 +141,7 @@ async def test_m05_the_original_marker_is_persisted_in_the_cursor_record():
     env.tracker.require(KEY, ResnapshotReason.CURSOR_MISSING, 0)
     await env.run(DriveRunMode.RESNAPSHOT_START, limits=BaselineLimits(1, 100))
     rec = await env.record()
-    assert rec.state is CursorState.BASELINING and rec.snap == 1
+    assert rec.state is CursorState.BASELINING and env.tracker.token_from_marker(rec.snap) == 1
     assert CursorRecord.decode(rec.encode()) == rec
 
 
