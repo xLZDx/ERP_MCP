@@ -19,7 +19,8 @@ dependencies = [
 dev = [
   "pytest>=9.0.3,<10",
   "pytest-asyncio>=1,<2",
-  "ruff>=0.9,<1",
+  "ruff>=0.16.10,<0.17",
+  "jsonschema>=4,<5",
 ]
 
 [tool.setuptools.packages.find]
