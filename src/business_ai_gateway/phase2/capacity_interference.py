@@ -254,6 +254,7 @@ class BudgetPlan:
     min_background_slots: int
     basis: Basis
     digest: str
+    background_reserved: int = 0  # minimum slots held back unused (caps deferred the demand); never given to interactive
     authority: str = AUTHORITY
 
     def __repr__(self) -> str:
@@ -364,11 +365,16 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
             backend = items[i][1]
             guaranteed[backend] = guaranteed.get(backend, 0) + _grant(
                 ledger, i, items[i], min_bg - guaranteed.get(backend, 0), len(interactive_backends))
+        # the minimum is a RESERVATION of physical capacity: whatever part phase A could not grant (writer / capture /
+        # tenant caps defer it) stays held back from interactive work on that backend and from the shared total
+        unmet = {b: max(0, min(min_bg, n) - guaranteed.get(b, 0)) for b, n in bg_demand.items()}
+        reserved = sum(unmet.values())
         served: set[str] = set()  # backends whose interactive work already got its first slot
         for i in interactive:  # phase B: interactive takes what the guarantee leaves
             backend = items[i][1]
             waiting = len(interactive_backends - served - {backend})
-            _grant(ledger, i, items[i], per_limit - ledger.backend.get(backend, 0), waiting)
+            _grant(ledger, i, items[i], per_limit - ledger.backend.get(backend, 0) - unmet.get(backend, 0),
+                   waiting + sum(unmet.values()))
             if ledger.granted[i]:
                 served.add(backend)
         for i in background:  # phase C: remaining background demand
@@ -384,9 +390,9 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
                             for a in allocations],
             "limits": [per_limit, total_limit, min_bg, policy.tenant_share_slots,  # type: ignore[attr-defined]
                        policy.capture_per_backend, policy.writer_per_source],  # type: ignore[attr-defined]
-            "authority": AUTHORITY})
+            "reserved": reserved, "authority": AUTHORITY})
         return BudgetPlan(allocations, inter, ledger.total - inter, per_limit, total_limit, min_bg,
-                          Basis.SCRIPTED_OFFLINE_FIXTURE, digest)
+                          Basis.SCRIPTED_OFFLINE_FIXTURE, digest, reserved)
     except Exception:  # noqa: BLE001
         return ops_refusal(OpsReason.INTERNAL_REFUSED, ids)
 
