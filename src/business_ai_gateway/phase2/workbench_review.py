@@ -770,7 +770,14 @@ def _plan(led: RunLedger, snaps: SnapshotStore, review_log: object, scope: _Scop
         raise _Refuse(ReasonCode.RERUN_TARGET_UNKNOWN)
     views = led.list_runs(tenant, key)
     if not views or views[-1].record.run_id != prev.run_id:
-        raise _Refuse(ReasonCode.RERUN_TARGET_STALE)
+        # The one exception to "previous run must be the chain head": a run this very request already created
+        # whose audit entry is still missing (recovery). Still pure; commit_rerun re-verifies run, actor, digest.
+        pending = review_log._pending_get(tenant, prev_id)  # type: ignore[attr-defined]
+        recoverable = (pending is not None and pending[1] == key and pending[2] == snap_id
+                       and views and views[-1].record.run_id == pending[0]
+                       and views[-1].record.supersedes == prev_id)
+        if not recoverable:
+            raise _Refuse(ReasonCode.RERUN_TARGET_STALE)
     snap = snaps.get(tenant, snap_id)
     if snap is None:
         raise _Refuse(ReasonCode.NOT_FOUND)
