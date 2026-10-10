@@ -285,7 +285,6 @@ _KEYS = frozenset({"v", "state", "ns", "tenant", "conn", "corpus", "epoch", "tok
 # of a fresh snapshot. A record without a marker is still encoded and decoded as v1 (compatible).
 _KEYS_V2 = _KEYS | {"snap"}
 _RECORD_VERSION_SNAP = 2
-_MAX_RECEIPTS = 4_096
 _MAX_SNAP = 2**(128 + 32) - 1  # 128-bit tracker generation << 32 | order token
 
 
@@ -419,34 +418,12 @@ class CursorLoad:
     port_code: str | None = None
 
 
-def events_digest(events: object) -> str:
-    """Canonical digest of the committed event list (what a page's durable effects were)."""
-    return hashlib.sha256(jsonb_text(list(events)).encode("utf-8")).hexdigest()  # type: ignore[call-overload]
-
-
-class CursorCommitReceipt:
-    """Opaque acknowledgment handle issued by ``DriveCursorStore.commit`` after a durable commit.
-
-    It carries NO evidence of its own (only a private nonce): what it proves lives in the issuing store's
-    registry and is checked through ``DriveCursorStore.receipt_matches``, which binds it to the exact
-    connection, prior cursor, committed cursor and epoch. Constructing one elsewhere proves nothing."""
-
-    __slots__ = ("_nonce",)
-
-    def __init__(self, nonce: object) -> None:
-        self._nonce = nonce
-
-    def __repr__(self) -> str:
-        return "CursorCommitReceipt()"
-
-
 @dataclass(frozen=True, slots=True)
 class StoreCommit:
     ok: bool
     replayed: bool
     version: int | None
     reason: CursorReason | None
-    receipt: CursorCommitReceipt | None = None
 
 
 _COMMIT_REASONS = {
@@ -572,9 +549,6 @@ class DriveCursorStore:
             raise ValueError("TRACKER_REQUIRED")
         self._cursors = cursors
         self._tracker = tracker
-        # receipts this store handed out: nonce -> (namespace, tenant, connection, corpus fingerprint, prior
-        # token, cursor version, epoch, digest of the committed events, lease, committed record value)
-        self._issued: dict[object, tuple[str, str, str, str, str | None, str, int, int, str, DriveLease, str]] = {}
 
     @property
     def tracker(self) -> ResnapshotTracker:
@@ -728,70 +702,9 @@ class DriveCursorStore:
             if not is_allowed_transition(old.state, new.state):
                 return StoreCommit(False, False, None, CursorReason.INVALID_TRANSITION)
             new_value = new.encode()
-            # Canonical IMMUTABLE snapshot of the events, taken before the first await: the port receives
-            # exactly this and the receipt digest covers exactly this, whatever the caller does to its list.
-            events_text = jsonb_text(list(events))
-            snapshot: list[dict[str, Any]] = json.loads(events_text)
         except Exception:  # noqa: BLE001 - forged / hostile arguments
             return invalid
-        digest = hashlib.sha256(events_text.encode("utf-8")).hexdigest()
-        done = await self._commit_raw(ident, lse, raw, version, new_value, snapshot)
-        if done.ok is True and type(done.version) is int and type(new.token) is str:
-            nonce = object()
-            while len(self._issued) >= _MAX_RECEIPTS:  # bounded: the oldest receipt expires first
-                del self._issued[next(iter(self._issued))]
-            self._issued[nonce] = (new.namespace, new.tenant, new.connection_id, new.corpus, old.token,
-                                   new.token, done.version, new.epoch, digest, lse, new_value)
-            done = replace(done, receipt=CursorCommitReceipt(nonce))
-        return done
-
-    def receipt_matches(self, receipt: object, identity: object, corpus_fingerprint: object,
-                        prior_cursor: object, token: object, epoch: object, events_digest_hex: object) -> bool:
-        """True only when ``receipt`` was issued by THIS store for a commit of exactly this connection
-        (namespace, tenant, connection) and corpus, from ``prior_cursor`` to ``token``, under ``epoch``, whose
-        committed events hash to ``events_digest_hex``. Structural only: whether that commit is still the
-        CURRENT durable cursor is decided by ``receipt_is_current`` against the backend. Never raises."""
-        try:
-            if (type(receipt) is not CursorCommitReceipt or type(identity) is not DrivePortIdentity
-                    or type(token) is not str or type(epoch) is not int
-                    or type(corpus_fingerprint) is not str or type(events_digest_hex) is not str
-                    or not (prior_cursor is None or type(prior_cursor) is str)):
-                return False
-            nonce = receipt._nonce
-            if type(nonce) is not object:
-                return False
-            entry = self._issued.get(nonce)
-            if entry is None:
-                return False
-            namespace, tenant, connection, corpus, prior, committed, _version, committed_epoch, digest, _l, _v = entry
-            parts = (identity.namespace, identity.tenant, identity.connection_id)
-            if any(type(p) is not str for p in parts):
-                return False
-            return ((namespace, tenant, connection) == parts and corpus == corpus_fingerprint
-                    and prior == prior_cursor and committed == token and committed_epoch == epoch
-                    and digest == events_digest_hex)
-        except Exception:  # noqa: BLE001 - a malformed receipt is simply not proof
-            return False
-
-    async def receipt_is_current(self, receipt: object, identity: object, corpus_fingerprint: object,
-                                 prior_cursor: object, token: object, epoch: object,
-                                 events_digest_hex: object) -> bool:
-        """``receipt_matches`` AND the durable cursor, read back from the backend right now, is still exactly
-        the record this receipt's commit wrote (same version, same value): any later commit by ANY writer, or a
-        reordered reply, makes the receipt obsolete. Never raises."""
-        try:
-            if not self.receipt_matches(receipt, identity, corpus_fingerprint, prior_cursor, token, epoch,
-                                        events_digest_hex):
-                return False
-            entry = self._issued.get(receipt._nonce)  # type: ignore[attr-defined]
-            if entry is None:
-                return False
-            version, lease, value = entry[6], entry[9], entry[10]
-            view = await self._cursors.get_cursor(lease.actor, lease.scope, cursor_key(identity))  # type: ignore[arg-type]
-            return (type(view.version) is int and view.version == version
-                    and type(view.cursor_value) is str and view.cursor_value == value)
-        except Exception:  # noqa: BLE001 - a malformed receipt is simply not proof
-            return False
+        return await self._commit_raw(ident, lse, raw, version, new_value, events)
 
     async def reset(self, identity: DrivePortIdentity, corpus: DriveCorpus, drive_epoch: int,
                     lease: DriveLease, load: CursorLoad) -> CursorLoad:

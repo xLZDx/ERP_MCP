@@ -123,18 +123,14 @@ async def test_removed_root_change_drops_cached_descendants_and_denies_disclosur
     assert await ck.authorize_disclosure("A") is False
 
 
-async def test_restored_root_is_trusted_again_after_an_upsert_change():
-    from s7_receipts import checker, committer, page_receipt
-
+async def test_removed_root_is_not_revived_by_a_later_upsert_change():
     fake = _world()
-    env = await committer()
-    ck = checker(fake, env)
+    ck = _ck(fake)
     await ck.prepare_page(_page([DriveChange("c1", "R", None, DriveChangeKind.REMOVED)]), "T1")
     assert await ck.authorize_disclosure("A") is False
-    prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
-    assert await ck.authorize_disclosure("A") is False  # still provisional: the cursor is not committed yet
-    assert await ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
-    assert await ck.authorize_disclosure("A") is True
+    await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
+    assert await ck.authorize_disclosure("A") is False  # only a new checker (re-consent / resnapshot) revives it
+    assert await _ck(fake).authorize_disclosure("A") is True
 
 
 # --- 2. epoch change while resolving ------------------------------------------------------------------
