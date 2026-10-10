@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S7: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S7: results</h1>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 417bd87, fix batch e410abc (GPT-PM pending; not pushed) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ e410abc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S7 is implemented and verified offline</span> (code 417bd87, fix batch e410abc). <span class="warn">GPT-PM pending, not pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G4 open: nine Drive modules (port, fake, OAuth consent, scope, baseline, cursor, revisions, membership, auth state) run in memory over a fake port and are not wired into Release 1.</p>
+<ul>
+<li>Tests: offline <code>tests/phase2</code> — <b>3397 passed, 229 skipped</b>; <code>ruff</code> clean. Run with the project <code>.venv</code> python.</li>
+<li>New S7 files: port_fake 108, oauth 110, scope 116, baseline 52, cursor 56, revisions 47, membership 42, auth_state 41, hints 16, boundaries 50 and three fix files (54 / 73 / 77).</li>
+<li>Review: four read-only reviewers (functional, silent-failure, Python, security) — 0 BLOCKER; about 14 MAJOR fixed in one batch, tests written before the fixes.</li>
+<li>Stories: US-035..038 — ceiling <code>IMPLEMENTED_UNVERIFIED</code>; TC103-114 covered offline over fixtures.</li>
+<li>The operator mutation ban was respected; CI, PostgreSQL and the Release 1 regression were not run. Outside S7: <code>tests/test_operations_artifacts.py</code> fails on a stale Release 1 engineering checkpoint (content hash of <code>src</code>).</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-035 OAuth consent and scope (<code>drive_port</code>, <code>drive_fake</code>, <code>drive_oauth</code>, <code>drive_scope</code>)</td><td>Read-only port; consent is single-use and tenant-bound; a broad scope is labelled APPLICATION_FILTER_ONLY</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Real Google OAuth and Drive — operator (G4)</td></tr>
+<tr><td>E2</td><td>R2-US-036 baseline and cursor (<code>drive_baseline</code>, <code>drive_cursor</code>)</td><td>Start token before listing; durable fail-closed cursor over the existing CAS/fence; a lost cursor is a resnapshot</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>In memory only; listing is an injected BaselineLister</td></tr>
+<tr><td>E3</td><td>R2-US-037 revisions and membership (<code>drive_revisions</code>, <code>drive_membership</code>)</td><td>A new revision is UNATTESTED; a shortcut/move cannot escape the corpus; removal has no guessed replacement</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real revisions</td></tr>
+<tr><td>E4</td><td>R2-US-038 auth state and hints (<code>drive_auth_state</code>)</td><td>INVALID_GRANT gives AUTH_REQUIRED with one alert; notifications are only a hint; polling is correct without watch</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real job queue</td></tr>
+<tr><td>E5</td><td>Traceability, docs sync, boundaries</td><td>AST boundary test; feature-file tags; matrix</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST is a static proxy</td></tr>
+<tr><td>Fix</td><td>Review fix batch</td><td>All MAJORs closed in one batch with tests written before the fixes</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Accepted residuals are in the decision log</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix (TC103-114 and boundaries)</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S7 section). Mutations were not run (operator ban). The Result column means an offline run over fixtures; the number in parentheses is the test count of the file. One file can cover several TCs.</p>
+<div class="wrap"><table>
+<thead><tr><th>Test case</th><th>Requirement</th><th>Test file</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Known gap</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-035 / TC103</td><td>Access to a file is proven inside the allowed corpus</td><td>test_drive_scope.py (116), test_drive_membership.py (42)</td><td>A file outside the corpus, trashed, a parent chain with cycle/depth/budget, a shortcut and another drive give no proof (DENIED/NOT_PROVEN with the exact code); the corpus root invalidates cached descendants; an epoch change mid-resolve refuses</td><td>offline</td><td><span class="ok">pass</span></td><td>Two MembershipResult types remain; proof over a fake port</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-035 / TC104</td><td>A new child file is proven only by observation, never guessed</td><td>test_drive_scope.py (116)</td><td>NEW_CHILD_ACCESS comes only from a scripted observation; a 403 on metadata and on history are different codes; a port refusal never becomes proof</td><td>offline</td><td><span class="ok">pass</span></td><td>Real Drive not exercised (G4)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-035 / TC105</td><td>A broad OAuth scope is never called folder isolation</td><td>test_drive_oauth.py (110), test_drive_scope.py (116)</td><td>drive.file gives NARROW_FILE_SCOPE, readonly READONLY_BROAD, drive BROAD with APPLICATION_FILTER_ONLY and a mandatory risk label; the FOLDER_ISOLATED label is refused; the allow-list is immutable (TypeError); a consent state is single-use and tenant-bound, the verifier is checked before scopes; tokens never reach repr/errors; 10,000 cycles for one tenant never cause CAPACITY for another</td><td>offline</td><td><span class="ok">pass</span></td><td>FAKE- tokens only; no real Google OAuth</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC106</td><td>The start page token is taken and stored BEFORE the baseline listing</td><td>test_drive_baseline.py (52), test_drive_cursor.py (56)</td><td>The call log proves the order getStartPageToken → persist → listing → changes.list; the token is persisted before listing; a crash after and before a commit resumes without duplicates; a page over the event limit is refused with a fixed PAGE_TOO_LARGE</td><td>offline</td><td><span class="ok">pass</span></td><td>Listing is an injected BaselineLister (the port has no listing method)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC107</td><td>Shared drives are separate namespaces</td><td>test_drive_baseline.py (52), test_drive_cursor.py (56)</td><td>A length-prefixed cursor key over (namespace, tenant, connection); a change of another drive is counted denied and never a candidate; the drive filter comes from corpus.drive_id; the candidate carries identity.connection_id</td><td>offline</td><td><span class="ok">pass</span></td><td>One corpus type via converters; two types still exist</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC108</td><td>A lost cursor is a gap and a resnapshot, never a silent continuation</td><td>test_drive_cursor.py (56), test_drive_baseline.py (52), test_s7_fix_cursor_baseline.py (73)</td><td>Recovery matrix: a revoked scope/PERMISSION_DENIED gives RESNAPSHOT_REQUIRED with the tracker marked (never RETRYABLE); LEASE_LOST and COMMIT_CONFLICT are preserved; the lease tenant must match the identity tenant; a forged CursorLoad cannot overwrite a GAP; a resnapshot emits tombstones for refused files; a first INCREMENTAL run initialises the cursor</td><td>offline</td><td><span class="ok">pass</span></td><td>In memory only; PostgreSQL not run</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC109</td><td>A new revision is UNATTESTED, an older PASS is historical</td><td>test_drive_revisions.py (47)</td><td>A new revision of an attested file gives a new UNATTESTED candidate and the older PASS becomes HISTORICAL; unavailable history gives CURRENT_ONLY; a wrong list type is CHECK_FAILED; a tracker overflow blocks the cursor; hostile datetimes never raise</td><td>offline</td><td><span class="ok">pass</span></td><td>No real Drive revisions</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC110</td><td>A shortcut or a move cannot escape the corpus</td><td>test_drive_membership.py (42), test_s7_fix_scope_membership.py (77)</td><td>A shortcut is never membership proof; a move out of the corpus gives OUT; a shared ancestor (diamond) is not a cycle; another drive yields no tombstone with its file id; ancestor/index/page limits refuse with a fixed code; a page with an UNKNOWN change is refused</td><td>offline</td><td><span class="ok">pass</span></td><td>Parity of the two implementations is table-tested over shared worlds</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC111</td><td>Removal is a tombstone with no guessed replacement</td><td>test_drive_membership.py (42), test_drive_revisions.py (47)</td><td>A removal/trashing gives MEMBERSHIP_CHANGED and a requalify signal; no replacement by name/size/hash is offered; removing the root invalidates descendants</td><td>offline</td><td><span class="ok">pass</span></td><td>Files refused by the drive filter get no tombstone on resnapshot (the projector hides ids)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC112</td><td>invalid_grant is AUTH_REQUIRED with one deduplicated alert</td><td>test_drive_auth_state.py (41), test_s7_fix_auth_oauth.py (54)</td><td>INVALID_GRANT and revocation move to AUTH_REQUIRED, the connection is paused, one alert; the dedup key includes epoch and incident; an undelivered alert is re-emitted via flush_alerts; an unknown token-refresh outcome is TRANSIENT, not an escalation; recovery only at a newer epoch</td><td>offline</td><td><span class="ok">pass</span></td><td>ConsentManagerSeam/StoreCursorReader adapters are covered by an end-to-end test over the real ConsentManager and cursor store</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC113</td><td>Notifications are only a hint to poll</td><td>test_drive_hints.py (16), test_drive_auth_state.py (41)</td><td>A hint needs a registered channel (id, resource, token, constant-time compare); the payload is dropped unread; a stale epoch and a paused connection are rejected; many hints collapse to one poll job; a hint never moves the cursor; older channels are evicted on re-consent</td><td>offline</td><td><span class="ok">pass</span></td><td>The poll job is not enqueued into the real job queue</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC114</td><td>Polling is correct without watch</td><td>test_drive_auth_state.py (41), test_s7_fix_auth_oauth.py (54)</td><td>run_poll walks the page chain to the terminal newStartPageToken; a repeated or regressed token is PAGE_INVALID without a commit; a failed commit result is COMMIT_FAILED with its code; a forged page never raises; a terminal token not newer than the committed one is not COMPLETE</td><td>offline</td><td><span class="ok">pass</span></td><td>A page skipped under a valid token without page_index is undetectable</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S7 boundaries</td><td>S7 modules are pure and never touch Release 1</td><td>test_s7_boundaries.py (50)</td><td>AST: imports only stdlib and sibling Phase 2 modules, no drive_http/network/DB/os/pathlib/open, DrivePort has exactly four async read methods, no Google scope or endpoint literal, no real token shape (detector self-check)</td><td>offline</td><td><span class="ok">pass</span></td><td>AST scan is a static proxy: aliasing/getattr are not detected</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>S7 review round</b> (code 417bd87; four read-only reviewers): 0 BLOCKER, about 14 MAJOR; all fixed in one batch, e410abc.</li>
+<li>Fixed: a revoked scope and a lost lease are no longer RETRYABLE; lease-to-tenant binding; a forged CursorLoad; corpus.drive_id enforcement; seam adapters over the real ConsentManager and cursor; run_poll guards; alert dedup and re-delivery; consent state eviction; root-based cache invalidation; the 1000-events-per-commit limit (PAGE_TOO_LARGE).</li>
+<li><b>Process:</b> this time the tests were written before the fixes and seen red (about 100 new tests). The first versions of the S7 modules were written by agents without red tests — recorded in the decision log.</li>
+<li><b>GPT-PM:</b> pending; no push without APPROVE.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Real Google OAuth, tokens, Drive, quotas, secrets storage, Drive push notifications.</li>
+<li>PostgreSQL integration run; GitHub CI; Release 1 regression.</li>
+<li>Mutation runs (operator ban).</li>
+</ul>
+<h2>Known residuals and next steps</h2>
+<ul>
+<li>Residual risks: digests are integrity, not authenticity; two MembershipResult types and two corpus types; the 4 MiB text limit per commit has no pre-check; one tenant's live pending consent states across many identities can fill the table; everything is in memory.</li>
+<li>Release 2 is NO-GO, G1 is NOT PASSED, G4 is open.</li>
+<li>Next: GPT-PM on the exact head; after APPROVE, a plain push; then S8 (Workbench/UAT). Real data and OAuth stay with the operator.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

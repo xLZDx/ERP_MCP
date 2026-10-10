@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — спринт S7: итоги</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — спринт S7: итоги</h1>
+<div class="sub">Дата: 2026-10-10 · ветка phase2/living-model-connectors-reconciliation · код 417bd87, пакет исправлений e410abc (GPT-PM ожидается; не запушен) · правила разработки v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ e410abc</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Итог</h2>
+<div class="card">
+<p><span class="ok">Спринт S7 реализован и проверен офлайн</span> (код 417bd87, пакет исправлений e410abc). <span class="warn">GPT-PM ожидается, push не выполнен.</span> Release 2 по-прежнему <span class="bad">NO-GO</span>, G1 <span class="warn">не пройден</span>, G4 открыт: девять модулей Drive (порт, фейк, OAuth consent, scope, baseline, курсор, ревизии, членство, состояние авторизации) работают в памяти на фейковом порте и не подключены к Release 1.</p>
+<ul>
+<li>Тесты: офлайн <code>tests/phase2</code> — <b>3397 passed, 229 skipped</b>; <code>ruff</code> чистый. Запуск через python из проектного <code>.venv</code>.</li>
+<li>Новые файлы S7: port_fake 108, oauth 110, scope 116, baseline 52, cursor 56, revisions 47, membership 42, auth_state 41, hints 16, границы 50 и три файла исправлений (54 / 73 / 77).</li>
+<li>Ревью: четыре read-only ревьюера (функциональный, silent-failure, Python, безопасность) — 0 BLOCKER; около 14 MAJOR исправлено одним пакетом, тесты написаны до исправлений.</li>
+<li>Истории: US-035..038 — максимум <code>IMPLEMENTED_UNVERIFIED</code>; TC103-114 покрыты офлайн на фикстурах.</li>
+<li>Запрет оператора на мутации соблюдён; CI, PostgreSQL и регрессия Release 1 не запускались. Вне S7: <code>tests/test_operations_artifacts.py</code> падает на устаревшем engineering checkpoint Release 1 (хэш содержимого <code>src</code>).</li>
+</ul>
+</div>
+<h2>План и результат (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-035 согласие OAuth и scope (<code>drive_port</code>, <code>drive_fake</code>, <code>drive_oauth</code>, <code>drive_scope</code>)</td><td>Порт только на чтение; consent одноразовый и привязан к tenant; широкий scope помечен APPLICATION_FILTER_ONLY</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Реальный Google OAuth и Drive — оператор (G4)</td></tr>
+<tr><td>E2</td><td>R2-US-036 baseline и курсор (<code>drive_baseline</code>, <code>drive_cursor</code>)</td><td>Start token до листинга; устойчивый fail-closed курсор над существующим CAS/fence; потеря курсора — resnapshot</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Только память; листинг — внедрённый BaselineLister</td></tr>
+<tr><td>E3</td><td>R2-US-037 ревизии и членство (<code>drive_revisions</code>, <code>drive_membership</code>)</td><td>Новая ревизия UNATTESTED; ярлык/перемещение не выводят из корпуса; удаление без угаданной замены</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реальных ревизий</td></tr>
+<tr><td>E4</td><td>R2-US-038 состояние авторизации и подсказки (<code>drive_auth_state</code>)</td><td>INVALID_GRANT → AUTH_REQUIRED, одно оповещение; уведомления — только подсказка; опрос корректен без watch</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Нет реального job queue</td></tr>
+<tr><td>E5</td><td>Трассируемость, синхронизация документов, границы</td><td>AST-тест границ; метки фича-файла; матрица</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>AST — статический прокси</td></tr>
+<tr><td>Fix</td><td>Пакет исправлений по ревью</td><td>Все MAJOR закрыты одним пакетом с тестами, написанными раньше исправлений</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Принятые остатки — в журнале решений</td></tr>
+</tbody></table></div>
+<h2>Матрица трассируемости тестов (TC103-114 и границы)</h2>
+<p class="sub">Полная версия: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (раздел Sprint S7). Мутации не запускались по запрету оператора. «Результат» — офлайн-прогон на фикстурах; число в скобках — количество тестов в файле. Один файл может покрывать несколько TC.</p>
+<div class="wrap"><table>
+<thead><tr><th>Тест-кейс</th><th>Требование</th><th>Файл теста</th><th>Утверждение (упало бы при поломке)</th><th>Запуск</th><th>Результат</th><th>Известный пробел</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>R2-US-035 / TC103</td><td>Доступ к файлу доказан в рамках разрешённого корпуса</td><td>test_drive_scope.py (116), test_drive_membership.py (42)</td><td>Файл вне корпуса, в корзине, цепочка родителей с циклом/глубиной/бюджетом, ярлык и чужой диск не дают доказательства (DENIED/NOT_PROVEN с точным кодом); корень корпуса сбрасывает кэш потомков; смена эпохи во время разрешения отказывает</td><td>offline</td><td><span class="ok">pass</span></td><td>Два типа MembershipResult остаются; доказательство по фейковому порту</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-035 / TC104</td><td>Новый дочерний файл доказывается только наблюдением, не догадкой</td><td>test_drive_scope.py (116)</td><td>NEW_CHILD_ACCESS возможен только из заскриптованного наблюдения; 403 на метаданных и истории — разные коды; отказ порта не превращается в доказательство</td><td>offline</td><td><span class="ok">pass</span></td><td>Реальный Drive не проверялся (G4)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-035 / TC105</td><td>Широкий OAuth-scope не называется изоляцией по папке</td><td>test_drive_oauth.py (110), test_drive_scope.py (116)</td><td>drive.file даёт NARROW_FILE_SCOPE, readonly — READONLY_BROAD, drive — BROAD с APPLICATION_FILTER_ONLY и обязательной меткой риска; метка FOLDER_ISOLATED отвергается; allow-list неизменяем (TypeError); состояние consent одноразовое, привязано к tenant, verifier проверяется раньше scope; токены не попадают в repr/ошибки; 10 000 циклов одного tenant не вызывают CAPACITY у другого</td><td>offline</td><td><span class="ok">pass</span></td><td>Только токены с префиксом FAKE-; реальный Google OAuth не запускался</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC106</td><td>Start page token берётся и сохраняется ДО листинга базовой линии</td><td>test_drive_baseline.py (52), test_drive_cursor.py (56)</td><td>Журнал вызовов доказывает порядок getStartPageToken → фиксация → листинг → changes.list; токен сохранён до листинга; сбой после коммита и до коммита возобновляется без дублей; страница выше лимита событий отказывается фиксированным PAGE_TOO_LARGE</td><td>offline</td><td><span class="ok">pass</span></td><td>Листинг — внедрённый BaselineLister (в порте нет метода листинга)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC107</td><td>Общие диски — отдельные пространства имён</td><td>test_drive_baseline.py (52), test_drive_cursor.py (56)</td><td>Ключ курсора с длиной-префиксом по (namespace, tenant, connection); изменение чужого диска считается denied и не даёт кандидата; фильтр диска берётся из corpus.drive_id; кандидат несёт identity.connection_id</td><td>offline</td><td><span class="ok">pass</span></td><td>Единый тип корпуса — через конвертеры, два типа ещё существуют</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-036 / TC108</td><td>Потеря курсора — разрыв и resnapshot, не тихое продолжение</td><td>test_drive_cursor.py (56), test_drive_baseline.py (52), test_s7_fix_cursor_baseline.py (73)</td><td>Матрица восстановления: отозванный scope/PERMISSION_DENIED → RESNAPSHOT_REQUIRED с отметкой трекера (не RETRYABLE); LEASE_LOST и COMMIT_CONFLICT сохраняются; tenant lease должен совпасть с tenant identity; подделанный CursorLoad не затирает GAP; resnapshot создаёт tombstone для отказанных файлов; первый INCREMENTAL-запуск инициализирует курсор</td><td>offline</td><td><span class="ok">pass</span></td><td>Только в памяти; PostgreSQL не запускался</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC109</td><td>Новая ревизия UNATTESTED, старый PASS — исторический</td><td>test_drive_revisions.py (47)</td><td>Новая ревизия аттестованного файла даёт нового кандидата UNATTESTED, старый PASS становится HISTORICAL; недоступная история даёт CURRENT_ONLY; неверный тип списка — CHECK_FAILED; переполнение трекера блокирует курсор; враждебные даты не бросают исключений</td><td>offline</td><td><span class="ok">pass</span></td><td>Нет реальных ревизий Drive</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC110</td><td>Ярлык и перемещение не выводят из корпуса</td><td>test_drive_membership.py (42), test_s7_fix_scope_membership.py (77)</td><td>Ярлык никогда не доказательство членства; перемещение из корпуса даёт OUT; общий предок («ромб») — не цикл; чужой диск не даёт tombstone с его file id; лимиты предков/индекса/страницы отказывают фиксированным кодом; страница с UNKNOWN-изменением отказана</td><td>offline</td><td><span class="ok">pass</span></td><td>Паритет двух реализаций проверен таблично на общих мирах</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-037 / TC111</td><td>Удаление — tombstone без угаданной замены</td><td>test_drive_membership.py (42), test_drive_revisions.py (47)</td><td>Удаление/корзина даёт MEMBERSHIP_CHANGED и сигнал requalify; замена по имени/размеру/хэшу не предлагается; удаление корня сбрасывает кэш потомков</td><td>offline</td><td><span class="ok">pass</span></td><td>Файлы, отказанные фильтром диска, не получают tombstone при resnapshot (проектор скрывает id)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC112</td><td>invalid_grant — AUTH_REQUIRED, одно дедуплицированное оповещение</td><td>test_drive_auth_state.py (41), test_s7_fix_auth_oauth.py (54)</td><td>INVALID_GRANT и отзыв переводят в AUTH_REQUIRED, соединение приостановлено, оповещение одно; ключ дедупликации включает эпоху и инцидент; недоставленное оповещение повторяется через flush_alerts; неизвестный результат обновления токена — TRANSIENT, не эскалация; повторный вход возможен только с новой эпохой</td><td>offline</td><td><span class="ok">pass</span></td><td>Адаптеры ConsentManagerSeam/StoreCursorReader проверены сквозным тестом на реальных ConsentManager и хранилище курсора</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC113</td><td>Уведомления — только подсказка к опросу</td><td>test_drive_hints.py (16), test_drive_auth_state.py (41)</td><td>Подсказка требует зарегистрированного канала (id, ресурс, токен, постоянное время сравнения); полезная нагрузка удаляется непрочитанной; чужая эпоха и пауза отклоняются; много подсказок — одна задача опроса; курсор подсказкой не двигается; старые каналы вытесняются при повторном consent</td><td>offline</td><td><span class="ok">pass</span></td><td>Очередь заданий опроса не подключена к реальному job queue</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-038 / TC114</td><td>Опрос корректен без watch</td><td>test_drive_auth_state.py (41), test_s7_fix_auth_oauth.py (54)</td><td>run_poll проходит цепочку страниц до терминального newStartPageToken; повторный или регрессирующий токен — PAGE_INVALID без коммита; неуспешный результат коммита — COMMIT_FAILED с кодом; подделанная страница не вызывает исключения; терминальный токен не новее зафиксированного не даёт COMPLETE</td><td>offline</td><td><span class="ok">pass</span></td><td>Пропуск страницы под валидным токеном без page_index не обнаруживается</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S7 boundaries</td><td>Модули S7 чисты и не трогают Release 1</td><td>test_s7_boundaries.py (50)</td><td>AST: импорты только stdlib и соседние модули Phase 2, нет drive_http/сети/БД/os/pathlib/open, у DrivePort ровно четыре async-метода чтения, нет литералов scope и endpoint Google, нет реальных форм токенов (самопроверка детектора)</td><td>offline</td><td><span class="ok">pass</span></td><td>AST-скан — статический прокси: алиасинг и getattr не обнаруживаются</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Что нашли ревью и что исправлено</h2>
+<ul>
+<li><b>Раунд ревью S7</b> (код 417bd87; четыре read-only ревьюера): 0 BLOCKER, около 14 MAJOR; все исправлены одним пакетом e410abc.</li>
+<li>Исправлено: отозванный scope и потеря lease больше не RETRYABLE; привязка lease к tenant; подделанный CursorLoad; применение corpus.drive_id; адаптеры seam к реальным ConsentManager и курсору; защита run_poll; дедупликация и повторная доставка оповещений; вытеснение состояний consent; инвалидация кэша по корню; лимит 1000 событий на коммит (PAGE_TOO_LARGE).</li>
+<li><b>Процесс:</b> в этот раз тесты писались до исправлений и наблюдались красными (около 100 новых тестов). Первые версии модулей S7 агенты писали без красных тестов — это отмечено в журнале.</li>
+<li><b>GPT-PM:</b> ожидается; без APPROVE push не выполняется.</li>
+</ul>
+<h2>Не запускалось (NOT_RUN) и не заявляется</h2>
+<ul>
+<li>Реальные Google OAuth, токены, Drive, квоты, хранилище секретов, push-уведомления Drive.</li>
+<li>Интеграционный прогон на PostgreSQL; GitHub CI; регрессия Release 1.</li>
+<li>Прогоны мутаций (запрет оператора).</li>
+</ul>
+<h2>Известные пробелы и следующие шаги</h2>
+<ul>
+<li>Остаточные риски: дайджесты — целостность, а не подлинность; два типа MembershipResult и два типа корпуса; лимит текста 4 МиБ на коммит без предпроверки; живые состояния consent одного tenant на многих identity могут заполнить таблицу; всё в памяти.</li>
+<li>Release 2 — NO-GO, G1 — NOT PASSED, G4 открыт.</li>
+<li>Дальше: GPT-PM по точному head; после APPROVE — обычный push; затем S8 (Workbench/UAT). Реальные данные и OAuth остаются за оператором.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
