@@ -372,6 +372,8 @@ def _effective(grants: object, attestations: object, now: datetime, ids: object,
         for entry in view.entries:
             rec = entry.record
             gid = rec.grant_id
+            if type(rec) is not GrantRecord or type(gid) is not GrantId:
+                return ops_refusal(OpsReason.DEPENDENCY_FAILED, ids)
             if entry.revoked is not False:
                 causes[gid.value] = BlockCause.REVOKED
             elif entry.expired is not False or rec.credential_expires_at <= high:
@@ -390,13 +392,16 @@ def _effective(grants: object, attestations: object, now: datetime, ids: object,
     effective.sort(key=lambda g: g.value)
     blocked: list[ResurrectionEntry] = []
     absent = 0
-    if snap_ids is not None:
-        for value in sorted(set(snap_ids)):
-            if value not in known:
-                absent += 1
-            elif value in causes:
-                blocked.append(ResurrectionEntry(GrantId(value), causes[value]))
-    return EffectiveGrants(tuple(effective), tuple(blocked), absent)
+    try:
+        if snap_ids is not None:
+            for value in sorted(set(snap_ids)):
+                if value not in known:
+                    absent += 1
+                elif value in causes:
+                    blocked.append(ResurrectionEntry(GrantId(value), causes[value]))
+        return EffectiveGrants(tuple(effective), tuple(blocked), absent)
+    except Exception:  # noqa: BLE001 - never raise out of the public boundary
+        return ops_refusal(OpsReason.DEPENDENCY_FAILED, ids)
 
 
 # --------------------------------------------------------------------------------------------------

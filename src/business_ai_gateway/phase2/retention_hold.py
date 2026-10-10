@@ -698,9 +698,11 @@ class RetentionLedger:
         approval = self._approvals.get(tenant, request.approval_id)
         if type(approval) is not DeletionApproval:
             return self._refuse(OpsReason.APPROVAL_MISSING)
+        if approval.company_id != scope.company_id:  # type: ignore[attr-defined]
+            return self._refuse(OpsReason.APPROVAL_MISSING)  # foreign == unknown, before any person comparison
         if approval.approver == actor or same_person(approval.approver, actor):
             return self._refuse(OpsReason.SELF_APPROVAL)
-        if (approval.requester != actor or approval.company_id != scope.company_id  # type: ignore[attr-defined]
+        if (approval.requester != actor
                 or self._authorized(approval.approver, ACTION_APPROVE_DELETION) is not True):
             return self._refuse(OpsReason.APPROVAL_MISSING)
         if any(h.placed_at >= approval.approved_at and self._covers(h, kind, ids, sources) for h in holds):

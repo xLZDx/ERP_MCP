@@ -5,6 +5,7 @@ import dataclasses
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -760,7 +761,12 @@ def test_registry_failures_are_dependency_failures(env):
             return self._view
 
     forged_entry = RegistryView((object.__new__(GrantEntry),), T0)
-    for reg in (Boom(), None, object(), Lying(None), Lying("view"), Lying(forged_entry),
+    duck = object.__new__(GrantEntry)  # a duck-typed record whose id is not a real GrantId
+    object.__setattr__(duck, "record", SimpleNamespace(grant_id=SimpleNamespace(value="g-duck"),
+                                                       credential_expires_at=T0 + timedelta(days=5), evidence=None))
+    object.__setattr__(duck, "revoked", False)
+    object.__setattr__(duck, "expired", False)
+    for reg in (Boom(), None, object(), Lying(None), Lying("view"), Lying(forged_entry), Lying(RegistryView((duck,), T0)),
                 Lying(RegistryView(("entry",), T0)), Lying(RegistryView([], T0)),
                 Lying(RegistryView((), datetime(2026, 1, 1)))):
         out = effective_after_rollback(reg, env.store, env.clock, env.ids)
