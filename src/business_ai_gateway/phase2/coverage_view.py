@@ -35,13 +35,16 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Final
 
-from .comparison_snapshot import RunLedger, RunRecord, RunView, canonical_digest
+from .comparison_snapshot import RunLedger, RunView, canonical_digest
 from .timeline_view import (
     OWN,
     SIBLING,
     Refuse,
     TimelineSubject,
     check_epoch,
+    check_ownership_port,
+    check_run_record,
+    collect_own_subjects,
     digest_ok,
     guard,
     provider,
@@ -63,6 +66,7 @@ from .validation_coverage import (
 from .workbench_types import (
     AUTHORITY,
     DEFAULT_CORRELATION_ID,
+    OwnershipPort,
     ReasonCode,
     SafeError,
     ViewerScope,
@@ -155,11 +159,12 @@ class CoveragePanel:
         return self.status is CoverageStatus.COMPLETE and self.code is CoverageCode.OK
 
 
-def build_coverage_panel(viewer: object, authority: object, matrix: object, *,
+def build_coverage_panel(viewer: object, authority: object, matrix: object, *, ownership: OwnershipPort,
                          correlation_id: object = DEFAULT_CORRELATION_ID) -> CoveragePanel | SafeError:
     """Coverage of the viewer's own company: covered / uncovered / non-pass claims with fixed codes."""
     def run() -> CoveragePanel:
         v = viewer_and_epoch(viewer, authority)
+        check_ownership_port(ownership)  # matrix rows carry no ledger key: nothing further to prove here
         sm = scoped_matrix(matrix, v)
         covered: list[CoveredItem] = []
         uncovered: list[str] = []
@@ -245,10 +250,11 @@ def _row_relation(viewer: ViewerScope, row: Claim | Evidence) -> str:
 
 
 def build_scoped_evidence(viewer: object, authority: object, claims: object, evidence: object, links: object,
-                          *, correlation_id: object = DEFAULT_CORRELATION_ID) -> ScopedEvidenceView | SafeError:
+                          *, ownership: OwnershipPort, correlation_id: object = DEFAULT_CORRELATION_ID) -> ScopedEvidenceView | SafeError:
     """Evidence (and its claim links) resolved inside the viewer's company only."""
     def run() -> ScopedEvidenceView:
         v = viewer_and_epoch(viewer, authority)
+        check_ownership_port(ownership)  # claims/evidence carry no ledger key: nothing further to prove here
         hidden = False
         own_claims: set[str] = set()
         for c in _typed_tuple(claims, Claim):
@@ -345,9 +351,11 @@ def _diff_items(ledger: RunLedger, sub: TimelineSubject) -> list[DiffItem]:
     if type(views) is not tuple:
         provider_invalid()
     items: list[DiffItem] = []
-    for rv in views:
-        if type(rv) is not RunView or type(rv.record) is not RunRecord:
+    for rv in views:  # every record is verified BEFORE any number is read
+        if type(rv) is not RunView:
             provider_invalid()
+        check_run_record(rv.record, sub.tenant_id, sub.comparison_key)
+    for rv in views:
         rec = rv.record
         native, gateway = _values(rec.native_values), _values(rec.gateway_values)
         if type(rec.differences) is not tuple:
@@ -358,24 +366,15 @@ def _diff_items(ledger: RunLedger, sub: TimelineSubject) -> list[DiffItem]:
 
 
 def build_scoped_diff(viewer: object, authority: object, ledger: object, subjects: object, *,
-                      correlation_id: object = DEFAULT_CORRELATION_ID) -> ScopedDiffView | SafeError:
+                      ownership: OwnershipPort, correlation_id: object = DEFAULT_CORRELATION_ID) -> ScopedDiffView | SafeError:
     """Differing measures (exact stored numbers) of the viewer's own comparison keys; others are dropped."""
     def run() -> ScopedDiffView:
         v = viewer_and_epoch(viewer, authority)
         if type(ledger) is not RunLedger:
             raise Refuse(ReasonCode.INPUT_INVALID)
-        hidden = False
-        seen: set[str] = set()
+        own_subjects, hidden = collect_own_subjects(v, _typed_tuple(subjects, TimelineSubject), ownership)
         items: list[DiffItem] = []
-        for sub in _typed_tuple(subjects, TimelineSubject):
-            relation = scope_relation(v, sub.tenant_id, sub.company_id)
-            if relation != OWN:
-                hidden = hidden or relation == SIBLING  # never read, never validated
-                continue
-            TimelineSubject(sub.tenant_id, sub.company_id, sub.comparison_key, sub.bindings)
-            if sub.comparison_key in seen:
-                continue
-            seen.add(sub.comparison_key)
+        for sub in own_subjects:
             items.extend(provider(_diff_items, ledger, sub))  # type: ignore[arg-type]
         items.sort(key=lambda i: (i.comparison_key, i.run_id, i.measure))
         done = tuple(items)

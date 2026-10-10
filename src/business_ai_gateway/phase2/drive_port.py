@@ -42,6 +42,8 @@ __all__ = [
     "FileMeta",
     "RevisionMeta",
     "StartToken",
+    "canonical_identity",
+    "is_sound_file_meta",
     "is_sound_identity",
     "is_valid_opaque_id",
     "is_valid_scope_epoch",
@@ -118,13 +120,53 @@ def is_valid_scope_epoch(value: object) -> bool:
 
 
 def is_sound_identity(value: object) -> bool:
-    """True for a real, fully initialised ``DrivePortIdentity`` (an ``object.__new__`` shell is not)."""
+    """True for a real, fully initialised ``DrivePortIdentity`` (an ``object.__new__`` shell is not):
+    exact types and the same id / namespace shape the constructor enforces."""
     try:
-        return (
+        if not (
             type(value) is DrivePortIdentity
             and type(value.namespace) is str  # type: ignore[attr-defined]
             and type(value.tenant) is str  # type: ignore[attr-defined]
             and type(value.connection_id) is str  # type: ignore[attr-defined]
+        ):
+            return False
+        ns = value.namespace  # type: ignore[attr-defined]
+        return (
+            is_valid_opaque_id(ns)
+            and any(ns.startswith(p) and len(ns) > len(p) for p in _NAMESPACE_PREFIXES)
+            and is_valid_opaque_id(value.tenant)  # type: ignore[attr-defined]
+            and is_valid_opaque_id(value.connection_id)  # type: ignore[attr-defined]
+        )
+    except Exception:  # noqa: BLE001 - unset slot / hostile object: not sound
+        return False
+
+
+def canonical_identity(value: object) -> DrivePortIdentity | None:
+    """A freshly built ``DrivePortIdentity`` made of plain-str copies of a sound identity's fields, or
+    None when ``value`` is not sound. Pure: never raises, never returns the caller's object."""
+    try:
+        if not is_sound_identity(value):
+            return None
+        return DrivePortIdentity(
+            str.__str__(value.namespace),  # type: ignore[attr-defined]
+            str.__str__(value.tenant),  # type: ignore[attr-defined]
+            str.__str__(value.connection_id),  # type: ignore[attr-defined]
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def is_sound_file_meta(value: object) -> bool:
+    """True for a real, fully initialised ``FileMeta`` with exact-typed fields (a forged shell is not)."""
+    try:
+        return (
+            type(value) is FileMeta
+            and is_valid_opaque_id(value.file_id)  # type: ignore[attr-defined]
+            and type(value.parents) is tuple  # type: ignore[attr-defined]
+            and all(is_valid_opaque_id(p) for p in value.parents)  # type: ignore[attr-defined]
+            and type(value.trashed) is bool  # type: ignore[attr-defined]
+            and (value.drive_id is None or is_valid_opaque_id(value.drive_id))  # type: ignore[attr-defined]
+            and (value.shortcut_target is None or is_valid_opaque_id(value.shortcut_target))  # type: ignore[attr-defined]
         )
     except Exception:  # noqa: BLE001 - unset slot / hostile object: not sound
         return False
@@ -218,6 +260,7 @@ class ChangesPage:
                     or type(change.kind) is not DriveChangeKind
                     or not is_valid_opaque_id(change.change_id)
                     or not is_valid_opaque_id(change.file_id)
+                    or (change.drive_id is not None and type(change.drive_id) is not str)
                 ):
                     raise ValueError("DRIVE_CHANGES_INVALID")
         except ValueError:

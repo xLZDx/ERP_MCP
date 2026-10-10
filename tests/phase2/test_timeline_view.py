@@ -95,6 +95,13 @@ class LyingInt(int):
     __hash__ = int.__hash__
 
 
+class _AllOwned:
+    """Permissive OwnershipPort: these tests pin view behavior, not ownership (see test_s8_gpt_fix_views)."""
+
+    def owns(self, tenant_id, company_id, kind, ref):
+        return True
+
+
 class Env:
     """One tenant t1 / company A, plus company B for scope rows. The clock only moves when told."""
 
@@ -161,7 +168,8 @@ class Env:
     def build(self, **over):
         args = {"viewer": self.viewer, "authority": self.authority, "ledger": self.ledger,
                 "attestations": self.att, "subjects": (self.subject(),) + self.extra_subjects,
-                "feeds": self.feeds, "matrix": self.matrix, "policy": self.policy, "clock": self.clock}
+                "feeds": self.feeds, "matrix": self.matrix, "policy": self.policy, "clock": self.clock,
+                "ownership": _AllOwned()}
         args.update(over)
         return build_timeline(**args)
 
@@ -427,7 +435,7 @@ HOSTILE = [None, "x", "", 1, 2**200, 1.5, b"b", object(), [], {}, LyingStr("t1")
 _REC: list = []
 _REC.append(_REC)
 HOSTILE.append(_REC)
-ARGS = ["viewer", "authority", "ledger", "attestations", "subjects", "feeds", "matrix", "policy", "clock"]
+ARGS = ["viewer", "authority", "ledger", "attestations", "subjects", "feeds", "matrix", "policy", "clock", "ownership"]
 
 
 @pytest.mark.parametrize("arg", ARGS)

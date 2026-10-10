@@ -354,7 +354,7 @@ async def test_real_consent_manager_and_cursor_store_end_to_end_revoke_and_recon
     key = cursor_key(IDENT)
 
     committed: list[str] = []
-    res = await run_poll(health, guard, reader, lambda tok, page, ep: committed.append(tok))
+    res = await run_poll(health, guard, reader, lambda tok, page, ep: committed.append(tok) or True)
     assert res.status is PollStatus.COMPLETE and committed == ["T1"] and fake.call_count == 1
     raw_before = (await living.get_cursor(WORKER, DEFAULT_SCOPE, key)).cursor_value
 
@@ -433,7 +433,7 @@ async def test_regressed_page_token_stops_without_committing_the_offending_page(
     fake.script_page("T1", (_chg("c1", "F1"),), next_page_token="T2")
     fake.script_page("T2", (_chg("c2", "F2"),), next_page_token="T1")
     got: list = []
-    res = await run_poll(health, guard, FakeCursorView("T1"), lambda tok, *a: got.append(tok), max_pages=5)
+    res = await run_poll(health, guard, FakeCursorView("T1"), lambda tok, *a: got.append(tok) or True, max_pages=5)
     assert res.status is PollStatus.PAGE_INVALID and res.reason is PollReason.TOKEN_REGRESSED
     assert got == ["T1"] and fake.call_count == 2 and res.pages_committed == 1
 
@@ -449,7 +449,7 @@ async def test_terminal_new_start_token_not_newer_than_committed_is_not_complete
     fake2.script_page("T1", (), next_page_token="T2")
     fake2.script_page("T2", (), new_start_page_token="T1")
     got2: list = []
-    res2 = await run_poll(health2, guard2, FakeCursorView("T1"), lambda tok, *a: got2.append(tok))
+    res2 = await run_poll(health2, guard2, FakeCursorView("T1"), lambda tok, *a: got2.append(tok) or True)
     assert res2.status is PollStatus.PAGE_INVALID and res2.reason is PollReason.START_TOKEN_ORDER
     assert got2 == ["T1"] and res2.final_token is None
 
@@ -460,8 +460,8 @@ class _Result:
     reason: object = None
 
 
-@pytest.mark.parametrize("returned", [False, True, 0, 1, "ok", [], {}, object(), _Result(False), _Result(1), _Result("yes")])
-async def test_a_commit_callback_returning_anything_but_none_or_success_is_commit_failed(returned) -> None:
+@pytest.mark.parametrize("returned", [None, False, 0, 1, "ok", [], {}, object(), _Result(False), _Result(1), _Result("yes")])
+async def test_a_commit_callback_returning_anything_but_an_explicit_ack_is_commit_failed(returned) -> None:
     fake, _s, _k, _m, health, guard = _build()
     fake.script_page("T1", (), new_start_page_token="N1")
     res = await run_poll(health, guard, FakeCursorView("T1"), lambda *a: returned)
@@ -517,7 +517,7 @@ async def test_async_cursor_view_is_supported() -> None:
         async def committed_token(self, identity):
             return "T1"
 
-    res = await run_poll(health, guard, AsyncView(), lambda *a: None)  # type: ignore[arg-type]
+    res = await run_poll(health, guard, AsyncView(), lambda *a: True)  # type: ignore[arg-type]
     assert res.status is PollStatus.COMPLETE
 
 

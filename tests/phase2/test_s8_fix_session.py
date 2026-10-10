@@ -67,11 +67,11 @@ class FlakyDispatcher(FakeJobDispatcher):
         super().__init__()
         self.fail_next = 1
 
-    def dispatch(self, tenant_id, company_id, kind, request_digest):
+    def dispatch(self, tenant_id, company_id, kind, request_digest, dispatch_key=None):
         if self.fail_next:
             self.fail_next -= 1
             raise RuntimeError(POISON)
-        return super().dispatch(tenant_id, company_id, kind, request_digest)
+        return super().dispatch(tenant_id, company_id, kind, request_digest, dispatch_key)
 
 
 def rebuild(env, *, review_log=None, reader=None, **ctx_changes):

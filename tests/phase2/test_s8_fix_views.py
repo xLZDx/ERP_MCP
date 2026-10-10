@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, tzinfo
 from decimal import Decimal
+from functools import partial
 
 import pytest
 
@@ -67,6 +68,20 @@ from business_ai_gateway.phase2.validation_coverage import (
     build_matrix,
 )
 from business_ai_gateway.phase2.workbench_types import ReasonCode, SafeError, ViewerScope
+
+
+class _AllOwned:
+    """Permissive OwnershipPort: these tests pin scope/view behavior, not ownership (see test_s8_gpt_fix_views)."""
+
+    def owns(self, tenant_id, company_id, kind, ref):
+        return True
+
+
+_ALL_OWNED = _AllOwned()
+build_coverage_panel = partial(build_coverage_panel, ownership=_ALL_OWNED)
+build_scoped_diff = partial(build_scoped_diff, ownership=_ALL_OWNED)
+build_scoped_evidence = partial(build_scoped_evidence, ownership=_ALL_OWNED)
+
 
 T0 = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 REV, POL_VER, POL_DIG = f"{1:064x}", "pol-v1", f"{2:064x}"
@@ -154,7 +169,7 @@ class W:
     def timeline(self, subjects, **over):
         args = {"viewer": self.viewer, "authority": self.authority, "ledger": self.ledger,
                 "attestations": self.att, "subjects": subjects, "feeds": (), "matrix": self.matrix,
-                "policy": self.policy, "clock": self.clock}
+                "policy": self.policy, "clock": self.clock, "ownership": _ALL_OWNED}
         args.update(over)
         return build_timeline(**args)
 
@@ -228,7 +243,8 @@ def test_casefold_variant_subject_is_foreign_and_the_ledger_is_never_read(scope)
         view = w.timeline((TimelineSubject(scope[0], scope[1], "K", ()),),
                           feeds=(feed_of(event("e1", T0), tenant=scope[0], company=scope[1]),))
         assert type(view) is TimelineView
-        assert view.hidden_by_scope is True and view.entries == ()
+        # M03: only another company of the EXACT tenant leaves the opaque flag; a tenant variant leaves no trace
+        assert view.hidden_by_scope is (scope[0] == "Acme") and view.entries == ()
         assert spy_calls == []
         w.timeline((TimelineSubject("Acme", "x", "K", ()),))
         assert spy_calls == [("Acme", "K")]  # positive control: the exact scope IS read
@@ -501,7 +517,7 @@ def test_diff_casefold_variant_subject_is_foreign_and_never_read():
     w = W()
     w.viewer = ViewerScope("Acme", "x", 5)
     out = build_scoped_diff(w.viewer, w.authority, w.ledger, (TimelineSubject("ACME", "X", "K", ()),))
-    assert type(out) is ScopedDiffView and out.items == () and out.hidden_by_scope is True
+    assert type(out) is ScopedDiffView and out.items == () and out.hidden_by_scope is False  # M03: tenant variant
 
 
 def test_utc_exact_helper_rejects_zero_offset_non_utc_zones():

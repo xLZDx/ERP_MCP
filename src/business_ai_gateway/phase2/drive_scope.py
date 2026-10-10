@@ -33,6 +33,7 @@ from .drive_port import (
     DrivePortError,
     DrivePortIdentity,
     FileMeta,
+    is_sound_file_meta,
     is_sound_identity,
     is_valid_opaque_id,
     is_valid_scope_epoch,
@@ -326,7 +327,7 @@ async def _fetch(
         raise _Abort(_out(MembershipCode.PORT_REFUSED, exc.code)) from None
     except Exception:  # noqa: BLE001 - unexpected port failure: fail closed, text dropped
         raise _Abort(_out(MembershipCode.PORT_REFUSED)) from None
-    if type(meta) is not FileMeta or meta.file_id != file_id:
+    if not is_sound_file_meta(meta) or meta.file_id != file_id:
         return None
     return meta
 
@@ -389,10 +390,24 @@ async def _walk(
     frontier: list[tuple[str, str]] = [(p, file_id) for p in dict.fromkeys(leaf.parents)]
     failure: MembershipCode | None = None
     for _ in range(max_depth):
-        if any(p in roots for p, _via in frontier):
-            return MembershipResult(MembershipStatus.IN_SCOPE, MembershipCode.IN_CORPUS)
         nxt: list[tuple[str, str]] = []
-        for parent, via in frontier:
+        # declared roots first: a root is an ancestor like any other and proves membership only when its
+        # CURRENT metadata is readable, of the declared drive, not trashed and not a shortcut
+        for parent, via in sorted(frontier, key=lambda pv: pv[0] not in roots):
+            if parent in roots and parent not in visited:
+                visited.add(parent)
+                root = await _fetch(port, identity, epoch, parent, budget)
+                if root is None:
+                    failure = failure or MembershipCode.PARENT_UNRESOLVED
+                elif root.drive_id != corpus.drive_id:
+                    failure = failure or MembershipCode.NAMESPACE_MISMATCH
+                elif root.shortcut_target is not None:
+                    failure = failure or MembershipCode.SHORTCUT_NOT_PROOF
+                elif root.trashed:
+                    failure = failure or MembershipCode.TRASHED
+                else:
+                    return MembershipResult(MembershipStatus.IN_SCOPE, MembershipCode.IN_CORPUS)
+                continue
             if parent in visited:
                 # a shared ancestor (diamond) is simply already handled; only a parent that can reach
                 # its own child through the fetched graph is a cycle
@@ -403,6 +418,8 @@ async def _walk(
             meta = await _fetch(port, identity, epoch, parent, budget)
             if meta is None:
                 failure = failure or MembershipCode.PARENT_UNRESOLVED
+            elif meta.drive_id != corpus.drive_id:
+                failure = failure or MembershipCode.NAMESPACE_MISMATCH  # an ancestor of another drive
             elif meta.shortcut_target is not None:
                 failure = failure or MembershipCode.SHORTCUT_NOT_PROOF
             elif meta.trashed:

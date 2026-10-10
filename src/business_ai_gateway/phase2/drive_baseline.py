@@ -355,6 +355,19 @@ class DriveBaseline:
                 CursorState.UNINITIALIZED, CursorState.BASELINING, CursorState.CATCHING_UP)
         ):
             raise _Stop(BaselineOutcome.BLOCKED, CursorReason.INCREMENTAL_BLOCKED, load.state)
+        if mode is DriveRunMode.RESNAPSHOT_CONTINUE and load.record is not None \
+                and load.record.state is not CursorState.UNINITIALIZED:
+            # Resume under the ORIGINAL snapshot-generation marker persisted when the baseline started,
+            # so a requirement recorded since then is never cleared by this older snapshot. A missing
+            # or foreign (ahead of this tracker's order) marker cannot be trusted: restart from a
+            # genuinely new snapshot instead of continuing.
+            marker = load.record.snap
+            if type(marker) is int and 0 <= marker <= snap:  # type: ignore[operator]
+                snap = marker
+            else:
+                load = await store.reset(*args, load)
+                if not load.usable:
+                    raise _from_load(load)
         return _Ctx(request, mode, key, load, snap)
 
     async def _drive(self, ctx: _Ctx) -> None:
@@ -382,7 +395,8 @@ class DriveBaseline:
             raise _Stop(BaselineOutcome.REFUSED, CursorReason.START_TOKEN_INVALID)
         rec: CursorRecord = ctx.load.record  # type: ignore[assignment]
         await self._commit(ctx, rec.evolve(
-            state=CursorState.BASELINING, token=start.token, pos=None, seen=()), [])
+            state=CursorState.BASELINING, token=start.token, pos=None, seen=(),
+            snap=ctx.snap_token), [])
         ctx.trace.append("TOKEN_PERSISTED")
 
     async def _baseline_page(self, ctx: _Ctx) -> None:

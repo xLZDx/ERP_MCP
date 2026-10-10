@@ -195,7 +195,8 @@ async def test_very_deep_chain_is_bounded():
 
 async def test_shared_drive_corpus_denies_a_file_of_another_drive():
     fake = _world()
-    fake.set_file(_folder("F1", ("R",)))
+    fake.set_file(_file("R", (), mime=FOLDER_MIME_TYPE, drive="D1"))  # root and ancestors of a shared drive carry its drive id
+    fake.set_file(_file("F1", ("R",), mime=FOLDER_MIME_TYPE, drive="D1"))
     fake.set_file(_file("A", ("F1",), drive="D1"))
     fake.set_file(_file("B", ("F1",), drive="OTHER"))
     ck = MembershipChecker(
@@ -305,8 +306,9 @@ async def test_revoke_rechecks_every_cached_membership_before_disclosure():
     ck = _checker(fake)
     assert await ck.authorize_disclosure("A") is True
     calls = fake.count("get_file_meta")
-    assert await ck.authorize_disclosure("A") is True  # same epoch: cache is used
-    assert fake.count("get_file_meta") == calls
+    assert await ck.authorize_disclosure("A") is True  # same epoch: still a FRESH read (S7 gate M02)
+    assert fake.count("get_file_meta") > calls
+    calls = fake.count("get_file_meta")
 
     assert ck.advance_epoch(1) is True  # revoke / re-consent: new epoch
     assert ck.cached("A") is None

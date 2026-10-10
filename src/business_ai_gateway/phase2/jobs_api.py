@@ -99,6 +99,18 @@ _REFUSAL_HTTP: Final = frozenset({400, 401, 403, 404, 409, 429})
 _KEY: Final = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 _HEX64: Final = re.compile(r"[0-9a-f]{64}")
 _CLASS_NAME: Final = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+def _builtin_error_names() -> frozenset[str]:
+    names: set[str] = set()
+    todo = [BaseException]
+    while todo:
+        cls = todo.pop()
+        if cls.__module__ == "builtins" and cls.__name__ not in names:
+            names.add(cls.__name__)
+            todo.extend(cls.__subclasses__())
+    return frozenset(names)
+
+
+_SAFE_ERROR_NAMES: Final[frozenset[str]] = _builtin_error_names()
 _MAX_TOKEN: Final = 512
 _MAX_ENTRIES: Final = 1_000_000
 _MAX_RETENTION: Final = 30 * 86400
@@ -523,8 +535,8 @@ def _emit(ctx: object, kind: EventKind, component: ComponentName, corr: object,
         if sink is None:
             return
         name = type(error).__name__ if error is not None else ""
-        if name and _CLASS_NAME.fullmatch(name) is None:
-            name = "Exception"
+        if name and (name not in _SAFE_ERROR_NAMES or _CLASS_NAME.fullmatch(name) is None):
+            name = "OTHER"  # a hostile dependency can encode text in a class name: allow-list only
         sink.emit(ApiEvent(kind, component, name, corr if _corr_ok(corr) else DEFAULT_CORRELATION_ID))
     except Exception:  # noqa: BLE001, S110 - observability must never break a decision
         pass
@@ -563,7 +575,13 @@ class CapturePolicyPort(Protocol):
 
 
 class JobDispatcher(Protocol):
-    def dispatch(self, tenant_id: str, company_id: str, kind: JobKind, request_digest: str) -> str: ...
+    def dispatch(self, tenant_id: str, company_id: str, kind: JobKind, request_digest: str,
+                 dispatch_key: str | None = None) -> str:
+        """Create a job. ``dispatch_key`` is a deterministic opaque key (64 hex chars) derived from
+        (tenant, actor, endpoint, idempotency key): a dispatcher must return the SAME job for a repeated key."""
+
+    def find(self, dispatch_key: str) -> str | None:
+        """The id of the live job created under ``dispatch_key``, else ``None`` (reuse after a lost reply)."""
 
     def get(self, job_id: str) -> JobRecord | None: ...
 
@@ -634,6 +652,7 @@ class FakeJobDispatcher:
         self._gets: deque[str] = deque(maxlen=max_log)
         self._cancelled: deque[str] = deque(maxlen=max_log)
         self._jobs: OrderedDict[str, JobRecord] = OrderedDict()
+        self._by_key: dict[str, str] = {}
         self._max_jobs = max_jobs
         self._n = 0
         self.on_get: Callable[[], object] | None = None  # test hook: runs during a fetch
@@ -658,15 +677,28 @@ class FakeJobDispatcher:
         with self._lock:
             return tuple(self._cancelled)
 
-    def dispatch(self, tenant_id: str, company_id: str, kind: JobKind, request_digest: str) -> str:
+    def dispatch(self, tenant_id: str, company_id: str, kind: JobKind, request_digest: str,
+                 dispatch_key: str | None = None) -> str:
         with self._lock:
+            if dispatch_key is not None:
+                known = self._by_key.get(dispatch_key)
+                if known is not None and known in self._jobs:
+                    return known  # same key: the job already exists, never a second one
             self._n += 1
             self._calls.append((tenant_id, company_id, kind, request_digest))
             job_id = f"JOB-{self._n:06d}"
             self._jobs[job_id] = JobRecord(job_id, tenant_id, company_id, kind, JobState.QUEUED)
+            if dispatch_key is not None:
+                self._by_key[dispatch_key] = job_id
             while len(self._jobs) > self._max_jobs:
                 self._jobs.popitem(last=False)
             return job_id
+
+    def find(self, dispatch_key: str) -> str | None:
+        """The id of the live job created under ``dispatch_key``, else ``None``."""
+        with self._lock:
+            known = self._by_key.get(dispatch_key)
+            return known if known is not None and known in self._jobs else None
 
     def set_state(self, job_id: str, state: JobState, result_digest: str | None = None) -> None:
         with self._lock:
@@ -681,6 +713,8 @@ class FakeJobDispatcher:
         with self._lock:
             self._cancelled.append(job_id)
             self._jobs.pop(job_id, None)
+            for key in [k for k, v in self._by_key.items() if v == job_id]:
+                del self._by_key[key]
 
     def get(self, job_id: str) -> JobRecord | None:
         with self._lock:
@@ -1220,10 +1254,38 @@ def _outcome(ctx: ApiContext, status: str, value: object, corr: str) -> ApiDecis
     return _refuse(_R.INTERNAL_REFUSED, corr)
 
 
+def dispatch_key_for(tenant_id: str, actor_id: str, endpoint: Endpoint, idempotency_key: str,
+                     digest: str) -> str:
+    """Deterministic opaque key (64 hex) that identifies one logical dispatch across retries.
+    The request digest is part of it: the same key with other content never reuses a job."""
+    material = f"dispatch\x1f{tenant_id}\x1f{actor_id}\x1f{endpoint.value}\x1f{idempotency_key}\x1f{digest}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _takes_dispatch_key(fn: object) -> bool:
+    """True when ``dispatch`` can take the 5th ``dispatch_key`` argument (legacy 4-arg ones cannot)."""
+    code = getattr(fn, "__code__", None)
+    if code is None:
+        return False
+    bound = 1 if getattr(fn, "__self__", None) is not None else 0
+    return bool(code.co_flags & 0x04) or code.co_argcount - bound >= 5
+
+
 def _dispatch_ticket(ctx: ApiContext, corr: str, scope: ViewerScope, kind: JobKind, digest: str,
-                     commit: RerunCommit | None = None) -> JobTicket:
-    job_id = _guard(ctx, ComponentName.DISPATCHER, corr, ctx.dispatcher.dispatch,
-                    scope.tenant_id, scope.company_id, kind, digest)
+                     commit: RerunCommit | None = None, dispatch_key: str | None = None) -> JobTicket:
+    dispatcher = ctx.dispatcher
+    job_id: object = None
+    if dispatch_key is not None and callable(getattr(dispatcher, "find", None)):
+        job_id = _guard(ctx, ComponentName.DISPATCHER, corr, dispatcher.find, dispatch_key)
+        if job_id is not None and not _key_ok(job_id):
+            raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # a garbage lookup answer: no new job
+    if job_id is None:
+        if dispatch_key is not None and _takes_dispatch_key(dispatcher.dispatch):
+            job_id = _guard(ctx, ComponentName.DISPATCHER, corr, dispatcher.dispatch,
+                            scope.tenant_id, scope.company_id, kind, digest, dispatch_key)
+        else:
+            job_id = _guard(ctx, ComponentName.DISPATCHER, corr, dispatcher.dispatch,
+                            scope.tenant_id, scope.company_id, kind, digest)
     if not _key_ok(job_id):
         if type(job_id) is str:
             try:
@@ -1234,9 +1296,17 @@ def _dispatch_ticket(ctx: ApiContext, corr: str, scope: ViewerScope, kind: JobKi
         else:
             _emit(ctx, EventKind.ORPHAN_JOB_UNREACHABLE, ComponentName.DISPATCHER, corr)
         raise _bad_output(ctx, ComponentName.DISPATCHER, corr)
-    return JobTicket(job_id, scope.tenant_id, scope.company_id, kind, digest,  # type: ignore[arg-type]
-                     run_id=None if commit is None else commit.run_id,
-                     run_state=None if commit is None else commit.state)
+    try:
+        return JobTicket(job_id, scope.tenant_id, scope.company_id, kind, digest,  # type: ignore[arg-type]
+                         run_id=None if commit is None else commit.run_id,
+                         run_state=None if commit is None else commit.state)
+    except Exception:  # noqa: BLE001 - compensate: the job exists but cannot be handed out
+        try:
+            dispatcher.cancel(job_id)  # type: ignore[arg-type]
+            _emit(ctx, EventKind.ORPHAN_JOB_CANCELLED, ComponentName.DISPATCHER, corr)
+        except Exception as exc:  # noqa: BLE001
+            _emit(ctx, EventKind.ORPHAN_JOB_UNREACHABLE, ComponentName.DISPATCHER, corr, exc)
+        raise _bad_output(ctx, ComponentName.DISPATCHER, corr) from None
 
 
 def _unexpected(ctx: object, corr: str | None, exc: Exception) -> ApiDecision:
@@ -1283,7 +1353,10 @@ def decide_enqueue(ctx: object, request: object, session: object, csrf_token: ob
             return _refuse(_R.INTERNAL_REFUSED, corr)
         status, value = ctx.idempotency.execute(  # type: ignore[attr-defined]
             scope.tenant_id, actor, Endpoint.ENQUEUE_JOB, request.idempotency_key,  # type: ignore[attr-defined]
-            digest, now, lambda: _dispatch_ticket(ctx, corr, scope, kind, digest))  # type: ignore[arg-type]
+            digest, now, lambda: _dispatch_ticket(  # type: ignore[arg-type]
+                ctx, corr, scope, kind, digest, None,
+                dispatch_key_for(scope.tenant_id, actor, Endpoint.ENQUEUE_JOB, request.idempotency_key,  # type: ignore[attr-defined]
+                digest)))
         return _outcome(ctx, status, value, corr)  # type: ignore[arg-type]
     except _Internal:
         return _refuse(_R.DEPENDENCY_FAILED, corr)
@@ -1305,6 +1378,9 @@ def decide_rerun(ctx: object, request: object, session: object, csrf_token: obje
         refusal = _pre_checks(ctx, corr, session, csrf_token, scope, actor, True, now)  # type: ignore[arg-type]
         if refusal is not None:
             return _refuse(refusal, corr)
+        refusal = _boundary(ctx, scope, JobKind.RERUN, OPERATION_FOR[JobKind.RERUN])  # type: ignore[arg-type]
+        if refusal is not None:
+            return _refuse(refusal, corr)  # sticky side-effect refusal: before any reservation or commit
         refusal = _owned(ctx, corr, scope, (  # type: ignore[arg-type]
             ("comparison_key", request.comparison_key), ("run_id", request.previous_run_id),  # type: ignore[attr-defined]
             ("snapshot_id", request.new_snapshot_id)))  # type: ignore[attr-defined]
@@ -1331,11 +1407,19 @@ def decide_rerun(ctx: object, request: object, session: object, csrf_token: obje
                 return verdict_of(verdict)
             made = _guard(ctx, ComponentName.GATE, corr, gate.commit, request)  # type: ignore[attr-defined,arg-type]
             if type(made) is RerunCommit:
-                return made
+                # Rebuild through the validating constructor: a forged instance (object.__new__ or a
+                # bad run id/state) is rejected here, before any effect is recorded or a job dispatched.
+                try:
+                    return RerunCommit(made.run_id, made.state)
+                except Exception:  # noqa: BLE001
+                    raise _bad_output(ctx, ComponentName.GATE, corr) from None  # type: ignore[arg-type]
             return verdict_of(made)
 
         def complete(commit: RerunCommit) -> JobTicket:
-            return _dispatch_ticket(ctx, corr, scope, JobKind.RERUN, digest, commit)  # type: ignore[arg-type]
+            return _dispatch_ticket(  # type: ignore[arg-type]
+                ctx, corr, scope, JobKind.RERUN, digest, commit,
+                dispatch_key_for(scope.tenant_id, actor, Endpoint.RERUN, request.idempotency_key,  # type: ignore[attr-defined]
+                                             digest))
 
         status, value = ctx.idempotency.execute(  # type: ignore[attr-defined]
             scope.tenant_id, actor, Endpoint.RERUN, request.idempotency_key,  # type: ignore[attr-defined]
@@ -1345,6 +1429,10 @@ def decide_rerun(ctx: object, request: object, session: object, csrf_token: obje
         return _refuse(_R.DEPENDENCY_FAILED, corr)
     except Exception as exc:  # noqa: BLE001
         return _unexpected(ctx, corr, exc)
+
+
+def _same_text(left: object, right: object) -> bool:
+    return type(left) is str and type(right) is str and left == right
 
 
 def _read(ctx: object, viewer: object, session: object, job_id: object, want_result: bool) -> ApiDecision:
@@ -1364,13 +1452,20 @@ def _read(ctx: object, viewer: object, session: object, job_id: object, want_res
         refusal = _epoch_check(ctx, corr, viewer)  # type: ignore[arg-type]  # re-check before disclosure
         if refusal is not None:
             return _refuse(refusal, corr)
+        if not _entitled(ctx, corr, session, viewer):  # type: ignore[arg-type]  # revoked during the fetch
+            return _refuse(_R.NOT_IN_SCOPE, corr)
         if record is None:
+            return _refuse(_R.NOT_FOUND, corr)
+        if type(record) is not JobRecord:
+            raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # type: ignore[arg-type]
+        # Scope filter FIRST (exact plain-str reads): a foreign record, valid or malformed, is
+        # indistinguishable from a missing one; only an in-scope record is validated in detail.
+        if (not _same_text(record.tenant_id, viewer.tenant_id)  # type: ignore[attr-defined]
+                or not _same_text(record.company_id, viewer.company_id)  # type: ignore[attr-defined]
+                or not _same_text(record.job_id, job_id)):
             return _refuse(_R.NOT_FOUND, corr)
         if not _record_ok(record):
             raise _bad_output(ctx, ComponentName.DISPATCHER, corr)  # type: ignore[arg-type]
-        if (record.tenant_id != viewer.tenant_id or record.company_id != viewer.company_id  # type: ignore[attr-defined]
-                or record.job_id != job_id):  # type: ignore[attr-defined]
-            return _refuse(_R.NOT_FOUND, corr)  # foreign: indistinguishable from missing
         http = 200
         digest = None
         if want_result:

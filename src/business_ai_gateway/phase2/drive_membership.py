@@ -41,6 +41,7 @@ from .drive_port import (
     DrivePortError,
     DrivePortIdentity,
     FileMeta,
+    is_sound_file_meta,
     is_sound_identity,
     is_valid_opaque_id,
     is_valid_scope_epoch,
@@ -312,9 +313,10 @@ class MembershipChecker:
         return result
 
     async def authorize_disclosure(self, file_id: object) -> bool:
-        """True only when a fresh-epoch membership says IN_SCOPE and a candidate is allowed.
-        A cache entry from an older epoch is never trusted: it is re-checked first."""
-        result = await self.check(file_id, use_cache=True)
+        """True only when a FRESH membership check (current metadata and parent chain, current epoch)
+        says IN_SCOPE and a candidate is allowed. The cache may select candidates, never disclose: a file
+        can be moved out of the corpus before its change notification is processed."""
+        result = await self.check(file_id)
         return result.verdict is MembershipVerdict.IN_SCOPE and result.candidate_allowed
 
     async def recheck_all(self) -> tuple[MembershipResult, ...]:
@@ -343,7 +345,7 @@ class MembershipChecker:
             if exc.code is DriveErrorCode.NOT_FOUND:
                 raise _NotFoundError from None
             raise _CheckFailedError(MembershipReason(exc.code.value)) from None
-        if type(meta) is not FileMeta or meta.file_id != file_id:
+        if not is_sound_file_meta(meta) or meta.file_id != file_id:
             raise _CheckFailedError(MembershipReason.TRANSIENT)
         return meta
 
@@ -368,6 +370,8 @@ class MembershipChecker:
             return self._result(file_id, MembershipVerdict.IN_SCOPE, MembershipReason.IN_CORPUS, True), ancestors
         if outcome == "OUT":
             return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.OUT_OF_CORPUS), ancestors
+        if outcome == "FOREIGN":
+            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.DRIVE_MISMATCH), ancestors
         if outcome == "UNRESOLVED":
             return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.PARENT_UNRESOLVED), ancestors
         return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), ancestors
@@ -389,7 +393,7 @@ class MembershipChecker:
         if outcome == "IN":
             # a shortcut is never a membership proof nor evidence: the target is evidence under its own id
             return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_NOT_EVIDENCE), none
-        if outcome == "OUT":
+        if outcome in ("OUT", "FOREIGN"):
             return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.SHORTCUT_TARGET_OUTSIDE), none
         return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_TARGET_UNRESOLVED), none
 
@@ -402,19 +406,38 @@ class MembershipChecker:
         reported removed/trashed is not a root any more (it is fetched like any other folder).
         """
         visited: set[str] = {start.file_id}
-        if start.file_id in self._roots:
-            return "IN", visited
         live_roots = self._roots - self._removed_roots
+        if start.file_id in self._roots:
+            # the caller already validated this fresh metadata (drive / trashed / shortcut); a root the feed
+            # reported removed is reinstated by prepare_page only when this fresh read proves it live
+            return "IN", visited
         graph: dict[str, tuple[str, ...]] = {start.file_id: start.parents}
         stack: list[tuple[FileMeta, int]] = [(start, 0)]
         unresolved = False
         limited = False
+        foreign = False
         while stack:
             meta, depth = stack.pop()
             for parent in dict.fromkeys(meta.parents):
-                if parent in live_roots:
+                if parent in live_roots and parent not in visited:
+                    # A declared root is an ancestor like any other: it proves membership only when its
+                    # CURRENT metadata is readable, same drive, not trashed and not a shortcut.
                     visited.add(parent)
-                    return "IN", visited
+                    try:
+                        root_meta = await self._fetch(parent, epoch, budget)
+                    except _NotFoundError:
+                        unresolved = True
+                        continue
+                    except _BudgetError:
+                        limited = True
+                        continue
+                    if root_meta.drive_id != self._corpus.shared_drive_id:
+                        foreign = True
+                    elif root_meta.trashed or root_meta.shortcut_target is not None:
+                        unresolved = True
+                    else:
+                        return "IN", visited
+                    continue
                 if parent in visited:
                     if graph_reaches(graph, parent, meta.file_id):
                         limited = True  # real cycle
@@ -431,6 +454,9 @@ class MembershipChecker:
                 except _BudgetError:
                     limited = True
                     continue
+                if parent_meta.drive_id != self._corpus.shared_drive_id:
+                    foreign = True  # an ancestor of another drive never links a membership chain
+                    continue
                 if parent_meta.trashed or parent_meta.shortcut_target is not None:
                     unresolved = True  # a trashed folder / a shortcut is never a link of a membership chain
                     continue
@@ -438,6 +464,8 @@ class MembershipChecker:
                 stack.append((parent_meta, depth + 1))
         if limited:  # a bound was hit: the picture is incomplete, which outranks "unresolved"
             return "LIMIT", visited
+        if foreign:
+            return "FOREIGN", visited
         if unresolved:
             return "UNRESOLVED", visited
         return "OUT", visited
@@ -461,7 +489,13 @@ class MembershipChecker:
                 return refused(PageReason.INVALID_INPUT)
             epoch = self._epoch
             for change in page.changes:
-                if type(change) is not DriveChange or type(change.kind) is not DriveChangeKind:
+                if (
+                    type(change) is not DriveChange
+                    or type(change.kind) is not DriveChangeKind
+                    or type(change.change_id) is not str
+                    or type(change.file_id) is not str
+                    or (change.drive_id is not None and type(change.drive_id) is not str)
+                ):
                     return refused(PageReason.INVALID_INPUT)
             if len({c.change_id for c in page.changes}) != len(page.changes):
                 return refused(PageReason.PAGE_PROJECTION_REFUSED)
@@ -543,7 +577,13 @@ class MembershipChecker:
 
     def _in_drive(self, change: DriveChange) -> bool:
         drive = self._corpus.shared_drive_id
-        return drive is None or change.drive_id == drive
+        # a removal of unknown origin (no drive id) is treated as ours: its cache entry must be dropped
+        # (the projector tombstones it); a provably foreign change stays out
+        return (
+            drive is None
+            or change.drive_id == drive
+            or (change.drive_id is None and change.kind is DriveChangeKind.REMOVED)
+        )
 
 
 class _NotFoundError(Exception):

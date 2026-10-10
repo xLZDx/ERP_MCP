@@ -558,6 +558,15 @@ class AnnotationEntry:
         return "AnnotationEntry(<redacted>)"
 
 
+class _Reservation:
+    """One reserved annotation slot (tenant, run). Consumed by ``_append`` or returned by ``_release``."""
+
+    __slots__ = ("live", "run_id", "tenant")
+
+    def __init__(self, tenant: str, run_id: str) -> None:
+        self.tenant, self.run_id, self.live = tenant, run_id, True
+
+
 class ReviewLog:
     """Append-only annotations keyed by (tenant, run id). Never touches, hides or re-totals numbers.
 
@@ -576,6 +585,9 @@ class ReviewLog:
         self._entries: dict[tuple[str, str], list[AnnotationEntry]] = {}
         self._tenant_count: dict[str, int] = {}
         self._count = 0
+        self._res_total = 0  # reserved-but-unwritten slots count against every quota
+        self._res_tenant: dict[str, int] = {}
+        self._res_run: dict[tuple[str, str], int] = {}
 
     def _now(self) -> datetime:
         try:
@@ -587,17 +599,53 @@ class ReviewLog:
             raise _Refuse(ReasonCode.INTERNAL_REFUSED) from None
 
     def _room(self, tenant: str, run_id: str) -> bool:
-        return (self._count < self._max_total and self._tenant_count.get(tenant, 0) < self._max_tenant
-                and len(self._entries.get((tenant, run_id), ())) < self._max_run)
+        return (self._count + self._res_total < self._max_total
+                and self._tenant_count.get(tenant, 0) + self._res_tenant.get(tenant, 0) < self._max_tenant
+                and len(self._entries.get((tenant, run_id), ())) + self._res_run.get((tenant, run_id), 0)
+                < self._max_run)
 
     def _has_room(self, tenant: str, run_id: str) -> bool:
         with self._lock:
             return self._room(tenant, run_id)
 
-    def _append(self, tenant: str, run_id: str, actor_id: str, kind: AnnotationKind, text: str,
-                assignee: str | None, related: str | None, at: datetime) -> AnnotationEntry | None:
+    def _reserve(self, tenant: str, run_id: str) -> _Reservation | None:
+        """Atomically take one slot for a later ``_append``; ``None`` when no room (nothing is held)."""
         with self._lock:
             if not self._room(tenant, run_id):
+                return None
+            self._res_total += 1
+            self._res_tenant[tenant] = self._res_tenant.get(tenant, 0) + 1
+            self._res_run[(tenant, run_id)] = self._res_run.get((tenant, run_id), 0) + 1
+            return _Reservation(tenant, run_id)
+
+    def _drop(self, reservation: _Reservation) -> bool:
+        """Give a live reservation back (caller holds the lock). ``False`` when it was already consumed."""
+        if not reservation.live:
+            return False
+        reservation.live = False
+        self._res_total -= 1
+        tenant, key = reservation.tenant, (reservation.tenant, reservation.run_id)
+        for table, k in ((self._res_tenant, tenant), (self._res_run, key)):
+            left = table.get(k, 0) - 1
+            if left > 0:
+                table[k] = left
+            else:
+                table.pop(k, None)
+        return True
+
+    def _release(self, reservation: _Reservation) -> None:
+        with self._lock:
+            self._drop(reservation)
+
+    def _append(self, tenant: str, run_id: str, actor_id: str, kind: AnnotationKind, text: str,
+                assignee: str | None, related: str | None, at: datetime,
+                reservation: _Reservation | None = None) -> AnnotationEntry | None:
+        with self._lock:
+            if reservation is not None:
+                if (type(reservation) is not _Reservation or reservation.tenant != tenant
+                        or reservation.run_id != run_id or not self._drop(reservation)):
+                    return None
+            elif not self._room(tenant, run_id):
                 return None
             self._count += 1
             seq = self._tenant_count.get(tenant, 0) + 1
@@ -766,6 +814,20 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
     if fresh.snapshot_digest != digest:
         raise _Refuse(ReasonCode.RERUN_TARGET_STALE)
     at = review_log._now()  # read before the run exists: a broken clock must not leave a run unannotated
+    # Reserve the audit slot BEFORE any run exists: the run + annotation pair cannot half-commit.
+    reservation = review_log._reserve(tenant, prev_id)
+    if reservation is None:
+        raise _Refuse(ReasonCode.RATE_LIMITED)
+    try:
+        return _commit_reserved(led, review_log, scope, reader, reservation, at, tenant, key, prev_id,
+                                snap_id, actor)
+    finally:
+        review_log._release(reservation)  # no-op once consumed by the append
+
+
+def _commit_reserved(led: RunLedger, review_log: ReviewLog, scope: _Scope, reader: object,
+                     reservation: _Reservation, at: datetime, tenant: str, key: str, prev_id: str,
+                     snap_id: str, actor: str) -> RerunOutcome:
     try:
         pair = reader(tenant, snap_id)  # type: ignore[operator]
     except Exception:  # noqa: BLE001 - public boundary: fixed refusal, never raise
@@ -778,10 +840,12 @@ def _commit_rerun(ledger: object, store: object, review_log: object, viewer: obj
     except ComparisonSnapshotError as err:
         raise _Refuse(_LEDGER_CODES.get(err.code, ReasonCode.DEPENDENCY_FAILED)) from None
     entry = review_log._append(tenant, prev_id, actor, AnnotationKind.RERUN_REQUESTED, _RERUN_NOTE, None,
-                               record.run_id, at)
+                               record.run_id, at, reservation)
+    if entry is None:  # unreachable while the reservation is held; never report success without the audit record
+        raise _Refuse(ReasonCode.INTERNAL_REFUSED)
     current = led.current(tenant, key)
     return RerunOutcome(prev_id, record.run_id, record.state.value,
-                        None if current is None else current.run_id, entry is not None)
+                        None if current is None else current.run_id, True)
 
 
 def commit_rerun(ledger: object, store: object, review_log: object, viewer: object, plan: object,
