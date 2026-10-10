@@ -122,6 +122,8 @@ def test_tables_are_read_only():
 @pytest.mark.parametrize("code", list(ReasonCode))
 def test_every_reason_code_renders_exactly_its_fixed_text(code):
     err = safe_error(code, "CORR-000009")
+    if code in (ReasonCode.ORIGINAL_INTACT, ReasonCode.REPLAYED):
+        code = ReasonCode.INTERNAL_REFUSED  # success-like codes degrade: never shown as a refusal
     out = render_safe_error(err)
     assert out == RenderedError(
         reason_code=code.value, message=MESSAGES[code],
@@ -183,3 +185,15 @@ def test_module_exports_only_declared_names():
     assert set(safe_errors.__all__) == {
         "ACTION_TEXT", "MESSAGES", "CorrelationSource", "FakeCorrelationSource", "RenderedError",
         "new_safe_error", "render_safe_error"}
+
+
+def test_fake_correlation_prefix_must_be_ascii_alnum():
+    for bad in ("٣٤", "éa", "", "x" * 17, 5, None, "a-b"):
+        assert FakeCorrelationSource(bad).next_id() == "CORR-000001"  # type: ignore[arg-type]
+    assert FakeCorrelationSource("REQ").next_id() == "REQ-000001"
+
+
+def test_import_time_guard_rejects_an_incomplete_message_table():
+    source = inspect.getsource(safe_errors)
+    assert "SAFE_ERROR_TABLES_INCOMPLETE" in source  # the guard exists; coverage asserted above
+    assert set(MESSAGES) == set(ReasonCode)

@@ -16,6 +16,7 @@ from business_ai_gateway.phase2.comparison_snapshot import RunLedger, SideRead, 
 from business_ai_gateway.phase2.reconciliation import Comparison, ComparisonState, Difference
 from business_ai_gateway.phase2.workbench_review import (
     AnnotationEntry,
+    CardsResult,
     DiscrepancyCard,
     FragmentRef,
     RerunOutcome,
@@ -28,6 +29,7 @@ from business_ai_gateway.phase2.workbench_review import (
 from business_ai_gateway.phase2.workbench_types import (
     AUTHORITY,
     AnnotationKind,
+    FakeOwnership,
     OwnerDirectory,
     ReasonCode,
     SafeError,
@@ -92,16 +94,46 @@ class World:
         self.owners = OwnerDirectory((("t1", "c1", "src1", "owner-a"),))
         self.viewer = ViewerScope("t1", "c1", 1)
         self.reader_calls = 0
+        self.own = FakeOwnership()  # company c1 of t1 owns everything this world creates
+        self.own.add("t1", "c1", "comparison_key", KEY)
+        self.own.add("t1", "c1", "source_id", "src1")
+        self.live_epoch = 1
+        self.ep = lambda: self.live_epoch
+
+    def kw(self, **extra):
+        base = {"ownership": self.own, "current_epoch": self.ep}
+        base.update(extra)
+        return base
 
     def first_run(self, native=None, gateway=None):
         n = native or values(closing_credit="0.1", turnover_debit="100.00")
         g = gateway or values(closing_credit="0.3", turnover_debit="100.5")
         s = snap(self.store, n, g)
+        self.own.add("t1", "c1", "snapshot_id", s.snapshot_id)
         run = self.ledger.run("t1", KEY, *reads(s, n, g), snapshot_id=s.snapshot_id)
+        self.own.add("t1", "c1", "run_id", run.run_id)
         return s, run
 
     def new_snapshot(self, native, gateway, known_at):
-        return snap(self.store, native, gateway, known_at=known_at)
+        s = snap(self.store, native, gateway, known_at=known_at)
+        self.own.add("t1", "c1", "snapshot_id", s.snapshot_id)
+        return s
+
+    def add(self, viewer, tenant, run_id, kind, text="", **kw):
+        kw.setdefault("actor_id", "alice")
+        log = kw.pop("log", self.log)
+        return log.add(kw.pop("ledger", self.ledger), viewer, tenant, run_id, kind, text, **self.kw(**kw))
+
+    def entries(self, viewer, tenant, run_id, **kw):
+        return kw.pop("log", self.log).entries(viewer, tenant, run_id, **self.kw(**kw))
+
+    def verify(self, card, **kw):
+        return verify_original(card, kw.pop("ledger", self.ledger), kw.pop("viewer", self.viewer),
+                               **self.kw(**kw))
+
+    def result(self, **kw):
+        kw.setdefault("source_id", "src1")
+        return build_cards(self.ledger, "t1", KEY, self.owners, self.viewer, **self.kw(**kw))
 
     def reader(self, tenant, snapshot_id):
         self.reader_calls += 1
@@ -113,14 +145,19 @@ class World:
         return reads(s, n, g)
 
     def cards(self, **kw):
-        kw.setdefault("source_id", "src1")
-        return build_cards(self.ledger, "t1", KEY, self.owners, self.viewer, **kw)
+        """The card tuple of a successful result; a refusal is returned as is."""
+        res = self.result(**kw)
+        return res.cards if isinstance(res, CardsResult) else res
 
     def rerun(self, prev, new_snapshot_id, reader=_DEFAULT, viewer=_DEFAULT, tenant="t1", **kw):
         viewer = self.viewer if viewer is _DEFAULT else viewer
         reader = self.reader if reader is _DEFAULT else reader
-        return request_rerun(self.ledger, self.store, self.log, viewer, tenant, KEY, prev,
-                             new_snapshot_id, reader, **kw)
+        kw.setdefault("actor_id", "alice")
+        out = request_rerun(self.ledger, self.store, self.log, viewer, tenant, KEY, prev,
+                            new_snapshot_id, reader, **self.kw(**kw))
+        if isinstance(out, RerunOutcome):
+            self.own.add("t1", "c1", "run_id", out.new_run_id)
+        return out
 
 
 @pytest.fixture
@@ -150,23 +187,27 @@ def test_build_cards_hostile_scalar_arguments_are_refused(w, bad):
     for idx in (1, 2):
         args = list(ok)
         args[idx] = bad
-        _assert_refusal(build_cards(*args, source_id="src1"), ReasonCode.INPUT_INVALID, ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(build_cards(*ok, source_id=bad), ReasonCode.INPUT_INVALID)
-    if bad is not None:  # None means "not supplied" for these three optional arguments
-        _assert_refusal(build_cards(*ok, source_id="src1", run_id=bad), ReasonCode.INPUT_INVALID,
+        _assert_refusal(build_cards(*args, source_id="src1", **w.kw()), ReasonCode.INPUT_INVALID,
                         ReasonCode.NOT_IN_SCOPE)
-        _assert_refusal(build_cards(*ok, source_id="src1", current_epoch=bad), ReasonCode.INPUT_INVALID,
-                        ReasonCode.SCOPE_EPOCH_STALE)  # a stray exact int is a valid-typed but stale epoch
-        _assert_refusal(build_cards(*ok, source_id="src1", comparison=bad), ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(*ok, source_id=bad, **w.kw()), ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(*ok, source_id="src1", **w.kw(ownership=bad)), ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(*ok, source_id="src1", **w.kw(current_epoch=bad)), ReasonCode.INPUT_INVALID)
+    if bad is not None:  # None means "not supplied" for these two optional arguments
+        _assert_refusal(build_cards(*ok, source_id="src1", run_id=bad, **w.kw()), ReasonCode.INPUT_INVALID,
+                        ReasonCode.NOT_IN_SCOPE)
+        _assert_refusal(build_cards(*ok, source_id="src1", comparison=bad, **w.kw()), ReasonCode.INPUT_INVALID)
 
 
 @pytest.mark.parametrize("bad", HOSTILE + [object.__new__(ViewerScope), object.__new__(OwnerDirectory),
                                           object.__new__(RunLedger)])
 def test_build_cards_hostile_objects_are_refused(w, bad):
     w.first_run()
-    _assert_refusal(build_cards(bad, "t1", KEY, w.owners, w.viewer, source_id="src1"), ReasonCode.INPUT_INVALID)
-    _assert_refusal(build_cards(w.ledger, "t1", KEY, bad, w.viewer, source_id="src1"), ReasonCode.INPUT_INVALID)
-    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, bad, source_id="src1"), ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(bad, "t1", KEY, w.owners, w.viewer, source_id="src1", **w.kw()),
+                    ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(w.ledger, "t1", KEY, bad, w.viewer, source_id="src1", **w.kw()),
+                    ReasonCode.INPUT_INVALID)
+    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, bad, source_id="src1", **w.kw()),
+                    ReasonCode.INPUT_INVALID)
 
 
 def test_build_cards_subclass_viewer_and_directory_refused(w):
@@ -178,9 +219,9 @@ def test_build_cards_subclass_viewer_and_directory_refused(w):
     class D(OwnerDirectory):
         pass
 
-    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, V("t1", "c1", 1), source_id="src1"),
+    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, V("t1", "c1", 1), source_id="src1", **w.kw()),
                     ReasonCode.INPUT_INVALID)
-    _assert_refusal(build_cards(w.ledger, "t1", KEY, D(w.owners.entries), w.viewer, source_id="src1"),
+    _assert_refusal(build_cards(w.ledger, "t1", KEY, D(w.owners.entries), w.viewer, source_id="src1", **w.kw()),
                     ReasonCode.INPUT_INVALID)
 
 
@@ -215,14 +256,14 @@ def test_build_cards_comparison_hostile_contents_refused(w):
 @pytest.mark.parametrize("bad", [None, 5, "x", object(), object.__new__(DiscrepancyCard), [], {}])
 def test_verify_original_hostile_card_is_tampered_never_raises(w, bad):
     w.first_run()
-    assert verify_original(bad, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(bad) is ReasonCode.ORIGINAL_TAMPERED
 
 
 @pytest.mark.parametrize("bad", [None, 5, "x", object(), object.__new__(RunLedger)])
-def test_verify_original_hostile_ledger_is_tampered_never_raises(w, bad):
+def test_verify_original_hostile_ledger_is_internal_refused_never_raises(w, bad):
     w.first_run()
     card = w.cards()[0]
-    assert verify_original(card, bad) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(card, ledger=bad) is ReasonCode.INTERNAL_REFUSED
 
 
 def test_forged_card_with_evil_values_is_tampered(w):
@@ -231,21 +272,23 @@ def test_forged_card_with_evil_values_is_tampered(w):
     forged = object.__new__(DiscrepancyCard)
     for f in dataclasses.fields(DiscrepancyCard):
         object.__setattr__(forged, f.name, getattr(card, f.name))
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_INTACT  # a faithful forgery has no effect
+    assert w.verify(forged) is ReasonCode.ORIGINAL_INTACT  # a faithful forgery has no effect
     object.__setattr__(forged, "native", EvilDec("0.1"))  # lying __eq__ cannot pass
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(forged) is ReasonCode.ORIGINAL_TAMPERED
     object.__setattr__(forged, "native", card.native)
     object.__setattr__(forged, "tenant_id", EvilStr("t1"))
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(forged) is ReasonCode.ORIGINAL_TAMPERED
 
 
 def test_foreign_tenant_and_stale_epoch_are_refused(w):
     w.first_run()
     other = ViewerScope("t2", "c1", 1)
-    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, other, source_id="src1"), ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(w.cards(current_epoch=2), ReasonCode.SCOPE_EPOCH_STALE)
-    _assert_refusal(w.cards(current_epoch=True), ReasonCode.INPUT_INVALID)
-    assert isinstance(w.cards(current_epoch=1), tuple)
+    _assert_refusal(build_cards(w.ledger, "t1", KEY, w.owners, other, source_id="src1", **w.kw()),
+                    ReasonCode.NOT_IN_SCOPE)
+    _assert_refusal(w.cards(current_epoch=lambda: 2), ReasonCode.SCOPE_EPOCH_STALE)
+    _assert_refusal(w.cards(current_epoch=2), ReasonCode.INPUT_INVALID)  # an int cannot be re-read: refused
+    _assert_refusal(w.cards(current_epoch=lambda: True), ReasonCode.DEPENDENCY_FAILED)
+    assert isinstance(w.cards(current_epoch=lambda: 1), tuple)
     # a run id that is not this tenant's reads exactly like an unknown run (no existence leak)
     _assert_refusal(w.cards(run_id="run-999999"), ReasonCode.NOT_IN_SCOPE)
 
@@ -265,67 +308,67 @@ def test_foreign_tenant_run_is_not_disclosed(w):
                                   [POISON], object()])
 def test_annotation_hostile_text_refused_and_log_unchanged(w, text):
     _, run = w.first_run()
-    res = w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, text)
+    res = w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, text)
     _assert_refusal(res, ReasonCode.ANNOTATION_INVALID)
-    assert w.log.entries(w.viewer, "t1", run.run_id) == ()
+    assert w.entries(w.viewer, "t1", run.run_id) == ()
 
 
 def test_recursive_annotation_text_refused(w):
     _, run = w.first_run()
     rec = []
     rec.append(rec)
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, rec),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, rec),
                     ReasonCode.ANNOTATION_INVALID)
 
 
 @pytest.mark.parametrize("kind", [None, 5, "BOGUS", "note", EvilStr("NOTE"), object()])
 def test_annotation_unknown_kind_refused(w, kind):
     _, run = w.first_run()
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, kind, "x"), ReasonCode.ANNOTATION_INVALID)
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, kind, "x"), ReasonCode.ANNOTATION_INVALID)
 
 
 @pytest.mark.parametrize("kind", ["ADJUSTMENT", "OVERRIDE", "ADJUST", "CORRECTION", "SET_NUMBERS"])
 def test_annotation_adjustment_kinds_are_original_numbers_immutable(w, kind):
     _, run = w.first_run()
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, kind, "closing_credit=0"),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, kind, "closing_credit=0"),
                     ReasonCode.ORIGINAL_NUMBERS_IMMUTABLE)
-    assert w.log.entries(w.viewer, "t1", run.run_id) == ()
+    assert w.entries(w.viewer, "t1", run.run_id) == ()
 
 
 def test_rerun_requested_kind_cannot_be_forged_through_add(w):
     _, run = w.first_run()
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.RERUN_REQUESTED, "x"),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.RERUN_REQUESTED, "x"),
                     ReasonCode.ANNOTATION_INVALID)
 
 
 @pytest.mark.parametrize("assignee", [None, 5, "", EvilStr("o"), "o\x00", "x" * 5_000])
 def test_assigned_requires_valid_assignee(w, assignee):
     _, run = w.first_run()
-    res = w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.ASSIGNED, assignee=assignee)
+    res = w.add(w.viewer, "t1", run.run_id, AnnotationKind.ASSIGNED, assignee=assignee)
     _assert_refusal(res, ReasonCode.ANNOTATION_INVALID)
 
 
 def test_assignee_on_non_assigned_kind_refused(w):
     _, run = w.first_run()
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", assignee="o"),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", assignee="o"),
                     ReasonCode.ANNOTATION_INVALID)
 
 
 def test_annotation_scope_and_run_checks(w):
     _, run = w.first_run()
     other = ViewerScope("t2", "c1", 1)
-    _assert_refusal(w.log.add(w.ledger, other, "t1", run.run_id, AnnotationKind.NOTE, "x"), ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", "run-999999", AnnotationKind.NOTE, "x"),
+    _assert_refusal(w.add(other, "t1", run.run_id, AnnotationKind.NOTE, "x"), ReasonCode.NOT_IN_SCOPE)
+    _assert_refusal(w.add(w.viewer, "t1", "run-999999", AnnotationKind.NOTE, "x"),
                     ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", current_epoch=9),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", current_epoch=lambda: 9),
                     ReasonCode.SCOPE_EPOCH_STALE)
-    _assert_refusal(w.log.add(object.__new__(RunLedger), w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x"),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", ledger=object.__new__(RunLedger)),
                     ReasonCode.INPUT_INVALID)
-    _assert_refusal(w.log.add(w.ledger, object.__new__(ViewerScope), "t1", run.run_id, AnnotationKind.NOTE, "x"),
+    _assert_refusal(w.add(object.__new__(ViewerScope), "t1", run.run_id, AnnotationKind.NOTE, "x"),
                     ReasonCode.INPUT_INVALID)
-    _assert_refusal(w.log.entries(other, "t1", run.run_id), ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(w.log.entries(object.__new__(ViewerScope), "t1", run.run_id), ReasonCode.INPUT_INVALID)
-    assert w.log.entries(w.viewer, "t1", run.run_id) == ()
+    _assert_refusal(w.entries(other, "t1", run.run_id), ReasonCode.NOT_IN_SCOPE)
+    _assert_refusal(w.entries(object.__new__(ViewerScope), "t1", run.run_id), ReasonCode.INPUT_INVALID)
+    assert w.entries(w.viewer, "t1", run.run_id) == ()
 
 
 @pytest.mark.parametrize("clock", [lambda: _naive(), lambda: "now", lambda: None, lambda: 5,
@@ -333,9 +376,9 @@ def test_annotation_scope_and_run_checks(w):
 def test_hostile_clock_gives_internal_refused_not_an_exception(w, clock):
     _, run = w.first_run()
     log = ReviewLog(clock)
-    res = log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x")
+    res = w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", log=log)
     _assert_refusal(res, ReasonCode.INTERNAL_REFUSED)
-    assert log.entries(w.viewer, "t1", run.run_id) == ()
+    assert w.entries(w.viewer, "t1", run.run_id, log=log) == ()
 
 
 def test_datetime_subclass_clock_refused_and_non_utc_clock_flattened(w):
@@ -345,11 +388,11 @@ def test_datetime_subclass_clock_refused_and_non_utc_clock_flattened(w):
         pass
 
     log = ReviewLog(lambda: Sub(2026, 9, 1, tzinfo=UTC))
-    _assert_refusal(log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x"),
+    _assert_refusal(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", log=log),
                     ReasonCode.INTERNAL_REFUSED)
     plus3 = timezone(timedelta(hours=3))
     log2 = ReviewLog(lambda: datetime(2026, 9, 1, 15, 0, tzinfo=plus3))
-    entry = log2.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x")
+    entry = w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x", log=log2)
     assert isinstance(entry, AnnotationEntry)
     assert entry.recorded_at == datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     assert entry.recorded_at.utcoffset() == timedelta(0)
@@ -359,12 +402,12 @@ def test_review_log_capacity_is_bounded(w):
     _, run = w.first_run()
     log = ReviewLog(lambda: T0)
     last = None
-    for _ in range(wr.MAX_LOG_ENTRIES + 5):
-        last = log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.ACKNOWLEDGED)
+    for _ in range(wr.MAX_RUN_ENTRIES + 5):
+        last = w.add(w.viewer, "t1", run.run_id, AnnotationKind.ACKNOWLEDGED, log=log)
         if isinstance(last, SafeError):
             break
     _assert_refusal(last, ReasonCode.RATE_LIMITED)
-    assert len(log.entries(w.viewer, "t1", run.run_id)) == wr.MAX_LOG_ENTRIES
+    assert len(w.entries(w.viewer, "t1", run.run_id, log=log)) == wr.MAX_RUN_ENTRIES
 
 
 # ---- override requests -------------------------------------------------------------------------
@@ -422,9 +465,11 @@ def test_types_are_frozen_slotted(w):
 def test_forged_card_is_original_tampered(w, field, value):
     w.first_run()
     card = next(c for c in w.cards() if c.measure == "closing_credit")
-    assert verify_original(card, w.ledger) is ReasonCode.ORIGINAL_INTACT
+    assert w.verify(card) is ReasonCode.ORIGINAL_INTACT
     forged = dataclasses.replace(card, **{field: value})
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    # a foreign tenant / an unowned run id is a scope refusal (same answer as unknown), never INTACT
+    expected = (ReasonCode.NOT_IN_SCOPE if field in ("tenant_id", "run_id") else ReasonCode.ORIGINAL_TAMPERED)
+    assert w.verify(forged) is expected
 
 
 def test_forged_card_with_recomputed_card_digest_still_fails_against_ledger(w):
@@ -433,36 +478,36 @@ def test_forged_card_with_recomputed_card_digest_still_fails_against_ledger(w):
     fake_native = Decimal("0.2")
     forged = dataclasses.replace(card, native=fake_native, delta=card.gateway - fake_native)
     forged = dataclasses.replace(forged, card_digest=wr._card_digest(forged))  # attacker recomputes own digest
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(forged) is ReasonCode.ORIGINAL_TAMPERED
 
 
 def test_card_for_unknown_run_is_tampered(w):
     w.first_run()
     card = w.cards()[0]
-    assert verify_original(card, RunLedger(SnapshotStore(Clock()))) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(card, ledger=RunLedger(SnapshotStore(Clock()))) is ReasonCode.ORIGINAL_TAMPERED
 
 
 def test_notes_assignment_acknowledgement_never_change_numbers(w):
     _, run = w.first_run()
     before = w.cards()
     ledger_before = w.ledger.get("t1", run.run_id)
-    assert isinstance(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE,
+    assert isinstance(w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE,
                                 "please set closing_credit to 0.30 and ignore 100.5 delta of 999"), AnnotationEntry)
-    assert isinstance(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.ASSIGNED,
+    assert isinstance(w.add(w.viewer, "t1", run.run_id, AnnotationKind.ASSIGNED,
                                 assignee="owner-b"), AnnotationEntry)
-    assert isinstance(w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.ACKNOWLEDGED), AnnotationEntry)
+    assert isinstance(w.add(w.viewer, "t1", run.run_id, AnnotationKind.ACKNOWLEDGED), AnnotationEntry)
     after = w.cards()
     assert after == before
     assert [c.original_digest for c in after] == [c.original_digest for c in before]
     assert w.ledger.get("t1", run.run_id) == ledger_before
-    assert all(verify_original(c, w.ledger) is ReasonCode.ORIGINAL_INTACT for c in after)
-    assert [e.kind for e in w.log.entries(w.viewer, "t1", run.run_id)] == [
+    assert all(w.verify(c) is ReasonCode.ORIGINAL_INTACT for c in after)
+    assert [e.kind for e in w.entries(w.viewer, "t1", run.run_id)] == [
         AnnotationKind.NOTE, AnnotationKind.ASSIGNED, AnnotationKind.ACKNOWLEDGED]
 
 
 def test_annotation_text_is_stored_verbatim_and_never_parsed(w):
     _, run = w.first_run()
-    entry = w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "Note 100.50 / долг")
+    entry = w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "Note 100.50 / долг")
     assert entry.text == "Note 100.50 / долг"
     assert entry.authority == AUTHORITY
     assert entry.seq == 1 and entry.related_run_id is None
@@ -476,13 +521,14 @@ def test_mutating_source_inputs_or_returned_tuples_does_not_change_ledger(w):
     s = w.new_snapshot(n, g, T0)
     nr, gr = reads(s, n, g)
     run = w.ledger.run("t1", KEY, nr, gr, snapshot_id=s.snapshot_id)
+    w.own.add("t1", "c1", "run_id", run.run_id)
     first = w.cards()
     nr.values["closing_credit"] = Decimal(999)  # caller edits its own input after the run
     gr.values["closing_credit"] = Decimal(-1)
     assert w.cards() == first
     assert first[0].native == Decimal("0.1") and first[0].gateway == Decimal("0.3")
     assert w.ledger.get("t1", run.run_id).native_values == (("closing_credit", Decimal("0.1")),)
-    log_entries = w.log.entries(w.viewer, "t1", run.run_id)
+    log_entries = w.entries(w.viewer, "t1", run.run_id)
     assert isinstance(log_entries, tuple)
     with pytest.raises(TypeError):
         log_entries[0] = None  # type: ignore[index]
@@ -520,7 +566,7 @@ def test_fail_run_with_two_measures_yields_two_cards_with_owner_fragment_delta(w
         assert c.fragment == FragmentRef(s.digest, None, c.measure)
         assert c.fragment.snapshot_digest == run.snapshot_digest
         assert c.basis == wr.BASIS_RUN_LEDGER
-        assert verify_original(c, w.ledger) is ReasonCode.ORIGINAL_INTACT
+        assert w.verify(c) is ReasonCode.ORIGINAL_INTACT
 
 
 def test_key_only_run_is_honest_about_missing_row_detail(w):
@@ -532,9 +578,10 @@ def test_key_only_run_is_honest_about_missing_row_detail(w):
 
 def test_unmapped_owner_is_visible_never_guessed(w):
     w.first_run()
+    w.own.add("t1", "c1", "source_id", "other-src")
     for src, owners in (("other-src", w.owners), ("src1", OwnerDirectory(())),
                         ("src1", OwnerDirectory((("t1", "c2", "src1", "owner-z"),)))):
-        cards = build_cards(w.ledger, "t1", KEY, owners, w.viewer, source_id=src)
+        cards = build_cards(w.ledger, "t1", KEY, owners, w.viewer, source_id=src, **w.kw()).cards
         assert all(c.owner_id is None and c.owner_note is ReasonCode.OWNER_UNASSIGNED for c in cards)
 
 
@@ -556,56 +603,77 @@ def test_delta_precision_overflow_gives_fixed_reason_and_no_card(w):
     native = {"big": Decimal("1E+100")}
     gateway = {"big": Decimal("1E-100")}
     s = w.new_snapshot(native, gateway, T0)
+    w.own.add("t1", "c1", "run_id", w.ledger.run("t1", KEY, *reads(s, native, gateway),
+                                                 snapshot_id=s.snapshot_id).run_id)
+    (card,) = w.cards()  # one oversized measure is a per-card note, not a failure of the whole run
+    assert card.delta is None and card.delta_note is ReasonCode.DELTA_PRECISION_EXCEEDED
+    assert card.native == Decimal("1E+100") and card.gateway == Decimal("1E-100")
+    assert w.verify(card) is ReasonCode.ORIGINAL_INTACT
+
+
+def test_one_overflowing_measure_does_not_fail_the_other_cards(w):
+    native = {"big": Decimal("1E+100"), "ok": Decimal(1)}
+    gateway = {"big": Decimal("1E-100"), "ok": Decimal(3)}
+    s = w.new_snapshot(native, gateway, T0)
     w.ledger.run("t1", KEY, *reads(s, native, gateway), snapshot_id=s.snapshot_id)
-    res = w.cards()
-    _assert_refusal(res, ReasonCode.DELTA_PRECISION_EXCEEDED)
+    by = {c.measure: c for c in w.cards()}
+    assert by["big"].delta is None and by["ok"].delta == Decimal(2) and by["ok"].delta_note is None
 
 
 def test_one_sided_measure_has_no_delta_and_no_invented_zero(w):
     native = values(a="1")
     gateway = values(a="1", extra="2")
     s = w.new_snapshot(native, gateway, T0)
-    w.ledger.run("t1", KEY, *reads(s, native, gateway), snapshot_id=s.snapshot_id)
+    w.own.add("t1", "c1", "run_id", w.ledger.run("t1", KEY, *reads(s, native, gateway),
+                                                 snapshot_id=s.snapshot_id).run_id)
     (card,) = w.cards()
     assert card.measure == "extra" and card.native is None and card.gateway == Decimal(2) and card.delta is None
-    assert verify_original(card, w.ledger) is ReasonCode.ORIGINAL_INTACT
+    assert w.verify(card) is ReasonCode.ORIGINAL_INTACT
 
 
 def test_pass_and_inconclusive_runs_have_no_cards(w):
     n = values(a="1")
     s = w.new_snapshot(n, n, T0)
     w.ledger.run("t1", KEY, *reads(s, n, n), snapshot_id=s.snapshot_id)
-    assert w.cards() == ()
+    res = w.result()
+    assert isinstance(res, CardsResult) and res.cards == () and res.run_state == "PASS"
+    assert w.result(run_id=None).run_id is not None
     w2 = World()
     s2 = w2.new_snapshot(n, n, T0)
     nr, _ = reads(s2, n, n)
     gr2 = SideRead("gateway", s2.snapshot_id, "0" * 64, dict(n))  # observed digest differs -> INCONCLUSIVE
     w2.ledger.run("t1", KEY, nr, gr2, snapshot_id=s2.snapshot_id)
-    assert w2.cards() == ()
-    assert build_cards(w2.ledger, "t1", "no-such-key", w2.owners, w2.viewer, source_id="src1") == ()
+    res2 = w2.result()
+    assert res2.cards == () and res2.run_state == "INCONCLUSIVE" and res2.run_status == "LATEST_ATTEMPT"
+    w2.own.add("t1", "c1", "comparison_key", "no-such-key")
+    res3 = build_cards(w2.ledger, "t1", "no-such-key", w2.owners, w2.viewer, source_id="src1", **w2.kw())
+    assert res3.cards == () and res3.run_state == "NO_RUN" and res3.run_id is None
+    assert len({res.run_state, res2.run_state, res3.run_state}) == 3  # the three empties are distinguishable
 
 
 def test_row_level_cards_through_the_explicit_comparison_adapter(w):
     s, run = w.first_run()
     comp = Comparison(ComparisonState.MISMATCH, "VALUES_DIFFER", "p", (
-        Difference(None, "closing_credit", Decimal("10.10"), Decimal("10.30")),
+        Difference(None, "closing_credit", Decimal("0.1"), Decimal("0.3")),
         Difference(("cp-1", "ct-1"), "turnover_debit", Decimal("0.10"), Decimal("0.30")),
-        Difference(("cp-2", "ct-2"), "ROW_MISSING", None, None),
+        Difference(("cp-2", "ct-2"), "turnover_debit", None, None),
     ))
     cards = w.cards(comparison=comp)
     assert isinstance(cards, tuple) and len(cards) == 3
     totals, row, missing = cards
-    assert totals.row_key is None and totals.row_detail is None and totals.delta == Decimal("0.20")
+    assert totals.row_key is None and totals.row_detail is None and totals.delta == Decimal("0.2")
     assert row.row_key == ("cp-1", "ct-1") and row.row_detail is None
     assert row.fragment == FragmentRef(s.digest, ("cp-1", "ct-1"), "turnover_debit")
     assert (row.native, row.gateway, row.delta) == (Decimal("0.10"), Decimal("0.30"), Decimal("0.20"))
-    assert missing.native is None and missing.delta is None and missing.measure == "ROW_MISSING"
+    assert missing.native is None and missing.delta is None and missing.measure == "turnover_debit"
     for c in cards:
         assert c.basis == wr.BASIS_COMPARISON and c.run_id == run.run_id
         assert c.owner_id == "owner-a"
-        assert verify_original(c, w.ledger) is ReasonCode.ORIGINAL_INTACT
+    # only a totals row that equals the ledger's own numbers is recomputable
+    assert w.verify(totals) is ReasonCode.ORIGINAL_INTACT
+    assert w.verify(row) is ReasonCode.ORIGINAL_UNVERIFIABLE and w.verify(missing) is ReasonCode.ORIGINAL_UNVERIFIABLE
     forged = dataclasses.replace(row, gateway=Decimal("0.31"))
-    assert verify_original(forged, w.ledger) is ReasonCode.ORIGINAL_TAMPERED
+    assert w.verify(forged) is ReasonCode.ORIGINAL_TAMPERED  # digest no longer matches
     # a FAIL run cannot be "explained" by a comparison without differences: refused, not silently empty
     _assert_refusal(w.cards(comparison=Comparison(ComparisonState.MATCH, "ALL_SIX_AND_ROWS_EQUAL", "p", ())),
                     ReasonCode.INPUT_INVALID)
@@ -614,13 +682,15 @@ def test_row_level_cards_through_the_explicit_comparison_adapter(w):
 def test_guid_ids_canonicalised_and_text_preserved_exactly(w):
     guid_up = "{3F2504E0-4F89-11D3-9A0C-0305E82C3301}"
     comp = Comparison(ComparisonState.MISMATCH, "VALUES_DIFFER", "p", (
-        Difference((guid_up, "Contract № 5 A"), "closing_credit", Decimal(1), Decimal(2)),))
+        Difference((guid_up, "Contract № 5 A"), "closing_credit", Decimal(1), Decimal(2)),
+        Difference(None, "turnover_debit", Decimal(1), Decimal(2))))
     w.first_run()
-    (card,) = w.cards(comparison=comp)
+    card = w.cards(comparison=comp)[0]
     assert card.row_key == ("3f2504e0-4f89-11d3-9a0c-0305e82c3301", "Contract № 5 A")
     comp2 = Comparison(ComparisonState.MISMATCH, "VALUES_DIFFER", "p", (
-        Difference(("Case-Sensitive-Ref", "ct"), "closing_credit", Decimal(1), Decimal(2)),))
-    (card2,) = w.cards(comparison=comp2)
+        Difference(("Case-Sensitive-Ref", "ct"), "closing_credit", Decimal(1), Decimal(2)),
+        Difference(None, "turnover_debit", Decimal(1), Decimal(2))))
+    card2 = w.cards(comparison=comp2)[0]
     assert card2.row_key == ("Case-Sensitive-Ref", "ct")
 
 
@@ -657,10 +727,11 @@ def test_rerun_hostile_arguments_refused_and_no_run_created(w):
         _assert_refusal(w.rerun(run.run_id, s2.snapshot_id, reader=bad), ReasonCode.INPUT_INVALID)
     for args in ((None, w.store, w.log), (w.ledger, None, w.log), (w.ledger, w.store, None),
                  (object.__new__(RunLedger), w.store, w.log)):
-        _assert_refusal(request_rerun(*args, w.viewer, "t1", KEY, run.run_id, s2.snapshot_id, w.reader),
-                        ReasonCode.INPUT_INVALID)
+        _assert_refusal(request_rerun(*args, w.viewer, "t1", KEY, run.run_id, s2.snapshot_id, w.reader,
+                                      actor_id="alice", **w.kw()), ReasonCode.INPUT_INVALID)
     _assert_refusal(request_rerun(w.ledger, w.store, w.log, w.viewer, "t1", bad_key := 5, run.run_id,
-                                  s2.snapshot_id, w.reader), ReasonCode.INPUT_INVALID)
+                                  s2.snapshot_id, w.reader, actor_id="alice", **w.kw()), ReasonCode.INPUT_INVALID)
+    _assert_refusal(w.rerun(run.run_id, s2.snapshot_id, actor_id=EvilStr("a")), ReasonCode.INPUT_INVALID)
     assert bad_key == 5
     assert len(w.ledger.list_runs("t1", KEY)) == 1
     assert w.reader_calls == 0
@@ -684,8 +755,8 @@ def test_rerun_new_snapshot_creates_run_n_plus_1_old_run_unchanged(w):
     assert [(c.native, c.gateway, c.delta, c.original_digest) for c in old_cards] == [
         (c.native, c.gateway, c.delta, c.original_digest) for c in cards_before]
     assert all(c.run_status == "SUPERSEDED" for c in old_cards)
-    assert all(verify_original(c, w.ledger) is ReasonCode.ORIGINAL_INTACT for c in cards_before + old_cards)
-    log = w.log.entries(w.viewer, "t1", run1.run_id)
+    assert all(w.verify(c) is ReasonCode.ORIGINAL_INTACT for c in cards_before + old_cards)
+    log = w.entries(w.viewer, "t1", run1.run_id)
     assert [e.kind for e in log] == [AnnotationKind.RERUN_REQUESTED] and log[0].related_run_id == out.new_run_id
     assert w.reader_calls == 1
 
@@ -700,7 +771,7 @@ def test_rerun_same_snapshot_id_or_same_digest_is_no_new_evidence(w):
     assert same_digest.snapshot_id != s1.snapshot_id and same_digest.digest == s1.digest
     _assert_refusal(w.rerun(run1.run_id, same_digest.snapshot_id), ReasonCode.NO_NEW_EVIDENCE)
     assert len(w.ledger.list_runs("t1", KEY)) == 1 and w.reader_calls == 0
-    assert w.log.entries(w.viewer, "t1", run1.run_id) == ()
+    assert w.entries(w.viewer, "t1", run1.run_id) == ()
 
 
 def test_rerun_of_superseded_or_non_head_run_is_stale(w):
@@ -713,17 +784,24 @@ def test_rerun_of_superseded_or_non_head_run_is_stale(w):
     s3 = w.new_snapshot(n3, n3, T0 + timedelta(days=2))
     _assert_refusal(w.rerun(run1.run_id, s3.snapshot_id), ReasonCode.RERUN_TARGET_STALE)
     assert len(w.ledger.list_runs("t1", KEY)) == 2
-    assert w.log.entries(w.viewer, "t1", run1.run_id)[-1].related_run_id == out.new_run_id
-    assert len(w.log.entries(w.viewer, "t1", run1.run_id)) == 1  # refused attempt wrote nothing
+    assert w.entries(w.viewer, "t1", run1.run_id)[-1].related_run_id == out.new_run_id
+    assert len(w.entries(w.viewer, "t1", run1.run_id)) == 1  # refused attempt wrote nothing
 
 
 def test_rerun_unknown_run_unknown_snapshot_and_wrong_key(w):
     _, run1 = w.first_run()
     s2 = w.new_snapshot(values(a="1"), values(a="1"), T0 + timedelta(days=1))
+    # not owned by the viewer's company == unknown: one identical refusal (no oracle)
+    _assert_refusal(w.rerun("run-999999", s2.snapshot_id), ReasonCode.NOT_IN_SCOPE)
+    _assert_refusal(w.rerun(run1.run_id, "snap-doesnotexist"), ReasonCode.NOT_IN_SCOPE)
+    # owned but absent from the stores: distinguishable, fixed codes
+    w.own.add("t1", "c1", "run_id", "run-999999")
+    w.own.add("t1", "c1", "snapshot_id", "snap-gone")
     _assert_refusal(w.rerun("run-999999", s2.snapshot_id), ReasonCode.RERUN_TARGET_UNKNOWN)
-    _assert_refusal(w.rerun(run1.run_id, "snap-doesnotexist"), ReasonCode.INPUT_INVALID)
+    _assert_refusal(w.rerun(run1.run_id, "snap-gone"), ReasonCode.NOT_FOUND)
+    w.own.add("t1", "c1", "comparison_key", "other-key")
     res = request_rerun(w.ledger, w.store, w.log, w.viewer, "t1", "other-key", run1.run_id, s2.snapshot_id,
-                        w.reader)
+                        w.reader, actor_id="alice", **w.kw())
     _assert_refusal(res, ReasonCode.RERUN_TARGET_UNKNOWN)
     assert len(w.ledger.list_runs("t1", KEY)) == 1
 
@@ -733,7 +811,7 @@ def test_rerun_foreign_tenant_is_not_in_scope_and_epoch_checked(w):
     s2 = w.new_snapshot(values(a="1"), values(a="1"), T0 + timedelta(days=1))
     other = ViewerScope("t2", "c1", 1)
     _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, viewer=other), ReasonCode.NOT_IN_SCOPE)
-    _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, current_epoch=2), ReasonCode.SCOPE_EPOCH_STALE)
+    _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, current_epoch=lambda: 2), ReasonCode.SCOPE_EPOCH_STALE)
     _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, current_epoch="1"), ReasonCode.INPUT_INVALID)
     assert len(w.ledger.list_runs("t1", KEY)) == 1 and w.reader_calls == 0
 
@@ -753,7 +831,7 @@ def test_inconclusive_rerun_keeps_earlier_decisive_run_current(w):
     cards = w.cards()
     assert [c.run_id for c in cards] == [run1.run_id, run1.run_id]
     assert all(c.run_status == "CURRENT" for c in cards)
-    assert all(verify_original(c, w.ledger) is ReasonCode.ORIGINAL_INTACT for c in cards)
+    assert all(w.verify(c) is ReasonCode.ORIGINAL_INTACT for c in cards)
 
 
 def test_reader_failure_is_a_fixed_refusal_with_no_echo_and_no_run(w):
@@ -763,12 +841,12 @@ def test_reader_failure_is_a_fixed_refusal_with_no_echo_and_no_run(w):
     def boom(tenant, snapshot_id):
         raise RuntimeError(POISON)
 
-    _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, reader=boom), ReasonCode.INTERNAL_REFUSED)
+    _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, reader=boom), ReasonCode.DEPENDENCY_FAILED)
     for junk in (None, "x", (1, 2), (object(), object()), ()):
         _assert_refusal(w.rerun(run1.run_id, s2.snapshot_id, reader=lambda t, s, j=junk: j),
-                        ReasonCode.INPUT_INVALID)
+                        ReasonCode.DEPENDENCY_FAILED)
     assert len(w.ledger.list_runs("t1", KEY)) == 1
-    assert w.log.entries(w.viewer, "t1", run1.run_id) == ()
+    assert w.entries(w.viewer, "t1", run1.run_id) == ()
 
 
 def test_hostile_review_clock_refuses_rerun_before_any_run_is_created(w):
@@ -798,7 +876,7 @@ def test_two_parallel_reruns_of_the_same_head_make_exactly_one_new_run(w):
     assert len(ok) == 1 and len(bad) == 1
     assert bad[0].reason_code is ReasonCode.RERUN_TARGET_STALE
     assert len(w.ledger.list_runs("t1", KEY)) == 2
-    assert len(w.log.entries(w.viewer, "t1", run1.run_id)) == 1
+    assert len(w.entries(w.viewer, "t1", run1.run_id)) == 1
 
 
 # ===================================================================================================
@@ -825,6 +903,6 @@ def test_module_imports_are_stdlib_and_sibling_only():
 def test_every_outward_result_is_evaluation_only(w):
     _, run = w.first_run()
     card = w.cards()[0]
-    entry = w.log.add(w.ledger, w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x")
+    entry = w.add(w.viewer, "t1", run.run_id, AnnotationKind.NOTE, "x")
     assert card.authority == entry.authority == AUTHORITY
     assert not any(hasattr(card, n) for n in ("verdict", "validated", "promotable", "approved"))

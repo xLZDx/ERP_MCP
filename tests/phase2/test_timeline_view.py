@@ -505,15 +505,16 @@ def test_guid_shaped_ids_are_preserved_exactly_other_text_untouched(env):
     assert TimelineSubject("t1", "A", "Cafe-Key/1", ()).comparison_key == "Cafe-Key/1"
 
 
-def test_poison_in_a_ledger_that_raises_is_not_leaked(env):
+def test_poison_in_a_ledger_that_raises_is_not_leaked(env, monkeypatch):
     env.live_run()
 
-    class Boom(RunLedger):
-        def list_runs(self, *a):
-            raise RuntimeError("POISON-FOREIGN-SOURCE stacktrace secret=abc")
+    def boom(self, *a):
+        raise RuntimeError("POISON-FOREIGN-SOURCE stacktrace secret=abc")
 
-    out = env.build(ledger=Boom(env.store))
-    assert type(out) is SafeError and "POISON" not in repr(out) and "secret" not in repr(out)
+    monkeypatch.setattr(RunLedger, "list_runs", boom)
+    out = env.build()
+    assert type(out) is SafeError and out.reason_code is ReasonCode.INTERNAL_REFUSED
+    assert "POISON" not in repr(out) and "secret" not in repr(out)
 
 
 # ===================================================== TC120: scope in the timeline builder

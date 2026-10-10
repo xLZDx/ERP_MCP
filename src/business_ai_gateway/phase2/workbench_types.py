@@ -18,18 +18,20 @@ are simply refused. Authority is ``EVALUATION_ONLY``; nothing here can express a
 from __future__ import annotations
 
 import re
+import threading
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Final
+from typing import Final, Protocol
 
 from ._identity import exact_text
 
 __all__ = [
-    "AUTHORITY", "DEFAULT_CORRELATION_ID", "NEXT_ACTION_FOR", "AnnotationKind", "NextAction",
-    "OwnerDirectory", "ReasonCode", "SafeError", "ViewerScope", "is_valid_directory",
-    "is_valid_safe_error", "is_valid_scope", "safe_error",
+    "AUTHORITY", "DEFAULT_CORRELATION_ID", "NEXT_ACTION_FOR", "OWNERSHIP_KINDS", "AnnotationKind",
+    "EntitlementPort", "FakeEntitlements", "FakeOwnership", "NextAction", "OwnerDirectory", "OwnershipPort",
+    "ReasonCode", "SafeError", "ViewerScope", "correlation_ok", "is_valid_directory", "is_valid_safe_error",
+    "is_valid_scope", "safe_error",
 ]
 
 AUTHORITY: Final = "EVALUATION_ONLY"
@@ -75,6 +77,9 @@ class ReasonCode(StrEnum):
     NOT_FOUND = "NOT_FOUND"
     RATE_LIMITED = "RATE_LIMITED"
     INTERNAL_REFUSED = "INTERNAL_REFUSED"
+    # added by the S8 review fix batch
+    ORIGINAL_UNVERIFIABLE = "ORIGINAL_UNVERIFIABLE"
+    DEPENDENCY_FAILED = "DEPENDENCY_FAILED"
 
 
 class NextAction(StrEnum):
@@ -110,11 +115,19 @@ NEXT_ACTION_FOR: Final[Mapping[ReasonCode, NextAction]] = MappingProxyType({
     _R.OPERATION_UNCLASSIFIED: _N.CONTACT_OWNER, _R.OPERATION_DENIED: _N.CONTACT_OWNER,
     _R.PARAMETER_SCHEMA_INVALID: _N.NO_ACTION, _R.NOT_FOUND: _N.NO_ACTION,
     _R.RATE_LIMITED: _N.RETRY_LATER, _R.INTERNAL_REFUSED: _N.RETRY_LATER,
+    _R.ORIGINAL_UNVERIFIABLE: _N.CONTACT_OWNER, _R.DEPENDENCY_FAILED: _N.RETRY_LATER,
 })
+if set(NEXT_ACTION_FOR) != set(ReasonCode):  # import-time guard: every code needs a fixed next action
+    raise RuntimeError("NEXT_ACTION_FOR_INCOMPLETE")
+_SUCCESS_LIKE: Final = frozenset({ReasonCode.ORIGINAL_INTACT, ReasonCode.REPLAYED})
 
 
-def _correlation_ok(value: object) -> bool:
+def correlation_ok(value: object) -> bool:
+    """True only for an exact ``str`` correlation id of the fixed shape (a lying-``__eq__`` subclass is refused)."""
     return type(value) is str and _CORRELATION.fullmatch(value) is not None
+
+
+_correlation_ok = correlation_ok
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,15 +141,21 @@ class SafeError:
 
     def __post_init__(self) -> None:
         if (type(self.reason_code) is not ReasonCode or type(self.next_action) is not NextAction
-                or not _correlation_ok(self.correlation_id) or self.authority != AUTHORITY
-                or type(self.authority) is not str):
+                or not correlation_ok(self.correlation_id) or type(self.authority) is not str
+                or self.authority != AUTHORITY):
             raise ValueError("SAFE_ERROR_INVALID")
 
 
 def safe_error(code: object, correlation_id: object = DEFAULT_CORRELATION_ID) -> SafeError:
-    """Build a ``SafeError`` for a fixed code; unusable input degrades to fixed values, never raises."""
+    """Build a ``SafeError`` for a fixed code; unusable input degrades to fixed values, never raises.
+
+    Success-like codes (``ORIGINAL_INTACT``, ``REPLAYED``) are not errors: they degrade to
+    ``INTERNAL_REFUSED`` so a caller bug can never present a success as a refusal.
+    """
     reason = code if type(code) is ReasonCode else ReasonCode.INPUT_INVALID
-    corr = correlation_id if _correlation_ok(correlation_id) else DEFAULT_CORRELATION_ID
+    if reason in _SUCCESS_LIKE:
+        reason = ReasonCode.INTERNAL_REFUSED
+    corr = correlation_id if correlation_ok(correlation_id) else DEFAULT_CORRELATION_ID
     return SafeError(reason, NEXT_ACTION_FOR[reason], corr)  # type: ignore[arg-type]
 
 
@@ -145,7 +164,8 @@ def is_valid_safe_error(value: object) -> bool:
         return False
     try:
         return (type(value.reason_code) is ReasonCode and type(value.next_action) is NextAction
-                and _correlation_ok(value.correlation_id) and value.authority == AUTHORITY)
+                and correlation_ok(value.correlation_id) and type(value.authority) is str
+                and value.authority == AUTHORITY)
     except AttributeError:  # forged object.__new__ instance: slots never set
         return False
 
@@ -176,8 +196,11 @@ def is_valid_scope(value: object) -> bool:
         return False
 
 
+_MAX_DIRECTORY_ENTRIES: Final = 10_000
+
+
 def _entries_ok(entries: object) -> bool:
-    if type(entries) is not tuple:
+    if type(entries) is not tuple or len(entries) > _MAX_DIRECTORY_ENTRIES:
         return False
     seen: set[tuple[str, str, str]] = set()
     for item in entries:
@@ -192,45 +215,127 @@ def _entries_ok(entries: object) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class OwnerDirectory:
-    """Immutable ``(tenant, company, source) -> owner_id`` table; entries are 4-tuples of exact text."""
+    """Immutable ``(tenant, company, source) -> owner_id`` table; entries are 4-tuples of exact text.
 
-    entries: tuple[tuple[str, str, str, str], ...]
+    The lookup index is built once at construction; ``repr`` never shows the table.
+    """
+
+    entries: tuple[tuple[str, str, str, str], ...] = field(repr=False)
+    _index: Mapping[tuple[str, str, str], str] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not _entries_ok(self.entries):
             raise ValueError("OWNER_DIRECTORY_INVALID")
+        object.__setattr__(self, "_index", MappingProxyType({e[:3]: e[3] for e in self.entries}))
+
+    def __repr__(self) -> str:
+        return "OwnerDirectory(<redacted>)"
 
     @classmethod
     def from_mapping(cls, mapping: object) -> OwnerDirectory:
         if type(mapping) not in (dict, MappingProxyType):
             raise ValueError("OWNER_DIRECTORY_INVALID")
-        rows = []
-        for key, owner in mapping.items():  # type: ignore[attr-defined]
-            if type(key) is not tuple or len(key) != 3:
-                raise ValueError("OWNER_DIRECTORY_INVALID")
-            rows.append((*key, owner))
         try:
+            rows = []
+            for key, owner in mapping.items():  # type: ignore[attr-defined]
+                if type(key) is not tuple or len(key) != 3:
+                    raise ValueError("OWNER_DIRECTORY_INVALID")
+                rows.append((*key, owner))
+                if len(rows) > _MAX_DIRECTORY_ENTRIES:
+                    raise ValueError("OWNER_DIRECTORY_INVALID")
             rows.sort()
-        except TypeError:
+            return cls(tuple(rows))
+        except Exception:  # noqa: BLE001 - hostile Mapping / __lt__: only the fixed code escapes
             raise ValueError("OWNER_DIRECTORY_INVALID") from None
-        return cls(tuple(rows))
 
     def owner_for(self, tenant_id: object, company_id: object, source_id: object) -> str | None:
         """The mapped owner id, or None when unmapped or anything is unusable (never a guess)."""
-        if not is_valid_directory(self):
+        if type(self) is not OwnerDirectory:
             return None
         if not (_text_ok(tenant_id) and _text_ok(company_id) and _text_ok(source_id)):
             return None
-        for tenant, company, source, owner in self.entries:
-            if tenant == tenant_id and company == company_id and source == source_id:
-                return owner
-        return None
+        try:
+            index = self._index
+        except AttributeError:  # forged object.__new__ instance
+            return None
+        if type(index) is not MappingProxyType:
+            return None
+        return index.get((tenant_id, company_id, source_id))  # type: ignore[arg-type]
 
 
 def is_valid_directory(value: object) -> bool:
     if type(value) is not OwnerDirectory:
         return False
     try:
-        return _entries_ok(value.entries)
+        return _entries_ok(value.entries) and type(value._index) is MappingProxyType
     except AttributeError:
         return False
+
+
+# --------------------------------------------------------------------------------------------------
+# injected ports: company ownership of workbench references and actor entitlement
+
+OWNERSHIP_KINDS: Final = frozenset({"comparison_key", "run_id", "snapshot_id", "source_id", "report_id"})
+_MAX_PORT_ROWS: Final = 100_000
+
+
+class OwnershipPort(Protocol):
+    """Does ``company_id`` (of ``tenant_id``) own the referenced object? Unknown and foreign read the same."""
+
+    def owns(self, tenant_id: str, company_id: str, kind: str, ref: str) -> bool: ...
+
+
+class EntitlementPort(Protocol):
+    """Is ``actor_id`` entitled to act for ``company_id`` of ``tenant_id``?"""
+
+    def entitled(self, tenant_id: str, actor_id: str, company_id: str) -> bool: ...
+
+
+class FakeOwnership:
+    """In-memory ``OwnershipPort``: exact types only, never raises, bounded, anything invalid is False."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._rows: set[tuple[str, str, str, str]] = set()
+
+    def add(self, tenant_id: object, company_id: object, kind: object, ref: object) -> None:
+        if not (_text_ok(tenant_id) and _text_ok(company_id) and _text_ok(ref)
+                and type(kind) is str and kind in OWNERSHIP_KINDS):
+            return
+        with self._lock:
+            if len(self._rows) < _MAX_PORT_ROWS:
+                self._rows.add((tenant_id, company_id, kind, ref))  # type: ignore[arg-type]
+
+    def owns(self, tenant_id: object, company_id: object, kind: object, ref: object) -> bool:
+        try:
+            if not (_text_ok(tenant_id) and _text_ok(company_id) and _text_ok(ref)
+                    and type(kind) is str and kind in OWNERSHIP_KINDS):
+                return False
+            with self._lock:
+                return (tenant_id, company_id, kind, ref) in self._rows
+        except Exception:  # noqa: BLE001 - a port answer is a bool, never an exception
+            return False
+
+
+class FakeEntitlements:
+    """In-memory ``EntitlementPort`` with the same properties as ``FakeOwnership``."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._rows: set[tuple[str, str, str]] = set()
+
+    def grant(self, tenant_id: object, actor_id: object, company_id: object) -> None:
+        if not (_text_ok(tenant_id) and _text_ok(actor_id) and _text_ok(company_id)):
+            return
+        with self._lock:
+            if len(self._rows) < _MAX_PORT_ROWS:
+                self._rows.add((tenant_id, actor_id, company_id))  # type: ignore[arg-type]
+
+    def entitled(self, tenant_id: object, actor_id: object, company_id: object) -> bool:
+        try:
+            if not (_text_ok(tenant_id) and _text_ok(actor_id) and _text_ok(company_id)):
+                return False
+            with self._lock:
+                return (tenant_id, actor_id, company_id) in self._rows
+        except Exception:  # noqa: BLE001 - a port answer is a bool, never an exception
+            return False

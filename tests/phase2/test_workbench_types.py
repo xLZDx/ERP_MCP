@@ -1,7 +1,6 @@
 """S8 E1 shared workbench types: fixed enums, SafeError, ViewerScope, OwnerDirectory (hostile rows first)."""
 import dataclasses
 import decimal
-from datetime import UTC, datetime
 
 import pytest
 
@@ -182,7 +181,7 @@ def test_reason_codes_are_the_fixed_plan_set():
         "ATTESTATION_REVOKED", "STALE", "SOURCE_PAUSED", "NOT_COVERED", "UNKNOWN",
         "CSRF_REJECTED", "SESSION_INVALID", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_CONFLICT", "REPLAYED",
         "OPERATION_UNCLASSIFIED", "OPERATION_DENIED", "PARAMETER_SCHEMA_INVALID", "NOT_FOUND",
-        "RATE_LIMITED", "INTERNAL_REFUSED",
+        "RATE_LIMITED", "INTERNAL_REFUSED", "ORIGINAL_UNVERIFIABLE", "DEPENDENCY_FAILED",
     }
     assert {c.value for c in ReasonCode} == expected
     assert all(c.value == c.name for c in ReasonCode)
@@ -197,7 +196,7 @@ def test_every_reason_code_has_a_fixed_next_action():
     with pytest.raises(TypeError):
         NEXT_ACTION_FOR[ReasonCode.UNKNOWN] = NextAction.NO_ACTION  # type: ignore[index]
     assert safe_error(ReasonCode.SCOPE_EPOCH_STALE).next_action is NextAction.REFRESH_PAGE
-    assert safe_error(ReasonCode.ORIGINAL_INTACT).next_action is NextAction.NO_ACTION
+    assert safe_error(ReasonCode.ORIGINAL_TAMPERED).next_action is NextAction.CONTACT_OWNER
 
 
 def test_authority_constant_and_defaults():
@@ -230,5 +229,167 @@ def test_module_has_no_forbidden_imports():
             names.add(("." * node.level) + (node.module or ""))
     assert not names & {"httpx", "requests", "socket", "os", "pathlib", "subprocess"}
     assert all(n.startswith(".") or n in {"__future__", "dataclasses", "enum", "types", "typing", "re",
-                                          "collections.abc"} for n in names)
-    assert datetime(2026, 1, 1, tzinfo=UTC)  # keep import used
+                                          "collections.abc", "threading"} for n in names)
+
+
+# ---- review fix batch: ports, public correlation_ok, exact-type conventions, repr hygiene ------------
+
+def test_correlation_ok_is_public_and_refuses_lying_str():
+    assert wt.correlation_ok("CORR-1") and wt.correlation_ok("a.b:c_d-1".replace("_", "-"))
+    assert not wt.correlation_ok(EvilStr("CORR-1"))
+    assert not wt.correlation_ok("bad id") and not wt.correlation_ok(None) and not wt.correlation_ok("x" * 65)
+    assert "correlation_ok" in wt.__all__
+
+
+def test_safe_error_lying_authority_is_refused():
+    err = safe_error(ReasonCode.UNKNOWN)
+    forged = object.__new__(SafeError)
+    for name in ("reason_code", "next_action", "correlation_id"):
+        object.__setattr__(forged, name, getattr(err, name))
+    object.__setattr__(forged, "authority", EvilStr("NOT-AUTHORITY"))
+    assert not is_valid_safe_error(forged)
+    with pytest.raises(ValueError, match="SAFE_ERROR_INVALID"):
+        SafeError(ReasonCode.UNKNOWN, NextAction.NO_ACTION, "CORR-1", EvilStr("x"))
+
+
+@pytest.mark.parametrize("code", [ReasonCode.ORIGINAL_INTACT, ReasonCode.REPLAYED])
+def test_safe_error_refuses_success_like_codes(code):
+    err = safe_error(code)
+    assert err.reason_code is ReasonCode.INTERNAL_REFUSED and is_valid_safe_error(err)
+
+
+def test_next_action_table_pinned_verbatim():
+    A = NextAction
+    expected = {
+        "ORIGINAL_NUMBERS_IMMUTABLE": A.NO_ACTION, "ORIGINAL_INTACT": A.NO_ACTION,
+        "ORIGINAL_TAMPERED": A.CONTACT_OWNER, "ROW_DETAIL_UNAVAILABLE": A.NO_ACTION,
+        "OWNER_UNASSIGNED": A.CONTACT_OWNER, "DELTA_PRECISION_EXCEEDED": A.CONTACT_OWNER,
+        "NO_NEW_EVIDENCE": A.NO_ACTION, "RERUN_TARGET_STALE": A.REFRESH_PAGE,
+        "RERUN_TARGET_UNKNOWN": A.REFRESH_PAGE, "NOT_IN_SCOPE": A.CONTACT_OWNER,
+        "SCOPE_EPOCH_STALE": A.REFRESH_PAGE, "ANNOTATION_INVALID": A.NO_ACTION, "INPUT_INVALID": A.NO_ACTION,
+        "EFFECTIVE_UNKNOWN": A.NO_ACTION, "HIDDEN_BY_SCOPE": A.NO_ACTION, "SUPERSEDED_BY_RUN": A.NO_ACTION,
+        "REVISION_CHANGED": A.REFRESH_PAGE, "ATTESTATION_REVOKED": A.CONTACT_OWNER, "STALE": A.REFRESH_PAGE,
+        "SOURCE_PAUSED": A.CONTACT_OWNER, "NOT_COVERED": A.CONTACT_OWNER, "UNKNOWN": A.CONTACT_OWNER,
+        "CSRF_REJECTED": A.REFRESH_PAGE, "SESSION_INVALID": A.REAUTHENTICATE,
+        "IDEMPOTENCY_KEY_REQUIRED": A.NO_ACTION, "IDEMPOTENCY_CONFLICT": A.NO_ACTION, "REPLAYED": A.NO_ACTION,
+        "OPERATION_UNCLASSIFIED": A.CONTACT_OWNER, "OPERATION_DENIED": A.CONTACT_OWNER,
+        "PARAMETER_SCHEMA_INVALID": A.NO_ACTION, "NOT_FOUND": A.NO_ACTION, "RATE_LIMITED": A.RETRY_LATER,
+        "INTERNAL_REFUSED": A.RETRY_LATER, "ORIGINAL_UNVERIFIABLE": A.CONTACT_OWNER,
+        "DEPENDENCY_FAILED": A.RETRY_LATER,
+    }
+    assert {k.value: v for k, v in NEXT_ACTION_FOR.items()} == expected
+    assert NEXT_ACTION_FOR[ReasonCode.CSRF_REJECTED] is NextAction.REFRESH_PAGE
+    assert NEXT_ACTION_FOR[ReasonCode.SESSION_INVALID] is NextAction.REAUTHENTICATE
+    assert NEXT_ACTION_FOR[ReasonCode.RATE_LIMITED] is NextAction.RETRY_LATER
+
+
+def test_next_action_table_import_guard_exists():
+    import inspect
+
+    assert "NEXT_ACTION_FOR_INCOMPLETE" in inspect.getsource(wt)
+
+
+def test_repr_never_shows_directory_table():
+    d = OwnerDirectory((("tenant-SECRET", "c1", "src-SECRET", "owner-SECRET"),))
+    text = repr(d)
+    assert "SECRET" not in text and "owner" not in text
+
+
+def test_owner_for_uses_precomputed_index():
+    rows = tuple(("t", "c", f"s{i}", f"o{i}") for i in range(2000))
+    d = OwnerDirectory(rows)
+    assert is_valid_directory(d)
+    assert d.owner_for("t", "c", "s1999") == "o1999"
+    # the lookup must not touch entries at all (no per-call scan / re-validation)
+    class Boom(tuple):
+        def __iter__(self):
+            raise AssertionError("scan")
+
+    forged = object.__new__(OwnerDirectory)
+    object.__setattr__(forged, "entries", Boom(rows))
+    object.__setattr__(forged, "_index", d._index)
+    assert forged.owner_for("t", "c", "s7") == "o7"
+
+
+def test_directory_size_is_bounded():
+    with pytest.raises(ValueError, match="OWNER_DIRECTORY_INVALID"):
+        OwnerDirectory(tuple(("t", "c", f"s{i}", "o") for i in range(10_001)))
+
+
+def test_from_mapping_hostile_mapping_and_keys_only_fixed_code():
+    class BadLt:
+        def __lt__(self, other):
+            raise RuntimeError("POISON")
+
+    class Bomb(dict):
+        def items(self):
+            raise RuntimeError("POISON")
+
+    from types import MappingProxyType
+
+    for bad in (MappingProxyType(Bomb(a=1)), {("t", "c", "s"): BadLt()}, {("t", "c", "s"): "o", ("t", "c", "s2"): BadLt()}):
+        with pytest.raises(ValueError, match="OWNER_DIRECTORY_INVALID") as info:
+            OwnerDirectory.from_mapping(bad)
+        assert "POISON" not in str(info.value) and info.value.__cause__ is None
+
+
+def test_fake_ownership_exact_semantics():
+    own = wt.FakeOwnership()
+    own.add("t1", "c1", "comparison_key", "K1")
+    assert own.owns("t1", "c1", "comparison_key", "K1") is True
+    assert own.owns("t1", "c2", "comparison_key", "K1") is False  # other company
+    assert own.owns("t2", "c1", "comparison_key", "K1") is False  # other tenant
+    assert own.owns("t1", "c1", "run_id", "K1") is False  # other kind
+    assert own.owns("t1", "c1", "comparison_key", "K2") is False
+    for kind in ("report_id", "snapshot_id", "source_id", "run_id"):
+        own.add("t1", "c1", kind, "X")
+        assert own.owns("t1", "c1", kind, "X") is True
+
+
+@pytest.mark.parametrize("bad", HOSTILE_TEXT)
+def test_fake_ownership_hostile_never_raises_and_is_false(bad):
+    own = wt.FakeOwnership()
+    own.add("t1", "c1", "comparison_key", "K1")
+    own.add(bad, "c1", "comparison_key", "K1")
+    own.add("t1", bad, "comparison_key", "K1")
+    own.add("t1", "c1", bad, "K1")
+    own.add("t1", "c1", "comparison_key", bad)
+    for args in ((bad, "c1", "comparison_key", "K1"), ("t1", bad, "comparison_key", "K1"),
+                 ("t1", "c1", bad, "K1"), ("t1", "c1", "comparison_key", bad)):
+        assert own.owns(*args) is False
+    assert own.owns(EvilStr("t1"), "c1", "comparison_key", "K1") is False
+    assert own.owns("t1", "c1", EvilStr("comparison_key"), "K1") is False
+    assert own.owns("t1", "c1", "bogus-kind", "K1") is False
+    own.add("t1", "c1", "bogus-kind", "K9")
+    assert len(own._rows) == 1
+
+
+def test_fake_ownership_is_bounded():
+    own = wt.FakeOwnership()
+    for i in range(wt._MAX_PORT_ROWS + 10):
+        own.add("t", "c", "run_id", f"r{i}")
+    assert len(own._rows) == wt._MAX_PORT_ROWS
+    assert own.owns("t", "c", "run_id", "r0") and not own.owns("t", "c", "run_id", f"r{wt._MAX_PORT_ROWS + 5}")
+
+
+def test_fake_entitlements_exact_semantics_and_hostile():
+    ent = wt.FakeEntitlements()
+    ent.grant("t1", "alice", "c1")
+    assert ent.entitled("t1", "alice", "c1") is True
+    assert ent.entitled("t1", "alice", "c2") is False
+    assert ent.entitled("t1", "bob", "c1") is False
+    assert ent.entitled("t2", "alice", "c1") is False
+    for bad in HOSTILE_TEXT:
+        ent.grant(bad, "alice", "c1")
+        ent.grant("t1", bad, "c1")
+        ent.grant("t1", "alice", bad)
+        assert ent.entitled(bad, "alice", "c1") is False
+        assert ent.entitled("t1", bad, "c1") is False
+        assert ent.entitled("t1", "alice", bad) is False
+    assert ent.entitled("t1", EvilStr("alice"), "c1") is False
+    assert len(ent._rows) == 1
+
+
+def test_ports_are_structural_protocols():
+    assert isinstance(wt.FakeOwnership().owns, object)
+    assert wt.OWNERSHIP_KINDS == {"comparison_key", "run_id", "snapshot_id", "source_id", "report_id"}

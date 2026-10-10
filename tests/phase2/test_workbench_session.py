@@ -31,6 +31,8 @@ from business_ai_gateway.phase2.jobs_api import (
     ApiContext,
     ApiDecision,
     CsrfGuard,
+    FakeCapturePolicy,
+    FakeEventSink,
     FakeJobDispatcher,
     FakeScopeEpochs,
     IdempotencyStore,
@@ -61,10 +63,12 @@ from business_ai_gateway.phase2.validation_coverage import (
     Link,
     build_matrix,
 )
-from business_ai_gateway.phase2.workbench_review import DiscrepancyCard, ReviewLog
+from business_ai_gateway.phase2.workbench_review import CardsResult, DiscrepancyCard, ReviewLog
 from business_ai_gateway.phase2.workbench_session import WorkbenchSession
 from business_ai_gateway.phase2.workbench_types import (
     AnnotationKind,
+    FakeEntitlements,
+    FakeOwnership,
     OwnerDirectory,
     ReasonCode,
     SafeError,
@@ -90,7 +94,7 @@ def h(n: int) -> str:
 class Calls:
     """Call log of the composed E1-E3 functions (the facade must reach each decision through one of them)."""
 
-    NAMES = ("build_cards", "verify_original", "request_override", "request_rerun", "build_timeline",
+    NAMES = ("build_cards", "verify_original", "request_override", "check_rerun", "commit_rerun", "build_timeline",
              "render_guard", "build_coverage_panel", "build_scoped_diff", "build_scoped_evidence",
              "render_guard_coverage", "decide_enqueue", "decide_rerun", "read_job", "read_result")
 
@@ -123,6 +127,13 @@ class Env:
         self.att = AttestationStore(self.clk.now, accountants={"t1": {"acc1"}},
                                     id_source=lambda: f"att-{next(self._ids)}")
         self.scopes = scopes_cls({("t1", "A"): 5, ("t1", "B"): 5})
+        self.ownership, self.entitlements = FakeOwnership(), FakeEntitlements()
+        self.capture, self.events = FakeCapturePolicy(), FakeEventSink()
+        for company in ("A", "B"):
+            self.entitlements.grant("t1", "alice", company)
+        for ref in ("src1", "SRC-1", "SRC-2"):
+            self.ownership.add("t1", "A", "source_id", ref)
+        self.ownership.add("t1", "A", "comparison_key", KEY)
         self.dispatcher = FakeJobDispatcher()
         self.idem = IdempotencyStore(64, 3600)
         self.refusals = RefusalLog()
@@ -130,7 +141,8 @@ class Env:
         self.ctx = ApiContext(
             csrf=CsrfGuard(fake_csrf_token), scopes=self.scopes, registry=default_registry(),
             refusals=self.refusals, idempotency=self.idem, dispatcher=self.dispatcher, clock=self.clk,
-            correlation=self.corr)
+            correlation=self.corr, ownership=self.ownership, entitlements=self.entitlements,
+            capture_policy=self.capture, events=self.events)
         self.owners = OwnerDirectory((("t1", "A", "src1", "owner-a"),))
         self.values: dict[str, tuple[dict, dict]] = {}
         self.reader_calls = 0
@@ -194,6 +206,7 @@ class Env:
 
     def snapshot(self, native, gateway):
         s = self.store.create("t1", {"values": {"native": native, "gateway": gateway}}, known_at=T0)
+        self.ownership.add("t1", "A", "snapshot_id", s.snapshot_id)
         self.values[s.snapshot_id] = (native, gateway)
         return s
 
@@ -202,7 +215,11 @@ class Env:
         g = dict(FAIL_G if gateway is None else gateway)
         s = self.snapshot(n, g)
         pair = self.reader("t1", s.snapshot_id)
-        return s, self.ledger.run("t1", key, *pair, snapshot_id=s.snapshot_id)
+        company = self.keys_company.get(key, "A")
+        self.ownership.add("t1", company, "comparison_key", key)
+        run = self.ledger.run("t1", key, *pair, snapshot_id=s.snapshot_id)
+        self.ownership.add("t1", company, "run_id", run.run_id)
+        return s, run
 
     def attest(self, rev=REV):
         res = self.att.sign(AttestationRequest("t1", rev, POL_VER, POL_DIG, "prop", "req",
@@ -219,15 +236,22 @@ class Env:
     def rerun_request(self, prev, snapshot_id, key="idem-key-0001", epoch=5):
         return RerunRequest(ViewerScope("t1", "A", epoch), "alice", KEY, prev, snapshot_id, key)
 
+    def own_runs(self, key=KEY):
+        for v in self.ledger.list_runs("t1", key):
+            self.ownership.add("t1", "A", "run_id", v.record.run_id)
+
     def rerun(self, prev, snapshot_id, key="idem-key-0001", token=None):
-        return self.ws.rerun(self.rerun_request(prev, snapshot_id, key), self.session,
-                             self.token() if token is None else token)
+        out = self.ws.rerun(self.rerun_request(prev, snapshot_id, key), self.session,
+                            self.token() if token is None else token)
+        self.own_runs()  # the ownership service learns the runs a rerun created
+        return out
 
     def job_request(self, operation="read_document", key="idem-key-1001", epoch=5, company="A"):
         return JobRequest(ViewerScope("t1", company, epoch), "alice", JobKind.RESCAN, operation,
                           (("source_id", "SRC-1"),), key)
 
     def statuses(self, key=KEY):
+        self.own_runs(key)
         return [(v.record.run_id, v.status) for v in self.ledger.list_runs("t1", key)]
 
     def no_side_effects(self):
@@ -253,24 +277,27 @@ def entry(view, ref):
 # ============================================================ TC115 + TC116 + TC117 chain
 def test_tc115_116_117_chain_over_one_ledger(env, calls):
     s1, run1 = env.first_run()
-    cards = env.ws.cards(env.viewer, KEY, source_id="src1")
+    cards_result = env.ws.cards(env.session, env.viewer, KEY, source_id="src1")
     assert calls.take() == ["build_cards"]
+    assert type(cards_result) is CardsResult and cards_result.run_state == "FAIL"
+    assert cards_result.run_id == run1.run_id
+    cards = cards_result.cards
     assert [c.measure for c in cards] == list(run1.differences) and len(cards) == 2
     by = {c.measure: c for c in cards}
     assert by["closing_credit"].delta == Decimal("0.2") and by["turnover_debit"].delta == Decimal("0.50")
     assert all(c.owner_id == "owner-a" and c.run_status == "CURRENT" for c in cards)
     assert all(c.row_detail is R.ROW_DETAIL_UNAVAILABLE and c.fragment.snapshot_digest == s1.digest
                for c in cards)
-    assert all(env.ws.verify_original(c) is R.ORIGINAL_INTACT for c in cards)
+    assert all(env.ws.verify_original(env.session, env.viewer, c) is R.ORIGINAL_INTACT for c in cards)
     assert calls.take() == ["verify_original"] * 2
 
     # annotate: notes, assignment, acknowledgement never touch the numbers
     for kind, text, kw in ((AnnotationKind.NOTE, "check 0.30 vs 0.10 please", {}),
                            (AnnotationKind.ASSIGNED, "", {"assignee": "owner-a"}),
                            (AnnotationKind.ACKNOWLEDGED, "", {})):
-        assert not isinstance(env.ws.annotate(env.viewer, run1.run_id, kind, text, **kw), SafeError)
+        assert not isinstance(env.ws.annotate(env.session, env.viewer, env.token(), run1.run_id, kind, text, **kw), SafeError)
     assert calls.take() == []  # annotations are the ReviewLog's own method, not a decision function
-    assert env.ws.cards(env.viewer, KEY, source_id="src1") == cards
+    assert env.ws.cards(env.session, env.viewer, KEY, source_id="src1") == cards_result
     calls.take()
     override = env.ws.override(run1.run_id, closing_credit=Decimal("0.3"))
     assert isinstance(override, SafeError) and override.reason_code is R.ORIGINAL_NUMBERS_IMMUTABLE
@@ -280,7 +307,7 @@ def test_tc115_116_117_chain_over_one_ledger(env, calls):
     s2 = env.snapshot({"closing_credit": Decimal("0.3"), "turnover_debit": Decimal("100.5")},
                       {"closing_credit": Decimal("0.3"), "turnover_debit": Decimal("100.5")})
     decision = env.rerun(run1.run_id, s2.snapshot_id)
-    assert calls.take() == ["decide_rerun", "request_rerun"]
+    assert calls.take() == ["decide_rerun", "check_rerun", "commit_rerun"]
     assert type(decision) is ApiDecision and decision.allowed and decision.http_class == 202
     assert decision.ticket.kind is JobKind.RERUN
     assert len(env.dispatcher.calls) == 1 and len(env.idem.effects) == 1
@@ -290,14 +317,15 @@ def test_tc115_116_117_chain_over_one_ledger(env, calls):
     assert env.ledger.get("t1", run2_id).supersedes == run1.run_id
 
     # old run: SUPERSEDED, numbers and digests unchanged, still verifiable
-    old = env.ws.cards(env.viewer, KEY, source_id="src1", run_id=run1.run_id)
+    old = env.ws.cards(env.session, env.viewer, KEY, source_id="src1", run_id=run1.run_id).cards
     assert all(c.run_status == "SUPERSEDED" for c in old)
     assert [(c.measure, c.native, c.gateway, c.original_digest) for c in old] == \
         [(c.measure, c.native, c.gateway, c.original_digest) for c in cards]
-    assert all(env.ws.verify_original(c) is R.ORIGINAL_INTACT for c in cards)
+    assert all(env.ws.verify_original(env.session, env.viewer, c) is R.ORIGINAL_INTACT for c in cards)
     # the new run is PASS: no discrepancy cards, and the rerun is annotated on the old run
-    assert env.ws.cards(env.viewer, KEY, source_id="src1") == ()
-    notes = env.ws.annotations(env.viewer, run1.run_id)
+    passed = env.ws.cards(env.session, env.viewer, KEY, source_id="src1")
+    assert (passed.run_state, passed.cards, passed.run_id) == ("PASS", (), run2_id)
+    notes = env.ws.annotations(env.session, env.viewer, run1.run_id)
     assert notes[-1].kind is AnnotationKind.RERUN_REQUESTED and notes[-1].related_run_id == run2_id
 
 
@@ -310,6 +338,7 @@ def test_rerun_replay_creates_no_second_run_and_no_second_dispatch(env, calls):
     assert calls.take() == ["decide_rerun"]  # replay never reaches the rerun fence
     assert again.reason_code is R.REPLAYED and again.http_class == 200 and again.ticket == first.ticket
     assert len(env.dispatcher.calls) == 1 and len(env.idem.effects) == 1 and len(env.statuses()) == 2
+    env.ownership.add("t1", "A", "snapshot_id", "other-snapshot")
     changed = env.rerun(run1.run_id, "other-snapshot")
     assert changed.reason_code is R.IDEMPOTENCY_CONFLICT and changed.http_class == 409
     assert len(env.dispatcher.calls) == 1 and len(env.statuses()) == 2
@@ -321,10 +350,12 @@ def test_rerun_fence_refusals_map_one_to_one_and_leave_no_trace(env, calls):
 
     same = env.rerun(run1.run_id, s1.snapshot_id)  # not new evidence
     assert (same.reason_code, same.http_class) == (R.NO_NEW_EVIDENCE, 409)
+    env.ownership.add("t1", "A", "run_id", "run-does-not-exist")  # owned but absent: a fence verdict
+    env.ownership.add("t1", "A", "snapshot_id", "snap-does-not-exist")
     unknown = env.rerun("run-does-not-exist", s2.snapshot_id, key="idem-key-0002")
     assert (unknown.reason_code, unknown.http_class) == (R.RERUN_TARGET_UNKNOWN, 404)
     missing_snap = env.rerun(run1.run_id, "snap-does-not-exist", key="idem-key-0003")
-    assert missing_snap.reason_code is R.INTERNAL_REFUSED  # not a fence verdict: never invented as one
+    assert (missing_snap.reason_code, missing_snap.http_class) == (R.NOT_FOUND, 404)
     env.no_side_effects()
     assert len(env.statuses()) == 1 and not any(isinstance(d, SafeError) for d in (same, unknown))
     assert [d.next_action for d in (same, unknown)] and all(CORR.fullmatch(d.correlation_id)
@@ -354,7 +385,7 @@ def test_tc118_119_chain_history_revoke_and_clock(env, calls):
     _, run1 = env.first_run(FAIL_N, FAIL_N)  # PASS run, attested
     att1 = env.attest()
     env.bind(run1, att1)
-    view = env.ws.timeline(env.viewer)
+    view = env.ws.timeline(env.session, env.viewer)
     assert type(view) is TimelineView and calls.take() == ["build_timeline", "render_guard"]
     assert is_green(entry(view, run1.run_id)) and entry(view, run1.run_id).applicability is Applicability.LIVE_CURRENT
 
@@ -362,7 +393,7 @@ def test_tc118_119_chain_history_revoke_and_clock(env, calls):
     s2 = env.snapshot({"closing_credit": Decimal(25)}, {"closing_credit": Decimal(25)})
     assert env.rerun(run1.run_id, s2.snapshot_id).http_class == 202
     run2 = env.statuses()[-1][0]
-    view = env.ws.timeline(env.viewer)
+    view = env.ws.timeline(env.session, env.viewer)
     old, new = entry(view, run1.run_id), entry(view, run2)
     assert (old.applicability, old.reason) == (Applicability.HISTORICAL_PASS, ApplicabilityReason.SUPERSEDED_BY_RUN)
     assert old.label_text == "historical, not current" and not is_green(old)
@@ -372,13 +403,13 @@ def test_tc118_119_chain_history_revoke_and_clock(env, calls):
     # attest the new run: live only now (attested + covered + fresh)
     att2 = env.attest()
     env.bind(env.ledger.get("t1", run2), att2)
-    view = env.ws.timeline(env.viewer)
+    view = env.ws.timeline(env.session, env.viewer)
     assert is_green(entry(view, run2)) and not is_green(entry(view, run1.run_id))
     assert [e.ref_id for e in view.entries if is_green(e)] == [run2]
 
     # clock advance beyond the freshness window: history stays, green goes
     env.clk.advance(7200)
-    stale = env.ws.timeline(env.viewer)
+    stale = env.ws.timeline(env.session, env.viewer)
     assert (entry(stale, run2).applicability, entry(stale, run2).reason) == \
         (Applicability.HISTORICAL_PASS, ApplicabilityReason.STALE)
     assert not any(is_green(e) for e in stale.entries)
@@ -386,7 +417,7 @@ def test_tc118_119_chain_history_revoke_and_clock(env, calls):
     # revoke the new attestation: REVOKED entry, history kept, applicability removed, no resurrection
     assert env.att.revoke(att2, "t1", Signer(SignerKind.HUMAN, "acc1")).revoked
     env.clk.advance(-3600)  # clock regression must not resurrect it
-    after = env.ws.timeline(env.viewer)
+    after = env.ws.timeline(env.session, env.viewer)
     assert entry(after, run2).applicability is Applicability.REVOKED and not is_green(entry(after, run2))
     revoked_att = entry(after, att2)
     assert revoked_att.kind is EntryKind.ATTESTATION and revoked_att.applicability is Applicability.REVOKED
@@ -399,11 +430,11 @@ def test_tc118_119_chain_history_revoke_and_clock(env, calls):
 def test_coverage_gap_makes_the_attested_run_not_green(env):
     _, run1 = env.first_run(FAIL_N, FAIL_N)
     env.bind(run1, env.attest())
-    assert is_green(entry(env.ws.timeline(env.viewer), run1.run_id))
+    assert is_green(entry(env.ws.timeline(env.session, env.viewer), run1.run_id))
     env.matrix = env.make_matrix("B")  # nothing covers company A any more
-    view = env.ws.timeline(env.viewer)
+    view = env.ws.timeline(env.session, env.viewer)
     assert entry(view, run1.run_id).applicability is Applicability.NOT_COVERED
-    panel = env.ws.coverage(env.viewer)
+    panel = env.ws.coverage(env.session, env.viewer)
     assert panel.status.value == "INCOMPLETE" and not panel.complete
 
 
@@ -416,8 +447,8 @@ def test_tc120_two_company_scope_no_leakage(env, calls):
     env.matrix = env.make_matrix("A", "B")
     env.evidence_rows = env.make_evidence(("A", "B"))
 
-    views = (env.ws.timeline(env.viewer), env.ws.diff(env.viewer), env.ws.coverage(env.viewer),
-             env.ws.evidence(env.viewer))
+    views = (env.ws.timeline(env.session, env.viewer), env.ws.diff(env.session, env.viewer), env.ws.coverage(env.session, env.viewer),
+             env.ws.evidence(env.session, env.viewer))
     assert all(not isinstance(v, SafeError) and v.hidden_by_scope is True for v in views)
     for v in views:
         text = repr(v)
@@ -432,18 +463,18 @@ def test_tc120_two_company_scope_no_leakage(env, calls):
 
     # B sees only its own; A's key never appears
     viewer_b = ViewerScope("t1", "B", 5)
-    diff_b = env.ws.diff(viewer_b)
+    diff_b = env.ws.diff(env.session, viewer_b)
     assert {i.comparison_key for i in diff_b.items} == {KEY_B} and KEY not in repr(diff_b)
-    assert KEY not in repr(env.ws.coverage(viewer_b)) and "ev-A" not in repr(env.ws.evidence(viewer_b))
+    assert KEY not in repr(env.ws.coverage(env.session, viewer_b)) and "ev-A" not in repr(env.ws.evidence(env.session, viewer_b))
 
 
 def test_stale_scope_epoch_gives_safe_error_and_no_view_everywhere(env):
     env.first_run()
     env.scopes.bump("t1", "A")
-    for result in (env.ws.timeline(env.viewer), env.ws.diff(env.viewer), env.ws.coverage(env.viewer),
-                   env.ws.evidence(env.viewer), env.ws.cards(env.viewer, KEY, source_id="src1"),
-                   env.ws.annotate(env.viewer, "run-1", AnnotationKind.NOTE, "x"),
-                   env.ws.annotations(env.viewer, "run-1")):
+    for result in (env.ws.timeline(env.session, env.viewer), env.ws.diff(env.session, env.viewer), env.ws.coverage(env.session, env.viewer),
+                   env.ws.evidence(env.session, env.viewer), env.ws.cards(env.session, env.viewer, KEY, source_id="src1"),
+                   env.ws.annotate(env.session, env.viewer, env.token(), "run-1", AnnotationKind.NOTE, "x"),
+                   env.ws.annotations(env.session, env.viewer, "run-1")):
         assert type(result) is SafeError and result.reason_code is R.SCOPE_EPOCH_STALE
         assert CORR.fullmatch(result.correlation_id) and result.correlation_id != "CORR-UNASSIGNED"
     stale_rerun = env.rerun("run-1", "SN-2")
@@ -513,7 +544,8 @@ def test_read_job_and_result_through_the_facade_are_scoped(env, calls):
     calls.take()
     got = env.ws.read_job(env.viewer, env.session, job_id)
     assert got.allowed and got.job.job_id == job_id and calls.take() == ["read_job"]
-    assert env.ws.read_result(env.viewer, env.session, job_id).reason_code is R.NOT_FOUND  # not finished
+    pending = env.ws.read_result(env.viewer, env.session, job_id)  # own job, not finished: its fixed state
+    assert (pending.allowed, pending.http_class, pending.job.state.value, pending.job.result_digest) ==         (True, 202, "QUEUED", None)
     env.dispatcher.complete(job_id, h(5))
     assert env.ws.read_result(env.viewer, env.session, job_id).job.result_digest == h(5)
     foreign = env.ws.read_job(ViewerScope("t1", "B", 5), env.session, job_id)
@@ -529,15 +561,15 @@ def test_read_job_and_result_through_the_facade_are_scoped(env, calls):
 def test_provider_failure_is_internal_refused_never_a_partial_view(env, where, failing, unaffected):
     _, run1 = env.first_run(FAIL_N, FAIL_N)
     env.bind(run1, env.attest())
-    assert is_green(entry(env.ws.timeline(env.viewer), run1.run_id))
+    assert is_green(entry(env.ws.timeline(env.session, env.viewer), run1.run_id))
     env.raise_in = where
     for name in failing:
-        result = getattr(env.ws, name)(env.viewer)
+        result = getattr(env.ws, name)(env.session, env.viewer)
         assert type(result) is SafeError, name
         assert result.reason_code is R.INTERNAL_REFUSED and CORR.fullmatch(result.correlation_id)
         assert POISON not in repr(result)
     for name in unaffected:  # a view that does not use the failing provider is unaffected
-        assert type(getattr(env.ws, name)(env.viewer)) is not SafeError
+        assert type(getattr(env.ws, name)(env.session, env.viewer)) is not SafeError
 
 
 def test_component_exception_in_the_ledger_is_internal_refused_and_never_green(env, monkeypatch):
@@ -548,7 +580,7 @@ def test_component_exception_in_the_ledger_is_internal_refused_and_never_green(e
         raise RuntimeError(POISON)
 
     monkeypatch.setattr(RunLedger, "list_runs", boom)
-    for result in (env.ws.timeline(env.viewer), env.ws.diff(env.viewer)):
+    for result in (env.ws.timeline(env.session, env.viewer), env.ws.diff(env.session, env.viewer)):
         assert type(result) is SafeError and result.reason_code is R.INTERNAL_REFUSED
         assert POISON not in repr(result)
         assert not isinstance(result, TimelineView)
@@ -558,11 +590,11 @@ def test_facade_converts_a_raising_component_function_into_internal_refused(env,
     def boom(*a, **k):
         raise RuntimeError(POISON)
 
-    for name, call in (("build_timeline", lambda: env.ws.timeline(env.viewer)),
-                       ("build_cards", lambda: env.ws.cards(env.viewer, KEY, source_id="src1")),
+    for name, call in (("build_timeline", lambda: env.ws.timeline(env.session, env.viewer)),
+                       ("build_cards", lambda: env.ws.cards(env.session, env.viewer, KEY, source_id="src1")),
                        ("decide_rerun", lambda: env.rerun("run-1", "SN-2")),
                        ("decide_enqueue", lambda: env.ws.enqueue(env.job_request(), env.session, env.token())),
-                       ("build_scoped_diff", lambda: env.ws.diff(env.viewer)),
+                       ("build_scoped_diff", lambda: env.ws.diff(env.session, env.viewer)),
                        ("read_job", lambda: env.ws.read_job(env.viewer, env.session, "JOB-000001"))):
         monkeypatch.setattr(ws, name, boom)
         result = call()
@@ -576,7 +608,7 @@ def test_reader_failure_during_rerun_is_internal_refused_with_no_run_and_no_reco
     s2 = env.snapshot(dict(FAIL_N), dict(FAIL_N))
     env.reader_error = RuntimeError(POISON)
     d = env.rerun(run1.run_id, s2.snapshot_id)
-    assert (d.allowed, d.reason_code, d.http_class) == (False, R.INTERNAL_REFUSED, 400)
+    assert (d.allowed, d.reason_code, d.http_class) == (False, R.DEPENDENCY_FAILED, 429)
     assert POISON not in repr(d)
     env.no_side_effects()
     assert len(env.statuses()) == 1 and env.statuses()[0][1] == "CURRENT"
@@ -591,13 +623,14 @@ def test_broken_correlation_source_degrades_to_the_fixed_default_id(env):
 
     env.ctx = ApiContext(csrf=env.ctx.csrf, scopes=env.scopes, registry=env.ctx.registry,
                          refusals=env.refusals, idempotency=env.idem, dispatcher=env.dispatcher,
-                         clock=env.clk, correlation=Broken())
+                         clock=env.clk, correlation=Broken(), ownership=env.ownership,
+                         entitlements=env.entitlements, capture_policy=env.capture)
     facade = WorkbenchSession(
         ledger=env.ledger, store=env.store, review_log=env.review_log, owners=env.owners,
         attestations=env.att, ctx=env.ctx, reader=env.reader, subjects=env._subjects, feeds=lambda: (),
         matrix=lambda: env.matrix, policy=lambda: env.policy, evidence=lambda: env.evidence_rows)
     env.scopes.bump("t1", "A")
-    result = facade.timeline(env.viewer)
+    result = facade.timeline(env.session, env.viewer)
     assert type(result) is SafeError and result.reason_code is R.SCOPE_EPOCH_STALE
     assert result.correlation_id == "CORR-UNASSIGNED" and POISON not in repr(result)
 
@@ -628,11 +661,11 @@ def test_revoke_during_the_timeline_flow_never_discloses_a_view(reads):
     _, run1 = env.first_run(FAIL_N, FAIL_N)
     env.bind(run1, env.attest())
     env.scopes.arm(reads)  # timeline reads the epoch 3 times: build check, pre-disclosure re-check, render_guard
-    result = env.ws.timeline(env.viewer)
+    result = env.ws.timeline(env.session, env.viewer)
     assert type(result) is SafeError and result.reason_code is R.SCOPE_EPOCH_STALE
     assert not isinstance(result, TimelineView)
-    assert type(env.ws.timeline(env.viewer)) is SafeError  # the old viewer scope stays refused
-    assert type(env.ws.diff(env.viewer)) is SafeError
+    assert type(env.ws.timeline(env.session, env.viewer)) is SafeError  # the old viewer scope stays refused
+    assert type(env.ws.diff(env.session, env.viewer)) is SafeError
 
 
 def test_revoke_after_the_last_check_is_refused_on_the_next_read():
@@ -640,18 +673,18 @@ def test_revoke_after_the_last_check_is_refused_on_the_next_read():
     _, run1 = env.first_run(FAIL_N, FAIL_N)
     env.bind(run1, env.attest())
     env.scopes.arm(3)  # lands after render_guard's read: that view was verified fresh when disclosed
-    assert type(env.ws.timeline(env.viewer)) is TimelineView
-    assert env.ws.timeline(env.viewer).reason_code is R.SCOPE_EPOCH_STALE
+    assert type(env.ws.timeline(env.session, env.viewer)) is TimelineView
+    assert env.ws.timeline(env.session, env.viewer).reason_code is R.SCOPE_EPOCH_STALE
 
 
 def test_attestation_revoked_between_two_reads_is_visible_in_the_second_view(env):
     _, run1 = env.first_run(FAIL_N, FAIL_N)
     att = env.attest()
     env.bind(run1, att)
-    first = env.ws.timeline(env.viewer)
+    first = env.ws.timeline(env.session, env.viewer)
     assert is_green(entry(first, run1.run_id))
     assert env.att.revoke(att, "t1", Signer(SignerKind.HUMAN, "acc1")).revoked
-    second = env.ws.timeline(env.viewer)
+    second = env.ws.timeline(env.session, env.viewer)
     assert not any(is_green(e) for e in second.entries)
     assert entry(second, run1.run_id).applicability is Applicability.REVOKED
 
@@ -660,14 +693,14 @@ def test_attestation_revoked_between_two_reads_is_visible_in_the_second_view(env
 def _script(env: Env):
     _, run1 = env.first_run()
     env.bind(run1, env.attest())
-    out = [repr(env.ws.cards(env.viewer, KEY, source_id="src1")), repr(env.ws.timeline(env.viewer))]
+    out = [repr(env.ws.cards(env.session, env.viewer, KEY, source_id="src1")), repr(env.ws.timeline(env.session, env.viewer))]
     s2 = env.snapshot({"closing_credit": Decimal(7)}, {"closing_credit": Decimal(7)})
     out.append(repr(env.rerun(run1.run_id, s2.snapshot_id)))
-    out.append(repr(env.ws.timeline(env.viewer)))
-    out.append(repr(env.ws.diff(env.viewer)))
-    out.append(repr(env.ws.coverage(env.viewer)))
-    out.append(repr(env.ws.evidence(env.viewer)))
-    return out, env.ws.timeline(env.viewer).digest
+    out.append(repr(env.ws.timeline(env.session, env.viewer)))
+    out.append(repr(env.ws.diff(env.session, env.viewer)))
+    out.append(repr(env.ws.coverage(env.session, env.viewer)))
+    out.append(repr(env.ws.evidence(env.session, env.viewer)))
+    return out, env.ws.timeline(env.session, env.viewer).digest
 
 
 def test_same_inputs_and_injected_clock_and_ids_give_byte_identical_views():
@@ -744,7 +777,8 @@ def test_module_imports_only_stdlib_and_phase2_siblings():
         if isinstance(node, ast.Import):
             assert not {a.name.split(".")[0] for a in node.names} & banned
         if isinstance(node, ast.ImportFrom):
-            assert node.level == 1 or (node.module or "") in {"__future__", "collections.abc", "typing"}
+            assert node.level == 1 or (node.module or "") in {"__future__", "collections", "collections.abc",
+                                                              "datetime", "typing"}
         if isinstance(node, ast.Name):
             assert node.id not in {"open", "eval", "exec"}
     assert ws.AUTHORITY == "EVALUATION_ONLY"
@@ -753,7 +787,9 @@ def test_module_imports_only_stdlib_and_phase2_siblings():
 
 def test_cards_are_derived_values_the_facade_cannot_edit(env):
     env.first_run()
-    cards = env.ws.cards(env.viewer, KEY, source_id="src1")
+    result = env.ws.cards(env.session, env.viewer, KEY, source_id="src1")
+    assert type(result) is CardsResult and result.run_state == "FAIL"
+    cards = result.cards
     assert all(type(c) is DiscrepancyCard and c.authority == "EVALUATION_ONLY" for c in cards)
     with pytest.raises(AttributeError):
         cards[0].native = Decimal(1)  # type: ignore[misc]

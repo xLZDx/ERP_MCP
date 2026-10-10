@@ -104,6 +104,7 @@ def test_tc120_panel_drops_foreign_rows_ids_names_and_counts(w):
     assert type(panel) is CoveragePanel
     assert [c.claim_id for c in panel.covered] == ["cA-covered"]
     assert panel.uncovered == ("cA-open",)
+    assert panel.status is CoverageStatus.INCOMPLETE and panel.code is CoverageCode.UNCOVERED_CLAIM
     assert panel.hidden_by_scope is True
     assert "SECRET" not in blob(panel) and "srcB" not in blob(panel).lower()
     assert not hasattr(panel, "hidden_count") and not hasattr(panel, "total")
@@ -204,11 +205,11 @@ def test_tc120_cross_company_link_is_not_rendered_even_as_an_id(w):
     evidence = (Evidence("eA", A, "s", h(1), PASS), Evidence("SECRET-eB", B, "s", h(2), PASS))
     links = (Link("cA", "eA"), Link("cA", "SECRET-eB"), Link("SECRET-cB", "eA"), Link("SECRET-cB", "SECRET-eB"))
     view = build_scoped_evidence(w.viewer, w.authority, claims, evidence, links)
-    assert type(view) is SafeError or "SECRET" not in blob(view)
-    if type(view) is ScopedEvidenceView:
-        assert [i.evidence_id for i in view.items] == ["eA"]
-        assert view.items[0].claim_ids == ("cA",)
-        assert view.hidden_by_scope is True
+    assert type(view) is ScopedEvidenceView
+    assert "SECRET" not in blob(view)
+    assert [i.evidence_id for i in view.items] == ["eA"]
+    assert view.items[0].claim_ids == ("cA",)
+    assert view.hidden_by_scope is True
 
 
 def test_tc120_non_pass_evidence_is_shown_with_its_verdict_in_scope(w):
@@ -262,15 +263,16 @@ def test_tc120_diff_view_lists_superseded_run_differences_with_status():
     assert view.hidden_by_scope is False
 
 
-def test_diff_view_ledger_that_raises_never_leaks_poison():
+def test_diff_view_ledger_that_raises_never_leaks_poison(monkeypatch):
     d = DiffWorld()
 
-    class Boom(RunLedger):
-        def list_runs(self, *a):
-            raise RuntimeError("POISON-FOREIGN stack secret=abc")
+    def boom(self, *a):
+        raise RuntimeError("POISON-FOREIGN stack secret=abc")
 
-    out = build_scoped_diff(d.viewer, d.authority, Boom(d.store), (TimelineSubject("t1", "A", "K", ()),))
-    assert type(out) is SafeError and "POISON" not in repr(out)
+    monkeypatch.setattr(RunLedger, "list_runs", boom)
+    out = build_scoped_diff(d.viewer, d.authority, d.ledger, (TimelineSubject("t1", "A", "K", ()),))
+    assert type(out) is SafeError and out.reason_code is ReasonCode.INTERNAL_REFUSED
+    assert "POISON" not in repr(out)
 
 
 # ===================================================== hostile input (S6b lesson rows)
@@ -349,7 +351,7 @@ def test_panel_lists_covered_uncovered_and_non_pass_with_fixed_codes(w):
     evidence = (Evidence("e1", A, "s1", h(1), PASS), Evidence("e2", A, "s2", h(2), FAIL))
     matrix = build_matrix(claims, evidence, (Link("cA-ok", "e1"), Link("cA-bad", "e2")))
     panel = build_coverage_panel(w.viewer, w.authority, matrix)
-    assert panel.status is CoverageStatus.INCOMPLETE and type(panel.code) is CoverageCode
+    assert panel.status is CoverageStatus.INCOMPLETE and panel.code is CoverageCode.NON_PASS_LINK
     assert [c.claim_id for c in panel.covered] == ["cA-ok"]
     assert set(panel.uncovered) == {"cA-open", "cA-bad"} and panel.non_pass == ("cA-bad",)
     assert panel.complete is False
@@ -364,7 +366,8 @@ def test_panel_complete_only_when_every_in_scope_claim_is_covered(w):
 def test_panel_refused_matrix_is_shown_refused_with_no_rows(w):
     panel = build_coverage_panel(w.viewer, w.authority, build_matrix((), (), ()))
     assert panel.status is CoverageStatus.REFUSED and panel.complete is False
-    assert panel.covered == () and panel.uncovered == ()
+    assert panel.code is CoverageCode.CLAIM_INVALID and panel.hidden_by_scope is False
+    assert panel.covered == () and panel.uncovered == () and panel.non_pass == ()
 
 
 def test_views_are_deterministic_frozen_and_evaluation_only(w):
@@ -378,7 +381,7 @@ def test_views_are_deterministic_frozen_and_evaluation_only(w):
             setattr(v, attr, "x")
     assert a.authority == ev.authority == "EVALUATION_ONLY"
     assert "offline" in a.basis.lower() and "not a gate" in a.basis.lower()
-    assert EvidenceItem.__slots__
+    assert EvidenceItem.__slots__ == ("evidence_id", "verdict", "digest", "claim_ids")
 
 
 def test_constructors_refuse_inconsistent_values_with_fixed_codes():
