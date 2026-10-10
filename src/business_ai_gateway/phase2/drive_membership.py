@@ -23,7 +23,6 @@ socket import; hostile input never raises out of a public async method.
 """
 from __future__ import annotations
 
-from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
@@ -75,7 +74,6 @@ MAX_ROOTS = MAX_CORPUS_ROOTS
 MAX_CACHE_ENTRIES = 100_000
 MAX_ANCESTORS_PER_ENTRY = 256  # visited ids kept per cached file (a hostile file may list 10,000 parents)
 MAX_ANCESTOR_INDEX_ENTRIES = 1_000_000  # total (ancestor, file) pairs of the invalidation index
-_PROVISIONAL: ContextVar[frozenset[tuple[int, str]]] = ContextVar("_PROVISIONAL", default=frozenset())
 MAX_LOOKUPS_PER_PAGE = 4_096  # port lookups one prepare_page may spend over all of its changes
 
 
@@ -221,8 +219,8 @@ class MembershipChecker:
         self._cache: dict[str, _CacheEntry] = {}
         self._by_ancestor: dict[str, set[str]] = {}
         self._index_size = 0  # total (ancestor, file) pairs in _by_ancestor
-        # (preparation, roots) of the last PREPARED page: removed roots it re-qualified; applied only by accept_page
-        self._pending_reinstate: tuple[object, frozenset[str]] | None = None
+        # (preparation, roots, epoch) of the last PREPARED page: removed roots it re-qualified; applied only by accept_page
+        self._pending_reinstate: tuple[object, frozenset[str], int] | None = None
         self._removed_roots: set[str] = set()  # roots a change feed reported removed/trashed
         self._lookups = 0  # port lookups so far (page budget)
 
@@ -238,6 +236,7 @@ class MembershipChecker:
         if not is_valid_scope_epoch(scope_epoch) or scope_epoch < self._epoch:  # type: ignore[operator]
             return False
         self._epoch = scope_epoch  # type: ignore[assignment]
+        self._pending_reinstate = None  # a preparation made under an older epoch can never be accepted
         return True
 
     def cached(self, file_id: object) -> MembershipResult | None:
@@ -293,6 +292,12 @@ class MembershipChecker:
 
     async def check(self, file_id: object, *, use_cache: bool = False) -> MembershipResult:
         """Resolve the CURRENT membership of ``file_id`` under the current epoch. Never raises."""
+        return await self._check(file_id, use_cache, frozenset())
+
+    async def _check(self, file_id: object, use_cache: bool, provisional: frozenset[str]) -> MembershipResult:
+        """``provisional``: removed roots a page under preparation re-qualified. It is an EXPLICIT argument
+        (never ambient state, so no other task or child task can inherit it) and a result computed under it
+        is never cached."""
         if not is_valid_opaque_id(file_id):
             return MembershipResult(
                 "-", MembershipVerdict.CHECK_FAILED, MembershipReason.INVALID_INPUT, self._key("-")
@@ -304,7 +309,7 @@ class MembershipChecker:
                 return hit
         epoch = self._epoch
         try:
-            result, ancestors = await self._resolve(fid, epoch)
+            result, ancestors = await self._resolve(fid, epoch, provisional)
         except _CheckFailedError as exc:
             return MembershipResult(fid, MembershipVerdict.CHECK_FAILED, exc.code, self._key(fid))
         except Exception:  # noqa: BLE001 - port bug / hostile object: fail closed
@@ -313,7 +318,8 @@ class MembershipChecker:
             return MembershipResult(
                 fid, MembershipVerdict.CHECK_FAILED, MembershipReason.SCOPE_EPOCH_STALE, self._key(fid)
             )
-        self._store(result, epoch, ancestors)
+        if not provisional:
+            self._store(result, epoch, ancestors)
         return result
 
     async def authorize_disclosure(self, file_id: object) -> bool:
@@ -353,7 +359,9 @@ class MembershipChecker:
             raise _CheckFailedError(MembershipReason.TRANSIENT)
         return meta
 
-    async def _resolve(self, file_id: str, epoch: int) -> tuple[MembershipResult, frozenset[str]]:
+    async def _resolve(
+        self, file_id: str, epoch: int, provisional: frozenset[str] = frozenset()
+    ) -> tuple[MembershipResult, frozenset[str]]:
         budget = [MAX_LOOKUPS_PER_CHECK]
         none: frozenset[str] = frozenset()
         try:
@@ -367,8 +375,8 @@ class MembershipChecker:
         if meta.drive_id != self._corpus.shared_drive_id:
             return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.DRIVE_MISMATCH), none
         if meta.shortcut_target is not None:
-            return await self._resolve_shortcut(file_id, meta.shortcut_target, epoch, budget)
-        outcome, visited = await self._walk(meta, epoch, budget)
+            return await self._resolve_shortcut(file_id, meta.shortcut_target, epoch, budget, provisional)
+        outcome, visited = await self._walk(meta, epoch, budget, provisional)
         ancestors = frozenset(visited)
         if outcome == "IN":
             return self._result(file_id, MembershipVerdict.IN_SCOPE, MembershipReason.IN_CORPUS, True), ancestors
@@ -381,7 +389,7 @@ class MembershipChecker:
         return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), ancestors
 
     async def _resolve_shortcut(
-        self, file_id: str, target: str, epoch: int, budget: list[int]
+        self, file_id: str, target: str, epoch: int, budget: list[int], provisional: frozenset[str] = frozenset()
     ) -> tuple[MembershipResult, frozenset[str]]:
         none: frozenset[str] = frozenset()
         try:
@@ -392,7 +400,7 @@ class MembershipChecker:
             return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), none
         if target_meta.trashed or target_meta.drive_id != self._corpus.shared_drive_id:
             return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.SHORTCUT_TARGET_OUTSIDE), none
-        outcome, walked = await self._walk(target_meta, epoch, budget)
+        outcome, walked = await self._walk(target_meta, epoch, budget, provisional)
         none = frozenset({target, *walked})  # re-check when the target or its chain changes
         if outcome == "IN":
             # a shortcut is never a membership proof nor evidence: the target is evidence under its own id
@@ -401,7 +409,9 @@ class MembershipChecker:
             return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.SHORTCUT_TARGET_OUTSIDE), none
         return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_TARGET_UNRESOLVED), none
 
-    async def _walk(self, start: FileMeta, epoch: int, budget: list[int]) -> tuple[str, set[str]]:
+    async def _walk(
+        self, start: FileMeta, epoch: int, budget: list[int], provisional: frozenset[str] = frozenset()
+    ) -> tuple[str, set[str]]:
         """Iterative bounded search of the parent graph. Returns (IN|OUT|UNRESOLVED|LIMIT, visited).
 
         ``visited`` holds every id the walk touched, INCLUDING the declared root it reached, so a change of
@@ -410,10 +420,9 @@ class MembershipChecker:
         reported removed/trashed is not a root any more (it is fetched like any other folder).
         """
         visited: set[str] = {start.file_id}
-        # A removed root is live again only inside the ONE prepare_page task that is re-qualifying it (context
-        # variable: a concurrent disclosure in another task never sees it) and, durably, after accept_page.
-        provisional = {fid for owner, fid in _PROVISIONAL.get() if owner == id(self)} & self._roots
-        live_roots = (self._roots - self._removed_roots) | provisional
+        # A removed root is live again only for the ``provisional`` set the calling prepare_page passes
+        # explicitly (no ambient state) and, durably, after accept_page.
+        live_roots = (self._roots - self._removed_roots) | (provisional & self._roots)
         if start.file_id in live_roots:
             # the caller already validated this fresh metadata (drive / trashed / shortcut); a root the feed
             # reported removed is reinstated by prepare_page only when this fresh read proves it live
@@ -533,17 +542,14 @@ class MembershipChecker:
                     # Only this explicit re-qualification (fresh metadata of the root itself) can make a removed
                     # root live, and only PROVISIONALLY (this task, this page) until accept_page.
                     requalifying = change.file_id in self._removed_roots
-                    if requalifying:
-                        _PROVISIONAL.set(_PROVISIONAL.get() | {(id(self), change.file_id)})
-                    result = await self.check(change.file_id)
+                    seen = reinstated | {change.file_id} if requalifying else reinstated
+                    result = await self._check(change.file_id, False, frozenset(seen))
                     resolved[change.file_id] = result
                     if change.file_id in self._roots:
                         if result.verdict is MembershipVerdict.REMOVED:
                             self._removed_roots.add(change.file_id)
                         if requalifying and result.verdict is MembershipVerdict.IN_SCOPE:
                             reinstated.add(change.file_id)
-                        elif requalifying:
-                            _PROVISIONAL.set(_PROVISIONAL.get() - {(id(self), change.file_id)})
             for change in changed:
                 if change.file_id in self._roots:
                     self.invalidate(change.file_id)  # the root state may have changed while resolving
@@ -588,23 +594,22 @@ class MembershipChecker:
             for fid in batch.requalify_folder_ids:
                 self.invalidate(fid)
             prepared = PagePreparation(PageStatus.PREPARED, PageReason.PAGE_PREPARED, batch, results)
-            self._pending_reinstate = (prepared, frozenset(reinstated)) if reinstated else None
+            self._pending_reinstate = (prepared, frozenset(reinstated), epoch) if reinstated else None
             return prepared
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
             return refused(PageReason.PAGE_PROJECTION_REFUSED)
-        finally:
-            # nothing provisional outlives this call: forget the task-local view and every cache entry that
-            # was computed under it (durable reinstatement is accept_page's job, after the cursor is accepted)
-            for owner, fid in _PROVISIONAL.get():
-                if owner == id(self):
-                    self.invalidate(fid)
-            _PROVISIONAL.set(frozenset(x for x in _PROVISIONAL.get() if x[0] != id(self)))
 
-    def accept_page(self, preparation: object) -> bool:
-        """Call after the cursor commit of ``preparation`` succeeded: only now do removed roots that the page
-        re-qualified become live again. A refused, unknown, replaced or already accepted preparation does nothing."""
+    def accept_page(self, preparation: object, committed_cursor: object) -> bool:
+        """Call after the durable cursor commit of ``preparation`` succeeded, passing the cursor value that was
+        committed (the receipt): only now do removed roots the page re-qualified become live again.
+
+        Nothing happens (False) for a refused, unknown, replaced, already accepted or stale-epoch preparation,
+        or when the receipt is not exactly the cursor this preparation's batch may commit."""
         pending = self._pending_reinstate
-        if pending is None or pending[0] is not preparation:
+        if pending is None or pending[0] is not preparation or pending[2] != self._epoch:
+            return False
+        batch = getattr(preparation, "batch", None)
+        if type(committed_cursor) is not str or batch is None or committed_cursor != batch.committable_cursor():
             return False
         self._pending_reinstate = None
         for fid in pending[1]:
