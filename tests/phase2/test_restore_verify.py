@@ -335,7 +335,6 @@ def test_attestation_unknown_to_the_current_store_is_stale(world):
     lambda r: r["attestations"][0].__setitem__("revoked_at", NOW),
     lambda r: r["attestations"][0].__setitem__("expires_at", NOW - timedelta(seconds=1)),
     lambda r: r["attestations"][0].__setitem__("expires_at", None),
-    lambda r: r["attestations"][0].__setitem__("revision_id", R3),  # no observation: no digest to bind to
 ])
 def test_attestation_row_that_is_not_current_on_its_face_is_stale(world, mutate):
     report = world.pair(mutate)
@@ -517,7 +516,7 @@ for _ in range(50):
 
 
 @pytest.mark.parametrize("value", [
-    1.5, float("nan"), Decimal("NaN"), Decimal("Infinity"), EvilStr("j"), "j\x00j", "x" * 70_000, b"bytes",
+    1.5, float("nan"), Decimal("NaN"), Decimal("Infinity"), EvilStr("j"), "j\x00j", "x" * 262_145, b"bytes",
     object(), {1, 2}, NAIVE, _RECURSIVE, _DEEP, {"a": {"$ts": 1}}, {"": 1}, {1: "x"}, 2**70,
     [object()], EvilDict(a=1),
 ], ids=lambda v: type(v).__name__)
@@ -764,6 +763,19 @@ def parse_sql_tables(sql_text):
                 if re.search(r"\bPRIMARY KEY\b", item, re.IGNORECASE):
                     pk = (col,)
         tables[match.group(1)] = (pk, fks)
+    # E5: constraints added later by ALTER TABLE (table constraint or inline on an added column)
+    for alt in re.finditer(r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?living\.(\w+)\s+([^;]*);", text, re.IGNORECASE):
+        child, clauses = alt.group(1), alt.group(2)
+        pk, fks = tables.setdefault(child, (None, []))
+        for add in re.split(r",\s*(?=ADD\b)", clauses, flags=re.IGNORECASE):
+            fk = re.search(r"ADD\s+(?:CONSTRAINT\s+\w+\s+)?FOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+living\.(\w+)"
+                           r"\s*(?:\(([^)]*)\))?", add, re.IGNORECASE)
+            col = re.search(r"ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\b[^;]*?REFERENCES\s+living\.(\w+)"
+                            r"\s*(?:\(([^)]*)\))?", add, re.IGNORECASE)
+            if fk:
+                fks.append((_cols(fk.group(1)), fk.group(2), _cols(fk.group(3)) if fk.group(3) else None))
+            elif col:
+                fks.append(((col.group(1),), col.group(2), _cols(col.group(3)) if col.group(3) else None))
     return tables
 
 
@@ -820,6 +832,124 @@ def test_the_comparison_instrument_can_fail_in_either_direction():
                      ("q", ("a", "b", "c"), "p", ("a", "b", "z"))}
     real = catalogue_edges(LIVING_FK_CATALOGUE)
     assert real - {next(iter(real))} != real and (real | {("jobs", ("a",), "b", ("a",))}) != real
+
+
+def test_the_parser_sees_edges_added_by_alter_table():
+    sql = """
+    CREATE TABLE IF NOT EXISTS living.p(a text PRIMARY KEY);
+    CREATE TABLE IF NOT EXISTS living.q(a text NOT NULL, b text);
+    ALTER TABLE living.q ADD CONSTRAINT q_fk FOREIGN KEY (a) REFERENCES living.p(a);
+    ALTER TABLE IF EXISTS ONLY living.q ADD COLUMN IF NOT EXISTS c text REFERENCES living.p;
+    ALTER TABLE living.q ADD COLUMN d text NOT NULL DEFAULT 'x';
+    """
+    assert sql_edges(sql) == {("q", ("a",), "p", ("a",)), ("q", ("c",), "p", ("a",))}
+
+
+# ---- E1..E4: review fixes ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("catalogue", [(), LIVING_FK_CATALOGUE[:-1], LIVING_FK_CATALOGUE[1:],
+                                       (FkEdge("jobs", ("tenant_id",), "tenants", ("tenant_id",)),)])
+def test_a_truncated_or_empty_catalogue_is_refused_not_verified_green(world, catalogue):
+    """E1: orphan rows must not verify green because the caller passed fewer edges than the real schema."""
+    def orphan(rows):
+        rows["observations"][1]["supersedes"] = UUID(int=999)  # orphan supersedes
+    source = world.build(world.rows)
+    restored_rows = copy.deepcopy(world.rows)
+    orphan(restored_rows)
+    restored = world.build(restored_rows)
+    out = world.verify(source, restored, catalogue=catalogue)
+    assert isinstance(out, OpsRefusal) and out.reason is OpsReason.INPUT_INVALID
+    full = world.verify(source, restored)
+    assert OpsReason.RESTORE_FK_ORPHAN in full.codes  # and the full catalogue does see the orphan
+
+
+def test_a_superset_catalogue_is_accepted_and_its_digest_is_bound_into_the_report(world):
+    extra = LIVING_FK_CATALOGUE + (FkEdge("jobs", ("tenant_id",), "tenants", ("tenant_id",)),)
+    base = world.pair()
+    wider = world.pair(catalogue=extra)
+    assert isinstance(wider, RestoreReport) and wider.report_digest != base.report_digest
+
+
+def test_an_old_expired_attestation_not_referenced_by_a_head_does_not_fail_a_healthy_restore(world):
+    world.rows["attestations"].append({**world.rows["attestations"][0], "attestation_id": "att-old", "revision_id": R1,
+                                       "expires_at": NOW - timedelta(days=90), "revoked_at": NOW - timedelta(days=80)})
+    report = world.pair()  # the history row is in BOTH manifests; only the head's attestation is judged
+    assert report.verified is True and report.codes == ()
+
+
+@pytest.mark.parametrize("field,value", [("revoked_at", NOW - timedelta(days=1)),
+                                         ("expires_at", NOW - timedelta(days=1))])
+def test_a_revoked_or_expired_attestation_of_a_head_revision_is_stale(world, field, value):
+    world.rows["attestations"][0][field] = value
+    report = world.pair()
+    assert report.codes == (OpsReason.RESTORE_ATTESTATION_STALE,)
+
+
+def test_head_version_must_equal_the_newest_acceptance_event(world):
+    """E3: version 1 with revision R1 has a matching event, but the events run to version 2."""
+    def lagging(rows):
+        rows["accepted_heads"][0].update({"version": 1, "revision_id": R1})
+    report = world.pair(lagging)
+    assert OpsReason.RESTORE_HEAD_MISMATCH in report.codes
+
+
+def test_head_revision_must_be_an_observed_observation(world):
+    def not_observed(rows):
+        rows["observations"][1]["kind"] = "PROPOSED"
+    report = world.pair(not_observed)
+    assert OpsReason.RESTORE_HEAD_MISMATCH in report.codes
+    assert _failed(report)[CheckName.HEAD].tables == ("accepted_heads",)
+
+
+def test_version_zero_head_with_events_is_a_head_mismatch(world):
+    report = world.pair(lambda r: r["accepted_heads"][0].update({"version": 0, "revision_id": None}))
+    assert OpsReason.RESTORE_HEAD_MISMATCH in report.codes
+
+
+def test_duplicate_primary_keys_and_duplicate_revision_ids_make_the_manifest_invalid(world):
+    dup_pk = copy.deepcopy(world.rows)
+    dup_pk["jobs"].append({**dup_pk["jobs"][0], "state": "DONE"})
+    out = world.build(dup_pk)
+    assert isinstance(out, OpsRefusal) and out.reason is OpsReason.INPUT_INVALID
+    dup_rev = copy.deepcopy(world.rows)
+    dup_rev["observations"][1]["revision_id"] = R1  # UNIQUE(tenant, source, revision_id)
+    out = world.build(dup_rev)
+    assert isinstance(out, OpsRefusal) and out.reason is OpsReason.INPUT_INVALID
+
+
+def test_legal_jsonb_payloads_up_to_the_sql_limits_verify(world):
+    """E4: a 100 KB text, a deep and a wide document are legal jsonb and must not refuse the table."""
+    rows = copy.deepcopy(world.rows)
+    rows["outbox"][0]["content"] = {"blob": "x" * 100_000, "deep": {"a": {"b": {"c": {"d": {"e": {"f": [1]}}}}}},
+                                    "wide": list(range(5_000))}
+    rows["observations"][0]["provenance"] = {"note": "y" * 60_000}
+    source = world.build(rows)
+    assert isinstance(source, RestoreManifest)
+    report = world.verify(source, world.build(copy.deepcopy(rows)))
+    assert report.verified is True
+
+
+def test_jsonb_above_the_sql_limit_is_still_refused(world):
+    rows = copy.deepcopy(world.rows)
+    rows["outbox"][0]["content"] = "x" * 262_145
+    out = world.build(rows)
+    assert isinstance(out, OpsRefusal) and out.reason is OpsReason.INPUT_INVALID
+
+
+# ---- E5: every living table, not just jobs -------------------------------------------------------------
+
+@pytest.mark.parametrize("table", LIVING_TABLES)
+def test_a_missing_row_in_any_living_table_is_a_count_mismatch_naming_that_table(world, table):
+    report = world.pair(lambda r: r[table].pop())
+    assert OpsReason.RESTORE_COUNT_MISMATCH in report.codes
+    assert table in _failed(report)[CheckName.COUNT].tables
+
+
+@pytest.mark.parametrize("table", LIVING_TABLES)
+def test_a_foreign_tenant_row_in_any_living_table_is_scope_foreign_naming_that_table(world, table):
+    report = world.pair(lambda r: r[table][0].__setitem__("tenant_id", "t2"))
+    assert OpsReason.RESTORE_SCOPE_FOREIGN in report.codes
+    assert table in _failed(report)[CheckName.SCOPE].tables
 
 
 # ---- source boundaries ----------------------------------------------------------------------------

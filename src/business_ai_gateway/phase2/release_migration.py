@@ -15,8 +15,14 @@ Public names
   plan validated against ``living.record_migration(version, requires)`` semantics: every ``requires``
   entry must be applied (or planned earlier in the same plan), a version whose numeric predecessor is
   neither applied nor planned is a gap (refused), re-applying an applied version is an idempotent no-op,
-  and every step of a unit that would really run must classify ``ADDITIVE``. The real rehearsal on a
-  disposable copy of the R1 database is NOT_RUN.
+  and every step of EVERY unit (applied or not) must classify ``ADDITIVE``; the plan digest binds a content
+  digest of each unit. The real rehearsal on a disposable copy of the R1 database is NOT_RUN.
+
+Documented limit (G2): a step is classified from the TYPED description the caller supplies. ``HARDEN_PRIVILEGES``,
+``SET_OWNER``, ``ENABLE_RLS`` and ``REPLACE_*`` are ``ADDITIVE`` although they narrow access, and a caller could
+describe a real ``REVOKE`` as ``HARDEN_PRIVILEGES``. This module cannot see SQL; the real SQL files are checked by
+the text guard in ``tests/phase2/test_release_sql_guard.py`` (a real ``REVOKE`` maps to ``HARDEN_PRIVILEGES`` by the
+guard itself, not by the caller), and a rollback plan refuses ``HARDEN_PRIVILEGES`` altogether.
 * ``ShadowObservation`` / ``compare_shadow`` / ``ShadowResult`` - digest comparison over a scripted R1
   corpus. Fixed priority ``R1_REGRESSION`` > ``SHADOW_INCOMPLETE`` > ``SHADOW_DIVERGENCE`` >
   ``R1_UNCHANGED``. Operation ids are typed fixture ids (pattern-checked), never free text. A result can
@@ -271,11 +277,12 @@ class RehearsalAction:
     version: str
     apply: bool  # False = already recorded: an idempotent no-op, like record_migration returning false
     step_count: int
+    content_digest: str = "0" * 64  # digest of the unit's version, requires and typed steps (applied or not)
 
     def __post_init__(self) -> None:
         if (type(self.version) is not str or _VERSION.fullmatch(self.version) is None
                 or type(self.apply) is not bool or type(self.step_count) is not int
-                or not 0 <= self.step_count <= MAX_STEPS_PER_UNIT):
+                or not 0 <= self.step_count <= MAX_STEPS_PER_UNIT or not is_digest(self.content_digest)):
             raise ValueError("REHEARSAL_ACTION_INVALID")
 
 
@@ -290,7 +297,7 @@ class RehearsalPlan:
                 or any(type(a) is not RehearsalAction for a in self.actions)):
             raise ValueError("REHEARSAL_PLAN_INVALID")
         object.__setattr__(self, "digest", canonical_digest(
-            {"kind": "rehearsal", "actions": [[a.version, a.apply, a.step_count]
+            {"kind": "rehearsal", "actions": [[a.version, a.apply, a.step_count, a.content_digest]
                                               for a in self.actions]}))
 
     @property
@@ -339,7 +346,8 @@ def plan_rehearsal(units: object, applied_versions: object, ids: object) -> Rehe
     plus the units planned before it. Refusals: ``INPUT_INVALID`` (structure, bounds, empty unit),
     ``REHEARSAL_REQUIRES_UNMET`` (a ``requires`` entry or the numeric predecessor of a version above 001
     is neither applied nor planned earlier), and the class code ``DESTRUCTIVE`` / ``UNCLASSIFIED`` /
-    ``SWITCH_ONLY`` / ``CONTRACT`` when a unit that would really run holds a step that is not ADDITIVE.
+    ``SWITCH_ONLY`` / ``CONTRACT`` when ANY unit (also one whose version is already applied) holds a step that is
+    not ADDITIVE. The plan digest binds a content digest of every unit.
     """
     snap_units = _tuple_of(units, MAX_UNITS, (tuple, list))
     applied_raw = _tuple_of(applied_versions, _MAX_APPLIED, (tuple, list, frozenset, set))
@@ -357,16 +365,21 @@ def plan_rehearsal(units: object, applied_versions: object, ids: object) -> Rehe
             return ops_refusal(OpsReason.REHEARSAL_REQUIRES_UNMET, ids)
         if version != "001" and f"{int(version) - 1:03d}" not in satisfied:
             return ops_refusal(OpsReason.REHEARSAL_REQUIRES_UNMET, ids)  # a gap in the sequence
-        if version in satisfied:  # idempotent re-apply: a no-op, so its steps never run
-            actions.append(RehearsalAction(version, False, len(steps)))
-            continue
+        # EVERY unit is classified, also one whose version is already applied: a destructive step hidden behind a
+        # recorded version must not pass today and run when the version is ever re-played
         classes = {classify_step(s) for s in steps}
         for worst in (StepClass.DESTRUCTIVE, StepClass.UNCLASSIFIED, StepClass.SWITCH_ONLY,
                       StepClass.CONTRACT):
             if worst in classes:
                 return ops_refusal(worst.as_reason(), ids)
+        content = canonical_digest({"kind": "unit", "version": version, "requires": list(requires), "steps": [
+            [s.phase.value, s.kind.value, s.schema.value, s.object_class.value]  # type: ignore[attr-defined]
+            for s in steps]})
+        if version in satisfied:  # idempotent re-apply: a no-op, so its steps never run
+            actions.append(RehearsalAction(version, False, len(steps), content))
+            continue
         satisfied.add(version)
-        actions.append(RehearsalAction(version, True, len(steps)))
+        actions.append(RehearsalAction(version, True, len(steps), content))
     return RehearsalPlan(tuple(actions))
 
 

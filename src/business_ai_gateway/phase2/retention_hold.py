@@ -7,9 +7,10 @@ module: the only positive answer is ``DeletionDecision`` - a plan whose ``execut
 Actual deletion is a separate, operator-authorized, unrecoverable-action gate outside this package.
 
 Public names: ``RetentionPolicy``, ``HoldLevel``, ``HoldReason``, ``Hold``, ``DeletionApproval``,
-``DeletionRequest``, ``HoldReleaseAudit``, ``HoldReleaseReceipt``, ``DeletionDecision``, ``RetentionLedger``
-(``add_policy``, ``register_object``, ``place_hold``, ``release_hold``, ``approve_deletion``,
-``decide_deletion``) and the module function ``decide_deletion(scope, request, ledger)``.
+``ApprovalRequest``, ``ReleaseRequest``, ``DeletionRequest``, ``HoldReleaseAudit``, ``HoldReleaseReceipt``,
+``DeletionDecision``, ``RetentionLedger`` (``add_policy``, ``register_object``, ``place_hold``,
+``request_release``, ``confirm_release``, ``request_approval``, ``confirm_approval``, ``decide_deletion``) and the
+module function ``decide_deletion(scope, request, ledger)``.
 
 Every ledger method takes the acting ``OpsScope`` first and runs the fixed order: structure -> entitlement ->
 ownership of EVERY referenced object -> per-tenant quota -> only then the ledger is read. Foreign and unknown
@@ -30,10 +31,24 @@ digest of the exact object list and class versions, and was not made stale by a 
 (also: wrong requester, lost authority, invalidated by a later hold), ``APPROVAL_EXPIRED``,
 ``APPROVAL_DIGEST_MISMATCH``, ``SELF_APPROVAL``, ``OBJECT_NOT_OWNED``.
 
-``release_hold`` needs an approver different from the requester who holds the platform authority, and is audited
-through the injected ``audit_fn(HoldReleaseAudit) -> True``: the release is applied only after the audit
-returned exactly ``True``; any other answer or exception leaves the hold active (``AUDIT_UNAVAILABLE``).
-The claim on a release is one atomic per-tenant slot, so two concurrent releases cannot both be audited.
+Four-eyes is a TWO-PHASE process (naming an approver is not approval). The initiator records a request
+(``request_approval`` / ``request_release``, naming the approver); the named, DIFFERENT approver then acts under
+his OWN ``OpsScope`` (``confirm_approval`` / ``confirm_release``): entitlement, ownership and the platform right
+are checked on THAT call's ``scope.actor_id``. Only the confirm call creates the stored ``DeletionApproval`` /
+applies the release; a named approver who never acts leaves ``APPROVAL_MISSING`` and nothing applied; the
+initiator confirming his own request is ``SELF_APPROVAL``. The release is audited through the injected
+``audit_fn(HoldReleaseAudit) -> True`` (naming the real requester and the real confirming actor) and applied only
+after the audit returned exactly ``True``; any other answer or exception leaves the hold active
+(``AUDIT_UNAVAILABLE``). The claim on a release is one atomic per-tenant slot, so two concurrent confirmations
+cannot both be audited.
+
+A ``Hold`` stores its company: a hold of another company and an unknown hold id give the identical ``NOT_FOUND``
+and port-call pattern (the entitlement gate runs first; the hold's own object/source reference is then owned-checked
+for the actor's company). TENANT-level holds are platform-wide: placing and releasing one needs the separate
+platform rights ``ACTION_PLACE_TENANT_HOLD`` / ``ACTION_RELEASE_TENANT_HOLD`` through the authority port, and
+every company has its own hold quota inside the tenant cap. The retention class of an object is fixed at its first
+registration; a class whose longest min_age is below the configured platform floor (``min_age_floor``) can be
+registered only by an actor holding ``ACTION_REGISTER_LOW_RETENTION``.
 
 Honest limits: a decision is a point-in-time plan; this package cannot make it atomic with the external
 deletion executor, which must re-decide immediately before acting. Placing a hold needs no second approver
@@ -70,20 +85,25 @@ from .ops_types import (
 from .workbench_types import OWNERSHIP_KINDS
 
 __all__ = [
-    "ACTION_APPROVE_DELETION", "ACTION_RELEASE_HOLD", "ACTION_SET_POLICY", "DeletionApproval", "DeletionDecision",
+    "ACTION_APPROVE_DELETION", "ACTION_PLACE_TENANT_HOLD", "ACTION_REGISTER_LOW_RETENTION", "ACTION_RELEASE_HOLD",
+    "ACTION_RELEASE_TENANT_HOLD", "ACTION_SET_POLICY", "ApprovalRequest", "DeletionApproval", "DeletionDecision",
     "DeletionRequest", "Hold", "HoldLevel", "HoldReason", "HoldReleaseAudit", "HoldReleaseReceipt",
-    "RetentionLedger", "RetentionPolicy", "decide_deletion",
+    "ReleaseRequest", "RetentionLedger", "RetentionPolicy", "decide_deletion",
 ]
 
 ACTION_SET_POLICY: Final = "retention.policy.set"
 ACTION_RELEASE_HOLD: Final = "retention.hold.release"
 ACTION_APPROVE_DELETION: Final = "retention.deletion.approve"
+ACTION_PLACE_TENANT_HOLD: Final = "retention.hold.place_tenant"
+ACTION_RELEASE_TENANT_HOLD: Final = "retention.hold.release_tenant"
+ACTION_REGISTER_LOW_RETENTION: Final = "retention.object.register_low_class"
 MAX_OBJECTS: Final = 64
 MAX_ID_CHARS: Final = 200
 MAX_APPROVAL_TTL: Final = timedelta(days=30)
 MAX_MIN_AGE: Final = timedelta(days=36_500)
 MAX_VERSION: Final = 1_000_000
 DEFAULT_CAP: Final = 1_000
+DEFAULT_MIN_AGE_FLOOR: Final = timedelta(days=1)
 
 
 class HoldLevel(StrEnum):
@@ -129,6 +149,7 @@ class Hold:
     reason: HoldReason
     placed_by: str
     placed_at: datetime
+    company_id: str = ""
 
     def __repr__(self) -> str:
         return "Hold(<redacted>)"
@@ -142,9 +163,40 @@ class DeletionApproval:
     approver: str
     approved_at: datetime
     expires_at: datetime
+    company_id: str = ""
 
     def __repr__(self) -> str:
         return "DeletionApproval(<redacted>)"
+
+
+@dataclass(frozen=True, slots=True)
+class ApprovalRequest:
+    """Phase 1 of four-eyes: a recorded request naming an approver. It is NOT an approval."""
+
+    approval_id: str
+    company_id: str
+    object_digest: str
+    requester: str
+    approver: str
+    requested_at: datetime
+    expires_at: datetime
+
+    def __repr__(self) -> str:
+        return "ApprovalRequest(<redacted>)"
+
+
+@dataclass(frozen=True, slots=True)
+class ReleaseRequest:
+    """Phase 1 of a hold release: a recorded request naming an approver. It releases nothing."""
+
+    hold_id: str
+    company_id: str
+    requester: str
+    approver: str
+    requested_at: datetime
+
+    def __repr__(self) -> str:
+        return "ReleaseRequest(<redacted>)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,9 +306,17 @@ class RetentionLedger:
     """Append-only per-tenant ledger with injected ports; see the module docstring."""
 
     def __init__(self, ids: object, ownership: object, entitlement: object, authority: object, clock: object,
-                 audit_fn: object = None, per_tenant_cap: int = DEFAULT_CAP) -> None:
+                 audit_fn: object = None, per_tenant_cap: int = DEFAULT_CAP, per_company_hold_cap: object = None,
+                 min_age_floor: object = DEFAULT_MIN_AGE_FLOOR) -> None:
         if not callable(clock) or (audit_fn is not None and not callable(audit_fn)):
             raise ValueError("RETENTION_LEDGER_INVALID")
+        if type(min_age_floor) is not timedelta or not timedelta(0) <= min_age_floor <= MAX_MIN_AGE:
+            raise ValueError("RETENTION_LEDGER_INVALID")
+        if per_company_hold_cap is None:  # a company may use at most half of the tenant's hold room by default
+            per_company_hold_cap = max(1, per_tenant_cap // 2) if is_exact_int(per_tenant_cap, 1) else 1
+        if not is_exact_int(per_company_hold_cap, 1, per_tenant_cap if is_exact_int(per_tenant_cap) else 1):
+            raise ValueError("RETENTION_LEDGER_INVALID")
+        self._floor_age: timedelta = min_age_floor
         self._ids, self._ownership, self._entitlement = ids, ownership, entitlement
         self._authority, self._clock, self._audit = authority, clock, audit_fn
         self._policies = TenantBoundedMap(per_tenant_cap, ids)
@@ -264,6 +324,9 @@ class RetentionLedger:
         self._holds = TenantBoundedMap(per_tenant_cap, ids)
         self._releases = TenantBoundedMap(per_tenant_cap, ids)
         self._approvals = TenantBoundedMap(per_tenant_cap, ids)
+        self._approval_requests = TenantBoundedMap(per_tenant_cap, ids)
+        self._release_requests = TenantBoundedMap(per_tenant_cap, ids)
+        self._company_holds = TenantSlotCounter(per_company_hold_cap)  # keyed (tenant, company); holds never expire
         self._claims = TenantSlotCounter(1)
 
     def __repr__(self) -> str:
@@ -286,6 +349,8 @@ class RetentionLedger:
     def _floor(self, tenant: str) -> datetime | None:
         stamps = [h.placed_at for _, h in self._holds.items(tenant)]  # type: ignore[attr-defined]
         stamps += [a.approved_at for _, a in self._approvals.items(tenant)]  # type: ignore[attr-defined]
+        stamps += [r.requested_at for _, r in self._approval_requests.items(tenant)]  # type: ignore[attr-defined]
+        stamps += [r.requested_at for _, r in self._release_requests.items(tenant)]  # type: ignore[attr-defined]
         stamps += [o.retained_from for _, o in self._objects.items(tenant)]  # type: ignore[attr-defined]
         return max(stamps) if stamps else None
 
@@ -360,8 +425,17 @@ class RetentionLedger:
         raw = self._raw_now()
         if raw is None:
             return self._refuse(OpsReason.DEPENDENCY_FAILED)
-        if retention_class not in self._policy_state(tenant):
+        state = self._policy_state(tenant)
+        if retention_class not in state:
             return self._refuse(OpsReason.NOT_FOUND)
+        if self._objects.get(tenant, f"{kind}:{object_id}") is not None:  # the class of a known object is fixed
+            return self._refuse(OpsReason.DUPLICATE_SUPPRESSED)
+        if state[retention_class][1] < self._floor_age:  # an almost-instant class is a platform decision
+            allowed = self._authorized(scope.actor_id, ACTION_REGISTER_LOW_RETENTION)  # type: ignore[attr-defined]
+            if allowed is None:
+                return self._refuse(OpsReason.DEPENDENCY_FAILED)
+            if not allowed:
+                return self._refuse(OpsReason.NOT_AUTHORIZED)
         record = _Object(kind, object_id, source_id, retention_class, self._stamp(tenant, raw))  # type: ignore[arg-type]
         refused = self._objects.insert(tenant, f"{kind}:{object_id}", record)
         return record if refused is None else refused
@@ -387,25 +461,65 @@ class RetentionLedger:
         refusal = self._gate(scope, refs)  # type: ignore[arg-type]
         if refusal is not None:
             return refusal
-        tenant, actor = scope.tenant_id, scope.actor_id  # type: ignore[attr-defined]
+        tenant, company, actor = scope.tenant_id, scope.company_id, scope.actor_id  # type: ignore[attr-defined]
+        if level is HoldLevel.TENANT:  # blocks every company of the tenant: a platform-level right
+            allowed = self._authorized(actor, ACTION_PLACE_TENANT_HOLD)
+            if allowed is None:
+                return self._refuse(OpsReason.DEPENDENCY_FAILED)
+            if not allowed:
+                return self._refuse(OpsReason.NOT_AUTHORIZED)
         raw = self._raw_now()
         hold_id = self._new_id()
         if raw is None or hold_id is None:
             return self._refuse(OpsReason.DEPENDENCY_FAILED)
-        hold = Hold(hold_id, level, kind, target, reason, actor, self._stamp(tenant, raw))  # type: ignore[arg-type]
+        if not self._company_holds.try_acquire(tenant, company):  # type: ignore[arg-type]
+            return self._refuse(OpsReason.QUOTA_EXCEEDED)  # this company's share of the tenant's hold room
+        hold = Hold(hold_id, level, kind, target, reason, actor, self._stamp(tenant, raw), company)  # type: ignore[arg-type]
         refused = self._holds.insert(tenant, hold_id, hold)
         if refused is not None:
+            self._company_holds.release(tenant, company)  # type: ignore[arg-type]
             return self._refuse(OpsReason.INTERNAL_REFUSED) if refused.reason is OpsReason.DUPLICATE_SUPPRESSED else refused
         return hold
 
+    def _own_hold(self, scope: OpsScope, hold_id: str) -> Hold | OpsRefusal:
+        """The hold of THIS company, after the ownership gate on the hold's own reference.
+
+        Entitlement is asked first (by the caller). A hold of another company and an unknown id are one identical
+        ``NOT_FOUND`` with the identical port calls (none beyond the entitlement). TENANT holds need the platform right.
+        """
+        hold = self._holds.get(scope.tenant_id, hold_id)
+        if type(hold) is not Hold or hold.company_id != scope.company_id:
+            return self._refuse(OpsReason.NOT_FOUND)
+        refs: tuple[tuple[str, str], ...]
+        if hold.level is HoldLevel.OBJECT:
+            refs = ((hold.object_kind, hold.target),)
+        elif hold.level is HoldLevel.SOURCE:
+            refs = (("source_id", hold.target),)
+        else:
+            refs = ()
+        refusal = self._gate(scope, refs)
+        if refusal is not None:
+            return refusal
+        if hold.level is HoldLevel.TENANT:
+            allowed = self._authorized(scope.actor_id, ACTION_RELEASE_TENANT_HOLD)
+            if allowed is None:
+                return self._refuse(OpsReason.DEPENDENCY_FAILED)
+            if not allowed:
+                return self._refuse(OpsReason.NOT_AUTHORIZED)
+        return hold
+
     @_guarded
-    def release_hold(self, scope: object, hold_id: object, approver_id: object) -> HoldReleaseReceipt | OpsRefusal:
+    def request_release(self, scope: object, hold_id: object, approver_id: object) -> ReleaseRequest | OpsRefusal:
+        """Phase 1: record that ``scope.actor_id`` wants ``hold_id`` released and names the approver. Releases nothing."""
         if not _short(hold_id) or not _short(approver_id):
             return self._refuse(OpsReason.INPUT_INVALID)
         refusal = self._gate(scope, ())
         if refusal is not None:
             return refusal
         tenant, company, actor = scope.tenant_id, scope.company_id, scope.actor_id  # type: ignore[attr-defined]
+        hold = self._own_hold(scope, hold_id)  # type: ignore[arg-type]
+        if type(hold) is not Hold:
+            return hold  # type: ignore[return-value]
         if approver_id == actor or same_person(approver_id, actor):
             return self._refuse(OpsReason.SELF_APPROVAL)
         allowed = self._authorized(approver_id, ACTION_RELEASE_HOLD)  # type: ignore[arg-type]
@@ -413,8 +527,43 @@ class RetentionLedger:
             return self._refuse(OpsReason.DEPENDENCY_FAILED)
         if not allowed:
             return self._refuse(OpsReason.NOT_AUTHORIZED)
-        if self._holds.get(tenant, hold_id) is None:
-            return self._refuse(OpsReason.NOT_FOUND)
+        if self._releases.get(tenant, hold_id) is not None:
+            return self._refuse(OpsReason.DUPLICATE_SUPPRESSED)
+        raw = self._raw_now()
+        if raw is None:
+            return self._refuse(OpsReason.DEPENDENCY_FAILED)
+        request = ReleaseRequest(hold_id, company, actor, approver_id, self._stamp(tenant, raw))  # type: ignore[arg-type]
+        refused = self._release_requests.insert(tenant, hold_id, request)  # type: ignore[arg-type]
+        if refused is not None and refused.reason is OpsReason.DUPLICATE_SUPPRESSED:  # a newer request supersedes
+            refused = self._release_requests.replace(tenant, hold_id, request)  # type: ignore[arg-type]
+        return request if refused is None else refused
+
+    @_guarded
+    def confirm_release(self, scope: object, hold_id: object) -> HoldReleaseReceipt | OpsRefusal:
+        """Phase 2: the NAMED, different approver acts under his own scope; only this call applies the release."""
+        if not _short(hold_id):
+            return self._refuse(OpsReason.INPUT_INVALID)
+        refusal = self._gate(scope, ())
+        if refusal is not None:
+            return refusal
+        tenant, company, actor = scope.tenant_id, scope.company_id, scope.actor_id  # type: ignore[attr-defined]
+        hold = self._own_hold(scope, hold_id)  # type: ignore[arg-type]
+        if type(hold) is not Hold:
+            return hold  # type: ignore[return-value]
+        if self._releases.get(tenant, hold_id) is not None:
+            return self._refuse(OpsReason.DUPLICATE_SUPPRESSED)
+        request = self._release_requests.get(tenant, hold_id)  # type: ignore[arg-type]
+        if type(request) is not ReleaseRequest or request.company_id != company:
+            return self._refuse(OpsReason.APPROVAL_MISSING)
+        if request.requester == actor or same_person(request.requester, actor):
+            return self._refuse(OpsReason.SELF_APPROVAL)
+        allowed = self._authorized(actor, ACTION_RELEASE_HOLD)
+        if allowed is None:
+            return self._refuse(OpsReason.DEPENDENCY_FAILED)
+        if not allowed:
+            return self._refuse(OpsReason.NOT_AUTHORIZED)
+        if request.approver != actor:  # somebody else was named: this actor was not asked
+            return self._refuse(OpsReason.APPROVAL_MISSING)
         if self._audit is None:
             return self._refuse(OpsReason.AUDIT_UNAVAILABLE)
         raw = self._raw_now()
@@ -425,7 +574,7 @@ class RetentionLedger:
             return self._refuse(OpsReason.DUPLICATE_SUPPRESSED)
         applied = False
         try:
-            record = HoldReleaseAudit("HOLD_RELEASED", tenant, company, actor, approver_id, hold_id, at)  # type: ignore[arg-type]
+            record = HoldReleaseAudit("HOLD_RELEASED", tenant, company, request.requester, actor, hold_id, at)  # type: ignore[arg-type]
             try:
                 audited = self._audit(record)  # type: ignore[operator]
             except Exception:  # noqa: BLE001
@@ -449,14 +598,15 @@ class RetentionLedger:
         return (found if len(found) == len(records) else None), sources
 
     @_guarded
-    def approve_deletion(self, scope: object, request: object, approver_id: object,
-                         expires_at: object) -> DeletionApproval | OpsRefusal:
+    def request_approval(self, scope: object, request: object, approver_id: object,
+                         expires_at: object) -> ApprovalRequest | OpsRefusal:
+        """Phase 1: record a deletion-approval request naming the approver. It is NOT an approval."""
         if (type(request) is not DeletionRequest or not _short(approver_id) or not is_aware_datetime(expires_at)):
             return self._refuse(OpsReason.INPUT_INVALID)
         refusal = self._gate(scope, tuple((request.object_kind, i) for i in request.object_ids))
         if refusal is not None:
             return self._refuse(OpsReason.OBJECT_NOT_OWNED) if refusal.reason is OpsReason.NOT_FOUND else refusal
-        tenant, actor = scope.tenant_id, scope.actor_id  # type: ignore[attr-defined]
+        tenant, company, actor = scope.tenant_id, scope.company_id, scope.actor_id  # type: ignore[attr-defined]
         if approver_id == actor or same_person(approver_id, actor):
             return self._refuse(OpsReason.SELF_APPROVAL)
         allowed = self._authorized(approver_id, ACTION_APPROVE_DELETION)  # type: ignore[arg-type]
@@ -477,8 +627,50 @@ class RetentionLedger:
         approval_id = self._new_id()
         if approval_id is None:
             return self._refuse(OpsReason.DEPENDENCY_FAILED)
-        approval = DeletionApproval(approval_id, digest, actor, approver_id, now, expires_at)  # type: ignore[arg-type]
-        refused = self._approvals.insert(tenant, approval_id, approval)
+        pending = ApprovalRequest(approval_id, company, digest, actor, approver_id, now, expires_at)  # type: ignore[arg-type]
+        refused = self._approval_requests.insert(tenant, approval_id, pending)
+        return pending if refused is None else refused
+
+    @_guarded
+    def confirm_approval(self, scope: object, request: object) -> DeletionApproval | OpsRefusal:
+        """Phase 2: the NAMED, different approver acts under his OWN scope (``request.approval_id`` is the pending id).
+
+        Entitlement, ownership of every object and the platform right are checked for ``scope.actor_id`` of THIS call;
+        only this call stores the ``DeletionApproval`` (approver = the real acting person).
+        """
+        if type(request) is not DeletionRequest:
+            return self._refuse(OpsReason.INPUT_INVALID)
+        refusal = self._gate(scope, tuple((request.object_kind, i) for i in request.object_ids))
+        if refusal is not None:
+            return self._refuse(OpsReason.OBJECT_NOT_OWNED) if refusal.reason is OpsReason.NOT_FOUND else refusal
+        tenant, company, actor = scope.tenant_id, scope.company_id, scope.actor_id  # type: ignore[attr-defined]
+        pending = self._approval_requests.get(tenant, request.approval_id)
+        if type(pending) is not ApprovalRequest or pending.company_id != company:  # unknown == another company's
+            return self._refuse(OpsReason.APPROVAL_MISSING)
+        if pending.requester == actor or same_person(pending.requester, actor):
+            return self._refuse(OpsReason.SELF_APPROVAL)
+        allowed = self._authorized(actor, ACTION_APPROVE_DELETION)
+        if allowed is None:
+            return self._refuse(OpsReason.DEPENDENCY_FAILED)
+        if not allowed:
+            return self._refuse(OpsReason.NOT_AUTHORIZED)
+        if pending.approver != actor:  # somebody else was named: this actor was not asked
+            return self._refuse(OpsReason.APPROVAL_MISSING)
+        raw = self._raw_now()
+        if raw is None:
+            return self._refuse(OpsReason.DEPENDENCY_FAILED)
+        now = self._stamp(tenant, raw)
+        if now >= pending.expires_at:
+            return self._refuse(OpsReason.APPROVAL_EXPIRED)
+        objects, _sources = self._load(scope, request)  # type: ignore[arg-type]
+        if objects is None:
+            return self._refuse(OpsReason.NOT_FOUND)
+        digest = self._digest(scope, request.object_kind, objects, self._policy_state(tenant))  # type: ignore[arg-type]
+        if digest != pending.object_digest:
+            return self._refuse(OpsReason.APPROVAL_DIGEST_MISMATCH)
+        approval = DeletionApproval(pending.approval_id, digest, pending.requester, actor, now, pending.expires_at,
+                                    company)
+        refused = self._approvals.insert(tenant, pending.approval_id, approval)
         return approval if refused is None else refused
 
     @_guarded
@@ -508,7 +700,8 @@ class RetentionLedger:
             return self._refuse(OpsReason.APPROVAL_MISSING)
         if approval.approver == actor or same_person(approval.approver, actor):
             return self._refuse(OpsReason.SELF_APPROVAL)
-        if approval.requester != actor or self._authorized(approval.approver, ACTION_APPROVE_DELETION) is not True:
+        if (approval.requester != actor or approval.company_id != scope.company_id  # type: ignore[attr-defined]
+                or self._authorized(approval.approver, ACTION_APPROVE_DELETION) is not True):
             return self._refuse(OpsReason.APPROVAL_MISSING)
         if any(h.placed_at >= approval.approved_at and self._covers(h, kind, ids, sources) for h in holds):
             return self._refuse(OpsReason.APPROVAL_MISSING)

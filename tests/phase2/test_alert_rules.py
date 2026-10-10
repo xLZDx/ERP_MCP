@@ -83,9 +83,13 @@ class Env:
         for t, c, a, s in (("t1", "c1", "a1", "SRC-1"), ("t2", "c2", "a2", "SRC-2")):
             self.ports.ent.grant(t, a, c)
             self.ports.owner.add(t, c, "source_id", s)
+        self.ports.ent.grant("t1", "a1b", "c1b")  # a second company of tenant t1
+        self.ports.owner.add("t1", "c1b", "source_id", "SRC-1B")
         self.clock = ManualClock()
-        self.engine = AlertEngine(self.ports, self.ports, FakeCorrelationSource(), self.clock, **kwargs)
         self.sink = FakeAlertSink()
+        self.sink2 = FakeAlertSink()
+        self.engine = AlertEngine(self.ports, self.ports, FakeCorrelationSource(), self.clock,
+                                  sinks={"t1": self.sink, "t2": self.sink2}, **kwargs)
 
     def rule(self, kind=RuleKind.CURSOR_LAG, scope=S1, subject="SRC-1", threshold=10, for_d=0, recover=2, rec_d=0,
              no_data=60):
@@ -295,16 +299,16 @@ def test_failed_delivery_keeps_the_event_undelivered_and_retries():
     env.rule()
     env.obs(50)
     env.sink.fail_next(1)
-    out = env.engine.deliver_events(S1, env.sink)
+    out = env.engine.deliver_events(S1)
     assert type(out) is AlertDeliveryOutcome and out.reason is OpsReason.ALERT_DELIVERY_FAILED
     assert out.delivered_count == 0 and out.remaining_count == 1 and POISON not in repr(out)
     assert env.sink.sent == [] and len(env.engine.undelivered(S1)) == 1
     record = env.engine.records(S1)[0]
     assert record.delivered is False and record.attempts == 1
-    ok = env.engine.deliver_events(S1, env.sink)
+    ok = env.engine.deliver_events(S1)
     assert ok.reason is None and ok.delivered_count == 1 and ok.remaining_count == 0
     assert [e.event_type for e in env.sink.sent] == [EventType.FIRED] and env.engine.undelivered(S1) == ()
-    again = env.engine.deliver_events(S1, env.sink)
+    again = env.engine.deliver_events(S1)
     assert again.delivered_count == 0 and len(env.sink.sent) == 1 and env.sink.attempts == 2
 
 
@@ -314,7 +318,7 @@ def test_every_sink_failure_mode_is_a_visible_delivery_failure(mode):
     env.rule()
     env.obs(50)
     env.sink.fail_next(1, mode)
-    out = env.engine.deliver_events(S1, env.sink)
+    out = env.engine.deliver_events(S1)
     assert out.reason is OpsReason.ALERT_DELIVERY_FAILED and env.sink.sent == []
     assert env.engine.records(S1)[0].delivered is False
 
@@ -325,9 +329,9 @@ def test_delivery_order_is_preserved_and_stops_at_the_first_failure():
     env.obs(50)
     env.obs(0, adv=1)
     env.sink.fail_next(1)
-    out = env.engine.deliver_events(S1, env.sink)
+    out = env.engine.deliver_events(S1)
     assert out.remaining_count == 2 and env.sink.sent == []  # RECOVERED was not sent ahead of FIRED
-    out = env.engine.deliver_events(S1, env.sink)
+    out = env.engine.deliver_events(S1)
     assert [e.event_type for e in env.sink.sent] == [EventType.FIRED, EventType.RECOVERED] and out.reason is None
 
 
@@ -335,12 +339,14 @@ def test_hostile_sink_and_scope_for_delivery():
     env = Env()
     env.rule()
     env.obs(50)
-    for bad in (None, 5, object(), "sink"):
-        assert env.engine.deliver_events(S1, bad).reason is OpsReason.INPUT_INVALID
+    p = SpyPorts()
+    for bad in ([], {"t1": object()}, {"": env.sink}, {EvilStr("t1"): env.sink}, {"t1": None}):
+        with pytest.raises(ValueError):
+            AlertEngine(p, p, FakeCorrelationSource(), ManualClock(), sinks=bad)
     for bad in (None, 5, object(), EvilStr("t1"), object.__new__(OpsScope)):
-        assert type(env.engine.deliver_events(bad, env.sink)) is OpsRefusal
+        assert type(env.engine.deliver_events(bad)) is OpsRefusal
     stranger = OpsScope("t1", "c1", "stranger")
-    assert env.engine.deliver_events(stranger, env.sink).reason is OpsReason.NOT_ENTITLED
+    assert env.engine.deliver_events(stranger).reason is OpsReason.NOT_ENTITLED
     assert env.sink.attempts == 0
 
 
@@ -352,7 +358,7 @@ def test_concurrent_delivery_sends_each_event_exactly_once():
 
     def work():
         for _ in range(20):
-            env.engine.deliver_events(S1, env.sink)
+            env.engine.deliver_events(S1)
 
     threads = [threading.Thread(target=work) for _ in range(6)]
     for t in threads:
@@ -391,8 +397,8 @@ def test_tenants_have_isolated_state_events_and_delivery():
     assert env.state() is AlertState.FIRING
     env.obs(50, scope=S2, subject="SRC-2", adv=1)
     assert len(env.types(S1)) == 1 and len(env.types(S2)) == 1
-    sink2 = FakeAlertSink()
-    env.engine.deliver_events(S2, sink2)
+    sink2 = env.sink2
+    env.engine.deliver_events(S2)
     assert len(sink2.sent) == 1 and sink2.sent[0].tenant_id == "t2" and len(env.engine.undelivered(S1)) == 1
     assert "t1" not in repr(env.engine.events(S2)) and "t2" not in repr(env.engine.events(S1))
 
@@ -403,10 +409,10 @@ def test_one_tenants_failing_sink_does_not_stop_the_other_tenant():
     env.rule(scope=S2, subject="SRC-2")
     env.obs(50, scope=S1, subject="SRC-1")
     env.obs(50, scope=S2, subject="SRC-2")
-    bad, good = FakeAlertSink(), FakeAlertSink()
+    bad, good = env.sink, env.sink2
     bad.fail_next(5)
-    assert env.engine.deliver_events(S1, bad).reason is OpsReason.ALERT_DELIVERY_FAILED
-    assert env.engine.deliver_events(S2, good).reason is None and len(good.sent) == 1
+    assert env.engine.deliver_events(S1).reason is OpsReason.ALERT_DELIVERY_FAILED
+    assert env.engine.deliver_events(S2).reason is None and len(good.sent) == 1
 
 
 def test_foreign_and_unknown_subject_are_identical_and_touch_no_state():
@@ -572,6 +578,147 @@ def test_event_ids_are_deterministic_and_stable_for_sink_dedup():
         env.obs(50)
         ids.append([e.event_id for e in env.engine.events(S1)])
     assert ids[0] == ids[1] and len(ids[0][0]) == 32
+
+
+# ---- S9 review fix batch ----------------------------------------------------------------------------
+
+S1B = OpsScope("t1", "c1b", "a1b")
+
+
+@pytest.mark.parametrize("method", ["set_rule", "tick", "status", "events", "observe"])
+def test_foreign_and_unknown_subject_are_identical_for_every_method(method):  # C1
+    def call(env, subject):
+        e = env.engine
+        return {
+            "set_rule": lambda: e.set_rule(S1, subject, AlertRule(RuleKind.OUTBOX_LAG, 5, 0, 1, 0)),
+            "tick": lambda: e.tick(S1, subject, RuleKind.CURSOR_LAG),
+            "status": lambda: e.status(S1, subject, RuleKind.CURSOR_LAG),
+            "events": lambda: e.events(S1, subject),
+            "observe": lambda: e.observe(S1, subject, RuleKind.CURSOR_LAG, 5),
+        }[method]()
+
+    foreign, unknown = Env(), Env()
+    for env in (foreign, unknown):
+        env.rule()
+        env.ports.log.clear()
+    f = call(foreign, "SRC-2")  # SRC-2 belongs to tenant 2
+    u = call(unknown, "SRC-NOPE")
+    assert type(f) is OpsRefusal and type(u) is OpsRefusal
+    assert f.reason is u.reason is OpsReason.NOT_FOUND and foreign.ports.log == unknown.ports.log
+    assert [c[0] for c in foreign.ports.log] == ["entitled", "owns"]
+    assert foreign.types() == [] == unknown.types()
+
+
+def test_events_and_delivery_only_touch_the_callers_company():  # C1
+    env = Env()
+    env.rule(subject="SRC-1")
+    env.rule(scope=S1B, subject="SRC-1B")
+    env.obs(50)
+    env.obs(50, scope=S1B, subject="SRC-1B")
+    assert [e.subject_id for e in env.engine.events(S1)] == ["SRC-1"]
+    assert [e.subject_id for e in env.engine.events(S1B)] == ["SRC-1B"]
+    assert [e.subject_id for e in env.engine.undelivered(S1B)] == ["SRC-1B"]
+    assert [r.event.subject_id for r in env.engine.records(S1B)] == ["SRC-1B"]
+    assert env.engine.events(S1B, "SRC-1").reason is OpsReason.NOT_FOUND  # not even by naming the subject
+    out = env.engine.deliver_events(S1B)
+    assert out.reason is None and out.delivered_count == 1
+    assert [e.subject_id for e in env.sink.sent] == ["SRC-1B"]
+    assert len(env.engine.undelivered(S1)) == 1 and env.engine.undelivered(S1B) == ()
+    assert env.state(scope=S1B, subject="SRC-1B") is AlertState.FIRING and env.state() is AlertState.FIRING
+
+
+def test_the_sink_cannot_be_chosen_by_the_caller():  # C1 / B2 analogue
+    import inspect
+
+    assert list(inspect.signature(AlertEngine.deliver_events).parameters) == ["self", "scope"]
+    env = Env()
+    env.rule()
+    env.obs(50)
+    env.sink.fail_next(1)
+    assert env.engine.deliver_events(S1).reason is OpsReason.ALERT_DELIVERY_FAILED
+    assert len(env.engine.undelivered(S1)) == 1
+    p = SpyPorts()
+    engine = AlertEngine(p, p, FakeCorrelationSource(), ManualClock())  # no bound sink at all
+    p.ent.grant("t1", "a1", "c1")
+    assert engine.deliver_events(S1).reason is OpsReason.DEPENDENCY_FAILED
+
+
+def test_an_undeliverable_event_is_parked_after_the_attempt_limit_and_later_events_continue():  # C2
+    env = Env(max_delivery_attempts=2)
+    env.rule()
+    env.obs(50)
+    env.obs(0, adv=1)  # FIRED then RECOVERED
+    env.sink.fail_next(2)
+    first = env.engine.deliver_events(S1)
+    assert first.reason is OpsReason.ALERT_DELIVERY_FAILED and first.remaining_count == 2 and first.parked_count == 0
+    second = env.engine.deliver_events(S1)  # FIRED fails its 2nd attempt: parked; RECOVERED goes through
+    assert second.delivered_count == 1 and second.remaining_count == 0 and second.parked_count == 1
+    assert second.reason is OpsReason.ALERT_DELIVERY_FAILED
+    assert [e.event_type for e in env.sink.sent] == [EventType.RECOVERED]
+    records = env.engine.records(S1)
+    assert [(r.event.event_type, r.delivered, r.parked, r.attempts) for r in records] == [
+        (EventType.FIRED, False, True, 2), (EventType.RECOVERED, True, False, 1)]
+    assert [e.event_type for e in env.engine.undelivered(S1)] == [EventType.FIRED]  # still visible
+    attempts = env.sink.attempts
+    third = env.engine.deliver_events(S1)
+    assert env.sink.attempts == attempts and third.parked_count == 1 and third.delivered_count == 0
+
+
+def test_delivery_attempt_limit_config_is_validated():  # C2
+    p = SpyPorts()
+    for bad in (0, True, 1.5, 101):
+        with pytest.raises(ValueError):
+            AlertEngine(p, p, FakeCorrelationSource(), ManualClock(), max_delivery_attempts=bad)
+
+
+def test_a_dropped_sample_is_visible_in_the_status_counter():  # C3
+    env = Env()
+    env.rule()
+    key = env.engine._key("c1", "SRC-1", RuleKind.CURSOR_LAG)
+    assert env.engine.status(S1, "SRC-1", RuleKind.CURSOR_LAG).dropped_count == 0
+    assert env.engine._locks.try_acquire("t1", key)  # another step holds the lock
+    refused = env.obs(50)
+    env.engine._locks.release("t1", key)
+    assert refused.reason is OpsReason.INTERNAL_REFUSED
+    assert env.engine.status(S1, "SRC-1", RuleKind.CURSOR_LAG).dropped_count == 1
+    assert env.obs(50) is None and env.engine.status(S1, "SRC-1", RuleKind.CURSOR_LAG).dropped_count == 1
+
+
+def test_an_internal_defect_in_a_step_also_counts_as_a_dropped_sample():  # C3
+    env = Env()
+    env.rule()
+    env.engine._events = None  # a broken store: the step raises inside the lock
+    refused = env.obs(50)
+    assert refused.reason is OpsReason.INTERNAL_REFUSED
+    assert env.engine.status(S1, "SRC-1", RuleKind.CURSOR_LAG).dropped_count == 1
+
+
+def test_quota_exhaustion_is_loud_counted_and_never_evicts():  # C4
+    env = Env(rules_per_tenant=1, events_per_tenant=1)
+    env.rule()
+    assert env.engine.exhausted_count(S1) == 0
+    assert env.engine.set_rule(S1, "SRC-1", AlertRule(RuleKind.OUTBOX_LAG, 10, 0, 2, 0)).reason         is OpsReason.QUOTA_EXCEEDED
+    assert env.engine.exhausted_count(S1) == 1  # rule slots exhausted
+    env.obs(50)
+    refused = env.obs(0, adv=1)  # the RECOVERED event has no slot
+    assert refused.reason is OpsReason.QUOTA_EXCEEDED and env.state() is AlertState.FIRING
+    status = env.engine.status(S1, "SRC-1", RuleKind.CURSOR_LAG)
+    assert status.exhausted_count == 1 and env.engine.exhausted_count(S1) == 2
+    again = env.obs(0, adv=1)
+    assert again.reason is OpsReason.QUOTA_EXCEEDED and env.engine.exhausted_count(S1) == 3
+    assert len(env.types()) == 1  # nothing evicted
+    assert env.engine.exhausted_count(S2) == 0 and type(env.engine.exhausted_count(object())) is OpsRefusal
+
+
+def test_unhashable_or_forged_reasons_raise_value_error_not_type_error():  # A4
+    now = T0
+    for reason in (["x"], {"a": 1}, EvilStr("ALERT_FIRED")):
+        with pytest.raises(ValueError):
+            AlertEvent("e" * 32, "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, reason, 1, now)
+        with pytest.raises(ValueError):
+            AlertDeliveryOutcome(0, 1, reason, "CORR-000001")
+    with pytest.raises(ValueError):
+        AlertEvent("e" * 32, "t1", "SRC-1", RuleKind.CURSOR_LAG, ["FIRED"], OpsReason.ALERT_FIRED, 1, now)
 
 
 # ---- import boundary --------------------------------------------------------------------------------

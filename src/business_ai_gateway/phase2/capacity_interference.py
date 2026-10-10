@@ -9,7 +9,7 @@ guarantees (``TARGET_LABEL``).
   ``(loaded - baseline) / baseline``. The verdict uses an exact comparison
   ``loaded - baseline <= target * baseline`` (equal is ``WITHIN_TARGET``), never the rounded ratio; the
   displayed ratio is rounded half-even to 6 places. A missing/zero/negative/insufficient baseline is
-  ``BASELINE_INVALID``. Inputs are integer microseconds or ``PercentileValue`` objects.
+  ``BASELINE_INVALID``. Inputs are integer microseconds or p95 ``PercentileValue`` objects (any other ``p`` is ``INPUT_INVALID``).
 * ``BudgetPolicy`` / ``make_policy`` - ``min_background_slots >= 1`` (a policy that lets background starve
   is REFUSED as ``BACKGROUND_STARVED``), per-tenant ``tenant_share_slots``, conservative defaults
   ``capture_per_backend = 1`` and ``writer_per_source = 1``.
@@ -17,7 +17,9 @@ guarantees (``TARGET_LABEL``).
   are READ from the reused ``PhysicalBackendBudget`` (``per_backend_limit`` / ``total_limit``); aliases of
   one backend id (``DB-1``, `` db-1 ``) share one counter via ``BackendId.normalize``. Phases per backend:
   (A) background up to its guaranteed minimum, (B) interactive up to the remaining slots, (C) the rest of
-  the background. Every grant is also bounded by the tenant's share on that backend, the capture/writer
+  the background. One total-limit slot is held back for every backend that has interactive demand until that
+  backend's interactive work has been granted (phase A and B), so background can never take the whole
+  ``total_limit``; a ``total_limit`` below the number of such backends is ``BACKEND_BUDGET_EXCEEDED``. Every grant is also bounded by the tenant's share on that backend, the capture/writer
   caps and the total limit; a cut demand is reported as deferred with ``TENANT_SHARE_EXCEEDED`` or
   ``BACKEND_BUDGET_EXCEEDED`` (the first limiting step of the last grant attempt). Input order is the priority order
   inside a phase; tenant fairness is bounded by the share only. Allocations refer to demand items by
@@ -122,8 +124,10 @@ def _p95_us(value: object) -> int | OpsReason:
         return OpsReason.CONFIG_LIMIT_NOT_CAPACITY
     if type(value) is PercentileValue:
         try:
-            number, reason = value.value, value.reason
+            number, reason, p = value.value, value.reason, value.p
         except AttributeError:
+            return OpsReason.INPUT_INVALID
+        if type(p) is not int or p != 95:  # a p50/p99 value must never be read as a p95 verdict input
             return OpsReason.INPUT_INVALID
         if number is None:
             return reason if type(reason) is OpsReason else OpsReason.INPUT_INVALID
@@ -294,7 +298,8 @@ class _Ledger:
         self.reason: list[OpsReason | None] = [None] * n
 
 
-def _grant(ledger: _Ledger, idx: int, item: tuple[str, str, str, WorkClass, int], pool_left: int) -> int:
+def _grant(ledger: _Ledger, idx: int, item: tuple[str, str, str, WorkClass, int], pool_left: int,
+           reserve: int = 0) -> int:
     """Grant as much of item ``idx``'s unmet demand as every limit allows; returns the slots granted."""
     tenant, backend, source, work, count = item
     want = count - ledger.granted[idx]
@@ -309,7 +314,7 @@ def _grant(ledger: _Ledger, idx: int, item: tuple[str, str, str, WorkClass, int]
     else:
         cap = take
     for limit in (cap, pool_left, ledger.per_limit - ledger.backend.get(backend, 0),
-                  ledger.total_limit - ledger.total):
+                  ledger.total_limit - ledger.total - reserve):
         if take > limit:
             take, reason = max(limit, 0), reason or OpsReason.BACKEND_BUDGET_EXCEEDED
     ledger.granted[idx] += take
@@ -344,13 +349,21 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
         interactive = [i for i, it in enumerate(items) if it[3] is WorkClass.INTERACTIVE]
         background = [i for i, it in enumerate(items) if it[3] is not WorkClass.INTERACTIVE]
         min_bg = policy.min_background_slots  # type: ignore[attr-defined]
+        interactive_backends = {items[i][1] for i in interactive}
+        if len(interactive_backends) > total_limit:  # cannot keep one interactive slot per backend
+            return ops_refusal(OpsReason.BACKEND_BUDGET_EXCEEDED, ids)
         guaranteed: dict[str, int] = {}
         for i in background:  # phase A: background up to its guaranteed minimum per backend
             backend = items[i][1]
             guaranteed[backend] = guaranteed.get(backend, 0) + _grant(
-                ledger, i, items[i], min_bg - guaranteed.get(backend, 0))
+                ledger, i, items[i], min_bg - guaranteed.get(backend, 0), len(interactive_backends))
+        served: set[str] = set()  # backends whose interactive work already got its first slot
         for i in interactive:  # phase B: interactive takes what the guarantee leaves
-            _grant(ledger, i, items[i], per_limit - ledger.backend.get(items[i][1], 0))
+            backend = items[i][1]
+            waiting = len(interactive_backends - served - {backend})
+            _grant(ledger, i, items[i], per_limit - ledger.backend.get(backend, 0), waiting)
+            if ledger.granted[i]:
+                served.add(backend)
         for i in background:  # phase C: remaining background demand
             _grant(ledger, i, items[i], per_limit - ledger.backend.get(items[i][1], 0))
         allocations = tuple(

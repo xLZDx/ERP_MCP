@@ -131,28 +131,111 @@ def test_no_real_looking_credentials(name):
         assert shape.search(text) is None, (name, shape.pattern)
 
 
+# Module-level values are constants only if their VALUE is immutable; the name's case proves nothing.
+_IMMUTABLE_CALLS = frozenset({
+    "tuple", "frozenset", "MappingProxyType", "compile", "Decimal", "Context", "timedelta", "str", "int",
+    "bytes", "TypeVar", "NewType", "namedtuple",
+    "FkEdge",  # frozen dataclass of strings/tuples (restore_verify)
+})
+_MUTABLE_CALLS = frozenset({
+    "dict", "list", "set", "bytearray", "defaultdict", "deque", "OrderedDict", "Counter", "TenantBoundedMap",
+    "TenantSlotCounter", "Lock", "RLock", "count",
+})
+# (module, name) pairs that are deliberately not mutable state: opaque sentinels compared by identity.
+_ALLOWED_SENTINELS = frozenset({
+    ("delivery_replay.py", "_BUSY"), ("alert_rules.py", "_BUSY"),  # object() sentinel, no state
+})
+
+
+def _call_name(node: ast.Call) -> str | None:
+    fn = node.func
+    return fn.id if isinstance(fn, ast.Name) else fn.attr if isinstance(fn, ast.Attribute) else None
+
+
+def _mutable_reason(value: ast.AST | None) -> str | None:
+    """Why a module-level value is (or may be) mutable shared state; ``None`` when it is immutable."""
+    if value is None:
+        return None
+    if isinstance(value, (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)):
+        return "mutable literal/comprehension"
+    if isinstance(value, ast.Call):
+        name = _call_name(value)
+        if name in _MUTABLE_CALLS:
+            return f"mutable constructor {name}()"
+        if name in _IMMUTABLE_CALLS:
+            return None
+        return f"call {name}() is not on the immutable allow-list"
+    if isinstance(value, ast.Tuple):
+        return next((r for r in (_mutable_reason(e) for e in value.elts) if r), None)
+    if isinstance(value, (ast.Constant, ast.Name, ast.Attribute, ast.Subscript, ast.JoinedStr, ast.Lambda)):
+        return None
+    if isinstance(value, ast.BinOp):
+        return _mutable_reason(value.left) or _mutable_reason(value.right)
+    if isinstance(value, ast.UnaryOp):
+        return _mutable_reason(value.operand)
+    return f"unclassified value {type(value).__name__}"
+
+
+def _module_level_assignments(tree: ast.Module):
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            yield [t.id for t in node.targets if isinstance(t, ast.Name)], node.value
+        elif isinstance(node, ast.AnnAssign):
+            yield ([node.target.id] if isinstance(node.target, ast.Name) else []), node.value
+        elif isinstance(node, ast.AugAssign):
+            yield [], node.value  # an augmented assignment at module level mutates shared state
+
+
 @pytest.mark.parametrize("name", S9_MODULES)
-def test_no_module_level_mutable_collection(name):
-    for node in _tree(name).body:
-        if isinstance(node, (ast.Assign, ast.AnnAssign)):
-            value = node.value
-            if isinstance(value, (ast.List, ast.Dict, ast.Set)):
-                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                names = [t.id for t in targets if isinstance(t, ast.Name)]
-                if names == ["__all__"]:
-                    continue
-                assert all(n.lstrip("_").isupper() for n in names), (name, names)
-                # UPPER_CASE names are constant lookup tables; a lower-case module-level store would be a hidden global
+def test_no_module_level_mutable_state(name):
+    for names, value in _module_level_assignments(_tree(name)):
+        if names == ["__all__"]:
+            continue
+        if all((name, n) in _ALLOWED_SENTINELS for n in names) and names:
+            assert isinstance(value, ast.Call) and _call_name(value) == "object", (name, names)
+            continue
+        assert _mutable_reason(value) is None, (name, names, _mutable_reason(value))
+
+
+def test_the_mutable_state_scan_itself_rejects_private_uppercase_stores():
+    """The scan must not be fooled by a private UPPER_CASE name (the former name-based rule accepted these)."""
+    for source in ("_STORE = {}", "_STORE = dict()", "_STORE = defaultdict(list)", "_Q = deque()", "_L = list()",
+                   "_S = set()", "_M = TenantBoundedMap(3, None)", "_X = [1]", "_C: dict = {}", "_U = unknown_factory()",
+                   "_T = (1, [2])"):
+        (_names, value), = _module_level_assignments(ast.parse(source))
+        assert _mutable_reason(value) is not None, source
+    for source in ("_OK = (1, 2)", "_F = frozenset({1})", "_P = MappingProxyType({1: 2})", "_R = re.compile('x')",
+                   "_D = Decimal('1')", "_N = 5", "_E = Basis.X"):
+        (_names, value), = _module_level_assignments(ast.parse(source))
+        assert _mutable_reason(value) is None, source
 
 
 def test_authority_is_evaluation_only_everywhere():
+    """Every real output dataclass carries ``authority == 'EVALUATION_ONLY'`` by its class definition."""
+    import dataclasses
+    import importlib
+
     from business_ai_gateway.phase2 import ops_types
     from business_ai_gateway.phase2.workbench_types import AUTHORITY
 
     assert ops_types.AUTHORITY == AUTHORITY == "EVALUATION_ONLY"
-    for name in S9_MODULES:
-        text = (_SRC / name).read_text(encoding="utf-8")
-        assert "EVALUATION_ONLY" in text or "AUTHORITY" in text or name == "release_migration.py", name
+    outputs = {
+        "capacity_model": ("CapacityReport",), "capacity_interference": ("InterferenceResult", "BudgetPlan"),
+        "restore_verify": ("RestoreReport",), "export_safety": ("ExportResult",),
+        "retention_hold": ("DeletionDecision",), "release_rollback": ("RollbackDecision",),
+        "g6_pre_readiness": ("ReadinessReport",), "alert_rules": ("AlertEvent",),
+        "audit_gate": ("GateOutcome",), "delivery_replay": ("DeliveryOutcome",),
+        "release_migration": ("ShadowResult", "RehearsalPlan"),
+    }
+    missing = []
+    for module, classes in outputs.items():
+        mod = importlib.import_module(f"business_ai_gateway.phase2.{module}")
+        for cls_name in classes:
+            cls = getattr(mod, cls_name)
+            field = {f.name: f for f in dataclasses.fields(cls)}.get("authority")
+            if field is None or field.default != "EVALUATION_ONLY":
+                missing.append((module, cls_name))
+    assert missing == [], f"output types without authority == EVALUATION_ONLY: {missing}"
 
 
 def test_every_reason_code_has_a_fixed_next_action():

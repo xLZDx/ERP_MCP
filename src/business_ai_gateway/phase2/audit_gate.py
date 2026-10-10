@@ -22,11 +22,25 @@ Flow of ``AuditGate.guarded_effect(scope, request_id, operation, effect, refs)``
 
 Limits (stated, not hidden): the deadline is checked on the injected clock after the sink call returns
 (a synchronous call cannot be pre-empted here); the sink must de-duplicate on ``(request_id, phase)``,
-because a timed-out write may still have been stored; the gate does not de-duplicate request ids, so a
-request replayed after completion runs its effect again (idempotency is the caller's); obligation slots are
-freed only by the operator-owned archive step outside S9 (S9 has no delete), a reconciled obligation keeps
-its slot; if the per-tenant list fills in a race after the pre-check, the obligation is counted in a
-visible overflow counter instead of being lost. Quotas are per tenant; nothing is evicted.
+because a timed-out write may still have been stored.
+
+Request ids: once an INTENT record is durable the gate remembers ``request_id`` PER TENANT (a bounded map,
+nothing is evicted). A request id that is already known (in flight, completed, effect failed, completion
+pending, reconciled) is refused BEFORE any record or effect with ``DUPLICATE_SUPPRESSED``; a request that was
+refused because the sink was unavailable is NOT remembered (no effect ran), so it can be retried. The request
+id space is the tenant's, because the sink de-duplicates on the tenant as well; a duplicate answer therefore
+does not distinguish companies of one tenant. Slots (request ids and obligations) are freed only by the
+operator-owned archive step outside S9 (S9 has no delete); a reconciled obligation keeps its slot. If the
+per-tenant obligation list refuses an entry in a race after the pre-check (full or duplicate), the obligation
+is counted in a visible overflow counter instead of being lost. Quotas are per tenant; nothing is evicted.
+
+Interruptions: ``KeyboardInterrupt`` / ``SystemExit`` (any ``BaseException``) raised by the effect are
+recorded exactly like a failing effect (completion record, or a visible obligation when that write fails)
+and then re-raised unchanged.
+
+Ownership: an obligation belongs to the company that ran the request; ``unaudited`` lists and
+``retry_completion`` acts only on the caller's company. A foreign request id and an unknown request id give
+the identical ``NOT_FOUND`` refusal with the identical port-call pattern.
 """
 from __future__ import annotations
 
@@ -36,6 +50,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Final, Protocol
 
 from .ops_types import (
@@ -64,7 +79,7 @@ _MAX_BINDINGS: Final = 10_000
 _REFUSAL_REASONS: Final = frozenset({
     OpsReason.INPUT_INVALID, OpsReason.NOT_FOUND, OpsReason.NOT_ENTITLED, OpsReason.NOT_AUTHORIZED,
     OpsReason.QUOTA_EXCEEDED, OpsReason.DEPENDENCY_FAILED, OpsReason.INTERNAL_REFUSED,
-    OpsReason.AUDIT_UNAVAILABLE, OpsReason.UNCLASSIFIED,
+    OpsReason.AUDIT_UNAVAILABLE, OpsReason.UNCLASSIFIED, OpsReason.DUPLICATE_SUPPRESSED,
 })
 
 
@@ -194,13 +209,13 @@ class GateStatus(StrEnum):
     COMPLETION_PENDING = "COMPLETION_PENDING"
 
 
-_STATUS_REASONS: Final = {
+_STATUS_REASONS: Final = MappingProxyType({
     GateStatus.READ_PASSED: frozenset({None}),
     GateStatus.COMPLETED: frozenset({None}),
     GateStatus.REFUSED: frozenset(_REFUSAL_REASONS),
     GateStatus.EFFECT_FAILED: frozenset({OpsReason.EFFECT_FAILED}),
     GateStatus.COMPLETION_PENDING: frozenset({OpsReason.AUDIT_COMPLETION_PENDING}),
-}
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,8 +231,8 @@ class GateOutcome:
     authority: str = AUTHORITY
 
     def __post_init__(self) -> None:
-        ok = (type(self.status) is GateStatus and self.reason in _STATUS_REASONS[self.status]
-              and (self.reason is None or type(self.reason) is OpsReason)
+        ok = (type(self.status) is GateStatus and (self.reason is None or type(self.reason) is OpsReason)
+              and self.reason in _STATUS_REASONS[self.status]
               and is_exact_int(self.intent_sequence, 0) and is_exact_int(self.completion_sequence, 0)
               and type(self.effect_invoked) is bool
               and (self.status is not GateStatus.REFUSED or not self.effect_invoked)
@@ -230,7 +245,8 @@ def is_valid_gate_outcome(value: object) -> bool:
     if type(value) is not GateOutcome:
         return False
     try:
-        return (type(value.status) is GateStatus and value.reason in _STATUS_REASONS[value.status]
+        return (type(value.status) is GateStatus and (value.reason is None or type(value.reason) is OpsReason)
+                and value.reason in _STATUS_REASONS[value.status]
                 and _ident(value.correlation_id) and value.authority == AUTHORITY)
     except AttributeError:
         return False
@@ -264,6 +280,7 @@ class UnauditedReport:
 
 @dataclass(frozen=True, slots=True)
 class _Obligation:
+    company_id: str
     effect: UnauditedEffect
     completion: AuditRecord
 
@@ -272,9 +289,11 @@ class AuditGate:
     """Per-tenant audit gate. See the module docstring for the flow and the stated limits."""
 
     def __init__(self, registry: object, sinks: object, ownership: object, entitlement: object, ids: object,
-                 clock: object, *, timeout_seconds: object = 5, unaudited_cap: object = 1000) -> None:
+                 clock: object, *, timeout_seconds: object = 5, unaudited_cap: object = 1000,
+                 request_cap: object = 100_000) -> None:
         if (type(registry) is not OperationRegistry or type(sinks) is not dict or len(sinks) > _MAX_BINDINGS
                 or not is_exact_int(timeout_seconds, 1, 3600) or not is_exact_int(unaudited_cap, 1, MAX_TENANT_CAP)
+                or not is_exact_int(request_cap, 1, MAX_TENANT_CAP)
                 or not callable(getattr(clock, "now", None))):
             raise ValueError("AUDIT_GATE_CONFIG_INVALID")
         bindings: dict[str, object] = {}
@@ -290,6 +309,7 @@ class AuditGate:
         self._clock = clock
         self._timeout = timedelta(seconds=timeout_seconds)  # type: ignore[arg-type]
         self._obligations = TenantBoundedMap(unaudited_cap, ids)
+        self._requests = TenantBoundedMap(request_cap, ids)  # request ids with a durable intent, per tenant
         self._overflow = TenantSlotCounter(MAX_TENANT_CAP)
 
     def __repr__(self) -> str:
@@ -356,23 +376,38 @@ class AuditGate:
         sink = self._sinks.get(tenant)
         if sink is None:
             return self._refused(OpsReason.AUDIT_UNAVAILABLE)
-        if not self._obligations.has_room(tenant):
+        if self._requests.get(tenant, request_id) is not None:
+            return self._refused(OpsReason.DUPLICATE_SUPPRESSED)  # known request: no record, no effect
+        if not self._obligations.has_room(tenant) or not self._requests.has_room(tenant):
             return self._refused(OpsReason.QUOTA_EXCEEDED)
         intent = AuditRecord(tenant, company, actor, request_id, name, AuditPhase.INTENT,  # type: ignore[arg-type]
                              _RecordOutcome.PENDING)
         intent_seq = self._write(sink, intent)
         if intent_seq is None:
             return self._refused(OpsReason.AUDIT_UNAVAILABLE)
+        remembered = self._requests.insert(tenant, request_id, True)  # atomic: one of two racers wins
+        if remembered is not None:
+            return self._refused(OpsReason.DUPLICATE_SUPPRESSED if remembered.reason is OpsReason.DUPLICATE_SUPPRESSED
+                                 else OpsReason.QUOTA_EXCEEDED)
         failed = False
+        interrupt: BaseException | None = None
         try:
             effect()  # type: ignore[operator]
         except Exception:  # noqa: BLE001 - effect text never surfaces
             failed = True
+        except BaseException as exc:  # noqa: BLE001 - audited below, then re-raised unchanged
+            failed, interrupt = True, exc
         completion = AuditRecord(tenant, company, actor, request_id, name, AuditPhase.COMPLETION,  # type: ignore[arg-type]
                                  _RecordOutcome.EFFECT_FAILED if failed else _RecordOutcome.SUCCEEDED)
-        completion_seq = self._write(sink, completion)
+        try:
+            completion_seq = self._write(sink, completion)
+            if completion_seq is None:
+                self._keep_obligation(tenant, company, request_id, name, intent_seq, failed,  # type: ignore[arg-type]
+                                      completion)
+        finally:
+            if interrupt is not None:
+                raise interrupt
         if completion_seq is None:
-            self._keep_obligation(tenant, request_id, name, intent_seq, failed, completion)  # type: ignore[arg-type]
             return self._outcome(GateStatus.COMPLETION_PENDING, OpsReason.AUDIT_COMPLETION_PENDING,
                                  intent=intent_seq, invoked=True)
         if failed:
@@ -381,12 +416,12 @@ class AuditGate:
         return self._outcome(GateStatus.COMPLETED, None, intent=intent_seq, completion=completion_seq,
                              invoked=True)
 
-    def _keep_obligation(self, tenant: str, request_id: str, name: str, intent_seq: int, failed: bool,
-                         completion: AuditRecord) -> None:
-        entry = _Obligation(UnauditedEffect(request_id, name, intent_seq, failed, False), completion)
+    def _keep_obligation(self, tenant: str, company: str, request_id: str, name: str, intent_seq: int,
+                         failed: bool, completion: AuditRecord) -> None:
+        entry = _Obligation(company, UnauditedEffect(request_id, name, intent_seq, failed, False), completion)
         refusal = self._obligations.insert(tenant, request_id, entry)
-        if refusal is not None and refusal.reason is OpsReason.QUOTA_EXCEEDED:
-            self._overflow.try_acquire(tenant, "overflow")  # visible counter, never a silent loss
+        if refusal is not None:  # full, duplicate or unusable: visible counter, never a silent loss
+            self._overflow.try_acquire(tenant, "overflow")
 
     # ---- obligations ---------------------------------------------------------------------------
     def unaudited(self, scope: object) -> UnauditedReport | OpsRefusal:
@@ -395,9 +430,9 @@ class AuditGate:
             refusal = self._scope(scope, ())
             if refusal is not None:
                 return refusal
-            tenant = scope.tenant_id  # type: ignore[attr-defined]
-            entries = tuple(v.effect for _, v in self._obligations.items(tenant)  # type: ignore[attr-defined]
-                            if type(v) is _Obligation)
+            tenant, company = scope.tenant_id, scope.company_id  # type: ignore[attr-defined]
+            entries = tuple(v.effect for _, v in self._obligations.items(tenant)
+                            if type(v) is _Obligation and v.company_id == company)
             return UnauditedReport(entries, self._overflow.active(tenant, "overflow"))
         except Exception:  # noqa: BLE001
             return ops_refusal(OpsReason.INTERNAL_REFUSED, self._ids)
@@ -410,11 +445,11 @@ class AuditGate:
             refusal = self._scope(scope, ())
             if refusal is not None:
                 return self._outcome(GateStatus.REFUSED, refusal.reason, corr=refusal.correlation_id)
-            tenant = scope.tenant_id  # type: ignore[attr-defined]
+            tenant, company = scope.tenant_id, scope.company_id  # type: ignore[attr-defined]
             entry = self._obligations.get(tenant, request_id)
             sink = self._sinks.get(tenant)
-            if type(entry) is not _Obligation:
-                return self._refused(OpsReason.NOT_FOUND)
+            if type(entry) is not _Obligation or entry.company_id != company:
+                return self._refused(OpsReason.NOT_FOUND)  # foreign company == unknown request
             if entry.effect.reconciled:
                 return self._outcome(GateStatus.COMPLETED, None, intent=entry.effect.intent_sequence)
             if sink is None:
@@ -423,7 +458,7 @@ class AuditGate:
             if seq is None:
                 return self._outcome(GateStatus.COMPLETION_PENDING, OpsReason.AUDIT_COMPLETION_PENDING,
                                      intent=entry.effect.intent_sequence)
-            done = _Obligation(UnauditedEffect(entry.effect.request_id, entry.effect.operation,
+            done = _Obligation(entry.company_id, UnauditedEffect(entry.effect.request_id, entry.effect.operation,
                                                entry.effect.intent_sequence, entry.effect.effect_failed, True),
                                entry.completion)
             self._obligations.replace(tenant, request_id, done)

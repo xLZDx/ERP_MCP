@@ -101,3 +101,46 @@ Operator-owned or environment-owned, so NOT_RUN: actual workload metrics (load g
 ## Review plan
 
 Internal narrow reviewers (Sonnet 5.5 medium, read-only, no mutation experiments) on the exact code head: functional-test-reviewer (TC127..138 coverage and assertion strength, including the "refusals cannot raise throughput", "cannot resurrect", "cannot delete" and cross-tenant parametrization, and the hostile-input rows), python-reviewer, silent-failure-hunter (swallowed sink/port exceptions, effect invoked after an audit failure, an alert marked sent after delivery failure, a delivery marked done after 429, silent eviction of an undelivered dedup record, partial reports from the facade, `HIDDEN_BY_SCOPE` leaking counts), security-reviewer (ownership-before-read order and identical foreign/unknown shape in every tenant-scoped function, per-tenant versus global quotas, entitlement checks, export masking/tenant filtering/formula-injection neutralization completeness, secret/PII echo in refusals and `repr`, platform-versus-tenant authority separation in E3, hold approver separation), database-reviewer (FK catalogue against the real SQL, head/sequence/digest checks against the real invariants and triggers), plus a domain read of the rollback rule against `AttestationStore.check_current` semantics and TDD section 19. Tests and checks run only at sprint end through subagents (`functional-test-reviewer` + `e2e-runner`), one consensus round, one fix batch, a bounded verification by two reviewers, then GPT-PM on the exact head (head-bound evidence; a new commit invalidates it), then one plain push. Every commit carries its detail file (decision-log entry) per rules v4. Traceability rows go to `S1_S4_TRACEABILITY.md` (Sprint S9 section) and the RU/EN sprint report; the report states IMPLEMENTED_UNVERIFIED, that G6-pre is OPEN, and lists the NOT_RUN set above verbatim.
+
+## Implementation outcome (HEAD 50e4c6e)
+
+Status: IMPLEMENTED_UNVERIFIED. Nothing in this section is DONE or PASS. Tests and checks have not been run for this outcome; per rules v4 they run at sprint end through subagents. G6-pre NOT PASSED, G1 NOT PASSED, G4 NOT PASSED, G5 NOT PASSED, Release 2 NO-GO. The facade has no `passed` field.
+
+Deviations and honest limits reported by the implementers.
+
+### E2 (audit gate, delivery replay, alert rules)
+- `audit_gate`, `delivery_replay` and `alert_rules` take a non-blocking try-lock on `TenantSlotCounter(1)`; a busy lock returns `INTERNAL_REFUSED`.
+- Slots are never freed inside S9 (there is no delete path).
+- Alert state `RECOVERING` replaces `RESOLVED`.
+- An unclassified operation is refused with `UNCLASSIFIED`.
+- The audit timeout is checked on the fake clock after the sink call returns, not preemptively.
+- The fence check and the sink call are not atomic; the sink must answer `DUPLICATE_ACK` for a repeated record.
+- `NO_DATA` fires only on `tick`, never on `observe`.
+
+### E3 (release migration and rollback)
+- Typed kinds `REPLACE_*`, `HARDEN_PRIVILEGES` and `SET_OWNER` are classified ADDITIVE for statements the real SQL contains outside the plan's narrow set: `DROP TRIGGER/POLICY IF EXISTS` before `CREATE`, conditional `DROP FUNCTION`, `CREATE TRIGGER/POLICY`, RLS enable/force, `ADD COLUMN IF NOT EXISTS`, `CREATE ROLE living_*`, owner/security definer, `REVOKE`, `ALTER DEFAULT PRIVILEGES`.
+- Finding: the first `ALTER DEFAULT PRIVILEGES FOR ROLE living_owner` in migration 003 has no `IN SCHEMA` clause (it is not schema-scoped).
+- `plan_rehearsal` takes `MigrationUnit` rather than the plan's step list.
+- The rollback window uses the injected clock; a clock regression only lengthens the window.
+
+### E4 (restore, export, retention)
+- Attestation rows carry extra columns `policy_version` and `policy_digest`.
+- Signatures take `source_ids`, `ownership`, `entitlement` and `ids`.
+- `RetentionLedger` holds the ports.
+- Hold release needs another approver plus `audit_fn`; a stalled release stays an active hold.
+- The restore manifest is only as honest as the rows the caller supplies.
+- The secret detector is heuristic and has false positives.
+- `HASHED` columns are unkeyed hashes.
+- Export builds text cells only.
+
+### E1 (capacity)
+- The p95 minimum of 20 samples was chosen by the implementer, not by the plan.
+- Correlation and report-id sources live on `CapacityStore`.
+- `plan_budget` only reads budget limits.
+
+### Process note
+- Several streams wrote code before tests, contrary to the test-first intent; the tests-at-sprint-end rule still applies and test strength is unverified.
+
+### Status and NOT_RUN
+- IMPLEMENTED_UNVERIFIED. G6-pre NOT PASSED (cannot be evaluated offline). G1, G4, G5 NOT PASSED. Release 2 NO-GO.
+- NOT_RUN, verbatim from "Out of scope / still NOT_RUN after this sprint" above: actual workload metrics (load generator, 30/50/100/150 sources x 1..100 active clients x 50..1000 sessions grid, 2h/8h soak, real p50/p95/p99, pool/queue wait, RSS/CPU, 1C user latency, audit/cursor lag, missed/duplicate events) and any capacity statement; real fault injection on staging (worker/provider/replica/network faults, real 429, audit sink outage, DB failover) and real alert rules, delivery to a pager/mail/chat and a human acknowledging them; repeatable backup/restore rehearsal with real `pg_dump`/`pg_restore`, RTO/RPO measurement and restored-system acceptance (the existing `test_g1_restore.py` run stays environment-dependent and is not claimed here); migration rehearsal on a disposable copy of the real R1 database, R1 shadow regression on staging, canary and production switch, route/feature-flag rollback drill and R1 compatibility on real R1 traffic; real retention schedule, legal hold enforcement, backup expiry and any deletion; privacy/DLP review of exports and real key management; real 1C load and any real 1C side-effect check; wiring into any runtime, server or Release 1 path; GitHub CI; Release 1 regression run; mutation runs (operator ban); exact release manifest and independent UAT (G7). Gate G6-pre cannot be evaluated offline and stays NOT PASSED; R2-US-047 (FOLLOW_ON/P2, OB-20) is not touched. Release 2 stays NO-GO; G1 NOT PASSED, G4 NOT PASSED, G5 NOT PASSED, G6-pre NOT PASSED. Test results over in-memory fakes prove the logic of the accounting and decision functions over the scripted inputs only, not the behavior of the real system under load, fault or restore.

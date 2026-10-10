@@ -50,3 +50,7 @@ Each row is ONE run (no repetition). Throughput is not monotonic in N (100 sourc
 - Single run per size, no warm-up, no confidence intervals; percentiles at these sample counts (30-450 per operation) are coarse, p99 is essentially the max.
 - Only 3 pages of 2 events per source: not a test of large pages, long histories, outbox publishing, retention, vacuum or table growth.
 - Not the G1 exit decision. That belongs to the gate review, which also requires the other G1 evidence.
+
+## Sprint S9 pointer
+
+The Sprint S9 offline capacity and interference logic (`capacity_model.py`, `capacity_interference.py`) works over scripted samples and does not replace this drill. It is not a measurement, not a capacity guarantee and not G6-pre evidence; G6-pre stays NOT_STARTED/OPEN and NOT PASSED. See `S1_S4_TRACEABILITY.md`, section "Sprint S9".
