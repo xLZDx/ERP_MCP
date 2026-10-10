@@ -62,11 +62,11 @@ An operator reproduces the engineering evidence for a head `H` as follows. Run f
 3. Lint:
    - `.venv/Scripts/python.exe -m ruff check src/business_ai_gateway/phase2 tests/phase2 scripts`
 4. PostgreSQL integration (only with a disposable database; the DSN is operator-supplied, see `EVIDENCE_MATRIX.md` for the container used so far): set `ERP_PHASE2_TEST_DSN` and `ERP_PHASE2_REQUIRE_PG=1`, then `.venv/Scripts/python.exe -m pytest -m integration`. Without a DSN the integration tests are skipped, which is NOT_RUN, not PASS.
-5. Document registry:
-   - `node scripts/build_document_registry.mjs` (regenerates `governance/DOCUMENT_REGISTRY.md`)
-   - `node scripts/build_document_registry.mjs --check` (exits 1 when the committed registry differs from the inventory)
+5. Exact-head document inventory (uses only objects of `H`, so it is reproducible on any clean checkout):
+   - `git ls-tree -r --name-only H -- docs core governance reports` lists the tracked documents of the head; compare the Markdown subset with what the evidence section of the release decision cites.
+   - `governance/DOCUMENT_REGISTRY.md` is NOT release evidence. The generator `scripts/build_document_registry.mjs` inventories every local and remote branch and the untracked Markdown of attached worktrees, so its output depends on repository-local state outside `H` (on the development machine it lists tracked paths of other branches and local-only paths). It is a navigation aid for the development machine only. Do not run it before comparing: regenerating overwrites the committed file and makes `--check` pass trivially. If you run it anyway, run `git diff --stat governance/DOCUMENT_REGISTRY.md` afterwards and discard the change (it is not part of `H`).
 6. Sprint reports (RU and EN, with the test traceability matrices): `reports/PHASE2_S1_S4_SPRINT_2026-10-09(.ru).html`, `reports/PHASE2_S4B_SPRINT_2026-10-09(.ru).html`, `reports/PHASE2_S5_SPRINT_2026-10-09(.ru).html`, `reports/PHASE2_S6_SPRINT_2026-10-10(.ru).html`, `reports/PHASE2_S6B_SPRINT_2026-10-10(.ru).html`, `reports/PHASE2_S7_SPRINT_2026-10-10(.ru).html`, `reports/PHASE2_S8_SPRINT_2026-10-10(.ru).html`, `reports/PHASE2_S9_SPRINT_2026-10-10(.ru).html` (file pattern `reports/PHASE2_S*_SPRINT_2026-10-10*.html` for the 2026-10-10 sprints, `..._2026-10-09*.html` for the earlier ones).
-7. Compare your results with the last agent-run results below and record them in `EVIDENCE_MATRIX.md` as a new row with the head from step 1.
+7. Final check: `git status --short` must again be empty (no regenerated or scratch file). Then compare your results with the last agent-run results below and record them in `EVIDENCE_MATRIX.md` as a new row with the head from step 1.
 
 ### 2.1 Last agent-run results (not an operator measurement)
 
@@ -95,7 +95,7 @@ This document cannot contain its own commit hash. **The release head is whatever
 
 Engineering cannot close these; each is a precise blocker, not a workaround request.
 
-- [ ] Re-issue the token for MCP `erp-mcp-818ha`: it currently answers 401 `AUTH_HEADER_REJECTED`. Auth is not bypassed.
+- [ ] Re-issue the token for MCP `erp-mcp-818ha`: it answered 401 `AUTH_HEADER_REJECTED` when last observed on 2026-10-10 (recheck before relying on this). Auth is not bypassed.
 - [ ] Real 1C data: scoped read access and the source-specific capture permit for `onec-818ha-reference` (OB-10), native report bytes, MOLDRETAIL posted-receipt data.
 - [ ] Accountant attestation (G3, OB-11): independent export and attestation for 818 HA SRL, account 521.1, 2026-08-01..2026-08-31.
 - [ ] Google OAuth and real Drive (G4, OB-12): ERP_MCP-owned OAuth client and narrow folder / new-child grant.
@@ -128,7 +128,7 @@ From the S9 closure entry and the S7/S8 decisions in `core/DECISION_LOG.md`:
 
 1. Delivery claim lease expiry is not checked by `_fenced` (`delivery_replay`).
 2. `place_hold` quota-slot leak (`retention_hold`).
-3. `confirm_release` reads a point-in-time snapshot (`release_rollback`).
+3. `confirm_release` reads a point-in-time snapshot (`retention_hold`).
 4. Tenant-wide duplicate audit request ids (`audit_gate`).
 5. S7 removed Drive roots return only with a new checker: root re-admission was removed (fail closed) in round 9 instead of being patched again; a future backend-enforced, version-bound claim is needed.
 6. An unaudited in-memory run stays visible until recovery (S8 session/run behavior).
