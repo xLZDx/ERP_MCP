@@ -502,7 +502,7 @@ class DriveBaseline:
         advance = prepared.committable_cursor()
         if advance != proposed:  # the projector's view of the cursor must match the page
             await self._close(ctx, CursorReason.PAGE_INVALID)
-        events = page_events(req.identity, prepared, token)
+        events = _page_events(req.identity, prepared, token)
         new_state = CursorState.LIVE if terminal else CursorState.CATCHING_UP
         await self._commit(ctx, rec.evolve(
             state=new_state, token=advance, seen=rec.advance_seen()), events)
@@ -613,7 +613,7 @@ class DriveBaseline:
         raise _Stop(BaselineOutcome.REFUSED, CursorReason.PORT_UNEXPECTED, state)
 
 
-def page_events(identity: DrivePortIdentity, prepared: PreparedDriveBatch,
+def _page_events(identity: DrivePortIdentity, prepared: PreparedDriveBatch,
                  requested_token: str) -> list[dict[str, Any]]:
     events = [
         build_event(identity, "DRIVE_CANDIDATE", c.change_id, file_id=c.file_id,
