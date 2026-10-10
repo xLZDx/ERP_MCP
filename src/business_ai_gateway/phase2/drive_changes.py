@@ -37,12 +37,27 @@ class DrivePage:
     new_start_page_token: str | None = None
 
     def __post_init__(self):
-        if not self.requested_page_token:
+        # Exact types only: a str / tuple / enum subclass (e.g. one with a lying __eq__) is refused.
+        if type(self.requested_page_token) is not str or not self.requested_page_token:
             raise ValueError("PAGE_TOKEN_REQUIRED")
+        for token in (self.next_page_token, self.new_start_page_token):
+            if token is not None and type(token) is not str:
+                raise ValueError("PAGE_CONTINUATION_XOR_NEW_START_REQUIRED")
         if bool(self.next_page_token) == bool(self.new_start_page_token):
             raise ValueError("PAGE_CONTINUATION_XOR_NEW_START_REQUIRED")
-        if any(not c.file_id or not c.change_id or not isinstance(c.kind, DriveChangeKind)
-               for c in self.changes):
+        if type(self.changes) is not tuple:
+            raise ValueError("INVALID_DRIVE_CHANGE")
+        try:
+            bad = any(
+                type(c) is not DriveChange
+                or type(c.file_id) is not str or not c.file_id
+                or type(c.change_id) is not str or not c.change_id
+                or type(c.kind) is not DriveChangeKind
+                for c in self.changes
+            )
+        except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
+            bad = True
+        if bad:
             raise ValueError("INVALID_DRIVE_CHANGE")
 
 
@@ -108,10 +123,12 @@ class PreparedDriveBatch:
         With unknown_changes > 0 it stays at prior_cursor unless the caller passes
         the id of a durably recorded history GAP acknowledging the skipped changes.
         """
-        if self.unknown_changes > 0 and (
-            not isinstance(recorded_gap, str) or not recorded_gap.strip()
-        ):
-            return self.prior_cursor
+        if self.unknown_changes > 0:
+            # local import: drive_port imports this module
+            from .drive_port import is_valid_opaque_id
+
+            if not is_valid_opaque_id(recorded_gap):  # exact str, opaque id; blank/whitespace/subclass refused
+                return self.prior_cursor
         return self.proposed_cursor or self.next_cursor
 
 
@@ -131,7 +148,9 @@ class DriveChangeProjector:
         self._scope_allowed = file_scope_allowed
 
     def prepare(self, page: DrivePage, *, stored_cursor: str) -> PreparedDriveBatch:
-        if page.requested_page_token != stored_cursor:
+        token = page.requested_page_token
+        # exact str on both sides: a str subclass with a lying __eq__/__ne__ never passes the CAS
+        if type(token) is not str or type(stored_cursor) is not str or token != stored_cursor:
             raise ValueError("CURSOR_COMPARE_AND_SWAP_FAILED")
         candidates: list[EvidenceCandidate] = []
         tombstones: list[TombstoneCandidate] = []
@@ -139,6 +158,7 @@ class DriveChangeProjector:
         denied = 0
         unknown = 0
         seen: set[str] = set()
+        requalify_seen: set[str] = set()
         for item in page.changes:
             if item.change_id in seen:
                 raise ValueError("DUPLICATE_CHANGE_ID_IN_PAGE")
@@ -156,7 +176,8 @@ class DriveChangeProjector:
             is_folder = item.mime_type == FOLDER_MIME_TYPE
             # A tombstone often carries no file metadata: treat it as a possible folder.
             if ((is_folder or (item.kind == DriveChangeKind.REMOVED and item.mime_type is None))
-                    and item.file_id not in requalify):
+                    and item.file_id not in requalify_seen):
+                requalify_seen.add(item.file_id)
                 requalify.append(item.file_id)
             if item.kind == DriveChangeKind.REMOVED:
                 tombstones.append(TombstoneCandidate(

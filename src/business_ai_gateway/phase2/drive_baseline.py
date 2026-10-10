@@ -27,6 +27,7 @@ Pure stdlib + Phase 2 modules; no Release 1 / httpx / requests / socket import.
 """
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -81,6 +82,9 @@ __all__ = [
 ]
 
 _MAX_LIMIT = 1_000_000
+# Cap of the re-qualification folder ids reported in one result (the durable DRIVE_REQUALIFY events
+# carry the full set; the result only says ``requalify_truncated``).
+_MAX_REQUALIFY = 100_000
 
 
 class BaselineOutcome(StrEnum):
@@ -97,7 +101,10 @@ class BaselineOutcome(StrEnum):
 
 
 class DriveRunMode(StrEnum):
-    INCREMENTAL = "INCREMENTAL"                # first baseline, resume or poll; blocked if required
+    # First baseline, resume or poll. An ABSENT cursor is a first run: it is created (UNINITIALIZED)
+    # and never marks the tracker; a corrupt / empty / foreign cursor or a pending requirement blocks.
+    # Detecting a cursor that was deleted after it existed is ``ResnapshotTracker.revalidate``'s job.
+    INCREMENTAL = "INCREMENTAL"
     RESNAPSHOT_START = "RESNAPSHOT_START"      # explicit fresh snapshot: overwrite the cursor
     RESNAPSHOT_CONTINUE = "RESNAPSHOT_CONTINUE"  # resume an interrupted fresh snapshot
 
@@ -173,17 +180,24 @@ class BaselineRequest:
     call_log: Callable[[], Sequence[str]] | None = None
 
     def __post_init__(self) -> None:
-        if (
-            type(self.identity) is not DrivePortIdentity
-            or type(self.corpus) is not DriveCorpus
-            or not is_valid_scope_epoch(self.drive_epoch)
-            or type(self.lease) is not DriveLease
-            or not callable(self.scope_allowed)
-            or not callable(getattr(self.lister, "list_page", None))
-            or type(self.limits) is not BaselineLimits
-            or (self.call_log is not None and not callable(self.call_log))
-        ):
+        try:
+            valid = (
+                type(self.identity) is DrivePortIdentity
+                and type(self.corpus) is DriveCorpus
+                and is_valid_scope_epoch(self.drive_epoch)
+                and type(self.lease) is DriveLease
+                and callable(self.scope_allowed)
+                and callable(getattr(self.lister, "list_page", None))
+                and type(self.limits) is BaselineLimits
+                and (self.call_log is None or callable(self.call_log))
+            )
+            is_async = valid and _is_async_callable(self.scope_allowed)
+        except Exception:  # noqa: BLE001 - hostile attribute access: fixed code, no echo
+            raise ValueError("BASELINE_REQUEST_INVALID") from None
+        if not valid:
             raise ValueError("BASELINE_REQUEST_INVALID")
+        if is_async:
+            raise ValueError("BASELINE_SCOPE_CALLBACK_ASYNC")
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +215,18 @@ class BaselineResult:
     trace: tuple[str, ...] = ()
     snapshot_cleared: bool = False
     cursor_marked: bool = False
+    # The cursor is durably LIVE but ``ResnapshotTracker.complete`` raised: the requirement is NOT cleared.
+    clear_failed: bool = False
+    # More re-qualification folders existed than ``_MAX_REQUALIFY`` (the events carry them all).
+    requalify_truncated: bool = False
+
+
+def _is_async_callable(fn: object) -> bool:
+    """True for a coroutine function / awaitable / object whose ``__call__`` is ``async def``."""
+    return (
+        inspect.iscoroutinefunction(fn) or inspect.isawaitable(fn)
+        or inspect.iscoroutinefunction(getattr(fn, "__call__", None))  # noqa: B004
+    )
 
 
 def check_baseline_order(call_log: object) -> bool:
@@ -210,14 +236,12 @@ def check_baseline_order(call_log: object) -> bool:
     """
     try:
         names = tuple(call_log)  # type: ignore[call-overload]
-    except TypeError:
+        if any(type(n) is not str for n in names) or "get_start_page_token" not in names:
+            return False
+        first = names.index("get_start_page_token")
+        return not any(n in ("baseline_list", "list_changes") for n in names[:first])
+    except Exception:  # noqa: BLE001 - a hostile iterable is simply not a valid call log
         return False
-    if any(type(n) is not str for n in names) or "get_start_page_token" not in names:
-        return False
-    first = names.index("get_start_page_token")
-    return not any(
-        n in ("baseline_list", "list_changes") for n in names[:first]
-    )
 
 
 # --- orchestrator -------------------------------------------------------------------------------
@@ -241,10 +265,13 @@ class _Ctx:
     rows: int = 0
     started_here: bool = False
     marked: bool = False
+    clear_failed: bool = False
     candidates: list[EvidenceCandidate] = field(default_factory=list)
     tombstones: list[TombstoneCandidate] = field(default_factory=list)
     denied: int = 0
     requalify: list[str] = field(default_factory=list)
+    requalify_seen: set[str] = field(default_factory=set)
+    requalify_truncated: bool = False
     trace: list[str] = field(default_factory=list)
     seen_tokens: set[str] = field(default_factory=set)
     seen_positions: set[str] = field(default_factory=set)
@@ -254,6 +281,11 @@ def _tri(fn: Callable[[str], bool | None]) -> Callable[[str], bool | None]:
     def scope_allowed(file_id: str) -> bool | None:
         try:
             value = fn(file_id)
+            if inspect.isawaitable(value):  # an async callback is never awaited: close it, fail closed
+                close = getattr(value, "close", None)
+                if callable(close):
+                    close()
+                return None
         except Exception:  # noqa: BLE001 - an unknown membership is fail-closed, never an echo
             return None
         return value if type(value) is bool else None
@@ -280,9 +312,12 @@ class DriveBaseline:
             cleared = False
             if mode is not DriveRunMode.INCREMENTAL and ctx.snap_token is not None:
                 epoch = request.lease.expected_epoch
-                cleared = self._store.tracker.complete(
-                    ctx.key, CaptureOutcomeKind.OK_COMPLETE, epoch, epoch,
-                    snapshot_token=ctx.snap_token)
+                try:
+                    cleared = self._store.tracker.complete(
+                        ctx.key, CaptureOutcomeKind.OK_COMPLETE, epoch, epoch,
+                        snapshot_token=ctx.snap_token) is True
+                except Exception:  # noqa: BLE001 - cursor already durably LIVE: flag, don't refuse
+                    ctx.clear_failed = True
             ctx.trace.append("LIVE")
             return _result(ctx, BaselineOutcome.LIVE, None, CursorState.LIVE, cleared)
         except _Stop as stop:
@@ -303,8 +338,15 @@ class DriveBaseline:
                         CursorState.RESNAPSHOT_REQUIRED)
         snap = tracker.begin_snapshot() if resnap else None
         args = (request.identity, request.corpus, request.drive_epoch, request.lease)
-        load = await store.load(*args, record_requirement=not resnap)
+        if resnap:
+            load = await store.load(*args, record_requirement=False)
+        else:
+            # An absent cursor is a first run: create it (never marks the tracker); every other
+            # failure (corrupt / empty / foreign / epoch ...) is recorded by the store as before.
+            load = await store.initialize(*args)
         if mode is DriveRunMode.RESNAPSHOT_START:
+            if load.version is None and load.reason is not CursorReason.CURSOR_MISSING:
+                raise _from_load(load)  # a failed read must not be "reset" over an unknown value
             load = await store.reset(*args, load)
         if not load.usable:
             raise _from_load(load)
@@ -376,19 +418,30 @@ class DriveBaseline:
         except ValueError:
             await self._close(ctx, CursorReason.PAGE_INVALID)
         prepared = await self._prepare(ctx, drive_page, start_token)
-        # A baseline lists the corpus; an item the scope refuses is counted, never turned into
-        # a "membership lost" tombstone for a file that was never captured.
+        # A baseline lists the corpus. A scope-refused item is always counted as denied. In a first
+        # (INCREMENTAL) baseline nothing was captured before, so no tombstone is made. In a fresh
+        # snapshot (RESNAPSHOT_*) the file may have been captured earlier and left the scope while the
+        # cursor was lost: it gets a MEMBERSHIP_CHANGED tombstone event, committed with this page
+        # (hence before ``snapshot_cleared`` can ever be reported).
+        resnap = ctx.mode is not DriveRunMode.INCREMENTAL
         denied = prepared.denied_changes + len(prepared.tombstones)
         events = [
             build_event(req.identity, "DRIVE_CANDIDATE", c.change_id, file_id=c.file_id,
                         revision_id=c.revision_id, status=c.status)
             for c in prepared.candidates]
+        if resnap:
+            events += [
+                build_event(req.identity, "DRIVE_TOMBSTONE", t.change_id, file_id=t.file_id,
+                            revision_id=t.revision_id, reason=t.reason, status=t.status)
+                for t in prepared.tombstones]
         new_state = CursorState.BASELINING if nxt is not None else CursorState.CATCHING_UP
         await self._commit(ctx, rec.evolve(state=new_state, pos=nxt), events)
         ctx.pages += 1
         ctx.rows += len(page.items)
         ctx.denied += denied
         ctx.candidates.extend(prepared.candidates)
+        if resnap:
+            ctx.tombstones.extend(prepared.tombstones)
         ctx.trace.append("BASELINE_PAGE")
         if nxt is None:
             ctx.trace.append("BASELINE_DONE")
@@ -444,8 +497,13 @@ class DriveBaseline:
         ctx.candidates.extend(prepared.candidates)
         ctx.tombstones.extend(prepared.tombstones)
         for folder in prepared.requalify_folder_ids:
-            if folder not in ctx.requalify:
-                ctx.requalify.append(folder)
+            if folder in ctx.requalify_seen:
+                continue
+            if len(ctx.requalify) >= _MAX_REQUALIFY:
+                ctx.requalify_truncated = True
+                break
+            ctx.requalify_seen.add(folder)
+            ctx.requalify.append(folder)
         ctx.trace.append("CATCHUP_PAGE")
         return terminal
 
@@ -453,9 +511,13 @@ class DriveBaseline:
 
     async def _prepare(self, ctx: _Ctx, page: DrivePage, stored: str) -> PreparedDriveBatch:
         req = ctx.request
+        # The corpus decides the drive filter (also for an ``account:`` namespace); a ``drive:``
+        # namespace without a corpus drive id falls back to its own drive id.
+        drive_id = req.corpus.drive_id
+        if drive_id is None and req.identity.kind == "drive":
+            drive_id = req.identity.namespace_id
         projector = DriveChangeProjector(
-            connection_id=ctx.key,
-            drive_id=req.identity.namespace_id if req.identity.kind == "drive" else None,
+            connection_id=req.identity.connection_id, drive_id=drive_id,
             file_scope_allowed=_tri(req.scope_allowed))
         try:
             return projector.prepare(page, stored_cursor=stored)
@@ -470,7 +532,9 @@ class DriveBaseline:
         state = ctx.load.record.state if ctx.load.record else None
         if pages_only and ctx.pages >= limits.max_pages:
             raise _Stop(BaselineOutcome.LIMIT_REACHED, CursorReason.PAGE_LIMIT, state)
-        if adding and ctx.rows + adding > limits.max_rows:
+        # The first page of a run is always allowed (a page larger than max_rows would otherwise
+        # never be committed and the run would livelock): the row limit is soft by one page.
+        if adding and ctx.rows > 0 and ctx.rows + adding > limits.max_rows:
             raise _Stop(BaselineOutcome.LIMIT_REACHED, CursorReason.ROW_LIMIT, state)
 
     def _check_order(self, ctx: _Ctx) -> None:
@@ -561,6 +625,10 @@ def _from_load(load: CursorLoad) -> _Stop:
         return _Stop(BaselineOutcome.AUTH_REQUIRED, reason, state)
     if reason is CursorReason.INVALID_REQUEST:
         return _Stop(BaselineOutcome.REFUSED, reason, None)
+    if reason is CursorReason.LEASE_LOST:
+        return _Stop(BaselineOutcome.LEASE_LOST, reason, None)
+    if reason is CursorReason.COMMIT_CONFLICT:
+        return _Stop(BaselineOutcome.CONFLICT, reason, None)
     return _Stop(BaselineOutcome.RETRYABLE, reason or CursorReason.PORT_FAILURE, None)
 
 
@@ -577,4 +645,5 @@ def _result(ctx: _Ctx | None, outcome: BaselineOutcome, reason: CursorReason | N
         complete=outcome is BaselineOutcome.LIVE, pages=ctx.pages, rows=ctx.rows,
         candidates=tuple(ctx.candidates), tombstones=tuple(ctx.tombstones),
         denied_changes=ctx.denied, requalify_folder_ids=tuple(ctx.requalify),
-        trace=tuple(ctx.trace), snapshot_cleared=cleared, cursor_marked=ctx.marked)
+        trace=tuple(ctx.trace), snapshot_cleared=cleared, cursor_marked=ctx.marked,
+        clear_failed=ctx.clear_failed, requalify_truncated=ctx.requalify_truncated)

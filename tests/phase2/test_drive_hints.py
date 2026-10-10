@@ -119,14 +119,12 @@ def test_register_channel_validates_and_is_bounded() -> None:
 
 def test_payload_and_message_number_change_nothing_and_are_not_exposed() -> None:
     fake, _s, health, _g, intake = _build()
-    cursor = FakeCursorView("T1")
     payload = {"changes": [{"fileId": "F1"}], "token": "NEW-CURSOR", "self": None}
     payload["self"] = payload  # recursive
     r = intake.accept_hint("CH1", "RES1", SECRET_TOKEN, 10**30, payload)
     assert r is HintResult.ACCEPTED_NEW_JOB
     job = intake.take_poll_job()
     assert "NEW-CURSOR" not in repr(job) and "F1" not in repr(job)
-    assert cursor.commits == 0 and cursor.token == "T1"  # a hint cannot move a cursor
     assert fake.call_count == 0  # and does not itself read Drive
     assert health.state is AuthState.HEALTHY
 

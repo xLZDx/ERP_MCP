@@ -11,7 +11,6 @@ from business_ai_gateway.phase2.drive_changes import EvidenceCandidate
 from business_ai_gateway.phase2.drive_fake import FakeDrivePort
 from business_ai_gateway.phase2.drive_port import (
     DriveErrorCode,
-    DrivePortError,
     DrivePortIdentity,
     FileMeta,
     RevisionMeta,
@@ -241,7 +240,7 @@ async def test_port_bugs_fail_closed_and_never_echo():
     assert (await list_history(_BrokenPort(dup), IDENT, 0, "F1")).reason == "REVISION_LIST_INVALID"  # type: ignore[arg-type]
     junk = (RevisionMeta("r1"), "r2")
     assert (await list_history(_BrokenPort(junk), IDENT, 0, "F1")).reason == "REVISION_LIST_INVALID"  # type: ignore[arg-type]
-    assert (await list_history(_BrokenPort(["r1"]), IDENT, 0, "F1")).status is HistoryStatus.HISTORY_UNAVAILABLE  # type: ignore[arg-type]
+    assert (await list_history(_BrokenPort(["r1"]), IDENT, 0, "F1")).reason == "REVISION_LIST_INVALID"  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("bad", HOSTILE)
@@ -255,12 +254,6 @@ async def test_history_hostile_args_refused_with_zero_port_calls(bad):
     assert fake.call_count == 0
     assert (await list_history(fake, IDENT, True, "F1")).status is HistoryStatus.CHECK_FAILED
     assert fake.call_count == 0
-
-
-async def test_history_error_is_a_port_error_only_for_fixed_codes():
-    # the port error carries only its fixed code; the module reports exactly that code
-    err = DrivePortError(DriveErrorCode.TRANSIENT)
-    assert str(err) == "TRANSIENT"
 
 
 # --- no write / permission / keepForever path (AST) ------------------------------------------------

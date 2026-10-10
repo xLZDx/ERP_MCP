@@ -30,6 +30,7 @@ from ._identity import canonical_guid
 from .drive_changes import DriveChange, DriveChangeKind, DrivePage
 
 __all__ = [
+    "MAX_CORPUS_ROOTS",
     "MAX_ID_CHARS",
     "MAX_LIST_ITEMS",
     "MAX_NAME_CHARS",
@@ -41,6 +42,7 @@ __all__ = [
     "FileMeta",
     "RevisionMeta",
     "StartToken",
+    "is_sound_identity",
     "is_valid_opaque_id",
     "is_valid_scope_epoch",
 ]
@@ -48,6 +50,8 @@ __all__ = [
 MAX_ID_CHARS = 1024
 MAX_NAME_CHARS = 1024
 MAX_LIST_ITEMS = 10_000
+# one root-count limit for every corpus type (drive_scope / drive_membership / drive_cursor): 1..1000
+MAX_CORPUS_ROOTS = 1_000
 _MAX_EPOCH = 2**63 - 1
 _NAMESPACE_PREFIXES = ("account:", "drive:")
 
@@ -62,15 +66,24 @@ class DriveErrorCode(StrEnum):
     SCOPE_EPOCH_STALE = "SCOPE_EPOCH_STALE"
 
 
+_ERROR_CODE_VALUES = frozenset(member.value for member in DriveErrorCode)
+
+
 class DrivePortError(Exception):
     """Rejected port call. Carries only ``code``; ``str()`` is the code, never provider text.
 
-    A ``code`` that is not exactly a ``DriveErrorCode`` is replaced by ``TRANSIENT`` so the
-    constructor itself can never raise or leak a caller value.
+    A ``code`` that is exactly a ``DriveErrorCode`` is kept; an exact plain ``str`` equal to a member
+    value (e.g. ``"NOT_FOUND"``) is converted to that member; anything else (unknown text, subclass,
+    non-str) is replaced by ``TRANSIENT`` so the constructor itself can never raise or leak a caller value.
     """
 
     def __init__(self, code: DriveErrorCode) -> None:
-        safe = code if type(code) is DriveErrorCode else DriveErrorCode.TRANSIENT
+        if type(code) is DriveErrorCode:
+            safe = code
+        elif type(code) is str and code in _ERROR_CODE_VALUES:
+            safe = DriveErrorCode(code)
+        else:
+            safe = DriveErrorCode.TRANSIENT
         super().__init__(safe.value)
         self.code: DriveErrorCode = safe
 
@@ -102,6 +115,19 @@ def is_valid_opaque_id(value: object) -> bool:
 def is_valid_scope_epoch(value: object) -> bool:
     """True for an exact (non-bool) ``int`` in 0..2**63-1."""
     return type(value) is int and 0 <= value <= _MAX_EPOCH
+
+
+def is_sound_identity(value: object) -> bool:
+    """True for a real, fully initialised ``DrivePortIdentity`` (an ``object.__new__`` shell is not)."""
+    try:
+        return (
+            type(value) is DrivePortIdentity
+            and type(value.namespace) is str  # type: ignore[attr-defined]
+            and type(value.tenant) is str  # type: ignore[attr-defined]
+            and type(value.connection_id) is str  # type: ignore[attr-defined]
+        )
+    except Exception:  # noqa: BLE001 - unset slot / hostile object: not sound
+        return False
 
 
 def _opaque(value: object, code: str) -> str:
@@ -183,16 +209,21 @@ class ChangesPage:
     new_start_page_token: str | None = None
 
     def __post_init__(self) -> None:
-        if type(self.changes) is not tuple or len(self.changes) > MAX_LIST_ITEMS:
-            raise ValueError("DRIVE_CHANGES_INVALID")
-        for change in self.changes:
-            if (
-                type(change) is not DriveChange
-                or type(change.kind) is not DriveChangeKind
-                or not is_valid_opaque_id(change.change_id)
-                or not is_valid_opaque_id(change.file_id)
-            ):
+        try:
+            if type(self.changes) is not tuple or len(self.changes) > MAX_LIST_ITEMS:
                 raise ValueError("DRIVE_CHANGES_INVALID")
+            for change in self.changes:
+                if (
+                    type(change) is not DriveChange
+                    or type(change.kind) is not DriveChangeKind
+                    or not is_valid_opaque_id(change.change_id)
+                    or not is_valid_opaque_id(change.file_id)
+                ):
+                    raise ValueError("DRIVE_CHANGES_INVALID")
+        except ValueError:
+            raise
+        except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
+            raise ValueError("DRIVE_CHANGES_INVALID") from None
         _opt_opaque(self.next_page_token, "DRIVE_PAGE_TOKEN_INVALID")
         _opt_opaque(self.new_start_page_token, "DRIVE_PAGE_TOKEN_INVALID")
         if (self.next_page_token is None) == (self.new_start_page_token is None):
@@ -200,12 +231,18 @@ class ChangesPage:
 
     def to_drive_page(self, requested_page_token: str) -> DrivePage:
         """Adapter for the existing ``DriveChangeProjector`` (reused, not copied)."""
-        return DrivePage(
-            requested_page_token=_opaque(requested_page_token, "DRIVE_PAGE_TOKEN_INVALID"),
-            changes=self.changes,
-            next_page_token=self.next_page_token,
-            new_start_page_token=self.new_start_page_token,
-        )
+        token = _opaque(requested_page_token, "DRIVE_PAGE_TOKEN_INVALID")
+        try:
+            return DrivePage(
+                requested_page_token=token,
+                changes=self.changes,
+                next_page_token=self.next_page_token,
+                new_start_page_token=self.new_start_page_token,
+            )
+        except ValueError:
+            raise
+        except Exception:  # noqa: BLE001 - forged page (unset slot): fixed code only
+            raise ValueError("DRIVE_CHANGES_INVALID") from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,9 +280,13 @@ class RevisionMeta:
         _opaque(self.revision_id, "DRIVE_REVISION_INVALID")
         mt = self.modified_time
         if mt is not None:
-            if type(mt) is not datetime or mt.tzinfo is None or mt.utcoffset() is None:
-                raise ValueError("DRIVE_REVISION_INVALID")
-            object.__setattr__(self, "modified_time", mt.astimezone(UTC))
+            try:
+                if type(mt) is not datetime or mt.tzinfo is None or mt.utcoffset() is None:
+                    raise ValueError("DRIVE_REVISION_INVALID")
+                flat = mt.astimezone(UTC)  # OverflowError near datetime.min/max, hostile tzinfo
+            except Exception:  # noqa: BLE001 - nothing of the hostile value may escape
+                raise ValueError("DRIVE_REVISION_INVALID") from None
+            object.__setattr__(self, "modified_time", flat)
 
 
 class DrivePort(Protocol):

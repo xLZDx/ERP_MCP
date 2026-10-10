@@ -30,8 +30,8 @@ from business_ai_gateway.phase2.resnapshot import ResnapshotReason, ResnapshotTr
 
 SCOPE = DEFAULT_SCOPE
 H = "a" * 64
-IDENT_A = DrivePortIdentity("account:A", "tenant-1", "conn-1")
-IDENT_B = DrivePortIdentity("drive:B", "tenant-1", "conn-1")
+IDENT_A = DrivePortIdentity("account:A", "A", "conn-1")
+IDENT_B = DrivePortIdentity("drive:B", "A", "conn-1")
 CORPUS = DriveCorpus(None, ("ROOT-1",))
 OTHER_CORPUS = DriveCorpus(None, ("ROOT-2",))
 

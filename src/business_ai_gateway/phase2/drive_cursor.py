@@ -31,6 +31,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from ._identity import canonical_guid
 from .drive_port import DrivePortIdentity, is_valid_opaque_id, is_valid_scope_epoch
 from .ports import (
     CommitResult,
@@ -44,6 +45,7 @@ from .ports import (
 from .resnapshot import ResnapshotReason, ResnapshotTracker
 
 __all__ = [
+    "MAX_EVENTS_PER_COMMIT",
     "SEEN_MAX",
     "CursorLoad",
     "CursorReason",
@@ -62,6 +64,9 @@ __all__ = [
 ]
 
 SEEN_MAX = 16
+# The cursor port (SQL ``jsonb_array_length > 1000``, fake alike) refuses a bigger batch for good; a page
+# whose events exceed it is refused with the fixed non-retryable PAGE_TOO_LARGE, never retried forever.
+MAX_EVENTS_PER_COMMIT = 1000
 _MAX_RECORD_CHARS = 16_384
 _RECORD_VERSION = 1
 
@@ -111,6 +116,7 @@ class CursorReason(StrEnum):
     STALE_CURSOR = "STALE_CURSOR"
     COMMIT_CONFLICT = "COMMIT_CONFLICT"
     INVALID_BATCH = "INVALID_BATCH"
+    PAGE_TOO_LARGE = "PAGE_TOO_LARGE"
     INVALID_TRANSITION = "INVALID_TRANSITION"
     # port-level
     RATE_LIMITED = "RATE_LIMITED"
@@ -180,9 +186,32 @@ def dedup_key(namespace: str, kind: str, change_id: str) -> str:
     return _enc("drivechg1", namespace, kind, change_id)
 
 
+_RESERVED_EVENT_KEYS = frozenset({
+    "event_id", "event_kind", "namespace", "tenant", "connection_id", "change_id", "digest"})
+
+
+def _event_value_ok(value: object) -> bool:
+    return (
+        value is None or type(value) is str
+        or (type(value) is list and all(type(v) is str for v in value))
+    )
+
+
 def build_event(identity: DrivePortIdentity, kind: str, change_id: str,
                 **fields: str | None | list[str]) -> dict[str, Any]:
-    """One outbox event with its SQL-compatible digest. ``fields`` values: str / None / list of str."""
+    """One outbox event with its SQL-compatible digest. ``fields`` values: str / None / list of str.
+
+    A reserved key (``event_id``, ``event_kind``, ``namespace``, ``tenant``, ``connection_id``,
+    ``change_id``, ``digest``) or any other value type raises ``ValueError("DRIVE_EVENT_INVALID")``
+    (fixed code, nothing echoed): the caller cannot overwrite what the module derives.
+    """
+    if (
+        type(identity) is not DrivePortIdentity
+        or not is_valid_opaque_id(kind)
+        or not is_valid_opaque_id(change_id)
+        or any(k in _RESERVED_EVENT_KEYS or not _event_value_ok(v) for k, v in fields.items())
+    ):
+        raise ValueError("DRIVE_EVENT_INVALID")
     event: dict[str, Any] = {
         "event_id": dedup_key(identity.namespace, kind, change_id),
         "event_kind": kind,
@@ -366,6 +395,8 @@ class CursorLoad:
     record: CursorRecord | None = None
     version: int | None = None
     raw_value: str | None = None
+    # Fixed port error code (exact ``str``) that caused a PORT_FAILURE / lease-loss load; never text.
+    port_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,6 +410,8 @@ class StoreCommit:
 _COMMIT_REASONS = {
     "STALE_JOB_FENCE": CursorReason.LEASE_LOST,
     "SCOPE_REVOKED": CursorReason.SCOPE_REVOKED,
+    "SCOPE_NOT_GRANTED": CursorReason.SCOPE_REVOKED,
+    "PERMISSION_DENIED": CursorReason.SCOPE_REVOKED,
     "CONFLICTING_PAGE_REPLAY": CursorReason.COMMIT_CONFLICT,
     "CONFLICTING_EVENT_DIGEST": CursorReason.COMMIT_CONFLICT,
     "STALE_CURSOR_OR_SCOPE": CursorReason.STALE_CURSOR,
@@ -396,17 +429,90 @@ def _commit_reason(code: object) -> CursorReason:
     return CursorReason.PORT_FAILURE
 
 
-def _valid_ctx(identity: object, corpus: object, drive_epoch: object, lease: object) -> bool:
-    return (
-        type(identity) is DrivePortIdentity
-        and type(corpus) is DriveCorpus
-        and is_valid_scope_epoch(drive_epoch)
-        and type(lease) is DriveLease
-    )
+_PORT_BLOCK_CODES = frozenset({"SCOPE_REVOKED", "SCOPE_NOT_GRANTED", "PERMISSION_DENIED"})
+
+
+def _port_reason(code: object) -> CursorReason:
+    """Reason for a ``PortError`` code outside ``commit_cursor_page`` (exact ``str`` codes only)."""
+    if type(code) is str:
+        if code in _PORT_BLOCK_CODES:
+            return CursorReason.SCOPE_REVOKED
+        if code == "STALE_JOB_FENCE":
+            return CursorReason.LEASE_LOST
+    return CursorReason.PORT_FAILURE
+
+
+def _exact_code(exc: PortError) -> str | None:
+    code = getattr(exc, "code", None)
+    return code if type(code) is str else None
+
+
+def _canon(value: str) -> str:
+    guid = canonical_guid(value)
+    return value if guid is None else guid
+
+
+def _clean_identity(identity: object) -> DrivePortIdentity | None:
+    """Rebuild through the validating constructor: a forged / lying object yields ``None``."""
+    try:
+        if type(identity) is not DrivePortIdentity:
+            return None
+        return DrivePortIdentity(identity.namespace, identity.tenant, identity.connection_id)
+    except Exception:  # noqa: BLE001 - hostile object: fixed refusal
+        return None
+
+
+def _clean_corpus(corpus: object) -> DriveCorpus | None:
+    try:
+        if type(corpus) is not DriveCorpus:
+            return None
+        return DriveCorpus(corpus.drive_id, corpus.root_folder_ids)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _clean_lease(lease: object) -> DriveLease | None:
+    try:
+        if type(lease) is not DriveLease or type(lease.scope) is not Scope:
+            return None
+        scope = Scope(lease.scope.tenant_id, lease.scope.source_id)
+        return DriveLease(lease.actor, scope, lease.job_id, lease.worker, lease.fence,
+                          lease.expected_epoch)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _clean_record(record: object) -> CursorRecord | None:
+    try:
+        return replace(record) if type(record) is CursorRecord else None  # type: ignore[type-var]
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _tenant_ok(identity: DrivePortIdentity, lease: DriveLease) -> bool:
+    """The lease scope must belong to the identity's tenant (canonical equality)."""
+    return _canon(lease.scope.tenant_id) == identity.tenant
+
+
+def _ident_lease(identity: object, lease: object) -> tuple[DrivePortIdentity, DriveLease] | None:
+    ident, lse = _clean_identity(identity), _clean_lease(lease)
+    return None if ident is None or lse is None else (ident, lse)
+
+
+def _ctx(identity: object, corpus: object, drive_epoch: object,
+         lease: object) -> tuple[DrivePortIdentity, DriveCorpus, DriveLease] | None:
+    ident, corp, lse = _clean_identity(identity), _clean_corpus(corpus), _clean_lease(lease)
+    if ident is None or corp is None or lse is None or not is_valid_scope_epoch(drive_epoch):
+        return None
+    return (ident, corp, lse) if _tenant_ok(ident, lse) else None
 
 
 class DriveCursorStore:
-    """Cursor record persistence + fail-closed bookkeeping (``ResnapshotTracker``)."""
+    """Cursor record persistence + fail-closed bookkeeping (``ResnapshotTracker``).
+
+    Every public async method is total: bad / forged arguments, hostile port results and port
+    exceptions become fixed refusals (``asyncio.CancelledError`` is never swallowed).
+    """
 
     def __init__(self, cursors: CursorOutboxPort, tracker: ResnapshotTracker) -> None:
         if type(tracker) is not ResnapshotTracker:
@@ -429,35 +535,62 @@ class DriveCursorStore:
             state=CursorState.UNINITIALIZED, namespace=identity.namespace, tenant=identity.tenant,
             connection_id=identity.connection_id, corpus=corpus.fingerprint, epoch=drive_epoch)
 
+    def _closed(self, key: str, lease: DriveLease, record_requirement: bool, reason: CursorReason,
+                version: int | None = None, raw: str | None = None) -> CursorLoad:
+        if record_requirement:
+            self._tracker.require(key, tracker_reason(reason), lease.expected_epoch)
+        return CursorLoad(False, fail_closed_state(reason), reason, None, version, raw)
+
+    def _port_load(self, exc: PortError, key: str, lease: DriveLease,
+                   record_requirement: bool) -> CursorLoad:
+        code = _exact_code(exc)
+        reason = _port_reason(code)
+        if reason is CursorReason.SCOPE_REVOKED:  # revoked / not granted / denied: fail closed
+            return self._closed(key, lease, record_requirement, reason)
+        return CursorLoad(False, None, reason, port_code=code)
+
     # -- reads ---------------------------------------------------------------------------------
 
     async def load(self, identity: DrivePortIdentity, corpus: DriveCorpus, drive_epoch: int,
                    lease: DriveLease, *, record_requirement: bool = True) -> CursorLoad:
         """Read and validate the cursor; every failure is fail-closed and recorded in the tracker
         (unless ``record_requirement`` is False, used while a fresh snapshot is in progress)."""
-        if not _valid_ctx(identity, corpus, drive_epoch, lease):
+        ctx = _ctx(identity, corpus, drive_epoch, lease)
+        if ctx is None:
             return CursorLoad(False, None, CursorReason.INVALID_REQUEST)
+        try:
+            return await self._load(*ctx, drive_epoch, record_requirement is not False)
+        except Exception:  # noqa: BLE001 - hostile port/result: fixed refusal, no echo
+            return CursorLoad(False, None, CursorReason.PORT_FAILURE)
+
+    async def _load(self, identity: DrivePortIdentity, corpus: DriveCorpus, lease: DriveLease,
+                    drive_epoch: int, record_requirement: bool) -> CursorLoad:
         key = cursor_key(identity)
         try:
             view = await self._cursors.get_cursor(lease.actor, lease.scope, key)
-        except PortError:
-            return CursorLoad(False, None, CursorReason.PORT_FAILURE)
+        except PortError as exc:
+            return self._port_load(exc, key, lease, record_requirement)
 
-        def closed(reason: CursorReason, version: int | None = None, raw: str | None = None):
-            if record_requirement:
-                self._tracker.require(key, tracker_reason(reason), lease.expected_epoch)
-            return CursorLoad(False, fail_closed_state(reason), reason, None, version, raw)
+        def closed(reason: CursorReason, version: int | None = None,
+                   raw: str | None = None) -> CursorLoad:
+            return self._closed(key, lease, record_requirement, reason, version, raw)
 
         if view is None:
             return closed(CursorReason.CURSOR_MISSING)
-        if (
-            type(view) is not CursorView
-            or view.connection_id != key
-            or type(view.version) is not int
-            or type(view.cursor_value) is not str
-        ):
+        try:  # exact types first, only then any comparison (a lying __eq__ is never consulted)
+            well_formed = (
+                type(view) is CursorView
+                and type(view.connection_id) is str
+                and type(view.version) is int
+                and type(view.cursor_value) is str
+                and type(view.scope_epoch) is int
+            )
+            well_formed = well_formed and view.connection_id == key
+            version, raw, view_epoch = view.version, view.cursor_value, view.scope_epoch
+        except Exception:  # noqa: BLE001 - forged view object
+            well_formed = False
+        if not well_formed:
             return closed(CursorReason.CURSOR_CORRUPT)
-        version, raw = view.version, view.cursor_value
         if raw == "":
             return closed(CursorReason.CURSOR_EMPTY, version, raw)
         record = CursorRecord.decode(raw)
@@ -471,7 +604,7 @@ class DriveCursorStore:
             return closed(CursorReason.IDENTITY_CHANGED, version, raw)
         if record.corpus != corpus.fingerprint:
             return closed(CursorReason.CORPUS_CHANGED, version, raw)
-        if record.epoch != drive_epoch or view.scope_epoch != lease.expected_epoch:
+        if record.epoch != drive_epoch or view_epoch != lease.expected_epoch:
             return closed(CursorReason.SCOPE_EPOCH_CHANGED, version, raw)
         if record.state in _BLOCKED_STATES:
             if record_requirement and record.state is not CursorState.AUTH_REQUIRED:
@@ -486,68 +619,132 @@ class DriveCursorStore:
                          lease: DriveLease) -> CursorLoad:
         """Create the cursor in UNINITIALIZED if absent (idempotent), then load it. Never resets an
         existing cursor."""
-        if not _valid_ctx(identity, corpus, drive_epoch, lease):
+        ctx = _ctx(identity, corpus, drive_epoch, lease)
+        if ctx is None:
             return CursorLoad(False, None, CursorReason.INVALID_REQUEST)
-        record = self.fresh_record(identity, corpus, drive_epoch)
+        ident, corp, lse = ctx
         try:
-            await self._cursors.create_cursor(
-                lease.actor, lease.scope, cursor_key(identity), record.encode())
-        except PortError:
+            record = self.fresh_record(ident, corp, drive_epoch)
+            try:
+                await self._cursors.create_cursor(
+                    lse.actor, lse.scope, cursor_key(ident), record.encode())
+            except PortError as exc:
+                return self._port_load(exc, cursor_key(ident), lse, True)
+        except Exception:  # noqa: BLE001
             return CursorLoad(False, None, CursorReason.PORT_FAILURE)
-        return await self.load(identity, corpus, drive_epoch, lease)
+        return await self.load(ident, corp, drive_epoch, lse)
 
     async def commit(self, identity: DrivePortIdentity, lease: DriveLease, load: CursorLoad,
                      new_record: CursorRecord, events: list[dict[str, Any]]) -> StoreCommit:
-        """Commit the page events and the cursor advance together (all-or-nothing, lease fenced)."""
-        if (
-            type(identity) is not DrivePortIdentity or type(lease) is not DriveLease
-            or type(load) is not CursorLoad or not load.usable or load.record is None
-            or load.version is None or load.raw_value is None
-            or type(new_record) is not CursorRecord or type(events) is not list
-        ):
-            return StoreCommit(False, False, None, CursorReason.INVALID_REQUEST)
-        if not is_allowed_transition(load.record.state, new_record.state):
-            return StoreCommit(False, False, None, CursorReason.INVALID_TRANSITION)
-        return await self._commit_raw(
-            identity, lease, load.raw_value, load.version, new_record.encode(), events)
+        """Commit the page events and the cursor advance together (all-or-nothing, lease fenced).
+
+        The ``load`` must be internally consistent (its record encodes to its raw value, its state is
+        the record's state, it is not a blocked state) and bound to ``identity``; ``new_record`` must
+        keep the identity / corpus / epoch of the loaded record. Anything else is refused before any
+        port call, so a forged load can never overwrite a stored GAP / RESNAPSHOT marker.
+        """
+        invalid = StoreCommit(False, False, None, CursorReason.INVALID_REQUEST)
+        try:
+            ids = _ident_lease(identity, lease)
+            if (
+                ids is None or type(load) is not CursorLoad or load.usable is not True
+                or type(new_record) is not CursorRecord or type(events) is not list
+                or any(type(e) is not dict for e in events)
+            ):
+                return invalid
+            ident, lse = ids
+            if not _tenant_ok(ident, lse):
+                return invalid
+            old, new = _clean_record(load.record), _clean_record(new_record)
+            version, raw = load.version, load.raw_value
+            if (
+                old is None or new is None or type(version) is not int or type(raw) is not str
+                or old.encode() != raw or load.state is not old.state
+                or old.state in _BLOCKED_STATES
+                or (old.namespace, old.tenant, old.connection_id)
+                != (ident.namespace, ident.tenant, ident.connection_id)
+                or (new.namespace, new.tenant, new.connection_id, new.corpus, new.epoch)
+                != (old.namespace, old.tenant, old.connection_id, old.corpus, old.epoch)
+            ):
+                return invalid
+            if len(events) > MAX_EVENTS_PER_COMMIT:
+                return StoreCommit(False, False, None, CursorReason.PAGE_TOO_LARGE)
+            if not is_allowed_transition(old.state, new.state):
+                return StoreCommit(False, False, None, CursorReason.INVALID_TRANSITION)
+            new_value = new.encode()
+        except Exception:  # noqa: BLE001 - forged / hostile arguments
+            return invalid
+        return await self._commit_raw(ident, lse, raw, version, new_value, events)
 
     async def reset(self, identity: DrivePortIdentity, corpus: DriveCorpus, drive_epoch: int,
                     lease: DriveLease, load: CursorLoad) -> CursorLoad:
         """Explicit fresh-snapshot restart: overwrite whatever is stored (even a corrupt value) with a
         new UNINITIALIZED record, CAS-guarded and lease-fenced. The only way out of a blocked state."""
-        if not _valid_ctx(identity, corpus, drive_epoch, lease) or type(load) is not CursorLoad:
-            return CursorLoad(False, None, CursorReason.INVALID_REQUEST)
-        if load.version is None or load.raw_value is None:
-            return await self.initialize(identity, corpus, drive_epoch, lease)
-        new = self.fresh_record(identity, corpus, drive_epoch)
-        result = await self._commit_raw(
-            identity, lease, load.raw_value, load.version, new.encode(), [])
+        invalid = CursorLoad(False, None, CursorReason.INVALID_REQUEST)
+        ctx = _ctx(identity, corpus, drive_epoch, lease)
+        if ctx is None or type(load) is not CursorLoad:
+            return invalid
+        ident, corp, lse = ctx
+        try:
+            version, raw = load.version, load.raw_value
+            if version is None or raw is None:
+                return await self.initialize(ident, corp, drive_epoch, lse)
+            if type(version) is not int or type(raw) is not str:
+                return invalid
+            new = self.fresh_record(ident, corp, drive_epoch)
+            new_value = new.encode()
+        except Exception:  # noqa: BLE001
+            return invalid
+        result = await self._commit_raw(ident, lse, raw, version, new_value, [])
         if not result.ok or result.version is None:
-            return CursorLoad(False, None, result.reason or CursorReason.PORT_FAILURE)
-        return CursorLoad(True, new.state, None, new, result.version, new.encode())
+            reason = result.reason or CursorReason.PORT_FAILURE
+            if reason is CursorReason.SCOPE_REVOKED:
+                try:
+                    return self._closed(cursor_key(ident), lse, True, reason)
+                except Exception:  # noqa: BLE001
+                    return CursorLoad(False, None, CursorReason.PORT_FAILURE)
+            return CursorLoad(False, None, reason)
+        return CursorLoad(True, new.state, None, new, result.version, new_value)
 
     async def fail_closed(self, identity: DrivePortIdentity, lease: DriveLease, load: CursorLoad,
                           reason: CursorReason) -> bool:
         """Record a fail-closed condition: tracker first (always), then persist the GAP /
         RESNAPSHOT_REQUIRED marker when the stored record is valid. Returns True when persisted."""
-        if type(reason) is not CursorReason:
-            reason = CursorReason.PAGE_INVALID
-        self._tracker.require(cursor_key(identity), tracker_reason(reason), lease.expected_epoch)
-        if type(load) is not CursorLoad or not load.usable or load.record is None:
+        try:
+            ids = _ident_lease(identity, lease)
+            if ids is None:
+                return False
+            ident, lse = ids
+            if type(reason) is not CursorReason:
+                reason = CursorReason.PAGE_INVALID
+            self._tracker.require(cursor_key(ident), tracker_reason(reason), lse.expected_epoch)
+            if not _tenant_ok(ident, lse):
+                return False
+            if type(load) is not CursorLoad or load.usable is not True:
+                return False
+            old = _clean_record(load.record)
+            if old is None:
+                return False
+            marked = old.evolve(state=fail_closed_state(reason), reason=reason)
+            return (await self.commit(ident, lse, load, marked, [])).ok
+        except Exception:  # noqa: BLE001
             return False
-        marked = load.record.evolve(state=fail_closed_state(reason), reason=reason)
-        result = await self.commit(identity, lease, load, marked, [])
-        return result.ok
 
     async def _commit_raw(self, identity: DrivePortIdentity, lease: DriveLease, prior_value: str,
                           prior_version: int, new_value: str,
                           events: list[dict[str, Any]]) -> StoreCommit:
+        failure = StoreCommit(False, False, None, CursorReason.PORT_FAILURE)
         try:
             result = await self._cursors.commit_cursor_page(
                 lease.actor, lease.scope, cursor_key(identity), lease.job_id, lease.worker,
                 lease.fence, prior_value, prior_version, lease.expected_epoch, new_value, events)
         except PortError as exc:
-            return StoreCommit(False, False, None, _commit_reason(exc.code))
-        if type(result) is not CommitResult or type(result.version) is not int:
-            return StoreCommit(False, False, None, CursorReason.PORT_FAILURE)
-        return StoreCommit(True, result.replayed is True, result.version, None)
+            return StoreCommit(False, False, None, _commit_reason(_exact_code(exc)))
+        except Exception:  # noqa: BLE001 - hostile port: fixed refusal, no echo
+            return failure
+        try:
+            if type(result) is not CommitResult or type(result.version) is not int:
+                return failure
+            return StoreCommit(True, result.replayed is True, result.version, None)
+        except Exception:  # noqa: BLE001 - forged result object
+            return failure

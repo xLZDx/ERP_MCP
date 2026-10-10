@@ -196,8 +196,9 @@ def test_port_error_carries_only_code_and_survives_pickle():
     assert err.args == ("RATE_LIMITED",)
     again = pickle.loads(pickle.dumps(err))
     assert again.code is DriveErrorCode.RATE_LIMITED
-    # a hostile code never leaks and never raises: fixed TRANSIENT
-    for bad in ("token=SECRET", None, StrSub("NOT_FOUND"), "NOT_FOUND"):
+    # a hostile code never leaks and never raises: fixed TRANSIENT (an exact plain str naming a member is
+    # converted instead: see test_s7_fix_scope_membership.py)
+    for bad in ("token=SECRET", None, StrSub("NOT_FOUND"), "not_found"):
         e = DrivePortError(bad)
         assert e.code is DriveErrorCode.TRANSIENT and "SECRET" not in str(e) and str(e) == "TRANSIENT"
 

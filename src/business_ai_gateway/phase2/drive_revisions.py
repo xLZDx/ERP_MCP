@@ -29,6 +29,7 @@ from .drive_port import (
     DrivePortError,
     DrivePortIdentity,
     RevisionMeta,
+    is_sound_identity,
     is_valid_opaque_id,
     is_valid_scope_epoch,
 )
@@ -37,9 +38,11 @@ __all__ = [
     "MAX_REVISIONS_PER_FILE",
     "MAX_TRACKED_FILES",
     "HistoryCoverage",
+    "HistoryReason",
     "HistoryResult",
     "HistoryStatus",
     "ObservationOutcome",
+    "ObservationReason",
     "RecordResult",
     "RevisionObservation",
     "RevisionState",
@@ -86,12 +89,40 @@ class RecordResult(StrEnum):
     INVALID_INPUT = "INVALID_INPUT"
 
 
+class HistoryReason(StrEnum):
+    HISTORY_LISTED = "HISTORY_LISTED"
+    HISTORY_UNAVAILABLE = "HISTORY_UNAVAILABLE"
+    NOT_FOUND = "NOT_FOUND"
+    INVALID_INPUT = "INVALID_INPUT"
+    REVISION_LIST_INVALID = "REVISION_LIST_INVALID"
+    # fixed port error codes (DriveErrorCode values) reported as CHECK_FAILED
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    CREDENTIAL_REJECTED = "INVALID_GRANT"  # value of DriveErrorCode.INVALID_GRANT
+    FORBIDDEN_HISTORY = "FORBIDDEN_HISTORY"
+    RATE_LIMITED = "RATE_LIMITED"
+    TRANSIENT = "TRANSIENT"
+    SCOPE_EPOCH_STALE = "SCOPE_EPOCH_STALE"
+
+
+class ObservationReason(StrEnum):
+    FIRST_REVISION = "FIRST_REVISION"
+    NEW_REVISION_UNATTESTED = "NEW_REVISION_UNATTESTED"
+    SAME_AS_LATEST = "SAME_AS_LATEST"
+    OLDER_REVISION_REDELIVERED = "OLDER_REVISION_REDELIVERED"
+    TRACKER_FULL = "TRACKER_FULL"
+    INVALID_INPUT = "INVALID_INPUT"
+
+
 @dataclass(frozen=True, slots=True)
 class HistoryResult:
     status: HistoryStatus
     coverage: HistoryCoverage
-    reason: str  # fixed code, never provider text
+    reason: HistoryReason  # fixed code, never provider text
     revision_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if type(self.reason) is not HistoryReason:
+            raise ValueError("HISTORY_REASON_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,20 +136,30 @@ class RevisionVerdict:
 @dataclass(frozen=True, slots=True)
 class RevisionObservation:
     outcome: ObservationOutcome
-    reason: str
+    reason: ObservationReason
     candidate: EvidenceCandidate | None = None
     # earlier PASS-attested revisions of this file that are HISTORICAL after this observation
     historical_revision_ids: tuple[str, ...] = ()
+    # True when the revision could NOT be tracked for a capacity reason (TRACKER_FULL): no candidate
+    # exists, so the caller must block the cursor / record a gap instead of advancing past this change.
+    blocks_cursor: bool = False
+
+    def __post_init__(self) -> None:
+        if type(self.reason) is not ObservationReason:
+            raise ValueError("OBSERVATION_REASON_INVALID")
 
 
-_REFUSED_INPUT = RevisionObservation(ObservationOutcome.REFUSED, "INVALID_INPUT")
+_REFUSED_INPUT = RevisionObservation(ObservationOutcome.REFUSED, ObservationReason.INVALID_INPUT)
+_TRACKER_FULL = RevisionObservation(
+    ObservationOutcome.REFUSED, ObservationReason.TRACKER_FULL, blocks_cursor=True
+)
 
 
 class RevisionTracker:
     """Per (namespace, connection) revision bookkeeping. In-memory, bounded, thread-safe."""
 
     def __init__(self, identity: DrivePortIdentity) -> None:
-        if type(identity) is not DrivePortIdentity:
+        if not is_sound_identity(identity):
             raise ValueError("DRIVE_IDENTITY_INVALID")
         self._identity = identity
         self._lock = threading.Lock()
@@ -138,23 +179,25 @@ class RevisionTracker:
                 known = self._revisions.get(file_id)
                 if known is None:
                     if len(self._revisions) >= MAX_TRACKED_FILES:
-                        return RevisionObservation(ObservationOutcome.REFUSED, "TRACKER_FULL")
+                        return _TRACKER_FULL
                     self._revisions[file_id] = [revision_id]
                     return RevisionObservation(
-                        ObservationOutcome.FIRST_SEEN, "FIRST_REVISION", self._candidate(file_id, revision_id, change_id)
+                        ObservationOutcome.FIRST_SEEN, ObservationReason.FIRST_REVISION, self._candidate(file_id, revision_id, change_id)
                     )
                 if known[-1] == revision_id:
-                    return RevisionObservation(ObservationOutcome.DUPLICATE, "SAME_AS_LATEST")
+                    return RevisionObservation(ObservationOutcome.DUPLICATE, ObservationReason.SAME_AS_LATEST)
                 if revision_id in known:
                     # an older revision re-delivered: it can never become "latest" again
-                    return RevisionObservation(ObservationOutcome.OUT_OF_ORDER, "OLDER_REVISION_REDELIVERED")
+                    return RevisionObservation(
+                        ObservationOutcome.OUT_OF_ORDER, ObservationReason.OLDER_REVISION_REDELIVERED
+                    )
                 if len(known) >= MAX_REVISIONS_PER_FILE:
-                    return RevisionObservation(ObservationOutcome.REFUSED, "TRACKER_FULL")
+                    return _TRACKER_FULL
                 known.append(revision_id)
                 historical = tuple(r for r in known[:-1] if r in self._attested.get(file_id, ()))
                 return RevisionObservation(
                     ObservationOutcome.NEW_REVISION,
-                    "NEW_REVISION_UNATTESTED",
+                    ObservationReason.NEW_REVISION_UNATTESTED,
                     self._candidate(file_id, revision_id, change_id),
                     historical,
                 )
@@ -211,7 +254,9 @@ class RevisionTracker:
         return EvidenceCandidate(self._identity.connection_id, file_id, revision_id, change_id)
 
 
-_UNAVAILABLE = HistoryResult(HistoryStatus.HISTORY_UNAVAILABLE, HistoryCoverage.CURRENT_ONLY, "HISTORY_UNAVAILABLE")
+_UNAVAILABLE = HistoryResult(
+    HistoryStatus.HISTORY_UNAVAILABLE, HistoryCoverage.CURRENT_ONLY, HistoryReason.HISTORY_UNAVAILABLE
+)
 
 
 async def list_history(
@@ -219,14 +264,14 @@ async def list_history(
 ) -> HistoryResult:
     """Read the revision ids of a file through the read-only port. Never raises, never echoes text."""
 
-    def failed(code: str) -> HistoryResult:
+    def failed(code: HistoryReason) -> HistoryResult:
         return HistoryResult(HistoryStatus.CHECK_FAILED, HistoryCoverage.NONE, code)
 
     try:
-        if type(identity) is not DrivePortIdentity or not is_valid_scope_epoch(scope_epoch):
-            return failed("INVALID_INPUT")
+        if not is_sound_identity(identity) or not is_valid_scope_epoch(scope_epoch):
+            return failed(HistoryReason.INVALID_INPUT)
         if not is_valid_opaque_id(file_id):
-            return failed("INVALID_INPUT")
+            return failed(HistoryReason.INVALID_INPUT)
         try:
             revisions = await port.list_revisions(identity, scope_epoch, file_id)  # type: ignore[arg-type]
         except DrivePortError as exc:
@@ -234,17 +279,19 @@ async def list_history(
             if code is DriveErrorCode.FORBIDDEN_HISTORY:
                 return _UNAVAILABLE
             if code is DriveErrorCode.NOT_FOUND:
-                return HistoryResult(HistoryStatus.NOT_FOUND, HistoryCoverage.NONE, "NOT_FOUND")
-            return failed(code.value)
-        if type(revisions) is not tuple or len(revisions) == 0:
+                return HistoryResult(HistoryStatus.NOT_FOUND, HistoryCoverage.NONE, HistoryReason.NOT_FOUND)
+            return failed(HistoryReason(code.value))
+        if revisions is None or (type(revisions) is tuple and len(revisions) == 0):
             return _UNAVAILABLE  # missing/empty list: history cannot be relied upon
+        if type(revisions) is not tuple:
+            return failed(HistoryReason.REVISION_LIST_INVALID)  # wrong type is a broken port, not "no history"
         ids: list[str] = []
         for item in revisions:
             if type(item) is not RevisionMeta:
-                return failed("REVISION_LIST_INVALID")
+                return failed(HistoryReason.REVISION_LIST_INVALID)
             ids.append(item.revision_id)
         if len(set(ids)) != len(ids):
-            return failed("REVISION_LIST_INVALID")
-        return HistoryResult(HistoryStatus.AVAILABLE, HistoryCoverage.LISTED, "HISTORY_LISTED", tuple(ids))
+            return failed(HistoryReason.REVISION_LIST_INVALID)
+        return HistoryResult(HistoryStatus.AVAILABLE, HistoryCoverage.LISTED, HistoryReason.HISTORY_LISTED, tuple(ids))
     except Exception:  # noqa: BLE001 - port bug or hostile object: fail closed with a fixed code
-        return failed("TRANSIENT")
+        return failed(HistoryReason.TRANSIENT)

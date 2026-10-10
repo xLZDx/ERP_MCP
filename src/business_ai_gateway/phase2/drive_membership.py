@@ -35,32 +35,45 @@ from .drive_changes import (
     PreparedDriveBatch,
 )
 from .drive_port import (
+    MAX_CORPUS_ROOTS,
     DriveErrorCode,
     DrivePort,
     DrivePortError,
     DrivePortIdentity,
     FileMeta,
+    is_sound_identity,
     is_valid_opaque_id,
     is_valid_scope_epoch,
 )
+from .drive_scope import DEFAULT_MAX_CALLS, DEFAULT_MAX_DEPTH, cursor_corpus_parts, graph_reaches
 
 __all__ = [
+    "MAX_ANCESTORS_PER_ENTRY",
+    "MAX_ANCESTOR_INDEX_ENTRIES",
     "MAX_CACHE_ENTRIES",
     "MAX_CHAIN_DEPTH",
     "MAX_LOOKUPS_PER_CHECK",
+    "MAX_LOOKUPS_PER_PAGE",
     "MAX_ROOTS",
     "Corpus",
     "MembershipChecker",
+    "MembershipReason",
     "MembershipResult",
     "MembershipVerdict",
     "PagePreparation",
+    "PageReason",
     "PageStatus",
+    "corpus_from_drive_corpus",
 ]
 
-MAX_CHAIN_DEPTH = 32
-MAX_LOOKUPS_PER_CHECK = 64
-MAX_ROOTS = 1_000
+# depth / call budget and the root limit are the SAME constants as drive_scope / drive_port
+MAX_CHAIN_DEPTH = DEFAULT_MAX_DEPTH
+MAX_LOOKUPS_PER_CHECK = DEFAULT_MAX_CALLS
+MAX_ROOTS = MAX_CORPUS_ROOTS
 MAX_CACHE_ENTRIES = 100_000
+MAX_ANCESTORS_PER_ENTRY = 256  # visited ids kept per cached file (a hostile file may list 10,000 parents)
+MAX_ANCESTOR_INDEX_ENTRIES = 1_000_000  # total (ancestor, file) pairs of the invalidation index
+MAX_LOOKUPS_PER_PAGE = 4_096  # port lookups one prepare_page may spend over all of its changes
 
 
 class MembershipVerdict(StrEnum):
@@ -74,6 +87,38 @@ class MembershipVerdict(StrEnum):
 class PageStatus(StrEnum):
     PREPARED = "PREPARED"
     REFUSED = "REFUSED"
+
+
+class MembershipReason(StrEnum):
+    IN_CORPUS = "IN_CORPUS"
+    DRIVE_MISMATCH = "DRIVE_MISMATCH"
+    TRASHED = "TRASHED"
+    CYCLE_OR_DEPTH = "CYCLE_OR_DEPTH"
+    PARENT_UNRESOLVED = "PARENT_UNRESOLVED"
+    OUT_OF_CORPUS = "OUT_OF_CORPUS"
+    SHORTCUT_TARGET_UNRESOLVED = "SHORTCUT_TARGET_UNRESOLVED"
+    SHORTCUT_TARGET_OUTSIDE = "SHORTCUT_TARGET_OUTSIDE"
+    SHORTCUT_NOT_EVIDENCE = "SHORTCUT_NOT_EVIDENCE"
+    INVALID_INPUT = "INVALID_INPUT"
+    # DriveErrorCode values (fixed port codes)
+    NOT_FOUND = "NOT_FOUND"
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    CREDENTIAL_REJECTED = "INVALID_GRANT"  # value of DriveErrorCode.INVALID_GRANT
+    FORBIDDEN_HISTORY = "FORBIDDEN_HISTORY"
+    RATE_LIMITED = "RATE_LIMITED"
+    TRANSIENT = "TRANSIENT"
+    SCOPE_EPOCH_STALE = "SCOPE_EPOCH_STALE"
+
+
+class PageReason(StrEnum):
+    PAGE_PREPARED = "PAGE_PREPARED"
+    INVALID_INPUT = "INVALID_INPUT"
+    EPOCH_CHANGED_DURING_PAGE = "EPOCH_CHANGED_DURING_PAGE"
+    PAGE_MEMBERSHIP_UNVERIFIED = "PAGE_MEMBERSHIP_UNVERIFIED"
+    PAGE_CURSOR_MISMATCH = "PAGE_CURSOR_MISMATCH"
+    PAGE_PROJECTION_REFUSED = "PAGE_PROJECTION_REFUSED"
+    UNKNOWN_CHANGE_KIND = "UNKNOWN_CHANGE_KIND"  # an UNKNOWN change needs a gap/pause, never an advance
+    PAGE_LOOKUP_BUDGET_EXCEEDED = "PAGE_LOOKUP_BUDGET_EXCEEDED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,23 +149,38 @@ class Corpus:
 class MembershipResult:
     file_id: str
     verdict: MembershipVerdict
-    reason: str  # fixed code
+    reason: MembershipReason  # fixed code
     object_key: str  # stable_key(namespace, file_id): identity survives a rename
     # a candidate may be created only for IN_SCOPE non-shortcut files
     candidate_allowed: bool = False
+
+    def __post_init__(self) -> None:
+        if type(self.verdict) is not MembershipVerdict or type(self.reason) is not MembershipReason:
+            raise ValueError("MEMBERSHIP_REASON_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
 class PagePreparation:
     status: PageStatus
-    reason: str
+    reason: PageReason
     batch: PreparedDriveBatch | None = None
     results: tuple[MembershipResult, ...] = ()
 
+    def __post_init__(self) -> None:
+        if type(self.status) is not PageStatus or type(self.reason) is not PageReason:
+            raise ValueError("PAGE_REASON_INVALID")
+
+
+def corpus_from_drive_corpus(corpus: object, identity: object) -> Corpus:
+    """Build the ``Corpus`` of a ``drive_cursor.DriveCorpus`` for ``identity`` (same checks and fixed
+    codes as ``drive_scope.declaration_from_drive_corpus``: CORPUS_INVALID / CORPUS_IDENTITY_MISMATCH)."""
+    drive_id, roots = cursor_corpus_parts(corpus, identity)
+    return Corpus(identity.namespace, roots, drive_id)  # type: ignore[attr-defined]
+
 
 class _CheckFailedError(Exception):
-    def __init__(self, code: str) -> None:
-        super().__init__(code)
+    def __init__(self, code: MembershipReason) -> None:
+        super().__init__(code.value)
         self.code = code
 
 
@@ -135,7 +195,16 @@ class MembershipChecker:
     def __init__(
         self, port: DrivePort, identity: DrivePortIdentity, corpus: Corpus, scope_epoch: int
     ) -> None:
-        if type(identity) is not DrivePortIdentity or type(corpus) is not Corpus:
+        try:
+            sound = (
+                is_sound_identity(identity)
+                and type(corpus) is Corpus
+                and type(corpus.namespace) is str
+                and type(corpus.root_folder_ids) is tuple
+            )
+        except Exception:  # noqa: BLE001 - forged corpus (unset slot)
+            sound = False
+        if not sound:
             raise ValueError("MEMBERSHIP_CONFIG_INVALID")
         if corpus.namespace != identity.namespace:
             raise ValueError("MEMBERSHIP_NAMESPACE_MISMATCH")
@@ -148,6 +217,9 @@ class MembershipChecker:
         self._epoch = scope_epoch
         self._cache: dict[str, _CacheEntry] = {}
         self._by_ancestor: dict[str, set[str]] = {}
+        self._index_size = 0  # total (ancestor, file) pairs in _by_ancestor
+        self._removed_roots: set[str] = set()  # roots a change feed reported removed/trashed
+        self._lookups = 0  # port lookups so far (page budget)
 
     @property
     def scope_epoch(self) -> int:
@@ -189,8 +261,9 @@ class MembershipChecker:
             return False
         for anc in entry.ancestors:
             members = self._by_ancestor.get(anc)
-            if members is not None:
+            if members is not None and file_id in members:
                 members.discard(file_id)
+                self._index_size -= 1
                 if not members:
                     del self._by_ancestor[anc]
         return True
@@ -199,18 +272,26 @@ class MembershipChecker:
         if result.verdict is MembershipVerdict.CHECK_FAILED:
             return
         self._drop(result.file_id)
-        if len(self._cache) >= MAX_CACHE_ENTRIES:
+        if result.reason is MembershipReason.CYCLE_OR_DEPTH or len(ancestors) > MAX_ANCESTORS_PER_ENTRY:
+            return  # bound hit: the ancestor set is incomplete, so it could not be invalidated reliably
+        if (
+            len(self._cache) >= MAX_CACHE_ENTRIES
+            or self._index_size + len(ancestors) > MAX_ANCESTOR_INDEX_ENTRIES
+        ):
             return  # bounded: not cached, still correct (re-resolved next time)
         self._cache[result.file_id] = _CacheEntry(result, epoch, ancestors)
         for anc in ancestors:
             self._by_ancestor.setdefault(anc, set()).add(result.file_id)
+            self._index_size += 1
 
     # --- checks ----------------------------------------------------------------------------------
 
     async def check(self, file_id: object, *, use_cache: bool = False) -> MembershipResult:
         """Resolve the CURRENT membership of ``file_id`` under the current epoch. Never raises."""
         if not is_valid_opaque_id(file_id):
-            return MembershipResult("-", MembershipVerdict.CHECK_FAILED, "INVALID_INPUT", self._key("-"))
+            return MembershipResult(
+                "-", MembershipVerdict.CHECK_FAILED, MembershipReason.INVALID_INPUT, self._key("-")
+            )
         fid: str = file_id  # type: ignore[assignment]
         if use_cache:
             hit = self.cached(fid)
@@ -222,9 +303,11 @@ class MembershipChecker:
         except _CheckFailedError as exc:
             return MembershipResult(fid, MembershipVerdict.CHECK_FAILED, exc.code, self._key(fid))
         except Exception:  # noqa: BLE001 - port bug / hostile object: fail closed
-            return MembershipResult(fid, MembershipVerdict.CHECK_FAILED, "TRANSIENT", self._key(fid))
+            return MembershipResult(fid, MembershipVerdict.CHECK_FAILED, MembershipReason.TRANSIENT, self._key(fid))
         if epoch != self._epoch:  # revoked while resolving: nothing may be kept or disclosed
-            return MembershipResult(fid, MembershipVerdict.CHECK_FAILED, "SCOPE_EPOCH_STALE", self._key(fid))
+            return MembershipResult(
+                fid, MembershipVerdict.CHECK_FAILED, MembershipReason.SCOPE_EPOCH_STALE, self._key(fid)
+            )
         self._store(result, epoch, ancestors)
         return result
 
@@ -245,7 +328,7 @@ class MembershipChecker:
         return stable_key(self._identity.namespace, file_id)
 
     def _result(
-        self, file_id: str, verdict: MembershipVerdict, reason: str, allowed: bool = False
+        self, file_id: str, verdict: MembershipVerdict, reason: MembershipReason, allowed: bool = False
     ) -> MembershipResult:
         return MembershipResult(file_id, verdict, reason, self._key(file_id), allowed)
 
@@ -253,14 +336,15 @@ class MembershipChecker:
         if budget[0] <= 0:
             raise _BudgetError
         budget[0] -= 1
+        self._lookups += 1
         try:
             meta = await self._port.get_file_meta(self._identity, epoch, file_id)
         except DrivePortError as exc:
             if exc.code is DriveErrorCode.NOT_FOUND:
                 raise _NotFoundError from None
-            raise _CheckFailedError(exc.code.value) from None
+            raise _CheckFailedError(MembershipReason(exc.code.value)) from None
         if type(meta) is not FileMeta or meta.file_id != file_id:
-            raise _CheckFailedError("TRANSIENT")
+            raise _CheckFailedError(MembershipReason.TRANSIENT)
         return meta
 
     async def _resolve(self, file_id: str, epoch: int) -> tuple[MembershipResult, frozenset[str]]:
@@ -269,24 +353,24 @@ class MembershipChecker:
         try:
             meta = await self._fetch(file_id, epoch, budget)
         except _NotFoundError:
-            return self._result(file_id, MembershipVerdict.REMOVED, "NOT_FOUND"), none
+            return self._result(file_id, MembershipVerdict.REMOVED, MembershipReason.NOT_FOUND), none
         except _BudgetError:
-            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "CYCLE_OR_DEPTH"), none
+            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), none
         if meta.trashed:
-            return self._result(file_id, MembershipVerdict.REMOVED, "TRASHED"), none
+            return self._result(file_id, MembershipVerdict.REMOVED, MembershipReason.TRASHED), none
         if meta.drive_id != self._corpus.shared_drive_id:
-            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, "DRIVE_MISMATCH"), none
+            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.DRIVE_MISMATCH), none
         if meta.shortcut_target is not None:
             return await self._resolve_shortcut(file_id, meta.shortcut_target, epoch, budget)
         outcome, visited = await self._walk(meta, epoch, budget)
         ancestors = frozenset(visited)
         if outcome == "IN":
-            return self._result(file_id, MembershipVerdict.IN_SCOPE, "IN_CORPUS", True), ancestors
+            return self._result(file_id, MembershipVerdict.IN_SCOPE, MembershipReason.IN_CORPUS, True), ancestors
         if outcome == "OUT":
-            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, "OUT_OF_CORPUS"), ancestors
+            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.OUT_OF_CORPUS), ancestors
         if outcome == "UNRESOLVED":
-            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "PARENT_UNRESOLVED"), ancestors
-        return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "CYCLE_OR_DEPTH"), ancestors
+            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.PARENT_UNRESOLVED), ancestors
+        return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), ancestors
 
     async def _resolve_shortcut(
         self, file_id: str, target: str, epoch: int, budget: list[int]
@@ -295,36 +379,47 @@ class MembershipChecker:
         try:
             target_meta = await self._fetch(target, epoch, budget)
         except _NotFoundError:
-            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "SHORTCUT_TARGET_UNRESOLVED"), none
+            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_TARGET_UNRESOLVED), none
         except _BudgetError:
-            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "CYCLE_OR_DEPTH"), none
+            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.CYCLE_OR_DEPTH), none
         if target_meta.trashed or target_meta.drive_id != self._corpus.shared_drive_id:
-            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, "SHORTCUT_TARGET_OUTSIDE"), none
-        outcome, _ = await self._walk(target_meta, epoch, budget)
+            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.SHORTCUT_TARGET_OUTSIDE), none
+        outcome, walked = await self._walk(target_meta, epoch, budget)
+        none = frozenset({target, *walked})  # re-check when the target or its chain changes
         if outcome == "IN":
             # a shortcut is never a membership proof nor evidence: the target is evidence under its own id
-            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "SHORTCUT_NOT_EVIDENCE"), none
+            return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_NOT_EVIDENCE), none
         if outcome == "OUT":
-            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, "SHORTCUT_TARGET_OUTSIDE"), none
-        return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, "SHORTCUT_TARGET_UNRESOLVED"), none
+            return self._result(file_id, MembershipVerdict.SCOPE_ESCAPE_DENIED, MembershipReason.SHORTCUT_TARGET_OUTSIDE), none
+        return self._result(file_id, MembershipVerdict.NOT_IN_SCOPE, MembershipReason.SHORTCUT_TARGET_UNRESOLVED), none
 
     async def _walk(self, start: FileMeta, epoch: int, budget: list[int]) -> tuple[str, set[str]]:
-        """Iterative bounded search of the parent graph. Returns (IN|OUT|UNRESOLVED|LIMIT, visited)."""
+        """Iterative bounded search of the parent graph. Returns (IN|OUT|UNRESOLVED|LIMIT, visited).
+
+        ``visited`` holds every id the walk touched, INCLUDING the declared root it reached, so a change of
+        that root invalidates the cached result. A shared ancestor (diamond) is simply already visited; only
+        a parent that can reach its own child through the fetched graph is a cycle. A root the change feed
+        reported removed/trashed is not a root any more (it is fetched like any other folder).
+        """
         visited: set[str] = {start.file_id}
         if start.file_id in self._roots:
             return "IN", visited
+        live_roots = self._roots - self._removed_roots
+        graph: dict[str, tuple[str, ...]] = {start.file_id: start.parents}
         stack: list[tuple[FileMeta, int]] = [(start, 0)]
         unresolved = False
         limited = False
         while stack:
             meta, depth = stack.pop()
-            for parent in meta.parents:
-                if parent in self._roots:
+            for parent in dict.fromkeys(meta.parents):
+                if parent in live_roots:
+                    visited.add(parent)
                     return "IN", visited
                 if parent in visited:
-                    limited = True  # cycle (or diamond) - never revisit, never hang
+                    if graph_reaches(graph, parent, meta.file_id):
+                        limited = True  # real cycle
                     continue
-                if depth + 1 >= MAX_CHAIN_DEPTH:
+                if depth + 1 >= MAX_CHAIN_DEPTH or budget[0] <= 0 or len(visited) >= MAX_ANCESTORS_PER_ENTRY:
                     limited = True
                     continue
                 visited.add(parent)
@@ -336,14 +431,15 @@ class MembershipChecker:
                 except _BudgetError:
                     limited = True
                     continue
-                if parent_meta.trashed:
-                    unresolved = True
+                if parent_meta.trashed or parent_meta.shortcut_target is not None:
+                    unresolved = True  # a trashed folder / a shortcut is never a link of a membership chain
                     continue
+                graph[parent] = parent_meta.parents
                 stack.append((parent_meta, depth + 1))
+        if limited:  # a bound was hit: the picture is incomplete, which outranks "unresolved"
+            return "LIMIT", visited
         if unresolved:
             return "UNRESOLVED", visited
-        if limited:
-            return "LIMIT", visited
         return "OUT", visited
 
     # --- page projection -------------------------------------------------------------------------
@@ -352,30 +448,58 @@ class MembershipChecker:
         """Project one page through ``DriveChangeProjector`` after re-resolving membership.
 
         Refuses the whole page (no batch, so no cursor to commit) when any membership cannot be
-        verified, the epoch changed meanwhile, or the projector rejects the page. Never raises.
+        verified, the epoch changed meanwhile, the page needs more lookups than ``MAX_LOOKUPS_PER_PAGE``,
+        it carries an UNKNOWN change (needs a recorded gap / pause, never an advance), or the projector
+        rejects the page. Never raises.
         """
 
-        def refused(reason: str, results: tuple[MembershipResult, ...] = ()) -> PagePreparation:
+        def refused(reason: PageReason, results: tuple[MembershipResult, ...] = ()) -> PagePreparation:
             return PagePreparation(PageStatus.REFUSED, reason, None, results)
 
         try:
             if type(page) is not DrivePage or not is_valid_opaque_id(stored_cursor):
-                return refused("INVALID_INPUT")
+                return refused(PageReason.INVALID_INPUT)
             epoch = self._epoch
             for change in page.changes:
                 if type(change) is not DriveChange or type(change.kind) is not DriveChangeKind:
-                    return refused("INVALID_INPUT")
-            changed = [c for c in page.changes if self._in_drive(c)]
+                    return refused(PageReason.INVALID_INPUT)
+            if len({c.change_id for c in page.changes}) != len(page.changes):
+                return refused(PageReason.PAGE_PROJECTION_REFUSED)
+            # Without a shared drive a change that names a drive is foreign: it is counted as denied and
+            # never resolved, never tombstoned, never requalified (no foreign file id leaves this method).
+            foreign = [
+                c for c in page.changes
+                if self._corpus.shared_drive_id is None
+                and c.drive_id is not None
+                and c.kind is not DriveChangeKind.UNKNOWN
+            ]
+            foreign_ids = {c.change_id for c in foreign}
+            kept = tuple(c for c in page.changes if c.change_id not in foreign_ids)
+            changed = [c for c in kept if self._in_drive(c)]
             for change in changed:
                 # the changed file and (when it is a folder) all cached descendants are stale
                 self.invalidate(change.file_id)
+                if change.file_id in self._roots and change.kind is DriveChangeKind.REMOVED:
+                    self._removed_roots.add(change.file_id)
             resolved: dict[str, MembershipResult] = {}
+            spent_from = self._lookups
             for change in changed:
                 if change.kind is DriveChangeKind.UPSERT and change.file_id not in resolved:
-                    resolved[change.file_id] = await self.check(change.file_id)
+                    if self._lookups - spent_from >= MAX_LOOKUPS_PER_PAGE:
+                        return refused(PageReason.PAGE_LOOKUP_BUDGET_EXCEEDED, tuple(resolved.values()))
+                    result = await self.check(change.file_id)
+                    resolved[change.file_id] = result
+                    if change.file_id in self._roots:
+                        if result.verdict is MembershipVerdict.REMOVED:
+                            self._removed_roots.add(change.file_id)
+                        elif result.verdict is MembershipVerdict.IN_SCOPE:
+                            self._removed_roots.discard(change.file_id)
+            for change in changed:
+                if change.file_id in self._roots:
+                    self.invalidate(change.file_id)  # the root state may have changed while resolving
             results = tuple(resolved.values())
             if epoch != self._epoch:
-                return refused("EPOCH_CHANGED_DURING_PAGE", results)
+                return refused(PageReason.EPOCH_CHANGED_DURING_PAGE, results)
 
             def allowed(file_id: str) -> bool | None:
                 res = resolved.get(file_id)
@@ -388,15 +512,22 @@ class MembershipChecker:
                 drive_id=self._corpus.shared_drive_id,
                 file_scope_allowed=allowed,
             )
+            projected = DrivePage(
+                page.requested_page_token, kept, page.next_page_token, page.new_start_page_token
+            )
             try:
-                batch = projector.prepare(page, stored_cursor=stored_cursor)  # type: ignore[arg-type]
+                batch = projector.prepare(projected, stored_cursor=stored_cursor)  # type: ignore[arg-type]
             except ValueError as exc:
                 code = str(exc)
                 if code == "FOLDER_MEMBERSHIP_UNVERIFIED":
-                    return refused("PAGE_MEMBERSHIP_UNVERIFIED", results)
+                    return refused(PageReason.PAGE_MEMBERSHIP_UNVERIFIED, results)
                 if code == "CURSOR_COMPARE_AND_SWAP_FAILED":
-                    return refused("PAGE_CURSOR_MISMATCH", results)
-                return refused("PAGE_PROJECTION_REFUSED", results)
+                    return refused(PageReason.PAGE_CURSOR_MISMATCH, results)
+                return refused(PageReason.PAGE_PROJECTION_REFUSED, results)
+            if batch.unknown_changes > 0 or batch.requires_gap_or_pause:
+                return refused(PageReason.UNKNOWN_CHANGE_KIND, results)
+            if foreign:
+                batch = replace(batch, denied_changes=batch.denied_changes + len(foreign))
             removed = {fid for fid, r in resolved.items() if r.verdict is MembershipVerdict.REMOVED}
             if removed:
                 tombs = tuple(
@@ -406,9 +537,9 @@ class MembershipChecker:
                 batch = replace(batch, tombstones=tombs)
             for fid in batch.requalify_folder_ids:
                 self.invalidate(fid)
-            return PagePreparation(PageStatus.PREPARED, "PAGE_PREPARED", batch, results)
+            return PagePreparation(PageStatus.PREPARED, PageReason.PAGE_PREPARED, batch, results)
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
-            return refused("PAGE_PROJECTION_REFUSED")
+            return refused(PageReason.PAGE_PROJECTION_REFUSED)
 
     def _in_drive(self, change: DriveChange) -> bool:
         drive = self._corpus.shared_drive_id

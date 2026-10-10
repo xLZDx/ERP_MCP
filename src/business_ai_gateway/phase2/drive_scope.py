@@ -23,13 +23,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 
+from .drive_cursor import DriveCorpus
 from .drive_port import (
+    MAX_CORPUS_ROOTS,
     DriveErrorCode,
     DrivePort,
     DrivePortError,
     DrivePortIdentity,
     FileMeta,
+    is_sound_identity,
     is_valid_opaque_id,
     is_valid_scope_epoch,
 )
@@ -44,13 +48,16 @@ __all__ = [
     "MembershipCode",
     "MembershipResult",
     "MembershipStatus",
+    "NewChildCode",
     "NewChildObservation",
     "ProofBasis",
     "ScopeClaim",
     "ScopeCode",
     "ScopeEvaluation",
+    "ScopedAccessCode",
     "ScopedAccessProof",
     "check_isolation_label",
+    "declaration_from_drive_corpus",
     "evaluate_scopes",
     "observe_new_child_access",
     "prove_scoped_read",
@@ -60,7 +67,7 @@ __all__ = [
 BROAD_ACCEPTED = "BROAD_ACCEPTED"
 MAX_SCOPE_NAMES = 16
 MAX_SCOPE_NAME_CHARS = 64
-MAX_CORPUS_ROOTS = 64
+# MAX_CORPUS_ROOTS (1000) is the one shared limit, defined in drive_port and re-exported here
 DEFAULT_MAX_DEPTH = 32
 DEFAULT_MAX_CALLS = 128
 _MAX_DEPTH_CAP = 64
@@ -95,13 +102,15 @@ class ScopeCode(StrEnum):
 
 
 # name -> claim. Plain names, not URLs: a real Google scope URL is refused as SCOPE_NAME_INVALID.
-SCOPE_ALLOW_LIST: dict[str, ScopeClaim] = {
+SCOPE_ALLOW_LIST: MappingProxyType[str, ScopeClaim] = MappingProxyType({
     "drive.file": ScopeClaim.NARROW_FILE_SCOPE,
     "drive.metadata.readonly": ScopeClaim.READONLY_BROAD,
     "drive.readonly": ScopeClaim.READONLY_BROAD,
     "drive": ScopeClaim.BROAD,
-}
-_RANK = {ScopeClaim.NARROW_FILE_SCOPE: 0, ScopeClaim.READONLY_BROAD: 1, ScopeClaim.BROAD: 2}
+})
+_RANK: MappingProxyType[ScopeClaim, int] = MappingProxyType(
+    {ScopeClaim.NARROW_FILE_SCOPE: 0, ScopeClaim.READONLY_BROAD: 1, ScopeClaim.BROAD: 2}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +213,47 @@ class CorpusDeclaration:
             raise ValueError("CORPUS_INVALID")
 
 
+def _declaration_ok(corpus: object) -> bool:
+    """True for a real, fully initialised ``CorpusDeclaration`` (an ``object.__new__`` shell is not)."""
+    try:
+        return (
+            type(corpus) is CorpusDeclaration
+            and type(corpus.namespace) is str  # type: ignore[attr-defined]
+            and type(corpus.root_folder_ids) is tuple  # type: ignore[attr-defined]
+            and (corpus.drive_id is None or type(corpus.drive_id) is str)  # type: ignore[attr-defined]
+        )
+    except Exception:  # noqa: BLE001 - unset slot / hostile object
+        return False
+
+
+def cursor_corpus_parts(corpus: object, identity: object) -> tuple[str | None, tuple[str, ...]]:
+    """Read-only bridge from ``drive_cursor.DriveCorpus``: (drive_id, root ids) after checking that the
+    corpus matches ``identity`` (``drive:<id>`` namespace <-> that drive id; ``account:<id>`` <-> no drive
+    id, the same rule the baseline uses). Raises ``ValueError`` with a fixed code only:
+    ``CORPUS_INVALID`` (wrong/forged object) or ``CORPUS_IDENTITY_MISMATCH``."""
+    if not is_sound_identity(identity):
+        raise ValueError("CORPUS_INVALID")
+    try:
+        if type(corpus) is not DriveCorpus:
+            raise ValueError("CORPUS_INVALID")
+        drive_id, roots = corpus.drive_id, corpus.root_folder_ids
+        if (drive_id is not None and type(drive_id) is not str) or type(roots) is not tuple:
+            raise ValueError("CORPUS_INVALID")
+        expected = identity.namespace_id if identity.kind == "drive" else None  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - forged object: fixed code only
+        raise ValueError("CORPUS_INVALID") from None
+    if drive_id != expected:
+        raise ValueError("CORPUS_IDENTITY_MISMATCH")
+    return drive_id, roots
+
+
+def declaration_from_drive_corpus(corpus: object, identity: object) -> CorpusDeclaration:
+    """Build the ``CorpusDeclaration`` of a ``drive_cursor.DriveCorpus`` for ``identity`` (one declaration
+    feeds ``resolve_membership`` and, via ``drive_membership.corpus_from_drive_corpus``, the checker)."""
+    drive_id, roots = cursor_corpus_parts(corpus, identity)
+    return CorpusDeclaration(identity.namespace, drive_id, roots)  # type: ignore[attr-defined]
+
+
 class MembershipStatus(StrEnum):
     IN_SCOPE = "IN_SCOPE"
     NOT_IN_SCOPE = "NOT_IN_SCOPE"
@@ -246,6 +296,21 @@ class _Abort(Exception):
         self.result = result
 
 
+def graph_reaches(graph: dict[str, tuple[str, ...]], start: str, target: str) -> bool:
+    """True when ``target`` is ``start`` or reachable from it through the already fetched parent edges."""
+    stack = [start]
+    seen: set[str] = set()
+    while stack:
+        node = stack.pop()
+        if node == target:
+            return True
+        if node in seen:
+            continue
+        seen.add(node)
+        stack.extend(graph.get(node, ()))
+    return False
+
+
 async def _fetch(
     port: DrivePort, identity: DrivePortIdentity, epoch: int, file_id: str, budget: list[int]
 ) -> FileMeta | None:
@@ -280,8 +345,8 @@ async def resolve_membership(
     port calls. Never raises (``asyncio.CancelledError`` still propagates)."""
     try:
         if (
-            type(identity) is not DrivePortIdentity
-            or type(corpus) is not CorpusDeclaration
+            not is_sound_identity(identity)
+            or not _declaration_ok(corpus)
             or not is_valid_scope_epoch(scope_epoch)
             or not is_valid_opaque_id(file_id)
             or type(max_depth) is not int
@@ -319,15 +384,20 @@ async def _walk(
     if file_id in roots:
         return MembershipResult(MembershipStatus.IN_SCOPE, MembershipCode.IN_CORPUS)
     visited = {file_id}
-    frontier: list[str] = list(leaf.parents)
+    graph: dict[str, tuple[str, ...]] = {file_id: leaf.parents}
+    # (parent id, id of the child it was read from): the child is needed to tell a cycle from a diamond
+    frontier: list[tuple[str, str]] = [(p, file_id) for p in dict.fromkeys(leaf.parents)]
     failure: MembershipCode | None = None
     for _ in range(max_depth):
-        if any(p in roots for p in frontier):
+        if any(p in roots for p, _via in frontier):
             return MembershipResult(MembershipStatus.IN_SCOPE, MembershipCode.IN_CORPUS)
-        nxt: list[str] = []
-        for parent in frontier:
+        nxt: list[tuple[str, str]] = []
+        for parent, via in frontier:
             if parent in visited:
-                failure = failure or MembershipCode.CYCLE
+                # a shared ancestor (diamond) is simply already handled; only a parent that can reach
+                # its own child through the fetched graph is a cycle
+                if graph_reaches(graph, parent, via):
+                    failure = failure or MembershipCode.CYCLE
                 continue
             visited.add(parent)
             meta = await _fetch(port, identity, epoch, parent, budget)
@@ -338,7 +408,8 @@ async def _walk(
             elif meta.trashed:
                 failure = failure or MembershipCode.TRASHED
             else:
-                nxt.extend(meta.parents)
+                graph[parent] = meta.parents
+                nxt.extend((p, parent) for p in dict.fromkeys(meta.parents))
         if not nxt:
             return _out(failure or MembershipCode.OUTSIDE_CORPUS)
         frontier = nxt
@@ -361,29 +432,67 @@ class ProofBasis:
     observation_id: str
 
 
+class ScopedAccessCode(StrEnum):
+    """Fixed codes of a ``ScopedAccessProof``: the proof's own codes plus every non-proving membership code."""
+
+    READ_IN_CORPUS = "READ_IN_CORPUS"
+    OUT_OF_CORPUS = "OUT_OF_CORPUS"
+    SCOPE_NOT_ACCEPTED = "SCOPE_NOT_ACCEPTED"
+    OBSERVATION_FAILED = "OBSERVATION_FAILED"
+    INPUT_INVALID = "INPUT_INVALID"
+    EMPTY_CORPUS = "EMPTY_CORPUS"
+    NAMESPACE_MISMATCH = "NAMESPACE_MISMATCH"
+    FILE_UNRESOLVED = "FILE_UNRESOLVED"
+    PARENT_UNRESOLVED = "PARENT_UNRESOLVED"
+    OUTSIDE_CORPUS = "OUTSIDE_CORPUS"
+    DEPTH_EXCEEDED = "DEPTH_EXCEEDED"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    CYCLE = "CYCLE"
+    SHORTCUT_NOT_PROOF = "SHORTCUT_NOT_PROOF"
+    TRASHED = "TRASHED"
+    PORT_REFUSED = "PORT_REFUSED"
+
+
+class NewChildCode(StrEnum):
+    CHILD_READABLE = "CHILD_READABLE"
+    CHILD_HIDDEN = "CHILD_HIDDEN"
+    CHILD_FORBIDDEN = "CHILD_FORBIDDEN"  # 403 on the child's FILE metadata read (not a history 403)
+    CHILD_OUTSIDE_CORPUS = "CHILD_OUTSIDE_CORPUS"
+    SCOPE_NOT_ACCEPTED = "SCOPE_NOT_ACCEPTED"
+    EMPTY_CORPUS = "EMPTY_CORPUS"
+    INPUT_INVALID = "INPUT_INVALID"
+    OBSERVATION_FAILED = "OBSERVATION_FAILED"
+
+
 @dataclass(frozen=True, slots=True)
 class ScopedAccessProof:
     status: AccessProof
-    code: str
+    code: ScopedAccessCode
     basis: ProofBasis | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.status) is not AccessProof or type(self.code) is not ScopedAccessCode:
+            raise ValueError("PROOF_CODE_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
 class NewChildObservation:
-    """``NEW_CHILD_ACCESS`` verdict. ``code`` names why: CHILD_READABLE, CHILD_HIDDEN,
-    CHILD_FORBIDDEN, CHILD_OUTSIDE_CORPUS, SCOPE_NOT_ACCEPTED, EMPTY_CORPUS, INPUT_INVALID,
-    OBSERVATION_FAILED."""
+    """``NEW_CHILD_ACCESS`` verdict; ``code`` is a fixed ``NewChildCode``."""
 
     status: AccessProof
-    code: str
+    code: NewChildCode
     basis: ProofBasis | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.status) is not AccessProof or type(self.code) is not NewChildCode:
+            raise ValueError("PROOF_CODE_INVALID")
 
 
 def _input_ok(identity: object, epoch: object, corpus: object, file_id: object, obs: object) -> bool:
     return (
-        type(identity) is DrivePortIdentity
+        is_sound_identity(identity)
         and is_valid_scope_epoch(epoch)
-        and type(corpus) is CorpusDeclaration
+        and _declaration_ok(corpus)
         and is_valid_opaque_id(file_id)
         and is_valid_opaque_id(obs)
     )
@@ -404,25 +513,25 @@ async def prove_scoped_read(
     an unresolved file proves nothing (NOT_PROVEN)."""
     try:
         if not _input_ok(identity, scope_epoch, corpus, file_id, observation_id):
-            return ScopedAccessProof(AccessProof.NOT_PROVEN, "INPUT_INVALID")
+            return ScopedAccessProof(AccessProof.NOT_PROVEN, ScopedAccessCode.INPUT_INVALID)
         evaluation = evaluate_scopes(scope_names, risk_labels)
         if not evaluation.may_proceed:
-            return ScopedAccessProof(AccessProof.DENIED, "SCOPE_NOT_ACCEPTED")
+            return ScopedAccessProof(AccessProof.DENIED, ScopedAccessCode.SCOPE_NOT_ACCEPTED)
         if not corpus.root_folder_ids:  # type: ignore[union-attr]
-            return ScopedAccessProof(AccessProof.NOT_PROVEN, "EMPTY_CORPUS")
+            return ScopedAccessProof(AccessProof.NOT_PROVEN, ScopedAccessCode.EMPTY_CORPUS)
         member = await resolve_membership(port, identity, scope_epoch, corpus, file_id)
         if member.in_scope:
             basis = ProofBasis(evaluation.scopes, corpus.root_folder_ids, observation_id)  # type: ignore[union-attr,arg-type]
-            return ScopedAccessProof(AccessProof.PROVEN, "READ_IN_CORPUS", basis)
+            return ScopedAccessProof(AccessProof.PROVEN, ScopedAccessCode.READ_IN_CORPUS, basis)
         if member.code in (
             MembershipCode.OUTSIDE_CORPUS,
             MembershipCode.NAMESPACE_MISMATCH,
             MembershipCode.SHORTCUT_NOT_PROOF,
         ):
-            return ScopedAccessProof(AccessProof.DENIED, "OUT_OF_CORPUS")
-        return ScopedAccessProof(AccessProof.NOT_PROVEN, member.code.value)
+            return ScopedAccessProof(AccessProof.DENIED, ScopedAccessCode.OUT_OF_CORPUS)
+        return ScopedAccessProof(AccessProof.NOT_PROVEN, ScopedAccessCode(member.code.value))
     except Exception:  # noqa: BLE001
-        return ScopedAccessProof(AccessProof.NOT_PROVEN, "OBSERVATION_FAILED")
+        return ScopedAccessProof(AccessProof.NOT_PROVEN, ScopedAccessCode.OBSERVATION_FAILED)
 
 
 async def observe_new_child_access(
@@ -441,22 +550,22 @@ async def observe_new_child_access(
     corpus never proves anything."""
     try:
         if not _input_ok(identity, scope_epoch, corpus, child_file_id, observation_id):
-            return NewChildObservation(AccessProof.NOT_PROVEN, "INPUT_INVALID")
+            return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.INPUT_INVALID)
         evaluation = evaluate_scopes(scope_names, risk_labels)
         if not evaluation.may_proceed:
-            return NewChildObservation(AccessProof.DENIED, "SCOPE_NOT_ACCEPTED")
+            return NewChildObservation(AccessProof.DENIED, NewChildCode.SCOPE_NOT_ACCEPTED)
         if not corpus.root_folder_ids:  # type: ignore[union-attr]
-            return NewChildObservation(AccessProof.NOT_PROVEN, "EMPTY_CORPUS")
+            return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.EMPTY_CORPUS)
         member = await resolve_membership(port, identity, scope_epoch, corpus, child_file_id)
         if member.in_scope:
             basis = ProofBasis(evaluation.scopes, corpus.root_folder_ids, observation_id)  # type: ignore[union-attr,arg-type]
-            return NewChildObservation(AccessProof.PROVEN, "CHILD_READABLE", basis)
+            return NewChildObservation(AccessProof.PROVEN, NewChildCode.CHILD_READABLE, basis)
         if member.code is MembershipCode.FILE_UNRESOLVED:
-            return NewChildObservation(AccessProof.NOT_PROVEN, "CHILD_HIDDEN")
+            return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.CHILD_HIDDEN)
         if member.code is MembershipCode.PORT_REFUSED:
             if member.port_code is DriveErrorCode.FORBIDDEN_HISTORY:
-                return NewChildObservation(AccessProof.DENIED, "CHILD_FORBIDDEN")
-            return NewChildObservation(AccessProof.NOT_PROVEN, "OBSERVATION_FAILED")
-        return NewChildObservation(AccessProof.NOT_PROVEN, "CHILD_OUTSIDE_CORPUS")
+                return NewChildObservation(AccessProof.DENIED, NewChildCode.CHILD_FORBIDDEN)
+            return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.OBSERVATION_FAILED)
+        return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.CHILD_OUTSIDE_CORPUS)
     except Exception:  # noqa: BLE001
-        return NewChildObservation(AccessProof.NOT_PROVEN, "OBSERVATION_FAILED")
+        return NewChildObservation(AccessProof.NOT_PROVEN, NewChildCode.OBSERVATION_FAILED)
