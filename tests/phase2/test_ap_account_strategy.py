@@ -15,7 +15,6 @@ from business_ai_gateway.phase2.ap_account_strategy import (
     ApViewState,
     InputName,
     LedgerInputs,
-    OpenItem,
     Reason,
     SourceDescription,
     Strategy,
@@ -24,10 +23,18 @@ from business_ai_gateway.phase2.ap_account_strategy import (
     make_balance_view,
     qualify_strategy,
 )
+from business_ai_gateway.phase2.ap_account_strategy import OpenItem as _OpenItem
 
 LEDGER = "ledger_accounting_register"
 SETTLE = "settlements_register"
 P_FROM, P_UNTIL = date(2026, 1, 1), date(2027, 1, 1)
+TENANT, SOURCE = "TENANT-A", "SRC-1"
+
+
+def OpenItem(doc_ref, document_date, due_date, amount, currency="", company="",
+             tenant_id=TENANT, source_id=SOURCE):
+    """Fixture builder: rows default to the fixture tenant/source (tests override it explicitly)."""
+    return _OpenItem(doc_ref, document_date, due_date, amount, currency, company, tenant_id, source_id)
 
 
 def source(**kw) -> SourceDescription:
@@ -40,6 +47,7 @@ def source(**kw) -> SourceDescription:
         currencies=("MDL",),
         covered_from=date(2025, 1, 1),
         covered_until=date(2028, 1, 1),
+        tenant_id=TENANT, source_id=SOURCE,
     )
     base.update(kw)
     return SourceDescription(**base)
@@ -49,6 +57,7 @@ def inputs(**kw) -> LedgerInputs:
     base: dict = dict(  # noqa: C408
         register="Хозрасчетный", account_codes=("60.01",), analytics_keys=("Контрагент", "Договор"),
         company="MOLDRETAIL", currency="MDL", period_from=P_FROM, period_until=P_UNTIL,
+        tenant_id=TENANT, source_id=SOURCE,
     )
     base.update(kw)
     return LedgerInputs(**base)
@@ -208,9 +217,13 @@ def test_tc092_settlements_register_listed_only_as_accounting_register_is_absent
 
 
 def test_tc092_absent_is_not_an_exception_for_empty_or_hostile_source():
-    for src in (source(accounting_registers=(), settlements_registers=()), SourceDescription()):
+    for src in (source(accounting_registers=(), settlements_registers=()),
+                SourceDescription(tenant_id=TENANT, source_id=SOURCE)):
         r = qualify_strategy(SETTLE, inputs(register="X"), src)
         assert r.state is StrategyState.ABSENT
+    # a description that names no tenant/source is not ABSENT for anybody: it is not in scope at all
+    r = qualify_strategy(SETTLE, inputs(register="X"), SourceDescription())
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_NOT_IN_SOURCE
 
 
 # ------------------------------------------------------------------ TC093
@@ -658,3 +671,214 @@ def test_aging_digest_is_bound_to_the_strategy():
     rows = (item("D", D0, DUE, "1"),)
     other = qualify_strategy(LEDGER, inputs(), source(currencies=("MDL", "EUR")))
     assert age(rows).digest != age(rows, strat=other).digest
+
+
+# ------------------------------------------------------------------ GPT-PM round fixes (M04, M07, M08, M09)
+
+ZERO_REFS = ["00000000-0000-0000-0000-000000000000", "{00000000-0000-0000-0000-000000000000}",
+             "0" * 32, " (00000000-0000-0000-0000-000000000000) "]
+
+
+@pytest.mark.parametrize("ref", ZERO_REFS)
+def test_m04_empty_1c_document_reference_refuses_the_whole_aging(ref):
+    r = age((item("D1", D0, DUE, "5"), item(ref, D0, DUE, "10")), ASOF)
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.DOC_REF_EMPTY_1C)
+    assert r.buckets == () and r.open_total is None
+
+
+def test_m04_a_real_guid_document_reference_is_accepted():
+    r = age((item("3f2504e0-4f89-11d3-9a0c-0305e82c3301", D0, DUE, "10"),), ASOF)
+    assert r.state is AgingState.AVAILABLE
+
+
+@pytest.mark.parametrize("field", ["company", "register"])
+def test_m04_empty_1c_reference_is_not_a_declared_identity(field):
+    zero = ZERO_REFS[0]
+    kw = {field: zero}
+    src = source(companies=(zero,)) if field == "company" else source(accounting_registers=(zero,))
+    r = qualify_strategy(LEDGER, inputs(**kw), src)
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_INVALID
+
+
+@pytest.mark.parametrize("field", ["tenant_id", "source_id"])
+def test_m04_empty_1c_reference_is_not_a_tenant_or_source(field):
+    zero = ZERO_REFS[0]
+    r = qualify_strategy(LEDGER, inputs(**{field: zero}), source(**{field: zero}))
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_INVALID
+
+
+def test_m07_comma_in_declared_or_source_elements_does_not_collide_digests():
+    a = qualify_strategy(LEDGER, inputs(account_codes=("a,b", "c")),
+                         source(account_codes=("a,b", "c")))
+    b = qualify_strategy(LEDGER, inputs(account_codes=("a", "b,c")),
+                         source(account_codes=("a", "b,c")))
+    assert a.state is b.state is StrategyState.QUALIFIED
+    assert a.digest != b.digest
+    k1 = qualify_strategy(LEDGER, inputs(analytics_keys=("x,y", "z")), source(analytics_keys=("x,y", "z")))
+    k2 = qualify_strategy(LEDGER, inputs(analytics_keys=("x", "y,z")), source(analytics_keys=("x", "y,z")))
+    assert k1.digest != k2.digest
+    # source-only ambiguity: the same declared inputs against differently-split source lists
+    s1 = qualify_strategy(LEDGER, inputs(), source(account_codes=("60.01", "x,y")))
+    s2 = qualify_strategy(LEDGER, inputs(), source(account_codes=("60.01", "x", "y")))
+    assert s1.digest != s2.digest
+    c1 = qualify_strategy(LEDGER, inputs(), source(companies=("MOLDRETAIL", "a,b")))
+    c2 = qualify_strategy(LEDGER, inputs(), source(companies=("MOLDRETAIL", "a", "b")))
+    assert c1.digest != c2.digest
+    # downstream digests follow
+    assert make_balance_view(a, Decimal(1)).digest != make_balance_view(b, Decimal(1)).digest
+    rows = (item("D", D0, DUE, "1"),)
+    assert age(rows, strat=a).digest != age(rows, strat=b).digest
+
+
+def test_m07_digest_is_sensitive_to_every_declared_and_source_input():
+    base = qualified().digest
+    variants = [
+        qualify_strategy(LEDGER, inputs(register="Другой"), source(accounting_registers=("Хозрасчетный", "Другой"))),
+        qualify_strategy(LEDGER, inputs(account_codes=("60.01", "60.02")), source()),
+        qualify_strategy(LEDGER, inputs(analytics_keys=("Контрагент",)), source()),
+        qualify_strategy(LEDGER, inputs(company="OTHER"), source(companies=("MOLDRETAIL", "OTHER"))),
+        qualify_strategy(LEDGER, inputs(currency="EUR"), source(currencies=("MDL", "EUR"))),
+        qualify_strategy(LEDGER, inputs(period_from=date(2026, 2, 1)), source()),
+        qualify_strategy(LEDGER, inputs(period_until=date(2026, 12, 1)), source()),
+        qualify_strategy(LEDGER, inputs(), source(accounting_registers=("Хозрасчетный", "Z"))),
+        qualify_strategy(LEDGER, inputs(), source(account_codes=("60.01", "60.02", "60.03"))),
+        qualify_strategy(LEDGER, inputs(), source(analytics_keys=("Контрагент", "Договор", "Склад"))),
+        qualify_strategy(LEDGER, inputs(), source(companies=("MOLDRETAIL", "OTHER"))),
+        qualify_strategy(LEDGER, inputs(), source(currencies=("MDL", "EUR"))),
+        qualify_strategy(LEDGER, inputs(), source(covered_from=date(2025, 6, 1))),
+        qualify_strategy(LEDGER, inputs(), source(covered_until=date(2029, 1, 1))),
+        qualify_strategy(LEDGER, inputs(tenant_id="TENANT-B"), source(tenant_id="TENANT-B")),
+        qualify_strategy(LEDGER, inputs(source_id="SRC-2"), source(source_id="SRC-2")),
+    ]
+    assert all(v.state is StrategyState.QUALIFIED for v in variants)
+    digests = [v.digest for v in variants]
+    assert base not in digests and len(set(digests)) == len(digests)
+
+
+class _LyingNe(str):
+    def __ne__(self, other):
+        return False
+
+    __eq__ = str.__eq__
+    __hash__ = str.__hash__
+
+
+def test_m08_str_subclass_cannot_hide_a_case_collision():
+    r = qualify_strategy(LEDGER, inputs(), source(companies=(_LyingNe("MoldRetail"), _LyingNe("MOLDRETAIL"))))
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_INVALID
+
+
+@pytest.mark.parametrize("field", ["accounting_registers", "account_codes", "analytics_keys",
+                                   "companies", "currencies"])
+def test_m08_source_list_elements_must_be_exactly_str(field):
+    plain = getattr(source(), field)
+    r = qualify_strategy(LEDGER, inputs(), source(**{field: (_LyingNe(plain[0]),) + plain[1:]}))
+    assert r.reason is Reason.INPUT_INVALID
+
+
+def test_m08_declared_inputs_must_be_exactly_str():
+    assert qualify_strategy(LEDGER, inputs(account_codes=(_LyingNe("60.01"),)), source()).reason \
+        is Reason.INPUT_INVALID
+    assert qualify_strategy(LEDGER, inputs(analytics_keys=(_LyingNe("Контрагент"),)), source()).reason \
+        is Reason.INPUT_INVALID
+    for field in ("register", "company", "currency", "tenant_id", "source_id"):
+        r = qualify_strategy(LEDGER, inputs(**{field: _LyingNe(getattr(inputs(), field))}), source())
+        assert r.reason is Reason.INPUT_INVALID, field
+
+
+class _TupleSub(tuple):
+    pass
+
+
+def test_m08_containers_must_be_exact_tuples():
+    assert qualify_strategy(LEDGER, inputs(), source(companies=_TupleSub(("MOLDRETAIL",)))).reason \
+        is Reason.INPUT_INVALID
+    rows = _TupleSub((item("D", D0, DUE, "1"),))
+    assert age(rows, ASOF).reason is Reason.ITEMS_INVALID
+
+
+def test_m08_open_item_text_must_be_exactly_str():
+    for kw in ({"company": _LyingNe("MOLDRETAIL")}, {"currency": _LyingNe("MDL")},
+               {"tenant_id": _LyingNe(TENANT)}, {"source_id": _LyingNe(SOURCE)}):
+        base = dict(company="MOLDRETAIL", currency="MDL", tenant_id=TENANT, source_id=SOURCE)  # noqa: C408
+        base.update(kw)
+        row = OpenItem("D", D0, DUE, Decimal(1), **base)
+        assert age((row,)).reason is Reason.ITEM_SCOPE_MISMATCH, kw
+    row = OpenItem(_LyingNe("D"), D0, DUE, Decimal(1), "MDL", "MOLDRETAIL", TENANT, SOURCE)
+    assert age((row,)).reason is Reason.ITEM_REF_INVALID
+
+
+def test_m08_hand_built_result_with_str_subclass_fields_is_refused():
+    for field in ("company", "currency", "tenant_id", "source_id"):
+        bad = dataclasses.replace(qualified(), **{field: _LyingNe(getattr(qualified(), field))})
+        assert make_balance_view(bad, Decimal(1)).state is ApViewState.UNQUALIFIED, field
+        assert age((item("D", D0, DUE, "1"),), strat=bad).reason is Reason.STRATEGY_NOT_QUALIFIED, field
+
+
+def test_m09_tenant_and_source_must_be_declared():
+    for kw in ({"tenant_id": ""}, {"source_id": " "}):
+        r = qualify_strategy(LEDGER, inputs(**kw), source())
+        assert r.reason is Reason.INPUT_NOT_DECLARED
+        assert r.missing == ((InputName("TENANT"),) if "tenant_id" in kw else (InputName("SOURCE"),))
+
+
+@pytest.mark.parametrize(("src_kw", "missing"), [
+    ({"tenant_id": "TENANT-B"}, "TENANT"), ({"tenant_id": ""}, "TENANT"),
+    ({"source_id": "SRC-2"}, "SOURCE"), ({"source_id": ""}, "SOURCE"),
+])
+def test_m09_source_of_another_tenant_or_source_does_not_qualify(src_kw, missing):
+    r = qualify_strategy(LEDGER, inputs(), source(**src_kw))
+    assert r.state is StrategyState.UNQUALIFIED and r.reason is Reason.INPUT_NOT_IN_SOURCE
+    assert r.missing == (getattr(InputName, missing),)
+    assert r.tenant_id == "" and r.source_id == ""
+
+
+def test_m09_settlements_strategy_is_tenant_and_source_bound_too():
+    ok = qualify_strategy(SETTLE, inputs(register="Расчеты"), source(settlements_registers=("Расчеты",)))
+    assert ok.state is StrategyState.QUALIFIED and (ok.tenant_id, ok.source_id) == ("tenant-a", "src-1")
+    other = qualify_strategy(SETTLE, inputs(register="Расчеты", tenant_id="TENANT-B"),
+                             source(settlements_registers=("Расчеты",)))
+    assert other.state is StrategyState.UNQUALIFIED and other.missing == (InputName("TENANT"),)
+
+
+def test_m09_qualified_result_carries_normalised_tenant_and_source():
+    r = qualify_strategy(LEDGER, inputs(tenant_id=" Tenant-A ", source_id="src-1"), source())
+    assert (r.tenant_id, r.source_id) == ("tenant-a", "src-1")
+
+
+@pytest.mark.parametrize("kw", [{"tenant_id": "TENANT-B"}, {"source_id": "SRC-2"},
+                                {"tenant_id": ""}, {"source_id": ""}, {"tenant_id": None}])
+def test_m09_open_items_of_another_tenant_or_source_are_refused(kw):
+    base = dict(currency="MDL", company="MOLDRETAIL", tenant_id=TENANT, source_id=SOURCE)  # noqa: C408
+    base.update(kw)
+    row = OpenItem("D", D0, DUE, Decimal(1), **base)
+    r = age((item("A", D0, DUE, "1"), row), total=Decimal(2))
+    assert (r.state, r.reason) == (AgingState.NOT_AVAILABLE, Reason.ITEM_SCOPE_MISMATCH)
+
+
+def test_m09_strategy_of_one_tenant_cannot_age_items_of_another_tenant_with_same_company():
+    strat_b = qualify_strategy(LEDGER, inputs(tenant_id="TENANT-B"), source(tenant_id="TENANT-B"))
+    assert strat_b.state is StrategyState.QUALIFIED
+    rows_a = (item("D", D0, DUE, "1"),)
+    assert age(rows_a, strat=strat_b).reason is Reason.ITEM_SCOPE_MISMATCH
+
+
+def test_m09_balance_and_aging_carry_and_bind_tenant_and_source():
+    strat_b = qualify_strategy(LEDGER, inputs(tenant_id="TENANT-B"), source(tenant_id="TENANT-B"))
+    strat_s = qualify_strategy(LEDGER, inputs(source_id="SRC-2"), source(source_id="SRC-2"))
+    va, vb = make_balance_view(qualified(), Decimal(5)), make_balance_view(strat_b, Decimal(5))
+    assert (va.tenant_id, va.source_id) == ("tenant-a", "src-1")
+    assert (vb.tenant_id, vb.source_id) == ("tenant-b", "src-1")
+    assert va.digest != vb.digest != make_balance_view(strat_s, Decimal(5)).digest
+    ra = age((item("D", D0, DUE, "1"),))
+    rb = age((OpenItem("D", D0, DUE, Decimal(1), "MDL", "MOLDRETAIL", "TENANT-B", SOURCE),), strat=strat_b)
+    assert (ra.tenant_id, ra.source_id) == ("tenant-a", "src-1")
+    assert (rb.tenant_id, rb.source_id) == ("tenant-b", "src-1")
+    assert ra.digest != rb.digest
+
+
+def test_m09_hand_built_result_without_tenant_or_source_is_refused():
+    for field in ("tenant_id", "source_id"):
+        bare = dataclasses.replace(qualified(), **{field: ""})
+        assert make_balance_view(bare, Decimal(1)).state is ApViewState.UNQUALIFIED
+        assert age((item("D", D0, DUE, "1"),), strat=bare).reason is Reason.STRATEGY_NOT_QUALIFIED

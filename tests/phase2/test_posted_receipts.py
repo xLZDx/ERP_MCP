@@ -479,3 +479,100 @@ def test_retrieval_is_read_only_scope_passed_unchanged_and_result_frozen():
     assert src.calls[0][0] is sc
     with pytest.raises(AttributeError):
         res.complete = False  # frozen
+
+
+# -- hardening round: exact types / empty 1C refs / lying objects ------------------------------------
+EMPTY_REF = "00000000-0000-0000-0000-000000000000"
+
+
+class _LyingStr(str):
+    """A str subclass that claims to equal anything and never to differ."""
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+    __hash__ = str.__hash__
+
+
+class _LyingResolver:
+    def __init__(self, entity_id):
+        self.entity_id = entity_id
+
+    def resolve(self, scope_, query):
+        return ResolutionResult(AliasOutcome.RESOLVED, entity_id=self.entity_id)
+
+
+def test_m01_resolver_entity_id_must_be_exact_str_never_a_lying_subclass():
+    src = FakeSource({None: page([doc("d-1")])})
+    res = PostedReceiptsRetriever(src, _LyingResolver(_LyingStr("foreign-vendor"))).retrieve(request())
+    assert res.complete is False and res.reason is RetrievalReason.ALIAS_REJECTED
+    assert res.listing is None and src.calls == []
+
+    class Plain(str):
+        pass
+    res = PostedReceiptsRetriever(src, _LyingResolver(Plain(VENDOR))).retrieve(request())
+    assert res.reason is RetrievalReason.ALIAS_REJECTED and src.calls == []
+    res = PostedReceiptsRetriever(src, _LyingResolver("foreign-vendor")).retrieve(request())
+    assert res.reason is RetrievalReason.ALIAS_COUNTERPARTY_MISMATCH and src.calls == []
+
+
+class _LyingDT(datetime):
+    """A datetime subclass whose comparisons always say 'inside the period'."""
+    def __lt__(self, other):
+        return True
+
+    def __le__(self, other):
+        return True
+
+    def __ge__(self, other):
+        return True
+
+    def __gt__(self, other):
+        return False
+
+
+def _lying(y):
+    from datetime import UTC
+    return _LyingDT(y, 1, 1, tzinfo=UTC)
+
+
+def test_m06_datetime_subclass_with_lying_comparisons_cannot_pass_the_period_check():
+    far = doc("d-2028", at=_lying(2028))
+    r, _ = retriever({None: page([doc("d-1"), far])})
+    res = r.retrieve(request())
+    assert res.complete is False and res.reason is RetrievalReason.PAGE_ROW_INVALID
+    assert res.listing is None
+
+
+class _NeverAfterDT(datetime):
+    """Claims never to be >= anything, hiding from > until in the scope's own check."""
+    def __ge__(self, other):
+        return False
+
+
+def test_m06_scope_bounds_must_be_exact_datetimes():
+    from datetime import UTC
+    bad = PurchaseScope("t", "onec-reference", COMPANY, VENDOR,
+                        _NeverAfterDT(2030, 1, 1, tzinfo=UTC), UNTIL, "MDL")
+    r, src = retriever({None: page([doc("d-1")])})
+    res = r.retrieve(request(sc=bad))
+    assert res.complete is False and res.reason is RetrievalReason.PERIOD_INVALID
+    assert src.calls == []
+
+
+@pytest.mark.parametrize("field", ["ref", "contract", "vendor", "company"])
+@pytest.mark.parametrize("spelling", [EMPTY_REF, "{" + EMPTY_REF + "}", EMPTY_REF.replace("-", "")])
+def test_m04_empty_1c_reference_in_a_row_refuses_the_page(field, spelling):
+    row = doc(spelling) if field == "ref" else doc("d-2", **{field: spelling})
+    r, _ = retriever({None: page([doc("d-1"), row])})
+    res = r.retrieve(request())
+    assert res.complete is False and res.reason is RetrievalReason.PAGE_IDENTITY_INVALID
+    assert res.listing is None
+
+
+def test_m04_empty_1c_reference_in_the_request_scope_is_refused_before_fetch():
+    r, src = retriever({None: page([doc("d-1")])})
+    res = r.retrieve(request(sc=scope(vendor=EMPTY_REF)))
+    assert res.reason is RetrievalReason.SCOPE_INVALID and src.calls == []

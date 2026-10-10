@@ -81,3 +81,41 @@ def test_distinct_names_and_invalid_input_are_not_same_person():
     assert not same_person("al\u200bice", "alice")
     assert not same_person(None, None)
     assert skeleton("alice\u0430") == ""  # mixed script stays invalid
+
+
+# --- 1C empty reference and GUID canonicalisation (S6b GPT-PM M04/M05) ------------------------
+
+from business_ai_gateway.phase2._identity import canonical_guid, is_empty_1c_ref
+
+
+@pytest.mark.parametrize("value", [
+    "00000000-0000-0000-0000-000000000000",
+    "{00000000-0000-0000-0000-000000000000}",
+    "(00000000-0000-0000-0000-000000000000)",
+    "00000000000000000000000000000000",
+    " 00000000-0000-0000-0000-000000000000 ",
+])
+def test_all_zero_guid_forms_are_the_empty_1c_reference(value):
+    assert is_empty_1c_ref(value) is True
+
+
+@pytest.mark.parametrize("value", [
+    "00000000-0000-0000-0000-000000000001", "", "0000", None, 0, b"0" * 32, "doc-1",
+    "0000000-00000-0000-0000-000000000000",
+])
+def test_other_values_are_not_the_empty_reference(value):
+    assert is_empty_1c_ref(value) is False
+
+
+def test_guid_canonicalisation_folds_case_only_for_real_guids():
+    upper = "A1234567-89AB-4CDE-8F01-1234567890AB"
+    assert canonical_guid(upper) == canonical_guid(upper.lower()) == upper.lower()
+    assert canonical_guid("{" + upper + "}") == upper.lower()
+    assert canonical_guid("Doc-A") is None and canonical_guid("doc-a") is None
+    assert canonical_guid(None) is None
+
+
+def test_canonical_guid_refuses_a_str_subclass():
+    class Lying(str):
+        pass
+    assert canonical_guid(Lying("a1234567-89ab-4cde-8f01-1234567890ab")) is None

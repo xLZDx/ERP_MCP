@@ -46,12 +46,12 @@ token (``page_index`` is optional and only checked when the source supplies it).
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Final, Protocol
 
-from ._identity import clean_identity, exact_text
+from ._identity import canonical_guid, clean_identity, exact_text, is_empty_1c_ref
 from .aliases import (
     AliasOutcome,
     AliasResolver,
@@ -250,7 +250,19 @@ def _currency_ok(value: object) -> bool:
 
 
 def _aware(value: object) -> bool:
-    return isinstance(value, datetime) and value.tzinfo is not None and value.utcoffset() is not None
+    """Exactly ``datetime`` (never a subclass: it could override the comparisons) and tz-aware."""
+    return type(value) is datetime and value.tzinfo is not None and value.utcoffset() is not None
+
+
+def _utc(value: datetime) -> datetime:
+    """A plain UTC ``datetime``; call only on values that passed ``_aware``."""
+    return value.astimezone(UTC)
+
+
+def _ref_key(ref: str) -> str:
+    """De-duplication key of a document reference: GUID spellings (case, braces, dashes) are one
+    document; every other identifier stays case-sensitive. The source spelling is never rewritten."""
+    return canonical_guid(ref) or ref
 
 
 def _amount_ok(value: object) -> bool:
@@ -309,7 +321,7 @@ def _classify(doc: PurchaseDocument, scope: PurchaseScope,
         return ExclusionReason.WRONG_COUNTERPARTY
     if doc.currency != scope.currency:
         return ExclusionReason.WRONG_CURRENCY
-    if not scope.from_inclusive <= doc.occurred_at < scope.until_exclusive:
+    if not _utc(scope.from_inclusive) <= _utc(doc.occurred_at) < _utc(scope.until_exclusive):
         return ExclusionReason.OUT_OF_PERIOD
     if doc.deletion_mark is not False:
         return ExclusionReason.DELETED
@@ -325,6 +337,10 @@ def _check_row(doc: object) -> RetrievalReason | None:
         "doc_ref", "company_ref", "counterparty_ref", "contract_ref", "number", "currency",
     )):
         return RetrievalReason.PAGE_IDENTITY_INVALID
+    if any(is_empty_1c_ref(getattr(doc, f)) for f in (
+        "doc_ref", "company_ref", "counterparty_ref", "contract_ref",
+    )):
+        return RetrievalReason.PAGE_IDENTITY_INVALID  # the empty 1C reference identifies nothing
     if type(doc.posted) is not bool or type(doc.deletion_mark) is not bool:
         return RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED
     if not _aware(doc.occurred_at) or not _amount_ok(doc.amount):
@@ -339,10 +355,12 @@ def _check_scope(scope: object) -> RetrievalReason | None:
         "tenant_id", "source_id", "company_ref", "counterparty_ref",
     )):
         return RetrievalReason.SCOPE_INVALID
+    if is_empty_1c_ref(scope.company_ref) or is_empty_1c_ref(scope.counterparty_ref):
+        return RetrievalReason.SCOPE_INVALID
     if not _currency_ok(scope.currency):
         return RetrievalReason.CURRENCY_INVALID
     if (not _aware(scope.from_inclusive) or not _aware(scope.until_exclusive)
-            or scope.from_inclusive >= scope.until_exclusive):
+            or _utc(scope.from_inclusive) >= _utc(scope.until_exclusive)):
         return RetrievalReason.PERIOD_INVALID
     return None
 
@@ -410,9 +428,12 @@ class PostedReceiptsRetriever:
             return _refused(RetrievalReason.ALIAS_REJECTED)
         if resolved.outcome is not AliasOutcome.RESOLVED:
             return _refused(_ALIAS_REASONS.get(resolved.outcome, RetrievalReason.ALIAS_REJECTED))
-        if resolved.entity_id != scope.counterparty_ref:
+        entity_id = resolved.entity_id
+        if not _strict(entity_id):  # exact str only: a subclass could lie in __eq__/__ne__
+            return _refused(RetrievalReason.ALIAS_REJECTED)
+        if entity_id != scope.counterparty_ref:
             return _refused(RetrievalReason.ALIAS_COUNTERPARTY_MISMATCH)
-        return self._walk(scope, resolved.entity_id, ref, max_pages, max_rows)
+        return self._walk(scope, entity_id, ref, max_pages, max_rows)
 
     def _walk(self, scope: PurchaseScope, entity_id: str, ref: Reference, max_pages: int,
               max_rows: int) -> RetrievalResult:
@@ -512,9 +533,10 @@ class PostedReceiptsRetriever:
                 return stop(bad)
         page_refs: set[str] = set()
         for doc in docs:
-            if doc.doc_ref in seen_refs or doc.doc_ref in page_refs:
+            key = _ref_key(doc.doc_ref)
+            if key in seen_refs or key in page_refs:
                 return stop(RetrievalReason.DUPLICATE_DOCUMENT)
-            page_refs.add(doc.doc_ref)
+            page_refs.add(key)
         page_kept: list[PurchaseDocument] = []
         page_counts = {r: 0 for r in _EXCLUSION_ORDER}
         for doc, kind in zip(docs, kinds, strict=True):
@@ -596,7 +618,7 @@ def _counts_ok(proof: ReceiptsProof) -> bool:
         if type(item) is not tuple or len(item) != 2:
             return False
         name, n = item
-        if name != expect.value or type(n) is not int or n < 0:
+        if type(name) is not str or name != expect.value or type(n) is not int or n < 0:
             return False
     seen, kept = proof.rows_seen, proof.kept_count
     return (type(seen) is int and type(kept) is int and kept >= 0
@@ -619,25 +641,41 @@ def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
         reason = result.reason if type(result.reason) is RetrievalReason else None
         return inc, reason.value if reason and reason is not RetrievalReason.OK else "RESULT_INCONSISTENT"
     try:
-        if canonical_digest(_proof_payload(proof)) != proof.digest:
+        if type(proof.digest) is not str or canonical_digest(_proof_payload(proof)) != proof.digest:
             return inc, "PROOF_DIGEST_MISMATCH"
-        if _listing_digest(listing) != proof.listing_digest:
+        if (type(proof.listing_digest) is not str
+                or _listing_digest(listing) != proof.listing_digest):
             return inc, "PROOF_LISTING_DIGEST_MISMATCH"
         s = listing.scope
+        # every identity/period field is checked for its EXACT type before anything is compared, so
+        # no str/datetime subclass (custom __eq__/__ne__/__lt__) can steer a comparison below
+        if (type(s) is not PurchaseScope or _check_scope(s) is not None
+                or not _strict(listing.snapshot_ref)):
+            return inc, "PROOF_SCOPE_MISMATCH"
+        if (not all(_strict(getattr(proof, f)) for f in (
+                "alias_entity_id", "alias_namespace", "alias_value", "tenant_id", "company_ref",
+                "counterparty_ref", "source_id", "snapshot_ref", "direction", "reason"))
+                or not _currency_ok(proof.currency)
+                or not _aware(proof.from_inclusive) or not _aware(proof.until_exclusive)):
+            return inc, "PROOF_CONTENT_INCONSISTENT"
+        if proof.alias_entity_id != proof.counterparty_ref:
+            return inc, "PROOF_CONTENT_INCONSISTENT"  # the resolved vendor is not the requested one
         if (proof.company_ref, proof.counterparty_ref, proof.currency, proof.source_id,
-                proof.tenant_id, proof.from_inclusive, proof.until_exclusive,
+                proof.tenant_id, _utc(proof.from_inclusive), _utc(proof.until_exclusive),
                 proof.snapshot_ref) != (
                 s.company_ref, s.counterparty_ref, s.currency, s.source_id, s.tenant_id,
-                s.from_inclusive, s.until_exclusive, listing.snapshot_ref):
+                _utc(s.from_inclusive), _utc(s.until_exclusive), listing.snapshot_ref):
             return inc, "PROOF_SCOPE_MISMATCH"
-        docs = tuple(listing.documents)
-        if (proof.direction != Direction.RECEIPT.value or proof.reason != RetrievalReason.OK.value
-                or proof.kept_count != len(docs) or not _counts_ok(proof)
-                or not _tokens_ok(proof.page_tokens, proof.pages_fetched)
-                or len({getattr(d, "doc_ref", None) for d in docs}) != len(docs)):
+        if type(listing.documents) is not tuple:
             return inc, "PROOF_CONTENT_INCONSISTENT"
+        docs = listing.documents
         if any(_check_row(d) is not None for d in docs):
             return inc, "PROOF_ROW_INVALID"
+        if (proof.direction != Direction.RECEIPT.value or proof.reason != RetrievalReason.OK.value
+                or not _counts_ok(proof) or proof.kept_count != len(docs)
+                or not _tokens_ok(proof.page_tokens, proof.pages_fetched)
+                or len({_ref_key(d.doc_ref) for d in docs}) != len(docs)):
+            return inc, "PROOF_CONTENT_INCONSISTENT"
         if any(_classify(d, s) is not None for d in docs):
             return inc, "DOCUMENT_OUT_OF_SCOPE"
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
@@ -650,6 +688,18 @@ def _safe_digest(listing: object) -> str | None:
         return _listing_digest(listing) if type(listing) is PurchaseListing else None  # type: ignore[arg-type]
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
         return None
+
+
+def _native_ok(native: object) -> bool:
+    """The caller-supplied native listing: exact types and a strict ``complete is True`` before it is
+    compared (the comparison itself must never rely on its truthiness or custom comparisons)."""
+    try:
+        return (type(native) is PurchaseListing and native.complete is True
+                and type(native.scope) is PurchaseScope and _check_scope(native.scope) is None
+                and _strict(native.snapshot_ref) and type(native.documents) is tuple
+                and all(_check_row(d) is None for d in native.documents))
+    except Exception:  # noqa: BLE001 - fixed code only, no text leak
+        return False
 
 
 def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
@@ -666,7 +716,7 @@ def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
     gateway = result.listing if type(result) is RetrievalResult else None
     if completeness is CompletenessVerdict.INCOMPLETE:
         k_reason = "GATEWAY_NOT_PROVEN_COMPLETE"
-    elif type(native) is not PurchaseListing:
+    elif not _native_ok(native):
         k_reason = "NATIVE_LISTING_UNQUALIFIED"
     elif type(gateway) is PurchaseListing:
         try:
@@ -685,18 +735,25 @@ def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
         scope_bound = _scope_payload(gateway.scope) if type(gateway) is PurchaseListing else None
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
         scope_bound = None
-    digest = canonical_digest({
-        "completeness": completeness.value, "completeness_reason": c_reason,
-        "correctness": correctness.value, "correctness_reason": k_reason,
-        "discrepancy": discrepancy.value,
-        "differences": [[d.doc_ref, d.field, d.expected, d.actual] for d in differences],
-        "proof_digest": proof.digest if type(proof) is ReceiptsProof else None,
-        "gateway_listing_digest": _safe_digest(gateway),
-        "native_listing_digest": _safe_digest(native),
-        "snapshot_ref": gateway.snapshot_ref if type(gateway) is PurchaseListing else None,
-        "scope": scope_bound,
-        "authority": _AUTHORITY,
-    })
+    try:
+        digest = canonical_digest({
+            "completeness": completeness.value, "completeness_reason": c_reason,
+            "correctness": correctness.value, "correctness_reason": k_reason,
+            "discrepancy": discrepancy.value,
+            "differences": [[d.doc_ref, d.field, d.expected, d.actual] for d in differences],
+            "proof_digest": proof.digest if type(proof) is ReceiptsProof and type(proof.digest) is str else None,
+            "gateway_listing_digest": _safe_digest(gateway),
+            "native_listing_digest": _safe_digest(native),
+            "snapshot_ref": gateway.snapshot_ref if type(gateway) is PurchaseListing else None,
+            "scope": scope_bound,
+            "authority": _AUTHORITY,
+        })
+    except Exception:  # noqa: BLE001 - fixed result, never an exception
+        return ReceiptsAssessment(
+            CompletenessVerdict.INCOMPLETE, "ASSESSMENT_UNVERIFIABLE", PurchaseResultKind.INCONCLUSIVE,
+            "ASSESSMENT_DIGEST_UNAVAILABLE", DiscrepancyVerdict.NOT_ASSESSABLE, (),
+            canonical_digest({"assessment": "UNVERIFIABLE", "authority": _AUTHORITY}),
+        )
     return ReceiptsAssessment(
         completeness, c_reason, correctness, k_reason, discrepancy, tuple(differences), digest,
     )

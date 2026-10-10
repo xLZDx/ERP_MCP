@@ -22,6 +22,17 @@ Rules
 - A QUALIFIED ``StrategyResult`` carries the normalised declared inputs (register, account codes,
   analytics keys, company, currency, period) and its digest also covers the source description
   fields the strategy used, so the same declared inputs against a different source differ.
+  Nested sequences are encoded structurally (``stable_key`` per list), so ``("a,b","c")`` and
+  ``("a","b,c")`` never share a digest.
+- Tenant/source: ``SourceDescription``, ``LedgerInputs`` and ``OpenItem`` carry ``tenant_id`` and
+  ``source_id``. They are CALLER-ASSERTED (this module has no way to prove them), but they are mandatory
+  (``TENANT``/``SOURCE`` are missing inputs), the declared pair must equal the source description's pair
+  (otherwise INPUT_NOT_IN_SOURCE, never ABSENT), a QUALIFIED result/balance/aging carries them and binds
+  them into its digest, and every open item must carry the same pair (``ITEM_SCOPE_MISMATCH``).
+- Exact types: every text input (declared scalars, list elements, open-item fields) must be exactly
+  ``str`` and every container exactly ``tuple``; a subclass (e.g. a lying ``__ne__``) is refused. The 1C
+  empty reference (all-zero GUID) is no identity: as a declared/source identity it is INPUT_INVALID and
+  as an open-item ``doc_ref`` it refuses the whole aging with ``DOC_REF_EMPTY_1C``.
   ``compute_aging`` and ``make_balance_view`` bind to them: every open item must carry the strategy's
   company and currency (otherwise ``ITEM_SCOPE_MISMATCH``), ``as_of`` must lie in
   ``period_from <= as_of < period_until`` (the same half-open interval as qualification, so a date
@@ -59,7 +70,7 @@ from datetime import date
 from decimal import Context, Decimal, Inexact, localcontext
 from enum import StrEnum
 
-from ._identity import clean_identity, stable_key
+from ._identity import clean_identity, is_empty_1c_ref, stable_key
 
 __all__ = [
     "AgingBucket", "AgingResult", "AgingState", "ApViewState", "BalanceView", "InputName",
@@ -93,6 +104,8 @@ class InputName(StrEnum):
     COMPANY = "COMPANY"
     CURRENCY = "CURRENCY"
     PERIOD = "PERIOD"
+    TENANT = "TENANT"
+    SOURCE = "SOURCE"
 
 
 class Reason(StrEnum):
@@ -109,6 +122,7 @@ class Reason(StrEnum):
     ITEMS_EMPTY = "ITEMS_EMPTY"
     TOO_MANY_ITEMS = "TOO_MANY_ITEMS"
     ITEM_REF_INVALID = "ITEM_REF_INVALID"
+    DOC_REF_EMPTY_1C = "DOC_REF_EMPTY_1C"
     DUPLICATE_ITEM = "DUPLICATE_ITEM"
     DATE_MISSING = "DATE_MISSING"
     DATE_INVALID = "DATE_INVALID"
@@ -154,6 +168,8 @@ class SourceDescription:
     currencies: tuple[str, ...] = ()
     covered_from: date | None = None  # inclusive
     covered_until: date | None = None  # exclusive
+    tenant_id: str = ""  # caller-asserted tenant / source this description belongs to
+    source_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +183,8 @@ class LedgerInputs:
     currency: str = ""
     period_from: date | None = None  # inclusive
     period_until: date | None = None  # exclusive
+    tenant_id: str = ""  # caller-asserted; must equal the source description's tenant / source
+    source_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +203,8 @@ class StrategyResult:
     currency: str = ""
     period_from: date | None = None
     period_until: date | None = None
+    tenant_id: str = ""  # normalised; filled ONLY when QUALIFIED
+    source_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +218,8 @@ class BalanceView:
     authority: str = "EVALUATION_ONLY"
     company: str = ""  # the strategy's normalised company / currency (BALANCE_ONLY only)
     currency: str = ""
+    tenant_id: str = ""
+    source_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +230,8 @@ class OpenItem:
     amount: Decimal
     currency: str = ""  # must equal the qualified strategy's currency / company after normalisation
     company: str = ""
+    tenant_id: str = ""  # caller-asserted; must equal the strategy's tenant / source
+    source_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +243,8 @@ class AgingResult:
     buckets: tuple[tuple[AgingBucket, Decimal], ...]  # empty unless AVAILABLE; all five buckets when set
     digest: str
     authority: str = "EVALUATION_ONLY"
+    tenant_id: str = ""  # the strategy's normalised tenant / source (AVAILABLE only)
+    source_id: str = ""
 
 
 # ---------------------------------------------------------------- helpers
@@ -243,17 +269,36 @@ def _norm_tuple(value: object, *, strict: bool = False) -> tuple[str, ...] | Non
     """Sorted unique normalised identities; None when the container or any element is unusable.
 
     ``strict`` (source lists) also refuses two DIFFERENT raw entries with the same normal form."""
-    if not isinstance(value, tuple) or len(value) > MAX_LIST:
+    if type(value) is not tuple or len(value) > MAX_LIST:  # exact types: a subclass could lie
         return None
     out: dict[str, str] = {}
     for item in value:
+        if type(item) is not str or is_empty_1c_ref(item):
+            return None
         norm = clean_identity(item)
         if not norm:
             return None
-        if strict and out.setdefault(norm, item) != item:
+        if strict and out.setdefault(norm, item) != item:  # plain stored str on both sides
             return None
         out[norm] = item
     return tuple(sorted(out))
+
+
+def _ident(value: object) -> str:
+    """Normalised identity of an EXACT ``str`` ('' for anything else, incl. str subclasses)."""
+    return clean_identity(value) if type(value) is str else ""
+
+
+def _scalar_ok(value: object) -> bool:
+    return type(value) is str and not is_empty_1c_ref(value)
+
+
+def _bound_ok(strategy: StrategyResult) -> bool:
+    """A QUALIFIED result must carry plain-str bound scope and plain dates (hand-built ones may not)."""
+    for text in (strategy.company, strategy.currency, strategy.tenant_id, strategy.source_id):
+        if type(text) is not str or not text or is_empty_1c_ref(text):
+            return False
+    return type(strategy.period_from) is date and type(strategy.period_until) is date
 
 
 def _amount_ok(value: object) -> bool:
@@ -266,8 +311,8 @@ def _strategy_result(
     state: StrategyState, reason: Reason, strategy: Strategy | None,
     missing: tuple[InputName, ...], material: tuple[str, ...] = (), bound: dict | None = None,
 ) -> StrategyResult:
-    digest = _sha("ap-strategy-v1", state.value, reason.value, strategy.value if strategy else "",
-                  ",".join(m.value for m in missing), *material)
+    digest = _sha("ap-strategy-v2", state.value, reason.value, strategy.value if strategy else "",
+                  stable_key(*(m.value for m in missing)), *material)
     return StrategyResult(state, reason, strategy, missing, digest, **(bound or {}))
 
 
@@ -295,9 +340,18 @@ def _qualify(name: object, declared: object, source: object) -> StrategyResult:
     invalid = _strategy_result(StrategyState.UNQUALIFIED, Reason.INPUT_INVALID, strategy, ())
 
     # only the fields this strategy uses are validated
+    # exact plain str only (a subclass could lie in __eq__/__ne__); an empty 1C reference is no identity
+    if not all(_scalar_ok(v) for v in (declared.register, declared.company, declared.currency,
+                                       declared.tenant_id, declared.source_id,
+                                       source.tenant_id, source.source_id)):
+        return invalid
     register = clean_identity(declared.register)
     company = clean_identity(declared.company)
     currency = clean_identity(declared.currency)
+    tenant = clean_identity(declared.tenant_id)
+    source_id = clean_identity(declared.source_id)
+    src_tenant = clean_identity(source.tenant_id)
+    src_source = clean_identity(source.source_id)
     codes = _norm_tuple(declared.account_codes) if ledger else ()
     keys = _norm_tuple(declared.analytics_keys) if ledger else ()
     src_reg = _norm_tuple(source.accounting_registers if ledger else source.settlements_registers,
@@ -324,6 +378,10 @@ def _qualify(name: object, declared: object, source: object) -> StrategyResult:
         undeclared.append(InputName.COMPANY)
     if not currency:
         undeclared.append(InputName.CURRENCY)
+    if not tenant:
+        undeclared.append(InputName.TENANT)
+    if not source_id:
+        undeclared.append(InputName.SOURCE)
     if (declared.period_from is None or declared.period_until is None
             or declared.period_from >= declared.period_until):
         undeclared.append(InputName.PERIOD)
@@ -332,19 +390,29 @@ def _qualify(name: object, declared: object, source: object) -> StrategyResult:
                                 tuple(sorted(undeclared, key=lambda m: m.value)))
 
     # the digest covers the declared inputs AND the source fields this strategy used
-    material = (register, ",".join(codes), ",".join(keys),
+    # (nested sequences are encoded structurally with stable_key, so element boundaries are unambiguous)
+    material = (register, stable_key(*codes), stable_key(*keys),
                 company, currency, declared.period_from.isoformat(), declared.period_until.isoformat(),
-                "src", ",".join(src_reg), ",".join(src_codes), ",".join(src_keys),
-                ",".join(src_companies), ",".join(src_currencies),
+                tenant, source_id,
+                "src", stable_key(*src_reg), stable_key(*src_codes), stable_key(*src_keys),
+                stable_key(*src_companies), stable_key(*src_currencies),
                 source.covered_from.isoformat() if source.covered_from else "",
-                source.covered_until.isoformat() if source.covered_until else "")
+                source.covered_until.isoformat() if source.covered_until else "",
+                src_tenant, src_source)
 
-    # a settlements register that a well-formed source does not list is ABSENT, a result of its own
-    if not ledger and register not in src_reg:
+    # the source description must belong to the declared tenant / source (caller-asserted)
+    scope_missing: list[InputName] = []
+    if tenant != src_tenant:
+        scope_missing.append(InputName.TENANT)
+    if source_id != src_source:
+        scope_missing.append(InputName.SOURCE)
+
+    # a settlements register that a well-formed source of the SAME scope does not list is ABSENT
+    if not ledger and register not in src_reg and not scope_missing:
         return _strategy_result(StrategyState.ABSENT, Reason.REGISTER_NOT_IN_SOURCE, strategy,
                                 (InputName.REGISTER,), material)
 
-    missing: list[InputName] = []
+    missing: list[InputName] = list(scope_missing)
     if register not in src_reg:
         missing.append(InputName.REGISTER)
     if ledger and not set(codes) <= set(src_codes):
@@ -364,7 +432,7 @@ def _qualify(name: object, declared: object, source: object) -> StrategyResult:
                                 tuple(sorted(missing, key=lambda m: m.value)), material)
     bound = {"register": register, "account_codes": codes, "analytics_keys": keys, "company": company,
              "currency": currency, "period_from": declared.period_from,
-             "period_until": declared.period_until}
+             "period_until": declared.period_until, "tenant_id": tenant, "source_id": source_id}
     return _strategy_result(StrategyState.QUALIFIED, Reason.ALL_INPUTS_PRESENT, strategy, (), material,
                             bound)
 
@@ -372,18 +440,19 @@ def _qualify(name: object, declared: object, source: object) -> StrategyResult:
 # ---------------------------------------------------------------- balance only
 
 def _view(state: ApViewState, reason: Reason, balance: Decimal | None, aging_reason: Reason,
-          strategy_digest: str, company: str = "", currency: str = "") -> BalanceView:
-    digest = _sha("ap-balance-v1", state.value, reason.value,
+          strategy_digest: str, company: str = "", currency: str = "", tenant_id: str = "",
+          source_id: str = "") -> BalanceView:
+    digest = _sha("ap-balance-v2", state.value, reason.value,
                   _dec_text(balance) if balance is not None else "", aging_reason.value,
-                  strategy_digest, company, currency)
+                  strategy_digest, company, currency, tenant_id, source_id)
     return BalanceView(state, reason, balance, AgingState.NOT_AVAILABLE, aging_reason, digest,
-                       company=company, currency=currency)
+                       company=company, currency=currency, tenant_id=tenant_id, source_id=source_id)
 
 
 def make_balance_view(strategy: object, closing_balance: object) -> BalanceView:
     """Label a single closing balance BALANCE_ONLY; aging is NOT_AVAILABLE. Never raises."""
     try:
-        if type(strategy) is not StrategyResult or not isinstance(strategy.digest, str):
+        if type(strategy) is not StrategyResult or type(strategy.digest) is not str:
             return _view(ApViewState.INPUT_INVALID, Reason.INPUT_INVALID, None,
                          Reason.STRATEGY_NOT_QUALIFIED, "")
         if strategy.state is StrategyState.ABSENT:
@@ -392,14 +461,15 @@ def make_balance_view(strategy: object, closing_balance: object) -> BalanceView:
         if strategy.state is not StrategyState.QUALIFIED:
             return _view(ApViewState.UNQUALIFIED, Reason.STRATEGY_NOT_QUALIFIED, None,
                          Reason.STRATEGY_NOT_QUALIFIED, strategy.digest)
-        if not strategy.company or not strategy.currency:  # hand-built result without bound inputs
+        if not _bound_ok(strategy):  # hand-built result without bound inputs
             return _view(ApViewState.UNQUALIFIED, Reason.STRATEGY_NOT_QUALIFIED, None,
                          Reason.STRATEGY_NOT_QUALIFIED, strategy.digest)
         if not _amount_ok(closing_balance):
             return _view(ApViewState.INPUT_INVALID, Reason.BALANCE_INVALID, None,
                          Reason.STRATEGY_NOT_QUALIFIED, strategy.digest)
         return _view(ApViewState.BALANCE_ONLY, Reason.ALL_INPUTS_PRESENT, closing_balance,  # type: ignore[arg-type]
-                     Reason.BALANCE_ONLY_NO_ITEMS, strategy.digest, strategy.company, strategy.currency)
+                     Reason.BALANCE_ONLY_NO_ITEMS, strategy.digest, strategy.company, strategy.currency,
+                     strategy.tenant_id, strategy.source_id)
     except Exception:  # noqa: BLE001
         return _view(ApViewState.INPUT_INVALID, Reason.INPUT_INVALID, None,
                      Reason.STRATEGY_NOT_QUALIFIED, "")
@@ -409,7 +479,7 @@ def make_balance_view(strategy: object, closing_balance: object) -> BalanceView:
 
 def _no_aging(reason: Reason, as_of: object = None) -> AgingResult:
     when = as_of if _is_date(as_of) else None
-    digest = _sha("ap-aging-v1", AgingState.NOT_AVAILABLE.value, reason.value,
+    digest = _sha("ap-aging-v2", AgingState.NOT_AVAILABLE.value, reason.value,
                   when.isoformat() if when else "")  # type: ignore[union-attr]
     return AgingResult(AgingState.NOT_AVAILABLE, reason, when, None, (), digest)  # type: ignore[arg-type]
 
@@ -445,8 +515,7 @@ def compute_aging(strategy: object, items: object, as_of: object,
 def _aging(strategy: object, items: object, as_of: object, declared_total: object) -> AgingResult:
     if type(strategy) is not StrategyResult or strategy.state is not StrategyState.QUALIFIED:
         return _no_aging(Reason.STRATEGY_NOT_QUALIFIED, as_of)
-    if (not strategy.company or not strategy.currency or strategy.period_from is None
-            or strategy.period_until is None):  # hand-built result without bound inputs
+    if not _bound_ok(strategy) or type(strategy.digest) is not str:  # hand-built result, bound inputs lacking
         return _no_aging(Reason.STRATEGY_NOT_QUALIFIED, as_of)
     if not _is_date(as_of):
         return _no_aging(Reason.DATE_INVALID)
@@ -454,7 +523,7 @@ def _aging(strategy: object, items: object, as_of: object, declared_total: objec
         return _no_aging(Reason.AS_OF_OUT_OF_PERIOD, as_of)
     if declared_total is None:
         return _no_aging(Reason.DECLARED_TOTAL_REQUIRED, as_of)
-    if not isinstance(items, tuple):
+    if type(items) is not tuple:
         return _no_aging(Reason.ITEMS_INVALID, as_of)
     if not items:
         return _no_aging(Reason.ITEMS_EMPTY, as_of)
@@ -468,12 +537,15 @@ def _aging(strategy: object, items: object, as_of: object, declared_total: objec
     for item in items:
         if type(item) is not OpenItem:
             return _no_aging(Reason.ITEMS_INVALID, as_of)
-        if (clean_identity(item.company) != strategy.company
-                or clean_identity(item.currency) != strategy.currency):
+        if (_ident(item.company) != strategy.company or _ident(item.currency) != strategy.currency
+                or _ident(item.tenant_id) != strategy.tenant_id
+                or _ident(item.source_id) != strategy.source_id):
             return _no_aging(Reason.ITEM_SCOPE_MISMATCH, as_of)
-        ref = clean_identity(item.doc_ref)
+        ref = _ident(item.doc_ref)
         if not ref:
             return _no_aging(Reason.ITEM_REF_INVALID, as_of)
+        if is_empty_1c_ref(item.doc_ref):  # the 1C empty reference identifies no document
+            return _no_aging(Reason.DOC_REF_EMPTY_1C, as_of)
         if item.document_date is None or item.due_date is None:
             return _no_aging(Reason.DATE_MISSING, as_of)
         if not _is_date(item.document_date) or not _is_date(item.due_date):
@@ -497,9 +569,11 @@ def _aging(strategy: object, items: object, as_of: object, declared_total: objec
         return _no_aging(Reason.TOTAL_MISMATCH, as_of)
 
     buckets = tuple((b, totals[b]) for b in AgingBucket)
-    digest = _sha("ap-aging-v1", AgingState.AVAILABLE.value, Reason.AGING_COMPUTED.value,
-                  as_of.isoformat(), strategy.digest, _dec_text(open_total),  # type: ignore[union-attr]
+    digest = _sha("ap-aging-v2", AgingState.AVAILABLE.value, Reason.AGING_COMPUTED.value,
+                  as_of.isoformat(), strategy.digest, strategy.tenant_id, strategy.source_id,  # type: ignore[union-attr]
+                  _dec_text(open_total),
                   *(f"{b.value}={_dec_text(v)}" for b, v in buckets),
                   *sorted(stable_key(clean_identity(i.doc_ref), i.document_date.isoformat(),
                                      i.due_date.isoformat(), _dec_text(i.amount)) for i in items))
-    return AgingResult(AgingState.AVAILABLE, Reason.AGING_COMPUTED, as_of, open_total, buckets, digest)
+    return AgingResult(AgingState.AVAILABLE, Reason.AGING_COMPUTED, as_of, open_total, buckets, digest,
+                       tenant_id=strategy.tenant_id, source_id=strategy.source_id)

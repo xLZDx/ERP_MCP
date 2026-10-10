@@ -126,3 +126,14 @@ def test_two_empty_complete_listings_are_inconclusive_not_match():
 def test_one_empty_listing_is_still_a_mismatch():
     r=compare_posted_purchases(listing(docs=()), listing())
     assert r.state is PurchaseResultKind.MISMATCH
+
+
+@pytest.mark.parametrize("flag", ["false", 1, "", None, 0])
+@pytest.mark.parametrize("side", ["native", "gateway"])
+def test_listing_complete_must_be_the_bool_true(flag, side):
+    good, bad = listing(), listing(complete=flag)
+    a, b = (bad, good) if side == "native" else (good, bad)
+    r = compare_posted_purchases(a, b)
+    assert r.state is PurchaseResultKind.INCONCLUSIVE
+    assert r.reason_code == ("NATIVE_LISTING_UNQUALIFIED" if side == "native"
+                             else "GATEWAY_LISTING_UNQUALIFIED")

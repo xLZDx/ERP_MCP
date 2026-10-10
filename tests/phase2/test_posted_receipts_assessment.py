@@ -369,3 +369,97 @@ def test_assessment_never_promotes_and_has_no_capability_surface():
     a = assess_receipts(native_of(res), res)
     assert a.authority == "EVALUATION_ONLY"
     assert not any(hasattr(a, n) for n in ("promote", "approved", "capability", "attested"))
+
+
+# -- hardening round: forged proofs with exact-type / lying-object tricks ---------------------------
+class _LyingStr(str):
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+    __hash__ = str.__hash__
+
+
+class _LyingDT(datetime):
+    def __lt__(self, other):
+        return True
+
+    def __le__(self, other):
+        return True
+
+    def __ge__(self, other):
+        return True
+
+    def __gt__(self, other):
+        return False
+
+
+def test_m02_native_complete_must_be_the_bool_true():
+    res = get(three_pages())
+    for flag in ("false", 1, None):
+        a = assess_receipts(native_of(res, complete=flag), res)
+        assert a.correctness is N and a.correctness_reason == "NATIVE_LISTING_UNQUALIFIED"
+        assert a.discrepancy is DiscrepancyVerdict.NOT_ASSESSABLE and a.discrepancies == ()
+
+
+def test_m03_resealed_alias_entity_that_is_not_the_counterparty_is_refused():
+    res = get(three_pages())
+    forged = reseal(res, alias_entity_id="foreign-vendor")
+    assert _forged_verdict(res, forged) == "PROOF_CONTENT_INCONSISTENT"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("direction", _LyingStr("SALE")),
+    ("tenant_id", _LyingStr("other-tenant")),
+    ("source_id", _LyingStr("other-source")),
+    ("alias_namespace", _LyingStr("x")),
+    ("alias_entity_id", _LyingStr("foreign-vendor")),
+    ("snapshot_ref", _LyingStr("snap-other")),
+    ("reason", _LyingStr("PAGE_LIMIT_HIT")),
+])
+def test_m03_str_subclass_proof_fields_with_lying_comparisons_are_refused(field, value):
+    res = get(three_pages())
+    forged = reseal(res, **{field: value})
+    assert _forged_verdict(res, forged) in {"PROOF_CONTENT_INCONSISTENT", "PROOF_SCOPE_MISMATCH"}
+
+
+def test_m06_resealed_listing_with_a_lying_datetime_row_is_not_complete():
+    res = get(three_pages())
+    far = doc("x-2028", at=_LyingDT(2028, 1, 1, tzinfo=UTC))
+    listing = replace(res.listing, documents=(*res.listing.documents, far))
+    forged = reseal(res, listing=listing, kept_count=res.proof.kept_count + 1,
+                    rows_seen=res.proof.rows_seen + 1)
+    assert _forged_verdict(res, forged) in {"PROOF_ROW_INVALID", "DOCUMENT_OUT_OF_SCOPE"}
+
+
+def test_m06_resealed_proof_with_lying_datetime_bound_is_refused():
+    res = get(three_pages())
+    forged = reseal(res, from_inclusive=_LyingDT(2026, 8, 2, tzinfo=UTC))
+    assert _forged_verdict(res, forged) in {"PROOF_CONTENT_INCONSISTENT", "PROOF_SCOPE_MISMATCH"}
+
+
+def test_m10_non_str_proof_digest_is_a_fixed_result_never_an_exception():
+    res = get(three_pages())
+    forged = replace(res, proof=replace(res.proof, digest=object()))
+    a = assess_receipts(native_of(res), forged)
+    assert a.completeness is I and a.correctness is N
+    assert a.discrepancy is DiscrepancyVerdict.NOT_ASSESSABLE and len(a.digest) == 64
+
+
+def test_m04_resealed_row_with_an_empty_1c_contract_is_refused():
+    res = get(three_pages())
+    bad = doc("x-1", contract="{00000000-0000-0000-0000-000000000000}")
+    listing = replace(res.listing, documents=(*res.listing.documents, bad))
+    forged = reseal(res, listing=listing, kept_count=res.proof.kept_count + 1,
+                    rows_seen=res.proof.rows_seen + 1)
+    assert _forged_verdict(res, forged) == "PROOF_ROW_INVALID"
+
+
+def test_m05_resealed_listing_with_guid_spelling_duplicates_is_refused():
+    res = get(three_pages())
+    up = "A1234567-89AB-4CDE-8F01-1234567890AB"
+    listing = _forge_listing(res.listing, documents=(*res.listing.documents, doc(up), doc(up.lower())))
+    forged = reseal(res, listing=listing, kept_count=6, rows_seen=6)
+    assert _forged_verdict(res, forged) == "PROOF_CONTENT_INCONSISTENT"
