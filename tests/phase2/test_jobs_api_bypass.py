@@ -19,6 +19,7 @@ from business_ai_gateway.phase2.jobs_api import (
     ApiContext,
     ApiDecision,
     CsrfGuard,
+    FakeCapturePolicy,
     FakeJobDispatcher,
     FakeScopeEpochs,
     IdempotencyStore,
@@ -39,7 +40,12 @@ from business_ai_gateway.phase2.side_effect_boundary import (
     OperationRegistry,
     default_registry,
 )
-from business_ai_gateway.phase2.workbench_types import ReasonCode, ViewerScope
+from business_ai_gateway.phase2.workbench_types import (
+    FakeEntitlements,
+    FakeOwnership,
+    ReasonCode,
+    ViewerScope,
+)
 
 R = ReasonCode
 START = datetime(2026, 1, 1, tzinfo=UTC)
@@ -64,11 +70,17 @@ class IntSub(int):
 
 def _ctx(registry=None, refusals=None):
     dispatcher = FakeJobDispatcher()
+    ownership, entitlements = FakeOwnership(), FakeEntitlements()
+    entitlements.grant("T1", "alice", "C1")
+    for kind, ref in (("source_id", "SRC-1"), ("comparison_key", "CK-1"), ("run_id", "run-1"),
+                      ("snapshot_id", "SN-2")):
+        ownership.add("T1", "C1", kind, ref)
     ctx = ApiContext(
         csrf=CsrfGuard(fake_csrf_token), scopes=FakeScopeEpochs({("T1", "C1"): 1}),
         registry=registry or default_registry(), refusals=refusals or RefusalLog(),
         idempotency=IdempotencyStore(256, 3600), dispatcher=dispatcher, clock=FakeClock(START),
-        correlation=FakeCorrelationSource())
+        correlation=FakeCorrelationSource(), ownership=ownership, entitlements=entitlements,
+        capture_policy=FakeCapturePolicy())
     return ctx, dispatcher
 
 
@@ -130,12 +142,12 @@ def test_refused_operation_stays_refused_for_every_canonical_respelling(base):
 def test_invalid_or_channel_labelled_spellings_are_refused_with_one_fixed_code(base):
     ctx, dispatcher = _ctx()
     for name, spelling in _invalid_variants(base).items():
+        if spelling == base:
+            continue  # the substitution did not apply to this base: not an invalid spelling
         d = _submit(ctx, spelling)
         assert d.allowed is False, name
-        assert d.reason_code in (R.OPERATION_UNCLASSIFIED, R.OPERATION_DENIED), name
+        assert d.reason_code is R.OPERATION_UNCLASSIFIED, name  # one fixed code (plan decision 11)
         assert d.http_class == 403
-    codes = {_submit(ctx, s).reason_code for s in _invalid_variants(base).values()}
-    assert codes <= {R.OPERATION_UNCLASSIFIED, R.OPERATION_DENIED}
     assert dispatcher.calls == ()
     assert ctx.idempotency.record_count() == 0
 
@@ -185,7 +197,7 @@ def test_refusal_log_is_sticky_even_if_a_later_registry_would_allow_the_name():
 
 
 def test_refusal_log_is_per_scope_and_bounded():
-    log = RefusalLog(max_entries=3)
+    log = RefusalLog(max_entries=3, per_tenant=3)
     for i in range(10):
         log.record("T1", "C1", f"op_{i}", R.OPERATION_DENIED)
     assert len(log.entries()) == 3
@@ -265,8 +277,8 @@ def test_runtime_request_fields_have_no_command_like_name():
 
 
 ALLOWED_IMPORT_ROOTS = {
-    "__future__", "collections", "dataclasses", "datetime", "enum", "hashlib", "hmac", "re",
-    "threading", "types", "typing"}
+    "__future__", "collections", "dataclasses", "datetime", "enum", "hashlib", "heapq", "hmac", "re",
+    "threading", "time", "types", "typing"}
 BANNED_ROOTS = {"httpx", "requests", "socket", "subprocess", "os", "pathlib", "sqlite3", "psycopg",
                 "psycopg2", "asyncpg", "sqlalchemy", "http", "urllib", "flask", "fastapi",
                 "starlette", "django", "aiohttp", "win32com", "pythoncom", "http.cookies"}
@@ -325,6 +337,9 @@ def test_public_functions_never_raise_on_hostile_arguments(hostile):
     class Gate:
         def check(self, request):
             return None
+
+        def commit(self, request):
+            return jobs_api.RerunCommit("run-new-1", jobs_api.RunState.CREATED)
 
     results = [
         decide_enqueue(hostile, req, SESSION, TOKEN), decide_enqueue(ctx, hostile, SESSION, TOKEN),
@@ -424,7 +439,7 @@ def test_naive_or_non_utc_expiry_is_handled():
     assert decide_enqueue(ctx, _valid_request(), s, fake_csrf_token(s)).http_class == 202
 
 
-def test_clock_returning_garbage_is_internal_refused():
+def test_clock_returning_garbage_is_dependency_failed():
     ctx, dispatcher = _ctx()
 
     class BadClock:
@@ -437,7 +452,7 @@ def test_clock_returning_garbage_is_internal_refused():
     for value in (None, "2026-01-01", datetime(2026, 1, 1), 5):  # noqa: DTZ001
         bad = dataclasses.replace(ctx, clock=BadClock(value))
         d = decide_enqueue(bad, _valid_request(), SESSION, TOKEN)
-        assert d.allowed is False and d.reason_code is R.INTERNAL_REFUSED
+        assert d.allowed is False and d.reason_code is R.DEPENDENCY_FAILED
     assert dispatcher.calls == ()
 
 
@@ -469,10 +484,19 @@ def test_csrf_derivation_garbage_rejects_instead_of_raising():
     assert dispatcher.calls == ()
 
 
-def test_csrf_compare_uses_constant_time_primitive():
-    source = Path(inspect.getsourcefile(jobs_api)).read_text(encoding="utf-8")
-    assert "hmac.compare_digest" in source
-    assert "random" not in source and "secrets" not in source  # derivation is deterministic
+def test_csrf_compare_uses_constant_time_primitive(monkeypatch):
+    calls: list[tuple[object, object]] = []
+    real = jobs_api.hmac.compare_digest
+
+    def spy(a, b):
+        calls.append((a, b))
+        return real(a, b)
+
+    monkeypatch.setattr(jobs_api.hmac, "compare_digest", spy)
+    guard = CsrfGuard(fake_csrf_token)
+    assert guard.check(SESSION, TOKEN) is True and guard.check(SESSION, TOKEN[:-1] + "0") is False
+    assert len(calls) == 2 and all(type(x) is bytes and type(y) is bytes for x, y in calls)
+    assert fake_csrf_token(SESSION) == fake_csrf_token(SESSION)  # deterministic derivation
 
 
 def test_context_with_wrong_component_types_is_refused():

@@ -39,6 +39,7 @@ MESSAGES: Final = MappingProxyType({
     _R.ORIGINAL_NUMBERS_IMMUTABLE: "Original numbers cannot be changed; request a new run instead.",
     _R.ORIGINAL_INTACT: "Original numbers are intact.",
     _R.ORIGINAL_TAMPERED: "The displayed numbers do not match the recorded run.",
+    _R.ORIGINAL_UNVERIFIABLE: "The displayed numbers cannot be verified against the recorded run.",
     _R.ROW_DETAIL_UNAVAILABLE: "Row-level detail is not available for this run.",
     _R.OWNER_UNASSIGNED: "No owner is assigned to this item.",
     _R.DELTA_PRECISION_EXCEEDED: "The difference cannot be shown exactly.",
@@ -69,6 +70,7 @@ MESSAGES: Final = MappingProxyType({
     _R.NOT_FOUND: "The requested item was not found.",
     _R.RATE_LIMITED: "Too many requests; try again later.",
     _R.INTERNAL_REFUSED: "The request was refused because of an internal condition.",
+    _R.DEPENDENCY_FAILED: "A required service did not answer; try again later.",
 })
 ACTION_TEXT: Final = MappingProxyType({
     _N.RETRY_LATER: "Try again later.",
@@ -77,6 +79,9 @@ ACTION_TEXT: Final = MappingProxyType({
     _N.REFRESH_PAGE: "Refresh the page.",
     _N.NO_ACTION: "No action is needed.",
 })
+if set(MESSAGES) != set(ReasonCode) or set(ACTION_TEXT) != set(NextAction):
+    # import-time guard: a code or action added to the closed vocabulary needs constant text here
+    raise RuntimeError("SAFE_ERROR_TABLES_INCOMPLETE")
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,10 +101,13 @@ class CorrelationSource(Protocol):
 
 
 class FakeCorrelationSource:
-    """Deterministic, thread-safe id source for tests: CORR-000001, CORR-000002, ..."""
+    """TEST-ONLY deterministic, thread-safe id source: CORR-000001, CORR-000002, ...
+
+    Its ids are sequential and therefore GUESSABLE; a production source must return unguessable
+    opaque ids (the closed ``SafeError`` id pattern allows 64 characters)."""
 
     def __init__(self, prefix: str = "CORR") -> None:
-        self._prefix = prefix if type(prefix) is str and prefix.isalnum() and len(prefix) <= 16 else "CORR"
+        self._prefix = prefix if type(prefix) is str and prefix.isascii() and prefix.isalnum() and len(prefix) <= 16 else "CORR"
         self._n = 0
         self._lock = threading.Lock()
 

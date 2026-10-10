@@ -16,11 +16,14 @@ from business_ai_gateway.phase2.fakes import FakeClock
 from business_ai_gateway.phase2.jobs_api import (
     DECISION_ENDPOINTS,
     ENDPOINTS,
+    OPERATION_FOR,
     ApiContext,
     ApiDecision,
     CsrfGuard,
     Endpoint,
     EndpointAnnotation,
+    FakeCapturePolicy,
+    FakeEventSink,
     FakeJobDispatcher,
     FakeScopeEpochs,
     IdempotencyStore,
@@ -28,7 +31,9 @@ from business_ai_gateway.phase2.jobs_api import (
     JobRequest,
     JobTicket,
     RefusalLog,
+    RerunCommit,
     RerunRequest,
+    RunState,
     SessionRecord,
     decide_enqueue,
     decide_rerun,
@@ -40,6 +45,8 @@ from business_ai_gateway.phase2.safe_errors import FakeCorrelationSource
 from business_ai_gateway.phase2.side_effect_boundary import default_registry
 from business_ai_gateway.phase2.workbench_types import (
     NEXT_ACTION_FOR,
+    FakeEntitlements,
+    FakeOwnership,
     NextAction,
     ReasonCode,
     SafeError,
@@ -48,7 +55,9 @@ from business_ai_gateway.phase2.workbench_types import (
 )
 
 POISON = "Traceback secret://vault/key-7 SELECT * FROM tenants provider-said-no ForeignSourceName"
-HTTP_CLASSES = {200, 202, 400, 401, 403, 404, 409, 429}
+GATE_HTTP = {ReasonCode.NO_NEW_EVIDENCE: 409, ReasonCode.RERUN_TARGET_STALE: 409,
+             ReasonCode.SOURCE_PAUSED: 409, ReasonCode.NOT_IN_SCOPE: 403,
+             ReasonCode.OPERATION_DENIED: 403}
 CORR = re.compile(r"[A-Za-z0-9._:-]{1,64}")
 DIGEST = "a" * 64
 START = datetime(2026, 1, 1, tzinfo=UTC)
@@ -62,13 +71,27 @@ class Env:
         self.clock = FakeClock(START)
         self.dispatcher = FakeJobDispatcher()
         self.scopes = FakeScopeEpochs({("T1", "C1"): 1, ("T2", "C1"): 1, ("T1", "C2"): 1})
-        self.idem = IdempotencyStore(max_entries, retention)
+        self.idem = IdempotencyStore(max_entries, retention, per_tenant=max_entries,
+                                     per_actor=max_entries)
         self.refusals = RefusalLog()
         self.corr = FakeCorrelationSource()
+        self.ownership, self.entitlements = FakeOwnership(), FakeEntitlements()
+        self.capture = FakeCapturePolicy()
+        self.events = FakeEventSink()
+        for tenant, company, actor in (("T1", "C1", "alice"), ("T1", "C1", "bob"),
+                                       ("T2", "C1", "bob"), ("T2", "C1", "alice"),
+                                       ("T1", "C2", "alice")):
+            self.entitlements.grant(tenant, actor, company)
+            for kind, refs in (("source_id", ("SRC-1", "SRC-2", "X")), ("report_id", ("R-1",)),
+                               ("comparison_key", ("CK-1",)), ("snapshot_id", ("SN-1", "SN-2", "SN-3")),
+                               ("run_id", ("run-1",))):
+                for ref in refs:
+                    self.ownership.add(tenant, company, kind, ref)
         self.ctx = ApiContext(
             csrf=CsrfGuard(fake_csrf_token), scopes=self.scopes, registry=default_registry(),
             refusals=self.refusals, idempotency=self.idem, dispatcher=self.dispatcher,
-            clock=self.clock, correlation=self.corr)
+            clock=self.clock, correlation=self.corr, ownership=self.ownership,
+            entitlements=self.entitlements, capture_policy=self.capture, events=self.events)
 
     def session(self, sid: str = "S1", tenant: str = "T1", actor: str = "alice",
                 hours: int = 1) -> SessionRecord:
@@ -79,14 +102,14 @@ class Env:
 
     def request(self, key: object = "idem-key-0001", tenant: str = "T1", company: str = "C1",
                 epoch: int = 1, actor: str = "alice", kind: JobKind = JobKind.RESCAN,
-                operation: str = "read_document", params=(("source_id", "SRC-1"),)) -> JobRequest:
+                operation: str | None = None, params=(("source_id", "SRC-1"),)) -> JobRequest:
+        operation = OPERATION_FOR[kind] if operation is None else operation
         return JobRequest(ViewerScope(tenant, company, epoch), actor, kind, operation, params, key)
 
-    def enqueue(self, request: JobRequest | None = None, session=None, token=None,
-                capture_allowed: bool = False) -> ApiDecision:
+    def enqueue(self, request: JobRequest | None = None, session=None, token=None) -> ApiDecision:
         session = session or self.session()
         return decide_enqueue(self.ctx, request or self.request(), session,
-                              self.token(session) if token is None else token, capture_allowed)
+                              self.token(session) if token is None else token)
 
 
 @pytest.fixture
@@ -234,7 +257,7 @@ def test_failing_collaborator_is_internal_refused_without_echo(which):
     if which == "correlation":
         assert d.correlation_id == "CORR-UNASSIGNED"
     if which == "dispatcher":
-        assert d.reason_code is R.INTERNAL_REFUSED
+        assert d.reason_code is R.DEPENDENCY_FAILED
         assert swap.idempotency.record_count() == 0  # a failed dispatch records nothing
         assert decide_enqueue(env.ctx, env.request(), env.session(), env.token()).http_class == 202
 
@@ -273,7 +296,9 @@ def test_foreign_tenant_job_read_is_not_found_same_shape_as_missing(env):
 def test_read_result_only_after_completion_and_never_foreign(env):
     ticket = env.enqueue().ticket
     viewer, session = ViewerScope("T1", "C1", 1), env.session()
-    _check_refusal(read_result(env.ctx, viewer, session, ticket.job_id), R.NOT_FOUND, 404)
+    queued = read_result(env.ctx, viewer, session, ticket.job_id)
+    assert queued.allowed and queued.http_class == 202 and queued.job.state.value == "QUEUED"
+    assert queued.job.result_digest is None
     env.dispatcher.complete(ticket.job_id, "b" * 64)
     done = read_result(env.ctx, viewer, session, ticket.job_id)
     assert done.allowed and done.job.result_digest == "b" * 64
@@ -512,6 +537,8 @@ def test_concurrent_same_key_different_digests_one_winner(env):
     results: list[ApiDecision] = []
     lock = threading.Lock()
     session, token = env.session(), env.token()
+    for i in range(n):
+        env.ownership.add("T1", "C1", "source_id", f"SRC-{i}")
 
     def work(i: int) -> None:
         barrier.wait()
@@ -537,9 +564,9 @@ def test_stale_epoch_is_refused_before_idempotency_is_touched(env):
     assert d2.http_class == 202  # the same key was never consumed by the refused request
 
 
-def test_unknown_scope_is_refused_as_stale_epoch(env):
+def test_unknown_scope_is_refused_as_not_in_scope(env):
     d = env.enqueue(env.request(company="C9"))
-    _check_refusal(d, R.SCOPE_EPOCH_STALE, 403)
+    _check_refusal(d, R.NOT_IN_SCOPE, 403)
     _assert_no_side_effects(env)
 
 
@@ -560,10 +587,10 @@ def test_fixed_check_order_session_csrf_scope_boundary_idempotency_dispatch(env)
 
 def test_capture_job_needs_an_explicit_permit_fact_and_never_consumes_the_key(env):
     capture = env.request(kind=JobKind.CAPTURE)
-    for fact in (False, None, 1, "yes"):
-        _check_refusal(env.enqueue(capture, capture_allowed=fact), R.OPERATION_DENIED, 403)
+    _check_refusal(env.enqueue(capture), R.OPERATION_DENIED, 403)
     _assert_no_side_effects(env)
-    assert env.enqueue(capture, capture_allowed=True).http_class == 202
+    env.capture.allow("T1", "C1", "alice")
+    assert env.enqueue(capture).http_class == 202
 
 
 @pytest.mark.parametrize("kind,params", [
@@ -588,6 +615,10 @@ class AllowGate:
     def check(self, request) -> ReasonCode | None:
         self.calls += 1
         return self.verdict
+
+    def commit(self, request):
+        self.commits = getattr(self, "commits", 0) + 1
+        return RerunCommit(f"run-new-{self.commits}", RunState.CREATED)
 
 
 def _rerun(env: Env, key="idem-key-9001", snapshot="SN-2", prev="run-1") -> RerunRequest:
@@ -615,7 +646,7 @@ def test_rerun_state_fence_codes_refuse_without_dispatch_or_record(env):
         gate = AllowGate(verdict)
         d = decide_rerun(env.ctx, _rerun(env), s, env.token(s), gate)
         assert d.allowed is False and d.reason_code is verdict and d.ticket is None
-        assert CORR.fullmatch(d.correlation_id) and d.http_class in HTTP_CLASSES
+        assert CORR.fullmatch(d.correlation_id) and d.http_class == GATE_HTTP[verdict]
     assert env.dispatcher.calls == () and env.idem.record_count() == 0
 
 
@@ -623,7 +654,7 @@ def test_rerun_gate_returning_garbage_is_internal_refused(env):
     s = env.session()
     for verdict in (POISON, 5, object(), ReasonCode.REPLAYED):
         d = decide_rerun(env.ctx, _rerun(env), s, env.token(s), AllowGate(verdict))
-        assert d.reason_code is R.INTERNAL_REFUSED and d.ticket is None
+        assert d.reason_code is R.DEPENDENCY_FAILED and d.ticket is None
         assert POISON not in repr(d)
     assert env.dispatcher.calls == ()
 

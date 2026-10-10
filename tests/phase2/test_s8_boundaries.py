@@ -38,6 +38,10 @@ S8_TESTS = (
     "test_jobs_api.py",
     "test_jobs_api_bypass.py",
     "test_workbench_session.py",
+    "test_s8_fix_jobs_api.py",
+    "test_s8_fix_review.py",
+    "test_s8_fix_views.py",
+    "test_s8_fix_session.py",
     "test_s8_boundaries.py",
 )
 
