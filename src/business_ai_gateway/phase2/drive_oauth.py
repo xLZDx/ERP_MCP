@@ -25,8 +25,10 @@ bumps the scope epoch so cursors/ports bound to the old epoch fail closed.
 Every public method returns a ``ConsentResult`` with a fixed ``ConsentCode`` and never raises on bad
 input (wrong type, subclass, NUL, huge, None, recursive). Configuration errors in constructors raise.
 
-KNOWN GAPS: process-local, not persisted; used states are retained for replay detection up to
-``max_states`` (then ``CAPACITY``); no authenticated principal binding of the caller; no real
+KNOWN GAPS: process-local, not persisted; used/expired states are retained for replay detection only
+until a capacity bound is reached (``max_states`` overall, ``max_states_per_identity`` per connection):
+then they are evicted (a late replay of an evicted state is ``STATE_UNKNOWN``, still refused) and only
+live pending states can cause ``CAPACITY``, so one tenant cannot exhaust the table for another; no authenticated principal binding of the caller; no real
 refresh/expiry of access tokens (E4 owns auth-health); the scope allow-list lives in ``drive_scope``.
 """
 from __future__ import annotations
@@ -36,7 +38,7 @@ import hmac
 import secrets
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
@@ -185,13 +187,23 @@ class FakeTokenStore:
             return None
         return value
 
-    def _mint(self, key: tuple[str, str, str]) -> bool:
+    def _pull_pair(self) -> tuple[str, str] | None:
+        """Pull an access/refresh pair from the source. Takes NO lock of the consent manager."""
         access = self._pull()
         refresh = self._pull()
         if access is None or refresh is None or access == refresh:
-            return False
+            return None
+        return (access, refresh)
+
+    def _put(self, key: tuple[str, str, str], pair: tuple[str, str]) -> None:
         with self._lock:
-            self._tokens[key] = (access, refresh)
+            self._tokens[key] = pair
+
+    def _mint(self, key: tuple[str, str, str]) -> bool:
+        pair = self._pull_pair()
+        if pair is None:
+            return False
+        self._put(key, pair)
         return True
 
     def _delete(self, key: tuple[str, str, str]) -> None:
@@ -216,6 +228,8 @@ class _Record:
     pending: str | None = None
     # requested scope names/labels kept while CONSENT_PENDING
     requested: tuple[str, ...] = ()
+    # every state value issued for this connection that is still retained (live or used/expired)
+    states: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -226,6 +240,8 @@ class _Pending:
     broad_accepted: bool
     expires: datetime
     used: bool = False
+    # True while a completion is minting tokens outside the manager lock (never evicted/reset then)
+    completing: bool = False
 
 
 def _challenge(verifier: str) -> str:
@@ -258,6 +274,7 @@ class ConsentManager:
         pending_ttl: timedelta = timedelta(minutes=10),
         max_states: int = 10_000,
         max_records: int = 10_000,
+        max_states_per_identity: int = 16,
     ) -> None:
         if not callable(clock):
             raise TypeError("clock must be callable")
@@ -269,12 +286,15 @@ class ConsentManager:
             raise ValueError("pending_ttl must be a timedelta in (0, 1h]")
         if type(max_states) is not int or max_states <= 0 or type(max_records) is not int or max_records <= 0:
             raise ValueError("max_states and max_records must be positive ints")
+        if type(max_states_per_identity) is not int or max_states_per_identity <= 0:
+            raise ValueError("max_states_per_identity must be a positive int")
         self._clock = clock
         self._store = store if store is not None else FakeTokenStore()
         self._state_source = state_source or _default_state
         self._ttl = pending_ttl
         self._max_states = max_states
         self._max_records = max_records
+        self._max_per_identity = max_states_per_identity
         self._lock = threading.Lock()
         self._records: dict[tuple[str, str, str], _Record] = {}
         self._states: dict[str, _Pending] = {}
@@ -303,6 +323,8 @@ class ConsentManager:
     def _expire_locked(self, key: tuple[str, str, str], rec: _Record, now: datetime) -> None:
         if rec.state is ConsentState.CONSENT_PENDING and rec.pending is not None:
             pend = self._states.get(rec.pending)
+            if pend is not None and pend.completing:
+                return
             if pend is None or pend.used or now >= pend.expires:
                 if pend is not None:
                     pend.used = True
@@ -312,6 +334,32 @@ class ConsentManager:
         if rec.epoch >= _MAX_EPOCH:
             return False
         rec.epoch += 1
+        return True
+
+    def _purge_locked(self, now: datetime, values: list[str] | None = None) -> None:
+        """Evict used/expired states (never one that is completing); keep every live pending state."""
+        removed: dict[tuple[str, str, str], set[str]] = {}
+        for value in tuple(self._states if values is None else values):
+            pend = self._states.get(value)
+            if pend is None or pend.completing or not (pend.used or now >= pend.expires):
+                continue
+            del self._states[value]
+            removed.setdefault(pend.key, set()).add(value)
+        for key, gone in removed.items():
+            rec = self._records.get(key)
+            if rec is not None:
+                rec.states = [v for v in rec.states if v not in gone]
+
+    def _make_room_locked(self, rec: _Record | None, now: datetime) -> bool:
+        """Bounded eviction before a new state is issued; False only when live pending states fill it."""
+        if rec is not None and len(rec.states) >= self._max_per_identity:
+            self._purge_locked(now, rec.states)
+            if len(rec.states) >= self._max_per_identity:
+                return False
+        if len(self._states) >= self._max_states:
+            self._purge_locked(now)
+            if len(self._states) >= self._max_states:
+                return False
         return True
 
     def _new_state_locked(self) -> str | None:
@@ -347,27 +395,35 @@ class ConsentManager:
             now = self._now()
             if now is None:
                 return _refuse(ConsentCode.CLOCK_INVALID)
+            try:
+                expires = now + self._ttl  # before any mutation: an overflow must not burn a state
+            except (OverflowError, ValueError):
+                return _refuse(ConsentCode.CLOCK_INVALID)
             broad = evaluation.claim is not ScopeClaim.NARROW_FILE_SCOPE
             with self._lock:
                 rec = self._records.get(key)
                 if rec is None:
                     if len(self._records) >= self._max_records:
                         return _refuse(ConsentCode.CAPACITY)
-                    rec = _Record()
-                    self._records[key] = rec
-                self._expire_locked(key, rec, now)
-                if rec.state is ConsentState.GRANTED:
-                    return _refuse(ConsentCode.ALREADY_GRANTED, rec.state, rec.epoch)
-                if len(self._states) >= self._max_states:
-                    return _refuse(ConsentCode.CAPACITY, rec.state, rec.epoch)
+                else:
+                    self._expire_locked(key, rec, now)
+                    if rec.state is ConsentState.GRANTED:
+                        return _refuse(ConsentCode.ALREADY_GRANTED, rec.state, rec.epoch)
+                known = (rec.state, rec.epoch) if rec is not None else (None, None)
+                if not self._make_room_locked(rec, now):
+                    return _refuse(ConsentCode.CAPACITY, *known)
                 value = self._new_state_locked()
                 if value is None:
-                    return _refuse(ConsentCode.STATE_SOURCE_INVALID, rec.state, rec.epoch)
+                    return _refuse(ConsentCode.STATE_SOURCE_INVALID, *known)
+                if rec is None:  # allocated only after every early refusal
+                    rec = _Record()
+                    self._records[key] = rec
                 if rec.pending is not None and rec.pending in self._states:
                     self._states[rec.pending].used = True
                 self._states[value] = _Pending(
-                    key, _challenge(code_verifier), evaluation.scopes, broad, now + self._ttl  # type: ignore[arg-type]
+                    key, _challenge(code_verifier), evaluation.scopes, broad, expires  # type: ignore[arg-type]
                 )
+                rec.states.append(value)
                 rec.state, rec.pending, rec.requested = (
                     ConsentState.CONSENT_PENDING, value, evaluation.scopes,
                 )
@@ -415,6 +471,16 @@ class ConsentManager:
                     return _refuse(ConsentCode.STATE_UNKNOWN)
                 if pend.used:
                     return _refuse(ConsentCode.STATE_REPLAYED, rec.state, rec.epoch)
+                # Possession checks (expiry, verifier) come BEFORE any scope evaluation, so a state holder
+                # without the verifier learns nothing about the scopes; both burn the state.
+                if now >= pend.expires:
+                    pend.used = True
+                    self._reset_pending_locked(rec, str(state))
+                    return _refuse(ConsentCode.STATE_EXPIRED, rec.state, rec.epoch)
+                if not hmac.compare_digest(pend.challenge, _challenge(code_verifier)):  # type: ignore[arg-type]
+                    pend.used = True
+                    self._reset_pending_locked(rec, str(state))
+                    return _refuse(ConsentCode.VERIFIER_MISMATCH, rec.state, rec.epoch)
                 final = pend.requested
                 broad = pend.broad_accepted
                 if granted_scopes is not None:
@@ -426,16 +492,25 @@ class ConsentManager:
                         return _refuse(ConsentCode.GRANT_NOT_SUBSET, rec.state, rec.epoch)
                     final = chosen.scopes
                 pend.used = True  # single use from here on, whatever the outcome
-                if now >= pend.expires:
-                    self._reset_pending_locked(rec, str(state))
-                    return _refuse(ConsentCode.STATE_EXPIRED, rec.state, rec.epoch)
-                if not hmac.compare_digest(pend.challenge, _challenge(code_verifier)):  # type: ignore[arg-type]
-                    self._reset_pending_locked(rec, str(state))
-                    return _refuse(ConsentCode.VERIFIER_MISMATCH, rec.state, rec.epoch)
                 final_eval = evaluate_scopes(final, (_BROAD_LABEL,) if broad else ())
-                if rec.pending != state or final_eval.claim is None or not self._store._mint(key):
+                if rec.pending != state or final_eval.claim is None:
                     self._reset_pending_locked(rec, str(state))
                     return _refuse(ConsentCode.TOKEN_INVALID, rec.state, rec.epoch)
+                pend.completing = True
+            # the token source is user code: it runs OUTSIDE the manager lock
+            try:
+                pair = self._store._pull_pair()
+            except Exception:  # noqa: BLE001
+                pair = None
+            with self._lock:
+                pend.completing = False
+                rec = self._records.get(key)
+                if pair is None or rec is None or rec.pending != state:
+                    if rec is not None:
+                        self._reset_pending_locked(rec, str(state))
+                    return _refuse(ConsentCode.TOKEN_INVALID, rec.state if rec else None,
+                                   rec.epoch if rec else None)
+                self._store._put(key, pair)
                 rec.state, rec.pending, rec.requested = ConsentState.GRANTED, None, ()
                 rec.scopes = final_eval.scopes
                 rec.claim, rec.isolation = final_eval.claim, final_eval.isolation
@@ -481,19 +556,23 @@ class ConsentManager:
             return _refuse(ConsentCode.INPUT_INVALID)
 
     def snapshot(self, identity: object) -> ConsentSnapshot | None:
-        key = _key(identity)
-        if key is None:
-            return None
-        now = self._now()
-        with self._lock:
-            rec = self._records.get(key)
-            if rec is None:
+        """Never raises: any internal failure reads as "no record" (fail closed)."""
+        try:
+            key = _key(identity)
+            if key is None:
                 return None
-            if now is not None:
-                self._expire_locked(key, rec, now)
-            return ConsentSnapshot(
-                rec.state, rec.epoch, rec.scopes, rec.claim, rec.isolation, rec.broad_accepted
-            )
+            now = self._now()
+            with self._lock:
+                rec = self._records.get(key)
+                if rec is None:
+                    return None
+                if now is not None:
+                    self._expire_locked(key, rec, now)
+                return ConsentSnapshot(
+                    rec.state, rec.epoch, rec.scopes, rec.claim, rec.isolation, rec.broad_accepted
+                )
+        except Exception:  # noqa: BLE001
+            return None
 
     def state_of(self, identity: object) -> ConsentState:
         snap = self.snapshot(identity)
@@ -505,26 +584,32 @@ class ConsentManager:
 
     def is_authorized(self, identity: object, scope_epoch: object) -> bool:
         """GRANTED, tokens present and the epoch exactly current. False for anything else."""
-        if not is_valid_scope_epoch(scope_epoch):
+        try:
+            if not is_valid_scope_epoch(scope_epoch):
+                return False
+            snap = self.snapshot(identity)
+            return (
+                snap is not None
+                and snap.state is ConsentState.GRANTED
+                and snap.scope_epoch == scope_epoch
+                and self._store.has_tokens(identity)
+            )
+        except Exception:  # noqa: BLE001
             return False
-        snap = self.snapshot(identity)
-        return (
-            snap is not None
-            and snap.state is ConsentState.GRANTED
-            and snap.scope_epoch == scope_epoch
-            and self._store.has_tokens(identity)
-        )
 
     def consent_digest(self, identity: object) -> str | None:
         """Stable digest of the consent record. The preimage never contains a token or a state value."""
-        snap = self.snapshot(identity)
-        key = _key(identity)
-        if snap is None or key is None:
+        try:
+            snap = self.snapshot(identity)
+            key = _key(identity)
+            if snap is None or key is None:
+                return None
+            preimage = stable_key(
+                "drive-consent-v1", *key, snap.state.value, str(snap.scope_epoch), *snap.scopes
+            )
+            return hashlib.sha256(preimage.encode("utf-8")).hexdigest()
+        except Exception:  # noqa: BLE001
             return None
-        preimage = stable_key(
-            "drive-consent-v1", *key, snap.state.value, str(snap.scope_epoch), *snap.scopes
-        )
-        return hashlib.sha256(preimage.encode("utf-8")).hexdigest()
 
 
 _BROAD_LABEL = "BROAD_ACCEPTED"

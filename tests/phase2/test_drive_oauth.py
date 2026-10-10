@@ -442,7 +442,9 @@ def test_guid_tenant_and_connection_are_canonicalised_but_drive_namespace_ids_st
 
 def test_clock_naive_subclass_raising_or_wrong_type_is_refused_before_any_state_change():
     for bad_clock in (
-        lambda: datetime(2026, 1, 1),  # noqa: DTZ001 lambda: DtSub(2026, 1, 1, tzinfo=UTC), lambda: "2026-01-01",
+        lambda: datetime(2026, 1, 1),  # noqa: DTZ001 - naive on purpose
+        lambda: DtSub(2026, 1, 1, tzinfo=UTC),
+        lambda: "2026-01-01",
         lambda: None, lambda: 1.0, lambda: (_ for _ in ()).throw(RuntimeError("boom")),
     ):
         mgr = ConsentManager(bad_clock, state_source=lambda: "S" * 24)

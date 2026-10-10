@@ -112,6 +112,7 @@ async def test_port_invalid_grant_moves_to_auth_required_and_blocks_everything()
     fake, _seam, sink, machine, health, guard = _build()
     fake.force_provider_response("list_changes", 400, f"invalid_grant {SECRET}")
     cursor = FakeCursorView("T1")
+    got: list = []
     with pytest.raises(DrivePortError) as ei:
         await guard.list_changes(IDENT, 0, "T1")
     assert ei.value.code is DriveErrorCode.AUTH_REQUIRED
@@ -119,6 +120,9 @@ async def test_port_invalid_grant_moves_to_auth_required_and_blocks_everything()
     assert health.cause is AuthCause.INVALID_GRANT and machine.state is SourceState.PAUSED
     assert len(sink.alerts) == 1
     await _all_methods_blocked(guard, health, fake)
+    before = fake.call_count
+    res = await run_poll(health, guard, cursor, _committer(cursor, got))
+    assert res.status is PollStatus.AUTH_REQUIRED and fake.call_count == before and got == []
     assert cursor.commits == 0 and cursor.token == "T1"  # cursor untouched
     assert len(sink.alerts) == 1  # blocked calls do not re-alert
 
@@ -211,7 +215,7 @@ async def test_alert_record_has_only_fixed_fields() -> None:
     assert alert == AuthAlert("tenant-1", "conn-1", AuthCause.CONSENT_REVOKED, 0, 1)
     text = repr(alert)
     assert "ya29" not in text and "token" not in text.lower().replace("transition", "")
-    assert set(AuthAlert.__slots__) == {"tenant", "connection_id", "cause", "scope_epoch", "transition_no"}
+    assert set(AuthAlert.__slots__) == {"tenant", "connection_id", "cause", "scope_epoch", "transition_no", "incident_id"}
 
 
 async def test_sink_failure_does_not_open_the_gate() -> None:
@@ -471,7 +475,7 @@ async def test_poll_fixed_refusals_and_no_leak() -> None:
     _script_chain(fake)
     nothing = FakeCursorView(None)
     assert (await run_poll(health, guard, nothing, lambda *a: None)).status is PollStatus.NO_CURSOR
-    for bad in ("", "a b", "x\x00", StrSub("T1")[:0]):
+    for bad in ("", "a b", "x\x00", StrSub("T1")):
         assert (await run_poll(health, guard, FakeCursorView(bad), lambda *a: None)).status is PollStatus.NO_CURSOR
     for bad in (0, True, None, IntSub(3)):
         assert (await run_poll(health, guard, FakeCursorView("T1"), lambda *a: None, max_pages=bad)).status \
@@ -515,7 +519,8 @@ def test_module_has_no_forbidden_imports_and_no_cursor_write_or_token_text() -> 
             mods.add((node.module or "").split(".")[0] if node.level == 0 else "." + (node.module or ""))
     banned = {"httpx", "requests", "socket", "urllib", "aiohttp", "business_ai_gateway"}
     assert not (mods & banned)
-    assert not any(m.startswith(".") and m.strip(".") in {"drive_oauth", "drive_cursor"} for m in mods)
+    # the adapter may import the sibling drive_oauth (one-dot phase2 import); drive_cursor stays duck-typed
+    assert not any(m.startswith(".") and m.strip(".") == "drive_cursor" for m in mods)
     # the cursor seam is read-only: no write-shaped method on the protocol
     assert [n for n in dir(drive_auth_state.CursorView) if not n.startswith("_")] == ["committed_token"]
 

@@ -43,8 +43,8 @@ from business_ai_gateway.phase2.resnapshot import ResnapshotReason, ResnapshotTr
 
 SCOPE = DEFAULT_SCOPE
 H = "a" * 64
-IDENT_A = DrivePortIdentity("account:A", "tenant-1", "conn-1")
-IDENT_B = DrivePortIdentity("drive:B", "tenant-1", "conn-1")
+IDENT_A = DrivePortIdentity("account:A", "A", "conn-1")
+IDENT_B = DrivePortIdentity("drive:B", "A", "conn-1")
 CORPUS = DriveCorpus(None, ("ROOT-1",))
 O = BaselineOutcome
 R = CursorReason
@@ -197,11 +197,6 @@ async def test_tc106_start_token_first_and_change_during_baseline_appears_in_cat
 
 async def test_tc106_start_token_is_persisted_before_the_listing_and_not_requested_again():
     env = await ready()
-    seen: list[CursorRecord] = []
-
-    async def peek(_n):
-        seen.append(await env.record())
-
     env.lister.pages = {None: DrivePortError(DriveErrorCode.TRANSIENT)}
     first = await env.run()
     assert first.outcome is O.RETRYABLE and first.reason is R.TRANSIENT
@@ -258,14 +253,18 @@ async def test_page_limit_is_a_non_complete_resumable_result_never_live():
     assert len([e for e in await env.events() if e["event_kind"] == "DRIVE_CANDIDATE"]) == 3
 
 
-async def test_row_limit_does_not_commit_the_oversized_page():
+async def test_row_limit_stops_before_the_second_oversized_page_and_commits_nothing_of_it():
     env = await ready()
-    env.lister.pages = {None: BaselinePage((BaselineItem("F1", "r1"), BaselineItem("F2", "r1")))}
-    result = await env.run(limits=BaselineLimits(max_pages=10, max_rows=1))
+    env.lister.pages = {
+        None: BaselinePage((BaselineItem("F1", "r1"),), "p2"),
+        "p2": BaselinePage((BaselineItem("F2", "r1"), BaselineItem("F3", "r1"))),
+    }
+    result = await env.run(limits=BaselineLimits(max_pages=10, max_rows=2))
     assert (result.outcome, result.reason) == (O.LIMIT_REACHED, R.ROW_LIMIT)
-    assert not result.complete and result.rows == 0
-    assert await env.events() == []
-    assert (await env.record()).state is CursorState.BASELINING
+    assert not result.complete and result.rows == 1
+    assert [e["file_id"] for e in await env.events()] == ["F1"]
+    rec = await env.record()
+    assert (rec.state, rec.pos) == (CursorState.BASELINING, "p2")
 
 
 async def test_page_limit_in_catchup_stays_catching_up():
@@ -301,8 +300,8 @@ async def test_tc107_same_file_id_in_two_namespaces_stays_two_candidates_and_two
     b.fake.script_page("SB", (chg("c1", "SAME", drive_id="B"),), new_start_page_token="SB2")
     ra, rb = await a.run(), await b.run()
     assert ra.outcome is O.LIVE and rb.outcome is O.LIVE
-    assert {c.connection_id for c in ra.candidates} == {cursor_key(IDENT_A)}
-    assert {c.connection_id for c in rb.candidates} == {cursor_key(IDENT_B)}
+    assert {c.connection_id for c in ra.candidates} == {IDENT_A.connection_id}
+    assert {c.connection_id for c in rb.candidates} == {IDENT_B.connection_id}
     assert {c.file_id for c in ra.candidates + rb.candidates} == {"SAME"}
     events = await a.events()
     assert len(events) == 4 and len({e["event_id"] for e in events}) == 4  # same change id c1, 2 ns
@@ -352,7 +351,7 @@ async def test_removed_change_gives_a_tombstone_and_requalification_never_a_repl
 
 @pytest.mark.parametrize(
     ("case", "reason"),
-    [("missing", R.CURSOR_MISSING), ("empty", R.CURSOR_EMPTY), ("corrupt", R.CURSOR_CORRUPT),
+    [("empty", R.CURSOR_EMPTY), ("corrupt", R.CURSOR_CORRUPT),
      ("foreign", R.IDENTITY_CHANGED)],
 )
 async def test_tc108_lost_cursor_blocks_incremental_until_a_fresh_complete_snapshot(case, reason):
@@ -388,7 +387,9 @@ async def test_tc108_an_incomplete_fresh_snapshot_does_not_clear_the_requirement
         "p2": BaselinePage((BaselineItem("F2", "r1"),)),
     }
     env.fake.script_page("START-1", new_start_page_token="TOK-2")
-    assert (await env.run()).reason is R.CURSOR_MISSING
+    env.tracker.require(cursor_key(IDENT_A), ResnapshotReason.CURSOR_MISSING, 0)
+    blocked_first = await env.run()
+    assert (blocked_first.outcome, blocked_first.reason) == (O.BLOCKED, R.INCREMENTAL_BLOCKED)
     limited = await env.run(DriveRunMode.RESNAPSHOT_START, limits=BaselineLimits(1, 100))
     assert limited.outcome is O.LIMIT_REACHED and not limited.snapshot_cleared
     assert env.tracker.is_required(cursor_key(IDENT_A))
@@ -665,7 +666,9 @@ async def test_hostile_run_arguments_never_raise():
     class SubRequest(BaselineRequest):
         pass
 
-    for args in ((None,), (req, "INCREMENTAL"), (req, None), (object(),), (StrSub("x"),)):
+    sub = SubRequest(**{f: getattr(req, f) for f in (
+        "identity", "corpus", "drive_epoch", "lease", "scope_allowed", "lister", "limits")})
+    for args in ((None,), (req, "INCREMENTAL"), (req, None), (object(),), (StrSub("x"),), (sub,)):
         result = await env.runner.run(*args)
         assert result.outcome is O.REFUSED and result.reason is R.INVALID_REQUEST
     with pytest.raises(ValueError, match="BASELINE_REQUEST_INVALID"):

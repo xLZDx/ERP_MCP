@@ -190,7 +190,7 @@ def test_unknown_risk_label_is_refused_not_ignored(label):
     ("bogus:x", None, ("R",)), ("account:", None, ("R",)), (StrSub("account:x"), None, ("R",)),
     ("account:x", StrSub("d"), ("R",)), ("account:x", None, ["R"]), ("account:x", None, ("R", "R")),
     ("account:x", None, (StrSub("R"),)), ("account:x", None, ("R\x00",)), ("account:x", None, ("R S",)),
-    ("account:x", None, tuple(f"r{i}" for i in range(65))), ("account:x", None, TupleSub(("R",))),
+    ("account:x", None, tuple(f"r{i}" for i in range(1001))), ("account:x", None, TupleSub(("R",))),
     ("account:x", "", ("R",)), (None, None, ("R",)), ("account:x", None, (None,)),
 ], ids=_ID)
 def test_corpus_declaration_refuses_bad_input_with_fixed_code_not_echoing_the_value(args):
@@ -391,9 +391,9 @@ async def test_tc103_empty_corpus_and_unresolved_file_prove_nothing():
     assert (p1.status, p1.code, p1.basis) == (AccessProof.NOT_PROVEN, "EMPTY_CORPUS", None)
     assert fake.call_count == 0
     p2 = await prove_scoped_read(fake, IDENT, 0, CORPUS, "X", NARROW, "OBS-1")
-    assert (p2.status, p2.basis) == (AccessProof.NOT_PROVEN, None)
+    assert (p2.status, p2.code, p2.basis) == (AccessProof.NOT_PROVEN, "PARENT_UNRESOLVED", None)
     p3 = await prove_scoped_read(fake, IDENT, 0, CORPUS, "MISSING", NARROW, "OBS-1")
-    assert p3.status is AccessProof.NOT_PROVEN
+    assert (p3.status, p3.code, p3.basis) == (AccessProof.NOT_PROVEN, "FILE_UNRESOLVED", None)
 
 
 async def test_tc103_unaccepted_scope_set_never_proves_even_for_a_readable_file():
@@ -408,7 +408,15 @@ async def test_tc103_unaccepted_scope_set_never_proves_even_for_a_readable_file(
 
 async def test_tc103_stale_epoch_and_auth_failure_do_not_prove():
     fake = _fake(_meta("X", ("ROOT",)), scope_epoch=3)
-    assert (await prove_scoped_read(fake, IDENT, 2, CORPUS, "X", NARROW, "O")).status is AccessProof.NOT_PROVEN
+    stale = await prove_scoped_read(fake, IDENT, 2, CORPUS, "X", NARROW, "O")
+    assert (stale.status, stale.code, stale.basis) == (AccessProof.NOT_PROVEN, "PORT_REFUSED", None)
+    assert (await resolve_membership(fake, IDENT, 2, CORPUS, "X")).port_code is DriveErrorCode.SCOPE_EPOCH_STALE
+    fake.force_error("get_file_meta", DriveErrorCode.AUTH_REQUIRED)
+    auth = await prove_scoped_read(fake, IDENT, 3, CORPUS, "X", NARROW, "O")
+    assert (auth.status, auth.code, auth.basis) == (AccessProof.NOT_PROVEN, "PORT_REFUSED", None)
+    fake.force_error("get_file_meta", DriveErrorCode.AUTH_REQUIRED)
+    res = await resolve_membership(fake, IDENT, 3, CORPUS, "X")
+    assert (res.code, res.port_code) == (MembershipCode.PORT_REFUSED, DriveErrorCode.AUTH_REQUIRED)
     assert (await prove_scoped_read(fake, IDENT, 3, CORPUS, "X", NARROW, "O")).status is AccessProof.PROVEN
 
 
@@ -427,7 +435,9 @@ async def test_hostile_scope_inputs_to_the_proof_functions_do_not_raise():
     for bad in HOSTILE_NAMES:
         p = await prove_scoped_read(fake, IDENT, 0, CORPUS, "X", bad, "O")
         n = await observe_new_child_access(fake, IDENT, 0, CORPUS, "X", bad, "O")
-        assert p.status is not AccessProof.PROVEN and n.status is not AccessProof.PROVEN
+        assert (p.status, p.code, p.basis) == (AccessProof.DENIED, "SCOPE_NOT_ACCEPTED", None)
+        assert (n.status, n.code, n.basis) == (AccessProof.DENIED, "SCOPE_NOT_ACCEPTED", None)
+    assert fake.call_count == 0
 
 
 # --- TC104 new child access --------------------------------------------------------------------
