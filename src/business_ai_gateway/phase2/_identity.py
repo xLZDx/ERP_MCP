@@ -10,8 +10,8 @@ import json
 import unicodedata
 
 __all__ = [
-    "MAX_TEXT_CHARS", "clean_identity", "exact_text", "same_person", "scope_key", "skeleton",
-    "stable_key",
+    "MAX_TEXT_CHARS", "canonical_guid", "clean_identity", "exact_text", "is_empty_1c_ref",
+    "same_person", "scope_key", "skeleton", "stable_key",
 ]
 
 _BAD_CATEGORIES = frozenset({"Cc", "Cf", "Co", "Cs", "Cn", "Zl", "Zp", "Zs"})
@@ -103,6 +103,34 @@ def scope_key(tenant: object, company: object) -> tuple[str, str] | None:
     """The single scope normalisation for every phase-2 module; None when either part is unusable."""
     t, c = clean_identity(tenant), clean_identity(company)
     return (t, c) if t and c else None
+
+
+def canonical_guid(value: object) -> str | None:
+    """Lower-case dashed form of a GUID given as an exact ``str`` (braces/parentheses/dashes optional).
+
+    ``None`` for anything that is not exactly a ``str`` holding 32 hex digits, so callers can
+    de-duplicate GUID-shaped identifiers without folding case-sensitive identifiers of other shapes.
+    """
+    if type(value) is not str:
+        return None
+    text = value.strip()
+    if len(text) >= 2 and text[0] + text[-1] in ("{}", "()"):
+        text = text[1:-1]
+    hexes = text.replace("-", "")
+    if len(hexes) != 32 or any(c not in "0123456789abcdefABCDEF" for c in hexes):
+        return None
+    if "-" in text and [len(p) for p in text.split("-")] != [8, 4, 4, 4, 12]:
+        return None
+    h = hexes.lower()
+    return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
+
+
+def is_empty_1c_ref(value: object) -> bool:
+    """True for the 1C empty reference (all-zero GUID in any common spelling).
+
+    An empty reference does not identify a document or contract, so it must never be accepted as one.
+    """
+    return canonical_guid(value) == "00000000-0000-0000-0000-000000000000"
 
 
 def stable_key(*parts: str) -> str:

@@ -422,3 +422,29 @@ def test_scope_changes_change_the_digest():
     other_src = PurchaseScope("t", "onec-copy", COMPANY, VENDOR, FROM, UNTIL, "MDL")
     r2, _ = retriever(three_pages())
     assert r2.retrieve(request(sc=other_src)).proof.digest != base
+
+
+# -- hardening round: GUID-shaped doc_refs are de-duplicated by canonical form --------------------
+GUID_UP = "A1234567-89AB-4CDE-8F01-1234567890AB"
+GUID_LOW = GUID_UP.lower()
+
+
+def test_m05_guid_spellings_on_two_pages_are_one_document():
+    s = {None: page([doc(GUID_UP)], "tok-1", SNAP, 0), "tok-1": page([doc(GUID_LOW)], None, SNAP, 1)}
+    res = retriever(s)[0].retrieve(request())
+    assert res.complete is False and res.reason is RetrievalReason.DUPLICATE_DOCUMENT
+    assert res.listing is None
+
+
+@pytest.mark.parametrize("other", [GUID_LOW, "{" + GUID_LOW + "}", GUID_UP.replace("-", "")])
+def test_m05_guid_spellings_on_one_page_are_one_document(other):
+    res = retriever({None: page([doc(GUID_UP), doc(other)])})[0].retrieve(request())
+    assert res.complete is False and res.reason is RetrievalReason.DUPLICATE_DOCUMENT
+    assert res.listing is None
+
+
+def test_m05_non_guid_refs_stay_case_sensitive_and_guid_keeps_source_spelling():
+    res = retriever({None: page([doc("Abc-1"), doc("abc-1"), doc(GUID_UP, amount="2")])})[0].retrieve(
+        request())
+    assert res.complete is True
+    assert {d.doc_ref for d in res.listing.documents} == {"Abc-1", "abc-1", GUID_UP}

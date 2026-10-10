@@ -104,7 +104,7 @@ class PurchaseComparison:
 
 
 def _listing_qualified(listing: PurchaseListing) -> bool:
-    if not listing.complete:
+    if type(listing.complete) is not bool or listing.complete is not True:
         return False
     s = listing.scope
     return all(
