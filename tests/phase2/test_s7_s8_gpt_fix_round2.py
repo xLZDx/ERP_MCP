@@ -85,17 +85,17 @@ async def test_s7_m03_control_explicit_upsert_plus_the_matching_store_receipt_re
     prep = await _requalified(ck)
     assert await ck.authorize_disclosure("R") is False  # provisional until the cursor commit is proven
     proof = await page_receipt(env, "T2", prep)
-    assert ck.accept_page(prep, proof) is True
+    assert await ck.accept_page(prep, proof) is True
     assert await ck.authorize_disclosure("R") is True
     assert await ck.authorize_disclosure("A") is True
-    assert ck.accept_page(prep, proof) is False  # one-shot
+    assert await ck.accept_page(prep, proof) is False  # one-shot
 
 
 async def test_s7_m03_refused_page_never_reinstates_the_root():
     _fake, env, ck = await _removed_world()
     bad = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "WRONG-CURSOR")
     assert bad.status is not PageStatus.PREPARED
-    assert ck.accept_page(bad, await receipt(env, "WRONG-CURSOR", "T3")) is False
+    assert await ck.accept_page(bad, await receipt(env, "WRONG-CURSOR", "T3")) is False
     assert await ck.authorize_disclosure("R") is False
     assert await ck.authorize_disclosure("A") is False
 
@@ -104,7 +104,7 @@ async def test_s7_m03_an_unaccepted_or_replaced_preparation_never_reinstates():
     _fake, env, ck = await _removed_world()
     first = await _requalified(ck)
     await ck.prepare_page(_page([_up("c3", "A")], token="T3", nxt="T4"), "T3")  # replaces the first
-    assert ck.accept_page(first, await page_receipt(env, "T2", first)) is False
+    assert await ck.accept_page(first, await page_receipt(env, "T2", first)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -126,7 +126,7 @@ async def test_s7_m03_an_epoch_change_before_acceptance_invalidates_the_preparat
     prep = await _requalified(ck)
     proof = await page_receipt(env, "T2", prep)
     assert ck.advance_epoch(1) is True
-    assert ck.accept_page(prep, proof) is False
+    assert await ck.accept_page(prep, proof) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -135,11 +135,11 @@ async def test_s7_m03_a_receipt_of_another_store_or_connection_or_transaction_is
     prep = await _requalified(ck)
     token = prep.batch.committable_cursor()
     other_store = await committer()  # a different store that really committed the same token
-    assert ck.accept_page(prep, await page_receipt(other_store, "T2", prep)) is False
-    assert ck.accept_page(prep, await receipt(env, "T9", token)) is False  # wrong prior cursor
-    assert ck.accept_page(prep, await receipt(env, "T2", "T7")) is False  # wrong committed cursor
+    assert await ck.accept_page(prep, await page_receipt(other_store, "T2", prep)) is False
+    assert await ck.accept_page(prep, await receipt(env, "T9", token)) is False  # wrong prior cursor
+    assert await ck.accept_page(prep, await receipt(env, "T2", "T7")) is False  # wrong committed cursor
     assert await ck.authorize_disclosure("R") is False
-    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
+    assert await ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
 
 
 async def test_s7_m03_a_genuine_receipt_for_another_corpus_is_not_proof():
@@ -148,7 +148,7 @@ async def test_s7_m03_a_genuine_receipt_for_another_corpus_is_not_proof():
     ck = checker(fake, other)
     await ck.prepare_page(_page([REMOVE]), "T1")
     prep = await _requalified(ck)
-    assert ck.accept_page(prep, await page_receipt(other, "T2", prep)) is False
+    assert await ck.accept_page(prep, await page_receipt(other, "T2", prep)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -156,12 +156,12 @@ async def test_s7_m03_a_commit_that_did_not_carry_this_pages_events_is_not_proof
     _fake, env, ck = await _removed_world()
     prep = await _requalified(ck)
     empty = await receipt(env, "T2", prep.batch.committable_cursor())  # same tokens, no page effects
-    assert ck.accept_page(prep, empty) is False
+    assert await ck.accept_page(prep, empty) is False
     assert await ck.authorize_disclosure("R") is False
     other_effects = await receipt(env, "T2", prep.batch.committable_cursor(), events=[build_event(IDENT, "DRIVE_CANDIDATE", "other-change", file_id="OTHER", revision_id="r9",
                                                                    status="UNATTESTED")])
-    assert ck.accept_page(prep, other_effects) is False
-    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
+    assert await ck.accept_page(prep, other_effects) is False
+    assert await ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
 
 
 async def test_s7_m03_an_obsolete_receipt_is_not_proof_after_the_cursor_moved_on():
@@ -169,7 +169,100 @@ async def test_s7_m03_an_obsolete_receipt_is_not_proof_after_the_cursor_moved_on
     prep = await _requalified(ck)
     old_proof = await page_receipt(env, "T2", prep)
     await receipt(env, "T3", "T4")  # the same store committed further: old_proof is obsolete
-    assert ck.accept_page(prep, old_proof) is False
+    assert await ck.accept_page(prep, old_proof) is False
+    assert await ck.authorize_disclosure("R") is False
+
+
+class _Wrapper:
+    """Delegating cursor port with test hooks around commit_cursor_page."""
+
+    def __init__(self, inner) -> None:
+        import asyncio
+
+        self.inner = inner
+        self.on_call = None
+        self.hold_next = False
+        self.gate = asyncio.Event()
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+    async def commit_cursor_page(self, *args, **kwargs):
+        if self.on_call is not None:
+            self.on_call()
+        result = await self.inner.commit_cursor_page(*args, **kwargs)
+        if self.hold_next:
+            self.hold_next = False
+            await self.gate.wait()  # the write is durable; its reply is delayed
+        return result
+
+
+async def test_s7_m03_events_mutated_after_submission_cannot_change_what_a_receipt_proves():
+    from s7_receipts import IDENT as ID
+    from s7_receipts import ROOT_CORPUS as RC
+
+    from business_ai_gateway.phase2.drive_baseline import page_events
+    from business_ai_gateway.phase2.drive_cursor import CursorState
+
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    await receipt(env, "T0", "T2")  # the cursor sits at the page's prior token
+    wrapper = _Wrapper(env.store._cursors)
+    env.store._cursors = wrapper
+    events: list = []
+    wrapper.on_call = lambda: events.extend(page_events(ID, prep.batch, "T2"))  # caller mutates mid-commit
+    load = await env.store.load(ID, RC, 0, env.env.lease)
+    new = load.record.evolve(state=CursorState.BASELINING, token=prep.batch.committable_cursor(), pos=None, seen=())
+    done = await env.store.commit(ID, env.env.lease, load, new, events)
+    assert done.ok and len(events) > 0  # the original list now holds the page's events
+    assert await ck.accept_page(prep, done.receipt) is False  # but the backend only ever received []
+    assert await ck.authorize_disclosure("R") is False
+
+
+async def test_s7_m03_a_receipt_is_obsolete_once_another_writer_advances_the_cursor():
+    from s7_receipts import IDENT as ID
+    from s7_receipts import ROOT_CORPUS as RC
+
+    from business_ai_gateway.phase2.drive_cursor import CursorState, DriveCursorStore
+    from business_ai_gateway.phase2.resnapshot import ResnapshotTracker
+
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    proof = await page_receipt(env, "T2", prep)
+    other = DriveCursorStore(env.env.living, ResnapshotTracker())  # a second store on the SAME backend
+    load = await other.load(ID, RC, 0, env.env.lease)
+    new = load.record.evolve(state=CursorState.BASELINING, token="T9", pos=None, seen=())
+    assert (await other.commit(ID, env.env.lease, load, new, [])).ok
+    assert await ck.accept_page(prep, proof) is False
+    assert await ck.authorize_disclosure("R") is False
+
+
+async def test_s7_m03_a_delayed_reply_of_an_older_commit_never_makes_it_current_again():
+    import asyncio
+
+    from s7_receipts import IDENT as ID
+    from s7_receipts import ROOT_CORPUS as RC
+
+    from business_ai_gateway.phase2.drive_baseline import page_events
+    from business_ai_gateway.phase2.drive_cursor import CursorState
+
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    await receipt(env, "T0", "T2")
+    wrapper = _Wrapper(env.store._cursors)
+    env.store._cursors = wrapper
+    wrapper.hold_next = True
+    load = await env.store.load(ID, RC, 0, env.env.lease)
+    new = load.record.evolve(state=CursorState.BASELINING, token=prep.batch.committable_cursor(), pos=None, seen=())
+    first = asyncio.ensure_future(
+        env.store.commit(ID, env.env.lease, load, new, list(page_events(ID, prep.batch, "T2"))))
+    for _ in range(50):
+        await asyncio.sleep(0)  # the first write is durable, its reply is parked
+    await receipt(env, "T9", "T10")  # a newer commit completes first
+    wrapper.gate.set()
+    delayed = await first
+    assert delayed.ok and delayed.receipt is not None
+    assert await ck.accept_page(prep, delayed.receipt) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -189,7 +282,7 @@ async def test_s7_m03_computed_forged_malformed_and_hostile_receipts_are_never_p
     half = object.__new__(CursorCommitReceipt)  # unset slot: must refuse, never raise
     cases = (None, "", token, 3, half, CursorCommitReceipt(object()), CursorCommitReceipt(HostileStr("x")))
     for proof in cases:
-        assert ck.accept_page(prep, proof) is False
+        assert await ck.accept_page(prep, proof) is False
     genuine = await page_receipt(env, "T2", prep)
     fp, dg = ROOT_FP, page_digest(prep, "T2")
     assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, 0, dg) is True
@@ -200,7 +293,7 @@ async def test_s7_m03_computed_forged_malformed_and_hostile_receipts_are_never_p
     assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, 0, HostileStr(dg)) is False
     assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, True, dg) is False  # bool epoch
     assert await ck.authorize_disclosure("R") is False
-    assert ck.accept_page(prep, genuine) is True
+    assert await ck.accept_page(prep, genuine) is True
 
 
 class HostileIdentity:
@@ -215,7 +308,7 @@ async def test_s7_m03_a_checker_without_a_bound_store_never_reinstates():
     ck = MembershipChecker(fake, IDENT, Corpus(IDENT.namespace, ("R",)), 0)
     await ck.prepare_page(_page([REMOVE]), "T1")
     prep = await _requalified(ck)
-    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is False
+    assert await ck.accept_page(prep, await page_receipt(env, "T2", prep)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -534,3 +627,14 @@ def test_s8_m08_forged_incomplete_foreign_record_looks_like_a_missing_job():
     assert _shape(forged) == _shape(missing)
     assert "JOB-FORGED" not in repr(forged)
     assert read_job is not None
+
+
+async def test_s7_m03_two_concurrent_acceptances_of_one_preparation_apply_exactly_once():
+    import asyncio
+
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    proof = await page_receipt(env, "T2", prep)
+    results = await asyncio.gather(ck.accept_page(prep, proof), ck.accept_page(prep, proof))
+    assert sorted(results) == [False, True]
+    assert await ck.authorize_disclosure("R") is True
