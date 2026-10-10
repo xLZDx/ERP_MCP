@@ -27,6 +27,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from ._identity import stable_key
+from .drive_baseline import page_events
 from .drive_changes import (
     DriveChange,
     DriveChangeKind,
@@ -34,7 +35,7 @@ from .drive_changes import (
     DrivePage,
     PreparedDriveBatch,
 )
-from .drive_cursor import DriveCursorStore
+from .drive_cursor import DriveCorpus, DriveCursorStore, events_digest
 from .drive_port import (
     MAX_CORPUS_ROOTS,
     DriveErrorCode,
@@ -618,10 +619,16 @@ class MembershipChecker:
         store = self._commit_store
         if store is None or batch is None:
             return False
-        token = batch.committable_cursor()
+        try:
+            token = batch.committable_cursor()
+            fingerprint = DriveCorpus(self._corpus.shared_drive_id, tuple(self._corpus.root_folder_ids)).fingerprint
+            expected = events_digest(page_events(self._identity, batch, pending[3]))
+        except Exception:  # noqa: BLE001 - a batch/corpus that cannot be bound is not acceptable
+            return False
         # the receipt must be this bound store's acknowledgment of exactly this page's transaction: this
-        # connection, from the cursor the page was prepared against, to the cursor the batch may commit
-        if not store.receipt_matches(receipt, self._identity, pending[3], token, self._epoch):
+        # connection and corpus, from the cursor the page was prepared against, to the cursor the batch may
+        # commit, carrying exactly this page's events, and still the newest commit of that cursor
+        if not store.receipt_matches(receipt, self._identity, fingerprint, pending[3], token, self._epoch, expected):
             return False
         self._pending_reinstate = None
         for fid in pending[1]:

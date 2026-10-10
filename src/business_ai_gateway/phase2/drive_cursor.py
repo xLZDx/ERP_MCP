@@ -419,6 +419,11 @@ class CursorLoad:
     port_code: str | None = None
 
 
+def events_digest(events: object) -> str:
+    """Canonical digest of the committed event list (what a page's durable effects were)."""
+    return hashlib.sha256(jsonb_text(list(events)).encode("utf-8")).hexdigest()  # type: ignore[call-overload]
+
+
 class CursorCommitReceipt:
     """Opaque acknowledgment handle issued by ``DriveCursorStore.commit`` after a durable commit.
 
@@ -567,8 +572,10 @@ class DriveCursorStore:
             raise ValueError("TRACKER_REQUIRED")
         self._cursors = cursors
         self._tracker = tracker
-        # receipts this store handed out: nonce -> (namespace, tenant, connection, prior token, token, version, epoch)
-        self._issued: dict[object, tuple[str, str, str, str | None, str, int, int]] = {}
+        # receipts this store handed out: nonce -> (namespace, tenant, connection, corpus fingerprint, prior
+        # token, token, cursor version, epoch, digest of the committed events)
+        self._issued: dict[object, tuple[str, str, str, str, str | None, str, int, int, str]] = {}
+        self._latest: dict[str, int] = {}  # cursor key -> version of the newest commit THIS store made
 
     @property
     def tracker(self) -> ResnapshotTracker:
@@ -726,21 +733,28 @@ class DriveCursorStore:
             return invalid
         done = await self._commit_raw(ident, lse, raw, version, new_value, events)
         if done.ok is True and type(done.version) is int and type(new.token) is str:
+            try:
+                digest = events_digest(events)
+            except Exception:  # noqa: BLE001 - events the digest cannot cover: no receipt
+                return done
             nonce = object()
             while len(self._issued) >= _MAX_RECEIPTS:  # bounded: the oldest receipt expires first
                 del self._issued[next(iter(self._issued))]
-            self._issued[nonce] = (new.namespace, new.tenant, new.connection_id, old.token, new.token,
-                                   done.version, new.epoch)
+            self._issued[nonce] = (new.namespace, new.tenant, new.connection_id, new.corpus, old.token,
+                                   new.token, done.version, new.epoch, digest)
             done = replace(done, receipt=CursorCommitReceipt(nonce))
         return done
 
-    def receipt_matches(self, receipt: object, identity: object, prior_cursor: object, token: object,
-                        epoch: object) -> bool:
+    def receipt_matches(self, receipt: object, identity: object, corpus_fingerprint: object,
+                        prior_cursor: object, token: object, epoch: object, events_digest_hex: object) -> bool:
         """True only when ``receipt`` was issued by THIS store for a commit of exactly this connection
-        (namespace, tenant, connection), from ``prior_cursor`` to ``token``, under ``epoch``. Never raises."""
+        (namespace, tenant, connection) and corpus, from ``prior_cursor`` to ``token``, under ``epoch``, whose
+        committed events hash to ``events_digest_hex``, and that is still the newest commit this store made
+        for the cursor (an obsolete receipt proves nothing). Never raises."""
         try:
             if (type(receipt) is not CursorCommitReceipt or type(identity) is not DrivePortIdentity
                     or type(token) is not str or type(epoch) is not int
+                    or type(corpus_fingerprint) is not str or type(events_digest_hex) is not str
                     or not (prior_cursor is None or type(prior_cursor) is str)):
                 return False
             nonce = receipt._nonce
@@ -749,12 +763,13 @@ class DriveCursorStore:
             entry = self._issued.get(nonce)
             if entry is None:
                 return False
-            namespace, tenant, connection, prior, committed, _version, committed_epoch = entry
+            namespace, tenant, connection, corpus, prior, committed, version, committed_epoch, digest = entry
             parts = (identity.namespace, identity.tenant, identity.connection_id)
             if any(type(p) is not str for p in parts):
                 return False
-            return ((namespace, tenant, connection) == parts and prior == prior_cursor
-                    and committed == token and committed_epoch == epoch)
+            return ((namespace, tenant, connection) == parts and corpus == corpus_fingerprint
+                    and prior == prior_cursor and committed == token and committed_epoch == epoch
+                    and digest == events_digest_hex and self._latest.get(cursor_key(identity)) == version)
         except Exception:  # noqa: BLE001 - a malformed receipt is simply not proof
             return False
 
@@ -827,6 +842,7 @@ class DriveCursorStore:
         try:
             if type(result) is not CommitResult or type(result.version) is not int:
                 return failure
+            self._latest[cursor_key(identity)] = result.version  # any older receipt is obsolete from now on
             return StoreCommit(True, result.replayed is True, result.version, None)
         except Exception:  # noqa: BLE001 - forged result object
             return failure

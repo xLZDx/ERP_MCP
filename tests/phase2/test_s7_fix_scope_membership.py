@@ -124,7 +124,7 @@ async def test_removed_root_change_drops_cached_descendants_and_denies_disclosur
 
 
 async def test_restored_root_is_trusted_again_after_an_upsert_change():
-    from s7_receipts import checker, committer, receipt
+    from s7_receipts import checker, committer, page_receipt
 
     fake = _world()
     env = await committer()
@@ -133,7 +133,7 @@ async def test_restored_root_is_trusted_again_after_an_upsert_change():
     assert await ck.authorize_disclosure("A") is False
     prep = await ck.prepare_page(_page([_up("c2", "R")], token="T2", nxt="T3"), "T2")
     assert await ck.authorize_disclosure("A") is False  # still provisional: the cursor is not committed yet
-    assert ck.accept_page(prep, await receipt(env, "T2", prep.batch.committable_cursor())) is True
+    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
     assert await ck.authorize_disclosure("A") is True
 
 

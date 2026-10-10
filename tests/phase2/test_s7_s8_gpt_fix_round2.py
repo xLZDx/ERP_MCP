@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from s7_receipts import checker, committer, receipt
+from s7_receipts import (
+    OTHER_CORPUS,
+    ROOT_CORPUS,
+    checker,
+    committer,
+    page_digest,
+    page_receipt,
+    receipt,
+)
 from test_s7_fix_scope_membership import (
     DriveChange,
     DriveChangeKind,
@@ -21,7 +29,7 @@ from test_s8_gpt_fix_session import _setup
 from test_workbench_session import FAIL_G, FAIL_N
 
 from business_ai_gateway.phase2.drive_baseline import DriveBaseline, DriveRunMode
-from business_ai_gateway.phase2.drive_cursor import DriveCursorStore, DriveLease
+from business_ai_gateway.phase2.drive_cursor import DriveCursorStore, DriveLease, build_event
 from business_ai_gateway.phase2.drive_fake import FakeDrivePort
 from business_ai_gateway.phase2.drive_membership import PageStatus
 from business_ai_gateway.phase2.fakes import DEFAULT_SCOPE as SCOPE
@@ -44,6 +52,7 @@ from business_ai_gateway.phase2.workbench_types import ReasonCode as R
 
 # ----------------------------------------------------------------------------------------- S7 M03
 
+ROOT_FP = ROOT_CORPUS.fingerprint
 REMOVE = DriveChange("c1", "R", None, DriveChangeKind.REMOVED)
 
 
@@ -75,7 +84,7 @@ async def test_s7_m03_control_explicit_upsert_plus_the_matching_store_receipt_re
     _fake, env, ck = await _removed_world()
     prep = await _requalified(ck)
     assert await ck.authorize_disclosure("R") is False  # provisional until the cursor commit is proven
-    proof = await receipt(env, "T2", prep.batch.committable_cursor())
+    proof = await page_receipt(env, "T2", prep)
     assert ck.accept_page(prep, proof) is True
     assert await ck.authorize_disclosure("R") is True
     assert await ck.authorize_disclosure("A") is True
@@ -95,7 +104,7 @@ async def test_s7_m03_an_unaccepted_or_replaced_preparation_never_reinstates():
     _fake, env, ck = await _removed_world()
     first = await _requalified(ck)
     await ck.prepare_page(_page([_up("c3", "A")], token="T3", nxt="T4"), "T3")  # replaces the first
-    assert ck.accept_page(first, await receipt(env, "T2", first.batch.committable_cursor())) is False
+    assert ck.accept_page(first, await page_receipt(env, "T2", first)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
@@ -115,7 +124,7 @@ async def test_s7_m03_a_child_task_spawned_during_preparation_cannot_disclose_th
 async def test_s7_m03_an_epoch_change_before_acceptance_invalidates_the_preparation():
     _fake, env, ck = await _removed_world()
     prep = await _requalified(ck)
-    proof = await receipt(env, "T2", prep.batch.committable_cursor())
+    proof = await page_receipt(env, "T2", prep)
     assert ck.advance_epoch(1) is True
     assert ck.accept_page(prep, proof) is False
     assert await ck.authorize_disclosure("R") is False
@@ -126,11 +135,42 @@ async def test_s7_m03_a_receipt_of_another_store_or_connection_or_transaction_is
     prep = await _requalified(ck)
     token = prep.batch.committable_cursor()
     other_store = await committer()  # a different store that really committed the same token
-    assert ck.accept_page(prep, await receipt(other_store, "T2", token)) is False
+    assert ck.accept_page(prep, await page_receipt(other_store, "T2", prep)) is False
     assert ck.accept_page(prep, await receipt(env, "T9", token)) is False  # wrong prior cursor
     assert ck.accept_page(prep, await receipt(env, "T2", "T7")) is False  # wrong committed cursor
     assert await ck.authorize_disclosure("R") is False
-    assert ck.accept_page(prep, await receipt(env, "T2", token)) is True
+    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
+
+
+async def test_s7_m03_a_genuine_receipt_for_another_corpus_is_not_proof():
+    fake = _world()
+    other = await committer(OTHER_CORPUS)  # the bound store really committed, but for corpus ROOT-1
+    ck = checker(fake, other)
+    await ck.prepare_page(_page([REMOVE]), "T1")
+    prep = await _requalified(ck)
+    assert ck.accept_page(prep, await page_receipt(other, "T2", prep)) is False
+    assert await ck.authorize_disclosure("R") is False
+
+
+async def test_s7_m03_a_commit_that_did_not_carry_this_pages_events_is_not_proof():
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    empty = await receipt(env, "T2", prep.batch.committable_cursor())  # same tokens, no page effects
+    assert ck.accept_page(prep, empty) is False
+    assert await ck.authorize_disclosure("R") is False
+    other_effects = await receipt(env, "T2", prep.batch.committable_cursor(), events=[build_event(IDENT, "DRIVE_CANDIDATE", "other-change", file_id="OTHER", revision_id="r9",
+                                                                   status="UNATTESTED")])
+    assert ck.accept_page(prep, other_effects) is False
+    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is True
+
+
+async def test_s7_m03_an_obsolete_receipt_is_not_proof_after_the_cursor_moved_on():
+    _fake, env, ck = await _removed_world()
+    prep = await _requalified(ck)
+    old_proof = await page_receipt(env, "T2", prep)
+    await receipt(env, "T3", "T4")  # the same store committed further: old_proof is obsolete
+    assert ck.accept_page(prep, old_proof) is False
+    assert await ck.authorize_disclosure("R") is False
 
 
 async def test_s7_m03_computed_forged_malformed_and_hostile_receipts_are_never_proof():
@@ -150,11 +190,15 @@ async def test_s7_m03_computed_forged_malformed_and_hostile_receipts_are_never_p
     cases = (None, "", token, 3, half, CursorCommitReceipt(object()), CursorCommitReceipt(HostileStr("x")))
     for proof in cases:
         assert ck.accept_page(prep, proof) is False
-    genuine = await receipt(env, "T2", token)
-    assert env.store.receipt_matches(genuine, HostileIdentity(), "T2", token, 0) is False
-    assert env.store.receipt_matches(genuine, IDENT, HostileStr("T2"), token, 0) is False
-    assert env.store.receipt_matches(genuine, IDENT, "T2", HostileStr(token), 0) is False
-    assert env.store.receipt_matches(genuine, IDENT, "T2", token, True) is False  # bool is not an int epoch
+    genuine = await page_receipt(env, "T2", prep)
+    fp, dg = ROOT_FP, page_digest(prep, "T2")
+    assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, 0, dg) is True
+    assert env.store.receipt_matches(genuine, HostileIdentity(), fp, "T2", token, 0, dg) is False
+    assert env.store.receipt_matches(genuine, IDENT, fp, HostileStr("T2"), token, 0, dg) is False
+    assert env.store.receipt_matches(genuine, IDENT, fp, "T2", HostileStr(token), 0, dg) is False
+    assert env.store.receipt_matches(genuine, IDENT, HostileStr(fp), "T2", token, 0, dg) is False
+    assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, 0, HostileStr(dg)) is False
+    assert env.store.receipt_matches(genuine, IDENT, fp, "T2", token, True, dg) is False  # bool epoch
     assert await ck.authorize_disclosure("R") is False
     assert ck.accept_page(prep, genuine) is True
 
@@ -171,7 +215,7 @@ async def test_s7_m03_a_checker_without_a_bound_store_never_reinstates():
     ck = MembershipChecker(fake, IDENT, Corpus(IDENT.namespace, ("R",)), 0)
     await ck.prepare_page(_page([REMOVE]), "T1")
     prep = await _requalified(ck)
-    assert ck.accept_page(prep, await receipt(env, "T2", prep.batch.committable_cursor())) is False
+    assert ck.accept_page(prep, await page_receipt(env, "T2", prep)) is False
     assert await ck.authorize_disclosure("R") is False
 
 
