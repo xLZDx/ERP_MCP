@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erp-mcp-r2"
+version = "0.1.0"
+description = "ERP_MCP Release 2 (Phase 2): living model, connectors and reconciliation (unwired, NO-GO)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "asyncpg>=0.30,<1",
+  "defusedxml>=0.7,<1",
+  "httpx>=0.28,<1",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0.3,<10",
+  "pytest-asyncio>=1,<2",
+  "ruff>=0.9,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+asyncio_mode = "auto"
+markers = [
+  "integration: tests that require an external system: a disposable PostgreSQL (ERP_PHASE2_TEST_DSN)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint.isort]
+known-first-party = ["business_ai_gateway"]
