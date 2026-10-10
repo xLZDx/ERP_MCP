@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — sprint S9: results</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — sprint S9: results</h1>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · head 6ee27f1 (GPT-PM APPROVE at this head; push fa4852d..6ee27f1) · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">Sprint S9 is implemented and verified offline; GPT-PM APPROVE at head 6ee27f1, pushed (fa4852d..6ee27f1).</span> The status ceiling is <span class="warn">IMPLEMENTED_UNVERIFIED</span>. G6-pre is <span class="bad">NOT PASSED</span> and cannot be evaluated offline; Release 2 remains <span class="bad">NO-GO</span>. Twelve modules (ops_types, capacity_model, capacity_interference, audit_gate, delivery_replay, alert_rules, release_migration, release_rollback, restore_verify, export_safety, retention_hold, g6_pre_readiness) are pure decision functions over scripted inputs, with no real load, restore, migration or alert delivery.</p>
+<ul>
+<li>Tests: offline <code>tests/phase2</code> — <b>6126 passed, 229 skipped</b> (operator run). S9 files as collected (<code>--co -q</code>): ops_types 107, capacity_model 207, capacity_interference 102, audit_gate 57, delivery_replay 66, alert_rules 97, release_migration 135, release_sql_guard 84, release_rollback 133, restore_verify 155, export_safety 143, retention_hold 78, g6_pre_readiness 35, s9_boundaries 109, s9_scenarios 34 — 1542 in total.</li>
+<li>Stories: R2-US-043..046 (TC127-138) — ceiling <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+<li>Review: four internal reviewer passes, one merged fix batch, bounded verification; then four GPT-PM rounds.</li>
+<li>GPT-PM: round 1 (head 292a62d) REJECT, 9 MAJOR (M01-M09); round 2 (23a055f) REJECT on M01 only; round 3 (92cc3d9) REJECT on M01 only (phase C); round 4 (6ee27f1) APPROVE.</li>
+<li>The operator mutation ban was respected; CI, PostgreSQL, real load and the Release 1 regression were not run.</li>
+</ul>
+</div>
+<h2>Plan and result (Planned / DoD / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>R2-US-043 capacity model (<code>ops_types</code>, <code>capacity_model</code>, <code>capacity_interference</code>)</td><td>Four distinct axes; profile refusals are not throughput; exact interference ratio</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Scripted data, not measurements</td></tr>
+<tr><td>E2</td><td>R2-US-044 audit, delivery, alerts (<code>audit_gate</code>, <code>delivery_replay</code>, <code>alert_rules</code>)</td><td>Fail closed on audit outage; exactly one delivery under 429; an alert fires once and recovers once</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real sink/queue/alert delivery</td></tr>
+<tr><td>E3</td><td>R2-US-045 release (<code>release_migration</code>, <code>release_rollback</code>)</td><td>Additive shadow regressions; destructive rollback denied; a revoked grant is never resurrected</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Nothing is executed</td></tr>
+<tr><td>E4</td><td>R2-US-046 restore and export (<code>restore_verify</code>, <code>export_safety</code>, <code>retention_hold</code>)</td><td>Each restore defect has its own code; safe export; a hold blocks deletion</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>No real pg restore, file or deletion</td></tr>
+<tr><td>E5</td><td>G6-pre facade, boundaries, scenarios (<code>g6_pre_readiness</code>)</td><td>Slots are NOT_RUN by default; AST boundaries; cross-story scenarios</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>G6-pre cannot be evaluated offline</td></tr>
+<tr><td>Fix</td><td>Fix batch from reviews and GPT-PM</td><td>M01-M09 closed; APPROVE at 6ee27f1</td><td><span class="warn">IMPLEMENTED_UNVERIFIED</span></td><td>Accepted backlog below</td></tr>
+</tbody></table></div>
+<h2>Test traceability matrix (TC127-138)</h2>
+<p class="sub">Full version: <code>docs/phase2/S1_S4_TRACEABILITY.md</code> (Sprint S9 section) and <code>docs/phase2/TEST_PLAN_PHASE2_RU.md</code>. Mutations were not run (operator ban). The Result column means an offline run over fixtures; the number in parentheses is the collected test count of the file at the current head. One file can cover several TCs.</p>
+<div class="wrap"><table>
+<thead><tr><th>Test case</th><th>Requirement</th><th>Test file</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Known gap</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-043 / TC127</td><td>Sessions, active clients, sources and backends are four distinct axes</td><td>test_ops_types.py (107), test_capacity_model.py (207)</td><td>A cell of 1000 sessions and 5 active clients stays two numbers; a sessions claim without the active-client dimension is SESSIONS_NOT_ACTIVE_CLIENTS; sessions below active clients is GRID_CELL_INCONSISTENT; a missing backend count is BACKEND_COUNT_MISSING</td><td>offline</td><td><span class="ok">pass</span></td><td>Scripted data, not measurements</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-043 / TC128</td><td>Profile refusals are not throughput</td><td>test_capacity_model.py (207)</td><td>1000 instant PROFILE_REFUSED plus 100 slow BUSINESS_OK yields throughput and p95 of the 100 only and REFUSALS_DOMINATE; p99 below 100 samples is INSUFFICIENT_SAMPLES; float/bool/negative/NaN latencies are refused</td><td>offline</td><td><span class="ok">pass</span></td><td>No real load</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-043 / TC129</td><td>Background interference and budget</td><td>test_capacity_interference.py (102)</td><td>The interference ratio is exact Decimal against the 0.20 proposed target; a zero or missing baseline is BASELINE_INVALID; a policy that starves background is refused; alias backend ids share one counter; two threads never exceed the shared limit</td><td>offline</td><td><span class="ok">pass</span></td><td>Targets are parameterized proposals, not measurements</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC130</td><td>Audit outage fails closed</td><td>test_audit_gate.py (57)</td><td>With the sink down, raising, slow or malformed the effect call log is empty and the result is AUDIT_UNAVAILABLE; a completion failure after the effect is AUDIT_COMPLETION_PENDING, not retried and listed as an obligation; a classified read passes without the gate</td><td>offline</td><td><span class="ok">pass</span></td><td>No real audit sink; tenant-wide duplicate audit request ids (accepted backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC131</td><td>Replica/network 429 gives no duplicates</td><td>test_delivery_replay.py (66)</td><td>The scripted 429/network/lost-ack sequence publishes every event exactly once and in order; a stale claim is STALE_CLAIM; the cursor never passes an undelivered event; concurrent threads give one publication per event; a tenant A 429 storm does not delay tenant B</td><td>offline</td><td><span class="ok">pass</span></td><td>No real queue; delivery lease expiry is not checked by _fenced (accepted backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-044 / TC132</td><td>Alert fired and recovered</td><td>test_alert_rules.py (97)</td><td>Every rule kind fires exactly once and recovers exactly once per episode; flapping inside hysteresis adds no event; a silent stream is NO_DATA; a failed alert delivery stays visible and undelivered</td><td>offline</td><td><span class="ok">pass</span></td><td>No real alert delivery</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC133</td><td>Additive shadow regressions</td><td>test_release_migration.py (135), test_release_sql_guard.py (84)</td><td>A planted DROP TABLE or an R1 object step is never ADDITIVE; one changed R1 digest is R1_REGRESSION; a missing observation is SHADOW_INCOMPLETE, not a pass; the real db/phase2/001..003 files contain only additive living-schema statements</td><td>offline</td><td><span class="ok">pass</span></td><td>No migration is executed (text scan only); confirm_release is a point-in-time read (accepted backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC134</td><td>Destructive rollback denied</td><td>test_release_rollback.py (133)</td><td>Destructive and unclassified steps deny the rollback; an unreadable live head is ROLLBACK_HEAD_INCOMPATIBLE; contract cleanup before the window is refused and a clock regression never shortens it; the decision never executes (executed=False)</td><td>offline</td><td><span class="ok">pass</span></td><td>Decision only, no rollback is executed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-045 / TC135</td><td>Switch rollback never resurrects a revoked grant</td><td>test_release_rollback.py (133)</td><td>Grant issued, switched, revoked, rolled back stays not effective, also after a second rollback or clock regression; a revoked attestation stays revoked; effective grants come from the CURRENT registry only; concurrent decisions never show a revoked grant as effective</td><td>offline</td><td><span class="ok">pass</span></td><td>Fake grant registry</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC136</td><td>Restored FKs, digests, heads</td><td>test_restore_verify.py (155)</td><td>Each injected defect gets its own code (COUNT/DIGEST/FK_ORPHAN per catalogue edge/HEAD/SEQUENCE_GAP/ATTESTATION_STALE/SCOPE_FOREIGN); an incomplete manifest is never verified; the catalogue has thirteen edges and each orphan case is distinct</td><td>offline</td><td><span class="ok">pass</span></td><td>The real pg restore proof (test_g1_restore.py) is NOT_RUN without the container</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC137</td><td>Export masking, tenant filter, formula safety</td><td>test_export_safety.py (143)</td><td>Foreign rows are absent with only the opaque HIDDEN_BY_SCOPE flag; undeclared columns are COLUMN_UNCLASSIFIED and absent; formula-leading cells in values and headers are neutralized, counted and never evaluated; credential-shaped values are denied</td><td>offline</td><td><span class="ok">pass</span></td><td>No real file export</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-046 / TC138</td><td>Legal hold, no unapproved deletion</td><td>test_retention_hold.py (78)</td><td>All conditions met gives only a plan with executed=False; an active hold at object, source or tenant level blocks with HOLD_ACTIVE; a hold placed after the approval blocks it; exactly at the boundary retention has elapsed; an AST check finds no delete call and no executed=True literal</td><td>offline</td><td><span class="ok">pass</span></td><td>Nothing is deleted; place_hold quota-slot leak (accepted backlog)</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / фасад готовности</td><td>G6-pre evidence slots are NOT_RUN by default</td><td>test_g6_pre_readiness.py (35)</td><td>Every slot is NOT_RUN without a well-formed operator evidence ref; even a full set of refs is not a passed gate; a ref for another head leaves the slot NOT_RUN; the report has no passed field</td><td>offline</td><td><span class="ok">pass</span></td><td>Evaluation only; the gate cannot be evaluated offline</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / границы</td><td>S9 modules are pure, offline, decision-only</td><td>test_s9_boundaries.py (109)</td><td>AST: stdlib or one-dot sibling imports only, no Release 1/PDCC/network/DB/COM, no delete-style call, no executed=True literal, every reason code has a fixed next action</td><td>offline</td><td><span class="ok">pass</span></td><td>AST scan is a static proxy</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>S9 E5 / сценарии</td><td>Cross-story offline chain</td><td>test_s9_scenarios.py (34)</td><td>A chain over fakes with call logs and per-tenant isolation</td><td>offline</td><td><span class="ok">pass</span></td><td>Several tests were written in the same pass as the code and not seen red</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+</tbody></table></div>
+<h2>Process and reviews</h2>
+<ul>
+<li><b>Internal review:</b> four reviewer passes, merged into one fix batch, followed by bounded verification.</li>
+<li><b>GPT-PM:</b> round 1 - head 292a62d, REJECT, 9 MAJOR (M01-M09); round 2 - head 23a055f, REJECT on M01 only; round 3 - head 92cc3d9, REJECT on M01 only (phase C); round 4 - head 6ee27f1, APPROVE. Final push: fa4852d..6ee27f1.</li>
+<li><b>Process:</b> several tests were written in the same pass as the code and were not seen red. No mutation runs (operator ban); tests are justified by their assertions.</li>
+</ul>
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>G6-pre: real workload metrics on the 30/50/100/150-source grid, fault alarms, repeatable recovery. The gate is NOT PASSED and cannot be evaluated offline.</li>
+<li>Real 1C load, a real audit sink and alert delivery, migration and rollback execution on PostgreSQL, real backup/restore, a real export file, a retention job and any deletion.</li>
+<li>Production permit and canary; wiring into any runtime or Release 1; GitHub CI; Release 1 regression; mutation runs (operator ban).</li>
+</ul>
+<h2>Known residuals, backlog and operator-owned items</h2>
+<ul>
+<li>Accepted backlog: delivery lease expiry is not checked by _fenced; place_hold leaks a quota slot; confirm_release is a point-in-time read; audit request ids may duplicate tenant-wide.</li>
+<li>Release 2 is NO-GO; G6-pre, G1, G4, G5 are NOT PASSED.</li>
+<li>Operator-owned: a token for MCP erp-mcp-818ha (currently 401); real 1C data; accountant attestation (G3); Google OAuth (G4); UAT (G5); G0-G7 decisions; issues #28/#29/#33/#37; the S10 canary permission.</li>
+</ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

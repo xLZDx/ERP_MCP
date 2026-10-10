@@ -24,7 +24,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <body>
 <header>
 <h1>ERP_MCP Phase 2 — sprint S7: results</h1>
-<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 417bd87, fix batch e410abc (GPT-PM pending; not pushed) · development rules v4</div>
+<div class="sub">Date: 2026-10-10 · branch phase2/living-model-connectors-reconciliation · code 417bd87, fix batch e410abc (GPT-PM: APPROVE at fa4852d (nine rounds, S7+S8), pushed) · development rules v4</div>
 </header>
 
 <!-- report-conform:begin -->
@@ -52,7 +52,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
   <dl>
     <dt>Project</dt><dd>ERP_MCP</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ e410abc</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 6ee27f1</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -62,7 +62,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <main>
 <h2>Summary</h2>
 <div class="card">
-<p><span class="ok">Sprint S7 is implemented and verified offline</span> (code 417bd87, fix batch e410abc). <span class="warn">GPT-PM pending, not pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G4 open: nine Drive modules (port, fake, OAuth consent, scope, baseline, cursor, revisions, membership, auth state) run in memory over a fake port and are not wired into Release 1.</p>
+<p><span class="ok">Sprint S7 is implemented and verified offline</span> (code 417bd87, fix batch e410abc). <span class="warn">GPT-PM: APPROVE at fa4852d (nine rounds on S7+S8), pushed.</span> Release 2 remains <span class="bad">NO-GO</span>, G1 <span class="warn">not passed</span>, G4 open: nine Drive modules (port, fake, OAuth consent, scope, baseline, cursor, revisions, membership, auth state) run in memory over a fake port and are not wired into Release 1.</p>
 <ul>
 <li>Tests: offline <code>tests/phase2</code> — <b>3397 passed, 229 skipped</b>; <code>ruff</code> clean. Run with the project <code>.venv</code> python.</li>
 <li>New S7 files: port_fake 108, oauth 110, scope 116, baseline 52, cursor 56, revisions 47, membership 42, auth_state 41, hints 16, boundaries 50 and three fix files (54 / 73 / 77).</li>
@@ -106,7 +106,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <li><b>S7 review round</b> (code 417bd87; four read-only reviewers): 0 BLOCKER, about 14 MAJOR; all fixed in one batch, e410abc.</li>
 <li>Fixed: a revoked scope and a lost lease are no longer RETRYABLE; lease-to-tenant binding; a forged CursorLoad; corpus.drive_id enforcement; seam adapters over the real ConsentManager and cursor; run_poll guards; alert dedup and re-delivery; consent state eviction; root-based cache invalidation; the 1000-events-per-commit limit (PAGE_TOO_LARGE).</li>
 <li><b>Process:</b> this time the tests were written before the fixes and seen red (about 100 new tests). The first versions of the S7 modules were written by agents without red tests — recorded in the decision log.</li>
-<li><b>GPT-PM:</b> pending; no push without APPROVE.</li>
+<li><b>GPT-PM:</b> nine rounds on S7+S8, APPROVE at fa4852d, pushed.</li>
 </ul>
 <h2>NOT_RUN and not claimed</h2>
 <ul>
@@ -118,7 +118,7 @@ code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-bre
 <ul>
 <li>Residual risks: digests are integrity, not authenticity; two MembershipResult types and two corpus types; the 4 MiB text limit per commit has no pre-check; one tenant's live pending consent states across many identities can fill the table; everything is in memory.</li>
 <li>Release 2 is NO-GO, G1 is NOT PASSED, G4 is open.</li>
-<li>Next: GPT-PM on the exact head; after APPROVE, a plain push; then S8 (Workbench/UAT). Real data and OAuth stay with the operator.</li>
+<li>Next: S8 and S9 are done (see their reports). Real data and OAuth stay with the operator.</li>
 </ul>
 </main>
 
