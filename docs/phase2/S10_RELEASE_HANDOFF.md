@@ -97,7 +97,7 @@ This document cannot contain its own commit hash. **The release head is whatever
 
 Engineering cannot close these; each is a precise blocker, not a workaround request.
 
-- [x] Token for MCP `erp-mcp-818ha`: re-issued on 2026-10-10 with the operator-owned lane helper (the old long-lived token carried a dead quick-tunnel issuer URL). It breaks again whenever the Cloudflare quick-tunnel host of the lane IdP changes; rerun `D:\ERP_MCP_Testbedeal1c_e2eefresh_mcp_token.py`.
+- [x] Token for MCP `erp-mcp-818ha`: re-issued on 2026-10-10 with the operator-owned lane helper (the old long-lived token carried a dead quick-tunnel issuer URL). It breaks again whenever the Cloudflare quick-tunnel host of the lane IdP changes; rerun `D:\ERP_MCP_Testbed\real1c_e2e\refresh_mcp_token.py`.
 - [ ] Real 1C data: scoped read access and the source-specific capture permit for `onec-818ha-reference` (OB-10), native report bytes, MOLDRETAIL posted-receipt data.
 - [ ] Accountant attestation (G3, OB-11): independent export and attestation for 818 HA SRL, account 521.1, 2026-08-01..2026-08-31.
 - [~] Google OAuth and real Drive (G4, OB-12): the OAuth client (Desktop, project `erp-mcp-phase2`) was supplied and stored outside git; two real-Drive probes were run on 2026-10-10 (see section 6). Still open for the operator: whether read access to the whole Drive (`drive.readonly`) is acceptable for production; refresh-token lifetime while the app is in Testing mode; moves/renames on shared drives.
@@ -152,7 +152,7 @@ Run by the engineering agent on the operator machine; raw results stay outside g
 | New file created in the folder | changes feed with `drive.readonly` | seen on the 2nd poll (3 s interval), right name and parent |
 | Rename and move of an app file | changes feed with `drive.readonly` | both events seen, new name and new parent folder |
 
-Conclusion: a "people drop files into a folder" capture needs `drive.readonly` (read access to the whole Drive); `drive.file` cannot do it. Not tested: shared drives, access revocation, token expiry in production mode. Test files remain in the operator's Drive (cleanup is the operator's: an attempt to trash the test folder with the `drive.file` token returned 403).
+Conclusion: in the tested flow a "people drop files into a folder" capture worked with `drive.readonly` (read access to the whole Drive) and did not work with `drive.file`. Narrower designs (per-file authorization through the Google Picker, or an upload flow owned by the app) were not tested and should be assessed before broad Drive access is granted. Not tested: shared drives, access revocation, token expiry in production mode. Test files remain in the operator's Drive (cleanup is the operator's: an attempt to trash the test folder with the `drive.file` token returned 403).
 
 ### 6.2 Canary pass and workload sample (G6 / G6-pre input)
 

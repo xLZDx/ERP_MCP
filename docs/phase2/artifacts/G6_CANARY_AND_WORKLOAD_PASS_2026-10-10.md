@@ -44,7 +44,7 @@ Sessions: one MCP session per worker thread. Latency in seconds, `err` = tool er
 | `source_health` on fixture "down" | 3 | 1 | 0 | 6.503 | 8.98 | 8.98 | 0.2 |
 | `source_health` on fixture "drift/slow" | 3 | 1 | 0 | 1.826 | 1.884 | 1.884 | 0.6 |
 
-Observations (measured, one machine, one run, small samples): light reads scale to 8 workers without errors; the first `source_health` after idle took about 30 seconds; the fail-closed business-read path is slow (about 4.6 s alone) and, with 4 concurrent callers, reaches the 40-second client timeout, so contention on that path is a risk to measure again after profiles exist. One earlier attempt that shared a single session between two threads hung until timeout; the client was changed to one session per thread, which suggests a session is serialized, but this was not investigated.
+Observations (measured, one machine, one run, small samples): light reads scale to 8 workers without errors; the first `source_health` call of the session (cold, measured in the canary pass, not part of the table above) took about 30 seconds; the fail-closed business-read path is slow (about 4.6 s alone) and, with 4 concurrent callers, reaches the 40-second client timeout, so contention on that path is a risk to measure again after profiles exist. One earlier attempt that shared a single session between two threads hung until timeout; the client was changed to one session per thread, which suggests a session is serialized, but this was not investigated.
 
 ## What this does not prove
 
