@@ -378,6 +378,24 @@ def test_an_unknown_approval_id_and_another_companys_one_read_identically():
     assert reason(decide_deletion(A1, w.request(approval_id=foreign.approval_id), w.ledger)) is OpsReason.APPROVAL_MISSING
 
 
+def test_a_confirmed_foreign_approval_naming_the_caller_reads_like_an_unknown_id():
+    w = World()
+    registered = w.ledger.register_object(B1, "run_id", "RB", "SB", "fin")
+    assert not isinstance(registered, OpsRefusal), registered
+    w.auth.allow("a1", ACTION_APPROVE_DELETION)  # the c1 actor may approve and is also entitled in c9
+    w.ports.ent.grant("t1", "a1", "c9")
+    pending = w.ledger.request_approval(B1, DeletionRequest("run_id", ("RB",), "x"), "a1", w.clock.t + DAY)
+    assert isinstance(pending, ApprovalRequest), pending
+    foreign = w.ledger.confirm_approval(OpsScope("t1", "c9", "a1"), DeletionRequest("run_id", ("RB",), pending.approval_id))
+    assert isinstance(foreign, DeletionApproval), foreign  # company c9 approval whose approver is the c1 actor "a1"
+    outs = []
+    for aid in (foreign.approval_id, "unknown-id"):
+        w.ports.log.clear()
+        outs.append((decide_deletion(A1, w.request(approval_id=aid), w.ledger), [c[:1] for c in w.ports.log]))
+    assert reason(outs[0][0]) is OpsReason.APPROVAL_MISSING  # not SELF_APPROVAL: no cross-company disclosure
+    assert outs[0][0].reason == outs[1][0].reason and outs[0][1] == outs[1][1]
+
+
 # ---- ownership first, foreign == unknown --------------------------------------------------------
 
 def test_foreign_and_unknown_objects_give_the_identical_refusal_and_port_pattern():

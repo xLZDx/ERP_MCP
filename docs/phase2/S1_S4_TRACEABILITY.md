@@ -108,7 +108,7 @@ Offline S8 tests collected at the S8 report head (`--co -q`): types 91, review 1
 
 NOT_RUN after S8: real UI (HTML/JS), browser rendering, accessibility checks, G5 user/admin UAT with real accountants/auditors/admins (operator-owned, G5 NOT_STARTED/OPEN and NOT PASSED), real HTTP server/cookies/TLS/CORS and real session/CSRF handling, RBAC/role wiring, PostgreSQL for job/idempotency/refusal storage (JobQueuePort is not called), real 1C and COM/DC channels, load and capacity of the workbench, alert delivery, production capture permit, persisting row-level differences in the run ledger, wiring into any runtime or Release 1, GitHub CI, Release 1 regression, mutation runs (operator ban). Release 2 stays NO-GO; G1, G4 and G5 stay NOT PASSED. Test results prove the logic of the view and decision functions over scripted inputs only.
 
-## Sprint S9 (2026-10-10, plan SPRINT_S9_PLAN.md, S9 code commit, head S9-HEAD-TBD)
+## Sprint S9 (2026-10-10, plan SPRINT_S9_PLAN.md, S9 code commit, head: S9 PR head in git log)
 
 | Story / item | Requirement | Module | Test | Assertion that would fail if broken | Result | Status |
 | --- | --- | --- | --- | --- | --- | --- |
