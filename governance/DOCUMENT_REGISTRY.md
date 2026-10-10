@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 166 tracked paths, 5 local-only paths.
+Inventory: 168 tracked paths, 3 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -122,9 +122,11 @@ Inventory: 166 tracked paths, 5 local-only paths.
 | docs/phase2/PROMOTION_PREFLIGHT_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 promotion preflight — independent review (2026-10-09)" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/RELEASE_READINESS_SNAPSHOT_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — customer release readiness (2026-10-09)" |
+| docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 scheduler and drift safety review — 2026-10-09" |
 | docs/phase2/SCHEDULER_ERROR_REDACTION_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — SCH-02 adapter error redaction" |
+| docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
 | docs/phase2/SPRINT_S4B_PLAN.md | Phase 2 design | "Sprint S4b plan - taxonomy/LDM candidates, aliases, impact tests, capture loop, PostgreSQL concurrency and capacity drill" |
 | docs/phase2/SPRINT_S5_PLAN.md | Phase 2 design | "Sprint S5 plan - capture permits, side-effect boundary, immutable artifact vault, isolated parser (first slice)" |
 | docs/phase2/SPRINT_S6B_PLAN.md | Phase 2 design | "Sprint S6b plan - account-based AP strategy (818HA) and posted purchase receipts retrieval with complete pagination, alias proof and a three-way assessment" |
@@ -189,5 +191,3 @@ Inventory: 166 tracked paths, 5 local-only paths.
 | docs/phase2/ADR_G0_SOURCE_BINDING_PROPOSAL_2026-10-09.md |
 | docs/phase2/FULL_CLOSURE_BLOCKERS_2026-10-09.md |
 | docs/phase2/RESNAPSHOT_CURSOR_BINDING_REVIEW_2026-10-09.md |
-| docs/phase2/S10_RELEASE_HANDOFF.md |
-| docs/phase2/SPRINT_S10_PLAN.md |
