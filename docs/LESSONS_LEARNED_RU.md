@@ -1,94 +1,94 @@
-# ERP_MCP Release 1 — lessons learned и практические ограничения
+# ERP_MCP Release 1 — Lessons Learned and Practical Constraints
 
-Дата актуализации: **2026-10-09**. Этот документ фиксирует инженерные уроки из текущих runbooks, тестовых отчётов и ревью репозитория. Он не заменяет [SECURITY.md](../SECURITY.md), [действующий release scope](SCOPE_FREEZE_BASELINE_2026-10-06.md) и [Definition of Done](DEFINITION_OF_DONE.md). «Тест пройден» всегда указывать с уровнем L1/L2/L3 и exact Git SHA.
+**Updated:** October 9, 2026. This document records engineering lessons from the current runbooks, test reports, and repository reviews. It does not replace [SECURITY.md](../SECURITY.md), [the current release scope](SCOPE_FREEZE_BASELINE_2026-10-06.md), or the [Definition of Done](DEFINITION_OF_DONE.md). Every claim that a test passed must name the L1/L2/L3 verification level and the exact Git SHA.
 
-## 1. Разделяйте демонстрацию и разрешённое production использование
+## 1. Separate Demonstrations from Authorized Production Use
 
-**Урок.** В проекте есть работающие тестовые инструменты и некоторые реальные Windows/1C эксперименты, но они не равны утверждённому production релизу. В исторических отчётах встречаются green CI и локальные PASS при незакрытой бухгалтерской сверке или внешнем gate.
+**Lesson.** The repository contains working test tools and some genuine Windows/1C experiments. These are not equivalent to an approved production release. Historical reports sometimes contain green CI results and local PASS records even though accounting reconciliation or an external gate remains open.
 
-**Правило установки.** Для первого запуска используйте только Fake1C, отдельные порты и test IdP. Не отправляйте настоящие бухгалтерские данные в local no-OAuth ChatGPT gateway. Нужен отдельный production review и [release evidence](RELEASE_OPERATIONS.md).
+**Installation rule.** Start only with Fake1C, independent ports, and the test identity provider. Never send real accounting data through a local ChatGPT gateway with OAuth disabled. A separate production review and [release evidence](RELEASE_OPERATIONS.md) are required.
 
-## 2. Модель источника и компания — не одно и то же
+## 2. Source-Wide Permissions Are Different from Company Permissions
 
-**Урок.** Source-wide metadata/health и company-scoped business data имеют разные разрешения. Grant на компанию не делает универсальный `onec_read` безопасным для company-only доступа: до подтверждённого predicate этот инструмент может требовать более широкого источникового разрешения.
+**Lesson.** Source-wide metadata and health information have different authorization requirements from company-scoped business data. A grant for one company does not make a generic `onec_read` call safe for company-only access. Until a company predicate is verified, that tool may require broader, source-wide authorization.
 
-**Правило.** Никогда не расширять грант до `all sources` / source-wide только ради устранения 403. Использовать семантическую функцию с доказанной source/company scope либо возвращать access denied. Проверяйте отказ для другой компании до разрешённого happy-path.
+**Rule.** Never expand a grant to `all sources` or source-wide access just to eliminate an HTTP 403. Use a semantic operation with a proven source/company scope, or return access denied. Verify the negative case for an unauthorized company before the authorized happy path.
 
-## 3. Настоящие отчёты 1С нельзя заменить синтетическими числами
+## 3. Genuine Native 1C Reports Cannot Be Replaced with Synthetic Numbers
 
-**Урок.** Fake1C, заполняемый JSON, digest и даже «10 PASS» без доказанного происхождения файлов не подтверждают суммы и проводки 1С. Ранняя валидация могла проверять только форму evidence, а не действительное происхождение. Поздние review выделили это как release-blocking trust boundary.
+**Lesson.** Fake1C, seeded JSON, hashes, and even ten passing checks are not independent evidence of 1C balances or journal postings without verifiable file provenance. Early validation sometimes checked only an evidence object's format, not its actual origin. Later reviews identified this as a release-blocking trust boundary.
 
-**Правило.** Независимый бухгалтерский oracle = оригинальный штатный отчёт 1С, квалифицированная процедура получения, source/company/config/time/period, полный объём данных (для ОСВ — все шесть агрегатов и строки, когда это требуется), неизменяемый artifact digest и независимое подтверждение. При отсутствии — `EVIDENCE_REQUIRED`, а не выдуманное подтверждение.
+**Rule.** An independent accounting oracle must be an original standard 1C report produced through a qualified method, bound to the exact source, company, configuration, timestamp, and reporting period. Coverage must be complete, including all six trial-balance totals and rows when required. Preserve an immutable artifact digest and obtain independent accountant approval. Without these, return `EVIDENCE_REQUIRED`, not a fabricated validation.
 
-## 4. Не доверяйте именам регистров и универсальным SQL/OData предположениям
+## 4. Do Not Trust Universal Register Names or SQL/OData Assumptions
 
-**Урок.** Конфигурации 1С существенно различаются: регистры, измерения, документы, знаки, валюта, time zone, счета и аналитики. Универсальные названия и presets не гарантируют правильного баланса (например, кредиторку 521.1 нельзя обещать без профиля конкретной базы).
+**Lesson.** 1C configurations differ significantly in their registers, dimensions, documents, signs, currencies, time zones, account codes, and analytics. Universal entity names and presets cannot guarantee a correct balance; accounts payable for account 521.1 must not be promised without a verified profile for the specific database.
 
-**Правило.** Сначала live metadata/probe → capability profile → явное согласование mapping → native verification. Поддержка OData `Balance` или другого метода подтверждается для **конкретного** EntitySet; если нет, вернуть `CAPABILITY_UNSUPPORTED`. При неизвестном opening balance, неполноте или смешанных валютах — не возвращать уверенный ноль.
+**Rule.** Follow live metadata/probe → capability profile → explicit mapping review → native validation. OData `Balance` and similar methods must be verified against the **exact EntitySet**. If unsupported, return `CAPABILITY_UNSUPPORTED`. If opening balances are unknown, coverage is partial, or currencies are mixed, do not invent a confident zero.
 
-## 5. Ошибка транспорта не является metadata drift
+## 5. Transport Failures Are Not Metadata Drift
 
-**Урок.** Разбор capability observations выявил опасность записать транспортную ошибку или пустой `$metadata` как новое состояние схемы. Это могло бы необоснованно инвалидировать проверенные mappings.
+**Lesson.** Capability observation reviews exposed the risk of treating a transport failure or empty `$metadata` response as a real new schema state. This could incorrectly invalidate known-good semantic mappings.
 
-**Правило.** `timeout` / `connection failed` → статус недоступности/необходимости проверки, но не новый правдивый fingerprint. Сохраняйте предыдущий known-good fingerprint; проверяйте recovery, повтор и negative PostgreSQL роль. См. [Master Plan](MASTER_PLAN.md) и [Phase 2 scope](PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md).
+**Rule.** `timeout` or `connection failed` means unavailable/verification required, not a truthful replacement fingerprint. Preserve the previous known-good fingerprint and verify recovery, retry, and PostgreSQL role-denial behavior. See the [Master Plan](MASTER_PLAN.md) and [Phase 2 scope](PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md).
 
-## 6. Регистрация 1С: SSRF защищается на нескольких уровнях
+## 6. Defend 1C Registration Against SSRF at Multiple Layers
 
-**Урок.** Запрет произвольного URL от AI — только начало. Hostname allowlist сама по себе не исключает DNS rebinding или маршрут через proxy; redirect может увести запрос на другой origin.
+**Lesson.** Refusing an arbitrary URL from an AI client is only the beginning. A hostname allowlist alone does not prevent DNS rebinding or proxy routing, and an HTTP redirect can transfer a request to another origin.
 
-**Правило.** Зарегистрированный `source_id` + issuer/audience/scope + exact hostname + CIDR/connect-time validation + TLS + network egress firewall + запрещённые redirects + private sidecar + ограничение verbs/read. Не выносить 1C OData или sidecar в открытый интернет. См. [Production](../deploy/PRODUCTION.md).
+**Rule.** Require a registered `source_id`, correct issuer/audience/scope, exact hostname, CIDR and connect-time verification, TLS, an egress firewall, restricted redirects, a private sidecar, and read-only HTTP verbs. Do not expose 1C OData or its sidecar to the public internet. See [Production](../deploy/PRODUCTION.md).
 
-## 7. Приватные ключи, OAuth и Secure MCP Tunnel — три разные границы
+## 7. Private Keys, OAuth, and the Secure MCP Tunnel Are Separate Boundaries
 
-**Урок.** Туннель даёт сетевой путь, **не** создаёт production-полномочия пользователя. Тестовая связка `development-local` + no-OAuth преднамеренно ограничена loopback Fake1C. Production IdP может быть недоступен браузеру, даже когда private tunnel работает.
+**Lesson.** A network tunnel provides connectivity; it **does not** grant production user privileges. The `development-local` configuration with OAuth disabled is intentionally limited to loopback Fake1C. A private tunnel can work even when the production identity provider is unavailable to a browser.
 
-**Правило.** Для реальной интеграции нужна проверяемая сквозная цепочка: публично доступный browser authorization flow IdP, MCP resource audience, scopes, user grants, отдельная Admin audience/scope, секреты вне Git. Не заменять ошибки auth тестовым bypass. См. [ChatGPT integration](CHATGPT_MCP_INTEGRATION.md).
+**Rule.** A real integration needs an end-to-end verifiable identity chain: browser-accessible IdP authorization, correct MCP resource audience, scopes, user grants, a separate administrator audience/scope, and secrets stored outside Git. Do not replace broken authentication with a test bypass. See [ChatGPT Integration](CHATGPT_MCP_INTEGRATION.md).
 
-## 8. Локальная Windows/COM-установка возможна, но не означает безопасный COM query
+## 8. Local Windows/COM Installation Does Not Make Arbitrary COM Queries Safe
 
-**Урок.** На disposable стенде удалось установить 1C 8.3, Community/Developer License, `V83.COMConnector` (per-user регистрация), RSV Data v1.3.0, проверить native metadata и reconnect. Но аудит RSV выявил shared token map, привилегированный `reveal`, записи токенов расширением и отсутствие неизменяемого company predicate для произвольного query.
+**Lesson.** A disposable workstation successfully installed 1C 8.3, a Community/Developer License, a per-user registered `V83.COMConnector`, and RSV Data v1.3.0, and verified native metadata and reconnection. However, an RSV audit found a shared token map, privileged `reveal`, extension token writes, and the absence of an immutable company predicate for arbitrary queries.
 
-**Правило.** Не открывать `execute_query`, `reveal`, arbitrary `query` или upstream bridge напрямую AI. Метаданные разрешать только через фиксированный allowlist и ERP_MCP ACL/audit. Любой бизнес-route только после zero-write + scope + native доказательств. См. [RSV runbook](runbooks/RSV_DATA_BRIDGE.md) и [local handoff](../reports/LOCAL_1C_SETUP_HANDOFF.md).
+**Rule.** Never expose `execute_query`, `reveal`, unrestricted `query`, or an upstream bridge directly to an AI client. Permit metadata only through a fixed allowlist and ERP_MCP ACL/audit enforcement. Business-data routes require verified zero-write behavior, scope, and native accounting evidence. See the [RSV Runbook](runbooks/RSV_DATA_BRIDGE.md) and [Local Handoff](../reports/LOCAL_1C_SETUP_HANDOFF.md).
 
-## 9. Административная роль, миграции и аудит — отдельная trust boundary
+## 9. Administrator Roles, Migrations, and Audit Are Separate Trust Boundaries
 
-**Урок.** Административная мутация через runtime DB-логин, несовместимые линии миграций или способность application-role подправлять trusted capability rows разрушает модель доверия. В ревью выявлялись необходимость реальных permission-тестов и аккуратного объединения миграционных веток.
+**Lesson.** Administrator mutations through the ordinary runtime database login, incompatible migration histories, or the ability of an application role to modify trusted capability records undermine the trust model. Reviews highlighted the need for real permission tests and careful reconciliation of migration branches.
 
-**Правило.** Отдельные `BAG_MIGRATION_DATABASE_URL`, `BAG_ADMIN_DATABASE_URL`, `BAG_DATABASE_URL`; миграции вперёд только с проверенной историей и возвратным планом; обычная runtime-роль не может менять trusted grants или audit. Проводить privilege-negative tests на настоящем disposable PostgreSQL, не только на mocks. Никогда не запускайте `reset` против рабочей БД.
+**Rule.** Keep separate `BAG_MIGRATION_DATABASE_URL`, `BAG_ADMIN_DATABASE_URL`, and `BAG_DATABASE_URL` credentials. Run forward migrations only with a verified history and rollback plan. The normal runtime role must not modify trusted grants or audit. Test negative privilege cases on a real disposable PostgreSQL instance, not only in mocks. **Never run reset against a working business database.**
 
-## 10. Тесты и среда могут испортить друг другу результаты
+## 10. Concurrent Tests and Environments Can Contaminate Each Other
 
-**Урок.** Одновременные worktrees и E2E процессы конфликтуют по портам, БД и pid. Ранние отчёты также обнаруживали missing Docker daemon, неправильные ожидания test fixture, неинтерпретированные skip и зелёные тесты на другом SHA.
+**Lesson.** Concurrent worktrees and E2E processes can conflict over ports, databases, and process identifiers. Early reports also found an unavailable Docker daemon, incorrect test fixture expectations, uninterpreted skipped tests, and green results belonging to a different SHA.
 
-**Правило.** Каждый стенд получает собственный `E2E_PORT_OFFSET` и `E2E_PROJECT_SUFFIX`; `up.ps1` должен отвергать чужой listener. Тесты проводить на exact head, записывать skipped/xfail и реально исполнять negative cases. Не используйте `down -Purge` на чужом стенде. См. [E2E Environment](E2E_ENVIRONMENT.md).
+**Rule.** Give each test stack a distinct `E2E_PORT_OFFSET` and `E2E_PROJECT_SUFFIX`. `up.ps1` must refuse a listener belonging to someone else's environment. Run checks against the exact HEAD, record skipped/xfail outcomes, and actually execute the negative cases. Never use `down -Purge` on another session's stack. See [E2E Environment](E2E_ENVIRONMENT.md).
 
-## 11. Наблюдаемость и fail-closed — не только метрики
+## 11. Observability and Fail-Closed Behavior Mean More Than Metrics
 
-**Урок.** Реализация HTTP/Redis/PostgreSQL/OData/RSV трассировки не доказывает восстановление от аварии; синтетические fault tests не равны замерам в production-like окружении. Нарушение записи обязательного audit должно блокировать dispatch, а не бесшумно возвращать данные.
+**Lesson.** Implementing HTTP/Redis/PostgreSQL/OData/RSV tracing does not prove crash recovery. Synthetic fault tests are not equivalent to measurements in a production-like environment. Failure to write mandatory audit evidence must block dispatch, not silently return data.
 
-**Правило.** Требуйте реального негативного доказательства DB/Redis/JWKS/secrets/OData/RSV failure/recovery, transport timeouts и data-redaction. Любое критическое `audit unavailable` — deny. Не публикуйте query/raw credentials в evidence.
+**Rule.** Require real negative proof for DB, Redis, JWKS, secrets, OData, and RSV failures and recovery, including transport timeouts and data redaction. Every critical `audit unavailable` case must deny the operation. Never include raw client queries or credentials in evidence artifacts.
 
-## 12. Phase 2 — развитие без подмены фактов
+## 12. Phase 2 Must Evolve Without Replacing Facts with Assumptions
 
-**Урок.** Автообновление LDM/PDM, история наблюдений и коннекторы полезны, но polling не может гарантировать все промежуточные изменения. Нельзя превращать `OBSERVED` в `ACCEPTED` силами модели AI и использовать фальшивую «нативную» сверку на основе собственных же MCP данных.
+**Lesson.** Automatically updating LDM/PDM models, maintaining observation history, and introducing connectors may be useful, but polling cannot guarantee visibility into every intermediate change. An AI model cannot promote `OBSERVED` directly to `ACCEPTED`, and a supposedly native reconciliation reconstructed from the same MCP figures is not independent.
 
-**Правило.** Phase 2 вводится через собственные review gates: immutable events, scoped PostgreSQL RLS, optimistic CAS/leases/cursors, drift-vs-failure, настоящие 1C reports, independent attestation, controlled source budget и explicit production permit. Пока отдельные gate не пройдены, это **WIP**, даже если код в feature-ветке выполняется.
+**Rule.** Introduce Phase 2 through its own gates: immutable events, scoped PostgreSQL RLS, optimistic CAS/leases/cursors, drift-vs-failure handling, genuine 1C reports, independent attestation, constrained per-source budgets, and explicit production permits. Until the applicable gates pass, the functionality is **WIP**, even if feature-branch code executes.
 
-См. [Phase 2 overview](phase2/README.md), [Phase 2 plan](phase2/PLAN_PHASE2_RU.md).
+See the [Phase 2 Overview](phase2/README.md) and [Phase 2 Plan](phase2/PLAN_PHASE2_RU.md).
 
-## 13. Чистый Windows install: отдельно проверить ComSpec и source grants
+## 13. Verify ComSpec and Source Grants Separately on a Fresh Windows Install
 
-**Урок из выполненной 09.10.2026 установки:** `Start-Process -FilePath $env:ComSpec` может получить пустой аргумент в удалённой noninteractive PowerShell. Теперь E2E helper проверяет штатный `cmd.exe` и восстанавливает `ComSpec` в процессе. Это не повод снижать ExecutionPolicy или отключать ACL.
+**Lesson from the October 9, 2026 verification:** `Start-Process -FilePath $env:ComSpec` can receive an empty value in a remote noninteractive PowerShell session. The E2E helper now checks the standard `cmd.exe` path and restores `ComSpec` within the process. This does not justify lowering ExecutionPolicy or disabling ACLs.
 
-**Второй подтверждённый случай:** test `AUDITOR` platform role успешно создавалась, но новый отдельный тестовый DB не имел data-plane source grant. `source_health`/ `onec_capabilities` выдали `AccessDenied` — корректную защиту, а не сломанную capability-схему. Ограниченный тестовый bootstrap для конкретного real1c source и idempotent repair позволяют проверить позитивный кейс. На реальном тестовом источнике **7/7** позитивных и негативных checks прошли. [Отчёт](../reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
+**Second verified case:** The test `AUDITOR` platform role was created successfully, but the new separate test database had no data-plane source grant. `source_health` and `onec_capabilities` returned `AccessDenied`—a correct security outcome, not a broken capability schema. A limited test-only bootstrap for the exact real-1C source and an idempotent repair allowed the authorized positive case to be verified. **7/7** positive and negative checks passed on the real test source. See the [Verification Report](../reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
 
-## Чек-лист перед любым публичным заявлением «готово»
+## Checklist Before Any Public Claim of Readiness
 
-- Назван exact Git SHA, версия конфигурации и тип окружения.
-- Есть защищённые настоящие роли/ACL, read-only границы, egress и audit.
-- Есть реальная L2 native-сверка на разрешённой базе; synthetic L1 помечена явно.
-- Отличаются «код реализован», «тест пройден», «gate закрыт» и «production разрешён».
-- Не скрыты skipped/NOT_RUN, внешние approvals и остаточные риски.
-- В документации не раскрыты URL клиентов, пароли, bearer-токены, DSN и приватные цифры.
+- Identify the exact Git SHA, configuration version, and environment level.
+- Demonstrate real protected roles/ACLs, read-only boundaries, egress controls, and mandatory audit.
+- Supply real L2 native reconciliation from an authorized source; clearly label synthetic L1 evidence.
+- Distinguish "implemented," "test passed," "gate approved," and "production authorized."
+- Disclose all skipped/NOT_RUN checks, external approvals, and residual risks.
+- Keep customer URLs, passwords, bearer tokens, DSNs, and private financial values out of documentation.
 
-Эта запись — **операционное руководство**, не утверждение, что все перечисленные инварианты уже достигли production GO.
+**This is operational guidance, not a claim that every listed invariant has achieved production GO.**

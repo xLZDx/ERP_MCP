@@ -1,44 +1,50 @@
-# Phase 2 — завершение подготовки проектного пакета
+# ERP_MCP Phase 2 — Design Package Preparation Closure
 
-08.10.2026 · v0.1 · DRAFT FOR REVIEW.
+**October 8, 2026 · v0.1 · DRAFT FOR REVIEW.** This is a historical preparation record, not the current Phase 2 implementation status.
 
-## Подготовлено
+## Deliverables Prepared
 
-28 требований, 48 user stories, 144 acceptance scenarios, 11 спринтов S0–S10, gates G0–G7, 4 JSON Schemas, synthetic examples, traceability.csv, YAML-каталоги, Gherkin и исполняемые SPEC/L0 проверки. Расширенный portable package содержит 38 файлов и офлайн HTML viewer.
+The initial design package included **28 requirements**, **48 user stories**, **144 acceptance scenarios**, **11 sprints (S0–S10)**, **G0–G7 gates**, four JSON Schemas, synthetic examples, `traceability.csv`, YAML catalogs, Gherkin, and executable SPEC/L0 checks. The extended portable package contained 38 files and an offline HTML viewer.
 
-Основные документы находятся в этом каталоге: TDD_PHASE2_RU.md, PLAN_PHASE2_RU.md, STORIES_PHASE2_RU.md, TEST_PLAN_PHASE2_RU.md, NATIVE_REPORT_PROTOCOL_RU.md, DECISIONS_AND_SOURCES_RU.md. Добавлено уточнение CONTRACTS_AND_API_RU.md и фактический SPEC_VALIDATION_SUMMARY.json.
+The principal documents were `TDD_PHASE2_RU.md`, `PLAN_PHASE2_RU.md`, `STORIES_PHASE2_RU.md`, `TEST_PLAN_PHASE2_RU.md`, `NATIVE_REPORT_PROTOCOL_RU.md`, and `DECISIONS_AND_SOURCES_RU.md`. `CONTRACTS_AND_API_RU.md` added contractual clarification, and `SPEC_VALIDATION_SUMMARY.json` recorded measured specification results.
 
-## Фактическая проверка
+## Actual Verification at Package Preparation
 
-В изолированном контейнере подготовки выполнено 35 SPEC/L0 checks: 35 PASS, 0 FAIL, 0 ERROR, 0 SKIPPED. Проверены 28/48/144 IDs, bidirectional traceability, requirement coverage, DAG зависимостей, четыре JSON Schemas/fixtures и отрицательные структурные cases, 144 Given/When/Then и synthetic пример компенсирующей ошибки all-six.
+An isolated preparation container executed **35 specification/L0 checks: 35 PASS, 0 FAIL, 0 ERROR, 0 SKIPPED**. Verified items included 28/48/144 IDs, bidirectional traceability, requirement coverage, the dependency DAG, four JSON Schemas and fixtures, negative structural cases, 144 Given/When/Then scenarios, and a synthetic counterexample where equal closing balances concealed compensating errors across six aggregates.
 
-Первый прогон выявил слишком короткие When steps в каталоге. Формулировки уточнены, финальный повтор зелёный; исходный протокол первого прогона сохранён внутри архива. Это исправление спецификации, не баг или тест реализации ERP_MCP.
+The first run identified When steps that were too short. The wording was corrected, and the final rerun passed. The first-run report remains preserved in the archive. This was a **specification correction**, not an ERP_MCP implementation defect.
 
-HTML статически проверен: 9 разделов, уникальные IDs, все navigation targets существуют, внешних ресурсов отрисовки 0. Визуальная browser-проверка NOT_RUN: управляемый Chromium запретил file navigation (ERR_BLOCKED_BY_ADMINISTRATOR); обход ограничений не выполнялся. Статическая проверка не выдаётся за screenshot/JS/runtime proof.
+The HTML viewer passed static checks: nine sections, unique IDs, all navigation targets present, and zero external rendering resources. **Visual browser verification was NOT_RUN** because managed Chromium refused local-file navigation (`ERR_BLOCKED_BY_ADMINISTRATOR`). No restriction was bypassed. Static HTML checks are not screenshot, JavaScript, or runtime proof.
 
-Product acceptance cases144, реальные PostgreSQL/1С/Drive/UI/COM/native/prod tests остаются NOT_RUN. BDD step implementations ещё отсутствуют. JSON Schema проверяет форму, не подлинность evidence/permit или фактические grants. Запуск SPEC на Windows в этом шаге не выполнялся.
+All 144 product acceptance cases and real PostgreSQL/1C/Drive/UI/COM/native/production checks were **NOT_RUN at this checkpoint**. BDD step implementations did not yet exist. JSON Schema verifies shape, not genuine evidence/permit provenance or actual grants. No Windows SPEC execution occurred during this preparation step.
 
-## Архив
+## Archived Package
 
-Имя: ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip
-Размер: 180452 bytes.
-SHA-256: e1ab5e1d8e96307a57536c82ce132a7591b41b2e3adf71e8b7c1e7adc2703963
-ZIP CRC и совпадение записанных input digests: PASS.
+- **Filename:** `ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip`
+- **Size:** 180,452 bytes
+- **SHA-256:** `e1ab5e1d8e96307a57536c82ce132a7591b41b2e3adf71e8b7c1e7adc2703963`
+- **ZIP CRC and recorded input-digest comparison:** PASS
 
-Архив предоставлен в чате. Он не был бинарно скопирован или распакован на Windows через DC_MCP. Для полного companion дерева рекомендован новый подкаталог docs\phase2\spec-v0.1\ после обычного сохранения/распаковки пользователем; не заменять существующие файлы без проверки. Hash — контроль целостности, не доверенная цифровая подпись.
+The archive was provided in the original chat. It was **not** copied as a binary file to Windows or extracted through DC_MCP. The recommended destination for the complete companion tree was a new `docs/phase2/spec-v0.1/` subdirectory after a normal authorized download and extraction; existing files must not be overwritten without review. A SHA-256 value establishes integrity against a supplied reference, **not a trusted digital signature**.
 
-Внутри: README, docs/01…07, HANDOFF_RU.md, index.html, requirements/stories/test_cases.yaml, traceability.csv, acceptance/phase2.feature, schemas/, examples/, tests/, spec_checks/, tools/validate_spec.py, validation_report.json, evidence/ и MANIFEST.sha256.
+The archive included README, docs/01–07, `HANDOFF_RU.md`, `index.html`, `requirements/stories/test_cases.yaml`, `traceability.csv`, `acceptance/phase2.feature`, `schemas/`, `examples/`, `tests/`, `spec_checks/`, `tools/validate_spec.py`, `validation_report.json`, `evidence/`, and `MANIFEST.sha256`.
 
-## Главное проектное решение
+## Main Design Decision
 
-Формировать штатные отчёты в самой 1С можно вручную или через квалифицированный UI/standard-engine recipe. Автоматизация запуска не превращает настоящий report в синтетический. Однако origin, no-business-write qualification, одинаковый scope/cutoff, all-six/row comparison и independent accounting approval обязательны. Existing R1 native eligibility автоматически не меняется, старые engine exports не relabelled.
+Standard reports can be generated within 1C manually or through a **qualified native UI or standard reporting-engine procedure**. Automating the creation of a genuine standard report does not inherently make that report synthetic.
 
-Prod capability сохраняется в design, но default OFF до source/company/recipe-specific permit, qualification и budget. Private candidate runner не public bypass semantic gate. Отсутствующий settlement register не появляется от десяти отчётов; account-based AP требует отдельного контракта.
+However, report origin, qualification for **no business-data writes**, matching scope and cutoff, comparison of all six aggregates and underlying rows, and independent accounting approval remain mandatory. Existing R1 eligibility rules are **not automatically changed**, and older engine exports are not retrospectively relabeled.
 
-Уточнено: одинаковый конечный net может скрыть разные opening/turnover. Наличие второго реального денежного набора из переписки независимо не подтверждалось; ТДД больше не утверждает это как установленный факт. Точные числа пользователя не записаны в Git/package fixtures; частная арифметическая записка предоставлена отдельно в чате.
+Production native capture remains in the design but is **OFF by default**, pending a source/company/recipe-specific permit, successful qualification, and an explicit resource budget. A private evaluation runner must never provide a public semantic-gate bypass. Ten reports do not create a missing settlement register; accounting-based AP requires a separate contract.
 
-## Граница выполненного
+The design was clarified to show that the **same final net balance can hide different opening balances and turnovers**. Another set of real accounting values from the conversation was never independently verified; the TDD therefore stopped presenting it as an established fact. Exact private financial figures were not written to Git or synthetic package fixtures. A private arithmetic note was supplied separately in the chat.
 
-Изменялись только собственные документы Phase 2. Не выполнялись code/config/migration/grant changes, рестарты, подключение к1С, production capture, нагрузка, commit/push/merge или удаление (на момент подготовки; позднее пакет опубликован только как draft-документация отдельным docs-only PR, без принятия дизайна и без GO на реализацию). Чужие staged/unstaged изменения не тронуты. R1 verdict не изменён.
+## Boundary of Completed Work
 
-Следующая стадия — согласование scope/ADR и S0 inventory/feasibility. Документационный пакет завершён; реализация Phase2 и её приёмка ещё впереди.
+Only the Phase 2 design author's own documents were changed. At that checkpoint, there were no code, configuration, migration, or grant changes; no service restarts, real 1C connections, production capture, load tests, commits, pushes, merges, or deletions.
+
+Later, the design package was published as draft documentation through a separate documentation-only PR. That did **not** constitute design approval or an implementation GO. Other staged/unstaged changes remained untouched, and the Release 1 verdict was unchanged.
+
+The next planned step at the time was approval of scope and ADRs, followed by S0 inventory and feasibility work. **Only preparation of the documentation package was complete; Phase 2 implementation and acceptance were future work.**
+
+For current Phase 2 status, consult the latest exact Git HEAD, implementation/test evidence, governance decisions and gate approvals rather than this historical v0.1 record.
