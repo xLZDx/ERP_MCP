@@ -746,22 +746,24 @@ def _scope(view: _View) -> set[str]:
 
 def _attestations(res: _View, port: object, now: datetime) -> set[str]:
     table = res.tables.get("attestations")
-    if table is None:
-        return set()
     needed: set[tuple[object, object, object]] = set()  # revisions the accepted heads currently rest on
     for entry in res.tables.get("accepted_heads", ((), (), ""))[1]:
         h = _cols(entry)
         if h["revision_id"] is not None:
             needed.add((h["tenant_id"], h["source_id"], h["revision_id"]))
+    if table is None:
+        return {"attestations"} if needed else set()  # an accepted head with no evidence table is not verified
     obs_digest: dict[tuple[object, object, object], object] = {}
     for entry in res.tables.get("observations", ((), (), ""))[1]:
         c = _cols(entry)
         obs_digest[(c["tenant_id"], c["source_id"], c["revision_id"])] = c["digest"]
     stale = False
+    covered: set[tuple[object, object, object]] = set()
     for entry in table[1]:
         c = _cols(entry)
         if (c["tenant_id"], c["source_id"], c["revision_id"]) not in needed:
             continue  # history (immutable, accumulating): an old expired/revoked row does not fail a healthy restore
+        covered.add((c["tenant_id"], c["source_id"], c["revision_id"]))
         digest = obs_digest.get((c["tenant_id"], c["source_id"], c["revision_id"]))
         locally_ok = (type(digest) is str and c["revoked_at"] is None and type(c["expires_at"]) is str
                       and type(c["policy_version"]) is str and type(c["policy_digest"]) is str
@@ -780,6 +782,8 @@ def _attestations(res: _View, port: object, now: datetime) -> set[str]:
         valid, code = result.valid, result.code  # type: ignore[attr-defined]
         if valid is not True or type(code) is not str or code != "VALID":
             stale = True
+    if needed - covered:  # an accepted head whose revision has no attestation row at all is missing evidence
+        stale = True
     return {"attestations"} if stale else set()
 
 

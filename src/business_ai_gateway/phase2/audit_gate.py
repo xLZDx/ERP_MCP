@@ -421,7 +421,7 @@ class AuditGate:
         entry = _Obligation(company, UnauditedEffect(request_id, name, intent_seq, failed, False), completion)
         refusal = self._obligations.insert(tenant, request_id, entry)
         if refusal is not None:  # full, duplicate or unusable: visible counter, never a silent loss
-            self._overflow.try_acquire(tenant, "overflow")
+            self._overflow.try_acquire(tenant, f"overflow:{company}")
 
     # ---- obligations ---------------------------------------------------------------------------
     def unaudited(self, scope: object) -> UnauditedReport | OpsRefusal:
@@ -433,7 +433,7 @@ class AuditGate:
             tenant, company = scope.tenant_id, scope.company_id  # type: ignore[attr-defined]
             entries = tuple(v.effect for _, v in self._obligations.items(tenant)
                             if type(v) is _Obligation and v.company_id == company)
-            return UnauditedReport(entries, self._overflow.active(tenant, "overflow"))
+            return UnauditedReport(entries, self._overflow.active(tenant, f"overflow:{company}"))
         except Exception:  # noqa: BLE001
             return ops_refusal(OpsReason.INTERNAL_REFUSED, self._ids)
 

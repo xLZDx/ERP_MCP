@@ -107,7 +107,7 @@ class SinkResponse:
 
 
 class DeliverySinkPort(Protocol):
-    def publish(self, tenant_id: str, source_id: str, connection_id: str, event_id: str,
+    def publish(self, tenant_id: str, company_id: str, source_id: str, connection_id: str, event_id: str,
                 event_digest: str) -> SinkResponse: ...
 
 
@@ -116,14 +116,14 @@ class FakeDeliverySink:
 
     Script items: ``SinkKind.RATE_LIMITED`` / ``SinkKind.NETWORK_FAILURE`` (nothing stored), ``"RAISE"`` (raises with
     poison text), ``"LOST_ACK"`` (stores the event, then reports a network failure), ``"MALFORMED"``. An empty
-    script means healthy. Dedups on ``(tenant, source, connection, event_id)``: a repeat answers ``DUPLICATE_ACK``
+    script means healthy. Dedups on ``(tenant, company, source, connection, event_id)``: a repeat answers ``DUPLICATE_ACK``
     and stores nothing. Lock-free: every shared operation is one atomic builtin call."""
 
     POISON: Final = "POISON-DELIVERY-SINK-token=FAKE-secret"
 
     def __init__(self, on_publish: Callable[[str, str, str, str], None] | None = None) -> None:
         self._scripts: dict[str, deque] = {}
-        self._seen: dict[tuple[str, str, str, str], tuple[str]] = {}
+        self._seen: dict[tuple[str, str, str, str, str], tuple[str]] = {}
         self._retry_after = 5
         self._hook = on_publish
         self._attempts = itertools.count(1)
@@ -134,7 +134,7 @@ class FakeDeliverySink:
         self._scripts.setdefault(tenant_id, deque()).extend(items)
         self._retry_after = retry_after
 
-    def publish(self, tenant_id: str, source_id: str, connection_id: str, event_id: str,
+    def publish(self, tenant_id: str, company_id: str, source_id: str, connection_id: str, event_id: str,
                 event_digest: str) -> SinkResponse:
         self.calls.append((tenant_id, source_id, connection_id, event_id))
         if self._hook is not None:
@@ -151,7 +151,7 @@ class FakeDeliverySink:
             raise ConnectionError(self.POISON)
         if item == "MALFORMED":
             return object()  # type: ignore[return-value]
-        key = (tenant_id, source_id, connection_id, event_id)
+        key = (tenant_id, company_id, source_id, connection_id, event_id)
         entry = (event_digest,)
         first = self._seen.setdefault(key, entry) is entry
         if first:
@@ -430,7 +430,7 @@ class ReplayPlanner:
                 counts["replayed"] += 1
             else:
                 counts["conflicts"] += 1
-                held = self._quarantine.insert(tenant, _digest(key, ev.event_digest), ev.seq)
+                held = self._quarantine.insert(tenant, _digest(key, ev.event_digest), company)
                 if held is not None and held.reason is OpsReason.QUOTA_EXCEEDED:
                     counts["quota"] += 1
             return True
@@ -455,7 +455,10 @@ class ReplayPlanner:
     def quarantine_count(self, scope: object) -> int | OpsRefusal:
         try:
             refusal = check_scope_order(scope, (), self._ownership, self._entitlement, self._ids)
-            return refusal if refusal is not None else self._quarantine.count(scope.tenant_id)  # type: ignore[attr-defined]
+            if refusal is not None:
+                return refusal
+            tenant, company = scope.tenant_id, scope.company_id  # type: ignore[attr-defined]
+            return sum(1 for _, v in self._quarantine.items(tenant) if v == company)
         except Exception:  # noqa: BLE001
             return self._refuse(OpsReason.INTERNAL_REFUSED)
 
@@ -637,7 +640,7 @@ class ReplayPlanner:
             if guard != "ok":
                 outcome = self._mark_outcome(guard, delivered, dup)
                 break
-            kind, retry_after = self._publish(sink, tenant, source_id, rec)  # type: ignore[arg-type]
+            kind, retry_after = self._publish(sink, tenant, rec.company_id, source_id, rec)  # type: ignore[arg-type]
             if kind in (SinkKind.DELIVERED, SinkKind.DUPLICATE_ACK):
                 done = _with(rec, RecordStatus.DELIVERED, rec.attempts + 1, None)
                 marked = self._mark(tenant, ckey, claim, key, done, rec)
@@ -671,11 +674,11 @@ class ReplayPlanner:
                                cursor, outcome.next_retry_at, outcome.correlation_id, lease_released=released)
 
     @staticmethod
-    def _publish(sink: object, tenant: str, source: str, rec: _Rec) -> tuple[SinkKind, int]:
+    def _publish(sink: object, tenant: str, company: str, source: str, rec: _Rec) -> tuple[SinkKind, int]:
         """Classify the sink answer: ``(kind, retry_after)``. A 429 stays a 429 (``retry_after`` clamped, a garbage
         value waits the maximum); a delivered answer ignores ``retry_after``; anything unusable is a network failure."""
         try:
-            resp = sink.publish(tenant, source, rec.connection_id, rec.event_id, rec.digest)  # type: ignore[attr-defined]
+            resp = sink.publish(tenant, company, source, rec.connection_id, rec.event_id, rec.digest)  # type: ignore[attr-defined]
             if type(resp) is not SinkResponse or type(resp.kind) is not SinkKind:
                 return SinkKind.NETWORK_FAILURE, 0
             if resp.kind is SinkKind.RATE_LIMITED:

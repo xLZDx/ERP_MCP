@@ -396,6 +396,28 @@ def test_a_confirmed_foreign_approval_naming_the_caller_reads_like_an_unknown_id
     assert outs[0][0].reason == outs[1][0].reason and outs[0][1] == outs[1][1]
 
 
+def test_two_companies_of_one_tenant_may_register_the_same_kind_and_id_independently():
+    w = World()
+    w.ports.owner.add("t1", "c9", "run_id", "R1")  # c9 also owns a run_id spelled "R1"
+    other = w.ledger.register_object(B1, "run_id", "R1", "SB", "fin")
+    assert not isinstance(other, OpsRefusal), other  # not DUPLICATE_SUPPRESSED because c1 registered it first
+    assert other.source_id == "SB"
+    assert w.ledger.register_object(A1, "run_id", "R1", "S1", "fin").reason is OpsReason.DUPLICATE_SUPPRESSED
+    assert reason(w.ledger.register_object(B1, "run_id", "R1", "SB", "fin")) is OpsReason.DUPLICATE_SUPPRESSED
+    # lookups stay separate: company c1 still sees source S1, company c9 sees SB
+    assert w.ledger._load(A1, w.request(("R1",)))[1] == frozenset({"S1"})
+    assert w.ledger._load(B1, w.request(("R1",)))[1] == frozenset({"SB"})
+    # an object hold of c1 does not cover c9's same-named object; a tenant hold covers both
+    hold = w.ledger.place_hold(A1, HoldLevel.OBJECT, HoldReason.LEGAL, "run_id", "R1")
+    assert isinstance(hold, Hold), hold
+    assert reason(w.ledger.decide_deletion(A1, w.request(("R1",), "x"))) is OpsReason.HOLD_ACTIVE
+    # c9's object was just registered, so it reaches the retention check (past the hold check) instead of HOLD_ACTIVE
+    assert reason(w.ledger.decide_deletion(B1, w.request(("R1",), "x"))) is OpsReason.RETENTION_NOT_ELAPSED
+    tenant_hold = w.ledger.place_hold(A1, HoldLevel.TENANT, HoldReason.LEGAL)
+    assert isinstance(tenant_hold, Hold), tenant_hold
+    assert reason(w.ledger.decide_deletion(B1, w.request(("R1",), "x"))) is OpsReason.HOLD_ACTIVE
+
+
 # ---- ownership first, foreign == unknown --------------------------------------------------------
 
 def test_foreign_and_unknown_objects_give_the_identical_refusal_and_port_pattern():

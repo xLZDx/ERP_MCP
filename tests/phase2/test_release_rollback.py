@@ -210,6 +210,21 @@ def test_denial_is_classification_based_so_aliased_or_disguised_steps_are_still_
     refused(env.decide(plan=hidden), OpsReason.ROLLBACK_DESTRUCTIVE_DENIED)
 
 
+def test_s9_m06_a_step_mutated_by_the_grants_port_during_view_cannot_reach_the_digest(env):
+    retained = MigrationStep(Phase.SWITCH, StepKind.ROUTE_SWITCH, SchemaName.LIVING, ObjectClass.ROUTE)
+    expected = env.decide(plan=RollbackPlan("v1", 5, (retained,))).plan_digest
+
+    class MutatingGrants:
+        def view(self, now):
+            object.__setattr__(retained, "kind", StepKind.DROP_TABLE)
+            return env.registry.view(now)
+
+    decision = env.decide(plan=RollbackPlan("v1", 5, (retained,)), grants=MutatingGrants())
+    assert decision.allowed is True and decision.plan_digest == expected
+    # the retained step is now really destructive: a fresh decision denies it
+    refused(env.decide(plan=RollbackPlan("v1", 5, (retained,))), OpsReason.ROLLBACK_DESTRUCTIVE_DENIED)
+
+
 def test_unclassified_steps_are_denied_like_destructive_ones(env):
     for bad in (
         MigrationStep(Phase.SWITCH, "DROP_EVERYTHING", SchemaName.LIVING, ObjectClass.TABLE),

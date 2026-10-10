@@ -562,6 +562,23 @@ def test_unaudited_lists_only_the_callers_company_obligations():
     assert env.gate.unaudited(S1).pending_count == 1
 
 
+def test_obligation_overflow_is_attributed_to_the_originating_company_only():
+    env = _two_company_env()
+    env.sink1.set_phase_mode(AuditPhase.COMPLETION, SinkMode.DOWN)
+    env.gate = AuditGate(default_registry(), {"t1": env.sink1}, env.ports, env.ports, FakeCorrelationSource(),
+                         env.clock, unaudited_cap=1)
+    inner = []
+
+    def outer_effect():
+        inner.append(env.write(S1B, "REQ-INNER", refs=(("source_id", "SRC-1B"),)))  # company B fills the store
+
+    out = env.gate.guarded_effect(S1, "REQ-OUTER", "create_document", outer_effect, REFS1)
+    assert out.status is GateStatus.COMPLETION_PENDING and inner[0].status is GateStatus.COMPLETION_PENDING
+    a, b = env.gate.unaudited(S1), env.gate.unaudited(S1B)
+    assert a.overflow_count == 1 and a.pending_count == 1 and len(a.entries) == 0
+    assert b.overflow_count == 0 and b.pending_count == 1 and len(b.entries) == 1
+
+
 # ---- A4: unhashable reasons never raise TypeError ---------------------------------------------------
 
 def test_unhashable_reason_is_a_value_error_not_a_type_error():

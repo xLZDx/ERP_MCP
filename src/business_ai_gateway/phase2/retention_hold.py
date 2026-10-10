@@ -272,6 +272,11 @@ class DeletionDecision:
         return "DeletionDecision(<redacted>)"
 
 
+def _object_key(company_id: str, kind: str, object_id: str) -> str:
+    """Registered-object key; the length prefix keeps (company, kind, id) unambiguous."""
+    return f"{len(company_id)}:{company_id}:{kind}:{object_id}"
+
+
 def _plan_digest(object_digest: str, approval_id: str, at: datetime) -> str:
     return canonical_digest({"v": 1, "o": object_digest, "a": approval_id, "t": at})
 
@@ -428,7 +433,8 @@ class RetentionLedger:
         state = self._policy_state(tenant)
         if retention_class not in state:
             return self._refuse(OpsReason.NOT_FOUND)
-        if self._objects.get(tenant, f"{kind}:{object_id}") is not None:  # the class of a known object is fixed
+        key = _object_key(scope.company_id, kind, object_id)  # type: ignore[attr-defined]
+        if self._objects.get(tenant, key) is not None:  # the class of a known object is fixed
             return self._refuse(OpsReason.DUPLICATE_SUPPRESSED)
         if state[retention_class][1] < self._floor_age:  # an almost-instant class is a platform decision
             allowed = self._authorized(scope.actor_id, ACTION_REGISTER_LOW_RETENTION)  # type: ignore[attr-defined]
@@ -437,7 +443,7 @@ class RetentionLedger:
             if not allowed:
                 return self._refuse(OpsReason.NOT_AUTHORIZED)
         record = _Object(kind, object_id, source_id, retention_class, self._stamp(tenant, raw))  # type: ignore[arg-type]
-        refused = self._objects.insert(tenant, f"{kind}:{object_id}", record)
+        refused = self._objects.insert(tenant, key, record)
         return record if refused is None else refused
 
     # ---- holds --------------------------------------------------------------------------------
@@ -592,7 +598,8 @@ class RetentionLedger:
 
     # ---- approvals and the decision ------------------------------------------------------------
     def _load(self, scope: OpsScope, request: DeletionRequest) -> tuple[list[_Object] | None, frozenset[str]]:
-        records = [self._objects.get(scope.tenant_id, f"{request.object_kind}:{i}") for i in request.object_ids]
+        records = [self._objects.get(scope.tenant_id, _object_key(scope.company_id, request.object_kind, i))
+                   for i in request.object_ids]
         found = [r for r in records if r is not None]
         sources = frozenset(r.source_id for r in found)
         return (found if len(found) == len(records) else None), sources
@@ -688,7 +695,8 @@ class RetentionLedger:
         kind, ids = request.object_kind, frozenset(request.object_ids)
         objects, sources = self._load(scope, request)  # type: ignore[arg-type]
         released = {k for k, _ in self._releases.items(tenant)}  # type: ignore[attr-defined]
-        holds = [h for _, h in self._holds.items(tenant)]  # type: ignore[attr-defined]
+        holds = [h for _, h in self._holds.items(tenant)  # type: ignore[attr-defined]
+                 if h.level is HoldLevel.TENANT or h.company_id == scope.company_id]  # tenant holds stay tenant-wide
         if any(h.hold_id not in released and self._covers(h, kind, ids, sources) for h in holds):
             return self._refuse(OpsReason.HOLD_ACTIVE)
         state = self._policy_state(tenant)

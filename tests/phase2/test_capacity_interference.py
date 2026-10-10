@@ -459,9 +459,10 @@ def test_k1_a_forged_p_attribute_is_refused_too():
 def test_k2_interactive_keeps_a_slot_on_every_backend_even_with_a_large_background_minimum():
     demand = [item(backend="db-1", source="s1", work=B, count=3), item(backend="db-2", source="s2", work=B, count=3),
               item(backend="db-1", source="s3", count=1), item(backend="db-2", source="s4", count=1)]
-    result = plan(demand, per=3, total=4, minimum=2)
+    result = plan(demand, per=3, total=6, minimum=2)
     assert result.allocations[2].granted == 1 and result.allocations[3].granted == 1
     assert result.interactive_granted == 2
+    assert result.allocations[0].granted >= 2 and result.allocations[1].granted >= 2
 
 
 def test_k2_interactive_slot_is_kept_for_every_demand_order_and_budget_shape():
@@ -473,11 +474,38 @@ def test_k2_interactive_slot_is_kept_for_every_demand_order_and_budget_shape():
                 bg = [item(backend=f"db-{n}", source=f"b{n}", work=B, count=per) for n in (1, 2)]
                 ia = [item(backend=f"db-{n}", source=f"i{n}", count=1) for n in (1, 2)]
                 for demand in (bg + ia, ia + bg, [bg[0], ia[1], bg[1], ia[0]]):
+                    if 2 * (minimum + 1) > total:  # the guaranteed minimum cannot be honoured: refused, not planned
+                        policy = BudgetPolicy(min_background_slots=minimum, tenant_share_slots=100)
+                        refused = plan_budget(policy, demand, budget(per, total), ids())
+                        assert refused.reason is OpsReason.BACKEND_BUDGET_EXCEEDED, (per, total, minimum)
+                        continue
                     result = plan(demand, per=per, total=total, minimum=minimum)
                     for idx, entry in enumerate(demand):
                         if entry.work is I:
                             assert result.allocations[idx].granted >= 1, (per, total, minimum, idx)
                     assert result.interactive_granted + result.background_granted <= total
+
+
+def test_s9_m01_minimum_background_plus_interactive_beyond_the_shared_total_is_refused():
+    demand = [item(backend="db-1", source="i1"), item(backend="db-1", source="b1", work=B),
+              item(backend="db-2", source="i2"), item(backend="db-2", source="b2", work=B)]
+    policy = BudgetPolicy(min_background_slots=1, tenant_share_slots=4)
+    assert plan_budget(policy, demand, budget(2, 2), ids()).reason is OpsReason.BACKEND_BUDGET_EXCEEDED
+    assert plan_budget(policy, demand, budget(2, 3), ids()).reason is OpsReason.BACKEND_BUDGET_EXCEEDED
+    ok = plan_budget(policy, demand, budget(2, 4), ids())
+    assert type(ok) is BudgetPlan and ok.background_granted == 2 and ok.interactive_granted == 2
+    three = demand + [item(backend="db-3", source="i3"), item(backend="db-3", source="b3", work=B)]
+    assert plan_budget(policy, three, budget(2, 5), ids()).reason is OpsReason.BACKEND_BUDGET_EXCEEDED
+    assert type(plan_budget(policy, three, budget(2, 6), ids())) is BudgetPlan
+
+
+def test_s9_m02_identical_source_text_in_two_tenants_does_not_share_a_writer_counter():
+    result = plan([item(tenant="A", source="same", work=W), item(tenant="B", source="same", work=W)])
+    assert granted(result) == [1, 1] and result.allocations[1].reason is None
+    same_tenant = plan([item(tenant="A", source="same", work=W), item(tenant="A", source="same", work=W)])
+    assert granted(same_tenant) == [1, 0]
+    shared_capture = plan([item(tenant="A", work=C), item(tenant="B", work=C)])
+    assert granted(shared_capture) == [1, 0]  # the physical capture limit stays shared across tenants
 
 
 def test_k2_a_total_limit_below_the_number_of_interactive_backends_is_refused():
