@@ -68,6 +68,7 @@ from .purchase_reconciliation import (
     PurchaseResultKind,
     PurchaseScope,
     compare_posted_purchases,
+    nfkc_stable,
 )
 
 __all__ = [
@@ -241,7 +242,13 @@ def _strict(value: object) -> bool:
     Exactly ``str`` (never a subclass): a subclass can lie in ``__eq__``/``__ne__`` and so spoof the
     direction or identity comparisons that follow.
     """
-    return type(value) is str and bool(value) and exact_text(value) == value
+    return (type(value) is str and bool(value) and exact_text(value) == value
+            and nfkc_stable(value))  # compatibility spellings are refused
+
+
+def _snapshot_ok(value: object) -> bool:
+    """A strict snapshot ref that is not the empty 1C reference (which identifies no snapshot)."""
+    return _strict(value) and not is_empty_1c_ref(value)
 
 
 def _currency_ok(value: object) -> bool:
@@ -348,6 +355,31 @@ def _check_row(doc: object) -> RetrievalReason | None:
     return None
 
 
+def _fresh_doc(doc: PurchaseDocument) -> PurchaseDocument:
+    """A new document of exact types with a plain UTC timestamp built from one offset read."""
+    return PurchaseDocument(
+        doc.doc_ref, doc.company_ref, doc.counterparty_ref, doc.contract_ref, doc.number,
+        doc.occurred_at, doc.amount, doc.currency, doc.posted, doc.deletion_mark)
+
+
+def _fresh_scope(scope: PurchaseScope) -> PurchaseScope:
+    return PurchaseScope(
+        scope.tenant_id, scope.source_id, scope.company_ref, scope.counterparty_ref,
+        scope.from_inclusive, scope.until_exclusive, scope.currency)
+
+
+def _refreeze(listing: PurchaseListing) -> PurchaseListing:
+    """A frozen copy (plain UTC datetimes, fresh objects) of an already type-checked listing."""
+    return PurchaseListing(
+        _fresh_scope(listing.scope), listing.snapshot_ref,
+        tuple(_fresh_doc(d) for d in listing.documents), listing.complete)
+
+
+def _keys_unique(docs: object) -> bool:
+    return (type(docs) is tuple
+            and len({_ref_key(d.doc_ref) for d in docs}) == len(docs))  # type: ignore[attr-defined]
+
+
 def _check_scope(scope: object) -> RetrievalReason | None:
     if type(scope) is not PurchaseScope:
         return RetrievalReason.SCOPE_INVALID
@@ -397,7 +429,10 @@ class PostedReceiptsRetriever:
         bad = _check_scope(request.scope)
         if bad is not None:
             return _refused(bad)
-        scope = request.scope
+        try:
+            scope = _fresh_scope(request.scope)  # plain UTC copy, one offset read
+        except Exception:  # noqa: BLE001 - fixed code only
+            return _refused(RetrievalReason.PERIOD_INVALID)
         if not _direction_ok(request.direction):
             return _refused(RetrievalReason.DIRECTION_NOT_RECEIPT)
         if (type(max_pages) is not int or type(max_rows) is not int
@@ -459,26 +494,27 @@ class PostedReceiptsRetriever:
             except Exception:  # noqa: BLE001 - fixed code only, no text leak
                 reason = RetrievalReason.SOURCE_ERROR
                 break
-            reason, page_kept, page_counts, page_refs, n_rows = self._accept_page(
+            (reason, page_kept, page_counts, page_refs, n_rows,
+             page_snap, page_next, page_idx) = self._accept_page(
                 page, scope, snapshot, pages, token, seen_tokens, seen_refs, rows, max_rows,
             )
             if reason is not RetrievalReason.OK:
                 break
-            snapshot = page.snapshot_ref
+            snapshot = page_snap
             pages += 1
             rows += n_rows
             kept.extend(page_kept)
             seen_refs |= page_refs
             for r, n in page_counts.items():
                 counts[r] += n
-            if page.next_token is None:
+            if page_next is None:
                 terminal = True
-                if rows == 0 and pages == 1 and page.page_index is None:
+                if rows == 0 and pages == 1 and page_idx is None:
                     reason = RetrievalReason.EMPTY_UNPROVEN  # nothing proves the source is empty
                 break
             if token is not None:
                 seen_tokens.add(token)
-            token = page.next_token
+            token = page_next
 
         complete = reason is RetrievalReason.OK and terminal
         return self._finish(
@@ -490,21 +526,23 @@ class PostedReceiptsRetriever:
     def _accept_page(
         page: object, scope: PurchaseScope, snapshot: str | None, pages: int, token: str | None,
         seen_tokens: set[str], seen_refs: set[str], rows: int, max_rows: int,
-    ) -> tuple[RetrievalReason, list[PurchaseDocument], dict[ExclusionReason, int], set[str], int]:
-        none: tuple[list[PurchaseDocument], dict[ExclusionReason, int], set[str], int] = (
-            [], {}, set(), 0)
-
+    ) -> tuple[RetrievalReason, list[PurchaseDocument], dict[ExclusionReason, int], set[str], int,
+               str | None, str | None, int | None]:
         def stop(r: RetrievalReason):
-            return (r, *none)
+            return (r, [], {}, set(), 0, None, None, None)
 
-        if type(page) is not Page or type(page.documents) not in (tuple, list):
+        if type(page) is not Page:
             return stop(RetrievalReason.PAGE_INVALID)
-        docs = tuple(page.documents)  # one snapshot of the (possibly mutable) row container
-        if not _strict(page.snapshot_ref):
+        # every Page field is read exactly once; only these locals are used below and returned
+        raw_docs, snap, idx, nxt, kinds = (
+            page.documents, page.snapshot_ref, page.page_index, page.next_token, page.kinds)
+        if type(raw_docs) not in (tuple, list):
+            return stop(RetrievalReason.PAGE_INVALID)
+        docs = tuple(raw_docs)  # one snapshot of the (possibly mutable) row container
+        if not _snapshot_ok(snap):
             return stop(RetrievalReason.SNAPSHOT_REF_INVALID)
-        if snapshot is not None and page.snapshot_ref != snapshot:
+        if snapshot is not None and snap != snapshot:
             return stop(RetrievalReason.SNAPSHOT_CHANGED)
-        idx = page.page_index
         if idx is not None:
             if type(idx) is not int:
                 return stop(RetrievalReason.PAGE_INVALID)
@@ -512,7 +550,6 @@ class PostedReceiptsRetriever:
                 return stop(RetrievalReason.TOKEN_REGRESSED)
             if idx > pages:
                 return stop(RetrievalReason.PAGE_GAP)
-        nxt = page.next_token
         if nxt is not None:
             if not _strict(nxt):
                 return stop(RetrievalReason.TOKEN_MISSING)
@@ -522,15 +559,20 @@ class PostedReceiptsRetriever:
                 return stop(RetrievalReason.TOKEN_REGRESSED)
         if rows + len(docs) > max_rows:
             return stop(RetrievalReason.ROW_LIMIT_HIT)
-        kinds = page.kinds
         if (type(kinds) not in (tuple, list) or len(kinds) != len(docs)
                 or not all(_strict(k) for k in kinds)):
             return stop(RetrievalReason.PAGE_DIRECTION_UNPROVEN)
         kinds = tuple(kinds)
+        fresh: list[PurchaseDocument] = []
         for doc in docs:
             bad = _check_row(doc)
             if bad is not None:
                 return stop(bad)
+            try:
+                fresh.append(_fresh_doc(doc))  # frozen exact-type copy with a plain UTC timestamp
+            except Exception:  # noqa: BLE001 - fixed code only
+                return stop(RetrievalReason.PAGE_ROW_INVALID)
+        docs = tuple(fresh)
         page_refs: set[str] = set()
         for doc in docs:
             key = _ref_key(doc.doc_ref)
@@ -545,7 +587,7 @@ class PostedReceiptsRetriever:
                 page_kept.append(doc)
             else:
                 page_counts[why] += 1
-        return RetrievalReason.OK, page_kept, page_counts, page_refs, len(docs)
+        return RetrievalReason.OK, page_kept, page_counts, page_refs, len(docs), snap, nxt, idx
 
     @staticmethod
     def _finish(
@@ -626,6 +668,13 @@ def _counts_ok(proof: ReceiptsProof) -> bool:
 
 
 def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
+    try:
+        return _completeness_unsafe(result)
+    except Exception:  # noqa: BLE001 - forged objects with unset slots: fixed code only
+        return CompletenessVerdict.INCOMPLETE, "PROOF_UNVERIFIABLE"
+
+
+def _completeness_unsafe(result: object) -> tuple[CompletenessVerdict, str]:
     """COMPLETE only for a result whose proof CONTENT is internally consistent and whose rows are
     re-validated. The digests are an integrity check, not authenticity: a caller can recompute them
     for a forged result, so every digest-bound field is cross-checked against the listing as well."""
@@ -640,7 +689,14 @@ def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
             and proof.terminal_page_reached is True and result.reason is RetrievalReason.OK):
         reason = result.reason if type(result.reason) is RetrievalReason else None
         return inc, reason.value if reason and reason is not RetrievalReason.OK else "RESULT_INCONSISTENT"
+    frozen: PurchaseListing | None
     try:
+        try:  # frozen plain-UTC copy: every later check and digest reads fixed values
+            frozen = _refreeze(listing)
+        except Exception:  # noqa: BLE001 - the specific checks below name the defect
+            frozen = None
+        if frozen is not None:
+            listing = frozen
         if type(proof.digest) is not str or canonical_digest(_proof_payload(proof)) != proof.digest:
             return inc, "PROOF_DIGEST_MISMATCH"
         if (type(proof.listing_digest) is not str
@@ -650,12 +706,12 @@ def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
         # every identity/period field is checked for its EXACT type before anything is compared, so
         # no str/datetime subclass (custom __eq__/__ne__/__lt__) can steer a comparison below
         if (type(s) is not PurchaseScope or _check_scope(s) is not None
-                or not _strict(listing.snapshot_ref)):
+                or not _snapshot_ok(listing.snapshot_ref)):
             return inc, "PROOF_SCOPE_MISMATCH"
         if (not all(_strict(getattr(proof, f)) for f in (
                 "alias_entity_id", "alias_namespace", "alias_value", "tenant_id", "company_ref",
                 "counterparty_ref", "source_id", "snapshot_ref", "direction", "reason"))
-                or not _currency_ok(proof.currency)
+                or not _snapshot_ok(proof.snapshot_ref) or not _currency_ok(proof.currency)
                 or not _aware(proof.from_inclusive) or not _aware(proof.until_exclusive)):
             return inc, "PROOF_CONTENT_INCONSISTENT"
         if proof.alias_entity_id != proof.counterparty_ref:
@@ -680,6 +736,8 @@ def _completeness(result: object) -> tuple[CompletenessVerdict, str]:
             return inc, "DOCUMENT_OUT_OF_SCOPE"
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
         return inc, "PROOF_UNVERIFIABLE"
+    if frozen is None:
+        return inc, "PROOF_UNVERIFIABLE"
     return CompletenessVerdict.COMPLETE, "PAGINATION_PROVEN_COMPLETE"
 
 
@@ -696,13 +754,31 @@ def _native_ok(native: object) -> bool:
     try:
         return (type(native) is PurchaseListing and native.complete is True
                 and type(native.scope) is PurchaseScope and _check_scope(native.scope) is None
-                and _strict(native.snapshot_ref) and type(native.documents) is tuple
-                and all(_check_row(d) is None for d in native.documents))
+                and _snapshot_ok(native.snapshot_ref) and type(native.documents) is tuple
+                and all(_check_row(d) is None for d in native.documents)
+                and _keys_unique(native.documents))
     except Exception:  # noqa: BLE001 - fixed code only, no text leak
         return False
 
 
 def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
+    """Never raises: a forged object (unset slots, hostile attributes) gives the fixed
+    ASSESSMENT_UNVERIFIABLE result. See ``_assess`` for the rules."""
+    try:
+        return _assess(native, result)
+    except Exception:  # noqa: BLE001 - fixed result, never an exception
+        return _unverifiable()
+
+
+def _unverifiable() -> ReceiptsAssessment:
+    return ReceiptsAssessment(
+        CompletenessVerdict.INCOMPLETE, "ASSESSMENT_UNVERIFIABLE", PurchaseResultKind.INCONCLUSIVE,
+        "ASSESSMENT_DIGEST_UNAVAILABLE", DiscrepancyVerdict.NOT_ASSESSABLE, (),
+        canonical_digest({"assessment": "UNVERIFIABLE", "authority": _AUTHORITY}),
+    )
+
+
+def _assess(native: object, result: object) -> ReceiptsAssessment:
     """Compare the retrieved gateway listing with the native journal listing; three verdicts.
 
     Correctness is only assessed against a gateway listing proven COMPLETE; otherwise it is
@@ -749,11 +825,7 @@ def assess_receipts(native: object, result: object) -> ReceiptsAssessment:
             "authority": _AUTHORITY,
         })
     except Exception:  # noqa: BLE001 - fixed result, never an exception
-        return ReceiptsAssessment(
-            CompletenessVerdict.INCOMPLETE, "ASSESSMENT_UNVERIFIABLE", PurchaseResultKind.INCONCLUSIVE,
-            "ASSESSMENT_DIGEST_UNAVAILABLE", DiscrepancyVerdict.NOT_ASSESSABLE, (),
-            canonical_digest({"assessment": "UNVERIFIABLE", "authority": _AUTHORITY}),
-        )
+        return _unverifiable()
     return ReceiptsAssessment(
         completeness, c_reason, correctness, k_reason, discrepancy, tuple(differences), digest,
     )

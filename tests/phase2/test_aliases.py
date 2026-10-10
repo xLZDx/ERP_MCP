@@ -406,3 +406,74 @@ def test_conflicting_second_decision_refused_and_first_kept():
     second = r.resolve_ambiguity(A, res.queue_item_id, "e2", HUMAN, "changed mind")
     assert second.outcome is AliasOutcome.REJECTED_CONFLICT and second.decision is None
     assert r.queue_items(A)[0].decision == first.decision
+
+
+# ---- hardening: exact types, 1C empty reference, hostile objects -------------------------------
+class _LyingStr(str):
+    def __iter__(self):
+        return iter("e1")
+
+    def __len__(self):
+        return 2
+
+    def strip(self, chars=None):
+        return "e1"
+
+    def __eq__(self, other):
+        return True
+
+    __hash__ = str.__hash__
+
+
+EMPTY_REF = "00000000-0000-0000-0000-000000000000"
+
+
+def test_reference_with_str_subclass_parts_is_invalid():
+    assert not Reference(_LyingStr("tax\u200bid"), "v").valid()
+    assert not Reference(TAX, _LyingStr("v\u200b1")).valid()
+
+
+def test_add_entity_and_alias_refuse_str_subclass_ids():
+    r = _res()
+    assert r.add_entity(_ent(_LyingStr("e\u200b1"), A)).outcome is AliasOutcome.REJECTED_INPUT
+    assert r.add_entity(_ent("e1", A)).ok
+    res = r.add_alias(AliasRecord(_LyingStr("e1"), A, "import", alias_text="x"))
+    assert res.outcome is AliasOutcome.REJECTED_INPUT
+
+
+def test_resolve_ambiguity_refuses_lying_eq_choice_and_item_id():
+    r = _res()
+    res = _ambiguous(r)
+    bad = r.resolve_ambiguity(A, res.queue_item_id, _LyingStr("zzz"), HUMAN, "why")
+    assert bad.outcome is AliasOutcome.REJECTED_CHOICE
+    bad_item = r.resolve_ambiguity(A, _LyingStr(res.queue_item_id), "e1", HUMAN, "why")
+    assert bad_item.outcome is AliasOutcome.UNKNOWN_ITEM
+    assert r.queue_items(A)[0].decision is None
+
+
+@pytest.mark.parametrize("empty", [EMPTY_REF, "{" + EMPTY_REF + "}", EMPTY_REF.replace("-", "")])
+def test_1c_empty_reference_is_never_a_valid_reference(empty):
+    assert not Reference("1c_ref", empty).valid()
+    r = _res()
+    ent = SupplierEntity("e1", A, "Acme", (Reference("1c_ref", empty),))
+    assert r.add_entity(ent).outcome is AliasOutcome.REJECTED_INPUT
+    assert r.add_entity(_ent("e2", A)).ok
+    res = r.add_alias(AliasRecord("e2", A, "import", reference=Reference("1c_ref", empty)))
+    assert res.outcome is AliasOutcome.REJECTED_INPUT
+    found = r.resolve(A, ResolveQuery(reference=Reference("1c_ref", empty)))
+    assert found.outcome is AliasOutcome.REJECTED_INPUT and found.entity_id is None
+
+
+def test_hostile_scope_objects_never_raise():
+    r = _res()
+    r.add_entity(_ent("e1", A))
+    blank = object.__new__(AliasScope)
+    res = r.resolve(blank, ResolveQuery(reference=Reference(TAX, "AB-123")))
+    assert res.outcome is AliasOutcome.SCOPE_VIOLATION and res.entity_id is None
+    assert r.queue_items(blank) == ()
+    assert r.resolve_ambiguity(blank, "x", "e1", HUMAN, "why").outcome is AliasOutcome.SCOPE_VIOLATION
+    assert r.add_entity(SupplierEntity("e9", blank, "N")).outcome is AliasOutcome.SCOPE_VIOLATION
+    assert r.add_alias(AliasRecord("e1", blank, "p", alias_text="x")).outcome is AliasOutcome.SCOPE_VIOLATION
+    half = object.__new__(AliasScope)
+    object.__setattr__(half, "tenant_id", "t1")
+    assert r.resolve(half, ResolveQuery()).outcome is AliasOutcome.SCOPE_VIOLATION

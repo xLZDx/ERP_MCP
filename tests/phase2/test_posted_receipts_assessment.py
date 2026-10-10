@@ -427,7 +427,7 @@ def test_m03_str_subclass_proof_fields_with_lying_comparisons_are_refused(field,
 
 def test_m06_resealed_listing_with_a_lying_datetime_row_is_not_complete():
     res = get(three_pages())
-    far = doc("x-2028", at=_LyingDT(2028, 1, 1, tzinfo=UTC))
+    far = forge(doc("x-2028"), occurred_at=_LyingDT(2028, 1, 1, tzinfo=UTC))
     listing = replace(res.listing, documents=(*res.listing.documents, far))
     forged = reseal(res, listing=listing, kept_count=res.proof.kept_count + 1,
                     rows_seen=res.proof.rows_seen + 1)

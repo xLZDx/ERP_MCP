@@ -70,7 +70,7 @@ from datetime import date
 from decimal import Context, Decimal, Inexact, localcontext
 from enum import StrEnum
 
-from ._identity import clean_identity, is_empty_1c_ref, stable_key
+from ._identity import canonical_guid, clean_identity, is_empty_1c_ref, stable_key
 
 __all__ = [
     "AgingBucket", "AgingResult", "AgingState", "ApViewState", "BalanceView", "InputName",
@@ -265,6 +265,16 @@ def _is_date(value: object) -> bool:
     return type(value) is date
 
 
+def _empty_ref(value: object) -> bool:
+    """The 1C empty reference in ANY spelling: the raw text and its normalised form are both tested."""
+    return is_empty_1c_ref(value) or is_empty_1c_ref(clean_identity(value))
+
+
+def _doc_key(value: object) -> str:
+    """One key per document: the canonical GUID when GUID-shaped, else the normalised identity."""
+    return canonical_guid(clean_identity(value)) or clean_identity(value)
+
+
 def _norm_tuple(value: object, *, strict: bool = False) -> tuple[str, ...] | None:
     """Sorted unique normalised identities; None when the container or any element is unusable.
 
@@ -273,7 +283,7 @@ def _norm_tuple(value: object, *, strict: bool = False) -> tuple[str, ...] | Non
         return None
     out: dict[str, str] = {}
     for item in value:
-        if type(item) is not str or is_empty_1c_ref(item):
+        if type(item) is not str or _empty_ref(item):
             return None
         norm = clean_identity(item)
         if not norm:
@@ -290,13 +300,13 @@ def _ident(value: object) -> str:
 
 
 def _scalar_ok(value: object) -> bool:
-    return type(value) is str and not is_empty_1c_ref(value)
+    return type(value) is str and not _empty_ref(value)
 
 
 def _bound_ok(strategy: StrategyResult) -> bool:
     """A QUALIFIED result must carry plain-str bound scope and plain dates (hand-built ones may not)."""
     for text in (strategy.company, strategy.currency, strategy.tenant_id, strategy.source_id):
-        if type(text) is not str or not text or is_empty_1c_ref(text):
+        if type(text) is not str or not text or _empty_ref(text):
             return False
     return type(strategy.period_from) is date and type(strategy.period_until) is date
 
@@ -541,10 +551,10 @@ def _aging(strategy: object, items: object, as_of: object, declared_total: objec
                 or _ident(item.tenant_id) != strategy.tenant_id
                 or _ident(item.source_id) != strategy.source_id):
             return _no_aging(Reason.ITEM_SCOPE_MISMATCH, as_of)
-        ref = _ident(item.doc_ref)
+        ref = _doc_key(item.doc_ref) if type(item.doc_ref) is str else ""
         if not ref:
             return _no_aging(Reason.ITEM_REF_INVALID, as_of)
-        if is_empty_1c_ref(item.doc_ref):  # the 1C empty reference identifies no document
+        if _empty_ref(item.doc_ref):  # the 1C empty reference identifies no document
             return _no_aging(Reason.DOC_REF_EMPTY_1C, as_of)
         if item.document_date is None or item.due_date is None:
             return _no_aging(Reason.DATE_MISSING, as_of)
@@ -573,7 +583,7 @@ def _aging(strategy: object, items: object, as_of: object, declared_total: objec
                   as_of.isoformat(), strategy.digest, strategy.tenant_id, strategy.source_id,  # type: ignore[union-attr]
                   _dec_text(open_total),
                   *(f"{b.value}={_dec_text(v)}" for b, v in buckets),
-                  *sorted(stable_key(clean_identity(i.doc_ref), i.document_date.isoformat(),
+                  *sorted(stable_key(_doc_key(i.doc_ref), i.document_date.isoformat(),
                                      i.due_date.isoformat(), _dec_text(i.amount)) for i in items))
     return AgingResult(AgingState.AVAILABLE, Reason.AGING_COMPUTED, as_of, open_total, buckets, digest,
                        tenant_id=strategy.tenant_id, source_id=strategy.source_id)

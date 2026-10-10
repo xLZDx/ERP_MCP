@@ -2,7 +2,7 @@
 refusals before any fetch and hostile rows. Pure fixtures; no I/O."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -264,7 +264,7 @@ def test_a_str_subclass_kind_cannot_pass_the_direction_gate():
 
 
 def test_a_str_subclass_in_a_document_field_is_refused():
-    row = doc("a", vendor=_LyingStr(VENDOR))
+    row = forge(doc("a"), counterparty_ref=_LyingStr(VENDOR))  # constructors refuse subclasses
     res = retriever({None: page([row], kinds=("RECEIPT",))})[0].retrieve(request())
     assert res.reason is RetrievalReason.PAGE_IDENTITY_INVALID and res.listing is None
 
@@ -476,7 +476,8 @@ def test_retrieval_is_read_only_scope_passed_unchanged_and_result_frozen():
     r, src = retriever({None: page([doc("a")])})
     sc = scope()
     res = r.retrieve(request(sc=sc))
-    assert src.calls[0][0] is sc
+    assert src.calls[0][0] == sc  # the port gets a frozen plain-UTC copy, equal to the request scope
+    assert src.calls[0][0].from_inclusive.tzinfo is UTC
     with pytest.raises(AttributeError):
         res.complete = False  # frozen
 
@@ -539,7 +540,7 @@ def _lying(y):
 
 
 def test_m06_datetime_subclass_with_lying_comparisons_cannot_pass_the_period_check():
-    far = doc("d-2028", at=_lying(2028))
+    far = forge(doc("d-2028"), occurred_at=_lying(2028))
     r, _ = retriever({None: page([doc("d-1"), far])})
     res = r.retrieve(request())
     assert res.complete is False and res.reason is RetrievalReason.PAGE_ROW_INVALID
@@ -554,8 +555,7 @@ class _NeverAfterDT(datetime):
 
 def test_m06_scope_bounds_must_be_exact_datetimes():
     from datetime import UTC
-    bad = PurchaseScope("t", "onec-reference", COMPANY, VENDOR,
-                        _NeverAfterDT(2030, 1, 1, tzinfo=UTC), UNTIL, "MDL")
+    bad = forge_scope(scope(), from_inclusive=_NeverAfterDT(2030, 1, 1, tzinfo=UTC))
     r, src = retriever({None: page([doc("d-1")])})
     res = r.retrieve(request(sc=bad))
     assert res.complete is False and res.reason is RetrievalReason.PERIOD_INVALID
