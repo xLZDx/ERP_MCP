@@ -163,6 +163,35 @@ def test_same_event_id_on_another_connection_is_a_different_event():
 
 # ---- scripted faults: 429, network, duplicate ack ---------------------------------------------------
 
+def test_quarantine_count_is_company_scoped_within_a_tenant():
+    env = Env()
+    env.reg([ev(1, eid="EVT-A")])
+    env.reg([ev(1, eid="EVT-A", digest=dg("tampered"))])
+    assert env.planner.quarantine_count(S1) == 1
+    assert env.planner.quarantine_count(S1B) == 0  # company B never sees company A's quarantine
+
+
+def test_same_event_id_in_two_companies_is_published_for_each_and_never_acked_as_duplicate():
+    env = Env()
+    env.reg([ev(1, eid="EVT-SAME")])
+    env.reg([ev(1, eid="EVT-SAME")], scope=S1B, source="SRC-1B")
+    a = env.drain()[-1]
+    b = env.drain(scope=S1B, source="SRC-1B")[-1]
+    assert a.status is DeliveryStatus.COMPLETE and b.status is DeliveryStatus.COMPLETE
+    assert len(env.sink.published) == 2 and len(env.sink.calls) == 2  # both really published
+    assert env.planner.records(S1B, "SRC-1B", "CON-1")[0].status is RecordStatus.DELIVERED
+
+
+def test_same_event_id_with_conflicting_digests_across_companies_both_publish_their_own_digest():
+    env = Env()
+    env.reg([ev(1, eid="EVT-SAME", digest=dg("a-content"))])
+    env.reg([ev(1, eid="EVT-SAME", digest=dg("b-content"))], scope=S1B, source="SRC-1B")
+    env.drain()
+    env.drain(scope=S1B, source="SRC-1B")
+    assert {p[4] for p in env.sink.published} == {dg("a-content"), dg("b-content")}
+    assert env.planner.quarantine_count(S1) == 0 and env.planner.quarantine_count(S1B) == 0
+
+
 def test_429_network_failure_lost_ack_then_success_publishes_each_event_exactly_once_in_order():
     env = Env(base_delay=1, max_attempts=10)
     env.sink.script("t1", [SinkKind.RATE_LIMITED, SinkKind.NETWORK_FAILURE, "LOST_ACK"], retry_after=5)

@@ -85,8 +85,31 @@ class SlotResult:
     status: SlotStatus
     evidence_digest: str | None  # digest of the supplied reference, never of an artifact that was read
 
+    def __post_init__(self) -> None:
+        ok = type(self.slot) is SlotKind and type(self.status) is SlotStatus
+        if ok:
+            if self.status is SlotStatus.NOT_RUN:
+                ok = self.evidence_digest is None
+            else:
+                ok = is_digest(self.evidence_digest)
+        if not ok:
+            raise ValueError("SLOT_RESULT_INVALID")
+
     def __repr__(self) -> str:
         return f"SlotResult({self.slot.value}, {self.status.value})"
+
+
+def _statement(not_run: tuple[SlotKind, ...]) -> str:
+    """The single fixed wording; it never expresses a passed gate."""
+    if not_run:
+        return ("G6-pre is NOT PASSED and cannot be evaluated offline. NOT_RUN: "
+                + ", ".join(k.value for k in not_run))
+    return "G6-pre is NOT PASSED: evidence references were received but are UNVERIFIED by this package."
+
+
+def _report_digest(head: str, slots: tuple[SlotResult, ...]) -> str:
+    return canonical_digest({"head": head, "slots": [(r.slot.value, r.status.value, r.evidence_digest) for r in slots],
+                             "authority": AUTHORITY})
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +120,25 @@ class ReadinessReport:
     statement: str
     report_digest: str
     authority: str = AUTHORITY
+
+    def __post_init__(self) -> None:
+        try:
+            ok = (type(self.head) is str and _HEAD.fullmatch(self.head) is not None
+                  and type(self.slots) is tuple and len(self.slots) == len(SlotKind)
+                  and all(type(r) is SlotResult and r.slot is k for r, k in zip(self.slots, SlotKind, strict=True))
+                  and type(self.not_run) is tuple)
+            if ok:
+                for r in self.slots:  # revalidate: a SlotResult may have been forged around its constructor
+                    SlotResult(r.slot, r.status, r.evidence_digest)
+                derived = tuple(r.slot for r in self.slots if r.status is SlotStatus.NOT_RUN)
+                ok = (self.not_run == derived and type(self.statement) is str
+                      and self.statement == _statement(derived)
+                      and type(self.report_digest) is str and self.report_digest == _report_digest(self.head, self.slots)
+                      and type(self.authority) is str and self.authority == AUTHORITY)
+        except Exception:  # noqa: BLE001 - any malformed field is the same fixed refusal
+            ok = False
+        if not ok:
+            raise ValueError("READINESS_REPORT_INVALID")
 
     def __repr__(self) -> str:
         return f"ReadinessReport(not_run={len(self.not_run)})"
@@ -140,11 +182,6 @@ def build_readiness(evidence_refs: object, head: object, ids: object = None) -> 
             else SlotResult(kind, SlotStatus.NOT_RUN, None)
             for kind in SlotKind)
         not_run = tuple(r.slot for r in results if r.status is SlotStatus.NOT_RUN)
-        statement = ("G6-pre is NOT PASSED and cannot be evaluated offline. NOT_RUN: "
-                     + ", ".join(k.value for k in not_run) if not_run else
-                     "G6-pre is NOT PASSED: evidence references were received but are UNVERIFIED by this package.")
-        digest = canonical_digest({"head": head, "slots": [(r.slot.value, r.status.value, r.evidence_digest)
-                                                            for r in results], "authority": AUTHORITY})
-        return ReadinessReport(head, results, not_run, statement, digest)
+        return ReadinessReport(head, results, not_run, _statement(not_run), _report_digest(head, results))
     except Exception:  # noqa: BLE001 - public boundary: fixed refusal
         return ops_refusal(OpsReason.INTERNAL_REFUSED, ids)

@@ -625,12 +625,25 @@ def test_attestation_port_answering_valid_with_a_wrong_code_is_still_stale(world
     assert OpsReason.RESTORE_ATTESTATION_STALE in world.pair(attestations=Truthy()).codes
 
 
-def test_attestation_port_is_not_needed_when_the_restore_has_no_attestation_rows(world):
+def test_an_empty_attestation_table_cannot_verify_accepted_heads_that_rest_on_attestations(world):
     rows = copy.deepcopy(world.rows)
     rows["attestations"] = []
     src = world.build(rows)
     report = world.verify(src, src, attestations=None)
-    assert report.verified is True
+    assert report.verified is False
+    assert OpsReason.RESTORE_ATTESTATION_STALE in report.codes
+    assert _failed(report)[CheckName.ATTESTATION].tables == ("attestations",)
+
+
+def test_an_empty_attestation_table_is_fine_when_no_accepted_head_has_a_revision(world):
+    rows = copy.deepcopy(world.rows)
+    rows["attestations"] = []
+    for head in rows["accepted_heads"]:
+        head.update({"version": 0, "revision_id": None})
+    rows["acceptance_events"] = []
+    src = world.build(rows)
+    report = world.verify(src, src, attestations=None)
+    assert CheckName.ATTESTATION not in _failed(report)
 
 
 def test_forged_report_pieces_are_rejected():

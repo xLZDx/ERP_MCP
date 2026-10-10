@@ -293,7 +293,7 @@ class _Ledger:
         self.backend: dict[str, int] = {}
         self.tenant: dict[tuple[str, str], int] = {}
         self.capture: dict[str, int] = {}
-        self.writer: dict[str, int] = {}
+        self.writer: dict[tuple[str, str], int] = {}  # keyed by the tenant-scoped source identity
         self.granted = [0] * n
         self.reason: list[OpsReason | None] = [None] * n
 
@@ -310,7 +310,7 @@ def _grant(ledger: _Ledger, idx: int, item: tuple[str, str, str, WorkClass, int]
     if work is WorkClass.CAPTURE:
         cap = ledger.policy.capture_per_backend - ledger.capture.get(backend, 0)
     elif work is WorkClass.WRITER:
-        cap = ledger.policy.writer_per_source - ledger.writer.get(source, 0)
+        cap = ledger.policy.writer_per_source - ledger.writer.get((tenant, source), 0)
     else:
         cap = take
     for limit in (cap, pool_left, ledger.per_limit - ledger.backend.get(backend, 0),
@@ -324,7 +324,7 @@ def _grant(ledger: _Ledger, idx: int, item: tuple[str, str, str, WorkClass, int]
     if work is WorkClass.CAPTURE:
         ledger.capture[backend] = ledger.capture.get(backend, 0) + take
     elif work is WorkClass.WRITER:
-        ledger.writer[source] = ledger.writer.get(source, 0) + take
+        ledger.writer[(tenant, source)] = ledger.writer.get((tenant, source), 0) + take
     ledger.reason[idx] = reason
     return take
 
@@ -351,6 +351,13 @@ def plan_budget(policy: object, demand: object, budget: object, ids: object) -> 
         min_bg = policy.min_background_slots  # type: ignore[attr-defined]
         interactive_backends = {items[i][1] for i in interactive}
         if len(interactive_backends) > total_limit:  # cannot keep one interactive slot per backend
+            return ops_refusal(OpsReason.BACKEND_BUDGET_EXCEEDED, ids)
+        bg_demand: dict[str, int] = {}
+        for i in background:
+            bg_demand[items[i][1]] = bg_demand.get(items[i][1], 0) + items[i][4]
+        # the guaranteed background minimum plus one interactive slot per interactive backend must fit the shared total
+        needed = len(interactive_backends) + sum(min(min_bg, n) for n in bg_demand.values())
+        if needed > total_limit:
             return ops_refusal(OpsReason.BACKEND_BUDGET_EXCEEDED, ids)
         guaranteed: dict[str, int] = {}
         for i in background:  # phase A: background up to its guaranteed minimum per backend

@@ -462,9 +462,20 @@ def _read_plan(plan: object) -> tuple[str, int, tuple[object, ...]] | None:
         if (not _id_ok(target) or not is_exact_int(max_head, 0, _MAX_FORMAT)
                 or type(steps_raw) not in (tuple, list) or not 1 <= len(steps_raw) <= _MAX_PLAN_STEPS):
             return None
-        return target, max_head, tuple(steps_raw)
+        return target, max_head, tuple(_snapshot_step(s) for s in tuple(steps_raw))
     except Exception:  # noqa: BLE001
         return None
+
+
+def _snapshot_step(step: object) -> object:
+    """Fresh ``MigrationStep`` copy (one read per field); anything unreadable becomes an unclassifiable sentinel."""
+    try:
+        if type(step) is not MigrationStep:
+            return object()
+        phase, kind, schema, object_class = step.phase, step.kind, step.schema, step.object_class
+        return MigrationStep(phase, kind, schema, object_class)
+    except Exception:  # noqa: BLE001 - forged instance: slots never set
+        return object()
 
 
 @dataclass(frozen=True, slots=True)

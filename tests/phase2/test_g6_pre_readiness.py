@@ -132,3 +132,35 @@ def test_repr_never_contains_input_text():
 def test_too_many_references_are_refused():
     out = build_readiness([ref()] * 2000, HEAD, FakeCorrelationSource())
     assert type(out) is OpsRefusal
+
+
+def test_public_constructors_cannot_fabricate_a_passed_or_inconsistent_report():
+    from business_ai_gateway.phase2.g6_pre_readiness import SlotResult
+
+    with pytest.raises(ValueError, match="READINESS_REPORT_INVALID"):
+        ReadinessReport("abcdef1234567", (), (), "G6-pre PASSED", "0" * 64, "CERTIFIED")
+    with pytest.raises(ValueError, match="SLOT_RESULT_INVALID"):
+        SlotResult(SlotKind.REPEATABLE_RESTORE_REHEARSAL, "PASSED", None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="SLOT_RESULT_INVALID"):
+        SlotResult(SlotKind.REPEATABLE_RESTORE_REHEARSAL, SlotStatus.NOT_RUN, DIGEST)
+    with pytest.raises(ValueError, match="SLOT_RESULT_INVALID"):
+        SlotResult(SlotKind.REPEATABLE_RESTORE_REHEARSAL, SlotStatus.EVIDENCE_RECEIVED_UNVERIFIED, None)
+
+
+def test_a_report_rebuilt_from_its_own_fields_is_accepted_but_any_tampered_field_is_not():
+    good = build_readiness((ref(),), HEAD)
+    assert ReadinessReport(good.head, good.slots, good.not_run, good.statement, good.report_digest) == good
+    base = (good.head, good.slots, good.not_run, good.statement, good.report_digest)
+    tampered = [
+        (base[0], base[1], base[2], "G6-pre PASSED", base[4]),
+        (base[0], base[1], base[2], base[3], "0" * 64),
+        (base[0], base[1], (), base[3], base[4]),
+        (base[0], base[1][:-1], base[2], base[3], base[4]),
+        (base[0], tuple(reversed(base[1])), base[2], base[3], base[4]),
+        ("zz", base[1], base[2], base[3], base[4]),
+    ]
+    for args in tampered:
+        with pytest.raises(ValueError, match="READINESS_REPORT_INVALID"):
+            ReadinessReport(*args)
+    with pytest.raises(ValueError, match="READINESS_REPORT_INVALID"):
+        ReadinessReport(*base, "CERTIFIED")
