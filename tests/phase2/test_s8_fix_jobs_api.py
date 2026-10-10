@@ -496,8 +496,8 @@ def test_idempotency_retention_exactly_at_the_window(env):
     env.clock.advance(3599)
     assert env.enqueue().reason_code is R.REPLAYED
     env.clock.advance(1)  # exactly the retention window
-    assert env.enqueue().http_class == 202  # the key is genuinely new again
-    assert len(env.dispatcher.calls) == 2
+    assert env.enqueue().http_class == 202  # the idempotency slot is new again
+    assert len(env.dispatcher.calls) == 1  # S8 GPT M06: same dispatch key -> the existing job is reused
 
 
 # ---------------------------------------------------------------- 5. boundary binding / capture policy

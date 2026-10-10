@@ -11,6 +11,7 @@ import itertools
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -44,6 +45,20 @@ from business_ai_gateway.phase2.validation_coverage import (
     build_matrix,
 )
 from business_ai_gateway.phase2.workbench_types import ReasonCode, SafeError, ViewerScope
+
+
+class _AllOwned:
+    """Permissive OwnershipPort: these tests pin scope/view behavior, not ownership (see test_s8_gpt_fix_views)."""
+
+    def owns(self, tenant_id, company_id, kind, ref):
+        return True
+
+
+_ALL_OWNED = _AllOwned()
+build_coverage_panel = partial(build_coverage_panel, ownership=_ALL_OWNED)
+build_scoped_diff = partial(build_scoped_diff, ownership=_ALL_OWNED)
+build_scoped_evidence = partial(build_scoped_evidence, ownership=_ALL_OWNED)
+
 
 T0 = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 A, B = ClaimScope("t1", "A"), ClaimScope("t1", "B")

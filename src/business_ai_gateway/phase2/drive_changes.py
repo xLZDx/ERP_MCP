@@ -28,6 +28,12 @@ class DriveChange:
     mime_type: str | None = None
     parents: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        # A drive id is compared with ``==`` / ``!=``: only an exact plain str (or None) is allowed, so a
+        # str subclass with a lying comparison can never pass a drive filter.
+        if self.drive_id is not None and type(self.drive_id) is not str:
+            raise ValueError("INVALID_DRIVE_CHANGE")
+
 
 @dataclass(frozen=True, slots=True)
 class DrivePage:
@@ -53,6 +59,7 @@ class DrivePage:
                 or type(c.file_id) is not str or not c.file_id
                 or type(c.change_id) is not str or not c.change_id
                 or type(c.kind) is not DriveChangeKind
+                or (c.drive_id is not None and type(c.drive_id) is not str)
                 for c in self.changes
             )
         except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
@@ -144,6 +151,8 @@ class DriveChangeProjector:
     ):
         if not connection_id or not callable(file_scope_allowed):
             raise ValueError("DRIVE_SCOPE_REQUIRED")
+        if drive_id is not None and type(drive_id) is not str:
+            raise ValueError("DRIVE_SCOPE_REQUIRED")
         self.connection_id, self.drive_id = connection_id, drive_id
         self._scope_allowed = file_scope_allowed
 
@@ -160,22 +169,42 @@ class DriveChangeProjector:
         seen: set[str] = set()
         requalify_seen: set[str] = set()
         for item in page.changes:
+            # Re-validate every change at the comparison site (a forged change / page can bypass the
+            # constructors): exact types only, and compare PLAIN copies of the drive ids.
+            try:
+                item_drive = item.drive_id
+                if (
+                    type(item) is not DriveChange
+                    or type(item.change_id) is not str
+                    or type(item.file_id) is not str
+                    or type(item.kind) is not DriveChangeKind
+                    or (item_drive is not None and type(item_drive) is not str)
+                ):
+                    raise ValueError("INVALID_DRIVE_CHANGE")
+                item_mime = item.mime_type
+            except ValueError:
+                raise
+            except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
+                raise ValueError("INVALID_DRIVE_CHANGE") from None
             if item.change_id in seen:
                 raise ValueError("DUPLICATE_CHANGE_ID_IN_PAGE")
             seen.add(item.change_id)
-            if self.drive_id is not None and item.drive_id != self.drive_id:
-                if item.drive_id is None and item.kind == DriveChangeKind.UNKNOWN:
+            if self.drive_id is not None and item_drive != self.drive_id:
+                if item_drive is None and item.kind is DriveChangeKind.UNKNOWN:
                     unknown += 1  # ambiguous origin, not provably another drive
+                    continue
+                if item_drive is None and item.kind is DriveChangeKind.REMOVED:
+                    pass  # unknown origin: a removal is never dropped silently (tombstone + requalify below)
                 else:
-                    denied += 1
-                continue
+                    denied += 1  # provably another drive
+                    continue
             if item.kind == DriveChangeKind.UNKNOWN:
                 # Neither evidence nor provably irrelevant: surface it, do not count as denied.
                 unknown += 1
                 continue
-            is_folder = item.mime_type == FOLDER_MIME_TYPE
+            is_folder = type(item_mime) is str and item_mime == FOLDER_MIME_TYPE
             # A tombstone often carries no file metadata: treat it as a possible folder.
-            if ((is_folder or (item.kind == DriveChangeKind.REMOVED and item.mime_type is None))
+            if ((is_folder or (item.kind == DriveChangeKind.REMOVED and item_mime is None))
                     and item.file_id not in requalify_seen):
                 requalify_seen.add(item.file_id)
                 requalify.append(item.file_id)

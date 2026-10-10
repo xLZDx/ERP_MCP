@@ -62,6 +62,7 @@ from .jobs_api import (
     RerunRequest,
     RunState,
     SessionRecord,
+    _session_ok,
     decide_enqueue,
     decide_rerun,
     read_job,
@@ -237,15 +238,9 @@ class WorkbenchSession:
         ``None`` means admitted. Non-member, unknown company, foreign tenant and an unusable viewer are all
         ``NOT_IN_SCOPE``; the scope epoch is not read here (nor before this passes).
         """
-        try:
-            if type(session) is not SessionRecord:
-                return self._refusal(_R.SESSION_INVALID)
-            tenant, actor, expires = session.tenant_id, session.actor_id, session.expires_at
-            if (type(tenant) is not str or type(actor) is not str or not tenant or not actor
-                    or type(expires) is not datetime or expires.utcoffset() is None):
-                return self._refusal(_R.SESSION_INVALID)
-        except Exception:  # noqa: BLE001 - forged instance
+        if not _session_ok(session):  # strict, every field (also for read-only paths): a forged record is refused
             return self._refusal(_R.SESSION_INVALID)
+        tenant, actor, expires = session.tenant_id, session.actor_id, session.expires_at  # type: ignore[attr-defined]
         if not is_valid_scope(viewer) or viewer.tenant_id != tenant:  # type: ignore[attr-defined]
             return self._refusal(_R.NOT_IN_SCOPE)
         corr = self._next_corr()
@@ -343,7 +338,8 @@ class WorkbenchSession:
             clock = self._ctx.clock.now  # type: ignore[attr-defined]
             built = build_timeline(
                 viewer, self._authority, self._ledger, self._attestations, self._subjects(),
-                self._feeds(), self._matrix(), self._policy(), clock, correlation_id=self._next_corr())
+                self._feeds(), self._matrix(), self._policy(), clock, ownership=self._ctx.ownership,
+                correlation_id=self._next_corr())
             if type(built) is not TimelineView:
                 return built
             return render_guard(built, self._authority, correlation_id=self._next_corr())
@@ -354,7 +350,8 @@ class WorkbenchSession:
         if refused is not None:
             return refused
         return self._guarded_view(lambda: build_coverage_panel(
-            viewer, self._authority, self._matrix(), correlation_id=self._next_corr()))  # type: ignore[return-value]
+            viewer, self._authority, self._matrix(), ownership=self._ctx.ownership,
+            correlation_id=self._next_corr()))  # type: ignore[return-value]
 
     def diff(self, session: SessionRecord, viewer: ViewerScope) -> ScopedDiffView | SafeError:
         refused = self._admit(session, viewer)
@@ -362,7 +359,7 @@ class WorkbenchSession:
             return refused
         return self._guarded_view(lambda: build_scoped_diff(
             viewer, self._authority, self._ledger, self._subjects(),
-            correlation_id=self._next_corr()))  # type: ignore[return-value]
+            ownership=self._ctx.ownership, correlation_id=self._next_corr()))  # type: ignore[return-value]
 
     def evidence(self, session: SessionRecord, viewer: ViewerScope) -> ScopedEvidenceView | SafeError:
         refused = self._admit(session, viewer)
@@ -372,7 +369,7 @@ class WorkbenchSession:
         def build() -> object:
             claims, evidence, links = self._evidence()  # type: ignore[misc]
             return build_scoped_evidence(viewer, self._authority, claims, evidence, links,
-                                         correlation_id=self._next_corr())
+                                         ownership=self._ctx.ownership, correlation_id=self._next_corr())
         return self._guarded_view(build)  # type: ignore[return-value]
 
     def _guarded_view(self, build: Callable[[], object]) -> object:

@@ -59,6 +59,7 @@ from .validation_coverage import CoverageCode, CoverageStatus, MatrixResult, Mat
 from .workbench_types import (
     AUTHORITY,
     DEFAULT_CORRELATION_ID,
+    OwnershipPort,
     ReasonCode,
     SafeError,
     ViewerScope,
@@ -67,13 +68,46 @@ from .workbench_types import (
 )
 
 __all__ = [
-    "BASIS", "EFFECTIVE_AT_LABEL", "EFFECTIVE_UNKNOWN_LABEL", "HISTORICAL_LABEL", "KNOWN_AT_LABEL",
-    "OTHER", "OWN", "SIBLING",
-    "Applicability", "ApplicabilityPolicy", "ApplicabilityReason", "EffectiveTimeLabel", "EntryKind",
-    "EventFeed", "KnownTimeLabel", "Refuse", "RunBinding", "ScopeAuthority", "ScopedMatrix",
-    "TimelineEntry", "TimelineSubject", "TimelineView", "build_timeline", "check_epoch", "digest_ok",
-    "guard", "is_green", "matrix_digest", "provider", "provider_invalid", "render_guard", "scope_relation",
-    "scoped_matrix", "text_ok", "utc_exact", "viewer_and_epoch",
+    "BASIS",
+    "EFFECTIVE_AT_LABEL",
+    "EFFECTIVE_UNKNOWN_LABEL",
+    "HISTORICAL_LABEL",
+    "KNOWN_AT_LABEL",
+    "OTHER",
+    "OWN",
+    "SIBLING",
+    "Applicability",
+    "ApplicabilityPolicy",
+    "ApplicabilityReason",
+    "EffectiveTimeLabel",
+    "EntryKind",
+    "EventFeed",
+    "KnownTimeLabel",
+    "Refuse",
+    "RunBinding",
+    "ScopeAuthority",
+    "ScopedMatrix",
+    "TimelineEntry",
+    "TimelineSubject",
+    "TimelineView",
+    "build_timeline",
+    "check_epoch",
+    "check_ownership_port",
+    "check_run_record",
+    "collect_own_subjects",
+    "digest_ok",
+    "guard",
+    "is_green",
+    "matrix_digest",
+    "owns_key",
+    "provider",
+    "provider_invalid",
+    "render_guard",
+    "scope_relation",
+    "scoped_matrix",
+    "text_ok",
+    "utc_exact",
+    "viewer_and_epoch",
 ]
 
 KNOWN_AT_LABEL: Final = "KNOWN_AT"
@@ -198,16 +232,16 @@ def _clock_now(clock: object) -> datetime:
 
 
 def scope_relation(viewer: ViewerScope, tenant: object, company: object) -> str:
-    """The single identity rule: OWN only for exact ``str`` equality of tenant AND company; SIBLING for
-    another company (or a casefold/NFKC variant) of the same tenant; OTHER for everything else."""
+    """The single identity rule: OWN only for exact ``str`` equality of tenant AND company; SIBLING only for
+    another company of the EXACTLY equal tenant; OTHER for everything else (any casefold/NFKC variant of the
+    tenant is another tenant and leaves no trace)."""
     try:
         vt, vc = viewer.tenant_id, viewer.company_id
         if not all(type(x) is str for x in (vt, vc, tenant, company)):
             return OTHER
         if tenant == vt and company == vc:
             return OWN
-        normal = clean_identity(vt)
-        return SIBLING if normal and clean_identity(tenant) == normal else OTHER
+        return SIBLING if tenant == vt else OTHER
     except Exception:  # noqa: BLE001 - hostile viewer object
         return OTHER
 
@@ -608,12 +642,65 @@ def _event_block(marks: list[tuple[datetime, EventKind]], recorded: datetime | N
                  ) -> ApplicabilityReason | None:
     if recorded is None:
         return None
-    newer = {kind for at, kind in marks if at > recorded}
+    # No persisted event order exists, so a timestamp tie is conservatively treated as "after" the run.
+    newer = {kind for at, kind in marks if at >= recorded}
     if EventKind.ATTESTATION_REVOKED in newer:
         return ApplicabilityReason.ATTESTATION_REVOKED
     if newer & {EventKind.GAP, EventKind.SOURCE_UNAVAILABLE}:
         return ApplicabilityReason.HISTORY_GAP
     return None
+
+
+def check_ownership_port(ownership: object) -> None:
+    """The injected ``OwnershipPort`` must expose a callable ``owns``; anything else is a caller fault."""
+    if not callable(getattr(type(ownership), "owns", None)):
+        raise Refuse(ReasonCode.INPUT_INVALID)
+
+
+def owns_key(ownership: object, tenant_id: str, company_id: str, comparison_key: str) -> bool:
+    """Independent ownership proof of one comparison key; only an exact ``True`` counts, a fault is False."""
+    try:
+        return ownership.owns(tenant_id, company_id, "comparison_key", comparison_key) is True  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - a port fault reads as "not owned", never as an error text
+        return False
+
+
+def collect_own_subjects(viewer: ViewerScope, subjects: tuple[TimelineSubject, ...], ownership: object,
+                         ) -> tuple[list[TimelineSubject], bool]:
+    """The viewer's own, ownership-verified subjects (one per comparison key) plus the sibling flag.
+
+    Foreign subjects are dropped unread. A subject labelled with the viewer's company whose key the company
+    does not own is dropped with no trace (same as an unknown key). Conflicting duplicates of one comparison
+    key are refused (fail closed); identical ones are deduplicated after full content equivalence.
+    """
+    check_ownership_port(ownership)
+    hidden = False
+    kept: dict[str, TimelineSubject] = {}
+    for sub in subjects:
+        if type(sub) is not TimelineSubject:
+            raise Refuse(ReasonCode.INPUT_INVALID)
+        relation = scope_relation(viewer, sub.tenant_id, sub.company_id)
+        if relation != OWN:
+            hidden = hidden or relation == SIBLING  # dropped unread and unvalidated
+            continue
+        TimelineSubject(sub.tenant_id, sub.company_id, sub.comparison_key, sub.bindings)
+        for b in sub.bindings:
+            RunBinding(b.run_id, b.attestation_id, b.revision_digest, b.policy_version, b.policy_digest)
+        if not owns_key(ownership, sub.tenant_id, sub.company_id, sub.comparison_key):
+            continue  # mislabelled or unknown key: no trace
+        prior = kept.get(sub.comparison_key)
+        if prior is None:
+            kept[sub.comparison_key] = sub
+        elif len(prior.bindings) != len(sub.bindings) or set(prior.bindings) != set(sub.bindings):
+            raise Refuse(ReasonCode.INPUT_INVALID)  # contradictory duplicates: never order-dependent
+    return list(kept.values()), hidden
+
+
+def check_run_record(rec: object, tenant_id: str, comparison_key: str) -> None:
+    """A provider's record must be exactly the requested tenant's and comparison key's, else a provider fault."""
+    if (type(rec) is not RunRecord or type(rec.tenant_id) is not str or rec.tenant_id != tenant_id
+            or type(rec.comparison_key) is not str or rec.comparison_key != comparison_key):
+        provider_invalid()
 
 
 def _run_entries(ledger: RunLedger, att: AttestationStore, signed: dict[str, datetime], sub: TimelineSubject,
@@ -630,11 +717,11 @@ def _run_entries(ledger: RunLedger, att: AttestationStore, signed: dict[str, dat
     if type(views) is not tuple:
         provider_invalid()
     for view in views:
-        if type(view) is not RunView or type(view.record) is not RunRecord:
+        if type(view) is not RunView:
             provider_invalid()
+        check_run_record(view.record, sub.tenant_id, sub.comparison_key)
         known = _flatten(view.record.recorded_at)
-        if (known is None or view.record.tenant_id != sub.tenant_id
-                or view.record.comparison_key != sub.comparison_key):
+        if known is None:
             provider_invalid()
         binding = by_run.get(view.record.run_id)
         if binding is not None and binding.attestation_id is not None:
@@ -728,6 +815,7 @@ def build_timeline(
     policy: object,
     clock: object,
     *,
+    ownership: OwnershipPort,
     correlation_id: object = DEFAULT_CORRELATION_ID,
 ) -> TimelineView | SafeError:
     """Build the auditor timeline for ``viewer`` at the injected ``clock``; never raises, never default-green."""
@@ -742,22 +830,9 @@ def build_timeline(
             raise Refuse(ReasonCode.INPUT_INVALID)
         ApplicabilityPolicy(policy.freshness_seconds, policy.current_revision_digest, policy.source_paused)
         covered = _in_scope_coverage(matrix, viewer)  # type: ignore[arg-type]
-        hidden = False
-        own_subjects: list[TimelineSubject] = []
-        seen: set[str] = set()
-        for sub in subjects:
-            if type(sub) is not TimelineSubject:
-                raise Refuse(ReasonCode.INPUT_INVALID)
-            relation = scope_relation(viewer, sub.tenant_id, sub.company_id)  # type: ignore[arg-type]
-            if relation != OWN:
-                hidden = hidden or relation == SIBLING  # dropped unread and unvalidated
-                continue
-            TimelineSubject(sub.tenant_id, sub.company_id, sub.comparison_key, sub.bindings)
-            for b in sub.bindings:
-                RunBinding(b.run_id, b.attestation_id, b.revision_digest, b.policy_version, b.policy_digest)
-            if sub.comparison_key not in seen:
-                seen.add(sub.comparison_key)
-                own_subjects.append(sub)
+        if type(subjects) is not tuple:
+            raise Refuse(ReasonCode.INPUT_INVALID)
+        own_subjects, hidden = collect_own_subjects(viewer, subjects, ownership)  # type: ignore[arg-type]
         entries: list[TimelineEntry] = []
         marks: list[tuple[datetime, EventKind]] = []
         for feed in feeds:

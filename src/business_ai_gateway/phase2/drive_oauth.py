@@ -9,7 +9,10 @@ and ``GRANTED`` -> ``REVOKED`` or ``AUTH_REQUIRED`` (``invalid_grant`` observed)
 auth-required connection re-consents through ``begin_consent`` under a NEW scope epoch.
 
 Consent ``state`` values
-- come from an injected generator (default ``secrets.token_urlsafe``), are validated, never reused;
+- come from an injected generator (default ``secrets.token_urlsafe``), are validated, never reused: the
+  digest of every issued value is kept in a never-evicted bounded set (``max_issued_states``; CAPACITY when
+  full), so a value that repeats after its record was evicted is skipped (``STATE_SOURCE_INVALID`` if the
+  generator keeps repeating) and an old callback can never authorize a re-issued state;
 - are single use: any completion attempt that reaches the verifier check burns the state; a second
   use is ``STATE_REPLAYED``; past ``pending_ttl`` on the injected clock it is ``STATE_EXPIRED``;
 - a callback from another (tenant, connection) is ``STATE_UNKNOWN`` (same code as a never-issued
@@ -21,6 +24,9 @@ Tokens (``FAKE-`` prefix mandatory) are minted by the store itself from an injec
 refused otherwise; they cannot be injected from outside (no public method accepts a token), are never
 part of ``repr``/``str``/results/errors/digests, and are deleted on revoke / auth failure, which also
 bumps the scope epoch so cursors/ports bound to the old epoch fail closed.
+
+Identities are reconstructed as plain validated ``str`` tuples (``_key``) before any lookup; a forged
+identity is ``IDENTITY_INVALID``.
 
 Every public method returns a ``ConsentResult`` with a fixed ``ConsentCode`` and never raises on bad
 input (wrong type, subclass, NUL, huge, None, recursive). Configuration errors in constructors raise.
@@ -42,7 +48,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
-from ._identity import stable_key
+from ._identity import canonical_guid, stable_key
 from .drive_port import DrivePortIdentity, is_valid_opaque_id, is_valid_scope_epoch
 from .drive_scope import Isolation, ScopeClaim, evaluate_scopes
 
@@ -212,9 +218,31 @@ class FakeTokenStore:
 
 
 def _key(identity: object) -> tuple[str, str, str] | None:
-    if type(identity) is not DrivePortIdentity:
+    """Plain, validated ``(namespace, tenant, connection_id)`` copy of an identity, or ``None``.
+
+    Every field is read ONCE and must be an exact ``str`` that is a valid opaque id (``namespace`` with an
+    ``account:``/``drive:`` prefix, a GUID-shaped tenant/connection already canonical) BEFORE it is used as a
+    dict key, a lookup or a comparison. A forged identity (``object.__new__`` shell, ``str`` subclass with a
+    lying ``__eq__``/``__hash__``, unset slot) therefore yields ``None`` and never reaches an authorization
+    decision; the returned tuple holds only exact ``str`` objects, so comparing/hashing it cannot be hijacked.
+    """
+    try:
+        if type(identity) is not DrivePortIdentity:
+            return None
+        ns = identity.namespace
+        tenant = identity.tenant
+        conn = identity.connection_id
+        if not (is_valid_opaque_id(ns) and is_valid_opaque_id(tenant) and is_valid_opaque_id(conn)):
+            return None
+        if not (ns.startswith("account:") and len(ns) > 8 or ns.startswith("drive:") and len(ns) > 6):
+            return None
+        for part in (tenant, conn):
+            guid = canonical_guid(part)
+            if guid is not None and guid != part:
+                return None
+        return (ns, tenant, conn)
+    except Exception:  # noqa: BLE001 - an unset slot / hostile attribute is a refusal
         return None
-    return (identity.namespace, identity.tenant, identity.connection_id)
 
 
 @dataclass(slots=True)
@@ -242,6 +270,10 @@ class _Pending:
     used: bool = False
     # True while a completion is minting tokens outside the manager lock (never evicted/reset then)
     completing: bool = False
+
+
+def _digest(state: str) -> bytes:
+    return hashlib.sha256(state.encode("ascii")).digest()
 
 
 def _challenge(verifier: str) -> str:
@@ -275,6 +307,7 @@ class ConsentManager:
         max_states: int = 10_000,
         max_records: int = 10_000,
         max_states_per_identity: int = 16,
+        max_issued_states: int = 100_000,
     ) -> None:
         if not callable(clock):
             raise TypeError("clock must be callable")
@@ -288,6 +321,8 @@ class ConsentManager:
             raise ValueError("max_states and max_records must be positive ints")
         if type(max_states_per_identity) is not int or max_states_per_identity <= 0:
             raise ValueError("max_states_per_identity must be a positive int")
+        if type(max_issued_states) is not int or max_issued_states <= 0:
+            raise ValueError("max_issued_states must be a positive int")
         self._clock = clock
         self._store = store if store is not None else FakeTokenStore()
         self._state_source = state_source or _default_state
@@ -295,6 +330,10 @@ class ConsentManager:
         self._max_states = max_states
         self._max_records = max_records
         self._max_per_identity = max_states_per_identity
+        # SHA-256 digest of EVERY state value ever issued: never evicted (bounded by ``max_issued_states``,
+        # fail-closed CAPACITY when full), so non-reuse does not depend on bounded record retention
+        self._max_issued = max_issued_states
+        self._issued: set[bytes] = set()
         self._lock = threading.Lock()
         self._records: dict[tuple[str, str, str], _Record] = {}
         self._states: dict[str, _Pending] = {}
@@ -360,7 +399,7 @@ class ConsentManager:
             self._purge_locked(now)
             if len(self._states) >= self._max_states:
                 return False
-        return True
+        return len(self._issued) < self._max_issued
 
     def _new_state_locked(self) -> str | None:
         for _ in range(_STATE_ATTEMPTS):
@@ -368,7 +407,7 @@ class ConsentManager:
                 value = self._state_source()
             except Exception:  # noqa: BLE001
                 return None
-            if _state_ok(value) and value not in self._states:
+            if _state_ok(value) and value not in self._states and _digest(value) not in self._issued:
                 return value
         return None
 
@@ -415,6 +454,7 @@ class ConsentManager:
                 value = self._new_state_locked()
                 if value is None:
                     return _refuse(ConsentCode.STATE_SOURCE_INVALID, *known)
+                self._issued.add(_digest(value))
                 if rec is None:  # allocated only after every early refusal
                     rec = _Record()
                     self._records[key] = rec

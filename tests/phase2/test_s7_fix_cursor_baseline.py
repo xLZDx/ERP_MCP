@@ -229,7 +229,8 @@ async def test_f1_unknown_port_code_is_carried_but_stays_a_port_failure_without_
     env = await make_env()
     env.cursors.override["get_cursor"] = PortError("BOOM")
     load = await env.store.load(IDENT, CORPUS, 0, env.lease)
-    assert (load.reason, load.port_code, load.state) == (R.PORT_FAILURE, "BOOM", None)
+    # M09: an unknown (non allow-listed) code is never carried outward
+    assert (load.reason, load.port_code, load.state) == (R.PORT_FAILURE, None, None)
     assert not env.tracker.is_required(KEY)
 
 

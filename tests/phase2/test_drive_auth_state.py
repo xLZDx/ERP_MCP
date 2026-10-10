@@ -404,6 +404,7 @@ def _committer(cursor: FakeCursorView, sink: list):
     def commit(token, page, epoch):
         sink.append((token, tuple(c.change_id for c in page.changes), epoch))
         cursor.commit_for_test(page.next_page_token or page.new_start_page_token)
+        return True  # explicit durable-commit acknowledgment (M08)
 
     return commit
 
@@ -500,6 +501,7 @@ async def test_async_commit_callback_is_awaited() -> None:
 
     async def commit(token, page, epoch):
         seen.append(token)
+        return True
 
     res = await run_poll(health, guard, FakeCursorView("T1"), commit)
     assert res.status is PollStatus.COMPLETE and seen == ["T1", "T2", "T3"]

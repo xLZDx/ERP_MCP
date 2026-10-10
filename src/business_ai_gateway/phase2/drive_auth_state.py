@@ -36,6 +36,7 @@ from __future__ import annotations
 import hmac
 import inspect
 import secrets
+import threading
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -43,6 +44,7 @@ from typing import ClassVar, Protocol
 
 from .drive_oauth import ConsentManager as _ConsentManager
 from .drive_oauth import ConsentState as _OauthConsentState
+from .drive_oauth import _key as _identity_key
 from .drive_port import (
     ChangesPage,
     DriveErrorCode,
@@ -301,8 +303,10 @@ class StoreCursorReader:
 
     async def committed_token(self, identity: DrivePortIdentity) -> str | None:
         try:
-            if type(identity) is not DrivePortIdentity:
+            key = _identity_key(identity)  # a forged identity never reaches the store
+            if key is None:
                 return None
+            identity = DrivePortIdentity(*key)
             epoch = self._epoch()
             if not is_valid_scope_epoch(epoch):
                 return None
@@ -333,7 +337,8 @@ class DriveAuthHealth:
         machine: SourceStateMachine,
         sink: AlertSink,
     ) -> None:
-        if type(identity) is not DrivePortIdentity:
+        key = _identity_key(identity)  # exact-typed, validated plain copy BEFORE anything is stored/compared
+        if key is None:
             raise ValueError("AUTH_HEALTH_IDENTITY_INVALID")
         if not is_valid_scope_epoch(scope_epoch):
             raise ValueError("AUTH_HEALTH_EPOCH_INVALID")
@@ -341,7 +346,8 @@ class DriveAuthHealth:
             raise ValueError("AUTH_HEALTH_MACHINE_INVALID")  # noqa: TRY004 - fixed-code config error
         if not _has_methods(consent, _SEAM_METHODS) or not _has_methods(sink, ("emit",)):
             raise ValueError("AUTH_HEALTH_SEAM_INVALID")
-        self._identity = identity
+        self._key = key
+        self._identity = DrivePortIdentity(*key)  # never the caller's object
         self._epoch = scope_epoch
         self._consent = consent
         self._machine = machine
@@ -554,8 +560,10 @@ class AuthGuardedDrivePort:
 
     async def _call(self, method: str, identity: object, scope_epoch: object, *args: object):
         h = self._health
-        if type(identity) is not DrivePortIdentity or identity != h.identity:
+        key = _identity_key(identity)
+        if key is None or key != h._key:  # plain-str tuples: a forged identity can neither match nor compare
             raise DrivePortError(DriveErrorCode.AUTH_REQUIRED)
+        identity = h.identity  # the validated copy, never the caller's object, goes to the inner port
         if not is_valid_scope_epoch(scope_epoch) or scope_epoch != h.scope_epoch:
             raise DrivePortError(DriveErrorCode.SCOPE_EPOCH_STALE)
         h.preflight()
@@ -629,8 +637,10 @@ def _is_code(value: object) -> bool:
 
 
 def _commit_verdict(outcome: object) -> tuple[bool, str | None]:
-    """(accepted, reason code). Only ``None`` or an object whose ``ok`` is exactly True is a success."""
-    if outcome is None:
+    """(accepted, reason code). Only an EXPLICIT positive acknowledgment is a success: the boolean ``True``
+    or an object whose ``ok`` is exactly ``True``. ``None`` (a no-op callback), ``False`` and anything else
+    is a refusal, so a poll can never report COMPLETE without a durable commit."""
+    if outcome is True:
         return True, None
     try:
         if getattr(outcome, "ok", None) is True:
@@ -663,9 +673,9 @@ async def run_poll(
     """One poll chain from the committed cursor. Hints are irrelevant to it.
 
     ``commit(page_token, page, scope_epoch)`` is the caller's durable page+cursor commit; this function
-    never writes a cursor. Its result must be ``None`` or an object with ``ok is True`` (e.g. a store
-    commit result), sync or awaited; anything else is ``COMMIT_FAILED`` (the store's fixed reason code is
-    surfaced in ``commit_reason``). Auth is re-checked immediately before each commit, so a page fetched
+    never writes a cursor. Its result must be an EXPLICIT acknowledgment: ``True`` or an object with
+    ``ok is True`` (e.g. a store commit result), sync or awaited; ``None`` (a no-op callback), ``False`` or
+    anything else is ``COMMIT_FAILED`` (the store's fixed reason code is surfaced in ``commit_reason``). Auth is re-checked immediately before each commit, so a page fetched
     across a revoke is not committed and the chain stops. A forged page, a repeated or regressed page
     token, or a terminal start token that is not newer than the chain so far stops the chain WITHOUT
     committing the offending page (``PAGE_INVALID``). Never raises.
@@ -769,6 +779,9 @@ class HintIntake:
         if type(health) is not DriveAuthHealth:
             raise ValueError("HINT_INTAKE_CONFIG_INVALID")
         self._health = health
+        # one lock makes channel changes, hint acceptance, the pending flag, its consumption and the
+        # counters atomic (two consumers can never both observe ``_pending`` True)
+        self._lock = threading.Lock()
         self._channels: dict[bytes, _Channel] = {}
         self._pending = False
         self._accepted = 0
@@ -776,29 +789,33 @@ class HintIntake:
 
     @property
     def pending_jobs(self) -> int:
-        return 1 if self._pending else 0
+        with self._lock:
+            return 1 if self._pending else 0
 
     @property
     def accepted_count(self) -> int:
-        return self._accepted
+        with self._lock:
+            return self._accepted
 
     @property
     def collapsed_count(self) -> int:
-        return self._collapsed
+        with self._lock:
+            return self._collapsed
 
     def register_channel(self, channel_id: object, resource_id: object, token: object) -> bool:
         """Remember a watch channel opened for THIS connection at the current epoch. Never raises."""
         cid, rid, tok = _field(channel_id), _field(resource_id), _field(token)
         if cid is None or rid is None or tok is None:
             return False
-        if cid not in self._channels and len(self._channels) >= MAX_CHANNELS:
-            current = self._health.scope_epoch
-            for old in [k for k, chan in self._channels.items() if chan.epoch != current]:
-                del self._channels[old]  # channels of older epochs are dead anyway (REJECTED_STALE)
-            if len(self._channels) >= MAX_CHANNELS:
-                return False
-        self._channels[cid] = _Channel(rid, tok, self._health.scope_epoch)
-        return True
+        with self._lock:
+            if cid not in self._channels and len(self._channels) >= MAX_CHANNELS:
+                current = self._health.scope_epoch
+                for old in [k for k, chan in self._channels.items() if chan.epoch != current]:
+                    del self._channels[old]  # channels of older epochs are dead anyway (REJECTED_STALE)
+                if len(self._channels) >= MAX_CHANNELS:
+                    return False
+            self._channels[cid] = _Channel(rid, tok, self._health.scope_epoch)
+            return True
 
     def accept_hint(
         self,
@@ -814,32 +831,34 @@ class HintIntake:
         cid, rid, tok = _field(channel_id), _field(resource_id), _field(token)
         if cid is None or rid is None or tok is None:
             return HintResult.REJECTED_INVALID
-        chan = self._channels.get(cid)
-        # always compare all three, even for an unknown channel, so the answer is one fixed code
-        known_rid = chan.resource_id if chan is not None else b"\x00"
-        known_tok = chan.token if chan is not None else b"\x00"
-        ok_rid = hmac.compare_digest(rid, known_rid)
-        ok_tok = hmac.compare_digest(tok, known_tok)
-        if chan is None or not (ok_rid and ok_tok):
-            return HintResult.REJECTED_FOREIGN
-        if chan.epoch != self._health.scope_epoch:
-            return HintResult.REJECTED_STALE
-        if self._health.state is not AuthState.HEALTHY:
-            return HintResult.REJECTED_PAUSED
-        if self._pending:
-            self._collapsed += 1
-            return HintResult.ACCEPTED_COLLAPSED
-        self._pending = True
-        self._accepted += 1
-        return HintResult.ACCEPTED_NEW_JOB
+        with self._lock:
+            chan = self._channels.get(cid)
+            # always compare all three, even for an unknown channel, so the answer is one fixed code
+            known_rid = chan.resource_id if chan is not None else b"\x00"
+            known_tok = chan.token if chan is not None else b"\x00"
+            ok_rid = hmac.compare_digest(rid, known_rid)
+            ok_tok = hmac.compare_digest(tok, known_tok)
+            if chan is None or not (ok_rid and ok_tok):
+                return HintResult.REJECTED_FOREIGN
+            if chan.epoch != self._health.scope_epoch:
+                return HintResult.REJECTED_STALE
+            if self._health.state is not AuthState.HEALTHY:
+                return HintResult.REJECTED_PAUSED
+            if self._pending:
+                self._collapsed += 1
+                return HintResult.ACCEPTED_COLLAPSED
+            self._pending = True
+            self._accepted += 1
+            return HintResult.ACCEPTED_NEW_JOB
 
     def take_poll_job(self) -> PollJob | None:
         """Pop the single pending poll job (None when nothing is pending)."""
-        if not self._pending:
-            return None
-        self._pending = False
         h = self._health
-        return PollJob(h.identity.tenant, h.identity.connection_id, h.scope_epoch)
+        with self._lock:  # check-and-clear is one atomic step: exactly one consumer gets the job
+            if not self._pending:
+                return None
+            self._pending = False
+            return PollJob(h.identity.tenant, h.identity.connection_id, h.scope_epoch)
 
 
 # --- test support (scripted, like drive_fake.py) ---------------------------------------------------

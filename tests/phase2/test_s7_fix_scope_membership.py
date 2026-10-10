@@ -284,7 +284,7 @@ async def test_shared_ancestor_is_visited_once_not_flagged_as_cycle_in_the_walk(
     fake = _fake(*metas)
     res = await _ck(fake).check("T")
     assert res.verdict is V.IN_SCOPE
-    assert fake.count("get_file_meta") == len({"T", "B", "C", "D"})  # D fetched once
+    assert fake.count("get_file_meta") == len({"T", "B", "C", "D", "ROOT"})  # D fetched once; the root is read too (M03)
 
 
 async def test_foreign_drive_upsert_emits_no_tombstone_and_no_file_id_without_a_shared_drive():

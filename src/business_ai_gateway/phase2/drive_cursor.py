@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -281,6 +281,11 @@ class DriveLease:
 
 _KEYS = frozenset({"v", "state", "ns", "tenant", "conn", "corpus", "epoch", "token", "pos",
                    "seen", "reason"})
+# Schema v2 = v1 + ``snap``: the ORIGINAL snapshot-generation marker (``ResnapshotTracker.begin_snapshot``)
+# of a fresh snapshot. A record without a marker is still encoded and decoded as v1 (compatible).
+_KEYS_V2 = _KEYS | {"snap"}
+_RECORD_VERSION_SNAP = 2
+_MAX_SNAP = 2**63 - 1
 
 
 def _hex64(value: object) -> bool:
@@ -298,13 +303,21 @@ class CursorRecord:
     connection_id: str
     corpus: str
     epoch: int
-    token: str | None = None
-    pos: str | None = None
-    seen: tuple[str, ...] = ()
+    # Opaque provider tokens are redacted from the repr.
+    token: str | None = field(default=None, repr=False)
+    pos: str | None = field(default=None, repr=False)
+    seen: tuple[str, ...] = field(default=(), repr=False)
     reason: CursorReason | None = None
+    # Original snapshot-generation marker of a fresh snapshot (None: not a fresh snapshot / legacy).
+    snap: int | None = None
 
     def __post_init__(self) -> None:
         bad = ValueError("DRIVE_CURSOR_RECORD_INVALID")
+        if self.snap is not None and (
+            type(self.snap) is not int or not 0 <= self.snap <= _MAX_SNAP
+            or self.state is CursorState.UNINITIALIZED
+        ):
+            raise bad
         ns = self.namespace
         if (
             type(self.state) is not CursorState
@@ -334,16 +347,17 @@ class CursorRecord:
             raise bad
 
     def encode(self) -> str:
-        return json.dumps(
-            {
-                "v": _RECORD_VERSION, "state": self.state.value, "ns": self.namespace,
-                "tenant": self.tenant, "conn": self.connection_id, "corpus": self.corpus,
-                "epoch": self.epoch, "token": self.token, "pos": self.pos,
-                "seen": list(self.seen),
-                "reason": None if self.reason is None else self.reason.value,
-            },
-            sort_keys=True, separators=(",", ":"), ensure_ascii=True,
-        )
+        body: dict[str, Any] = {
+            "v": _RECORD_VERSION, "state": self.state.value, "ns": self.namespace,
+            "tenant": self.tenant, "conn": self.connection_id, "corpus": self.corpus,
+            "epoch": self.epoch, "token": self.token, "pos": self.pos,
+            "seen": list(self.seen),
+            "reason": None if self.reason is None else self.reason.value,
+        }
+        if self.snap is not None:
+            body["v"] = _RECORD_VERSION_SNAP
+            body["snap"] = self.snap
+        return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
     @classmethod
     def decode(cls, text: object) -> CursorRecord | None:
@@ -352,9 +366,12 @@ class CursorRecord:
             return None
         try:
             raw = json.loads(text, parse_constant=_reject_constant)
-            if type(raw) is not dict or set(raw) != _KEYS:
+            if type(raw) is not dict or type(raw.get("v")) is not int:
                 return None
-            if type(raw["v"]) is not int or raw["v"] != _RECORD_VERSION:
+            if raw["v"] == _RECORD_VERSION:
+                if set(raw) != _KEYS:
+                    return None
+            elif raw["v"] != _RECORD_VERSION_SNAP or set(raw) != _KEYS_V2 or raw["snap"] is None:
                 return None
             if type(raw["state"]) is not str or type(raw["seen"]) is not list:
                 return None
@@ -366,6 +383,7 @@ class CursorRecord:
                 connection_id=raw["conn"], corpus=raw["corpus"], epoch=raw["epoch"],
                 token=raw["token"], pos=raw["pos"], seen=tuple(raw["seen"]),
                 reason=None if reason is None else CursorReason(reason),
+                snap=raw.get("snap"),
             )
         except (ValueError, TypeError, RecursionError, KeyError):
             return None
@@ -394,8 +412,9 @@ class CursorLoad:
     reason: CursorReason | None
     record: CursorRecord | None = None
     version: int | None = None
-    raw_value: str | None = None
-    # Fixed port error code (exact ``str``) that caused a PORT_FAILURE / lease-loss load; never text.
+    raw_value: str | None = field(default=None, repr=False)  # holds opaque tokens: never printed
+    # Allow-listed port error code (exact ``str`` from ``_SAFE_PORT_CODES``) that caused a
+    # PORT_FAILURE / lease-loss load; None for every other code. Never caller / provider text.
     port_code: str | None = None
 
 
@@ -442,9 +461,20 @@ def _port_reason(code: object) -> CursorReason:
     return CursorReason.PORT_FAILURE
 
 
+# Fixed outward port codes: the cursor/job port contract (SQL error texts of the cursor, outbox and job
+# functions, as raised by the in-memory fake) plus every code mapped above. Anything else is hostile or
+# unknown and is never exposed.
+_SAFE_PORT_CODES = frozenset({
+    *_COMMIT_REASONS, *_PORT_BLOCK_CODES, "STALE_JOB_FENCE",
+    "INVALID_LEASE", "INVALID_JOB", "JOB_UNAVAILABLE", "LEASE_EXPIRED", "INVALID_JSON",
+    "NAIVE_DATETIME", "UNIQUE_VIOLATION", "CHECK_VIOLATION", "SOURCE_NOT_FOUND", "ROLE_NOT_FOUND",
+})
+
+
 def _exact_code(exc: PortError) -> str | None:
+    """The port error code only when it is an exact ``str`` from the fixed allow-list; else None."""
     code = getattr(exc, "code", None)
-    return code if type(code) is str else None
+    return code if type(code) is str and code in _SAFE_PORT_CODES else None
 
 
 def _canon(value: str) -> str:

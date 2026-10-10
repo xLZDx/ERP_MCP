@@ -65,6 +65,7 @@ def _meta(fid: str, parents=(), **kw) -> FileMeta:
 
 def _fake(*metas: FileMeta, **kw) -> FakeDrivePort:
     fake = FakeDrivePort(**kw)
+    fake.set_file(_meta("ROOT"))  # a declared root is read like any ancestor (S7 gate M03)
     for m in metas:
         fake.set_file(m)
     return fake
@@ -297,6 +298,7 @@ async def test_namespace_and_drive_id_must_match_the_corpus_declaration():
     assert res.code is MembershipCode.NAMESPACE_MISMATCH and fake.call_count == 0
     assert (await resolve_membership(fake, IDENT, 0, CORPUS, "SD")).code is MembershipCode.NAMESPACE_MISMATCH
     shared = CorpusDeclaration("drive:D1", "D1", ("ROOT",))
+    fake.set_file(_meta("ROOT", drive_id="D1"))  # a shared-drive root carries its drive id (M03)
     assert (await resolve_membership(fake, other_ns, 0, shared, "SD")).in_scope
     assert (await resolve_membership(fake, other_ns, 0, shared, "X")).code is MembershipCode.NAMESPACE_MISMATCH
 
@@ -445,11 +447,12 @@ async def test_hostile_scope_inputs_to_the_proof_functions_do_not_raise():
 
 async def test_tc104_new_child_readable_after_grant_is_proven_only_from_the_observation():
     fake = FakeDrivePort()
+    fake.set_file(_meta("ROOT"))
     fake.set_file(_meta("CHILD", ("ROOT",)), new_child=True)
     obs = await observe_new_child_access(fake, IDENT, 0, CORPUS, "CHILD", NARROW, "OBS-9")
     assert (obs.status, obs.code) == (AccessProof.PROVEN, "CHILD_READABLE")
     assert obs.basis is not None and obs.basis.observation_id == "OBS-9"
-    assert fake.call_log == ("get_file_meta",)
+    assert fake.call_log == ("get_file_meta", "get_file_meta")  # the child, then its declared root (M03)
 
 
 async def test_tc104_fake_that_hides_new_children_is_not_proven_and_names_why():

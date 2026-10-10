@@ -177,6 +177,7 @@ async def _poll_once() -> tuple[tuple, str | None, PollStatus]:
     def commit(token, page, epoch):
         seen.extend((c.change_id, c.file_id) for c in page.changes)
         cursor.commit_for_test(page.next_page_token or page.new_start_page_token)
+        return True
 
     res = await run_poll(health, guard, cursor, commit)
     return tuple(seen), cursor.token, res.status
@@ -196,6 +197,7 @@ async def test_same_candidates_and_cursor_with_zero_hints_with_hints_and_without
     def commit(token, page, epoch):
         seen.extend((c.change_id, c.file_id) for c in page.changes)
         cursor.commit_for_test(page.next_page_token or page.new_start_page_token)
+        return True
 
     res = await run_poll(health, guard, cursor, commit)
     hinted = (tuple(seen), cursor.token, res.status)
@@ -212,6 +214,7 @@ async def test_same_candidates_and_cursor_with_zero_hints_with_hints_and_without
     def commit2(token, page, epoch):
         seen2.extend((c.change_id, c.file_id) for c in page.changes)
         cursor2.commit_for_test(page.next_page_token or page.new_start_page_token)
+        return True
 
     res2 = await run_poll(health2, guard2, cursor2, commit2)
     unsupported = (tuple(seen2), cursor2.token, res2.status)
