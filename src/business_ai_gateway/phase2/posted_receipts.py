@@ -68,7 +68,6 @@ from .purchase_reconciliation import (
     PurchaseResultKind,
     PurchaseScope,
     compare_posted_purchases,
-    nfkc_stable,
 )
 
 __all__ = [
@@ -242,8 +241,12 @@ def _strict(value: object) -> bool:
     Exactly ``str`` (never a subclass): a subclass can lie in ``__eq__``/``__ne__`` and so spoof the
     direction or identity comparisons that follow.
     """
-    return (type(value) is str and bool(value) and exact_text(value) == value
-            and nfkc_stable(value))  # compatibility spellings are refused
+    if not (type(value) is str and bool(value) and exact_text(value) == value):
+        return False
+    # Only GUID-shaped values are held to their ASCII spelling: a fullwidth/compatibility spelling of a
+    # GUID must not become a second identity. Other source-native text (document numbers such as
+    # "№ 123", opaque tokens) keeps its compatibility characters exactly.
+    return value.isascii() or canonical_guid(value) is None
 
 
 def _snapshot_ok(value: object) -> bool:

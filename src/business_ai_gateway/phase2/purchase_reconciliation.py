@@ -11,7 +11,6 @@ INCONCLUSIVE code (it never raises).
 """
 from __future__ import annotations
 
-import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -37,11 +36,6 @@ def utc_exact(value: object) -> datetime:
         return datetime(u.year, u.month, u.day, u.hour, u.minute, u.second, u.microsecond, tzinfo=UTC)
     except (ValueError, OverflowError, TypeError) as exc:
         raise ValueError("QUALIFIED_TIMESTAMP_REQUIRED") from exc
-
-
-def nfkc_stable(value: str) -> bool:
-    """True when NFKC normalisation leaves the text unchanged (no fullwidth/compatibility spelling)."""
-    return unicodedata.normalize("NFKC", value) == value
 
 
 def _text(value: object) -> bool:
