@@ -305,3 +305,24 @@ def test_scope_refs_compare_by_canonical_form():
     r = compare_posted_purchases(a, b)
     assert r.state is PurchaseResultKind.MATCH
 
+
+
+# -- R01 (GPT-PM): valid source-native text with compatibility characters must not be refused -------
+@pytest.mark.parametrize("number", ["№ 123", "AB-①", "№123", "ﬁle-1"])
+def test_r01_document_numbers_with_compatibility_characters_are_kept(number):
+    res = get({None: page([doc("d-1", number=number)])})
+    assert res.reason is RetrievalReason.OK and res.complete is True
+    assert res.listing.documents[0].number == number
+
+
+@pytest.mark.parametrize("token", ["tok-№1", "tok-①", "ﬁ-2"])
+def test_r01_opaque_continuation_tokens_with_compatibility_characters_paginate(token):
+    res = get({None: page([doc("d-1")], nxt=token), token: page([doc("d-2")], index=None)})
+    assert res.reason is RetrievalReason.OK and res.complete is True
+    assert res.proof.page_tokens[-1] == token
+
+
+def test_r01_non_guid_ref_with_compatibility_characters_is_not_folded_and_not_refused():
+    a, b = "doc-①", "doc-1"
+    res = get({None: page([doc(a), doc(b)])})
+    assert res.reason is RetrievalReason.OK and len(res.listing.documents) == 2
