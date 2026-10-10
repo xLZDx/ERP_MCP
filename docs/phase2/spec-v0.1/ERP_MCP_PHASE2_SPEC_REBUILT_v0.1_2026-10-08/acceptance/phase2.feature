@@ -685,55 +685,55 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate polling корректен без watch
 
-  @not_implemented @R2TC115
+  @not_implemented @offline_fixture_coverage_only @R2TC115
   Scenario: R2-TC-115 row/fragment/owner/delta
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate row/fragment/owner/delta
 
-  @not_implemented @R2TC116
+  @not_implemented @offline_fixture_coverage_only @R2TC116
   Scenario: R2-TC-116 original numbers immutable
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate original numbers immutable
 
-  @not_implemented @R2TC117
+  @not_implemented @offline_fixture_coverage_only @R2TC117
   Scenario: R2-TC-117 new evidence -> new run
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate new evidence -> new run
 
-  @not_implemented @R2TC118
+  @not_implemented @offline_fixture_coverage_only @R2TC118
   Scenario: R2-TC-118 known/effective labels
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate known/effective labels
 
-  @not_implemented @R2TC119
+  @not_implemented @offline_fixture_coverage_only @R2TC119
   Scenario: R2-TC-119 historical !=live green
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate historical !=live green
 
-  @not_implemented @R2TC120
+  @not_implemented @offline_fixture_coverage_only @R2TC120
   Scenario: R2-TC-120 diff/evidence scoped
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate diff/evidence scoped
 
-  @not_implemented @R2TC121
+  @not_implemented @offline_fixture_coverage_only @R2TC121
   Scenario: R2-TC-121 safe reason+annotation
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate safe reason+annotation
 
-  @not_implemented @R2TC122
+  @not_implemented @offline_fixture_coverage_only @R2TC122
   Scenario: R2-TC-122 CSRF/idem403/409
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate CSRF/idem403/409
 
-  @not_implemented @R2TC123
+  @not_implemented @offline_fixture_coverage_only @R2TC123
   Scenario: R2-TC-123 отказ не обходится rawCOM/DC
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised

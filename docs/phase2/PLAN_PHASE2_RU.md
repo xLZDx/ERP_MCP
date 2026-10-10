@@ -19,7 +19,7 @@ R2: новый согласованный scope, staged feature flags и отд�
 | S5 | Manual native UI export, qualified UI automation dev, capture permit, original store/parser sandbox | G3a: настоящий UI baseline, report identity/parameters/no business writes |
 | S6 | Optional engine qualification; attestation; candidate runner; 521.1 six totals; account-based AP; purchases contract | G3: native+MCP independent proof/coverage; missing register не выдумывается |
 | S7 | Drive least-privilege PoC, baseline+changes/revisions/moves/revoke, auth expiry | G4: actual new-file scope behavior; polling работает без webhook; S7 code: offline coverage only (fake Drive port, IMPLEMENTED_UNVERIFIED), G4 stays open |
-| S8 | Workbench/UI explanations, history/coverage, job/read APIs, safe rerun | G5 user/admin UAT и evidence revocation/current applicability |
+| S8 | Workbench/UI explanations, history/coverage, job/read APIs, safe rerun | G5 user/admin UAT и evidence revocation/current applicability; S8 code: offline view/decision modules only (workbench_types/review, timeline_view, coverage_view, safe_errors, jobs_api, workbench_session; IMPLEMENTED_UNVERIFIED, no real UI/HTTP), G5 stays open |
 | S9 | Capacity/chaos/audit/restore/retention, R1 compatibility, migrations rehearsal | G6-pre: actual workload metrics, fault alarms, repeatable recovery |
 | S10 | Source-specific prod canary при отдельном разрешении; exact-head R2 release bundle | G6/G7: approved recipe/identity/window/budget, native correctness и formal acceptance |
 
