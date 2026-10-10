@@ -604,7 +604,7 @@ class MembershipChecker:
         except Exception:  # noqa: BLE001 - public boundary: hostile input never raises
             return refused(PageReason.PAGE_PROJECTION_REFUSED)
 
-    def accept_page(self, preparation: object, receipt: object) -> bool:
+    async def accept_page(self, preparation: object, receipt: object) -> bool:
         """Call after the durable cursor commit of ``preparation`` succeeded, passing the
         ``CursorCommitReceipt`` that ``DriveCursorStore.commit`` returned: only now do removed roots the page
         re-qualified become live again.
@@ -628,8 +628,11 @@ class MembershipChecker:
         # the receipt must be this bound store's acknowledgment of exactly this page's transaction: this
         # connection and corpus, from the cursor the page was prepared against, to the cursor the batch may
         # commit, carrying exactly this page's events, and still the newest commit of that cursor
-        if not store.receipt_matches(receipt, self._identity, fingerprint, pending[3], token, self._epoch, expected):
+        if not await store.receipt_is_current(receipt, self._identity, fingerprint, pending[3], token,
+                                              self._epoch, expected):
             return False
+        if self._pending_reinstate is not pending or self._epoch != pending[2]:
+            return False  # replaced, already accepted or revoked while the backend was being read
         self._pending_reinstate = None
         for fid in pending[1]:
             self._removed_roots.discard(fid)
