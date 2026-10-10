@@ -52,7 +52,7 @@ Owners and required evidence come from `PLAN_PHASE2_RU.md` section 3; status fro
 
 ## 2. Exact-head bundle recipe
 
-An operator reproduces the engineering evidence for a head `H` as follows. Run from `D:\Repo\ERP_MCP-phase2` on a clean checkout of `H`.
+An operator reproduces the engineering evidence for a head `H` as follows. Run from the root of the Release 2 repository (`D:\Repo\ERP_MCP_R2` or any clean clone of it) on a clean checkout of `H`; every command below resolves inside this repository, and every evidence record must name the exact R2 commit it tested (`git rev-parse HEAD`).
 
 1. Identify the head and confirm it is clean:
    - `git rev-parse HEAD`
@@ -74,6 +74,8 @@ An operator reproduces the engineering evidence for a head `H` as follows. Run f
 - GPT-PM independently reran its 20,000-input capacity invariant scan with zero invalid plans (S9).
 
 ### 2.2 GPT-PM approval heads per sprint (from `core/DECISION_LOG.md` and `docs/phase2/DECISION_LOG.md`)
+
+The hashes below are the ORIGINAL source-repository hashes quoted by the approvals. History was rewritten when Release 2 moved to its own repository, so these hashes do not resolve here. Translate them with `docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md` (full source and R2 hashes, plus a check that the Phase 2 code and test trees are identical). The R2 hash, not the source hash, is what a release head names.
 
 | Sprint | Approved exact head | Note |
 | --- | --- | --- |

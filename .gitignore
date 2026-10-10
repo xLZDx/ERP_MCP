@@ -5,3 +5,12 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 tests/phase2/_red_tmp/
+
+# secrets and local credentials must never be committed
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*client_secret*.json
+*token*.json
