@@ -1,6 +1,6 @@
 # ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)
 
-Date: 2026-10-11. Revision 5. Status: DRAFT for GPT-PM verification (revision 2 was REJECTED with 20 findings; revision 3 closed 15 and left 3 MAJOR; revision 4 closed those 3 and left 1 MAJOR regression; this revision answers that one). Language: English (durable record); the operator copy is `reports/PHASE2_V2_CLOSURE_PLAN_2026-10-11.ru.html`.
+Date: 2026-10-11. Revision 5. Status: APPROVED by GPT-PM on 2026-10-11 as the planning baseline for S11-S19 (revision 2 REJECT with 20 findings, revision 3 REJECT with 3 MAJOR, revision 4 REJECT with 1 MAJOR regression, revision 5 APPROVE; sha256 of the reviewed text 303974518dd7dfdcdff7b281450abfecbfc0552be2892bdf7c62ce0dede497fe, this status line being the only later difference, see commit 1c7cb9a for the reviewed bytes). Authorized: S11 documentation and planning only. NOT authorized: the S12 interface freeze, code, push, deployment, production writes. G8 NOT_PASSED, C1 NOT_REACHED, Release 2 NO-GO. Language: English (durable record); the operator copy is `reports/PHASE2_V2_CLOSURE_PLAN_2026-10-11.ru.html`.
 
 ## 0. Revision note and GPT-PM decisions
 

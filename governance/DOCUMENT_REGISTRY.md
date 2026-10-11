@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 52 tracked paths, 1 local-only paths.
+Inventory: 54 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -36,6 +36,7 @@ Inventory: 52 tracked paths, 1 local-only paths.
 | docs/phase2/OPERATOR_BACKLOG.md | Phase 2 design | "Phase 2 operator backlog" |
 | docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
+| docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
@@ -55,6 +56,7 @@ Inventory: 52 tracked paths, 1 local-only paths.
 | docs/phase2/WORKSTATION_VERIFICATION_2026-10-08.md | Phase 2 design | "Phase 2 workstation isolation verification — 2026-10-08" |
 | docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md | Phase 2 design | "G3 engineering reconciliation index: account 521.1, 2026-08" |
 | docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md | Phase 2 design | "G6 / G6-pre: one read-only canary pass and a bounded workload measurement (2026-10-10)" |
+| docs/phase2/artifacts/PHASE2_TESTLANE_MCP_DESIGN.md | Phase 2 design | "Phase 2 test-lane MCP server: design (stage 1)" |
 | docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md | Phase 2 design | "Remote 1C host (Ivan): independent test environment and MCP stack - runbook" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md | Phase 2 design | "Derived Phase 2 specification bundle" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/01_TDD_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
@@ -72,4 +74,3 @@ Inventory: 52 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/artifacts/PHASE2_TESTLANE_MCP_DESIGN.md |
