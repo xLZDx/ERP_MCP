@@ -19,7 +19,7 @@ $plain = [Security.Cryptography.ProtectedData]::Unprotect($blob, $null, 'Current
 $env:CONTROL_PLANE_API_KEY = [Text.UTF8Encoding]::new($false).GetString($plain)
 [Array]::Clear($plain, 0, $plain.Length)
 $client = Join-Path $Root 'tunnel\tunnel-client.exe'
-$common = @('--control-plane.tunnel-id', $cfg.tunnel_id, '--control-plane.api-key', 'env:CONTROL_PLANE_API_KEY', '--mcp.server-url', $McpUrl, '--mcp.oauth-trusted-origin', $IssuerOrigin, '--health.listen-addr', $HealthAddr)
+$common = @('--control-plane.tunnel-id', $cfg.tunnel_id, '--control-plane.api-key', 'env:CONTROL_PLANE_API_KEY', '--mcp.server-url', $McpUrl, '--mcp.oauth-trusted-origin', $IssuerOrigin, '--harpoon.allow-plaintext-http', '--health.listen-addr', $HealthAddr)
 try {
     if ($Action -eq 'Doctor') { & $client doctor @common 2>&1 | ForEach-Object { "$_" } }
     else { & $client run @common }
