@@ -23,6 +23,11 @@ dev = [
   "jsonschema>=4,<5",
 ]
 
+testlane = [
+  "mcp>=2,<3",
+  "uvicorn>=0.30",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
