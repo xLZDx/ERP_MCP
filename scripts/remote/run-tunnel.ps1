@@ -9,7 +9,7 @@ param(
     [string]$Root = 'D:\1c\mcp',
     [string]$McpUrl = 'http://100.88.71.74:21000/mcp',
     [string]$HealthAddr = '127.0.0.1:21090',
-    [string]$IssuerOrigin = 'https://ivan.tail08f9f9.ts.net:8443'
+    [string]$IssuerOrigin = 'https://ivan.tail08f9f9.ts.net'
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Security
