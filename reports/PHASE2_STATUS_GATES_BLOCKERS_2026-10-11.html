@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — full status</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#175cd3;--accent:#175cd3}
+:root[data-theme=dark]{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 48px}
+header,main{max-width:1280px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:23px;margin:0 0 4px}h2{font-size:18px;margin:34px 0 10px;padding-top:6px;border-top:1px solid var(--line)}h3{font-size:15px;margin:18px 0 6px}
+.sub{color:var(--muted)}
+nav.toc{margin:10px 0 0;padding:8px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:13px}
+nav.toc a{color:var(--accent);text-decoration:none;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+.card.verdict{border-left:4px solid var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.kpi b{display:block;font-size:26px;line-height:1.1}
+.kpi span{color:var(--muted);font-size:12px}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12);position:sticky;top:0}
+tr.tot td{background:rgba(127,127,127,.08)}
+.wrap{overflow-x:auto}
+table.wide{min-width:980px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid currentColor;white-space:nowrap}
+.p-ok{color:var(--ok)}.p-warn{color:var(--warn)}.p-bad{color:var(--bad)}.p-info{color:var(--info)}.p-mute{color:var(--muted)}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+.bar{display:flex;height:30px;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin:8px 0 4px}
+.seg{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+.s-warn{background:var(--warn)}.s-bad{background:var(--bad)}.s-info{background:var(--info)}.s-ok0{background:var(--ok)}
+.legend{font-size:12px;color:var(--muted)}.lg{margin-right:14px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:baseline}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0}
+.node{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;border:2px solid currentColor;background:var(--card)}
+.n-bad{color:var(--bad)}.n-warn{color:var(--warn)}.n-op{color:var(--info);font-size:12px;padding:2px 8px}
+.arr{color:var(--muted);font-size:18px}
+.sidebranch{margin:6px 0;color:var(--muted)}
+ul{margin:6px 0;padding-left:20px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+@media (max-width:640px){body{padding:0 12px 40px}h1{font-size:19px}}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — full status: sprints, gates, blockers, dependencies</h1>
+<div class="sub">Date: 2026-10-11 · Release 2 repository (branch main) · development rules v4 · built from repository documents; test numbers are as recorded, not re-measured today</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 3688196</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<nav class="toc"><a href="#answer">Answer</a> · <a href="#claim">Claimed vs fact</a> · <a href="#sprints">Sprints</a> · <a href="#stories">Stories</a> · <a href="#gates">Gates</a> · <a href="#blockers">Blockers</a> · <a href="#tracks">After S10</a> · <a href="#backlog">Tails</a> · <a href="#notrun">NOT_RUN</a> · <a href="#next">Next</a> · <a href="#sources">Sources</a></nav>
+<h2 id="answer">Answer to «is Phase 2 fully ready?»</h2>
+<div class="card verdict">
+<p><span class="bad">No. Phase 2 as a product is NOT ready.</span> Release 2 is <b>NO-GO</b>; none of the gates G0–G7 (and G6-pre) has passed; none of the 48 stories is VERIFIED or DONE.</p>
+<p>What is actually closed: the <b>offline engineering part</b> — ten deliveries (S0/G1 … S10) implemented as isolated reference modules not wired to any source, each with a GPT-PM approval on an exact head (S10 is documentation only, there is no release head). The terminal program state is <b>ENGINEERING_HANDOFF</b>, not «done». If earlier reports sounded like «fully ready», this is the correct wording: reference code is written and checked on scripted inputs, there was no product acceptance.</p>
+<p>The main external blocker is <b>OB-11</b>: the independent accountant attestation for account 521.1 (G3). Without it there is no validated semantic profile, hence no honest business-data reads, no canary and no later gates (G5/G6/G7).</p>
+</div>
+<div class="kpis">
+<div class="kpi"><b class="ok">10 / 10</b><span>deliveries closed offline (S0/G1 … S10)</span></div>
+<div class="kpi"><b class="bad">0 / 9</b><span>gates passed (G0–G7 and G6-pre)</span></div>
+<div class="kpi"><b class="bad">0 / 48</b><span>stories VERIFIED/DONE</span></div>
+<div class="kpi"><b class="warn">36</b><span>stories IMPLEMENTED_UNVERIFIED (code, no acceptance)</span></div>
+<div class="kpi"><b class="bad">12</b><span>stories not started / in progress</span></div>
+<div class="kpi"><b class="warn">8</b><span>R2 commits not pushed at measurement time, before this report is committed (push only after GPT-PM APPROVE)</span></div>
+</div>
+<h2 id="claim">Claimed vs fact</h2>
+<div class="wrap"><table class="wide"><thead><tr><th>Wording</th><th>Correct?</th><th>What can honestly be said</th></tr></thead><tbody>
+<tr><td>«Phase 2 is fully ready»</td><td><span class="pill p-bad">NO</span></td><td>Offline reference code S0–S9 and the S10 handoff are done. The product is not accepted, Release 2 is NO-GO.</td></tr>
+<tr><td>«All sprints closed»</td><td><span class="pill p-warn">OFFLINE ONLY</span></td><td>Closed as implementation + GPT-PM review. US-021..023 (real UI/COM) and US-005/006/007 not started; the S10 canary is NOT_RUN.</td></tr>
+<tr><td>«Tests are green»</td><td><span class="pill p-warn">WITH CAVEATS</span></td><td>6126 passed / 229 skipped at 6ee27f1 and in a fresh venv. The 229 skipped are PostgreSQL integration tests without a DSN (NOT_RUN, not PASS). Tests prove classification over scenarios, not acceptance. A full run was not repeated on the current HEAD.</td></tr>
+<tr><td>«Base reconciliation works»</td><td><span class="pill p-ok">YES, IN THE TEST LANE</span></td><td>Verified live on a real difference (section «After S10»). It compares two copies of one base by machine; there is no native attestation and no independent data origin.</td></tr>
+<tr><td>«Everything pushed / in production»</td><td><span class="pill p-bad">NO</span></td><td>There is no production. origin/main holds up to 8f50ea8; the local R2 commits (8 at measurement time) and the R1 commit ea4defa are not pushed.</td></tr>
+</tbody></table></div>
+<h2 id="sprints">Sprints: what was done, how it was checked, what remains</h2>
+<p class="sub">Test counts are cumulative over tests/phase2 at the time of the sprint. Hashes are the ORIGINAL source-repository hashes (history was rewritten at extraction; mapping to R2 hashes is in SOURCE_TO_R2_COMMIT_MAP.md).</p>
+<div class="wrap"><table class="wide"><thead><tr><th>Delivery</th><th>Content</th><th>Offline tests (recorded)</th><th>GPT-PM review / approval</th><th>Status</th><th>Tail / dependency</th></tr></thead><tbody><tr><td><b>S0 + G1</b></td><td>Baseline, ADR proposals, G1 SQL (<code>db/phase2/001..003</code>) executed on a disposable PostgreSQL 16: roles/RLS/leases/cursors/outbox, restore equivalence, crash recovery, nine guard mutations RED/GREEN.</td><td>326 passed / 65 skipped; integration 65 passed (df92cc8)</td><td>Plan APPROVE; sweep of a8b5b4d REJECT (3 BLOCKER, 5 MAJOR) → fixed; d3c3f60 7 of 8; 45a7b1a APPROVE for push only; df92cc8 G1 exit evidence accepted.</td><td><span class="pill p-warn">Closed offline; G1 NOT PASSED</span></td><td>Open for G1: capacity 30/50/100/150 sources, kill timed inside COMMIT, restore into another cluster/version, final G1 exit review not recorded as PASS.</td></tr><tr><td><b>S1–S4</b></td><td>Ports and fakes, connector SDK envelope, scheduler, failure≠drift, promotion service, capture loop, lease/fencing, backend budget.</td><td>1035 passed / 219 skipped; integration 219 passed (e42dacb)</td><td>Exact-head review 87c6817 REJECT (1 MAJOR) → fixed in e42dacb; APPROVE at 5000043 (push df92cc8..5000043).</td><td><span class="pill p-warn">Closed offline</span></td><td>Not wired to any source; US-005/006/007 NOT_STARTED; US-009 IN_PROGRESS (baseline hash in memory only).</td></tr><tr><td><b>S4b</b></td><td>Taxonomy, aliases, capture-loop hardening, capacity drill on a disposable PostgreSQL.</td><td>1232 passed / 228 skipped; integration 226 passed</td><td>REJECT 03da6aa (1 MAJOR: the drill did not prove the DSN is the disposable container) → APPROVE a2219b0 and merge 6f80219.</td><td><span class="pill p-warn">Closed offline</span></td><td>The capacity drill is a small single-host measurement, not a capacity guarantee.</td></tr><tr><td><b>S5</b></td><td>Capture permit, side-effect boundary, artifact vault, safe xlsx/csv parser. US-021..023 deferred: need a real UI/COM.</td><td>1641 passed / 229 skipped; integration 229 passed (af9f287)</td><td>APPROVE at af9f287, 0 BLOCKER / 0 MAJOR.</td><td><span class="pill p-warn">Closed offline; US-021..023 not started</span></td><td>The parser is not a sandbox; the child memory bound is not enforced on Windows.</td></tr><tr><td><b>S6</b></td><td>Evidence attestation, candidate runner, 521.1 six totals, purchases contract.</td><td>1984 passed / 229 skipped / 1 failed (S5 test_safe_parser: CHILD_ABORTED instead of TIMEOUT) in the recorded run; later fresh venv: 6126 passed / 229 skipped</td><td>REJECT 1342b3a (5 MAJOR) → APPROVE c194760 (push only). Hash quoted from the sprint report; there is no decision-log entry — needs confirmation.</td><td><span class="pill p-warn">Closed offline</span></td><td>No real native 521.1 report bytes; everything runs on fixtures.</td></tr><tr><td><b>S6b</b></td><td><code>ap_account_strategy</code>, <code>posted_receipts</code> (<code>ap.account_based</code> stays closed).</td><td>2555 passed / 229 skipped</td><td>REJECT 09536a3 (10 MAJOR) → APPROVE b5ae365 (push only).</td><td><span class="pill p-warn">Closed offline</span></td><td>No real paginated source and no MOLDRETAIL data.</td></tr><tr><td><b>S7</b></td><td>Google Drive over a read-only port and a scripted fake: OAuth, scope, baseline, cursor, revisions, membership, auth state.</td><td>3397 passed / 229 skipped (cumulative)</td><td>Nine rounds together with S8: REJECT e5761eb (S7 M01–M10) → APPROVE fa4852d. S7-M03 closed by removing root re-admission (fail closed).</td><td><span class="pill p-warn">Closed offline; G4 NOT PASSED</span></td><td>Real Drive was exercised only by probes outside R2 code (2026-10-10); returning removed roots needs a future backend-enforced claim.</td></tr><tr><td><b>S8</b></td><td>Workbench, timeline/coverage, safe_errors, jobs_api, workbench_session — offline decision modules (no real UI/HTTP).</td><td>4433 passed / 229 skipped (cumulative)</td><td>APPROVE at fa4852d (nine rounds with S7; one request stalled on a PM Bridge browser failure).</td><td><span class="pill p-warn">Closed offline; G5 NOT PASSED</span></td><td>No UI/HTTP/RBAC; JobQueuePort is not called; UI scope deferred by the operator.</td></tr><tr><td><b>S9</b></td><td>Twelve ops modules: capacity/audit/delivery/alerts/migration/rollback/restore/export/retention/readiness (all outputs stamped SCRIPTED_OFFLINE_FIXTURE).</td><td>6126 passed / 229 skipped, ruff clean (6ee27f1)</td><td>Four rounds: 292a62d REJECT (9 MAJOR), 23a055f REJECT, 92cc3d9 REJECT, 6ee27f1 APPROVE.</td><td><span class="pill p-warn">Closed offline; G6-pre NOT PASSED</span></td><td>No real load, chaos, restore, migration or alert delivery; six accepted-backlog items (section 8).</td></tr><tr><td><b>S10</b></td><td>Documentation only: ENGINEERING_HANDOFF (G0–G7, exact-head recipe, operator checklist, NOT_RUN).</td><td>No code; fresh venv: 6126 passed / 229 skipped</td><td>c1a2692 REJECT (1 MAJOR S10-M01) → fixed in 71bd8a3; review of 8f50ea8 found minor items only (fixed in acc7dba). No release head approved.</td><td><span class="pill p-bad">Canary NOT_RUN; no release</span></td><td>A production canary needs separate operator permission, recipe, window, budget and real data.</td></tr></tbody></table></div>
+<h2 id="stories">Stories by plan sprint</h2>
+<div class="bar"><div class="seg s-warn" style="flex:36" title="IMPLEMENTED_UNVERIFIED: 36">36</div><div class="seg s-info" style="flex:1" title="IN_PROGRESS: 1">1</div><div class="seg s-bad" style="flex:11" title="NOT_STARTED: 11">11</div></div><div class="legend"><span class="lg"><i class="sw s-ok0"></i>VERIFIED / DONE: <b>0</b></span> <span class="lg"><i class="sw s-warn"></i>IMPLEMENTED_UNVERIFIED: <b>36</b></span> <span class="lg"><i class="sw s-info"></i>IN_PROGRESS: <b>1</b></span> <span class="lg"><i class="sw s-bad"></i>NOT_STARTED: <b>11</b></span></div>
+<div class="wrap"><table><thead><tr><th>Plan sprint</th><th>Stories</th><th>IMPLEMENTED_UNVERIFIED</th><th>IN_PROGRESS</th><th>NOT_STARTED</th><th>VERIFIED / DONE</th></tr></thead><tbody><tr><td><b>S0</b></td><td>2</td><td>0</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S1</b></td><td>4</td><td>2</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S2</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S3</b></td><td>6</td><td>4</td><td>1</td><td>1</td><td>0</td></tr><tr><td><b>S4</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S5</b></td><td>6</td><td>4</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S6</b></td><td>8</td><td>7</td><td>0</td><td>1</td><td>0</td></tr><tr><td><b>S7</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S8</b></td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S9</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S10</b></td><td>2</td><td>0</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>FOLLOW_ON</b></td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr><tr class='tot'><td><b>Total</b></td><td><b>48</b></td><td><b>36</b></td><td><b>1</b></td><td><b>11</b></td><td><b>0</b></td></tr></tbody></table></div>
+<p class="sub">Source: TASK_LEDGER.md (parsed automatically: 48 rows). IMPLEMENTED_UNVERIFIED means «logic exists and is tested over scenarios», not «story done». Not started: US-001, 002 (S0), 005, 006 (S1), 007 (S3), 021–023 (S5/S6, need a real UI/COM), 042, 048 (S10), 047 (FOLLOW_ON).</p>
+<h2 id="gates">Gates G0–G7 and G6-pre</h2>
+<div class="flow"><span class="node n-bad">G0</span><span class="arr">→</span><span class="node n-warn">G1</span><span class="arr">→</span><span class="node n-bad">G2</span><span class="arr">→</span><span class="node n-bad">G3</span><span class="arr">→</span><span class="node n-bad">G5</span><span class="arr">→</span><span class="node n-bad">G6-pre</span><span class="arr">→</span><span class="node n-bad">G6</span><span class="arr">→</span><span class="node n-bad">G7</span></div><div class="sidebranch"><span class="node n-bad">G4</span> — independent branch (Drive), feeds G7</div><div class="sidebranch">Operator inputs: <span class="node n-op">OB-10</span> → G2 &nbsp; <span class="node n-op">OB-11</span> → G3 &nbsp; <span class="node n-op">OB-12</span> → G4 &nbsp; <span class="node n-op">OB-14</span> → G6 &nbsp; <span class="node n-op">OB-21</span> → G7</div>
+<div class="wrap"><table class="wide"><thead><tr><th>Gate</th><th>Decision owner</th><th>Required evidence</th><th>Status</th><th>What exists</th><th>Blockers</th><th>Depends on</th></tr></thead><tbody><tr><td><b>G0</b></td><td>Product owner + architecture + security</td><td>Approved scope/ADR/threat model, R1 boundary, source inventory</td><td><span class="pill p-bad">BLOCKED</span></td><td>Operator decisions of 2026-10-10: R2 in its own repository (A2), own <code>living.sources</code> (A3), replace GPL/AGPL donors with own code (A4); no donor code found in src.</td><td>OB-01 (formal scope/rebaseline), OB-15 (formal donor inventory approval). There is no formal G0 PASS.</td><td>— (entry point)</td></tr><tr><td><b>G1</b></td><td>Database/security review</td><td>Real roles/RLS/FKs/lease/fence/cursor/outbox/replay on PostgreSQL, not only mocks</td><td><span class="pill p-warn">NOT PASSED (in progress)</span></td><td>SQL executed on a disposable PG16; 229 integration tests passed (af9f287); restore equivalence, crash recovery, 9 guard mutations RED/GREEN; GPT-PM accepted exit evidence at df92cc8.</td><td>No «G1 PASS» recorded; not covered: capacity, kill inside COMMIT, restore into another cluster/version, migration on the real R1 schema. Closable by engineering without the operator.</td><td>G0 (formally); a deciding reviewer</td></tr><tr><td><b>G2</b></td><td>Metadata/domain review</td><td>Full canonical corpus, observed/accepted, conservative denial on unknown impact, no AI promotion</td><td><span class="pill p-bad">NOT_STARTED</span></td><td>Mechanics (promotion, CAS, timeline, coverage) exist on synthetic data only.</td><td>OB-10: authenticated source-wide 1C observation and a bounded worker; R2 is wired to no source.</td><td>G1; OB-10</td></tr><tr><td><b>G3</b></td><td>Independent accountant + verifier</td><td>Authentic report bytes/provenance, qualified recipe, six totals + rows, operation coverage, attestation</td><td><span class="pill p-bad">BLOCKED</span></td><td>Engineering reconciliation index for 521.1/2026-08 (10 machine cases MATCH, COM vs MCP, COM/OData parity) is engineering data, NOT attestation; there is no native report with data for 521.1.</td><td>OB-11: accountant export and attestation for 818 HA SRL, account 521.1, 2026-08. Without G3 there is no validated semantic profile → business reads fail closed.</td><td>OB-10, OB-11; G2 for accepting real data</td></tr><tr><td><b>G4</b></td><td>Source owner + security</td><td>Narrow Drive access proven; shared drive, membership, revoke, token, revision tests</td><td><span class="pill p-bad">NOT PASSED</span></td><td>S7 is a fake. Real probes of 2026-10-10: <code>drive.readonly</code> sees folder files and the changes feed (create, rename, move); <code>drive.file</code> does not see hand-placed files.</td><td>OB-12: is <code>drive.readonly</code> (whole Drive) acceptable in production; refresh-token lifetime in Testing mode; shared drives and revoke untested; Picker/app-owned upload untested.</td><td>Independent of G3 (per the plan Drive does not block the first manual 521.1 proof)</td></tr><tr><td><b>G5</b></td><td>Real user/admin UAT</td><td>Actual UAT, safe explanations, operations separation, auditable workbench</td><td><span class="pill p-bad">NOT_STARTED</span></td><td>S8 is offline decision modules; there is no UI.</td><td>Operator decision: UAT deferred until the UI scope is decided (B4). Needs the UI scope, real data (G3) and users.</td><td>G3 (data), UI-scope decision</td></tr><tr><td><b>G6-pre</b></td><td>Ops + security</td><td>Actual workload metrics, fired and recovered alarms, repeatable recovery</td><td><span class="pill p-bad">NOT PASSED</span></td><td>S9 is decisions over scripted inputs (all readiness slots NOT_RUN). Small sample on the local lane: light reads scale to 8 workers; the fail-closed path hits the 40 s timeout with 4 callers.</td><td>Needs real load/alarms/recovery; staging is forbidden by the operator; without G3 business reads are unavailable.</td><td>G1, G3; OB-14</td></tr><tr><td><b>G6</b></td><td>Prod owner + ops + security</td><td>Default-OFF, pinned source/company/recipe/hash/user, window/expiry/budget, kill-switch, copied-environment qualification; no test probes in prod</td><td><span class="pill p-bad">BLOCKED</span></td><td>One read-only canary on the local copy (not staging, not prod, no R2 code): health/companies work, business reads fail closed — see the as_of correction.</td><td>OB-14: canary window and rollback owner; a production canary is not authorized.</td><td>G6-pre, G3</td></tr><tr><td><b>G7</b></td><td>Release owner</td><td>Exact commit/config/recipe/parser/policy/evidence manifest; all mandatory tests actual PASS; no P0/P1; skipped ≠ PASS</td><td><span class="pill p-bad">BLOCKED</span></td><td>Exact-head recipe and bundle description exist (S10); there is no signed release head.</td><td>OB-21: the operator signs <code>PRODUCTION_GO</code> only after actual PASS of G0–G7.</td><td>All other gates</td></tr></tbody></table></div>
+<p class="sub">Critical path per the plan: G0 → contracts/storage → observed/accepted and native capture → attestation/comparison → UAT/ops → production qualification. Drive does not block the first manual 521.1 proof.</p>
+<h2 id="blockers">Blockers and dependencies</h2>
+<h3>A. Blockers only the operator / an external party can close</h3>
+<div class="wrap"><table class="wide"><thead><tr><th>ID</th><th>What is needed</th><th>Status</th><th>Fact</th><th>Blocks</th></tr></thead><tbody><tr><td><b>OB-01</b></td><td>Formal G0 / R2 scope rebaseline</td><td><span class="pill p-warn">PARTIAL</span></td><td>Separate repository decided 2026-10-10; no formal G0 PASS recorded.</td><td>G0</td></tr><tr><td><b>OB-02</b></td><td>GPT-PM chat bound to the project</td><td><span class="pill p-ok">CLOSED in practice</span></td><td>GPT-PM reviews ran for S1–S10 and for head 8f50ea8.</td><td>push approvals</td></tr><tr><td><b>OB-03</b></td><td>Disposable PostgreSQL</td><td><span class="pill p-ok">RESOLVED 2026-10-08</span></td><td>Container erp-phase2-test-pg.</td><td>G1</td></tr><tr><td><b>OB-04</b></td><td>Source registry: own <code>living.sources</code> or R1 <code>bag.sources</code></td><td><span class="pill p-ok">DECIDED 2026-10-10</span></td><td>Own table kept (A3).</td><td>G0/G1</td></tr><tr><td><b>OB-05</b></td><td>R1 fingerprint/CI and Phase 2</td><td><span class="pill p-ok">ANSWERED 2026-10-08</span></td><td>No CI; R2 separate from R1.</td><td>—</td></tr><tr><td><b>OB-10</b></td><td>Real 1C access and source-specific capture permit for <code>onec-818ha-reference</code></td><td><span class="pill p-bad">OPEN</span></td><td>R2 is wired to no source; the lane copy is reachable only through the R1 gateway.</td><td>G2, S3/S5</td></tr><tr><td><b>OB-11</b></td><td>Independent accountant attestation: 818 HA SRL, account 521.1, 2026-08</td><td><span class="pill p-bad">OPEN — the main blocker</span></td><td>No native report with data for 521.1; engineering reconciliations are not attestation.</td><td>G3 → G5/G6/G7</td></tr><tr><td><b>OB-12</b></td><td>Google OAuth and narrow Drive grant</td><td><span class="pill p-warn">PARTIAL</span></td><td>Client supplied, probes done; scope, token lifetime and shared drives are open decisions.</td><td>G4</td></tr><tr><td><b>OB-13</b></td><td>Production secret provider and rotation</td><td><span class="pill p-bad">OPEN (operator-owned)</span></td><td>The secrets provider is unchanged.</td><td>S1 rotation, S9</td></tr><tr><td><b>OB-14</b></td><td>Production canary and rollback owner; R1 shadow compatibility</td><td><span class="pill p-bad">OPEN</span></td><td>One read-only pass on the local copy was allowed; staging is forbidden; a production database is not authorized.</td><td>G6</td></tr><tr><td><b>OB-15</b></td><td>Formal donor/license inventory approval</td><td><span class="pill p-warn">PARTIAL</span></td><td>No donor code found in <code>src/.../phase2</code>; formal approval stays with the operator.</td><td>G0</td></tr><tr><td><b>OB-20</b></td><td>R2-US-047: in or out of Release 2 scope</td><td><span class="pill p-bad">OPEN (left as is)</span></td><td>Operator left it unchanged.</td><td>scope</td></tr><tr><td><b>OB-21</b></td><td>Final <code>PRODUCTION_GO</code> approval</td><td><span class="pill p-mute">LAST STEP</span></td><td>Only after actual PASS of G0–G7.</td><td>G7</td></tr></tbody></table></div>
+<h3>B. Dependency chains (what unlocks what)</h3>
+<ul><li><b>OB-11 → G3 → validated semantic profile → business reads without fail-closed → canary (G6) and UAT (G5) → G7.</b> This is the longest chain and the main critical path.</li><li><b>OB-10 → G2:</b> without real source-wide 1C observation and a bounded worker accepting real data is impossible; today R2 is wired to no source.</li><li><b>OB-12 → G4:</b> decision on <code>drive.readonly</code> and shared-drive/revoke checks; independent of G3.</li><li><b>UI-scope decision → G5:</b> UAT deferred by the operator; without a UI scope S8 stays a set of offline modules.</li><li><b>OB-14 → G6:</b> canary window and rollback owner; staging is forbidden, a production database is not authorized.</li><li><b>G0…G6-pre → G7 → OB-21:</b> <code>PRODUCTION_GO</code> is signed by the operator last.</li></ul>
+<h3>C. What engineering can do without the operator</h3>
+<ul><li>Test-lane stage 2: S8 job API HTTP endpoints, <code>living.*</code> ports on PostgreSQL, the Drive connector as tools; improve difference output (row amount with <code>show_values=true</code>).</li><li>Close the G1 tails: capacity, kill inside COMMIT, restore into another cluster/version — on a disposable PostgreSQL.</li><li>The six accepted-backlog items (section «Tails»).</li><li>Bring the stale status documents up to date (section «Tails»).</li><li>Push the 8 local R2 commits and the R1 commit <code>ea4defa</code> — only after GPT-PM APPROVE on the exact head.</li></ul>
+<h2 id="tracks">What happened after S10 closed (outside the original plan)</h2>
+<div class="wrap"><table class="wide"><thead><tr><th>Track</th><th>Status</th><th>Fact</th></tr></thead><tbody><tr><td>Release 2 extraction into its own repository</td><td><span class="pill p-ok">DONE</span></td><td><code>github.com/xLZDx/ERP_MCP_R2</code>; GPT-PM rejected e6abcfd (2 MAJOR R2-EXT-M01/M02) → fixed in 3ac41d9; <code>origin/main</code> = 8f50ea8.</td></tr><tr><td>Canary + workload sample (G6 / G6-pre input)</td><td><span class="pill p-warn">MEASUREMENT, NOT A PASS</span></td><td>Local copy, 37 s, 9 calls. Correction 2026-10-11: the <code>accounting_balance_by_analytics</code> failure came from a date without a time-zone offset, not from a missing profile.</td></tr><tr><td>Real Google Drive probes (G4 input)</td><td><span class="pill p-warn">MEASUREMENT, NOT A PASS</span></td><td><code>drive.readonly</code> works for a drop folder and the changes feed; <code>drive.file</code> does not. The test folder remains in the operator's Drive (cleanup is the operator's).</td></tr><tr><td>Second host Ivan: 1C copy + full R1 MCP stack, reachable from Claude and ChatGPT</td><td><span class="pill p-ok">WORKING (operator-confirmed)</span></td><td>Tailscale + Funnel + OpenAI tunnel; ChatGPT <code>system_status</code>/<code>sources_list</code> PASS as reported by the operator; runbook <code>docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md</code>. The host has no 1C client license: COM writes are possible only on the local machine.</td></tr><tr><td>Test-lane profile mode in R1 (all business reads on the test base)</td><td><span class="pill p-warn">LOCAL, NOT PUSHED</span></td><td>Commit <code>ea4defa</code> in the R1 worktree, 12 tests passed; labelled <code>native_reconciliation=NOT_RUN</code>. Push only after GPT-PM APPROVE on the exact head.</td></tr><tr><td>Phase 2 test-lane MCP, stage 1 (3 tools)</td><td><span class="pill p-ok">STAGE 1 DONE</span></td><td><code>phase2_capabilities</code>, <code>phase2_reconcile_two_bases</code>, <code>phase2_reconcile_negative_control</code> over the R2 <code>reconciliation</code> modules; 19 new tests + 286 with boundary tests passed; registered in Claude as <code>erp-mcp-phase2</code>. The process lives in the background of the session.</td></tr><tr><td>Two-base reconciliation on a real difference (reference here vs modified copy on Ivan)</td><td><span class="pill p-ok">VERIFIED LIVE</span></td><td>One posted document edited on a clone (+100), the clone shipped to Ivan (SHA-256 equal); the tool found exactly one 521.1 difference (<code>ROW_MISSING_IN_A</code>); before the edit the bases were identical. A machine copy-consistency check, not a native PASS.</td></tr><tr><td>Rest of Phase 2 in the test lane (S8 job API, <code>living.*</code> on Postgres, Drive as tools)</td><td><span class="pill p-bad">NOT STARTED (stage 2)</span></td><td>This is what «enable all Phase 2 tools» means: only reconciliation is exposed through MCP today.</td></tr></tbody></table></div>
+<h2 id="backlog">Tails, debts and document drift</h2>
+<div class="two">
+<div class="card"><h3>Accepted backlog (known, not fixed)</h3><ul><li><code>delivery_replay</code>: claim lease expiry is not checked by <code>_fenced</code>.</li><li><code>retention_hold.place_hold</code>: quota-slot leak.</li><li><code>retention_hold.confirm_release</code> reads a point-in-time snapshot.</li><li><code>audit_gate</code>: tenant-wide duplicate request ids.</li><li>S7: removed Drive roots return only with a new checker (re-admission removed, fail closed).</li><li>S8: an unaudited in-memory run stays visible until recovery.</li></ul></div>
+<div class="card"><h3>Document drift (needs sync)</h3><ul><li><code>docs/phase2/IMPLEMENTATION_STATUS.md</code> describes the 2026-10-08 state (head df92cc8, 326 tests) — stale; its gate table is shorter than the current one.</li><li><code>EVIDENCE_MATRIX.md</code> stops at S5; S6–S9 are backed by the sprint reports and the decision log.</li><li><code>S1_S4_TRACEABILITY.md</code>: the S9 section shows counts collected at 50e4c6e.</li><li>The S6 approval hash (c194760) comes from the sprint report only — confirm it.</li><li>The repository tracks <code>scripts/remote/discover-host - Copy.ps1</code> by mistake.</li></ul></div>
+</div>
+<div class="card"><h3>Hygiene and security (operator-owned)</h3><ul><li>Delete the plaintext secret files: <code>D:\secure\erp_mcp\New Text Document.txt</code> (copy admin login/password) and <code>chatgpt_connector_oauth.txt</code> — DPAPI-protected copies already exist.</li><li>The old OpenAI key that appeared in a screenshot was declared compromised; revocation of the old key is unverified.</li><li>Values from the local test-lane <code>env.ps1</code> were printed into the session twice (loopback only, disposable DB); the lane passwords can be rotated if desired.</li><li>Delete the Drive test folder <code>ERP_MCP_G4_PROBE</code>; issues #29 and #37 are open (the source-repository issue state was not re-checked now).</li><li>Ivan now serves the MODIFIED base copy (<code>818HA_p2diff</code>); revert with <code>scripts/remote/repoint-odata-base.ps1 -BaseName 818HA_test_ready</code>.</li></ul></div>
+<h2 id="notrun">NOT_RUN</h2>
+<ul><li>Production-representative workload/capacity; fired and recovered alarms; real alert delivery to a human.</li><li>PostgreSQL restore into another cluster/version; migration rehearsal on the real R1 schema; retention approval and any deletion.</li><li>Release 1 shadow regression; hosted CI (operator decision: no CI); mutation runs (operator ban 2026-10-09).</li><li>A real UI; real 1C reads by R2 modules; native report bytes; MOLDRETAIL data; accountant attestation; a production canary.</li><li>PostgreSQL integration for S6–S9 (no DB code; last run at af9f287).</li></ul>
+<h2 id="next">Recommended order</h2>
+<ol><li><b>Operator, highest value:</b> start OB-11 — get the independent accountant to export and attest the native 521.1 report for 2026-08. Everything else in the G3→G7 chain waits for it.</li><li><b>Operator:</b> decide the UI scope (unblocks G5) and the <code>drive.readonly</code> question (G4).</li><li><b>Engineering:</b> test-lane stage 2 (job API, <code>living.*</code>, Drive as tools) and closing the G1 tails on a disposable PostgreSQL.</li><li><b>Engineering:</b> sync the stale status documents and remove the stray file; then a GPT-PM review of the exact head and a push of the accumulated commits.</li><li><b>Operator:</b> secret hygiene (section «Tails»).</li></ol>
+<h2 id="sources">Sources and measurement basis</h2>
+<div class="card"><ul><li><b>From repository documents (not re-measured today):</b> <code>docs/phase2/S10_RELEASE_HANDOFF.md</code>, <code>PLAN_PHASE2_RU.md</code>, <code>TASK_LEDGER.md</code>, <code>OPERATOR_BACKLOG.md</code>, <code>G1_OPERATOR_BACKLOG.md</code>, <code>EVIDENCE_MATRIX.md</code>, <code>SOURCE_TO_R2_COMMIT_MAP.md</code>, <code>docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md</code>, <code>docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md</code>, the <code>reports/PHASE2_S*_SPRINT_*.html</code> reports, <code>core/DECISION_LOG.md</code>.</li><li><b>Checked today:</b> git state (main is 8 commits ahead of origin/main), story counts from TASK_LEDGER (parsed from the file), the live two-base reconciliation through the test-lane MCP and direct gateway calls.</li><li>Not run: the full test suite on the current HEAD, CI, mutations, PostgreSQL integration — per development rules v4 checks run at sprint end through subagents.</li></ul></div>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

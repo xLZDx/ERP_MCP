@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — полный статус</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#175cd3;--accent:#175cd3}
+:root[data-theme=dark]{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 48px}
+header,main{max-width:1280px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:23px;margin:0 0 4px}h2{font-size:18px;margin:34px 0 10px;padding-top:6px;border-top:1px solid var(--line)}h3{font-size:15px;margin:18px 0 6px}
+.sub{color:var(--muted)}
+nav.toc{margin:10px 0 0;padding:8px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:13px}
+nav.toc a{color:var(--accent);text-decoration:none;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+.card.verdict{border-left:4px solid var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.kpi b{display:block;font-size:26px;line-height:1.1}
+.kpi span{color:var(--muted);font-size:12px}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12);position:sticky;top:0}
+tr.tot td{background:rgba(127,127,127,.08)}
+.wrap{overflow-x:auto}
+table.wide{min-width:980px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid currentColor;white-space:nowrap}
+.p-ok{color:var(--ok)}.p-warn{color:var(--warn)}.p-bad{color:var(--bad)}.p-info{color:var(--info)}.p-mute{color:var(--muted)}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+.bar{display:flex;height:30px;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin:8px 0 4px}
+.seg{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+.s-warn{background:var(--warn)}.s-bad{background:var(--bad)}.s-info{background:var(--info)}.s-ok0{background:var(--ok)}
+.legend{font-size:12px;color:var(--muted)}.lg{margin-right:14px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:baseline}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0}
+.node{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;border:2px solid currentColor;background:var(--card)}
+.n-bad{color:var(--bad)}.n-warn{color:var(--warn)}.n-op{color:var(--info);font-size:12px;padding:2px 8px}
+.arr{color:var(--muted);font-size:18px}
+.sidebranch{margin:6px 0;color:var(--muted)}
+ul{margin:6px 0;padding-left:20px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+@media (max-width:640px){body{padding:0 12px 40px}h1{font-size:19px}}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — полный статус: спринты, гейты, блокеры, зависимости</h1>
+<div class="sub">Дата: 2026-10-11 · репозиторий Release 2 (ветка main) · правила разработки v4 · отчёт строится по документам репозитория, числа тестов — записанные, не перемеренные сегодня</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP_R2</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 3688196</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<nav class="toc"><a href="#answer">Ответ</a> · <a href="#claim">Заявлено vs факт</a> · <a href="#sprints">Спринты</a> · <a href="#stories">Истории</a> · <a href="#gates">Гейты</a> · <a href="#blockers">Блокеры</a> · <a href="#tracks">После S10</a> · <a href="#backlog">Хвосты</a> · <a href="#notrun">NOT_RUN</a> · <a href="#next">Дальше</a> · <a href="#sources">Источники</a></nav>
+<h2 id="answer">Ответ на вопрос «фаза 2 полностью готова?»</h2>
+<div class="card verdict">
+<p><span class="bad">Нет. Phase 2 как продукт НЕ готова.</span> Release 2 — <b>NO-GO</b>; ни один из гейтов G0–G7 (и G6-pre) не пройден; ни одна из 48 историй не имеет статуса VERIFIED или DONE.</p>
+<p>Что действительно закрыто: <b>офлайн-инженерная часть</b> — десять поставок (S0/G1 … S10) реализованы как изолированные эталонные модули без подключения к источникам, по каждой есть одобрение GPT-PM на точный head (S10 — только документация, релизного head нет). Терминальное состояние программы — <b>ENGINEERING_HANDOFF</b>, а не «готово». Если в прошлых отчётах прозвучало «полностью готово», корректная формулировка именно эта: код-эталон написан и проверен на сценарных входах, продуктовой приёмки не было.</p>
+<p>Главный внешний блокер — <b>OB-11</b>: независимая аттестация бухгалтера по счёту 521.1 (G3). Пока её нет, нет валидированного семантического профиля, а значит нет честных чтений бизнес-данных, пилота и дальнейших гейтов (G5/G6/G7).</p>
+</div>
+<div class="kpis">
+<div class="kpi"><b class="ok">10 / 10</b><span>поставок закрыто офлайн (S0/G1 … S10)</span></div>
+<div class="kpi"><b class="bad">0 / 9</b><span>гейтов пройдено (G0–G7 и G6-pre)</span></div>
+<div class="kpi"><b class="bad">0 / 48</b><span>историй VERIFIED/DONE</span></div>
+<div class="kpi"><b class="warn">36</b><span>историй IMPLEMENTED_UNVERIFIED (код есть, приёмки нет)</span></div>
+<div class="kpi"><b class="bad">12</b><span>историй не начато / в работе</span></div>
+<div class="kpi"><b class="warn">8</b><span>коммитов R2 не запушено на момент измерения, до коммита этого отчёта (push — только после GPT-PM APPROVE)</span></div>
+</div>
+<h2 id="claim">Заявлено vs факт</h2>
+<div class="wrap"><table class="wide"><thead><tr><th>Формулировка</th><th>Верно?</th><th>Что можно говорить честно</th></tr></thead><tbody>
+<tr><td>«Phase 2 полностью готова»</td><td><span class="pill p-bad">НЕТ</span></td><td>Готов офлайн-эталонный код S0–S9 и handoff S10. Продукт не принят, Release 2 NO-GO.</td></tr>
+<tr><td>«Все спринты закрыты»</td><td><span class="pill p-warn">ТОЛЬКО ОФЛАЙН</span></td><td>Закрыты как реализация + ревью GPT-PM. US-021..023 (реальный UI/COM) и US-005/006/007 не начаты; канарейка S10 NOT_RUN.</td></tr>
+<tr><td>«Тесты зелёные»</td><td><span class="pill p-warn">С ОГОВОРКАМИ</span></td><td>6126 passed / 229 skipped на 6ee27f1 и в свежем venv. 229 пропущенных — интеграционные тесты PostgreSQL без DSN (NOT_RUN, не PASS). Тесты доказывают классификацию над сценариями, не приёмку. На текущем HEAD полный прогон не повторялся.</td></tr>
+<tr><td>«Сверка баз работает»</td><td><span class="pill p-ok">ДА, В ТЕСТ-ЛИНИИ</span></td><td>Подтверждено живьём на реальной разнице (раздел «После S10»). Это сверка двух копий одной базы машинным путём; нативной аттестации и независимого происхождения данных нет.</td></tr>
+<tr><td>«Всё запушено / в проде»</td><td><span class="pill p-bad">НЕТ</span></td><td>Прода нет. В origin/main — до 8f50ea8; локальные коммиты R2 (8 на момент измерения) и коммит R1 ea4defa не запушены.</td></tr>
+</tbody></table></div>
+<h2 id="sprints">Спринты: что сделано, как проверено, что осталось</h2>
+<p class="sub">Число тестов накопительное по всему набору tests/phase2 на момент спринта. Хэши — оригинальные хэши исходного репозитория (при выносе история переписана; соответствие R2-хэшам — SOURCE_TO_R2_COMMIT_MAP.md).</p>
+<div class="wrap"><table class="wide"><thead><tr><th>Поставка</th><th>Содержание</th><th>Офлайн-тесты (записанные)</th><th>Ревью / одобрение GPT-PM</th><th>Статус</th><th>Хвост / зависимость</th></tr></thead><tbody><tr><td><b>S0 + G1</b></td><td>Базовая линия, ADR-предложения, SQL G1 (<code>db/phase2/001..003</code>), выполненный на одноразовом PostgreSQL 16: роли/RLS/замки/курсоры/outbox, restore-эквивалентность, crash-recovery, девять guard-мутаций RED/GREEN.</td><td>326 passed / 65 skipped; интеграция 65 passed (df92cc8)</td><td>План APPROVE; свип a8b5b4d REJECT (3 BLOCKER, 5 MAJOR) → исправлено; d3c3f60 7 из 8; 45a7b1a APPROVE только на push; df92cc8 — G1 exit evidence принят.</td><td><span class="pill p-warn">Закрыт офлайн; G1 НЕ ПРОЙДЕН</span></td><td>Не закрыто для G1: ёмкость 30/50/100/150 источников, kill в момент COMMIT, restore в другой кластер/версию, финальный exit review G1 не записан как PASS.</td></tr><tr><td><b>S1–S4</b></td><td>Порты и фейки, конверт коннектора (connector SDK), планировщик, failure≠drift, promotion service, capture loop, лизинг/fencing, бюджет бэкендов.</td><td>1035 passed / 219 skipped; интеграция 219 passed (e42dacb)</td><td>Exact-head review 87c6817 REJECT (1 MAJOR) → исправлено e42dacb; APPROVE на 5000043 (push df92cc8..5000043).</td><td><span class="pill p-warn">Закрыт офлайн</span></td><td>Не подключено ни к одному источнику; US-005/006/007 NOT_STARTED; US-009 IN_PROGRESS (baseline hash только в памяти).</td></tr><tr><td><b>S4b</b></td><td>Таксономия, алиасы, ужесточение capture loop, capacity drill на одноразовом PostgreSQL.</td><td>1232 passed / 228 skipped; интеграция 226 passed</td><td>REJECT 03da6aa (1 MAJOR: drill не доказывал, что DSN — одноразовый контейнер) → APPROVE a2219b0 и merge 6f80219.</td><td><span class="pill p-warn">Закрыт офлайн</span></td><td>Capacity drill — малое измерение на одном хосте, не гарантия ёмкости.</td></tr><tr><td><b>S5</b></td><td>Capture permit, граница побочных эффектов, artifact vault, безопасный парсер xlsx/csv. US-021..023 отложены: нужны реальный UI/COM.</td><td>1641 passed / 229 skipped; интеграция 229 passed (af9f287)</td><td>APPROVE на af9f287, 0 BLOCKER / 0 MAJOR.</td><td><span class="pill p-warn">Закрыт офлайн; US-021..023 не начаты</span></td><td>Парсер не песочница; лимит памяти дочернего процесса на Windows не применяется.</td></tr><tr><td><b>S6</b></td><td>Аттестация доказательств, candidate runner, шесть итогов 521.1, контракт закупок.</td><td>1984 passed / 229 skipped / 1 failed (S5 test_safe_parser: CHILD_ABORTED вместо TIMEOUT) в записанном прогоне; позднее свежий venv: 6126 passed / 229 skipped</td><td>REJECT 1342b3a (5 MAJOR) → APPROVE c194760 (push only). Хэш взят из отчёта спринта: записи в decision log нет — нужно подтверждение.</td><td><span class="pill p-warn">Закрыт офлайн</span></td><td>Нет реальных байтов нативного отчёта 521.1; всё на фикстурах.</td></tr><tr><td><b>S6b</b></td><td><code>ap_account_strategy</code>, <code>posted_receipts</code> (<code>ap.account_based</code> остаётся закрытым).</td><td>2555 passed / 229 skipped</td><td>REJECT 09536a3 (10 MAJOR) → APPROVE b5ae365 (push only).</td><td><span class="pill p-warn">Закрыт офлайн</span></td><td>Нет реального постраничного источника и данных MOLDRETAIL.</td></tr><tr><td><b>S7</b></td><td>Google Drive через read-only порт и скриптовый фейк: OAuth, scope, baseline, курсор, ревизии, членство, auth-state.</td><td>3397 passed / 229 skipped (накопительно)</td><td>Девять раундов вместе с S8: REJECT e5761eb (S7 M01–M10) → APPROVE fa4852d. S7-M03 закрыт удалением root re-admission (fail closed).</td><td><span class="pill p-warn">Закрыт офлайн; G4 НЕ ПРОЙДЕН</span></td><td>Реальный Drive проверен только пробами вне кода R2 (2026-10-10); возврат удалённых root требует будущего backend-enforced claim.</td></tr><tr><td><b>S8</b></td><td>Workbench, timeline/coverage, safe_errors, jobs_api, workbench_session — офлайн модули решений (без реального UI/HTTP).</td><td>4433 passed / 229 skipped (накопительно)</td><td>APPROVE fa4852d (девять раундов вместе с S7; один запрос завис из-за сбоя браузера PM Bridge).</td><td><span class="pill p-warn">Закрыт офлайн; G5 НЕ ПРОЙДЕН</span></td><td>Нет UI/HTTP/RBAC; JobQueuePort не вызывается; UI-scope отложен оператором.</td></tr><tr><td><b>S9</b></td><td>Двенадцать модулей ops/ёмкость/аудит/доставка/алерты/миграция/rollback/restore/export/retention/readiness (все выходы помечены SCRIPTED_OFFLINE_FIXTURE).</td><td>6126 passed / 229 skipped, ruff чист (6ee27f1)</td><td>Четыре раунда: 292a62d REJECT (9 MAJOR), 23a055f REJECT, 92cc3d9 REJECT, 6ee27f1 APPROVE.</td><td><span class="pill p-warn">Закрыт офлайн; G6-pre НЕ ПРОЙДЕН</span></td><td>Реальной нагрузки, chaos, restore, миграции и доставки алертов не было; шесть пунктов accepted backlog (раздел 8).</td></tr><tr><td><b>S10</b></td><td>Только документация: ENGINEERING_HANDOFF (G0–G7, рецепт exact-head, чек-лист оператора, NOT_RUN).</td><td>Кода нет; свежий venv: 6126 passed / 229 skipped</td><td>c1a2692 REJECT (1 MAJOR S10-M01) → исправлено 71bd8a3; ревью 8f50ea8 — только minor (исправлены в acc7dba). Релизный head не утверждён.</td><td><span class="pill p-bad">Канарейка NOT_RUN; релиза нет</span></td><td>Продовая канарейка требует отдельного разрешения оператора, рецепта, окна, бюджета и реальных данных.</td></tr></tbody></table></div>
+<h2 id="stories">Истории по спринтам плана</h2>
+<div class="bar"><div class="seg s-warn" style="flex:36" title="IMPLEMENTED_UNVERIFIED: 36">36</div><div class="seg s-info" style="flex:1" title="IN_PROGRESS: 1">1</div><div class="seg s-bad" style="flex:11" title="NOT_STARTED: 11">11</div></div><div class="legend"><span class="lg"><i class="sw s-ok0"></i>VERIFIED / DONE: <b>0</b></span> <span class="lg"><i class="sw s-warn"></i>IMPLEMENTED_UNVERIFIED: <b>36</b></span> <span class="lg"><i class="sw s-info"></i>IN_PROGRESS: <b>1</b></span> <span class="lg"><i class="sw s-bad"></i>NOT_STARTED: <b>11</b></span></div>
+<div class="wrap"><table><thead><tr><th>Спринт плана</th><th>Историй</th><th>IMPLEMENTED_UNVERIFIED</th><th>IN_PROGRESS</th><th>NOT_STARTED</th><th>VERIFIED / DONE</th></tr></thead><tbody><tr><td><b>S0</b></td><td>2</td><td>0</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S1</b></td><td>4</td><td>2</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S2</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S3</b></td><td>6</td><td>4</td><td>1</td><td>1</td><td>0</td></tr><tr><td><b>S4</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S5</b></td><td>6</td><td>4</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>S6</b></td><td>8</td><td>7</td><td>0</td><td>1</td><td>0</td></tr><tr><td><b>S7</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S8</b></td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S9</b></td><td>4</td><td>4</td><td>0</td><td>0</td><td>0</td></tr><tr><td><b>S10</b></td><td>2</td><td>0</td><td>0</td><td>2</td><td>0</td></tr><tr><td><b>FOLLOW_ON</b></td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr><tr class='tot'><td><b>Итого</b></td><td><b>48</b></td><td><b>36</b></td><td><b>1</b></td><td><b>11</b></td><td><b>0</b></td></tr></tbody></table></div>
+<p class="sub">Источник — TASK_LEDGER.md (разобран автоматически: 48 строк). Статус IMPLEMENTED_UNVERIFIED означает «логика есть и проверена тестами над сценариями», не «история выполнена». Не начаты: US-001, 002 (S0), 005, 006 (S1), 007 (S3), 021–023 (S5/S6, нужен реальный UI/COM), 042, 048 (S10), 047 (FOLLOW_ON).</p>
+<h2 id="gates">Гейты G0–G7 и G6-pre</h2>
+<div class="flow"><span class="node n-bad">G0</span><span class="arr">→</span><span class="node n-warn">G1</span><span class="arr">→</span><span class="node n-bad">G2</span><span class="arr">→</span><span class="node n-bad">G3</span><span class="arr">→</span><span class="node n-bad">G5</span><span class="arr">→</span><span class="node n-bad">G6-pre</span><span class="arr">→</span><span class="node n-bad">G6</span><span class="arr">→</span><span class="node n-bad">G7</span></div><div class="sidebranch"><span class="node n-bad">G4</span> — независимая ветка (Drive), входит в G7</div><div class="sidebranch">Опоры оператора: <span class="node n-op">OB-10</span> → G2 &nbsp; <span class="node n-op">OB-11</span> → G3 &nbsp; <span class="node n-op">OB-12</span> → G4 &nbsp; <span class="node n-op">OB-14</span> → G6 &nbsp; <span class="node n-op">OB-21</span> → G7</div>
+<div class="wrap"><table class="wide"><thead><tr><th>Гейт</th><th>Владелец решения</th><th>Нужное доказательство</th><th>Статус</th><th>Что уже есть</th><th>Блокеры</th><th>Зависит от</th></tr></thead><tbody><tr><td><b>G0</b></td><td>Продукт-владелец + архитектура + безопасность</td><td>Утверждённые scope/ADR/threat model, граница с R1, инвентаризация источников</td><td><span class="pill p-bad">BLOCKED</span></td><td>Решения оператора 2026-10-10: R2 в отдельном репозитории (A2), собственная <code>living.sources</code> (A3), замена GPL/AGPL-доноров своим кодом (A4); donor-код в src не найден.</td><td>OB-01 (формальный scope/rebaseline), OB-15 (формальное одобрение инвентаря доноров). Формального G0 PASS нет.</td><td>— (входная точка)</td></tr><tr><td><b>G1</b></td><td>Ревью БД/безопасности</td><td>Реальные роли/RLS/FK/lease/fence/cursor/outbox/replay на PostgreSQL, не только моки</td><td><span class="pill p-warn">НЕ ПРОЙДЕН (в работе)</span></td><td>SQL выполнен на одноразовом PG16; 229 интеграционных тестов passed (af9f287); restore-эквивалентность, crash-recovery, 9 guard-мутаций RED/GREEN; GPT-PM принял exit evidence на df92cc8.</td><td>Нет записи «G1 PASS»; не покрыто: ёмкость, kill внутри COMMIT, restore в другой кластер/версию, миграция на реальной схеме R1. Инженерно закрываемо без оператора.</td><td>G0 (формально); отдельный решающий ревьюер</td></tr><tr><td><b>G2</b></td><td>Ревью метаданных/домена</td><td>Полный канонический корпус, observed/accepted, консервативный отказ при неизвестном влиянии, никакого AI-promotion</td><td><span class="pill p-bad">NOT_STARTED</span></td><td>Механика (promotion, CAS, timeline, coverage) есть только на синтетических данных.</td><td>OB-10: аутентифицированное source-wide наблюдение 1С и ограниченный worker; R2 не подключён ни к одному источнику.</td><td>G1; OB-10</td></tr><tr><td><b>G3</b></td><td>Независимый бухгалтер + верификатор</td><td>Подлинные байты и происхождение отчёта, квалифицированный рецепт, шесть итогов + строки, покрытие операций, аттестация</td><td><span class="pill p-bad">BLOCKED</span></td><td>Инженерный индекс сверки 521.1/2026-08 (10 машинных кейсов MATCH, COM vs MCP, parity COM/OData) — это инженерные данные, НЕ аттестация; нативного отчёта с данными по 521.1 нет.</td><td>OB-11: экспорт и аттестация бухгалтера по 818 HA SRL, счёт 521.1, 2026-08. Без G3 нет валидированного семантического профиля → бизнес-чтения fail closed.</td><td>OB-10, OB-11; GATE G2 для принятия реальных данных</td></tr><tr><td><b>G4</b></td><td>Владелец источника + безопасность</td><td>Доказан узкий доступ к Drive; shared drive, членство, revoke, токены, ревизии</td><td><span class="pill p-bad">NOT PASSED</span></td><td>S7 — фейк. Реальные пробы 2026-10-10: <code>drive.readonly</code> видит файлы папки и changes-feed (создание, rename, move); <code>drive.file</code> не видит файлов, положенных вручную.</td><td>OB-12: приемлем ли <code>drive.readonly</code> (весь Drive) в проде; срок refresh-токена в режиме Testing; shared drives и revoke не проверялись; Picker/app-owned upload не проверены.</td><td>Независим от G3 (по плану Drive не блокирует первый ручной proof 521.1)</td></tr><tr><td><b>G5</b></td><td>Реальный UAT пользователя/админа</td><td>Фактический UAT, безопасные объяснения, разделение операций, аудируемый workbench</td><td><span class="pill p-bad">NOT_STARTED</span></td><td>S8 — офлайн модули решений; UI нет.</td><td>Решение оператора: UAT отложен до определения UI-scope (B4). Нужны UI-scope, реальные данные (G3) и пользователи.</td><td>G3 (данные), решение по UI-scope</td></tr><tr><td><b>G6-pre</b></td><td>Эксплуатация + безопасность</td><td>Реальные метрики нагрузки, сработавшие и восстановленные алармы, повторяемое восстановление</td><td><span class="pill p-bad">NOT PASSED</span></td><td>S9 — решения над сценариями (все слоты readiness NOT_RUN). Малая выборка на локальной линии: лёгкие чтения масштабируются до 8 воркеров; fail-closed путь упирается в 40-секундный таймаут при 4 вызывающих.</td><td>Нужны реальные нагрузка/алармы/восстановление; staging запрещён оператором; без G3 бизнес-чтения недоступны.</td><td>G1, G3; OB-14</td></tr><tr><td><b>G6</b></td><td>Владелец прода + ops + безопасность</td><td>Default-OFF, закреплённые source/company/recipe/hash/user, окно/срок/бюджет, kill-switch, квалификация на копии; без тестовых проб в проде</td><td><span class="pill p-bad">BLOCKED</span></td><td>Одна read-only канарейка на локальной копии (не staging, не прод, без кода R2): health/companies работают, бизнес-чтения fail closed — см. поправку про as_of.</td><td>OB-14: окно канарейки и владелец отката; продовая канарейка не разрешена.</td><td>G6-pre, G3</td></tr><tr><td><b>G7</b></td><td>Владелец релиза</td><td>Манифест exact commit/config/recipe/parser/policy/evidence; все обязательные тесты — фактический PASS; нет P0/P1; skipped ≠ PASS</td><td><span class="pill p-bad">BLOCKED</span></td><td>Рецепт exact-head и описание пакета есть (S10); подписанного релизного head нет.</td><td>OB-21: <code>PRODUCTION_GO</code> подписывает оператор только после фактического PASS G0–G7.</td><td>Все остальные гейты</td></tr></tbody></table></div>
+<p class="sub">Критический путь по плану: G0 → контракты/хранилище → observed/accepted и нативный capture → аттестация/сверка → UAT/ops → квалификация прода. Drive не блокирует первый ручной proof 521.1.</p>
+<h2 id="blockers">Блокеры и зависимости</h2>
+<h3>A. Блокеры, которые закрывает только оператор / внешняя сторона</h3>
+<div class="wrap"><table class="wide"><thead><tr><th>ID</th><th>Что нужно</th><th>Статус</th><th>Факт</th><th>Блокирует</th></tr></thead><tbody><tr><td><b>OB-01</b></td><td>Формальный G0 / rebaseline scope R2</td><td><span class="pill p-warn">ЧАСТИЧНО</span></td><td>Решение об отдельном репозитории принято 2026-10-10; формальный G0 PASS не записан.</td><td>G0</td></tr><tr><td><b>OB-02</b></td><td>Привязка чата GPT-PM к проекту</td><td><span class="pill p-ok">ЗАКРЫТО на практике</span></td><td>GPT-PM ревью прошли по S1–S10 и по head 8f50ea8.</td><td>push-одобрения</td></tr><tr><td><b>OB-03</b></td><td>Одноразовый PostgreSQL</td><td><span class="pill p-ok">ЗАКРЫТО 2026-10-08</span></td><td>Контейнер erp-phase2-test-pg.</td><td>G1</td></tr><tr><td><b>OB-04</b></td><td>Реестр источников: свой <code>living.sources</code> или R1 <code>bag.sources</code></td><td><span class="pill p-ok">РЕШЕНО 2026-10-10</span></td><td>Оставлена собственная таблица (A3).</td><td>G0/G1</td></tr><tr><td><b>OB-05</b></td><td>R1 fingerprint/CI и Phase 2</td><td><span class="pill p-ok">ОТВЕЧЕНО 2026-10-08</span></td><td>Без CI; R2 отдельно от R1.</td><td>—</td></tr><tr><td><b>OB-10</b></td><td>Реальный доступ к 1С и source-specific capture permit для <code>onec-818ha-reference</code></td><td><span class="pill p-bad">ОТКРЫТО</span></td><td>R2 не подключён ни к одному источнику; lane-копия доступна только через gateway R1.</td><td>G2, S3/S5</td></tr><tr><td><b>OB-11</b></td><td>Независимая аттестация бухгалтера: 818 HA SRL, счёт 521.1, 2026-08</td><td><span class="pill p-bad">ОТКРЫТО — главный блокер</span></td><td>Нативного отчёта с данными по 521.1 нет; инженерные сверки — не аттестация.</td><td>G3 → G5/G6/G7</td></tr><tr><td><b>OB-12</b></td><td>Google OAuth и узкий grant Drive</td><td><span class="pill p-warn">ЧАСТИЧНО</span></td><td>Клиент предоставлен, пробы сделаны; открыты решения по scope, сроку токена, shared drives.</td><td>G4</td></tr><tr><td><b>OB-13</b></td><td>Провайдер секретов и ротация для прода</td><td><span class="pill p-bad">ОТКРЫТО (владелец — оператор)</span></td><td>Провайдер секретов не менялся.</td><td>S1 rotation, S9</td></tr><tr><td><b>OB-14</b></td><td>Канарейка в проде и владелец отката; R1 shadow-совместимость</td><td><span class="pill p-bad">ОТКРЫТО</span></td><td>Разрешена одна read-only проба на локальной копии; staging запрещён; прод-БД не разрешена.</td><td>G6</td></tr><tr><td><b>OB-15</b></td><td>Формальное одобрение инвентаря доноров/лицензий</td><td><span class="pill p-warn">ЧАСТИЧНО</span></td><td>Donor-код в <code>src/.../phase2</code> не найден; формальное одобрение за оператором.</td><td>G0</td></tr><tr><td><b>OB-20</b></td><td>R2-US-047: в scope Release 2 или нет</td><td><span class="pill p-bad">ОТКРЫТО (оставлено как есть)</span></td><td>Оператор оставил без изменений.</td><td>scope</td></tr><tr><td><b>OB-21</b></td><td>Финальное одобрение <code>PRODUCTION_GO</code></td><td><span class="pill p-mute">ПОСЛЕДНИЙ ШАГ</span></td><td>Только после фактического PASS G0–G7.</td><td>G7</td></tr></tbody></table></div>
+<h3>B. Цепочки зависимостей (что разблокирует что)</h3>
+<ul><li><b>OB-11 → G3 → валидированный семантический профиль → чтения бизнес-данных без fail-closed → канарейка (G6) и UAT (G5) → G7.</b> Это самая длинная цепочка и главный критический путь.</li><li><b>OB-10 → G2:</b> без реального source-wide наблюдения 1С и bounded worker принятие реальных данных невозможно; сейчас R2 не подключён к источникам.</li><li><b>OB-12 → G4:</b> решение по <code>drive.readonly</code> и проверка shared drives/revoke; независимо от G3.</li><li><b>Решение по UI-scope → G5:</b> UAT отложен оператором; без UI-scope S8 остаётся набором офлайн-модулей.</li><li><b>OB-14 → G6:</b> окно канарейки и владелец отката; staging запрещён, прод-БД не разрешена.</li><li><b>G0…G6-pre → G7 → OB-21:</b> <code>PRODUCTION_GO</code> подписывается оператором последним.</li></ul>
+<h3>C. Что можно делать без оператора (инженерные зависимости)</h3>
+<ul><li>Этап 2 test-lane: HTTP-эндпоинты job API (S8), порты <code>living.*</code> на PostgreSQL, Drive-коннектор как инструменты; доработка вывода различий (сумма строки при <code>show_values=true</code>).</li><li>Закрыть хвосты G1: ёмкость, kill внутри COMMIT, restore в другой кластер/версию — на одноразовом PostgreSQL.</li><li>Шесть пунктов accepted backlog (раздел «Хвосты»).</li><li>Привести в соответствие устаревшие документы статуса (раздел «Хвосты»).</li><li>Push 8 локальных коммитов R2 и коммита R1 <code>ea4defa</code> — только после GPT-PM APPROVE на точный head.</li></ul>
+<h2 id="tracks">Что сделано после закрытия S10 (вне исходного плана)</h2>
+<div class="wrap"><table class="wide"><thead><tr><th>Дорожка</th><th>Статус</th><th>Факт</th></tr></thead><tbody><tr><td>Вынос Release 2 в отдельный репозиторий</td><td><span class="pill p-ok">СДЕЛАНО</span></td><td><code>github.com/xLZDx/ERP_MCP_R2</code>; GPT-PM отклонил e6abcfd (2 MAJOR R2-EXT-M01/M02) → исправлено 3ac41d9; <code>origin/main</code> = 8f50ea8.</td></tr><tr><td>Канарейка + выборка нагрузки (G6 / G6-pre вход)</td><td><span class="pill p-warn">ИЗМЕРЕНИЕ, НЕ PASS</span></td><td>Локальная копия, 37 с, 9 вызовов. Поправка 2026-10-11: сбой <code>accounting_balance_by_analytics</code> был из-за даты без смещения часового пояса, а не из-за отсутствия профиля.</td></tr><tr><td>Пробы реального Google Drive (G4 вход)</td><td><span class="pill p-warn">ИЗМЕРЕНИЕ, НЕ PASS</span></td><td><code>drive.readonly</code> работает для drop-папки и changes-feed; <code>drive.file</code> — нет. Тестовая папка осталась в Drive оператора (удаление — за оператором).</td></tr><tr><td>Второй хост Ivan: 1С-копия + полный стек MCP R1, доступ из Claude и ChatGPT</td><td><span class="pill p-ok">РАБОТАЕТ (подтвердил оператор)</span></td><td>Tailscale + Funnel + OpenAI tunnel; ChatGPT <code>system_status</code>/<code>sources_list</code> PASS по сообщению оператора; runbook — <code>docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md</code>. На хосте нет клиентской лицензии 1С: записи через COM возможны только на локальной машине.</td></tr><tr><td>Режим test-lane profiles в R1 (все бизнес-чтения на тестовой базе)</td><td><span class="pill p-warn">ЛОКАЛЬНО, НЕ ЗАПУШЕНО</span></td><td>Коммит <code>ea4defa</code> в worktree R1, 12 тестов passed; помечено <code>native_reconciliation=NOT_RUN</code>. Push — только после GPT-PM APPROVE на точный head.</td></tr><tr><td>Phase 2 test-lane MCP, этап 1 (3 инструмента)</td><td><span class="pill p-ok">ЭТАП 1 СДЕЛАН</span></td><td><code>phase2_capabilities</code>, <code>phase2_reconcile_two_bases</code>, <code>phase2_reconcile_negative_control</code> поверх модулей R2 <code>reconciliation</code>; 19 новых тестов + 286 с граничными passed; подключён в Claude как <code>erp-mcp-phase2</code>. Процесс живёт в фоне сессии.</td></tr><tr><td>Сверка двух баз на реальной разнице (эталон здесь vs изменённая копия на Ivan)</td><td><span class="pill p-ok">ПОДТВЕРЖДЕНО ЖИВЬЁМ</span></td><td>Один проведённый документ правлен на клоне (+100), клон перенесён на Ivan (SHA-256 совпал); инструмент нашёл ровно одно отличие 521.1 (<code>ROW_MISSING_IN_A</code>), до правки базы были идентичны. Это машинная проверка копий одной базы, не нативный PASS.</td></tr><tr><td>Остальная часть Phase 2 в test-lane (job API S8, <code>living.*</code> на Postgres, Drive как инструменты)</td><td><span class="pill p-bad">НЕ НАЧАТО (этап 2)</span></td><td>Это то, что имелось в виду под «включить все инструменты Phase 2»: сейчас через MCP доступна только сверка.</td></tr></tbody></table></div>
+<h2 id="backlog">Хвосты, долги и расхождения документов</h2>
+<div class="two">
+<div class="card"><h3>Accepted backlog (известно, не исправлено)</h3><ul><li><code>delivery_replay</code>: срок lease заявки не проверяется в <code>_fenced</code>.</li><li><code>retention_hold.place_hold</code>: утечка квотного слота.</li><li><code>retention_hold.confirm_release</code> читает снимок на момент времени.</li><li><code>audit_gate</code>: дублирующиеся request id в пределах tenant.</li><li>S7: удалённые Drive-root возвращаются только с новым checker (re-admission убран, fail closed).</li><li>S8: неаудированный in-memory run виден до recovery.</li></ul></div>
+<div class="card"><h3>Расхождения документов (нужна синхронизация)</h3><ul><li><code>docs/phase2/IMPLEMENTATION_STATUS.md</code> описывает состояние 2026-10-08 (head df92cc8, 326 тестов) — устарел; таблица гейтов в нём короче актуальной.</li><li><code>EVIDENCE_MATRIX.md</code> заканчивается на S5; S6–S9 подтверждены отчётами спринтов и decision log.</li><li><code>S1_S4_TRACEABILITY.md</code>: секция S9 показывает счётчики на 50e4c6e.</li><li>Хэш одобрения S6 (c194760) взят только из отчёта спринта — подтвердить.</li><li>В репозитории по ошибке отслеживается <code>scripts/remote/discover-host - Copy.ps1</code>.</li></ul></div>
+</div>
+<div class="card"><h3>Гигиена и безопасность (за оператором)</h3><ul><li>Удалить открытые файлы с секретами: <code>D:\secure\erp_mcp\New Text Document.txt</code> (логин/пароль админа копии) и <code>chatgpt_connector_oauth.txt</code> — зашифрованные копии (DPAPI) уже созданы.</li><li>Старый ключ OpenAI, попавший на скриншот, объявлен скомпрометированным; отзыв старого ключа не проверен.</li><li>В сессию дважды попадали значения из <code>env.ps1</code> локальной тестовой линии (только loopback, одноразовая БД); пароли линии при желании можно ротировать.</li><li>Удалить тестовую папку Drive <code>ERP_MCP_G4_PROBE</code>; issues #29 и #37 открыты (состояние issues исходного репозитория сейчас не перепроверялось).</li><li>Ivan сейчас обслуживает ИЗМЕНЁННУЮ копию базы (<code>818HA_p2diff</code>); откат — <code>scripts/remote/repoint-odata-base.ps1 -BaseName 818HA_test_ready</code>.</li></ul></div>
+<h2 id="notrun">NOT_RUN</h2>
+<ul><li>Нагрузка/ёмкость, представительная для прода; сработавшие и восстановленные алармы; реальная доставка алертов человеку.</li><li>Restore PostgreSQL в другой кластер/версию; репетиция миграции на реальной схеме R1; одобрение retention и любое удаление.</li><li>Регрессия Release 1 (shadow); hosted CI (решение оператора: CI нет); мутационные прогоны (запрет оператора 2026-10-09).</li><li>Реальный UI; реальное чтение 1С модулями R2; нативные байты отчёта; данные MOLDRETAIL; аттестация бухгалтера; продовая канарейка.</li><li>Интеграция PostgreSQL для S6–S9 (кода БД нет; последний прогон — на af9f287).</li></ul>
+<h2 id="next">Рекомендуемый порядок дальше</h2>
+<ol><li><b>Оператор, самое ценное:</b> запустить OB-11 — получить независимого бухгалтера для экспорта и аттестации нативного отчёта по 521.1 за 2026-08. Всё остальное в цепочке G3→G7 ждёт этого.</li><li><b>Оператор:</b> решить UI-scope (разблокирует G5) и вопрос <code>drive.readonly</code> (G4).</li><li><b>Инженерия:</b> этап 2 test-lane (job API, <code>living.*</code>, Drive как инструменты) и закрытие хвостов G1 на одноразовом PostgreSQL.</li><li><b>Инженерия:</b> синхронизировать устаревшие документы статуса и убрать лишний файл; затем GPT-PM ревью точного head и push накопленных коммитов.</li><li><b>Оператор:</b> гигиена секретов (раздел «Хвосты»).</li></ol>
+<h2 id="sources">Источники и основа измерений</h2>
+<div class="card"><ul><li><b>Из документов репозитория (не перемерено сегодня):</b> <code>docs/phase2/S10_RELEASE_HANDOFF.md</code>, <code>PLAN_PHASE2_RU.md</code>, <code>TASK_LEDGER.md</code>, <code>OPERATOR_BACKLOG.md</code>, <code>G1_OPERATOR_BACKLOG.md</code>, <code>EVIDENCE_MATRIX.md</code>, <code>SOURCE_TO_R2_COMMIT_MAP.md</code>, <code>docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md</code>, <code>docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md</code>, отчёты <code>reports/PHASE2_S*_SPRINT_*.html</code>, <code>core/DECISION_LOG.md</code>.</li><li><b>Проверено сегодня:</b> состояние git (ветка main опережает origin/main на 8 коммитов), счёт историй по TASK_LEDGER (разбор файла), живая сверка двух баз через test-lane MCP и прямые вызовы шлюзов.</li><li>Не запускалось: полный набор тестов на текущем HEAD, CI, мутации, интеграция PostgreSQL — по правилам разработки v4 проверки выполняются в конце спринта через субагентов.</li></ul></div>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
