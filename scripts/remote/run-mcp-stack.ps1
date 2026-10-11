@@ -100,6 +100,11 @@ try {
         Remove-Item Env:\ERP_MCP_818HA_USER, Env:\ERP_MCP_818HA_PASSWORD -ErrorAction SilentlyContinue
         Log ('gateway: ' + (Wait-Port 21000 60))
     }
+    # 7. OpenAI tunnel-client for the ChatGPT connector (only when the operator has stored a tunnel id and key)
+    if ((Test-Path (Join-Path $EnvDir 'tunnel.json')) -and (Test-Path (Join-Path $EnvDir 'tunnel_api_key.dpapi')) -and -not (Test-Port 21090)) {
+        Start-Hidden 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Root 'run-tunnel.ps1'), '-Action', 'Run') $Root 'tunnel'
+        Log ('tunnel-client: ' + (Wait-Port 21090 30))
+    }
     Log ('summary: ' + ((($ports.Keys | ForEach-Object { $_ + '=' + (Test-Port $ports[$_]) })) -join ' '))
 }
 finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
