@@ -63,9 +63,11 @@
       "evidence": null,
       "waiver": {
         "approved_by": "operator",
+        "approval_ref": "OP-MSG-20261012-01",
+        "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/ok.txt",
-          "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "c705fae9782ee08ae6c61a70d6ba109d0005377c4941f97288fa7e14df6f1b94"
         }
       }
     },

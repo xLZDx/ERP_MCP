@@ -255,7 +255,7 @@
   "_fixture": {
     "expect": "reject",
     "match": "^G7: unknown predecessor GZ$",
-    "desc": "unknown conditional predecessor",
-    "lines": 1
+    "desc": "unknown conditional predecessor (also differs from canonical graph)",
+    "lines": 2
   }
 }

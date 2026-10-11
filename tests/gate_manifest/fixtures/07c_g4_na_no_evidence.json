@@ -62,7 +62,8 @@
       "production_authorization": "NONE",
       "evidence": null,
       "waiver": {
-        "approved_by": "operator"
+        "approved_by": "operator",
+        "approval_ref": "OP-MSG-20261012-01"
       }
     },
     {

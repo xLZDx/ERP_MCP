@@ -254,7 +254,7 @@
   "_fixture": {
     "expect": "reject",
     "match": "^S12: unknown predecessor NOPE$",
-    "desc": "node unknown predecessor",
-    "lines": 1
+    "desc": "node unknown predecessor (also differs from canonical graph)",
+    "lines": 2
   }
 }

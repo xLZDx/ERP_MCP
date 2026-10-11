@@ -21,7 +21,8 @@ const EVIDENCE = "evidence-fixture-v1\n";
 const base = mkdtempSync(join(tmpdir(), "gate-manifest-"));
 const root = join(base, "root");
 mkdirSync(join(root, "evidence"), { recursive: true });
-writeFileSync(join(root, "evidence", "ok.txt"), EVIDENCE);
+const evidenceFiles = JSON.parse(readFileSync(join(here, "evidence_files.json"), "utf8"));
+for (const [p, content] of Object.entries(evidenceFiles)) writeFileSync(join(root, p), content);
 writeFileSync(join(base, "outside.txt"), EVIDENCE);
 
 let failed = 0;

@@ -63,9 +63,11 @@
       "evidence": null,
       "waiver": {
         "approved_by": "alice",
+        "approval_ref": "PMB-REQ-20261012-0001",
+        "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/ok.txt",
-          "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+          "path": "evidence/waiver_gptpm.txt",
+          "sha256": "fb97cb36ed19b1af829634ddddcd0c3a819cc2496b96f5cf3bbc37b319ce58c4"
         }
       }
     },

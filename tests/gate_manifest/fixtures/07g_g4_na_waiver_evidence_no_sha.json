@@ -63,8 +63,10 @@
       "evidence": null,
       "waiver": {
         "approved_by": "operator",
+        "approval_ref": "OP-MSG-20261012-01",
+        "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/ok.txt"
+          "path": "evidence/waiver_operator.txt"
         }
       }
     },

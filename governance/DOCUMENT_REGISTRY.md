@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 58 tracked paths, 1 local-only paths.
+Inventory: 59 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -43,6 +43,7 @@ Inventory: 58 tracked paths, 1 local-only paths.
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
 | docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md | Phase 2 design | "S11 scope record, decisions, glossary, read-back inventory and gate manifest (2026-10-12)" |
 | docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
+| docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
@@ -78,4 +79,3 @@ Inventory: 58 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md |

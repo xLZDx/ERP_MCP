@@ -12,6 +12,23 @@ const positional = args.filter((a, i) => !a.startsWith("--") && (rootIdx < 0 || 
 const path = positional[0] ?? "governance/GATE_MANIFEST.json";
 const m = JSON.parse(readFileSync(path, "utf8"));
 
+// Canonical mandatory graph for manifest schema 2 (plan section 9 and section 8 sprint dependencies).
+// It lives in the validator on purpose: the manifest is the mutable status record and must not be its own
+// source of truth for which gates, nodes and edges are mandatory. A legitimate graph amendment is a reviewed
+// change to this constant together with a new schema number, never an edit of the manifest alone.
+const SCHEMA = 2;
+const CANONICAL_GATES = {
+  G0: [], G1: ["G0"], G2: ["G0"], G3: ["G2"], G4: ["G0"], G5: ["S16", "S17"], "G6-pre": ["G1", "G8"],
+  G6: ["G3", "G5", "G6-pre", "G8"], G7: ["G0", "G1", "G2", "G3", "G5", "G6", "G8"],
+  G8: ["G0", "CT14", "S12", "S13", "S14", "S15", "S16", "S17", "S18"],
+};
+const CANONICAL_CONDITIONAL = { G7: ["G4"] };
+const CANONICAL_NODES = {
+  CT14: [], S11: [], S12: ["S11"], S13: ["S12"], S14: ["S12", "CT14"], S15: ["S13", "S14"],
+  S16: ["S12", "S15"], S17: ["S16"], S18: ["S13", "S14", "S15", "S16"], S19: ["S17", "S18"],
+};
+const sameSet = (a, b) => a.length === b.length && [...a].sort().every((x, i) => x === [...b].sort()[i]);
+
 const GATE_STATUS = new Set(["NOT_PASSED", "PASSED", "NOT_APPLICABLE"]);
 const NODE_STATE = new Set(["NOT_STARTED", "IN_PROGRESS", "DONE"]);
 const ENG = new Set(["NOT_STARTED", "IN_PROGRESS", "COMPLETE", "NOT_APPLICABLE"]);
@@ -40,6 +57,25 @@ for (const x of [...(m.gates ?? []), ...(m.nodes ?? [])]) {
   if (seen.has(x.id)) err(`${x.id}: duplicate id`);
   seen.add(x.id);
 }
+if (m.schema !== SCHEMA) err(`unsupported manifest schema ${m.schema}; this validator enforces schema ${SCHEMA}`);
+{
+  const gotGates = (m.gates ?? []).map((g) => g.id);
+  const gotNodes = (m.nodes ?? []).map((n) => n.id);
+  for (const id of Object.keys(CANONICAL_GATES)) if (!gotGates.includes(id)) err(`mandatory gate missing: ${id}`);
+  for (const id of Object.keys(CANONICAL_NODES)) if (!gotNodes.includes(id)) err(`mandatory node missing: ${id}`);
+  for (const id of gotGates) if (!(id in CANONICAL_GATES)) err(`unexpected gate not in the canonical graph: ${id}`);
+  for (const id of gotNodes) if (!(id in CANONICAL_NODES)) err(`unexpected node not in the canonical graph: ${id}`);
+  for (const g of m.gates ?? []) {
+    if (!(g.id in CANONICAL_GATES)) continue;
+    if (!sameSet(g.predecessors ?? [], CANONICAL_GATES[g.id])) err(`${g.id}: predecessors differ from the canonical graph`);
+    if (!sameSet(g.conditional_predecessors ?? [], CANONICAL_CONDITIONAL[g.id] ?? [])) err(`${g.id}: conditional predecessors differ from the canonical graph`);
+  }
+  for (const n of m.nodes ?? []) {
+    if (!(n.id in CANONICAL_NODES)) continue;
+    if (!sameSet(n.predecessors ?? [], CANONICAL_NODES[n.id])) err(`${n.id}: predecessors differ from the canonical graph`);
+  }
+}
+
 const gates = new Map((m.gates ?? []).map((g) => [g.id, g]));
 const nodes = new Map((m.nodes ?? []).map((n) => [n.id, n]));
 for (const id of nodes.keys()) if (gates.has(id)) err(`${id}: defined as both gate and node`);
@@ -79,8 +115,16 @@ if (g4) {
   if (m.drive_intake_enabled === false) {
     if (g4.gate_status === "NOT_APPLICABLE") {
       const w = g4.waiver;
-      if (!w || !WAIVER_APPROVERS.has(w.approved_by) || !w.evidence) err("G4: NOT_APPLICABLE requires a waiver with approved_by (GPT-PM or operator) and evidence");
-      else evidenceOk("G4 waiver evidence", w.evidence);
+      if (!w || !WAIVER_APPROVERS.has(w.approved_by) || !w.evidence || typeof w.approval_ref !== "string" || w.approval_ref.length < 8) {
+        err("G4: NOT_APPLICABLE requires a waiver with approved_by (GPT-PM or operator), approval_ref and evidence");
+      } else if (evidenceOk("G4 waiver evidence", w.evidence)) {
+        // Approval basis: the evidence file must quote the approval reference and the approval marker for the approver.
+        // This is an audit-trail check (the PM Bridge request id or the operator's recorded message), not a cryptographic proof.
+        const text = readFileSync(resolve(root, w.evidence.path), "utf8");
+        const marker = w.approved_by === "GPT-PM" ? "APPROVE" : "OPERATOR_APPROVED";
+        const markerRe = new RegExp(`(^|[^A-Za-z_])${marker}([^A-Za-z_]|$)`);
+        if (!text.includes(w.approval_ref) || !markerRe.test(text)) err(`G4 waiver: evidence does not contain the approval_ref and the ${marker} marker`);
+      }
     } else if (g4.gate_status === "PASSED") err("G4 cannot be PASSED while drive intake is disabled");
   } else if (g4.gate_status === "NOT_APPLICABLE") {
     err("G4 is NOT_APPLICABLE while drive intake is enabled");

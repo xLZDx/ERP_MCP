@@ -2,7 +2,7 @@
   "schema": 2,
   "baseline": "docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md revision 5",
   "release_2": "NO_GO",
-  "drive_intake_enabled": false,
+  "drive_intake_enabled": true,
   "gates": [
     {
       "id": "G0",
@@ -61,6 +61,19 @@
         "path": "evidence/ok.txt",
         "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
       }
+    },
+    {
+      "id": "G4",
+      "name": "Drive (conditional on drive_intake_enabled)",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null,
+      "waiver": null
     },
     {
       "id": "G5",
@@ -124,9 +137,7 @@
         "G6",
         "G8"
       ],
-      "conditional_predecessors": [
-        "G4"
-      ],
+      "conditional_predecessors": [],
       "engineering_status": "COMPLETE",
       "gate_status": "PASSED",
       "external_evidence_status": "SATISFIED",
@@ -296,8 +307,8 @@
     }
   ],
   "_fixture": {
-    "expect": "probe",
-    "match": "",
-    "desc": "full closure with G4 gate deleted entirely and drive off"
+    "expect": "reject",
+    "match": "^G7: conditional predecessors differ from the canonical graph$",
+    "desc": "G7 PASSED with drive on and G4 open, hidden by deleting the conditional edge (graph-only per-line match; other G7 line may follow)"
   }
 }

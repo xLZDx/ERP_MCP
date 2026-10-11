@@ -256,7 +256,7 @@
   "_fixture": {
     "expect": "reject",
     "match": "^cycle: .*S11 -> S11$",
-    "desc": "self predecessor",
-    "lines": 1
+    "desc": "self predecessor (also differs from canonical graph)",
+    "lines": 2
   }
 }

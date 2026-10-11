@@ -1,0 +1,7 @@
+{
+  "evidence/ok.txt": "evidence-fixture-v1\n",
+  "evidence/waiver_gptpm.txt": "PM Bridge request PMB-REQ-20261012-0001: verdict APPROVE for the G4 waiver\n",
+  "evidence/waiver_operator.txt": "Operator message OP-MSG-20261012-01: OPERATOR_APPROVED the G4 waiver\n",
+  "evidence/waiver_nomarker.txt": "PM Bridge request PMB-REQ-20261012-0001: verdict REJECT for the G4 waiver\n",
+  "evidence/waiver_disapproved.txt": "PM Bridge request PMB-REQ-20261012-0001: DISAPPROVED the G4 waiver\n"
+}

@@ -63,8 +63,10 @@
       "evidence": null,
       "waiver": {
         "approved_by": "GPT-PM",
+        "approval_ref": "PMB-REQ-20261012-0001",
+        "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/ok.txt",
+          "path": "evidence/waiver_gptpm.txt",
           "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
       }

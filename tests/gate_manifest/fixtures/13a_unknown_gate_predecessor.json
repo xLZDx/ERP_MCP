@@ -255,7 +255,7 @@
   "_fixture": {
     "expect": "reject",
     "match": "^G1: unknown predecessor GX$",
-    "desc": "gate unknown predecessor",
-    "lines": 1
+    "desc": "gate unknown predecessor (also differs from canonical graph)",
+    "lines": 2
   }
 }
