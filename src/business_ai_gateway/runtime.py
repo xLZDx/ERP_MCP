@@ -44,12 +44,23 @@ class Runtime:
             if settings.synthetic_fixture_profiles_file
             else None
         )
+        self.test_lane_profiles = (
+            SyntheticFixtureProfiles(
+                settings.test_lane_profiles_file,
+                settings.test_lane_profiles_sha256,
+                environment=settings.environment,
+            )
+            if settings.test_lane_profiles_file
+            else None
+        )
         self.registry = Registry(
             self.db,
             production=settings.environment == "production",
             allowed_source_hosts=settings.source_host_allowlist_items,
             synthetic_profiles=self.synthetic_profiles,
             machine_reconciled_sources=settings.machine_reconciled_source_items,
+            test_lane_profiles=self.test_lane_profiles,
+            test_lane_sources=settings.test_lane_unreconciled_source_items,
         )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(

@@ -1,0 +1,111 @@
+{
+  "fixture_id": "erp-mcp-test-lane-unreconciled-v1",
+  "review": {
+    "kind": "TEST_LANE_UNRECONCILED",
+    "notes": "Authored from the live $metadata of the real test base; L1 only, native reconciliation NOT_RUN, never native or machine evidence, never a bag.semantic_profiles row."
+  },
+  "schema_version": 1,
+  "sources": {
+    "onec-818ha-reference": {
+      "companies": {
+        "3e31afc5-351f-4f36-8074-99129fa3d911": {
+          "concepts": {
+            "account.balance_and_turnovers": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Хозрасчетный",
+              "method": "balanceAndTurnovers",
+              "output_fields": {
+                "account": "Account_Key",
+                "closing_credit": "СуммаClosingSplittedBalanceCr",
+                "closing_debit": "СуммаClosingSplittedBalanceDr",
+                "credit_turnover": "СуммаTurnoverCr",
+                "debit_turnover": "СуммаTurnoverDr",
+                "opening_credit": "СуммаOpeningSplittedBalanceCr",
+                "opening_debit": "СуммаOpeningSplittedBalanceDr"
+              },
+              "required_register_capabilities": [
+                {
+                  "entity_set": "AccountingRegister_Хозрасчетный",
+                  "method": "balanceAndTurnovers"
+                }
+              ]
+            },
+            "accounting.posting_rows": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "AccountingRegister_Хозрасчетный_RecordType",
+              "output_fields": {
+                "account_cr_ref": "AccountCr_Key",
+                "account_dr_ref": "AccountDr_Key",
+                "active": "Active",
+                "line_number": "LineNumber",
+                "period": "Period",
+                "recorder_ref": "Recorder"
+              },
+              "required_register_capabilities": [],
+              "source_timezone": "Europe/Chisinau"
+            },
+            "counterparty.duplicate_candidates": {
+              "company_activity": {
+                "company_scope": {
+                  "field": "Организация_Key",
+                  "value_type": "guid"
+                },
+                "counterparty_field": "Контрагент_Key",
+                "entity_set": "AccumulationRegister_Продажи_RecordType"
+              },
+              "entity_set": "Catalog_Контрагенты",
+              "match_rule": "normalized_name_v1",
+              "output_fields": {
+                "code": "Code",
+                "counterparty_ref": "Ref_Key",
+                "name": "Description"
+              },
+              "required_register_capabilities": []
+            },
+            "purchases": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "Document_ПоступлениеТоваровУслуг",
+              "order_by": "Date",
+              "output_fields": {
+                "amount": "СуммаДокумента",
+                "counterparty": "Контрагент_Key",
+                "currency": "ВалютаДокумента_Key",
+                "date": "Date",
+                "document_number": "Number",
+                "document_ref": "Ref_Key",
+                "posted": "Posted"
+              }
+            },
+            "sales": {
+              "company_scope": {
+                "field": "Организация_Key",
+                "value_type": "guid"
+              },
+              "entity_set": "Document_РеализацияТоваровУслуг",
+              "order_by": "Date",
+              "output_fields": {
+                "amount": "СуммаДокумента",
+                "counterparty": "Контрагент_Key",
+                "currency": "ВалютаДокумента_Key",
+                "date": "Date",
+                "document_number": "Number",
+                "document_ref": "Ref_Key",
+                "posted": "Posted"
+              }
+            }
+          }
+        }
+      },
+      "metadata_fingerprint": "56337576ddf06821456a7ab4701a619f9c2457e3e1757c723dcc8907196ebbeb"
+    }
+  }
+}

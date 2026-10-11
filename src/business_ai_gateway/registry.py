@@ -18,6 +18,9 @@ from .fixture_profiles import (
     MACHINE_AUDIT_CODE,
     MACHINE_PROFILE_KIND,
     SYNTHETIC_AUDIT_CODE,
+    TEST_LANE_AUDIT_CODE,
+    TEST_LANE_FINGERPRINT_PREFIX,
+    TEST_LANE_PROFILE_KIND,
     SYNTHETIC_PROFILE_KIND,
     SYNTHETIC_SOURCE_TAG,
     SyntheticFixtureProfiles,
@@ -66,7 +69,13 @@ class Registry:
         allowed_source_hosts: tuple[str, ...] = (),
         synthetic_profiles: SyntheticFixtureProfiles | None = None,
         machine_reconciled_sources: tuple[str, ...] = (),
+        test_lane_profiles: SyntheticFixtureProfiles | None = None,
+        test_lane_sources: tuple[str, ...] = (),
     ):
+        if production and (test_lane_profiles is not None or test_lane_sources):
+            raise ValueError("TEST_LANE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+        self.test_lane_profiles = test_lane_profiles
+        self.test_lane_sources = frozenset(test_lane_sources)
         if production and synthetic_profiles is not None:
             raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
         if production and machine_reconciled_sources:
@@ -501,7 +510,8 @@ class Registry:
     async def _synthetic_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
         """Test-only reviewed fixture profile; consulted only when no VALIDATED DB row exists."""
         unavailable = f"no validated {concept} profile exists for this exact source/company"
-        provider = self.synthetic_profiles
+        lane = source_id in self.test_lane_sources
+        provider = self.test_lane_profiles if lane else self.synthetic_profiles
         if self.production or provider is None:
             raise SemanticProfileUnavailable(unavailable)
         row = await self.db.require_pool().fetchrow(
@@ -514,7 +524,11 @@ class Registry:
             """,
             source_id,
         )
-        if row is None or not row["enabled"] or SYNTHETIC_SOURCE_TAG not in (row["tags"] or []):
+        # The test-lane variant is allow-listed by source id (a real test source); the synthetic
+        # variant requires the synthetic-fixture tag.
+        if row is None or not row["enabled"] or (
+            not lane and SYNTHETIC_SOURCE_TAG not in (row["tags"] or [])
+        ):
             raise SemanticProfileUnavailable(unavailable)
         # Any live (non-retired) DB profile for this scope/concept means the DB is authoritative:
         # a stale/invalid/unvalidated row must never silently fall through to a fixture.
@@ -554,13 +568,17 @@ class Registry:
                 metadata_fingerprint=row["current_metadata_fingerprint"],
             )
         return {
-            "profile_kind": SYNTHETIC_PROFILE_KIND,
-            "audit_detail_code": SYNTHETIC_AUDIT_CODE,
+            "profile_kind": TEST_LANE_PROFILE_KIND if lane else SYNTHETIC_PROFILE_KIND,
+            "audit_detail_code": TEST_LANE_AUDIT_CODE if lane else SYNTHETIC_AUDIT_CODE,
             "source_id": source_id,
             "company_id": company_id,
             "metadata_fingerprint": pinned,
             "profile_fingerprint": provider.profile_fingerprint(
-                source_id, company_id, concept, mapping
+                source_id,
+                company_id,
+                concept,
+                mapping,
+                **({"prefix": TEST_LANE_FINGERPRINT_PREFIX} if lane else {}),
             ),
             "mapping": mapping,
             "register_capabilities": capability_profile,

@@ -89,6 +89,12 @@ class Settings(BaseSettings):
         default=None, pattern=r'^[a-f0-9]{64}$'
     )
 
+    # Test-only reviewed profiles for a REAL test source served without native/machine reconciliation
+    # (TEST_LANE_UNRECONCILED, always labelled NOT reconciled; hard-denied outside BAG_ENVIRONMENT=test).
+    test_lane_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
+    test_lane_profiles_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
+    test_lane_unreconciled_sources: str = ""
+
     # Test-only allow-list of source ids whose profile may be validated by labelled machine two-source
     # reconciliation (evidence_basis.py). Hard-denied outside the test environment; never native proof.
     machine_reconciled_sources: str = ""
@@ -140,6 +146,16 @@ class Settings(BaseSettings):
             )
         )
 
+    @property
+    def test_lane_unreconciled_source_items(self) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                item.strip()
+                for item in self.test_lane_unreconciled_sources.split(",")
+                if item.strip()
+            )
+        )
+
     @staticmethod
     def _cidr_items(value: str | None) -> tuple[str, ...]:
         return tuple(item.strip() for item in (value or "").split(",") if item.strip())
@@ -173,6 +189,26 @@ class Settings(BaseSettings):
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_REQUIRE_TEST_ENVIRONMENT")
             if not Path(self.synthetic_fixture_profiles_file).is_absolute():
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_SETTINGS_INVALID")
+        if (
+            self.test_lane_profiles_file
+            or self.test_lane_profiles_sha256
+            or self.test_lane_unreconciled_source_items
+        ):
+            if self.environment == "production":
+                raise ValueError("TEST_LANE_PROFILES_FORBIDDEN_IN_PRODUCTION")
+            if self.environment != "test":
+                raise ValueError("TEST_LANE_PROFILES_REQUIRE_TEST_ENVIRONMENT")
+            if not (
+                self.test_lane_profiles_file
+                and self.test_lane_profiles_sha256
+                and self.test_lane_unreconciled_source_items
+            ):
+                raise ValueError("TEST_LANE_PROFILES_SETTINGS_INCOMPLETE")
+            if not Path(self.test_lane_profiles_file).is_absolute() or any(
+                not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", item)
+                for item in self.test_lane_unreconciled_source_items
+            ):
+                raise ValueError("TEST_LANE_PROFILES_SETTINGS_INVALID")
         evidence_settings = (self.evidence_store_root, self.evidence_approval_index, self.evidence_approval_sha256)
         if any(evidence_settings) and not all(evidence_settings):
             raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INCOMPLETE')

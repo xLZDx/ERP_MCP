@@ -45,7 +45,7 @@ from .duplicate_counterparties import (
     MAX_ROWS as MAX_DUPLICATE_ROWS,
 )
 from .external_evidence import EvidenceRejected
-from .fixture_profiles import SYNTHETIC_PROFILE_KIND, profile_provenance
+from .fixture_profiles import SYNTHETIC_PROFILE_KIND, TEST_LANE_PROFILE_KIND, profile_provenance
 from .principal import current_principal
 from .runtime import Runtime
 from .semantic import (
@@ -1895,7 +1895,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 as_of=as_of_date, row_limit=row_limit,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
-                synthetic=profile.get("profile_kind") == SYNTHETIC_PROFILE_KIND,
+                synthetic=profile.get("profile_kind") in {SYNTHETIC_PROFILE_KIND, TEST_LANE_PROFILE_KIND},
                 source_truncated=source_truncated,
             )
             conclusive = payload["status"] in {"PASS", "FINDING"}

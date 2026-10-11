@@ -4,6 +4,9 @@ A fixture profile is never a bag.semantic_profiles row, never status VALIDATED, 
 the ten-native-reports rule and is always labelled SYNTHETIC_FIXTURE / L1 / native NOT_RUN.
 Hard-denied unless BAG_ENVIRONMENT == "test" (settings, constructor, every lookup), and only for
 sources that are listed in the pinned file AND carry the synthetic-fixture tag.
+
+The same pinned-file loader also backs the TEST_LANE_UNRECONCILED mode for a REAL test source
+(allow-listed by id instead of tag): same hard test-only denial, labelled L1 / native NOT_RUN.
 """
 
 from __future__ import annotations
@@ -21,6 +24,10 @@ SYNTHETIC_SOURCE_TAG = "synthetic-fixture"
 SYNTHETIC_AUDIT_CODE = "SYNTHETIC_FIXTURE_PROFILE"
 SYNTHETIC_WARNING = "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE"
 SYNTHETIC_FINGERPRINT_PREFIX = "synthetic-fixture:"
+TEST_LANE_PROFILE_KIND = "TEST_LANE_UNRECONCILED"
+TEST_LANE_AUDIT_CODE = "TEST_LANE_UNRECONCILED_PROFILE"
+TEST_LANE_WARNING = "TEST_LANE_PROFILE_NOT_RECONCILED_NOT_NATIVE"
+TEST_LANE_FINGERPRINT_PREFIX = "test-lane-unreconciled:"
 MACHINE_PROFILE_KIND = "VALIDATED_MACHINE_RECONCILED"
 MACHINE_AUDIT_CODE = "MACHINE_RECONCILED_PROFILE"
 MACHINE_WARNING = "MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT"
@@ -77,9 +84,15 @@ class SyntheticFixtureProfiles:
         return json.loads(json.dumps(mapping))
 
     def profile_fingerprint(
-        self, source_id: str, company_id: UUID, concept: str, mapping: dict[str, Any]
+        self,
+        source_id: str,
+        company_id: UUID,
+        concept: str,
+        mapping: dict[str, Any],
+        *,
+        prefix: str = SYNTHETIC_FINGERPRINT_PREFIX,
     ) -> str:
-        return SYNTHETIC_FINGERPRINT_PREFIX + canonical_fingerprint(
+        return prefix + canonical_fingerprint(
             {
                 "fixture_id": self.fixture_id,
                 "source_id": source_id,
@@ -100,6 +113,13 @@ def profile_provenance(profile: dict[str, Any], warnings: list[str] | None = Non
             "evidence_level": "L1",
             "native_reconciliation": "NOT_RUN",
             "warnings": [*out, SYNTHETIC_WARNING],
+        }
+    if profile.get("profile_kind") == TEST_LANE_PROFILE_KIND:
+        return {
+            "profile_kind": TEST_LANE_PROFILE_KIND,
+            "evidence_level": "L1",
+            "native_reconciliation": "NOT_RUN",
+            "warnings": [*out, TEST_LANE_WARNING],
         }
     if profile.get("profile_kind") == MACHINE_PROFILE_KIND:
         return {
