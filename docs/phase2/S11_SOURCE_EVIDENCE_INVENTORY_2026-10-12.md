@@ -40,7 +40,7 @@ Four requirements to be settled in S11 before the S12 interface freeze:
 
 Next inventory pass must cover: ops_types, _identity, workbench_types, comparison_snapshot, safe_errors, connector_sdk, the complete db/phase2 schemas and migrations, safe_parser, the Drive adapters, the 1C reader, restore_verify, release_rollback and the deployment/permission configuration; for each dependency record exact path, revision, relevant lines, authority level, tenant/company scope, persistence, error-code semantics and whether reuse is code, pattern only or not at all. A live CT14 spike that changes a disposable 1C clone still needs the applicable operator permission; the review is not that permission.
 
-## 5. Second inventory pass (2026-10-12, read-only agent, FACT = seen in the cited file)
+## 5. Second inventory pass (2026-10-12, read-only agent; FACT here means an agent-reported source observation, NOT independently verified by the reviewer from attached source)
 
 `P2` = `src/business_ai_gateway/phase2`. Authority of every module is EVALUATION_ONLY. Reuse type: code / pattern / none.
 
@@ -61,7 +61,7 @@ Next inventory pass must cover: ops_types, _identity, workbench_types, compariso
 | release_rollback | `P2/release_rollback.py` 168-587 | platform level | memory (`FakeGrantRegistry`) | `OpsReason.ROLLBACK_*`; `executed` always False | pattern (separate approver, no resurrection) |
 | capture_permit | `P2/capture_permit.py` 66-471 | per (tenant, source) | memory | `PERMIT_NOT_ADMITTABLE`, `PROD_DISABLED` | pattern; `set_prod_enabled` is a global PROD flag, not a write kill switch |
 | side_effect_boundary | `P2/side_effect_boundary.py` 73-303 | none | none | `BoundaryCode.*_OPERATION` | pattern; `evaluate` can never allow a non-READ class |
-| audit_gate | `P2/audit_gate.py` 90-468 | tenant sink; request-id space per tenant | memory | `AUDIT_UNAVAILABLE`, `DUPLICATE_SUPPRESSED`, `EFFECT_FAILED`, `AUDIT_COMPLETION_PENDING` | code (INTENT before effect, COMPLETION after) |
+| audit_gate | `P2/audit_gate.py` 90-468 | tenant sink; request-id space per tenant | memory | `AUDIT_UNAVAILABLE`, `DUPLICATE_SUPPRESSED`, `EFFECT_FAILED`, `AUDIT_COMPLETION_PENDING` | pattern only (INTENT before effect, COMPLETION after); the in-memory gate is not a code-level replacement for the durable ledger and checkpoint service |
 | scheduler | `P2/scheduler.py` 92-137 | per source | memory | `IllegalTransition` | pattern (ACTIVE/PAUSED/QUARANTINED) |
 
 Kill switch search (FACT, not exhaustive): no kill switch or disable-writes mechanism in `src` under any searched name. Nearest anchors: `living.sources.status` SUSPENDED/REVOKED with `scope_epoch` bump (001 lines 86, 90-100), `SourceStateMachine`, `PermitStore.set_prod_enabled`, deny-wins in `OperatorAuthorityPort`. An R1 "kill switch" in the decision log is a profile re-verify command, not a write stop. The scripts and config folders were not searched by content.

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "baseline": "docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md revision 5",
+  "release_2": "NO_GO",
+  "gates": [
+    {"id": "G0", "name": "Scope and architecture", "predecessors": [], "engineering_status": "S11_IN_PROGRESS", "gate_status": "NOT_PASSED", "external_evidence_status": "OB-01 and OB-15 operator records open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G1", "name": "Database and security", "predecessors": ["G0"], "engineering_status": "NOT_STARTED_FOR_V2", "gate_status": "NOT_PASSED", "external_evidence_status": "original G1 tails open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G2", "name": "Metadata/domain", "predecessors": ["G0"], "engineering_status": "NOT_STARTED_FOR_V2", "gate_status": "NOT_PASSED", "external_evidence_status": "OB-10 open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G3", "name": "Accountant attestation", "predecessors": ["G2"], "engineering_status": "NOT_APPLICABLE", "gate_status": "NOT_PASSED", "external_evidence_status": "OB-11 open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G4", "name": "Drive (conditional)", "predecessors": ["G0"], "engineering_status": "NOT_STARTED", "gate_status": "NOT_PASSED", "external_evidence_status": "decision 6 and OB-12 open", "production_authorization": "NONE", "evidence": null, "conditional": true, "waiver": null},
+    {"id": "G5", "name": "UAT", "predecessors": ["S16", "S17"], "engineering_status": "NOT_STARTED", "gate_status": "NOT_PASSED", "external_evidence_status": "UI scope open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G6-pre", "name": "Operational readiness", "predecessors": ["G1", "G8"], "engineering_status": "NOT_STARTED", "gate_status": "NOT_PASSED", "external_evidence_status": "none", "production_authorization": "NONE", "evidence": null},
+    {"id": "G6", "name": "Production canary", "predecessors": ["G3", "G5", "G6-pre", "G8"], "engineering_status": "NOT_STARTED", "gate_status": "NOT_PASSED", "external_evidence_status": "signed canary permission open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G7", "name": "Release", "predecessors": ["G0", "G1", "G2", "G3", "G5", "G6", "G8"], "engineering_status": "NOT_STARTED", "gate_status": "NOT_PASSED", "external_evidence_status": "PRODUCTION_GO open", "production_authorization": "NONE", "evidence": null},
+    {"id": "G8", "name": "Controlled-change acceptance", "predecessors": ["G0", "CT14", "S12", "S13", "S14", "S15", "S16", "S17", "S18"], "engineering_status": "S11_IN_PROGRESS", "gate_status": "NOT_PASSED", "external_evidence_status": "CT14 matrix PARTIAL", "production_authorization": "NONE", "evidence": null, "implies": []}
+  ],
+  "non_gate_nodes": ["CT14", "S12", "S13", "S14", "S15", "S16", "S17", "S18"]
+}
