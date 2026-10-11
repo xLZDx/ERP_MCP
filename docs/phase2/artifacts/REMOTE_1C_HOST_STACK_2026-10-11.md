@@ -151,3 +151,12 @@ Release 1 commit `ea4defa` (separate local commit in the Release 1 worktree, not
 - Review and publish: three local R2 commits and the Release 1 commit `ea4defa` are not pushed; push needs a GPT-PM APPROVE on the exact head.
 - A stray duplicate `scripts/remote/discover-host - Copy.ps1` was committed by mistake; remove it in a follow-up.
 - The long-lived Claude token and the public IdP address are test conveniences; production would need a named domain, short-lived tokens and a real identity provider.
+
+## 13. Real-difference reconciliation experiment (2026-10-11)
+
+State change on the host: the OData alias `erp_mcp_ref` now points at the base `D:\1c\env\bases\818HA_p2diff`, a byte-for-byte copy of `818HA_test_ready` in which ONE posted purchase document of 2026-08 was edited on a disposable local clone (a known +100.00 on the service line, reposted; the 521.1 credit movement became 2600 instead of 2500) and the file was shipped to the host. The original publication descriptor is kept as `D:\1c\env\odata\erp_mcp_ref\default.vrd.bak-818HA_test_ready`.
+
+- Why the clone is edited locally: the host has no 1C client license, so COM writes are possible only on the licensed local machine. The host serves the result through the Apache OData extension, which needs no client license.
+- Tools: `testlane/tools/edit_purchase_on_clone.py` (refuses any path except the `818HA_p2diff` clone; dry run by default), `scripts/remote/repoint-odata-base.ps1` (repoint plus Apache restart through the stack task).
+- Revert on the host: `repoint-odata-base.ps1 -BaseName 818HA_test_ready`.
+- Result: side A (local reference) vs side B (host, modified) through the Phase 2 test-lane MCP: the 521.1 closing-balance comparison returns `PARTIAL_MISMATCH` / `CLOSING_VALUES_DIFFER` with exactly one difference (`ROW_MISSING_IN_A`: a credit-100 row for the edited counterparty exists only on side B); the baseline run before the edit was identical on both sides. Both sides carry the machine-reconciled labels, so this is a machine copy-consistency detection, not a native 1C PASS.
