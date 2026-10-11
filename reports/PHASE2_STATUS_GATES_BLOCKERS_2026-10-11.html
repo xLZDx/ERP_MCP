@@ -77,7 +77,7 @@ ul{margin:6px 0;padding-left:20px}
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 3e7bd95</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ e8ad0f6</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -91,7 +91,9 @@ ul{margin:6px 0;padding-left:20px}
 <p><span class="bad">No. Phase 2 as a product is NOT ready.</span> Release 2 is <b>NO-GO</b>; none of the gates G0–G7 (and G6-pre) has passed; none of the 48 stories is VERIFIED or DONE.</p>
 <p>What is actually closed: the <b>offline engineering part</b> — ten deliveries (S0/G1 … S10) implemented as isolated reference modules not wired to any source, each with a GPT-PM approval on an exact head (S10 is documentation only, there is no release head). The terminal program state is <b>ENGINEERING_HANDOFF</b>, not «done». If earlier reports sounded like «fully ready», this is the correct wording: reference code is written and checked on scripted inputs, there was no product acceptance.</p>
 <p>The main external blocker is <b>OB-11</b>: the independent accountant attestation for account 521.1 (G3). Without it there is no validated semantic profile, hence no honest business-data reads, no canary and no later gates (G5/G6/G7).</p>
+
 </div>
+<div class="card verdict"><p><span class="bad">A scope gap (confirmed by the operator on 2026-10-11).</span> The recorded Phase 2 requirements (R2-REQ-15 «no business writes») contain no writes to 1C at all: all 48 stories describe reading, observation and reconciliation. The operator clarified that «read-only was phase 1», so version 2 must change 1C data on request from ChatGPT/Claude and reconcile the result. A whole uncovered program is therefore added to the list above; the plan to close it is <code>docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md</code> and the report <code>reports/PHASE2_V2_CLOSURE_PLAN_2026-10-11.html</code> (sprints S11–S19, new gate G8).</p></div>
 <div class="kpis">
 <div class="kpi"><b class="ok">10 / 10</b><span>deliveries closed offline (S0/G1 … S10)</span></div>
 <div class="kpi"><b class="bad">0 / 9</b><span>gates passed (G0–G7 and G6-pre)</span></div>
@@ -107,6 +109,7 @@ ul{margin:6px 0;padding-left:20px}
 <tr><td>«Tests are green»</td><td><span class="pill p-warn">WITH CAVEATS</span></td><td>6126 passed / 229 skipped at 6ee27f1 and in a fresh venv. The 229 skipped are PostgreSQL integration tests without a DSN (NOT_RUN, not PASS). Tests prove classification over scenarios, not acceptance. A full run was not repeated on the current HEAD.</td></tr>
 <tr><td>«Base reconciliation works»</td><td><span class="pill p-ok">YES, IN THE TEST LANE</span></td><td>Verified live on a real difference (section «After S10»). It compares two copies of one base by machine; there is no native attestation and no independent data origin.</td></tr>
 <tr><td>«Everything pushed / in production»</td><td><span class="pill p-bad">NO</span></td><td>There is no production. origin/main holds up to 8f50ea8; the local R2 commits (8 at measurement time) and the R1 commit ea4defa are not pushed.</td></tr>
+<tr><td>«Version 2 changes 1C data on request from ChatGPT/Claude and reconciles the result»</td><td><span class="pill p-bad">NO</span></td><td>This is not in the recorded scope either: R2-REQ-15 «no business writes», not one story about writing. Only the «write → read → reconcile» mechanics exist, proven by hand on a clone. The closure plan is S11–S19 and gate G8.</td></tr>
 </tbody></table></div>
 <h2 id="sprints">Sprints: what was done, how it was checked, what remains</h2>
 <p class="sub">Test counts are cumulative over tests/phase2 at the time of the sprint. Hashes are the ORIGINAL source-repository hashes (history was rewritten at extraction; mapping to R2 hashes is in SOURCE_TO_R2_COMMIT_MAP.md).</p>
