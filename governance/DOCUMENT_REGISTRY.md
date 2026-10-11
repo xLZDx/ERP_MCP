@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 56 tracked paths, 0 local-only paths.
+Inventory: 56 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -76,3 +76,4 @@ Inventory: 56 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md |
