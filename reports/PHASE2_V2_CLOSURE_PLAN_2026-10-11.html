@@ -45,43 +45,10 @@ ul{margin:6px 0;padding-left:20px}
 <h1>ERP_MCP v2: closure plan — changing data from ChatGPT/Claude, and reconciliation</h1>
 <div class="sub">Date: 2026-10-11 · revision 5 · APPROVED by GPT-PM as the planning baseline for S11–S19 (rev 5; the S12 interface freeze, code and production are NOT authorized; G8 not passed, C1 not reached, Release 2 NO-GO) · process per AGENTS.md (2026-10-11) · sprints S11–S19, new gate G8</div>
 </header>
-
-<!-- report-conform:begin -->
-<style id="rc-style">
-.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
-  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
-  border:1px solid var(--border,var(--rule,#d9d9d9));
-  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
-.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
-  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
-.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
-  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
-.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
-.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
-  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
-  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
-  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
-  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
-.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
-.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
-.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
-.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
-</style>
-<div class="rc-bar">
-  <dl>
-    <dt>Project</dt><dd>ERP_MCP_R2</dd>
-    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ a9d482c</dd>
-  </dl>
-  <button id="rc-copy" class="rc-copy" type="button"
-          data-idle="Copy page" data-done="Copied"
-          data-fail="Select manually">Copy page</button>
-</div>
-<!-- report-conform:end -->
 <main>
 <nav class="toc"><a href="#scope">Decision and gap</a> · <a href="#closure">What «closed» means</a> · <a href="#facts">Facts</a> · <a href="#behaviour">How v2 works</a> · <a href="#inv">Invariants</a> · <a href="#arch">Components</a> · <a href="#recon">Reconciliation</a> · <a href="#sprints">Sprints</a> · <a href="#gates">Gates</a> · <a href="#deps">Dependencies</a> · <a href="#risks">Risks</a> · <a href="#tests">Tests</a> · <a href="#hyp">Hypotheses</a> · <a href="#process">Process</a> · <a href="#contracts">S11 contracts</a> · <a href="#review">Review response</a></nav>
 <h2 id="scope">Operator decision and the scope gap</h2>
-<div class="card key"><p>Operator decision of 2026-10-11: «read-only was phase 1». Phase 2 / version 2 must change 1C data on request from ChatGPT or Claude («add this invoice», «update this contract») and be able to reconcile the result. This is the core outcome of version 2, not an extension.</p><p>The recorded Phase 2 scope has no writes: R2-REQ-15 says «no business writes», the S1–S10 connectors are read-only, side_effect_boundary admits only READ, capture_permit knows only READ_SNAPSHOT. So «all 48 stories» do not cover what the operator needs: the story catalogue has no story that changes data. This plan adds it as a new program S11–S19 and a new gate G8; the old gates G0–G7 stay.</p></div>
+<div class="card key"><p>Operator decision of 2026-10-11: «read-only was phase 1». Phase 2 / version 2 must change 1C data on request from ChatGPT or Claude («add this invoice», «update this contract») and be able to reconcile the result. This is the core outcome of version 2, not an extension.</p><p>The recorded Phase 2 scope has no writes: R2-REQ-15 says «no business writes», the S1–S10 connectors are read-only, side_effect_boundary admits only READ, capture_permit knows only the read modes READ_SNAPSHOT and READ_INCREMENTAL. So «all 48 stories» do not cover what the operator needs: the story catalogue has no story that changes data. This plan adds it as a new program S11–S19 and a new gate G8; the old gates G0–G7 stay.</p></div>
 <div class="card"><b>Revision 5.</b> Revision 5 (after the GPT-PM verification round on revision 4 of 2026-10-11: R3-01, R3-02, R3-03 closed; one MAJOR regression with no BLOCKER — R4-01: forced termination of the 1C session is conditional in CT3 but unconditional in S14, S18 and CT15). Revision 5 corrects only R4-01 and its direct references: the expiry of the hard deadline only starts a determination of call completion (observation first); a forced termination of the 1C session is allowed only if CT14 established its safety for that channel and base type; otherwise the call stays <code>POSSIBLY_EXECUTING</code>, base mutations are held, reads are allowed, an alert and triage follow; a deadline alone never yields <code>PROVEN_FINISHED</code> (CT3, CT15, S14, S18, E34, E44). The other findings are not reopened. Revision 4 closed R3-01–R3-03; revision 3 (after the REJECT of revision 2: 8 BLOCKER, 12 MAJOR) introduced the contracts CT1–CT15, the invariant I15 and the scenarios up to E47; the section 10 item 2 decisions (D1–D3) were approved. The finding → change map and the residual risk of replacing mutation tests are in section 17.</div>
 <h3>GPT-PM decisions of 2026-10-11 (section 10 item 2 only; they authorize no development, production change or deployment)</h3>
 <div class="wrap"><table class=""><thead><tr><th>ID</th><th>Decision</th><th>Verdict</th></tr></thead><tbody><tr><td><b>D1</b></td><td>Draft by default; posting is a separate operation with independent authorization, a re-check of the current document state and a new approval.</td><td>APPROVE</td></tr><tr><td><b>D2</b></td><td>The v2.0 catalogue: purchase document creation, a contract update by a field allow-list, post/unpost. Excluded: payments, bank transfers, deletion, bulk operations; the sales reference is removed; posting and unposting are approved individually and narrowly.</td><td>APPROVE WITH CONDITIONS (conditions met in rev 3)</td></tr><tr><td><b>D3</b></td><td>The write service stays private; public exposure is not a workaround for ChatGPT/Claude connectivity; any remote-access architecture is a separate security and operator decision; network isolation complements, not replaces, authentication and authorization.</td><td>APPROVE</td></tr></tbody></table></div>
@@ -157,62 +124,5 @@ ul{margin:6px 0;padding-left:20px}
 <p class="sub">Round on revision 3: 15 of 20 findings closed, three MAJOR left (no BLOCKER); revision 4 changed only these and their direct references. Round on revision 4: R3-01, R3-02, R3-03 closed, one MAJOR regression (R4-01); revision 5 changes only it and its direct references.</p>
 <div class="wrap"><table class="wide"><thead><tr><th>ID</th><th>Severity</th><th>Finding</th><th>Where changed</th></tr></thead><tbody><tr><td><b>R3-01</b></td><td>MAJOR</td><td>Idempotency identity, conflict detection and create locking: a key that includes the digest cannot «match with a different digest»; a new document has no target ref to lock on</td><td>CT2 (a logical request key + an immutable canonical digest; a create lock on the canonical business key; a duplicate re-check inside the serialized writer); I7; E3, E19, E28, E33 extended. Closes the remainder of F-02, F-10</td></tr><tr><td><b>R3-02</b></td><td>MAJOR</td><td>Grant accounting is not defined for every operation class (contract update, post, unpost)</td><td>CT13 (the accounting matrix: three limits; create, update, post, unpost, re-post, amount correction; <code>amount_consumed(document, grant)</code>); E38 extended. Closes the remainder of F-09</td></tr><tr><td><b>R3-03</b></td><td>MAJOR</td><td>A single writer per base conflicts with parking an unknown outcome by target only</td><td>CT3 (call ownership, a hard deadline that starts a completion check (forced session termination only when CT14 established its safety, see R4-01), <code>PROVEN_FINISHED</code> / <code>POSSIBLY_EXECUTING</code>, the consequence for the queue); CT2 condition (d); CT10 (the <code>call_ownership</code> attribute); CT14 (two new capabilities); CT15; S14; E19, E34, E44 extended. Closes the remainder of F-03, F-16</td></tr><tr><td><b>R4-01</b></td><td>MAJOR</td><td>A regression of the R3-03 edit: forced termination of the 1C session is conditional in CT3 but unconditional in S14, S18 and CT15</td><td>CT3 (the deadline only starts a determination of completion; forced termination only when CT14 established its safety; a deadline alone is not PROVEN_FINISHED), S14, CT15, S18; E34, E44 extended with both CT14 outcomes</td></tr></tbody></table></div>
 </main>
-
-<!-- report-conform:script:begin -->
-<script>
-(function () {
-  var btn = document.getElementById('rc-copy');
-  if (!btn) { return; }
-
-  function pageText() {
-    // Hide the button so its own label never lands in the copied text.
-    var previous = btn.style.display;
-    btn.style.display = 'none';
-    var root = document.querySelector('.wrap') || document.body;
-    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
-    btn.style.display = previous;
-    return text;
-  }
-
-  function legacyCopy(text) {
-    var field = document.createElement('textarea');
-    field.value = text;
-    field.setAttribute('readonly', '');
-    field.style.position = 'fixed';
-    field.style.top = '-1000px';
-    document.body.appendChild(field);
-    field.select();
-    var copied = false;
-    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
-    document.body.removeChild(field);
-    return copied;
-  }
-
-  function report(state) {
-    btn.textContent = btn.getAttribute('data-' + state);
-    btn.classList.toggle('is-done', state === 'done');
-    btn.classList.toggle('is-fail', state === 'fail');
-    window.setTimeout(function () {
-      btn.textContent = btn.getAttribute('data-idle');
-      btn.classList.remove('is-done', 'is-fail');
-    }, 2400);
-  }
-
-  btn.addEventListener('click', function () {
-    var text = pageText();
-    // Some hosts block the async clipboard API inside the artifact iframe, so the
-    // execCommand path stays as a real fallback rather than an assumed success.
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(
-        function () { report('done'); },
-        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
-      );
-    } else {
-      report(legacyCopy(text) ? 'done' : 'fail');
-    }
-  });
-})();
-</script>
-<!-- report-conform:script:end -->
 </body>
 </html>

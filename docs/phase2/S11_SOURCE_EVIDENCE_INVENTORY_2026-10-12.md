@@ -24,3 +24,18 @@ Status: first pass, DRAFT. Scope: the claims in `PLAN_V2_CONTROLLED_CHANGE_2026-
 ## 3. Not covered yet
 
 `workbench_review` full read, the `jobs_api` fakes, exact-reference behaviour of `aliases`, `safe_parser` limits for the xlsx/csv intake, the `drive_*` modules, `restore_verify` and `release_rollback` as patterns for ops. The next pass must close these before any component is reused.
+
+## 4. GPT-PM deep review of this package (2026-10-12)
+
+Verdict: APPROVE for S11 execution entry (plan baseline revision 5, inventory PARTIAL); S11 exit NOT_PASSED; S12 interface freeze NOT approved; G0-G8 NOT_PASSED; Release 2 NO-GO. The reviewer read the attached files only (no execution) and could not verify that they match the local head or that no differently named kill switch exists anywhere in the repository; both stay inventory items.
+
+Reuse claims: all seven modules CONFIRMED against the attached text, with one WRONG plan statement (capture_permit modes; corrected in plan section 1). Reuse is as pattern only: `side_effect_boundary.evaluate()` stays the READ-only path, `capture_permit.admit()` consumes a use immediately (unlike the reserved/consumed/released grant of CT13), `audit_gate` acknowledgements prove audit persistence only, `jobs_api` keeps sticky refusals and a read-only operation map, `reconciliation` is six-column and not a registrar-movement multiset, `workbench_review` annotations are not approval authority, `aliases` trusts a caller-asserted HUMAN approver.
+
+Four requirements to be settled in S11 before the S12 interface freeze:
+
+- S11-A read/write boundary separation: two authorization paths with different trusted contexts; the legacy READ evaluator stays deny-by-default for every non-READ class; acceptance: a proposed WRITE/POST stays denied through every legacy read entry point even when an approved change exists elsewhere.
+- S11-B audit phases are not write finality: a documented mapping between the audit gate phases and the CT2/CT10 states; an audit acknowledgement or DUPLICATE_SUSPECTED-style suppression never means VERIFIED; acceptance: lost completion ack, failed effect, unknown 1C outcome and duplicate request give distinguishable durable states.
+- S11-C live authorization epoch: entitlement and base-epoch checks at queue claim and immediately before the effect, separate from the 1C base fingerprint epoch; acceptance: entitlement change, revoked requester or approver, replaced source or base epoch between proposal, approval, dequeue and execution all refuse before a write.
+- S11-D separate evidence types: document fields, registrar movements, 1C state versions and authorization receipts; a six-column MATCH or an ORIGINAL_INTACT card never produces VERIFIED.
+
+Next inventory pass must cover: ops_types, _identity, workbench_types, comparison_snapshot, safe_errors, connector_sdk, the complete db/phase2 schemas and migrations, safe_parser, the Drive adapters, the 1C reader, restore_verify, release_rollback and the deployment/permission configuration; for each dependency record exact path, revision, relevant lines, authority level, tenant/company scope, persistence, error-code semantics and whether reuse is code, pattern only or not at all. A live CT14 spike that changes a disposable 1C clone still needs the applicable operator permission; the review is not that permission.

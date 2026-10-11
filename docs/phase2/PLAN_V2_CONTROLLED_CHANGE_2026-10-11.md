@@ -18,7 +18,7 @@ GPT-PM decisions of 2026-10-11 (settle only section 10 item 2; they authorize no
 
 Operator decision of 2026-10-11: «read-only was phase 1». Phase 2 / version 2 must change 1C data on request from ChatGPT or Claude («add this invoice», «update this contract») and be able to reconcile the result. This is the core outcome of version 2, not an extension.
 
-The recorded Phase 2 scope has no writes: R2-REQ-15 says «no business writes», the S1–S10 connectors are read-only, side_effect_boundary admits only READ, capture_permit knows only READ_SNAPSHOT. So «all 48 stories» do not cover what the operator needs: the story catalogue has no story that changes data. This plan adds it as a new program S11–S19 and a new gate G8; the old gates G0–G7 stay.
+The recorded Phase 2 scope has no writes: R2-REQ-15 says «no business writes», the S1–S10 connectors are read-only, side_effect_boundary admits only READ, capture_permit knows only the read modes READ_SNAPSHOT and READ_INCREMENTAL. So «all 48 stories» do not cover what the operator needs: the story catalogue has no story that changes data. This plan adds it as a new program S11–S19 and a new gate G8; the old gates G0–G7 stay.
 
 ## 2. What closure means
 
