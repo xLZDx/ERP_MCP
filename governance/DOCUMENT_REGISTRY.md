@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 49 tracked paths, 0 local-only paths.
+Inventory: 52 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -39,6 +39,7 @@ Inventory: 49 tracked paths, 0 local-only paths.
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
+| docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
 | docs/phase2/SPRINT_S4B_PLAN.md | Phase 2 design | "Sprint S4b plan - taxonomy/LDM candidates, aliases, impact tests, capture loop, PostgreSQL concurrency and capacity drill" |
 | docs/phase2/SPRINT_S5_PLAN.md | Phase 2 design | "Sprint S5 plan - capture permits, side-effect boundary, immutable artifact vault, isolated parser (first slice)" |
@@ -53,6 +54,8 @@ Inventory: 49 tracked paths, 0 local-only paths.
 | docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
 | docs/phase2/WORKSTATION_VERIFICATION_2026-10-08.md | Phase 2 design | "Phase 2 workstation isolation verification — 2026-10-08" |
 | docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md | Phase 2 design | "G3 engineering reconciliation index: account 521.1, 2026-08" |
+| docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md | Phase 2 design | "G6 / G6-pre: one read-only canary pass and a bounded workload measurement (2026-10-10)" |
+| docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md | Phase 2 design | "Remote 1C host (Ivan): independent test environment and MCP stack (2026-10-11)" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md | Phase 2 design | "Derived Phase 2 specification bundle" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/01_TDD_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/02_PLAN_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
