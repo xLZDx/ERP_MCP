@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ERP_MCP Phase 2 — полный статус</title>
+<title>Статус Phase 2</title>
 <style>
 :root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#175cd3;--accent:#175cd3}
-:root[data-theme=dark]{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#7cb0ff;--accent:#7cb0ff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 48px}
 header,main{max-width:1280px;margin:0 auto}
@@ -77,7 +77,7 @@ ul{margin:6px 0;padding-left:20px}
   <dl>
     <dt>Проект</dt><dd>ERP_MCP_R2</dd>
     <dt>Папка</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 3688196</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 3e7bd95</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -131,13 +131,13 @@ ul{margin:6px 0;padding-left:20px}
 <h2 id="backlog">Хвосты, долги и расхождения документов</h2>
 <div class="two">
 <div class="card"><h3>Accepted backlog (известно, не исправлено)</h3><ul><li><code>delivery_replay</code>: срок lease заявки не проверяется в <code>_fenced</code>.</li><li><code>retention_hold.place_hold</code>: утечка квотного слота.</li><li><code>retention_hold.confirm_release</code> читает снимок на момент времени.</li><li><code>audit_gate</code>: дублирующиеся request id в пределах tenant.</li><li>S7: удалённые Drive-root возвращаются только с новым checker (re-admission убран, fail closed).</li><li>S8: неаудированный in-memory run виден до recovery.</li></ul></div>
-<div class="card"><h3>Расхождения документов (нужна синхронизация)</h3><ul><li><code>docs/phase2/IMPLEMENTATION_STATUS.md</code> описывает состояние 2026-10-08 (head df92cc8, 326 тестов) — устарел; таблица гейтов в нём короче актуальной.</li><li><code>EVIDENCE_MATRIX.md</code> заканчивается на S5; S6–S9 подтверждены отчётами спринтов и decision log.</li><li><code>S1_S4_TRACEABILITY.md</code>: секция S9 показывает счётчики на 50e4c6e.</li><li>Хэш одобрения S6 (c194760) взят только из отчёта спринта — подтвердить.</li><li>В репозитории по ошибке отслеживается <code>scripts/remote/discover-host - Copy.ps1</code>.</li></ul></div>
+<div class="card"><h3>Расхождения документов (нужна синхронизация)</h3><ul><li><code>docs/phase2/IMPLEMENTATION_STATUS.md</code> описывает состояние 2026-10-08 (head df92cc8, 326 тестов): помечен историческим снимком со ссылкой на handoff и этот отчёт (исправлено), тело не обновлялось.</li><li><code>EVIDENCE_MATRIX.md</code> заканчивается на S5; S6–S9 подтверждены отчётами спринтов и decision log.</li><li><code>S1_S4_TRACEABILITY.md</code>: секция S9 показывает счётчики на 50e4c6e.</li><li>Хэш одобрения S6 (c194760) взят только из отчёта спринта — подтвердить.</li><li>Ошибочно отслеживавшийся дубликат <code>scripts/remote/discover-host - Copy.ps1</code> удалён (побайтово идентичен <code>discover-host.ps1</code>, восстановим из истории git) — исправлено.</li></ul></div>
 </div>
 <div class="card"><h3>Гигиена и безопасность (за оператором)</h3><ul><li>Удалить открытые файлы с секретами: <code>D:\secure\erp_mcp\New Text Document.txt</code> (логин/пароль админа копии) и <code>chatgpt_connector_oauth.txt</code> — зашифрованные копии (DPAPI) уже созданы.</li><li>Старый ключ OpenAI, попавший на скриншот, объявлен скомпрометированным; отзыв старого ключа не проверен.</li><li>В сессию дважды попадали значения из <code>env.ps1</code> локальной тестовой линии (только loopback, одноразовая БД); пароли линии при желании можно ротировать.</li><li>Удалить тестовую папку Drive <code>ERP_MCP_G4_PROBE</code>; issues #29 и #37 открыты (состояние issues исходного репозитория сейчас не перепроверялось).</li><li>Ivan сейчас обслуживает ИЗМЕНЁННУЮ копию базы (<code>818HA_p2diff</code>); откат — <code>scripts/remote/repoint-odata-base.ps1 -BaseName 818HA_test_ready</code>.</li></ul></div>
 <h2 id="notrun">NOT_RUN</h2>
 <ul><li>Нагрузка/ёмкость, представительная для прода; сработавшие и восстановленные алармы; реальная доставка алертов человеку.</li><li>Restore PostgreSQL в другой кластер/версию; репетиция миграции на реальной схеме R1; одобрение retention и любое удаление.</li><li>Регрессия Release 1 (shadow); hosted CI (решение оператора: CI нет); мутационные прогоны (запрет оператора 2026-10-09).</li><li>Реальный UI; реальное чтение 1С модулями R2; нативные байты отчёта; данные MOLDRETAIL; аттестация бухгалтера; продовая канарейка.</li><li>Интеграция PostgreSQL для S6–S9 (кода БД нет; последний прогон — на af9f287).</li></ul>
 <h2 id="next">Рекомендуемый порядок дальше</h2>
-<ol><li><b>Оператор, самое ценное:</b> запустить OB-11 — получить независимого бухгалтера для экспорта и аттестации нативного отчёта по 521.1 за 2026-08. Всё остальное в цепочке G3→G7 ждёт этого.</li><li><b>Оператор:</b> решить UI-scope (разблокирует G5) и вопрос <code>drive.readonly</code> (G4).</li><li><b>Инженерия:</b> этап 2 test-lane (job API, <code>living.*</code>, Drive как инструменты) и закрытие хвостов G1 на одноразовом PostgreSQL.</li><li><b>Инженерия:</b> синхронизировать устаревшие документы статуса и убрать лишний файл; затем GPT-PM ревью точного head и push накопленных коммитов.</li><li><b>Оператор:</b> гигиена секретов (раздел «Хвосты»).</li></ol>
+<ol><li><b>Оператор, самое ценное:</b> запустить OB-11 — получить независимого бухгалтера для экспорта и аттестации нативного отчёта по 521.1 за 2026-08. Всё остальное в цепочке G3→G7 ждёт этого.</li><li><b>Оператор:</b> решить UI-scope (разблокирует G5) и вопрос <code>drive.readonly</code> (G4).</li><li><b>Инженерия:</b> этап 2 test-lane (job API, <code>living.*</code>, Drive как инструменты) и закрытие хвостов G1 на одноразовом PostgreSQL.</li><li><b>Инженерия:</b> довести EVIDENCE_MATRIX.md и S1_S4_TRACEABILITY.md до S9 и подтвердить хэш одобрения S6; затем GPT-PM ревью точного head и push накопленных коммитов.</li><li><b>Оператор:</b> гигиена секретов (раздел «Хвосты»).</li></ol>
 <h2 id="sources">Источники и основа измерений</h2>
 <div class="card"><ul><li><b>Из документов репозитория (не перемерено сегодня):</b> <code>docs/phase2/S10_RELEASE_HANDOFF.md</code>, <code>PLAN_PHASE2_RU.md</code>, <code>TASK_LEDGER.md</code>, <code>OPERATOR_BACKLOG.md</code>, <code>G1_OPERATOR_BACKLOG.md</code>, <code>EVIDENCE_MATRIX.md</code>, <code>SOURCE_TO_R2_COMMIT_MAP.md</code>, <code>docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md</code>, <code>docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md</code>, отчёты <code>reports/PHASE2_S*_SPRINT_*.html</code>, <code>core/DECISION_LOG.md</code>.</li><li><b>Проверено сегодня:</b> состояние git (ветка main опережает origin/main на 8 коммитов), счёт историй по TASK_LEDGER (разбор файла), живая сверка двух баз через test-lane MCP и прямые вызовы шлюзов.</li><li>Не запускалось: полный набор тестов на текущем HEAD, CI, мутации, интеграция PostgreSQL — по правилам разработки v4 проверки выполняются в конце спринта через субагентов.</li></ul></div>
 </main>
