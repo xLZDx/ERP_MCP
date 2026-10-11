@@ -39,3 +39,31 @@ Four requirements to be settled in S11 before the S12 interface freeze:
 - S11-D separate evidence types: document fields, registrar movements, 1C state versions and authorization receipts; a six-column MATCH or an ORIGINAL_INTACT card never produces VERIFIED.
 
 Next inventory pass must cover: ops_types, _identity, workbench_types, comparison_snapshot, safe_errors, connector_sdk, the complete db/phase2 schemas and migrations, safe_parser, the Drive adapters, the 1C reader, restore_verify, release_rollback and the deployment/permission configuration; for each dependency record exact path, revision, relevant lines, authority level, tenant/company scope, persistence, error-code semantics and whether reuse is code, pattern only or not at all. A live CT14 spike that changes a disposable 1C clone still needs the applicable operator permission; the review is not that permission.
+
+## 5. Second inventory pass (2026-10-12, read-only agent, FACT = seen in the cited file)
+
+`P2` = `src/business_ai_gateway/phase2`. Authority of every module is EVALUATION_ONLY. Reuse type: code / pattern / none.
+
+| Item | Path and lines | Scope | Persistence | Error semantics | Reuse |
+| --- | --- | --- | --- | --- | --- |
+| ops_types | `P2/ops_types.py` 83-207, 312-403, 409-443 | `OpsScope(tenant, company, actor)`; entitlement check is one boolean, no read/write split | memory (`TenantBoundedMap`) | closed `OpsReason` + `NextAction`, import-time completeness guard; port exception -> `DEPENDENCY_FAILED` | code (scope-order check, refusal carrier) |
+| _identity | `P2/_identity.py` 17-139 | `scope_key(tenant, company)` | none | returns empty/None, never raises | code (`same_person`, `is_empty_1c_ref`) |
+| workbench_types | `P2/workbench_types.py` 37-196, 278-341 | `ViewerScope` carries `scope_epoch`; no write-target ownership kind | memory (fakes) | `SafeError`; success-like codes degrade to `INTERNAL_REFUSED` | code + pattern |
+| comparison_snapshot | `P2/comparison_snapshot.py` 114-188, 264-382 | tenant only (no company) | memory; run ids global across tenants | floats refused | code (`canonical_digest`), pattern (supersession chain) |
+| safe_errors | `P2/safe_errors.py` 38-139 | none | none | message table tied to workbench codes only | code, needs new tables |
+| connector_sdk | `P2/connector_sdk.py` 40-196, 325-374 | `source_id`, `tenant_id`, `scope_epoch`; read-only (`SNAPSHOT_ONLY`) | none | `ValidationError.reasons` as `field:REASON` | pattern only (key/value scanner reusable) |
+| db/phase2 001-003 | `db/phase2/001_living_registry.sql`, `002_job_cursor_functions.sql`, `003_security_hardening.sql` | per (tenant, source), RLS, company nullable | Postgres, immutable ledgers | fixed `RAISE` codes (`SCOPE_REVOKED`, `STALE_JOB_FENCE`, `APPROVER_NOT_INDEPENDENT`, ...) | pattern: epoch rechecked under the source row lock at claim (002 `acquire_job`), separate approver with digest-bound attestation (003 `promote_head`), role change bumps epoch; no write grant, proposal or call-ownership table exists |
+| safe_parser | `P2/safe_parser.py` 66-169, 703-996 | none | none | fixed codes, content never echoed; Windows memory bound not enforced | code (untrusted xlsx/csv intake) |
+| drive_port/scope/http/oauth | `P2/drive_*.py` (headers only) | `scope_epoch` first on every call; read-only by construction | memory | closed code sets | pattern; other drive modules NOT_VERIFIED |
+| 1C metadata reader | `P2/onec_discovery.py` 39-182 | per (tenant, source) | none | audit write awaited before fetch, fail closed `AUDIT_WRITE_FAILED` | pattern |
+| test-lane gateway client | `testlane/phase2_mcp/gateway_client.py`, `config.py` | env-configured | none | fixed `GATEWAY_*` codes | none for writes |
+| restore_verify | `P2/restore_verify.py` 88-845 | `OpsScope` + declared source ids | memory | `OpsReason.RESTORE_*` | code + pattern, `living.*` tables only |
+| release_rollback | `P2/release_rollback.py` 168-587 | platform level | memory (`FakeGrantRegistry`) | `OpsReason.ROLLBACK_*`; `executed` always False | pattern (separate approver, no resurrection) |
+| capture_permit | `P2/capture_permit.py` 66-471 | per (tenant, source) | memory | `PERMIT_NOT_ADMITTABLE`, `PROD_DISABLED` | pattern; `set_prod_enabled` is a global PROD flag, not a write kill switch |
+| side_effect_boundary | `P2/side_effect_boundary.py` 73-303 | none | none | `BoundaryCode.*_OPERATION` | pattern; `evaluate` can never allow a non-READ class |
+| audit_gate | `P2/audit_gate.py` 90-468 | tenant sink; request-id space per tenant | memory | `AUDIT_UNAVAILABLE`, `DUPLICATE_SUPPRESSED`, `EFFECT_FAILED`, `AUDIT_COMPLETION_PENDING` | code (INTENT before effect, COMPLETION after) |
+| scheduler | `P2/scheduler.py` 92-137 | per source | memory | `IllegalTransition` | pattern (ACTIVE/PAUSED/QUARANTINED) |
+
+Kill switch search (FACT, not exhaustive): no kill switch or disable-writes mechanism in `src` under any searched name. Nearest anchors: `living.sources.status` SUSPENDED/REVOKED with `scope_epoch` bump (001 lines 86, 90-100), `SourceStateMachine`, `PermitStore.set_prod_enabled`, deny-wins in `OperatorAuthorityPort`. An R1 "kill switch" in the decision log is a profile re-verify command, not a write stop. The scripts and config folders were not searched by content.
+
+Gaps confirmed for S11-A..D: (1) no read/write authorization split: entitlement, ownership and permit are read-only booleans; (2) audit has only INTENT/COMPLETION with `EFFECT_FAILED`, no unknown-outcome state, in-memory obligations and request ids lost on restart; (3) the epoch is compared under a row lock in the DB only, no Python module compares a carried `scope_epoch` to a live store, and DB jobs have no company dimension; (4) no separation of field, movement, version and authorization evidence; (5) nearly all Python state is process-local, and `living.*` has no table for proposals, approvals, write grants or call ownership. Still NOT_VERIFIED: the R1 gateway write surface, evidence_attestation, release_migration, backend_budget, ports, the remaining drive modules, and `scripts/` and config content.

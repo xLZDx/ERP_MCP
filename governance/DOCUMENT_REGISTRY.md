@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 54 tracked paths, 0 local-only paths.
+Inventory: 56 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -22,6 +22,7 @@ Inventory: 54 tracked paths, 0 local-only paths.
 | docs/phase2/BRANCH_ISOLATION_AND_HANDOFF.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/CAPACITY_DRILL.md | Phase 2 design | "Phase 2 capacity drill (S4b E5)" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
+| docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md | Phase 2 design | "CT14 feasibility spike: measured 1C capabilities on the disposable clone (2026-10-12)" |
 | docs/phase2/CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
 | docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "Phase 2 — ADR proposals, решения, риски и источники" |
 | docs/phase2/DECISION_LOG.md | Phase 2 design | "Phase 2 decision and evidence log" |
@@ -39,6 +40,7 @@ Inventory: 54 tracked paths, 0 local-only paths.
 | docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
+| docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
