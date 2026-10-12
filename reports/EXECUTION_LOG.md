@@ -1,7 +1,7 @@
 <!-- ENGINEERING_CHECKPOINT=CLIENT_SAFETY_20261009 ENGINEERING_IMPLEMENTATION=9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2 -->
 # Autonomous engineering execution log
 
-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=b68e581fd42ceedcb184f2499c33d32d7fb7e5ddb993eb7963713ff8a810a71b -->
+<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2998028f79f1796d447a09aefedf4796abf2cea4c9ccd94911ba91667130249d -->
 
 ## Capability observation boundary — 2026-10-06
 
@@ -562,3 +562,5 @@ Base `40317f0`, isolated `hardening/client-safety-20261008`; code/test commits `
 ## 2026-10-09 — complete local retest and retained flaky incident
 
 After the checkpoint was re-pinned, first full local pytest: 1933 passed, 343 skipped, 1 failed (nested fault/recovery harness). Its focused repeat passed and the independent fault runner exercised 11 passing tests with `timed_out=false`. A second entire local pytest passed 1934 with 343 external-gated skips and no failures (387.78s). Original failed run retained in `var/full-final-run.log`, PASS in `var/full-final-retry.log`. Engineering evidence only, no hosted exact-head verification; DoD PARTIAL / Production NO-GO.
+
+- Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run.
