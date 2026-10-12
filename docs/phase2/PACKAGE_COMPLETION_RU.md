@@ -39,6 +39,6 @@ Prod capability сохраняется в design, но default OFF до source/c
 
 ## Граница выполненного
 
-Изменялись только собственные документы Phase 2. Не выполнялись code/config/migration/grant changes, рестарты, подключение к1С, production capture, нагрузка, commit/push/merge или удаление (на момент подготовки; позднее пакет опубликован только как draft-документация отдельным docs-only PR, без принятия дизайна и без GO на реализацию). Чужие staged/unstaged изменения не тронуты. R1 verdict не изменён.
+Изменялись только собственные документы Phase 2. Не выполнялись code/config/migration/grant changes, рестарты, подключение к1С, production capture, нагрузка, commit/push/merge или удаление. Чужие staged/unstaged изменения не тронуты. R1 verdict не изменён.
 
 Следующая стадия — согласование scope/ADR и S0 inventory/feasibility. Документационный пакет завершён; реализация Phase2 и её приёмка ещё впереди.

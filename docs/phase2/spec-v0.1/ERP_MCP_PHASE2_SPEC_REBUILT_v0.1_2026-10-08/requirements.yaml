@@ -1,0 +1,84 @@
+- id: R2-REQ-01
+  statement: Сохранить R1/R2 boundary, staged rollout и exact-build evidence
+  status: PLANNED
+- id: R2-REQ-02
+  statement: Один source registry; tenant/company/source/field ACL и server-side IDs
+  status: PLANNED
+- id: R2-REQ-03
+  statement: Read-only connector SDK; отдельная авторизация самого источника
+  status: PLANNED
+- id: R2-REQ-04
+  statement: Audit/pin/license/portability PDCC, ERP и Ferma
+  status: PLANNED
+- id: R2-REQ-05
+  statement: Baseline/incremental discovery с доказанной coverage
+  status: PLANNED
+- id: R2-REQ-06
+  statement: Canonical object/field/operation hashes отдельно от raw provenance hash
+  status: PLANNED
+- id: R2-REQ-07
+  statement: Независимые observed/accepted версии и решения
+  status: PLANNED
+- id: R2-REQ-08
+  statement: Версионируемая taxonomy/LDM, typed edges, aliases и confidence
+  status: PLANNED
+- id: R2-REQ-09
+  statement: Bitemporal history, unknown effective time, gaps и replay
+  status: PLANNED
+- id: R2-REQ-10
+  statement: Dependency impact; unknown impact — fail-closed
+  status: PLANNED
+- id: R2-REQ-11
+  statement: Durable jobs, fencing, cursor/outbox, бюджеты и backpressure
+  status: PLANNED
+- id: R2-REQ-12
+  statement: Drive scope PoC, baseline/change feed, revisions/membership/revoke
+  status: PLANNED
+- id: R2-REQ-13
+  statement: Manual native UI capture и qualified UI automation
+  status: PLANNED
+- id: R2-REQ-14
+  statement: Qualified standard-engine/batch capture только где поддержано
+  status: PLANNED
+- id: R2-REQ-15
+  statement: Раздельные dev/prod permissions, default OFF prod, no business writes
+  status: PLANNED
+- id: R2-REQ-16
+  statement: Provenance, независимость oracle, private evidence и attestation
+  status: PLANNED
+- id: R2-REQ-17
+  statement: Parser sandbox, no active content, privacy/retention
+  status: PLANNED
+- id: R2-REQ-18
+  statement: Decimal/currency/timezone/cutoff/rows deterministic reconciliation
+  status: PLANNED
+- id: R2-REQ-19
+  statement: 'Native 521.1: шесть колонок, expanded balance и аналитики'
+  status: PLANNED
+- id: R2-REQ-20
+  statement: 'Posted MOLDRETAIL purchases: identity/filters/fields/completeness'
+  status: PLANNED
+- id: R2-REQ-21
+  statement: Validation policy по operation, evidence FKs, independent approval
+  status: PLANNED
+- id: R2-REQ-22
+  statement: Discrepancy workbench, coverage, lineage и safe explanation
+  status: PLANNED
+- id: R2-REQ-23
+  statement: Capacity по маршрутам, backend-wide budgets и измерения
+  status: PLANNED
+- id: R2-REQ-24
+  statement: Fault/lag/audit alerts, recovery и restore evidence
+  status: PLANNED
+- id: R2-REQ-25
+  statement: Expand/switch/contract, R1 compatibility и safe rollback
+  status: PLANNED
+- id: R2-REQ-26
+  statement: Safe read/job APIs, idempotency/CSRF/annotations
+  status: PLANNED
+- id: R2-REQ-27
+  statement: Multi-account и отзыв доступа без утечек через cache/index
+  status: PLANNED
+- id: R2-REQ-28
+  statement: Reproducible acceptance bundle и честные NOT_RUN/BLOCKED
+  status: PLANNED

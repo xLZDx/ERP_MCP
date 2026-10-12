@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP Phase 2 — S1–S4 slice: sprint outcome</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1180px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP Phase 2 — S1–S4 slice: sprint outcome</h1>
+<div class="sub">Date: 2026-10-09 · branch phase2/living-model-connectors-reconciliation · head 5000043 (pushed, GPT-PM APPROVE on this exact head) · Rosetta plan erp_mcp-phase2-2026-10-08T21-01-00-999Z-be6a8e · development rules v4</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-phase2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; phase2/living-model-connectors-reconciliation @ 5000043</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+
+<h2>Summary</h2>
+<div class="card">
+<p><span class="ok">The S1–S4 slice is implemented, verified and published</span> (push <code>df92cc8..5000043</code>, no merge, no release). Release 2 is still <span class="bad">NO-GO</span> and G1 is <span class="warn">not passed</span>: the slice is isolated modules on ports, nothing is wired into Release 1.</p>
+<ul>
+<li>Without a DSN: <b>950 passed, 219 skipped</b>. On the disposable PostgreSQL 16 (<code>erp-phase2-test-pg</code>): <b>219 integration passed</b>. <code>ruff</code> clean. All runs were executed by the parent session on the exact tree of the commit.</li>
+<li>Two independent rounds of narrow reviewers (Sonnet 5.5): 0 BLOCKER and several MAJOR per round, all fixed in one batch per round. Final GPT-PM review on the exact head: APPROVE, no new BLOCKER/MAJOR.</li>
+<li>No user story was given DONE: the best status is <code>IMPLEMENTED_UNVERIFIED</code>.</li>
+</ul>
+</div>
+
+<h2>Plan and result (Planned / Definition of Done / Status / Tail)</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Planned</th><th>Definition of Done</th><th>Status</th><th>Tail</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Ports (Protocol) and in-memory fakes; one shared contract suite that also runs against the real SQL</td><td>One test body against fake and SQL; a skipped SQL variant fails the run under REQUIRE_PG=1</td><td class="ok">DONE (code and tests)</td><td>Cosmetic fake/SQL divergences in the backlog: collation ordering, identity sequence gaps, deepcopy cost</td></tr>
+<tr><td>2</td><td>Connector SDK: request/response envelope, fail-closed validation</td><td>No URL/SQL/credential fields, SNAPSHOT_ONLY, response must match the request</td><td class="ok">DONE</td><td>Real connectors are not attached (out of plan)</td></tr>
+<tr><td>3</td><td>Scheduler: backoff with jitter, lease through the port, poison, pause/quarantine, backend budget</td><td>Deterministic tests; each guard has a test that fails when the guard is removed</td><td class="warn">PARTIAL</td><td>Real multi-process concurrency not run; persisting the state snapshot is the caller's duty; fairness (TC057) and source isolation (TC059) not covered</td></tr>
+<tr><td>4</td><td>Failure-vs-drift: a source failure never yields structural drift; resnapshot after cursor loss</td><td>Timeout/outage/denied/partial never yield STRUCTURAL_DRIFT and never remove objects</td><td class="warn">PARTIAL</td><td>Classification is done, but nothing consumes <code>RESNAPSHOT_REQUIRED</code>; <code>resume</code> does not revalidate scope and cursor (TC035/036/060)</td></tr>
+<tr><td>5</td><td>Promotion: expected-head CAS, independent approver, evidence, rollback that does not restore revoked rights</td><td>A typed outcome per guard; replay is safe</td><td class="ok">DONE (code and tests)</td><td>Replay runs before the NOT_A_PROMOTER check that SQL applies first; replay returns the caller's success label without comparing it with the recorded kind</td></tr>
+<tr><td>6</td><td>Local tests, narrow agent review, GPT-PM review on the exact head, then push</td><td>Agent consensus, APPROVE on the exact head, push only after it</td><td class="ok">DONE</td><td>—</td></tr>
+</tbody></table></div>
+
+<h2>Test traceability matrix</h2>
+<p class="sub">Requirement → test → assertion → run → result → bug found and fix. Full version in the repository: <code>docs/phase2/S1_S4_TRACEABILITY.md</code>. Per-guard mutation tables (promotion 12/12, scheduler 26/26 and 14/14, SDK and drift all RED) are the implementing agents' own reports and were not re-run by the parent, except two promotion guards (RED/GREEN, file hash identical after restore).</p>
+<div class="wrap"><table>
+<thead><tr><th>Story</th><th>Requirement</th><th>Test</th><th>Assertion (would fail if broken)</th><th>Run</th><th>Result</th><th>Bug / fix</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>R2-US-003</td><td>Strict fail-closed envelope</td><td>test_connector_sdk.py</td><td>Exact ValidationError code per forbidden field class</td><td>offline</td><td class="ok">pass</td><td>COMPLETE with next_cursor was accepted; a raw key was echoed in messages; scope_epoch unbounded — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-004</td><td>Scope revocation and tenant isolation</td><td>test_ports_contract.py (scope-epoch, cross-scope, permissions, raw SELECT under RLS)</td><td>SCOPE_REVOKED / SCOPE_NOT_GRANTED / PERMISSION_DENIED on every call; foreign rows invisible</td><td>offline + PG</td><td class="ok">pass</td><td>No port-level test existed — added; the fake's unknown-actor code aligned to SQL</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-009</td><td>Failure is not drift</td><td>test_drift.py, test_scheduler.py (all outcome kinds)</td><td>STRUCTURAL_DRIFT only for a COMPLETE capture with a different hash; removal_permitted False otherwise</td><td>offline</td><td class="ok">pass</td><td>Drift advanced the accepted hash with the event — now a separate candidate_hash, accepted hash unchanged</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-011</td><td>Bitemporal reads, knowledge horizon</td><td>test_ports_contract.py (as_known_at, as_effective_at)</td><td>Same result from fake and SQL</td><td>offline + PG</td><td class="ok">pass</td><td>—</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-012</td><td>Cursor loss, GAP</td><td>test_drift.py, contract replay tests</td><td>CURSOR_LOST → RESNAPSHOT_REQUIRED; conflicting replay rejected</td><td>offline + PG</td><td class="warn">pass (classification only)</td><td>No consumer of the event</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-013, 015</td><td>(not covered by this slice)</td><td>—</td><td>—</td><td>—</td><td class="bad">none</td><td>—</td><td>NOT_IMPLEMENTED</td></tr>
+<tr><td>R2-US-016</td><td>CAS, independence, evidence, rollback, replay</td><td>test_promotion.py (94), contract promote/attestation tests</td><td>A typed outcome per guard; replay with the same acceptance_id returns the recorded version; an ambiguous commit is INDETERMINATE</td><td>offline + PG</td><td class="ok">pass</td><td>Replay was unreachable; a transient read error masked a committed promotion; an unknown write code was treated as "nothing written" — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-017</td><td>One writer per source: lease, fence, reap, poison</td><td>test_scheduler.py (143), two-connection SQL races</td><td>Exactly one winner; stale fence → LEASE_LOST with no finish; poison at min(poison_after, max_attempts)</td><td>offline + PG</td><td class="ok">pass</td><td>Result of work unchecked; raw exception text stored in last_error; lease loss not accounted; a worker that lost its lease still counted a failure against the source — fixed</td><td>IMPLEMENTED_UNVERIFIED</td></tr>
+<tr><td>R2-US-019</td><td>Backend budget; denial defers</td><td>test_scheduler.py, test_backend_budget.py</td><td>DEFERRED_BUDGET leaves the job PENDING at attempt 0</td><td>offline</td><td class="ok">pass</td><td>Deferral was unbounded — capped and observable</td><td>PARTIAL</td></tr>
+<tr><td>R2-US-020</td><td>Pause/quarantine; a restart does not lift quarantine</td><td>test_scheduler.py (SchedulerState export/import)</td><td>QUARANTINED survives export/import; import is validated and never clears a poison mark</td><td>offline</td><td class="ok">pass</td><td>State was memory-only — snapshot added (the caller persists it)</td><td>PARTIAL</td></tr>
+</tbody></table></div>
+
+<h2>What the reviews found and what was fixed</h2>
+<ul>
+<li><b>Round 1</b> (a00d16a; test adequacy, python, silent failures, reliability): 0 BLOCKER; MAJOR — unreachable replay, ambiguous commit, unchecked work result and raw errors, poison vs max_attempts, unaccounted lease loss, memory-only state, COMPLETE with next_cursor, drift advancing the baseline, a silently skippable SQL variant, no scope-epoch or race tests. Fixed in batch d1f87bc.</li>
+<li><b>Round 2</b> (d1f87bc; regressions and test adequacy): 0 BLOCKER; fixed in 5000043 — transient replay-read error, unknown write code, a lease-less worker counting a failure, validation and merge on state import, skip-guard and RLS tests.</li>
+<li><b>GPT-PM</b> on the exact head 5000043: APPROVE, no new BLOCKER/MAJOR; push only.</li>
+<li>Process failures: agents hit their turn limit, two lost their reports at a session restart, one wrote a literal NUL byte into <code>fakes.py</code> (caught by a test-collection error). Their work was accepted only on the parent's own runs.</li>
+</ul>
+
+<h2>NOT_RUN and not claimed</h2>
+<ul>
+<li>Real multi-process scheduler concurrency, capacity 30/50/100/150, Release 1 regression, CI (operator decision: none), a kill timed inside COMMIT, restore into another cluster or version.</li>
+<li>Gates G0 and G2–G7 and the operator-dependent items (1C/Drive sources, OAuth, accountant reconciliation) are untouched.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ul>
+<li>Without operator input: a consumer for <code>RESNAPSHOT_REQUIRED</code>, scope and cursor revalidation in <code>resume</code>, the missing tests (fairness, source isolation), the remaining promotion items.</li>
+<li>The G1 exit decision (capacity, kill inside COMMIT) is a separate gate.</li>
+</ul>
+
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
