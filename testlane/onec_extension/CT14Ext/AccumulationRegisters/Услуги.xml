@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="9a98e902-4169-4eda-8b11-06f30243d241">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.Услуги" category="Record">
+				<xr:TypeId>fc29ec4d-8436-422b-afa1-85ee4e59a17f</xr:TypeId>
+				<xr:ValueId>e992df62-b6bf-486f-a09b-69335b46c9c9</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.Услуги" category="Manager">
+				<xr:TypeId>9c06ebd9-700e-4eae-9baa-2516fcb8f332</xr:TypeId>
+				<xr:ValueId>284e2653-5886-45ea-898a-c7666130f7e3</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.Услуги" category="Selection">
+				<xr:TypeId>03ff3f81-08ab-4014-90e8-33398b4c9048</xr:TypeId>
+				<xr:ValueId>7c56d0aa-d4e4-4678-b673-b02905b8bd91</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.Услуги" category="List">
+				<xr:TypeId>39a433b8-d531-4772-ab58-8d1de95331ea</xr:TypeId>
+				<xr:ValueId>97ca48b3-3c7a-465c-b529-162cc300a9b3</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.Услуги" category="RecordSet">
+				<xr:TypeId>54013cbb-d12d-4649-a35b-53894ec1fecd</xr:TypeId>
+				<xr:ValueId>0b6bd301-51b3-44ee-99af-ec758b6fc159</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.Услуги" category="RecordKey">
+				<xr:TypeId>c19ff67b-db7c-4035-9732-8ca8887ce5d6</xr:TypeId>
+				<xr:ValueId>f81f9f5d-6d2e-4296-bcd8-fca8fd16f6cb</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>Услуги</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>2604cfd2-d595-408e-8c15-83a45bbecdf5</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

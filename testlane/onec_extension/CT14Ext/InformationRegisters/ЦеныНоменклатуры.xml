@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="04a7ce2d-6067-485a-9ead-94fe58d3d1b7">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.ЦеныНоменклатуры" category="Record">
+				<xr:TypeId>8c5dde1f-16b2-4dbf-8fca-5fb4727e5d54</xr:TypeId>
+				<xr:ValueId>49bc4a0f-98ae-4d98-992d-17bee89c5d3f</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.ЦеныНоменклатуры" category="Manager">
+				<xr:TypeId>9e38d562-1734-4353-89f0-392bf502547a</xr:TypeId>
+				<xr:ValueId>924a31a5-8f43-4f5f-8b0a-3e05cc625121</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.ЦеныНоменклатуры" category="Selection">
+				<xr:TypeId>2d91139b-5f98-48fa-b5ac-4521880de422</xr:TypeId>
+				<xr:ValueId>37f18f4e-10bc-4451-8f4a-edc06759b16b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.ЦеныНоменклатуры" category="List">
+				<xr:TypeId>c2467b47-3dd9-45e7-9086-a6d02b6fb226</xr:TypeId>
+				<xr:ValueId>83881c7e-30fc-41ae-8b75-6e26105aa108</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.ЦеныНоменклатуры" category="RecordSet">
+				<xr:TypeId>85debaca-e654-4428-81b6-f2f48dedaf5b</xr:TypeId>
+				<xr:ValueId>fa704408-994e-4b03-868c-3786a37938b7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.ЦеныНоменклатуры" category="RecordKey">
+				<xr:TypeId>6d0c1876-4353-4248-8a4c-27df1d851e6c</xr:TypeId>
+				<xr:ValueId>210a85d2-0148-4357-b748-40ec66305f5f</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.ЦеныНоменклатуры" category="RecordManager">
+				<xr:TypeId>a46267e8-f362-41c8-832e-cdda02b0842d</xr:TypeId>
+				<xr:ValueId>340bbd69-f384-4342-b1a7-9819ae99bfd3</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ЦеныНоменклатуры</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>2f2783ad-c483-4ce6-b35b-6ddc7b6f1c18</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

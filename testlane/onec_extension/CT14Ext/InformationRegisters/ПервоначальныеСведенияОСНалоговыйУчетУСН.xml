@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="620daa05-0943-4e9c-93d4-2375e4a76978">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="Record">
+				<xr:TypeId>a161eae4-5ff0-4cbb-9205-0d55db4210d4</xr:TypeId>
+				<xr:ValueId>38cadc8d-1a18-4f16-8e18-7217c8129ee6</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="Manager">
+				<xr:TypeId>d6c1e70d-6e0d-404a-a332-d83486f86c76</xr:TypeId>
+				<xr:ValueId>b7df080d-0a5a-4a82-9b24-0bf788ee4711</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="Selection">
+				<xr:TypeId>b32495e0-8886-41e2-8fd1-ce0b74656478</xr:TypeId>
+				<xr:ValueId>2a5e9a6a-1b1a-402b-8afd-fed212e3983e</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="List">
+				<xr:TypeId>74f78030-a888-4b4d-b5bb-b31f5b9b48a8</xr:TypeId>
+				<xr:ValueId>e6c540db-4b93-453b-9bdc-2e0147515b92</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="RecordSet">
+				<xr:TypeId>0a002576-509e-4f5f-8f91-6879ece3517c</xr:TypeId>
+				<xr:ValueId>f9f61fa5-41ee-4dda-bf76-7913f57b1b75</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="RecordKey">
+				<xr:TypeId>da0b25eb-f0cb-4857-8b86-6fba43459f3c</xr:TypeId>
+				<xr:ValueId>6129905a-985e-4a82-8296-f9c35d719272</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.ПервоначальныеСведенияОСНалоговыйУчетУСН" category="RecordManager">
+				<xr:TypeId>dd8fa113-191f-4806-b6e0-05f8260a1fc3</xr:TypeId>
+				<xr:ValueId>dc1ba7b6-eba5-45ba-8b1e-717754005c34</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ПервоначальныеСведенияОСНалоговыйУчетУСН</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>e1be676f-70b2-4a8c-84c2-a84c8b96649c</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

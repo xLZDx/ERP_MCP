@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="bec3906d-2822-4fdf-8072-39b89d8689e7">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.ИмпортТоваровТаможенныйСоюз" category="Record">
+				<xr:TypeId>62dd429a-57c5-48d9-9bd1-ad9d33e13751</xr:TypeId>
+				<xr:ValueId>cc5138b7-2a73-4a0e-bbcd-8febd0af69c7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.ИмпортТоваровТаможенныйСоюз" category="Manager">
+				<xr:TypeId>7bb1fc39-6628-4c37-86e7-bcd7bac61377</xr:TypeId>
+				<xr:ValueId>c4d01db7-87f1-43c2-8d44-26519acda110</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.ИмпортТоваровТаможенныйСоюз" category="Selection">
+				<xr:TypeId>a9739e12-65b1-41c5-a200-8c0ce3cbe969</xr:TypeId>
+				<xr:ValueId>10ee8ddc-180d-4268-a668-ab160c591a88</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.ИмпортТоваровТаможенныйСоюз" category="List">
+				<xr:TypeId>884dae64-b088-4e88-bbd2-43181a85b0b1</xr:TypeId>
+				<xr:ValueId>bb6c4268-54e5-45e5-879f-7f52e744bee4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.ИмпортТоваровТаможенныйСоюз" category="RecordSet">
+				<xr:TypeId>b1bad14a-e904-4866-8d8a-0a95f963c228</xr:TypeId>
+				<xr:ValueId>7e379b25-c9cc-4c83-9ea7-0e501e364e4c</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.ИмпортТоваровТаможенныйСоюз" category="RecordKey">
+				<xr:TypeId>cbbda03d-5c31-4ba5-9905-f7345fb4d335</xr:TypeId>
+				<xr:ValueId>9badd0e3-93c7-4297-95c7-81fe6c2971b4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.ИмпортТоваровТаможенныйСоюз" category="RecordManager">
+				<xr:TypeId>0bc9ff08-41f7-4090-8437-aa5c4fbe4821</xr:TypeId>
+				<xr:ValueId>8028d1fe-1c13-443b-80d0-026ab5a6aa41</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ИмпортТоваровТаможенныйСоюз</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>fd8fe814-97e6-42d3-a042-b1e429cfb067</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

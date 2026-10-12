@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="a3c3f121-e311-477a-89a3-0750d8c9bfb3">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="Record">
+				<xr:TypeId>f78ece3a-653c-48f7-97b3-91e504eee384</xr:TypeId>
+				<xr:ValueId>008256ea-4432-4177-9aec-233d0f552f28</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="Manager">
+				<xr:TypeId>3db51e10-44c8-41c5-8d37-dbbb70aea5be</xr:TypeId>
+				<xr:ValueId>c235407a-bc2b-4a47-8cd5-4a8a705be6a3</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="Selection">
+				<xr:TypeId>865f4b71-e165-4563-8e03-22447934f079</xr:TypeId>
+				<xr:ValueId>3e02d4c6-7106-4821-adf6-115d84bc2d50</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="List">
+				<xr:TypeId>47c778a0-25ad-4239-8df1-fea45cf8078b</xr:TypeId>
+				<xr:ValueId>baddb0cb-5f4d-402a-a130-e1d228dc36da</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="RecordSet">
+				<xr:TypeId>49d5424d-1271-451c-b119-fc40b2207aec</xr:TypeId>
+				<xr:ValueId>7cf5e612-4bdf-4484-9ed1-0e34b4c4c57d</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="RecordKey">
+				<xr:TypeId>e8711d49-4063-44c0-97e2-8a6563a5a520</xr:TypeId>
+				<xr:ValueId>9b8827f1-148e-41a1-93e8-4de5ed4b7167</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет" category="RecordManager">
+				<xr:TypeId>e0c71a4c-2a9e-4658-b9d6-d4a34ffeda16</xr:TypeId>
+				<xr:ValueId>518ed187-c654-4606-9817-90865d8237bf</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>53e08d2b-2e37-458c-8894-678387a46bfb</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

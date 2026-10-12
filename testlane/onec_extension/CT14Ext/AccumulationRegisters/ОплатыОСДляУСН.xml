@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="8b59abac-733d-4cc0-a13b-25ea7407746d">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.ОплатыОСДляУСН" category="Record">
+				<xr:TypeId>7ab918b5-4b7a-48b4-ae26-2ee94f5e0990</xr:TypeId>
+				<xr:ValueId>9d7fee6d-0235-4b59-984c-022543784480</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.ОплатыОСДляУСН" category="Manager">
+				<xr:TypeId>a38c5fc0-5b2e-470b-b1e2-830120ccddce</xr:TypeId>
+				<xr:ValueId>36516d7c-d6c2-487f-891b-da47a236b8b1</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.ОплатыОСДляУСН" category="Selection">
+				<xr:TypeId>a2c7bfb5-b69b-498c-8e26-8d7616c2cb6f</xr:TypeId>
+				<xr:ValueId>b5c4319b-5fd3-4813-abf4-54fd411d5907</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.ОплатыОСДляУСН" category="List">
+				<xr:TypeId>34892661-2e3b-43d7-b94b-5f9e477b13dd</xr:TypeId>
+				<xr:ValueId>879f6644-2685-4625-8faa-f7c268087e70</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.ОплатыОСДляУСН" category="RecordSet">
+				<xr:TypeId>26a3b4b1-2b6a-4e65-b225-3462ce5137b4</xr:TypeId>
+				<xr:ValueId>a34d3a62-49e4-4f0c-898f-5ca37e368b9a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.ОплатыОСДляУСН" category="RecordKey">
+				<xr:TypeId>95faaee6-bda9-4c27-ad9e-2ec8dbe84bbb</xr:TypeId>
+				<xr:ValueId>16a00cac-3bfd-403e-8ddb-d13444eecde6</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ОплатыОСДляУСН</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>0b8ec966-631d-4ed1-8f0b-c6f8ccce2cd1</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

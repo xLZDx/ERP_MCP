@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="cb458aec-b8b2-48e5-9547-0e2ffbd96d86">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.МестонахождениеОСБухгалтерскийУчет" category="Record">
+				<xr:TypeId>0bdc649c-3b8a-4e8c-ab3b-e2b4b514eedb</xr:TypeId>
+				<xr:ValueId>359c2524-2072-4d7c-9456-f2307abdfae9</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.МестонахождениеОСБухгалтерскийУчет" category="Manager">
+				<xr:TypeId>547b9dc0-718f-4a43-8b98-8b6e87bebc1c</xr:TypeId>
+				<xr:ValueId>0d60c29a-7b37-4810-a438-a1980daaf8c8</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.МестонахождениеОСБухгалтерскийУчет" category="Selection">
+				<xr:TypeId>95f4f162-66a0-4d06-a54b-45119001c867</xr:TypeId>
+				<xr:ValueId>ce21ef77-e910-4f70-a25c-074fa4758bfe</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.МестонахождениеОСБухгалтерскийУчет" category="List">
+				<xr:TypeId>8573c4d2-62c3-485e-82d3-eae4ed19c9db</xr:TypeId>
+				<xr:ValueId>85b2b37b-fdf7-448c-bb69-f1a839443cc5</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.МестонахождениеОСБухгалтерскийУчет" category="RecordSet">
+				<xr:TypeId>dd559992-8317-4488-b7c8-894f7b3a80ca</xr:TypeId>
+				<xr:ValueId>b3f09c1b-1c19-4adc-abfb-aa8774108e70</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.МестонахождениеОСБухгалтерскийУчет" category="RecordKey">
+				<xr:TypeId>6c06ae2e-603f-4b2d-82b0-1f6d660a8460</xr:TypeId>
+				<xr:ValueId>aaa3fa70-e60e-4832-9090-670c1d25f017</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.МестонахождениеОСБухгалтерскийУчет" category="RecordManager">
+				<xr:TypeId>0681c721-63f1-43a4-99a7-7ef360d461ae</xr:TypeId>
+				<xr:ValueId>05f4b121-dbbd-4f22-8c68-27c821b55102</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>МестонахождениеОСБухгалтерскийУчет</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>0270334b-9414-42bf-a4b5-cb7fe1f8892a</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

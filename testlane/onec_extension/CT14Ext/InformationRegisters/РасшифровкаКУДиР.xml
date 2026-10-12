@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="c7d0f86b-10ef-43f5-a90c-2eb2e94fff74">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.РасшифровкаКУДиР" category="Record">
+				<xr:TypeId>e952eb27-f315-4062-9d74-e5c6b148d3c2</xr:TypeId>
+				<xr:ValueId>8726118e-78c3-4377-9045-9afff262b2c2</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.РасшифровкаКУДиР" category="Manager">
+				<xr:TypeId>0f4c9b15-ee6c-403c-bad8-348c93adfb1e</xr:TypeId>
+				<xr:ValueId>6b0774fa-4ac2-4426-96cd-c42b5e3e5af7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.РасшифровкаКУДиР" category="Selection">
+				<xr:TypeId>fb35f093-a162-49ab-b707-bbef6285c260</xr:TypeId>
+				<xr:ValueId>c1e47742-5197-4759-a43c-aab26581dbbe</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.РасшифровкаКУДиР" category="List">
+				<xr:TypeId>e3166b39-23b9-4ee9-9e65-1326c1189605</xr:TypeId>
+				<xr:ValueId>1ac02e3e-199e-40b5-9f51-c73cd3f82da7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.РасшифровкаКУДиР" category="RecordSet">
+				<xr:TypeId>a57dda67-49c3-478d-8cce-b204b0dc30b9</xr:TypeId>
+				<xr:ValueId>fac06d03-448a-46d3-aa8d-0f9ace4cebcf</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.РасшифровкаКУДиР" category="RecordKey">
+				<xr:TypeId>1793043e-2291-4a7d-b49b-5e78229e1cb5</xr:TypeId>
+				<xr:ValueId>aded13c5-64cd-4d64-bd4c-bd31a730d261</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.РасшифровкаКУДиР" category="RecordManager">
+				<xr:TypeId>8e72dda9-fc8d-489c-b4ff-5ad32742458f</xr:TypeId>
+				<xr:ValueId>4dcea690-63d7-4931-b123-dc13c589364a</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>РасшифровкаКУДиР</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>8ba69bdc-b763-412a-9d95-0fd1557f9906</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

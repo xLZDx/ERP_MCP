@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="a3b588d2-c17e-4ac3-ba77-99dfa4e243d4">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.НачислениеАмортизацииОСБухгалтерскийУчет" category="Record">
+				<xr:TypeId>cbb71a46-dab1-45c4-afc7-63956584f8bf</xr:TypeId>
+				<xr:ValueId>89c9b8a6-5245-439c-8650-6c4c22e00013</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.НачислениеАмортизацииОСБухгалтерскийУчет" category="Manager">
+				<xr:TypeId>2319d9ab-afb9-49eb-87b2-a27d423a47ae</xr:TypeId>
+				<xr:ValueId>d8ae54f6-6bc3-43e1-8629-9e84e9bcd7ed</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.НачислениеАмортизацииОСБухгалтерскийУчет" category="Selection">
+				<xr:TypeId>bec0048d-e47b-41f7-a9ba-a30df8b87260</xr:TypeId>
+				<xr:ValueId>8c09b7ed-12f5-44d7-96d8-a9a3bd27e734</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.НачислениеАмортизацииОСБухгалтерскийУчет" category="List">
+				<xr:TypeId>7616ecca-f578-4519-a176-9eeb676ac351</xr:TypeId>
+				<xr:ValueId>2999217e-c8bf-4e1b-9a27-8a2333cd35cf</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.НачислениеАмортизацииОСБухгалтерскийУчет" category="RecordSet">
+				<xr:TypeId>cfead7dd-3804-4fca-aa1d-6a144e05f83f</xr:TypeId>
+				<xr:ValueId>ef3d2df0-5ddc-4a60-9f19-2c2eb83494c9</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.НачислениеАмортизацииОСБухгалтерскийУчет" category="RecordKey">
+				<xr:TypeId>b606f800-cda1-4414-9187-bf6fd25fe7b5</xr:TypeId>
+				<xr:ValueId>b376ad90-df9c-40e0-b9d8-fbb858bbb210</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.НачислениеАмортизацииОСБухгалтерскийУчет" category="RecordManager">
+				<xr:TypeId>7e48bec5-54d0-4929-b5f4-984f0ad52cde</xr:TypeId>
+				<xr:ValueId>2ee78920-e1a1-4de6-bec7-04fc196552da</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НачислениеАмортизацииОСБухгалтерскийУчет</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>8eb3f8ae-8590-48a9-830d-52ae7d081be8</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

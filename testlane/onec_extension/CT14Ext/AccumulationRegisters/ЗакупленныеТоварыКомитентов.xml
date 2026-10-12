@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="db42145f-9dba-49a2-aa21-2818f5426d3c">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.ЗакупленныеТоварыКомитентов" category="Record">
+				<xr:TypeId>2d532a5f-14eb-41e4-a074-7fa725a2eb0a</xr:TypeId>
+				<xr:ValueId>8e71ba3b-b9b8-439e-b25f-bbfce0fb556c</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.ЗакупленныеТоварыКомитентов" category="Manager">
+				<xr:TypeId>b7a2b385-5024-4dde-9b71-0de2ed0a70a7</xr:TypeId>
+				<xr:ValueId>f877858b-bbd9-49e5-a649-ee8c67ce0b83</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.ЗакупленныеТоварыКомитентов" category="Selection">
+				<xr:TypeId>3e5747e7-8dfb-4ee4-aff9-5a19971e6e41</xr:TypeId>
+				<xr:ValueId>a6bf5b04-5a8b-4b1e-84be-b5c5ac754482</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.ЗакупленныеТоварыКомитентов" category="List">
+				<xr:TypeId>14db05f6-08bb-4c44-a0b6-c85398c11e86</xr:TypeId>
+				<xr:ValueId>3e482f61-786d-4847-b6cc-7423eb9d4037</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.ЗакупленныеТоварыКомитентов" category="RecordSet">
+				<xr:TypeId>a9afbd85-54d4-4914-b024-1a21a1b360c0</xr:TypeId>
+				<xr:ValueId>52d3356b-574a-416d-89d0-fdab865f37f8</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.ЗакупленныеТоварыКомитентов" category="RecordKey">
+				<xr:TypeId>c341faa7-dd1f-449f-8627-e3ff600ab91f</xr:TypeId>
+				<xr:ValueId>efee5345-1c48-49e7-bcaf-0098fb904126</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ЗакупленныеТоварыКомитентов</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>cf526ecb-4060-4e44-8eab-4c87be954128</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

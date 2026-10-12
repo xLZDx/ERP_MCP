@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="6fa65abb-15a2-4b70-89ea-cf092888d441">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСНачисленный" category="Record">
+				<xr:TypeId>61d839b5-e88b-4d16-bd3c-b25860f9462a</xr:TypeId>
+				<xr:ValueId>c10b3758-cecd-4ff4-bd69-57457b044f48</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСНачисленный" category="Manager">
+				<xr:TypeId>b370089a-7a9d-404e-9e99-2fd70284f41e</xr:TypeId>
+				<xr:ValueId>954c56b7-9751-4312-8c42-3c0ecdaf9d37</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСНачисленный" category="Selection">
+				<xr:TypeId>98748900-3989-4a2b-a50e-c5d35980f76b</xr:TypeId>
+				<xr:ValueId>65ec0b4b-a20a-4f50-9120-8d295b069544</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСНачисленный" category="List">
+				<xr:TypeId>d2622d4a-de41-4159-b75c-b08419b42e8f</xr:TypeId>
+				<xr:ValueId>e1d15bb9-e879-468e-9506-a7893a9a09ca</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСНачисленный" category="RecordSet">
+				<xr:TypeId>edbac5d0-148b-4f54-9f89-357d2076d2da</xr:TypeId>
+				<xr:ValueId>cbd3745a-bc27-4163-87ee-38f752543c95</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСНачисленный" category="RecordKey">
+				<xr:TypeId>80f8ead7-7560-408b-9d38-b313011cf773</xr:TypeId>
+				<xr:ValueId>163a06c0-7fe2-4911-bc64-1c8ea20db80d</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСНачисленный</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>394fe9ed-de0a-4203-bfdb-7af6a84ae200</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

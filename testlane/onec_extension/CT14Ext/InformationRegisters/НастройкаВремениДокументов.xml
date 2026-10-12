@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="bb908976-f686-43c6-9c58-0361f5418310">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.НастройкаВремениДокументов" category="Record">
+				<xr:TypeId>55dc8aa0-1b0e-45e7-b47c-49558c1650cf</xr:TypeId>
+				<xr:ValueId>312a9379-7c87-4c67-83d1-b2dc19c158c9</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.НастройкаВремениДокументов" category="Manager">
+				<xr:TypeId>61cc4211-fd60-4cfd-bdb7-cc5ac3f9f911</xr:TypeId>
+				<xr:ValueId>d177ad41-85a3-4e10-9ba8-33b3dd26f02f</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.НастройкаВремениДокументов" category="Selection">
+				<xr:TypeId>d1188d3d-c3ae-4c0d-8d5a-eb19d532e942</xr:TypeId>
+				<xr:ValueId>a46dbefc-eca4-42e1-a8f4-6daeace77882</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.НастройкаВремениДокументов" category="List">
+				<xr:TypeId>60af51c2-2142-4bb6-8372-98d68a8fcdca</xr:TypeId>
+				<xr:ValueId>f9c58a67-c1af-4638-a8df-254e7758b7d2</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.НастройкаВремениДокументов" category="RecordSet">
+				<xr:TypeId>ce3584c6-4a90-4f53-8ef5-5103bc141214</xr:TypeId>
+				<xr:ValueId>1b07fdb7-1061-42d7-8c54-dc7421d577cb</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.НастройкаВремениДокументов" category="RecordKey">
+				<xr:TypeId>33a9ab02-3c12-4f8a-84c5-2b4ba74c2ef2</xr:TypeId>
+				<xr:ValueId>ea64d315-a875-47bd-ad3e-8a9ee60d5b40</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.НастройкаВремениДокументов" category="RecordManager">
+				<xr:TypeId>80ba83e6-f32f-42e4-8249-ee6e113998f0</xr:TypeId>
+				<xr:ValueId>4e3c3c0b-e519-4d98-acaf-d1e7fb3b5f3a</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НастройкаВремениДокументов</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>a73efb49-441d-4ed2-a8b3-3d4f2e20bdf6</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

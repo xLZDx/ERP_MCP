@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="8ba52009-b8eb-4032-b4db-e018e60e44be">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.СостоянияОСОрганизацийНУ" category="Record">
+				<xr:TypeId>78588737-b736-4664-8b0d-42cdd55dc80a</xr:TypeId>
+				<xr:ValueId>75d8614f-6e2b-445d-90d9-a2de557e0f51</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.СостоянияОСОрганизацийНУ" category="Manager">
+				<xr:TypeId>4ca3fbad-9b1f-47dc-826c-c8078ce03c2a</xr:TypeId>
+				<xr:ValueId>5f8bc305-b495-42f6-a5a5-e0e1ef13fd0a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.СостоянияОСОрганизацийНУ" category="Selection">
+				<xr:TypeId>c1cfdd1e-890e-4e94-ac47-85df188fe5e0</xr:TypeId>
+				<xr:ValueId>98f81260-50cb-459a-be10-37e0250e0287</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.СостоянияОСОрганизацийНУ" category="List">
+				<xr:TypeId>a832986c-b6eb-43be-b42a-c1c382ad5329</xr:TypeId>
+				<xr:ValueId>7102a109-a027-4de8-8b1c-1a49f8f6045e</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.СостоянияОСОрганизацийНУ" category="RecordSet">
+				<xr:TypeId>d2db6a1e-75bd-40ad-9f58-c8e6b0303299</xr:TypeId>
+				<xr:ValueId>6ea52635-e497-43f4-b62f-2ca000f67055</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.СостоянияОСОрганизацийНУ" category="RecordKey">
+				<xr:TypeId>ddd382f2-40af-4ec1-aadd-a439b82f1734</xr:TypeId>
+				<xr:ValueId>77209396-edb3-4f4a-897f-eeae16272eea</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.СостоянияОСОрганизацийНУ" category="RecordManager">
+				<xr:TypeId>5ca785e4-8929-41fa-924d-74d04db1b816</xr:TypeId>
+				<xr:ValueId>c9a1cdd5-06eb-4839-b578-e490ef17b619</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СостоянияОСОрганизацийНУ</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>1064019c-a74d-4c80-bc7c-d6d083ea46ae</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="9c5f6660-d580-4a30-9811-91187c4d3de4">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.СчетаБухгалтерскогоУчетаОС" category="Record">
+				<xr:TypeId>fb925dd5-958e-4112-8fb6-3b399b026b51</xr:TypeId>
+				<xr:ValueId>4712e4ff-15a9-478f-8ff9-9f9f1adf501d</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.СчетаБухгалтерскогоУчетаОС" category="Manager">
+				<xr:TypeId>b63c38a9-5ba0-4efc-a361-5ad4c9cb828c</xr:TypeId>
+				<xr:ValueId>95a9e916-a3a0-4931-8cd8-50ab211ac514</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.СчетаБухгалтерскогоУчетаОС" category="Selection">
+				<xr:TypeId>4adc2042-9772-4f76-ba04-73687ad8a66d</xr:TypeId>
+				<xr:ValueId>80781f7c-3c9d-4325-a686-b74978e639a5</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.СчетаБухгалтерскогоУчетаОС" category="List">
+				<xr:TypeId>f2d9c9f5-db67-47c5-a589-5ddf8a0cf3bd</xr:TypeId>
+				<xr:ValueId>26bfa89d-d302-4980-bb61-14e4c2b208c4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.СчетаБухгалтерскогоУчетаОС" category="RecordSet">
+				<xr:TypeId>c6458654-d119-4a05-8c31-304f97df0a4a</xr:TypeId>
+				<xr:ValueId>b60198fc-a279-4753-bd7f-5f8137637255</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.СчетаБухгалтерскогоУчетаОС" category="RecordKey">
+				<xr:TypeId>03742ddf-9026-47bc-997e-f1c8cbbf1e04</xr:TypeId>
+				<xr:ValueId>68d15347-323f-49a8-b2ad-1203580dc31b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.СчетаБухгалтерскогоУчетаОС" category="RecordManager">
+				<xr:TypeId>f258f636-222c-4038-bf99-f965540de9a5</xr:TypeId>
+				<xr:ValueId>efa681a8-4ef8-4a51-9e95-f6ab0d558750</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СчетаБухгалтерскогоУчетаОС</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>a6b937fb-8ea9-40b3-808e-2c939742afc7</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>
