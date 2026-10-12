@@ -51,10 +51,10 @@ Run on the same clone with the administrator test user plus one created infobase
 
 | Operation | COM on a licensed host (clone) | OData (Ivan) |
 | --- | --- | --- |
-| Purchase receipt: create draft | feasible; blocked until least-privilege role and durable marker are qualified | OUT_OF_SCOPE v2.0 |
-| Purchase receipt: post | feasible (effects measured for this type); same blockers | OUT_OF_SCOPE v2.0 |
-| Purchase receipt: unpost | feasible; same blockers; dependency and period-closure safety not measured | OUT_OF_SCOPE v2.0 |
-| Contract: update allowed attribute | write and stale rejection measured on the clone; NO provenance mechanism; least-privilege role unmeasured | OUT_OF_SCOPE v2.0 |
+| Purchase receipt: create draft | SUPPORTED on the clone (COM, file base) with the custom role and the extension marker attribute (section 6); marker is an untrusted label | OUT_OF_SCOPE v2.0 |
+| Purchase receipt: post | SUPPORTED on the clone with the custom role (effects measured for this shape: accounting 2 rows, VAT accumulation 1 row) | OUT_OF_SCOPE v2.0 |
+| Purchase receipt: unpost | SUPPORTED on the clone with the custom role; dependent documents and closed period not measured | OUT_OF_SCOPE v2.0 |
+| Contract: update allowed attribute | write and stale rejection measured on the clone; NO provenance mechanism; the custom role was measured for the receipt only | OUT_OF_SCOPE v2.0 |
 | Forced session termination | DENIED (not measured) | not applicable |
 
 Topology decision recorded for review: the write channel is the COM connector on a licensed host with a private access path; OData stays a read channel and is not part of v2.0 writes. The contract update is kept out of the first S12 interface freeze until a durable provenance mechanism and a least-privilege role are measured under a separately authorized spike.
@@ -82,7 +82,7 @@ Measured as the infobase user `CT14_NARROW` holding only `CT14Писатель` 
 
 Minimal rights of `CT14Писатель` (53 rights entries, one per adopted object: the receipt document plus 52 empty adoptions; found by about 40 one-right-at-a-time rounds; Read rights were added only after a real denial and not pruned): document `ПоступлениеТоваровУслуг` Read, Insert, Update, Posting, UndoPosting; sequence `ДокументыОрганизаций` Read and Update (post fails without Update); Read only on one more document, 3 catalogs, 2 constants, the accounting register, 19 accumulation registers and 21 information registers; Get on 4 session parameters. No delete, no interactive right, no administration, no write on any payment document.
 
-Consequences for the plan: (1) the purchase-receipt create/post/unpost slice now has a measured least-privilege identity on the clone, so the CT14 item 12 blocker is resolved for this slice on a file base; (2) the marker is durable and queryable but not tamper-proof against an API writer, so CT2 must keep treating it as a hint verified by the content hash (R-c) and must never infer non-application from its absence (already the rule); a tamper-detecting before-write handler is a possible hardening that needs its own decision because the plan excludes handlers; (3) the extension and its 52 adopted objects can drift when the base configuration is upgraded, so the rights matrix must be re-read periodically (TM20); (4) the contract update still has no marker mechanism and stays outside the first freeze; (5) all of this is measured on the disposable clone only, nothing is authorized for staging or production.
+Consequences for the plan: (1) the purchase-receipt create/post/unpost slice now has a measured least-privilege identity on the clone, so the CT14 item 12 blocker is resolved for this slice on a file base; (2) the marker is durable and queryable but not tamper-proof against an API writer, so CT2 must keep treating it as a hint verified by the content hash (R-c) and must never infer non-application from its absence (already the rule); a tamper-detecting before-write handler is a possible hardening that needs its own decision because the plan excludes handlers; (3) the extension and its 53 adopted objects (52 empty adoptions plus the document) can drift when the base configuration is upgraded, so the rights matrix must be re-read periodically (TM20); (4) the contract update still has no marker mechanism and stays outside the first freeze; (5) all of this is measured on the disposable clone only, nothing is authorized for staging or production.
 
 Left on the clone: the deactivated first extension `CT14Ext`, several unposted draft receipts (one with a deliberately tampered marker that the administrator restored), the infobase user `CT14_NARROW` and its user-catalog item. Nothing was deleted.
 

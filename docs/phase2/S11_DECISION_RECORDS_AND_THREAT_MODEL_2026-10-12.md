@@ -37,9 +37,9 @@ For each contract: what exists (FACT from the inventory or spike), what must be 
 
 | Operation | Channel (measured) | Status |
 | --- | --- | --- |
-| Create purchase receipt draft with marker | COM on a licensed host, clone | feasible; marker field choice open (comment is user-editable) |
+| Create purchase receipt draft with marker | COM on a licensed host, clone | SUPPORTED on the clone with the extension marker attribute and the custom role (CT14 record, section 6); the marker is an untrusted label verified by hash |
 | Post / unpost purchase receipt | COM, clone | feasible; effects limited to the registers above for this type |
-| Update contract: `СрокДействия`, `Комментарий` | COM, clone: comment write, version change and stale rejection measured (text restored) | OUT of the first S12 freeze: no provenance mechanism (no additional-property definitions exist) and no least-privilege role measured |
+| Update contract: `СрокДействия`, `Комментарий` | COM, clone: comment write, version change and stale rejection measured (text restored) | OUT of the first S12 freeze: no provenance mechanism (no additional-property definitions exist); the custom role was measured for the receipt only |
 | Any OData write | Ivan | OUT_OF_SCOPE for v2.0; the write topology is COM on a licensed host with a private access path (see the CT14 record, section 5) |
 
 Canonical business key for a purchase receipt: base fingerprint, organization, counterparty, contract, supplier number and date (a year filter is mandatory because numbers repeat across years), kind, currency. A contract key: base, organization, counterparty, contract number and date.
