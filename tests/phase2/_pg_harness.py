@@ -21,7 +21,8 @@ import asyncpg
 import pytest
 
 MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
-FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql")
+FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql",
+         "004_change_ledger.sql")
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
 FUTURE = datetime(2099, 1, 1, tzinfo=UTC)

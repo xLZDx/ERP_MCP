@@ -71,7 +71,7 @@ LANGUAGE sql STABLE AS $fn$
   AND c = nullif(current_setting('change_ledger.company_id',true),'')
   AND EXISTS(SELECT 1 FROM change_ledger.role_scope rs
    WHERE rs.tenant_id=t AND rs.company_id=c
-    AND pg_has_role(current_user, rs.role_name::name, 'USAGE'))
+    AND pg_has_role(change_ledger.caller_role()::name, rs.role_name::name, 'USAGE'))
 $fn$;
 
 -- The only supported way to set scope; grants are checked here and re-checked by every
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS change_ledger.events(
  tenant_id text NOT NULL, company_id text NOT NULL,
  event_id uuid NOT NULL DEFAULT gen_random_uuid(),
  change_id uuid,
- seq bigint GENERATED ALWAYS AS IDENTITY,
+ seq bigint NOT NULL,  -- per-(tenant,company) 1,2,3...; assigned by events_chain_guard under the chain lock
  event_type text NOT NULL CHECK(length(event_type)>0),
  payload jsonb NOT NULL DEFAULT '{}'::jsonb CHECK(octet_length(payload::text)<=65536),
  prev_hash text,
@@ -172,17 +172,18 @@ CREATE INDEX IF NOT EXISTS events_change_idx ON change_ledger.events(tenant_id,c
 -- tests/phase2/test_g1_restore.py-style checks for 001-003.
 CREATE OR REPLACE FUNCTION change_ledger.events_chain_guard() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
-DECLARE prior text;
+DECLARE prior text; prior_seq bigint;
 BEGIN
  IF NEW.tenant_id IS NULL OR NEW.company_id IS NULL THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.tenant_id||':'||NEW.company_id,0));
- SELECT hash INTO prior FROM change_ledger.events
+ SELECT hash, seq INTO prior, prior_seq FROM change_ledger.events
   WHERE tenant_id=NEW.tenant_id AND company_id=NEW.company_id
   ORDER BY seq DESC LIMIT 1;
+ NEW.seq := coalesce(prior_seq,0)+1;
  NEW.prev_hash := prior;
  NEW.hash := encode(sha256(convert_to(
-  coalesce(prior,'') || ':' || NEW.change_id::text || ':' || NEW.event_type || ':' ||
-  NEW.payload::text,'UTF8')),'hex');
+  coalesce(prior,'') || ':' || NEW.seq::text || ':' || coalesce(NEW.change_id::text,'') || ':' ||
+  NEW.event_type || ':' || NEW.payload::text,'UTF8')),'hex');
  RETURN NEW;
 END $fn$;
 DROP TRIGGER IF EXISTS events_chain ON change_ledger.events;
@@ -320,7 +321,11 @@ CREATE TABLE IF NOT EXISTS change_ledger.dispatch_permits(
  generation bigint NOT NULL,
  state text NOT NULL DEFAULT 'NOT_PERMITTED'
   CHECK(state IN ('NOT_PERMITTED','PERMITTED','CANCELLED_UNDISPATCHED','DISPATCHED')),
+ call_id uuid,
  checkpoint_seq bigint,
+ permit_digest text,
+ signer_key_id text,
+ signature text,
  issued_at timestamptz,
  expires_at timestamptz,
  PRIMARY KEY(change_id,generation)
@@ -401,9 +406,14 @@ CREATE TRIGGER witness_cosigns_no_delete BEFORE DELETE ON change_ledger.witness_
 CREATE TABLE IF NOT EXISTS change_ledger.checkpoints(
  tenant_id text NOT NULL, company_id text NOT NULL,
  seq bigint GENERATED ALWAYS AS IDENTITY,
+ ledger_seq bigint NOT NULL,  -- change_ledger.events.seq this checkpoint covers (the head at write time)
  head_hash text NOT NULL CHECK(head_hash ~ '^[a-f0-9]{64}$'),
+ sink_kind text NOT NULL CHECK(sink_kind IN ('REAL','TEST')),
+ sink_id text NOT NULL CHECK(length(sink_id)>0),
  signer_key_id text NOT NULL CHECK(length(signer_key_id)>0),
  signature text NOT NULL CHECK(length(signature)>0),
+ signed_at timestamptz NOT NULL,
+ read_back_confirmed boolean NOT NULL DEFAULT false,
  written_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(tenant_id,company_id,seq)
 );
@@ -411,16 +421,84 @@ DROP TRIGGER IF EXISTS checkpoints_immutable ON change_ledger.checkpoints;
 CREATE TRIGGER checkpoints_immutable BEFORE UPDATE OR DELETE ON change_ledger.checkpoints
  FOR EACH ROW EXECUTE FUNCTION change_ledger.reject_immutable_mutation();
 
+-- ================================================================== internal helpers
+-- Kill switch (S12-M06): every mode above OFF refuses propose/validate/approve/claim/begin_apply/permit.
+CREATE OR REPLACE FUNCTION change_ledger.assert_switch_off(t text, c text) RETURNS void
+LANGUAGE plpgsql AS $fn$
+DECLARE sw text;
+BEGIN
+ SELECT mode INTO sw FROM change_ledger.kill_switch_state WHERE tenant_id=t AND company_id=c;
+ IF coalesce(sw,'OFF') <> 'OFF' THEN RAISE EXCEPTION 'KILL_SWITCH_ACTIVE'; END IF;
+END $fn$;
+
+-- True when an unreleased hold blocks this change on its base. A repair UNPOST (S12 4.2) excepts
+-- exactly the FAILED_VERIFY_HALT row of its own repair_for parent and nothing else.
+CREATE OR REPLACE FUNCTION change_ledger.blocking_hold(t text, c text, p_base text, p_repair_for uuid)
+RETURNS boolean LANGUAGE sql STABLE AS $fn$
+ SELECT EXISTS(SELECT 1 FROM change_ledger.holds h
+  WHERE h.tenant_id=t AND h.company_id=c AND h.base_fingerprint=p_base AND h.released_at IS NULL
+   AND NOT (p_repair_for IS NOT NULL AND h.cause='FAILED_VERIFY_HALT' AND h.change_id=p_repair_for))
+$fn$;
+
+-- Common zero-effect exit (S12 4.1/4.2): drop the change's key lock and writer lease, release its
+-- own reservation, and either delete its target lock or (repair) hand it back to the parent in the
+-- same transaction. Callers have already proven that no 1C effect and no dispatch happened.
+CREATE OR REPLACE FUNCTION change_ledger.release_zero_effect(t text, c text, p_change_id uuid)
+RETURNS void LANGUAGE plpgsql AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; tref text;
+BEGIN
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ tref := coalesce(rec.target_ref, rec.change_id::text);
+ IF rec.repair_for IS NOT NULL THEN
+  IF NOT change_ledger.handoff_target_lock(t,c,rec.base_fingerprint,tref,rec.change_id,rec.repair_for) THEN
+   RAISE EXCEPTION 'LOCK_BUSY';
+  END IF;
+ ELSE
+  DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
+   AND base_fingerprint=rec.base_fingerprint AND target_ref=tref AND owner_change_id=rec.change_id;
+ END IF;
+ DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
+  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=rec.change_id;
+ DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
+  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=rec.change_id;
+ UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=rec.change_id AND state='RESERVED';
+ UPDATE change_ledger.records SET
+  reservation_state=CASE WHEN reservation_state='RESERVED' THEN 'RELEASED' ELSE reservation_state END,
+  updated_at=clock_timestamp()
+  WHERE tenant_id=t AND company_id=c AND change_id=rec.change_id;
+END $fn$;
+
 -- ================================================================== operations (section 6)
+
+-- T4 precondition: a one-time nonce issued to the approver's own authenticated session, bound to
+-- (change_id, expiry). The requester can never obtain one for their own change.
+CREATE OR REPLACE FUNCTION change_ledger.issue_approval_nonce(t text, c text, p_change_id uuid)
+RETURNS text LANGUAGE plpgsql AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; who text; n text;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ who := change_ledger.caller_role();
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ IF who IS NOT DISTINCT FROM rec.requester OR pg_has_role(who::name, rec.requester::name, 'MEMBER') THEN
+  RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
+ END IF;
+ n := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
+ INSERT INTO change_ledger.approval_nonces(nonce,change_id,approver,expires_at)
+ VALUES(n,p_change_id,who,clock_timestamp()+interval '10 minutes');
+ RETURN n;
+END $fn$;
 
 -- T1: propose. Idempotent on logical_key: same key + same digest returns the existing change_id;
 -- same key + different digest raises IDEMPOTENCY_CONFLICT (S12 T1 note).
 CREATE OR REPLACE FUNCTION change_ledger.propose(
  t text, c text, p_change_id uuid, p_kind text, p_base_fingerprint text, p_organization_ref text,
  p_requester text, p_request_id text, p_payload_digest text, p_target_ref text,
- p_target_version text, p_parent_change_id uuid, p_expires_at timestamptz
+ p_target_version text, p_parent_change_id uuid, p_expires_at timestamptz,
+ p_repair_for uuid DEFAULT NULL
 ) RETURNS uuid LANGUAGE plpgsql AS $fn$
-DECLARE existing change_ledger.records%ROWTYPE; epoch bigint; tgt_status text;
+DECLARE existing change_ledger.records%ROWTYPE; tgt_epoch bigint; tgt_status text;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
  IF p_change_id IS NULL OR p_kind IS NULL OR p_base_fingerprint IS NULL
@@ -428,7 +506,13 @@ BEGIN
   OR p_payload_digest IS NULL OR p_expires_at IS NULL THEN
   RAISE EXCEPTION 'SCHEMA_INVALID';
  END IF;
- SELECT status, epoch INTO tgt_status, epoch FROM change_ledger.targets
+ -- Section 2: the requester identity is the authenticated caller, never a free argument.
+ IF p_requester IS DISTINCT FROM change_ledger.caller_role() THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
+ IF p_repair_for IS NOT NULL AND (p_kind<>'UNPOST' OR p_parent_change_id IS DISTINCT FROM p_repair_for) THEN
+  RAISE EXCEPTION 'SCHEMA_INVALID';
+ END IF;
+ PERFORM change_ledger.assert_switch_off(t,c);
+ SELECT status, epoch INTO tgt_status, tgt_epoch FROM change_ledger.targets
   WHERE tenant_id=t AND company_id=c AND base_fingerprint=p_base_fingerprint FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'TARGET_REJECTED'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
@@ -445,9 +529,9 @@ BEGIN
  END IF;
  INSERT INTO change_ledger.records(
   change_id,tenant_id,company_id,base_fingerprint,organization_ref,kind,requester,request_id,
-  payload_digest,target_ref,target_version,parent_change_id,auth_epoch_at_proposal,expires_at)
+  payload_digest,target_ref,target_version,parent_change_id,repair_for,auth_epoch_at_proposal,expires_at)
  VALUES(p_change_id,t,c,p_base_fingerprint,p_organization_ref,p_kind,p_requester,p_request_id,
-  p_payload_digest,p_target_ref,p_target_version,p_parent_change_id,epoch,p_expires_at);
+  p_payload_digest,p_target_ref,p_target_version,p_parent_change_id,p_repair_for,tgt_epoch,p_expires_at);
  PERFORM change_ledger.append_event(t,c,p_change_id,'PROPOSED',
   jsonb_build_object('kind',p_kind,'payload_digest',p_payload_digest));
  RETURN p_change_id;
@@ -462,10 +546,12 @@ CREATE OR REPLACE FUNCTION change_ledger.validate(
 DECLARE rec change_ledger.records%ROWTYPE;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
+ PERFORM change_ledger.assert_switch_off(t,c);
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF rec.requester IS DISTINCT FROM change_ledger.caller_role() THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
  IF rec.lifecycle = 'VALIDATED' THEN RETURN rec.lifecycle; END IF;
  IF rec.lifecycle = 'DUPLICATE_PARKED' THEN RETURN rec.lifecycle; END IF;
  IF rec.lifecycle <> 'PROPOSED' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
@@ -486,30 +572,39 @@ END $fn$;
 CREATE OR REPLACE FUNCTION change_ledger.approve(
  t text, c text, p_change_id uuid, p_nonce text, p_digest text
 ) RETURNS uuid LANGUAGE plpgsql AS $fn$
-DECLARE rec change_ledger.records%ROWTYPE; approver text; nonce change_ledger.approval_nonces%ROWTYPE;
+DECLARE rec change_ledger.records%ROWTYPE; v_approver text; nrow change_ledger.approval_nonces%ROWTYPE;
  aid uuid;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- approver := change_ledger.caller_role();
+ v_approver := change_ledger.caller_role();
+ PERFORM change_ledger.assert_switch_off(t,c);
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
  IF rec.lifecycle <> 'VALIDATED' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
- IF approver IS NOT DISTINCT FROM rec.requester
-  OR pg_has_role(approver::name, rec.requester::name, 'MEMBER') THEN
+ IF rec.authorization_state='APPROVED' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
+ IF v_approver IS NOT DISTINCT FROM rec.requester
+  OR pg_has_role(v_approver::name, rec.requester::name, 'MEMBER') THEN
   RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
  END IF;
- SELECT * INTO nonce FROM change_ledger.approval_nonces
-  WHERE nonce=p_nonce AND change_id=p_change_id FOR UPDATE;
- IF NOT FOUND OR nonce.state<>'ISSUED' THEN RAISE EXCEPTION 'APPROVAL_NONCE_INVALID'; END IF;
- IF nonce.expires_at<=clock_timestamp() THEN
-  UPDATE change_ledger.approval_nonces SET state='EXPIRED' WHERE nonce=p_nonce;
+ IF rec.repair_for IS NOT NULL AND v_approver IS NOT DISTINCT FROM
+  (SELECT p.requester FROM change_ledger.records p WHERE p.change_id=rec.repair_for) THEN
+  RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
+ END IF;
+ IF p_digest IS DISTINCT FROM rec.payload_digest THEN RAISE EXCEPTION 'DIGEST_MISMATCH'; END IF;
+ SELECT * INTO nrow FROM change_ledger.approval_nonces n
+  WHERE n.nonce=p_nonce AND n.change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND OR nrow.state<>'ISSUED' OR nrow.approver IS DISTINCT FROM v_approver THEN
+  RAISE EXCEPTION 'APPROVAL_NONCE_INVALID';
+ END IF;
+ IF nrow.expires_at<=clock_timestamp() THEN
+  UPDATE change_ledger.approval_nonces n SET state='EXPIRED' WHERE n.nonce=p_nonce;
   RAISE EXCEPTION 'APPROVAL_EXPIRED';
  END IF;
- UPDATE change_ledger.approval_nonces SET state='CONSUMED' WHERE nonce=p_nonce;
+ UPDATE change_ledger.approval_nonces n SET state='CONSUMED' WHERE n.nonce=p_nonce;
  INSERT INTO change_ledger.approvals(change_id,approver,nonce,digest,decision)
- VALUES(p_change_id,approver,p_nonce,p_digest,'APPROVE') RETURNING approval_id INTO aid;
+ VALUES(p_change_id,v_approver,p_nonce,p_digest,'APPROVE') RETURNING approval_id INTO aid;
  UPDATE change_ledger.records SET authorization_state='APPROVED', updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  PERFORM change_ledger.append_event(t,c,p_change_id,'APPROVED',
@@ -520,19 +615,25 @@ END $fn$;
 CREATE OR REPLACE FUNCTION change_ledger.reject(
  t text, c text, p_change_id uuid, p_nonce text
 ) RETURNS text LANGUAGE plpgsql AS $fn$
-DECLARE rec change_ledger.records%ROWTYPE; approver text;
+DECLARE rec change_ledger.records%ROWTYPE; v_approver text; nrow change_ledger.approval_nonces%ROWTYPE;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- approver := change_ledger.caller_role();
+ v_approver := change_ledger.caller_role();
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
- IF rec.lifecycle NOT IN ('PROPOSED','VALIDATED') THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
- UPDATE change_ledger.approval_nonces SET state='CONSUMED'
-  WHERE nonce=p_nonce AND change_id=p_change_id AND state='ISSUED';
+ IF rec.lifecycle NOT IN ('PROPOSED','VALIDATED') OR rec.authorization_state<>'NONE' THEN
+  RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
+ END IF;
+ SELECT * INTO nrow FROM change_ledger.approval_nonces n
+  WHERE n.nonce=p_nonce AND n.change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND OR nrow.state<>'ISSUED' OR nrow.approver IS DISTINCT FROM v_approver THEN
+  RAISE EXCEPTION 'APPROVAL_NONCE_INVALID';
+ END IF;
+ UPDATE change_ledger.approval_nonces n SET state='CONSUMED' WHERE n.nonce=p_nonce;
  INSERT INTO change_ledger.approvals(change_id,approver,nonce,digest,decision)
- VALUES(p_change_id,approver,p_nonce,repeat('0',64),'REJECT');
+ VALUES(p_change_id,v_approver,p_nonce,repeat('0',64),'REJECT');
  UPDATE change_ledger.records SET lifecycle='REJECTED', updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  PERFORM change_ledger.append_event(t,c,p_change_id,'REJECTED','{}'::jsonb);
@@ -547,49 +648,86 @@ CREATE OR REPLACE FUNCTION change_ledger.claim(
  t text, c text, p_change_id uuid, p_key_hash text, p_grant_id uuid, p_amount numeric,
  p_counts_create_update boolean, p_counts_post boolean
 ) RETURNS change_ledger.claim_tokens LANGUAGE plpgsql AS $fn$
-DECLARE rec change_ledger.records%ROWTYPE; requester text; gen bigint; tok change_ledger.claim_tokens%ROWTYPE;
- g change_ledger.grants%ROWTYPE; switch text; open_hold boolean;
+DECLARE rec change_ledger.records%ROWTYPE; v_requester text; gen bigint;
+ tok change_ledger.claim_tokens%ROWTYPE; g change_ledger.grants%ROWTYPE;
+ parent change_ledger.records%ROWTYPE; tref text; used_amount numeric; used_cu integer; used_post integer;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- requester := change_ledger.caller_role();
+ v_requester := change_ledger.caller_role();
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
- IF requester IS DISTINCT FROM rec.requester THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
+ IF v_requester IS DISTINCT FROM rec.requester THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
  IF rec.authorization_state <> 'APPROVED' THEN RAISE EXCEPTION 'APPROVAL_MISSING'; END IF;
- SELECT mode INTO switch FROM change_ledger.kill_switch_state WHERE tenant_id=t AND company_id=c;
- IF coalesce(switch,'OFF') IN ('STOP_ADMIT','STOP_EFFECTS','REVOKE') THEN
-  RAISE EXCEPTION 'KILL_SWITCH_ACTIVE';
+ IF rec.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'APPROVAL_EXPIRED'; END IF;
+ PERFORM change_ledger.assert_switch_off(t,c);
+ IF change_ledger.blocking_hold(t,c,rec.base_fingerprint,rec.repair_for) THEN
+  RAISE EXCEPTION 'BASE_HOLD';
  END IF;
- SELECT EXISTS(SELECT 1 FROM change_ledger.holds
-  WHERE tenant_id=t AND company_id=c AND base_fingerprint=rec.base_fingerprint
-   AND released_at IS NULL) INTO open_hold;
- IF open_hold THEN RAISE EXCEPTION 'BASE_HOLD'; END IF;
- IF rec.parent_change_id IS NOT NULL THEN
+ tref := coalesce(rec.target_ref,p_change_id::text);
+ IF rec.repair_for IS NOT NULL THEN
+  -- S12 4.2: the repair authorization exempts only the parent-VERIFIED guard and the parent's own
+  -- FAILED_VERIFY_HALT row; the target lock is handed over below, never released in between.
+  SELECT * INTO parent FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+   AND change_id=rec.repair_for FOR UPDATE;
+  IF NOT FOUND OR parent.verification_state<>'FAILED_VERIFY' OR parent.effect_known IS DISTINCT FROM 'YES'
+   OR parent.target_ref IS DISTINCT FROM rec.target_ref
+   OR parent.base_fingerprint<>rec.base_fingerprint
+   OR NOT EXISTS(SELECT 1 FROM change_ledger.holds h WHERE h.tenant_id=t AND h.company_id=c
+     AND h.base_fingerprint=rec.base_fingerprint AND h.cause='FAILED_VERIFY_HALT'
+     AND h.change_id=rec.repair_for AND h.released_at IS NULL) THEN
+   RAISE EXCEPTION 'PARENT_NOT_VERIFIED';
+  END IF;
+ ELSIF rec.parent_change_id IS NOT NULL THEN
   IF NOT EXISTS(SELECT 1 FROM change_ledger.records
     WHERE change_id=rec.parent_change_id AND verification_state='VERIFIED') THEN
    RAISE EXCEPTION 'PARENT_NOT_VERIFIED';
   END IF;
  END IF;
- IF p_grant_id IS NOT NULL THEN
-  SELECT * INTO g FROM change_ledger.grants WHERE grant_id=p_grant_id FOR UPDATE;
-  IF NOT FOUND OR g.status<>'ACTIVE' OR clock_timestamp()<g.window_start
-   OR clock_timestamp()>=g.window_end THEN
-   RAISE EXCEPTION 'BUDGET_EXCEEDED';
+ BEGIN
+  IF p_grant_id IS NOT NULL THEN
+   SELECT * INTO g FROM change_ledger.grants WHERE grant_id=p_grant_id AND tenant_id=t AND company_id=c
+    FOR UPDATE;
+   IF NOT FOUND OR g.status<>'ACTIVE' OR clock_timestamp()<g.window_start
+    OR clock_timestamp()>=g.window_end THEN
+    RAISE EXCEPTION 'BUDGET_EXCEEDED';
+   END IF;
+   SELECT coalesce(sum(r.amount),0),
+          count(*) FILTER (WHERE r.counts_create_update), count(*) FILTER (WHERE r.counts_post)
+    INTO used_amount, used_cu, used_post
+    FROM change_ledger.reservations r
+    WHERE r.grant_id=p_grant_id AND r.state IN ('RESERVED','CONSUMED') AND r.change_id<>p_change_id;
+   IF used_amount+coalesce(p_amount,0) > g.amount_limit
+    OR used_cu+(CASE WHEN coalesce(p_counts_create_update,false) THEN 1 ELSE 0 END) > g.count_limit
+    OR used_post+(CASE WHEN coalesce(p_counts_post,false) THEN 1 ELSE 0 END) > g.post_count_limit THEN
+    RAISE EXCEPTION 'BUDGET_EXCEEDED';
+   END IF;
+   INSERT INTO change_ledger.reservations(change_id,grant_id,amount,counts_create_update,counts_post)
+   VALUES(p_change_id,p_grant_id,coalesce(p_amount,0),coalesce(p_counts_create_update,false),
+    coalesce(p_counts_post,false))
+   ON CONFLICT(change_id) DO UPDATE SET grant_id=EXCLUDED.grant_id, amount=EXCLUDED.amount,
+    counts_create_update=EXCLUDED.counts_create_update, counts_post=EXCLUDED.counts_post,
+    state='RESERVED', reserved_at=clock_timestamp()
+    WHERE change_ledger.reservations.state='RELEASED';
   END IF;
-  INSERT INTO change_ledger.reservations(change_id,grant_id,amount,counts_create_update,counts_post)
-  VALUES(p_change_id,p_grant_id,coalesce(p_amount,0),coalesce(p_counts_create_update,false),
-   coalesce(p_counts_post,false));
- END IF;
- INSERT INTO change_ledger.target_locks(tenant_id,company_id,base_fingerprint,target_ref,owner_change_id)
- VALUES(t,c,rec.base_fingerprint,coalesce(rec.target_ref,p_change_id::text),p_change_id);
- IF p_key_hash IS NOT NULL THEN
-  INSERT INTO change_ledger.key_locks(tenant_id,company_id,base_fingerprint,key_hash,owner_change_id)
-  VALUES(t,c,rec.base_fingerprint,p_key_hash,p_change_id);
- END IF;
- INSERT INTO change_ledger.writer_leases(tenant_id,company_id,base_fingerprint,owner_change_id)
- VALUES(t,c,rec.base_fingerprint,p_change_id);
+  IF rec.repair_for IS NOT NULL THEN
+   IF NOT change_ledger.handoff_target_lock(t,c,rec.base_fingerprint,tref,rec.repair_for,p_change_id) THEN
+    RAISE EXCEPTION 'LOCK_BUSY';
+   END IF;
+  ELSE
+   INSERT INTO change_ledger.target_locks(tenant_id,company_id,base_fingerprint,target_ref,owner_change_id)
+   VALUES(t,c,rec.base_fingerprint,tref,p_change_id);
+  END IF;
+  IF p_key_hash IS NOT NULL THEN
+   INSERT INTO change_ledger.key_locks(tenant_id,company_id,base_fingerprint,key_hash,owner_change_id)
+   VALUES(t,c,rec.base_fingerprint,p_key_hash,p_change_id);
+  END IF;
+  INSERT INTO change_ledger.writer_leases(tenant_id,company_id,base_fingerprint,owner_change_id)
+  VALUES(t,c,rec.base_fingerprint,p_change_id);
+ EXCEPTION WHEN unique_violation THEN
+  RAISE EXCEPTION 'LOCK_BUSY';
+ END;
  gen := rec.claim_generation + 1;
  UPDATE change_ledger.records SET authorization_state='CLAIMED', execution_state='NOT_STARTED',
   claim_generation=gen, reservation_state=CASE WHEN p_grant_id IS NOT NULL THEN 'RESERVED'
@@ -604,7 +742,7 @@ END $fn$;
 
 -- T5x / repair handback common path: releases locks/lease/reservation and supersedes the
 -- token. For a change with repair_for set, the target lock is handed back to the parent
--- (section 4.2 common handback rule) instead of being dropped.
+-- (section 4.2 common handback rule) instead of being dropped (release_zero_effect).
 CREATE OR REPLACE FUNCTION change_ledger.release_claim(
  t text, c text, p_token_id uuid
 ) RETURNS text LANGUAGE plpgsql AS $fn$
@@ -623,43 +761,34 @@ BEGIN
  END IF;
  IF tok.state<>'ISSUED' THEN RETURN tok.state; END IF;
  UPDATE change_ledger.claim_tokens SET state='SUPERSEDED' WHERE token_id=p_token_id;
- IF rec.repair_for IS NOT NULL THEN
-  PERFORM change_ledger.handoff_target_lock(t,c,rec.base_fingerprint,
-   coalesce(rec.target_ref,rec.change_id::text), rec.change_id, rec.repair_for);
- ELSE
-  DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
-   AND base_fingerprint=rec.base_fingerprint
-   AND target_ref=coalesce(rec.target_ref,rec.change_id::text) AND owner_change_id=rec.change_id;
- END IF;
- DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
-  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=rec.change_id;
- DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
-  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=rec.change_id;
- UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=rec.change_id AND state='RESERVED';
+ PERFORM change_ledger.release_zero_effect(t,c,rec.change_id);
  UPDATE change_ledger.records SET
   authorization_state=CASE WHEN rec.expires_at<=clock_timestamp() THEN 'EXPIRED' ELSE 'APPROVED' END,
-  execution_state='NOT_STARTED',
-  reservation_state=CASE WHEN reservation_state='RESERVED' THEN 'RELEASED' ELSE reservation_state END,
-  updated_at=clock_timestamp()
+  execution_state='NOT_STARTED', updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=rec.change_id;
  PERFORM change_ledger.append_event(t,c,rec.change_id,'CLAIM_RELEASED','{}'::jsonb);
  RETURN 'SUPERSEDED';
 END $fn$;
 
--- T6: begin_apply. One atomic section: re-checks target version/epoch, commits the APPLYING
--- event and a NOT_PERMITTED dispatch row in the same transaction (the permit comes later, T6p).
+-- T6: begin_apply. One atomic section: re-checks kill switch, holds and approval expiry, commits
+-- the APPLYING event and a NOT_PERMITTED dispatch row (bound to call_id) in the same transaction
+-- (the permit comes later, T6p).
 CREATE OR REPLACE FUNCTION change_ledger.begin_apply(
  t text, c text, p_token_id uuid, p_call_id uuid, p_writer_host text, p_onec_session text
 ) RETURNS change_ledger.claim_tokens LANGUAGE plpgsql AS $fn$
-DECLARE tok change_ledger.claim_tokens%ROWTYPE; rec change_ledger.records%ROWTYPE;
+DECLARE tok change_ledger.claim_tokens%ROWTYPE; rec change_ledger.records%ROWTYPE; caller text;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
+ caller := change_ledger.caller_role();
  SELECT * INTO tok FROM change_ledger.claim_tokens WHERE token_id=p_token_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=tok.change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF caller IS DISTINCT FROM rec.requester AND NOT pg_has_role(caller::name,'writer_role','USAGE') THEN
+  RAISE EXCEPTION 'NOT_ENTITLED';
+ END IF;
  IF tok.generation<>rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
  IF tok.state='CONSUMED' THEN
   -- Replay: return the existing ticket while still current and not yet DISPATCHED.
@@ -669,24 +798,32 @@ BEGIN
  IF tok.state<>'ISSUED' THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
  IF rec.authorization_state<>'CLAIMED' THEN RAISE EXCEPTION 'APPROVAL_MISSING'; END IF;
  IF rec.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'APPROVAL_EXPIRED'; END IF;
+ PERFORM change_ledger.assert_switch_off(t,c);
+ IF change_ledger.blocking_hold(t,c,rec.base_fingerprint,rec.repair_for) THEN
+  RAISE EXCEPTION 'BASE_HOLD';
+ END IF;
  UPDATE change_ledger.claim_tokens SET state='CONSUMED' WHERE token_id=p_token_id;
  UPDATE change_ledger.records SET execution_state='APPLYING', updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=rec.change_id;
- INSERT INTO change_ledger.dispatch_permits(change_id,generation,state)
- VALUES(rec.change_id,tok.generation,'NOT_PERMITTED')
+ INSERT INTO change_ledger.dispatch_permits(change_id,generation,state,call_id)
+ VALUES(rec.change_id,tok.generation,'NOT_PERMITTED',p_call_id)
  ON CONFLICT(change_id,generation) DO NOTHING;
  PERFORM change_ledger.append_event(t,c,rec.change_id,'APPLYING',
   jsonb_build_object('call_id',p_call_id,'writer_host',p_writer_host,'onec_session',p_onec_session));
  RETURN tok;
 END $fn$;
 
--- T6p: issue_permit. Requires a checkpoint already written (checked by checkpoint_seq
--- existing) covering this head; sets dispatch = PERMITTED. The writer then runs its own
--- PERMITTED -> DISPATCHED CAS (change_ledger.dispatch_cas) immediately before the 1C call.
+-- T6p: issue_permit. Requires a REAL, read-back-confirmed checkpoint whose head hash IS the ledger
+-- event at its ledger_seq and whose ledger_seq is at or after the APPLYING event of this change
+-- (CT5/S12-M01: "a signed checkpoint covering that committed head"). A TEST sink can never satisfy
+-- this (require_real_checkpoint is permanently 1 in this skeleton; checkpoint.py's DispatchGate
+-- stays disabled while only test doubles are wired). The writer then runs record_call (the
+-- PERMITTED -> DISPATCHED CAS) immediately before the 1C call.
 CREATE OR REPLACE FUNCTION change_ledger.issue_permit(
- t text, c text, p_change_id uuid, p_generation bigint, p_checkpoint_seq bigint
-) RETURNS change_ledger.dispatch_permits LANGUAGE plpgsql AS $fn$
-DECLARE rec change_ledger.records%ROWTYPE; dp change_ledger.dispatch_permits%ROWTYPE; switch text;
+ t text, c text, p_change_id uuid, p_generation bigint
+) RETURNS jsonb LANGUAGE plpgsql AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; dp change_ledger.dispatch_permits%ROWTYPE;
+ cp_seq bigint; applying_seq bigint; digest text;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
@@ -695,29 +832,95 @@ BEGIN
  PERFORM change_ledger.recheck_scope_locked(t,c);
  IF p_generation<>rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
  IF rec.execution_state<>'APPLYING' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
- SELECT mode INTO switch FROM change_ledger.kill_switch_state WHERE tenant_id=t AND company_id=c;
- IF coalesce(switch,'OFF') IN ('STOP_ADMIT','STOP_EFFECTS','REVOKE') THEN
-  RAISE EXCEPTION 'KILL_SWITCH_ACTIVE';
- END IF;
- IF NOT EXISTS(SELECT 1 FROM change_ledger.checkpoints
-   WHERE tenant_id=t AND company_id=c AND seq=p_checkpoint_seq) THEN
-  RAISE EXCEPTION 'CHECKPOINT_UNAVAILABLE';
- END IF;
- UPDATE change_ledger.dispatch_permits SET state='PERMITTED', checkpoint_seq=p_checkpoint_seq,
-  issued_at=clock_timestamp(), expires_at=clock_timestamp()+interval '60 seconds'
+ PERFORM change_ledger.assert_switch_off(t,c);
+ SELECT max(e.seq) INTO applying_seq FROM change_ledger.events e
+  WHERE e.tenant_id=t AND e.company_id=c AND e.change_id=p_change_id AND e.event_type='APPLYING';
+ SELECT k.seq INTO cp_seq FROM change_ledger.checkpoints k
+  JOIN change_ledger.events e ON e.tenant_id=k.tenant_id AND e.company_id=k.company_id
+   AND e.seq=k.ledger_seq AND e.hash=k.head_hash
+  WHERE k.tenant_id=t AND k.company_id=c AND k.sink_kind='REAL' AND k.read_back_confirmed
+   AND k.ledger_seq>=applying_seq
+  ORDER BY k.seq DESC LIMIT 1;
+ IF cp_seq IS NULL THEN RAISE EXCEPTION 'CHECKPOINT_UNAVAILABLE'; END IF;
+ digest := encode(sha256(convert_to(p_change_id::text||':'||p_generation::text||':'||cp_seq::text,
+  'UTF8')),'hex');
+ UPDATE change_ledger.dispatch_permits SET state='PERMITTED', checkpoint_seq=cp_seq,
+  permit_digest=digest, issued_at=clock_timestamp(),
+  expires_at=clock_timestamp()+interval '60 seconds'
   WHERE change_id=p_change_id AND generation=p_generation AND state='NOT_PERMITTED'
  RETURNING * INTO dp;
  IF NOT FOUND THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
  UPDATE change_ledger.records SET dispatch_state='PERMITTED', updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  PERFORM change_ledger.append_event(t,c,p_change_id,'PERMITTED',
-  jsonb_build_object('generation',p_generation,'checkpoint_seq',p_checkpoint_seq));
- RETURN dp;
+  jsonb_build_object('generation',p_generation,'checkpoint_seq',cp_seq));
+ RETURN jsonb_build_object('change_id',dp.change_id,'generation',dp.generation,
+  'permit_digest',dp.permit_digest,'checkpoint_seq',dp.checkpoint_seq,
+  'expires_at',to_char(dp.expires_at,'YYYY-MM-DD"T"HH24:MI:SS.US'));
+END $fn$;
+
+-- T6 -> DISPATCHED: the writer's side of the ONE dispatch compare-and-set (S12-M01). Row-locks the
+-- change first (same order as cancel_permit), checks the kill switch and the permit TTL, then the
+-- CAS. Returns true only if THIS call moved PERMITTED -> DISPATCHED; false if the cancel won.
+CREATE OR REPLACE FUNCTION change_ledger.record_call(
+ t text, c text, p_change_id uuid, p_generation bigint, p_call_id uuid
+) RETURNS boolean LANGUAGE plpgsql AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; dp change_ledger.dispatch_permits%ROWTYPE;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF p_generation<>rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ SELECT * INTO dp FROM change_ledger.dispatch_permits WHERE change_id=p_change_id AND generation=p_generation;
+ IF NOT FOUND OR dp.call_id IS DISTINCT FROM p_call_id THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
+ IF dp.state='NOT_PERMITTED' THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
+ IF dp.state='PERMITTED' THEN
+  PERFORM change_ledger.assert_switch_off(t,c);
+  IF dp.expires_at<=clock_timestamp() THEN RETURN false; END IF;
+ END IF;
+ IF NOT change_ledger.dispatch_cas(p_change_id,p_generation,'PERMITTED','DISPATCHED') THEN
+  RETURN false;
+ END IF;
+ UPDATE change_ledger.records SET dispatch_state='DISPATCHED', updated_at=clock_timestamp()
+  WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ PERFORM change_ledger.append_event(t,c,p_change_id,'DISPATCHED',
+  jsonb_build_object('generation',p_generation,'call_id',p_call_id));
+ RETURN true;
+END $fn$;
+
+-- T6c: cancel an issued, not yet dispatched permit. The decision is the CAS PERMITTED ->
+-- CANCELLED_UNDISPATCHED; only when it succeeds are the token superseded and locks/lease/
+-- reservation released (repair: handed back). Without a successful CAS nothing is released.
+CREATE OR REPLACE FUNCTION change_ledger.cancel_permit(
+ t text, c text, p_change_id uuid, p_generation bigint
+) RETURNS boolean LANGUAGE plpgsql AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF NOT change_ledger.dispatch_cas(p_change_id,p_generation,'PERMITTED','CANCELLED_UNDISPATCHED') THEN
+  RETURN false;
+ END IF;
+ UPDATE change_ledger.claim_tokens SET state='SUPERSEDED' WHERE change_id=p_change_id AND generation=p_generation;
+ PERFORM change_ledger.release_zero_effect(t,c,p_change_id);
+ UPDATE change_ledger.records SET
+  authorization_state=CASE WHEN rec.expires_at<=clock_timestamp() THEN 'EXPIRED' ELSE 'APPROVED' END,
+  execution_state='NOT_STARTED', dispatch_state='CANCELLED_UNDISPATCHED', updated_at=clock_timestamp()
+  WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ PERFORM change_ledger.append_event(t,c,p_change_id,'PERMIT_CANCELLED',
+  jsonb_build_object('generation',p_generation));
+ RETURN true;
 END $fn$;
 
 -- T7/T8/T9: complete. writer_role only. The outcome is chosen by the evidence class, never by
 -- a caller flag (S12 section 6): p_outcome in {SUCCESS, PRE_WRITE_REFUSAL, UNKNOWN}; a
--- PRE_WRITE_REFUSAL carries p_no_effect_proof (required, S12-M02).
+-- PRE_WRITE_REFUSAL carries p_no_effect_proof (required, S12-M02). SUCCESS and UNKNOWN presuppose
+-- that the dispatch CAS (record_call) won: without DISPATCHED no call was ever possible.
 CREATE OR REPLACE FUNCTION change_ledger.complete(
  t text, c text, p_change_id uuid, p_generation bigint, p_outcome text,
  p_evidence jsonb, p_no_effect_proof jsonb DEFAULT NULL
@@ -735,26 +938,36 @@ BEGIN
   IF rec.execution_state IN ('APPLIED','APPLY_UNKNOWN','FAILED_APPLY') THEN RETURN rec.execution_state; END IF;
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
  END IF;
+ IF p_outcome IN ('SUCCESS','UNKNOWN') AND rec.dispatch_state<>'DISPATCHED' THEN
+  RAISE EXCEPTION 'PERMIT_MISSING';
+ END IF;
  IF p_outcome='SUCCESS' THEN
   new_exec:='APPLIED'; new_res:='CONSUMED';
   UPDATE change_ledger.records SET execution_state=new_exec, call_ownership='PROVEN_FINISHED',
    attribution='PROVEN', reservation_state=new_res, updated_at=clock_timestamp()
    WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
   UPDATE change_ledger.reservations SET state='CONSUMED' WHERE change_id=p_change_id AND state='RESERVED';
- ELSIF p_outcome='PRE_WRITE_REFUSAL' THEN
-  IF p_no_effect_proof IS NULL THEN RAISE EXCEPTION 'WRITE_REFUSED'; END IF;
-  new_exec:='FAILED_APPLY'; new_res:='RELEASED';
-  UPDATE change_ledger.records SET execution_state=new_exec, reservation_state=new_res,
-   updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
-  UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=p_change_id AND state='RESERVED';
-  DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
-   AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+  -- T7: the target lock stays until verification (T13); key lock and writer lease are released.
   DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
    AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
   DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
    AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+ ELSIF p_outcome='PRE_WRITE_REFUSAL' THEN
+  IF p_no_effect_proof IS NULL THEN RAISE EXCEPTION 'WRITE_REFUSED'; END IF;
+  IF rec.dispatch_state='DISPATCHED' THEN
+   -- a refusal stage PRE_WRITE after the CAS is still a refusal before the write (S12 T8)
+   NULL;
+  ELSE
+   UPDATE change_ledger.dispatch_permits SET state='CANCELLED_UNDISPATCHED'
+    WHERE change_id=p_change_id AND generation=p_generation AND state IN ('NOT_PERMITTED','PERMITTED');
+  END IF;
+  new_exec:='FAILED_APPLY';
+  PERFORM change_ledger.release_zero_effect(t,c,p_change_id);
+  UPDATE change_ledger.records SET execution_state=new_exec,
+   dispatch_state=CASE WHEN dispatch_state='DISPATCHED' THEN dispatch_state ELSE 'CANCELLED_UNDISPATCHED' END,
+   updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  ELSE
-  new_exec:='APPLY_UNKNOWN'; new_res:=rec.reservation_state;
+  new_exec:='APPLY_UNKNOWN';
   UPDATE change_ledger.records SET execution_state=new_exec, call_ownership='POSSIBLY_EXECUTING',
    updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
   INSERT INTO change_ledger.holds(tenant_id,company_id,base_fingerprint,cause,change_id)
@@ -765,13 +978,11 @@ BEGIN
 END $fn$;
 
 -- recover_sweep: worker_role, ledger-driven, idempotent. SKELETON: handles claim TTL (T5x) and
--- permit TTL (T6r/T6c via dispatch_cas) expiry; approval TTL (T3 expire) and stuck-verification
--- retry scheduling are left as straightforward extensions of the same pattern and are not all
--- enumerated here.
+-- permit TTL (T6c via the cancel CAS); approval TTL (T3 expire), T6r (permit never issued), the
+-- hard-deadline T9 and stuck-verification retry are NOT implemented (listed as gaps).
 CREATE OR REPLACE FUNCTION change_ledger.recover_sweep(t text, c text) RETURNS integer
 LANGUAGE plpgsql AS $fn$
-DECLARE n integer := 0; tok change_ledger.claim_tokens%ROWTYPE; rec change_ledger.records%ROWTYPE;
- dp change_ledger.dispatch_permits%ROWTYPE;
+DECLARE n integer := 0; tok change_ledger.claim_tokens%ROWTYPE; dp record;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
  FOR tok IN SELECT ct.* FROM change_ledger.claim_tokens ct
@@ -781,23 +992,19 @@ BEGIN
   PERFORM change_ledger.release_claim(t,c,tok.token_id);
   n := n+1;
  END LOOP;
- FOR dp IN SELECT * FROM change_ledger.dispatch_permits
-  WHERE state='PERMITTED' AND expires_at<=clock_timestamp() LOOP
-  IF change_ledger.dispatch_cas(dp.change_id,dp.generation,'PERMITTED','CANCELLED_UNDISPATCHED') THEN
-   SELECT * INTO rec FROM change_ledger.records WHERE change_id=dp.change_id FOR UPDATE;
-   UPDATE change_ledger.records SET authorization_state='APPROVED', execution_state='NOT_STARTED',
-    dispatch_state='CANCELLED_UNDISPATCHED', updated_at=clock_timestamp()
-    WHERE change_id=dp.change_id;
-   PERFORM change_ledger.append_event(t,c,dp.change_id,'PERMIT_CANCELLED','{}'::jsonb);
-   n := n+1;
-  END IF;
+ FOR dp IN SELECT p.change_id, p.generation FROM change_ledger.dispatch_permits p
+   JOIN change_ledger.records r ON r.change_id=p.change_id
+  WHERE r.tenant_id=t AND r.company_id=c AND p.state='PERMITTED' AND p.expires_at<=clock_timestamp() LOOP
+  IF change_ledger.cancel_permit(t,c,dp.change_id,dp.generation) THEN n := n+1; END IF;
  END LOOP;
  RETURN n;
 END $fn$;
 
--- T10/T11/T12: resolve_unknown. worker_role only. p_found distinguishes T10 (found, needs
--- p_attributed) from T11 (absent); TRIAGE_REQUIRED (T12) is reached either explicitly
--- (p_found=NULL meaning "not yet resolvable") or when found-but-unattributed.
+-- T10/T11/T12: resolve_unknown. worker_role only. Section 5: exclusivity is UNPROVEN for every
+-- unknown-outcome resolution in this contract version, so an effect that exists NEVER becomes
+-- APPLIED/PROVEN here (p_attributed is recorded in the event but cannot change the outcome); it goes
+-- to TRIAGE_REQUIRED (T12) and only operator_resolve can account it. Absence (T11) needs an
+-- independent PROVEN_FINISHED proof (class a or b) in the observation, else COMPLETION_PROOF_MISSING.
 CREATE OR REPLACE FUNCTION change_ledger.resolve_unknown(
  t text, c text, p_change_id uuid, p_observation jsonb, p_found boolean, p_attributed boolean DEFAULT false
 ) RETURNS text LANGUAGE plpgsql AS $fn$
@@ -812,37 +1019,32 @@ BEGIN
   IF rec.execution_state IN ('APPLIED','FAILED_APPLY','TRIAGE_REQUIRED') THEN RETURN rec.execution_state; END IF;
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
  END IF;
- IF p_found IS NULL THEN
-  new_exec:='TRIAGE_REQUIRED';
-  UPDATE change_ledger.records SET execution_state=new_exec, updated_at=clock_timestamp()
-   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
- ELSIF p_found AND p_attributed THEN
-  new_exec:='APPLIED';
-  UPDATE change_ledger.records SET execution_state=new_exec, attribution='PROVEN',
-   call_ownership='PROVEN_FINISHED', reservation_state='CONSUMED', updated_at=clock_timestamp()
-   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
-  UPDATE change_ledger.reservations SET state='CONSUMED' WHERE change_id=p_change_id AND state='RESERVED';
-  UPDATE change_ledger.holds SET released_at=clock_timestamp(), release_evidence=p_observation
-   WHERE change_id=p_change_id AND cause='CALL_OWNERSHIP' AND released_at IS NULL;
- ELSIF p_found AND NOT p_attributed THEN
+ IF p_found IS NULL OR p_found THEN
   new_exec:='TRIAGE_REQUIRED';
   UPDATE change_ledger.records SET execution_state=new_exec, updated_at=clock_timestamp()
    WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  ELSE
+  IF coalesce(p_observation->'completion_proof'->>'class','') NOT IN ('a','b') THEN
+   RAISE EXCEPTION 'COMPLETION_PROOF_MISSING';
+  END IF;
   new_exec:='FAILED_APPLY';
   UPDATE change_ledger.records SET execution_state=new_exec, call_ownership='PROVEN_FINISHED',
-   reservation_state='RELEASED', updated_at=clock_timestamp()
+   updated_at=clock_timestamp()
    WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
-  UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=p_change_id AND state='RESERVED';
   UPDATE change_ledger.holds SET released_at=clock_timestamp(), release_evidence=p_observation
    WHERE change_id=p_change_id AND cause='CALL_OWNERSHIP' AND released_at IS NULL;
   DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
    AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+  DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
+   AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
   DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
    AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+  UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=p_change_id AND state='RESERVED';
+  UPDATE change_ledger.records SET reservation_state='RELEASED' WHERE tenant_id=t AND company_id=c
+   AND change_id=p_change_id AND reservation_state='RESERVED';
  END IF;
  PERFORM change_ledger.append_event(t,c,p_change_id,'RESOLVE_UNKNOWN',
-  jsonb_build_object('found',p_found,'attributed',p_attributed,'observation',p_observation));
+  jsonb_build_object('found',p_found,'attributed_claim',p_attributed,'observation',p_observation));
  RETURN new_exec;
 END $fn$;
 
@@ -865,47 +1067,63 @@ END $fn$;
 
 -- T16: operator_resolve. operator_role caller; requires an unconsumed witness cosign signed by
 -- a DIFFERENT identity than both the caller and the change's requester/approver (section 2,
--- S12-M05). Without a valid, unconsumed cosign: COMPLETION_PROOF_MISSING, nothing released.
+-- S12-M05) carrying an independent completion proof (class a or b). Without a valid, unconsumed
+-- cosign or without that proof: COMPLETION_PROOF_MISSING, nothing released. "Attributed" needs an
+-- explicit attribution proof in the cosign, otherwise ATTRIBUTION_UNPROVEN.
 CREATE OR REPLACE FUNCTION change_ledger.operator_resolve(
  t text, c text, p_change_id uuid, p_cosign_id uuid, p_present boolean, p_attributed boolean
 ) RETURNS text LANGUAGE plpgsql AS $fn$
-DECLARE rec change_ledger.records%ROWTYPE; operator text; cosign change_ledger.witness_cosigns%ROWTYPE;
+DECLARE rec change_ledger.records%ROWTYPE; v_operator text; cs change_ledger.witness_cosigns%ROWTYPE;
  approver_subject text; new_exec text;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- operator := change_ledger.caller_role();
+ v_operator := change_ledger.caller_role();
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
  IF rec.execution_state<>'TRIAGE_REQUIRED' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
- SELECT * INTO cosign FROM change_ledger.witness_cosigns
-  WHERE cosign_id=p_cosign_id AND change_id=p_change_id AND consumed_at IS NULL FOR UPDATE;
+ SELECT * INTO cs FROM change_ledger.witness_cosigns w
+  WHERE w.cosign_id=p_cosign_id AND w.change_id=p_change_id AND w.consumed_at IS NULL FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'COMPLETION_PROOF_MISSING'; END IF;
- SELECT approver INTO approver_subject FROM change_ledger.approvals
-  WHERE change_id=p_change_id AND decision='APPROVE' ORDER BY approved_at DESC LIMIT 1;
- IF operator IS NOT DISTINCT FROM cosign.signer
-  OR operator IS NOT DISTINCT FROM rec.requester
-  OR cosign.signer IS NOT DISTINCT FROM rec.requester
-  OR (operator IS NOT DISTINCT FROM approver_subject AND cosign.signer IS NOT DISTINCT FROM approver_subject)
+ IF coalesce(cs.completion_proof->>'class','') NOT IN ('a','b') THEN
+  RAISE EXCEPTION 'COMPLETION_PROOF_MISSING';
+ END IF;
+ SELECT a.approver INTO approver_subject FROM change_ledger.approvals a
+  WHERE a.change_id=p_change_id AND a.decision='APPROVE' ORDER BY a.approved_at DESC LIMIT 1;
+ IF v_operator IS NOT DISTINCT FROM cs.signer
+  OR v_operator IS NOT DISTINCT FROM rec.requester
+  OR cs.signer IS NOT DISTINCT FROM rec.requester
+  OR (v_operator IS NOT DISTINCT FROM approver_subject AND cs.signer IS NOT DISTINCT FROM approver_subject)
  THEN
   RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
  END IF;
- UPDATE change_ledger.witness_cosigns SET consumed_at=clock_timestamp() WHERE cosign_id=p_cosign_id;
+ IF p_present AND p_attributed AND coalesce((cs.completion_proof->>'attribution_proof')::boolean,false) IS NOT TRUE THEN
+  RAISE EXCEPTION 'ATTRIBUTION_UNPROVEN';
+ END IF;
+ UPDATE change_ledger.witness_cosigns w SET consumed_at=clock_timestamp() WHERE w.cosign_id=p_cosign_id;
+ DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
+  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+ DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
+  AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
  IF NOT p_present THEN
   new_exec:='FAILED_APPLY';
   UPDATE change_ledger.records SET execution_state=new_exec, reservation_state='RELEASED',
-   updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+   call_ownership='PROVEN_FINISHED', updated_at=clock_timestamp()
+   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
   UPDATE change_ledger.reservations SET state='RELEASED' WHERE change_id=p_change_id AND state='RESERVED';
+  DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
+   AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
  ELSE
   new_exec:='APPLIED';
   UPDATE change_ledger.records SET execution_state=new_exec, reservation_state='CONSUMED',
+   call_ownership='PROVEN_FINISHED',
    attribution=CASE WHEN p_attributed THEN 'PROVEN' ELSE 'UNPROVEN_OPERATOR_ATTESTED' END,
    updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
   UPDATE change_ledger.reservations SET state='CONSUMED' WHERE change_id=p_change_id AND state='RESERVED';
  END IF;
  UPDATE change_ledger.holds SET released_at=clock_timestamp(),
-  release_evidence=cosign.completion_proof
+  release_evidence=cs.completion_proof
   WHERE change_id=p_change_id AND cause='CALL_OWNERSHIP' AND released_at IS NULL;
  PERFORM change_ledger.append_event(t,c,p_change_id,'OPERATOR_RESOLVE',
   jsonb_build_object('present',p_present,'attributed',p_attributed,'cosign_id',p_cosign_id));
@@ -952,6 +1170,12 @@ BEGIN
   effect_known=CASE WHEN p_passed THEN effect_known ELSE 'YES' END, updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  IF p_passed THEN
+  IF rec.repair_for IS NOT NULL THEN
+   UPDATE change_ledger.holds SET released_at=clock_timestamp(),
+    release_evidence=jsonb_build_object('released_by_repair',p_change_id)
+    WHERE tenant_id=t AND company_id=c AND change_id=rec.repair_for AND cause='FAILED_VERIFY_HALT'
+     AND released_at IS NULL;
+  END IF;
   DELETE FROM change_ledger.target_locks WHERE tenant_id=t AND company_id=c
    AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
   DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
@@ -997,7 +1221,8 @@ BEGIN
  IF NOT FOUND OR g.status<>'ACTIVE' THEN RAISE EXCEPTION 'BUDGET_EXCEEDED'; END IF;
  INSERT INTO change_ledger.reservations(change_id,grant_id,amount)
  VALUES(p_change_id,p_grant_id,coalesce(p_amount,0))
- ON CONFLICT(change_id) DO UPDATE SET amount=EXCLUDED.amount WHERE change_ledger.reservations.state='RESERVED';
+ ON CONFLICT(change_id) DO UPDATE SET amount=EXCLUDED.amount
+  WHERE change_ledger.reservations.state='RESERVED';
  RETURN p_grant_id;
 END $fn$;
 
@@ -1036,19 +1261,96 @@ BEGIN
  RETURN p_grant_id;
 END $fn$;
 
+-- verify_chain: recomputes every event hash of this scope from its stored fields and checks the
+-- prev_hash linkage and the 1..n seq continuity. Returns {ok, count, bad_seq}; bad_seq is the first
+-- row that does not verify (null when ok). auditor/worker/operator may call it.
+CREATE OR REPLACE FUNCTION change_ledger.verify_chain(t text, c text) RETURNS jsonb
+LANGUAGE plpgsql AS $fn$
+DECLARE r record; prior text := NULL; expect bigint := 1; cnt bigint := 0; h text;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ FOR r IN SELECT * FROM change_ledger.events WHERE tenant_id=t AND company_id=c ORDER BY seq LOOP
+  h := encode(sha256(convert_to(coalesce(prior,'') || ':' || r.seq::text || ':' ||
+   coalesce(r.change_id::text,'') || ':' || r.event_type || ':' || r.payload::text,'UTF8')),'hex');
+  IF r.seq<>expect OR r.prev_hash IS DISTINCT FROM prior OR r.hash<>h THEN
+   RETURN jsonb_build_object('ok',false,'count',cnt,'bad_seq',r.seq);
+  END IF;
+  prior := r.hash; expect := expect+1; cnt := cnt+1;
+ END LOOP;
+ RETURN jsonb_build_object('ok',true,'count',cnt,'bad_seq',NULL);
+END $fn$;
+
+-- check_anchor (R-04, W10): compares the externally anchored head (seq, hash) with this ledger. If
+-- the ledger has no event at that seq with that hash (a restored older ledger, or a diverged one),
+-- an ANCHOR_GAP hold is opened on every ACTIVE base of the scope (once) and no dispatch can follow.
+CREATE OR REPLACE FUNCTION change_ledger.check_anchor(t text, c text, p_ext_seq bigint, p_ext_head_hash text)
+RETURNS jsonb LANGUAGE plpgsql AS $fn$
+DECLARE ok boolean; opened integer := 0; b record;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ SELECT EXISTS(SELECT 1 FROM change_ledger.events e WHERE e.tenant_id=t AND e.company_id=c
+   AND e.seq=p_ext_seq AND e.hash=p_ext_head_hash) INTO ok;
+ IF NOT ok THEN
+  FOR b IN SELECT g.base_fingerprint FROM change_ledger.targets g WHERE g.tenant_id=t AND g.company_id=c
+    AND NOT EXISTS(SELECT 1 FROM change_ledger.holds h WHERE h.tenant_id=t AND h.company_id=c
+      AND h.base_fingerprint=g.base_fingerprint AND h.cause='ANCHOR_GAP' AND h.released_at IS NULL) LOOP
+   INSERT INTO change_ledger.holds(tenant_id,company_id,base_fingerprint,cause) VALUES(t,c,b.base_fingerprint,'ANCHOR_GAP');
+   opened := opened+1;
+  END LOOP;
+  PERFORM change_ledger.append_event(t,c,NULL,'ANCHOR_GAP',
+   jsonb_build_object('ext_seq',p_ext_seq,'ext_head_hash',p_ext_head_hash));
+ END IF;
+ RETURN jsonb_build_object('ok',ok,'holds_opened',opened);
+END $fn$;
+
 -- write_checkpoint: internal helper used by the Python checkpoint sink wiring (not part of
 -- section 6's caller matrix; called by the service identity that owns the external anchor
 -- round-trip, mapped here to writer_role per CT5's "written to an external store, then read
 -- back by the ledger").
 CREATE OR REPLACE FUNCTION change_ledger.record_checkpoint(
- t text, c text, p_head_hash text, p_signer_key_id text, p_signature text
+ t text, c text, p_ledger_seq bigint, p_head_hash text, p_sink_kind text, p_sink_id text,
+ p_signer_key_id text, p_signature text, p_signed_at timestamptz, p_read_back boolean
 ) RETURNS bigint LANGUAGE plpgsql AS $fn$
 DECLARE s bigint;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- INSERT INTO change_ledger.checkpoints(tenant_id,company_id,head_hash,signer_key_id,signature)
- VALUES(t,c,p_head_hash,p_signer_key_id,p_signature) RETURNING seq INTO s;
+ IF p_sink_kind NOT IN ('REAL','TEST') THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ IF NOT p_read_back THEN RAISE EXCEPTION 'CHECKPOINT_UNAVAILABLE'; END IF;
+ INSERT INTO change_ledger.checkpoints(tenant_id,company_id,ledger_seq,head_hash,sink_kind,
+  sink_id,signer_key_id,signature,signed_at,read_back_confirmed)
+ VALUES(t,c,p_ledger_seq,p_head_hash,p_sink_kind,p_sink_id,p_signer_key_id,p_signature,
+  p_signed_at,p_read_back)
+ RETURNING seq INTO s;
  RETURN s;
+END $fn$;
+
+-- ledger_head: the current event-chain head for this scope (used by the checkpoint gate before
+-- it writes a new checkpoint; CT5).
+CREATE OR REPLACE FUNCTION change_ledger.ledger_head(t text, c text) RETURNS jsonb
+LANGUAGE plpgsql AS $fn$
+DECLARE r record;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ SELECT seq, hash INTO r FROM change_ledger.events WHERE tenant_id=t AND company_id=c
+  ORDER BY seq DESC LIMIT 1;
+ IF NOT FOUND THEN RETURN jsonb_build_object('seq',0,'head_hash','');
+ END IF;
+ RETURN jsonb_build_object('seq',r.seq,'head_hash',r.hash);
+END $fn$;
+
+-- attach_permit_signature: records the signature over the issued permit digest (the writer or
+-- the checkpoint gate signs after the SQL permit itself is issued, since the digest is server-
+-- computed inside issue_permit).
+CREATE OR REPLACE FUNCTION change_ledger.attach_permit_signature(
+ t text, c text, p_change_id uuid, p_generation bigint, p_key_id text, p_signature text
+) RETURNS void LANGUAGE plpgsql AS $fn$
+DECLARE n integer;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ UPDATE change_ledger.dispatch_permits SET signer_key_id=p_key_id, signature=p_signature
+  WHERE change_id=p_change_id AND generation=p_generation AND state='PERMITTED';
+ GET DIAGNOSTICS n = ROW_COUNT;
+ IF n=0 THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
 END $fn$;
 
 -- ================================================================== definer wiring + privileges
@@ -1062,8 +1364,11 @@ BEGIN
    'handoff_target_lock','dispatch_cas','propose','validate','approve','reject','claim',
    'release_claim','begin_apply','issue_permit','complete','recover_sweep','resolve_unknown',
    'witness_cosign','operator_resolve','release_hold','verify','kill_switch','budget_reserve',
-   'budget_consume','budget_release','budget_admin','record_checkpoint','events_chain_guard',
-   'reject_immutable_mutation','caller_role','row_in_scope')
+   'budget_consume','budget_release','budget_admin','record_checkpoint','ledger_head',
+   'issue_approval_nonce','assert_switch_off','blocking_hold','release_zero_effect','record_call',
+   'cancel_permit','verify_chain','check_anchor',
+   'attach_permit_signature','events_chain_guard','reject_immutable_mutation','caller_role',
+   'row_in_scope')
  LOOP
   EXECUTE format('ALTER FUNCTION %s SECURITY DEFINER SET search_path = pg_catalog, pg_temp',f.sig);
  END LOOP;
@@ -1111,14 +1416,15 @@ GRANT SELECT ON change_ledger.records, change_ledger.target_locks, change_ledger
  TO requester_role, approver_role, operator_role, writer_role, worker_role;
 
 GRANT EXECUTE ON FUNCTION
- change_ledger.propose(text,text,uuid,text,text,text,text,text,text,text,text,uuid,timestamptz),
+ change_ledger.propose(text,text,uuid,text,text,text,text,text,text,text,text,uuid,timestamptz,uuid),
  change_ledger.validate(text,text,uuid,boolean,boolean),
  change_ledger.claim(text,text,uuid,text,uuid,numeric,boolean,boolean),
  change_ledger.release_claim(text,text,uuid),
  change_ledger.begin_apply(text,text,uuid,uuid,text,text)
  TO requester_role;
 GRANT EXECUTE ON FUNCTION
- change_ledger.approve(text,text,uuid,text,text), change_ledger.reject(text,text,uuid,text)
+ change_ledger.approve(text,text,uuid,text,text), change_ledger.reject(text,text,uuid,text),
+ change_ledger.issue_approval_nonce(text,text,uuid)
  TO approver_role;
 GRANT EXECUTE ON FUNCTION
  change_ledger.kill_switch(text,text,text), change_ledger.release_hold(text,text,uuid,jsonb),
@@ -1127,15 +1433,25 @@ GRANT EXECUTE ON FUNCTION
  change_ledger.witness_cosign(text,text,uuid,jsonb)
  TO operator_role;
 GRANT EXECUTE ON FUNCTION
- change_ledger.issue_permit(text,text,uuid,bigint,bigint), change_ledger.complete(text,text,uuid,bigint,text,jsonb,jsonb),
- change_ledger.record_checkpoint(text,text,text,text,text), change_ledger.dispatch_cas(uuid,bigint,text,text),
- change_ledger.begin_apply(text,text,uuid,uuid,text,text)
+ change_ledger.complete(text,text,uuid,bigint,text,jsonb,jsonb),
+ change_ledger.record_checkpoint(text,text,bigint,text,text,text,text,text,timestamptz,boolean),
+ change_ledger.record_call(text,text,uuid,bigint,uuid), change_ledger.begin_apply(text,text,uuid,uuid,text,text),
+ change_ledger.ledger_head(text,text), change_ledger.attach_permit_signature(text,text,uuid,bigint,text,text)
  TO writer_role;
+GRANT EXECUTE ON FUNCTION
+ change_ledger.ledger_head(text,text), change_ledger.record_checkpoint(text,text,bigint,text,text,text,text,text,timestamptz,boolean),
+ change_ledger.attach_permit_signature(text,text,uuid,bigint,text,text)
+ TO worker_role;
+GRANT EXECUTE ON FUNCTION change_ledger.ledger_head(text,text) TO auditor_role;
 GRANT EXECUTE ON FUNCTION
  change_ledger.recover_sweep(text,text), change_ledger.resolve_unknown(text,text,uuid,jsonb,boolean,boolean),
  change_ledger.verify(text,text,uuid,jsonb,boolean), change_ledger.release_claim(text,text,uuid),
- change_ledger.dispatch_cas(uuid,bigint,text,text)
+ change_ledger.issue_permit(text,text,uuid,bigint), change_ledger.cancel_permit(text,text,uuid,bigint),
+ change_ledger.check_anchor(text,text,bigint,text)
  TO worker_role;
+GRANT EXECUTE ON FUNCTION change_ledger.cancel_permit(text,text,uuid,bigint),
+ change_ledger.verify_chain(text,text) TO operator_role;
+GRANT EXECUTE ON FUNCTION change_ledger.verify_chain(text,text) TO auditor_role, worker_role;
 
 -- ================================================================== RLS
 DO $fn$
