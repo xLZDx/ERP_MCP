@@ -954,7 +954,8 @@ async def test_kill_switch_modes_refuse_admission_and_effect_steps_but_not_obser
     assert await led.call("clt_wrk", "cancel_permit", permitted, ptok["generation"]) is True
     await led.conn.execute("UPDATE change_ledger.claim_tokens SET issued_at=now()-interval '3 minutes' "
                            "WHERE token_id=$1", ctok["token_id"])
-    assert await led.call("clt_wrk", "recover_sweep") == 1
+    # REVOKE additionally voids the unclaimed approvals (contract section 6), so the sweep changes more
+    assert await led.call("clt_wrk", "recover_sweep") == (3 if mode == "REVOKE" else 1)
     # in-flight DISPATCHED call follows the call: complete is allowed under every mode
     assert await led.call("clt_wri", "complete", dispatched, dtok["generation"], "SUCCESS", "{}", None) == "APPLIED"
     assert await led.call("clt_wrk", "verify", dispatched, '{"s":1}', True) == "VERIFIED"

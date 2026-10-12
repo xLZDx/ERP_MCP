@@ -1,15 +1,18 @@
-"""Thin asyncpg port over the ``change_ledger.*`` SQL functions (db/phase2/004_change_ledger.sql).
+"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006).
 
-No ledger logic lives here: each method opens one transaction, optionally ``SET LOCAL ROLE`` for the
-caller class, calls ``change_ledger.set_scope`` and then exactly one SQL function (the
-``tests/phase2/_sql_ports.py`` convention). A rejected call becomes ``LedgerError(code)``.
-``actors`` maps a caller class (requester/approver/operator/writer/worker/auditor) to the database
-role to assume; a missing/None entry means the connection already is the authenticated principal
-(matches ``tests/phase2/_sql_ports.py`` and ``ports.py``'s actor convention).
+No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
+caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
+tests/phase2/test_change_ledger_sql.py ``L.call``). A rejected call becomes ``LedgerError(code)`` where
+``code`` is the RAISE EXCEPTION text. ``SPEC`` is the single table of function name, parameter types,
+result type and the caller classes the migrations grant EXECUTE to (the last definition wins, 005 and 006
+redefine 004 functions with identical signatures); the port test compares it with pg_proc and the grants.
 
-``ledger_head`` / ``record_checkpoint`` / ``issue_permit`` / ``attach_permit_signature`` together
-satisfy ``checkpoint.LedgerPort`` so ``checkpoint.DispatchGate`` can run against a real database
-without any change to ``checkpoint.py``.
+``actors`` maps a caller class (requester/approver/operator/writer/worker/auditor) to the database role to
+assume; a missing entry means the connection already is the authenticated principal. The first class in a
+function's SPEC entry is the default; ``as_class`` selects another granted class.
+
+``ledger_head`` / ``record_checkpoint`` / ``issue_permit`` / ``attach_permit_signature`` satisfy
+``checkpoint.LedgerPort`` (all default to the worker class, the identity that runs the permit gate).
 """
 from __future__ import annotations
 
@@ -17,7 +20,8 @@ import json
 import re
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
+from decimal import Decimal
+from typing import Any, NamedTuple
 from uuid import UUID
 
 import asyncpg
@@ -25,200 +29,366 @@ import asyncpg
 from ._common import LedgerError, Scope, code_from_message
 
 _IDENT = re.compile(r"[a-z][a-z0-9_]*")
-_CLASSES = ("requester", "approver", "operator", "writer", "worker", "auditor")
+CLASSES = ("requester", "approver", "operator", "writer", "worker", "auditor")
+_TOKEN_ROW = "change_ledger.claim_tokens"
 
 
-def _j(value: Any) -> str | None:
-    return None if value is None else json.dumps(value)
+class Fn(NamedTuple):
+    name: str
+    classes: tuple[str, ...]  # classes with EXECUTE; the first one is the default
+    params: tuple[str, ...]  # SQL parameter types after (t, c)
+    ret: str  # regtype of the result
+
+
+def _f(name, classes, params, ret):
+    return Fn(name, tuple(classes.split()), tuple(p for p in params.split(",") if p), ret)
+
+
+SPEC: dict[str, Fn] = {
+    # 004 + 005 requester / approver
+    "propose": _f("propose", "requester",
+                  "uuid,text,text,text,text,text,text,text,text,uuid,timestamptz,uuid", "uuid"),
+    "validate": _f("validate", "requester", "uuid,boolean,boolean", "text"),
+    "claim": _f("claim", "requester", "uuid,text,uuid,numeric,boolean,boolean", _TOKEN_ROW),
+    "release_claim": _f("release_claim", "requester worker", "uuid", "text"),
+    "begin_apply": _f("begin_apply", "requester writer", "uuid,uuid,text,text", _TOKEN_ROW),
+    "issue_approval_nonce": _f("issue_approval_nonce", "approver", "uuid", "text"),
+    "approve": _f("approve", "approver", "uuid,text,text", "uuid"),
+    "reject": _f("reject", "approver", "uuid,text", "text"),
+    # permit / dispatch / completion
+    "issue_permit": _f("issue_permit", "worker", "uuid,bigint", "jsonb"),
+    "record_call": _f("record_call", "writer", "uuid,bigint,uuid", "boolean"),
+    "cancel_permit": _f("cancel_permit", "worker operator", "uuid,bigint", "boolean"),
+    "complete": _f("complete", "writer", "uuid,bigint,text,jsonb,jsonb", "text"),
+    "record_checkpoint": _f("record_checkpoint", "worker writer",
+                            "bigint,text,text,text,text,text,timestamptz,boolean", "bigint"),
+    "ledger_head": _f("ledger_head", "worker writer auditor", "", "jsonb"),
+    "attach_permit_signature": _f("attach_permit_signature", "worker writer", "uuid,bigint,text,text",
+                                  "void"),
+    # recovery / verification / operator
+    "recover_sweep": _f("recover_sweep", "worker", "", "integer"),
+    "recover_sweep_params": _f("recover_sweep", "worker", "jsonb", "jsonb"),
+    "resolve_unknown": _f("resolve_unknown", "worker", "uuid,jsonb,boolean,boolean", "text"),
+    "verify": _f("verify", "worker", "uuid,jsonb,boolean", "text"),
+    "verify_inconclusive": _f("verify_inconclusive", "worker", "uuid,jsonb,integer", "jsonb"),
+    "retry_verify": _f("retry_verify", "worker", "uuid,jsonb,boolean", "text"),
+    "check_anchor": _f("check_anchor", "worker", "bigint,text", "jsonb"),
+    "verify_chain": _f("verify_chain", "auditor worker operator", "", "jsonb"),
+    "witness_cosign": _f("witness_cosign", "operator", "uuid,jsonb", "uuid"),
+    "operator_resolve": _f("operator_resolve", "operator", "uuid,uuid,boolean,boolean", "text"),
+    "operator_close_failed_verify": _f("operator_close_failed_verify", "operator",
+                                       "uuid,uuid,boolean", "text"),
+    "release_hold": _f("release_hold", "operator", "uuid,jsonb", "timestamp with time zone"),
+    "kill_switch": _f("kill_switch", "operator", "text", "text"),
+    "budget_admin": _f("budget_admin", "operator",
+                       "uuid,text,numeric,integer,integer,timestamptz,timestamptz", "uuid"),
+    "declare_anchor_gap": _f("declare_anchor_gap", "worker operator writer", "text,jsonb", "integer"),
+    "declare_unclean_restart": _f("declare_unclean_restart", "worker operator", "text,jsonb",
+                                  "integer"),
+    # 005 registry / evidence
+    "declare_business_key": _f("declare_business_key", "requester", "uuid,text,text,text", "text"),
+    "declare_target_class": _f("declare_target_class", "requester", "uuid,text", "text"),
+    "add_epoch_dependency": _f("add_epoch_dependency", "requester", "uuid,text", "jsonb"),
+    "bind_duplicate_override": _f("bind_duplicate_override", "approver", "uuid,text", "boolean"),
+    "register_principal": _f("register_principal", "operator", "text,text,text[],boolean", "bigint"),
+    "enforce_registry": _f("enforce_registry", "operator", "", "boolean"),
+    "register_target": _f("register_target", "operator", "text,text,text,text,timestamptz", "bigint"),
+    "register_verifier_key": _f("register_verifier_key", "operator", "text,text,text", "void"),
+    "revoke_verifier_key": _f("revoke_verifier_key", "operator", "text", "void"),
+    "bump_epoch": _f("bump_epoch", "operator", "text", "bigint"),
+    "revoke_change": _f("revoke_change", "operator worker", "uuid,text", "text"),
+    "revoke_stale": _f("revoke_stale", "worker", "", "integer"),
+    "record_evidence": _f("record_evidence", "worker writer",
+                          "uuid,text,text,timestamptz,jsonb,text,text,text", "uuid"),
+    "verify_signed": _f("verify_signed", "worker", "uuid,uuid,uuid,uuid,boolean", "text"),
+    "complete_signed": _f("complete_signed", "writer", "uuid,bigint,text,uuid", "text"),
+    "resolve_unknown_signed": _f("resolve_unknown_signed", "worker", "uuid,uuid,uuid,boolean,boolean",
+                                 "text"),
+    "witness_cosign_signed": _f("witness_cosign_signed", "operator", "uuid,uuid", "uuid"),
+    "observe_target": _f("observe_target", "writer", "uuid,text,text", "boolean"),
+    "read_status": _f("read_status", "requester approver auditor", "uuid", "jsonb"),
+    "read_evidence": _f("read_evidence", "requester auditor", "uuid", "jsonb"),
+    "amount_consumed": _f("amount_consumed", "operator worker auditor", "text,uuid", "numeric"),
+    # 006 writer fence
+    "complete_lock_busy": _f("complete_lock_busy", "writer", "uuid,bigint,jsonb,jsonb,jsonb", "text"),
+    "renew_writer_lease": _f("renew_writer_lease", "writer", "uuid,bigint,integer",
+                             "timestamp with time zone"),
+    "fence_check": _f("fence_check", "writer", "uuid,bigint,uuid", "jsonb"),
+}
+
+_CAST = {"timestamp with time zone": "timestamptz"}
+
+
+def _arg(ty: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if ty == "jsonb":
+        return json.dumps(value)
+    if ty == "numeric":
+        return value if isinstance(value, Decimal) else Decimal(str(value))
+    if ty == "timestamptz" and (not isinstance(value, datetime) or value.tzinfo is None):
+        raise ValueError("TIMESTAMP_NOT_AWARE")
+    return value
 
 
 class SqlChangeLedger:
-    """Implements ``checkpoint.LedgerPort``; a superset covers the rest of section 6."""
+    """Implements ``checkpoint.LedgerPort`` plus the rest of the runtime surface of 004-006."""
 
     def __init__(self, conn: asyncpg.Connection, actors: Mapping[str, str | None] | None = None):
         self.conn = conn
         self._actors = dict(actors or {})
         for cls, role in self._actors.items():
-            if cls not in _CLASSES or (role is not None and not _IDENT.fullmatch(role)):
+            if cls not in CLASSES or (role is not None and not _IDENT.fullmatch(role)):
                 raise ValueError("ACTOR_INVALID")
 
-    async def _call(self, cls: str, scope: Scope, sql: str, *args: Any) -> Any:
-        """Scalar/jsonb result path: used for every function whose SQL return type is a plain
-        scalar (text/uuid/bigint/boolean/void) or ``jsonb`` (auto-decoded here, never by the caller)."""
+    async def invoke(self, key: str, scope: Scope, *args: Any, as_class: str | None = None) -> Any:
+        fn = SPEC[key]
+        if len(args) != len(fn.params):
+            raise TypeError(f"{key} takes {len(fn.params)} arguments after scope, got {len(args)}")
+        cls = as_class or fn.classes[0]
+        if cls not in fn.classes:
+            raise ValueError("ACTOR_INVALID")
+        marks = "".join(f",${i + 3}::{_CAST.get(ty, ty)}" for i, ty in enumerate(fn.params))
+        call = f"change_ledger.{fn.name}($1,$2{marks})"
+        sql = f"SELECT * FROM {call}" if fn.ret == _TOKEN_ROW else f"SELECT {call}"
+        params = [_arg(ty, a) for ty, a in zip(fn.params, args, strict=True)]
         role = self._actors.get(cls)
         try:
             async with self.conn.transaction():
                 if role:
                     await self.conn.execute(f'SET LOCAL ROLE "{role}"')
-                await self.conn.execute("SELECT change_ledger.set_scope($1,$2)", scope.tenant_id,
-                                        scope.company_id)
-                value = await self.conn.fetchval(sql, scope.tenant_id, scope.company_id, *args)
+                await self.conn.fetchval("SELECT change_ledger.set_scope($1,$2)", scope.tenant_id,
+                                         scope.company_id)
+                if fn.ret == _TOKEN_ROW:
+                    row = await self.conn.fetchrow(sql, scope.tenant_id, scope.company_id, *params)
+                    return None if row is None else dict(row)
+                value = await self.conn.fetchval(sql, scope.tenant_id, scope.company_id, *params)
         except asyncpg.PostgresError as e:
-            raise LedgerError(code_from_message(str(e), e.sqlstate)) from None
-        if isinstance(value, str) and value[:1] in "{[":
+            raise LedgerError(code_from_message(str(e), e.sqlstate), e.sqlstate) from None
+        if fn.ret == "jsonb" and isinstance(value, str):
             return json.loads(value)
         return value
 
-    async def _row(self, cls: str, scope: Scope, sql: str, *args: Any) -> dict | None:
-        """Row result path: used for the two functions that return a ``change_ledger.claim_tokens``
-        composite row (``claim``, ``begin_apply``) rather than a scalar/jsonb value."""
-        role = self._actors.get(cls)
-        try:
-            async with self.conn.transaction():
-                if role:
-                    await self.conn.execute(f'SET LOCAL ROLE "{role}"')
-                await self.conn.execute("SELECT change_ledger.set_scope($1,$2)", scope.tenant_id,
-                                        scope.company_id)
-                record = await self.conn.fetchrow(sql, scope.tenant_id, scope.company_id, *args)
-        except asyncpg.PostgresError as e:
-            raise LedgerError(code_from_message(str(e), e.sqlstate)) from None
-        return None if record is None else dict(record)
-
-    # ---- requester (T1/T2/T5/T5x/T6)
+    # ---- requester
     async def propose(self, scope: Scope, change_id: UUID, kind: str, base_fingerprint: str,
-                      organization_ref: str, requester: str, request_id: str,
-                      payload_digest: str, target_ref: str | None, target_version: str | None,
-                      parent_change_id: UUID | None, expires_at: datetime) -> UUID:
-        return await self._call(
-            "requester", scope,
-            "SELECT change_ledger.propose($1,$2,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12::uuid,"
-            "$13::timestamptz)",
-            change_id, kind, base_fingerprint, organization_ref, requester, request_id,
-            payload_digest, target_ref, target_version, parent_change_id, expires_at)
+                      organization_ref: str, requester: str, request_id: str, payload_digest: str,
+                      target_ref: str | None, target_version: str | None,
+                      parent_change_id: UUID | None, expires_at: datetime,
+                      repair_for: UUID | None = None) -> UUID:
+        return await self.invoke("propose", scope, change_id, kind, base_fingerprint, organization_ref,
+                                 requester, request_id, payload_digest, target_ref, target_version,
+                                 parent_change_id, expires_at, repair_for)
 
-    async def validate(self, scope: Scope, change_id: UUID, duplicate: bool,
-                       budget_ok: bool) -> str:
-        return await self._call("requester", scope,
-                                "SELECT change_ledger.validate($1,$2,$3::uuid,$4,$5)",
-                                change_id, duplicate, budget_ok)
+    async def validate(self, scope: Scope, change_id: UUID, duplicate: bool, budget_ok: bool) -> str:
+        return await self.invoke("validate", scope, change_id, duplicate, budget_ok)
 
     async def claim(self, scope: Scope, change_id: UUID, key_hash: str | None = None,
                     grant_id: UUID | None = None, amount: Any = None,
                     counts_create_update: bool = False, counts_post: bool = False) -> dict | None:
-        return await self._row(
-            "requester", scope,
-            "SELECT * FROM change_ledger.claim($1,$2,$3::uuid,$4,$5::uuid,$6::numeric,$7,$8)",
-            change_id, key_hash, grant_id, amount, counts_create_update, counts_post)
+        return await self.invoke("claim", scope, change_id, key_hash, grant_id, amount,
+                                 counts_create_update, counts_post)
 
-    async def release_claim(self, scope: Scope, token_id: UUID, cls: str = "requester") -> str:
-        return await self._call(cls, scope, "SELECT change_ledger.release_claim($1,$2,$3::uuid)",
-                                token_id)
+    async def release_claim(self, scope: Scope, token_id: UUID, as_class: str | None = None) -> str:
+        return await self.invoke("release_claim", scope, token_id, as_class=as_class)
 
-    async def begin_apply(self, scope: Scope, token_id: UUID, call_id: UUID,
-                          writer_host: str, onec_session: str,
-                          cls: str = "requester") -> dict | None:
-        return await self._row(
-            cls, scope,
-            "SELECT * FROM change_ledger.begin_apply($1,$2,$3::uuid,$4::uuid,$5,$6)",
-            token_id, call_id, writer_host, onec_session)
+    async def begin_apply(self, scope: Scope, token_id: UUID, call_id: UUID, writer_host: str,
+                          onec_session: str, as_class: str | None = None) -> dict | None:
+        return await self.invoke("begin_apply", scope, token_id, call_id, writer_host, onec_session,
+                                 as_class=as_class)
 
-    # ---- approver (T3/T4)
+    async def declare_business_key(self, scope: Scope, change_id: UUID, key_hash: str,
+                                   override_of: str | None = None,
+                                   justification: str | None = None) -> str:
+        return await self.invoke("declare_business_key", scope, change_id, key_hash, override_of,
+                                 justification)
+
+    async def declare_target_class(self, scope: Scope, change_id: UUID, target_class: str) -> str:
+        return await self.invoke("declare_target_class", scope, change_id, target_class)
+
+    async def add_epoch_dependency(self, scope: Scope, change_id: UUID, key: str) -> dict:
+        return await self.invoke("add_epoch_dependency", scope, change_id, key)
+
+    # ---- approver
+    async def issue_approval_nonce(self, scope: Scope, change_id: UUID) -> str:
+        return await self.invoke("issue_approval_nonce", scope, change_id)
+
     async def approve(self, scope: Scope, change_id: UUID, nonce: str, digest: str) -> UUID:
-        return await self._call("approver", scope,
-                                "SELECT change_ledger.approve($1,$2,$3::uuid,$4,$5)",
-                                change_id, nonce, digest)
+        return await self.invoke("approve", scope, change_id, nonce, digest)
 
     async def reject(self, scope: Scope, change_id: UUID, nonce: str) -> str:
-        return await self._call("approver", scope,
-                                "SELECT change_ledger.reject($1,$2,$3::uuid,$4)", change_id, nonce)
+        return await self.invoke("reject", scope, change_id, nonce)
 
-    # ---- writer (T6p/T7/T8/T9)
-    async def issue_permit(self, scope: Scope, change_id: UUID, generation: int) -> dict:
-        """Satisfies ``checkpoint.LedgerPort.issue_permit``."""
-        return await self._call("writer", scope,
-                                "SELECT change_ledger.issue_permit($1,$2,$3::uuid,$4::bigint)",
-                                change_id, generation)
+    async def bind_duplicate_override(self, scope: Scope, change_id: UUID, override_digest: str) -> bool:
+        return await self.invoke("bind_duplicate_override", scope, change_id, override_digest)
 
-    async def complete(self, scope: Scope, change_id: UUID, generation: int, outcome: str,
-                       evidence: dict, no_effect_proof: dict | None = None) -> str:
-        return await self._call(
-            "writer", scope,
-            "SELECT change_ledger.complete($1,$2,$3::uuid,$4::bigint,$5,$6::jsonb,$7::jsonb)",
-            change_id, generation, outcome, _j(evidence), _j(no_effect_proof))
-
-    # ---- worker (recovery/verification)
-    async def recover_sweep(self, scope: Scope) -> int:
-        return await self._call("worker", scope, "SELECT change_ledger.recover_sweep($1,$2)")
-
-    async def resolve_unknown(self, scope: Scope, change_id: UUID, observation: dict,
-                              found: bool | None, attributed: bool = False) -> str:
-        return await self._call(
-            "worker", scope,
-            "SELECT change_ledger.resolve_unknown($1,$2,$3::uuid,$4::jsonb,$5,$6)",
-            change_id, _j(observation), found, attributed)
-
-    async def verify(self, scope: Scope, change_id: UUID, evidence: dict, passed: bool) -> str:
-        return await self._call("worker", scope,
-                                "SELECT change_ledger.verify($1,$2,$3::uuid,$4::jsonb,$5)",
-                                change_id, _j(evidence), passed)
-
-    async def witness_cosign(self, scope: Scope, change_id: UUID, completion_proof: dict,
-                             cls: str = "operator") -> UUID:
-        return await self._call(cls, scope,
-                                "SELECT change_ledger.witness_cosign($1,$2,$3::uuid,$4::jsonb)",
-                                change_id, _j(completion_proof))
+    # ---- permit gate (worker identity) and writer
+    async def ledger_head(self, scope: Scope, as_class: str | None = "worker") -> dict:
+        return await self.invoke("ledger_head", scope, as_class=as_class)
 
     async def record_checkpoint(self, scope: Scope, seq: int, head_hash: str, sink_kind: str,
                                 sink_id: str, key_id: str, signature: str, signed_at: datetime,
-                                read_back: bool, cls: str = "writer") -> int:
-        """Satisfies ``checkpoint.LedgerPort.record_checkpoint``."""
-        return await self._call(
-            cls, scope,
-            "SELECT change_ledger.record_checkpoint($1,$2,$3::bigint,$4,$5,$6,$7,$8,"
-            "$9::timestamptz,$10)",
-            seq, head_hash, sink_kind, sink_id, key_id, signature, signed_at, read_back)
+                                read_back: bool, as_class: str | None = "worker") -> int:
+        return await self.invoke("record_checkpoint", scope, seq, head_hash, sink_kind, sink_id, key_id,
+                                 signature, signed_at, read_back, as_class=as_class)
+
+    async def issue_permit(self, scope: Scope, change_id: UUID, generation: int) -> dict:
+        return await self.invoke("issue_permit", scope, change_id, generation)
 
     async def attach_permit_signature(self, scope: Scope, change_id: UUID, generation: int,
-                                      key_id: str, signature: str, cls: str = "writer") -> None:
-        """Satisfies ``checkpoint.LedgerPort.attach_permit_signature``."""
-        await self._call(
-            cls, scope,
-            "SELECT change_ledger.attach_permit_signature($1,$2,$3::uuid,$4::bigint,$5,$6)",
-            change_id, generation, key_id, signature)
+                                      key_id: str, signature: str,
+                                      as_class: str | None = "worker") -> None:
+        await self.invoke("attach_permit_signature", scope, change_id, generation, key_id, signature,
+                          as_class=as_class)
 
-    async def ledger_head(self, scope: Scope, cls: str = "worker") -> dict:
-        """Satisfies ``checkpoint.LedgerPort.ledger_head``."""
-        return await self._call(cls, scope, "SELECT change_ledger.ledger_head($1,$2)")
+    async def record_call(self, scope: Scope, change_id: UUID, generation: int, call_id: UUID) -> bool:
+        return await self.invoke("record_call", scope, change_id, generation, call_id)
 
-    # ---- operator (T16/release_hold/kill_switch/budget_admin)
-    async def operator_resolve(self, scope: Scope, change_id: UUID, cosign_id: UUID,
+    async def cancel_permit(self, scope: Scope, change_id: UUID, generation: int,
+                            as_class: str | None = None) -> bool:
+        return await self.invoke("cancel_permit", scope, change_id, generation, as_class=as_class)
+
+    async def complete(self, scope: Scope, change_id: UUID, generation: int, outcome: str,
+                       evidence: dict | None, no_effect_proof: dict | None = None) -> str:
+        return await self.invoke("complete", scope, change_id, generation, outcome, evidence,
+                                 no_effect_proof)
+
+    async def complete_lock_busy(self, scope: Scope, change_id: UUID, generation: int,
+                                 evidence: dict | None, no_effect_proof: dict | None,
+                                 params: dict | None = None) -> str:
+        return await self.invoke("complete_lock_busy", scope, change_id, generation, evidence,
+                                 no_effect_proof, params if params is not None else {})
+
+    async def renew_writer_lease(self, scope: Scope, change_id: UUID, generation: int,
+                                 ttl_seconds: int = 300) -> datetime:
+        return await self.invoke("renew_writer_lease", scope, change_id, generation, ttl_seconds)
+
+    async def fence_check(self, scope: Scope, change_id: UUID, generation: int, call_id: UUID) -> dict:
+        return await self.invoke("fence_check", scope, change_id, generation, call_id)
+
+    async def observe_target(self, scope: Scope, token_id: UUID, fingerprint: str,
+                             target_class: str) -> bool:
+        return await self.invoke("observe_target", scope, token_id, fingerprint, target_class)
+
+    async def complete_signed(self, scope: Scope, change_id: UUID, generation: int, outcome: str,
+                              completion: UUID | None) -> str:
+        return await self.invoke("complete_signed", scope, change_id, generation, outcome, completion)
+
+    # ---- worker
+    async def recover_sweep(self, scope: Scope, params: dict | None = None) -> Any:
+        """No params: the legacy integer count; with params: the jsonb report of 006."""
+        if params is None:
+            return await self.invoke("recover_sweep", scope)
+        return await self.invoke("recover_sweep_params", scope, params)
+
+    async def resolve_unknown(self, scope: Scope, change_id: UUID, observation: dict,
+                              found: bool | None, attributed: bool = False) -> str:
+        return await self.invoke("resolve_unknown", scope, change_id, observation, found, attributed)
+
+    async def verify(self, scope: Scope, change_id: UUID, evidence: dict | None, passed: bool) -> str:
+        return await self.invoke("verify", scope, change_id, evidence, passed)
+
+    async def verify_inconclusive(self, scope: Scope, change_id: UUID, evidence: dict | None,
+                                  max_attempts: int = 3) -> dict:
+        return await self.invoke("verify_inconclusive", scope, change_id, evidence, max_attempts)
+
+    async def retry_verify(self, scope: Scope, change_id: UUID, evidence: dict | None,
+                           passed: bool) -> str:
+        return await self.invoke("retry_verify", scope, change_id, evidence, passed)
+
+    async def check_anchor(self, scope: Scope, ext_seq: int, ext_head_hash: str) -> dict:
+        return await self.invoke("check_anchor", scope, ext_seq, ext_head_hash)
+
+    async def verify_chain(self, scope: Scope, as_class: str | None = None) -> dict:
+        return await self.invoke("verify_chain", scope, as_class=as_class)
+
+    async def revoke_stale(self, scope: Scope) -> int:
+        return await self.invoke("revoke_stale", scope)
+
+    async def record_evidence(self, scope: Scope, change_id: UUID, kind: str, content_hash: str,
+                              observed_at: datetime, content: dict | None, key_id: str,
+                              binding_hash: str, signature: str, as_class: str | None = None) -> UUID:
+        return await self.invoke("record_evidence", scope, change_id, kind, content_hash, observed_at,
+                                 content, key_id, binding_hash, signature, as_class=as_class)
+
+    async def verify_signed(self, scope: Scope, change_id: UUID, field: UUID | None,
+                            movement: UUID | None, version: UUID | None, passed: bool) -> str:
+        return await self.invoke("verify_signed", scope, change_id, field, movement, version, passed)
+
+    async def resolve_unknown_signed(self, scope: Scope, change_id: UUID, observation: UUID,
+                                     completion: UUID | None, found: bool | None,
+                                     attributed: bool = False) -> str:
+        return await self.invoke("resolve_unknown_signed", scope, change_id, observation, completion,
+                                 found, attributed)
+
+    # ---- operator
+    async def witness_cosign(self, scope: Scope, change_id: UUID, completion_proof: dict | None) -> UUID:
+        return await self.invoke("witness_cosign", scope, change_id, completion_proof)
+
+    async def witness_cosign_signed(self, scope: Scope, change_id: UUID, completion: UUID) -> UUID:
+        return await self.invoke("witness_cosign_signed", scope, change_id, completion)
+
+    async def operator_resolve(self, scope: Scope, change_id: UUID, cosign_id: UUID | None,
                                present: bool, attributed: bool) -> str:
-        return await self._call(
-            "operator", scope,
-            "SELECT change_ledger.operator_resolve($1,$2,$3::uuid,$4::uuid,$5,$6)",
-            change_id, cosign_id, present, attributed)
+        return await self.invoke("operator_resolve", scope, change_id, cosign_id, present, attributed)
 
-    async def release_hold(self, scope: Scope, hold_id: UUID, release_evidence: dict) -> datetime:
-        return await self._call("operator", scope,
-                                "SELECT change_ledger.release_hold($1,$2,$3::uuid,$4::jsonb)",
-                                hold_id, _j(release_evidence))
+    async def operator_close_failed_verify(self, scope: Scope, change_id: UUID,
+                                           cosign_id: UUID | None, effect_present: bool) -> str:
+        return await self.invoke("operator_close_failed_verify", scope, change_id, cosign_id,
+                                 effect_present)
+
+    async def release_hold(self, scope: Scope, hold_id: UUID, release_evidence: dict | None) -> datetime:
+        return await self.invoke("release_hold", scope, hold_id, release_evidence)
 
     async def kill_switch(self, scope: Scope, mode: str) -> str:
-        return await self._call("operator", scope, "SELECT change_ledger.kill_switch($1,$2,$3)",
-                                mode)
+        return await self.invoke("kill_switch", scope, mode)
 
-    async def budget_admin(self, scope: Scope, grant_id: UUID | None, currency: str,
-                           amount_limit: Any, count_limit: int, post_count_limit: int,
-                           window_start: datetime, window_end: datetime) -> UUID:
-        return await self._call(
-            "operator", scope,
-            "SELECT change_ledger.budget_admin($1,$2,$3::uuid,$4,$5::numeric,$6::integer,"
-            "$7::integer,$8::timestamptz,$9::timestamptz)",
-            grant_id, currency, amount_limit, count_limit, post_count_limit, window_start,
-            window_end)
+    async def budget_admin(self, scope: Scope, grant_id: UUID | None, currency: str, amount_limit: Any,
+                           count_limit: int, post_count_limit: int, window_start: datetime,
+                           window_end: datetime) -> UUID:
+        return await self.invoke("budget_admin", scope, grant_id, currency, amount_limit, count_limit,
+                                 post_count_limit, window_start, window_end)
 
-    # ---- internal-only budget operations (never exposed to a human caller class; exercised in
-    # tests under the owning role directly, mirroring how 001-003 test internal helpers)
-    async def budget_reserve(self, scope: Scope, change_id: UUID, grant_id: UUID,
-                             amount: Any, cls: str = "worker") -> UUID:
-        return await self._call(cls, scope,
-                                "SELECT change_ledger.budget_reserve($1,$2,$3::uuid,$4::uuid,"
-                                "$5::numeric)", change_id, grant_id, amount)
+    async def declare_anchor_gap(self, scope: Scope, base: str | None, detail: dict | None,
+                                 as_class: str | None = None) -> int:
+        return await self.invoke("declare_anchor_gap", scope, base, detail, as_class=as_class)
 
-    async def budget_consume(self, scope: Scope, change_id: UUID, cls: str = "worker") -> None:
-        await self._call(cls, scope, "SELECT change_ledger.budget_consume($1,$2,$3::uuid)",
-                         change_id)
+    async def declare_unclean_restart(self, scope: Scope, base: str | None, detail: dict | None,
+                                      as_class: str | None = None) -> int:
+        return await self.invoke("declare_unclean_restart", scope, base, detail, as_class=as_class)
 
-    async def budget_release(self, scope: Scope, change_id: UUID, cls: str = "worker") -> None:
-        await self._call(cls, scope, "SELECT change_ledger.budget_release($1,$2,$3::uuid)",
-                         change_id)
+    async def revoke_change(self, scope: Scope, change_id: UUID, cause: str,
+                            as_class: str | None = None) -> str:
+        return await self.invoke("revoke_change", scope, change_id, cause, as_class=as_class)
+
+    async def register_principal(self, scope: Scope, principal: str, person_id: str | None,
+                                 capabilities: list[str], active: bool = True) -> int:
+        return await self.invoke("register_principal", scope, principal, person_id, capabilities, active)
+
+    async def enforce_registry(self, scope: Scope) -> bool:
+        return await self.invoke("enforce_registry", scope)
+
+    async def register_target(self, scope: Scope, base: str, org: str, target_class: str,
+                              status: str = "ACTIVE", permission_expires_at: datetime | None = None) -> int:
+        return await self.invoke("register_target", scope, base, org, target_class, status,
+                                 permission_expires_at)
+
+    async def register_verifier_key(self, scope: Scope, key_id: str, role_name: str,
+                                    key_material: str) -> None:
+        await self.invoke("register_verifier_key", scope, key_id, role_name, key_material)
+
+    async def revoke_verifier_key(self, scope: Scope, key_id: str) -> None:
+        await self.invoke("revoke_verifier_key", scope, key_id)
+
+    async def bump_epoch(self, scope: Scope, key: str) -> int:
+        return await self.invoke("bump_epoch", scope, key)
+
+    # ---- reads
+    async def read_status(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> dict:
+        return await self.invoke("read_status", scope, change_id, as_class=as_class)
+
+    async def read_evidence(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> list:
+        return await self.invoke("read_evidence", scope, change_id, as_class=as_class)
+
+    async def amount_consumed(self, scope: Scope, document: str, grant_id: UUID,
+                              as_class: str | None = None) -> Decimal:
+        return await self.invoke("amount_consumed", scope, document, grant_id, as_class=as_class)

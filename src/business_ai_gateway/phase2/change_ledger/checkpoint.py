@@ -4,7 +4,10 @@
 verification is a ``SignatureVerifier`` Protocol; ``UnwiredVerifier`` fails closed. A real Ed25519
 verifier needs a separate dependency decision. ``InMemoryCheckpointSink``, ``FakeSigner`` and
 ``FakeVerifier`` are TEST ONLY: ``DispatchGate`` stays DISABLED while any of them is wired, whatever
-the ``real_checkpoint_sink`` flag says, and the SQL refuses sink_kind TEST for permits.
+the ``real_checkpoint_sink`` flag says. SQL rule (db/phase2/005 ``issue_permit``, last definition wins):
+a permit needs a checkpoint with sink_kind REAL, read_back_confirmed, whose head hash is the ledger event at
+its seq and whose seq is at or after the change's APPLYING event; a TEST sink never satisfies it
+(CHECKPOINT_UNAVAILABLE). The gate writes exactly such a checkpoint and lets SQL decide.
 """
 from __future__ import annotations
 
@@ -13,7 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from ._common import Scope
+from ._common import LedgerError, Scope
 
 
 class GateDisabled(Exception):
@@ -33,18 +36,18 @@ class PermitRefused(Exception):
 
 
 def _ts(value: datetime) -> str:
-    """Same rendering as chg._ts in SQL: UTC, microseconds, no zone suffix."""
+    """UTC, microseconds, no zone suffix (checkpoint signing payload)."""
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
 
 
 def content_hash_of(payload_text: str) -> str:
-    """sha256 of the exact payload text that is signed and sent to chg.record_evidence."""
+    """sha256 of the exact payload text that is signed and sent to change_ledger.record_evidence."""
     return hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
 
 
 def evidence_binding(change_id: str, kind: str, content_hash: str, observed_at: datetime) -> str:
-    """Mirror of chg.evidence_binding: the digest a verifier/writer signs."""
-    raw = f"{change_id}|{kind}|{content_hash}|{_ts(observed_at)}"
+    """Mirror of change_ledger.evidence_binding (005): ``id:kind:hash:UTC-microseconds-Z``."""
+    raw = f"{change_id}:{kind}:{content_hash}:{_ts(observed_at)}Z"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -60,7 +63,7 @@ class CheckpointRecord:
     sink_id: str
 
     def signing_payload(self) -> bytes:
-        return (f"chg-checkpoint|v1|{self.tenant_id}|{self.company_id}|{self.seq}|{self.head_hash}|"
+        return (f"change-ledger-checkpoint|v1|{self.tenant_id}|{self.company_id}|{self.seq}|{self.head_hash}|"
                 f"{_ts(self.signed_at)}|{self.key_id}").encode()
 
 
@@ -141,7 +144,7 @@ class LedgerPort(Protocol):
 
     async def record_checkpoint(self, scope: Scope, seq: int, head_hash: str, sink_kind: str,
                                 sink_id: str, key_id: str, signature: str, signed_at: datetime,
-                                read_back: bool) -> dict[str, Any]: ...
+                                read_back: bool) -> int: ...
 
     async def issue_permit(self, scope: Scope, change_id: Any, generation: int) -> dict[str, Any]: ...
 
@@ -152,7 +155,9 @@ class LedgerPort(Protocol):
 class DispatchGate:
     """Refuses to issue a dispatch permit unless a checkpoint covering the head was written AND read back.
 
-    Disabled unless ``real_checkpoint_sink`` is True and the sink, signer and verifier are all real.
+    Disabled unless ``real_checkpoint_sink`` is True and the sink is REAL and the signer and verifier are
+    not test doubles. SQL raises (never returns) a refusal; it is surfaced as CheckpointUnavailable
+    (CHECKPOINT_UNAVAILABLE) or PermitRefused(code).
     """
 
     def __init__(self, ledger: LedgerPort, sink: CheckpointSink, signer: CheckpointSigner,
@@ -167,11 +172,11 @@ class DispatchGate:
                 and not getattr(self._verifier, "is_test_double", True))
 
     async def issue_permit(self, scope: Scope, change_id: Any, generation: int,
-                           apply_event_seq: int) -> dict[str, Any]:
+                           apply_event_seq: int | None = None) -> dict[str, Any]:
         if not self.enabled:
             raise GateDisabled("GATE_DISABLED")
         head = await self._ledger.ledger_head(scope)
-        if int(head["seq"]) < apply_event_seq:
+        if apply_event_seq is not None and int(head["seq"]) < apply_event_seq:
             raise CheckpointUnavailable("HEAD_BEHIND_APPLY_EVENT")
         signed_at = datetime.now(UTC)
         unsigned = CheckpointRecord(scope.tenant_id, scope.company_id, int(head["seq"]),
@@ -184,13 +189,16 @@ class DispatchGate:
         if back != record or not self._verifier.verify(back.key_id, back.signing_payload(),
                                                        back.signature):
             raise CheckpointUnavailable("READ_BACK_MISMATCH")
-        await self._ledger.record_checkpoint(scope, record.seq, record.head_hash, self._sink.kind,
-                                             record.sink_id, record.key_id, record.signature,
-                                             record.signed_at, True)
-        permit = await self._ledger.issue_permit(scope, change_id, generation)
-        if permit.get("refused"):
-            raise PermitRefused(str(permit.get("code")))
-        sig = self._signer.sign(f"chg-permit|v1|{permit['permit_digest']}".encode())
-        await self._ledger.attach_permit_signature(scope, change_id, generation,
-                                                   self._signer.key_id, sig)
+        try:
+            await self._ledger.record_checkpoint(scope, record.seq, record.head_hash, self._sink.kind,
+                                                 record.sink_id, record.key_id, record.signature,
+                                                 record.signed_at, True)
+            permit = await self._ledger.issue_permit(scope, change_id, generation)
+            sig = self._signer.sign(f"change-ledger-permit|v1|{permit['permit_digest']}".encode())
+            await self._ledger.attach_permit_signature(scope, change_id, generation,
+                                                       self._signer.key_id, sig)
+        except LedgerError as e:
+            if e.code == "CHECKPOINT_UNAVAILABLE":
+                raise CheckpointUnavailable(e.code) from None
+            raise PermitRefused(e.code) from None
         return {**permit, "signature": sig, "signer_key_id": self._signer.key_id}
