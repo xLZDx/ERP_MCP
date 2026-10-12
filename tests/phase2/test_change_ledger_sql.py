@@ -39,11 +39,19 @@ ACTORS = {  # role -> (member of, scopes)
     "clt_aud": (["auditor_role"], [(T, C)]),
     "clt_both": (["requester_role", "approver_role"], [(T, C)]),
     "clt_zed": (["requester_role"], [(T2, C2)]),
+    "clt_chk": (["checkpoint_role"], [(T, C)]),
 }
+# signing identities of the keyed-hash evidence / checkpoint stand-in: actor -> (key id, key material, key role)
+SIGN_KEYS = {"clt_wrk": ("vk-wrk", "W" * 32, "clt_wrk"), "clt_wri": ("vk-wri", "R" * 32, "clt_wri"),
+             "clt_chk": ("vk-chk", "C" * 32, "checkpoint_role")}
 RUNTIME_ROLES = ["requester_role", "approver_role", "operator_role", "writer_role", "worker_role",
-                 "auditor_role"]
+                 "auditor_role", "checkpoint_role"]
 JSON_FUNCS = {"issue_permit", "ledger_head", "verify_chain", "check_anchor"}
 COMPOSITE_FUNCS = {"claim", "begin_apply"}
+
+
+def sha(s):
+    return hashlib.sha256(s.encode()).hexdigest()
 
 
 def exp(hours=1):
@@ -123,7 +131,7 @@ class L:
     async def approved(self, approver="clt_bob", **kw):
         cid = await self.validated(**kw)
         nonce = await self.call(approver, "issue_approval_nonce", cid)
-        await self.call(approver, "approve", cid, nonce, kw.get("digest", DIGEST))
+        await self.call(approver, "approve", cid, nonce, await self.approval_digest(cid))
         return cid
 
     async def claimed(self, cid, requester="clt_alice", key=KH, grant=None, amount=None):
@@ -136,10 +144,97 @@ class L:
         await self.call(requester, "begin_apply", tok["token_id"], call_id, "host-1", "sess-1")
         return cid, tok, call_id
 
+    # ---------------------------------------------------------------- signed paths (007)
+    async def head(self):
+        return await self.call("clt_chk", "ledger_head")
+
+    async def checkpoint_at(self, seq, head_hash, kind="REAL", read_back=True, role="clt_chk", sig=None,
+                            key_id=None, sink_id="sink-1", signed_at=None):
+        signed_at = signed_at or datetime.now(UTC)
+        kid, kmat, _ = SIGN_KEYS["clt_chk"]
+        kid = key_id or kid
+        payload = await self.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
+                                           T, C, seq, head_hash, signed_at, kid, kind, sink_id)
+        return await self.call(role, "record_checkpoint", seq, head_hash, kind, sink_id, kid,
+                               sig if sig is not None else sha(f"{kmat}:{payload}"), signed_at, read_back)
+
     async def checkpoint(self, kind="REAL", read_back=True, head_hash=None):
-        head = await self.call("clt_wrk", "ledger_head")
-        return await self.call("clt_wrk", "record_checkpoint", head["seq"], head_hash or head["head_hash"],
-                               kind, "sink-1", "key-1", "sig-1", datetime.now(UTC), read_back)
+        head = await self.head()
+        return await self.checkpoint_at(head["seq"], head_hash or head["head_hash"], kind, read_back)
+
+    async def call_id_of(self, cid, gen=None):
+        return await self.conn.fetchval(
+            "SELECT call_id FROM change_ledger.dispatch_permits WHERE change_id=$1 AND generation="
+            "coalesce($2,(SELECT claim_generation FROM change_ledger.records WHERE change_id=$1))", cid, gen)
+
+    async def evidence(self, cid, kind, content, role="clt_wrk", gen=None, call_id=None, at=None, key=None,
+                       bind=None, sig=None, ch=None):
+        """Record one signed evidence record as `role`; generation / call id default to the current ones."""
+        rec = await self.rec(cid)
+        gen = rec["claim_generation"] if gen is None else gen
+        call_id = call_id or await self.call_id_of(cid)
+        if kind in ("COMPLETION_PROOF", "OBSERVATION"):
+            content = {"generation": gen, "call_id": str(call_id), "nonce": uuid.uuid4().hex, **content}
+        else:
+            content = {"nonce": uuid.uuid4().hex, **content}
+        at = at or datetime.now(UTC) + timedelta(seconds=1)
+        ch = ch or await self.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)",
+                                            json.dumps(content))
+        b = bind or await self.conn.fetchval("SELECT change_ledger.evidence_binding($1,$2,$3,$4,$5,$6)",
+                                             cid, kind, ch, at, gen, call_id)
+        kid, kmat, _ = SIGN_KEYS[key or role]
+        return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content), kid, b,
+                               sig if sig is not None else sha(f"{kmat}:{b}"), gen, call_id)
+
+    async def complete(self, cid, gen, outcome, proof=None, code="STALE_VERSION", **kw):
+        """Writer completion through complete_signed; the signed record is typed by `outcome`."""
+        completion = None
+        if outcome == "SUCCESS":
+            completion = await self.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True},
+                                             role="clt_wri", gen=gen, **kw)
+        elif outcome == "PRE_WRITE_REFUSAL":
+            body = {"class": "a", "result_returned": False, "stage": "PRE_WRITE", "refusal_code": code}
+            if proof is not None:
+                body["no_effect_proof"] = proof
+            completion = await self.evidence(cid, "COMPLETION_PROOF", body, role="clt_wri", gen=gen, **kw)
+        return await self.call("clt_wri", "complete_signed", cid, gen, outcome, completion)
+
+    async def verify(self, cid, passed, role="clt_wrk", fn="verify_signed", **kw):
+        ids = [await self.evidence(cid, k, {"matches": passed}, role=role, **kw)
+               for k in ("FIELD", "MOVEMENT", "VERSION")]
+        return await self.call(role, fn, cid, *ids)
+
+    async def observation(self, cid, present, role="clt_wrk", **extra):
+        body = dict(extra)
+        if present is not None:
+            body["effect_present"] = present
+        return await self.evidence(cid, "OBSERVATION", body, role=role)
+
+    async def resolve_unknown(self, cid, found, proof=None, attributed=False):
+        obs = await self.observation(cid, found)
+        comp = None
+        if proof:
+            comp = await self.evidence(cid, "COMPLETION_PROOF", {"class": proof, "result_returned": False},
+                                       role="clt_wri" if proof == "a" else "clt_wrk")
+        return await self.call("clt_wrk", "resolve_unknown_signed", cid, obs, comp, found, attributed)
+
+    async def cosign(self, role, cid, cls="a", attribution=False, present=None):
+        """A witness cosign through a signed completion proof (class a by the writer, b by the worker); with
+        `present` the matching signed OBSERVATION is recorded too (what operator_resolve requires)."""
+        body = {"class": cls, "result_returned": False}
+        if attribution:
+            body["attribution_proof"] = True
+        comp = await self.evidence(cid, "COMPLETION_PROOF", body, role="clt_wri" if cls == "a" else "clt_wrk")
+        if present is not None:
+            await self.observation(cid, present)
+        return await self.call(role, "witness_cosign_signed", cid, comp)
+
+    async def status(self, cid):
+        st = await self.call("clt_aud", "read_status", cid)
+        return json.loads(st) if isinstance(st, str) else st
+
+    async def approval_digest(self, cid):
+        return (await self.status(cid))["approval_digest"]
 
     async def permitted(self, **kw):
         cid, tok, call_id = await self.applying(**kw)
@@ -154,14 +249,12 @@ class L:
 
     async def unknown(self, **kw):
         cid, tok, call_id = await self.dispatched(**kw)
-        assert await self.call("clt_wri", "complete", cid, tok["generation"], "UNKNOWN",
-                               json.dumps({"why": "timeout"}), None) == "APPLY_UNKNOWN"
+        assert await self.complete(cid, tok["generation"], "UNKNOWN") == "APPLY_UNKNOWN"
         return cid, tok, call_id
 
     async def triage(self, **kw):
         cid, tok, call_id = await self.unknown(**kw)
-        assert await self.call("clt_wrk", "resolve_unknown", cid, json.dumps({"seen": True}), True,
-                               True) == "TRIAGE_REQUIRED"
+        assert await self.resolve_unknown(cid, True, attributed=True) == "TRIAGE_REQUIRED"
         return cid, tok, call_id
 
 
@@ -177,6 +270,10 @@ async def _setup(conn):
             await conn.execute(f'GRANT {g} TO "{role}"')
         for t, c in scopes:
             await conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", role, t, c)
+    for _actor, (kid, kmat, krole) in SIGN_KEYS.items():
+        await conn.execute(
+            "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
+            "VALUES($1,$2,$3,$4,$5)", T, C, kid, krole, kmat)
     for b in BASES:
         await conn.execute(
             "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,"
@@ -401,25 +498,27 @@ async def test_propose_refuses_foreign_identity_unknown_or_revoked_target_and_ba
 # ============================================================================ T4 approval
 async def test_approval_needs_a_distinct_person_and_a_single_use_bound_nonce(led):
     cid = await led.validated(requester="clt_both")
+    dg = await led.approval_digest(cid)
     # the requester's own identity can neither obtain a nonce nor approve
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_both", "issue_approval_nonce", cid))
     nonce = await led.call("clt_bob", "issue_approval_nonce", cid)
-    await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_both", "approve", cid, nonce, DIGEST))
+    await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_both", "approve", cid, nonce, dg))
     assert (await led.rec(cid))["authorization_state"] == "NONE"
     # a nonce is bound to its approver, its change and its digest
-    await fails("APPROVAL_NONCE_INVALID", led.call("clt_carol", "approve", cid, nonce, DIGEST))
-    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, "bogus", DIGEST))
+    await fails("APPROVAL_NONCE_INVALID", led.call("clt_carol", "approve", cid, nonce, dg))
+    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, "bogus", dg))
     await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", cid, nonce, "d" * 64))
     other = await led.validated(request_id="other", base="base-2")
-    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", other, nonce, DIGEST))
+    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", other, nonce,
+                                                   await led.approval_digest(other)))
     # expiry
     await led.conn.execute("UPDATE change_ledger.approval_nonces SET expires_at=now()-interval '1 second' "
                            "WHERE nonce=$1", nonce)
-    await fails("APPROVAL_EXPIRED", led.call("clt_bob", "approve", cid, nonce, DIGEST))
+    await fails("APPROVAL_EXPIRED", led.call("clt_bob", "approve", cid, nonce, dg))
     await led.conn.execute("UPDATE change_ledger.approval_nonces SET expires_at=now()+interval '1 hour' "
                            "WHERE nonce=$1", nonce)
     # valid approval consumes the nonce and writes an immutable approval record
-    aid = await led.call("clt_bob", "approve", cid, nonce, DIGEST)
+    aid = await led.call("clt_bob", "approve", cid, nonce, dg)
     assert (await led.rec(cid))["authorization_state"] == "APPROVED"
     assert await led.conn.fetchval("SELECT state FROM change_ledger.approval_nonces WHERE nonce=$1", nonce) \
         == "CONSUMED"
@@ -428,11 +527,11 @@ async def test_approval_needs_a_distinct_person_and_a_single_use_bound_nonce(led
         == "clt_bob"
     # single use: even if the authorization were reset, the consumed nonce cannot approve again
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='NONE' WHERE change_id=$1", cid)
-    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, nonce, DIGEST))
+    await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, nonce, dg))
     # an approved change cannot be approved a second time with a fresh nonce
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='APPROVED' WHERE change_id=$1", cid)
-    n2 = await led.call("clt_carol", "issue_approval_nonce", cid)
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "approve", cid, n2, DIGEST))
+    # (batch A, A2) the nonce itself is refused for an authorization that is already APPROVED
+    await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "issue_approval_nonce", cid))
 
 
 async def test_reject_consumes_a_nonce_and_is_terminal(led):
@@ -528,7 +627,7 @@ async def test_begin_apply_then_permit_needs_a_real_readback_checkpoint_covering
     # 5. a REAL, correct checkpoint written BEFORE the APPLYING event does not cover it
     stale = await led.conn.fetchval("SELECT max(seq) FROM change_ledger.events WHERE event_type='CLAIMED'")
     h = await led.conn.fetchval("SELECT hash FROM change_ledger.events WHERE seq=$1", stale)
-    await led.call("clt_wrk", "record_checkpoint", stale, h, "REAL", "s", "k", "sig", datetime.now(UTC), True)
+    await led.checkpoint_at(stale, h)
     await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_wrk", "issue_permit", cid, gen))
     assert (await led.rec(cid))["dispatch_state"] == "NOT_PERMITTED"
     # 6. a REAL read-back checkpoint of the current head: the permit is issued, dispatch = PERMITTED
@@ -636,29 +735,28 @@ async def test_complete_outcomes_success_prewrite_refusal_and_verification(led):
     # nothing may be completed as effect-bearing before the dispatch CAS
     cid, tok, call_id, _ = await led.permitted(request_id="o1", base="base-1")
     gen = tok["generation"]
-    await fails("PERMIT_MISSING", led.call("clt_wri", "complete", cid, gen, "SUCCESS", "{}", None))
-    await fails("PERMIT_MISSING", led.call("clt_wri", "complete", cid, gen, "UNKNOWN", "{}", None))
-    await fails("SCHEMA_INVALID", led.call("clt_wri", "complete", cid, gen, "WHATEVER", "{}", None))
-    await fails("TICKET_SUPERSEDED", led.call("clt_wri", "complete", cid, gen + 1, "SUCCESS", "{}", None))
+    await fails("PERMIT_MISSING", led.complete(cid, gen, "SUCCESS"))
+    await fails("PERMIT_MISSING", led.complete(cid, gen, "UNKNOWN"))
+    await fails("SCHEMA_INVALID", led.complete(cid, gen, "WHATEVER"))
+    await fails("TICKET_SUPERSEDED", led.complete(cid, gen + 1, "SUCCESS"))
     # PRE_WRITE refusal needs the no-effect proof; with it: FAILED_APPLY and everything released
-    await fails("WRITE_REFUSED", led.call("clt_wri", "complete", cid, gen, "PRE_WRITE_REFUSAL", "{}", None))
-    assert await led.call("clt_wri", "complete", cid, gen, "PRE_WRITE_REFUSAL", "{}", '{"proof":"no-effect"}') \
-        == "FAILED_APPLY"
+    await fails("WRITE_REFUSED", led.complete(cid, gen, "PRE_WRITE_REFUSAL"))
+    assert await led.complete(cid, gen, "PRE_WRITE_REFUSAL", proof={"proof": "no-effect"}) == "FAILED_APPLY"
     assert await led.locks(cid) == (0, 0, 0)
     assert (await led.rec(cid))["dispatch_state"] == "CANCELLED_UNDISPATCHED"
     # SUCCESS: APPLIED/PROVEN, reservation consumed, target lock kept until T13
     s, stok, scall = await led.dispatched(request_id="o2", base="base-2")
-    assert await led.call("clt_wri", "complete", s, stok["generation"], "SUCCESS", "{}", None) == "APPLIED"
+    assert await led.complete(s, stok["generation"], "SUCCESS") == "APPLIED"
     r = await led.rec(s)
     assert (r["attribution"], r["call_ownership"], r["execution_state"]) == ("PROVEN", "PROVEN_FINISHED", "APPLIED")
     assert await led.locks(s) == (1, 0, 0)
-    assert await led.call("clt_wri", "complete", s, stok["generation"], "SUCCESS", "{}", None) == "APPLIED"
-    assert await led.call("clt_wrk", "verify", s, '{"sig":"v"}', True) == "VERIFIED"
+    assert await led.complete(s, stok["generation"], "SUCCESS") == "APPLIED"
+    assert await led.verify(s, True) == "VERIFIED"
     assert await led.locks(s) == (0, 0, 0)
     # a failed verification halts the base and keeps the target lock
     f, ftok, _ = await led.dispatched(request_id="o3", base="base-3")
-    await led.call("clt_wri", "complete", f, ftok["generation"], "SUCCESS", "{}", None)
-    assert await led.call("clt_wrk", "verify", f, '{"sig":"v"}', False) == "FAILED_VERIFY"
+    await led.complete(f, ftok["generation"], "SUCCESS")
+    assert await led.verify(f, False) == "FAILED_VERIFY"
     assert await led.open_holds("FAILED_VERIFY_HALT") == 1 and await led.locks(f) == (1, 0, 0)
     assert (await led.rec(f))["effect_known"] == "YES"
 
@@ -674,8 +772,7 @@ async def test_unknown_outcome_keeps_lock_lease_reservation_and_opens_call_owner
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", cid, tok["generation"])
     await led.call("clt_wri", "record_call", cid, tok["generation"], call_id)
-    assert await led.call("clt_wri", "complete", cid, tok["generation"], "UNKNOWN", '{"e":"timeout"}', None) \
-        == "APPLY_UNKNOWN"
+    assert await led.complete(cid, tok["generation"], "UNKNOWN") == "APPLY_UNKNOWN"
     r = await led.rec(cid)
     assert (r["execution_state"], r["call_ownership"], r["reservation_state"]) == \
         ("APPLY_UNKNOWN", "POSSIBLY_EXECUTING", "RESERVED")
@@ -696,15 +793,11 @@ async def test_unknown_outcome_keeps_lock_lease_reservation_and_opens_call_owner
 async def test_resolve_unknown_needs_completion_proof_and_never_attributes_presence(led):
     cid, tok, _ = await led.unknown(request_id="r1", base="base-1")
     # absence without an independent PROVEN_FINISHED proof is refused, nothing changes
-    await fails("COMPLETION_PROOF_MISSING", led.call("clt_wrk", "resolve_unknown", cid, '{"absent":true}',
-                                                     False, False))
-    await fails("COMPLETION_PROOF_MISSING", led.call("clt_wrk", "resolve_unknown", cid,
-                                                     '{"completion_proof":{"class":"c"}}', False, False))
+    await fails("COMPLETION_PROOF_MISSING", led.resolve_unknown(cid, False))
     r = await led.rec(cid)
     assert r["execution_state"] == "APPLY_UNKNOWN" and await led.open_holds("CALL_OWNERSHIP") == 1
     # presence, even with an attribution claim: TRIAGE_REQUIRED, never APPLIED / PROVEN, hold and locks kept
-    assert await led.call("clt_wrk", "resolve_unknown", cid, '{"completion_proof":{"class":"a"}}', True, True) \
-        == "TRIAGE_REQUIRED"
+    assert await led.resolve_unknown(cid, True, proof="a", attributed=True) == "TRIAGE_REQUIRED"
     r = await led.rec(cid)
     assert (r["execution_state"], r["attribution"], r["call_ownership"]) == \
         ("TRIAGE_REQUIRED", "NOT_APPLICABLE", "POSSIBLY_EXECUTING")
@@ -721,16 +814,15 @@ async def test_resolve_unknown_needs_completion_proof_and_never_attributes_prese
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", c2, t2["generation"])
     await led.call("clt_wri", "record_call", c2, t2["generation"], k2)
-    await led.call("clt_wri", "complete", c2, t2["generation"], "UNKNOWN", "{}", None)
-    assert await led.call("clt_wrk", "resolve_unknown", c2, '{"completion_proof":{"class":"b"}}', False, False) \
-        == "FAILED_APPLY"
+    await led.complete(c2, t2["generation"], "UNKNOWN")
+    assert await led.resolve_unknown(c2, False, proof="b") == "FAILED_APPLY"
     assert await led.locks(c2) == (0, 0, 0) and await led.res_state(c2) == "RELEASED"
     assert (await led.rec(c2))["reservation_state"] == "RELEASED"
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.holds WHERE change_id=$1 AND "
                                    "released_at IS NOT NULL", c2) == 1
-    # T12 explicit: not yet resolvable -> triage
+    # T12 explicit: an inconclusive observation (no verdict) -> triage
     c3, _, _ = await led.unknown(request_id="r3", base="base-3")
-    assert await led.call("clt_wrk", "resolve_unknown", c3, "{}", None, False) == "TRIAGE_REQUIRED"
+    assert await led.resolve_unknown(c3, None) == "TRIAGE_REQUIRED"
 
 
 # ============================================================================ T16
@@ -745,20 +837,16 @@ async def test_operator_resolve_needs_two_distinct_signers_and_completion_proof(
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", cid, tok["generation"])
     await led.call("clt_wri", "record_call", cid, tok["generation"], call_id)
-    await led.call("clt_wri", "complete", cid, tok["generation"], "UNKNOWN", "{}", None)
-    await led.call("clt_wrk", "resolve_unknown", cid, "{}", True, False)
+    await led.complete(cid, tok["generation"], "UNKNOWN")
+    await led.resolve_unknown(cid, True)
     assert (await led.rec(cid))["execution_state"] == "TRIAGE_REQUIRED"
     # no witness co-signature at all
     await fails("COMPLETION_PROOF_MISSING", led.call("clt_dave", "operator_resolve", cid, uuid.uuid4(), True, False))
-    # a co-signature without an independent completion proof does not count
-    weak = await led.call("clt_erin", "witness_cosign", cid, '{"note":"looks done"}')
-    await fails("COMPLETION_PROOF_MISSING", led.call("clt_dave", "operator_resolve", cid, weak, True, False))
     # the same person cannot be operator and witness
-    own = await led.call("clt_dave", "witness_cosign", cid, '{"class":"a"}')
+    own = await led.cosign("clt_dave", cid, present=True)
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_resolve", cid, own, True, False))
-    await fails("COMPLETION_PROOF_MISSING", led.call("clt_erin", "witness_cosign", cid, None))
     # an attributed claim without an attribution proof is refused
-    good = await led.call("clt_erin", "witness_cosign", cid, '{"class":"a"}')
+    good = await led.cosign("clt_erin", cid, present=True)
     await fails("ATTRIBUTION_UNPROVEN", led.call("clt_dave", "operator_resolve", cid, good, True, True))
     assert (await led.rec(cid))["execution_state"] == "TRIAGE_REQUIRED" and await led.open_holds("CALL_OWNERSHIP") == 1
     # valid: present and unattributed -> APPLIED with the explicit unproven marker; hold released; TL kept
@@ -776,16 +864,16 @@ async def test_operator_resolve_needs_two_distinct_signers_and_completion_proof(
 async def test_operator_resolve_absent_releases_and_requester_cannot_witness_own_change(led):
     cid, tok, _ = await led.triage(request_id="t16b", base="base-1", requester="clt_dave")
     # dave is the requester of this change: he can neither sign as witness nor operate it
-    own = await led.call("clt_dave", "witness_cosign", cid, '{"class":"b"}')
+    own = await led.cosign("clt_dave", cid, cls="b", present=False)
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_erin", "operator_resolve", cid, own, False, False))
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_resolve", cid, own, False, False))
-    good = await led.call("clt_erin", "witness_cosign", cid, '{"class":"b"}')
+    good = await led.cosign("clt_erin", cid, cls="b")
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_resolve", cid, good, False, False))
     assert await led.open_holds("CALL_OWNERSHIP") == 1
     # the cosign of a third operator, resolved by a non-requester operator: absent -> FAILED_APPLY, all released
     await led.conn.execute("GRANT operator_role TO clt_carol")
     await led.conn.execute("SELECT change_ledger.add_role_scope('clt_carol',$1,$2)", T, C)
-    w = await led.call("clt_carol", "witness_cosign", cid, '{"class":"a"}')
+    w = await led.cosign("clt_carol", cid)
     assert await led.call("clt_erin", "operator_resolve", cid, w, False, False) == "FAILED_APPLY"
     assert await led.locks(cid) == (0, 0, 0) and await led.open_holds("CALL_OWNERSHIP") == 0
     assert (await led.rec(cid))["reservation_state"] in ("RELEASED", "NONE")
@@ -802,8 +890,8 @@ async def _failed_parent(led, base=BASE, target="doc1"):
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", ver, tok["generation"])
     await led.call("clt_wri", "record_call", ver, tok["generation"], k)
-    await led.call("clt_wri", "complete", ver, tok["generation"], "SUCCESS", "{}", None)
-    await led.call("clt_wrk", "verify", ver, '{"s":1}', True)
+    await led.complete(ver, tok["generation"], "SUCCESS")
+    await led.verify(ver, True)
     post = await led.approved(kind="POST", parent=ver, request_id=f"post-{base}", base=base, target=target)
     tok = await led.claimed(post, key="9" * 64)
     k = uuid.uuid4()
@@ -811,8 +899,8 @@ async def _failed_parent(led, base=BASE, target="doc1"):
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", post, tok["generation"])
     await led.call("clt_wri", "record_call", post, tok["generation"], k)
-    await led.call("clt_wri", "complete", post, tok["generation"], "SUCCESS", "{}", None)
-    assert await led.call("clt_wrk", "verify", post, '{"s":2}', False) == "FAILED_VERIFY"
+    await led.complete(post, tok["generation"], "SUCCESS")
+    assert await led.verify(post, False) == "FAILED_VERIFY"
     return post
 
 
@@ -866,8 +954,7 @@ async def test_repair_claim_hands_the_target_lock_over_atomically_and_hands_it_b
     tok = await led.claimed(rep, key="5" * 64)
     k = uuid.uuid4()
     await led.call("clt_alice", "begin_apply", tok["token_id"], k, "h", "s")
-    assert await led.call("clt_wri", "complete", rep, tok["generation"], "PRE_WRITE_REFUSAL", "{}",
-                          '{"proof":"stale"}') == "FAILED_APPLY"
+    assert await led.complete(rep, tok["generation"], "PRE_WRITE_REFUSAL", proof={"proof": "stale"}) == "FAILED_APPLY"
     assert await led.tl_owner(BASE, "doc1") == parent and await led.open_holds("FAILED_VERIFY_HALT") == 1
     assert await led.locks(rep) == (0, 0, 0)
 
@@ -887,7 +974,7 @@ async def test_repair_after_dispatch_does_not_hand_back_and_success_releases_the
     assert await led.call("clt_wrk", "recover_sweep") == 0
     assert await led.tl_owner(BASE, "doc1") == rep
     # an unknown outcome keeps the repair as owner and opens CALL_OWNERSHIP next to the parent's halt
-    await led.call("clt_wri", "complete", rep, tok["generation"], "UNKNOWN", "{}", None)
+    await led.complete(rep, tok["generation"], "UNKNOWN")
     assert await led.tl_owner(BASE, "doc1") == rep
     assert await led.open_holds("CALL_OWNERSHIP") == 1 and await led.open_holds("FAILED_VERIFY_HALT") == 1
     # second repair of the same halt is impossible while the first one is unresolved
@@ -905,8 +992,8 @@ async def test_repair_applied_and_verified_releases_the_parent_halt(led):
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", rep, tok["generation"])
     await led.call("clt_wri", "record_call", rep, tok["generation"], k)
-    await led.call("clt_wri", "complete", rep, tok["generation"], "SUCCESS", "{}", None)
-    assert await led.call("clt_wrk", "verify", rep, '{"s":3}', True) == "VERIFIED"
+    await led.complete(rep, tok["generation"], "SUCCESS")
+    assert await led.verify(rep, True) == "VERIFIED"
     assert await led.open_holds("FAILED_VERIFY_HALT") == 0
     assert await led.tl_owner(BASE, "doc1") is None
     assert (await led.rec(parent))["verification_state"] == "FAILED_VERIFY"      # history is kept
@@ -920,8 +1007,8 @@ async def test_repair_for_a_parent_that_is_not_failed_verify_is_refused(led):
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", ok_parent, tok["generation"])
     await led.call("clt_wri", "record_call", ok_parent, tok["generation"], k)
-    await led.call("clt_wri", "complete", ok_parent, tok["generation"], "SUCCESS", "{}", None)
-    await led.call("clt_wrk", "verify", ok_parent, '{"s":1}', True)
+    await led.complete(ok_parent, tok["generation"], "SUCCESS")
+    await led.verify(ok_parent, True)
     rep = await _repair(led, ok_parent)
     await fails("PARENT_NOT_VERIFIED", led.claimed(rep, key="5" * 64))
 
@@ -957,8 +1044,8 @@ async def test_kill_switch_modes_refuse_admission_and_effect_steps_but_not_obser
     # REVOKE additionally voids the unclaimed approvals (contract section 6), so the sweep changes more
     assert await led.call("clt_wrk", "recover_sweep") == (3 if mode == "REVOKE" else 1)
     # in-flight DISPATCHED call follows the call: complete is allowed under every mode
-    assert await led.call("clt_wri", "complete", dispatched, dtok["generation"], "SUCCESS", "{}", None) == "APPLIED"
-    assert await led.call("clt_wrk", "verify", dispatched, '{"s":1}', True) == "VERIFIED"
+    assert await led.complete(dispatched, dtok["generation"], "SUCCESS") == "APPLIED"
+    assert await led.verify(dispatched, True) == "VERIFIED"
     # events of the switch are on the chain and the chain still verifies
     assert (await led.call("clt_aud", "verify_chain"))["ok"] is True
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE event_type='KILL_SWITCH' "
