@@ -1,3 +1,5 @@
+[Reading 3427 lines from start (total: 3427 lines, 0 remaining)]
+
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ERP_MCP — Engineering Command Center</title><style>
 :root{--bg:#eef2f5;--paper:#fff;--ink:#17243a;--muted:#6f7f95;--navy:#061a3f;--navy2:#0a2758;--line:#d9e2ea;--blue:#5ba8ff;--green:#43d17c;--amber:#f1a51a;--red:#ef5a65;--soft:#f7f9fb;--shadow:0 18px 50px rgba(24,47,76,.10)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,Segoe UI,Arial,sans-serif}button,input{font:inherit}a{color:#2368bb}.wrap{max-width:1720px;margin:0 auto;padding:24px 34px 80px}.topbar{position:sticky;top:0;z-index:50;background:rgba(238,242,245,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 0}.tabs{display:flex;gap:9px;flex-wrap:wrap}.tab{border:1px solid #cfd9e1;background:#fff;border-radius:10px;padding:10px 16px;font-weight:700;color:#22344b;box-shadow:0 1px 2px rgba(0,0,0,.03);cursor:pointer}.tab:hover,.tab.active{border-color:#8bbbf4;color:#0b5eb6;background:#f5faff}.hero{margin-top:24px;background:linear-gradient(145deg,#061839,#071e49 60%,#082458);border-radius:20px;padding:36px 34px;color:#eaf3ff;box-shadow:var(--shadow);overflow:hidden;position:relative}.hero:after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(83,166,255,.22),transparent 68%);right:-120px;bottom:-170px}.hero-title{text-align:center;margin-bottom:12px}.hero h1{font-family:Georgia,serif;font-size:48px;line-height:1.1;margin:0}.hero h1 strong{color:#5aa9ff}.hero-sub{text-align:center;color:#9fb8d8;font-size:16px;margin:12px 0 28px}.badges{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:22px}.badge{border:1px solid #31588b;background:#0d2b5d;border-radius:999px;padding:6px 11px;color:#bad0eb;font-size:12px;font-weight:700}.phase-grid{display:grid;grid-template-columns:repeat(6,minmax(160px,1fr));gap:12px;position:relative;z-index:1}.phase-card{border:1px solid #28538d;background:rgba(7,31,72,.86);border-radius:14px;padding:14px;min-height:152px}.phase-code{color:#7fbcff;font:700 12px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em}.phase-name{font-weight:800;margin:5px 0 5px;font-size:15px}.phase-desc{color:#b7c7db;font-size:12.5px;min-height:38px}.phase-stat{color:#8ea6c3;margin-top:7px;font-size:12px}.bar{height:5px;background:#163f78;border-radius:9px;margin-top:8px;overflow:hidden}.bar span{display:block;height:100%;border-radius:9px;background:#3f86d7}.phase-card.complete .bar span{background:var(--green)}.phase-card.progress .bar span{background:#57a8ff}.phase-card.planned .bar span{background:#4984c8}.phase-card.optional .bar span{background:#8a96a6}.phase-card.notstarted .bar span{background:#cad3dc}.legend{display:flex;justify-content:center;gap:22px;margin-top:22px;color:#a9bad1;font-size:12px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}.summary-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin:22px 0}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:21px;box-shadow:0 7px 24px rgba(42,68,99,.06)}.panel h3{margin:0 0 14px;font-size:18px}.metric-row{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.metric{background:#f5f8fb;border:1px solid #e0e7ee;border-radius:12px;padding:14px}.metric b{font-size:23px;display:block;color:#17395e}.metric span{font-size:11px;color:#72839a}.invariants{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.inv{padding:10px 12px;border-left:3px solid #4d9df4;background:#f7faff;border-radius:6px;font-size:13px}.inv strong{display:block;color:#143a66}.architecture-mini{background:#061a3f;color:#dcecff;border-radius:13px;padding:18px;font-family:ui-monospace,Consolas,monospace;white-space:pre;overflow:auto;font-size:12px}.gate-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.gate{background:#fff;border:1px solid #d8e1e9;border-radius:10px;padding:10px}.gate span{display:block;color:#1f70c6;font-weight:800;font-family:ui-monospace,monospace}.gate b{display:block;font-size:12px;margin:3px 0}.gate em{font-size:10px;color:#8090a4;font-style:normal;text-transform:uppercase;letter-spacing:.08em}.content-layout{display:grid;grid-template-columns:285px 1fr;gap:20px;margin-top:22px}.sidebar{position:sticky;top:79px;height:calc(100vh - 100px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 7px 24px rgba(42,68,99,.05)}.search{width:100%;padding:10px 11px;border:1px solid #cfd9e1;border-radius:9px;margin-bottom:10px}.filter-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}.chip{font-size:10px;border:1px solid #d7e0e8;background:#f7f9fb;border-radius:999px;padding:5px 8px;cursor:pointer}.chip.active{background:#e8f3ff;border-color:#7eb9f9;color:#105fae}.doc-link{width:100%;text-align:left;border:0;border-bottom:1px solid #edf1f4;background:#fff;padding:8px 7px;cursor:pointer;color:#34465d;font-size:12.5px}.doc-link:hover{background:#f4f8fc;color:#1265b6}.doc-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 30px;margin-bottom:18px;box-shadow:0 7px 24px rgba(42,68,99,.05)}.doc-head{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e9eef3;padding-bottom:14px;margin-bottom:18px}.doc-head h2{margin:3px 0 0;font-size:25px}.eyebrow{color:#4d8ed1;text-transform:uppercase;font-size:10px;font-weight:900;letter-spacing:.13em}.toplink{font-size:11px;color:#8090a4;text-decoration:none}.md h1{font-family:Georgia,serif;font-size:31px;margin-top:5px;color:#10294b}.md h2{font-size:21px;margin-top:30px;color:#153d6c}.md h3{font-size:17px;margin-top:23px}.md h4{font-size:15px}.md p,.md li{color:#33455d}.md code{background:#eef3f8;color:#194e82;padding:2px 5px;border-radius:5px;font-family:ui-monospace,Consolas,monospace}.md pre{background:#061a3f;color:#d9eaff;border-radius:12px;padding:16px;overflow:auto}.md pre code{background:transparent;color:inherit;padding:0}.md blockquote{border-left:4px solid #5ca8f8;background:#f4f9ff;margin:18px 0;padding:10px 16px;color:#315475}.md table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12.5px}.md th{background:#eef4fa;text-align:left}.md th,.md td{border:1px solid #dbe3ea;padding:8px;vertical-align:top}.md strong{color:#152f50}.hidden{display:none!important}.footer{text-align:center;color:#8190a3;font-size:11px;margin-top:26px}.status-note{color:#79889b;font-size:11px;margin-top:7px;text-align:center}.print-note{font-size:11px;color:#7b8b9e}.kbd{font-family:ui-monospace,monospace;background:#f1f4f7;border:1px solid #d8e0e7;border-bottom-width:2px;border-radius:5px;padding:1px 5px}
@@ -8,59 +10,99 @@
 <body id="top"><div class="topbar"><div class="wrap" style="padding-top:0;padding-bottom:0"><div class="tabs">
 <button class="tab active" data-target="status">Статус</button><button class="tab" data-target="master-plan">Мастер-план</button><button class="tab" data-target="gates">Гейты</button><button class="tab" data-target="architecture">Архитектура</button><button class="tab" data-target="documents">Документы</button><button class="tab" onclick="window.print()">Печать / PDF</button>
 </div></div></div>
-<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.0 · 1C-first Production MVP · snapshot 2026-10-05 · branch bootstrap/1c-day1-production</div></div>
-<div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span></div>
+<div class="wrap"><section class="hero" id="status"><div class="hero-title"><h1><strong>ERP_MCP</strong> — engineering command center</h1><div class="hero-sub">Normative baseline v1.1 · SCOPE FROZEN 2026-10-06 · freeze code 65883a5 · baseline 57eb5b0 · CI 37446049853 PASS</div></div>
+<div class="badges"><span class="badge">READ-ONLY HARD BOUNDARY</span><span class="badge">FAIL-CLOSED</span><span class="badge">REUSE BEFORE REWRITE</span><span class="badge">30–150+ COMPANIES</span><span class="badge">ACCOUNTING RECONCILIATION REQUIRED</span><span class="badge">SCOPE FROZEN · NO NEW FEATURES</span></div>
 <div class="phase-grid" id="master-plan"><div class="phase-card complete">
   <div class="phase-code">P0</div><div class="phase-name">Docs & decisions</div>
   <div class="phase-desc">Нормативный baseline</div><div class="phase-stat">закрыт · 100%</div>
   <div class="bar"><span style="width:100%"></span></div></div><div class="phase-card progress">
   <div class="phase-code">P1</div><div class="phase-name">Control plane</div>
-  <div class="phase-desc">OAuth · ACL · Registry · Audit</div><div class="phase-stat">в работе · 68%</div>
-  <div class="bar"><span style="width:68%"></span></div></div><div class="phase-card progress">
+  <div class="phase-desc">ACL lifecycle + append-only audit: integrated CI PASS</div><div class="phase-stat">в candidate #11 · upstream PR #9/#10 ещё Draft</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P2</div><div class="phase-name">Capability router</div>
-  <div class="phase-desc">Fingerprint · routing · drift</div><div class="phase-stat">в работе · 62%</div>
-  <div class="bar"><span style="width:62%"></span></div></div><div class="phase-card planned">
+  <div class="phase-desc">Per-source capabilities · drift · deny unconfirmed</div><div class="phase-stat">OData contract PASS · live profiles открыты</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P3</div><div class="phase-name">Modern OData</div>
-  <div class="phase-desc">@1c-odata read-only plane</div><div class="phase-stat">план · 15%</div>
-  <div class="bar"><span style="width:15%"></span></div></div><div class="phase-card notstarted">
+  <div class="phase-desc">Pinned sidecar + upstream/contract tests: PASS</div><div class="phase-stat">candidate CI PASS · live parity/1C ещё не проверены</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P4</div><div class="phase-name">Semantic accounting</div>
-  <div class="phase-desc">AR/AP · sales · cash · stock</div><div class="phase-stat">не начат · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card progress">
-  <div class="phase-code">P5</div><div class="phase-name">Real 1C testbed</div>
-  <div class="phase-desc">L2 reconciliation evidence</div><div class="phase-stat">в работе · 20%</div>
-  <div class="bar"><span style="width:20%"></span></div></div><div class="phase-card planned">
+  <div class="phase-desc">Profiles · balances · documents · movements</div><div class="phase-stat">candidate CI PASS · native сверка открыта</div>
+  </div><div class="phase-card progress">
+  <div class="phase-code">P5</div><div class="phase-name">Dual 1C assurance</div>
+  <div class="phase-desc">P5-A Real Reference + P5-B Ferma Controlled Synthetic</div><div class="phase-stat">L1 PASS · private reference restore/native reconciliation + Ferma L2 remain active frozen scope</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P6</div><div class="phase-name">COM / extension</div>
-  <div class="phase-desc">RSV Data fallback</div><div class="phase-stat">план · 10%</div>
-  <div class="bar"><span style="width:10%"></span></div></div><div class="phase-card optional">
-  <div class="phase-code">P7</div><div class="phase-name">Legacy 8.2</div>
-  <div class="phase-desc">isolated GPL route</div><div class="phase-stat">опционально · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card progress">
+  <div class="phase-desc">1C 8.3.27.2342 + V83.COMConnector + RSV metadata smoke: PASS</div><div class="phase-stat">metadata allowlist proven · query default DENY · execute_query DENY · reveal HARD DENY</div>
+  </div><div class="phase-card optional">
+  <div class="phase-code">P7</div><div class="phase-name">Legacy 8.2 / 7.7</div>
+  <div class="phase-desc">Demand-gated isolated compatibility lanes</div><div class="phase-stat">8.2 Windows VM/service · 7.7 parser/VM only on concrete target · not active completion blocker</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P8</div><div class="phase-name">Prod hardening</div>
-  <div class="phase-desc">OTel · load · DR · SBOM</div><div class="phase-stat">в работе · 15%</div>
-  <div class="bar"><span style="width:15%"></span></div></div><div class="phase-card notstarted">
+  <div class="phase-desc">Restore drill + synthetic ACL load + secret rotation test</div><div class="phase-stat">локально PASS · production capacity/deploy открыты</div>
+  </div><div class="phase-card progress">
   <div class="phase-code">P9</div><div class="phase-name">Pilot & GO</div>
-  <div class="phase-desc">controlled production gate</div><div class="phase-stat">не начат · 0%</div>
-  <div class="bar"><span style="width:0%"></span></div></div><div class="phase-card planned">
-  <div class="phase-code">P10</div><div class="phase-name">ERP / Ferma</div>
-  <div class="phase-desc">future adapters</div><div class="phase-stat">план · 5%</div>
-  <div class="bar"><span style="width:5%"></span></div></div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>в работе</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>не начат / опционально</span></div>
-<div class="status-note">Проценты — визуальная оценка текущей реализации по Master Plan, не замена формального DoD closure.</div></section>
-<section class="summary-grid"><div class="panel"><h3>Baseline в цифрах</h3><div class="metric-row"><div class="metric"><b>28</b><span>документов в HTML</span></div><div class="metric"><b>19</b><span>DoD gates D0–D18</span></div><div class="metric"><b>30</b><span>рисков в register</span></div><div class="metric"><b>6</b><span>accepted ADR</span></div><div class="metric"><b>3</b><span>уровня 1C testbed</span></div></div></div>
-<div class="panel"><h3>Неподвижные инварианты</h3><div class="invariants"><div class="inv"><strong>Read-only</strong>Нет mutation surface для 1C MVP.</div><div class="inv"><strong>Fail-closed</strong>Auth/state/secrets нельзя обойти dev-mode.</div><div class="inv"><strong>Server-side ACL</strong>AI не выбирает произвольный endpoint.</div><div class="inv"><strong>Accounting evidence</strong>Нативная сверка 1C обязательна.</div></div></div></section>
+  <div class="phase-desc">Fail-closed pilot evidence validator</div><div class="phase-stat">PR #7 Draft · production GO не подтверждён</div>
+  </div><div class="phase-card planned">
+  <div class="phase-code">P10</div><div class="phase-name">Production ERP / Ferma</div>
+  <div class="phase-desc">recorded deferred production adapters</div><div class="phase-stat">не продвигаются при freeze · Ferma test/oracle role активен только внутри P5-B</div>
+  </div></div><div class="legend"><span><i style="background:#43d17c"></i>закрыт</span><span><i style="background:#57a8ff"></i>реализация / проверка</span><span><i style="background:#4984c8"></i>план</span><span><i style="background:#cad3dc"></i>опционально</span></div>
+<div class="status-note"><strong>SCOPE FREEZE ACTIVE.</strong> PR #11 Draft/mergeable, freeze code checkpoint <code>65883a5</code>; baseline <code>57eb5b0</code>; hosted CI <code>37446049853</code> PASS. Новые feature/scenario/adapter/integration families запрещены до закрытия текущего committed scope или явного operator rebaseline. CI PASS не означает Production GO.</div></section><section class="panel" id="scope-freeze" style="margin-top:18px;border:2px solid #57a8ff">
+<h3>Scope Freeze · baseline 2026-10-06 · commit <code>57eb5b0</code></h3>
+<p><strong>Решение оператора:</strong> дальнейшие добавления продукта заморожены. Выполняем только уже принятый scope, defect/security/compliance fixes и evidence/ops работу, необходимую для его закрытия. Любая новая задача обязана ответить: <em>какой существующий frozen requirement/gate она закрывает?</em> Если ответа нет — это scope expansion и она ждёт явного rebaseline.</p>
+<div class="summary-grid">
+<div><h4>Committed / current scope</h4><ul>
+<li>Read-only 1C control plane: OAuth/OIDC, source/company ACL, 30–150+, instant grant/revoke, secrets, audit, limits.</li>
+<li>Modern OData + capability-first routing + semantic profiles and accounting primitives.</li>
+<li>DAD read-only assurance: 6 accountant checks, invoice reconciliation, month-close rule packs, P&amp;L/CF/BS, bank/Z/terminal/customs/CCAC, VAT/IPC/VEN and payroll prechecks with evidence/human review.</li>
+<li>External Evidence Plane for already accepted document/evidence classes.</li>
+<li>P5-A private Real Reference + P5-B Ferma Controlled Synthetic + native reconciliation.</li>
+<li>P6 audited COM/RSV metadata fallback, production hardening, D0–D18 and pilot closure.</li>
+</ul></div>
+<div><h4>Frozen deferred lanes</h4><ul>
+<li>Legacy 8.2/7.7 runtime implementation without a concrete target.</li>
+<li>Future production write plane: invoice/payment/cash-register mutations.</li>
+<li>Production ERP/Ferma adapters. Ferma remains active only as P5 test/oracle.</li>
+</ul>
+<p><strong>Freeze release barrier:</strong> current committed scope reaches declared acceptance, P5 real/synthetic evidence closes, DAD R0–R7 closes, mandatory D0–D18 target gates close, and no actionable blocker/high risk is silently deferred.</p></div>
+</div>
+</section>
+<section class="panel" id="latest-delivery-summary" style="margin-top:18px">
+<h3>Обновление 2026-10-06 — frozen integration candidate</h3>
+<p><strong>PR #11 Draft / mergeable · HEAD <code>65883a5</code> · hosted CI <code>37446049853</code> PASS.</strong> Последний autonomous non-production closure дал локально до <strong>199 passed / 9 skipped</strong>; offline/CI-verifiable fault injection, RSV lifecycle, performance evidence, alert/report-reference gates, release/rollback artifacts и operational runbooks закрыты как engineering evidence. Production GO остаётся NO-GO.</p>
+<p><strong>Реальная локальная 1С:</strong> установлена 1C 8.3.27.2342 x64, Community/Developer License активна, <code>V83.COMConnector</code> создаётся и подключается. Official RSV Data v1.3.0 установлен в disposable base, выгружен в XML/BSL и audited; live <code>ping/config/describe/get_structure/help</code> прошли. Это снимает старый blocker «нет Windows/COM/1C» для P6 metadata boundary.</p>
+<p><strong>P5 изменён:</strong> P5-A = private <code>REFERENCE_TEST_BASE_A</code> (immutable golden → RO clone → exact config/native reports/known errors); P5-B = Ferma deterministic synthetic + independent oracle + test-only 1C seeder. Эти пути дополняют друг друга.</p>
+<p><strong>Новый DAD frozen scope:</strong> External Evidence Plane + versioned DAD rule packs + six accountant checks + invoice/e-factura read-only reconciliation + P&amp;L/CF/BS + accepted bank/Z/terminal/customs/CCAC/tax/payroll precheck families. Missing evidence must be explicit, not guessed.</p>
+<p><strong>Ближайшая незакрытая работа:</strong> private reference-base acquisition/hash/restore/fingerprint, exact real semantic profile/native-report reconciliation, DAD R1–R7 implementation, production deployment/IdP/network/secrets/PITR/rollback/pilot evidence. Новые product additions запрещены.</p>
+</section>
+<section class="summary-grid"><div class="panel"><h3>Baseline в цифрах</h3><div class="metric-row"><div class="metric"><b>31</b><span>required baseline docs</span></div><div class="metric"><b>19</b><span>DoD gates D0–D18</span></div><div class="metric"><b>35</b><span>рисков в register</span></div><div class="metric"><b>6</b><span>accepted ADR</span></div><div class="metric"><b>4</b><span>L1 / L2-A / L2-B / L3</span></div></div></div>
+<div class="panel"><h3>Неподвижные инварианты</h3><div class="invariants"><div class="inv"><strong>Read-only</strong>Нет mutation surface для 1C MVP.</div><div class="inv"><strong>Fail-closed</strong>Auth/state/secrets нельзя обойти dev-mode.</div><div class="inv"><strong>Server-side ACL</strong>AI не выбирает произвольный endpoint.</div><div class="inv"><strong>Accounting evidence</strong>Нативная сверка 1C обязательна.</div><div class="inv"><strong>Scope freeze</strong>Новый scope только через явный operator rebaseline.</div></div></div></section>
 <section class="panel" id="architecture"><h3>Архитектура в одном экране</h3><div class="architecture-mini">AI / MCP Clients
        │ OAuth/OIDC + HTTPS
        ▼
 ERP_MCP CONTROL PLANE
 Auth · ACL · Registry · Policy · Audit · Limits · Semantics
        │
-Capability Router
-   ┌───┼────────────┐
-   ▼   ▼            ▼
-OData  RSV/COM   Legacy 8.2
- MIT    MIT       isolated GPL
-   └───┴────────────┘
-       ▼
-       1C</div></section>
+       ├──────── Capability Router ────────┐
+       │                                   │
+       ▼                                   ▼
+OData V3                         RSV/COM / Legacy
+       │                                   │
+       └────────────────┬──────────────────┘
+                        ▼
+                  1C Data Plane
+                        │
+                        ├──────────────┐
+                        │              │
+                        ▼              ▼
+                Semantic Layer   External Evidence Plane
+                        │              │
+                        └───────┬──────┘
+                                ▼
+                         DAD Rule Engine
+                                ▼
+                     Findings / Answers / Evidence
+
+ASSURANCE: Real Reference 1C + Ferma Synthetic → Native 1C reconciliation → ERP_MCP proof</div></section>
 <section class="panel" id="gates" style="margin-top:18px"><h3>DoD gate map — D0…D18</h3><div class="gate-grid"><div class="gate"><span>D0</span><b>Documentation &amp; traceability</b><em>tracked</em></div><div class="gate"><span>D1</span><b>Build &amp; dependency integrity</b><em>tracked</em></div><div class="gate"><span>D2</span><b>Authentication</b><em>tracked</em></div><div class="gate"><span>D3</span><b>Authorization &amp; isolation</b><em>tracked</em></div><div class="gate"><span>D4</span><b>Secrets</b><em>tracked</em></div><div class="gate"><span>D5</span><b>Read-only guarantee</b><em>tracked</em></div><div class="gate"><span>D6</span><b>SSRF / transport safety</b><em>tracked</em></div><div class="gate"><span>D7</span><b>Compatibility routing</b><em>tracked</em></div><div class="gate"><span>D8</span><b>Data-plane correctness</b><em>tracked</em></div><div class="gate"><span>D9</span><b>Accounting correctness</b><em>tracked</em></div><div class="gate"><span>D10</span><b>Multi-company operation</b><em>tracked</em></div><div class="gate"><span>D11</span><b>Audit &amp; provenance</b><em>tracked</em></div><div class="gate"><span>D12</span><b>Observability</b><em>tracked</em></div><div class="gate"><span>D13</span><b>Performance &amp; limits</b><em>tracked</em></div><div class="gate"><span>D14</span><b>Resilience</b><em>tracked</em></div><div class="gate"><span>D15</span><b>Backup / restore / rollback</b><em>tracked</em></div><div class="gate"><span>D16</span><b>Production deployment</b><em>tracked</em></div><div class="gate"><span>D17</span><b>Operations &amp; support</b><em>tracked</em></div><div class="gate"><span>D18</span><b>Pilot closure</b><em>tracked</em></div></div><div class="print-note" style="margin-top:10px">Статус “tracked” означает: gate нормативно определён. Фактический PASS фиксируется только evidence по exact release/environment.</div></section>
 <section class="content-layout" id="documents"><aside class="sidebar"><input id="search" class="search" placeholder="Поиск по документам…  /"><div class="filter-row"><button class="chip active" data-cat="all">все</button><button class="chip" data-cat="core">core</button><button class="chip" data-cat="plan">plan</button><button class="chip" data-cat="architecture">arch</button><button class="chip" data-cat="governance">gov</button><button class="chip" data-cat="gates">gates</button><button class="chip" data-cat="security">security</button><button class="chip" data-cat="adapter">1C/adapters</button><button class="chip" data-cat="quality">test</button><button class="chip" data-cat="operations">ops</button><button class="chip" data-cat="risk">risk</button><button class="chip" data-cat="adr">ADR</button></div><button class="doc-link" data-target="doc-document-index" data-cat="core">Индекс документов</button>
 <button class="doc-link" data-target="doc-tdd" data-cat="core">TDD</button>
@@ -444,12 +486,16 @@ transport safely.</li>
 30–150+ companies, tolerate heterogeneous 1C deployments, and produce accounting answers that are
 reconcilable with native 1C reports.</p>
 <h2>Phase map</h2>
-<table>
+<p><strong>Статус на 2026-10-06.</strong> Интегрированный candidate <a href="https://github.com/xLZDx/ERP_MCP/pull/11">PR #11</a> — Draft, head <code>65883a5</code>; hosted CI <code>37446049853</code> PASS · SCOPE FROZEN. Source PR #2–#10 остаются Draft. «CI PASS» подтверждает проверенный код; закрытие фазы требует exit criteria и evidence конкретной базы/релиза. «Осталось» — работа; «Блокер» — недостающая зависимость/среда.</p>
+<div style="overflow-x:auto"><table id="phase-status-map" style="min-width:1250px">
 <thead>
 <tr>
   <th>Phase</th>
   <th>Name</th>
   <th>Primary outcome</th>
+  <th>Статус / evidence</th>
+  <th>Что осталось / следующий шаг</th>
+  <th>Блокеры / зависимости</th>
 </tr>
 </thead>
 <tbody>
@@ -457,59 +503,93 @@ reconcilable with native 1C reports.</p>
   <td>P0</td>
   <td>Documentation &amp; decision freeze</td>
   <td>Normative TDD/architecture/data/governance/DoD baseline</td>
+  <td><strong>Baseline зафиксирован</strong><br>Нормативный пакет и ADR опубликованы.</td>
+  <td>Синхронизировать execution/status/DoD отчёты с итоговым объединённым релизом; проверить traceability.</td>
+  <td>Для документации блокера нет. Release closure зависит от окончательного состава изменений.</td>
 </tr>
 <tr>
   <td>P1</td>
   <td>Control-plane baseline</td>
   <td>OAuth, ACL, registry, secrets, audit, limits, migrations</td>
+  <td><strong>Интеграционный candidate PASS</strong><br>ACL lifecycle, audit outcomes и restore follow-ups включены в <a href="https://github.com/xLZDx/ERP_MCP/pull/11">PR #11</a>; hosted checks PASS. #9/#10 остаются Draft.</td>
+  <td>Закрыть live IdP, secret leakage/provider rotation, production trace propagation и multi-source runtime contract.</td>
+  <td>Нет production IdP/provider/deployment identity; PR #11 ожидает review/merge в main.</td>
 </tr>
 <tr>
   <td>P2</td>
   <td>Capability router</td>
   <td>Source fingerprinting and deterministic adapter selection</td>
+  <td><strong>OData capability rule реализован</strong><br>Per-source evidence, deny неподтверждённых методов, drift и cache invalidation проверены.</td>
+  <td>Проверить routing на реальных heterogeneous sources; закончить fallback capability contract и негативные проверки смены платформы/конфигурации.</td>
+  <td>Нужны live metadata/probes конкретных баз; fallback data route зависит от P6.</td>
 </tr>
 <tr>
   <td>P3</td>
   <td>Modern OData data-plane</td>
   <td>Mature upstream OData v3 engine integrated read-only</td>
+  <td><strong>Sidecar интегрирован; CI PASS</strong><br>Код в merged PR #1; pinned client/metadata, contract tests и non-root image smoke проходят.</td>
+  <td>Подтвердить live query/key/count/register parity, transport/egress и zero-write evidence на целевой базе.</td>
+  <td>Не записаны результаты реального OData source. Требуются endpoint, read-only identity и source-specific capabilities.</td>
 </tr>
 <tr>
   <td>P4</td>
   <td>Semantic accounting layer</td>
   <td>Stable transport-independent business tools</td>
+  <td><strong>Частично реализовано; CI PASS</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/2">PR #2</a> и <a href="https://github.com/xLZDx/ERP_MCP/pull/8">#8</a> Draft: profiles, documents, balances, inventory/cash movements и posting follow-up.</td>
+  <td>Закончить оставшуюся AR/AP aging и tax/VAT семантику; сверить заявленный scope, подтвердить mappings и ≥10 native-report cases на конкретной конфигурации.</td>
+  <td>Нет validated customer profiles/native reports; upstream presets остаются candidates. Семантическая валидация зависит от P5.</td>
 </tr>
 <tr>
   <td>P5</td>
-  <td>Real 1C testbed &amp; reconciliation</td>
-  <td>L2 evidence against native reports</td>
+  <td>Dual 1C assurance</td>
+  <td>Real Reference + Ferma Controlled Synthetic</td>
+  <td><strong>L1 PASS; L2 strategy frozen</strong><br>P5-A private reference base for real config/known errors/native reports; P5-B Ferma deterministic scenario/oracle + test-only 1C seeder.</td>
+  <td>Acquire/hash/restore immutable reference clone; fingerprint config; build exact semantic profile/native reconciliations; implement Ferma scenario package/seeder/observer.</td>
+  <td>Private reference restore/native reports still pending; external evidence and pilot are separate gates.</td>
 </tr>
 <tr>
   <td>P6</td>
   <td>Local/extension/COM fallback</td>
-  <td>MIT RSV-data based fallback route</td>
+  <td>Audited RSV metadata boundary</td>
+  <td><strong>Real Windows/COM metadata smoke PASS</strong><br>1C 8.3.27.2342 + Community License + V83.COMConnector; RSV v1.3.0 installed/exported/audited; ping/config/describe/get_structure/help PASS.</td>
+  <td>Close secret-ref binding, reconnect/timeout/crash lifecycle and normalized metadata adapter evidence.</td>
+  <td><code>query</code> default DENY until zero-write+company-scope proof; <code>execute_query</code> DENY; <code>reveal</code> HARD DENY.</td>
 </tr>
 <tr>
   <td>P7</td>
-  <td>Legacy 8.2 route</td>
+  <td>Legacy 8.2 / 7.7</td>
   <td>Optional isolated legacy service if business need exists</td>
+  <td><strong>Отложено по demand gate</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/5">PR #5</a> Draft: требование к named legacy target и отдельному GPL service.</td>
+  <td>При подтверждённой потребности: определить 8.2 target, развернуть isolated service, выполнить license/security и compatibility проверки.</td>
+  <td>Нет конкретного legacy target/customer requirement. Эта опциональная фаза не блокирует modern MVP.</td>
 </tr>
 <tr>
   <td>P8</td>
   <td>Production hardening</td>
   <td>load, observability, backup/restore, incident/rollback</td>
+  <td><strong>Частично; локальные drills PASS</strong><br>PostgreSQL 16 fresh-instance restore: 9/9 table fingerprints match; synthetic ACL 30/50/100/150 source correctness; secret-file rotation unit test.</td>
+  <td>Добавить trace/source telemetry, dependency/process fault matrix, SBOM/deployment proof, production PITR/rollback и controlled load/SLO evidence.</td>
+  <td>Нет production target/SLO, deployment identity/network, PITR environment; shared-host latency noisy and not capacity proof.</td>
 </tr>
 <tr>
   <td>P9</td>
   <td>Pilot &amp; production GO</td>
   <td>controlled customer pilot, closure evidence</td>
+  <td><strong>Gate реализован; NOT_READY</strong><br><a href="https://github.com/xLZDx/ERP_MCP/pull/7">PR #7</a> Draft: strict evidence manifest/validator. Production GO не подтверждён.</td>
+  <td>Собрать exact-release evidence, провести controlled pilot, закрыть обязательные DoD gates, оформить итоговое release approval.</td>
+  <td>Открыты P4/P5/P8 evidence; отсутствуют подтверждённые pilot users, среда, native reconciliation и release approvals.</td>
 </tr>
 <tr>
   <td>P10</td>
-  <td>ERP/Ferma adapters</td>
+  <td>Production ERP/Ferma adapters</td>
   <td>reuse common control plane without weakening domain boundaries</td>
+  <td><strong>Deferred / frozen</strong><br>Не продвигается без operator rebaseline; Ferma test/oracle role уже активен в P5-B.</td>
+  <td>После MVP определить target ERP/Ferma API, reuse intake, domain contracts и отдельные acceptance tests.</td>
+  <td>Не выбран конкретный target/scope. Текущий modern MVP эта фаза не блокирует.</td>
 </tr>
 </tbody>
 </table>
+</div>
 <h2>P0 — Documentation &amp; decision freeze</h2>
 <p>Deliver:</p>
 <ul>
@@ -3326,4 +3406,26 @@ $$('.chip').forEach(c=>c.addEventListener('click',()=>{activeCat=c.dataset.cat; 
 $('#search').addEventListener('input',filter);
 function filter(){const q=$('#search').value.trim().toLowerCase(); $$('.searchable').forEach(card=>{const cat=card.dataset.cat; const okCat=activeCat==='all'||cat===activeCat; const okQ=!q||card.innerText.toLowerCase().includes(q); card.classList.toggle('hidden',!(okCat&&okQ));}); $$('.doc-link').forEach(link=>{const card=document.getElementById(link.dataset.target); link.classList.toggle('hidden',card.classList.contains('hidden'));});}
 document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==$('#search')){e.preventDefault();$('#search').focus();}});
-</script><section class="panel" id="p4-step27" style="margin:22px"><h3>Шаг 27 — P4: source-capability-gated inventory balance</h3><p><strong>DONE / hosted CI PASS 37381909454 · 2026-10-06.</strong> <code>inventory_balance</code> uses pinned accumulation-register <code>Balance(Period, Condition)</code>; exact register, company dimension, item/warehouse/quantity projection and capability all require the validated source/company profile. No fallback or preset-driven name inference. Python <code>90 passed, 7 skipped</code>; PostgreSQL 001–009, grants, integration <code>6/6</code>, Ruff, compileall, Bandit and pip-audit PASS.</p></section><section class="panel" id="p4-step28" style="margin:22px"><h3>Шаг 28 — P4: source-capability-gated bank balance</h3><p><strong>DONE / hosted CI PASS 37382615109 · 2026-10-06.</strong> <code>bank_balance</code> uses exact source/company mapping and live <code>Balance</code> capability; reviewed profile alone defines register, company predicate, account/currency/amount projection. UT11 name remains advisory. Python <code>93 passed, 7 skipped</code>; PostgreSQL, Ruff, compileall, Bandit and pip-audit PASS.</p></section><section class="panel" id="p4-step29" style="margin:22px"><h3>Шаг 29 — P4: receivable/payable balance snapshots</h3><p><strong>DONE / hosted CI PASS 37383219137 · 2026-10-06.</strong> Added <code>receivable_balance</code>/<code>payable_balance</code> with separate exact-source/company profiles and live <code>Balance</code> capability. Output contains counterparty/contract/amount only; no aging or overdue claims. Python <code>101 passed, 7 skipped</code>; PostgreSQL 001–009 and integration <code>6/6</code> PASS.</p></section><section class="panel" id="p5-step30" style="margin:22px"><h3>Шаг 30 — P5 L1 deterministic seed and scenario contract</h3><p><strong>DONE LOCAL / hosted CI pending · 2026-10-06.</strong> Fake1C loads versioned seed <code>erp-mcp-synthetic-v1</code> and exposes sales/purchase plus inventory, bank and settlements fixtures. Ten schema-v2 scenarios have executable invariants; validator emits canonical SHA-256 and rejects broken math or fake native-report evidence. Snapshot template remains unfilled; scenario runner labels every case <code>NOT_RUN</code> for native 1C. Python <code>104 passed, 7 skipped</code>; Ruff, compileall, Bandit, pip-audit PASS. Real L2/L3 seed import and native reports remain.</p></section></body></html>
+</script>
+<section class="panel" id="p4-step27" style="margin:22px"><h3>Шаг 27 — P4: source-capability-gated inventory balance</h3><p><strong>DONE / hosted CI PASS 37381909454 · 2026-10-06.</strong> <code>inventory_balance</code> uses pinned accumulation-register <code>Balance(Period, Condition)</code>; exact register, company dimension, item/warehouse/quantity projection and capability all require the validated source/company profile. No fallback or preset-driven name inference. Python <code>90 passed, 7 skipped</code>; PostgreSQL 001–009, grants, integration <code>6/6</code>, Ruff, compileall, Bandit and pip-audit PASS.</p></section>
+<section class="panel" id="p4-step28" style="margin:22px"><h3>Шаг 28 — P4: source-capability-gated bank balance</h3><p><strong>DONE / hosted CI PASS 37382615109 · 2026-10-06.</strong> <code>bank_balance</code> uses exact source/company mapping and live <code>Balance</code> capability; reviewed profile alone defines register, company predicate, account/currency/amount projection. UT11 name remains advisory. Python <code>93 passed, 7 skipped</code>; PostgreSQL, Ruff, compileall, Bandit and pip-audit PASS.</p></section>
+<section class="panel" id="p4-step29" style="margin:22px"><h3>Шаг 29 — P4: receivable/payable balance snapshots</h3><p><strong>DONE / hosted CI PASS 37383219137 · 2026-10-06.</strong> Added <code>receivable_balance</code>/<code>payable_balance</code> with separate exact-source/company profiles and live <code>Balance</code> capability. Output contains counterparty/contract/amount only; no aging or overdue claims. Python <code>101 passed, 7 skipped</code>; PostgreSQL 001–009 and integration <code>6/6</code> PASS.</p></section>
+<section class="panel" id="p5-step30" style="margin:22px"><h3>Шаг 30 — P5 L1 deterministic seed and scenario contract</h3><p><strong>DONE / hosted CI PASS 37383877277 · 2026-10-06.</strong> Fake1C loads versioned seed <code>erp-mcp-synthetic-v1</code> and exposes sales/purchase plus inventory, bank and settlements fixtures. Ten schema-v2 scenarios have executable invariants; validator emits canonical SHA-256 and rejects broken math or fake native-report evidence. Snapshot template remains unfilled; scenario runner labels every case <code>NOT_RUN</code> for native 1C. Python <code>104 passed, 7 skipped</code>; Ruff, compileall, Bandit, pip-audit PASS. Real L2/L3 seed import and native reports remain.</p></section>
+<section class="panel" id="p6-step31" style="margin:22px"><h3>Шаг 31 — P6: изолированная граница RSV bridge</h3><p><strong>DONE / hosted CI PASS 37384482140 · 2026-10-06.</strong> Закреплённый <code>mcp-rsv-data</code> запускается как отдельный MCP stdio process; проверены привязка source ID к конфигурации, точный tool inventory, ping-only health/restart и sanitization ошибок. Общие <code>query</code>/<code>execute_query</code> не проксируются; новый COM/native-query bridge не создавался. В pin <code>76fed8e</code> доступен Go bridge, но нет исходника 1С CFE, достаточного для подтверждения company-scoped query semantics. Поэтому business-data routing остаётся fail-closed: <code>CAPABILITY_UNSUPPORTED</code> до проверенного контракта и source evidence. P6 PR #4 остаётся Draft.</p></section>
+<section class="panel" id="p4-step32" style="margin:22px"><h3>Шаг 32 — P4 follow-up: movements и cache/capability drift</h3><p><strong>DONE / hosted CI PASS 37415523392 и 37415638873 · 2026-10-06.</strong> Добавлена profile-gated обработка cash movements, сохранение отрицательного semantic-capability evidence и ограниченный metadata/capability cache TTL (default 60 s, максимум 1 h) с invalidation при смене endpoint/credential reference и обновлении metadata. Code head <code>f4340b3</code>, актуальный docs head <code>1c01640</code>. PR <a href="https://github.com/xLZDx/ERP_MCP/pull/8">#8</a> открыт как Draft; hosted тесты обоих head зелёные.</p></section>
+<section class="panel" id="p1-step33" style="margin:22px"><h3>Шаг 33 — P1: multi-source company ACL lifecycle</h3><p><strong>DONE / hosted CI PASS 37415897249 и 37416049964 · 2026-10-06.</strong> PostgreSQL contract проверяет изоляцию трёх differently configured sources, subject/group grants, запрет unscoped source access только на основании company grant, добавление source/grant без restart и немедленную revocation. Это contract/registry evidence, не live-1C или fanout-performance claim. PR <a href="https://github.com/xLZDx/ERP_MCP/pull/9">#9</a> открыт как Draft.</p></section>
+<section class="panel" id="p1-step34" style="margin:22px"><h3>Шаг 34 — P1: audit outcome round-trip и append-only</h3><p><strong>DONE / hosted CI PASS 37416120977 и 37416244057 · 2026-10-06.</strong> Проверены runtime-role audit writes для success/denied/error, result/company/provenance поля и запрет UPDATE/DELETE каждой audit row. PR <a href="https://github.com/xLZDx/ERP_MCP/pull/10">#10</a> открыт как Draft.</p></section>
+<section class="panel" id="current-mvp-status" style="margin:22px">
+<h3>Актуальный frozen status · 2026-10-06</h3>
+<p><strong>Scope зафиксирован; Production GO = NO-GO.</strong> PR #11 остаётся Draft/mergeable. Текущий remote freeze code HEAD <code>65883a5a83fbb369cbd32e5e31af3041f9d7c515</code>; hosted CI <code>37446049853</code> SUCCESS.</p>
+<p><strong>Engineering baseline:</strong> control plane/ACL/audit, OData sidecar/capability gates, core semantic reads, supply-chain/SBOM/scans, bounded fan-out/load evidence, fault-injection harnesses, rollback/preflight/runbooks и P6 real Windows/COM metadata smoke уже имеют substantial evidence. Последний статусный пакет сообщает до 199 passed / 9 skipped; skipped/live gates нельзя считать PASS.</p>
+<p><strong>Реальная accounting validation теперь имеет два обязательных L2 пути:</strong> private Real Reference 1C для exact config/native-report/known-error fidelity и Ferma Controlled Synthetic для deterministic multi-company/edge-case/oracle coverage. Оригинальный reference artifact immutable; тесты идут только на clones.</p>
+<p><strong>DAD scope уже принят и заморожен:</strong> 6 accountant checks; invoice reconciliation; month-close rule packs; P&amp;L/CF/BS; External Evidence Plane; accepted tax/payroll/bank/Z/terminal/customs/CCAC read-only prechecks. Это текущий backlog, а не новые будущие идеи.</p>
+<p><strong>P6 policy:</strong> metadata allowlist допустим за ERP_MCP ACL; <code>query</code> default DENY до zero-write+company-scope proof; <code>execute_query</code> DENY; <code>reveal</code> HARD DENY.</p>
+<p><strong>Deferred/frozen:</strong> legacy 8.2/7.7 без конкретного target, future write product, production ERP/Ferma adapters. Они не продвигаются до явного rebaseline.</p>
+</section>
+</body>
+</html>
+
+
+[executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]
