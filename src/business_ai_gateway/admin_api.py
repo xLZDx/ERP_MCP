@@ -528,7 +528,10 @@ class AdminRepository:
                 SELECT profile_id, source_id, company_id, preset_id, profile_name,
                        profile_version, status, metadata_fingerprint,
                        capability_fingerprint, profile_fingerprint, created_by,
-                       validated_by, created_at, validated_at, retired_at
+                       validated_by, created_at, validated_at, retired_at,
+                       CASE WHEN validation_evidence_json IS NULL THEN NULL
+                            WHEN validation_evidence_json ? 'machine_scope' THEN 'MACHINE'
+                            ELSE 'NATIVE' END AS evidence_basis
                 FROM bag.semantic_profiles
                 ORDER BY source_id, company_id NULLS FIRST, profile_name,
                          profile_version DESC LIMIT $1
@@ -537,7 +540,10 @@ class AdminRepository:
                 SELECT profile_id, source_id, company_id, preset_id, profile_name,
                        profile_version, status, metadata_fingerprint,
                        capability_fingerprint, profile_fingerprint, created_by,
-                       validated_by, created_at, validated_at, retired_at
+                       validated_by, created_at, validated_at, retired_at,
+                       CASE WHEN validation_evidence_json IS NULL THEN NULL
+                            WHEN validation_evidence_json ? 'machine_scope' THEN 'MACHINE'
+                            ELSE 'NATIVE' END AS evidence_basis
                 FROM bag.semantic_profiles
                 WHERE source_id=ANY($1::text[])
                 ORDER BY source_id, company_id NULLS FIRST, profile_name,

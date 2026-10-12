@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from uuid import UUID
 
+from .evidence_basis import with_native_only
 from .models import Company, Source
 
 _PROPERTY_RE = re.compile(r"^[^\W\d]\w*$", re.UNICODE)
@@ -38,7 +39,7 @@ class CompanyScopeResolver:
         if drift_status != "STABLE":
             raise CompanyScopeUnavailable("metadata drift must be acknowledged")
         row = await self.db.require_pool().fetchrow(
-            """
+            with_native_only("""
             SELECT m.profile_id, m.entity_set, m.company_property, m.literal_kind,
                    p.profile_fingerprint
             FROM bag.company_scope_mappings m
@@ -48,15 +49,40 @@ class CompanyScopeResolver:
               AND p.status='VALIDATED'
               AND p.metadata_fingerprint=$3
               AND m.entity_set=$4
+              AND __NATIVE_ONLY_SQL__
             ORDER BY (p.company_id=$2) DESC NULLS LAST, p.profile_version DESC
             LIMIT 1
-            """,
+            """),
             source.id,
             company.id,
             metadata_fingerprint,
             entity_set,
         )
         if row is None:
+            machine_only = await self.db.require_pool().fetchval(
+                with_native_only("""
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM bag.company_scope_mappings m
+                  JOIN bag.semantic_profiles p ON p.profile_id=m.profile_id
+                  WHERE p.source_id=$1
+                    AND (p.company_id=$2 OR p.company_id IS NULL)
+                    AND p.status='VALIDATED'
+                    AND p.metadata_fingerprint=$3
+                    AND m.entity_set=$4
+                    AND p.validation_evidence_json ? 'machine_scope'
+                    AND NOT (__NATIVE_ONLY_SQL__)
+                )
+                """),
+                source.id,
+                company.id,
+                metadata_fingerprint,
+                entity_set,
+            )
+            if machine_only:
+                raise CompanyScopeUnavailable(
+                    "company-scope mapping profile is machine-reconciled, not native-validated"
+                )
             raise CompanyScopeUnavailable(
                 "no validated company-scope mapping for entity set"
             )

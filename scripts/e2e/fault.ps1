@@ -21,6 +21,11 @@ function Set-Component([string]$Verb) {
     }
 }
 
+if ((Test-E2eGatewayNeedsReader $Component) -and $Action -in 'start', 'restart') {
+    # Never stop a working gateway when its replacement could not receive the reader credentials.
+    Assert-E2eReaderAvailable
+}
+
 switch ($Action) {
     'stop' { Set-Component 'stop' }
     'start' { Set-Component 'start' }

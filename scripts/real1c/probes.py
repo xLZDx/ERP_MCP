@@ -484,9 +484,12 @@ async def probe_portfolio(lane: Lane, companies: int = 150) -> dict:
                               capture_output=True, text=True, timeout=120, check=False).returncode
 
     base = "http://127.0.0.1:8191/erp_mcp_ref/odata/standard.odata"
-    cli("source-upsert", "--source-id", source, "--display-name", "SYNTHETIC portfolio fixture (150 companies)",
-        "--base-url", base, "--username-secret", "ERP_MCP_818HA_USER", "--password-secret", "ERP_MCP_818HA_PASSWORD",
-        "--tags", "synthetic-fixture", "--allow", "Catalog_Валюты")
+    source_rc = cli("source-upsert", "--source-id", source, "--display-name",
+                    "SYNTHETIC portfolio fixture (150 companies)", "--base-url", base,
+                    "--username-secret", "ERP_MCP_818HA_USER", "--password-secret", "ERP_MCP_818HA_PASSWORD",
+                    "--tags", "synthetic-fixture", "--allow", "Catalog_Валюты")
+    if source_rc != 0:
+        raise RuntimeError(f"portfolio probe: source-upsert failed with exit code {source_rc}")
     ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"real1c-portfolio-{i}")) for i in range(companies)]
     sem = asyncio.Semaphore(8)
 
@@ -512,7 +515,10 @@ async def probe_portfolio(lane: Lane, companies: int = 150) -> dict:
     seconds = round(time.monotonic() - t0, 2)
     a = {c["company_id"] for c in (one["payload"] or [])}
     b = {c["company_id"] for c in (two["payload"] or [])}
-    return {"companies_created": sum(1 for rc in created if rc == 0), "grants_created": sum(1 for rc in grants if rc == 0),
+    created_ok = sum(1 for rc in created if rc == 0)
+    grants_ok = sum(1 for rc in grants if rc == 0)
+    return {"companies_created": created_ok, "grants_created": grants_ok,
             "visible_to_one": len(a), "visible_to_two": len(b), "overlap": len(a & b),
             "union_equals_all": (a | b) == set(ids), "list_seconds": seconds,
-            "paging_parameters_supported": False}
+            "paging_parameters_supported": False,
+            "passed": created_ok == companies and grants_ok == companies and not (a & b) and (a | b) == set(ids)}

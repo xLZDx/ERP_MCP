@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     oauth_enabled: bool = False
     oauth_issuer: str | None = None
     oauth_audience: str | None = None
+    oauth_additional_audiences: str = ""
     oauth_required_scope: str = "onec:read"
     oauth_jwks_url: str | None = None
     oauth_algorithms: str = "RS256"
@@ -88,6 +89,10 @@ class Settings(BaseSettings):
         default=None, pattern=r'^[a-f0-9]{64}$'
     )
 
+    # Test-only allow-list of source ids whose profile may be validated by labelled machine two-source
+    # reconciliation (evidence_basis.py). Hard-denied outside the test environment; never native proof.
+    machine_reconciled_sources: str = ""
+
     secret_provider: SecretProviderKind = SecretProviderKind.ENV
     secret_file_root: str = "/run/secrets"
     gcp_project_id: str | None = None
@@ -106,6 +111,16 @@ class Settings(BaseSettings):
         return [x.strip() for x in self.oauth_algorithms.split(",") if x.strip()]
 
     @property
+    def oauth_audience_list(self) -> tuple[str, ...]:
+        values = [self.oauth_audience] if self.oauth_audience else []
+        values.extend(
+            item.strip()
+            for item in self.oauth_additional_audiences.split(",")
+            if item.strip()
+        )
+        return tuple(dict.fromkeys(values))
+
+    @property
     def source_host_allowlist_items(self) -> tuple[str, ...]:
         if not self.source_host_allowlist:
             return ()
@@ -113,6 +128,16 @@ class Settings(BaseSettings):
             host.strip().rstrip(".").lower()
             for host in self.source_host_allowlist.split(",")
             if host.strip()
+        )
+
+    @property
+    def machine_reconciled_source_items(self) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                item.strip()
+                for item in self.machine_reconciled_sources.split(",")
+                if item.strip()
+            )
         )
 
     @staticmethod
@@ -129,6 +154,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self):
+        if self.machine_reconciled_source_items:
+            if self.environment != "test":
+                raise ValueError("MACHINE_RECONCILED_SOURCES_REQUIRE_TEST_ENVIRONMENT")
+            if any(
+                not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", item)
+                for item in self.machine_reconciled_source_items
+            ):
+                raise ValueError("MACHINE_RECONCILED_SOURCES_INVALID")
         if self.synthetic_fixture_profiles_file or self.synthetic_fixture_profiles_sha256:
             if self.environment == "production":
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")

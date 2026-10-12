@@ -80,6 +80,40 @@ Findings that shape operations:
   so the gateway routes to OData; the COM route is exercised only where OData is proven absent and the operator has
   approved a binding.
 
+## Enabling the COM route for one real source (operator procedure)
+
+The COM route is used only for a source whose OData publication is **proven** not to offer `Balance` for the current
+metadata fingerprint, and only with a binding that the operator approved. Nothing below is done by the gateway or by a
+tool on its own: approval is a manual edit. On the reference base `Balance` is available, so it stays on OData.
+
+1. **Confirm the need.** The capability report of the source must show `Balance` absent for the register
+   (`metadata-function-import-absent-or-not-read-only`) at the current metadata fingerprint. If it is `AVAILABLE`, stop.
+2. **Give the source a platform version.** Set `platform_version_hint` (for example `8.3.27.2342`) on the registered
+   source; without it no binding can be created (`COM_BINDING_CONFIGURATION_UNKNOWN`).
+3. **Create a confirmed semantic profile** for `account.balance_by_analytics`, one per account family (counterparties,
+   items and warehouses, ...), with the register `AccountingRegister_Хозрасчетный` and company field `Организация_Key`
+   (the bridge serves only these; any other mapping answers `CAPABILITY_UNSUPPORTED`).
+4. **Prepare the bridge host** (Windows, 1C platform and COM connector installed): a DPAPI blob of the reader password
+   created by the operator under the account that runs the bridge, a token file, and the bridge configuration described
+   above with `base_path`, `reader_user`, `allowed_company_refs`, `clone_identity` and the attested `metadata_fingerprint`.
+   Start it with `python -m onec_com_bridge --config <file>`; it listens on loopback only.
+5. **Draft the gateway binding** in a private directory (owner-only, outside Git):
+   `python -m scripts.real1c.com_binding_tool draft --out <private dir>/com_bindings.json --source-id ... --binding-id ...
+   --version 1 --base-url <source base url> --credential-identity <username secret ref> --clone-identity ...
+   --platform-version 8.3.27.2342 --metadata-fingerprint <64 hex> --company <external company guid>`.
+   The draft is written with `status: REVOKED`.
+6. **Review and approve by hand.** Check every field against the bridge configuration (`binding_id`, `version`,
+   `source_id`, `clone_identity`, `metadata_fingerprint`, company list), then change `status` to `APPROVED` yourself.
+7. **Pin it.** `python -m scripts.real1c.com_binding_tool pin --file <private dir>/com_bindings.json` prints the sha256.
+8. **Configure the gateway:** `BAG_COM_BINDINGS_FILE` (absolute path), `BAG_COM_BINDINGS_SHA256` (the printed digest),
+   `BAG_COM_BRIDGE_URL` (loopback URL of the bridge) and `BAG_COM_BRIDGE_TOKEN_SECRET_REF` (secret reference of the
+   bridge token). The settings are validated together: a file without a digest, or a URL without a token reference, is
+   refused at start.
+9. **Verify on a disposable clone first** (parity run above) and keep the printed digest and the approval in the
+   decision log. Any change of the source base URL, credential identity, platform version or metadata fingerprint
+   invalidates the binding until a new version is approved: change `version` in the bridge configuration and the
+   binding file together.
+
 ## Behaviour after a timeout, admission and identity
 
 - A call that exceeds `call_timeout_seconds` answers `COM_TIMEOUT`. The query may still run inside 1C, so the binding

@@ -21,7 +21,7 @@ from mcp.server.mcpserver.exceptions import UnexpectedToolError
 from business_ai_gateway.adapters.onec.client import OneCTransportError
 from business_ai_gateway.audit import query_fingerprint
 from business_ai_gateway.business_policy import CAPABILITY_KEYS, CapabilityPolicy
-from business_ai_gateway.semantic import canonical_fingerprint
+from business_ai_gateway.semantic import capability_evidence_fingerprint
 from business_ai_gateway.server import BUSINESS_CAPABILITY_BY_TOOL, build_mcp
 from business_ai_gateway.settings import Settings
 from business_ai_gateway.testbed.fake1c import SEED
@@ -334,7 +334,7 @@ async def test_db_profile_shadows_the_fixture_draft_fails_closed_validated_is_us
                  preset_upstream_sha, created_by)
                VALUES($1,$2,$3,'bp30','db-native',1,'DRAFT',$4,$5,'profile-db','r','s','test')""",
             profile_id, stack.source_id, stack.companies[ORG_ONE], cap["metadata_fingerprint"],
-            canonical_fingerprint(caps))
+            capability_evidence_fingerprint(caps))
         await pool.execute(
             "INSERT INTO bag.semantic_mappings(mapping_id, profile_id, canonical_concept, "
             "mapping_json, mapping_status, confidence) VALUES($1,$2,$3,$4::jsonb,'CONFIRMED','HIGH')",
@@ -806,7 +806,7 @@ async def test_validated_db_profile_with_an_extra_mapping_key_fails_closed_witho
                  preset_upstream_sha, created_by)
                VALUES($1,$2,$3,'bp30','db-native',1,'DRAFT',$4,$5,'profile-db','r','s','test')""",
             profile_id, stack.source_id, stack.companies[ORG_ONE], cap["metadata_fingerprint"],
-            canonical_fingerprint(caps))
+            capability_evidence_fingerprint(caps))
         await pool.execute(
             "INSERT INTO bag.semantic_mappings(mapping_id, profile_id, canonical_concept, "
             "mapping_json, mapping_status, confidence) VALUES($1,$2,$3,$4::jsonb,'CONFIRMED','HIGH')",

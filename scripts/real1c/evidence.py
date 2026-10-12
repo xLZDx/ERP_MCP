@@ -5,6 +5,10 @@ Policy: NATIVE_COM_QUERY and NATIVE_ENGINE_REPORT are comparison-only classes. T
 PROFILE_EVIDENCE_ON_FILE or PROFILE_VALIDATED. Only genuine native 1C UI
 reports (NATIVE_UI_REPORT, each with a 64-hex report sha256) count, and at
 least ten distinct cases are needed before validate may be called.
+
+MACHINE_TWO_SOURCE_RECONCILIATION is a labelled cross-copy comparison (ADR-0008 section 8). It never counts
+here; it reaches validate only through the test-lane CLI path in ``scripts/semantic_profiles.py``, which
+re-verifies artifacts and the Rosetta authority (``machine_reconciliation.py``).
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ EVIDENCE_CLASSES = frozenset(
         "CONTROL_PLANE_ROWS",
         "REPO_STATIC",
         "NATIVE_UI_REPORT",
+        "MACHINE_TWO_SOURCE_RECONCILIATION",
         "NONE",
     }
 )

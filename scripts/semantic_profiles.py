@@ -21,6 +21,11 @@ from business_ai_gateway.duplicate_counterparties import (
     DUPLICATE_CONCEPT,
     validate_duplicate_mapping,
 )
+from business_ai_gateway.evidence_basis import (
+    BASIS_MACHINE,
+    MACHINE_EVIDENCE_CLASS,
+    check_machine_evidence_structure,
+)
 from business_ai_gateway.semantic import (
     ACCOUNTING_POSTING_ROWS_CONCEPT,
     BANK_BALANCE_CONCEPT,
@@ -31,7 +36,9 @@ from business_ai_gateway.semantic import (
     PRESETS_BY_ID,
     RECEIVABLE_BALANCE_CONCEPT,
     canonical_fingerprint,
+    capability_evidence_fingerprint,
     find_configuration_preset,
+    is_machine_shaped_case,
     require_profile_capabilities,
     validate_account_turnovers_mapping,
     validate_accounting_posting_rows_mapping,
@@ -48,6 +55,11 @@ from business_ai_gateway.settlement_collector import (
     OPEN_ITEMS_CONCEPTS,
     validate_open_items_mapping,
 )
+
+try:  # run as ``python scripts/semantic_profiles.py`` (scripts/ on sys.path) or imported as ``scripts.*``
+    from real1c import machine_reconciliation
+except ImportError:  # pragma: no cover - import layout depends on the caller
+    from scripts.real1c import machine_reconciliation
 
 CONCEPTS = (
     "account.balance_and_turnovers",
@@ -188,7 +200,7 @@ async def create_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> 
     capability_profile = _json_value(capability_row["register_capabilities_json"])
     if not isinstance(capability_profile, dict):
         raise TypeError("stored register capability profile is invalid")
-    capability_fingerprint = canonical_fingerprint(capability_profile)
+    capability_fingerprint = capability_evidence_fingerprint(capability_profile)
     profile_id = uuid.uuid4()
     company_id = uuid.UUID(args.company_id) if args.company_id else None
     version = await conn.fetchval(
@@ -473,14 +485,84 @@ async def confirm_mapping(args: argparse.Namespace, conn: asyncpg.Connection) ->
         )
 
 
+def _is_machine_manifest(evidence: dict[str, Any]) -> bool:
+    cases = evidence.get("native_reconciliation_cases")
+    return "machine_scope" in evidence or "evidence_basis" in evidence or (
+        isinstance(cases, list)
+        and any(
+            isinstance(c, dict) and (c.get("evidence_class") == MACHINE_EVIDENCE_CLASS or is_machine_shaped_case(c))
+            for c in cases
+        )
+    )
+
+
+def _machine_validation_evidence(
+    evidence_input: dict[str, Any],
+    *,
+    args: argparse.Namespace,
+    profile: Any,
+    mappings: list[Any],
+    capability_fingerprint: str,
+) -> dict[str, Any]:
+    """CLI-only path for labelled machine two-source evidence; every precondition is re-proved here."""
+    settings = Settings()
+    if settings.environment != "test":
+        raise ValueError("machine two-source validation is test-environment only")
+    if profile["source_id"] not in settings.machine_reconciled_source_items:
+        raise ValueError("source is not in BAG_MACHINE_RECONCILED_SOURCES")
+    if profile["company_id"] is None:
+        raise ValueError("machine two-source validation needs a company-specific profile")
+    if len(mappings) != 1 or mappings[0]["canonical_concept"] != ANALYTICS_BALANCE_CONCEPT:
+        raise ValueError("a machine-reconciled profile carries exactly one analytics-balance mapping")
+    mapping = _json_value(mappings[0]["mapping_json"])
+    codes = sorted(a.get("code") for a in mapping.get("accounts", []) if isinstance(a, dict))
+    if codes != ["521.1"]:
+        raise ValueError("machine two-source validation is limited to account 521.1")
+    if not args.artifacts_root or not args.plans_dir:
+        raise ValueError("--artifacts-root and --plans-dir are required for machine evidence")
+    allowed_keys = {"native_reconciliation_cases", "evidence_basis", "machine_scope"}
+    if set(evidence_input) - allowed_keys:
+        raise ValueError("machine evidence manifest has unexpected fields")
+    check_machine_evidence_structure(
+        evidence_input,
+        source_id=profile["source_id"],
+        company_id=str(profile["company_id"]),
+        concept=ANALYTICS_BALANCE_CONCEPT,
+        mapping=mapping,
+        metadata_fingerprint=profile["metadata_fingerprint"],
+        capability_fingerprint=capability_fingerprint,
+    )
+    machine_reconciliation.verify_all(
+        evidence_input,
+        artifacts_root=Path(args.artifacts_root),
+        plans_dir=Path(args.plans_dir),
+        scope_sha256=evidence_input["machine_scope"]["authorization_scope_sha256"],
+        mapping=mapping,
+    )
+    validate_native_reconciliation_evidence(evidence_input, allow_machine=True)
+    return {
+        # The full verified case records are stored (class, run records, authority): the normalized
+        # case_id/ref pair alone would lose the class and read back as native evidence.
+        "native_reconciliation_cases": [
+            {**case, "status": "PASS"} for case in evidence_input["native_reconciliation_cases"]
+        ],
+        "evidence_basis": BASIS_MACHINE,
+        "machine_scope": evidence_input["machine_scope"],
+        "evidence_manifest_fingerprint": canonical_fingerprint(evidence_input),
+    }
+
+
 async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> None:
     profile_id = uuid.UUID(args.profile_id)
     evidence_input = _read_object(args.evidence_file)
-    cases = validate_native_reconciliation_evidence(evidence_input)
-    validation_evidence = {
-        "native_reconciliation_cases": [{**case, "status": "PASS"} for case in cases],
-        "evidence_manifest_fingerprint": canonical_fingerprint(evidence_input),
-    }
+    machine = _is_machine_manifest(evidence_input)
+    validation_evidence = None
+    if not machine:
+        cases = validate_native_reconciliation_evidence(evidence_input)
+        validation_evidence = {
+            "native_reconciliation_cases": [{**case, "status": "PASS"} for case in cases],
+            "evidence_manifest_fingerprint": canonical_fingerprint(evidence_input),
+        }
     async with conn.transaction():
         profile = await conn.fetchrow(
             """
@@ -502,7 +584,7 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
         if capability_row["metadata_fingerprint"] != profile["metadata_fingerprint"]:
             raise ValueError("profile metadata fingerprint is stale")
         capability_profile = _json_value(capability_row["register_capabilities_json"])
-        if canonical_fingerprint(capability_profile) != profile["capability_fingerprint"]:
+        if capability_evidence_fingerprint(capability_profile) != profile["capability_fingerprint"]:
             raise ValueError("profile capability fingerprint is stale")
 
         mappings = await conn.fetch(
@@ -528,6 +610,15 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
                 metadata_fingerprint=profile["metadata_fingerprint"],
             )
 
+        if machine:
+            validation_evidence = _machine_validation_evidence(
+                evidence_input,
+                args=args,
+                profile=profile,
+                mappings=mappings,
+                capability_fingerprint=profile["capability_fingerprint"],
+            )
+            cases = validation_evidence["native_reconciliation_cases"]
         profile = dict(profile)
         profile["validation_evidence_json"] = validation_evidence
         profile_fingerprint = _profile_fingerprint(profile, mappings)
@@ -556,8 +647,21 @@ async def validate_profile(args: argparse.Namespace, conn: asyncpg.Connection) -
                 "metadata_fingerprint": profile["metadata_fingerprint"],
                 "capability_fingerprint": profile["capability_fingerprint"],
                 "case_count": len(cases),
+                **_evidence_audit_details(validation_evidence),
             },
         )
+
+
+def _evidence_audit_details(validation_evidence: dict[str, Any]) -> dict[str, Any]:
+    """Audit fields that tell a human-native validation apart from a machine two-source one."""
+    basis = validation_evidence.get("evidence_basis", "NATIVE")
+    details: dict[str, Any] = {"evidence_basis": basis}
+    if basis != "NATIVE":
+        details["authorized_by"] = sorted(
+            {c["authorized_by"] for c in validation_evidence["native_reconciliation_cases"]}
+        )
+        details["evidence_manifest_fingerprint"] = validation_evidence.get("evidence_manifest_fingerprint")
+    return details
 
 
 async def retire_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> None:
@@ -583,6 +687,67 @@ async def retire_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> 
         )
 
 
+async def reverify_profile(args: argparse.Namespace, conn: asyncpg.Connection) -> bool:
+    """Re-prove a VALIDATED machine profile against its private artifacts and Rosetta plan.
+
+    The gateway only re-checks the stored evidence structure at runtime; this operator command is the kill
+    switch for changed artifacts or a revoked plan.  A failed proof moves the profile to STALE (audited) and
+    returns False; a profile that still verifies is left untouched and True is returned.
+    """
+    if Settings().environment != "test":
+        raise ValueError("machine two-source re-verification is test-environment only")
+    if not args.artifacts_root or not args.plans_dir:
+        raise ValueError("--artifacts-root and --plans-dir are required to re-verify machine evidence")
+    profile_id = uuid.UUID(args.profile_id)
+    async with conn.transaction():
+        profile = await conn.fetchrow(
+            "SELECT * FROM bag.semantic_profiles WHERE profile_id=$1 FOR UPDATE", profile_id
+        )
+        if profile is None or profile["status"] != "VALIDATED":
+            raise ValueError("only a validated profile can be re-verified")
+        evidence = _json_value(profile["validation_evidence_json"])
+        if not isinstance(evidence, dict) or evidence.get("evidence_basis") != BASIS_MACHINE:
+            raise ValueError("only a machine-reconciled profile carries artifacts to re-verify")
+        mapping_row = await conn.fetchrow(
+            "SELECT mapping_json FROM bag.semantic_mappings WHERE profile_id=$1 AND canonical_concept=$2",
+            profile_id,
+            ANALYTICS_BALANCE_CONCEPT,
+        )
+        failure = None
+        try:
+            if mapping_row is None:
+                raise ValueError("the analytics-balance mapping is missing")
+            machine_reconciliation.verify_all(
+                evidence,
+                artifacts_root=Path(args.artifacts_root),
+                plans_dir=Path(args.plans_dir),
+                scope_sha256=evidence["machine_scope"]["authorization_scope_sha256"],
+                mapping=_json_value(mapping_row["mapping_json"]),
+            )
+        except Exception as exc:  # noqa: BLE001 - a kill switch must fail closed on any verification error
+            failure = f"{type(exc).__name__}: {exc}"
+        if failure is None:
+            return True
+        await conn.execute(
+            "UPDATE bag.semantic_profiles SET status='STALE' WHERE profile_id=$1 AND status='VALIDATED'",
+            profile_id,
+        )
+        # The event vocabulary has no dedicated action; the reason code in the details carries the cause.
+        await _record_event(
+            conn,
+            profile_id=profile_id,
+            actor=args.actor,
+            action="MAPPING_CHANGED_INVALIDATED",
+            details={
+                "reason": "MACHINE_REVERIFY_FAILED",
+                "detail": failure[:500],
+                "profile_fingerprint": profile["profile_fingerprint"],
+                **_evidence_audit_details(evidence),
+            },
+        )
+        return False
+
+
 async def _run(args: argparse.Namespace) -> None:
     settings = Settings()
     dsn = settings.admin_database_url
@@ -591,6 +756,7 @@ async def _run(args: argparse.Namespace) -> None:
             "production semantic profile administration requires BAG_ADMIN_DATABASE_URL"
         )
     conn = await asyncpg.connect(dsn or settings.database_url)
+    reverify_failed = False
     try:
         if args.command == "create":
             print(await create_profile(args, conn))
@@ -602,10 +768,15 @@ async def _run(args: argparse.Namespace) -> None:
             await validate_profile(args, conn)
         elif args.command == "retire":
             await retire_profile(args, conn)
+        elif args.command == "reverify" and not await reverify_profile(args, conn):
+            print("MACHINE_REVERIFY_FAILED: the profile was marked STALE")
+            reverify_failed = True
     except CapabilityUnsupported as exc:
         raise RuntimeError(f"{exc.code}: {exc}") from exc
     finally:
         await conn.close()
+    if reverify_failed:
+        raise SystemExit(2)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -636,10 +807,20 @@ def parser() -> argparse.ArgumentParser:
     validate.add_argument("--profile-id", required=True)
     validate.add_argument("--evidence-file", required=True)
     validate.add_argument("--actor", required=True)
+    validate.add_argument("--artifacts-root", help="private root of machine-artifact: references")
+    validate.add_argument("--plans-dir", help="Rosetta plans directory (machine evidence authority check)")
 
     retire = commands.add_parser("retire")
     retire.add_argument("--profile-id", required=True)
     retire.add_argument("--actor", required=True)
+
+    reverify = commands.add_parser(
+        "reverify", help="re-prove a validated machine profile; exits 2 and marks it STALE when it no longer holds"
+    )
+    reverify.add_argument("--profile-id", required=True)
+    reverify.add_argument("--actor", required=True)
+    reverify.add_argument("--artifacts-root", required=True)
+    reverify.add_argument("--plans-dir", required=True)
     return root
 
 

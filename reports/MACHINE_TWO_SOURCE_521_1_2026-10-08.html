@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP_MCP — account 521.1 served from machine two-source evidence</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5b6570;--card:#fff;--line:#d9dee4;--ok:#127a3d;--warn:#9a6700;--bad:#b42318;--info:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e6e9ec;--muted:#9aa5b1;--card:#1d2226;--line:#333b42;--ok:#4fc27e;--warn:#e0a93b;--bad:#ff7b6e;--info:#6fb2ff}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:0 16px 40px}
+header,main{max-width:1100px;margin:0 auto}
+header{padding:20px 0 4px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}
+.sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:10px 0}
+table{border-collapse:collapse;width:100%;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(127,127,127,.12)}
+.wrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+code{background:rgba(127,127,127,.15);padding:1px 4px;border-radius:4px;word-break:break-all}
+</style>
+</head>
+<body>
+<header>
+<h1>ERP_MCP — account 521.1 served from machine two-source evidence</h1>
+<div class="sub">Date: 2026-10-08 · branch integration/1c-mvp-production-candidate · commit 6ca90e5 · Rosetta plan 198889 (GPT-PM APPROVED) · rules v3</div>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP-integration-candidate</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; integration/1c-mvp-production-candidate @ ee95505</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<h2>Result</h2><div class="card"><b class="ok">DONE in the test lane.</b> <code>accounting_balance_by_analytics</code> for account 521.1 now answers from a profile validated by ten machine two-source cases and says so in every response. The answer equals the hand-written 1C query exactly (2026-08-31). Nothing else was unlocked.</div>
+<h2>What this is not</h2><ul><li>It is a cross-copy comparison of two machine runs, not parity proof and not a human native 1C report (ADR-0008 section 8). Responses carry <code>VALIDATED_MACHINE_RECONCILED</code> and the warning <code>MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT</code>.</li><li>Test environment only; production refuses the allow-list at startup. One source, one concept, one account (521.1).</li><li>All other tools (<code>payable_balance</code>, <code>accounting_balance_and_turnovers</code>, ...) still refuse: no validated profile. No source-wide grant was given to <code>user_company_one</code>.</li><li>A live ChatGPT call after the restart is not part of this evidence (the operator can make one <code>system_status</code> call).</li></ul>
+<h2>Real defects found and fixed</h2><div class="card"><b>Capability fingerprint included <code>discovered_at</code></b><br>Any profile on a live source became stale at the next probe ("capability evidence changed"). Found by the live call. Fixed with one shared function at five sites; regression test added; fixtures without the stamp keep the same value.</div><div class="card"><b>Case normalisation dropped the evidence class</b><br>A machine profile would have read back as native. Found by the PostgreSQL chain test before the lane run. The CLI now stores the full verified case records.</div><div class="card"><b>Side-A references through COM</b><br>The first lane run produced one empty-reference row per case. Fixed in the private lane script (<code>XMLString</code> of the reference); the repository code was not affected.</div>
+<h2>Lane evidence (private artifacts, no business names or amounts here)</h2><ul><li>Ten month-end cases 2025-11-30 .. 2026-08-31; side A = hand-written 1C query through COM on a disposable clone, side B = production tool code; 10 of 10 identical in exact decimals on key (counterparty, contract, currency).</li><li>Profile validated by <code>scripts/semantic_profiles.py validate</code>: artifacts re-read (digest, embedded run id and method, no truncation), approved Rosetta plan checked.</li><li>Lane gateway restarted with <code>BAG_MACHINE_RECONCILED_SOURCES=onec-818ha-reference</code>; HTTP call as <code>user_company_one</code>: labelled machine-reconciled, 10 aggregated rows equal to the 1C query.</li></ul>
+<h2>Test traceability matrix</h2><p class="sub">Tests were written by the main session (not by functional agents) and run by it; the functional-test-reviewer judged their adequacy (section Reviews). Runs were limited by rules v3.</p><div class="wrap"><table><thead><tr><th>Req</th><th>Requirement</th><th>Test (file::case)</th><th>Asserts</th><th>Run</th><th>Result</th><th>Bug found / fix</th></tr></thead><tbody><tr><td>R1</td><td>Basis is recomputed from stored cases; contradictions refused</td><td>test_evidence_basis.py::test_legacy_cases_without_class_are_native, test_mixed_cases_are_refused_at_runtime, test_contradictions_are_refused</td><td>legacy = native; mixed refused; machine scope on native cases, machine without scope, wrong declared label all raise</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R2</td><td>Ten machine cases bound to source, company, mapping, fingerprints, one authorization</td><td>test_evidence_basis.py::test_structure_refusals (15 mutations), test_scope_is_bound_to_profile_fingerprints</td><td>fewer than ten, duplicate case id / as_of, wrong kind / ref / result / authority, shared run id, unequal parameters, bad digest, foreign scope all refused</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R3</td><td>Native validators refuse machine evidence</td><td>test_evidence_basis.py::test_native_validators_refuse_machine_evidence</td><td>normalizer and require_usable_semantic_profile reject machine cases unless allow_machine</td><td>RUN-1</td><td>pass</td><td>class dropped on normalisation (fixed)</td></tr><tr><td>R4</td><td>Labels and test-only allow-list</td><td>test_evidence_basis.py::test_machine_provenance_is_labelled, test_settings_allow_list_is_test_only, test_registry_refuses_machine_sources_in_production</td><td>labels, production refusal in Settings and Registry, source id format</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R5</td><td>Capability fingerprint ignores the probe stamp only</td><td>test_evidence_basis.py::test_capability_fingerprint_ignores_probe_timestamp_only</td><td>discovered_at ignored, real capability change detected, fixtures unchanged</td><td>RUN-1</td><td>pass</td><td>discovered_at made profiles stale (fixed)</td></tr><tr><td>R6</td><td>Exact artifact comparison</td><td>test_machine_reconciliation.py::compare tests (7)</td><td>exact equality, 1 cent, sub-cent 100.004 vs 100.00, float refused, missing/extra key, currency mismatch, duplicate key</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R7</td><td>Artifact integrity and reference containment</td><td>test_machine_reconciliation.py::case artifact tests (5)</td><td>digest tamper, foreign run id (copied file), truncated, empty, path escape</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R8</td><td>Plan authority</td><td>test_machine_reconciliation.py::plan authority tests (8)</td><td>approved current correlated plan accepted; wrong status/hash/scope/verdict/correlation/approver and unknown plan refused</td><td>RUN-1</td><td>pass</td><td>—</td></tr><tr><td>R9</td><td>CLI validate -> stored profile -> runtime gate -> native-only consumers (PostgreSQL 16)</td><td>test_machine_profile_postgres.py::test_machine_profile_chain_validates_serves_and_stays_out_of_native_consumers</td><td>CLI refuses without allow-list; validates with it; Registry serves only with allow-list and only that concept; NATIVE_ONLY_SQL excludes the profile</td><td>RUN-1 (PG)</td><td>pass</td><td>class dropped (fixed)</td></tr><tr><td>R10</td><td>Tampered artifact leaves the profile unvalidated</td><td>test_machine_profile_postgres.py::test_machine_validate_refuses_tampered_artifact_and_keeps_profile_unvalidated</td><td>validate raises, status stays NEEDS_VALIDATION</td><td>RUN-1 (PG)</td><td>pass</td><td>—</td></tr><tr><td>R11</td><td>No regression elsewhere</td><td>whole existing suite (1743 cases)</td><td>existing behaviour</td><td>RUN-2 (PG)</td><td>1743 pass, 1 fail: stale engineering checkpoint (re-pin step)</td><td>—</td></tr><tr><td>R12</td><td>Real source answer equals the 1C query</td><td>lane scripts (private)</td><td>10/10 cases identical; HTTP tool rows equal COM rows for 2026-08-31</td><td>RUN-3, RUN-4</td><td>pass</td><td>discovered_at; COM reference extraction</td></tr><tr><td>R13</td><td>Native-only consumers refuse the machine profile (real queries)</td><td>test_machine_profile_postgres.py::test_native_only_consumers_refuse_the_machine_profile</td><td>CompanyScopeResolver raises; access explanation shows no mapping candidate</td><td>RUN-5 (PG)</td><td>pass</td><td>gap found by functional-test-reviewer</td></tr><tr><td>R14</td><td>Runtime refuses tampered stored evidence</td><td>test_machine_profile_postgres.py::test_registry_refuses_tampered_machine_profile</td><td>mixed row and forged scope refused; restored row served again</td><td>RUN-5 (PG)</td><td>pass</td><td>gap found by functional-test-reviewer</td></tr><tr><td>R15</td><td>Probe stamp does not stale a profile; a real capability change does</td><td>test_machine_profile_postgres.py::test_probe_stamp_does_not_stale_the_profile_but_a_capability_change_does</td><td>re-saved capabilities with new discovered_at still served; available flipped gives SemanticProfileStale</td><td>RUN-5 (PG)</td><td>pass</td><td>gap found by functional-test-reviewer</td></tr><tr><td>R16</td><td>CLI refuses evidence outside its limits</td><td>test_machine_profile_postgres.py::test_cli_refuses_machine_evidence_outside_its_limits (6 cases)</td><td>no artifact root, no plans dir, company-less profile, other account, extra manifest key, non-test environment: refused, never VALIDATED</td><td>RUN-5 (PG)</td><td>pass</td><td>gap found by functional-test-reviewer</td></tr><tr><td>R17</td><td>Uniqueness compares instants and UUIDs</td><td>test_evidence_basis.py::test_uniqueness_compares_instants_and_uuids_not_spellings</td><td>same instant in another spelling and braced uuid are duplicates</td><td>RUN-5</td><td>pass</td><td>weak uniqueness (python-reviewer, fixed)</td></tr><tr><td>R18</td><td>Machine origin cannot be laundered into native by removing labels (GPT-PM M-01)</td><td>test_evidence_basis.py::test_machine_origin_cannot_be_laundered_into_native_by_removing_labels, test_native_label_with_machine_markers_is_a_contradiction; test_machine_profile_postgres.py::test_cli_refuses_a_legacy_shaped_machine_manifest</td><td>label-stripped manifest refused by native normaliser, stored classifier and CLI; normalised shape with the reserved reference is not native; native label plus machine markers is a contradiction</td><td>RUN-6 (PG)</td><td>pass</td><td>M-01 found by GPT-PM; fixed</td></tr><tr><td>R19</td><td>Runs and artifacts bound to the authorized scope (GPT-PM M-02)</td><td>test_evidence_basis.py::test_run_parameters_must_be_bound_to_the_authorized_scope_on_both_sides (4 x 2); test_machine_reconciliation.py::test_artifact_context_must_equal_the_run_record_parameters, test_rows_must_stay_inside_the_authorized_accounts_and_roles</td><td>foreign source / company / account / extra key refused even when equal on both sides; artifact context must equal the record; rows outside accounts and roles refused</td><td>RUN-6 (PG)</td><td>pass</td><td>M-02 found by GPT-PM; fixed</td></tr><tr><td>R20</td><td>Closed typed row schema (GPT-PM M-03)</td><td>test_machine_reconciliation.py::test_currency_must_be_text_and_missing_is_only_the_empty_string, test_analytics_slots_are_a_closed_schema</td><td>null/false/0 currency refused, empty string is the only none; extra slot field and repeated role refused</td><td>RUN-6</td><td>pass</td><td>M-03 found by GPT-PM; fixed</td></tr><tr><td>R21</td><td>Rows carry the complete authorized analytics projection (GPT-PM round-2 M-02 remainder)</td><td>test_machine_reconciliation.py::test_rows_must_cover_the_complete_authorized_projection (counterparty only / contract only; either side or both)</td><td>a subset of the mapped roles is refused before comparison; full projection accepted</td><td>RUN-7</td><td>pass</td><td>found by GPT-PM round 2; fixed</td></tr><tr><td>RUN-7</td><td>2026-10-08</td><td>after the GPT-PM round-2 fix: pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py on PostgreSQL 16; real lane artifacts re-checked (196 rows in 20 files carry both roles)</td><td>69 passed</td></tr></tbody></table></div>
+<h2>Runs</h2><div class="wrap"><table><thead><tr><th>Run</th><th>When (UTC+3)</th><th>Command / what</th><th>Result</th></tr></thead><tbody><tr><td>RUN-1</td><td>2026-10-08</td><td>pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py on disposable PostgreSQL 16 (127.0.0.1:58432)</td><td>56 passed (after review fixes; 46 before)</td></tr><tr><td>RUN-2</td><td>2026-10-08</td><td>pytest tests (excluding e2e and real1c) on the same PostgreSQL; run once mid-sprint, before rules v3 were known</td><td>1743 passed, 91 skipped, 1 failed (stale checkpoint)</td></tr><tr><td>RUN-3</td><td>2026-10-08</td><td>private lane builder: 10 month-end cases, side A COM query vs side B production tool code</td><td>10 of 10 identical</td></tr><tr><td>RUN-4</td><td>2026-10-08</td><td>HTTP call accounting_balance_by_analytics as user_company_one after gateway restart; plus payable_balance and accounting_balance_and_turnovers</td><td>labelled machine-reconciled and equal to the 1C query; the other two refuse</td></tr><tr><td>RUN-5</td><td>2026-10-08</td><td>after review fixes: pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py on PostgreSQL 16</td><td>56 passed</td></tr><tr><td>RUN-6</td><td>2026-10-08</td><td>after the GPT-PM REJECT fixes: pytest tests/test_evidence_basis.py tests/test_machine_reconciliation.py tests/test_machine_profile_postgres.py on PostgreSQL 16; lane artifacts rebuilt with the bound context (10 of 10 identical), new profile validated through the CLI, gateway restarted, HTTP call equal to the 1C query</td><td>67 passed; lane 10/10; HTTP rows equal</td></tr></tbody></table></div>
+<h2>Reviews (sprint end, sonnet medium, read-only)</h2><p class="sub">Three read-only reviewers (functional-test-reviewer, python-reviewer, database-reviewer) on commit 6ca90e5. No BLOCKER. Roles not used: e2e-runner (no browser journey in this change), architect (no new boundary), refactor-cleaner.</p>
+<div class="wrap"><table><thead><tr><th>Finding</th><th>Severity</th><th>Disposition</th></tr></thead><tbody>
+<tr><td>Consumers of the native-only SQL (company scope, access explanation) had no test that fails if the gate is removed</td><td>MAJOR (test gap)</td><td class="ok">closed: <code>test_native_only_consumers_refuse_the_machine_profile</code></td></tr>
+<tr><td>No negative test for runtime tampering (mixed row, forged scope)</td><td>MAJOR (test gap)</td><td class="ok">closed: <code>test_registry_refuses_tampered_machine_profile</code></td></tr>
+<tr><td><code>discovered_at</code> fix not exercised through Registry and CLI</td><td>MAJOR (test gap)</td><td class="ok">closed: <code>test_probe_stamp_does_not_stale_the_profile_but_a_capability_change_does</code></td></tr>
+<tr><td>CLI refusals (no artifact root, no plans dir, company-less profile, other account, extra manifest key, non-test environment)</td><td>MAJOR (test gap)</td><td class="ok">closed: six parametrized cases</td></tr>
+<tr><td>Stored fingerprints from before the change could go stale (conditional)</td><td>MAJOR</td><td class="ok">checked: lane has 1 validated profile, 0 differ; the real source has only drafts; fixtures without the stamp unchanged</td></tr>
+<tr><td>Plan authority file lookup by substring</td><td>MAJOR (self-attested)</td><td class="ok">tightened: file stem must equal the plan id, plan must be an object. Recomputing the hash from the plan body is PM Bridge's algorithm: backlog</td></tr>
+<tr><td>Mapping count not keyed on the profile; SQL twin accepted malformed evidence; uniqueness compared raw strings</td><td>MINOR</td><td class="ok">closed in code with tests</td></tr>
+<tr><td>Admin method-level tests, isolated wrong-concept branch, extra verifier negatives, runtime re-check of profile and manifest fingerprints, DB CHECK for machine invariants, plan hash recompute</td><td>MINOR / MAJOR test gaps</td><td class="warn">backlog (recorded in the decision log); each gate is covered by a function-level test or by another layer</td></tr>
+<tr><td>GPT-PM round 1 on ee95505 (new conversation): M-01 label-stripped machine manifest read back as native; M-02 runs and artifacts not bound to the authorized scope; M-03 comparator coerced null/false/0 currency and ignored extra slot fields</td><td>MAJOR x3 (REJECT)</td><td class="ok">fixed with regression tests, lane evidence rebuilt; see R18-R20 and RUN-6; verification round pending</td></tr></tbody></table></div>
+<h2>Not verified / remaining</h2><ul><li>Final GPT-PM review on the exact head, then push (not done yet).</li><li>Re-pin of the engineering checkpoint after the last code change.</li><li>Live ChatGPT confirmation; ten human native reports remain the stronger evidence and are still wanted.</li><li>The reader's own account permissions on the reference publication are unchanged.</li></ul>
+</main>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

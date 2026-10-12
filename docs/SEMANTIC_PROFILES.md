@@ -157,3 +157,39 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
 - `counterparty_duplicate_candidates` (input `source_id`, `company_id`, `top`; permission `accounting.read`) reads concept `counterparty.duplicate_candidates`. Its mapping shape is `{entity_set: "Catalog_Counterparties", output_fields: {counterparty_ref: "Ref_Key", code: "Code", name: "Description"}, company_activity: {entity_set: "AccumulationRegister_SettlementItems", counterparty_field: "Counterparty_Key", company_scope: {field, value_type: "guid"}}, match_rule: "normalized_name_v1", required_register_capabilities: []}`.
 - The tool is read-only and never merges (`merge_count` is always 0). The fixture profile exists only under `BAG_ENVIRONMENT=test`, is never validated and is never native evidence; responses carry `profile_kind=SYNTHETIC_FIXTURE`, `evidence_level=L1`, `native_reconciliation=NOT_RUN`. In production the tool fails closed with `SEMANTIC_PROFILE_UNVALIDATED` until an operator validates a DB profile (the existing rule of at least ten native PASS cases applies).
 - Detection semantics (normalisation, grouping, company scoping, truncation, result schema) are frozen in [SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
+## Machine two-source reconciled profiles (test lane only)
+
+A profile may be validated from ten labelled **machine two-source reconciliation** cases instead of ten human native
+1C UI reports, under these limits (operator decision 2026-10-08, Rosetta plan 198889, ADR-0008 section 8):
+
+- Evidence class `MACHINE_TWO_SOURCE_RECONCILIATION`, comparison kind `cross_copy_comparison`. It is a comparison of
+  two independent machine runs (a hand-written 1C query through COM on a disposable clone, and the production tool
+  `accounting_balance_by_analytics`). It is never parity proof and never native evidence.
+- Only the test environment, only sources listed in `BAG_MACHINE_RECONCILED_SOURCES`, only the concept
+  `account.balance_by_analytics`, only account 521.1, only a company-specific profile with exactly one confirmed mapping.
+  Production refuses the setting at startup.
+- Only `scripts/semantic_profiles.py validate` accepts machine evidence (with `--artifacts-root` and `--plans-dir`). It
+  re-reads the private artifacts (digest, embedded run id and method, exact decimal equality per row key, no truncation,
+  no empty result) and checks that the cited approved Rosetta plan names the authorization scope hash. The Admin API
+  validate path refuses machine and mixed evidence.
+- Every other consumer of `status = 'VALIDATED'` (company scope mappings, access explanation, the other tools) accepts
+  native evidence only. The basis is recomputed from the stored cases and contradictions are refused.
+- Responses carry `profile_kind = VALIDATED_MACHINE_RECONCILED`, `evidence_level = PROFILE_VALIDATED_MACHINE`,
+  `native_reconciliation = MACHINE_TWO_SOURCE` and the warning `MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT`.
+
+Machine evidence is bound end to end (GPT-PM review, 2026-10-08):
+
+- A case that carries machine-origin markers (`comparison_kind`, `run_record_*`) or the reserved reference prefix
+  `machine-artifact:` is machine evidence whatever label it declares. The native validators refuse it, the stored
+  classifier treats it as machine (and refuses it without a machine scope), and the native-only SQL excludes it.
+  Removing the labels therefore cannot turn it into native evidence.
+- Each run record's parameters are exactly `as_of`, `account`, `source_id`, `company_id`, equal to the authorized
+  scope (account from the confirmed mapping). Each artifact embeds the same values as `context`, and its rows may
+  only use the authorized accounts and must carry exactly the complete set of analytics roles of the confirmed
+  mapping (a subset, such as counterparty totals without the contract, is refused on either side).
+- Rows are a closed typed schema: `currency_ref` is text (the empty string means none; null/false/0 are refused),
+  analytics slots are exactly `{type, ref}` strings, and a role is not repeated within a row.
+
+The capability fingerprint a profile is bound to ignores the probe stamp `discovered_at`; it records when the source
+was probed, not what it supports, and including it made every profile stale after the next probe of a live source.

@@ -49,6 +49,7 @@ class Runtime:
             production=settings.environment == "production",
             allowed_source_hosts=settings.source_host_allowlist_items,
             synthetic_profiles=self.synthetic_profiles,
+            machine_reconciled_sources=settings.machine_reconciled_source_items,
         )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(

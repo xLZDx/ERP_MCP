@@ -59,7 +59,7 @@ async function render(){
    document.getElementById('root').innerHTML=shell(body);
   } else if(state.page==='profiles'){
    const x=await api('/admin/v1/semantic-profiles');
-   document.getElementById('root').innerHTML=shell(table('Semantic profiles',x.items,[{h:'Profile',f:i=>'<b>'+esc(i.profile_name)+'</b><br>'+esc(i.profile_id)},{h:'Source',f:i=>esc(i.source_id)},{h:'Company',f:i=>esc(i.company_id||'source-wide')},{h:'Status',f:i=>tag(i.status,i.status==='VALIDATED'?'ok':i.status==='STALE'?'warn':'')},{h:'Version',f:i=>esc(i.profile_version)}]));
+   document.getElementById('root').innerHTML=shell(table('Semantic profiles',x.items,[{h:'Profile',f:i=>'<b>'+esc(i.profile_name)+'</b><br>'+esc(i.profile_id)},{h:'Source',f:i=>esc(i.source_id)},{h:'Company',f:i=>esc(i.company_id||'source-wide')},{h:'Status',f:i=>tag(i.status,i.status==='VALIDATED'?'ok':i.status==='STALE'?'warn':'')},{h:'Evidence',f:i=>i.evidence_basis?tag(i.evidence_basis==='MACHINE'?'MACHINE (not native)':'NATIVE',i.evidence_basis==='MACHINE'?'warn':'ok'):'—'},{h:'Version',f:i=>esc(i.profile_version)}]));
   } else if(state.page==='audit'){
    const x=await api('/admin/v1/audit'); const all=[...(x.admin||[]).map(i=>({...i,stream:'admin'})),...(x.access||[]).map(i=>({...i,stream:'runtime'}))];
    document.getElementById('root').innerHTML=shell(table('Audit events',all,[{h:'Time',f:i=>esc(i.occurred_at)},{h:'Stream',f:i=>tag(i.stream)},{h:'Actor',f:i=>esc(i.actor_subject||i.principal_subject)},{h:'Action',f:i=>esc(i.action||i.tool_name)},{h:'Source',f:i=>esc(i.source_id||'—')},{h:'Outcome',f:i=>tag(i.outcome,i.outcome==='success'?'ok':i.outcome==='denied'?'deny':'warn')}]));
