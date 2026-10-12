@@ -171,7 +171,7 @@ def test_removed_signing_key_is_rejected_after_jwks_ttl(monkeypatch):
     monkeypatch.setattr(verifier._jwks, "fetch_data", fetch_data)
     now = int(time.time())
     token = jwt.encode({"iss": config.oauth_issuer, "aud": config.admin_oauth_audience, "scope": "erp_mcp:admin",
-                        "sub": "admin", "iat": now, "exp": now + 600}, private,
+                        "sub": "admin", "azp": "admin-test-client", "iat": now, "exp": now + 600}, private,
                        algorithm="RS256", headers={"kid": "old"})
     assert verifier._verify_sync(token) is not None
     keys["keys"] = [new_key]
@@ -191,7 +191,7 @@ def test_malformed_or_incomplete_group_claims_cannot_create_permissions(extra):
     verifier._jwks = FixedJWKS(public)
     now = int(time.time())
     raw = jwt.encode({"iss": config.oauth_issuer, "aud": config.admin_oauth_audience,
-                      "sub": "admin", "scope": "erp_mcp:admin", "iat": now, "exp": now + 300,
+                      "sub": "admin", "azp": "admin-test-client", "scope": "erp_mcp:admin", "iat": now, "exp": now + 300,
                       **extra}, private, algorithm="RS256")
     token = verifier._verify_sync(raw)
     assert token is not None

@@ -77,8 +77,9 @@ class JWTTokenVerifier(TokenVerifier):
             claims.get("client_id")
             or claims.get("azp")
             or claims.get("appid")
-            or "unknown-client"
         )
+        if not isinstance(client_id, str) or not client_id.strip():
+            return None
         return AccessToken(
             token=token,
             client_id=str(client_id),

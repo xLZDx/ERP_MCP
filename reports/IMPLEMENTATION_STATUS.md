@@ -1,7 +1,16 @@
+<!-- ENGINEERING_CHECKPOINT=CLIENT_SAFETY_20261009 ENGINEERING_IMPLEMENTATION=9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2 -->
 
 # ERP_MCP implementation status
 
 <!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=b68e581fd42ceedcb184f2499c33d32d7fb7e5ddb993eb7963713ff8a810a71b -->
+
+## Final local OAuth validation — 2026-10-09
+
+On the completed re-pin worktree, the full suite was rerun without deselection: **1934 passed / 343 skipped** in 387.78 seconds, zero failures. An earlier complete run had **1 failed / 1933 passed / 343 skipped** (fault/recovery harness); separate fault runner diagnostics had 11 passing cases and the problem test itself passed on re-run. This intermittent incident is retained as a flaky-test risk, NOT suppressed. Ruff/compile checks for OAuth were executed; current branch has no hosted exact-head confirmation, real 1C or production IdP acceptance. **Production GO remains NO-GO; DoD remains PARTIAL.**
+
+## OAuth client identity hardening — 2026-10-09
+
+In isolated branch `hardening/client-safety-20261008`, JWT verification now rejects tokens without a nonblank string client identity (no `unknown-client` fallback). Historical admin JWT fixtures were updated to carry an explicit `azp`; valid `client_id` and legacy `appid` remain covered. Local broad regression excluding only the checkpoint re-pin test: **1933 passed / 343 skipped / 1 deselected**; after re-pin, checkpoint/release tests **41 passed** and report reference gate **PASS**. New checkpoint `CLIENT_SAFETY_20261009` binds implementation fingerprint; previous hosted CI remains evidence of *prior* commits only. **Current head not independently hosted-verified. Production GO remains NO-GO; DoD remains PARTIAL.** See `docs/CLIENT_SAFETY_REVIEW_2026-10-08.md`.
 
 ## Capability observation boundary — 2026-10-06
 
