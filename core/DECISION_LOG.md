@@ -447,3 +447,5 @@ eal1c_e2eutostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is id
 - Evidence: with apache, proxy 8193 and the sidecar killed, one task run restored all three (log lines apache/lane proxy/real sidecar started: True); gateway pid unchanged on a no-op pass. A cold start after a real reboot is not yet exercised.
 - Limitation: the IdP is published through a Cloudflare quick tunnel; a new host after reboot is written into env.ps1 and idp-config.json by the script, but ChatGPT must press Reconnect once. Needs an interactive Windows logon (DPAPI key, Docker Desktop are per-user). No production change.
 - 2026-10-12: Commit pending integration work on integration/1c-mvp-production-candidate: OAuth additional audience for the ChatGPT tunnel resource (auth, settings, tests) and the matching envctl client and audience configuration. Nothing executed by this commit; nothing pushed.
+# Decision log
+- 2026-10-12: Commit three pending audit and remediation documents on feature/admin-control-center-implementation (admin branch remediation master prompt, current audit reconciliation, independent consensus audit of 2026-10-06). Documents only; nothing pushed.
