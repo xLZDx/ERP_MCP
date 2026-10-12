@@ -16,6 +16,10 @@ from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
 from tests.test_analytics_balance_mapping import COMPANY, REF1, good_mapping, odata_row
 from tests.test_analytics_balance_routing import SOURCE, make_caps
+from tests.test_analytics_balance_routing import build as routing_build
+from tests.test_analytics_balance_routing import call as routing_call
+from tests.test_analytics_balance_routing import payload as routing_payload
+from tests.test_supplier_debt_mcp_integration import exact_5211_mapping
 from tests.test_server_audit import RecordingAudit, TestRegistry
 from tests.test_counterparty_lookup import PROFILE
 
@@ -142,50 +146,47 @@ async def test_tool_schema_has_exactly_three_parameters():
     assert schema.get("additionalProperties") is False
 
 
-# ---------------------------------------------------------------- name resolution in the balance tool
+# ---------------------------------------------------------------- supplier names in the balance tool (main path)
 
 
-async def balance(mcp, company):
-    return body(await mcp.call_tool("accounting_balance_by_analytics", {
-        "source_id": "source-1", "company_id": str(company), "as_of": "2026-04-30T00:00:00+00:00"}))
-
-
-def counterparty_slot(out):
-    return next(slot for slot in out["rows"][0]["analytics"] if slot["role"] == "counterparty")
-
-
-async def test_balance_rows_get_names_from_one_batched_profile_owned_read():
-    mcp, _audit, onec, company = build(lookup_rows=[catalog_row(ref=REF1, name="ACME SRL")])
-    out = await balance(mcp, company)
-    slot = counterparty_slot(out)
-    assert (slot["name"], slot["code"], slot["deleted"]) == ("ACME SRL", "00-000036", False)
+async def test_balance_rows_get_names_from_one_batched_authorized_catalog_read(monkeypatch):
+    monkeypatch.setattr(SOURCE, "entity_allowed", lambda entity: entity == "Catalog_Контрагенты", raising=False)
+    mcp, _audit, onec, _com, company = routing_build("AVAILABLE", mapping=exact_5211_mapping())
+    onec.read = AsyncMock(return_value={
+        "value": [{"Ref_Key": REF1, "Description": "ACME SRL"}],
+        "page": {"has_more": False, "truncated": False},
+    })
+    summary = routing_payload(await routing_call(mcp, company))["supplier_summary"]
+    assert summary["suppliers"][0]["supplier_name"] == "ACME SRL"
+    assert summary["name_lookup_status"] == "COMPLETE"
     assert onec.read.await_count == 1
-    assert onec.read.await_args.kwargs["filter_expr"] == f"Ref_Key eq guid'{REF1}'"
-    assert out["account_totals"][0]["account"] == "521.1"
-    assert out["warnings"] == []
 
 
-async def test_balance_survives_a_missing_lookup_profile_with_a_warning():
-    mcp, _audit, onec, company = build(lookup_profile=False)
-    out = await balance(mcp, company)
-    assert "name" not in counterparty_slot(out)
-    assert out["warnings"] and out["warnings"][0].startswith("COUNTERPARTY_NAMES_UNAVAILABLE")
+async def test_many_account_profile_has_no_supplier_summary_and_no_catalog_read(monkeypatch):
+    monkeypatch.setattr(SOURCE, "entity_allowed", lambda entity: True, raising=False)
+    mcp, _audit, onec, _com, company = routing_build("AVAILABLE", mapping=good_mapping())
+    onec.read = AsyncMock()
+    result = routing_payload(await routing_call(mcp, company))
+    assert result["supplier_summary"] is None
     onec.read.assert_not_awaited()
-    assert out["row_count"] == 1
 
 
-async def test_balance_survives_a_failing_catalog_read_without_leaking_its_text():
-    mcp, _audit, _onec, company = build(read_error=RuntimeError("secret-host.internal exploded"))
-    out = await balance(mcp, company)
-    assert out["warnings"] == ["COUNTERPARTY_NAMES_UNAVAILABLE:RuntimeError"]
-    assert "secret-host" not in json.dumps(out)
+async def test_failing_catalog_read_fails_closed_without_leaking_its_text(monkeypatch):
+    monkeypatch.setattr(SOURCE, "entity_allowed", lambda entity: True, raising=False)
+    mcp, _audit, onec, _com, company = routing_build("AVAILABLE", mapping=exact_5211_mapping())
+    onec.read = AsyncMock(side_effect=RuntimeError("secret-host.internal exploded"))
+    with pytest.raises(UnexpectedToolError) as raised:
+        await routing_call(mcp, company)
+    assert "secret-host" not in str(raised.value)
 
 
-async def test_unknown_reference_is_reported_not_invented():
-    mcp, _audit, _onec, company = build(lookup_rows=[])
-    out = await balance(mcp, company)
-    assert "name" not in counterparty_slot(out)
-    assert out["warnings"] == ["COUNTERPARTY_NAME_NOT_FOUND:1"]
+async def test_unknown_reference_is_reported_not_invented(monkeypatch):
+    monkeypatch.setattr(SOURCE, "entity_allowed", lambda entity: True, raising=False)
+    mcp, _audit, onec, _com, company = routing_build("AVAILABLE", mapping=exact_5211_mapping())
+    onec.read = AsyncMock(return_value={"value": [], "page": {"has_more": False, "truncated": False}})
+    summary = routing_payload(await routing_call(mcp, company))["supplier_summary"]
+    assert summary["suppliers"][0]["supplier_name"] is None
+    assert summary["name_lookup_status"] == "PARTIAL"
 
 
 # ---------------------------------------------------------------- every tool rejects unknown arguments
@@ -218,7 +219,7 @@ async def test_tool_descriptions_name_the_right_tool_and_the_timezone_rule():
     assert "timezone" in desc["accounting_balance_and_turnovers"]
     assert "accounting_balance_by_analytics" in desc["accounting_balance_and_turnovers"]
     assert "counterparty_find" in desc["accounting_balance_and_turnovers"]
-    for name in ("payable_balance", "payable_aging"):
-        assert "SEMANTIC_PROFILE_UNVALIDATED" in desc[name]
-        assert "accounting_balance_by_analytics" in desc[name]
-    assert "timezone" in desc["accounting_balance_by_analytics"] and "name" in desc["accounting_balance_by_analytics"]
+    assert "payable.balance" in desc["payable_balance"] and "fail closed" in desc["payable_balance"]
+    assert "payable" in desc["payable_aging"]
+    assert "ISO 8601 with offset" in desc["accounting_balance_by_analytics"]
+    assert "counterparty names" in desc["accounting_balance_by_analytics"]
