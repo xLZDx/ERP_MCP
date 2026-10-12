@@ -160,8 +160,11 @@
       "name": "Foundations, contracts and feasibility",
       "kind": "sprint",
       "predecessors": [],
-      "state": "IN_PROGRESS",
-      "evidence": null
+      "state": "DONE",
+      "evidence": {
+        "path": "docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md",
+        "sha256": "91d8a14db488c5397a714995ff3423ebc1475dd719c4cdeaa0f0550307ad4a40"
+      }
     },
     {
       "id": "S12",
