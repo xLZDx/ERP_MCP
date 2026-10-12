@@ -378,3 +378,4 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - Re-pinned the engineering checkpoint after the lint fix (clean export of e147719; concurrent uncommitted edits of another session excluded). The phase-2 documents that had sat untracked in this worktree were moved out of it at the operator's request; they live only on branch docs/phase2-design-package-v0.1 (PR #23). The other session's OAuth edits remain untouched in the worktree (operator: test data, to be cleaned later).
 
 - Sprint report (EN and RU) extended with the traceability row R21 and RUN-7 for the round-2 fix; reports are outside the implementation fingerprint, so no re-pin is needed.
+- 2026-10-12: Commit pending integration work on integration/1c-mvp-production-candidate: OAuth additional audience for the ChatGPT tunnel resource (auth, settings, tests) and the matching envctl client and audience configuration. Nothing executed by this commit; nothing pushed.

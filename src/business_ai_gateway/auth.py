@@ -21,7 +21,7 @@ class JWTTokenVerifier(TokenVerifier):
         if not settings.oauth_jwks_url:
             raise ValueError("oauth_jwks_url required")
         self.settings = settings
-        self.audience = settings.oauth_audience if audience is None else audience
+        self.audience = settings.oauth_audience_list if audience is None else audience
         self.required_scope = settings.oauth_required_scope if required_scope is None else required_scope
         self.resource = settings.public_mcp_url if resource is None else resource
         if not self.audience:

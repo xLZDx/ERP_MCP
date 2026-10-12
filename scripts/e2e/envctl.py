@@ -77,6 +77,7 @@ HEADLESS_CLIENT = "erp-mcp-headless-e2e"
 DESKTOP_CLIENT = "erp-mcp-claude-desktop"
 DESKTOP_CALLBACK_PORT = 3334  # mcp-remote default OAuth callback port
 CHATGPT_CLIENT = "erp-mcp-chatgpt"
+CHATGPT_TUNNEL_RESOURCE = "https://tunnel-service.gateway.unified-0.internal.api.openai.org/v1/mcp/tunnel_6ac64553de90819188eaf83bc540eb7a"
 CHATGPT_REDIRECT_URIS = [
     "https://chatgpt.com/connector_platform_oauth_redirect",
     "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
@@ -195,7 +196,7 @@ def init_secrets() -> None:
             {"client_id": CHATGPT_CLIENT, "secret": None,
              "redirect_uris": CHATGPT_REDIRECT_URIS,
              "post_logout_redirect_uris": [],
-             "audiences": [MCP_AUDIENCE],
+             "audiences": [MCP_AUDIENCE, CHATGPT_TUNNEL_RESOURCE],
              "scopes": ["openid", "profile", "onec:read"],
              "grant_types": ["authorization_code", "refresh_token"]},
         ],
@@ -262,6 +263,7 @@ def _base_env_vars(sec: dict, gw: int) -> dict[str, str]:
         "BAG_OAUTH_ENABLED": "true",
         "BAG_OAUTH_ISSUER": ISSUER,
         "BAG_OAUTH_AUDIENCE": MCP_AUDIENCE,
+        "BAG_OAUTH_ADDITIONAL_AUDIENCES": CHATGPT_TUNNEL_RESOURCE,
         "BAG_OAUTH_JWKS_URL": f"{ISSUER}/protocol/openid-connect/certs",
         "BAG_ADMIN_API_ENABLED": "true",
         "BAG_ADMIN_UI_ENABLED": "true",
