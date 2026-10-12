@@ -1089,6 +1089,83 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
+
+    @mcp.tool()
+    async def counterparty_find(
+        source_id: str, company_id: str, name: str
+    ) -> dict[str, Any]:
+        """Find a counterparty by name or code: exact, case-insensitive, or partial match.
+
+        Returns status EXACT, PARTIAL, AMBIGUOUS or NOT_FOUND with bounded matches (ref, code,
+        name, deleted). The catalog and field names come from the validated profile, not the caller.
+        """
+        tool = "counterparty_find"
+        started = time.monotonic()
+        principal = await ctx()
+        try:
+            parsed_company_id = uuid.UUID(company_id)
+        except ValueError as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, outcome="denied",
+                started_at=started, company_id=None, detail_code="INVALID_COMPANY_ID",
+            )
+            raise ValueError("company_id must be a UUID") from exc
+        query = {"company_id": str(parsed_company_id), "concept": COUNTERPARTY_LOOKUP_CONCEPT,
+                 "name_length": len(name) if isinstance(name, str) else None}
+        source = await resolve_source(
+            principal, source_id, tool, started, query, company_id=parsed_company_id
+        )
+        capabilities = None
+        try:
+            await runtime.registry.require_company(principal, source_id, parsed_company_id)
+            capabilities = await runtime.onec.capabilities(source)
+            drift = await runtime.registry.save_capabilities(capabilities)
+            require_acknowledged_metadata(drift)
+            profile = await runtime.registry.require_semantic_mapping(
+                source_id, parsed_company_id, COUNTERPARTY_LOOKUP_CONCEPT
+            )
+            mapping = profile["mapping"]
+            entity_set, select, filter_expr, row_limit = build_lookup_query(mapping, name)
+            result = await runtime.onec.read(
+                source, entity_set=entity_set, select=select, filter_expr=filter_expr,
+                orderby=None, expand=None, top=row_limit, skip=0,
+            )
+            raw_rows = result.get("value", []) if isinstance(result, dict) else result
+            outcome = evaluate_lookup(raw_rows, mapping, name)
+            provenance = profile_provenance(profile)
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id, outcome="success",
+                started_at=started, query=query, returned_items=outcome["match_count"],
+                company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
+                metadata_fingerprint=capabilities.metadata_fingerprint,
+                profile_fingerprint=profile["profile_fingerprint"],
+                detail_code=f"status={outcome['status']}", truncated=outcome["truncated"],
+            )
+            return {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": COUNTERPARTY_LOOKUP_CONCEPT,
+                **outcome,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                **provenance,
+            }
+        except Exception as exc:
+            await runtime.audit.write(
+                principal=principal, tool=tool, source_id=source_id,
+                outcome=(
+                    "denied"
+                    if isinstance(exc, (PermissionError, CapabilityUnsupported,
+                                        MetadataDriftUnacknowledged, SemanticProfileUnavailable))
+                    else "error"
+                ),
+                started_at=started, query=query, company_id=parsed_company_id,
+                adapter_kind=(capabilities.adapter_profile.value if capabilities else None),
+                metadata_fingerprint=(capabilities.metadata_fingerprint if capabilities else None),
+                detail_code=str(getattr(exc, "code", type(exc).__name__)),
+            )
+            raise
+
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def inventory_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
         """Read a point-in-time, company-scoped inventory balance via a validated profile."""
