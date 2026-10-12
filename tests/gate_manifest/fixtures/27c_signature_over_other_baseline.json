@@ -62,11 +62,13 @@
       "production_authorization": "NONE",
       "evidence": null,
       "waiver": {
-        "approved_by": "GPT-PM",
+        "approved_by": "operator",
+        "signer_id": "op-test",
+        "signature": "@SIGN_OTHER_BASELINE",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/waiver_gptpm.txt",
-          "sha256": "fb97cb36ed19b1af829634ddddcd0c3a819cc2496b96f5cf3bbc37b319ce58c4"
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -260,8 +262,8 @@
   ],
   "_fixture": {
     "expect": "reject",
-    "match": "^G4: NOT_APPLICABLE requires a waiver",
-    "desc": "approval_ref absent",
+    "match": "^G4 waiver: signature does not verify against the registered operator key$",
+    "desc": "valid signature over a different baseline",
     "lines": 1
   }
 }

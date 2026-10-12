@@ -62,12 +62,12 @@
       "production_authorization": "NONE",
       "evidence": null,
       "waiver": {
-        "approved_by": "GPT-PM",
-        "approval_ref": "PMB-REQ-20261012-0001",
+        "approved_by": "operator",
+        "signature": "@SIGN",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/waiver_gptpm.txt",
-          "sha256": "fb97cb36ed19b1af829634ddddcd0c3a819cc2496b96f5cf3bbc37b319ce58c4"
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -260,8 +260,9 @@
     }
   ],
   "_fixture": {
-    "expect": "accept",
-    "match": "gate manifest ok",
-    "desc": "GPT-PM waiver with correct ref and APPROVE marker"
+    "expect": "reject",
+    "match": "^G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence$",
+    "desc": "signer_id absent",
+    "lines": 1
   }
 }

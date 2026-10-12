@@ -7,7 +7,7 @@ Date: 2026-10-12. Platform 1C:Enterprise 8.3.27.2342, file base, configuration "
 - Safety copy before any work: `D:\ERP_MCP_Testbed\1c\reference\working\_bak_818HA_p2diff_pre_ext\1Cv8.1CD` (4377796608 bytes, equal to the clone file at copy time). The clone was not restored; no restore was needed.
 - Extension `CT14Cust` (purpose Customization, no modules, no handlers), sources in `testlane/onec_extension/CT14Ext/`:
   adopted `Document.ПоступлениеТоваровУслуг` with own attributes `CT14ИдентификаторИзменения` String(36, indexed) and `CT14ХешИзменения` String(64);
-  role `CT14Писатель`; 52 adopted base objects (empty adoption) that the role needs (see section 5).
+  role `CT14Писатель`; 52 further base objects adopted empty because the role needs them (53 adopted objects in total, see section 7). Extension name `CT14Cust`, version string `1.0.0-ct14-spike`.
 - APPLIED and ACTIVE in the base (evidence: `ct14_check_ext.py` earlier: attr_count 75 = 73 + 2, both CT14 attributes and the role visible through COM, query on the attribute OK; and the full measurement below ran against it).
 - Left on the clone, not deleted: extension `CT14Ext` (first attempt, purpose AddOn, DEACTIVATED), test drafts of purchase receipts (markers `CT14-ITER-MARKER-0001`, six `CT14-PRUNE-*`, `CT14M-86f4a165d45e44e2`; all unposted), infobase user `CT14_NARROW` (its roles are currently the standard accounting roles from measurement phase B) and its Users catalog item. Cleanup is for the operator.
 
@@ -44,15 +44,31 @@ Date: 2026-10-12. Platform 1C:Enterprise 8.3.27.2342, file base, configuration "
 | Delete denied | SUPPORTED | receipt Удаление, ИнтерактивноеУдаление, ИнтерактивнаяПометкаУдаления, ИнтерактивноеУдалениеПомеченных all false; `Удалить()` attempt: "Access violation!" (called only because the right was false) |
 | No administration | SUPPORTED | Администрирование, АдминистрированиеДанных, ОбновлениеКонфигурацииБазыДанных false; catalog Изменение false for ДоговорыКонтрагентов, Склады, Контрагенты, Номенклатура |
 
-## 5. Final minimal right list of `CT14Писатель` (52 objects; no Delete, no Interactive*, no administration)
+## 5. Final minimal right list of `CT14Писатель` (53 objects in Rights.xml; no Delete, no Interactive*, no administration)
 
-- `Document.ПоступлениеТоваровУслуг`: Read, Insert, Update, Posting, UndoPosting; attributes `CT14ИдентификаторИзменения` and `CT14ХешИзменения`: View, Edit (interface rights; they evaluate false for this role, see section 4).
+- `Document.ПоступлениеТоваровУслуг`: Read, Insert, Update, Posting, UndoPosting. No explicit rights on the marker attributes: the role has NO View/Edit on `CT14ИдентификаторИзменения` / `CT14ХешИзменения` (effective values read from 1C are false). An earlier Rights.xml listed View/Edit=true for both attributes; those entries were stored but ineffective (`independentRightsOfChildObjects=false`, so child rights follow the parent) and were removed in the S11-R02 reconciliation (section 7). The role writes the marker through the API, which is not governed by attribute rights.
 - `Sequence.ДокументыОрганизаций`: Read, Update (removing Update fails at post: "РаботаСПоследовательностямиСобытия.Модуль(122) ... Access violation").
 - Read only: `Document.СчетФактураПолученный`; Catalogs ДоговорыКонтрагентов, Склады, ИдентификаторыОбъектовМетаданных; Constants ОграничиватьДоступНаУровнеЗаписейУниверсально, ПервоеОбновлениеДоступаЗавершилось; AccountingRegister Хозрасчетный; 19 AccumulationRegisters and 21 InformationRegisters (the 39 movement registers of the receipt plus КурсыВалют, НастройкаВремениДокументов).
 - Get only: session parameters ВыполняетсяОбновлениеИБ, ПараметрыОбработчикаОбновления, ОтключениеОбновленияКлючейДоступа, ОграничениеДоступаНаУровнеЗаписейУниверсально.
 - Pruning (one removal per Designer rebuild, full chain re-run each time): Update/Insert on Catalog.Склады and ДоговорыКонтрагентов and Update on InformationRegister.КурсыВалют were removable (posting writes movements without register Update). Update on the sequence was not removable. Read rights were added only after a real denial; they were not pruned individually.
 - The exact list is in `scripts/ct14_rights_state.json` and `CT14Ext/Roles/CT14Писатель/Ext/Rights.xml`.
 - The coordinator's bulk "Read on everything" approach was NOT used: the iteration (about 40 rounds of about 1 minute each, driven by event-log AccessDenied events) already converged on a verified minimal set, and bulk Read would contradict least privilege and require adopting thousands of objects.
+
+## 7. Reconciliation S11-R02 (adopted objects vs Rights.xml vs effective rights)
+
+| Representation | Count | Content |
+| --- | --- | --- |
+| (1) Adopted objects in `CT14Ext/` (non-language) | 53 | the receipt document `ПоступлениеТоваровУслуг` (carries the 2 own attributes) + 52 empty adoptions: Document СчетФактураПолученный; Catalogs ДоговорыКонтрагентов, Склады, ИдентификаторыОбъектовМетаданных; Constants ОграничиватьДоступНаУровнеЗаписейУниверсально, ПервоеОбновлениеДоступаЗавершилось; AccountingRegister Хозрасчетный; 19 AccumulationRegisters; 21 InformationRegisters; Sequence ДокументыОрганизаций; 4 SessionParameters. (The Language `Русский` is also adopted and not counted.) |
+| (2) `<object>` entries in the committed Rights.xml | 53 | exactly the 53 adopted objects. The previous 55 = these 53 + 2 attribute entries `Document.ПоступлениеТоваровУслуг.Attribute.CT14...` (View=true, Edit=true), which were the source of the discrepancy; "52" in the earlier report counted only the empty adoptions |
+| (3) Effective rights from 1C (`ПравоДоступа`, CT14_NARROW with only CT14Писатель + ЗапускВнешнегоСоединения; `scripts/ct14_effective_rights.py`) | 53 objects probed with 13 right names each | equal to Rights.xml: no extra effective right, no listed-but-not-effective right; `Delete`/`Interactive*` false on every object; marker attributes: View=false, Edit=false |
+
+Before the fix, the live role dump (`/DumpConfigToFiles -Extension CT14Cust`) equalled the committed file (55 objects, sha256 `b9a1a286...58ab`), but the stored attribute View/Edit=true differed from the effective false. Fix: the two ineffective entries were removed, the extension was reloaded and updated (`/LoadConfigFromFiles`, `/UpdateDBCfg -Extension CT14Cust`), the live role was dumped again and equals the committed file (53 objects), the effective rights were re-read, and the full chain (new draft with marker, post, read movements, unpost) was re-run as CT14_NARROW: `ok`.
+
+Marker attribute rights, stated plainly: the writer role does not hold Edit on the marker attributes, and neither does any other role as a deliberate grant; standard accounting roles inherit View/Edit=true on them from the document Update right, and any API writer can change them (section 4). The marker is therefore an untrusted label whose integrity must be checked by the consumer.
+
+- Final Rights.xml SHA-256: `e9296a472dc320c18fccf3a2831d2f549737cb124438bc2c32116ee8b1b8f785` (`CT14Ext/Roles/CT14Писатель/Ext/Rights.xml`).
+- Extension name / version: `CT14Cust` / `1.0.0-ct14-spike` (Configuration.xml, confirmed in the live dump).
+- Static check: `scripts/ct14_compare_rights.py` (committed Rights.xml vs `scripts/ct14_rights_allowlist.json`, 53 objects) prints every right not in the allowlist, missing allowlisted rights, non-allowlisted objects and forbidden rights; current result: "OK, committed rights equal the allowlist".
 
 ## 6. Residual risks and not done
 

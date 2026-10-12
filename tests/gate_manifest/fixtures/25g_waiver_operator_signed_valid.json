@@ -62,12 +62,13 @@
       "production_authorization": "NONE",
       "evidence": null,
       "waiver": {
-        "approved_by": "GPT-PM",
-        "approval_ref": "OP-MSG-20261012-01",
+        "approved_by": "operator",
+        "signer_id": "op-test",
+        "signature": "@SIGN",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
           "path": "evidence/waiver_operator.txt",
-          "sha256": "c705fae9782ee08ae6c61a70d6ba109d0005377c4941f97288fa7e14df6f1b94"
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -260,9 +261,8 @@
     }
   ],
   "_fixture": {
-    "expect": "reject",
-    "match": "^G4 waiver: evidence does not contain the approval_ref and the APPROVE marker$",
-    "desc": "approved_by GPT-PM, evidence has only OPERATOR_APPROVED (substring APPROVE must not satisfy the token)",
-    "lines": 1
+    "expect": "accept",
+    "match": "gate manifest ok",
+    "desc": "operator-signed waiver verifies against the registered test key"
   }
 }

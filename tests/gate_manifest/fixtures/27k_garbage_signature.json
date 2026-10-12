@@ -63,11 +63,12 @@
       "evidence": null,
       "waiver": {
         "approved_by": "operator",
-        "approval_ref": "PMB-REQ-20261012-0001",
+        "signer_id": "op-test",
+        "signature": "!!!not-base64!!!",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/waiver_gptpm.txt",
-          "sha256": "fb97cb36ed19b1af829634ddddcd0c3a819cc2496b96f5cf3bbc37b319ce58c4"
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -261,8 +262,8 @@
   ],
   "_fixture": {
     "expect": "reject",
-    "match": "^G4 waiver: evidence does not contain the approval_ref and the OPERATOR_APPROVED marker$",
-    "desc": "approved_by operator but evidence only has APPROVE",
+    "match": "^G4 waiver: signature does not verify against the registered operator key$",
+    "desc": "signature is not valid base64/Ed25519",
     "lines": 1
   }
 }

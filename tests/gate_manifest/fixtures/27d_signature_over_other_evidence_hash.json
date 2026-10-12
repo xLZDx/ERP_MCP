@@ -63,11 +63,12 @@
       "evidence": null,
       "waiver": {
         "approved_by": "operator",
-        "approval_ref": "OP-MSG-20261012-01",
+        "signer_id": "op-test",
+        "signature": "@SIGN_OTHER_EVIDENCE",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
           "path": "evidence/waiver_operator.txt",
-          "sha256": "c705fae9782ee08ae6c61a70d6ba109d0005377c4941f97288fa7e14df6f1b94"
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -260,8 +261,9 @@
     }
   ],
   "_fixture": {
-    "expect": "accept",
-    "match": "gate manifest ok",
-    "desc": "operator waiver with correct ref and OPERATOR_APPROVED marker"
+    "expect": "reject",
+    "match": "^G4 waiver: signature does not verify against the registered operator key$",
+    "desc": "valid signature over a different evidence hash (evidence changed after signing)",
+    "lines": 1
   }
 }

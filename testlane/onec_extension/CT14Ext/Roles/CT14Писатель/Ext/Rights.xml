@@ -112,16 +112,6 @@
 		<right><name>UndoPosting</name><value>true</value></right>
 	</object>
 	<object>
-		<name>Document.ПоступлениеТоваровУслуг.Attribute.CT14ИдентификаторИзменения</name>
-		<right><name>View</name><value>true</value></right>
-		<right><name>Edit</name><value>true</value></right>
-	</object>
-	<object>
-		<name>Document.ПоступлениеТоваровУслуг.Attribute.CT14ХешИзменения</name>
-		<right><name>View</name><value>true</value></right>
-		<right><name>Edit</name><value>true</value></right>
-	</object>
-	<object>
 		<name>Document.СчетФактураПолученный</name>
 		<right><name>Read</name><value>true</value></right>
 	</object>

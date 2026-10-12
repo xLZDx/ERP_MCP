@@ -2,13 +2,15 @@
 // Usage: node scripts/validate_gate_manifest.mjs [manifest.json] [--root <dir>]
 // Evidence references are {path, sha256}; the validator recomputes the digest, so stale evidence is rejected.
 import { readFileSync, existsSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 import { resolve, relative, isAbsolute } from "node:path";
 
 const args = process.argv.slice(2);
 const rootIdx = args.indexOf("--root");
 const root = rootIdx >= 0 ? resolve(args[rootIdx + 1]) : process.cwd();
-const positional = args.filter((a, i) => !a.startsWith("--") && (rootIdx < 0 || i !== rootIdx + 1));
+const signersIdx = args.indexOf("--signers");
+const positional = args.filter((a, i) => !a.startsWith("--") && (rootIdx < 0 || i !== rootIdx + 1) && (signersIdx < 0 || i !== signersIdx + 1));
+const signersPath = signersIdx >= 0 ? resolve(args[signersIdx + 1]) : resolve("governance/WAIVER_SIGNERS.json");
 const path = positional[0] ?? "governance/GATE_MANIFEST.json";
 const m = JSON.parse(readFileSync(path, "utf8"));
 
@@ -34,7 +36,7 @@ const NODE_STATE = new Set(["NOT_STARTED", "IN_PROGRESS", "DONE"]);
 const ENG = new Set(["NOT_STARTED", "IN_PROGRESS", "COMPLETE", "NOT_APPLICABLE"]);
 const EXT = new Set(["OPEN", "SATISFIED", "NOT_REQUIRED"]);
 const AUTH = new Set(["NONE", "TEST_LANE_ONLY", "PRODUCTION_CANARY_SIGNED", "PRODUCTION_GO"]);
-const WAIVER_APPROVERS = new Set(["GPT-PM", "operator"]);
+// Waiver approver is the operator only; the signature check below is the authority.
 const errors = [];
 const err = (s) => errors.push(s);
 
@@ -114,23 +116,31 @@ const g4 = gates.get("G4");
 if (g4) {
   if (m.drive_intake_enabled === false) {
     if (g4.gate_status === "NOT_APPLICABLE") {
+      // A waiver is authorized only by a detached Ed25519 signature of a registered operator key. A file that merely
+      // quotes an approval is not authority. With no registered signer no waiver can be valid (fail closed).
       const w = g4.waiver;
-      if (!w || !WAIVER_APPROVERS.has(w.approved_by) || !w.evidence || typeof w.approval_ref !== "string" || w.approval_ref.length < 8) {
-        err("G4: NOT_APPLICABLE requires a waiver with approved_by (GPT-PM or operator), approval_ref and evidence");
+      const WAIVER_MSG = (sha) => `G4-WAIVER|baseline=${m.baseline}|drive_intake_enabled=false|evidence_sha256=${sha}`;
+      if (!w || w.approved_by !== "operator" || !w.evidence || typeof w.signer_id !== "string" || typeof w.signature !== "string") {
+        err("G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence");
       } else if (evidenceOk("G4 waiver evidence", w.evidence)) {
-        // Approval basis: the evidence file must quote the approval reference and the approval marker for the approver.
-        // This is an audit-trail check (the PM Bridge request id or the operator's recorded message), not a cryptographic proof.
-        const text = readFileSync(resolve(root, w.evidence.path), "utf8");
-        const marker = w.approved_by === "GPT-PM" ? "APPROVE" : "OPERATOR_APPROVED";
-        const markerRe = new RegExp(`(^|[^A-Za-z_])${marker}([^A-Za-z_]|$)`);
-        if (!text.includes(w.approval_ref) || !markerRe.test(text)) err(`G4 waiver: evidence does not contain the approval_ref and the ${marker} marker`);
+        let signers = [];
+        try { signers = JSON.parse(readFileSync(signersPath, "utf8")).signers ?? []; } catch { signers = []; }
+        const signer = signers.find((x) => x.id === w.signer_id && x.role === "operator");
+        if (!signer) err(`G4 waiver: signer ${w.signer_id} is not a registered operator signer`);
+        else {
+          let ok = false;
+          try {
+            ok = verify(null, Buffer.from(WAIVER_MSG(w.evidence.sha256), "utf8"), createPublicKey(signer.public_key_pem), Buffer.from(w.signature, "base64"));
+          } catch { ok = false; }
+          if (!ok) err("G4 waiver: signature does not verify against the registered operator key");
+        }
       }
     } else if (g4.gate_status === "PASSED") err("G4 cannot be PASSED while drive intake is disabled");
   } else if (g4.gate_status === "NOT_APPLICABLE") {
     err("G4 is NOT_APPLICABLE while drive intake is enabled");
   }
 }
-const g4Satisfied = () => g4 && (g4.gate_status === "PASSED" || (m.drive_intake_enabled === false && g4.gate_status === "NOT_APPLICABLE" && g4.waiver && WAIVER_APPROVERS.has(g4.waiver.approved_by)));
+const g4Satisfied = () => g4 && (g4.gate_status === "PASSED" || (m.drive_intake_enabled === false && g4.gate_status === "NOT_APPLICABLE" && g4.waiver && g4.waiver.approved_by === "operator" && !errors.some((e) => e.startsWith("G4"))));
 
 const closed = (id) => {
   const x = all.get(id);

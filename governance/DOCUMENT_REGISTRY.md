@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 59 tracked paths, 2 local-only paths.
+Inventory: 61 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -74,10 +74,10 @@ Inventory: 59 tracked paths, 2 local-only paths.
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/08_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/09_HANDOFF_RU.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/10_CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
+| testlane/onec_extension/README.md | Other | "CT14 extension spike (disposable 1C clone only)" |
+| testlane/onec_extension/STATUS.md | Other | "CT14 extension spike - final status (clone 818HA_p2diff only)" |
 
 ## Markdown untracked in at least one attached worktree (paths only)
 
 | Path |
 | --- |
-| testlane/onec_extension/README.md |
-| testlane/onec_extension/STATUS.md |

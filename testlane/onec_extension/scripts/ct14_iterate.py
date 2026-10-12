@@ -45,9 +45,9 @@ KIND = {
 }
 REF_LIKE = {"Catalog", "Document", "ChartOfAccounts", "ChartOfCharacteristicTypes", "ChartOfCalculationTypes", "ExchangePlan", "BusinessProcess", "Task"}
 CORE = {
+    # Attribute-level View/Edit entries were removed: with independentRightsOfChildObjects=false they are stored but
+    # NOT effective (ПравоДоступа returns false for the writer role), and API writes ignore them anyway.
     "Document.ПоступлениеТоваровУслуг": ["Read", "Insert", "Update", "Posting", "UndoPosting"],
-    "Document.ПоступлениеТоваровУслуг.Attribute.CT14ИдентификаторИзменения": ["View", "Edit"],
-    "Document.ПоступлениеТоваровУслуг.Attribute.CT14ХешИзменения": ["View", "Edit"],
 }
 
 

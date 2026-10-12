@@ -253,7 +253,7 @@
   ],
   "_fixture": {
     "expect": "reject",
-    "match": "^G4: NOT_APPLICABLE requires a waiver",
+    "match": "^G4: NOT_APPLICABLE requires an operator waiver",
     "desc": "waiver null",
     "lines": 1
   }

@@ -63,11 +63,12 @@
       "evidence": null,
       "waiver": {
         "approved_by": "GPT-PM",
-        "approval_ref": "PM-1",
+        "signer_id": "op-test",
+        "signature": "@SIGN",
         "reason": "Drive intake is out of scope for this release",
         "evidence": {
-          "path": "evidence/waiver_gptpm.txt",
-          "sha256": "fb97cb36ed19b1af829634ddddcd0c3a819cc2496b96f5cf3bbc37b319ce58c4"
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
         }
       }
     },
@@ -261,8 +262,8 @@
   ],
   "_fixture": {
     "expect": "reject",
-    "match": "^G4: NOT_APPLICABLE requires a waiver",
-    "desc": "approval_ref shorter than 8 chars",
+    "match": "^G4: NOT_APPLICABLE requires an operator waiver with signer_id, signature and evidence$",
+    "desc": "GPT-PM approver is no longer accepted even with a valid signature",
     "lines": 1
   }
 }

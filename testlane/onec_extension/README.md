@@ -43,7 +43,20 @@ from the base dump, which comes from `/DumpConfigToFiles <dir>` of the clone; re
 | `ct14_iterate.py`, `ct14_rights_state.json` | Discover the minimal rights iteratively from event-log AccessDenied events |
 | `ct14_narrow_ops.py`, `ct14_rightcheck.py` | Operations and `ПравоДоступа` checks as `CT14_NARROW` |
 | `ct14_measure.py` | Marker / immutability / denial measurements |
+| `ct14_prune.py` | Remove suspicious rights one at a time and re-run the whole chain |
+| `ct14_effective_rights.py` | Effective rights (`ПравоДоступа`) of `CT14_NARROW` for every object in Rights.xml, compared with the committed file |
+| `ct14_compare_rights.py`, `ct14_rights_allowlist.json` | Static check (no COM, no credentials): committed Rights.xml vs allowlist; prints any right outside it and any forbidden right |
+| `designer_dialog.ps1` | Reads and dismisses a modal Designer error dialog of our own Designer child process |
 | `ct14_eventlog.py`, `ct14_denied.py` | Event log diagnostics |
 | `ct14_regen_ids.py` | Regenerate extension-owned GUIDs |
+
+## Counts and versions (reconciled, see STATUS.md section 7)
+
+Extension `CT14Cust`, version `1.0.0-ct14-spike`. 53 adopted objects (the receipt document with the two own
+attributes + 52 empty adoptions), 53 `<object>` entries in `Rights.xml` (one per adopted object), and the effective
+rights read from 1C for `CT14_NARROW` equal the committed file. The role grants NO View/Edit on the marker
+attributes (explicit attribute entries were stored but ineffective and were removed); the writer writes the marker
+through the API, and any API writer with document Update can change it, so the marker is an untrusted label.
+Run `scripts/ct14_compare_rights.py` after any change of `Rights.xml`.
 
 Results and the final minimal right list: `STATUS.md`.
