@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 61 tracked paths, 1 local-only paths.
+Inventory: 62 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -41,6 +41,7 @@ Inventory: 61 tracked paths, 1 local-only paths.
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
+| docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md | Phase 2 design | "S11 operation rule table and v2 story register (2026-10-12)" |
 | docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md | Phase 2 design | "S11 scope record, decisions, glossary, read-back inventory and gate manifest (2026-10-12)" |
 | docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
 | docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
@@ -81,4 +82,4 @@ Inventory: 61 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md |
+| docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md |
