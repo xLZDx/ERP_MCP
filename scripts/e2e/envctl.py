@@ -32,16 +32,6 @@ HOST = "127.0.0.1"
 # When neither variable is set the values recorded in E2E_DIR/env.json (if any) are used.
 BASE_PORTS = {"postgres": 15432, "redis": 16379, "fake1c": 18766, "sidecar": 18767,
               "idp": 18080, "gateway": 18000}
-# Real local 1C profile (E2E_REAL1C=1): the stand runs only PostgreSQL, Redis, IdP and gateway. No Fake1C and no fake sidecar
-# process exists; the gateway talks to the REAL sidecar and the real 1C publication that the operator names explicitly.
-REAL1C = os.environ.get("E2E_REAL1C") == "1"
-
-
-def _required_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise SystemExit(f"{name} is required when E2E_REAL1C=1")
-    return value
 
 
 def _topology() -> tuple[int, str]:
@@ -74,10 +64,8 @@ BASIC_ACR = "urn:local-test:basic"
 ADMIN_CLIENT = "erp-mcp-admin-e2e"
 DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
-DESKTOP_CLIENT = "erp-mcp-claude-desktop"
-DESKTOP_CALLBACK_PORT = 3334  # mcp-remote default OAuth callback port
+CLAUDE_CLIENT = "erp-mcp-claude-desktop"
 CHATGPT_CLIENT = "erp-mcp-chatgpt"
-CHATGPT_TUNNEL_RESOURCE = "https://tunnel-service.gateway.unified-0.internal.api.openai.org/v1/mcp/tunnel_6ac64553de90819188eaf83bc540eb7a"
 CHATGPT_REDIRECT_URIS = [
     "https://chatgpt.com/connector_platform_oauth_redirect",
     "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
@@ -142,13 +130,11 @@ def init_secrets() -> None:
     wanted = {
         "pg_owner_password": _token, "pg_app_password": _token,
         "pg_admin_password": _token, "pg_control_password": _token,
-        "redis_password": _token, "admin_client_secret": _token,
+        "redis_password": _token, "fake1c_username": lambda: "e2e-" + secrets.token_hex(4),
+        "fake1c_password": _token, "admin_client_secret": _token,
         "headless_client_secret": _token, "idp_cookie_secret": _token,
         "sidecar_token": _token, "metrics_token": _token,  # 48 hex chars = 48 bytes (>= 32)
     }
-    if not REAL1C:
-        wanted["fake1c_username"] = lambda: "e2e-" + secrets.token_hex(4)
-        wanted["fake1c_password"] = _token
     missing = {key: make() for key, make in wanted.items() if key not in existing}
     if missing or not existing:
         _write(E2E_DIR / "secrets.json", json.dumps({**existing, **missing}, indent=2))
@@ -187,8 +173,8 @@ def init_secrets() -> None:
              "audiences": [MCP_AUDIENCE, ADMIN_AUDIENCE],
              "scopes": ["openid", "profile", "onec:read", "erp_mcp:admin"],
              "grant_types": ["password"]},
-            {"client_id": DESKTOP_CLIENT, "secret": None,
-             "redirect_uris": [f"http://{HOST}:{DESKTOP_CALLBACK_PORT}/oauth/callback"],
+            {"client_id": CLAUDE_CLIENT, "secret": None,
+             "redirect_uris": ["http://127.0.0.1:3334/oauth/callback"],
              "post_logout_redirect_uris": [],
              "audiences": [MCP_AUDIENCE],
              "scopes": ["onec:read"],
@@ -196,7 +182,7 @@ def init_secrets() -> None:
             {"client_id": CHATGPT_CLIENT, "secret": None,
              "redirect_uris": CHATGPT_REDIRECT_URIS,
              "post_logout_redirect_uris": [],
-             "audiences": [MCP_AUDIENCE, CHATGPT_TUNNEL_RESOURCE],
+             "audiences": [MCP_AUDIENCE],
              "scopes": ["openid", "profile", "onec:read"],
              "grant_types": ["authorization_code", "refresh_token"]},
         ],
@@ -242,16 +228,6 @@ def fixture_sha256() -> str:
 def env_vars() -> dict[str, str]:
     sec = _load("secrets.json")
     gw = PORTS["gateway"]
-    env = _base_env_vars(sec, gw)
-    if REAL1C:
-        env["BAG_ADMIN_SOURCE_ALLOWED_HOSTS"] = _required_env("E2E_SOURCE_ALLOWED_HOSTS")
-        env["BAG_ODATA_SIDECAR_URL"] = _required_env("E2E_SIDECAR_URL")
-        for fake in ("FAKE_SIDECAR_TOKEN", "FAKE1C_USERNAME", "FAKE1C_PASSWORD"):
-            env.pop(fake, None)
-    return env
-
-
-def _base_env_vars(sec: dict, gw: int) -> dict[str, str]:
     return {
         # `test` is required by the reviewed synthetic fixture profile (hard-denied in production).
         "BAG_ENVIRONMENT": "test",
@@ -263,7 +239,6 @@ def _base_env_vars(sec: dict, gw: int) -> dict[str, str]:
         "BAG_OAUTH_ENABLED": "true",
         "BAG_OAUTH_ISSUER": ISSUER,
         "BAG_OAUTH_AUDIENCE": MCP_AUDIENCE,
-        "BAG_OAUTH_ADDITIONAL_AUDIENCES": CHATGPT_TUNNEL_RESOURCE,
         "BAG_OAUTH_JWKS_URL": f"{ISSUER}/protocol/openid-connect/certs",
         "BAG_ADMIN_API_ENABLED": "true",
         "BAG_ADMIN_UI_ENABLED": "true",
@@ -286,23 +261,11 @@ def _base_env_vars(sec: dict, gw: int) -> dict[str, str]:
         "BAG_ODATA_SIDECAR_TOKEN": sec["sidecar_token"],
         "BAG_METRICS_TOKEN": sec["metrics_token"],
         "FAKE_SIDECAR_TOKEN": sec["sidecar_token"],
-        "FAKE1C_USERNAME": sec.get("fake1c_username", ""),
-        "FAKE1C_PASSWORD": sec.get("fake1c_password", ""),
+        "FAKE1C_USERNAME": sec["fake1c_username"],
+        "FAKE1C_PASSWORD": sec["fake1c_password"],
         "NO_PROXY": f"{HOST},localhost",
         "no_proxy": f"{HOST},localhost",
     }
-
-
-def _urls() -> dict[str, str]:
-    urls = {"gateway": f"http://{HOST}:{PORTS['gateway']}", "mcp": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE + "/",
-            "idp": f"http://{HOST}:{PORTS['idp']}"}
-    if REAL1C:
-        urls["sidecar"] = _required_env("E2E_SIDECAR_URL")
-        return urls
-    urls.update({"fake1c": f"http://{HOST}:{PORTS['fake1c']}/odata/standard.odata",
-                 "fake1c_root": f"http://{HOST}:{PORTS['fake1c']}",
-                 "sidecar": f"http://{HOST}:{PORTS['sidecar']}"})
-    return urls
 
 
 def write_env(seed: str) -> None:
@@ -314,15 +277,15 @@ def write_env(seed: str) -> None:
     _write(FIXTURE_FILE, render_fixture().decode("utf-8"))
     lines = ["# Generated by scripts/e2e/envctl.py - contains secrets, never commit."]
     for key, value in env_vars().items():
-        lines.append(f"$env:{key} = '{str(value).replace(chr(39), chr(39) * 2)}'")
+        lines.append(f"$env:{key} = '{value}'")
     lines.append(f"$env:BAG_MIGRATION_DATABASE_URL = '{dsn('owner')}'")
     lines.append(f"$env:BAG_PRIVILEGE_TEST_DATABASE_URL = '{dsn('owner')}'")
     lines.append(f"$env:E2E_DIR = '{E2E_DIR}'")
     _write(E2E_DIR / "env.ps1", "\r\n".join(lines) + "\r\n")
-    ports = {k: v for k, v in PORTS.items() if not (REAL1C and k in ("fake1c", "sidecar"))}
+    ports = dict(PORTS)
     _write(E2E_DIR / "env.pending.json", json.dumps({
         "project": PROJECT, "project_suffix": PROJECT_SUFFIX, "port_offset": PORT_OFFSET,
-        "host": HOST, "ports": ports, "seed_mode": seed, "real1c": REAL1C,
+        "host": HOST, "ports": ports, "seed_mode": seed,
         "environment": "test", "fixture_profiles": True,
         "issuer": ISSUER, "realm": REALM,
         "idp": {"authorization_endpoint": f"{ISSUER}/protocol/openid-connect/auth",
@@ -335,10 +298,14 @@ def write_env(seed: str) -> None:
         "audiences": {"data": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE},
         "scopes": {"data": "onec:read", "admin": "erp_mcp:admin"},
         "step_up_acr": STEP_UP_ACR, "basic_acr": BASIC_ACR,
-        "urls": _urls(),
+        "urls": {"gateway": f"http://{HOST}:{PORTS['gateway']}",
+                 "mcp": MCP_AUDIENCE, "admin": ADMIN_AUDIENCE + "/",
+                 "fake1c": f"http://{HOST}:{PORTS['fake1c']}/odata/standard.odata",
+                 "fake1c_root": f"http://{HOST}:{PORTS['fake1c']}",
+                 "sidecar": f"http://{HOST}:{PORTS['sidecar']}",
+                 "idp": f"http://{HOST}:{PORTS['idp']}"},
         "identities": {n: {"sub": n, "groups": g} for n, g in IDENTITIES.items()},
-        "source_id": None if REAL1C else SOURCE_ID,
-        "companies": {} if REAL1C else {"one": COMPANY_ONE, "two": COMPANY_TWO},
+        "source_id": SOURCE_ID, "companies": {"one": COMPANY_ONE, "two": COMPANY_TWO},
         "schema_version": 14,
     }, indent=2))
 
@@ -462,8 +429,6 @@ def _admin_cli(*args: str) -> None:
 async def seed(mode: str) -> None:
     if mode not in SEED_MODES:
         raise SystemExit(f"unknown seed mode {mode}")
-    if REAL1C and mode == "baseline":
-        raise SystemExit("seed mode baseline creates the Fake1C source; use bootstrap-only or none with E2E_REAL1C=1")
     if mode == "none":
         print("seed: none")
         return
