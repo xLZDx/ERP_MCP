@@ -21,11 +21,22 @@ from .analytics_balance import (
     AnalyticsBalanceError,
     ComRouteUnsupported,
     build_analytics_balance_arguments,
+    compute_account_totals,
     normalize_com_balance_rows,
+    summarize_account_turnovers,
+    summarize_document_amounts,
     normalize_odata_balance_rows,
     select_route,
 )
 from .audit import AuditCorrelationMiddleware, AuditUnavailable
+from .counterparty_lookup import (
+    COUNTERPARTY_LOOKUP_CONCEPT,
+    MAX_REFS_PER_REQUEST,
+    build_lookup_query,
+    build_refs_filter,
+    evaluate_lookup,
+    index_names,
+)
 from .auth import JWTTokenVerifier
 from .compatibility import (
     CapabilityUnsupported,
@@ -63,6 +74,7 @@ from .semantic import (
     build_bank_balance_arguments,
     build_cash_movements_query,
     build_company_filter,
+    build_document_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
     build_settlement_balance_arguments,
@@ -76,6 +88,7 @@ from .semantic import (
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
+from .tool_errors import StructuredErrorMCPServer
 from .settlement_collector import (
     MAX_OPEN_ITEM_ROWS,
     OPEN_ITEMS_FAILURE_REASONS,
@@ -124,6 +137,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "receivable_aging": "ar.read",
     "payable_aging": "ap.read",
     "counterparty_duplicate_candidates": "accounting.read",
+    "counterparty_find": "accounting.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
@@ -167,7 +181,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
 
     kwargs["middleware"] = [AuditCorrelationMiddleware()]
-    mcp = MCPServer(
+    mcp = StructuredErrorMCPServer(
         "ERP_MCP — 1C Production",
         title="ERP_MCP — secure read-only 1C/ERP gateway",
         description="Company-scoped read-only ERP/1C data, metadata and accounting tools.",
@@ -657,8 +671,17 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         company_id: str,
         start_period: str,
         end_period: str,
+        account_code: str | None = None,
     ) -> dict[str, Any]:
-        """Read company-filtered account balances/turnovers via its validated semantic profile."""
+        """Read company-filtered account opening/turnover/closing figures via its validated profile.
+
+        ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset, for example
+        ``2026-08-01T00:00:00+03:00`` and ``2026-08-31T23:59:59+03:00``. ``account_code`` (for example
+        "521.1") narrows the read to one account the profile declares; ``totals`` carries exact
+        server-side per-account sums so nothing has to be added up by the caller. Rows are per analytics
+        combination and carry no counterparty names: for a breakdown by supplier or contract with names
+        use ``accounting_balance_by_analytics``; to find a counterparty use ``counterparty_find``.
+        """
         started = time.monotonic()
         principal = await ctx()
         try:
@@ -679,6 +702,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": ACCOUNT_TURNOVERS_CONCEPT,
             "start_period": start_period,
             "end_period": end_period,
+            "account_code": account_code,
         }
         source = await resolve_source(
             principal,
@@ -705,6 +729,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 company_external_ref=company.external_ref,
                 start_period=start_period,
                 end_period=end_period,
+                account_code=account_code,
             )
             result = await runtime.onec.register_read(
                 source,
@@ -715,6 +740,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_account_turnovers(raw_rows, mapping)
+            page = result.get("page") if isinstance(result, dict) else None
+            truncated = (
+                (not isinstance(page, dict) or page.get("has_more") is not False)
+                or len(normalized_rows) >= settings.max_rows
+            )
+            totals = summarize_account_turnovers(normalized_rows, mapping)
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -740,7 +771,10 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
-                "page": result.get("page") if isinstance(result, dict) else None,
+                "page": page,
+                "totals": totals,
+                "totals_complete": bool(totals) and not truncated,
+                "truncated": truncated,
                 **profile_provenance(profile),
             }
         except Exception as exc:
@@ -2121,6 +2155,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         tool_name: str,
         top: int,
         skip: int,
+        counterparty_ref: str | None = None,
+        posted_only: bool = False,
     ) -> dict[str, Any]:
         started = time.monotonic()
         principal = await ctx()
@@ -2144,6 +2180,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": concept,
             "top": bounded_top,
             "skip": skip,
+            "counterparty_ref": counterparty_ref,
+            "posted_only": posted_only,
         }
         source = await resolve_source(
             principal,
@@ -2165,7 +2203,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source_id, parsed_company_id, concept
             )
             mapping = profile["mapping"]
-            company_filter = build_company_filter(mapping, company.external_ref)
+            company_filter = build_document_filter(
+                mapping,
+                company.external_ref,
+                counterparty_ref=counterparty_ref,
+                posted_only=posted_only,
+            )
             result = await runtime.onec.read(
                 source,
                 entity_set=mapping["entity_set"],
@@ -2178,6 +2221,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_document_rows(raw_rows, mapping, concept)
+            page = result.get("page") if isinstance(result, dict) else None
+            amount_totals = summarize_document_amounts(normalized_rows)
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -2203,7 +2248,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
-                "page": result.get("page") if isinstance(result, dict) else None,
+                "page": page,
+                "amount_totals": amount_totals,
+                "amount_totals_complete": isinstance(page, dict) and page.get("has_more") is False,
                 **profile_provenance(profile),
             }
         except Exception as exc:
@@ -2249,9 +2296,18 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def purchase_documents(
-        source_id: str, company_id: str, top: int = 50, skip: int = 0
+        source_id: str,
+        company_id: str,
+        top: int = 50,
+        skip: int = 0,
+        counterparty_ref: str | None = None,
+        posted_only: bool = False,
     ) -> dict[str, Any]:
-        """List company-scoped purchase documents using a validated semantic mapping."""
+        """List company-scoped purchase documents using a validated semantic mapping.
+
+        ``counterparty_ref`` (a GUID, e.g. from counterparty_find) narrows the list to one supplier and
+        ``posted_only`` keeps only posted documents; ``amount_totals`` carries exact per-currency sums.
+        """
         return await read_company_documents(
             source_id,
             company_id,
@@ -2259,6 +2315,8 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             tool_name="purchase_documents",
             top=top,
             skip=skip,
+            counterparty_ref=counterparty_ref,
+            posted_only=posted_only,
         )
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
@@ -2272,7 +2330,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         top: int = 50,
         skip: int = 0,
     ) -> dict[str, Any] | list[Any]:
-        """Read one authorized 1C OData EntitySet. This tool cannot mutate 1C."""
+        """Read one authorized 1C OData EntitySet. This tool cannot mutate 1C.
+
+        Arguments: ``entity_set`` (required, e.g. ChartOfAccounts_Хозрасчетный), ``select`` (list of
+        property names), ``filter_expr`` (OData $filter, e.g. ``Code eq '521.1'`` or
+        ``startswith(Code,'521')``), ``orderby``, ``expand`` (list), ``top``, ``skip``. Unknown argument
+        names are rejected, never ignored.
+        """
         started = time.monotonic()
         principal = await ctx()
         query = {
@@ -2334,12 +2398,15 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     # ADR-0008 §5: the caller cannot pass route/bridge/path/secret/query text. Unknown arguments
     # are rejected (not silently dropped) and the published schema says additionalProperties=false.
-    analytics_tool = mcp._tool_manager.get_tool("accounting_balance_by_analytics")
-    if analytics_tool is None:
-        raise RuntimeError("accounting_balance_by_analytics tool is not registered")
-    analytics_model = analytics_tool.fn_metadata.arg_model
-    analytics_model.model_config["extra"] = "forbid"
-    analytics_model.model_rebuild(force=True)
-    analytics_tool.parameters["additionalProperties"] = False
+    # This covers EVERY tool: a silently ignored, misnamed filter (``filter`` instead of
+    # ``filter_expr``) used to return an unfiltered page as if it were the answer.
+    for strict_tool in mcp._tool_manager.list_tools():
+        strict_model = strict_tool.fn_metadata.arg_model
+        strict_model.model_config["extra"] = "forbid"
+        strict_model.model_rebuild(force=True)
+        strict_tool.parameters["additionalProperties"] = False
+    for required_tool in ("accounting_balance_by_analytics", "counterparty_find"):
+        if mcp._tool_manager.get_tool(required_tool) is None:
+            raise RuntimeError(f"{required_tool} tool is not registered")
 
     return mcp

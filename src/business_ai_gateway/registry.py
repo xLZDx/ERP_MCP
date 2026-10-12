@@ -6,6 +6,7 @@ from uuid import UUID
 
 from .analytics_balance import ANALYTICS_BALANCE_CONCEPT, validate_analytics_balance_mapping
 from .compatibility import OneCCapabilities
+from .counterparty_lookup import COUNTERPARTY_LOOKUP_CONCEPT, validate_counterparty_lookup_mapping
 from .db import Database
 from .duplicate_counterparties import DUPLICATE_CONCEPT, validate_duplicate_mapping
 from .evidence_basis import (
@@ -17,9 +18,13 @@ from .evidence_basis import (
 from .fixture_profiles import (
     MACHINE_AUDIT_CODE,
     MACHINE_PROFILE_KIND,
+    PROVISIONAL_AUDIT_CODE,
+    PROVISIONAL_PROFILE_KIND,
+    PROVISIONAL_SOURCE_TAG,
     SYNTHETIC_AUDIT_CODE,
     SYNTHETIC_PROFILE_KIND,
     SYNTHETIC_SOURCE_TAG,
+    ProvisionalProfiles,
     SyntheticFixtureProfiles,
     SyntheticFixtureUnavailable,
 )
@@ -66,13 +71,18 @@ class Registry:
         allowed_source_hosts: tuple[str, ...] = (),
         synthetic_profiles: SyntheticFixtureProfiles | None = None,
         machine_reconciled_sources: tuple[str, ...] = (),
+        provisional_profiles: ProvisionalProfiles | None = None,
     ):
         if production and synthetic_profiles is not None:
             raise ValueError("SYNTHETIC_FIXTURE_PROFILES_FORBIDDEN_IN_PRODUCTION")
         if production and machine_reconciled_sources:
             raise ValueError("MACHINE_RECONCILED_SOURCES_FORBIDDEN_IN_PRODUCTION")
+        if production and provisional_profiles is not None:
+            raise ValueError("PROVISIONAL_PROFILES_FORBIDDEN_IN_PRODUCTION")
         self.machine_reconciled_sources = frozenset(machine_reconciled_sources)
+        self.provisional_profiles = provisional_profiles
         self.synthetic_profiles = synthetic_profiles
+        self.provisional_profiles = provisional_profiles
         self.db = db
         self.production = production
         self.allowed_source_hosts = allowed_source_hosts
@@ -354,6 +364,8 @@ class Registry:
                 )
         elif concept == ANALYTICS_BALANCE_CONCEPT:
             validate_analytics_balance_mapping(mapping)
+        elif concept == COUNTERPARTY_LOOKUP_CONCEPT:
+            validate_counterparty_lookup_mapping(mapping)
         else:
             raise SemanticMappingUnconfirmed(f"semantic concept is not runtime-enabled: {concept}")
         return required
@@ -385,7 +397,7 @@ class Registry:
             concept,
         )
         if row is None:
-            return await self._synthetic_mapping(source_id, company_id, concept)
+            return await self._fallback_mapping(source_id, company_id, concept)
         if (
             row["drift_status"] != "STABLE"
             or row["metadata_fingerprint"] != row["current_metadata_fingerprint"]
@@ -499,10 +511,36 @@ class Registry:
                 "machine-reconciled profile must carry exactly one confirmed mapping"
             )
 
+    async def _fallback_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
+        """No VALIDATED DB row: consult the test-only synthetic provider, then the provisional one."""
+        try:
+            return await self._synthetic_mapping(source_id, company_id, concept)
+        except SemanticProfileUnavailable as refusal:
+            if self.provisional_profiles is None:
+                raise
+            try:
+                return await self._pinned_mapping(
+                    self.provisional_profiles, PROVISIONAL_SOURCE_TAG, PROVISIONAL_PROFILE_KIND,
+                    PROVISIONAL_AUDIT_CODE, source_id, company_id, concept,
+                )
+            except SemanticProfileStale:
+                raise  # drift is a specific, actionable reason and must not be flattened
+            except SemanticProfileUnavailable:
+                raise refusal from None
+
     async def _synthetic_mapping(self, source_id: str, company_id: UUID, concept: str) -> dict:
         """Test-only reviewed fixture profile; consulted only when no VALIDATED DB row exists."""
+        return await self._pinned_mapping(
+            self.synthetic_profiles, SYNTHETIC_SOURCE_TAG, SYNTHETIC_PROFILE_KIND,
+            SYNTHETIC_AUDIT_CODE, source_id, company_id, concept,
+        )
+
+    async def _pinned_mapping(
+        self, provider, source_tag: str, profile_kind: str, audit_code: str,
+        source_id: str, company_id: UUID, concept: str,
+    ) -> dict:
+        """Shared pinned-provider lookup; a DB profile of any live status always shadows it."""
         unavailable = f"no validated {concept} profile exists for this exact source/company"
-        provider = self.synthetic_profiles
         if self.production or provider is None:
             raise SemanticProfileUnavailable(unavailable)
         row = await self.db.require_pool().fetchrow(
@@ -515,7 +553,7 @@ class Registry:
             """,
             source_id,
         )
-        if row is None or not row["enabled"] or SYNTHETIC_SOURCE_TAG not in (row["tags"] or []):
+        if row is None or not row["enabled"] or source_tag not in (row["tags"] or []):
             raise SemanticProfileUnavailable(unavailable)
         # Any live (non-retired) DB profile for this scope/concept means the DB is authoritative:
         # a stale/invalid/unvalidated row must never silently fall through to a fixture.
@@ -554,9 +592,9 @@ class Registry:
                 source_id=source_id,
                 metadata_fingerprint=row["current_metadata_fingerprint"],
             )
-        return {
-            "profile_kind": SYNTHETIC_PROFILE_KIND,
-            "audit_detail_code": SYNTHETIC_AUDIT_CODE,
+        profile = {
+            "profile_kind": profile_kind,
+            "audit_detail_code": audit_code,
             "source_id": source_id,
             "company_id": company_id,
             "metadata_fingerprint": pinned,
@@ -566,6 +604,9 @@ class Registry:
             "mapping": mapping,
             "register_capabilities": capability_profile,
         }
+        if profile_kind == PROVISIONAL_PROFILE_KIND:
+            profile["reconciliation_basis"] = provider.reconciliation
+        return profile
 
     async def require_account_turnovers_mapping(self, source_id: str, company_id: UUID) -> dict:
         return await self.require_semantic_mapping(source_id, company_id, ACCOUNT_TURNOVERS_CONCEPT)

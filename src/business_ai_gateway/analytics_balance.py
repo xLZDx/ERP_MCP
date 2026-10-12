@@ -225,7 +225,9 @@ def _decimal(value: Any) -> str:
 
 
 def _guid_or_none(value: Any) -> str | None:
-    if value is None:
+    # 1C returns "" (with an Undefined type) for a subconto slot that is not set; that is "absent",
+    # not malformed. Any other non-GUID text still fails closed.
+    if value is None or value == "":
         return None
     if not isinstance(value, str) or not _GUID.fullmatch(value):
         raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
@@ -570,3 +572,90 @@ def select_route(
     ):
         raise ComRouteUnsupported("com_mapping_not_served_by_bridge")
     return RouteDecision("com", "capability_unsupported_binding_approved", binding)
+
+
+def compute_account_totals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Exact per-account totals of normalized rows (Decimal, server side).
+
+    ``net_credit`` is credit minus debit: for a passive account such as 521.1 a positive value is
+    what the company owes. Amounts stay strings so no float ever touches an accounting figure.
+    """
+    totals: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        entry = totals.setdefault(
+            row["account"],
+            {"account": row["account"], "debit": Decimal(0), "credit": Decimal(0), "row_count": 0},
+        )
+        entry["debit"] += Decimal(row["balance_debit"])
+        entry["credit"] += Decimal(row["balance_credit"])
+        entry["row_count"] += 1
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {
+            "account": entry["account"],
+            "balance_debit": text(entry["debit"]),
+            "balance_credit": text(entry["credit"]),
+            "net_credit": text(entry["credit"] - entry["debit"]),
+            "row_count": entry["row_count"],
+        }
+        for entry in sorted(totals.values(), key=lambda item: item["account"])
+    ]
+
+
+def summarize_account_turnovers(rows: list[dict[str, Any]], mapping: dict[str, Any]) -> list[dict[str, Any]]:
+    """Exact per-account sums of normalized balance-and-turnover rows (Decimal, server side).
+
+    Rows whose account is not declared by the profile fail closed: the account condition is sent to
+    the source, so a foreign account in the response means the filter was not honoured.
+    """
+    by_key = {item["account_key"].lower(): item["code"] for item in mapping.get("accounts", [])}
+    if not by_key:
+        return []
+    fields = ("opening_debit", "opening_credit", "debit_turnover", "credit_turnover",
+              "closing_debit", "closing_credit")
+    sums: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = str(row.get("account", "")).lower()
+        if key not in by_key:
+            raise AnalyticsBalanceError("SOURCE_RESPONSE_INVALID")
+        entry = sums.setdefault(by_key[key], {"row_count": 0, **{name: Decimal(0) for name in fields}})
+        entry["row_count"] += 1
+        for name in fields:
+            entry[name] += Decimal(_decimal(row[name]))
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {"account": code, "row_count": entry["row_count"], **{name: text(entry[name]) for name in fields}}
+        for code, entry in sorted(sums.items())
+    ]
+
+
+def summarize_document_amounts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Exact per-currency sums of normalized document rows (Decimal, server side)."""
+    sums: dict[Any, list[Any]] = {}
+    for row in rows:
+        entry = sums.setdefault(row.get("currency"), [Decimal(0), 0])
+        entry[0] += Decimal(_decimal(row["amount"]))
+        entry[1] += 1
+
+    def text(value: Decimal) -> str:
+        rendered = format(value, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return "0" if rendered in {"", "-0"} else rendered
+
+    return [
+        {"currency": currency, "amount": text(total), "document_count": count}
+        for currency, (total, count) in sorted(sums.items(), key=lambda item: str(item[0]))
+    ]

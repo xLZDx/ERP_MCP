@@ -193,3 +193,34 @@ Machine evidence is bound end to end (GPT-PM review, 2026-10-08):
 
 The capability fingerprint a profile is bound to ignores the probe stamp `discovered_at`; it records when the source
 was probed, not what it supports, and including it made every profile stale after the next probe of a live source.
+
+## Real-source provisional profiles and supplier-debt tools (2026-10-07)
+
+**Label.** A real source that has no natively validated profile yet can serve semantic tools from a reviewed, sha256-pinned provisional file (`BAG_PROVISIONAL_PROFILES_FILE` + `_SHA256`, test environment only, source tag `real-reference`). Every response is labelled `validation_status=UNVALIDATED_INDEPENDENT_RECONCILIATION`, `evidence_level=L2_PROVISIONAL`, `native_reconciliation=NOT_RUN` with warning `UNVALIDATED_INDEPENDENT_RECONCILIATION_NOT_NATIVE_VALIDATED`. It is never a `bag.semantic_profiles` row and never counts towards the native-report rule. The 818 HA file is `testbed/real1c/provisional_profiles_818ha.json`; launch with `scripts/real1c/start_branch_gateway.ps1 -ReaderFromDpapi -ProfilesFile <absolute path>`.
+
+**Tools and concepts (all read-only, `accounting.read` / `purchases.read`).**
+
+| Tool | Concept | What the profile owns | Caller supplies |
+|---|---|---|---|
+| `accounting_balance_by_analytics` | `account.balance_by_analytics` (+ `counterparty.lookup` for names) | account keys, subconto slots, amount columns, catalog and fields for names | `source_id`, `company_id`, `as_of` (with timezone) |
+| `counterparty_find` | `counterparty.lookup` | catalog, ref/code/name/deleted/folder properties, `max_results` | `name` (2..64 chars) |
+| `accounting_balance_and_turnovers` | `account.balance_and_turnovers` | register, method, company field, optional `account_field` + `accounts` | period, optional `account_code` that must be declared by the profile |
+| `purchase_documents` | `purchases` | document entity and field names | optional `counterparty_ref` (GUID), `posted_only` |
+
+- Balance rows carry `name`, `code`, `deleted` on the counterparty slot when the lookup profile is present (one batched catalog read per 30 references); otherwise the balance is still returned with `COUNTERPARTY_NAMES_UNAVAILABLE:<code>` in `warnings`. `account_totals`, `totals` and `amount_totals` are exact Decimal sums computed on the server; `totals_complete` / `amount_totals_complete` are false whenever the page reports more rows. `net_credit` is credit minus debit (positive on 521.1 means the company owes).
+- `counterparty_find` statuses: `EXACT`, `PARTIAL` (one partial hit), `AMBIGUOUS`, `NOT_FOUND`; folders are never matches; 1C `substringof` is case-insensitive on this publication and the match is re-checked locally. The searched text is never written to the audit trail (only its length).
+- `accounting_balance_by_analytics` and `counterparty_find` reject unknown arguments (`additionalProperties=false`).
+- Structured errors: every anticipated refusal reaches the client as JSON `{error: {code, category, retryable, safe_message, tool, source_id, correlation_id}}` (`SEMANTIC_PROFILE_UNVALIDATED`, `SCHEMA_DRIFT`, `INVALID_ARGUMENT`, `ACCESS_DENIED`, `SOURCE_UNAVAILABLE`, ...); source text, paths, URLs and credentials are never echoed.
+
+**Live evidence (818 HA, 2026-08-31, native Balance/BalanceAndTurnovers, reader ERP_MCP_TEST_READER).** Net payable on 521.1 = 623,049.67 (debit 15,899.09, credit 638,948.76, 15 rows, eight non-zero supplier positions led by MOLDRETAIL GROUP SRL 452,249.54). August turnovers: debit 173,171.83, credit 263,450.05, opening Dr 15,899.09 / Cr 548,670.54. Measured latency over 7 calls: `counterparty_find` median 149 ms, `accounting_balance_by_analytics` 354 ms (14 KB), `accounting_balance_and_turnovers` 256 ms, `purchase_documents` 202 ms.
+
+**Known limits.**
+- `payable_balance` and `payable_aging` stay out of scope for this source: the publication exposes only `AccountingRegister_Хозрасчетный` (no accumulation or information registers), so there is no settlement register to profile. They fail closed with `SEMANTIC_PROFILE_UNVALIDATED`. Supplier debt is answered by `accounting_balance_by_analytics` (account 521.1 by counterparty and contract).
+- The mission's expected August debit turnover 173,436.43 and opening 533,036.05 differ from the native figures by exactly 264.60 (net balance and credit turnover agree; two 'Зачет аванса поставщику' debits of 264.60 exist, 14.07 and 05.08). Native is reported as primary; confirmation by the owner's native 1C report is open.
+- No profile is natively validated; production use needs the usual validation path.
+
+**Retest prompts for Claude in VS Code (server `erp-mcp-818ha`).**
+- A: "Use erp-mcp-818ha, source onec-818ha-reference, company 3e31afc5-351f-4f36-8074-99129fa3d911. Call accounting_balance_by_analytics as_of 2026-08-31T23:59:59+03:00 and report account_totals.net_credit, the per-counterparty positions by name, the validation_status label and any warnings. Do not add rows yourself."
+- B: "Call accounting_balance_and_turnovers for 2026-08-01T00:00:00+03:00 .. 2026-08-31T23:59:59+03:00 with account_code 521.1 and report totals and totals_complete."
+- C: "Find the counterparty 'MOLDRETAIL GROUP SRL' with counterparty_find, then call purchase_documents with its ref and posted_only=true, and list the posted receipts with amount_totals."
+- D: "Call payable_balance and payable_aging and quote the structured error code and safe_message; do not retry or work around it."

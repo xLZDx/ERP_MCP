@@ -332,6 +332,8 @@ def validate_account_turnovers_mapping(mapping: dict[str, Any]) -> tuple[str, st
             "company_scope",
             "output_fields",
             "required_register_capabilities",
+            "account_field",
+            "accounts",
         }
         or not isinstance(register_set, str)
         or not _ENTITY_SET_PATTERN.fullmatch(register_set)
@@ -350,7 +352,43 @@ def validate_account_turnovers_mapping(mapping: dict[str, Any]) -> tuple[str, st
         or len(set(mapping["output_fields"].values())) != len(ACCOUNT_TURNOVERS_FIELDS)
     ):
         raise SemanticMappingUnconfirmed("account-turnover mapping is incomplete or unsupported")
+    validate_turnover_account_scope(mapping)
     return register_set, method
+
+
+_ACCOUNT_CODE = re.compile(r"^[0-9]{1,3}(?:\.[0-9]{1,3}){0,3}$")
+_GUID_TEXT = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def validate_turnover_account_scope(mapping: dict[str, Any]) -> list[dict[str, str]]:
+    """Optional profile-owned account scope: ``account_field`` + ``accounts`` (both or neither)."""
+    has_field, has_accounts = "account_field" in mapping, "accounts" in mapping
+    if has_field != has_accounts:
+        raise SemanticMappingUnconfirmed("account scope needs both account_field and accounts")
+    if not has_field:
+        return []
+    accounts = mapping["accounts"]
+    if (
+        not isinstance(mapping["account_field"], str)
+        or not _PROPERTY_PATTERN.fullmatch(mapping["account_field"])
+        or not isinstance(accounts, list)
+        or not 1 <= len(accounts) <= 16
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"code", "account_key"}
+            or not isinstance(item["code"], str)
+            or not _ACCOUNT_CODE.fullmatch(item["code"])
+            or not isinstance(item["account_key"], str)
+            or not _GUID_TEXT.fullmatch(item["account_key"])
+            for item in accounts
+        )
+        or len({item["code"] for item in accounts}) != len(accounts)
+        or len({item["account_key"].lower() for item in accounts}) != len(accounts)
+    ):
+        raise SemanticMappingUnconfirmed("account scope is invalid")
+    return accounts
 
 
 def normalize_account_turnovers(rows: Any, mapping: dict[str, Any]) -> list[dict[str, Any]]:
@@ -627,6 +665,27 @@ def build_company_filter(mapping: dict[str, Any], company_external_ref: str) -> 
     if not isinstance(field, str) or not _PROPERTY_PATTERN.fullmatch(field):
         raise SemanticMappingUnconfirmed("company dimension field is invalid")
     return f"{field} eq {literal}"
+
+
+def build_document_filter(
+    mapping: dict[str, Any],
+    company_external_ref: str,
+    *,
+    counterparty_ref: str | None = None,
+    posted_only: bool = False,
+) -> str:
+    """Company filter plus optional counterparty / posted narrowing, all property names from the profile."""
+    parts = [build_company_filter(mapping, company_external_ref)]
+    output_fields = mapping["output_fields"]
+    if counterparty_ref is not None:
+        try:
+            ref = str(UUID(counterparty_ref))
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("counterparty_ref must be a GUID") from exc
+        parts.append(f"{output_fields['counterparty']} eq guid'{ref}'")
+    if posted_only:
+        parts.append(f"{output_fields['posted']} eq true")
+    return " and ".join(parts)
 
 
 def normalize_document_rows(
@@ -994,9 +1053,17 @@ def build_account_turnovers_arguments(
     company_external_ref: str,
     start_period: str,
     end_period: str,
+    account_code: str | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
-    """Build bounded inputs from an operator-confirmed source/company mapping."""
+    """Build bounded inputs from an operator-confirmed source/company mapping.
+
+    ``account_code`` selects one of the accounts the profile declares; the caller never supplies a
+    filter expression or an account key.
+    """
     register_set, method = validate_account_turnovers_mapping(mapping)
+    scope = validate_turnover_account_scope(mapping)
+    if account_code is not None and not scope:
+        raise ValueError("this profile does not declare an account scope")
     try:
         start = datetime.fromisoformat(start_period)
         end = datetime.fromisoformat(end_period)
@@ -1006,14 +1073,20 @@ def build_account_turnovers_arguments(
         raise ValueError("period boundaries must include a timezone and start <= end")
 
     condition = build_company_filter(mapping, company_external_ref)
-    return (
-        register_set,
-        method,
-        {
-            "Period": {"from": start.isoformat(), "to": end.isoformat()},
-            "Condition": condition,
-        },
-    )
+    arguments: dict[str, Any] = {
+        "Period": {"from": start.isoformat(), "to": end.isoformat()},
+        "Condition": condition,
+    }
+    if scope:
+        chosen = scope
+        if account_code is not None:
+            chosen = [item for item in scope if item["code"] == account_code]
+            if not chosen:
+                raise ValueError("account_code is not declared by the profile")
+        arguments["AccountCondition"] = " or ".join(
+            f"{mapping['account_field']} eq guid'{UUID(item['account_key'])!s}'" for item in chosen
+        )
+    return register_set, method, arguments
 
 
 class SemanticProfileStatus(StrEnum):

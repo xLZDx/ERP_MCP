@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     synthetic_fixture_profiles_sha256: str | None = Field(
         default=None, pattern=r'^[a-f0-9]{64}$'
     )
+    # Reviewed, pinned profiles for a REAL source that is not yet natively validated. Results are
+    # always labelled UNVALIDATED_INDEPENDENT_RECONCILIATION; test environment only.
+    provisional_profiles_file: str | None = Field(default=None, repr=False, max_length=1024)
+    provisional_profiles_sha256: str | None = Field(default=None, pattern=r'^[a-f0-9]{64}$')
 
     # Test-only allow-list of source ids whose profile may be validated by labelled machine two-source
     # reconciliation (evidence_basis.py). Hard-denied outside the test environment; never native proof.
@@ -173,6 +177,15 @@ class Settings(BaseSettings):
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_REQUIRE_TEST_ENVIRONMENT")
             if not Path(self.synthetic_fixture_profiles_file).is_absolute():
                 raise ValueError("SYNTHETIC_FIXTURE_PROFILES_SETTINGS_INVALID")
+        if self.provisional_profiles_file or self.provisional_profiles_sha256:
+            if self.environment == "production":
+                raise ValueError("PROVISIONAL_PROFILES_FORBIDDEN_IN_PRODUCTION")
+            if not (self.provisional_profiles_file and self.provisional_profiles_sha256):
+                raise ValueError("PROVISIONAL_PROFILES_SETTINGS_INCOMPLETE")
+            if self.environment != "test":
+                raise ValueError("PROVISIONAL_PROFILES_REQUIRE_TEST_ENVIRONMENT")
+            if not Path(self.provisional_profiles_file).is_absolute():
+                raise ValueError("PROVISIONAL_PROFILES_SETTINGS_INVALID")
         evidence_settings = (self.evidence_store_root, self.evidence_approval_index, self.evidence_approval_sha256)
         if any(evidence_settings) and not all(evidence_settings):
             raise ValueError('EVIDENCE_PROVIDER_SETTINGS_INCOMPLETE')
