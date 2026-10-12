@@ -64,6 +64,12 @@ BASIC_ACR = "urn:local-test:basic"
 ADMIN_CLIENT = "erp-mcp-admin-e2e"
 DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
+CLAUDE_CLIENT = "erp-mcp-claude-desktop"
+CHATGPT_CLIENT = "erp-mcp-chatgpt"
+CHATGPT_REDIRECT_URIS = [
+    "https://chatgpt.com/connector_platform_oauth_redirect",
+    "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
+]
 SOURCE_ID = "fake1c-e2e"
 COMPANY_ONE = "00000000-0000-0000-0000-000000000001"
 COMPANY_TWO = "00000000-0000-0000-0000-000000000002"
@@ -167,6 +173,18 @@ def init_secrets() -> None:
              "audiences": [MCP_AUDIENCE, ADMIN_AUDIENCE],
              "scopes": ["openid", "profile", "onec:read", "erp_mcp:admin"],
              "grant_types": ["password"]},
+            {"client_id": CLAUDE_CLIENT, "secret": None,
+             "redirect_uris": ["http://127.0.0.1:3334/oauth/callback"],
+             "post_logout_redirect_uris": [],
+             "audiences": [MCP_AUDIENCE],
+             "scopes": ["onec:read"],
+             "grant_types": ["authorization_code", "refresh_token"]},
+            {"client_id": CHATGPT_CLIENT, "secret": None,
+             "redirect_uris": CHATGPT_REDIRECT_URIS,
+             "post_logout_redirect_uris": [],
+             "audiences": [MCP_AUDIENCE],
+             "scopes": ["openid", "profile", "onec:read"],
+             "grant_types": ["authorization_code", "refresh_token"]},
         ],
     }, indent=2))
     _write(E2E_DIR / "compose.env", "\n".join([

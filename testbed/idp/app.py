@@ -294,9 +294,9 @@ def create_app(config: dict) -> Starlette:
         scopes = (q.get("scope") or "").split()
         if not scopes or any(s not in client.scopes for s in scopes):
             return redirect_error(pending, "invalid_scope", "scope not permitted for this client")
+        # OIDC Authorization Code + PKCE does not require nonce. Preserve and return
+        # it when supplied, but allow OAuth/OIDC clients such as ChatGPT to omit it.
         nonce = q.get("nonce") or None
-        if "openid" in scopes and not nonce:
-            return redirect_error(pending, "invalid_request", "nonce is required with openid")
         resources = q.getlist("resource")
         if len(resources) > 1 or (resources and resources[0] not in client.audiences):
             return redirect_error(pending, "invalid_target", "resource not permitted")
