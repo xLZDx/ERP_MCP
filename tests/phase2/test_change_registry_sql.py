@@ -24,6 +24,7 @@ from test_change_ledger_sql import (
     BASES,
     C,
     C2,
+    DEFAULT_GRANT,
     DIGEST,
     KH,
     ORG,
@@ -356,9 +357,11 @@ async def test_operator_resolve_compares_persons_and_capabilities(reg):
 async def test_enforced_registry_refuses_unregistered_actors_and_cannot_be_switched_off(reg):
     assert await reg.call("clt_dave", "enforce_registry") is True
     assert await reg.call("clt_dave", "enforce_registry") is True            # idempotent
+    # 008: the fixtures register every actor (an unregistered scope is enforced by default); arrange "not registered"
+    await reg.conn.execute("DELETE FROM change_ledger.principals WHERE principal IN ('clt_alice','clt_bob','clt_mallory')")
     await fails("NOT_ENTITLED", reg.propose())                               # alice is not registered
     await reg.reg("clt_alice", "P-A", ["requester"])
-    cid = await reg.validated()
+    cid = await reg.validated(declare_class=False)
     await fails("NOT_ENTITLED", reg.call("clt_bob", "issue_approval_nonce", cid))   # bob is not registered
     await reg.reg("clt_bob", "P-B", ["approver"])
     # class declaration must precede approval (it is inside the approved digest) and match the registry
@@ -370,9 +373,9 @@ async def test_enforced_registry_refuses_unregistered_actors_and_cannot_be_switc
     await reg.call("clt_bob", "approve", cid, nonce, await reg.approval_digest(cid))
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_target_class", cid, "CLONE"))
     # a change that never declared a class cannot take effect once the registry is enforced
-    nocls = await reg.approved(request_id="nocls", base="base-2")
+    nocls = await reg.approved(request_id="nocls", base="base-2", declare_class=False)
     await fails("TARGET_REJECTED", reg.claimed(nocls))
-    tok = await reg.claimed(cid)
+    tok = await reg.claimed(cid, observe=False)
     await fails("TARGET_REJECTED", reg.call("clt_alice", "begin_apply", tok["token_id"], uuid.uuid4(), "h", "s"))
     await fails("TARGET_REJECTED", reg.call("clt_wri", "observe_target", tok["token_id"], "base-2", "CLONE"))
     await fails("TARGET_REJECTED", reg.call("clt_wri", "observe_target", tok["token_id"], BASE, "PROD"))
@@ -638,7 +641,7 @@ async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_r
     st = await reg.jcall("clt_alice", "read_status", cid)
     assert (st["lifecycle"], st["authorization"], st["execution"], st["verification"], st["dispatch"],
             st["reservation"], st["call_ownership"], st["attribution"]) == \
-        ("VALIDATED", "CLAIMED", "APPLYING", "NOT_VERIFIED", "NOT_PERMITTED", "NONE", "NONE", "NOT_APPLICABLE")
+        ("VALIDATED", "CLAIMED", "APPLYING", "NOT_VERIFIED", "NOT_PERMITTED", "RESERVED", "NONE", "NOT_APPLICABLE")  # 008: claim reserves
     assert st["approver"] == "clt_bob" and st["evidence_count"] == 1 and st["epoch_current"] is True
     assert st["requester"] == "clt_alice" and st["open_holds"] == 0
     assert st["approval_digest"] == await reg.approval_digest(cid)       # 007 (A7): the ledger-computed digest
@@ -738,11 +741,11 @@ async def test_signed_wrappers_reference_records_and_extend_without_changing_004
 
 # ============================================================================ (6) duplicates
 async def _keyed(reg, rid, key, base=BASE, target=None, kind="CREATE_DRAFT", override=None, just=None, validate=True,
-                 flag=False, requester="clt_alice"):
+                 requester="clt_alice"):
     cid = await reg.propose(request_id=rid, base=base, target=target or f"doc-{rid}", kind=kind, requester=requester)
     await reg.call(requester, "declare_business_key", cid, key, override, just)
     if validate:
-        return cid, await reg.call(requester, "validate", cid, flag, True)
+        return cid, await reg.call(requester, "validate", cid)
     return cid, None
 
 
@@ -752,14 +755,14 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     assert st == "VALIDATED"
     b, st = await _keyed(reg, "b", k1)
     assert st == "DUPLICATE_PARKED"
-    assert await reg.call("clt_alice", "validate", b, False, True) == "DUPLICATE_PARKED"            # terminal
+    assert await reg.call("clt_alice", "validate", b) == "DUPLICATE_PARKED"            # terminal
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", b, k2, None, None))
     nonce = await reg.call("clt_bob", "issue_approval_nonce", b)
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_bob", "approve", b, nonce, await reg.approval_digest(b)))
-    # another base or another key is not a duplicate; neither is the caller flag alone un-parked
+    # another base or another key is not a duplicate; the 004 caller flag no longer exists (008): a collision parks server-side
     assert (await _keyed(reg, "c", k1, base="base-2"))[1] == "VALIDATED"
     assert (await _keyed(reg, "d", k2))[1] == "VALIDATED"
-    assert (await _keyed(reg, "e", k2, flag=True))[1] == "DUPLICATE_PARKED"                         # 004 flag still parks
+    assert (await _keyed(reg, "e", k2))[1] == "DUPLICATE_PARKED"                                # collides with "d"
     # an override naming something else, or a pair of collisions, still parks
     assert (await _keyed(reg, "f", k1, override="not-the-colliding-change", just="reason"))[1] == "DUPLICATE_PARKED"
     # a matching override validates but needs the approver-bound digest
@@ -783,7 +786,8 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     # after approval the key and the override are frozen (they are inside the digest)
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", o, k2, None, None))
     # claim: the declared key is the key lock; a different key argument is refused
-    await fails("DIGEST_MISMATCH", reg.claimed(o, key="3" * 64))
+    # (L.claimed ignores a caller key for a keyed draft, so the mismatching key is passed to claim directly)
+    await fails("DIGEST_MISMATCH", reg.call("clt_alice", "claim", o, "3" * 64, DEFAULT_GRANT[(T, C)], 0, False, False))
     await reg.claimed(o, key=None)
     assert await reg.conn.fetchval("SELECT key_hash FROM change_ledger.key_locks WHERE owner_change_id=$1", o) == k1
     # shape checks
@@ -814,7 +818,7 @@ async def test_update_draft_key_change_is_rechecked_and_the_own_document_is_not_
     ev = await reg.conn.fetchrow("SELECT payload FROM change_ledger.events WHERE change_id=$1 AND "
                                  "event_type='BUSINESS_KEY_DECLARED' ORDER BY seq DESC LIMIT 1", u3)
     assert js(ev["payload"])["key_changed"] is True and js(ev["payload"])["revalidate"] is True
-    assert await reg.call("clt_alice", "validate", u3, False, True) == "DUPLICATE_PARKED"
+    assert await reg.call("clt_alice", "validate", u3) == "DUPLICATE_PARKED"
     # rejected or voided changes no longer hold their key
     r, _ = await _keyed(reg, "r", "4" * 64)
     nonce = await reg.call("clt_bob", "issue_approval_nonce", r)
@@ -831,7 +835,7 @@ async def test_concurrent_validation_of_one_business_key_validates_exactly_one(r
         ids.append(cid)
     conns = [await reg.db.connect() for _ in ids]
     try:
-        res = await asyncio.gather(*[reg.call("clt_alice", "validate", cid, False, True, conn=cn)
+        res = await asyncio.gather(*[reg.call("clt_alice", "validate", cid, conn=cn)
                                      for cid, cn in zip(ids, conns, strict=True)])
     finally:
         for x in conns:

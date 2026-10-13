@@ -21,7 +21,7 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 from _pg_harness import require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
+from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
 
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope, code_from_message
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
@@ -101,18 +101,27 @@ async def env():
         yield db.conn, SqlChangeLedger(db.conn, ACTORS)
 
 
+async def declare_inputs(port, cid):
+    """008: a draft needs its business key, its target class and its stored budget before validate."""
+    await port.declare_business_key(SCOPE, cid, sha(str(cid)))
+    await port.declare_target_class(SCOPE, cid, "CLONE")
+    await port.declare_budget(SCOPE, cid, DEFAULT_GRANT[(T, C)], "EUR", 0)
+
+
 async def applying(port):
     """propose -> validate -> approve (nonce) -> claim -> begin_apply; returns ids."""
     cid = uuid.uuid4()
     assert await port.propose(SCOPE, cid, "CREATE_DRAFT", BASE, ORG, "clt_alice", uuid.uuid4().hex,
                               DIGEST, "doc1", "v1", None, exp()) == cid
-    assert await port.validate(SCOPE, cid, False, True) == "VALIDATED"
+    await declare_inputs(port, cid)
+    assert await port.validate(SCOPE, cid) == "VALIDATED"
     nonce = await port.issue_approval_nonce(SCOPE, cid)
     digest = (await port.read_status(SCOPE, cid, as_class="approver"))["approval_digest"]
     assert isinstance(await port.approve(SCOPE, cid, nonce, digest), uuid.UUID)
-    tok = await port.claim(SCOPE, cid, KH)
+    tok = await port.claim(SCOPE, cid, None, DEFAULT_GRANT[(T, C)], 0)
     assert tok["change_id"] == cid and tok["generation"] == 1
     call_id = uuid.uuid4()
+    assert await port.observe_target(SCOPE, tok["token_id"], BASE, "CLONE") is True
     got = await port.begin_apply(SCOPE, tok["token_id"], call_id, "host-1", "sess-1")
     assert got["token_id"] == tok["token_id"]
     return cid, tok["generation"], call_id
@@ -332,7 +341,8 @@ async def test_approve_compares_the_sql_computed_digest(env):
     cid = uuid.uuid4()
     await port.propose(SCOPE, cid, "CREATE_DRAFT", BASE, ORG, "clt_alice", uuid.uuid4().hex, DIGEST, "doc1", "v1",
                        None, exp())
-    await port.validate(SCOPE, cid, False, True)
+    await declare_inputs(port, cid)
+    await port.validate(SCOPE, cid)
     nonce = await port.issue_approval_nonce(SCOPE, cid)
     # the caller can no longer pick the digest: the requester's own payload digest is not the approval digest
     await refused(port.approve(SCOPE, cid, nonce, DIGEST), "DIGEST_MISMATCH")
@@ -433,7 +443,7 @@ async def test_caller_class_and_scope_errors_are_mapped(env):
     with pytest.raises(ValueError):
         SqlChangeLedger(conn, {"worker": 'x"; drop'})
     # a scope the actor was not granted
-    await refused(port.validate(Scope("T2", "C2"), cid, False, True), "SCOPE_NOT_GRANTED")
+    await refused(port.validate(Scope("T2", "C2"), cid), "SCOPE_NOT_GRANTED")
     # a foreign identity argument
     await refused(port.propose(SCOPE, uuid.uuid4(), "CREATE_DRAFT", BASE, ORG, "clt_mallory", "r2", DIGEST,
                                "d", "v1", None, exp()), "NOT_ENTITLED")

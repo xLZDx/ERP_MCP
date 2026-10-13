@@ -44,6 +44,13 @@ ACTORS = {  # role -> (member of, scopes)
 # signing identities of the keyed-hash evidence / checkpoint stand-in: actor -> (key id, key material, key role)
 SIGN_KEYS = {"clt_wrk": ("vk-wrk", "W" * 32, "clt_wrk"), "clt_wri": ("vk-wri", "R" * 32, "clt_wri"),
              "clt_chk": ("vk-chk", "C" * 32, "checkpoint_role")}
+# 008 (B3): a scope without a registry_policy row is ENFORCED, so every actor of the fixtures is a registered
+# principal (own person, capabilities of its role groups); B1: a default grant for the budget every change declares.
+CAPS = {"clt_alice": ["requester"], "clt_mallory": ["requester"], "clt_bob": ["approver"], "clt_carol": ["approver"],
+        "clt_dave": ["operator", "requester", "recovery_witness"], "clt_erin": ["operator", "recovery_witness"],
+        "clt_both": ["requester", "approver"], "clt_zed": ["requester"]}
+DEFAULT_GRANT = {(T, C): uuid.UUID("00000000-0000-4000-8000-0000000000a1"),
+                 (T2, C2): uuid.UUID("00000000-0000-4000-8000-0000000000a2")}
 RUNTIME_ROLES = ["requester_role", "approver_role", "operator_role", "writer_role", "worker_role",
                  "auditor_role", "checkpoint_role"]
 JSON_FUNCS = {"issue_permit", "ledger_head", "verify_chain", "check_anchor"}
@@ -115,17 +122,25 @@ class L:
 
     # ---------------------------------------------------------------- flows
     async def propose(self, requester="clt_alice", base=BASE, request_id=None, digest=DIGEST,
-                      target="doc1", kind="CREATE_DRAFT", parent=None, repair_for=None, t=T, c=C):
+                      target="doc1", kind="CREATE_DRAFT", parent=None, repair_for=None, t=T, c=C,
+                      budget=True, key=None, grant=None, amount=0, declare_class=True):
         cid = uuid.uuid4()
         got = await self.call(requester, "propose", cid, kind, base, ORG, requester,
                               request_id or uuid.uuid4().hex, digest, target, "v1", parent, exp(),
                               repair_for, t=t, c=c)
         assert got == cid
+        if kind == "CREATE_DRAFT" and budget:      # 008 (B1): a draft creation needs its business key
+            await self.call(requester, "declare_business_key", cid, key or sha(str(cid)), None, None, t=t, c=c)
+        if budget and declare_class:               # 008 (B3): the registry is enforced: the class is declared
+            await self.call(requester, "declare_target_class", cid, "CLONE", t=t, c=c)
+        if budget:                                 # 008 (B1): the budget inputs are stored with the change
+            await self.call(requester, "declare_budget", cid, grant or DEFAULT_GRANT[(t, c)], "EUR", amount,
+                            False, False, t=t, c=c)
         return cid
 
     async def validated(self, **kw):
         cid = await self.propose(**kw)
-        assert await self.call(kw.get("requester", "clt_alice"), "validate", cid, False, True) == "VALIDATED"
+        assert await self.call(kw.get("requester", "clt_alice"), "validate", cid) == "VALIDATED"
         return cid
 
     async def approved(self, approver="clt_bob", **kw):
@@ -134,8 +149,24 @@ class L:
         await self.call(approver, "approve", cid, nonce, await self.approval_digest(cid))
         return cid
 
-    async def claimed(self, cid, requester="clt_alice", key=KH, grant=None, amount=None):
-        return await self.call(requester, "claim", cid, key, grant, amount, False, False)
+    async def claimed(self, cid, requester="clt_alice", key=None, grant=None, amount=None, observe=True):
+        """claim reads the budget and the business key from the stored change. A test that wants another grant or
+        amount than the default arranges the stored declaration as superuser (the approval is already given, so no API
+        may change it); the claim arguments always equal the stored values."""
+        if grant is not None or amount is not None:
+            await self.conn.execute(
+                "UPDATE change_ledger.change_budget SET grant_id=coalesce($2,grant_id), amount=coalesce($3,amount) "
+                "WHERE change_id=$1", cid, grant, amount)
+        cb = await self.conn.fetchrow("SELECT * FROM change_ledger.change_budget WHERE change_id=$1", cid)
+        if await self.conn.fetchval("SELECT 1 FROM change_ledger.business_keys WHERE change_id=$1", cid):
+            key = None                      # a declared business key is the one claim locks; a caller key is ignored
+        tok = await self.call(requester, "claim", cid, key, cb["grant_id"] if cb else None,
+                              cb["amount"] if cb else None, bool(cb and cb["counts_create_update"]),
+                              bool(cb and cb["counts_post"]))
+        if observe:      # 008 (B3): the registry is enforced, so the writer observes the target before begin_apply
+            base = await self.conn.fetchval("SELECT base_fingerprint FROM change_ledger.records WHERE change_id=$1", cid)
+            await self.call("clt_wri", "observe_target", tok["token_id"], base, "CLONE")
+        return tok
 
     async def applying(self, requester="clt_alice", **kw):
         cid = await self.approved(requester=requester, **kw)
@@ -270,6 +301,11 @@ async def _setup(conn):
             await conn.execute(f'GRANT {g} TO "{role}"')
         for t, c in scopes:
             await conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", role, t, c)
+        if role in CAPS:                 # direct insert: no epoch bump, like the verifier keys below
+            for t, c in scopes:
+                await conn.execute(
+                    "INSERT INTO change_ledger.principals(tenant_id,company_id,principal,person_id,capabilities) "
+                    "VALUES($1,$2,$3,$4,$5)", t, c, role, "person-" + role, CAPS[role])
     for _actor, (kid, kmat, krole) in SIGN_KEYS.items():
         await conn.execute(
             "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
@@ -281,6 +317,11 @@ async def _setup(conn):
     await conn.execute(
         "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,"
         "target_class) VALUES($1,$2,'base-t2',$3,'DISPOSABLE_CLONE')", T2, C2, ORG)
+    for (t, c), gid in DEFAULT_GRANT.items():
+        await conn.execute(
+            "INSERT INTO change_ledger.grants(grant_id,tenant_id,company_id,currency,amount_limit,count_limit,"
+            "post_count_limit,window_start,window_end) VALUES($1,$2,$3,'EUR',1000000,100000,100000,"
+            "now()-interval '1 day',now()+interval '3650 days')", gid, t, c)
 
 
 @pytest.fixture
@@ -371,7 +412,7 @@ async def test_caller_class_matrix_denies_other_classes(led, role, fn, args):
 
 # ============================================================================ event log / hash chain
 async def test_event_log_is_append_only_even_for_the_owner_path(led):
-    cid = await led.propose()
+    cid = await led.propose(budget=False)     # 008: a bare proposal (no declarations) writes exactly one event
     c = led.conn  # superuser: privileges cannot help, the triggers must refuse
     await fails("IMMUTABLE_LEDGER", c.execute("UPDATE change_ledger.events SET payload='{}'::jsonb"))
     await fails("IMMUTABLE_LEDGER", c.execute("DELETE FROM change_ledger.events"))
@@ -456,9 +497,9 @@ async def test_rls_tenant_isolation_and_scope_grants(led):
         await led.conn.execute('SET LOCAL ROLE "clt_alice"')
         await led.conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
         with pytest.raises(asyncpg.PostgresError, match="SCOPE_NOT_GRANTED"):
-            await led.conn.fetchval("SELECT change_ledger.validate($1,$2,$3,false,true)", T2, C2, z)
+            await led.conn.fetchval("SELECT change_ledger.validate($1,$2,$3)", T2, C2, z)
     # a change of another tenant cannot be touched from a granted scope (not found, not leaked)
-    await fails("CHANGE_NOT_FOUND", led.call("clt_alice", "validate", z, False, True))
+    await fails("CHANGE_NOT_FOUND", led.call("clt_alice", "validate", z))
     # a role sees only its own role_scope rows
     with pytest.raises(asyncpg.InsufficientPrivilegeError):      # the grant table itself is not readable
         await led.sql("clt_aud", "SELECT role_name FROM change_ledger.role_scope")
@@ -569,7 +610,10 @@ async def test_claim_takes_locks_lease_and_reservation_atomically_and_second_cla
     c3 = await led.approved(request_id="c3", target="doc1")
     await fails("LOCK_BUSY", led.claimed(c3, key="d" * 64))
     c4 = await led.approved(request_id="c4", target="doc4")
-    await fails("LOCK_BUSY", led.claimed(c4, key=KH))
+    # 008: the key lock is the STORED business key; arrange c4 to carry the same key as c1 (validate would park it)
+    await led.conn.execute("UPDATE change_ledger.business_keys SET key_hash=(SELECT key_hash FROM "
+                           "change_ledger.business_keys WHERE change_id=$1) WHERE change_id=$2", c1, c4)
+    await fails("LOCK_BUSY", led.claimed(c4))
     for x in (c3, c4):
         assert await led.locks(x) == (0, 0, 0)
         assert (await led.rec(x))["authorization_state"] == "APPROVED"
@@ -873,6 +917,9 @@ async def test_operator_resolve_absent_releases_and_requester_cannot_witness_own
     # the cosign of a third operator, resolved by a non-requester operator: absent -> FAILED_APPLY, all released
     await led.conn.execute("GRANT operator_role TO clt_carol")
     await led.conn.execute("SELECT change_ledger.add_role_scope('clt_carol',$1,$2)", T, C)
+    # 008: the registry is enforced, so the third operator is registered with its capabilities (own person)
+    await led.conn.execute("UPDATE change_ledger.principals SET capabilities=ARRAY['approver','operator',"
+                           "'recovery_witness'] WHERE principal='clt_carol'")
     w = await led.cosign("clt_carol", cid)
     assert await led.call("clt_erin", "operator_resolve", cid, w, False, False) == "FAILED_APPLY"
     assert await led.locks(cid) == (0, 0, 0) and await led.open_holds("CALL_OWNERSHIP") == 0
@@ -1030,7 +1077,7 @@ async def test_kill_switch_modes_refuse_admission_and_effect_steps_but_not_obser
     await fails("SCHEMA_INVALID", led.call("clt_dave", "kill_switch", "PANIC"))
     assert await led.call("clt_dave", "kill_switch", mode) == mode
     await fails("KILL_SWITCH_ACTIVE", led.propose(request_id="k8", base="base-8"))
-    await fails("KILL_SWITCH_ACTIVE", led.call("clt_alice", "validate", proposed, False, True))
+    await fails("KILL_SWITCH_ACTIVE", led.call("clt_alice", "validate", proposed))
     await fails("KILL_SWITCH_ACTIVE", led.call("clt_bob", "approve", validated, nonce, DIGEST))
     await fails("KILL_SWITCH_ACTIVE", led.claimed(approved, key="2" * 64))
     await fails("KILL_SWITCH_ACTIVE", led.call("clt_alice", "begin_apply", ctok["token_id"], uuid.uuid4(), "h", "s"))

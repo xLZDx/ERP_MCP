@@ -1,4 +1,4 @@
-"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007).
+"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007, 008).
 
 No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
 caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
@@ -51,7 +51,8 @@ SPEC: dict[str, Fn] = {
     # 004 + 005 requester / approver
     "propose": _f("propose", "requester",
                   "uuid,text,text,text,text,text,text,text,text,uuid,timestamptz,uuid", "uuid"),
-    "validate": _f("validate", "requester", "uuid,boolean,boolean", "text"),
+    "validate": _f("validate", "requester", "uuid", "text"),
+    "declare_budget": _f("declare_budget", "requester", "uuid,uuid,text,numeric,boolean,boolean", "text"),
     "claim": _f("claim", "requester", "uuid,text,uuid,numeric,boolean,boolean", _TOKEN_ROW),
     "release_claim": _f("release_claim", "requester worker", "uuid", "text"),
     "begin_apply": _f("begin_apply", "requester writer", "uuid,uuid,text,text", _TOKEN_ROW),
@@ -81,6 +82,7 @@ SPEC: dict[str, Fn] = {
     "kill_switch": _f("kill_switch", "operator", "text", "text"),
     "budget_admin": _f("budget_admin", "operator",
                        "uuid,text,numeric,integer,integer,timestamptz,timestamptz", "uuid"),
+    "budget_revoke": _f("budget_revoke", "operator", "uuid", "text"),
     "declare_anchor_gap": _f("declare_anchor_gap", "worker operator writer", "text,jsonb", "integer"),
     "declare_unclean_restart": _f("declare_unclean_restart", "worker operator", "text,jsonb",
                                   "integer"),
@@ -178,8 +180,15 @@ class SqlChangeLedger:
                                  requester, request_id, payload_digest, target_ref, target_version,
                                  parent_change_id, expires_at, repair_for)
 
-    async def validate(self, scope: Scope, change_id: UUID, duplicate: bool, budget_ok: bool) -> str:
-        return await self.invoke("validate", scope, change_id, duplicate, budget_ok)
+    async def validate(self, scope: Scope, change_id: UUID) -> str:
+        """008 (B1): no caller flags; the budget pre-check and the duplicate check come from the stored change."""
+        return await self.invoke("validate", scope, change_id)
+
+    async def declare_budget(self, scope: Scope, change_id: UUID, grant_id: UUID, currency: str, amount: Any,
+                             counts_create_update: bool = False, counts_post: bool = False) -> str:
+        """008 (B1): the budget inputs claim derives its reservation from (inside the approval digest)."""
+        return await self.invoke("declare_budget", scope, change_id, grant_id, currency, amount,
+                                 counts_create_update, counts_post)
 
     async def claim(self, scope: Scope, change_id: UUID, key_hash: str | None = None,
                     grant_id: UUID | None = None, amount: Any = None,
@@ -325,6 +334,9 @@ class SqlChangeLedger:
 
     async def kill_switch(self, scope: Scope, mode: str) -> str:
         return await self.invoke("kill_switch", scope, mode)
+
+    async def budget_revoke(self, scope: Scope, grant_id: UUID) -> str:
+        return await self.invoke("budget_revoke", scope, grant_id)
 
     async def budget_admin(self, scope: Scope, grant_id: UUID | None, currency: str, amount_limit: Any,
                            count_limit: int, post_count_limit: int, window_start: datetime,

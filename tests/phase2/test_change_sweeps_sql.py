@@ -129,7 +129,7 @@ async def test_t3_expires_proposed_validated_and_approved_but_not_live_changes(l
     assert (await led.rec(live))["authorization_state"] == "APPROVED"
     assert (await led.rec(claimed))["authorization_state"] == "CLAIMED"
     await fails("APPROVAL_MISSING", led.claimed(app, key="d" * 64))
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_alice", "validate", prop, False, True))
+    await fails("FORBIDDEN_TRANSITION", led.call("clt_alice", "validate", prop))
     assert (await sweep(led))["T3"] == []                                   # idempotent
     assert (await led.call("clt_aud", "verify_chain"))["ok"] is True
 
@@ -219,7 +219,7 @@ async def test_t12_five_durable_attempts_then_triage_with_alert(led):
     assert got["T12"] == [str(cid)]
     r = await led.rec(cid)
     assert (r["execution_state"], r["call_ownership"], r["reservation_state"]) == \
-        ("TRIAGE_REQUIRED", "POSSIBLY_EXECUTING", "NONE")
+        ("TRIAGE_REQUIRED", "POSSIBLY_EXECUTING", "RESERVED")   # 008: every claim reserves
     assert await led.open_holds("CALL_OWNERSHIP") == 1 and await led.locks(cid) == (1, 1, 1)
     ctr = await counter(led, cid, "RESOLVE")
     assert ctr["attempts"] == 5 and ctr["close_reason"] == "ATTEMPTS"
@@ -510,6 +510,8 @@ async def test_t17_refund_needs_effect_not_yes_and_requester_cannot_close_own_ch
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_close_failed_verify", c2, own, False))
     await led.conn.execute("GRANT operator_role TO clt_carol")
     await led.conn.execute("SELECT change_ledger.add_role_scope('clt_carol',$1,$2)", T, C)
+    await led.conn.execute("UPDATE change_ledger.principals SET capabilities=ARRAY['approver','operator',"
+                           "'recovery_witness'] WHERE principal='clt_carol'")      # 008: registered operator witness
     ok = await led.cosign("clt_carol", c2, cls="a")
     assert await led.call("clt_erin", "operator_close_failed_verify", c2, ok, False) == "CLOSED"
     r = await led.rec(c2)
