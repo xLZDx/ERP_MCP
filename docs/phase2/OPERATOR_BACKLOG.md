@@ -31,6 +31,15 @@ OB-01 status (2026-10-13): operator decision "accept" (chat, 2026-10-13: "реш
 
 OB-15 status (2026-10-13): **OPEN**. Status DRAFT_ACKNOWLEDGED: the operator answered "accept" in chat on 2026-10-13 without qualification, and that answer is preserved without expanding its meaning. It is not a formal closure, because the draft states that evidence is still missing for the operator's approval (GPT-PM bounded review b27d5c18, finding B-01). The draft is the donor code/license inventory in `S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md` section 9 (a DRAFT for the operator; an earlier record of this decision cited the S11 scope record by mistake, which was wrong). The acknowledgment covers that draft as written; its NOT_VERIFIED items and the "Missing for the operator's approval" list at its end stay open. Closure needs the missing inventory evidence to be completed and explicitly accepted by the operator, or a validly authorized deferral that names what is deferred. INVENTORY_ACCEPTED: NO. LICENSE_BOUNDARY_APPROVED: NO. Nothing here establishes ownership of all donor code, redistribution rights, GPL/AGPL compatibility or separation, approval of later donor additions, or clearance of dependencies missing from the inventory. PDCC is the operator's own code, written for another project (operator statement 2026-10-12). No gate changes; G0 still needs its manifest evidence.
 
+Operator decisions of 2026-10-14 (answers to direct multiple-choice questions in chat; they supersede the OPEN and agent-restriction wording of the OB-01 and OB-15 status paragraphs above, which stay as history):
+
+- OB-01: the operator confirmed the narrow reading as their own decision: isolated prototype until G0, only on the disposable clone `818HA_p2diff`, no rebaseline of the R1 scope. G0 scope baseline: "prototype until G0" (the same narrow line), to be revisited at the G0 review.
+- OB-15: the operator chose "accept with a named deferral". Accepted as written: the inventory in sections 9, 9a and 9b of `S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md`. Deferred to deployment qualification, by name: an R2 lock file or SBOM; license, pin and checksum facts for the host binaries. The R2 license statement is recorded as "all rights reserved, internal" (the operator's own code). Status: ACCEPTED_WITH_NAMED_DEFERRAL. LICENSE_BOUNDARY_APPROVED: NO. The deferral does not close the deferred items.
+- S13: work on migration 007 and batch B is allowed as a non-gating prototype on a disposable database; its results are not gate evidence.
+- Tests: focused functional tests of S12 and S13 written and run by the named agents on disposable containers are allowed. CI, lint, full suites and CI mirroring stay forbidden.
+- D10, D10b, D9, D4: stay AGENT_SELECTED_TEST_PLACEHOLDER until the first real write to 1C. Real D9 (host, account, Ed25519 signer) and a separate D10b witness are required before that first real write.
+- Push: the local R2 commits may be pushed after this decision.
+
 ## P2
 
 | ID | Item |
