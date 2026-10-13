@@ -107,3 +107,55 @@ Host binaries named by the install scripts (versions, sources and licenses mostl
 Missing for the operator's approval of OB-15: a resolved license table from an R2 environment (a lock file or SBOM), transitive and build-tool licenses, a code-similarity statement for the donor claim, license and pin facts for the host binaries with checksums, a LICENSE or NOTICE for R2 and a license field, and the recorded operator approval entry. This pass produced no approval; OB-15 stays open and operator-owned.
 
 Current status (2026-10-13): OB-15 is still OPEN. The operator answered "accept" in chat without qualification; that is recorded as DRAFT_ACKNOWLEDGED only, not as acceptance of a complete inventory, because the items listed as missing above are still missing. INVENTORY_ACCEPTED and LICENSE_BOUNDARY_APPROVED are NOT granted. The statements "OB-15 stays open" in sections 7 and 9 remain accurate. See `OPERATOR_BACKLOG.md`.
+
+### 9a. Resolved license table (added 2026-10-14)
+
+Method: the license field of each installed distribution's metadata (License-Expression, else License classifiers, else the License field), read with `importlib.metadata` in the sibling R1 environment `D:\Repo\ERP_MCP\.venv`, following Requires-Dist transitively from the declared roots (asyncpg, defusedxml, httpx, PyYAML, mcp, uvicorn, pytest, pytest-asyncio, ruff, jsonschema). Limits: this is the R1 environment, not an R2 lock file or SBOM (R2 still has none); versions are the installed ones; metadata fields are what packages declare, the `License-File` texts were not read; Windows-only and extra-conditional dependencies are included only if installed.
+
+| package | version | declared license |
+| --- | --- | --- |
+| annotated-types | 0.8.0 | MIT |
+| anyio | 4.15.1 | MIT |
+| asyncpg | 0.31.0 | Apache-2.0 |
+| attrs | 26.1.0 | MIT |
+| certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) |
+| click | 8.5.0 | BSD-3-Clause |
+| colorama | 0.4.6 | BSD License |
+| defusedxml | 0.7.1 | Python Software Foundation License |
+| h11 | 0.16.0 | MIT License |
+| httpcore | 1.0.9 | BSD-3-Clause |
+| httpcore2 | 2.13.1 | BSD-3-Clause |
+| httpx | 0.28.1 | BSD License |
+| httpx2 | 2.13.1 | BSD-3-Clause |
+| idna | 3.20 | BSD-3-Clause |
+| iniconfig | 2.3.0 | MIT |
+| jsonschema | 4.26.0 | MIT |
+| jsonschema-specifications | 2025.9.1 | MIT |
+| mcp | 2.3.0 | MIT License |
+| mcp-types | 2.3.0 | MIT License |
+| opentelemetry-api | 1.45.0 | Apache-2.0 |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
+| pluggy | 1.6.0 | MIT License |
+| pydantic | 2.13.5 | MIT |
+| pydantic_core | 2.46.5 | MIT |
+| Pygments | 2.21.0 | BSD-2-Clause |
+| PyJWT | 2.15.1 | MIT |
+| pytest | 9.1.1 | MIT |
+| pytest-asyncio | 1.4.0 | Apache-2.0 |
+| python-multipart | 0.0.32 | Apache-2.0 |
+| pywin32 | 312 | Python Software Foundation License |
+| PyYAML | 6.0.3 | MIT License |
+| referencing | 0.37.0 | MIT |
+| rpds-py | 2026.9.1 | MIT |
+| ruff | 0.16.10 | MIT |
+| sse-starlette | 3.5.0 | BSD-3-Clause |
+| starlette | 1.7.0 | BSD-3-Clause |
+| tomli | 2.4.1 | MIT |
+| truststore | 0.10.4 | MIT |
+| typing_extensions | 4.16.0 | PSF-2.0 |
+| typing-inspection | 0.4.4 | MIT |
+| uvicorn | 0.54.0 | BSD-3-Clause |
+
+Result: 41 distributions, no GPL or AGPL. One weak-copyleft entry: `certifi` (MPL-2.0, file-level copyleft; used unmodified as a dependency, no file of it is copied into R2). Not installed in that environment, so their licenses are NOT_VERIFIED: async-timeout, backports-asyncio-runner, exceptiongroup, httpx2-jsfetch.
+
+This table closes the item "resolved license table" and the "transitive licenses" part of the missing list above, for the R1 environment only. Still missing: an R2 lock file or SBOM, the code-similarity statement for the donor claim, license and pin facts with checksums for the host binaries, a LICENSE or NOTICE for R2 with a license field, and the operator's explicit acceptance or named deferral.
