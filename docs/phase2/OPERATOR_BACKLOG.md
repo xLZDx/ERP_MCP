@@ -10,6 +10,8 @@ Evidence source: six read-only local reviews of HEAD `9b4fc0c` (database, securi
 | ID | Blocker | Evidence | Minimal operator action | Blocks |
 | --- | --- | --- | --- | --- |
 | OB-01 | No G0 / scope rebaseline recorded for R2 code inside the R1 repository | `docs/DOCUMENT_INDEX.md` says FROZEN / NO NEW SCOPE; `docs/SCOPE_FREEZE_BASELINE_2026-10-06.md` §7 requires frozen IDs; no `phase2` mention in R1 normative docs | Record a decision: rebaseline, or explicit permission for an isolated prototype until G0 | Any merge to main, G0 |
+
+OB-01 status (2026-10-13): **ACCEPTED by the operator** as explicit permission for an isolated prototype until G0, limited to the disposable clone `818HA_p2diff` and to the Phase 2 change work. This is NOT a rebaseline of the R1 frozen scope: the R1 scope freeze remains as written, and no merge to main is authorized by this acceptance. The narrow reading was chosen by the agent because the operator's message did not name an option. G0 stays NOT_PASSED until its manifest evidence exists.
 | OB-02 | No dedicated ChatGPT conversation bound to this worktree in PM Bridge | `pm_rosetta_plan` refused: no project to conversation binding for `D:\Repo\ERP_MCP-phase2`; `config/projects.json` has only `erp_mcp-integration-candidate` and `erp_mcp-native-reports` | Provide an exact `https://chatgpt.com/c/<id>` link for a Phase 2 chat (do not reuse the R1 chat) | GPT-PM review, Rosetta governed work, push approval |
 | OB-03 | RESOLVED 2026-10-08: operator ordered a disposable instance; docker container `erp-phase2-test-pg` created and used (20/20 integration tests green). Earlier text: No authorized disposable PostgreSQL | No docker/psql/pg_ctl on PATH, no PostgreSQL service on this machine | Authorize/create a disposable R2 test database with separate credentials, isolated from R1; supply DSN via `ERP_PHASE2_TEST_DSN` | G1-08/09, all integration/security/concurrency/backup tests |
 | OB-04 | Source registry decision: `living.sources` (own) vs reuse of R1 `bag.sources` | `CONTRACTS_AND_API_RU.md` says existing sources are reused; `001_living_registry.sql` defines its own table | Choose: same DB with FK, or separate DB with sync | Final shape of RLS and FKs |
@@ -26,6 +28,8 @@ Evidence source: six read-only local reviews of HEAD `9b4fc0c` (database, securi
 | OB-13 | Secret provider and rotation procedure for production | Name provider and owner | S1 secret rotation, S9 |
 | OB-14 | R1 shadow-compatibility and production canary approval | Approve canary window and rollback owner | S9/S10 |
 | OB-15 | Donor code/license inventory approvals | Review inventory; approve any GPL/AGPL boundary | S0/S1 |
+
+OB-15 status (2026-10-13): **ACCEPTED by the operator.** Scope: the donor code/license inventory as drafted in `S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md` section 9 (PDCC is the operator's own code, written for another project; no third-party license question is raised for it). No GPL/AGPL boundary is approved beyond what that inventory states. The acceptance does not change any gate by itself; G0 still needs its manifest evidence.
 
 ## P2
 

@@ -6,6 +6,8 @@ Correction (2026-10-13): the values in the table below were chosen by the agent,
 
 Status after GPT-PM review (2026-10-13, request 7c1e4b2a-5d3f-4a8e-9b6c-2f0d1e8a7b93): the test-lane freeze is WITHDRAWN (REQUEST_CHANGES). Contract revision 6 keeps its technical APPROVE. S12 formal entry is BLOCKED until OB-01 and OB-15 are explicitly accepted, rejected or validly deferred by the operator. S13 dependent start is BLOCKED. The placeholder values D10, D10b, D9 and D4 are AGENT_SELECTED_TEST_PLACEHOLDER: they support documentary design only and never satisfy a gate that needs real identities, hosts, keys or configuration.
 
+Operator decisions (2026-10-13): OB-01 and OB-15 are ACCEPTED, with the scope recorded in `docs/phase2/OPERATOR_BACKLOG.md`. The operator confirmed that D10, D10b, D9 and D4 remain test stubs. They are not real operator, witness, checkpoint-host or COM-host values. A new S12 entry decision still needs GPT-PM review against contract revision 6.
+
 Bound contract: `docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md` revision 6, approved by GPT-PM at local head f57e0da; blob id at that head `7ef7fe212a09c7e2d90bb86ca6d5306cb5e510d9`; sha256 of the working-copy file `0aa4a766d920df8d2bfd195d894ff872793dcf8e002258338f641a5fa5131f38`. A material change of the contract invalidates these bindings.
 
 | Input | Fake test-lane value | Notes |
