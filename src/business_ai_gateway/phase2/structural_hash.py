@@ -9,7 +9,6 @@ import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any
-from xml.etree.ElementTree import ParseError  # nosec B405 - exception type only; parsing uses defusedxml
 
 from defusedxml import ElementTree as ET
 from defusedxml.common import DefusedXmlException
@@ -135,7 +134,7 @@ def fingerprint_edmx(
         root = ET.fromstring(xml)
     except DefusedXmlException as exc:
         raise ValueError("EDMX_FORBIDDEN_XML") from exc
-    except ParseError as exc:
+    except ET.ParseError as exc:
         raise ValueError("EDMX_PARSE_ERROR") from exc
     except RecursionError as exc:
         raise ValueError("EDMX_DEPTH_EXCEEDED") from exc
