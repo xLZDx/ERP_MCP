@@ -6,7 +6,21 @@ Correction (2026-10-13): the values in the table below were chosen by the agent,
 
 Status after GPT-PM review (2026-10-13, request 7c1e4b2a-5d3f-4a8e-9b6c-2f0d1e8a7b93): the test-lane freeze is WITHDRAWN (REQUEST_CHANGES). Contract revision 6 keeps its technical APPROVE. S12 formal entry is BLOCKED until OB-01 and OB-15 are explicitly accepted, rejected or validly deferred by the operator. S13 dependent start is BLOCKED. The placeholder values D10, D10b, D9 and D4 are AGENT_SELECTED_TEST_PLACEHOLDER: they support documentary design only and never satisfy a gate that needs real identities, hosts, keys or configuration.
 
-Operator decisions (2026-10-13): OB-01 and OB-15 are ACCEPTED, with the scope recorded in `docs/phase2/OPERATOR_BACKLOG.md`. The operator confirmed that D10, D10b, D9 and D4 remain test stubs. They are not real operator, witness, checkpoint-host or COM-host values. A new S12 entry decision still needs GPT-PM review against contract revision 6.
+Operator decisions (2026-10-13): the operator answered "accept" for OB-01 and OB-15 (details and exact limits in `docs/phase2/OPERATOR_BACKLOG.md`). For OB-01 the operator named no option, so the prototype-only limit below is an agent and GPT-PM restriction, not an operator decision. For OB-15 only INVENTORY_ACCEPTED holds (inventory in section 9 of `S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md`); LICENSE_BOUNDARY_APPROVED is not granted. The operator confirmed that D10, D10b, D9 and D4 remain test stubs, not real operator, witness, checkpoint-host or COM-host values.
+
+## S12 test-lane entry record (2026-10-13, GPT-PM request 3e9a0f47-1b6c-4d2e-8a5f-7c4b9d1e2f60)
+
+Verdict: S12 formal entry for the TEST LANE is CONDITIONAL_APPROVE against contract revision 6 (sha256 `0aa4a766d920df8d2bfd195d894ff872793dcf8e002258338f641a5fa5131f38`). S13 dependent start is NOT APPROVED. Release 2 NO-GO. G0-G8 NOT_PASSED. This is a documentary decision, not evidence of tested S12 or S13 functionality. The earlier withdrawn freeze stays withdrawn as history.
+
+Entry restrictions (the five GPT-PM findings, recorded as binding restrictions):
+
+- S12-G01, OB-01: the entry applies only to the disposable clone `818HA_p2diff` with an authenticated base fingerprint and explicit disposable-clone classification, only for the purchase-receipt operations of revision 6, as S12 prototype design and implementation. Excluded: R1 scope change, merge to main, staging, production, real-money operations, deletion. The operator's word was "accept"; the narrow reading is a restriction, not an operator decision, and G0 may still need an explicit scope baseline from the operator.
+- S12-G02, OB-15: INVENTORY_ACCEPTED only. Not established: ownership of all donor code, redistribution rights, GPL/AGPL compatibility, approval of later donor additions, clearance of dependencies missing from the inventory. Additions and unresolved licenses need separate clearance.
+- S12-G03: the historical "OB-15 open" and "OB-01 open" statements in the S11 scope record and the S11 source inventory now carry a dated current-status note; the historical text stays as provenance.
+- S12-G04: D10, D10b, D9 and D4 stay AGENT_SELECTED_TEST_PLACEHOLDER. They never satisfy a real-identity, real-host, real-key or production requirement, must not gain production entitlements, and must not be promoted into operational configuration because a test passes. D10 and D10b must stay two distinct fixture persons (the same underlying person under two accounts would defeat the separation-of-duties rule). Test configuration fails closed when a record lacks `lane = TEST`.
+- S12-G05: S12 entry is not approval to execute a 1C write, to pass a gate, to start S13 or to promote a release. Executing a write needs the runtime safety prerequisites of the contract to be demonstrated first (real authenticated test principals, a real test checkpoint sink and signer, the trusted target registry for the clone).
+
+Existing unverified S13 code (migration 007 WIP and the earlier S13 commits) is not accepted as gate evidence. S13 preparatory analysis and documentation may continue; S13 implementation or execution needs its own scope authorization.
 
 Bound contract: `docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md` revision 6, approved by GPT-PM at local head f57e0da; blob id at that head `7ef7fe212a09c7e2d90bb86ca6d5306cb5e510d9`; sha256 of the working-copy file `0aa4a766d920df8d2bfd195d894ff872793dcf8e002258338f641a5fa5131f38`. A material change of the contract invalidates these bindings.
 
