@@ -1,7 +1,6 @@
 """Safe structured tool failures: no semantic-tool refusal may collapse into an opaque error."""
 from __future__ import annotations
 
-import asyncio
 import json
 
 import pytest
@@ -68,7 +67,7 @@ async def failure(exc_factory, **arguments) -> tuple[dict, BaseException]:
          "capability", False),
         (lambda: PermissionError("company 3e31 is not granted"), "ACCESS_DENIED", "authorization", False),
         (lambda: AuditUnavailable("AUDIT_UNAVAILABLE"), "AUDIT_UNAVAILABLE", "dependency", True),
-        (lambda: asyncio.TimeoutError(), "SOURCE_TIMEOUT", "dependency", True),
+        (lambda: TimeoutError(), "SOURCE_TIMEOUT", "dependency", True),
         (lambda: OneCTransportError("GET http://1c.internal/odata failed"), "SOURCE_UNAVAILABLE",
          "dependency", True),
         (lambda: ValueError("as_of must include an explicit timezone"), "INVALID_ARGUMENT",

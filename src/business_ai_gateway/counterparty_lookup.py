@@ -61,7 +61,7 @@ def validate_counterparty_lookup_mapping(mapping: Any) -> str:
 def normalize_search_text(text: Any) -> str:
     """Validate and normalise the caller's text. Raises ValueError (a safe INVALID_ARGUMENT)."""
     if not isinstance(text, str):
-        raise ValueError("query must be a string")
+        raise ValueError("query must be a string")  # noqa: TRY004 - callers map ValueError to INVALID_ARGUMENT
     cleaned = " ".join(text.split())
     if not MIN_QUERY <= len(cleaned) <= MAX_QUERY:
         raise ValueError(f"query must be {MIN_QUERY}..{MAX_QUERY} characters")

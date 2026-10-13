@@ -9,7 +9,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any
-from xml.etree.ElementTree import ParseError
+from xml.etree.ElementTree import ParseError  # nosec B405 - exception type only; parsing uses defusedxml
 
 from defusedxml import ElementTree as ET
 from defusedxml.common import DefusedXmlException

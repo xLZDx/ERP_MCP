@@ -21,27 +21,23 @@ from .analytics_balance import (
     AnalyticsBalanceError,
     ComRouteUnsupported,
     build_analytics_balance_arguments,
-    compute_account_totals,
     normalize_com_balance_rows,
-    summarize_account_turnovers,
-    summarize_document_amounts,
     normalize_odata_balance_rows,
     select_route,
+    summarize_account_turnovers,
+    summarize_document_amounts,
 )
 from .audit import AuditCorrelationMiddleware, AuditUnavailable
-from .counterparty_lookup import (
-    COUNTERPARTY_LOOKUP_CONCEPT,
-    MAX_REFS_PER_REQUEST,
-    build_lookup_query,
-    build_refs_filter,
-    evaluate_lookup,
-    index_names,
-)
 from .auth import JWTTokenVerifier
 from .compatibility import (
     CapabilityUnsupported,
     MetadataDriftUnacknowledged,
     require_acknowledged_metadata,
+)
+from .counterparty_lookup import (
+    COUNTERPARTY_LOOKUP_CONCEPT,
+    build_lookup_query,
+    evaluate_lookup,
 )
 from .duplicate_counterparties import (
     DUPLICATE_CONCEPT,
@@ -73,7 +69,6 @@ from .semantic import (
     build_accounting_posting_rows_query,
     build_bank_balance_arguments,
     build_cash_movements_query,
-    build_company_filter,
     build_document_filter,
     build_inventory_balance_arguments,
     build_inventory_movement_query,
@@ -88,7 +83,6 @@ from .semantic import (
     normalize_settlement_balance_rows,
 )
 from .settings import Settings
-from .tool_errors import StructuredErrorMCPServer
 from .settlement_collector import (
     MAX_OPEN_ITEM_ROWS,
     OPEN_ITEMS_FAILURE_REASONS,
@@ -99,6 +93,7 @@ from .settlement_collector import (
     parse_as_of,
 )
 from .supplier_debt_summary import summarize_supplier_5211, supplier_filter_batches, supplier_refs
+from .tool_errors import StructuredErrorMCPServer
 
 CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,

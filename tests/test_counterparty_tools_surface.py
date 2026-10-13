@@ -19,9 +19,9 @@ from tests.test_analytics_balance_routing import SOURCE, make_caps
 from tests.test_analytics_balance_routing import build as routing_build
 from tests.test_analytics_balance_routing import call as routing_call
 from tests.test_analytics_balance_routing import payload as routing_payload
-from tests.test_supplier_debt_mcp_integration import exact_5211_mapping
-from tests.test_server_audit import RecordingAudit, TestRegistry
 from tests.test_counterparty_lookup import PROFILE
+from tests.test_server_audit import RecordingAudit, TestRegistry
+from tests.test_supplier_debt_mcp_integration import exact_5211_mapping
 
 LOOKUP = ProvisionalProfiles(
     PROFILE, hashlib.sha256(PROFILE.read_bytes()).hexdigest(), environment="test"
@@ -201,7 +201,7 @@ async def test_every_published_tool_schema_forbids_additional_properties():
 
 @pytest.mark.parametrize("misnamed", ["filter", "$filter", "query", "where"])
 async def test_onec_read_with_a_misnamed_filter_is_rejected_not_answered_unfiltered(misnamed):
-    mcp, _audit, onec, company = build()
+    mcp, _audit, onec, _company = build()
     with pytest.raises(ToolError) as raised:
         await mcp.call_tool("onec_read", {
             "source_id": "source-1", "entity_set": "ChartOfAccounts_Хозрасчетный",
