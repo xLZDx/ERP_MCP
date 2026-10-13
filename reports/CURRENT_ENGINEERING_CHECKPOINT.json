@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "batch_id": "SUPPLIER_5211_REPORT_20261009",
-  "implementation_sha256": "2998028f79f1796d447a09aefedf4796abf2cea4c9ccd94911ba91667130249d",
+  "implementation_sha256": "0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
@@ -89,5 +89,5 @@
     }
   },
   "current_full_suite_status": "PENDING_ON_NEW_FEATURE_HEAD",
-  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run."
+  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run. Rebound again on 2026-10-14 after hand edits of import order, unused imports and an exception import (commits 1764254 and 1d895bb); those edits were NOT re-tested and the focused-set figures above predate them."
 }
