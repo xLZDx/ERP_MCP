@@ -158,4 +158,14 @@ Method: the license field of each installed distribution's metadata (License-Exp
 
 Result: 41 distributions, no GPL or AGPL. One weak-copyleft entry: `certifi` (MPL-2.0, file-level copyleft; used unmodified as a dependency, no file of it is copied into R2). Not installed in that environment, so their licenses are NOT_VERIFIED: async-timeout, backports-asyncio-runner, exceptiongroup, httpx2-jsfetch.
 
-This table closes the item "resolved license table" and the "transitive licenses" part of the missing list above, for the R1 environment only. Still missing: an R2 lock file or SBOM, the code-similarity statement for the donor claim, license and pin facts with checksums for the host binaries, a LICENSE or NOTICE for R2 with a license field, and the operator's explicit acceptance or named deferral.
+This table closes the item "resolved license table" and the "transitive licenses" part of the missing list above, for the R1 environment only.
+
+### 9b. Donor code-similarity statement (added 2026-10-14)
+
+FACT (checked by the main session, read-only): the pinned donor commit `ebf10414aaa8ef858a3df82652fb2050141adc98` exists in `D:\Repo\Personal_Decision_Command_Center`, and the blob `scripts/tools/build-document-registry.mjs` at that commit has the id `b581feac23e4caea5c056a71dd0587cc7c58eef0`, exactly as the provenance header of `scripts/build_document_registry.mjs` states. A comparison of trimmed, de-duplicated, non-empty lines: the donor has 134, the R2 file has 174, and 33 are identical (about 25% of the donor lines, about 19% of the R2 lines). This is a line-overlap measure, not a semantic or legal analysis. It is consistent with the header's list of substantial changes.
+
+FACT: a search of `src` and `scripts` of R2 for the donor paths `gmail-connector`, `slack-connector`, `telegram-connector`, `Personal_Decision_Command_Center` and `PDCC` finds only the provenance header above and comments in `phase2/drive_oauth.py` and `phase2/drive_port.py` that state no PDCC code or token is used. No connector code from the three named donor paths was found. This was a text search, not a code-similarity tool run.
+
+INFERENCE: the only donor-derived code in R2 is the one adapted registry script, and the donor repository is the operator's own code without a third-party license (section 9, read-only check of 2026-10-12).
+
+Still missing for OB-15: an R2 lock file or SBOM, license and pin facts with checksums for the host binaries, a LICENSE or NOTICE for R2 with a license field, and the operator's explicit acceptance or named deferral.
