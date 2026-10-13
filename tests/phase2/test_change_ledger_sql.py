@@ -585,7 +585,7 @@ async def test_claim_guards_owner_approval_hold_parent_and_release_then_reclaim(
     cid = await led.validated()
     await fails("APPROVAL_MISSING", led.claimed(cid))
     nonce = await led.call("clt_bob", "issue_approval_nonce", cid)
-    await led.call("clt_bob", "approve", cid, nonce, DIGEST)
+    await led.call("clt_bob", "approve", cid, nonce, await led.approval_digest(cid))
     await fails("NOT_ENTITLED", led.claimed(cid, requester="clt_mallory"))
     hold = uuid.uuid4()
     await led.conn.execute("INSERT INTO change_ledger.holds(hold_id,tenant_id,company_id,base_fingerprint,cause) "
@@ -1085,3 +1085,406 @@ async def test_check_anchor_detects_a_restored_older_ledger_with_an_anchor_gap_h
     div = await led.call("clt_wrk", "check_anchor", head["seq"], "9" * 64)
     assert div["ok"] is False
     assert later is not None
+
+
+# ============================================================================ S13 batch A (007_change_hardening_a.sql)
+# One focused group per finding A1-A8 of docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md. Every assertion names a
+# behavior the guard produces; nothing here removes or weakens a guard.
+RAW_SIGS = [
+    "change_ledger.complete(text,text,uuid,bigint,text,jsonb,jsonb)",
+    "change_ledger.resolve_unknown(text,text,uuid,jsonb,boolean,boolean)",
+    "change_ledger.verify(text,text,uuid,jsonb,boolean)",
+    "change_ledger.witness_cosign(text,text,uuid,jsonb)",
+]
+RAW_CALLS = [
+    ("complete", "gen_random_uuid(),1,'SUCCESS','{}'::jsonb,NULL"),
+    ("resolve_unknown", "gen_random_uuid(),'{}'::jsonb,true,true"),
+    ("verify", "gen_random_uuid(),'{}'::jsonb,true"),
+    ("witness_cosign", "gen_random_uuid(),'{}'::jsonb"),
+]
+
+
+async def owner_call(led, sql, *args):
+    """Call an internal function as ledger_owner (what the signed wrappers do); never granted to runtime roles."""
+    await led.conn.execute("SELECT change_ledger.add_role_scope('ledger_owner',$1,$2)", T, C)
+    async with led.conn.transaction():
+        await led.conn.execute('SET LOCAL ROLE "ledger_owner"')
+        await led.conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+        return await led.conn.fetchval(sql, T, C, *args)
+
+
+async def ev_count(led, cid=None):
+    return await led.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE ($1::uuid IS NULL OR change_id=$1)", cid)
+
+
+async def test_a1_raw_completion_and_verdict_functions_are_closed_to_every_runtime_role(led):
+    for sig in RAW_SIGS:
+        for role in RUNTIME_ROLES:
+            assert not await led.conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')", role, sig), (sig, role)
+    for actor in ("clt_wri", "clt_wrk", "clt_dave", "clt_erin", "clt_alice", "clt_bob", "clt_aud", "clt_chk"):
+        for fn, args in RAW_CALLS:
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):      # port maps SQLSTATE 42501 to NOT_ENTITLED
+                await led.sql(actor, f"SELECT change_ledger.{fn}('T1','C1',{args})")
+    # the signed wrappers stay callable by their own class
+    for role, sig in (("writer_role", "change_ledger.complete_signed(text,text,uuid,bigint,text,uuid)"),
+                      ("worker_role", "change_ledger.verify_signed(text,text,uuid,uuid,uuid,uuid)"),
+                      ("worker_role", "change_ledger.retry_verify(text,text,uuid,uuid,uuid,uuid)"),
+                      ("worker_role", "change_ledger.verify_inconclusive(text,text,uuid,uuid)"),
+                      ("writer_role", "change_ledger.complete_lock_busy(text,text,uuid,bigint,uuid,jsonb)"),
+                      ("operator_role", "change_ledger.witness_cosign_signed(text,text,uuid,uuid)")):
+        assert await led.conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')", role, sig), (role, sig)
+
+
+async def test_a1_evidence_content_hash_generation_and_call_id_are_bound(led):
+    cid, tok, call_id = await led.dispatched(request_id="a1h", base="base-1")
+    gen = tok["generation"]
+    n0 = await led.conn.fetchval("SELECT count(*) FROM change_ledger.evidence_records")
+    # content_hash must be the hash of the content
+    await fails("DIGEST_MISMATCH", led.evidence(cid, "OBSERVATION", {"x": 1}, ch="e" * 64))
+    # the signature covers generation and call id: a binding made for another generation / call is refused
+    at = datetime.now(UTC) + timedelta(seconds=1)
+    full = {"generation": gen, "call_id": str(call_id), "nonce": "n-bound", "x": 1}
+    ch = await led.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(full))
+    wrong = await led.conn.fetchval("SELECT change_ledger.evidence_binding($1,'OBSERVATION',$2,$3,$4,$5)",
+                                    cid, ch, at, gen + 1, call_id)
+    await fails("DIGEST_MISMATCH", led.evidence(cid, "OBSERVATION", {"nonce": "n-bound", "x": 1}, at=at,
+                                                bind=wrong, sig=sha("W" * 32 + ":" + wrong)))
+    wrong_call = await led.conn.fetchval("SELECT change_ledger.evidence_binding($1,'OBSERVATION',$2,$3,$4,$5)",
+                                         cid, ch, at, gen, uuid.uuid4())
+    await fails("DIGEST_MISMATCH", led.evidence(cid, "OBSERVATION", {"nonce": "n-bound", "x": 1}, at=at,
+                                                bind=wrong_call, sig=sha("W" * 32 + ":" + wrong_call)))
+    # another generation or another call id (consistently signed) is refused
+    await fails("TICKET_SUPERSEDED", led.evidence(cid, "OBSERVATION", {"x": 2}, gen=gen + 1))
+    await fails("PERMIT_MISSING", led.evidence(cid, "OBSERVATION", {"x": 3}, call_id=uuid.uuid4()))
+    # the typed content must repeat the generation of the call
+    await fails("SCHEMA_INVALID", led.evidence(cid, "OBSERVATION", {"x": 4, "generation": gen + 5}))
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.evidence_records") == n0
+    ok = await led.evidence(cid, "OBSERVATION", {"x": 5})
+    row = await led.conn.fetchrow("SELECT generation, call_id FROM change_ledger.evidence_records "
+                                  "WHERE evidence_id=$1", ok)
+    assert (row["generation"], row["call_id"]) == (gen, call_id)
+
+
+async def test_a1_outcome_is_derived_from_the_typed_signed_record_not_from_flags(led):
+    cid, tok, call_id, _ = await led.permitted(request_id="a1o", base="base-1")
+    gen = tok["generation"]
+    other, otok, _, _ = await led.permitted(request_id="a1o2", base="base-2")
+    refusal = {"class": "a", "result_returned": False, "stage": "PRE_WRITE", "refusal_code": "STALE_VERSION",
+               "no_effect_proof": {"proof": "no-effect"}}
+    succ = await led.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True}, role="clt_wri")
+    # a SUCCESS record cannot back a PRE_WRITE_REFUSAL
+    await fails("WRITE_REFUSED", led.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", succ))
+    # a refusal record cannot back SUCCESS
+    ref = await led.evidence(cid, "COMPLETION_PROOF", refusal, role="clt_wri")
+    await fails("COMPLETION_PROOF_MISSING", led.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", ref))
+    # a worker (class b) proof never completes; a record of another change or generation is refused
+    wproof = await led.evidence(cid, "COMPLETION_PROOF", {"class": "b", "result_returned": True}, role="clt_wrk")
+    await fails("COMPLETION_PROOF_MISSING", led.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", wproof))
+    foreign = await led.evidence(other, "COMPLETION_PROOF", refusal, role="clt_wri")
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", foreign))
+    await fails("TICKET_SUPERSEDED", led.call("clt_wri", "complete_signed", cid, gen + 1, "PRE_WRITE_REFUSAL", ref))
+    # refusal records that fail the typed rules: wrong stage, code outside the closed set, no or empty proof
+    bad_stage = await led.evidence(cid, "COMPLETION_PROOF", {**refusal, "stage": "WRITE"}, role="clt_wri")
+    await fails("WRITE_REFUSED", led.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", bad_stage))
+    await fails("WRITE_REFUSED", led.complete(cid, gen, "PRE_WRITE_REFUSAL", proof={"p": 1}, code="BOGUS"))
+    await fails("WRITE_REFUSED", led.complete(cid, gen, "PRE_WRITE_REFUSAL", proof=None))
+    await fails("WRITE_REFUSED", led.complete(cid, gen, "PRE_WRITE_REFUSAL", proof={}))
+    assert (await led.rec(cid))["execution_state"] == "APPLYING" and await led.locks(cid) == (1, 1, 1)
+    # a call without a completion record at all
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", None))
+    # the well-typed refusal and the well-typed success are accepted
+    assert await led.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", ref) == "FAILED_APPLY"
+    d, dtok, _ = await led.dispatched(request_id="a1o3", base="base-3")
+    assert await led.complete(d, dtok["generation"], "SUCCESS") == "APPLIED"
+
+
+async def test_a1_verdicts_and_resolutions_derive_from_signed_records(led):
+    # verify: one mismatching record fails the verification, there is no caller flag to say otherwise
+    cid, tok, _ = await led.dispatched(request_id="a1v", base="base-1")
+    await led.complete(cid, tok["generation"], "SUCCESS")
+    ids = [await led.evidence(cid, k, {"matches": m})
+           for k, m in (("FIELD", True), ("MOVEMENT", False), ("VERSION", True))]
+    assert await led.call("clt_wrk", "verify_signed", cid, *ids) == "FAILED_VERIFY"
+    # retry_verify takes evidence ids; no evidence is EVIDENCE_UNSIGNED, passing records release the halt
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "retry_verify", cid, None, None, None))
+    assert await led.verify(cid, True, fn="retry_verify") == "VERIFIED"
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 0
+    # verify_inconclusive needs a signed observation that says inconclusive
+    inc, itok, _ = await led.dispatched(request_id="a1i", base="base-2")
+    await led.complete(inc, itok["generation"], "SUCCESS")
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "verify_inconclusive", inc, None))
+    plain = await led.observation(inc, False)
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "verify_inconclusive", inc, plain))
+    obs = await led.observation(inc, None, inconclusive=True)
+    got = json.loads(await led.call("clt_wrk", "verify_inconclusive", inc, obs))
+    assert got == {"attempts": 1, "exhausted": False}
+    # resolve_unknown_signed: the caller's found flag must equal the signed observation
+    unk, _, _ = await led.unknown(request_id="a1u", base="base-3")
+    o = await led.observation(unk, False)
+    await fails("DIGEST_MISMATCH", led.call("clt_wrk", "resolve_unknown_signed", unk, o, None, True, False))
+    assert (await led.rec(unk))["execution_state"] == "APPLY_UNKNOWN"
+    # operator_resolve(present=false) needs a signed observation with effect_present = false
+    tri, _, _ = await led.triage(request_id="a1t", base="base-4")          # triage recorded effect_present = true
+    w = await led.cosign("clt_erin", tri, cls="b")
+    await fails("COMPLETION_PROOF_MISSING", led.call("clt_dave", "operator_resolve", tri, w, False, False))
+    assert (await led.rec(tri))["execution_state"] == "TRIAGE_REQUIRED"
+    assert await led.conn.fetchval("SELECT consumed_at IS NULL FROM change_ledger.witness_cosigns "
+                                   "WHERE cosign_id=$1", w)
+    await led.observation(tri, False)
+    assert await led.call("clt_dave", "operator_resolve", tri, w, False, False) == "FAILED_APPLY"
+    # complete_lock_busy takes the writer's evidence id and only a LOCK_BUSY refusal record
+    lb, lbtok, _ = await led.applying(request_id="a1l", base="base-5")
+    await fails("WRITE_REFUSED", led.call("clt_wri", "complete_lock_busy", lb, lbtok["generation"], None))
+    body = {"class": "a", "result_returned": False, "stage": "PRE_WRITE", "no_effect_proof": {"p": 1}}
+    stale = await led.evidence(lb, "COMPLETION_PROOF", {**body, "refusal_code": "STALE_VERSION"}, role="clt_wri")
+    await fails("WRITE_REFUSED", led.call("clt_wri", "complete_lock_busy", lb, lbtok["generation"], stale))
+    busy = await led.evidence(lb, "COMPLETION_PROOF", {**body, "refusal_code": "LOCK_BUSY"}, role="clt_wri")
+    assert await led.call("clt_wri", "complete_lock_busy", lb, lbtok["generation"], busy) == "APPROVED"
+
+
+async def test_a1_witness_cosign_needs_a_completion_proof_of_the_current_generation(led):
+    cid = await led.approved(request_id="a1w", base="base-1")
+    tok1 = await led.claimed(cid)
+    await led.call("clt_alice", "begin_apply", tok1["token_id"], uuid.uuid4(), "h", "s")
+    old = await led.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wri")
+    await led.call("clt_wrk", "recover_sweep", json.dumps({"permit_ttl_seconds": 0}))      # T6r releases the claim
+    tok2 = await led.claimed(cid)
+    assert tok2["generation"] == 2
+    call2 = uuid.uuid4()
+    await led.call("clt_alice", "begin_apply", tok2["token_id"], call2, "h", "s")
+    await led.checkpoint()
+    await led.call("clt_wrk", "issue_permit", cid, 2)
+    assert await led.call("clt_wri", "record_call", cid, 2, call2) is True
+    assert await led.complete(cid, 2, "SUCCESS") == "APPLIED"
+    assert await led.verify(cid, False) == "FAILED_VERIFY"
+    await fails("TICKET_SUPERSEDED", led.call("clt_erin", "witness_cosign_signed", cid, old))
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.witness_cosigns WHERE change_id=$1", cid) == 0
+    assert await led.cosign("clt_erin", cid)                                               # current generation
+
+
+async def _approved_with_spare_nonce(led, builder, **kw):
+    cid = await builder(**kw)
+    nonce = uuid.uuid4().hex + uuid.uuid4().hex
+    await led.conn.execute("INSERT INTO change_ledger.approval_nonces(nonce,change_id,approver,expires_at) "
+                           "VALUES($1,$2,'clt_bob',now()+interval '1 hour')", nonce, cid)
+    return cid, nonce
+
+
+async def test_a2_finished_or_running_changes_cannot_be_approved_or_get_a_nonce_again(led):
+    async def failed_apply(**kw):
+        cid, tok, _, _ = await led.permitted(**kw)
+        assert await led.complete(cid, tok["generation"], "PRE_WRITE_REFUSAL", proof={"p": 1}) == "FAILED_APPLY"
+        return cid
+
+    async def verified(**kw):
+        cid, tok, _ = await led.dispatched(**kw)
+        await led.complete(cid, tok["generation"], "SUCCESS")
+        assert await led.verify(cid, True) == "VERIFIED"
+        return cid
+
+    async def applying(**kw):
+        return (await led.applying(**kw))[0]
+
+    async def triage(**kw):
+        return (await led.triage(**kw))[0]
+
+    cases = [("FAILED_APPLY", failed_apply), ("VERIFIED", verified), ("APPLYING", applying),
+             ("TRIAGE_REQUIRED", triage)]
+    for i, (expect, builder) in enumerate(cases, start=1):
+        cid, nonce = await _approved_with_spare_nonce(led, builder, request_id=f"a2-{i}", base=f"base-{i}")
+        r = await led.rec(cid)
+        assert expect in (r["execution_state"], r["verification_state"]), (expect, dict(r))
+        before = (r["authorization_state"], r["execution_state"], r["verification_state"], await ev_count(led, cid))
+        await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "issue_approval_nonce", cid))
+        await fails("FORBIDDEN_TRANSITION",
+                    led.call("clt_bob", "approve", cid, nonce, await led.approval_digest(cid)))
+        r = await led.rec(cid)
+        after = (r["authorization_state"], r["execution_state"], r["verification_state"], await ev_count(led, cid))
+        assert after == before
+    # control: a REVOKED approval of an unstarted change may be approved again
+    o = await led.approved(request_id="a2-r", base="base-5")
+    assert await led.call("clt_dave", "revoke_change", o, "SESSION_REVOKED") == "REVOKED"
+    nonce = await led.call("clt_bob", "issue_approval_nonce", o)
+    await led.call("clt_bob", "approve", o, nonce, await led.approval_digest(o))
+    assert (await led.rec(o))["authorization_state"] == "APPROVED"
+
+
+async def test_a3_failed_verify_cannot_be_flipped_and_the_halt_stays_single(led):
+    cid, tok, _ = await led.dispatched(request_id="a3", base="base-1")
+    await led.complete(cid, tok["generation"], "SUCCESS")
+    assert await led.verify(cid, False) == "FAILED_VERIFY"
+    await fails("FORBIDDEN_TRANSITION", led.verify(cid, True))
+    assert (await led.rec(cid))["verification_state"] == "FAILED_VERIFY"
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 1 and await led.locks(cid) == (1, 0, 0)
+    await fails("FORBIDDEN_TRANSITION", led.verify(cid, False))
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 1
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.holds WHERE change_id=$1 AND "
+                                   "cause='FAILED_VERIFY_HALT'", cid) == 1
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1 AND "
+                                   "event_type LIKE 'VERIFY\\_%'", cid) == 1
+
+
+async def _repair_unknown(led, parent, rid):
+    return await led.unknown(kind="UNPOST", parent=parent, repair_for=parent, target="doc1", request_id=rid,
+                             approver="clt_carol")
+
+
+async def test_a4_t11_and_t16_absent_on_a_repair_hand_the_target_lock_back_to_the_parent(led):
+    parent = await _failed_parent(led)
+    # T11: unknown outcome of a repair resolved as absent
+    r1, _, _ = await _repair_unknown(led, parent, "a4-1")
+    assert await led.tl_owner(BASE, "doc1") == r1
+    assert await led.resolve_unknown(r1, False, proof="b") == "FAILED_APPLY"
+    assert await led.tl_owner(BASE, "doc1") == parent and await led.locks(r1) == (0, 0, 0)
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 1 and await led.open_holds("CALL_OWNERSHIP") == 0
+    # T16: unknown outcome of a second repair, triaged, resolved absent by two operators
+    r2, _, _ = await _repair_unknown(led, parent, "a4-2")
+    assert await led.resolve_unknown(r2, True) == "TRIAGE_REQUIRED"
+    w = await led.cosign("clt_erin", r2, cls="b", present=False)
+    assert await led.call("clt_dave", "operator_resolve", r2, w, False, False) == "FAILED_APPLY"
+    assert await led.tl_owner(BASE, "doc1") == parent and await led.locks(r2) == (0, 0, 0)
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 1 and await led.open_holds("CALL_OWNERSHIP") == 0
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.target_locks WHERE target_ref='doc1'") == 1
+    # a new repair claim succeeds because the parent owns the lock again
+    r3 = await _repair(led, parent, rid="a4-3")
+    await led.claimed(r3, key="3" * 64)
+    assert await led.tl_owner(BASE, "doc1") == r3
+
+
+async def test_a5_null_inputs_fail_closed_and_change_nothing(led):
+    cid, tok, _ = await led.dispatched(request_id="a5", base="base-1")
+    gen = tok["generation"]
+    before = (await ev_count(led, cid), (await led.rec(cid))["execution_state"])
+    # NULL generation: the fence must not be skipped (wrapper and the raw internal)
+    await fails("SCHEMA_INVALID", led.call("clt_wri", "complete_signed", cid, None, "UNKNOWN", None))
+    await fails("SCHEMA_INVALID", owner_call(
+        led, "SELECT change_ledger.complete($1,$2,$3,NULL,'SUCCESS','{}'::jsonb,NULL)", cid))
+    await fails("SCHEMA_INVALID", owner_call(
+        led, "SELECT change_ledger.complete($1,$2,$3,$4,NULL,'{}'::jsonb,NULL)", cid, gen))
+    assert (await ev_count(led, cid), (await led.rec(cid))["execution_state"]) == before
+    # NULL found on the raw resolve_unknown: refused; the signed inconclusive path goes to triage explicitly
+    unk, _, _ = await led.unknown(request_id="a5u", base="base-2")
+    await fails("SCHEMA_INVALID", owner_call(
+        led, "SELECT change_ledger.resolve_unknown($1,$2,$3,'{}'::jsonb,NULL,false)", unk))
+    assert (await led.rec(unk))["execution_state"] == "APPLY_UNKNOWN"
+    assert await led.resolve_unknown(unk, None) == "TRIAGE_REQUIRED"
+    # NULL present / attributed on operator_resolve: refused, the cosign stays unconsumed, nothing changes
+    tri, _, _ = await led.triage(request_id="a5t", base="base-3")
+    w = await led.cosign("clt_erin", tri, cls="b", present=False)
+    n = await ev_count(led, tri)
+    await fails("SCHEMA_INVALID", led.call("clt_dave", "operator_resolve", tri, w, None, False))
+    await fails("SCHEMA_INVALID", led.call("clt_dave", "operator_resolve", tri, w, False, None))
+    assert (await led.rec(tri))["execution_state"] == "TRIAGE_REQUIRED" and await ev_count(led, tri) == n
+    assert await led.conn.fetchval("SELECT consumed_at IS NULL FROM change_ledger.witness_cosigns "
+                                   "WHERE cosign_id=$1", w)
+    assert await led.open_holds("CALL_OWNERSHIP") == 2                      # unk (triaged) and tri still hold
+
+
+async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_permits(led):
+    cid, tok, call_id = await led.applying(request_id="a6", base="base-1")
+    gen = tok["generation"]
+    head = await led.head()
+    for role in ("clt_wrk", "clt_wri", "clt_alice", "clt_bob", "clt_dave", "clt_aud"):
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):             # NOT_ENTITLED in the port
+            await led.checkpoint_at(head["seq"], head["head_hash"], "REAL", True, role=role)
+    with pytest.raises(asyncpg.InsufficientPrivilegeError):
+        await led.sql("clt_wrk", "SELECT change_ledger.attach_permit_signature("
+                      "'T1','C1',gen_random_uuid(),1,'vk-chk','x')")
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 0
+    # rows not written by the checkpoint identity never gate issue_permit, whatever they claim
+    for verified in (False, True):
+        await led.conn.execute(
+            "INSERT INTO change_ledger.checkpoints(tenant_id,company_id,ledger_seq,head_hash,sink_kind,sink_id,"
+            "signer_key_id,signature,signed_at,read_back_confirmed,verified) VALUES($1,$2,$3,$4,'REAL','forged',"
+            "'vk-chk','x',now(),true,$5)", T, C, head["seq"], head["head_hash"], verified)
+        await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_wrk", "issue_permit", cid, gen))
+    # a bad signature, an unknown key, a key of another identity and a signature over another head are refused
+    sa = datetime.now(UTC)
+    other_payload = await led.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
+                                            T, C, head["seq"], "f" * 64, sa, "vk-chk", "REAL", "sink-1")
+    for kw in (dict(sig="0" * 64), dict(key_id="vk-unknown"), dict(key_id="vk-wrk"),
+               dict(sig=sha("C" * 32 + ":" + other_payload), signed_at=sa)):
+        await fails("CHECKPOINT_UNAVAILABLE", led.checkpoint_at(head["seq"], head["head_hash"], **kw))
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 2
+    await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_wrk", "issue_permit", cid, gen))
+    # the checkpoint identity with a valid keyed signature: stored verified, permit issued
+    await led.checkpoint()
+    row = await led.conn.fetchrow("SELECT sink_kind, read_back_confirmed, verified, written_by "
+                                  "FROM change_ledger.checkpoints WHERE written_by IS NOT NULL")
+    assert tuple(row) == ("REAL", True, True, "clt_chk")
+    permit = await led.call("clt_wrk", "issue_permit", cid, gen)
+    good = sha("C" * 32 + ":change-ledger-permit|v1|" + permit["permit_digest"])
+    for role in ("clt_wrk", "clt_wri"):
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            await led.call(role, "attach_permit_signature", cid, gen, "vk-chk", good)
+    await fails("CHECKPOINT_UNAVAILABLE",
+                led.call("clt_chk", "attach_permit_signature", cid, gen, "vk-chk", "0" * 64))
+    await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_chk", "attach_permit_signature", cid, gen, "vk-wrk", good))
+    assert await led.conn.fetchval("SELECT signature FROM change_ledger.dispatch_permits "
+                                   "WHERE change_id=$1", cid) is None
+    await led.call("clt_chk", "attach_permit_signature", cid, gen, "vk-chk", good)
+    got = await led.conn.fetchrow("SELECT signer_key_id, signature FROM change_ledger.dispatch_permits "
+                                  "WHERE change_id=$1", cid)
+    assert tuple(got) == ("vk-chk", good)
+
+
+async def test_a7_approval_digest_is_computed_in_sql_from_the_stored_change(led):
+    a = await led.validated(request_id="a7a", target="docA")          # same base, same payload, same version
+    b = await led.validated(request_id="a7b", target="docB")
+    sa, sb = await led.status(a), await led.status(b)
+    assert sa["payload_digest"] == sb["payload_digest"] == DIGEST
+    assert sa["target_version"] == sb["target_version"] == "v1"
+    assert (sa["target_ref"], sb["target_ref"]) == ("docA", "docB")
+    assert len(sa["approval_digest"]) == 64 and sa["approval_digest"] != sb["approval_digest"]
+    assert sa["approval_digest"] != DIGEST
+    assert sa["rule_table_version"] and sa["allowed_effects"] == [] and sa["parent_change_id"] is None
+    # the parent changes the digest too, and POST carries server-derived allowed effects
+    p1 = await led.propose(kind="POST", parent=a, request_id="a7p1", base="base-2", target="docP")
+    p2 = await led.propose(kind="POST", parent=b, request_id="a7p2", base="base-2", target="docP")
+    s1, s2 = await led.status(p1), await led.status(p2)
+    assert s1["approval_digest"] != s2["approval_digest"] and len(s1["allowed_effects"]) == 2
+    assert s1["parent_change_id"] == str(a)
+    # approve compares against the SQL digest: another change's digest and the opaque payload digest are refused
+    nonce = await led.call("clt_bob", "issue_approval_nonce", a)
+    await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", a, nonce, sb["approval_digest"]))
+    await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", a, nonce, DIGEST))
+    assert (await led.rec(a))["authorization_state"] == "NONE"
+    await led.call("clt_bob", "approve", a, nonce, sa["approval_digest"])
+    done = await led.status(a)
+    assert done["approved_digest"] == sa["approval_digest"] == done["approval_digest"]
+    stored = await led.conn.fetchval("SELECT digest FROM change_ledger.approvals WHERE change_id=$1", a)
+    assert stored == sa["approval_digest"]
+
+
+async def test_a8_two_person_cosign_compares_persons_and_capabilities_under_an_enforced_registry(led):
+    cid, tok, _ = await led.dispatched(request_id="a8", base="base-1")
+    await led.complete(cid, tok["generation"], "SUCCESS")
+    assert await led.verify(cid, False) == "FAILED_VERIFY"
+    w = await led.cosign("clt_erin", cid)                                   # signed before the registry is enforced
+    await led.conn.execute("GRANT operator_role TO clt_carol")
+
+    async def reg(principal, person, caps):
+        await led.call("clt_carol", "register_principal", principal, person, caps, True)
+
+    await reg("clt_carol", "P-ADMIN", ["operator"])
+    await reg("clt_dave", "P-OP", ["operator"])
+    await reg("clt_erin", "P-OP", ["operator", "recovery_witness"])         # the witness is the operator's alias
+    await reg("clt_alice", "P-REQ", ["requester"])
+    assert await led.call("clt_carol", "enforce_registry") is True
+
+    def close():
+        return led.call("clt_dave", "operator_close_failed_verify", cid, w, True)
+
+    await fails("APPROVER_NOT_INDEPENDENT", close())                        # different role names, one person
+    await reg("clt_erin", "P-WIT", ["operator"])                            # distinct person, no witness capability
+    await fails("NOT_ENTITLED", close())
+    await reg("clt_erin", "P-WIT", ["operator", "recovery_witness"])
+    await reg("clt_dave", "P-OP", ["approver"])                             # the operator lacks the capability
+    await fails("NOT_ENTITLED", close())
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 1
+    assert await led.conn.fetchval("SELECT consumed_at IS NULL FROM change_ledger.witness_cosigns "
+                                   "WHERE cosign_id=$1", w)
+    await reg("clt_dave", "P-OP", ["operator"])
+    assert await close() == "CLOSED"
+    assert await led.open_holds("FAILED_VERIFY_HALT") == 0

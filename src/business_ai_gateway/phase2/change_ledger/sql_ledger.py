@@ -1,18 +1,21 @@
-"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006).
+"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007).
 
 No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
 caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
 tests/phase2/test_change_ledger_sql.py ``L.call``). A rejected call becomes ``LedgerError(code)`` where
 ``code`` is the RAISE EXCEPTION text. ``SPEC`` is the single table of function name, parameter types,
-result type and the caller classes the migrations grant EXECUTE to (the last definition wins, 005 and 006
-redefine 004 functions with identical signatures); the port test compares it with pg_proc and the grants.
+result type and the caller classes the migrations grant EXECUTE to (the last definition wins; 005, 006 and 007
+redefine earlier functions, 007 also changes some signatures); the port test compares it with pg_proc and the grants.
 
 ``actors`` maps a caller class (requester/approver/operator/writer/worker/auditor) to the database role to
 assume; a missing entry means the connection already is the authenticated principal. The first class in a
 function's SPEC entry is the default; ``as_class`` selects another granted class.
 
 ``ledger_head`` / ``record_checkpoint`` / ``issue_permit`` / ``attach_permit_signature`` satisfy
-``checkpoint.LedgerPort`` (all default to the worker class, the identity that runs the permit gate).
+``checkpoint.LedgerPort``. ``issue_permit`` and ``ledger_head`` default to the worker class; since 007
+``record_checkpoint`` and ``attach_permit_signature`` belong to the dedicated ``checkpoint`` class only
+(``checkpoint_role``). 007 revoked the raw ``complete`` / ``verify`` / ``resolve_unknown`` / ``witness_cosign``
+from every runtime role: this port has no method for them, only the typed-evidence ``*_signed`` paths.
 """
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ import asyncpg
 from ._common import LedgerError, Scope, code_from_message
 
 _IDENT = re.compile(r"[a-z][a-z0-9_]*")
-CLASSES = ("requester", "approver", "operator", "writer", "worker", "auditor")
+CLASSES = ("requester", "approver", "operator", "writer", "worker", "auditor", "checkpoint")
 _TOKEN_ROW = "change_ledger.claim_tokens"
 
 
@@ -59,22 +62,18 @@ SPEC: dict[str, Fn] = {
     "issue_permit": _f("issue_permit", "worker", "uuid,bigint", "jsonb"),
     "record_call": _f("record_call", "writer", "uuid,bigint,uuid", "boolean"),
     "cancel_permit": _f("cancel_permit", "worker operator", "uuid,bigint", "boolean"),
-    "complete": _f("complete", "writer", "uuid,bigint,text,jsonb,jsonb", "text"),
-    "record_checkpoint": _f("record_checkpoint", "worker writer",
+    "record_checkpoint": _f("record_checkpoint", "checkpoint",
                             "bigint,text,text,text,text,text,timestamptz,boolean", "bigint"),
-    "ledger_head": _f("ledger_head", "worker writer auditor", "", "jsonb"),
-    "attach_permit_signature": _f("attach_permit_signature", "worker writer", "uuid,bigint,text,text",
+    "ledger_head": _f("ledger_head", "worker writer auditor checkpoint", "", "jsonb"),
+    "attach_permit_signature": _f("attach_permit_signature", "checkpoint", "uuid,bigint,text,text",
                                   "void"),
     # recovery / verification / operator
     "recover_sweep": _f("recover_sweep", "worker", "", "integer"),
     "recover_sweep_params": _f("recover_sweep", "worker", "jsonb", "jsonb"),
-    "resolve_unknown": _f("resolve_unknown", "worker", "uuid,jsonb,boolean,boolean", "text"),
-    "verify": _f("verify", "worker", "uuid,jsonb,boolean", "text"),
-    "verify_inconclusive": _f("verify_inconclusive", "worker", "uuid,jsonb,integer", "jsonb"),
-    "retry_verify": _f("retry_verify", "worker", "uuid,jsonb,boolean", "text"),
+    "verify_inconclusive": _f("verify_inconclusive", "worker", "uuid,uuid", "jsonb"),
+    "retry_verify": _f("retry_verify", "worker", "uuid,uuid,uuid,uuid", "text"),
     "check_anchor": _f("check_anchor", "worker", "bigint,text", "jsonb"),
     "verify_chain": _f("verify_chain", "auditor worker operator", "", "jsonb"),
-    "witness_cosign": _f("witness_cosign", "operator", "uuid,jsonb", "uuid"),
     "operator_resolve": _f("operator_resolve", "operator", "uuid,uuid,boolean,boolean", "text"),
     "operator_close_failed_verify": _f("operator_close_failed_verify", "operator",
                                        "uuid,uuid,boolean", "text"),
@@ -99,8 +98,8 @@ SPEC: dict[str, Fn] = {
     "revoke_change": _f("revoke_change", "operator worker", "uuid,text", "text"),
     "revoke_stale": _f("revoke_stale", "worker", "", "integer"),
     "record_evidence": _f("record_evidence", "worker writer",
-                          "uuid,text,text,timestamptz,jsonb,text,text,text", "uuid"),
-    "verify_signed": _f("verify_signed", "worker", "uuid,uuid,uuid,uuid,boolean", "text"),
+                          "uuid,text,text,timestamptz,jsonb,text,text,text,bigint,uuid", "uuid"),
+    "verify_signed": _f("verify_signed", "worker", "uuid,uuid,uuid,uuid", "text"),
     "complete_signed": _f("complete_signed", "writer", "uuid,bigint,text,uuid", "text"),
     "resolve_unknown_signed": _f("resolve_unknown_signed", "worker", "uuid,uuid,uuid,boolean,boolean",
                                  "text"),
@@ -109,8 +108,8 @@ SPEC: dict[str, Fn] = {
     "read_status": _f("read_status", "requester approver auditor", "uuid", "jsonb"),
     "read_evidence": _f("read_evidence", "requester auditor", "uuid", "jsonb"),
     "amount_consumed": _f("amount_consumed", "operator worker auditor", "text,uuid", "numeric"),
-    # 006 writer fence
-    "complete_lock_busy": _f("complete_lock_busy", "writer", "uuid,bigint,jsonb,jsonb,jsonb", "text"),
+    # 006 writer fence (complete_lock_busy re-signed in 007)
+    "complete_lock_busy": _f("complete_lock_busy", "writer", "uuid,bigint,uuid,jsonb", "text"),
     "renew_writer_lease": _f("renew_writer_lease", "writer", "uuid,bigint,integer",
                              "timestamp with time zone"),
     "fence_check": _f("fence_check", "writer", "uuid,bigint,uuid", "jsonb"),
@@ -227,7 +226,7 @@ class SqlChangeLedger:
 
     async def record_checkpoint(self, scope: Scope, seq: int, head_hash: str, sink_kind: str,
                                 sink_id: str, key_id: str, signature: str, signed_at: datetime,
-                                read_back: bool, as_class: str | None = "worker") -> int:
+                                read_back: bool, as_class: str | None = "checkpoint") -> int:
         return await self.invoke("record_checkpoint", scope, seq, head_hash, sink_kind, sink_id, key_id,
                                  signature, signed_at, read_back, as_class=as_class)
 
@@ -236,7 +235,7 @@ class SqlChangeLedger:
 
     async def attach_permit_signature(self, scope: Scope, change_id: UUID, generation: int,
                                       key_id: str, signature: str,
-                                      as_class: str | None = "worker") -> None:
+                                      as_class: str | None = "checkpoint") -> None:
         await self.invoke("attach_permit_signature", scope, change_id, generation, key_id, signature,
                           as_class=as_class)
 
@@ -247,16 +246,10 @@ class SqlChangeLedger:
                             as_class: str | None = None) -> bool:
         return await self.invoke("cancel_permit", scope, change_id, generation, as_class=as_class)
 
-    async def complete(self, scope: Scope, change_id: UUID, generation: int, outcome: str,
-                       evidence: dict | None, no_effect_proof: dict | None = None) -> str:
-        return await self.invoke("complete", scope, change_id, generation, outcome, evidence,
-                                 no_effect_proof)
-
     async def complete_lock_busy(self, scope: Scope, change_id: UUID, generation: int,
-                                 evidence: dict | None, no_effect_proof: dict | None,
-                                 params: dict | None = None) -> str:
-        return await self.invoke("complete_lock_busy", scope, change_id, generation, evidence,
-                                 no_effect_proof, params if params is not None else {})
+                                 completion: UUID | None, params: dict | None = None) -> str:
+        return await self.invoke("complete_lock_busy", scope, change_id, generation, completion,
+                                 params if params is not None else {})
 
     async def renew_writer_lease(self, scope: Scope, change_id: UUID, generation: int,
                                  ttl_seconds: int = 300) -> datetime:
@@ -280,20 +273,12 @@ class SqlChangeLedger:
             return await self.invoke("recover_sweep", scope)
         return await self.invoke("recover_sweep_params", scope, params)
 
-    async def resolve_unknown(self, scope: Scope, change_id: UUID, observation: dict,
-                              found: bool | None, attributed: bool = False) -> str:
-        return await self.invoke("resolve_unknown", scope, change_id, observation, found, attributed)
+    async def verify_inconclusive(self, scope: Scope, change_id: UUID, observation: UUID) -> dict:
+        return await self.invoke("verify_inconclusive", scope, change_id, observation)
 
-    async def verify(self, scope: Scope, change_id: UUID, evidence: dict | None, passed: bool) -> str:
-        return await self.invoke("verify", scope, change_id, evidence, passed)
-
-    async def verify_inconclusive(self, scope: Scope, change_id: UUID, evidence: dict | None,
-                                  max_attempts: int = 3) -> dict:
-        return await self.invoke("verify_inconclusive", scope, change_id, evidence, max_attempts)
-
-    async def retry_verify(self, scope: Scope, change_id: UUID, evidence: dict | None,
-                           passed: bool) -> str:
-        return await self.invoke("retry_verify", scope, change_id, evidence, passed)
+    async def retry_verify(self, scope: Scope, change_id: UUID, field: UUID | None,
+                           movement: UUID | None, version: UUID | None) -> str:
+        return await self.invoke("retry_verify", scope, change_id, field, movement, version)
 
     async def check_anchor(self, scope: Scope, ext_seq: int, ext_head_hash: str) -> dict:
         return await self.invoke("check_anchor", scope, ext_seq, ext_head_hash)
@@ -306,13 +291,15 @@ class SqlChangeLedger:
 
     async def record_evidence(self, scope: Scope, change_id: UUID, kind: str, content_hash: str,
                               observed_at: datetime, content: dict | None, key_id: str,
-                              binding_hash: str, signature: str, as_class: str | None = None) -> UUID:
+                              binding_hash: str, signature: str, generation: int | None,
+                              call_id: UUID | None, as_class: str | None = None) -> UUID:
         return await self.invoke("record_evidence", scope, change_id, kind, content_hash, observed_at,
-                                 content, key_id, binding_hash, signature, as_class=as_class)
+                                 content, key_id, binding_hash, signature, generation, call_id,
+                                 as_class=as_class)
 
     async def verify_signed(self, scope: Scope, change_id: UUID, field: UUID | None,
-                            movement: UUID | None, version: UUID | None, passed: bool) -> str:
-        return await self.invoke("verify_signed", scope, change_id, field, movement, version, passed)
+                            movement: UUID | None, version: UUID | None) -> str:
+        return await self.invoke("verify_signed", scope, change_id, field, movement, version)
 
     async def resolve_unknown_signed(self, scope: Scope, change_id: UUID, observation: UUID,
                                      completion: UUID | None, found: bool | None,
@@ -321,9 +308,6 @@ class SqlChangeLedger:
                                  found, attributed)
 
     # ---- operator
-    async def witness_cosign(self, scope: Scope, change_id: UUID, completion_proof: dict | None) -> UUID:
-        return await self.invoke("witness_cosign", scope, change_id, completion_proof)
-
     async def witness_cosign_signed(self, scope: Scope, change_id: UUID, completion: UUID) -> UUID:
         return await self.invoke("witness_cosign_signed", scope, change_id, completion)
 

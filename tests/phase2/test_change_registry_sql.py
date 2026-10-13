@@ -5,6 +5,8 @@ superuser DSN of a disposable cluster); without it: skip NOT_RUN, or fail when E
 Every test gets its own throwaway database (g1x_<uuid8>) with all migrations of the harness applied; runtime
 actors are the NOLOGIN roles (clt_*) of test_change_ledger_sql.py assumed with SET LOCAL ROLE. Superuser access
 is used only to arrange state no API can produce (clock back-dating, target expiry by passing time) and to read.
+Reconciled with db/phase2/007_change_hardening_a.sql (S13 batch A): ledger-computed approval digest, typed evidence
+bound to generation and call id, signed completion / verification / cosign paths only, checkpoint identity.
 Covers: principal registry / person independence, target registry, epoch dependencies and T15 revoke, signed
 evidence, status/evidence reads and RLS, duplicate detection with approver-bound override, amount_consumed.
 """
@@ -25,6 +27,7 @@ from test_change_ledger_sql import (
     DIGEST,
     KH,
     ORG,
+    SIGN_KEYS,
     T,
     T2,
     L,
@@ -38,19 +41,11 @@ pytestmark = pytest.mark.integration
 KEYS = {"clt_wrk": ("vk-wrk", "W" * 32), "clt_wri": ("vk-wri", "R" * 32)}
 NEW_TABLES = ["epochs", "principals", "registry_policy", "verifier_keys", "evidence_records", "business_keys",
               "override_bindings", "target_observations"]
+_D = object()   # "use the current value" marker for generation / call id of a forged evidence record
 
 
 def sha(s):
     return hashlib.sha256(s.encode()).hexdigest()
-
-
-def binding(cid, kind, ch, at):
-    ts = at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
-    return sha(f"{cid}:{kind}:{ch}:{ts}")
-
-
-def sign(bind, key):
-    return sha(f"{key}:{bind}")
 
 
 def js(v):
@@ -58,21 +53,51 @@ def js(v):
 
 
 class R(L):
+    """L (test_change_ledger_sql.py, reconciled for 007) plus the registry helpers.
+
+    Evidence goes through L.evidence (typed, generation / call-id bound, signed with SIGN_KEYS) for ordinary flows;
+    `pack` / `put` / `rec_ev` below build a record argument by argument so a test can corrupt one element."""
+
     async def jcall(self, role, name, *args, **kw):
         return js(await self.call(role, name, *args, **kw))
 
     async def reg(self, principal, person, caps, active=True):
         return await self.call("clt_dave", "register_principal", principal, person, caps, active)
 
-    async def evidence(self, cid, kind, role="clt_wrk", key_role=None, content=None, at=None, ch=None,
-                       bind=None, sig=None, key_id=None, key=None):
-        at = at or datetime.now(UTC) + timedelta(seconds=2)
-        ch = ch or sha(uuid.uuid4().hex)
-        kid, kmat = KEYS[key_role or role]
-        b = bind or binding(cid, kind, ch, at)
-        s = sig if sig is not None else sign(b, key or kmat)
-        return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content or {}),
-                               key_id if key_id is not None else kid, b, s)
+    async def bind(self, cid, kind, ch, at, gen, call_id):
+        return await self.conn.fetchval("SELECT change_ledger.evidence_binding($1,$2,$3,$4,$5,$6)",
+                                        cid, kind, ch, at, gen, call_id)
+
+    async def pack(self, cid, kind, content=None, *, role="clt_wrk", gen=_D, call_id=_D, at=None, ch=None,
+                   key_id=None, key_material=None, bind=None, sig=None, nonce=False):
+        """The ordered record_evidence arguments after (t, c, change_id) as a dict; every element overridable."""
+        content = dict(content or {})
+        if kind == "AUTH_RECEIPT":
+            gen = None if gen is _D else gen
+            call_id = None if call_id is _D else call_id
+        else:
+            if gen is _D:
+                gen = (await self.rec(cid))["claim_generation"]
+            if call_id is _D:
+                call_id = await self.call_id_of(cid)
+        if kind in ("COMPLETION_PROOF", "OBSERVATION"):
+            content = {"generation": gen, "call_id": str(call_id), **content}
+        if nonce:
+            content["nonce"] = uuid.uuid4().hex
+        at = at or datetime.now(UTC) + timedelta(seconds=1)
+        ch = ch or await self.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)",
+                                            json.dumps(content))
+        kid, kmat, _ = SIGN_KEYS[role]
+        b = bind or await self.bind(cid, kind, ch, at, gen, call_id)
+        s = sig if sig is not None else sha(f"{key_material or kmat}:{b}")
+        return {"kind": kind, "ch": ch, "at": at, "content": json.dumps(content), "key_id": key_id or kid,
+                "bind": b, "sig": s, "gen": gen, "call_id": call_id}
+
+    async def put(self, role, cid, packed):
+        return await self.call(role, "record_evidence", cid, *packed.values())
+
+    async def rec_ev(self, cid, kind, content=None, role="clt_wrk", **kw):
+        return await self.put(role, cid, await self.pack(cid, kind, content, role=role, **kw))
 
     async def grant(self, amount=100000):
         gid = uuid.uuid4()
@@ -87,14 +112,14 @@ class R(L):
         await self.checkpoint()
         await self.call("clt_wrk", "issue_permit", cid, tok["generation"])
         assert await self.call("clt_wri", "record_call", cid, tok["generation"], call_id) is True
-        await self.call("clt_wri", "complete", cid, tok["generation"], outcome, "{}", None)
+        assert await self.complete(cid, tok["generation"], outcome) == "APPLIED"
         return call_id
 
     async def run(self, cid, grant=None, amount=None, verify=True, key=KH):
         tok = await self.claimed(cid, key=key, grant=grant, amount=amount)
         await self.effect_tail(cid, tok)
         if verify is not None:
-            await self.call("clt_wrk", "verify", cid, '{"s":1}', verify)
+            await self.verify(cid, verify)      # signed FIELD / MOVEMENT / VERSION records with matches = verify
         return tok
 
     async def target_expiry(self, base, when):
@@ -112,7 +137,7 @@ async def reg():
     async with throwaway_db(dsn, seed=False) as db:
         await _setup(db.conn)
         r = R(db)
-        for role, (kid, kmat) in KEYS.items():
+        for role, (kid, kmat) in KEYS.items():       # _setup already stored them: registering again is a no-op
             await r.call("clt_dave", "register_verifier_key", kid, role, kmat)
         yield r
 
@@ -133,7 +158,9 @@ async def test_005_is_recorded_hardened_idempotent_and_not_directly_writable(reg
     assert not bad
     # no runtime role may EXECUTE the internal helpers of this migration
     for fn in ("bump_epoch_internal", "revoke_core", "assert_target_effect", "evidence_ref", "assert_capability",
-               "assert_independent", "evidence_binding", "norm_target_class"):
+               "assert_independent", "evidence_binding", "norm_target_class",
+               # 007 (A1): the raw completion / verification / cosign variants became internals of the signed ones
+               "complete", "resolve_unknown", "verify", "witness_cosign"):
         got = await c.fetch(
             "SELECT r.rolname FROM pg_roles r JOIN pg_proc p ON p.proname=$1 JOIN pg_namespace n ON "
             "n.oid=p.pronamespace AND n.nspname='change_ledger' WHERE r.rolname = ANY($2) AND "
@@ -194,18 +221,18 @@ async def test_no_direct_dml_on_the_new_tables(reg, role):
     ("clt_alice", "bump_epoch", "'k'"),
     ("clt_alice", "revoke_stale", ""),
     ("clt_alice", "revoke_change", "gen_random_uuid(),'EPOCH_DEPENDENCY'"),
-    ("clt_alice", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s'"),
+    ("clt_alice", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s',1,gen_random_uuid()"),
     ("clt_alice", "amount_consumed", "'d',gen_random_uuid()"),
     ("clt_alice", "bind_duplicate_override", "gen_random_uuid(),repeat('a',64)"),
-    ("clt_alice", "verify_signed", "gen_random_uuid(),NULL,NULL,NULL,true"),
+    ("clt_alice", "verify_signed", "gen_random_uuid(),NULL,NULL,NULL"),
     ("clt_bob", "declare_business_key", "gen_random_uuid(),repeat('a',64),NULL,NULL"),
     ("clt_bob", "declare_target_class", "gen_random_uuid(),'CLONE'"),
-    ("clt_bob", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s'"),
+    ("clt_bob", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s',1,gen_random_uuid()"),
     ("clt_bob", "read_evidence", "gen_random_uuid()"),
     ("clt_bob", "revoke_change", "gen_random_uuid(),'EPOCH_DEPENDENCY'"),
     ("clt_wri", "register_target", "'b','o','CLONE','ACTIVE',NULL"),
     ("clt_wri", "bump_epoch", "'k'"),
-    ("clt_wri", "verify_signed", "gen_random_uuid(),NULL,NULL,NULL,true"),
+    ("clt_wri", "verify_signed", "gen_random_uuid(),NULL,NULL,NULL"),
     ("clt_wri", "read_status", "gen_random_uuid()"),
     ("clt_wri", "resolve_unknown_signed", "gen_random_uuid(),gen_random_uuid(),NULL,true,false"),
     ("clt_wrk", "register_principal", "'x','p',ARRAY['approver'],true"),
@@ -213,10 +240,17 @@ async def test_no_direct_dml_on_the_new_tables(reg, role):
     ("clt_wrk", "complete_signed", "gen_random_uuid(),1,'SUCCESS',gen_random_uuid()"),
     ("clt_wrk", "observe_target", "gen_random_uuid(),'b','CLONE'"),
     ("clt_wrk", "declare_target_class", "gen_random_uuid(),'CLONE'"),
-    ("clt_aud", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s'"),
+    ("clt_aud", "record_evidence", "gen_random_uuid(),'FIELD',repeat('a',64),now(),'{}'::jsonb,'k',repeat('a',64),'s',1,gen_random_uuid()"),
     ("clt_aud", "revoke_change", "gen_random_uuid(),'EPOCH_DEPENDENCY'"),
     ("clt_aud", "register_principal", "'x','p',ARRAY['approver'],true"),
     ("clt_erin", "approve", "gen_random_uuid(),'x','x'"),
+    # 007 (A1): the raw completion / verification / cosign variants are closed to every runtime role
+    ("clt_wri", "complete", "gen_random_uuid(),1,'SUCCESS','{}'::jsonb,NULL"),
+    ("clt_wrk", "resolve_unknown", "gen_random_uuid(),'{}'::jsonb,true,false"),
+    ("clt_wrk", "verify", "gen_random_uuid(),'{}'::jsonb,true"),
+    ("clt_erin", "witness_cosign", "gen_random_uuid(),'{}'::jsonb"),
+    # 007 (A6): only the checkpoint identity records checkpoints
+    ("clt_wrk", "record_checkpoint", "1,repeat('a',64),'REAL','s','vk-wrk','x',now(),true"),
 ])
 async def test_new_operations_are_closed_to_other_caller_classes(reg, role, fn, args):
     pre = "'T1','C1'" + ("," + args if args else "")
@@ -228,7 +262,9 @@ async def test_verifier_key_material_is_never_readable_and_keys_are_write_once(r
     with pytest.raises(asyncpg.InsufficientPrivilegeError):
         await reg.sql("clt_aud", "SELECT key_material FROM change_ledger.verifier_keys")
     rows = await reg.sql("clt_aud", "SELECT key_id, role_name, status FROM change_ledger.verifier_keys ORDER BY 1")
-    assert [tuple(r) for r in rows] == [("vk-wri", "clt_wri", "ACTIVE"), ("vk-wrk", "clt_wrk", "ACTIVE")]
+    # the shared _setup also stores the checkpoint identity's key (vk-chk) since 007 (A6)
+    assert [tuple(r) for r in rows] == [("vk-chk", "checkpoint_role", "ACTIVE"), ("vk-wri", "clt_wri", "ACTIVE"),
+                                        ("vk-wrk", "clt_wrk", "ACTIVE")]
     # same key again: no-op; a different material for the same id is refused; a bad key is refused
     await reg.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", KEYS["clt_wrk"][1])
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", "x" * 32))
@@ -251,12 +287,13 @@ async def test_person_independence_replaces_role_name_distinctness(reg):
     await reg.reg("clt_bob", "P-2", ["approver"])
     nonce = await reg.call("clt_bob", "issue_approval_nonce", cid)
     await reg.reg("clt_bob", "P-1", ["approver"])
-    await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_bob", "approve", cid, nonce, DIGEST))
+    dg = await reg.approval_digest(cid)        # 007 (A7): the digest is computed by the ledger, not opaque
+    await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_bob", "approve", cid, nonce, dg))
     await reg.reg("clt_bob", "P-2", ["approver"], False)
-    await fails("NOT_ENTITLED", reg.call("clt_bob", "approve", cid, nonce, DIGEST))
+    await fails("NOT_ENTITLED", reg.call("clt_bob", "approve", cid, nonce, dg))
     assert (await reg.rec(cid))["authorization_state"] == "NONE"
     await reg.reg("clt_bob", "P-2", ["approver"])
-    aid = await reg.call("clt_bob", "approve", cid, nonce, DIGEST)
+    aid = await reg.call("clt_bob", "approve", cid, nonce, dg)
     r = await reg.rec(cid)
     assert r["authorization_state"] == "APPROVED"
     deps = js(r["epoch_dependencies"])
@@ -280,9 +317,10 @@ async def test_repair_approver_must_be_a_different_person_than_the_failed_parent
     rep = await reg.validated(kind="UNPOST", parent=parent, repair_for=parent, request_id="rep-x",
                               requester="clt_mallory", target="doc1")
     nonce = await reg.call("clt_carol", "issue_approval_nonce", rep)
-    await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_carol", "approve", rep, nonce, DIGEST))
+    dg = await reg.approval_digest(rep)
+    await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_carol", "approve", rep, nonce, dg))
     nonce_b = await reg.call("clt_bob", "issue_approval_nonce", rep)
-    await reg.call("clt_bob", "approve", rep, nonce_b, DIGEST)
+    await reg.call("clt_bob", "approve", rep, nonce_b, dg)
     assert (await reg.rec(rep))["authorization_state"] == "APPROVED"
 
 
@@ -290,20 +328,22 @@ async def test_operator_resolve_compares_persons_and_capabilities(reg):
     cid, _, _ = await reg.triage(request_id="p-or")           # requested by clt_alice, TRIAGE_REQUIRED
     await reg.reg("clt_dave", "P-OP", ["operator"])
     await reg.reg("clt_erin", "P-OP", ["operator", "recovery_witness"])   # witness is the operator's alias
-    w = await reg.call("clt_erin", "witness_cosign", cid, '{"class":"a"}')
+    # 007 (A1): the witness signs through witness_cosign_signed over a signed completion proof (class a, writer);
+    # triage() already recorded the signed OBSERVATION (effect_present = true) that operator_resolve(present) needs
+    w = await reg.cosign("clt_erin", cid)
     await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_dave", "operator_resolve", cid, w, True, False))
     # the witness is the requester's alias
     await reg.reg("clt_alice", "P-REQ", ["requester"])
     await reg.reg("clt_erin", "P-WIT", ["operator", "recovery_witness"])
     await reg.reg("clt_carol", "P-REQ", ["operator", "recovery_witness"])
     await reg.conn.execute("GRANT operator_role TO clt_carol")
-    wc = await reg.call("clt_carol", "witness_cosign", cid, '{"class":"a"}')
+    wc = await reg.cosign("clt_carol", cid)
     await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_dave", "operator_resolve", cid, wc, True, False))
     # capability: a witness without recovery_witness cannot even sign
     await reg.reg("clt_erin", "P-WIT", ["operator"])
-    await fails("NOT_ENTITLED", reg.call("clt_erin", "witness_cosign", cid, '{"class":"a"}'))
+    await fails("NOT_ENTITLED", reg.cosign("clt_erin", cid))
     await reg.reg("clt_erin", "P-WIT", ["operator", "recovery_witness"])
-    good = await reg.call("clt_erin", "witness_cosign", cid, '{"class":"a"}')
+    good = await reg.cosign("clt_erin", cid)
     # the operator without the operator capability is refused, nothing is released
     await reg.reg("clt_dave", "P-OP", ["approver"])
     await fails("NOT_ENTITLED", reg.call("clt_dave", "operator_resolve", cid, good, True, False))
@@ -327,7 +367,7 @@ async def test_enforced_registry_refuses_unregistered_actors_and_cannot_be_switc
     await fails("NOT_ENTITLED", reg.call("clt_mallory", "declare_target_class", cid, "CLONE"))
     assert await reg.call("clt_alice", "declare_target_class", cid, "CLONE") == "DISPOSABLE_CLONE"
     nonce = await reg.call("clt_bob", "issue_approval_nonce", cid)
-    await reg.call("clt_bob", "approve", cid, nonce, DIGEST)
+    await reg.call("clt_bob", "approve", cid, nonce, await reg.approval_digest(cid))
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_target_class", cid, "CLONE"))
     # a change that never declared a class cannot take effect once the registry is enforced
     nocls = await reg.approved(request_id="nocls", base="base-2")
@@ -377,8 +417,8 @@ async def test_effects_are_limited_to_the_registered_target_at_every_effect_step
     cid = await reg.validated(request_id="eff", target="doc-eff")
     assert await reg.call("clt_alice", "declare_target_class", cid, "clone") == "DISPOSABLE_CLONE"
     nonce = await reg.call("clt_bob", "issue_approval_nonce", cid)
-    await reg.call("clt_bob", "approve", cid, nonce, DIGEST)
-    past = datetime.now(UTC) - timedelta(seconds=1)
+    await reg.call("clt_bob", "approve", cid, nonce, await reg.approval_digest(cid))
+    past =datetime.now(UTC) - timedelta(seconds=1)
     # claim: expiry, revocation and organization drift each refuse and leave nothing behind
     for col, bad, good in (("permission_expires_at", past, None), ("status", "REVOKED", "ACTIVE"),
                            ("organization_ref", "drifted", ORG)):
@@ -429,7 +469,7 @@ async def test_only_listed_epoch_dependencies_void_a_change(reg):
     assert "source:s1" in deps and js(await reg.call("clt_alice", "add_epoch_dependency", b, "source:s1")) == deps
     await fails("NOT_ENTITLED", reg.call("clt_mallory", "add_epoch_dependency", b, "source:s2"))
     nonce = await reg.call("clt_bob", "issue_approval_nonce", b)
-    await reg.call("clt_bob", "approve", b, nonce, DIGEST)
+    await reg.call("clt_bob", "approve", b, nonce, await reg.approval_digest(b))   # the listed dependency is inside it
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "add_epoch_dependency", b, "source:s2"))
     await reg.call("clt_dave", "bump_epoch", "source:s1")
     await fails("EPOCH_CHANGED", reg.claimed(b, key="c" * 64, grant=gid, amount=10))
@@ -450,7 +490,9 @@ async def test_only_listed_epoch_dependencies_void_a_change(reg):
     d = await reg.validated(request_id="e4", base="base-4")
     await reg.call("clt_dave", "register_target", "base-4", ORG, "CLONE", "ACTIVE", None)
     n4 = await reg.call("clt_bob", "issue_approval_nonce", d)
-    await fails("EPOCH_CHANGED", reg.call("clt_bob", "approve", d, n4, DIGEST))
+    # the ledger's own digest of the stored change (007 compares the digest before the epochs): the failure left
+    # is the stale registry epoch, not an opaque digest
+    await fails("EPOCH_CHANGED", reg.call("clt_bob", "approve", d, n4, await reg.approval_digest(d)))
     assert (await reg.rec(d))["authorization_state"] == "NONE"
     await reg.chain_ok()
 
@@ -506,41 +548,60 @@ async def test_t15_revoke_of_a_claimed_repair_hands_the_target_lock_back_to_the_
 
 # ============================================================================ (4) signed evidence
 async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(reg):
-    cid = await reg.approved(request_id="ev")
-    other = await reg.approved(request_id="ev2", base="base-2")
+    # 007 (A1): a record needs the change's current generation and the call id of its permit, so the changes are
+    # taken to begin_apply (permit row NOT_PERMITTED); the content is hashed and bound, generation and call id too
+    cid, tok, call_id = await reg.applying(request_id="ev")
+    other, otok, ocall = await reg.applying(request_id="ev2", base="base-2")
+    gen = tok["generation"]
     at = datetime.now(UTC)
-    ch = sha("content-1")
-    ev = await reg.evidence(cid, "FIELD", ch=ch, at=at, content={"f": 1})
-    assert await reg.evidence(cid, "FIELD", ch=ch, at=at, content={"f": 1}) == ev          # idempotent
+    body = {"matches": True, "f": 1}
+    ev = await reg.rec_ev(cid, "FIELD", body, at=at)
+    assert await reg.rec_ev(cid, "FIELD", body, at=at) == ev                                # idempotent
     assert await reg.conn.fetchval("SELECT count(*) FROM change_ledger.evidence_records") == 1
     assert await reg.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE event_type='EVIDENCE_RECORDED'") == 1
+    ok = {"matches": True}
     # unsigned or signed by something the ledger does not trust
-    await fails("EVIDENCE_UNSIGNED", reg.evidence(cid, "VERSION", sig=""))
-    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "record_evidence", cid, "VERSION", ch, at, "{}", "vk-wrk",
-                                              binding(cid, "VERSION", ch, at), None))
-    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "record_evidence", cid, "VERSION", ch, at, "{}", None,
-                                              binding(cid, "VERSION", ch, at), "s"))
-    await fails("EVIDENCE_UNSIGNED", reg.evidence(cid, "VERSION", key_id="vk-unknown"))
-    await fails("EVIDENCE_UNSIGNED", reg.evidence(cid, "VERSION", key="Z" * 32))           # wrong key material
-    await fails("EVIDENCE_UNSIGNED", reg.evidence(cid, "VERSION", sig="f" * 64))
-    # wrongly bound: each element of (change_id, kind, content_hash, observed_at) is part of the binding
-    for bad in (binding(other, "VERSION", ch, at), binding(cid, "FIELD", ch, at), binding(cid, "VERSION", sha("x"), at),
-                binding(cid, "VERSION", ch, at + timedelta(microseconds=1)), "0" * 64):
-        await fails("DIGEST_MISMATCH", reg.evidence(cid, "VERSION", ch=ch, at=at, bind=bad,
-                                                     sig=sign(bad, KEYS["clt_wrk"][1])))
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, sig=""))
+    a = await reg.pack(cid, "VERSION", ok, at=at)
+    a["sig"] = None
+    await fails("EVIDENCE_UNSIGNED", reg.put("clt_wrk", cid, a))
+    a = await reg.pack(cid, "VERSION", ok, at=at)
+    a["key_id"] = None
+    await fails("EVIDENCE_UNSIGNED", reg.put("clt_wrk", cid, a))
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, key_id="vk-unknown"))
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, key_material="Z" * 32))   # wrong key material
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, sig="f" * 64))
+    # wrongly bound: each element of (change_id, kind, content_hash, observed_at, generation, call_id) is part of the
+    # binding (the last two are new in 007); a valid signature over a wrong binding does not help
+    ch = (await reg.pack(cid, "VERSION", ok, at=at))["ch"]
+    wrk_key = SIGN_KEYS["clt_wrk"][1]
+    for bad in (await reg.bind(other, "VERSION", ch, at, gen, call_id), await reg.bind(cid, "FIELD", ch, at, gen, call_id),
+                await reg.bind(cid, "VERSION", sha("x"), at, gen, call_id),
+                await reg.bind(cid, "VERSION", ch, at + timedelta(microseconds=1), gen, call_id),
+                await reg.bind(cid, "VERSION", ch, at, gen + 1, call_id),
+                await reg.bind(cid, "VERSION", ch, at, gen, uuid.uuid4()), "0" * 64):
+        await fails("DIGEST_MISMATCH", reg.rec_ev(cid, "VERSION", ok, at=at, bind=bad, sig=sha(f"{wrk_key}:{bad}")))
     # a valid signature over a binding of ANOTHER change does not help either
-    await fails("DIGEST_MISMATCH", reg.call("clt_wrk", "record_evidence", other, "VERSION", ch, at, "{}", "vk-wrk",
-                                            binding(cid, "VERSION", ch, at),
-                                            sign(binding(cid, "VERSION", ch, at), KEYS["clt_wrk"][1])))
+    cid_bind = (await reg.pack(cid, "VERSION", ok, at=at))["bind"]
+    foreign = await reg.pack(other, "VERSION", ok, at=at, bind=cid_bind, sig=sha(f"{wrk_key}:{cid_bind}"))
+    await fails("DIGEST_MISMATCH", reg.put("clt_wrk", other, foreign))
+    # 007: content_hash must be the hash of the content, whatever is bound and signed
+    await fails("DIGEST_MISMATCH", reg.rec_ev(cid, "VERSION", ok, at=at, ch=sha("not-the-content")))
+    # 007: generation and call id are fenced against the change's current claim and its permit
+    await fails("TICKET_SUPERSEDED", reg.rec_ev(cid, "VERSION", ok, at=at, gen=gen + 1))
+    await fails("PERMIT_MISSING", reg.rec_ev(cid, "VERSION", ok, at=at, call_id=uuid.uuid4()))
+    await fails("PERMIT_MISSING", reg.rec_ev(cid, "VERSION", ok, at=at, call_id=ocall))     # another change's call
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "VERSION", ok, at=at, gen=None))
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "OBSERVATION", {"effect_present": False, "generation": gen + 5}))
     # key / caller: the key belongs to one identity; the writer may record only completion proofs
-    await fails("NOT_ENTITLED", reg.evidence(cid, "VERSION", role="clt_wrk", key_role="clt_wri"))
-    await fails("NOT_ENTITLED", reg.evidence(cid, "FIELD", role="clt_wri"))
-    await fails("SCHEMA_INVALID", reg.evidence(cid, "BOGUS"))
-    await fails("SCHEMA_INVALID", reg.evidence(cid, "FIELD", at=datetime.now(UTC) + timedelta(hours=1)))
-    await fails("CHANGE_NOT_FOUND", reg.evidence(uuid.uuid4(), "FIELD"))
+    await fails("NOT_ENTITLED", reg.rec_ev(cid, "VERSION", ok, role="clt_wrk", key_id="vk-wri", key_material="R" * 32))
+    await fails("NOT_ENTITLED", reg.rec_ev(cid, "FIELD", ok, role="clt_wri"))
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "BOGUS", ok))
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "FIELD", ok, at=datetime.now(UTC) + timedelta(hours=1)))
+    await fails("CHANGE_NOT_FOUND", reg.rec_ev(uuid.uuid4(), "FIELD", ok, gen=1, call_id=uuid.uuid4()))
     # a revoked key stops signing at once
     await reg.call("clt_dave", "revoke_verifier_key", "vk-wrk")
-    await fails("EVIDENCE_UNSIGNED", reg.evidence(cid, "OBSERVATION"))
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "OBSERVATION", {"effect_present": False}))
     assert await reg.conn.fetchval("SELECT count(*) FROM change_ledger.evidence_records") == 1
     # records are immutable even for the superuser path
     await fails("IMMUTABLE_LEDGER", reg.conn.execute("UPDATE change_ledger.evidence_records SET content='{}'::jsonb"))
@@ -550,29 +611,37 @@ async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(
 
 
 async def test_completion_proof_class_and_auth_receipt_rules(reg):
-    cid = await reg.approved(request_id="cp")
-    await fails("SCHEMA_INVALID", reg.evidence(cid, "COMPLETION_PROOF", content={}))
-    await fails("SCHEMA_INVALID", reg.evidence(cid, "COMPLETION_PROOF", content={"class": "c"}))   # forced kill: disabled
-    await fails("NOT_ENTITLED", reg.evidence(cid, "COMPLETION_PROOF", role="clt_wrk", content={"class": "a"}))
-    await fails("NOT_ENTITLED", reg.evidence(cid, "COMPLETION_PROOF", role="clt_wri", content={"class": "b"}))
-    assert await reg.evidence(cid, "COMPLETION_PROOF", role="clt_wri", content={"class": "a"})
-    assert await reg.evidence(cid, "COMPLETION_PROOF", role="clt_wrk", content={"class": "b"})
-    await fails("SCHEMA_INVALID", reg.evidence(cid, "AUTH_RECEIPT", content={"approval_id": str(uuid.uuid4())}))
+    cid, tok, call_id = await reg.applying(request_id="cp")      # 007: records need a generation and a permit row
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF", {}))
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "c", "result_returned": False}))  # forced kill: disabled
+    await fails("NOT_ENTITLED", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wrk"))
+    await fails("NOT_ENTITLED", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "b", "result_returned": False}, role="clt_wri"))
+    # 007: a missing result_returned / matches key must be refused (NULL comparison used to fail open)
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "b"}, role="clt_wrk"))
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "FIELD", {"k": "v"}))
+    # 007: the typed content needs result_returned and the generation / call id inside the content must match
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF",
+                                              {"class": "b", "result_returned": False, "generation": 99}, role="clt_wrk"))
+    assert await reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wri")
+    assert await reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "b", "result_returned": False}, role="clt_wrk")
+    await fails("SCHEMA_INVALID", reg.rec_ev(cid, "AUTH_RECEIPT", {"approval_id": str(uuid.uuid4())}))
     aid = await reg.conn.fetchval("SELECT approval_id FROM change_ledger.approvals WHERE change_id=$1", cid)
-    assert await reg.evidence(cid, "AUTH_RECEIPT", content={"approval_id": str(aid)})
+    assert await reg.rec_ev(cid, "AUTH_RECEIPT", {"approval_id": str(aid)})
 
 
 # ============================================================================ (5) reads and RLS
 async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_reads(reg):
-    cid = await reg.approved(request_id="rd")                            # alice's, approved by bob
+    # 007: evidence needs a generation and a permit row, so the change is read at CLAIMED / APPLYING
+    cid, tok, _ = await reg.applying(request_id="rd")                    # alice's, approved by bob
     mine2 = await reg.propose(request_id="rd2", base="base-2", requester="clt_mallory")
-    ev = await reg.evidence(cid, "FIELD", content={"k": "v"})
+    ev = await reg.rec_ev(cid, "FIELD", {"matches": True, "k": "v"})
     st = await reg.jcall("clt_alice", "read_status", cid)
     assert (st["lifecycle"], st["authorization"], st["execution"], st["verification"], st["dispatch"],
             st["reservation"], st["call_ownership"], st["attribution"]) == \
-        ("VALIDATED", "APPROVED", "NOT_STARTED", "NOT_VERIFIED", "NOT_PERMITTED", "NONE", "NONE", "NOT_APPLICABLE")
+        ("VALIDATED", "CLAIMED", "APPLYING", "NOT_VERIFIED", "NOT_PERMITTED", "NONE", "NONE", "NOT_APPLICABLE")
     assert st["approver"] == "clt_bob" and st["evidence_count"] == 1 and st["epoch_current"] is True
     assert st["requester"] == "clt_alice" and st["open_holds"] == 0
+    assert st["approval_digest"] == await reg.approval_digest(cid)       # 007 (A7): the ledger-computed digest
     assert await reg.jcall("clt_aud", "read_status", cid) == st
     assert (await reg.jcall("clt_bob", "read_status", cid))["change_id"] == str(cid)
     await fails("CHANGE_NOT_FOUND", reg.call("clt_mallory", "read_status", cid))          # not leaked to another requester
@@ -584,7 +653,8 @@ async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_r
     assert (await reg.jcall("clt_aud", "read_status", cid))["epoch_current"] is False
     # read_evidence
     out = await reg.jcall("clt_alice", "read_evidence", cid)
-    assert [e["evidence_id"] for e in out] == [str(ev)] and out[0]["kind"] == "FIELD" and out[0]["content"] == {"k": "v"}
+    assert [e["evidence_id"] for e in out] == [str(ev)] and out[0]["kind"] == "FIELD"
+    assert out[0]["content"] == {"matches": True, "k": "v"}
     assert "key_material" not in json.dumps(out)
     assert await reg.jcall("clt_aud", "read_evidence", cid) == out
     await fails("CHANGE_NOT_FOUND", reg.call("clt_mallory", "read_evidence", cid))
@@ -601,51 +671,64 @@ async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_r
 
 
 async def test_signed_wrappers_reference_records_and_extend_without_changing_004_behavior(reg):
-    # ---- complete_signed: the outcome evidence is a writer-signed proof class a
+    # ---- complete_signed: the outcome evidence is a writer-signed proof class a, typed by the outcome (007)
     cid, tok, call_id = await reg.dispatched(request_id="sw1", base="base-1")
     gen = tok["generation"]
     await fails("EVIDENCE_UNSIGNED", reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", None))
-    worker_proof = await reg.evidence(cid, "COMPLETION_PROOF", role="clt_wrk", content={"class": "b"})
+    worker_proof = await reg.evidence(cid, "COMPLETION_PROOF", {"class": "b", "result_returned": True}, role="clt_wrk")
     await fails("COMPLETION_PROOF_MISSING", reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", worker_proof))
     await fails("SCHEMA_INVALID", reg.call("clt_wri", "complete_signed", cid, gen, "WHATEVER", worker_proof))
     other, _, _ = await reg.dispatched(request_id="sw1o", base="base-2")
-    foreign = await reg.evidence(other, "COMPLETION_PROOF", role="clt_wri", content={"class": "a"})
+    foreign = await reg.evidence(other, "COMPLETION_PROOF", {"class": "a", "result_returned": True}, role="clt_wri")
     await fails("EVIDENCE_UNSIGNED", reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", foreign))
-    writer_proof = await reg.evidence(cid, "COMPLETION_PROOF", role="clt_wri", content={"class": "a"})
+    # 007 (A1): the outcome comes from the record content, not from the caller's flag
+    no_result = await reg.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wri")
+    await fails("COMPLETION_PROOF_MISSING", reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", no_result))
+    await fails("WRITE_REFUSED", reg.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", no_result))
+    writer_proof = await reg.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True}, role="clt_wri")
+    await fails("WRITE_REFUSED", reg.call("clt_wri", "complete_signed", cid, gen, "PRE_WRITE_REFUSAL", writer_proof))
+    assert (await reg.rec(cid))["execution_state"] == "APPLYING"          # the refusals wrote nothing
     assert await reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", writer_proof) == "APPLIED"
     ref = await reg.conn.fetchval("SELECT payload->>'evidence_id' FROM change_ledger.events WHERE change_id=$1 AND "
                                   "event_type='COMPLETE_SUCCESS'", cid)
     assert ref == str(writer_proof)
-    # ---- verify_signed: field + movement + version read AFTER the effect
-    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "verify_signed", cid, None, None, None, True))
-    f = await reg.evidence(cid, "FIELD")
-    m = await reg.evidence(cid, "MOVEMENT")
-    v = await reg.evidence(cid, "VERSION")
-    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "verify_signed", cid, m, f, v, True))      # wrong slots
-    stale = await reg.evidence(cid, "VERSION", at=datetime.now(UTC) - timedelta(hours=1))
-    await fails("VERIFY_FAILED", reg.call("clt_wrk", "verify_signed", cid, f, m, stale, True))
+    # ---- verify_signed: field + movement + version read AFTER the effect; the verdict is derived from the records
+    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "verify_signed", cid, None, None, None))
+    f = await reg.evidence(cid, "FIELD", {"matches": True})
+    m = await reg.evidence(cid, "MOVEMENT", {"matches": True})
+    v = await reg.evidence(cid, "VERSION", {"matches": True})
+    await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "verify_signed", cid, m, f, v))      # wrong slots
+    stale = await reg.evidence(cid, "VERSION", {"matches": True}, at=datetime.now(UTC) - timedelta(hours=1))
+    await fails("VERIFY_FAILED", reg.call("clt_wrk", "verify_signed", cid, f, m, stale))
     assert (await reg.rec(cid))["verification_state"] == "NOT_VERIFIED"
-    assert await reg.call("clt_wrk", "verify_signed", cid, f, m, v, True) == "VERIFIED"
-    assert await reg.call("clt_wrk", "verify_signed", cid, None, None, None, True) == "VERIFIED"      # idempotent
+    assert await reg.call("clt_wrk", "verify_signed", cid, f, m, v) == "VERIFIED"
+    assert await reg.call("clt_wrk", "verify_signed", cid, None, None, None) == "VERIFIED"      # idempotent
     assert await reg.locks(cid) == (0, 0, 0)
-    # a failed verification needs no evidence but opens the halt exactly like 004
+    # a failed verification (007: derived from signed records with matches = false, no longer a caller flag) opens
+    # the halt exactly like 004 and cannot be flipped to VERIFIED afterwards (A3)
     bad, btok, _ = await reg.dispatched(request_id="sw2", base="base-3")
-    await reg.call("clt_wri", "complete", bad, btok["generation"], "SUCCESS", "{}", None)
-    assert await reg.call("clt_wrk", "verify_signed", bad, None, None, None, False) == "FAILED_VERIFY"
+    await reg.complete(bad, btok["generation"], "SUCCESS")
+    assert await reg.verify(bad, False) == "FAILED_VERIFY"
     assert await reg.open_holds("FAILED_VERIFY_HALT") == 1
+    await fails("FORBIDDEN_TRANSITION", reg.verify(bad, True))
+    assert (await reg.rec(bad))["verification_state"] == "FAILED_VERIFY" and await reg.open_holds("FAILED_VERIFY_HALT") == 1
     # ---- resolve_unknown_signed
     u, utok, _ = await reg.unknown(request_id="sw3", base="base-4")
-    obs = await reg.evidence(u, "OBSERVATION", content={"seen": False})
+    obs = await reg.observation(u, False)
     await fails("COMPLETION_PROOF_MISSING", reg.call("clt_wrk", "resolve_unknown_signed", u, obs, None, False, False))
     await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "resolve_unknown_signed", u, None, None, False, False))
-    cp_b = await reg.evidence(u, "COMPLETION_PROOF", role="clt_wrk", content={"class": "b"})
+    cp_b = await reg.evidence(u, "COMPLETION_PROOF", {"class": "b", "result_returned": False}, role="clt_wrk")
+    # 007: the found flag must equal the signed observation's effect_present
+    await fails("DIGEST_MISMATCH", reg.call("clt_wrk", "resolve_unknown_signed", u, obs, cp_b, True, False))
     assert await reg.call("clt_wrk", "resolve_unknown_signed", u, obs, cp_b, False, False) == "FAILED_APPLY"
     assert await reg.locks(u) == (0, 0, 0)
     t2, _, _ = await reg.unknown(request_id="sw4", base="base-5")
-    obs2 = await reg.evidence(t2, "OBSERVATION", content={"seen": True})
+    obs2 = await reg.observation(t2, True)
     assert await reg.call("clt_wrk", "resolve_unknown_signed", t2, obs2, None, True, True) == "TRIAGE_REQUIRED"
-    # ---- witness_cosign_signed -> operator_resolve (attribution proof comes from the signed record)
-    cp_a = await reg.evidence(t2, "COMPLETION_PROOF", role="clt_wri", content={"class": "a", "attribution_proof": True})
+    # ---- witness_cosign_signed -> operator_resolve (attribution proof comes from the signed record; the verdict
+    # from the signed observation recorded above)
+    cp_a = await reg.evidence(t2, "COMPLETION_PROOF", {"class": "a", "result_returned": False, "attribution_proof": True},
+                              role="clt_wri")
     w = await reg.call("clt_erin", "witness_cosign_signed", t2, cp_a)
     assert await reg.call("clt_dave", "operator_resolve", t2, w, True, True) == "APPLIED"
     assert (await reg.rec(t2))["attribution"] == "PROVEN"
@@ -672,7 +755,7 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     assert await reg.call("clt_alice", "validate", b, False, True) == "DUPLICATE_PARKED"            # terminal
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", b, k2, None, None))
     nonce = await reg.call("clt_bob", "issue_approval_nonce", b)
-    await fails("FORBIDDEN_TRANSITION", reg.call("clt_bob", "approve", b, nonce, DIGEST))
+    await fails("FORBIDDEN_TRANSITION", reg.call("clt_bob", "approve", b, nonce, await reg.approval_digest(b)))
     # another base or another key is not a duplicate; neither is the caller flag alone un-parked
     assert (await _keyed(reg, "c", k1, base="base-2"))[1] == "VALIDATED"
     assert (await _keyed(reg, "d", k2))[1] == "VALIDATED"
@@ -686,15 +769,16 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     assert odg == sha(f"{o}:{k1}:{a}:same supplier invoice re-issued")
     assert await reg.conn.fetchval("SELECT override_required FROM change_ledger.business_keys WHERE change_id=$1", o)
     n_bob = await reg.call("clt_bob", "issue_approval_nonce", o)
-    await fails("DUPLICATE_SUSPECTED", reg.call("clt_bob", "approve", o, n_bob, DIGEST))
+    dg_o = await reg.approval_digest(o)     # 007 (A7): the digest covers the key and the override (business state)
+    await fails("DUPLICATE_SUSPECTED", reg.call("clt_bob", "approve", o, n_bob, dg_o))
     with pytest.raises(asyncpg.InsufficientPrivilegeError):                                          # requester cannot bind
         await reg.call("clt_alice", "bind_duplicate_override", o, odg)
     await fails("DIGEST_MISMATCH", reg.call("clt_bob", "bind_duplicate_override", o, "9" * 64))
     assert await reg.call("clt_carol", "bind_duplicate_override", o, odg) is True
-    await fails("DUPLICATE_SUSPECTED", reg.call("clt_bob", "approve", o, n_bob, DIGEST))             # carol's binding is carol's
+    await fails("DUPLICATE_SUSPECTED", reg.call("clt_bob", "approve", o, n_bob, dg_o))               # carol's binding is carol's
     assert await reg.call("clt_carol", "bind_duplicate_override", o, odg) is True                    # idempotent
     n_carol = await reg.call("clt_carol", "issue_approval_nonce", o)
-    await reg.call("clt_carol", "approve", o, n_carol, DIGEST)
+    await reg.call("clt_carol", "approve", o, n_carol, dg_o)
     assert (await reg.rec(o))["authorization_state"] == "APPROVED"
     # after approval the key and the override are frozen (they are inside the digest)
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", o, k2, None, None))
@@ -773,7 +857,7 @@ async def test_amount_consumed_reconciles_post_unpost_and_repair(reg):
     await reg.effect_tail(post1, tok)
     assert await consumed("docA") == 300 and await consumed("docA", other_grant) == 0
     assert await consumed("docB") == 0
-    await reg.call("clt_wrk", "verify", post1, '{"s":1}', True)
+    assert await reg.verify(post1, True) == "VERIFIED"
     # a second POST of the same document reserves only the unconsumed part (nothing)
     post2 = await reg.approved(kind="POST", parent=draft, request_id="p2", target="docA", base="base-1")
     t2 = await reg.claimed(post2, grant=gid, amount=300)
@@ -807,7 +891,7 @@ async def test_amount_consumed_reconciles_post_unpost_and_repair(reg):
     assert await consumed("docB") == 0                                       # the repair APPLIED reconciles the parent
     assert await reg.res_state(bad) == "CONSUMED"                            # history kept, not refunded
     assert (await reg.rec(bad))["verification_state"] == "FAILED_VERIFY"
-    await reg.call("clt_wrk", "verify", rep, '{"s":2}', True)
+    assert await reg.verify(rep, True) == "VERIFIED"
     assert await reg.open_holds("FAILED_VERIFY_HALT") == 0 and await consumed("docB") == 0
     # an UNPOST that was refused before the write does not reverse anything
     p4 = await reg.approved(kind="POST", parent=d2, request_id="p4", target="docB", base="base-2")
@@ -817,7 +901,7 @@ async def test_amount_consumed_reconciles_post_unpost_and_repair(reg):
     t4 = await reg.claimed(u4, grant=gid, amount=10)
     call = uuid.uuid4()
     await reg.call("clt_alice", "begin_apply", t4["token_id"], call, "h", "s")
-    assert await reg.call("clt_wri", "complete", u4, t4["generation"], "PRE_WRITE_REFUSAL", "{}",
-                          '{"proof":"dependents"}') == "FAILED_APPLY"
+    assert await reg.complete(u4, t4["generation"], "PRE_WRITE_REFUSAL", proof={"proof": "dependents"},
+                              code="ROLLBACK_REFUSED") == "FAILED_APPLY"      # 007: a signed typed refusal record
     assert await consumed("docB") == 200
     await reg.chain_ok()

@@ -4,10 +4,17 @@
 verification is a ``SignatureVerifier`` Protocol; ``UnwiredVerifier`` fails closed. A real Ed25519
 verifier needs a separate dependency decision. ``InMemoryCheckpointSink``, ``FakeSigner`` and
 ``FakeVerifier`` are TEST ONLY: ``DispatchGate`` stays DISABLED while any of them is wired, whatever
-the ``real_checkpoint_sink`` flag says. SQL rule (db/phase2/005 ``issue_permit``, last definition wins):
-a permit needs a checkpoint with sink_kind REAL, read_back_confirmed, whose head hash is the ledger event at
-its seq and whose seq is at or after the change's APPLYING event; a TEST sink never satisfies it
-(CHECKPOINT_UNAVAILABLE). The gate writes exactly such a checkpoint and lets SQL decide.
+the ``real_checkpoint_sink`` flag says. SQL rule (db/phase2/007 ``record_checkpoint`` / ``issue_permit``, last
+definition wins): only the dedicated ``checkpoint_role`` identity may call ``record_checkpoint`` and
+``attach_permit_signature``; ``record_checkpoint`` recomputes a keyed-hash signature (the D9 Ed25519 stand-in,
+``sha256(key_material || ':' || payload)``) over ``change_ledger.checkpoint_payload`` (v2, which includes sink
+kind and id) against an ACTIVE ``checkpoint_role`` key registered in ``verifier_keys`` and marks the row
+``verified``. ``issue_permit`` accepts only a verified checkpoint with sink_kind REAL, read_back_confirmed,
+whose head hash is the ledger event at its seq and whose seq is at or after the change's APPLYING event; a TEST
+sink never satisfies it (CHECKPOINT_UNAVAILABLE). The gate writes exactly such a checkpoint through the
+checkpoint identity of the port (``as_class='checkpoint'``, the port default) and lets SQL decide. The signer
+passed to the gate must therefore produce the keyed hash registered for ``signer.key_id``; the signers in this
+module are TEST ONLY and are not accepted by the gate.
 """
 from __future__ import annotations
 
@@ -45,10 +52,19 @@ def content_hash_of(payload_text: str) -> str:
     return hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
 
 
-def evidence_binding(change_id: str, kind: str, content_hash: str, observed_at: datetime) -> str:
-    """Mirror of change_ledger.evidence_binding (005): ``id:kind:hash:UTC-microseconds-Z``."""
-    raw = f"{change_id}:{kind}:{content_hash}:{_ts(observed_at)}Z"
+def evidence_binding(change_id: str, kind: str, content_hash: str, observed_at: datetime,
+                     generation: int | None = None, call_id: str | None = None) -> str:
+    """Mirror of change_ledger.evidence_binding (007): ``id:kind:hash:UTC-microseconds-Z:generation:call_id``
+    where a missing generation / call id is the empty string (AUTH_RECEIPT carries neither)."""
+    gen = "" if generation is None else str(generation)
+    call = "" if call_id is None else str(call_id)
+    raw = f"{change_id}:{kind}:{content_hash}:{_ts(observed_at)}Z:{gen}:{call}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def permit_signing_payload(permit_digest: str) -> bytes:
+    """Exact text attach_permit_signature checks the signature of (007): ``change-ledger-permit|v1|digest``."""
+    return f"change-ledger-permit|v1|{permit_digest}".encode()
 
 
 @dataclass(frozen=True)
@@ -61,10 +77,12 @@ class CheckpointRecord:
     key_id: str
     signature: str
     sink_id: str
+    sink_kind: str
 
     def signing_payload(self) -> bytes:
-        return (f"change-ledger-checkpoint|v1|{self.tenant_id}|{self.company_id}|{self.seq}|{self.head_hash}|"
-                f"{_ts(self.signed_at)}|{self.key_id}").encode()
+        """Mirror of change_ledger.checkpoint_payload (007, v2): sink kind and id are part of the signed text."""
+        return (f"change-ledger-checkpoint|v2|{self.tenant_id}|{self.company_id}|{self.seq}|{self.head_hash}|"
+                f"{_ts(self.signed_at)}|{self.key_id}|{self.sink_kind}|{self.sink_id}").encode()
 
 
 class CheckpointSigner(Protocol):
@@ -138,7 +156,11 @@ class InMemoryCheckpointSink:
 
 
 class LedgerPort(Protocol):
-    """The slice of the SQL port the gate needs (satisfied by sql_ledger.SqlChangeLedger)."""
+    """The slice of the SQL port the gate needs (satisfied by sql_ledger.SqlChangeLedger).
+
+    ``record_checkpoint`` and ``attach_permit_signature`` run as the checkpoint identity, ``ledger_head`` and
+    ``issue_permit`` as the worker identity; the SQL port selects these by its per-method default class.
+    """
 
     async def ledger_head(self, scope: Scope) -> dict[str, Any]: ...
 
@@ -156,7 +178,7 @@ class DispatchGate:
     """Refuses to issue a dispatch permit unless a checkpoint covering the head was written AND read back.
 
     Disabled unless ``real_checkpoint_sink`` is True and the sink is REAL and the signer and verifier are
-    not test doubles. SQL raises (never returns) a refusal; it is surfaced as CheckpointUnavailable
+    not test doubles (no real sink or signer is wired anywhere in the product: dispatch stays DISABLED). SQL raises (never returns) a refusal; it is surfaced as CheckpointUnavailable
     (CHECKPOINT_UNAVAILABLE) or PermitRefused(code).
     """
 
@@ -181,7 +203,7 @@ class DispatchGate:
         signed_at = datetime.now(UTC)
         unsigned = CheckpointRecord(scope.tenant_id, scope.company_id, int(head["seq"]),
                                     head["head_hash"], signed_at, self._signer.key_id, "",
-                                    self._sink.sink_id)
+                                    self._sink.sink_id, self._sink.kind)
         record = CheckpointRecord(**{**unsigned.__dict__,
                                      "signature": self._signer.sign(unsigned.signing_payload())})
         await self._sink.write(record)
@@ -194,7 +216,7 @@ class DispatchGate:
                                                  record.sink_id, record.key_id, record.signature,
                                                  record.signed_at, True)
             permit = await self._ledger.issue_permit(scope, change_id, generation)
-            sig = self._signer.sign(f"change-ledger-permit|v1|{permit['permit_digest']}".encode())
+            sig = self._signer.sign(permit_signing_payload(permit["permit_digest"]))
             await self._ledger.attach_permit_signature(scope, change_id, generation,
                                                        self._signer.key_id, sig)
         except LedgerError as e:

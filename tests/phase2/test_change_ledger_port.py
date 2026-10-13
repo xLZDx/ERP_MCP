@@ -1,20 +1,27 @@
 """Focused PostgreSQL integration tests for the thin Python port src/business_ai_gateway/phase2/change_ledger.
 
 Needs ERP_PHASE2_TEST_DSN (superuser DSN of a disposable cluster); without it: skip NOT_RUN, or fail when
-ERP_PHASE2_REQUIRE_PG=1. Every test has its own throwaway database with 001-006 applied and the clt_* actors of
+ERP_PHASE2_REQUIRE_PG=1. Every test has its own throwaway database with 001-007 applied and the clt_* actors of
 test_change_ledger_sql.py. The port is driven exactly as production would: one SQL function per call under
 SET LOCAL ROLE of the caller class. Superuser access only reads results and counts rows.
+
+007 intentionally changed the API (the assertions below were rewritten only where that applies): the raw
+complete / verify / resolve_unknown / witness_cosign are revoked from every runtime role, so the journeys use the
+typed-evidence ``*_signed`` paths; approve compares an SQL-computed approval digest; record_checkpoint and
+attach_permit_signature belong to the checkpoint identity and verify a keyed-hash signature against a registered
+key. RealSigner / RealVerifier / RealSink below are TEST-ONLY stand-ins that merely CLAIM to be real.
 """
 import asyncio
 import hashlib
-import hmac
 import inspect
+import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+import asyncpg
 import pytest
 from _pg_harness import require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, DIGEST, KH, ORG, T, _setup, exp
+from test_change_ledger_sql import BASE, C, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
 
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope, code_from_message
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
@@ -25,8 +32,10 @@ from business_ai_gateway.phase2.change_ledger.checkpoint import (
     FakeVerifier,
     GateDisabled,
     InMemoryCheckpointSink,
+    PermitRefused,
     UnwiredVerifier,
     evidence_binding,
+    permit_signing_payload,
 )
 from business_ai_gateway.phase2.change_ledger.sql_ledger import CLASSES, SPEC, SqlChangeLedger
 from business_ai_gateway.phase2.change_ledger.write_port import (
@@ -40,9 +49,15 @@ pytestmark = pytest.mark.integration
 
 SCOPE = Scope(T, C)
 ACTORS = {"requester": "clt_alice", "approver": "clt_bob", "operator": "clt_erin", "writer": "clt_wri",
-          "worker": "clt_wrk", "auditor": "clt_aud"}
+          "worker": "clt_wrk", "auditor": "clt_aud", "checkpoint": "clt_chk"}
 GROUP = {c: c + "_role" for c in CLASSES}
 REGTYPE = {"timestamptz": "timestamp with time zone"}
+RAW_REVOKED = ("complete", "resolve_unknown", "verify", "witness_cosign")  # 007 A1: internals of the signed paths
+CHK_KEY_ID, CHK_KEY_MATERIAL, _ = SIGN_KEYS["clt_chk"]  # keyed-hash stand-in for the D9 signer (TEST ONLY)
+
+
+def sha(text):
+    return hashlib.sha256(text.encode()).hexdigest()
 
 
 class RealSink:
@@ -62,18 +77,20 @@ class RealSink:
 
 
 class RealSigner:
-    key_id = "real-key"
+    """TEST-ONLY stand-in that claims to be a real signer: the keyed hash registered for checkpoint_role."""
+
+    key_id = CHK_KEY_ID
     is_test_double = False
 
     def sign(self, payload):
-        return hmac.new(b"k", payload, hashlib.sha256).hexdigest()
+        return sha(f"{CHK_KEY_MATERIAL}:{payload.decode()}")
 
 
 class RealVerifier:
     is_test_double = False
 
     def verify(self, key_id, payload, signature):
-        return hmac.compare_digest(signature, hmac.new(b"k", payload, hashlib.sha256).hexdigest())
+        return key_id == CHK_KEY_ID and signature == sha(f"{CHK_KEY_MATERIAL}:{payload.decode()}")
 
 
 @pytest.fixture
@@ -91,13 +108,42 @@ async def applying(port):
                               DIGEST, "doc1", "v1", None, exp()) == cid
     assert await port.validate(SCOPE, cid, False, True) == "VALIDATED"
     nonce = await port.issue_approval_nonce(SCOPE, cid)
-    assert isinstance(await port.approve(SCOPE, cid, nonce, DIGEST), uuid.UUID)
+    digest = (await port.read_status(SCOPE, cid, as_class="approver"))["approval_digest"]
+    assert isinstance(await port.approve(SCOPE, cid, nonce, digest), uuid.UUID)
     tok = await port.claim(SCOPE, cid, KH)
     assert tok["change_id"] == cid and tok["generation"] == 1
     call_id = uuid.uuid4()
     got = await port.begin_apply(SCOPE, tok["token_id"], call_id, "host-1", "sess-1")
     assert got["token_id"] == tok["token_id"]
     return cid, tok["generation"], call_id
+
+
+async def evidence(conn, port, cid, kind, content, actor="worker", gen=None, call_id=None):
+    """Record one signed evidence record through the port (generation / call id default to the current ones)."""
+    if gen is None:
+        gen = await conn.fetchval("SELECT claim_generation FROM change_ledger.records WHERE change_id=$1", cid)
+    if call_id is None:
+        call_id = await conn.fetchval("SELECT call_id FROM change_ledger.dispatch_permits WHERE change_id=$1 "
+                                      "AND generation=$2", cid, gen)
+    content = {"nonce": uuid.uuid4().hex, **content}
+    if kind in ("COMPLETION_PROOF", "OBSERVATION"):
+        content = {"generation": gen, "call_id": str(call_id), **content}
+    at = datetime.now(UTC) + timedelta(seconds=1)
+    ch = await conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
+    binding = evidence_binding(str(cid), kind, ch, at, gen, call_id)
+    kid, kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
+    return await port.record_evidence(SCOPE, cid, kind, ch, at, content, kid, binding, sha(f"{kmat}:{binding}"),
+                                      gen, call_id, as_class=actor)
+
+
+async def signed_checkpoint(port, seq, head_hash, kind="REAL", sink_id="s", read_back=True, signature=None,
+                            key_id=CHK_KEY_ID, as_class="checkpoint"):
+    """record_checkpoint with the exact 007 payload (CheckpointRecord mirrors change_ledger.checkpoint_payload)."""
+    signed_at = datetime.now(UTC)
+    rec = CheckpointRecord(SCOPE.tenant_id, SCOPE.company_id, seq, head_hash, signed_at, key_id, "", sink_id, kind)
+    sig = signature if signature is not None else RealSigner().sign(rec.signing_payload())
+    return await port.record_checkpoint(SCOPE, seq, head_hash, kind, sink_id, key_id, sig, signed_at, read_back,
+                                        as_class=as_class)
 
 
 async def apply_seq(conn, cid):
@@ -135,6 +181,27 @@ async def test_spec_matches_pg_proc_signatures_and_grants(env):
         assert granted == set(fn.classes), (key, granted)
 
 
+async def test_raw_functions_are_revoked_and_the_port_has_no_method_for_them(env):
+    conn, port = env
+    rows = await conn.fetch("SELECT p.oid, p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+                            "WHERE n.nspname='change_ledger' AND p.proname = ANY($1::text[])", list(RAW_REVOKED))
+    assert {r["proname"] for r in rows} == set(RAW_REVOKED)
+    for r in rows:
+        for cls in CLASSES:
+            assert not await conn.fetchval("SELECT has_function_privilege($1, $2::oid, 'EXECUTE')",
+                                           GROUP[cls], r["oid"]), (r["proname"], cls)
+    for name in RAW_REVOKED:
+        assert name not in SPEC and not hasattr(port, name), name
+    # the raw call is refused by SQL under every actor even when issued around the port
+    for cls, role in ACTORS.items():
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with conn.transaction():
+                await conn.execute(f'SET LOCAL ROLE "{role}"')
+                await conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+                await conn.fetchval("SELECT change_ledger.complete($1,$2,$3,1,'UNKNOWN','{}'::jsonb,NULL)",
+                                    T, C, uuid.uuid4())
+
+
 def test_every_spec_entry_has_a_method_and_error_mapping():
     port_methods = {n for n, _ in inspect.getmembers(SqlChangeLedger, inspect.iscoroutinefunction)}
     missing = [k for k in SPEC if k not in port_methods and k != "recover_sweep_params"]
@@ -154,14 +221,24 @@ async def test_journey_propose_to_dispatch_through_the_permit_gate(env):
     # a TEST checkpoint (recorded directly) never satisfies the permit rule
     head = await port.ledger_head(SCOPE)
     assert head["seq"] >= await apply_seq(conn, cid)
-    await port.record_checkpoint(SCOPE, head["seq"], head["head_hash"], "TEST", "mem", "k", "s",
-                                 datetime.now(UTC), True)
+    await signed_checkpoint(port, head["seq"], head["head_hash"], "TEST", "mem")
     await refused(port.issue_permit(SCOPE, cid, gen), "CHECKPOINT_UNAVAILABLE")
     # a checkpoint that was not read back is refused at record time
-    await refused(port.record_checkpoint(SCOPE, head["seq"], head["head_hash"], "REAL", "s", "k", "s",
-                                         datetime.now(UTC), False), "CHECKPOINT_UNAVAILABLE")
+    await refused(signed_checkpoint(port, head["seq"], head["head_hash"], "REAL", "s", read_back=False),
+                  "CHECKPOINT_UNAVAILABLE")
+    # 007: a wrong signature, an unregistered key and a non-checkpoint caller are refused at record time
+    await refused(signed_checkpoint(port, head["seq"], head["head_hash"], signature="0" * 64),
+                  "CHECKPOINT_UNAVAILABLE")
+    await refused(signed_checkpoint(port, head["seq"], head["head_hash"], key_id="no-such-key"),
+                  "CHECKPOINT_UNAVAILABLE")
+    with pytest.raises(ValueError):  # the worker class is not granted record_checkpoint any more
+        await signed_checkpoint(port, head["seq"], head["head_hash"], as_class="worker")
+    impostor = SqlChangeLedger(conn, {"checkpoint": "clt_wrk"})
+    await refused(impostor.record_checkpoint(SCOPE, head["seq"], head["head_hash"], "REAL", "s", CHK_KEY_ID,
+                                             "0" * 64, datetime.now(UTC), True), "NOT_ENTITLED")
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 1  # only the TEST row
     # a REAL checkpoint with a head hash that is not the ledger event is recorded but cannot cover the head
-    await port.record_checkpoint(SCOPE, head["seq"], "f" * 64, "REAL", "s", "k", "s", datetime.now(UTC), True)
+    await signed_checkpoint(port, head["seq"], "f" * 64, "REAL", "s")
     await refused(port.issue_permit(SCOPE, cid, gen), "CHECKPOINT_UNAVAILABLE")
     assert await conn.fetchval("SELECT dispatch_state FROM change_ledger.records WHERE change_id=$1",
                                cid) == "NOT_PERMITTED"
@@ -169,14 +246,17 @@ async def test_journey_propose_to_dispatch_through_the_permit_gate(env):
     sink = RealSink()
     permit = await real_gate(port, sink).issue_permit(SCOPE, cid, gen, await apply_seq(conn, cid))
     assert permit["change_id"] == str(cid) and permit["generation"] == gen
-    assert permit["signature"] and permit["signer_key_id"] == "real-key"
+    assert permit["signature"] and permit["signer_key_id"] == CHK_KEY_ID
+    assert permit["signature"] == RealSigner().sign(permit_signing_payload(permit["permit_digest"]))
     stored = await conn.fetchrow("SELECT state, signer_key_id, signature, permit_digest FROM "
                                  "change_ledger.dispatch_permits WHERE change_id=$1", cid)
     assert (stored["state"], stored["signer_key_id"], stored["signature"], stored["permit_digest"]) == (
-        "PERMITTED", "real-key", permit["signature"], permit["permit_digest"])
-    cp = await conn.fetchrow("SELECT sink_kind, read_back_confirmed, ledger_seq FROM change_ledger.checkpoints "
-                             "WHERE sink_id='ext-store-1'")
-    assert (cp["sink_kind"], cp["read_back_confirmed"], cp["ledger_seq"]) == ("REAL", True, permit["checkpoint_seq"] and cp["ledger_seq"])
+        "PERMITTED", CHK_KEY_ID, permit["signature"], permit["permit_digest"])
+    cp = await conn.fetchrow("SELECT sink_kind, read_back_confirmed, verified, written_by, ledger_seq FROM "
+                             "change_ledger.checkpoints WHERE sink_id='ext-store-1'")
+    assert (cp["sink_kind"], cp["read_back_confirmed"], cp["verified"], cp["written_by"]) == (
+        "REAL", True, True, "clt_chk")
+    assert cp["ledger_seq"] == head["seq"] or cp["ledger_seq"] >= await apply_seq(conn, cid)
     assert await conn.fetchval("SELECT checkpoint_seq FROM change_ledger.dispatch_permits WHERE change_id=$1",
                                cid) == permit["checkpoint_seq"]
     assert len(sink.rows) == 1
@@ -195,15 +275,17 @@ async def test_unknown_outcome_then_operator_resolve_is_refused_without_proof(en
     cid, gen, call_id = await applying(port)
     await real_gate(port).issue_permit(SCOPE, cid, gen)
     assert await port.record_call(SCOPE, cid, gen, call_id) is True
-    # UNKNOWN needs no proof but opens a CALL_OWNERSHIP hold
-    assert await port.complete(SCOPE, cid, gen, "UNKNOWN", {"why": "timeout"}) == "APPLY_UNKNOWN"
+    # UNKNOWN needs no proof (complete_signed, no completion record) but opens a CALL_OWNERSHIP hold
+    assert await port.complete_signed(SCOPE, cid, gen, "UNKNOWN", None) == "APPLY_UNKNOWN"
     assert await conn.fetchval("SELECT count(*) FROM change_ledger.holds WHERE change_id=$1 AND "
                                "cause='CALL_OWNERSHIP' AND released_at IS NULL", cid) == 1
     # a replayed completion is idempotent; a wrong generation is superseded
-    assert await port.complete(SCOPE, cid, gen, "UNKNOWN", {"why": "again"}) == "APPLY_UNKNOWN"
-    await refused(port.complete(SCOPE, cid, gen + 1, "UNKNOWN", {}), "TICKET_SUPERSEDED")
-    # an effect found never becomes APPLIED here: it goes to triage
-    assert await port.resolve_unknown(SCOPE, cid, {"seen": True}, True, True) == "TRIAGE_REQUIRED"
+    assert await port.complete_signed(SCOPE, cid, gen, "UNKNOWN", None) == "APPLY_UNKNOWN"
+    await refused(port.complete_signed(SCOPE, cid, gen + 1, "UNKNOWN", None), "TICKET_SUPERSEDED")
+    # an effect found never becomes APPLIED here: it goes to triage (the verdict is the signed observation)
+    seen = await evidence(conn, port, cid, "OBSERVATION", {"effect_present": True})
+    await refused(port.resolve_unknown_signed(SCOPE, cid, seen, None, False, True), "DIGEST_MISMATCH")
+    assert await port.resolve_unknown_signed(SCOPE, cid, seen, None, True, True) == "TRIAGE_REQUIRED"
     # operator_resolve without a witness cosign carrying a completion proof is refused, state unchanged
     await refused(port.operator_resolve(SCOPE, cid, None, False, False), "COMPLETION_PROOF_MISSING")
     await refused(port.operator_resolve(SCOPE, cid, uuid.uuid4(), False, False), "COMPLETION_PROOF_MISSING")
@@ -219,9 +301,46 @@ async def test_absent_resolution_needs_a_proof_class(env):
     cid, gen, call_id = await applying(port)
     await real_gate(port).issue_permit(SCOPE, cid, gen)
     await port.record_call(SCOPE, cid, gen, call_id)
-    await port.complete(SCOPE, cid, gen, "UNKNOWN", {})
-    await refused(port.resolve_unknown(SCOPE, cid, {}, False), "COMPLETION_PROOF_MISSING")
-    assert await port.resolve_unknown(SCOPE, cid, {"completion_proof": {"class": "b"}}, False) == "FAILED_APPLY"
+    await port.complete_signed(SCOPE, cid, gen, "UNKNOWN", None)
+    absent = await evidence(conn, port, cid, "OBSERVATION", {"effect_present": False})
+    await refused(port.resolve_unknown_signed(SCOPE, cid, absent, None, False), "COMPLETION_PROOF_MISSING")
+    proof = await evidence(conn, port, cid, "COMPLETION_PROOF", {"class": "b", "result_returned": False})
+    assert await port.resolve_unknown_signed(SCOPE, cid, absent, proof, False) == "FAILED_APPLY"
+
+
+async def test_signed_completion_and_verification_through_the_port(env):
+    conn, port = env
+    cid, gen, call_id = await applying(port)
+    await real_gate(port).issue_permit(SCOPE, cid, gen)
+    assert await port.record_call(SCOPE, cid, gen, call_id) is True
+    # a completion needs the writer's own signed class-a record of this call; no record -> refused
+    await refused(port.complete_signed(SCOPE, cid, gen, "SUCCESS", None), "EVIDENCE_UNSIGNED")
+    done = await evidence(conn, port, cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True},
+                          actor="writer")
+    assert await port.complete_signed(SCOPE, cid, gen, "SUCCESS", done) == "APPLIED"
+    # verification verdict is derived from three signed typed records, never from a caller flag
+    ids = [await evidence(conn, port, cid, k, {"matches": True}) for k in ("FIELD", "MOVEMENT", "VERSION")]
+    assert await port.verify_signed(SCOPE, cid, *ids) == "VERIFIED"
+    assert await conn.fetchval("SELECT verification_state FROM change_ledger.records WHERE change_id=$1",
+                               cid) == "VERIFIED"
+    assert (await port.read_status(SCOPE, cid, as_class="auditor"))["verification"] == "VERIFIED"
+    assert (await port.verify_chain(SCOPE, as_class="auditor"))["ok"] is True
+
+
+async def test_approve_compares_the_sql_computed_digest(env):
+    conn, port = env
+    cid = uuid.uuid4()
+    await port.propose(SCOPE, cid, "CREATE_DRAFT", BASE, ORG, "clt_alice", uuid.uuid4().hex, DIGEST, "doc1", "v1",
+                       None, exp())
+    await port.validate(SCOPE, cid, False, True)
+    nonce = await port.issue_approval_nonce(SCOPE, cid)
+    # the caller can no longer pick the digest: the requester's own payload digest is not the approval digest
+    await refused(port.approve(SCOPE, cid, nonce, DIGEST), "DIGEST_MISMATCH")
+    status = await port.read_status(SCOPE, cid, as_class="approver")
+    assert status["approval_digest"] and status["approved_digest"] is None
+    assert isinstance(await port.approve(SCOPE, cid, nonce, status["approval_digest"]), uuid.UUID)
+    # 007 A2: an already approved change gets no new nonce
+    await refused(port.issue_approval_nonce(SCOPE, cid), "FORBIDDEN_TRANSITION")
 
 
 # ============================================================================ gate consistency with SQL
@@ -268,7 +387,6 @@ async def test_gate_maps_a_sql_refusal_after_the_checkpoint(env):
     conn, port = env
     cid, gen, _ = await applying(port)
     await port.kill_switch(SCOPE, "STOP_ADMIT")
-    from business_ai_gateway.phase2.change_ledger.checkpoint import PermitRefused
     with pytest.raises(PermitRefused) as e:
         await real_gate(port).issue_permit(SCOPE, cid, gen)
     assert e.value.code == "KILL_SWITCH_ACTIVE" or e.value.code.startswith("KILL")
@@ -278,16 +396,24 @@ async def test_gate_maps_a_sql_refusal_after_the_checkpoint(env):
 def test_evidence_binding_mirrors_sql_formula():
     at = datetime(2026, 10, 12, 12, 0, 0, 123456, tzinfo=UTC)
     cid = uuid.UUID(int=7)
-    want = hashlib.sha256(f"{cid}:FIELD:{'a' * 64}:2026-10-12T12:00:00.123456Z".encode()).hexdigest()
-    assert evidence_binding(str(cid), "FIELD", "a" * 64, at) == want
+    call = uuid.UUID(int=9)
+    want = hashlib.sha256(f"{cid}:FIELD:{'a' * 64}:2026-10-12T12:00:00.123456Z:3:{call}".encode()).hexdigest()
+    assert evidence_binding(str(cid), "FIELD", "a" * 64, at, 3, call) == want
+    none = hashlib.sha256(f"{cid}:AUTH_RECEIPT:{'a' * 64}:2026-10-12T12:00:00.123456Z::".encode()).hexdigest()
+    assert evidence_binding(str(cid), "AUTH_RECEIPT", "a" * 64, at) == none
 
 
 async def test_evidence_binding_equals_sql_function(env):
     conn, _ = env
     at = datetime(2026, 10, 12, 12, 0, 0, 123456, tzinfo=UTC)
     cid = uuid.uuid4()
-    sql = await conn.fetchval("SELECT change_ledger.evidence_binding($1,'FIELD',$2,$3)", cid, "a" * 64, at)
-    assert sql == evidence_binding(str(cid), "FIELD", "a" * 64, at)
+    call = uuid.uuid4()
+    sql = await conn.fetchval("SELECT change_ledger.evidence_binding($1,'FIELD',$2,$3,$4,$5)", cid, "a" * 64, at,
+                              3, call)
+    assert sql == evidence_binding(str(cid), "FIELD", "a" * 64, at, 3, call)
+    sql = await conn.fetchval("SELECT change_ledger.evidence_binding($1,'AUTH_RECEIPT',$2,$3,NULL,NULL)", cid,
+                              "a" * 64, at)
+    assert sql == evidence_binding(str(cid), "AUTH_RECEIPT", "a" * 64, at)
 
 
 # ============================================================================ roles and scope through the port

@@ -270,13 +270,13 @@ BEGIN
   cls := p_content->>'class';
   IF cls IS NULL OR cls NOT IN ('a','b') THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
   IF (cls='a' AND NOT is_writer) OR (cls='b' AND NOT is_worker) THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
-  IF jsonb_typeof(p_content->'result_returned')<>'boolean' THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+  IF jsonb_typeof(p_content->'result_returned') IS DISTINCT FROM 'boolean' THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
  ELSIF p_kind='OBSERVATION' THEN
   IF p_content ? 'effect_present' AND jsonb_typeof(p_content->'effect_present')<>'boolean' THEN
    RAISE EXCEPTION 'SCHEMA_INVALID';
   END IF;
  ELSIF p_kind IN ('FIELD','MOVEMENT','VERSION') THEN
-  IF jsonb_typeof(p_content->'matches')<>'boolean' THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+  IF jsonb_typeof(p_content->'matches') IS DISTINCT FROM 'boolean' THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
  ELSIF p_kind='AUTH_RECEIPT' THEN
   IF NOT EXISTS(SELECT 1 FROM change_ledger.approvals a WHERE a.change_id=p_change_id
     AND a.approval_id::text = p_content->>'approval_id') THEN
@@ -510,7 +510,9 @@ CREATE OR REPLACE FUNCTION change_ledger.resolve_unknown(
 DECLARE rec change_ledger.records%ROWTYPE; new_exec text;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
- IF p_change_id IS NULL OR p_observation IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ IF p_change_id IS NULL OR p_observation IS NULL OR p_found IS NULL OR p_attributed IS NULL THEN
+  RAISE EXCEPTION 'SCHEMA_INVALID';
+ END IF;
  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
@@ -519,7 +521,7 @@ BEGIN
   IF rec.execution_state IN ('APPLIED','FAILED_APPLY','TRIAGE_REQUIRED') THEN RETURN rec.execution_state; END IF;
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
  END IF;
- IF p_found IS NULL OR p_found THEN
+ IF p_found THEN
   new_exec:='TRIAGE_REQUIRED';
   UPDATE change_ledger.records SET execution_state=new_exec, updated_at=clock_timestamp()
    WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
@@ -563,6 +565,21 @@ BEGIN
                  THEN (obs.content->>'effect_present')::boolean END;
  IF p_found IS DISTINCT FROM derived THEN RAISE EXCEPTION 'DIGEST_MISMATCH'; END IF;
  body := jsonb_build_object('observation_evidence',obs.evidence_id);
+ IF derived IS NULL THEN
+  -- inconclusive observation (no effect_present verdict): explicit T12 path to triage, never a release
+  SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+   AND change_id=p_change_id FOR UPDATE;
+  PERFORM change_ledger.recheck_scope_locked(t,c);
+  IF rec.execution_state<>'APPLY_UNKNOWN' THEN
+   IF rec.execution_state IN ('APPLIED','FAILED_APPLY','TRIAGE_REQUIRED') THEN RETURN rec.execution_state; END IF;
+   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
+  END IF;
+  UPDATE change_ledger.records SET execution_state='TRIAGE_REQUIRED', updated_at=clock_timestamp()
+   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+  PERFORM change_ledger.append_event(t,c,p_change_id,'RESOLVE_UNKNOWN',
+   jsonb_build_object('found',NULL::boolean,'attributed_claim',coalesce(p_attributed,false),'observation',body));
+  RETURN 'TRIAGE_REQUIRED';
+ END IF;
  IF p_completion IS NOT NULL THEN
   cp := change_ledger.evidence_ref(t,c,p_change_id,p_completion,'COMPLETION_PROOF');
   IF cp.generation IS DISTINCT FROM rec.claim_generation OR cp.call_id IS DISTINCT FROM obs.call_id THEN
@@ -572,6 +589,24 @@ BEGIN
    jsonb_build_object('class',cp.content->>'class','evidence_id',cp.evidence_id));
  END IF;
  RETURN change_ledger.resolve_unknown(t,c,p_change_id,body,derived,p_attributed);
+END $fn$;
+
+-- A1: a witness cosign needs a completion proof of the CURRENT generation and of that generation's call
+CREATE OR REPLACE FUNCTION change_ledger.witness_cosign_signed(t text, c text, p_change_id uuid, p_completion uuid)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE cp change_ledger.evidence_records; rec change_ledger.records%ROWTYPE; dp_call uuid;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ IF p_change_id IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ cp := change_ledger.evidence_ref(t,c,p_change_id,p_completion,'COMPLETION_PROOF');
+ IF cp.generation IS DISTINCT FROM rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ SELECT dp.call_id INTO dp_call FROM change_ledger.dispatch_permits dp
+  WHERE dp.change_id=p_change_id AND dp.generation=rec.claim_generation;
+ IF NOT FOUND OR cp.call_id IS DISTINCT FROM dp_call THEN RAISE EXCEPTION 'PERMIT_MISSING'; END IF;
+ RETURN change_ledger.witness_cosign(t,c,p_change_id,jsonb_build_object('class',cp.content->>'class',
+  'evidence_id',cp.evidence_id,'attribution_proof',coalesce((cp.content->>'attribution_proof')::boolean,false)));
 END $fn$;
 
 -- ================================================================== A1/A3/A5 verify
@@ -935,8 +970,7 @@ GRANT USAGE ON SCHEMA change_ledger TO checkpoint_role;
 GRANT EXECUTE ON FUNCTION change_ledger.caller_role(), change_ledger.row_in_scope(text,text),
  change_ledger.set_scope(text,text), change_ledger.ledger_head(text,text) TO checkpoint_role;
 GRANT EXECUTE ON FUNCTION change_ledger.canonical_content_hash(jsonb), change_ledger.keyed_signature(text,text),
- change_ledger.checkpoint_payload(text,text,bigint,text,timestamptz,text,text,text),
- change_ledger.evidence_binding(uuid,text,text,timestamptz,bigint,uuid)
+ change_ledger.checkpoint_payload(text,text,bigint,text,timestamptz,text,text,text)
  TO requester_role, approver_role, operator_role, writer_role, worker_role, auditor_role, checkpoint_role;
 
 -- A1: the raw variants are internals of the signed wrappers; no runtime role may call them

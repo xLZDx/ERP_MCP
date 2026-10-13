@@ -46,15 +46,24 @@ async def counter(led, cid, kind):
 
 async def failed_verify(led, **kw):
     cid, tok, _ = await led.dispatched(**kw)
-    await led.call("clt_wri", "complete", cid, tok["generation"], "SUCCESS", "{}", None)
-    assert await led.call("clt_wrk", "verify", cid, '{"s":1}', False) == "FAILED_VERIFY"
+    assert await led.complete(cid, tok["generation"], "SUCCESS") == "APPLIED"
+    assert await led.verify(cid, False) == "FAILED_VERIFY"
     return cid
 
 
 async def applied(led, **kw):
     cid, tok, _ = await led.dispatched(**kw)
-    await led.call("clt_wri", "complete", cid, tok["generation"], "SUCCESS", "{}", None)
+    assert await led.complete(cid, tok["generation"], "SUCCESS") == "APPLIED"
     return cid
+
+
+async def lock_busy_proof(led, cid, gen, code="LOCK_BUSY"):
+    """The writer's signed class-a completion record of a pre-write LOCK_BUSY refusal (007: replaces the raw
+    proof argument of complete_lock_busy)."""
+    return await led.evidence(cid, "COMPLETION_PROOF",
+                              {"class": "a", "result_returned": False, "stage": "PRE_WRITE", "refusal_code": code,
+                               "no_effect_proof": {"proof": "platform lock busy before write"}},
+                              role="clt_wri", gen=gen)
 
 
 # ============================================================================ schema / privileges
@@ -87,8 +96,11 @@ async def test_006_objects_are_hardened_and_not_reachable_directly(led):
             ("clt_wrk", "operator_close_failed_verify", f"'{cid}','{cid}',true"),
             ("clt_alice", "renew_writer_lease", f"'{cid}',1,10"), ("clt_wrk", "renew_writer_lease", f"'{cid}',1,10"),
             ("clt_wrk", "fence_check", f"'{cid}',1,'{cid}'"), ("clt_alice", "declare_unclean_restart", "NULL,'{}'::jsonb"),
-            ("clt_alice", "declare_anchor_gap", "NULL,'{}'::jsonb"), ("clt_wri", "retry_verify", f"'{cid}','{{}}'::jsonb,true"),
-            ("clt_alice", "complete_lock_busy", f"'{cid}',1,'{{}}'::jsonb,'{{}}'::jsonb")]
+            ("clt_alice", "declare_anchor_gap", "NULL,'{}'::jsonb"),
+            ("clt_wri", "retry_verify", f"'{cid}','{cid}','{cid}','{cid}'"),                   # 007: evidence ids
+            ("clt_alice", "retry_verify", f"'{cid}','{cid}','{cid}','{cid}'"),
+            ("clt_alice", "complete_lock_busy", f"'{cid}',1,'{cid}','{{}}'::jsonb"),
+            ("clt_wrk", "complete_lock_busy", f"'{cid}',1,'{cid}','{{}}'::jsonb")]            # writer only
     for role, fn, args in deny:
         await fails("permission denied", led.sql(role, f"SELECT change_ledger.{fn}('T1','C1',{args})"))
 
@@ -188,7 +200,7 @@ async def test_t9_hard_deadline_makes_dispatched_apply_unknown_with_hold(led):
     assert (await sweep(led))["T9"] == []                                   # idempotent, hold not duplicated
     assert await led.open_holds("CALL_OWNERSHIP") == 1
     # a late writer SUCCESS cannot turn the unknown outcome into APPLIED
-    assert await led.call("clt_wri", "complete", cid, tok["generation"], "SUCCESS", "{}", None) == "APPLY_UNKNOWN"
+    assert await led.complete(cid, tok["generation"], "SUCCESS") == "APPLY_UNKNOWN"
     assert (await led.rec(cid))["execution_state"] == "APPLY_UNKNOWN"
 
 
@@ -235,8 +247,8 @@ async def test_t12_window_triages_before_five_attempts_and_jitter_is_bounded(led
 async def test_resolved_unknown_leaves_the_sweep(led):
     cid, _, _ = await led.unknown(request_id="x1", base="base-1")
     await sweep(led, **FAST)
-    assert await led.call("clt_wrk", "resolve_unknown", cid, '{"completion_proof":{"class":"a"}}', False,
-                          False) == "FAILED_APPLY"
+    # 007: signed OBSERVATION (effect absent) + signed class-a COMPLETION_PROOF instead of the raw observation json
+    assert await led.resolve_unknown(cid, False, proof="a") == "FAILED_APPLY"
     assert (await sweep(led, **FAST))["changed"] == 0
     assert (await counter(led, cid, "RESOLVE"))["attempts"] == 1
 
@@ -266,33 +278,42 @@ async def test_stuck_verification_counts_attempts_then_fails_verify_unknown_with
 
 async def test_verify_inconclusive_is_bounded_and_worker_only(led):
     cid = await applied(led, request_id="v2", base="base-1")
+    # 007: the evidence is a signed OBSERVATION record that says inconclusive (no raw json argument)
     await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "verify_inconclusive", cid, None))
+    plain = await led.observation(cid, True)                                   # an observation that is not inconclusive
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "verify_inconclusive", cid, plain))
+    assert (await counter(led, cid, "VERIFY")) is None                          # nothing was counted
     for n in (1, 2):
-        got = await led.call("clt_wrk", "verify_inconclusive", cid, '{"reader":"down"}')
+        obs = await led.observation(cid, None, inconclusive=True, reader="down")
+        got = await led.call("clt_wrk", "verify_inconclusive", cid, obs)
         assert json.loads(got) == {"attempts": n, "exhausted": False}
-    got = json.loads(await led.call("clt_wrk", "verify_inconclusive", cid, '{"reader":"down"}'))
+    obs = await led.observation(cid, None, inconclusive=True, reader="down")
+    got = json.loads(await led.call("clt_wrk", "verify_inconclusive", cid, obs))
     assert got == {"attempts": 3, "exhausted": True}
     assert (await led.rec(cid))["verification_state"] == "FAILED_VERIFY"
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_wrk", "verify_inconclusive", cid, '{"x":1}'))
-    await fails("permission denied", led.call("clt_alice", "verify_inconclusive", cid, '{"x":1}'))
+    obs = await led.observation(cid, None, inconclusive=True, reader="down")
+    await fails("FORBIDDEN_TRANSITION", led.call("clt_wrk", "verify_inconclusive", cid, obs))
+    await fails("permission denied", led.call("clt_alice", "verify_inconclusive", cid, obs))
 
 
 async def test_t17_retry_verify_is_bounded_by_three_and_a_pass_releases_the_halt(led):
     cid = await failed_verify(led, request_id="t17a", base="base-1")
-    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "retry_verify", cid, None, True))
-    assert await led.call("clt_wrk", "retry_verify", cid, '{"s":2}', False) == "FAILED_VERIFY"
-    assert await led.call("clt_wrk", "retry_verify", cid, '{"s":3}', False) == "FAILED_VERIFY"
-    assert await led.call("clt_wrk", "retry_verify", cid, '{"s":4}', False) == "FAILED_VERIFY"
-    await fails("VERIFY_FAILED", led.call("clt_wrk", "retry_verify", cid, '{"s":5}', True))
+    # 007: retry_verify takes the ids of signed FIELD / MOVEMENT / VERSION records; the verdict is derived from them
+    await fails("EVIDENCE_UNSIGNED", led.call("clt_wrk", "retry_verify", cid, None, None, None))
+    assert (await counter(led, cid, "VERIFY_RETRY")) is None                    # a refused call is not counted
+    assert await led.verify(cid, False, fn="retry_verify") == "FAILED_VERIFY"
+    assert await led.verify(cid, False, fn="retry_verify") == "FAILED_VERIFY"
+    assert await led.verify(cid, False, fn="retry_verify") == "FAILED_VERIFY"
+    await fails("VERIFY_FAILED", led.verify(cid, True, fn="retry_verify"))      # the 4th attempt is refused
     assert (await counter(led, cid, "VERIFY_RETRY"))["attempts"] == 3
     assert await led.open_holds("FAILED_VERIFY_HALT") == 1
     ok = await failed_verify(led, request_id="t17b", base="base-2")
-    assert await led.call("clt_wrk", "retry_verify", ok, '{"s":9}', True) == "VERIFIED"
+    assert await led.verify(ok, True, fn="retry_verify") == "VERIFIED"
     r = await led.rec(ok)
     assert r["verification_state"] == "VERIFIED" and await led.locks(ok) == (0, 0, 0)
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.holds WHERE change_id=$1 AND "
                                    "released_at IS NOT NULL", ok) == 1
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_wrk", "retry_verify", ok, '{"s":9}', True))
+    await fails("FORBIDDEN_TRANSITION", led.verify(ok, True, fn="retry_verify"))
 
 
 # ============================================================================ T8 LOCK_BUSY
@@ -301,16 +322,22 @@ async def test_lock_busy_retries_five_times_with_a_gate_then_takes_the_definite_
     await led.call("clt_dave", "budget_admin", gid, "EUR", 1000, 9, 9, datetime.now(UTC) - timedelta(hours=1),
                    datetime.now(UTC) + timedelta(hours=1))
     cid = await led.approved(request_id="lb", base="base-1")
-    proof = '{"proof":"platform lock busy before write"}'
     fast = json.dumps({"lock_busy_interval_seconds": 0, "lock_busy_jitter_seconds": 0})
     slow = json.dumps({"lock_busy_interval_seconds": 3600, "lock_busy_jitter_seconds": 0})
     for n in range(1, 6):
         tok = await led.claimed(cid, grant=gid, amount=5)
         await led.call("clt_alice", "begin_apply", tok["token_id"], uuid.uuid4(), "h", "s")
         if n == 1:
-            await fails("WRITE_REFUSED", led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], "{}",
+            # 007: the no-effect proof is part of the signed completion record; no record = no refusal
+            await fails("WRITE_REFUSED", led.call("clt_wri", "complete_lock_busy", cid, tok["generation"],
                                                   None, fast))
-        assert await led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], "{}", proof, fast) \
+            # a signed refusal with another code is not a LOCK_BUSY refusal
+            wrong = await lock_busy_proof(led, cid, tok["generation"], code="STALE_VERSION")
+            await fails("WRITE_REFUSED", led.call("clt_wri", "complete_lock_busy", cid, tok["generation"],
+                                                  wrong, fast))
+            assert await counter(led, cid, "LOCK_BUSY") is None
+        proof = await lock_busy_proof(led, cid, tok["generation"])
+        assert await led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], proof, fast) \
             == "APPROVED"
         r = await led.rec(cid)
         assert (r["authorization_state"], r["execution_state"], r["reservation_state"]) == \
@@ -321,14 +348,16 @@ async def test_lock_busy_retries_five_times_with_a_gate_then_takes_the_definite_
     # the 6th busy refusal is definite
     tok = await led.claimed(cid, grant=gid, amount=5)
     await led.call("clt_alice", "begin_apply", tok["token_id"], uuid.uuid4(), "h", "s")
-    assert await led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], "{}", proof, fast) == "FAILED_APPLY"
+    proof = await lock_busy_proof(led, cid, tok["generation"])
+    assert await led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], proof, fast) == "FAILED_APPLY"
     assert await led.locks(cid) == (0, 0, 0) and (await led.rec(cid))["execution_state"] == "FAILED_APPLY"
     assert (await counter(led, cid, "LOCK_BUSY"))["close_reason"] == "DEFINITE"
     # the interval gate: a claim before next_attempt_at is refused, after it is allowed
     c2 = await led.approved(request_id="lb2", base="base-2")
     t2 = await led.claimed(c2, key="e" * 64)
     await led.call("clt_alice", "begin_apply", t2["token_id"], uuid.uuid4(), "h", "s")
-    assert await led.call("clt_wri", "complete_lock_busy", c2, t2["generation"], "{}", proof, slow) == "APPROVED"
+    proof = await lock_busy_proof(led, c2, t2["generation"])
+    assert await led.call("clt_wri", "complete_lock_busy", c2, t2["generation"], proof, slow) == "APPROVED"
     await fails("LOCK_BUSY", led.claimed(c2, key="e" * 64))
     assert (await led.rec(c2))["authorization_state"] == "APPROVED"
     await led.conn.execute("UPDATE change_ledger.sweep_counters SET next_attempt_at=now()-interval '1 second' "
@@ -339,7 +368,8 @@ async def test_lock_busy_retries_five_times_with_a_gate_then_takes_the_definite_
     t3 = await led.claimed(c3, key="d" * 64)
     await led.call("clt_alice", "begin_apply", t3["token_id"], uuid.uuid4(), "h", "s")
     zero = json.dumps({"lock_busy_window_seconds": 0})
-    assert await led.call("clt_wri", "complete_lock_busy", c3, t3["generation"], "{}", proof, zero) == "FAILED_APPLY"
+    proof = await lock_busy_proof(led, c3, t3["generation"])
+    assert await led.call("clt_wri", "complete_lock_busy", c3, t3["generation"], proof, zero) == "FAILED_APPLY"
 
 
 # ============================================================================ ANCHOR_GAP
@@ -429,11 +459,19 @@ async def test_t17_operator_closure_needs_two_persons_and_completion_proof(led):
     cid = await failed_verify(led, request_id="c1", base="base-1")
     await led.conn.execute("UPDATE change_ledger.records SET effect_known='UNKNOWN' WHERE change_id=$1", cid)
     await fails("COMPLETION_PROOF_MISSING", led.call("clt_dave", "operator_close_failed_verify", cid, uuid.uuid4(), True))
-    weak = await led.call("clt_erin", "witness_cosign", cid, '{"note":"looks fine"}')
+    # 007: the raw witness_cosign is revoked and a signed completion proof must carry class a or b, so a "weak"
+    # cosign can no longer be created through the API: refuse it at the source ...
+    await fails("permission denied", led.call("clt_erin", "witness_cosign", cid, '{"class":"a"}'))
+    await fails("SCHEMA_INVALID", led.evidence(cid, "COMPLETION_PROOF", {"class": "x", "result_returned": False},
+                                               role="clt_wri"))
+    # ... and keep the guard of operator_close_failed_verify itself: a stored cosign whose proof lost its class
+    weak = await led.cosign("clt_erin", cid, cls="a")
+    await led.conn.execute("UPDATE change_ledger.witness_cosigns SET completion_proof='{\"note\":\"looks fine\"}'::jsonb "
+                           "WHERE cosign_id=$1", weak)
     await fails("COMPLETION_PROOF_MISSING", led.call("clt_dave", "operator_close_failed_verify", cid, weak, True))
-    own = await led.call("clt_dave", "witness_cosign", cid, '{"class":"a"}')
+    own = await led.cosign("clt_dave", cid, cls="a")
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_close_failed_verify", cid, own, True))
-    good = await led.call("clt_erin", "witness_cosign", cid, '{"class":"b"}')
+    good = await led.cosign("clt_erin", cid, cls="b")
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_erin", "operator_close_failed_verify", cid, good, True))
     assert await led.open_holds("FAILED_VERIFY_HALT") == 1 and await led.locks(cid) == (1, 0, 0)
     assert await led.call("clt_dave", "operator_close_failed_verify", cid, good, True) == "CLOSED"
@@ -445,14 +483,14 @@ async def test_t17_operator_closure_needs_two_persons_and_completion_proof(led):
     assert await led.conn.fetchval("SELECT consumed_at IS NOT NULL FROM change_ledger.witness_cosigns "
                                    "WHERE cosign_id=$1", good)
     await fails("FORBIDDEN_TRANSITION", led.call("clt_dave", "operator_close_failed_verify", cid, good, True))
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_wrk", "retry_verify", cid, '{"s":1}', True))
+    await fails("FORBIDDEN_TRANSITION", led.verify(cid, True, fn="retry_verify"))
     # the base is usable again
     await led.claimed(await led.approved(request_id="c1b", base="base-1", target="doc2"), key="8" * 64)
 
 
 async def test_t17_refund_needs_effect_not_yes_and_requester_cannot_close_own_change(led):
     cid = await failed_verify(led, request_id="c2", base="base-1")             # effect_known = YES
-    w = await led.call("clt_erin", "witness_cosign", cid, '{"class":"a"}')
+    w = await led.cosign("clt_erin", cid, cls="a")
     await fails("FORBIDDEN_TRANSITION", led.call("clt_dave", "operator_close_failed_verify", cid, w, False))
     assert await led.open_holds("FAILED_VERIFY_HALT") == 1
     gid = uuid.uuid4()
@@ -465,14 +503,14 @@ async def test_t17_refund_needs_effect_not_yes_and_requester_cannot_close_own_ch
     await led.checkpoint()
     await led.call("clt_wrk", "issue_permit", c2, t2["generation"])
     await led.call("clt_wri", "record_call", c2, t2["generation"], k)
-    await led.call("clt_wri", "complete", c2, t2["generation"], "SUCCESS", "{}", None)
-    await led.call("clt_wrk", "verify", c2, '{"s":1}', False)
+    assert await led.complete(c2, t2["generation"], "SUCCESS") == "APPLIED"
+    assert await led.verify(c2, False) == "FAILED_VERIFY"
     await led.conn.execute("UPDATE change_ledger.records SET effect_known='NO' WHERE change_id=$1", c2)
-    own = await led.call("clt_erin", "witness_cosign", c2, '{"class":"a"}')
+    own = await led.cosign("clt_erin", c2, cls="a")
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_dave", "operator_close_failed_verify", c2, own, False))
     await led.conn.execute("GRANT operator_role TO clt_carol")
     await led.conn.execute("SELECT change_ledger.add_role_scope('clt_carol',$1,$2)", T, C)
-    ok = await led.call("clt_carol", "witness_cosign", c2, '{"class":"a"}')
+    ok = await led.cosign("clt_carol", c2, cls="a")
     assert await led.call("clt_erin", "operator_close_failed_verify", c2, ok, False) == "CLOSED"
     r = await led.rec(c2)
     assert (r["effect_known"], r["reservation_state"]) == ("NO", "RELEASED")
@@ -484,7 +522,7 @@ async def test_t17_closure_refused_while_a_repair_owns_the_target_lock(led):
     parent = await _failed_parent(led)
     rep = await _repair(led, parent)
     await led.claimed(rep, key="5" * 64)
-    w = await led.call("clt_erin", "witness_cosign", parent, '{"class":"a"}')
+    w = await led.cosign("clt_erin", parent, cls="a")
     await fails("LOCK_BUSY", led.call("clt_dave", "operator_close_failed_verify", parent, w, True))
     assert await led.tl_owner(BASE, "doc1") == rep and await led.open_holds("FAILED_VERIFY_HALT") == 1
 
@@ -525,7 +563,7 @@ async def test_revoke_voids_unclaimed_approvals_and_released_claims_and_reenable
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.sweep_runs") == runs + 1
     await fails("APPROVAL_VOIDED", led.claimed(app))                          # a new approval is needed
     nonce = await led.call("clt_bob", "issue_approval_nonce", app)
-    await led.call("clt_bob", "approve", app, nonce, DIGEST)
+    await led.call("clt_bob", "approve", app, nonce, await led.approval_digest(app))     # 007: SQL-computed digest
     await led.claimed(app)
 
 
@@ -566,7 +604,7 @@ async def test_lease_renewal_and_fence_before_each_call(led):
     await fails("TICKET_SUPERSEDED", led.call("clt_wri", "renew_writer_lease", cid, gen, 60))
     await fails("TICKET_SUPERSEDED", led.call("clt_wri", "fence_check", cid, gen, call_id))
     # outside APPLYING nothing renews
-    await led.call("clt_wri", "complete", cid, gen, "SUCCESS", "{}", None)
+    await led.complete(cid, gen, "SUCCESS")
     await fails("FORBIDDEN_TRANSITION", led.call("clt_wri", "renew_writer_lease", cid, gen, 60))
 
 
