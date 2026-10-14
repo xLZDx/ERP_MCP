@@ -28,7 +28,23 @@ async def led():
         yield L(db)
 
 
+CONTRACT_KEYS = {"claim_ttl_seconds", "permit_ttl_seconds", "t12_window_seconds", "t12_max_attempts",
+                 "anchor_gap_window_seconds", "verify_max_attempts"}
+
+
 async def sweep(led, **params):
+    """008 (B5): contract constants are no longer worker parameters (NOT_ENTITLED). A test that shrinks one arranges
+    the scope's policy row as superuser (the operator-set row, exactly what set_sweep_policy writes without its
+    range floor); the remaining cadence keys stay parameters. Every call resets the row, so a call without
+    contract keys runs with the ledger constants as before."""
+    contract = {k: params.pop(k) for k in list(params) if k in CONTRACT_KEYS}
+    if contract:
+        await led.conn.execute(
+            "INSERT INTO change_ledger.sweep_policy(tenant_id,company_id,params,updated_by) "
+            "VALUES('T1','C1',$1::jsonb,'fixture') ON CONFLICT(tenant_id,company_id) DO UPDATE SET "
+            "params=EXCLUDED.params", json.dumps(contract))
+    else:
+        await led.conn.execute("DELETE FROM change_ledger.sweep_policy WHERE tenant_id='T1' AND company_id='C1'")
     got = await led.call("clt_wrk", "recover_sweep", json.dumps(params))
     return json.loads(got) if isinstance(got, str) else got
 

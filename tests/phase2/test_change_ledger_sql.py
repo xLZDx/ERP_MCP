@@ -1295,7 +1295,11 @@ async def test_a1_witness_cosign_needs_a_completion_proof_of_the_current_generat
     tok1 = await led.claimed(cid)
     await led.call("clt_alice", "begin_apply", tok1["token_id"], uuid.uuid4(), "h", "s")
     old = await led.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wri")
-    await led.call("clt_wrk", "recover_sweep", json.dumps({"permit_ttl_seconds": 0}))      # T6r releases the claim
+    # 008 (B5): the permit TTL is a ledger constant / the operator's policy row, no worker parameter any more
+    await led.conn.execute("INSERT INTO change_ledger.sweep_policy(tenant_id,company_id,params,updated_by) "
+                           "VALUES($1,$2,'{\"permit_ttl_seconds\":0}'::jsonb,'fixture')", T, C)
+    await led.call("clt_wrk", "recover_sweep", "{}")                                          # T6r releases the claim
+    await led.conn.execute("DELETE FROM change_ledger.sweep_policy")
     tok2 = await led.claimed(cid)
     assert tok2["generation"] == 2
     call2 = uuid.uuid4()
