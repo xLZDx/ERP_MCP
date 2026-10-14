@@ -283,7 +283,8 @@ async def test_b3_a_scope_without_a_registry_policy_row_is_enforced_and_refuses_
                                          DIGEST, "d", "v1", None, exp(), None))
     assert await c.fetchval("SELECT count(*) FROM change_ledger.records") == 0
     # registered: accepted
-    await led.call("clt_dave", "register_principal", "clt_new", "person-new", ["requester"], True)
+    await led.dual("PRINCIPAL", {"principal": "clt_new", "person_id": "person-new", "capabilities": ["requester"],
+                                 "active": True})        # 010 (C1): a new principal needs two operators
     assert await led.call("clt_new", "propose", uuid.uuid4(), "CREATE_DRAFT", BASE, ORG, "clt_new", "r2", DIGEST, "d",
                           "v1", None, exp(), None) is not None
     # an approver without registration is refused as well, and enforce_registry stores the row it implies

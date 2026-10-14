@@ -98,6 +98,20 @@ class L:
     async def rec(self, cid):
         return await self.conn.fetchrow("SELECT * FROM change_ledger.records WHERE change_id=$1", cid)
 
+    async def arrange_principal(self, principal, person, caps, active=True, who="clt_dave", t=T, c=C):
+        """Registry fixture (010, C1): register_principal no longer lets ONE operator widen the registry, so a test that
+        only needs a principal in a given state arranges it through the ledger's own core as superuser: the same row,
+        the same epoch bump and the same PRINCIPAL_REGISTERED / EPOCH_BUMPED events the public function wrote before."""
+        return await self.conn.fetchval("SELECT change_ledger.register_principal_core($1,$2,$3,$4,$5,$6,$7)",
+                                        t, c, principal, person, caps, active, who)
+
+    async def dual(self, kind, params, proposer="clt_dave", approver="clt_erin", t=T, c=C):
+        """A registry change through two operators (propose_registry_change, then approve_registry_change)."""
+        cid = await self.call(proposer, "propose_registry_change", kind, json.dumps(params), t=t, c=c)
+        dg = await self.conn.fetchval("SELECT params_digest FROM change_ledger.registry_changes WHERE change_id=$1", cid)
+        got = await self.call(approver, "approve_registry_change", cid, dg, t=t, c=c)
+        return json.loads(got) if isinstance(got, str) else got
+
     async def locks(self, cid):
         tl = await self.conn.fetchval(
             "SELECT count(*) FROM change_ledger.target_locks WHERE owner_change_id=$1", cid)
@@ -1538,7 +1552,7 @@ async def test_a8_two_person_cosign_compares_persons_and_capabilities_under_an_e
     await led.conn.execute("GRANT operator_role TO clt_carol")
 
     async def reg(principal, person, caps):
-        await led.call("clt_carol", "register_principal", principal, person, caps, True)
+        await led.arrange_principal(principal, person, caps, True, who="clt_carol")       # 010: arranged, see L
 
     await reg("clt_carol", "P-ADMIN", ["operator"])
     await reg("clt_dave", "P-OP", ["operator"])

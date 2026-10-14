@@ -63,7 +63,7 @@ class R(L):
         return js(await self.call(role, name, *args, **kw))
 
     async def reg(self, principal, person, caps, active=True):
-        return await self.call("clt_dave", "register_principal", principal, person, caps, active)
+        return await self.arrange_principal(principal, person, caps, active)     # 010 (C1): see L.arrange_principal
 
     async def bind(self, cid, kind, ch, at, gen, call_id):
         return await self.conn.fetchval("SELECT change_ledger.evidence_binding($1,$2,$3,$4,$5,$6)",
@@ -398,8 +398,11 @@ async def test_enforced_registry_refuses_unregistered_actors_and_cannot_be_switc
 # ============================================================================ (2) target registry
 async def test_register_target_normalizes_classes_and_limits_proposals(reg):
     far = datetime.now(UTC) + timedelta(days=1)
-    await reg.call("clt_dave", "register_target", "base-new", ORG, "CLONE", "ACTIVE", far)
-    await reg.call("clt_dave", "register_target", "base-prod", ORG, "prod", "ACTIVE", None)
+    # 010 (C1): a NEW target widens the registry, so two operators register it (the same normalization and core)
+    await reg.dual("TARGET", {"base": "base-new", "organization": ORG, "class": "CLONE", "status": "ACTIVE",
+                              "permission_expires_at": far.isoformat()})
+    await reg.dual("TARGET", {"base": "base-prod", "organization": ORG, "class": "prod", "status": "ACTIVE",
+                              "permission_expires_at": None})
     rows = await reg.conn.fetch("SELECT base_fingerprint, target_class FROM change_ledger.targets "
                                 "WHERE base_fingerprint IN ('base-new','base-prod') ORDER BY 1")
     assert [tuple(r) for r in rows] == [("base-new", "DISPOSABLE_CLONE"), ("base-prod", "PRODUCTION")]
