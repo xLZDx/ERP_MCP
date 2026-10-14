@@ -34,19 +34,23 @@ from urllib.parse import urlsplit
 
 import asyncpg
 import pytest
+from _approval_envelope import FIXTURE_DIGEST, ensure_envelope
 
 pytestmark = pytest.mark.integration
 
 MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
 FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql",
-         "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql")
+         "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql",
+         "008_change_hardening_b.sql", "009_approval_digest_2.sql")
 CONTAINER_PREFIX = "r2-s13-dump-"
 
 T, C = "T1", "C1"
 T2, C2 = "T2", "C2"
 ORG = "org-1"
-DIGEST = "a" * 64
+DIGEST = FIXTURE_DIGEST  # S12-APPROVAL-2: the ledger recomputes the payload digest of the stored envelope
 KH = "b" * 64
+DEFAULT_GRANT = {(T, C): uuid.UUID("00000000-0000-4000-8000-0000000000a1"),
+                 (T2, C2): uuid.UUID("00000000-0000-4000-8000-0000000000a2")}
 ACTORS = {
     "clt_alice": (["requester_role"], [(T, C)]),
     "clt_bob": (["approver_role"], [(T, C)]),
@@ -57,6 +61,8 @@ ACTORS = {
     "clt_zed": (["requester_role"], [(T2, C2)]),
     "clt_chk": (["checkpoint_role"], [(T, C)]),
 }
+CAPS = {"clt_alice": ["requester"], "clt_bob": ["approver"], "clt_dave": ["operator", "requester", "recovery_witness"],
+        "clt_zed": ["requester"]}
 SIGN_KEYS = {"clt_wrk": ("vk-wrk", "W" * 32, "clt_wrk"), "clt_wri": ("vk-wri", "R" * 32, "clt_wri"),
              "clt_chk": ("vk-chk", "C" * 32, "checkpoint_role")}
 JSON_FUNCS = {"issue_permit", "ledger_head", "verify_chain", "check_anchor"}
@@ -143,12 +149,16 @@ class L:
         got = await self.call(requester, "propose", cid, "CREATE_DRAFT", base, ORG, requester, uuid.uuid4().hex,
                               DIGEST, target, "v1", None, exp(), None, t=t, c=c)
         assert got == cid
+        # 008: the business key, the declared target class and the budget inputs are stored with the change
+        await self.call(requester, "declare_business_key", cid, sha(str(cid)), None, None, t=t, c=c)
+        await self.call(requester, "declare_target_class", cid, "CLONE", t=t, c=c)
+        await self.call(requester, "declare_budget", cid, DEFAULT_GRANT[(t, c)], "EUR", 0, False, False, t=t, c=c)
         return cid
 
     async def validated(self, requester="clt_alice", **kw):
         cid = await self.propose(requester=requester, **kw)
-        assert await self.call(requester, "validate", cid, False, True, **{k: v for k, v in kw.items()
-                                                                           if k in ("t", "c")}) == "VALIDATED"
+        assert await self.call(requester, "validate", cid,
+                               **{k: v for k, v in kw.items() if k in ("t", "c")}) == "VALIDATED"
         return cid
 
     async def status(self, cid):
@@ -158,7 +168,7 @@ class L:
     async def approved(self, **kw):
         cid = await self.validated(**kw)
         nonce = await self.call("clt_bob", "issue_approval_nonce", cid)
-        await self.call("clt_bob", "approve", cid, nonce, (await self.status(cid))["approval_digest"])
+        await self.call("clt_bob", "approve", cid, nonce, await ensure_envelope(self, cid))
         return cid
 
     async def checkpoint(self):
@@ -202,6 +212,11 @@ async def _setup(conn):
             await conn.execute(f'GRANT {g} TO "{role}"')
         for t, c in scopes:
             await conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", role, t, c)
+        if role in CAPS:                 # direct insert: no epoch bump (008 asserts capabilities)
+            for t, c in scopes:
+                await conn.execute(
+                    "INSERT INTO change_ledger.principals(tenant_id,company_id,principal,person_id,capabilities) "
+                    "VALUES($1,$2,$3,$4,$5)", t, c, role, "person-" + role, CAPS[role])
     for _actor, (kid, kmat, krole) in SIGN_KEYS.items():
         await conn.execute("INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,"
                            "key_material) VALUES($1,$2,$3,$4,$5)", T, C, kid, krole, kmat)
@@ -210,14 +225,20 @@ async def _setup(conn):
                            "organization_ref,target_class) VALUES($1,$2,$3,$4,'DISPOSABLE_CLONE')", T, C, b, ORG)
     await conn.execute("INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,"
                        "target_class) VALUES($1,$2,'base-t2',$3,'DISPOSABLE_CLONE')", T2, C2, ORG)
+    for (t, c), gid in DEFAULT_GRANT.items():
+        await conn.execute(
+            "INSERT INTO change_ledger.grants(grant_id,tenant_id,company_id,currency,amount_limit,count_limit,"
+            "post_count_limit,window_start,window_end) VALUES($1,$2,$3,'EUR',1000000,100000,100000,"
+            "now()-interval '1 day',now()+interval '3650 days')", gid, t, c)
 
 
 async def _journey(led):
     """Several chained events: full happy path of change 1, a validated change, an approved+claimed change, a kill
     switch event (NULL change_id), checkpoints, and a second tenant with its own chain."""
     cid = await led.approved()
-    tok = await led.call("clt_alice", "claim", cid, KH, None, None, False, False)
+    tok = await led.call("clt_alice", "claim", cid, None, DEFAULT_GRANT[(T, C)], 0, False, False)
     call_id = uuid.uuid4()
+    await led.call("clt_wri", "observe_target", tok["token_id"], "base-1", "CLONE")   # 008: registry enforced
     await led.call("clt_alice", "begin_apply", tok["token_id"], call_id, "host-1", "sess-1")
     await led.checkpoint()
     permit = await led.call("clt_wrk", "issue_permit", cid, tok["generation"])
@@ -337,8 +358,9 @@ async def probe(conn):
     # RLS: scoped visibility
     got["rls_aud_records"] = sorted({r[0] for r in await led.sql("clt_aud", "SELECT tenant_id FROM change_ledger.records")})
     got["rls_aud_events"] = sorted({r[0] for r in await led.sql("clt_aud", "SELECT tenant_id FROM change_ledger.events")})
-    got["rls_zed_records"] = sorted({r[0] for r in await led.sql("clt_zed", "SELECT tenant_id FROM change_ledger.records",
-                                                                 t=T2, c=C2)})
+    # 008 (B6k): a requester has no direct SELECT on records (status goes through read_status)
+    got["rls_zed_records"] = (await err(led.sql("clt_zed", "SELECT tenant_id FROM change_ledger.records",
+                                                t=T2, c=C2)))[0]
     got["rls_no_scope"] = await led.sql("clt_aud", "SELECT * FROM change_ledger.records", t=None)
     got["rls_scope_not_granted"] = await err(led.call("clt_aud", "ledger_head", t=T2, c=C2))
     got["rls_grant_table_unreadable"] = (await err(led.sql("clt_aud", "SELECT role_name FROM change_ledger.role_scope")))[0]
@@ -482,7 +504,7 @@ async def test_guards_behave_the_same_in_the_restored_database(rt):
     p = b_probe
     for k in ("update", "delete", "truncate", "update_hash", "approvals_update"):
         assert p["immutable_" + k][0] != "NO_ERROR" and "IMMUTABLE_LEDGER" in p["immutable_" + k][1], k
-    assert p["rls_aud_records"] == p["rls_aud_events"] == [T] and p["rls_zed_records"] == [T2]
+    assert p["rls_aud_records"] == p["rls_aud_events"] == [T] and p["rls_zed_records"] == "42501"
     assert p["rls_no_scope"] == []
     assert p["rls_scope_not_granted"][1].count("SCOPE_NOT_GRANTED") == 1
     assert p["rls_grant_table_unreadable"] == "42501"
@@ -501,7 +523,7 @@ async def test_restored_ledger_keeps_chaining_from_the_restored_head(rt):
     before = await rt.b.fetchval("SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2",
                                  T, C)
     cid = await led.propose(base="base-4", target="doc4")
-    assert await led.call("clt_alice", "validate", cid, False, True) == "VALIDATED"
+    assert await led.call("clt_alice", "validate", cid) == "VALIDATED"
     new = await rt.b.fetch("SELECT seq, prev_hash, hash, event_type FROM change_ledger.events WHERE tenant_id=$1 "
                            "AND company_id=$2 AND seq>$3 ORDER BY seq", T, C, head["seq"])
     assert len(new) >= 2 and new[0]["event_type"] == "PROPOSED"
