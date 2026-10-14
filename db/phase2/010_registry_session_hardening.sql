@@ -220,7 +220,12 @@ BEGIN
   SELECT * INTO pr FROM change_ledger.principals x WHERE x.tenant_id=t AND x.company_id=c AND x.principal=n->>'principal';
   found_row := FOUND;
   -- narrowing: the same person, no capability that was not there, not re-activated
-  IF found_row AND pr.person_id=n->>'person_id' AND caps <@ pr.capabilities AND (NOT act OR pr.active) THEN RETURN true; END IF;
+  -- but an active operator or recovery witness keeps those capabilities and stays active: removing one is a
+  -- two-person change, otherwise one operator could drop the second person and reopen the bootstrap rule below
+  IF found_row AND pr.person_id=n->>'person_id' AND caps <@ pr.capabilities AND (NOT act OR pr.active)
+   AND (NOT pr.active OR NOT (pr.capabilities && ARRAY['operator','recovery_witness']::text[])
+        OR (act AND caps @> ARRAY(SELECT x FROM unnest(pr.capabilities) x
+                                   WHERE x = ANY(ARRAY['operator','recovery_witness']::text[])))) THEN RETURN true; END IF;
   -- BOOTSTRAP: fewer than two operator persons exist, so a second one may be added by the only one
   IF act AND cardinality(caps)>0 AND caps <@ ARRAY['operator','recovery_witness']::text[]
    AND (NOT found_row OR pr.person_id=n->>'person_id')

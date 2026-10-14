@@ -114,8 +114,10 @@ async def test_c1_direct_widening_by_one_operator_is_refused_and_writes_nothing(
 
 
 async def test_c1_direct_narrowing_and_exact_repeats_stay_single_operator(led):
-    # same person, fewer capabilities, deactivation
-    await led.call("clt_dave", "register_principal", "clt_dave", "person-clt_dave", ["operator", "requester"], True)
+    # same person, fewer capabilities (the operator and witness capabilities of an active operator must stay), deactivation
+    await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_principal", "clt_dave", "person-clt_dave",
+                                                ["operator", "requester"], True))       # drops recovery_witness
+    await led.call("clt_dave", "register_principal", "clt_dave", "person-clt_dave", ["operator", "recovery_witness"], True)
     await led.call("clt_dave", "register_principal", "clt_mallory", "person-clt_mallory", ["requester"], False)
     assert (await principal_row(led, "clt_mallory"))["active"] is False
     # revocation of a registered target, a shorter permission, an exact repeat of a key
@@ -250,6 +252,28 @@ async def test_c1_bootstrap_lets_the_only_operator_add_a_second_operator_and_not
     # the other scope is unaffected by this one
     assert (await principal_row(led, "clt_bob", T, C)) is not None and await count(
         led, "SELECT count(*) FROM change_ledger.principals WHERE tenant_id=$1 AND person_id='P-D'", T) == 0
+
+
+async def test_c1_one_operator_cannot_remove_the_second_operator_and_reopen_the_bootstrap(led):
+    for r in ("clt_dave", "clt_erin"):
+        await led.conn.execute("SELECT change_ledger.add_role_scope($1,$2,$3)", r, T2, C2)
+
+    def reg(principal, person, caps, active=True):
+        return led.call("clt_dave", "register_principal", principal, person, caps, active, t=T2, c=C2)
+
+    await reg("clt_dave", "P-D", ["operator"])
+    await reg("clt_erin", "P-E", ["operator", "recovery_witness"])
+    # deactivating, or stripping the operator or witness capability of an active operator person is a two-person change
+    await fails("TWO_PERSON_REQUIRED", reg("clt_erin", "P-E", ["operator", "recovery_witness"], False))
+    await fails("TWO_PERSON_REQUIRED", reg("clt_erin", "P-E", ["recovery_witness"]))
+    await fails("TWO_PERSON_REQUIRED", reg("clt_erin", "P-E", ["operator"]))
+    await fails("TWO_PERSON_REQUIRED", reg("clt_dave", "P-D", ["operator"], False))      # also for oneself
+    row = await principal_row(led, "clt_erin", T2, C2)
+    assert row["active"] is True and sorted(row["capabilities"]) == ["operator", "recovery_witness"]
+    # so the count stays at two and the bootstrap stays closed
+    await fails("TWO_PERSON_REQUIRED", reg("clt_carol", "P-C", ["operator"]))
+    # the exact repeat stays allowed
+    await reg("clt_erin", "P-E", ["operator", "recovery_witness"])
 
 
 async def test_c1_replay_is_idempotent_for_proposal_and_approval(led):
