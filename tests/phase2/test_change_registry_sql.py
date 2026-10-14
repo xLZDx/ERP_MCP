@@ -906,6 +906,6 @@ async def test_amount_consumed_reconciles_post_unpost_and_repair(reg):
     call = uuid.uuid4()
     await reg.call("clt_alice", "begin_apply", t4["token_id"], call, "h", "s")
     assert await reg.complete(u4, t4["generation"], "PRE_WRITE_REFUSAL", proof={"proof": "dependents"},
-                              code="ROLLBACK_REFUSED") == "FAILED_APPLY"      # 007: a signed typed refusal record
+                              code="ROLLBACK_REFUSED") == "ROLLBACK_REFUSED"  # 007 typed record; 008 B6a: T8 outcome
     assert await consumed("docB") == 200
     await reg.chain_ok()

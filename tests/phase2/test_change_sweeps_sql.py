@@ -555,9 +555,8 @@ async def test_revoke_voids_unclaimed_approvals_and_released_claims_and_reenable
     await led.conn.execute("UPDATE change_ledger.records SET created_at=now()-interval '2 hours', "
                            "expires_at=now()-interval '1 minute' WHERE change_id=$1", expired)
     flying, _, _, _ = await led.permitted(request_id="rv5", base="base-5")
-    await led.call("clt_dave", "kill_switch", "STOP_ADMIT")
-    assert (await sweep(led))["VOIDED"] == []                                # only REVOKE voids
-    assert (await led.rec(app))["authorization_state"] == "APPROVED"
+    # 008 B6c: a STOP_* sweep now unwinds claims and permits at once, so the "only REVOKE voids" check with a live
+    # claim moved to test_b6c_a_stop_sweep_releases_but_never_voids (b3 file); this test goes straight to REVOKE
     await led.call("clt_dave", "kill_switch", "REVOKE")
     got = await sweep(led)
     assert got["VOIDED"] == [str(app)] and got["T5x"] == [str(claimed)]
@@ -571,7 +570,10 @@ async def test_revoke_voids_unclaimed_approvals_and_released_claims_and_reenable
                                    tok["token_id"]) == "SUPERSEDED"
     assert (await led.rec(validated))["authorization_state"] == "NONE"
     assert (await led.rec(expired))["authorization_state"] == "EXPIRED"      # T3 wins over voiding
-    assert (await led.rec(flying))["dispatch_state"] == "PERMITTED"           # in-flight permit: T6c/writer path
+    # 008 B6c: a stop mode cancels the undispatched permit at once (approval back to APPROVED); the next sweep voids it
+    r = await led.rec(flying)
+    assert (r["dispatch_state"], r["authorization_state"]) == ("CANCELLED_UNDISPATCHED", "APPROVED")
+    assert (await sweep(led))["VOIDED"] == [str(flying)]
     assert (await sweep(led))["VOIDED"] == []                                # idempotent
     # re-enable runs the sweep first: a claim made stale meanwhile is settled before the switch is off
     runs = await led.conn.fetchval("SELECT count(*) FROM change_ledger.sweep_runs")

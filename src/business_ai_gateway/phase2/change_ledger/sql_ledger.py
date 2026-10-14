@@ -154,6 +154,10 @@ class SqlChangeLedger:
         sql = f"SELECT * FROM {call}" if fn.ret == _TOKEN_ROW else f"SELECT {call}"
         params = [_arg(ty, a) for ty, a in zip(fn.params, args, strict=True)]
         role = self._actors.get(cls)
+        if self.conn.is_in_transaction():
+            # a nested transaction is only a savepoint: SET LOCAL ROLE / the scope would outlive the call and leak
+            # the assumed role into the caller's transaction (008 B6q)
+            raise LedgerError("TRANSACTION_ACTIVE")
         try:
             async with self.conn.transaction():
                 if role:

@@ -255,15 +255,31 @@ BEGIN
   END IF;
   RETURN existing.change_id;
  END IF;
- INSERT INTO change_ledger.records(
-  change_id,tenant_id,company_id,base_fingerprint,organization_ref,kind,requester,request_id,
-  payload_digest,target_ref,target_version,parent_change_id,repair_for,auth_epoch_at_proposal,expires_at,
-  epoch_dependencies,requester_session)
- VALUES(p_change_id,t,c,p_base_fingerprint,p_organization_ref,p_kind,p_requester,p_request_id,
-  p_payload_digest,p_target_ref,p_target_version,p_parent_change_id,p_repair_for,tgt_epoch,p_expires_at,
-  jsonb_build_object('target:'||p_base_fingerprint,change_ledger.epoch_value(t,c,'target:'||p_base_fingerprint),
-   'principal:'||p_requester,change_ledger.epoch_value(t,c,'principal:'||p_requester)),
-  session_user::text);
+ -- B6j: the parent of a change lives in the same (tenant, company); unknown and foreign parents look the same
+ IF (p_parent_change_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM change_ledger.records p
+      WHERE p.tenant_id=t AND p.company_id=c AND p.change_id=p_parent_change_id))
+  OR (p_repair_for IS NOT NULL AND NOT EXISTS(SELECT 1 FROM change_ledger.records p
+      WHERE p.tenant_id=t AND p.company_id=c AND p.change_id=p_repair_for)) THEN
+  RAISE EXCEPTION 'CHANGE_NOT_FOUND';
+ END IF;
+ BEGIN
+  INSERT INTO change_ledger.records(
+   change_id,tenant_id,company_id,base_fingerprint,organization_ref,kind,requester,request_id,
+   payload_digest,target_ref,target_version,parent_change_id,repair_for,auth_epoch_at_proposal,expires_at,
+   epoch_dependencies,requester_session)
+  VALUES(p_change_id,t,c,p_base_fingerprint,p_organization_ref,p_kind,p_requester,p_request_id,
+   p_payload_digest,p_target_ref,p_target_version,p_parent_change_id,p_repair_for,tgt_epoch,p_expires_at,
+   jsonb_build_object('target:'||p_base_fingerprint,change_ledger.epoch_value(t,c,'target:'||p_base_fingerprint),
+    'principal:'||p_requester,change_ledger.epoch_value(t,c,'principal:'||p_requester)),
+   session_user::text);
+ EXCEPTION WHEN unique_violation THEN
+  -- B6e: a concurrent propose with the same logical key committed first: return its result as a replay
+  SELECT * INTO existing FROM change_ledger.records
+   WHERE tenant_id=t AND company_id=c AND requester=p_requester AND kind=p_kind
+    AND base_fingerprint=p_base_fingerprint AND organization_ref=p_organization_ref AND request_id=p_request_id;
+  IF FOUND AND existing.payload_digest IS NOT DISTINCT FROM p_payload_digest THEN RETURN existing.change_id; END IF;
+  RAISE EXCEPTION 'IDEMPOTENCY_CONFLICT';
+ END;
  PERFORM change_ledger.append_event(t,c,p_change_id,'PROPOSED',
   jsonb_build_object('kind',p_kind,'payload_digest',p_payload_digest));
  RETURN p_change_id;
@@ -291,7 +307,7 @@ BEGIN
  IF NOT have_bk AND rec.kind='CREATE_DRAFT' THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;   -- key lock is mandatory
  PERFORM change_ledger.budget_precheck(t,c,rec,false,false);
  IF have_bk AND rec.kind IN ('CREATE_DRAFT','UPDATE_DRAFT') THEN
-  PERFORM pg_advisory_xact_lock(hashtextextended(t||':'||c||':'||rec.base_fingerprint||':'||bk.key_hash,1));
+  PERFORM change_ledger.take_lock('key',t||':'||c||':'||rec.base_fingerprint||':'||bk.key_hash);   -- B6n
   SELECT coalesce(array_agg(o.change_id::text ORDER BY o.created_at),ARRAY[]::text[]) INTO colls
    FROM change_ledger.records o JOIN change_ledger.business_keys ob ON ob.change_id=o.change_id
    WHERE o.tenant_id=t AND o.company_id=c AND o.base_fingerprint=rec.base_fingerprint
@@ -334,13 +350,17 @@ BEGIN
  IF who IS NOT DISTINCT FROM rec.requester OR pg_has_role(who::name, rec.requester::name, 'MEMBER') THEN
   RAISE EXCEPTION 'APPROVER_NOT_INDEPENDENT';
  END IF;
- IF rec.authorization_state NOT IN ('NONE','VOIDED','REVOKED') OR rec.execution_state<>'NOT_STARTED' THEN
+ -- B6b: an APPROVED (unclaimed) change may get a nonce so that the approver can still reject it
+ IF rec.authorization_state NOT IN ('NONE','VOIDED','REVOKED','APPROVED') OR rec.execution_state<>'NOT_STARTED' THEN
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
  END IF;
  PERFORM change_ledger.assert_capability(t,c,who,'approver');
  PERFORM change_ledger.assert_independent(t,c,who,rec.requester);
  PERFORM change_ledger.assert_session_independent(t,c,rec.requester_session);
- n := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
+ -- B6d: expired nonces of this change are persisted as EXPIRED here (no raise rolls it back)
+ UPDATE change_ledger.approval_nonces x SET state='EXPIRED'
+  WHERE x.change_id=p_change_id AND x.state='ISSUED' AND x.expires_at<=clock_timestamp();
+ n :=replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
  INSERT INTO change_ledger.approval_nonces(nonce,change_id,approver,expires_at)
  VALUES(n,p_change_id,who,clock_timestamp()+interval '10 minutes');
  RETURN n;
@@ -350,7 +370,7 @@ CREATE OR REPLACE FUNCTION change_ledger.approve(
  t text, c text, p_change_id uuid, p_nonce text, p_digest text
 ) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
 DECLARE rec change_ledger.records%ROWTYPE; v_approver text; nrow change_ledger.approval_nonces%ROWTYPE;
- aid uuid; bk change_ledger.business_keys%ROWTYPE; parent_req text;
+ aid uuid; bk change_ledger.business_keys%ROWTYPE; parent_req text; atype text; amfa boolean;
 BEGIN
  PERFORM change_ledger.assert_scope(t,c);
  IF p_change_id IS NULL OR p_nonce IS NULL OR p_digest IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
@@ -360,6 +380,11 @@ BEGIN
   AND change_id=p_change_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
+ -- B6e: a replay of the same approval (same nonce, digest, approver) returns the existing approval
+ SELECT a.approval_id INTO aid FROM change_ledger.approvals a WHERE a.change_id=p_change_id AND a.nonce=p_nonce
+  AND a.approver=v_approver AND a.decision='APPROVE' AND a.digest=p_digest
+  AND rec.authorization_state IN ('APPROVED','CLAIMED');
+ IF FOUND THEN RETURN aid; END IF;
  IF rec.lifecycle <> 'VALIDATED' THEN RAISE EXCEPTION 'FORBIDDEN_TRANSITION'; END IF;
  IF rec.authorization_state NOT IN ('NONE','VOIDED','REVOKED') OR rec.execution_state<>'NOT_STARTED' THEN
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
@@ -383,8 +408,7 @@ BEGIN
   RAISE EXCEPTION 'APPROVAL_NONCE_INVALID';
  END IF;
  IF nrow.expires_at<=clock_timestamp() THEN
-  UPDATE change_ledger.approval_nonces n SET state='EXPIRED' WHERE n.nonce=p_nonce;
-  RAISE EXCEPTION 'APPROVAL_EXPIRED';
+  RAISE EXCEPTION 'APPROVAL_EXPIRED';     -- B6d: the EXPIRED state is persisted by issue_approval_nonce and the sweep
  END IF;
  SELECT * INTO bk FROM change_ledger.business_keys WHERE change_id=p_change_id;
  IF FOUND AND bk.override_required AND NOT EXISTS(SELECT 1 FROM change_ledger.override_bindings ob
@@ -392,15 +416,19 @@ BEGIN
   RAISE EXCEPTION 'DUPLICATE_SUSPECTED';
  END IF;
  UPDATE change_ledger.approval_nonces n SET state='CONSUMED' WHERE n.nonce=p_nonce;
- INSERT INTO change_ledger.approvals(change_id,approver,nonce,digest,decision)
- VALUES(p_change_id,v_approver,p_nonce,p_digest,'APPROVE') RETURNING approval_id INTO aid;
+ -- B6l: the approval type and the MFA flag are derived here, never supplied by the caller
+ atype := change_ledger.approval_lane(t,c,rec.base_fingerprint);
+ amfa := coalesce((SELECT pr.mfa FROM change_ledger.principals pr WHERE pr.tenant_id=t AND pr.company_id=c
+   AND pr.principal=v_approver),false);
+ INSERT INTO change_ledger.approvals(change_id,approver,nonce,digest,decision,approval_type,mfa_verified)
+ VALUES(p_change_id,v_approver,p_nonce,p_digest,'APPROVE',atype,amfa) RETURNING approval_id INTO aid;
  UPDATE change_ledger.records SET authorization_state='APPROVED',
   epoch_dependencies=epoch_dependencies || jsonb_build_object('principal:'||v_approver,
    change_ledger.epoch_value(t,c,'principal:'||v_approver)),
   updated_at=clock_timestamp()
   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
  PERFORM change_ledger.append_event(t,c,p_change_id,'APPROVED',
-  jsonb_build_object('approval_id',aid,'digest',p_digest));
+  jsonb_build_object('approval_id',aid,'digest',p_digest,'approval_type',atype,'mfa_verified',amfa));
  RETURN aid;
 END $fn$;
 
@@ -420,6 +448,21 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
  PERFORM change_ledger.recheck_scope_locked(t,c);
  IF v_requester IS DISTINCT FROM rec.requester THEN RAISE EXCEPTION 'NOT_ENTITLED'; END IF;
+ -- B6e: a replayed claim of a live claim returns the existing token (arguments are still cross-checked)
+ IF rec.authorization_state='CLAIMED' AND rec.execution_state='NOT_STARTED' THEN
+  SELECT * INTO tok FROM change_ledger.claim_tokens ct
+   WHERE ct.change_id=p_change_id AND ct.generation=rec.claim_generation AND ct.state='ISSUED';
+  IF FOUND THEN
+   SELECT * INTO cb FROM change_ledger.change_budget b WHERE b.change_id=p_change_id;
+   IF NOT FOUND OR p_grant_id IS DISTINCT FROM cb.grant_id THEN RAISE EXCEPTION 'BUDGET_EXCEEDED'; END IF;
+   IF p_amount IS DISTINCT FROM cb.amount
+    OR coalesce(p_counts_create_update,false) IS DISTINCT FROM cb.counts_create_update
+    OR coalesce(p_counts_post,false) IS DISTINCT FROM cb.counts_post THEN
+    RAISE EXCEPTION 'DIGEST_MISMATCH';
+   END IF;
+   RETURN tok;
+  END IF;
+ END IF;
  IF rec.execution_state<>'NOT_STARTED' OR rec.verification_state<>'NOT_VERIFIED' OR rec.dispatch_state='DISPATCHED' THEN
   RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
  END IF;
@@ -465,7 +508,7 @@ BEGIN
   END IF;
  ELSIF rec.parent_change_id IS NOT NULL THEN
   IF NOT EXISTS(SELECT 1 FROM change_ledger.records
-    WHERE change_id=rec.parent_change_id AND verification_state='VERIFIED') THEN
+    WHERE tenant_id=t AND company_id=c AND change_id=rec.parent_change_id AND verification_state='VERIFIED') THEN
    RAISE EXCEPTION 'PARENT_NOT_VERIFIED';
   END IF;
  END IF;
@@ -526,6 +569,14 @@ BEGIN
  PERFORM change_ledger.assert_switch_off(t,c);
  PERFORM change_ledger.assert_target_effect(t,c,rec.base_fingerprint,rec.organization_ref,rec.declared_target_class);
  PERFORM change_ledger.assert_registry_for_effect(t,c,rec.base_fingerprint);
+ PERFORM change_ledger.assert_repair_authorized(t,c,rec);            -- B6f: hold + repair authorization again
+ -- B6e: a replayed issue_permit of a live PERMITTED permit returns it
+ SELECT * INTO dp FROM change_ledger.dispatch_permits x WHERE x.change_id=p_change_id AND x.generation=p_generation;
+ IF FOUND AND dp.state='PERMITTED' THEN
+  RETURN jsonb_build_object('change_id',dp.change_id,'generation',dp.generation,
+   'permit_digest',dp.permit_digest,'checkpoint_seq',dp.checkpoint_seq,
+   'expires_at',to_char(dp.expires_at,'YYYY-MM-DD"T"HH24:MI:SS.US'));
+ END IF;
  SELECT max(e.seq) INTO applying_seq FROM change_ledger.events e
   WHERE e.tenant_id=t AND e.company_id=c AND e.change_id=p_change_id AND e.event_type='APPLYING';
  SELECT k.seq INTO cp_seq FROM change_ledger.checkpoints k
@@ -1099,7 +1150,7 @@ END $fn$;
 CREATE OR REPLACE FUNCTION change_ledger.recover_sweep(t text, c text, p_params jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
 DECLARE
- p jsonb; v_mode text; v_start timestamptz := clock_timestamp(); n integer := 0; bsz integer;
+ p jsonb; v_mode text; v_start timestamptz := clock_timestamp(); n integer := 0; bsz integer; nexp integer := 0;
  cid uuid; tokid uuid; gen bigint; x record; rec change_ledger.records%ROWTYPE; ctr change_ledger.sweep_counters%ROWTYPE;
  dl timestamptz; disp timestamptz; started timestamptz; cnt integer; due_in double precision; vres jsonb;
  c_t5x uuid[]; c_t6c uuid[]; c_t6r uuid[]; c_t9 uuid[]; c_t3 uuid[]; c_void uuid[] := '{}'; c_t12 uuid[];
@@ -1123,12 +1174,12 @@ BEGIN
  SELECT coalesce(array_agg(s.change_id),'{}'::uuid[]) INTO c_t5x FROM (
   SELECT r.change_id FROM change_ledger.claim_tokens ct JOIN change_ledger.records r ON r.change_id=ct.change_id
    WHERE r.tenant_id=t AND r.company_id=c AND ct.state='ISSUED'
-    AND (v_mode='REVOKE' OR ct.issued_at<=clock_timestamp()-make_interval(secs=>(p->>'claim_ttl_seconds')::double precision))
+    AND (v_mode<>'OFF' OR ct.issued_at<=clock_timestamp()-make_interval(secs=>(p->>'claim_ttl_seconds')::double precision))   -- B6c
    ORDER BY coalesce((SELECT f.failures FROM change_ledger.sweep_failures f WHERE f.subject_id=r.change_id AND f.stage='T5x'),0),
     ct.issued_at LIMIT bsz) s;
  SELECT coalesce(array_agg(s.change_id),'{}'::uuid[]) INTO c_t6c FROM (
   SELECT dp.change_id FROM change_ledger.dispatch_permits dp JOIN change_ledger.records r ON r.change_id=dp.change_id
-   WHERE r.tenant_id=t AND r.company_id=c AND dp.state='PERMITTED' AND dp.expires_at<=clock_timestamp()
+   WHERE r.tenant_id=t AND r.company_id=c AND dp.state='PERMITTED' AND (dp.expires_at<=clock_timestamp() OR v_mode<>'OFF')   -- B6c
    ORDER BY coalesce((SELECT f.failures FROM change_ledger.sweep_failures f WHERE f.subject_id=dp.change_id AND f.stage='T6c'),0),
     dp.expires_at LIMIT bsz) s;
  SELECT coalesce(array_agg(s.change_id),'{}'::uuid[]) INTO c_t6r FROM (
@@ -1186,6 +1237,13 @@ BEGIN
     AND (k.subject_id IS NULL OR (k.closed_at IS NULL AND k.next_attempt_at<=clock_timestamp()))
    ORDER BY coalesce((SELECT f.failures FROM change_ledger.sweep_failures f WHERE f.subject_id=r.change_id AND f.stage='VERIFY'),0),
     r.updated_at LIMIT bsz) s;
+ -- B6d: expired approval nonces are persisted as EXPIRED (before any append: a nonce row is never waited for
+ -- while the chain lock is held); rows locked by an in-flight approve are skipped
+ UPDATE change_ledger.approval_nonces an SET state='EXPIRED' WHERE an.nonce IN (
+  SELECT n.nonce FROM change_ledger.approval_nonces n JOIN change_ledger.records r ON r.change_id=n.change_id
+   WHERE r.tenant_id=t AND r.company_id=c AND n.state='ISSUED' AND n.expires_at<=clock_timestamp()
+   ORDER BY n.nonce LIMIT bsz FOR UPDATE OF n SKIP LOCKED);
+ GET DIAGNOSTICS nexp = ROW_COUNT;
  ids := c_t5x||c_t6c||c_t6r||c_t9||c_t3||c_void||c_t12||c_gap||c_ver;
  PERFORM 1 FROM change_ledger.claim_tokens ct WHERE ct.change_id = ANY(ids) ORDER BY ct.token_id FOR UPDATE;
  PERFORM 1 FROM change_ledger.records r WHERE r.tenant_id=t AND r.company_id=c AND r.change_id = ANY(ids)
@@ -1196,7 +1254,7 @@ BEGIN
  FOREACH cid IN ARRAY c_t5x LOOP
   BEGIN
    SELECT ct.token_id INTO tokid FROM change_ledger.claim_tokens ct WHERE ct.change_id=cid AND ct.state='ISSUED'
-    AND (v_mode='REVOKE' OR ct.issued_at<=clock_timestamp()-make_interval(secs=>(p->>'claim_ttl_seconds')::double precision));
+    AND (v_mode<>'OFF' OR ct.issued_at<=clock_timestamp()-make_interval(secs=>(p->>'claim_ttl_seconds')::double precision));
    IF tokid IS NOT NULL THEN
     IF change_ledger.release_claim_internal(t,c,tokid,v_mode='REVOKE') THEN
      DELETE FROM change_ledger.sweep_failures WHERE subject_id=cid AND stage='T5x';
@@ -1213,7 +1271,7 @@ BEGIN
  FOREACH cid IN ARRAY c_t6c LOOP
   BEGIN
    SELECT dp.generation INTO gen FROM change_ledger.dispatch_permits dp WHERE dp.change_id=cid
-    AND dp.state='PERMITTED' AND dp.expires_at<=clock_timestamp();
+    AND dp.state='PERMITTED' AND (dp.expires_at<=clock_timestamp() OR v_mode<>'OFF');
    IF gen IS NOT NULL THEN
     IF change_ledger.cancel_permit(t,c,cid,gen) THEN
      DELETE FROM change_ledger.sweep_failures WHERE subject_id=cid AND stage='T6c';
@@ -1229,7 +1287,8 @@ BEGIN
  -- T6r: APPLYING and the permit of the current generation was never issued, after the permit TTL.
  FOREACH cid IN ARRAY c_t6r LOOP
   BEGIN
-   IF change_ledger.permit_not_issued_internal(t,c,cid,(p->>'permit_ttl_seconds')::double precision) THEN
+   IF change_ledger.permit_not_issued_internal(t,c,cid,
+       CASE WHEN v_mode<>'OFF' THEN -1 ELSE (p->>'permit_ttl_seconds')::double precision END) THEN   -- B6c: no wait under a stop
     DELETE FROM change_ledger.sweep_failures WHERE subject_id=cid AND stage='T6r';
     n := n+1; a_t6r := a_t6r||cid;
    END IF;
@@ -1421,7 +1480,7 @@ BEGIN
  RETURN jsonb_build_object('changed',n,'T5x',to_jsonb(a_t5x),'T6c',to_jsonb(a_t6c),'T6r',to_jsonb(a_t6r),
   'T9',to_jsonb(a_t9),'T3',to_jsonb(a_t3),'VOIDED',to_jsonb(a_void),'T12_ATTEMPT',to_jsonb(a_t12a),
   'T12',to_jsonb(a_t12),'ANCHOR_GAP_TRIAGE',to_jsonb(a_gap),'VERIFY_DUE',to_jsonb(a_vdue),
-  'VERIFY_EXHAUSTED',to_jsonb(a_vexh),'FAILED',a_fail);
+  'VERIFY_EXHAUSTED',to_jsonb(a_vexh),'FAILED',a_fail,'NONCES_EXPIRED',nexp);
 END $fn$;
 
 -- ownership, RLS and privileges of the B4 / B5 objects
@@ -1441,6 +1500,461 @@ BEGIN
 END $fn$;
 GRANT EXECUTE ON FUNCTION change_ledger.set_sweep_policy(text,text,jsonb),
  change_ledger.anchor_gap_cosign(text,text,uuid,jsonb) TO operator_role;
+
+-- ================================================================== B6 (round 3): minors REL-F9 / DB-minors
+-- Items done IN PLACE in the B1-B5 functions above (marked "-- B6x" there): B6c (kill-switch unwind in recover_sweep),
+-- B6d (nonce EXPIRED persisted by the sweep and issue_approval_nonce), B6e (replays of propose / approve / claim /
+-- issue_permit), B6f (issue_permit calls assert_repair_authorized), B6j (parent validation at propose, tenant filter
+-- in the claim parent guard), B6n (validate uses take_lock). Everything else is a new section below.
+
+-- ---- B6n: advisory locks use the two-int form (namespace constant, hashtext(key)); namespaces: 1 chain,
+-- 2 killswitch, 3 hold, 4 key. hashtext is 32 bit: a collision only shares a lock between two names (no unsafety).
+CREATE OR REPLACE FUNCTION change_ledger.lock_ns(p_name text) RETURNS integer
+LANGUAGE sql IMMUTABLE AS $fn$
+ SELECT CASE p_name WHEN 'chain' THEN 1 WHEN 'killswitch' THEN 2 WHEN 'hold' THEN 3 WHEN 'key' THEN 4
+  ELSE NULL END
+$fn$;
+CREATE OR REPLACE FUNCTION change_ledger.take_lock(p_ns text, p_key text) RETURNS void
+LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF change_ledger.lock_ns(p_ns) IS NULL OR p_key IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ PERFORM pg_advisory_xact_lock(change_ledger.lock_ns(p_ns), hashtext(p_key));
+END $fn$;
+
+CREATE OR REPLACE FUNCTION change_ledger.events_chain_guard() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+DECLARE prior text; prior_seq bigint;
+BEGIN
+ IF NEW.tenant_id IS NULL OR NEW.company_id IS NULL THEN RAISE EXCEPTION 'INVALID_ARGUMENT'; END IF;
+ PERFORM change_ledger.take_lock('chain', NEW.tenant_id||':'||NEW.company_id);
+ SELECT hash, seq INTO prior, prior_seq FROM change_ledger.events
+  WHERE tenant_id=NEW.tenant_id AND company_id=NEW.company_id
+  ORDER BY seq DESC LIMIT 1;
+ NEW.seq := coalesce(prior_seq,0)+1;
+ NEW.prev_hash := prior;
+ NEW.hash := encode(sha256(convert_to(
+  coalesce(prior,'') || ':' || NEW.seq::text || ':' || coalesce(NEW.change_id::text,'') || ':' ||
+  NEW.event_type || ':' || NEW.payload::text,'UTF8')),'hex');
+ RETURN NEW;
+END $fn$;
+
+CREATE OR REPLACE FUNCTION change_ledger.kill_switch(
+ t text, c text, p_mode text
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE who text; cur text;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ IF p_mode NOT IN ('OFF','STOP_ADMIT','STOP_EFFECTS','REVOKE') THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ who := change_ledger.caller_role();
+ PERFORM change_ledger.take_lock('killswitch', t||':'||c);
+ SELECT ks.mode INTO cur FROM change_ledger.kill_switch_state ks WHERE ks.tenant_id=t AND ks.company_id=c;
+ IF p_mode='OFF' AND coalesce(cur,'OFF')<>'OFF' THEN
+  PERFORM change_ledger.recover_sweep(t,c,'{}'::jsonb);
+ END IF;
+ INSERT INTO change_ledger.kill_switch_state(tenant_id,company_id,mode,updated_by)
+ VALUES(t,c,p_mode,who)
+ ON CONFLICT(tenant_id,company_id) DO UPDATE SET mode=p_mode, updated_by=who,
+  updated_at=clock_timestamp();
+ PERFORM change_ledger.append_event(t,c,NULL,'KILL_SWITCH',jsonb_build_object('mode',p_mode,'by',who));
+ RETURN p_mode;
+END $fn$;
+
+CREATE OR REPLACE FUNCTION change_ledger.open_hold_internal(
+ t text, c text, p_base text, p_cause text, p_event text, p_detail jsonb
+) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE b record; opened integer := 0;
+BEGIN
+ PERFORM change_ledger.take_lock('hold', t||':'||c||':'||p_cause);
+ IF p_base IS NOT NULL AND NOT EXISTS(SELECT 1 FROM change_ledger.targets g WHERE g.tenant_id=t
+   AND g.company_id=c AND g.base_fingerprint=p_base) THEN
+  RAISE EXCEPTION 'TARGET_REJECTED';
+ END IF;
+ FOR b IN SELECT g.base_fingerprint FROM change_ledger.targets g
+   WHERE g.tenant_id=t AND g.company_id=c AND (p_base IS NULL OR g.base_fingerprint=p_base)
+    AND NOT EXISTS(SELECT 1 FROM change_ledger.holds h WHERE h.tenant_id=t AND h.company_id=c
+      AND h.base_fingerprint=g.base_fingerprint AND h.cause=p_cause AND h.released_at IS NULL)
+   ORDER BY g.base_fingerprint LOOP
+  INSERT INTO change_ledger.holds(tenant_id,company_id,base_fingerprint,cause)
+  VALUES(t,c,b.base_fingerprint,p_cause);
+  opened := opened+1;
+ END LOOP;
+ IF opened>0 THEN
+  PERFORM change_ledger.append_event(t,c,NULL,p_event,
+   coalesce(p_detail,'{}'::jsonb)||jsonb_build_object('cause',p_cause,'bases_held',opened));
+ END IF;
+ RETURN opened;
+END $fn$;
+
+-- ---- B6a: ROLLBACK_REFUSED is reachable at T8: an UNPOST whose signed typed PRE_WRITE refusal carries the code
+-- ROLLBACK_REFUSED ends in ROLLBACK_REFUSED (terminal, reservation released, handback as for FAILED_APPLY).
+CREATE OR REPLACE FUNCTION change_ledger.complete(
+ t text, c text, p_change_id uuid, p_generation bigint, p_outcome text,
+ p_evidence jsonb, p_no_effect_proof jsonb DEFAULT NULL
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; new_exec text; new_res text;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ IF p_change_id IS NULL OR p_generation IS NULL OR p_outcome IS NULL
+  OR p_outcome NOT IN ('SUCCESS','PRE_WRITE_REFUSAL','UNKNOWN') THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF p_generation IS DISTINCT FROM rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ IF rec.execution_state<>'APPLYING' THEN
+  IF rec.execution_state IN ('APPLIED','APPLY_UNKNOWN','FAILED_APPLY','ROLLBACK_REFUSED') THEN RETURN rec.execution_state; END IF;
+  RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
+ END IF;
+ IF p_outcome IN ('SUCCESS','UNKNOWN') AND rec.dispatch_state<>'DISPATCHED' THEN
+  RAISE EXCEPTION 'PERMIT_MISSING';
+ END IF;
+ IF p_outcome='SUCCESS' THEN
+  new_exec:='APPLIED'; new_res:='CONSUMED';
+  UPDATE change_ledger.records SET execution_state=new_exec, call_ownership='PROVEN_FINISHED',
+   attribution='PROVEN', reservation_state=new_res, updated_at=clock_timestamp()
+   WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+  UPDATE change_ledger.reservations SET state='CONSUMED' WHERE change_id=p_change_id AND state='RESERVED';
+  DELETE FROM change_ledger.key_locks WHERE tenant_id=t AND company_id=c
+   AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+  DELETE FROM change_ledger.writer_leases WHERE tenant_id=t AND company_id=c
+   AND base_fingerprint=rec.base_fingerprint AND owner_change_id=p_change_id;
+ ELSIF p_outcome='PRE_WRITE_REFUSAL' THEN
+  IF p_no_effect_proof IS NULL THEN RAISE EXCEPTION 'WRITE_REFUSED'; END IF;
+  IF rec.dispatch_state<>'DISPATCHED' THEN
+   UPDATE change_ledger.dispatch_permits SET state='CANCELLED_UNDISPATCHED'
+    WHERE change_id=p_change_id AND generation=p_generation AND state IN ('NOT_PERMITTED','PERMITTED');
+  END IF;
+  new_exec:='FAILED_APPLY';
+  IF rec.kind='UNPOST' AND coalesce((SELECT e.content->>'refusal_code' FROM change_ledger.evidence_records e
+     WHERE e.change_id=p_change_id AND e.evidence_id::text=p_evidence->>'evidence_id'),'')='ROLLBACK_REFUSED' THEN
+   new_exec:='ROLLBACK_REFUSED';
+  END IF;
+  PERFORM change_ledger.release_zero_effect(t,c,p_change_id);
+  UPDATE change_ledger.records SET execution_state=new_exec,
+   dispatch_state=CASE WHEN dispatch_state='DISPATCHED' THEN dispatch_state ELSE 'CANCELLED_UNDISPATCHED' END,
+   updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ ELSE
+  new_exec:='APPLY_UNKNOWN';
+  UPDATE change_ledger.records SET execution_state=new_exec, call_ownership='POSSIBLY_EXECUTING',
+   updated_at=clock_timestamp() WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+  IF NOT EXISTS(SELECT 1 FROM change_ledger.holds h WHERE h.change_id=p_change_id AND h.cause='CALL_OWNERSHIP'
+    AND h.released_at IS NULL) THEN
+   INSERT INTO change_ledger.holds(tenant_id,company_id,base_fingerprint,cause,change_id)
+   VALUES(t,c,rec.base_fingerprint,'CALL_OWNERSHIP',p_change_id);
+  END IF;
+ END IF;
+ PERFORM change_ledger.append_event(t,c,p_change_id,'COMPLETE_'||p_outcome,
+  coalesce(p_evidence,'{}'::jsonb)||CASE WHEN new_exec='ROLLBACK_REFUSED'
+   THEN jsonb_build_object('execution','ROLLBACK_REFUSED') ELSE '{}'::jsonb END);
+ RETURN new_exec;
+END $fn$;
+
+-- ---- B6l: approval type / MFA flag are server-derived columns of the approval (TEST_LANE_AUTO only for a clone)
+ALTER TABLE change_ledger.principals ADD COLUMN IF NOT EXISTS mfa boolean NOT NULL DEFAULT false;
+ALTER TABLE change_ledger.approvals ADD COLUMN IF NOT EXISTS approval_type text NOT NULL DEFAULT 'HUMAN';
+ALTER TABLE change_ledger.approvals ADD COLUMN IF NOT EXISTS mfa_verified boolean NOT NULL DEFAULT false;
+ALTER TABLE change_ledger.approvals DROP CONSTRAINT IF EXISTS approvals_type_chk;
+ALTER TABLE change_ledger.approvals ADD CONSTRAINT approvals_type_chk CHECK(approval_type IN ('HUMAN','TEST_LANE_AUTO'));
+
+CREATE OR REPLACE FUNCTION change_ledger.approval_lane(t text, c text, p_base text) RETURNS text
+LANGUAGE sql STABLE AS $fn$
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM change_ledger.targets g WHERE g.tenant_id=t AND g.company_id=c
+   AND g.base_fingerprint=p_base AND g.target_class='DISPOSABLE_CLONE') THEN 'TEST_LANE_AUTO' ELSE 'HUMAN' END
+$fn$;
+
+CREATE OR REPLACE FUNCTION change_ledger.approvals_lane_guard() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.approval_type='TEST_LANE_AUTO' AND NOT EXISTS(SELECT 1 FROM change_ledger.records r
+   JOIN change_ledger.targets g ON g.tenant_id=r.tenant_id AND g.company_id=r.company_id
+    AND g.base_fingerprint=r.base_fingerprint
+   WHERE r.change_id=NEW.change_id AND g.target_class='DISPOSABLE_CLONE') THEN
+  RAISE EXCEPTION 'NOT_ENTITLED';
+ END IF;
+ RETURN NEW;
+END $fn$;
+DROP TRIGGER IF EXISTS approvals_lane ON change_ledger.approvals;
+CREATE TRIGGER approvals_lane BEFORE INSERT ON change_ledger.approvals
+ FOR EACH ROW EXECUTE FUNCTION change_ledger.approvals_lane_guard();
+
+-- ---- B6b: reject is allowed from APPROVED (an unclaimed approval is withdrawn: lifecycle REJECTED, authorization VOIDED)
+CREATE OR REPLACE FUNCTION change_ledger.reject(
+ t text, c text, p_change_id uuid, p_nonce text
+) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; v_approver text; nrow change_ledger.approval_nonces%ROWTYPE;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ v_approver := change_ledger.caller_role();
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF rec.lifecycle NOT IN ('PROPOSED','VALIDATED') OR rec.authorization_state NOT IN ('NONE','APPROVED')
+  OR rec.execution_state<>'NOT_STARTED' THEN
+  RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
+ END IF;
+ SELECT * INTO nrow FROM change_ledger.approval_nonces n
+  WHERE n.nonce=p_nonce AND n.change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND OR nrow.state<>'ISSUED' OR nrow.approver IS DISTINCT FROM v_approver
+  OR nrow.expires_at<=clock_timestamp() THEN
+  RAISE EXCEPTION 'APPROVAL_NONCE_INVALID';
+ END IF;
+ UPDATE change_ledger.approval_nonces n SET state='CONSUMED' WHERE n.nonce=p_nonce;
+ INSERT INTO change_ledger.approvals(change_id,approver,nonce,digest,decision,approval_type,mfa_verified)
+ VALUES(p_change_id,v_approver,p_nonce,repeat('0',64),'REJECT',
+  change_ledger.approval_lane(t,c,rec.base_fingerprint),
+  coalesce((SELECT pr.mfa FROM change_ledger.principals pr WHERE pr.tenant_id=t AND pr.company_id=c
+    AND pr.principal=v_approver),false));
+ UPDATE change_ledger.records SET lifecycle='REJECTED',
+  authorization_state=CASE WHEN authorization_state='APPROVED' THEN 'VOIDED' ELSE authorization_state END,
+  updated_at=clock_timestamp()
+  WHERE tenant_id=t AND company_id=c AND change_id=p_change_id;
+ PERFORM change_ledger.append_event(t,c,p_change_id,'REJECTED',
+  jsonb_build_object('authorization_from',rec.authorization_state));
+ RETURN 'REJECTED';
+END $fn$;
+
+-- ---- B6g: the T6 ownership row (call_deadlines) stores host / session and the pre-image hashes of the call.
+-- The writer host / 1C session come from begin_apply (kept on the permit row and copied at dispatch); the
+-- pre-image hashes are derived from stored data (payload digest, expected target version, observed fingerprint):
+-- the hash of the real 1C object state before the write has no source in the current port (named limit).
+ALTER TABLE change_ledger.dispatch_permits ADD COLUMN IF NOT EXISTS writer_host text;
+ALTER TABLE change_ledger.dispatch_permits ADD COLUMN IF NOT EXISTS onec_session text;
+ALTER TABLE change_ledger.call_deadlines ADD COLUMN IF NOT EXISTS writer_host text;
+ALTER TABLE change_ledger.call_deadlines ADD COLUMN IF NOT EXISTS onec_session text;
+ALTER TABLE change_ledger.call_deadlines ADD COLUMN IF NOT EXISTS pre_image_hashes jsonb;
+
+-- ---- B6f: one helper re-runs the hold check and the repair authorization (parent still FAILED_VERIFY with a known
+-- effect, same target, its halt hold still open); issue_permit (above) and the dispatch trigger call it.
+CREATE OR REPLACE FUNCTION change_ledger.assert_repair_authorized(t text, c text, p_rec change_ledger.records)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE parent change_ledger.records%ROWTYPE;
+BEGIN
+ IF change_ledger.blocking_hold(t,c,p_rec.base_fingerprint,p_rec.repair_for) THEN RAISE EXCEPTION 'BASE_HOLD'; END IF;
+ IF p_rec.repair_for IS NOT NULL THEN
+  SELECT * INTO parent FROM change_ledger.records x WHERE x.tenant_id=t AND x.company_id=c AND x.change_id=p_rec.repair_for;
+  IF NOT FOUND OR parent.verification_state<>'FAILED_VERIFY' OR parent.effect_known IS DISTINCT FROM 'YES'
+   OR parent.target_ref IS DISTINCT FROM p_rec.target_ref OR parent.base_fingerprint<>p_rec.base_fingerprint
+   OR NOT EXISTS(SELECT 1 FROM change_ledger.holds h WHERE h.tenant_id=t AND h.company_id=c
+     AND h.base_fingerprint=p_rec.base_fingerprint AND h.cause='FAILED_VERIFY_HALT'
+     AND h.change_id=p_rec.repair_for AND h.released_at IS NULL) THEN
+   RAISE EXCEPTION 'PARENT_NOT_VERIFIED';
+  END IF;
+ END IF;
+END $fn$;
+
+CREATE OR REPLACE FUNCTION change_ledger.dispatch_fence_guard() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; secs integer; pre jsonb;
+BEGIN
+ IF OLD.state='PERMITTED' AND NEW.state='DISPATCHED' THEN
+  SELECT * INTO rec FROM change_ledger.records WHERE change_id=NEW.change_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+  PERFORM change_ledger.fence_assert(rec.tenant_id,rec.company_id,rec,true);
+  PERFORM change_ledger.assert_repair_authorized(rec.tenant_id,rec.company_id,rec);        -- B6f
+  secs := change_ledger.call_deadline_seconds(rec.kind);
+  pre := jsonb_build_object('payload_digest',rec.payload_digest,           -- B6g
+   'target_version_sha256',CASE WHEN rec.target_version IS NULL THEN NULL
+     ELSE encode(sha256(convert_to(rec.target_version,'UTF8')),'hex') END,
+   'observed_fingerprint_sha256',(SELECT encode(sha256(convert_to(o.observed_fingerprint,'UTF8')),'hex')
+     FROM change_ledger.target_observations o WHERE o.change_id=NEW.change_id AND o.generation=NEW.generation));
+  INSERT INTO change_ledger.call_deadlines(tenant_id,company_id,change_id,generation,call_id,
+   deadline_seconds,hard_deadline_at,writer_host,onec_session,pre_image_hashes)
+  VALUES(rec.tenant_id,rec.company_id,NEW.change_id,NEW.generation,NEW.call_id,secs,
+   clock_timestamp()+make_interval(secs=>secs),NEW.writer_host,NEW.onec_session,pre)
+  ON CONFLICT(change_id,generation) DO NOTHING;
+ END IF;
+ RETURN NEW;
+END $fn$;
+
+-- ---- B6e / B6g: begin_apply. A replay is returned only while the call is really in flight (APPLYING, claim still
+-- CLAIMED, not dispatched); on a dead change (refused, failed, voided) it is TICKET_SUPERSEDED. Host and session
+-- are stored on the permit row.
+CREATE OR REPLACE FUNCTION change_ledger.begin_apply(
+ t text, c text, p_token_id uuid, p_call_id uuid, p_writer_host text, p_onec_session text
+) RETURNS change_ledger.claim_tokens LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE tok change_ledger.claim_tokens%ROWTYPE; rec change_ledger.records%ROWTYPE; caller text;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ caller := change_ledger.caller_role();
+ SELECT * INTO tok FROM change_ledger.claim_tokens WHERE token_id=p_token_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=tok.change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF caller IS DISTINCT FROM rec.requester AND NOT pg_has_role(caller::name,'writer_role','USAGE') THEN
+  RAISE EXCEPTION 'NOT_ENTITLED';
+ END IF;
+ IF tok.generation<>rec.claim_generation THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ IF tok.state='CONSUMED' THEN
+  IF rec.execution_state='APPLYING' AND rec.authorization_state='CLAIMED' AND rec.dispatch_state<>'DISPATCHED' THEN
+   RETURN tok;
+  END IF;
+  RAISE EXCEPTION 'TICKET_SUPERSEDED';
+ END IF;
+ IF tok.state<>'ISSUED' THEN RAISE EXCEPTION 'TICKET_SUPERSEDED'; END IF;
+ IF rec.authorization_state<>'CLAIMED' THEN RAISE EXCEPTION 'APPROVAL_MISSING'; END IF;
+ IF rec.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'APPROVAL_EXPIRED'; END IF;
+ PERFORM change_ledger.assert_switch_off(t,c);
+ IF change_ledger.blocking_hold(t,c,rec.base_fingerprint,rec.repair_for) THEN
+  RAISE EXCEPTION 'BASE_HOLD';
+ END IF;
+ IF NOT change_ledger.epoch_deps_current(t,c,rec.epoch_dependencies) THEN RAISE EXCEPTION 'EPOCH_CHANGED'; END IF;
+ PERFORM change_ledger.assert_target_effect(t,c,rec.base_fingerprint,rec.organization_ref,rec.declared_target_class);
+ IF change_ledger.registry_enforced(t,c) AND NOT EXISTS(SELECT 1 FROM change_ledger.target_observations o
+   WHERE o.change_id=rec.change_id AND o.generation=tok.generation
+    AND o.observed_fingerprint=rec.base_fingerprint) THEN
+  RAISE EXCEPTION 'TARGET_REJECTED';
+ END IF;
+ UPDATE change_ledger.claim_tokens SET state='CONSUMED' WHERE token_id=p_token_id;
+ UPDATE change_ledger.records SET execution_state='APPLYING', updated_at=clock_timestamp()
+  WHERE tenant_id=t AND company_id=c AND change_id=rec.change_id;
+ INSERT INTO change_ledger.dispatch_permits(change_id,generation,state,call_id,writer_host,onec_session)
+ VALUES(rec.change_id,tok.generation,'NOT_PERMITTED',p_call_id,p_writer_host,p_onec_session)
+ ON CONFLICT(change_id,generation) DO NOTHING;
+ PERFORM change_ledger.append_event(t,c,rec.change_id,'APPLYING',
+  jsonb_build_object('call_id',p_call_id,'writer_host',p_writer_host,'onec_session',p_onec_session));
+ RETURN tok;
+END $fn$;
+
+-- ---- B6h: verification attempts are counted from real attempts: one signed inconclusive OBSERVATION is one attempt
+-- (replaying the same evidence returns the stored counter instead of burning the bound). The sweep tick of the
+-- stuck-verification stage stays a bounded timer (named limit: it still counts against verify_max_attempts).
+CREATE TABLE IF NOT EXISTS change_ledger.verify_attempt_log(
+ evidence_id uuid PRIMARY KEY,
+ tenant_id text NOT NULL, company_id text NOT NULL, change_id uuid NOT NULL,
+ generation bigint NOT NULL, logged_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE OR REPLACE FUNCTION change_ledger.verify_inconclusive(
+ t text, c text, p_change_id uuid, p_observation uuid
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+DECLARE rec change_ledger.records%ROWTYPE; obs change_ledger.evidence_records; k change_ledger.sweep_counters%ROWTYPE;
+BEGIN
+ PERFORM change_ledger.assert_scope(t,c);
+ IF p_change_id IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ SELECT * INTO rec FROM change_ledger.records WHERE tenant_id=t AND company_id=c
+  AND change_id=p_change_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
+ PERFORM change_ledger.recheck_scope_locked(t,c);
+ IF EXISTS(SELECT 1 FROM change_ledger.verify_attempt_log l WHERE l.evidence_id=p_observation AND l.change_id=p_change_id) THEN
+  SELECT * INTO k FROM change_ledger.sweep_counters WHERE subject_id=p_change_id AND kind='VERIFY';
+  RETURN jsonb_build_object('attempts',coalesce(k.attempts,0),'exhausted',k.closed_at IS NOT NULL,'replay',true);
+ END IF;
+ IF rec.execution_state<>'APPLIED' OR rec.verification_state<>'NOT_VERIFIED' THEN
+  RAISE EXCEPTION 'FORBIDDEN_TRANSITION';
+ END IF;
+ obs := change_ledger.evidence_ref(t,c,p_change_id,p_observation,'OBSERVATION');
+ IF obs.generation IS DISTINCT FROM rec.claim_generation
+  OR obs.content->'inconclusive' IS DISTINCT FROM 'true'::jsonb THEN
+  RAISE EXCEPTION 'EVIDENCE_UNSIGNED';
+ END IF;
+ INSERT INTO change_ledger.verify_attempt_log(evidence_id,tenant_id,company_id,change_id,generation)
+ VALUES(obs.evidence_id,t,c,p_change_id,obs.generation);
+ RETURN change_ledger.verify_attempt_internal(t,c,p_change_id,'WORKER_INCONCLUSIVE',3,180);
+END $fn$;
+
+-- ---- B6i: at most one open hold per (tenant, company, base, cause, change); released holds do not count
+CREATE UNIQUE INDEX IF NOT EXISTS holds_open_uniq ON change_ledger.holds
+ (tenant_id,company_id,base_fingerprint,cause,coalesce(change_id,'00000000-0000-0000-0000-000000000000'::uuid))
+ WHERE released_at IS NULL;
+
+-- ---- B6j: tenant integrity: UNIQUE(tenant, company, change_id) and composite references in the child tables
+ALTER TABLE change_ledger.records DROP CONSTRAINT IF EXISTS records_scope_change_uniq;
+ALTER TABLE change_ledger.records ADD CONSTRAINT records_scope_change_uniq UNIQUE(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.records DROP CONSTRAINT IF EXISTS records_parent_scope_fk;
+ALTER TABLE change_ledger.records ADD CONSTRAINT records_parent_scope_fk
+ FOREIGN KEY(tenant_id,company_id,parent_change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.records DROP CONSTRAINT IF EXISTS records_repair_scope_fk;
+ALTER TABLE change_ledger.records ADD CONSTRAINT records_repair_scope_fk
+ FOREIGN KEY(tenant_id,company_id,repair_for) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.holds DROP CONSTRAINT IF EXISTS holds_scope_change_fk;
+ALTER TABLE change_ledger.holds ADD CONSTRAINT holds_scope_change_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.change_budget DROP CONSTRAINT IF EXISTS change_budget_scope_fk;
+ALTER TABLE change_ledger.change_budget ADD CONSTRAINT change_budget_scope_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.call_deadlines DROP CONSTRAINT IF EXISTS call_deadlines_scope_fk;
+ALTER TABLE change_ledger.call_deadlines ADD CONSTRAINT call_deadlines_scope_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.change_closures DROP CONSTRAINT IF EXISTS change_closures_scope_fk;
+ALTER TABLE change_ledger.change_closures ADD CONSTRAINT change_closures_scope_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.evidence_records DROP CONSTRAINT IF EXISTS evidence_scope_fk;
+ALTER TABLE change_ledger.evidence_records ADD CONSTRAINT evidence_scope_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+ALTER TABLE change_ledger.business_keys DROP CONSTRAINT IF EXISTS business_keys_scope_fk;
+ALTER TABLE change_ledger.business_keys ADD CONSTRAINT business_keys_scope_fk
+ FOREIGN KEY(tenant_id,company_id,change_id) REFERENCES change_ledger.records(tenant_id,company_id,change_id);
+
+-- ---- B6k: requesters and approvers read through read_status / read_evidence only (no direct SELECT)
+REVOKE SELECT ON change_ledger.records, change_ledger.claim_tokens, change_ledger.holds
+ FROM requester_role, approver_role;
+-- the evidence_records policy of 005 subselected records as the INVOKER; a requester without SELECT on records would
+-- be refused on its own evidence rows. The ownership test moves into a definer helper (same rule: the change's requester).
+CREATE OR REPLACE FUNCTION change_ledger.requested_by_caller(p_change_id uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+ SELECT EXISTS(SELECT 1 FROM change_ledger.records r WHERE r.change_id=p_change_id
+  AND r.requester=change_ledger.caller_role())
+$fn$;
+GRANT EXECUTE ON FUNCTION change_ledger.requested_by_caller(uuid)
+ TO requester_role, approver_role, operator_role, writer_role, worker_role, auditor_role;
+DROP POLICY IF EXISTS scope_isolation ON change_ledger.evidence_records;
+CREATE POLICY scope_isolation ON change_ledger.evidence_records FOR ALL USING (
+ change_ledger.row_in_scope(tenant_id,company_id)
+ AND (pg_has_role(current_user,'auditor_role','USAGE') OR change_ledger.requested_by_caller(change_id)));
+
+-- ---- B6m: evidence payload size is bounded (16 KiB) when the record is stored, before any terminal transition.
+-- Hash coverage of tenant_id / company_id / event_id / recorded_at is NOT changed in this round (documented reason):
+-- the chain is partitioned by (tenant, company) and every row's hash commits to the previous hash and its seq, so a
+-- row moved between chains breaks prev_hash / seq; widening the hashed fields changes the chain formula and needs a
+-- versioned formula plus a rehash of existing ledgers, external anchors and checkpoints (a GPT-PM design ruling).
+CREATE OR REPLACE FUNCTION change_ledger.evidence_size_guard() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF octet_length(NEW.content::text) > 16384 THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
+ RETURN NEW;
+END $fn$;
+DROP TRIGGER IF EXISTS evidence_size ON change_ledger.evidence_records;
+CREATE TRIGGER evidence_size BEFORE INSERT ON change_ledger.evidence_records
+ FOR EACH ROW EXECUTE FUNCTION change_ledger.evidence_size_guard();
+
+-- ---- B6o: TRUNCATE guards on the other INSERT-only objects
+DROP TRIGGER IF EXISTS checkpoints_no_truncate ON change_ledger.checkpoints;
+CREATE TRIGGER checkpoints_no_truncate BEFORE TRUNCATE ON change_ledger.checkpoints
+ FOR EACH STATEMENT EXECUTE FUNCTION change_ledger.reject_immutable_mutation();
+DROP TRIGGER IF EXISTS approvals_no_truncate ON change_ledger.approvals;
+CREATE TRIGGER approvals_no_truncate BEFORE TRUNCATE ON change_ledger.approvals
+ FOR EACH STATEMENT EXECUTE FUNCTION change_ledger.reject_immutable_mutation();
+DROP TRIGGER IF EXISTS change_closures_no_truncate ON change_ledger.change_closures;
+CREATE TRIGGER change_closures_no_truncate BEFORE TRUNCATE ON change_ledger.change_closures
+ FOR EACH STATEMENT EXECUTE FUNCTION change_ledger.reject_immutable_mutation();
+DROP TRIGGER IF EXISTS override_bindings_no_truncate ON change_ledger.override_bindings;
+CREATE TRIGGER override_bindings_no_truncate BEFORE TRUNCATE ON change_ledger.override_bindings
+ FOR EACH STATEMENT EXECUTE FUNCTION change_ledger.reject_immutable_mutation();
+
+-- ---- B6p: indexes of the sweep and lookup paths
+CREATE INDEX IF NOT EXISTS claim_tokens_issued_idx ON change_ledger.claim_tokens(issued_at) WHERE state='ISSUED';
+CREATE INDEX IF NOT EXISTS dispatch_permits_permitted_idx ON change_ledger.dispatch_permits(expires_at) WHERE state='PERMITTED';
+CREATE INDEX IF NOT EXISTS records_exec_idx ON change_ledger.records(tenant_id,company_id,execution_state)
+ WHERE execution_state IN ('APPLYING','APPLY_UNKNOWN','APPLIED');
+CREATE INDEX IF NOT EXISTS records_expiry_idx ON change_ledger.records(tenant_id,company_id,expires_at)
+ WHERE execution_state='NOT_STARTED' AND lifecycle IN ('PROPOSED','VALIDATED');
+CREATE INDEX IF NOT EXISTS reservations_grant_idx ON change_ledger.reservations(grant_id);
+CREATE INDEX IF NOT EXISTS approvals_change_idx ON change_ledger.approvals(change_id);
+CREATE INDEX IF NOT EXISTS witness_cosigns_change_idx ON change_ledger.witness_cosigns(change_id);
+CREATE INDEX IF NOT EXISTS records_repair_idx ON change_ledger.records(repair_for) WHERE repair_for IS NOT NULL;
+CREATE INDEX IF NOT EXISTS records_parent_idx ON change_ledger.records(parent_change_id) WHERE parent_change_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS sweep_runs_scope_idx ON change_ledger.sweep_runs(tenant_id,company_id,started_at);
+
+-- ---- B6 ownership / RLS of the new table
+ALTER TABLE change_ledger.verify_attempt_log OWNER TO ledger_owner;
+ALTER TABLE change_ledger.verify_attempt_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE change_ledger.verify_attempt_log FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS owner_all ON change_ledger.verify_attempt_log;
+CREATE POLICY owner_all ON change_ledger.verify_attempt_log FOR ALL TO ledger_owner USING (true) WITH CHECK (true);
+-- B6q (port): src/business_ai_gateway/phase2/change_ledger/sql_ledger.py refuses a call on a connection that is
+-- already inside a transaction (TRANSACTION_ACTIVE), see tests/phase2/test_change_hardening_b3_sql.py.
 
 -- ================================================================== wiring, ownership, privileges (keep last)
 DO $fn$

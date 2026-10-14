@@ -486,9 +486,12 @@ async def test_rls_tenant_isolation_and_scope_grants(led):
         rows = await led.sql("clt_aud", f"SELECT tenant_id FROM change_ledger.{tbl}")
         assert rows and {r[0] for r in rows} == {T}, tbl
     assert [r[0] for r in await led.sql("clt_aud", "SELECT change_id FROM change_ledger.records")] == [a]
-    # with the T2 scope the zed role sees only its own
-    assert [r[0] for r in await led.sql("clt_zed", "SELECT change_id FROM change_ledger.records",
-                                        t=T2, c=C2)] == [z]
+    # with the T2 scope the zed role sees only its own; 008 B6k: a requester reads through read_status, not the table
+    with pytest.raises(asyncpg.InsufficientPrivilegeError):
+        await led.sql("clt_zed", "SELECT change_id FROM change_ledger.records", t=T2, c=C2)
+    zs = await led.call("clt_zed", "read_status", z, t=T2, c=C2)
+    assert (json.loads(zs) if isinstance(zs, str) else zs)["change_id"] == str(z)
+    await fails("CHANGE_NOT_FOUND", led.call("clt_zed", "read_status", a, t=T2, c=C2))
     # no scope set at all: nothing visible
     assert await led.sql("clt_aud", "SELECT * FROM change_ledger.records", t=None) == []
     # a role cannot enter a scope it was not granted, and cannot call with arguments differing from its scope
@@ -571,8 +574,10 @@ async def test_approval_needs_a_distinct_person_and_a_single_use_bound_nonce(led
     await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, nonce, dg))
     # an approved change cannot be approved a second time with a fresh nonce
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='APPROVED' WHERE change_id=$1", cid)
-    # (batch A, A2) the nonce itself is refused for an authorization that is already APPROVED
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "issue_approval_nonce", cid))
+    # (batch A, A2; 008 B6b) an APPROVED change may get a nonce (the approver can still reject it) but a second
+    # approval with it is refused
+    n2 = await led.call("clt_carol", "issue_approval_nonce", cid)
+    await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "approve", cid, n2, dg))
 
 
 async def test_reject_consumes_a_nonce_and_is_terminal(led):
@@ -679,7 +684,11 @@ async def test_begin_apply_then_permit_needs_a_real_readback_checkpoint_covering
     permit = await led.call("clt_wrk", "issue_permit", cid, gen)
     assert permit["generation"] == gen and len(permit["permit_digest"]) == 64
     assert (await led.rec(cid))["dispatch_state"] == "PERMITTED"
-    await fails("PERMIT_MISSING", led.call("clt_wrk", "issue_permit", cid, gen))   # not twice
+    # 008 B6e: a repeated issue_permit returns the existing permit (no second PERMITTED event)
+    again = await led.call("clt_wrk", "issue_permit", cid, gen)
+    assert again["permit_digest"] == permit["permit_digest"] and again["expires_at"] == permit["expires_at"]
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1 AND "
+                                   "event_type='PERMITTED'", cid) == 1
     await fails("TICKET_SUPERSEDED", led.call("clt_wrk", "issue_permit", cid, gen + 1))
 
 
@@ -1089,7 +1098,8 @@ async def test_kill_switch_modes_refuse_admission_and_effect_steps_but_not_obser
     await led.conn.execute("UPDATE change_ledger.claim_tokens SET issued_at=now()-interval '3 minutes' "
                            "WHERE token_id=$1", ctok["token_id"])
     # REVOKE additionally voids the unclaimed approvals (contract section 6), so the sweep changes more
-    assert await led.call("clt_wrk", "recover_sweep") == (3 if mode == "REVOKE" else 1)
+    # 008 B6c: a stop mode also unwinds the permit-less APPLYING change (T6r) at once: one more change than before
+    assert await led.call("clt_wrk", "recover_sweep") == (4 if mode == "REVOKE" else 2)
     # in-flight DISPATCHED call follows the call: complete is allowed under every mode
     assert await led.complete(dispatched, dtok["generation"], "SUCCESS") == "APPLIED"
     assert await led.verify(dispatched, True) == "VERIFIED"

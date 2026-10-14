@@ -349,8 +349,10 @@ async def test_approve_compares_the_sql_computed_digest(env):
     status = await port.read_status(SCOPE, cid, as_class="approver")
     assert status["approval_digest"] and status["approved_digest"] is None
     assert isinstance(await port.approve(SCOPE, cid, nonce, status["approval_digest"]), uuid.UUID)
-    # 007 A2: an already approved change gets no new nonce
-    await refused(port.issue_approval_nonce(SCOPE, cid), "FORBIDDEN_TRANSITION")
+    # 007 A2 / 008 B6b: an already approved change may get a nonce (so that the approver can still reject it), but
+    # it can never be approved again with it
+    again = await port.issue_approval_nonce(SCOPE, cid)
+    await refused(port.approve(SCOPE, cid, again, status["approval_digest"]), "FORBIDDEN_TRANSITION")
 
 
 # ============================================================================ gate consistency with SQL
