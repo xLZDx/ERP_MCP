@@ -20,9 +20,11 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
+from _approval_envelope import envelope_dict
 from _pg_harness import require_dsn, throwaway_db
 from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
 
+from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope, code_from_message
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointRecord,
@@ -108,6 +110,12 @@ async def declare_inputs(port, cid):
     await port.declare_budget(SCOPE, cid, DEFAULT_GRANT[(T, C)], "EUR", 0)
 
 
+async def store_text(port, cid, nonce):
+    """009 (S12-APPROVAL-2): build the canonical approval text of the stored change and store it for `nonce`."""
+    text = canonical_json(await envelope_dict(port.conn, cid, nonce))
+    return await port.store_approval_text(SCOPE, cid, nonce, text)
+
+
 async def applying(port):
     """propose -> validate -> approve (nonce) -> claim -> begin_apply; returns ids."""
     cid = uuid.uuid4()
@@ -116,7 +124,8 @@ async def applying(port):
     await declare_inputs(port, cid)
     assert await port.validate(SCOPE, cid) == "VALIDATED"
     nonce = await port.issue_approval_nonce(SCOPE, cid)
-    digest = (await port.read_status(SCOPE, cid, as_class="approver"))["approval_digest"]
+    digest = await store_text(port, cid, nonce)       # 009: the trusted service stores the canonical text first
+    assert (await port.read_status(SCOPE, cid, as_class="approver"))["approval_digest"] == digest
     assert isinstance(await port.approve(SCOPE, cid, nonce, digest), uuid.UUID)
     tok = await port.claim(SCOPE, cid, None, DEFAULT_GRANT[(T, C)], 0)
     assert tok["change_id"] == cid and tok["generation"] == 1
@@ -346,8 +355,11 @@ async def test_approve_compares_the_sql_computed_digest(env):
     nonce = await port.issue_approval_nonce(SCOPE, cid)
     # the caller can no longer pick the digest: the requester's own payload digest is not the approval digest
     await refused(port.approve(SCOPE, cid, nonce, DIGEST), "DIGEST_MISMATCH")
+    assert (await port.read_status(SCOPE, cid, as_class="approver"))["approval_digest"] is None   # nothing stored yet
+    await store_text(port, cid, nonce)
     status = await port.read_status(SCOPE, cid, as_class="approver")
     assert status["approval_digest"] and status["approved_digest"] is None
+    await refused(port.approve(SCOPE, cid, nonce, DIGEST), "DIGEST_MISMATCH")    # still not the digest of the stored text
     assert isinstance(await port.approve(SCOPE, cid, nonce, status["approval_digest"]), uuid.UUID)
     # 007 A2 / 008 B6b: an already approved change may get a nonce (so that the approver can still reject it), but
     # it can never be approved again with it

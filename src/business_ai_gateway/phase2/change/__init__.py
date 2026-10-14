@@ -19,7 +19,7 @@ from .policy import (
 from .proposal import (
     MEASURED_SHAPE_MAX_LINES, OPERATION_RULES, RULE_TABLE_VERSION, ChangeProposal, DraftPayload, DuplicateOverride,
     Line, ProposalContext, approval_digest, canonical_json, derive_allowed_effects, parse_proposal, payload_digest,
-    payload_to_dict, sha256_hex,
+    payload_to_dict, sha256_hex, APPROVAL_DIGEST_VERSION, approval_canonical_text, digest_of_canonical_text,
 )
 from .transitions import (
     EVENT_EVIDENCE, FORBIDDEN_TRANSITIONS, LOCK_MATRIX, TRANSITION_TABLE, Applied, ApproveEvidence, BeginApplyEvidence,
@@ -50,6 +50,7 @@ __all__ = [
     "RejectEvidence", "ReleaseClaimEvidence", "ReleaseReason", "RepairAuth", "RepairContext", "RepairPhase",
     "Reservation", "ResolveEvidence", "ResolveOutcome", "RetryVerifyEvidence", "RevokeCause", "RevokeEvidence",
     "SWITCH_OFF", "Scope", "SwitchReading", "TRANSITION_TABLE", "TokenState", "TransitionRow", "ValidateEvidence",
+    "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "digest_of_canonical_text",
     "Verification", "VerifyEvidence", "amount_to_reserve", "apply_transition", "approval_digest",
     "authorize_operation", "canonical_json", "check_operation", "classify_completion", "consume",
     "derive_allowed_effects", "effective_mode", "evaluate", "forbidden_transition", "is_aware_datetime",

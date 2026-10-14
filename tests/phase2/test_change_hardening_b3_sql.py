@@ -186,8 +186,8 @@ async def test_b6c_a_stop_sweep_releases_but_never_voids(led):
 # ============================================================================ (d) nonce EXPIRED persisted
 async def test_b6d_an_expired_nonce_is_persisted_as_expired_by_the_sweep_and_by_the_next_nonce(led):
     cid = await led.validated()
-    dg = await led.approval_digest(cid)
     nonce = await led.call("clt_bob", "issue_approval_nonce", cid)
+    dg = await led.approval_digest(cid)       # 009: the canonical text is stored for the issued nonce
     await led.conn.execute("UPDATE change_ledger.approval_nonces SET expires_at=now()-interval '1 second' "
                            "WHERE nonce=$1", nonce)                                  # arrangement: time passed
     await fails("APPROVAL_EXPIRED", led.call("clt_bob", "approve", cid, nonce, dg))
@@ -202,7 +202,7 @@ async def test_b6d_an_expired_nonce_is_persisted_as_expired_by_the_sweep_and_by_
                            "WHERE nonce=$1", n2)
     n3 = await led.call("clt_bob", "issue_approval_nonce", cid)
     assert await count(led, "SELECT state FROM change_ledger.approval_nonces WHERE nonce=$1", n2) == "EXPIRED"
-    assert await led.call("clt_bob", "approve", cid, n3, dg) is not None
+    assert await led.call("clt_bob", "approve", cid, n3, await led.approval_digest(cid)) is not None  # 009: n3 has its own text
 
 
 # ============================================================================ (f) repair authorization again

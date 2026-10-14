@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
+from _approval_envelope import FIXTURE_DIGEST, ensure_envelope
 from _pg_harness import fails, require_dsn, throwaway_db
 
 pytestmark = pytest.mark.integration
@@ -23,7 +24,7 @@ T2, C2 = "T2", "C2"
 ORG = "org-1"
 BASE = "base-1"
 BASES = [f"base-{i}" for i in range(1, 9)] + [f"race-{i}" for i in range(8)]
-DIGEST = "a" * 64
+DIGEST = FIXTURE_DIGEST     # 009: the real payload digest of the fixture payload (target version v1), not a constant
 KH = "b" * 64
 HOST_PROOF_A = {"class": "a"}
 
@@ -265,6 +266,9 @@ class L:
         return json.loads(st) if isinstance(st, str) else st
 
     async def approval_digest(self, cid):
+        """009 (S12-APPROVAL-2): store the canonical text for the newest issued nonce (as the trusted service does),
+        then return the ledger-computed digest of the stored text."""
+        await ensure_envelope(self, cid)
         return (await self.status(cid))["approval_digest"]
 
     async def permitted(self, **kw):
@@ -542,10 +546,10 @@ async def test_propose_refuses_foreign_identity_unknown_or_revoked_target_and_ba
 # ============================================================================ T4 approval
 async def test_approval_needs_a_distinct_person_and_a_single_use_bound_nonce(led):
     cid = await led.validated(requester="clt_both")
-    dg = await led.approval_digest(cid)
     # the requester's own identity can neither obtain a nonce nor approve
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_both", "issue_approval_nonce", cid))
     nonce = await led.call("clt_bob", "issue_approval_nonce", cid)
+    dg = await led.approval_digest(cid)       # 009: the canonical text is stored for the issued nonce first
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_both", "approve", cid, nonce, dg))
     assert (await led.rec(cid))["authorization_state"] == "NONE"
     # a nonce is bound to its approver, its change and its digest
@@ -553,6 +557,7 @@ async def test_approval_needs_a_distinct_person_and_a_single_use_bound_nonce(led
     await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", cid, "bogus", dg))
     await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", cid, nonce, "d" * 64))
     other = await led.validated(request_id="other", base="base-2")
+    await led.call("clt_carol", "issue_approval_nonce", other)          # 009: other has its own text and digest
     await fails("APPROVAL_NONCE_INVALID", led.call("clt_bob", "approve", other, nonce,
                                                    await led.approval_digest(other)))
     # expiry
@@ -1359,7 +1364,7 @@ async def test_a2_finished_or_running_changes_cannot_be_approved_or_get_a_nonce_
         before = (r["authorization_state"], r["execution_state"], r["verification_state"], await ev_count(led, cid))
         await fails("FORBIDDEN_TRANSITION", led.call("clt_carol", "issue_approval_nonce", cid))
         await fails("FORBIDDEN_TRANSITION",
-                    led.call("clt_bob", "approve", cid, nonce, await led.approval_digest(cid)))
+                    led.call("clt_bob", "approve", cid, nonce, (await led.status(cid))["approval_digest"]))  # 009: no new text can be stored once approved
         r = await led.rec(cid)
         after = (r["authorization_state"], r["execution_state"], r["verification_state"], await ev_count(led, cid))
         assert after == before
@@ -1493,6 +1498,10 @@ async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_perm
 async def test_a7_approval_digest_is_computed_in_sql_from_the_stored_change(led):
     a = await led.validated(request_id="a7a", target="docA")          # same base, same payload, same version
     b = await led.validated(request_id="a7b", target="docB")
+    nonce = await led.call("clt_bob", "issue_approval_nonce", a)       # 009: the digest is that of the stored text
+    await led.call("clt_bob", "issue_approval_nonce", b)
+    await led.approval_digest(a)
+    await led.approval_digest(b)
     sa, sb = await led.status(a), await led.status(b)
     assert sa["payload_digest"] == sb["payload_digest"] == DIGEST
     assert sa["target_version"] == sb["target_version"] == "v1"
@@ -1503,11 +1512,13 @@ async def test_a7_approval_digest_is_computed_in_sql_from_the_stored_change(led)
     # the parent changes the digest too, and POST carries server-derived allowed effects
     p1 = await led.propose(kind="POST", parent=a, request_id="a7p1", base="base-2", target="docP")
     p2 = await led.propose(kind="POST", parent=b, request_id="a7p2", base="base-2", target="docP")
+    for p in (p1, p2):
+        await led.call("clt_bob", "issue_approval_nonce", p)
+        await led.approval_digest(p)
     s1, s2 = await led.status(p1), await led.status(p2)
     assert s1["approval_digest"] != s2["approval_digest"] and len(s1["allowed_effects"]) == 2
     assert s1["parent_change_id"] == str(a)
     # approve compares against the SQL digest: another change's digest and the opaque payload digest are refused
-    nonce = await led.call("clt_bob", "issue_approval_nonce", a)
     await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", a, nonce, sb["approval_digest"]))
     await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", a, nonce, DIGEST))
     assert (await led.rec(a))["authorization_state"] == "NONE"

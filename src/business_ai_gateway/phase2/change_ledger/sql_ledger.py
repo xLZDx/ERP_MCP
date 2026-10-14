@@ -1,4 +1,4 @@
-"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007, 008).
+"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007, 008, 009).
 
 No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
 caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
@@ -109,6 +109,10 @@ SPEC: dict[str, Fn] = {
     "observe_target": _f("observe_target", "writer", "uuid,text,text", "boolean"),
     "read_status": _f("read_status", "requester approver auditor", "uuid", "jsonb"),
     "read_evidence": _f("read_evidence", "requester auditor", "uuid", "jsonb"),
+    # 009 S12-APPROVAL-2: the canonical approval text is stored by the ledger and hashed as given
+    "store_approval_text": _f("store_approval_text", "requester", "uuid,text,text", "text"),
+    "read_approval_text": _f("read_approval_text", "requester approver", "uuid", "text"),
+    "verify_dispatch_payload": _f("verify_dispatch_payload", "writer requester", "uuid,bigint,text", "boolean"),
     "amount_consumed": _f("amount_consumed", "operator worker auditor", "text,uuid", "numeric"),
     # 006 writer fence (complete_lock_busy re-signed in 007)
     "complete_lock_busy": _f("complete_lock_busy", "writer", "uuid,bigint,uuid,jsonb", "text"),
@@ -381,6 +385,22 @@ class SqlChangeLedger:
 
     async def bump_epoch(self, scope: Scope, key: str) -> int:
         return await self.invoke("bump_epoch", scope, key)
+
+    # ---- 009 S12-APPROVAL-2
+    async def store_approval_text(self, scope: Scope, change_id: UUID, nonce: str, text: str) -> str:
+        """Store the canonical approval text (change.proposal.approval_canonical_text) for one issued nonce; returns
+        its digest (sha256 of the stored UTF-8 bytes). The ledger refuses a text that differs from its own state."""
+        return await self.invoke("store_approval_text", scope, change_id, nonce, text)
+
+    async def read_approval_text(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> str | None:
+        return await self.invoke("read_approval_text", scope, change_id, as_class=as_class)
+
+    async def verify_dispatch_payload(self, scope: Scope, change_id: UUID, generation: int,
+                                      payload_text: str | None, as_class: str | None = None) -> bool:
+        """The writer checks the exact payload (canonical JSON text; None for kinds without payload) against the
+        approved envelope before dispatch; a mismatch raises ``LedgerError('DIGEST_MISMATCH')``."""
+        return await self.invoke("verify_dispatch_payload", scope, change_id, generation, payload_text,
+                                 as_class=as_class)
 
     # ---- reads
     async def read_status(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> dict:

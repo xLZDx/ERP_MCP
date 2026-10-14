@@ -121,14 +121,16 @@ async def test_b1_currency_is_checked_at_declaration_and_at_claim(led):
 
 async def test_b1_the_declared_budget_is_inside_the_approval_digest_and_frozen_after_approval(led):
     cid = await led.validated(request_id="dg")
+    n0 = await led.call("clt_bob", "issue_approval_nonce", cid)       # 009: the text is stored per issued nonce
     d0 = await led.approval_digest(cid)
     assert await led.call("clt_alice", "declare_budget", cid, DEFAULT_GRANT[(T, C)], "EUR", 5, False, False) == "PROPOSED"
     assert (await led.rec(cid))["lifecycle"] == "PROPOSED"            # the earlier validation no longer stands
     await led.call("clt_alice", "validate", cid)
+    nonce = await led.call("clt_bob", "issue_approval_nonce", cid)    # a new preview needs a new nonce and text
     d1 = await led.approval_digest(cid)
     assert d1 != d0
-    nonce = await led.call("clt_bob", "issue_approval_nonce", cid)
     await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", cid, nonce, d0))
+    await fails("DIGEST_MISMATCH", led.call("clt_bob", "approve", cid, n0, d0))     # stale preview of the old budget
     await led.call("clt_bob", "approve", cid, nonce, d1)
     await fails("FORBIDDEN_TRANSITION", led.call("clt_alice", "declare_budget", cid, DEFAULT_GRANT[(T, C)], "EUR", 1,
                                                   False, False))

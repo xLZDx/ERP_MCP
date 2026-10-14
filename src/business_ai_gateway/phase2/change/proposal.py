@@ -26,7 +26,8 @@ from .types import ChangeKind, Scope, is_aware_datetime, is_identity_text
 
 __all__ = [
     "ChangeProposal", "DraftPayload", "DuplicateOverride", "Line", "MEASURED_SHAPE_MAX_LINES", "OPERATION_RULES",
-    "ProposalContext", "RULE_TABLE_VERSION", "approval_digest", "canonical_json", "derive_allowed_effects",
+    "ProposalContext", "RULE_TABLE_VERSION", "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "approval_digest",
+    "canonical_json", "derive_allowed_effects", "digest_of_canonical_text",
     "payload_digest", "payload_to_dict", "parse_proposal", "sha256_hex",
 ]
 
@@ -289,31 +290,82 @@ class ChangeProposal:
         return "ChangeProposal(<redacted>)"
 
 
-def approval_digest(proposal: ChangeProposal) -> str:
-    """The approval digest set of section 3: change_id, kind, scope, payload, target_ref, target_version,
-    business_state_digest, server-derived allowed_effects, rule table version, epoch_dependencies,
-    parent_change_id, duplicate_override and expires_at."""
+APPROVAL_DIGEST_VERSION: Final = "S12-APPROVAL-2"
+PRINCIPAL_EPOCH_PREFIX: Final = "principal:"  # principal epoch entries are not part of the digest (see spec 3, item 5)
+
+
+def _budget_envelope(budget: Mapping[str, object] | None) -> dict[str, object] | None:
+    """The declared budget in canonical form (amount as canonical decimal text), or ``None`` when none is declared."""
+    if budget is None:
+        return None
+    keys = {"grant_id", "currency", "amount", "counts_create_update", "counts_post"}
+    if (not isinstance(budget, Mapping) or set(budget) != keys or type(budget["grant_id"]) is not str
+            or type(budget["currency"]) is not str or type(budget["counts_create_update"]) is not bool
+            or type(budget["counts_post"]) is not bool or type(budget["amount"]) not in (str, Decimal)):
+        raise ValueError("PROPOSAL_INVALID")
+    amount = Decimal(str(budget["amount"]))
+    if not amount.is_finite() or amount < 0:
+        raise ValueError("PROPOSAL_INVALID")
+    return {"grant_id": budget["grant_id"], "currency": budget["currency"],
+            "amount": format(amount.normalize(), "f") if amount != 0 else "0",
+            "counts_create_update": budget["counts_create_update"], "counts_post": budget["counts_post"]}
+
+
+def approval_canonical_text(proposal: ChangeProposal, *, approval_nonce: str | None = None,
+                            repair_for: str | None = None, declared_target_class: str | None = None,
+                            budget: Mapping[str, object] | None = None) -> str:
+    """The canonical approval text of S12-APPROVAL-2 (docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md section 3).
+
+    The closed field list has exactly 20 top-level keys; absent optional values are JSON ``null``. The SQL ledger
+    stores this text as given and hashes its UTF-8 bytes (``change_ledger.store_approval_text``). Fields a
+    ``ChangeProposal`` does not carry (nonce, repair link, declared class, declared budget) are keyword arguments.
+    ``payload`` is ``null`` for the kinds that carry none. Principal epoch entries are excluded; the rest are sorted pairs.
+    """
     if type(proposal) is not ChangeProposal:
         raise ValueError("PROPOSAL_INVALID")
+    if any(v is not None and type(v) is not str for v in (approval_nonce, repair_for, declared_target_class)):
+        raise ValueError("PROPOSAL_INVALID")
     override = proposal.duplicate_override
-    return sha256_hex(canonical_json({
-        "digest_version": "S12-APPROVAL-1",
+    pairs = sorted([k, v] for k, v in proposal.epoch_dependencies if not k.startswith(PRINCIPAL_EPOCH_PREFIX))
+    return canonical_json({
+        "digest_version": APPROVAL_DIGEST_VERSION,
         "change_id": proposal.change_id,
         "kind": proposal.kind,
         "scope": {"tenant": proposal.scope.tenant, "company": proposal.scope.company,
                   "organization": proposal.scope.organization, "base_fingerprint": proposal.scope.base_fingerprint},
-        "payload": payload_to_dict(proposal.payload),
+        "payload": None if proposal.payload is None else payload_to_dict(proposal.payload),
+        "payload_digest": proposal.payload_digest,
         "target_ref": proposal.target_ref,
         "target_version": proposal.target_version,
         "business_state_digest": proposal.business_state_digest,
-        "allowed_effects": list(proposal.allowed_effects),
-        "rule_table_version": proposal.rule_table_version,
-        "epoch_dependencies": [list(p) for p in proposal.epoch_dependencies],
         "parent_change_id": proposal.parent_change_id,
+        "repair_for": repair_for,
+        "declared_target_class": declared_target_class,
+        "allowed_effects": sorted(proposal.allowed_effects),
+        "budget": _budget_envelope(budget),
         "duplicate_override": None if override is None else {
             "duplicate_of_change_or_ref": override.duplicate_of_change_or_ref, "justification": override.justification},
+        "rule_table_version": proposal.rule_table_version,
+        "epoch_dependencies": pairs,
+        "preview_digest": proposal.preview_digest,
+        "approval_nonce": approval_nonce,
         "expires_at": proposal.expires_at,
-    }))
+    })
+
+
+def digest_of_canonical_text(text: str) -> str:
+    """SHA-256 (hex) of the UTF-8 bytes of a canonical approval text: the S12-APPROVAL-2 digest."""
+    if type(text) is not str:
+        raise ValueError("PROPOSAL_INVALID")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def approval_digest(proposal: ChangeProposal, *, approval_nonce: str | None = None, repair_for: str | None = None,
+                    declared_target_class: str | None = None, budget: Mapping[str, object] | None = None) -> str:
+    """S12-APPROVAL-2: sha256 of ``approval_canonical_text`` (same arguments)."""
+    return digest_of_canonical_text(approval_canonical_text(
+        proposal, approval_nonce=approval_nonce, repair_for=repair_for,
+        declared_target_class=declared_target_class, budget=budget))
 
 
 # ---- parsing caller input ------------------------------------------------------------------------------------

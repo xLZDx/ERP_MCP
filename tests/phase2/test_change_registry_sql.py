@@ -321,7 +321,9 @@ async def test_repair_approver_must_be_a_different_person_than_the_failed_parent
     dg = await reg.approval_digest(rep)
     await fails("APPROVER_NOT_INDEPENDENT", reg.call("clt_carol", "approve", rep, nonce, dg))
     nonce_b = await reg.call("clt_bob", "issue_approval_nonce", rep)
-    await reg.call("clt_bob", "approve", rep, nonce_b, dg)
+    dg_b = await reg.approval_digest(rep)      # 009: the digest binds the nonce, so bob's nonce has its own text
+    assert dg_b != dg
+    await reg.call("clt_bob", "approve", rep, nonce_b, dg_b)
     assert (await reg.rec(rep))["authorization_state"] == "APPROVED"
 
 
@@ -758,7 +760,8 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     assert await reg.call("clt_alice", "validate", b) == "DUPLICATE_PARKED"            # terminal
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", b, k2, None, None))
     nonce = await reg.call("clt_bob", "issue_approval_nonce", b)
-    await fails("FORBIDDEN_TRANSITION", reg.call("clt_bob", "approve", b, nonce, await reg.approval_digest(b)))
+    await fails("FORBIDDEN_TRANSITION", reg.approval_digest(b))     # 009: no canonical text is stored for a parked change
+    await fails("FORBIDDEN_TRANSITION", reg.call("clt_bob", "approve", b, nonce, "e" * 64))
     # another base or another key is not a duplicate; the 004 caller flag no longer exists (008): a collision parks server-side
     assert (await _keyed(reg, "c", k1, base="base-2"))[1] == "VALIDATED"
     assert (await _keyed(reg, "d", k2))[1] == "VALIDATED"
@@ -781,7 +784,9 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
     await fails("DUPLICATE_SUSPECTED", reg.call("clt_bob", "approve", o, n_bob, dg_o))               # carol's binding is carol's
     assert await reg.call("clt_carol", "bind_duplicate_override", o, odg) is True                    # idempotent
     n_carol = await reg.call("clt_carol", "issue_approval_nonce", o)
-    await reg.call("clt_carol", "approve", o, n_carol, dg_o)
+    dg_c = await reg.approval_digest(o)        # 009: the digest binds the nonce, so carol's nonce has its own text
+    assert dg_c != dg_o
+    await reg.call("clt_carol", "approve", o, n_carol, dg_c)
     assert (await reg.rec(o))["authorization_state"] == "APPROVED"
     # after approval the key and the override are frozen (they are inside the digest)
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_alice", "declare_business_key", o, k2, None, None))
