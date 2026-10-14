@@ -76,3 +76,16 @@ Add migration 009 with a canonical-text column and the version-2 digest function
 prototype rows of `S12-APPROVAL-SQL-1`; update `change/proposal.py::approval_digest`, the port SPEC in
 `sql_ledger.py` and `checkpoint.py`, and the harness `FILES` tuple. Sequenced after batch B round 3 is committed,
 because those files are under edit by the B6 work.
+
+## 7. Reconciliation with the SQL digest of migrations 007 and 008 (2026-10-14)
+
+Read from change_ledger.approval_digest (007 line 78, redefined in 008 line 194). The interim S12-APPROVAL-SQL-1 covers: change_id, kind, tenant, company, organization, base_fingerprint, payload_digest, target_ref, target_version, parent_change_id, repair_for, declared_target_class, business_state_digest (sha256 of business key hash plus override digest, not the observed target state), budget (grant_id, currency, amount, counts_create_update, counts_post; 008 only), allowed_effects, rule_table_version (hard-coded), epoch_dependencies (principal entries removed), expires_at.
+
+Gaps against section 3 that version 2 must close:
+1. The payload itself is not stored in records; only payload_digest. Version 2 needs the canonical text column (migration 009).
+2. preview_digest and approval_nonce are not part of the digest.
+3. duplicate_override is represented only through business_keys.override_digest inside business_state_digest; it becomes its own field.
+4. business_state_digest must carry the observed target state digest from preview, not a key-hash derivation.
+5. epoch_dependencies are a JSON object in SQL and sorted pairs offline; version 2 fixes one form (sorted pairs) and the principal-entry exclusion rule is stated explicitly in the field list.
+6. Serialization: SQL uses jsonb text; version 2 hashes stored canonical text.
+7. The approval type and the kill-switch epoch are outside the envelope in this draft; GPT-PM review decides whether they belong in it.
