@@ -73,8 +73,8 @@ async def restored_ledger(led):
     await led.checkpoint()
     anchored = await led.call("clt_wrk", "ledger_head")
     assert anchored["seq"] > head["seq"]
-    lost = await led.conn.fetch("SELECT change_id,event_type,payload FROM change_ledger.events WHERE seq>$1 "
-                                "ORDER BY seq", head["seq"])
+    lost = await led.conn.fetch("SELECT event_id,recorded_at,change_id,event_type,payload FROM change_ledger.events "
+                                "WHERE seq>$1 ORDER BY seq", head["seq"])
     await led.conn.execute("ALTER TABLE change_ledger.events DISABLE TRIGGER events_immutable")
     await led.conn.execute("DELETE FROM change_ledger.events WHERE seq>$1", head["seq"])
     await led.conn.execute("ALTER TABLE change_ledger.events ENABLE TRIGGER events_immutable")
@@ -119,13 +119,15 @@ async def test_b4_replayed_history_that_contains_the_exact_event_releases_the_ho
     head, anchored, lost = await restored_ledger(led)
     hold = await hold_of(led, "base-1")
     # the lost history is restored from the external archive (fixture): drop what the restored ledger appended since
-    # (the ANCHOR_GAP event) and replay the lost events; the chain is deterministic, so the hashes come back
+    # (the ANCHOR_GAP event) and replay the lost events VERBATIM from the archive (011: the v2 hash also covers the
+    # event id and the recorded time, so the replay must carry them; the chain is deterministic given the full rows)
     await led.conn.execute("ALTER TABLE change_ledger.events DISABLE TRIGGER events_immutable")
     await led.conn.execute("DELETE FROM change_ledger.events WHERE seq>$1", head["seq"])
     await led.conn.execute("ALTER TABLE change_ledger.events ENABLE TRIGGER events_immutable")
     for r in lost:
-        await led.conn.execute("INSERT INTO change_ledger.events(tenant_id,company_id,change_id,event_type,payload) "
-                               "VALUES($1,$2,$3,$4,$5::jsonb)", T, C, r["change_id"], r["event_type"], r["payload"])
+        await led.conn.execute("INSERT INTO change_ledger.events(tenant_id,company_id,event_id,recorded_at,change_id,"
+                               "event_type,payload) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb)", T, C, r["event_id"],
+                               r["recorded_at"], r["change_id"], r["event_type"], r["payload"])
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE seq=$1 AND hash=$2",
                                    anchored["seq"], anchored["head_hash"]) == 1
     # the checkpoint of the restored ledger covered the ANCHOR_GAP event that no longer exists: it does not match now

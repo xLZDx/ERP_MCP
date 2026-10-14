@@ -456,9 +456,13 @@ async def test_hash_chain_verifies_and_every_tamper_is_detected(led):
     assert head == {"seq": n, "head_hash": rows[-1]["hash"]}
     # the stored hash is what the documented formula yields (so an external verifier can recompute it)
     r2 = await led.conn.fetchrow("SELECT * FROM change_ledger.events WHERE seq=2")
-    want = hashlib.sha256(f"{rows[0]['hash']}:2:{r2['change_id']}:{r2['event_type']}:{r2['payload']}"
-                          .encode()).hexdigest()
-    assert r2["hash"] == want
+    # 011: formula version 2 also covers tenant, company, event id and the recorded time (UTC, fixed format)
+    ts = r2["recorded_at"].astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    want = hashlib.sha256((
+        f"change-ledger-event|v2|{rows[0]['hash']}|2|{len(r2['tenant_id'])}:{r2['tenant_id']}|"
+        f"{len(r2['company_id'])}:{r2['company_id']}|{r2['event_id']}|{r2['change_id'] or ''}|"
+        f"{len(r2['event_type'])}:{r2['event_type']}|{ts}|{r2['payload']}").encode()).hexdigest()
+    assert r2["hash"] == want and r2["hash_version"] == 2
 
     async def tamper(stmt):
         await led.conn.execute("ALTER TABLE change_ledger.events DISABLE TRIGGER events_immutable")
