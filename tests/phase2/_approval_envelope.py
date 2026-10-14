@@ -20,6 +20,7 @@ FIXTURE_PAYLOAD = {
 }
 FIXTURE_TARGET_VERSION = "v1"
 FIXTURE_DIGEST = sha256_hex(canonical_json({"payload": FIXTURE_PAYLOAD, "target_version": FIXTURE_TARGET_VERSION}))
+FIXTURE_NULL_DIGEST = sha256_hex(canonical_json({"payload": {}, "target_version": FIXTURE_TARGET_VERSION}))
 FIXTURE_PREVIEW = "c" * 64
 
 
@@ -32,10 +33,20 @@ def _json(value):
     return json.loads(value) if isinstance(value, str) else value
 
 
-async def envelope_dict(conn, cid, nonce, *, payload=FIXTURE_PAYLOAD, preview=FIXTURE_PREVIEW,
+def fixture_digest_for(kind):
+    """The payload digest the legacy fixtures propose with: drafts carry FIXTURE_PAYLOAD, every other kind none."""
+    return FIXTURE_DIGEST if kind in ("CREATE_DRAFT", "UPDATE_DRAFT") else FIXTURE_NULL_DIGEST
+
+
+_DEFAULT = object()
+
+
+async def envelope_dict(conn, cid, nonce, *, payload=_DEFAULT, preview=FIXTURE_PREVIEW,
                         business_state_digest=None):
     """The closed 20-key envelope of the spec, built from the ledger's stored change (superuser read)."""
     rec = await conn.fetchrow("SELECT * FROM change_ledger.records WHERE change_id=$1", cid)
+    if payload is _DEFAULT:    # 009 payload rule: drafts carry an object, POST / UNPOST carry JSON null
+        payload = FIXTURE_PAYLOAD if rec["kind"] in ("CREATE_DRAFT", "UPDATE_DRAFT") else None
     cb = await conn.fetchrow("SELECT * FROM change_ledger.change_budget WHERE change_id=$1", cid)
     bk = await conn.fetchrow("SELECT * FROM change_ledger.business_keys WHERE change_id=$1", cid)
     effects = _json(await conn.fetchval("SELECT change_ledger.allowed_effects($1)", rec["kind"]))

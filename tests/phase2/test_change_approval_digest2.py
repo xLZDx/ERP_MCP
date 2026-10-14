@@ -301,7 +301,30 @@ async def test_a_payload_that_does_not_recompute_to_its_digest_is_refused_at_sto
     obj = json.loads(text_of(k))
     obj["payload"]["comment"] = "substituted before approval"          # payload_digest still names the original
     await fails("DIGEST_MISMATCH", store(led, k, canonical_json(obj)))
-    await fails("DIGEST_MISMATCH", store(led, k, canonical_json({**json.loads(text_of(k)), "payload": None})))
+    # a null payload on a draft is now refused earlier, by the operation-specific payload rule (was DIGEST_MISMATCH)
+    await fails("SCHEMA_INVALID", store(led, k, canonical_json({**json.loads(text_of(k)), "payload": None})))
+    await assert_equal_and_approvable(led, k, text_of(k))
+
+
+@pytest.mark.parametrize("kind", ["CREATE_DRAFT", "UPDATE_DRAFT"])
+async def test_a_draft_envelope_must_carry_a_payload_object(led, kind):
+    k = await make_case(led, kind)
+    obj = json.loads(text_of(k))
+    for bad in (None, [], "x", 1):
+        await fails("SCHEMA_INVALID", store(led, k, canonical_json({**obj, "payload": bad})))
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.approval_envelopes") == 0
+    await assert_equal_and_approvable(led, k, text_of(k))
+
+
+@pytest.mark.parametrize("kind", ["POST", "UNPOST", "REPAIR"])
+async def test_a_post_or_unpost_envelope_must_carry_json_null_not_an_object(led, kind):
+    k = await make_case(led, kind)
+    obj = json.loads(text_of(k))
+    assert obj["payload"] is None
+    # {} would recompute to the same payload_digest, so only the payload rule refuses it
+    for bad in ({}, {"comment": "smuggled"}, [], "x"):
+        await fails("SCHEMA_INVALID", store(led, k, canonical_json({**obj, "payload": bad})))
+    assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.approval_envelopes") == 0
     await assert_equal_and_approvable(led, k, text_of(k))
 
 

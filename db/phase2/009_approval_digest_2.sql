@@ -188,6 +188,11 @@ BEGIN
  IF p_env->'payload' IS NULL OR jsonb_typeof(p_env->'payload') NOT IN ('null','object') THEN
   RAISE EXCEPTION 'SCHEMA_INVALID';
  END IF;
+ -- operation-specific payload rule (as ChangeProposal): drafts carry an object, POST / UNPOST carry JSON null
+ IF jsonb_typeof(p_env->'payload') IS DISTINCT FROM
+    (CASE WHEN p_rec.kind IN ('CREATE_DRAFT','UPDATE_DRAFT') THEN 'object' ELSE 'null' END) THEN
+  RAISE EXCEPTION 'SCHEMA_INVALID';
+ END IF;
  IF (p_env - 'payload' - 'business_state_digest' - 'preview_digest')
     IS DISTINCT FROM change_ledger.envelope_expected(p_rec,p_nonce) THEN
   RAISE EXCEPTION 'DIGEST_MISMATCH';          -- stale preview or substituted field

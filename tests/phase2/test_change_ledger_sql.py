@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
-from _approval_envelope import FIXTURE_DIGEST, ensure_envelope
+from _approval_envelope import FIXTURE_DIGEST, ensure_envelope, fixture_digest_for
 from _pg_harness import fails, require_dsn, throwaway_db
 
 pytestmark = pytest.mark.integration
@@ -122,10 +122,11 @@ class L:
             base, target)
 
     # ---------------------------------------------------------------- flows
-    async def propose(self, requester="clt_alice", base=BASE, request_id=None, digest=DIGEST,
+    async def propose(self, requester="clt_alice", base=BASE, request_id=None, digest=None,
                       target="doc1", kind="CREATE_DRAFT", parent=None, repair_for=None, t=T, c=C,
                       budget=True, key=None, grant=None, amount=0, declare_class=True):
         cid = uuid.uuid4()
+        digest = digest or fixture_digest_for(kind)     # 009 payload rule: POST / UNPOST carry no payload
         got = await self.call(requester, "propose", cid, kind, base, ORG, requester,
                               request_id or uuid.uuid4().hex, digest, target, "v1", parent, exp(),
                               repair_for, t=t, c=c)
