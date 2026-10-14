@@ -14,8 +14,9 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
-from _approval_envelope import FIXTURE_DIGEST, ensure_envelope, fixture_digest_for
+from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
 from _pg_harness import fails, require_dsn, throwaway_db
+from business_ai_gateway.phase2.change import canonical_json
 
 pytestmark = pytest.mark.integration
 
@@ -72,8 +73,32 @@ class L:
     def __init__(self, db):
         self.db, self.conn = db, db.conn
 
+    async def verify_dispatch(self, cid, gen, t=T, c=C, conn=None):
+        """012 (A7-B01): the writer verifies the exact payload before dispatch; record_call refuses without it.
+
+        Fixture helper for the legacy dispatch flows: it sends the fixture payload of the change when that payload
+        recomputes to the stored payload_digest, and does nothing otherwise or when the ledger refuses (a test that
+        probes a refusal of record_call itself still gets the real record_call outcome; the marker is only ever
+        written by the ledger's own verify_dispatch_payload, never arranged by a direct INSERT)."""
+        conn = conn or self.conn
+        row = await conn.fetchrow("SELECT kind, target_version, payload_digest FROM change_ledger.records "
+                                  "WHERE change_id=$1", cid)
+        if row is None:
+            return
+        payload = FIXTURE_PAYLOAD if row["kind"] in ("CREATE_DRAFT", "UPDATE_DRAFT") else None
+        if await conn.fetchval("SELECT change_ledger.payload_digest_of($1::jsonb,$2)", json.dumps(payload or {}),
+                               row["target_version"]) != row["payload_digest"]:
+            return
+        try:
+            await self.call("clt_wri", "verify_dispatch_payload", cid, gen,
+                            None if payload is None else canonical_json(payload), t=t, c=c, conn=conn)
+        except asyncpg.PostgresError:
+            pass
+
     async def call(self, role, name, *args, t=T, c=C, conn=None):
         conn = conn or self.conn
+        if name == "record_call" and len(args) == 3 and isinstance(args[0], uuid.UUID):
+            await self.verify_dispatch(args[0], args[1], t=t, c=c, conn=conn)
         marks = ",".join(f"${i + 3}" for i in range(len(args)))
         head = "SELECT * FROM" if name in COMPOSITE_FUNCS else "SELECT"
         sql = f"{head} change_ledger.{name}($1,$2{',' if args else ''}{marks})"

@@ -34,7 +34,9 @@ from urllib.parse import urlsplit
 
 import asyncpg
 import pytest
-from _approval_envelope import FIXTURE_DIGEST, ensure_envelope
+from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope
+
+from business_ai_gateway.phase2.change import canonical_json
 
 pytestmark = pytest.mark.integration
 
@@ -42,7 +44,7 @@ MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
 FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql",
          "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql",
          "008_change_hardening_b.sql", "009_approval_digest_2.sql", "010_registry_session_hardening.sql",
-         "011_event_hash_v2.sql")
+         "011_event_hash_v2.sql", "012_dispatch_session_hardening.sql")
 CONTAINER_PREFIX = "r2-s13-dump-"
 
 T, C = "T1", "C1"
@@ -244,6 +246,9 @@ async def _journey(led):
     await led.checkpoint()
     permit = await led.call("clt_wrk", "issue_permit", cid, tok["generation"])
     assert permit["generation"] == tok["generation"]
+    # 012 (A7-B01): the writer verifies the exact payload first; record_call refuses a dispatch without the marker
+    assert await led.call("clt_wri", "verify_dispatch_payload", cid, tok["generation"],
+                          canonical_json(FIXTURE_PAYLOAD)) is True
     assert await led.call("clt_wri", "record_call", cid, tok["generation"], call_id) is True
     comp = await led.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True}, "clt_wri",
                               tok["generation"], call_id)

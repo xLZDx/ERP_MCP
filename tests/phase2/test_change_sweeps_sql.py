@@ -60,6 +60,13 @@ async def counter(led, cid, kind):
         "SELECT * FROM change_ledger.sweep_counters WHERE subject_id=$1 AND kind=$2", cid, kind)
 
 
+async def age_verify_counter(led):
+    """012 (B6-h): a counted verification tick needs the minimum spacing since the previous one; arrange that the spacing
+    (and the due time) lies in the past, exactly as if the sweeps had run that much later."""
+    await led.conn.execute("UPDATE change_ledger.sweep_counters SET last_attempt_at=last_attempt_at-interval '10 minutes',"
+                           " next_attempt_at=now()-interval '1 second' WHERE kind='VERIFY' AND closed_at IS NULL")
+
+
 async def failed_verify(led, **kw):
     cid, tok, _ = await led.dispatched(**kw)
     assert await led.complete(cid, tok["generation"], "SUCCESS") == "APPLIED"
@@ -278,6 +285,7 @@ async def test_stuck_verification_counts_attempts_then_fails_verify_unknown_with
         got = await sweep(led, **FAST)
         assert got["VERIFY_DUE"] == [str(cid)]
         assert (await counter(led, cid, "VERIFY"))["attempts"] == n
+        await age_verify_counter(led)       # 012 (B6-h): ticks are spaced; the test lets the spacing elapse by back-dating
     assert (await led.rec(cid))["verification_state"] == "NOT_VERIFIED"
     got = await sweep(led, **FAST)
     assert got["VERIFY_EXHAUSTED"] == [str(cid)]

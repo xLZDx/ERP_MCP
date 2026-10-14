@@ -357,6 +357,9 @@ async def test_b5_a_worker_cannot_pass_a_contract_constant_and_the_operator_poli
     ev = json.loads(await led.conn.fetchval("SELECT payload FROM change_ledger.events WHERE event_type="
                                             "'SWEEP_POLICY_SET'"))
     assert ev["params"] == {"verify_max_attempts": 1} and ev["previous"] == {} and ev["by"] == "clt_dave"
+    # 012 (B6-h): the second counted tick needs the minimum spacing; arrange that it elapsed (back-date the counter)
+    await led.conn.execute("UPDATE change_ledger.sweep_counters SET last_attempt_at=last_attempt_at-interval '10 minutes',"
+                           " next_attempt_at=now()-interval '1 second' WHERE kind='VERIFY' AND closed_at IS NULL")
     got = await sweep(led, **FAST)
     assert got["VERIFY_EXHAUSTED"] == [str(cid)]                          # the policy row, not a parameter
     assert (await led.rec(cid))["verification_state"] == "FAILED_VERIFY"

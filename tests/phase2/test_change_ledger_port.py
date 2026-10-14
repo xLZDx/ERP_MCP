@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
-from _approval_envelope import envelope_dict
+from _approval_envelope import FIXTURE_PAYLOAD, envelope_dict
 from _pg_harness import require_dsn, throwaway_db
 from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
 
@@ -134,6 +134,12 @@ async def applying(port):
     got = await port.begin_apply(SCOPE, tok["token_id"], call_id, "host-1", "sess-1")
     assert got["token_id"] == tok["token_id"]
     return cid, tok["generation"], call_id
+
+
+async def dispatch(port, cid, gen, call_id):
+    """012 (A7-B01): the writer verifies the exact payload through the port first; record_call is the dispatch CAS."""
+    assert await port.verify_dispatch_payload(SCOPE, cid, gen, canonical_json(FIXTURE_PAYLOAD), as_class="writer") is True
+    return await port.record_call(SCOPE, cid, gen, call_id)
 
 
 async def evidence(conn, port, cid, kind, content, actor="worker", gen=None, call_id=None):
@@ -280,7 +286,7 @@ async def test_journey_propose_to_dispatch_through_the_permit_gate(env):
     assert len(sink.rows) == 1
     # writer: fence check, dispatch CAS
     assert (await port.fence_check(SCOPE, cid, gen, call_id))["ok"] is True
-    assert await port.record_call(SCOPE, cid, gen, call_id) is True
+    assert await dispatch(port, cid, gen, call_id) is True
     assert await conn.fetchval("SELECT dispatch_state FROM change_ledger.records WHERE change_id=$1",
                                cid) == "DISPATCHED"
     # the whole chain verifies for auditor and the head moved
@@ -292,7 +298,7 @@ async def test_unknown_outcome_then_operator_resolve_is_refused_without_proof(en
     conn, port = env
     cid, gen, call_id = await applying(port)
     await real_gate(port).issue_permit(SCOPE, cid, gen)
-    assert await port.record_call(SCOPE, cid, gen, call_id) is True
+    assert await dispatch(port, cid, gen, call_id) is True
     # UNKNOWN needs no proof (complete_signed, no completion record) but opens a CALL_OWNERSHIP hold
     assert await port.complete_signed(SCOPE, cid, gen, "UNKNOWN", None) == "APPLY_UNKNOWN"
     assert await conn.fetchval("SELECT count(*) FROM change_ledger.holds WHERE change_id=$1 AND "
@@ -318,7 +324,7 @@ async def test_absent_resolution_needs_a_proof_class(env):
     conn, port = env
     cid, gen, call_id = await applying(port)
     await real_gate(port).issue_permit(SCOPE, cid, gen)
-    await port.record_call(SCOPE, cid, gen, call_id)
+    await dispatch(port, cid, gen, call_id)
     await port.complete_signed(SCOPE, cid, gen, "UNKNOWN", None)
     absent = await evidence(conn, port, cid, "OBSERVATION", {"effect_present": False})
     await refused(port.resolve_unknown_signed(SCOPE, cid, absent, None, False), "COMPLETION_PROOF_MISSING")
@@ -330,7 +336,7 @@ async def test_signed_completion_and_verification_through_the_port(env):
     conn, port = env
     cid, gen, call_id = await applying(port)
     await real_gate(port).issue_permit(SCOPE, cid, gen)
-    assert await port.record_call(SCOPE, cid, gen, call_id) is True
+    assert await dispatch(port, cid, gen, call_id) is True
     # a completion needs the writer's own signed class-a record of this call; no record -> refused
     await refused(port.complete_signed(SCOPE, cid, gen, "SUCCESS", None), "EVIDENCE_UNSIGNED")
     done = await evidence(conn, port, cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True},
