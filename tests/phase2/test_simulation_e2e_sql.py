@@ -312,7 +312,7 @@ async def test_crash_before_write_recovery_proves_absence_without_retry(env):
 
 async def test_repair_unposts_failed_post_and_verification_releases_halt(env):
     e = env
-    base = "base-repair-e2e"
+    base = "base-1"
     draft = e.gen.draft_payload()
     draft_id, _, _ = await full_success(e, ChangeKind.CREATE_DRAFT, draft, None, None, target="new-doc")
     ref = e.clone.target_refs()[0]
