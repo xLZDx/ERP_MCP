@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 80 tracked paths, 1 local-only paths.
+Inventory: 81 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -30,6 +30,7 @@ Inventory: 80 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_021.md | Phase 2 design | "Change record 021 — repair scenario target fixture" |
 | docs/phase2/CHANGE_RECORD_022.md | Phase 2 design | "Change record 022 — migration 017 regression setup" |
 | docs/phase2/CHANGE_RECORD_023.md | Phase 2 design | "Change record 023 — receipt-marker retry lifecycle" |
+| docs/phase2/CHANGE_RECORD_024.md | Phase 2 design | "Change record 024 — dump/restore container selection" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -100,4 +101,4 @@ Inventory: 80 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_024.md |
+| docs/phase2/CHANGE_RECORD_025.md |

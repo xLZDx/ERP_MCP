@@ -17,4 +17,8 @@ Affected contracts are claim-generation fencing, dispatch receipt evidence, veri
 
 ## Verification state
 
-Code and focused SQL tests are implemented. PostgreSQL tests, independent verification, and catalog/ACL runtime inspection are NOT_RUN at this record; they are scheduled after all in-scope code is complete. The simulation remains NON-GATING, and no release or real-system status changes.
+Independent focused PostgreSQL runs passed: migration 017 regressions 4/4, migration 016 regressions 7/7, and related
+hardening G/D, approval digest, ledger, registry, sweeps, dump/restore and Ed25519 SQL files all passed. Independent
+manual migration review found no BLOCKER/MAJOR in wiring, ACL, trigger, concurrency/order or receipt state handling.
+Evidence is recorded in the run logs listed in `CHANGE_RECORD_018.md` and the independent verification handoff. The
+simulation remains NON-GATING, and no release or real-system status changes.

@@ -17,5 +17,6 @@ container is running and that its PostgreSQL system identifier matches the DSN b
 
 ## Verification state
 
-Source change implemented. The independent test phase has not started; the verifier was asked to pause until this update
-is committed. Runtime behavior remains NOT_RUN.
+The independent verifier used `ERP_PHASE2_TEST_CONTAINER` with its unique `r2-s13-dump-20261015-1505` container. Shared
+harness tests passed. The dump/restore guard initially failed before DB work with Docker's publish filter, so change 024
+added explicit container selection and `docker port` verification; the corrected dump/restore test passed 6/6.

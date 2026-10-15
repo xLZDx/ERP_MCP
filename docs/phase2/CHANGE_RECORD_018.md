@@ -21,6 +21,13 @@ test owns PostgreSQL database export/import coverage.
 
 ## Verification state
 
-Scenario code is implemented. Test execution is NOT_RUN until the full coding set is frozen and the authorized focused
-test agents run one file at a time on the disposable PostgreSQL container. Any runtime-unavailable scenario must retain
-its exact dependency/error and remain NOT_RUN. The test does not establish production or release-gate evidence.
+Independent run of `test_simulation_e2e_sql.py` passed 14/14. The separate PostgreSQL dump/restore journey passed 6/6,
+including restored history and continued chain append. The full independent focused list passed 849 tests across 16 files;
+`test_change_port.py` is absent, and its existing counterpart `test_change_ledger_port.py` passed 16/16. Each file ran in a
+separate pytest process with a distinct basetemp; logs are under
+`D:\Temp\claude\d--Repo\97a99f8c-e320-4800-a0f3-451a82795360\scratchpad`. Migration review found no BLOCKER/MAJOR.
+This does not establish production or release-gate evidence.
+
+An independent end-to-end code review found no BLOCKER/MAJOR and one MINOR: the tamper case's mismatching digest is
+arbitrary rather than derived from the received wire bytes. The adjacent test comment now states that limited assertion;
+the typed-payload versus wire-byte digest gap remains explicit and is not claimed closed.

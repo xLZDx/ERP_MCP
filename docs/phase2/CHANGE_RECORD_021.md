@@ -15,5 +15,5 @@ This corrects test data setup only. It does not relax target registration or eff
 
 ## Verification state
 
-The failing run is recorded as 13 passed, 1 failed on commit 8115d62. The corrected `test_simulation_e2e_sql.py` remains
-NOT_RUN pending independent rerun. All later requested files remain NOT_RUN.
+The failing run is recorded as 13 passed, 1 failed on commit 8115d62. The corrected `test_simulation_e2e_sql.py` later
+passed 14/14 independently. See the final verification summary in `CHANGE_RECORD_018.md`.

@@ -18,5 +18,5 @@ next claim generation by migration 017's trigger.
 
 ## Verification state
 
-The preceding run had 1 failed and 3 passed. This corrected test remains NOT_RUN pending independent rerun; all later
-requested files remain NOT_RUN.
+The preceding run had 1 failed and 3 passed. The corrected `test_change_hardening_i_sql.py` later passed 4/4 independently.
+See the final verification summary in `CHANGE_RECORD_018.md`.

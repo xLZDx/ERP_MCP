@@ -18,5 +18,6 @@ not reused after the switch returns to OFF.
 
 ## Verification state
 
-The failing run is evidence only for the initial commit and is not a pass. The corrected file must be rerun by the
-independent test agent. No other requested test file has been run yet.
+After this and the subsequent registered-base correction in change 021, the independent `test_simulation_e2e_sql.py`
+run passed 14/14 on commit 60a5b7e. Earlier failures remain recorded in the log for traceability and are superseded by
+the later green run.

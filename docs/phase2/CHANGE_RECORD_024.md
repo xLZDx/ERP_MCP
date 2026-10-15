@@ -18,5 +18,5 @@ container created for this verifier and does not broaden test cleanup or databas
 
 ## Verification state
 
-Harness change is implemented. The dump/restore file has not run successfully on this container selection yet; all
-remaining requested files stay NOT_RUN until the independent runner resumes.
+After this fix, the independent dump/restore file passed 6/6 using the explicitly selected container and DSN port.
+The shared harness passed all other requested SQL files; see the run summary in `CHANGE_RECORD_018.md`.

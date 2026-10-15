@@ -200,7 +200,8 @@ async def test_clone_tamper_gives_no_matching_receipt_and_completion_is_refused(
     out = await dispatch(e, cid, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None)
     assert out.status is WriteStatus.TAMPER_DETECTED and out.received_payload_sha256 != out.approved_payload_sha256
     digest = await approved_digest(e, cid)
-    # what the clone could honestly sign is a digest of the OTHER bytes it received: never the approved one
+    # Exercise rejection of an arbitrary mismatching digest. This does not prove the ledger
+    # rejects a receipt over the actual received wire bytes (the ledger uses the 009 payload digest).
     other = sha((digest + ":other-bytes").encode())
     await fails("DIGEST_MISMATCH", put(e, cid, gen, ledger_receipt(e.clone, cid, call_id, other, "V1")))
     # a receipt over the approved digest is only possible if the clone signed it; the writer cannot mint one

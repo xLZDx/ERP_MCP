@@ -27,13 +27,17 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 598a7a5</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 4dec3bc</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
+
+
 <main>
 <p>Status as of 2026-10-15. This is a NON-GATING prototype; no real 1C system was touched.</p>
 <h2>Workstream matrix</h2>
@@ -42,14 +46,18 @@
 <tr><td>P1 — Ed25519</td><td>Implemented in prototype; D9 OPEN</td><td>Migrations and synthetic fixtures in the reviewed range</td><td>No evidence of real key custody or identities</td><td>Qualify separately; owner: key-governance lane</td></tr>
 <tr><td>P2 — synthetic actors</td><td>C-M01/C-M02/MFA PARTIAL</td><td>Simulated identity provider and components</td><td>Real identities/MFA are unverified</td><td>Keep partial; owner: identity lane</td></tr>
 <tr><td>P3 — preview and state</td><td>A7-B02 PARTIAL; B6-g OPEN</td><td>Simulated signed state</td><td>No real-world qualification</td><td>Keep open; owner: state lane</td></tr>
-<tr><td>P4 — receipt</td><td>F-01 PARTIAL</td><td>Combined SQL scenario and migration 017 added</td><td>Ledger digest is the typed-payload digest from 009, not wire-byte SHA-256; receipt requirement is opt-in</td><td>Independent focused run and exact-diff review; owner: test agent, then GPT-PM for review</td></tr>
-<tr><td>P5 — integration scenarios</td><td>Code implemented; independent verification not run</td><td>Existing e2e scenarios plus new 017 regressions</td><td>No test execution is claimed here</td><td>Run permitted focused files one at a time on disposable DB; owner: test agents</td></tr>
-<tr><td>P6 — report and ruling</td><td>This RU/EN checkpoint created</td><td>Matrix, plan, and decision log</td><td>No new GPT-PM transport request was made</td><td>Export exact diff and request adversarial review; owner: local agent, transport unavailable under session rules</td></tr>
+<tr><td>P4 — receipt</td><td>F-01 PARTIAL</td><td>E2E PASS 14/14; hardening 017 PASS 4/4; DB review found no BLOCKER/MAJOR</td><td>Ledger digest is the typed-payload digest from 009, not wire-byte SHA-256; receipt requirement is opt-in</td><td>Preserve partial status; owner: project lane</td></tr>
+<tr><td>P5 — integration scenarios</td><td>Runtime-proven on the synthetic lane</td><td>849 PASS across 16 files; dump/restore PASS 6/6; each file ran separately. Review: no BLOCKER/MAJOR; one MINOR clarified in the test comment</td><td>Requested `test_change_port.py` is absent; counterpart `test_change_ledger_port.py` passed 16/16; wire-byte digest gap remains open</td><td>Keep the test claim narrow; define a canonical wire digest before real integration; owner: ledger/writer design lane</td></tr>
+<tr><td>P6 — report and ruling</td><td>Local reports and records complete</td><td>DB reviewer found no findings; code reviewer found no BLOCKER/MAJOR, MINOR addressed. PM Bridge disabled</td><td>No new GPT-PM approval for exact HEAD; push is not authorized</td><td>Exact-diff GPT-PM review unavailable in this session; no external decision owner recorded</td></tr>
 <tr><td>G0–G8 / S13 / Release 2</td><td>NOT_PASSED / NOT APPROVED / NO-GO</td><td>GPT-PM ruling</td><td>Operator-side system dependencies remain</td><td>Do not simulate closure; no human owner assigned in the current decision</td></tr>
 </tbody></table>
-<h2>New changes</h2><p>Migration 017 carries the receipt marker to a new claim generation, rejects receipts after terminal state, and prevents one Ed25519 public key from being used for the receipt role and another role. Focused SQL regressions were added. Independent execution is not yet recorded.</p>
-<h2>Ordered next steps</h2><ol><li>Finish scenario code and its linked change record.</li><li>After coding, run only permitted focused checks, one file at a time.</li><li>Fix confirmed defects and repeat affected scenarios.</li><li>Prepare exact diffs and obtain a new review before any push.</li></ol>
+<h2>New changes</h2><p>Migration 017 carries the receipt marker to a new claim generation, rejects receipts after terminal state, and prevents one Ed25519 public key from being used for the receipt role and another role. Focused SQL regressions and the combined synthetic SQL journey are complete. Independent focused runs passed 849 tests across 16 files; after a test-comment clarification, the combined journey passed again (14/14). The exact received-wire-byte digest gap remains open.</p>
+<h2>Ordered next steps</h2><ol><li>Local coding, tests, and specialist reviews are complete; evidence is recorded in change records.</li><li>Do not push: a new GPT-PM approval for the exact current diff is required, and PM Bridge is disabled by session instructions.</li><li>In a session where PM Bridge is allowed, request review of the exact final HEAD; without approval, push remains blocked. Release 2 remains NO-GO.</li></ol>
 </main>
+
+
+
+
 <!-- report-conform:script:begin -->
 <script>
 (function () {

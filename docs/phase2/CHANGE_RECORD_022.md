@@ -19,5 +19,5 @@ weakening migration behavior.
 
 ## Verification state
 
-The failing run is recorded as 2 failed, 2 passed on commit 60a5b7e. The corrected test file is NOT_RUN pending independent
-rerun. Other requested files remain NOT_RUN.
+The initial failing run is recorded as 2 failed, 2 passed on commit 60a5b7e. The corrected file passed 4/4 independently
+after change 023. See the final verification summary in `CHANGE_RECORD_018.md`.
