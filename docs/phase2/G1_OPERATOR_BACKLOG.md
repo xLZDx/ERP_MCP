@@ -1,6 +1,6 @@
 # G1 blockers and operator handoff — 2026-10-08
 
-> **SUPERSEDED 2026-10-08 (partly).** Statements below that SQL was never applied or PostgreSQL tests are NOT_RUN describe the state of commit 9b4fc0c. Current evidence: `EVIDENCE_MATRIX.md` (SQL executed on a disposable PostgreSQL 16, 20 integration tests green on e71d4ff; GPT-PM REJECT of a8b5b4d open).
+> **Historical snapshot (2026-10-08).** The blocker table below describes commit 9b4fc0c; it is not a current inventory. See “Current reconciliation (2026-10-15)” at the end and `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`. G1 remains NOT_PASSED.
 
 
 ## State
@@ -30,3 +30,21 @@ G1 is **BLOCKED / NOT VERIFIED**. R2 release is NO-GO.
 ## Security caveat
 
 The two drafted SQL migrations must not be deployed until G1-B04/B05/B06 are resolved. Tests of literal SQL fragments cannot establish correct privilege behavior.
+
+## Current reconciliation (2026-10-15)
+
+The original blocker table is preserved as history. The later migrations, test records and independent reviews supersede several implementation claims, but do not satisfy G1's formal exit criteria. `governance/GATE_MANIFEST.json` remains authoritative: G1 is NOT_PASSED, engineering NOT_STARTED, external evidence OPEN, and production authorization NONE.
+
+| Historical blocker | Current evidence/status | Remaining acceptance |
+|---|---|---|
+| G1-B01 — migration-authoring route | Superseded for local engineering: migrations 003–018 are tracked and later SQL work used the repository route. This does not authorize deployment. | No provider action for local authoring; keep all migrations test-only until gate evidence passes. |
+| G1-B02 — disposable PostgreSQL target | Superseded for synthetic tests: PostgreSQL 16 disposable runs are recorded in `EVIDENCE_MATRIX.md` and the 2026-10-15 checkpoint. | A named, isolated target and exact-head evidence are still required for G1 acceptance. |
+| G1-B03 — SQL not applied/reviewed | Historical wording superseded: migrations have been applied by focused disposable test harnesses and reviewed at prototype scope. | Complete the G1 contract review and exact-head runtime evidence; no production apply. |
+| G1-B04 — tenant/source/company isolation | Partial: migration 003 adds source/company role scope, RLS, revocation, and scoped grants. Independent static review at HEAD `8935deda` found no cross-tenant bypass in migrations 016–018 under the documented ledger-owner/superuser trust boundary. | Current-head negative tests for tenant, source, company, revoked scope, and runtime-role denials; prove owner and deployment separation. |
+| G1-B05 — broad grants and unauthenticated evidence | Partial: migration 003 revokes PUBLIC access and grants scoped functions; 015–018 use narrow definer entrypoints. Some evidence/approver authority remains an independently authenticated control-plane responsibility. | Prove effective grants for the actual runtime role and authenticate approver/evidence and checkpoint identity outside the database-admin boundary. |
+| G1-B06 — writer-controlled observation time | Superseded for the living registry: migration 001 assigns `recorded_at` from the database clock in a trigger; migration 003 preserves that server-authoritative insert path. | Retain this as an invariant in current-head negative evidence. |
+| G1-B07 — lease/CAS/outbox and crash behavior | Partially evidenced in historical focused PostgreSQL runs and S13 prototype suites. These are not a current G1 exit run. | Re-run required scenarios at one exact head, including the G1-required kill inside COMMIT and crash/replay boundaries. |
+| G1-B08 — backup/restore and security roles | Partial: a populated database was restored to a second throwaway database with a behavior battery (`EVIDENCE_MATRIX.md`). | G1 requires restore into another cluster plus role/RLS/digest/head equivalence at the exact accepted head. |
+| G1-B09 — exact-head review and release manifest | Partial: prototype ranges have independent reviews and GPT-PM approvals; the gate manifest has no evidence attachment. | Assemble the G1 evidence package and obtain gate-specific database/security review; do not infer PASS from prototype approvals. |
+
+G1 exit gaps confirmed by the database and security reviewers at HEAD `8935deda`: no recorded kill timed inside COMMIT; no restore into another PostgreSQL cluster; the capacity drill is a developer-host measurement, not the G1 decision; and the G1 evidence package is absent. These require disposable-database/runtime evidence and a gate review. G1 remains NOT_PASSED.

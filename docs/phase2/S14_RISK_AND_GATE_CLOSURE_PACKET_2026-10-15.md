@@ -4,7 +4,7 @@
 
 This packet turns the open R-01/R-03 findings and the current G0–G8/S13 status into explicit engineering dispositions and acceptance evidence. It records proposals for future production design; it does not pass a gate, authorize a real-system operation, or change the approved non-gating synthetic scope.
 
-Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md` (especially §§9–10 and the G8 acceptance contract), `docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md`, `governance/GATE_MANIFEST.json`, and the S14 simulation checkpoint. `GATE_MANIFEST.json` still records every G0–G8 gate as `NOT_PASSED` and production authorization as `NONE`. PM Bridge has no separate gate records for `erp_mcp_r2`.
+Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md` (especially §§9–10 and the G8 acceptance contract), `docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md`, `governance/GATE_MANIFEST.json`, and the S14 simulation checkpoint. `GATE_MANIFEST.json` still records every G0–G8 gate as `NOT_PASSED` and production authorization as `NONE`. PM Bridge has no separate gate records for `erp_mcp_r2`. Read-only database and security reviews at HEAD `8935deda` reconciled stale G1/S13 claims; their exact findings and remaining evidence are recorded in `G1_OPERATOR_BACKLOG.md` and `S13_REVIEW_FINDINGS_2026-10-12.md`.
 
 ## R-01 — dispatch receipt requirement
 
@@ -20,7 +20,7 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 4. Add focused negative evidence for missing, invalid, replayed, and persistence-uncertain receipts at the enforcement boundary.
 5. Obtain independent security/database review of the exact implementation and deployment plan.
 
-**Status:** OPEN. This is a design recommendation, not a completed trust-boundary review.
+**Status:** OPEN; production-blocking MAJOR in independent static security review at HEAD `8935deda`. This is a design recommendation, not a completed trust-boundary review. The write port remains non-operational, so the review identified a production qualification blocker, not a current production exploit.
 
 ## R-03 — legacy verifier keys
 
@@ -34,14 +34,14 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 4. Demonstrate denial of legacy-key use for new authorization, plus continued correct read-only verification of historical records.
 5. Obtain independent key-governance/security review before any production identity qualification.
 
-**Status:** OPEN. Migration 015's compatibility is unchanged; this proposal authorizes no key mutation or production cutover.
+**Status:** OPEN; production-blocking MAJOR in independent static security review at HEAD `8935deda`. Migration 015's compatibility is unchanged; this proposal authorizes no key mutation or production cutover. The write port remains non-operational, so this is a qualification blocker, not a claim of a current production exploit.
 
 ## Gate closure matrix
 
 | Item | Current state | Evidence already in the repository | Remaining acceptance | Dependency / owner |
 |---|---|---|---|---|
 | G0 — scope and architecture | NOT_PASSED; engineering IN_PROGRESS | `GATE_MANIFEST.json`; scope decisions and backlog | Preserve the 2026-10-14 decision allowing an isolated prototype until G0; complete the formal G0 scope evidence and OB-15 donor/license inventory, then approve the architecture and evidence manifest | Scope/release decision role; no individual is named |
-| G1 — database and security | NOT_PASSED; engineering NOT_STARTED in manifest | Migration/test records exist, but they are prototype evidence; `G1_OPERATOR_BACKLOG.md` is explicitly partly superseded and cannot itself certify current closure | Reconcile current SQL, grants, RLS, source/company isolation, CAS/outbox, backup/restore, and exact-head security evidence against the current contract | Database/security lane; disposable DB and independent reviewer evidence |
+| G1 — database and security | NOT_PASSED; engineering NOT_STARTED in manifest | Reconciled `G1_OPERATOR_BACKLOG.md`; migrations 003–018 and focused disposable runs cover portions of scope; independent static review at `8935deda` found no receipt-migration cross-tenant bypass under the stated owner/superuser boundary | Exact-head G1 run still lacks a kill timed inside COMMIT, restore to another cluster, production-class capacity decision, and complete effective-role/approver evidence | Database/security lane; disposable PostgreSQL runtime evidence and gate-specific review |
 | G2 — metadata/domain | NOT_PASSED | S11 feasibility and catalogue documents | Authenticated source observation and source-specific capture permit; confirm operation catalogue and domain rules against real source evidence | OB-10; source access authority, no named individual |
 | G3 — accountant attestation | NOT_PASSED | Backlog records the missing native 521.1 report | Native report for 818 HA SRL, account 521.1, 2026-08-01..2026-08-31, independently exported and attested | OB-11; independent accountant, no name recorded |
 | G4 — Drive, conditional | NOT_PASSED; `drive_intake_enabled=false` | Manifest disables Drive intake | Keep conditional and unpassed unless scope formally excludes it or required narrow OAuth/folder evidence and the applicable signed waiver are supplied | Drive/account authority; no named individual |
@@ -55,7 +55,7 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 ## Ordered execution queue
 
 1. Keep the two R-01/R-03 dispositions as proposals until their stated trust/key-governance evidence exists; do not change production defaults or keys in this synthetic slice.
-2. Reconcile the stale G1 backlog against the current branch and current database evidence before treating its individual rows as live blockers.
+2. Reconciled the historical G1 blocker list; next, complete the missing exact-head disposable-PostgreSQL evidence and gate-specific review listed in `G1_OPERATOR_BACKLOG.md`.
 3. Close the G0 scope and inventory evidence package; then advance G1 and G2/S13 evidence in dependency order.
 4. Obtain the external accountant and source evidence for G2/G3. Resolve G4 only if Drive intake is enabled; otherwise record the scope decision without pretending the gate passed.
 5. Complete S16/S17 before G5; establish G6-pre and G8 evidence before any G6 canary discussion.
