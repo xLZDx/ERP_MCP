@@ -20,7 +20,7 @@ No source, gate state, test, migration, or runtime authorization changed.
 
 ## Verification state
 
-- `git diff --check` passed for the original change 053 worktree; it will be repeated for this follow-up before commit.
+- `git diff --check` passed for both the original change 053 worktree and this follow-up before their respective commits.
 - No tests or migrations run.
 - G0 remains PASSED; G1–G8 remain NOT_PASSED; formal S13 remains NOT_APPROVED; production authorization remains NONE.
 - Exact-range PM review is required before push.
