@@ -14,6 +14,7 @@ from business_ai_gateway.phase2.simulation.reference_writer import WriteOutcome,
 from business_ai_gateway.phase2.simulation.synthetic_dispatch import (
     DispatchCallNotRecorded,
     DispatchPayloadNotVerified,
+    ReceiptPersistenceCancelled,
     ReceiptPersistenceUnknown,
     SyntheticDispatchCoordinator,
 )
@@ -207,13 +208,14 @@ class SyntheticDispatchCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         ledger = FakeLedger(receipt_error=asyncio.CancelledError())
         writer = FakeWriter(outcome)
 
-        with self.assertRaises(ReceiptPersistenceUnknown) as raised:
+        with self.assertRaises(ReceiptPersistenceCancelled) as raised:
             await SyntheticDispatchCoordinator(ledger, writer).dispatch(
                 SCOPE, CHANGE_ID, GENERATION, CALL_ID, ChangeKind.CREATE_DRAFT, payload,
                 "document-a", "V7",
             )
 
-        self.assertTrue(raised.exception.interrupted)
+        self.assertIsInstance(raised.exception, asyncio.CancelledError)
+        self.assertEqual(raised.exception.code, "RECEIPT_PERSISTENCE_UNKNOWN")
         self.assertIs(raised.exception.outcome, outcome)
         self.assertIs(raised.exception.outcome.receipt, outcome.receipt)
         self.assertEqual(len(writer.calls), 1, "interruption must not trigger a clone retry")

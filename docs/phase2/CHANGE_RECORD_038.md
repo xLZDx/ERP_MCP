@@ -6,8 +6,8 @@
   `APPLIED_VERIFIED`.
 - The exception carries the verified `WriteOutcome`, preserving the clone receipt for reconciliation,
   and uses a fixed public error code.
-- Cancellation during the SQL wait is wrapped in the same exception with `interrupted = true`, so the
-  verified clone outcome is not discarded at that boundary.
+- Cancellation during the SQL wait is surfaced as `ReceiptPersistenceCancelled`, which remains an
+  `asyncio.CancelledError` while carrying the verified outcome.
 - Clarified that this result must never cause an automatic retry because SQL may have committed before
   its response was lost.
 
@@ -31,7 +31,11 @@ the ledger state before any further action.
 
 The pre-fix focused functional (5/5) and PostgreSQL 16 E2E (18/18) evidence is recorded in
 `CHANGE_RECORD_037.md`. After the fix, the functional reviewer ran
-`PYTHONPATH=src python -m unittest tests.phase2.test_synthetic_dispatch -v`: 7/7 passed, including
-SQL receipt-persistence failure and cancellation preservation. The PostgreSQL 16 E2E file was not
-rerun because its coverage did not change; focused Python/code re-review and exact-head GPT-PM review
-remain pending.
+`PYTHONPATH=src python -m unittest tests.phase2.test_synthetic_dispatch -v`: 7/7 passed for the first
+typed implementation, including SQL receipt-persistence failure. A subsequent code review found that
+the cancellation path suppressed asyncio cancellation. The final adjustment uses
+`ReceiptPersistenceCancelled`, which remains an `asyncio.CancelledError` and carries the outcome. The
+functional reviewer reran the file after that adjustment: 7/7 passed, including assertions for
+cancellation type, stable code, identical verified outcome and one writer call. PostgreSQL E2E was
+not rerun because the wrapper sequence did not change. Focused independent re-review and exact-head
+GPT-PM review remain pending.

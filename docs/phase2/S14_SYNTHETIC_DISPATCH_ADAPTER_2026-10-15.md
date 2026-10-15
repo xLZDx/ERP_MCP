@@ -27,7 +27,8 @@ receipt. The coordinator is a synthetic test-lane adapter, not an implementation
 - If a verified clone write is followed by an SQL receipt-persistence error, the coordinator raises
   `ReceiptPersistenceUnknown` carrying the verified outcome. The caller must reconcile ledger state
   and must not retry because SQL may have committed before the response was lost. Cancellation while
-  waiting for that SQL call is surfaced through the same typed outcome with `interrupted = true`.
+  waiting is surfaced as `ReceiptPersistenceCancelled`, a subclass of `asyncio.CancelledError` that
+  preserves normal task-cancellation behavior and carries the verified outcome for reconciliation.
 - The adapter only accepts a ledger interface that exposes the scoped SQL functions. No real 1C,
   network transport, `OneCWritePort`, production credential, or release-gate evidence is added.
 
@@ -37,7 +38,8 @@ Implemented in `synthetic_dispatch.py` with scoped `SqlChangeLedger` wrappers fo
 receipt functions. The first implementation passed the functional contract tests 5/5 and PostgreSQL
 16 synthetic E2E 18/18. Python review found a post-write receipt-persistence ambiguity; the typed fix
 is implemented. The expanded functional file passed 7/7, including persistence-error and cancellation
-cases. Focused independent re-review and exact-head GPT-PM review remain pending.
+cases; cancellation remains an `asyncio.CancelledError` subclass. Focused independent re-review and
+exact-head GPT-PM review remain pending.
 
 ## Acceptance
 
@@ -51,7 +53,8 @@ cases. Focused independent re-review and exact-head GPT-PM review remain pending
    functions without changing their SQL contracts or caller classes.
 5. Functional and end-to-end reviewers add focused tests after all code is complete. The expanded
    functional file passed 7/7 and the PostgreSQL E2E file passed 18/18. The post-write
-   persistence-uncertainty regression passed; focused independent re-review is pending.
+   persistence-uncertainty regression and cancellation semantics passed; focused independent
+   re-review is pending.
 
 ## Limits
 

@@ -732,7 +732,10 @@ GPT-PM review are pending. Agent cleanup of disposable container
 Review correction: the Python reviewer found that a SQL receipt-persistence failure after
 `APPLIED_VERIFIED` could resemble a pre-write refusal. The fix raises typed
 `ReceiptPersistenceUnknown` with the verified clone outcome; callers must reconcile SQL state and
-must not retry because SQL may have committed before the response was lost. The functional reviewer
-added persistence-error and cancellation cases; the expanded focused file passed 7/7. Focused
-independent re-review and exact-head GPT-PM review remain pending. See `docs/phase2/CHANGE_RECORD_038.md`.
+must not retry because SQL may have committed before the response was lost. A second focused review
+found the cancellation wrapper suppressed normal task-cancellation semantics. The fix is to surface
+`ReceiptPersistenceCancelled`, a subclass of `asyncio.CancelledError` carrying the verified outcome;
+the focused functional file passed 7/7 with assertions for subtype, error code, result preservation
+and one writer call. Focused independent re-review remains pending. See
+`docs/phase2/CHANGE_RECORD_038.md`.
 

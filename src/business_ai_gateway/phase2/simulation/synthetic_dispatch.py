@@ -20,6 +20,7 @@ from .reference_writer import ReferenceWriter, WriteOutcome, WriteStatus
 __all__ = [
     "DispatchCallNotRecorded",
     "DispatchPayloadNotVerified",
+    "ReceiptPersistenceCancelled",
     "ReceiptPersistenceUnknown",
     "SyntheticDispatchCoordinator",
 ]
@@ -63,11 +64,19 @@ class ReceiptPersistenceUnknown(Exception):
     retried because the SQL transaction may have committed even if its response was lost.
     """
 
-    def __init__(self, outcome: WriteOutcome, *, interrupted: bool = False) -> None:
+    def __init__(self, outcome: WriteOutcome) -> None:
         super().__init__("RECEIPT_PERSISTENCE_UNKNOWN")
         self.code = "RECEIPT_PERSISTENCE_UNKNOWN"
         self.outcome = outcome
-        self.interrupted = interrupted
+
+
+class ReceiptPersistenceCancelled(asyncio.CancelledError):
+    """Preserve task cancellation while carrying the verified clone result for reconciliation."""
+
+    def __init__(self, outcome: WriteOutcome) -> None:
+        super().__init__("RECEIPT_PERSISTENCE_UNKNOWN")
+        self.code = "RECEIPT_PERSISTENCE_UNKNOWN"
+        self.outcome = outcome
 
 
 class SyntheticDispatchCoordinator:
@@ -113,7 +122,7 @@ class SyntheticDispatchCoordinator:
                 str(receipt["signature"]),
             )
         except asyncio.CancelledError:
-            raise ReceiptPersistenceUnknown(outcome, interrupted=True) from None
+            raise ReceiptPersistenceCancelled(outcome) from None
         except Exception:
             raise ReceiptPersistenceUnknown(outcome) from None
         return outcome
