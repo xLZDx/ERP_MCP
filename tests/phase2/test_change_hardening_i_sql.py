@@ -20,7 +20,8 @@ async def led():
 
 
 async def test_i1_receipt_requirement_moves_to_reclaimed_generation(led):
-    cid, tok, _call, _ = await led.permitted()
+    cid = await led.approved()
+    tok = await led.claimed(cid)
     old_gen = tok["generation"]
     await led.call("clt_wri", "require_dispatch_receipt", cid, old_gen)
     await led.call("clt_alice", "release_claim", tok["token_id"])
@@ -47,9 +48,9 @@ async def test_i3_receipt_public_key_cannot_be_registered_under_another_role(led
 
 
 async def test_i4_receipt_key_cannot_be_repurposed_after_registration(led):
-    await fails("KEY_ROLE_CONFLICT", led.conn.execute(
-        "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
-        "VALUES($1,$2,'vk-worker-first','clt_wrk',$3)", T, C, OTHER_CLONE.receipt_public_key_hex))
     await led.conn.execute(
         "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
-        "VALUES($1,$2,'vk-receipt-first','receipt_role',$3)", T, C, OTHER_CLONE.receipt_public_key_hex)
+        "VALUES($1,$2,'vk-worker-first','clt_wrk',$3)", T, C, OTHER_CLONE.receipt_public_key_hex)
+    await fails("KEY_ROLE_CONFLICT", led.conn.execute(
+        "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
+        "VALUES($1,$2,'vk-receipt-first','receipt_role',$3)", T, C, OTHER_CLONE.receipt_public_key_hex))
