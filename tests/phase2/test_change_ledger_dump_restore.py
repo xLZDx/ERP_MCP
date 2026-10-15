@@ -35,6 +35,7 @@ from urllib.parse import urlsplit
 import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope
+from _ed25519_fixtures import pub_hex, sign_hex
 
 from business_ai_gateway.phase2.change import canonical_json
 
@@ -44,7 +45,8 @@ MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
 FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql",
          "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql",
          "008_change_hardening_b.sql", "009_approval_digest_2.sql", "010_registry_session_hardening.sql",
-         "011_event_hash_v2.sql", "012_dispatch_session_hardening.sql", "013_dispatched_invariant.sql")
+         "011_event_hash_v2.sql", "012_dispatch_session_hardening.sql", "013_dispatched_invariant.sql",
+         "014_ed25519_verify.sql", "015_ed25519_signatures.sql")
 CONTAINER_PREFIX = "r2-s13-dump-"
 
 T, C = "T1", "C1"
@@ -66,8 +68,8 @@ ACTORS = {
 }
 CAPS = {"clt_alice": ["requester"], "clt_bob": ["approver"], "clt_dave": ["operator", "requester", "recovery_witness"],
         "clt_zed": ["requester"]}
-SIGN_KEYS = {"clt_wrk": ("vk-wrk", "W" * 32, "clt_wrk"), "clt_wri": ("vk-wri", "R" * 32, "clt_wri"),
-             "clt_chk": ("vk-chk", "C" * 32, "checkpoint_role")}
+SIGN_KEYS = {"clt_wrk": ("vk-wrk", pub_hex("vk-wrk"), "clt_wrk"), "clt_wri": ("vk-wri", pub_hex("vk-wri"), "clt_wri"),
+             "clt_chk": ("vk-chk", pub_hex("vk-chk"), "checkpoint_role")}   # synthetic Ed25519 keys (lane TEST), 015
 JSON_FUNCS = {"issue_permit", "ledger_head", "verify_chain", "check_anchor"}
 COMPOSITE_FUNCS = {"claim", "begin_apply"}
 
@@ -181,7 +183,7 @@ class L:
         payload = await self.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                            T, C, head["seq"], head["head_hash"], signed_at, kid, "REAL", "sink-1")
         await self.call("clt_chk", "record_checkpoint", head["seq"], head["head_hash"], "REAL", "sink-1", kid,
-                        sha(f"{kmat}:{payload}"), signed_at, True)
+                        sign_hex(kid, payload), signed_at, True)
         return head
 
     async def evidence(self, cid, kind, content, role, gen, call_id):
@@ -193,7 +195,7 @@ class L:
                                      cid, kind, ch, at, gen, call_id)
         kid, kmat, _ = SIGN_KEYS[role]
         return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content), kid, b,
-                               sha(f"{kmat}:{b}"), gen, call_id)
+                               sign_hex(kid, b), gen, call_id)
 
 
 async def _migrate(conn):

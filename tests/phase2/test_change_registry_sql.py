@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
+from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import FILES, MIGRATIONS, fails, require_dsn, throwaway_db
 from test_change_ledger_sql import (
     BASE,
@@ -39,7 +40,7 @@ from test_change_ledger_sql import (
 
 pytestmark = pytest.mark.integration
 
-KEYS = {"clt_wrk": ("vk-wrk", "W" * 32), "clt_wri": ("vk-wri", "R" * 32)}
+KEYS = {"clt_wrk": ("vk-wrk", pub_hex("vk-wrk")), "clt_wri": ("vk-wri", pub_hex("vk-wri"))}     # lane TEST, 015
 NEW_TABLES = ["epochs", "principals", "registry_policy", "verifier_keys", "evidence_records", "business_keys",
               "override_bindings", "target_observations"]
 _D = object()   # "use the current value" marker for generation / call id of a forged evidence record
@@ -70,7 +71,7 @@ class R(L):
                                         cid, kind, ch, at, gen, call_id)
 
     async def pack(self, cid, kind, content=None, *, role="clt_wrk", gen=_D, call_id=_D, at=None, ch=None,
-                   key_id=None, key_material=None, bind=None, sig=None, nonce=False):
+                   key_id=None, signer=None, bind=None, sig=None, nonce=False):
         """The ordered record_evidence arguments after (t, c, change_id) as a dict; every element overridable."""
         content = dict(content or {})
         if kind == "AUTH_RECEIPT":
@@ -90,7 +91,7 @@ class R(L):
                                             json.dumps(content))
         kid, kmat, _ = SIGN_KEYS[role]
         b = bind or await self.bind(cid, kind, ch, at, gen, call_id)
-        s = sig if sig is not None else sha(f"{key_material or kmat}:{b}")
+        s = sig if sig is not None else sign_hex(signer or kid, b)    # `signer`: key id whose (synthetic) seed signs
         return {"kind": kind, "ch": ch, "at": at, "content": json.dumps(content), "key_id": key_id or kid,
                 "bind": b, "sig": s, "gen": gen, "call_id": call_id}
 
@@ -268,9 +269,11 @@ async def test_verifier_key_material_is_never_readable_and_keys_are_write_once(r
                                         ("vk-wrk", "clt_wrk", "ACTIVE")]
     # same key again: no-op; a different material for the same id is refused; a bad key is refused
     await reg.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", KEYS["clt_wrk"][1])
-    await fails("FORBIDDEN_TRANSITION", reg.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", "x" * 32))
+    await fails("FORBIDDEN_TRANSITION", reg.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk",
+                                                 pub_hex("vk-other")))
     await fails("SCHEMA_INVALID", reg.call("clt_dave", "register_verifier_key", "k2", "clt_wrk", "short"))
-    await fails("SCHEMA_INVALID", reg.call("clt_dave", "register_verifier_key", "k2", "no_such_role", "x" * 32))
+    await fails("SCHEMA_INVALID", reg.call("clt_dave", "register_verifier_key", "k2", "no_such_role",
+                                           pub_hex("vk-other")))
 
 
 # ============================================================================ (1) principal registry
@@ -577,21 +580,22 @@ async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(
     a["key_id"] = None
     await fails("EVIDENCE_UNSIGNED", reg.put("clt_wrk", cid, a))
     await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, key_id="vk-unknown"))
-    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, key_material="Z" * 32))   # wrong key material
-    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, sig="f" * 64))
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, signer="vk-unregistered"))   # wrong key
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, signer="vk-wri"))           # another registered key
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, sig="f" * 64))              # malformed (64 hex)
+    await fails("EVIDENCE_UNSIGNED", reg.rec_ev(cid, "VERSION", ok, at=at, sig="f" * 128))             # well formed, wrong
     # wrongly bound: each element of (change_id, kind, content_hash, observed_at, generation, call_id) is part of the
     # binding (the last two are new in 007); a valid signature over a wrong binding does not help
     ch = (await reg.pack(cid, "VERSION", ok, at=at))["ch"]
-    wrk_key = SIGN_KEYS["clt_wrk"][1]
     for bad in (await reg.bind(other, "VERSION", ch, at, gen, call_id), await reg.bind(cid, "FIELD", ch, at, gen, call_id),
                 await reg.bind(cid, "VERSION", sha("x"), at, gen, call_id),
                 await reg.bind(cid, "VERSION", ch, at + timedelta(microseconds=1), gen, call_id),
                 await reg.bind(cid, "VERSION", ch, at, gen + 1, call_id),
                 await reg.bind(cid, "VERSION", ch, at, gen, uuid.uuid4()), "0" * 64):
-        await fails("DIGEST_MISMATCH", reg.rec_ev(cid, "VERSION", ok, at=at, bind=bad, sig=sha(f"{wrk_key}:{bad}")))
+        await fails("DIGEST_MISMATCH", reg.rec_ev(cid, "VERSION", ok, at=at, bind=bad, sig=sign_hex("vk-wrk", bad)))
     # a valid signature over a binding of ANOTHER change does not help either
     cid_bind = (await reg.pack(cid, "VERSION", ok, at=at))["bind"]
-    foreign = await reg.pack(other, "VERSION", ok, at=at, bind=cid_bind, sig=sha(f"{wrk_key}:{cid_bind}"))
+    foreign = await reg.pack(other, "VERSION", ok, at=at, bind=cid_bind, sig=sign_hex("vk-wrk", cid_bind))
     await fails("DIGEST_MISMATCH", reg.put("clt_wrk", other, foreign))
     # 007: content_hash must be the hash of the content, whatever is bound and signed
     await fails("DIGEST_MISMATCH", reg.rec_ev(cid, "VERSION", ok, at=at, ch=sha("not-the-content")))
@@ -602,7 +606,7 @@ async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "VERSION", ok, at=at, gen=None))
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "OBSERVATION", {"effect_present": False, "generation": gen + 5}))
     # key / caller: the key belongs to one identity; the writer may record only completion proofs
-    await fails("NOT_ENTITLED", reg.rec_ev(cid, "VERSION", ok, role="clt_wrk", key_id="vk-wri", key_material="R" * 32))
+    await fails("NOT_ENTITLED", reg.rec_ev(cid, "VERSION", ok, role="clt_wrk", key_id="vk-wri", signer="vk-wri"))
     await fails("NOT_ENTITLED", reg.rec_ev(cid, "FIELD", ok, role="clt_wri"))
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "BOGUS", ok))
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "FIELD", ok, at=datetime.now(UTC) + timedelta(hours=1)))

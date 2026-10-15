@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
+from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails, require_dsn, throwaway_db
 from business_ai_gateway.phase2.change import canonical_json
 
@@ -43,9 +44,10 @@ ACTORS = {  # role -> (member of, scopes)
     "clt_zed": (["requester_role"], [(T2, C2)]),
     "clt_chk": (["checkpoint_role"], [(T, C)]),
 }
-# signing identities of the keyed-hash evidence / checkpoint stand-in: actor -> (key id, key material, key role)
-SIGN_KEYS = {"clt_wrk": ("vk-wrk", "W" * 32, "clt_wrk"), "clt_wri": ("vk-wri", "R" * 32, "clt_wri"),
-             "clt_chk": ("vk-chk", "C" * 32, "checkpoint_role")}
+# signing identities of the evidence / checkpoint signatures: actor -> (key id, key material, key role). Since 015 the
+# material is the public key of a SYNTHETIC Ed25519 key (lane TEST, seed = sha256 of the key id, see _ed25519_fixtures)
+SIGN_KEYS = {"clt_wrk": ("vk-wrk", pub_hex("vk-wrk"), "clt_wrk"), "clt_wri": ("vk-wri", pub_hex("vk-wri"), "clt_wri"),
+             "clt_chk": ("vk-chk", pub_hex("vk-chk"), "checkpoint_role")}
 # 008 (B3): a scope without a registry_policy row is ENFORCED, so every actor of the fixtures is a registered
 # principal (own person, capabilities of its role groups); B1: a default grant for the budget every change declares.
 CAPS = {"clt_alice": ["requester"], "clt_mallory": ["requester"], "clt_bob": ["approver"], "clt_carol": ["approver"],
@@ -70,8 +72,14 @@ def exp(hours=1):
 class L:
     """Thin test driver: one scoped call = one transaction under SET LOCAL ROLE."""
 
+    keyed = False      # True only for a world built from migrations before 015 (the ledger there knows only the stand-in)
+
     def __init__(self, db):
         self.db, self.conn = db, db.conn
+
+    def sign(self, kid, kmat, payload):
+        """Signature of `payload` by the key `kid`: Ed25519 (lane TEST) since 015, the keyed-hash stand-in before it."""
+        return sha(f"{kmat}:{payload}") if self.keyed else sign_hex(kid, payload)
 
     async def verify_dispatch(self, cid, gen, t=T, c=C, conn=None):
         """012 (A7-B01): the writer verifies the exact payload before dispatch; record_call refuses without it.
@@ -228,7 +236,7 @@ class L:
         payload = await self.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                            T, C, seq, head_hash, signed_at, kid, kind, sink_id)
         return await self.call(role, "record_checkpoint", seq, head_hash, kind, sink_id, kid,
-                               sig if sig is not None else sha(f"{kmat}:{payload}"), signed_at, read_back)
+                               sig if sig is not None else self.sign(kid, kmat, payload), signed_at, read_back)
 
     async def checkpoint(self, kind="REAL", read_back=True, head_hash=None):
         head = await self.head()
@@ -256,7 +264,7 @@ class L:
                                              cid, kind, ch, at, gen, call_id)
         kid, kmat, _ = SIGN_KEYS[key or role]
         return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content), kid, b,
-                               sig if sig is not None else sha(f"{kmat}:{b}"), gen, call_id)
+                               sig if sig is not None else self.sign(kid, kmat, b), gen, call_id)
 
     async def complete(self, cid, gen, outcome, proof=None, code="STALE_VERSION", **kw):
         """Writer completion through complete_signed; the signed record is typed by `outcome`."""
@@ -1255,11 +1263,11 @@ async def test_a1_evidence_content_hash_generation_and_call_id_are_bound(led):
     wrong = await led.conn.fetchval("SELECT change_ledger.evidence_binding($1,'OBSERVATION',$2,$3,$4,$5)",
                                     cid, ch, at, gen + 1, call_id)
     await fails("DIGEST_MISMATCH", led.evidence(cid, "OBSERVATION", {"nonce": "n-bound", "x": 1}, at=at,
-                                                bind=wrong, sig=sha("W" * 32 + ":" + wrong)))
+                                                bind=wrong, sig=sign_hex("vk-wrk", wrong)))
     wrong_call = await led.conn.fetchval("SELECT change_ledger.evidence_binding($1,'OBSERVATION',$2,$3,$4,$5)",
                                          cid, ch, at, gen, uuid.uuid4())
     await fails("DIGEST_MISMATCH", led.evidence(cid, "OBSERVATION", {"nonce": "n-bound", "x": 1}, at=at,
-                                                bind=wrong_call, sig=sha("W" * 32 + ":" + wrong_call)))
+                                                bind=wrong_call, sig=sign_hex("vk-wrk", wrong_call)))
     # another generation or another call id (consistently signed) is refused
     await fails("TICKET_SUPERSEDED", led.evidence(cid, "OBSERVATION", {"x": 2}, gen=gen + 1))
     await fails("PERMIT_MISSING", led.evidence(cid, "OBSERVATION", {"x": 3}, call_id=uuid.uuid4()))
@@ -1514,7 +1522,7 @@ async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_perm
     other_payload = await led.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                             T, C, head["seq"], "f" * 64, sa, "vk-chk", "REAL", "sink-1")
     for kw in (dict(sig="0" * 64), dict(key_id="vk-unknown"), dict(key_id="vk-wrk"),
-               dict(sig=sha("C" * 32 + ":" + other_payload), signed_at=sa)):
+               dict(sig=sign_hex("vk-chk", other_payload), signed_at=sa)):
         await fails("CHECKPOINT_UNAVAILABLE", led.checkpoint_at(head["seq"], head["head_hash"], **kw))
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 2
     await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_wrk", "issue_permit", cid, gen))
@@ -1524,7 +1532,7 @@ async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_perm
                                   "FROM change_ledger.checkpoints WHERE written_by IS NOT NULL")
     assert tuple(row) == ("REAL", True, True, "clt_chk")
     permit = await led.call("clt_wrk", "issue_permit", cid, gen)
-    good = sha("C" * 32 + ":change-ledger-permit|v1|" + permit["permit_digest"])
+    good = sign_hex("vk-chk", "change-ledger-permit|v1|" + permit["permit_digest"])
     for role in ("clt_wrk", "clt_wri"):
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await led.call(role, "attach_permit_signature", cid, gen, "vk-chk", good)

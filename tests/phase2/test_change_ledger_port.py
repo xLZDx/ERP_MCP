@@ -8,8 +8,8 @@ SET LOCAL ROLE of the caller class. Superuser access only reads results and coun
 007 intentionally changed the API (the assertions below were rewritten only where that applies): the raw
 complete / verify / resolve_unknown / witness_cosign are revoked from every runtime role, so the journeys use the
 typed-evidence ``*_signed`` paths; approve compares an SQL-computed approval digest; record_checkpoint and
-attach_permit_signature belong to the checkpoint identity and verify a keyed-hash signature against a registered
-key. RealSigner / RealVerifier / RealSink below are TEST-ONLY stand-ins that merely CLAIM to be real.
+attach_permit_signature belong to the checkpoint identity and verify a signature against a registered
+key (since 015 a synthetic Ed25519 key of lane TEST; before it a keyed hash). RealSigner / RealVerifier / RealSink below are TEST-ONLY stand-ins that merely CLAIM to be real.
 """
 import asyncio
 import hashlib
@@ -21,9 +21,11 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_PAYLOAD, envelope_dict
+from _ed25519_fixtures import sign_hex
 from _pg_harness import require_dsn, throwaway_db
 from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
 
+from business_ai_gateway.phase2 import ed25519
 from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope, code_from_message
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
@@ -55,7 +57,7 @@ ACTORS = {"requester": "clt_alice", "approver": "clt_bob", "operator": "clt_erin
 GROUP = {c: c + "_role" for c in CLASSES}
 REGTYPE = {"timestamptz": "timestamp with time zone"}
 RAW_REVOKED = ("complete", "resolve_unknown", "verify", "witness_cosign")  # 007 A1: internals of the signed paths
-CHK_KEY_ID, CHK_KEY_MATERIAL, _ = SIGN_KEYS["clt_chk"]  # keyed-hash stand-in for the D9 signer (TEST ONLY)
+CHK_KEY_ID, CHK_KEY_MATERIAL, _ = SIGN_KEYS["clt_chk"]  # synthetic Ed25519 key (lane TEST); material = public key hex
 
 
 def sha(text):
@@ -79,20 +81,24 @@ class RealSink:
 
 
 class RealSigner:
-    """TEST-ONLY stand-in that claims to be a real signer: the keyed hash registered for checkpoint_role."""
+    """TEST-ONLY stand-in that claims to be a real signer: the synthetic Ed25519 key registered for checkpoint_role."""
 
     key_id = CHK_KEY_ID
     is_test_double = False
 
     def sign(self, payload):
-        return sha(f"{CHK_KEY_MATERIAL}:{payload.decode()}")
+        return sign_hex(CHK_KEY_ID, payload.decode())       # Ed25519 (lane TEST, synthetic seed), 128 hex characters
 
 
 class RealVerifier:
     is_test_double = False
 
     def verify(self, key_id, payload, signature):
-        return key_id == CHK_KEY_ID and signature == sha(f"{CHK_KEY_MATERIAL}:{payload.decode()}")
+        try:
+            sig = bytes.fromhex(signature)
+        except (TypeError, ValueError):
+            return False
+        return key_id == CHK_KEY_ID and ed25519.verify(bytes.fromhex(CHK_KEY_MATERIAL), payload, sig)
 
 
 @pytest.fixture
@@ -156,7 +162,7 @@ async def evidence(conn, port, cid, kind, content, actor="worker", gen=None, cal
     ch = await conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
     binding = evidence_binding(str(cid), kind, ch, at, gen, call_id)
     kid, kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
-    return await port.record_evidence(SCOPE, cid, kind, ch, at, content, kid, binding, sha(f"{kmat}:{binding}"),
+    return await port.record_evidence(SCOPE, cid, kind, ch, at, content, kid, binding, sign_hex(kid, binding),
                                       gen, call_id, as_class=actor)
 
 

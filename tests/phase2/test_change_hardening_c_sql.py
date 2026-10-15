@@ -21,11 +21,14 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
+from _ed25519_fixtures import pub_hex
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_hardening_b2_sql import hold_of, restored_ledger
 from test_change_ledger_sql import BASE, C, C2, ORG, T, T2, L, _setup, sha
 
 pytestmark = pytest.mark.integration
+
+NEW_KEY = pub_hex("vk-new")      # a synthetic Ed25519 public key (lane TEST): since 015 the only kind a new key may be
 
 
 @pytest.fixture
@@ -99,7 +102,7 @@ async def test_c1_direct_widening_by_one_operator_is_refused_and_writes_nothing(
     await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_target", "base-1", ORG, "PROD", "ACTIVE", None))
     assert await count(led, "SELECT target_class FROM change_ledger.targets WHERE base_fingerprint='base-1'") == "DISPOSABLE_CLONE"
     # a new verifier key
-    await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_verifier_key", "vk-new", "clt_wrk", "N" * 32))
+    await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_verifier_key", "vk-new", "clt_wrk", NEW_KEY))
     assert await count(led, "SELECT count(*) FROM change_ledger.verifier_keys WHERE key_id='vk-new'") == 0
     assert await count(led, "SELECT count(*) FROM change_ledger.targets WHERE base_fingerprint='base-new'") == 0
     assert (await principal_row(led, "clt_wrk")) is None
@@ -128,8 +131,8 @@ async def test_c1_direct_narrowing_and_exact_repeats_stay_single_operator(led):
     assert await count(led, "SELECT status FROM change_ledger.targets WHERE base_fingerprint='base-3'") == "REVOKED"
     await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_target", "base-3", ORG, "CLONE", "ACTIVE", None))
     await fails("TWO_PERSON_REQUIRED", led.call("clt_dave", "register_target", "base-2", ORG, "CLONE", "ACTIVE", None))
-    await led.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", "W" * 32)
-    await fails("FORBIDDEN_TRANSITION", led.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", "x" * 32))
+    await led.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", pub_hex("vk-wrk"))
+    await fails("FORBIDDEN_TRANSITION", led.call("clt_dave", "register_verifier_key", "vk-wrk", "clt_wrk", NEW_KEY))
     await led.call("clt_dave", "revoke_verifier_key", "vk-wrk")        # revocation only narrows
 
 
@@ -161,14 +164,14 @@ async def test_c1_dual_change_needs_a_second_person_and_is_applied_by_the_second
                                     "permission_expires_at": far})
     assert out["kind"] == "TARGET"
     assert await count(led, "SELECT target_class FROM change_ledger.targets WHERE base_fingerprint='base-new'") == "PRODUCTION"
-    out = await led.dual("VERIFIER_KEY", {"key_id": "vk-new", "role_name": "clt_wrk", "key_material": "N" * 32})
+    out = await led.dual("VERIFIER_KEY", {"key_id": "vk-new", "role_name": "clt_wrk", "key_material": NEW_KEY})
     assert out["kind"] == "VERIFIER_KEY"
     assert await count(led, "SELECT role_name FROM change_ledger.verifier_keys WHERE key_id='vk-new'") == "clt_wrk"
     summary = await led.conn.fetchval("SELECT summary FROM change_ledger.registry_changes WHERE kind='VERIFIER_KEY'")
     summary = json.loads(summary) if isinstance(summary, str) else summary
-    assert "key_material" not in summary and summary["key_material_sha256"] == sha("N" * 32)
+    assert "key_material" not in summary and summary["key_material_sha256"] == sha(NEW_KEY)
     ev = json.dumps(await events(led, "REGISTRY_CHANGE_APPLIED"))
-    assert "N" * 32 not in ev
+    assert NEW_KEY not in ev
 
 
 async def test_c1_dual_change_refusals(led):
@@ -300,7 +303,7 @@ async def test_c1_replay_is_idempotent_for_proposal_and_approval(led):
 
 
 async def test_c1_immutable_tables_are_closed_to_every_writer_and_the_params_are_unreadable(led):
-    cid, dg = await propose(led, "VERIFIER_KEY", {"key_id": "vk-new", "role_name": "clt_wrk", "key_material": "N" * 32})
+    cid, dg = await propose(led, "VERIFIER_KEY", {"key_id": "vk-new", "role_name": "clt_wrk", "key_material": NEW_KEY})
     await led.call("clt_erin", "approve_registry_change", cid, dg)
     for stmt in ("UPDATE change_ledger.registry_changes SET kind='TARGET'", "DELETE FROM change_ledger.registry_changes",
                  "TRUNCATE change_ledger.registry_changes",

@@ -220,10 +220,12 @@ EVENT_COLS = ("tenant_id, company_id, event_id, change_id, seq, event_type, payl
 async def old_world(db):
     """001-010 only: a ledger whose events are v1 and whose checkpoints are anchored on v1 heads."""
     db.conn = await db.connect()
-    assert FILES[10] == FILE_011 and len(FILES) == 13      # 012 and 013 follow 011 and are not part of the old world
+    assert FILES[10] == FILE_011 and len(FILES) == 15      # 012 to 015 follow 011 and are not part of the old world
     await apply_files(db.conn, FILES[:10])
     await _setup(db.conn)
-    return L(db)
+    led = L(db)
+    led.keyed = True       # 001-010 (+ 011) know only the keyed-hash stand-in: the key material is hashed, not verified as Ed25519
+    return led
 
 
 async def test_d_migration_rehashes_existing_rows_and_the_chain_continues():
