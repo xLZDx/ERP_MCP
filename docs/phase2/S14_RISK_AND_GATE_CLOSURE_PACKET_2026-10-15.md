@@ -2,9 +2,9 @@
 
 ## Purpose and authority boundary
 
-This packet turns the open R-01/R-03 findings and the current G0–G8/S13 status into explicit engineering dispositions and acceptance evidence. It records proposals for future production design; it does not pass a gate, authorize a real-system operation, or change the approved non-gating synthetic scope.
+This packet turns the open R-01/R-03 findings and the current G0–G8/S13 status into explicit engineering dispositions and acceptance evidence. It records proposals for future production design and summarizes gate decisions made under their own evidence reviews; this packet does not itself pass a gate or authorize a real-system operation. The approved non-gating synthetic scope remains unchanged.
 
-Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md` (especially §§9–10 and the G8 acceptance contract), `docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md`, `governance/GATE_MANIFEST.json`, and the S14 simulation checkpoint. `GATE_MANIFEST.json` still records every G0–G8 gate as `NOT_PASSED` and production authorization as `NONE`. PM Bridge has no separate gate records for `erp_mcp_r2`. Read-only database and security reviews at HEAD `8935deda` reconciled stale G1/S13 claims; their exact findings and remaining evidence are recorded in `G1_OPERATOR_BACKLOG.md` and `S13_REVIEW_FINDINGS_2026-10-12.md`.
+Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md` (especially §§9–10 and the G8 acceptance contract), `docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md`, `governance/GATE_MANIFEST.json`, and the S14 simulation checkpoint. The manifest records G0 as `PASSED`; G1–G8 remain `NOT_PASSED`; production authorization is `NONE`. G0's exact evidence and gate-specific PM approval are recorded in `G0_EVIDENCE_INDEX_2026-10-15.md` and `CHANGE_RECORD_050.md`. PM Bridge has no separate gate records for `erp_mcp_r2`. Read-only database and security reviews at HEAD `8935deda` reconciled stale G1/S13 claims; their exact findings and remaining evidence are recorded in `G1_OPERATOR_BACKLOG.md` and `S13_REVIEW_FINDINGS_2026-10-12.md`.
 
 ## R-01 — dispatch receipt requirement
 
@@ -56,9 +56,9 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 
 1. Keep the two R-01/R-03 dispositions as proposals until their stated trust/key-governance evidence exists; do not change production defaults or keys in this synthetic slice.
 2. Reconciled the historical G1 blocker list; next, complete the missing exact-head disposable-PostgreSQL evidence and gate-specific review listed in `G1_OPERATOR_BACKLOG.md`.
-3. Close the G0 scope and inventory evidence package; then advance G1 and G2/S13 evidence in dependency order.
+3. Preserve the approved G0 baseline and OB-15 deferrals; advance G1 and G2/S13 evidence in dependency order.
 4. Obtain the external accountant and source evidence for G2/G3. Resolve G4 only if Drive intake is enabled; otherwise record the scope decision without pretending the gate passed.
 5. Complete S16/S17 before G5; establish G6-pre and G8 evidence before any G6 canary discussion.
 6. Keep G7 and Release 2 NO-GO until every applicable gate is actually passed and the release owner records `PRODUCTION_GO`.
 
-No test, migration, key change, real-system access, staging action, production action, or release-gate state change is performed by this documentation packet.
+No tests, migrations, key changes, real-system access, staging action or production action were performed for this packet update. G0's gate-state change is recorded in the manifest from the separate gate-specific approval; G1–G8 remain NOT_PASSED and production authorization remains NONE.

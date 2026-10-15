@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 110 tracked paths, 1 local-only paths.
+Inventory: 111 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -56,6 +56,7 @@ Inventory: 110 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_047.md | Phase 2 design | "Change record 047 — reconcile G1 and S13 historical evidence" |
 | docs/phase2/CHANGE_RECORD_048.md | Phase 2 design | "Change record 048 — reconcile current G0 decisions" |
 | docs/phase2/CHANGE_RECORD_049.md | Phase 2 design | "Change record 049 — assemble the G0 evidence index" |
+| docs/phase2/CHANGE_RECORD_050.md | Phase 2 design | "Change record 050 — record approved G0 closure" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -130,4 +131,4 @@ Inventory: 110 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_050.md |
+| docs/phase2/CHANGE_RECORD_051.md |
