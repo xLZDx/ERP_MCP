@@ -75,7 +75,9 @@ prove runtime behavior.
 - The restore scenario uses separately provisioned clusters and records their Docker IDs and
   PostgreSQL system identifiers. It compares schema, data digests, sequences, constraints,
   policies, effective grants, accepted heads and behavior, including tenant/source/company scope,
-  GUC spoofing and a revoked scope; it then performs a permitted operation on the restored target.
+  GUC spoofing and a genuinely deleted reader grant. In each cluster, it checks that an already
+  scoped session is rejected and a fresh session cannot reacquire the deleted scope; it then
+  performs a permitted operation on the restored target.
 - All crash and restore tests in these files now provision uniquely named `r2-s13-dump-*`
   containers, verify their invocation-specific ownership label before container operations, and
   remove only verified containers and their anonymous PostgreSQL volumes. They do not attach to

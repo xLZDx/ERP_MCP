@@ -174,8 +174,9 @@ def assert_scope_battery(outcomes):
 
 
 async def assert_revoked_scope_is_denied(admin, dsn, database):
-    """Prove a reader scope is invalidated by a role-scope epoch change."""
+    """Prove DELETE denies an existing scoped context and blocks new contexts."""
     actor = await asyncpg.connect(dsn, database=database)
+    fresh_actor = await asyncpg.connect(dsn, database=database)
     tx = actor.transaction()
     tx_open = False
     try:
@@ -183,24 +184,36 @@ async def assert_revoked_scope_is_denied(admin, dsn, database):
         tx_open = True
         await actor.execute("SET LOCAL ROLE living_reader")
         await actor.fetchval("SELECT living.set_scope('A','s1',NULL)")
-        await admin.execute(
-            "UPDATE living.role_scope SET source_id=source_id WHERE role_name='living_reader' "
-            "AND tenant_id='A' AND source_id='s1' AND company_id IS NULL")
+        deleted = await admin.fetch(
+            "DELETE FROM living.role_scope WHERE role_name='living_reader' "
+            "AND tenant_id='A' AND source_id='s1' AND company_id IS NULL RETURNING role_name")
+        assert len(deleted) == 1 and deleted[0]["role_name"] == "living_reader", (
+            "expected to delete exactly the living_reader A/s1 grant", deleted)
         try:
             await actor.fetchval("SELECT living.assert_scope('A','s1')")
         except asyncpg.PostgresError as error:
-            assert error.sqlstate == "P0001" and "SCOPE_REVOKED" in str(error), (
+            assert error.sqlstate == "P0001" and "SCOPE_NOT_GRANTED" in str(error), (
                 error.sqlstate, str(error))
-            outcome = (error.sqlstate, str(error).splitlines()[0])
+            existing_context = (error.sqlstate, str(error).splitlines()[0])
         else:
-            raise AssertionError("revoked scope remained accepted")
+            raise AssertionError("existing scoped session remained accepted after grant deletion")
         await tx.rollback()
         tx_open = False
+        try:
+            async with scope(fresh_actor, "living_reader", "A", "s1"):
+                pass
+        except asyncpg.PostgresError as error:
+            assert error.sqlstate == "P0001" and "SCOPE_NOT_GRANTED" in str(error), (
+                error.sqlstate, str(error))
+            fresh_context = (error.sqlstate, str(error).splitlines()[0])
+        else:
+            raise AssertionError("fresh session reacquired the deleted A/s1 grant")
     finally:
         if tx_open:
             await tx.rollback()
         await actor.close()
-    return outcome
+        await fresh_actor.close()
+    return existing_context, fresh_context
 
 
 def _pipe_dump_restore(src, dst, container_name, owner_token):
@@ -358,7 +371,9 @@ async def test_pg_dump_restore_to_distinct_postgres_cluster(record_property):
                                   "SELECT count(*) FROM living.observations") >= 1
                 revoked_src = await assert_revoked_scope_is_denied(c, source_dsn, src.name)
                 revoked_dst = await assert_revoked_scope_is_denied(d, target_dsn, dst.name)
-                assert "SCOPE_REVOKED" in revoked_src[1]
-                assert "SCOPE_REVOKED" in revoked_dst[1]
+                assert "SCOPE_NOT_GRANTED" in revoked_src[0][1]
+                assert "SCOPE_NOT_GRANTED" in revoked_src[1][1]
+                assert "SCOPE_NOT_GRANTED" in revoked_dst[0][1]
+                assert "SCOPE_NOT_GRANTED" in revoked_dst[1][1]
             finally:
                 await d.close()
