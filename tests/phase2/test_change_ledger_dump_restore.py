@@ -100,14 +100,27 @@ async def _guarded_container(dsn):
     port = urlsplit(dsn).port
     if not port:
         _unavailable("the DSN has no explicit port")
+    requested = os.environ.get("ERP_PHASE2_TEST_CONTAINER")
     try:
-        ps = _docker("ps", "--filter", f"publish={port}", "--format", "{{.Names}}", timeout=30)
+        if requested:
+            ps = _docker("ps", "--filter", f"name=^{requested}$", "--format", "{{.Names}}", timeout=30)
+        else:
+            ps = _docker("ps", "--filter", f"publish={port}", "--format", "{{.Names}}", timeout=30)
     except (OSError, subprocess.TimeoutExpired) as e:
         _unavailable(f"docker is unavailable ({e})")
     names = ps.stdout.decode().split()
     if ps.returncode != 0 or len(names) != 1 or not names[0].startswith(CONTAINER_PREFIX):
         _unavailable(f"no single {CONTAINER_PREFIX}* container publishes port {port} (got {names})")
     name = names[0]
+    if requested:
+        try:
+            published = _docker("port", name, "5432/tcp", timeout=30)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            _unavailable(f"cannot inspect published port for {name} ({e})")
+        if published.returncode != 0 or not any(
+            line.rsplit(":", 1)[-1] == str(port) for line in published.stdout.decode().splitlines()
+        ):
+            _unavailable(f"selected container {name} does not publish DSN port {port}")
     conn = await asyncpg.connect(dsn, timeout=10)
     try:
         via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
