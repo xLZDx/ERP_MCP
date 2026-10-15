@@ -688,3 +688,22 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 - S14-R02 test evidence update (2026-10-15): the functional wire-receipt SQL cases and dump/restore file passed 9/9; the combined synthetic clone-to-ledger E2E passed 15/15. Migration 018 was applied only by those focused tests to disposable PostgreSQL 16 databases. This is synthetic runtime evidence, not real 1C, staging, production, or release-gate evidence. Independent database review and exact-range GPT-PM review remain; no push yet. See `docs/phase2/CHANGE_RECORD_029.md`.
 - GPT-PM exact-head review for S14-R02 (2026-10-15): request `c3988a83-527e-4a5a-916d-b829746a1cd6` returned **APPROVE** to push exact HEAD `c33e34d65b910b8b9517c84ede1a261b4b91f175` against base `3820e71c5acbba0c27ec3aee6ae50122aa865848`. The correlated response reports 0 BLOCKER and 0 MAJOR; it approves only the NON-GATING synthetic prototype and does not authorize later commits, merge, deployment, real 1C, or gate-status changes. Push was not executed. Because this decision-log follow-up is a later commit, request fresh exact-head approval for the combined range before pushing. The complete response remains in PM Bridge's durable message log under the request ID. See `docs/phase2/CHANGE_RECORD_031.md`.
 - S14-R02 final exact-head approval and push (2026-10-15): GPT-PM request `77b44c13-73d7-490e-908a-8d1c06888dad` returned **APPROVE** for exact head `5acbb06b9ca52ebf5635f6e25a9feb4d4c8ab279` against base `3820e71c5acbba0c27ec3aee6ae50122aa865848`; 0 BLOCKER, 0 MAJOR, 0 documentation findings. `git push origin HEAD:main` advanced `origin/main` from `3820e71` to `5acbb06`; a subsequent `git ls-remote` confirmed the exact remote SHA. This closes S14-R02 for the NON-GATING synthetic prototype only. G0-G8 remain NOT_PASSED, formal S13 entry remains NOT APPROVED, Release 2 remains NO-GO, and no real 1C/staging/production action was authorized. The complete correlated response is in PM Bridge's durable message log. See `docs/phase2/CHANGE_RECORD_033.md`.
+# 2026-10-15 — S14-R03 synthetic dispatch coordinator contract
+
+Decision: implement a reusable coordinator only inside the synthetic simulation package. It will
+sequence the existing SQL receipt requirement, canonical payload verification and call recording
+before `ReferenceWriter`, then persist the unchanged clone receipt only after `APPLIED_VERIFIED`.
+Already-issued IDs are inputs, not proof of authority. The coordinator will not mint approvals,
+claims, permits, tickets or signatures; it will not complete changes, retry writes, implement
+`OneCWritePort`, or claim real-system qualification. Canonical bytes continue to come from the
+existing serializer, and SQL remains authoritative for approval and receipt checks.
+
+Rationale: the combined end-to-end scenario currently spells this safe sequence inline, while
+`SqlChangeLedger` lacks public wrappers for the two receipt SQL functions. Encapsulating that exact
+sequence reduces scenario duplication without broadening the trust boundary. Unknown outcomes remain
+unknown and are returned for the established recovery path.
+
+Evidence/state: design-first contract at `docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md`.
+Implementation, focused tests, specialist review and GPT-PM exact-head decision are pending. This
+prototype does not change G0-G8 (NOT_PASSED), formal S13 entry (NOT APPROVED), or Release 2 (NO-GO).
+
