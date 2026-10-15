@@ -1,4 +1,4 @@
-"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004, 005, 006, 007, 008, 009).
+"""Thin asyncpg port over the real ``change_ledger.*`` SQL functions (db/phase2/004-018).
 
 No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
 caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
@@ -112,7 +112,10 @@ SPEC: dict[str, Fn] = {
     # 009 S12-APPROVAL-2: the canonical approval text is stored by the ledger and hashed as given
     "store_approval_text": _f("store_approval_text", "requester", "uuid,text,text", "text"),
     "read_approval_text": _f("read_approval_text", "requester approver", "uuid", "text"),
+    "require_dispatch_receipt": _f("require_dispatch_receipt", "writer requester", "uuid,bigint", "void"),
     "verify_dispatch_payload": _f("verify_dispatch_payload", "writer requester", "uuid,bigint,text", "boolean"),
+    "record_dispatch_receipt": _f("record_dispatch_receipt", "writer requester",
+                                   "uuid,bigint,text,text,text,text", "uuid"),
     "amount_consumed": _f("amount_consumed", "operator worker auditor", "text,uuid", "numeric"),
     # 006 writer fence (complete_lock_busy re-signed in 007)
     "complete_lock_busy": _f("complete_lock_busy", "writer", "uuid,bigint,uuid,jsonb", "text"),
@@ -404,6 +407,18 @@ class SqlChangeLedger:
         """
         return await self.invoke("verify_dispatch_payload", scope, change_id, generation, payload_text,
                                  as_class=as_class)
+
+    async def require_dispatch_receipt(self, scope: Scope, change_id: UUID, generation: int,
+                                       as_class: str | None = None) -> None:
+        """Require a clone receipt before this generation can complete as APPLIED (opt-in per generation)."""
+        await self.invoke("require_dispatch_receipt", scope, change_id, generation, as_class=as_class)
+
+    async def record_dispatch_receipt(self, scope: Scope, change_id: UUID, generation: int,
+                                      key_id: str, received_payload_sha256: str, new_version: str,
+                                      signature: str, as_class: str | None = None) -> UUID:
+        """Persist the clone-produced receipt; SQL verifies its signature and verified wire digest."""
+        return await self.invoke("record_dispatch_receipt", scope, change_id, generation, key_id,
+                                 received_payload_sha256, new_version, signature, as_class=as_class)
 
     # ---- reads
     async def read_status(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> dict:

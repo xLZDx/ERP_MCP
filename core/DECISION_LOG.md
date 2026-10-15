@@ -707,3 +707,15 @@ Evidence/state: design-first contract at `docs/phase2/S14_SYNTHETIC_DISPATCH_ADA
 Implementation, focused tests, specialist review and GPT-PM exact-head decision are pending. This
 prototype does not change G0-G8 (NOT_PASSED), formal S13 entry (NOT APPROVED), or Release 2 (NO-GO).
 
+## 2026-10-15 — S14-R03 synthetic dispatch coordinator implementation
+
+Implemented `SyntheticDispatchCoordinator` in the synthetic simulation package and added scoped
+`SqlChangeLedger` wrappers for existing SQL receipt requirement/recording functions. The coordinator
+uses exact canonical serializer bytes, runs ledger gates before the one writer call, persists only
+the unmodified receipt after `APPLIED_VERIFIED`, and neither completes nor retries. False gate
+results stop before the write. This is not `OneCWritePort` and does not issue authorization artifacts.
+
+Verification state: coding is complete; focused functional/E2E agent tests and specialist review are
+pending. See `docs/phase2/CHANGE_RECORD_036.md`. G0-G8 remain NOT_PASSED, formal S13 entry NOT
+APPROVED, and Release 2 NO-GO.
+

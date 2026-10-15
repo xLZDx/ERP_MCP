@@ -24,5 +24,6 @@ or implement the real `OneCWritePort`.
 
 ## Verification state
 
-Documentation-only; no tests or checks run. The runtime implementation, focused functional/E2E
-evidence, specialist review, GPT-PM exact-head review and push remain pending.
+The contract was committed before runtime code as `c4bd0a7`. Runtime implementation is being recorded
+in change record 036. No tests or checks were run while coding. Focused functional/E2E evidence,
+specialist review, GPT-PM exact-head review and push remain pending.

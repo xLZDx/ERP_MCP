@@ -27,6 +27,12 @@ receipt. The coordinator is a synthetic test-lane adapter, not an implementation
 - The adapter only accepts a ledger interface that exposes the scoped SQL functions. No real 1C,
   network transport, `OneCWritePort`, production credential, or release-gate evidence is added.
 
+## Implementation state
+
+Implemented in `synthetic_dispatch.py` with scoped `SqlChangeLedger` wrappers for the existing
+receipt functions. Runtime acceptance remains pending the focused functional and end-to-end agent
+tests and review.
+
 ## Acceptance
 
 1. The new coordinator calls the ledger gates in order and does not call the writer after any gate
@@ -37,7 +43,7 @@ receipt. The coordinator is a synthetic test-lane adapter, not an implementation
    outcome remains non-success and does not create a receipt or trigger a retry.
 4. `SqlChangeLedger` exposes scoped wrappers for the receipt requirement and receipt recording SQL
    functions without changing their SQL contracts or caller classes.
-5. Functional and end-to-end reviewers add focused tests after all code is complete.
+5. Functional and end-to-end reviewers add focused tests after all code is complete. **Pending.**
 
 ## Limits
 

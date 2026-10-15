@@ -58,10 +58,10 @@ identities, real keys, formal gates, staging or production.
 | S14-R02 — bind the clone receipt to received wire bytes | CLOSED — NON-GATING SYNTHETIC PROTOTYPE PUSHED | Migration 018 keeps the approved typed digest separate from canonical wire SHA and checks the clone receipt against the latter. Focused SQL and dump/restore tests passed 9/9; combined SimulatedOneC-to-ledger E2E passed 15/15 on disposable PostgreSQL 16. Database review had no findings. GPT-PM approved final exact head `5acbb06b9ca52ebf5635f6e25a9feb4d4c8ab279` against base `3820e71c5acbba0c27ec3aee6ae50122aa865848` (request `77b44c13-73d7-490e-908a-8d1c06888dad`); push was verified on `origin/main`. Evidence: `CHANGE_RECORD_029.md`, `CHANGE_RECORD_031.md`, and `CHANGE_RECORD_033.md`. | Prototype acceptance is complete. Real COM/1C behavior, identity/key custody, staging, production, and release qualification remain outside this synthetic scope. Migration ran only inside disposable test databases; no human owner is recorded for prototype code. |
 | S14 remainder — write-port and unknown outcome | PARTIAL / NOT_GATE_EVIDENCE | Existing `ReferenceWriter`, `SimulatedOneC`, and updated SQL scenarios cover canonical receipt binding, altered wire bytes, noncanonical JSON, replay, and failure outcomes on the synthetic lane. No real COM adapter or 1C call is used. | Runtime identity, checkpoint, unknown-call ownership and real clone qualification remain outside this synthetic lane; they do not change G0-G8, formal S13 entry, or Release 2 status. |
 
-S14-R03 — reusable synthetic dispatch coordination is the next local implementation slice. Its accepted
-contract is recorded in `S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md`: sequence the existing SQL
-receipt/payload/call gates around `ReferenceWriter`, pass through only a clone-verified receipt, and
-return unknown outcomes without retry. This remains test-lane plumbing and does not implement the
-non-operational `OneCWritePort` or change the gates above.
+S14-R03 — reusable synthetic dispatch coordination is implemented in
+`simulation/synthetic_dispatch.py`, with scoped SQL port wrappers for receipt requirement and
+recording. Its contract is recorded in `S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md`. The focused
+functional/E2E evidence and specialist review are pending. This remains test-lane plumbing and does
+not implement the non-operational `OneCWritePort` or change the gates above.
 
 Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused execution proves only synthetic PostgreSQL/clone behavior. The exact approved five-commit range is on `origin/main`; the S14 scope does not alter G0-G8, formal S13 entry, or Release 2 status in sections 1–3.
