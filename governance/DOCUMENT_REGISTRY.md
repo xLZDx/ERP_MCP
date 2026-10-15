@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 121 tracked paths, 0 local-only paths.
+Inventory: 123 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -67,6 +67,7 @@ Inventory: 121 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_058.md | Phase 2 design | "Change record 058 — record R-01 and R-03 source inventories" |
 | docs/phase2/CHANGE_RECORD_059.md | Phase 2 design | "Change record 059 — verify actual G1 scope revocation after restore" |
 | docs/phase2/CHANGE_RECORD_060.md | Phase 2 design | "Change record 060 — record G1 focused static re-review" |
+| docs/phase2/CHANGE_RECORD_061.md | Phase 2 design | "Change record 061 — reconcile G1 engineering state and SDLC checkpoint" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -134,6 +135,7 @@ Inventory: 121 tracked paths, 0 local-only paths.
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/08_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/09_HANDOFF_RU.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/10_CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
+| docs/sdlc/STATE.md | Other | "SDLC state" |
 | testlane/onec_extension/README.md | Other | "CT14 extension spike (disposable 1C clone only)" |
 | testlane/onec_extension/STATUS.md | Other | "CT14 extension spike - final status (clone 818HA_p2diff only)" |
 

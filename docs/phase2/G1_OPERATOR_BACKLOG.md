@@ -31,9 +31,9 @@ G1 is **BLOCKED / NOT VERIFIED**. R2 release is NO-GO.
 
 The two drafted SQL migrations must not be deployed until G1-B04/B05/B06 are resolved. Tests of literal SQL fragments cannot establish correct privilege behavior.
 
-## Current reconciliation (2026-10-15)
+## Current reconciliation (2026-10-16)
 
-The original blocker table is preserved as history. The later migrations, test records and independent reviews supersede several implementation claims, but do not satisfy G1's formal exit criteria. `governance/GATE_MANIFEST.json` remains authoritative: G1 is NOT_PASSED, engineering NOT_STARTED, external evidence OPEN, and production authorization NONE.
+The original blocker table is preserved as history. The later migrations, authored test scenarios and independent reviews supersede several implementation claims, but do not satisfy G1's formal exit criteria. `governance/GATE_MANIFEST.json` remains authoritative: G1 is NOT_PASSED, engineering IN_PROGRESS, external evidence OPEN, and production authorization NONE. The engineering status reflects implementation of focused COMMIT/restore acceptance scenarios and their static review; it does not mean runtime evidence or gate acceptance exists.
 
 | Historical blocker | Current evidence/status | Remaining acceptance |
 |---|---|---|

@@ -23,7 +23,7 @@
       "predecessors": [
         "G0"
       ],
-      "engineering_status": "NOT_STARTED",
+      "engineering_status": "IN_PROGRESS",
       "gate_status": "NOT_PASSED",
       "external_evidence_status": "OPEN",
       "production_authorization": "NONE",
