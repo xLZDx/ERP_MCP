@@ -23,6 +23,6 @@ No executable source, SQL, test, manifest gate state, or runtime authorization c
 ## Verification state
 
 - Reconciled with G0 approval request `935d6eed-4690-46f6-867f-8085ea38a11d` and the current `governance/GATE_MANIFEST.json`.
-- No tests or migrations run. `git diff --check` is to be performed before commit.
+- No tests or migrations run. `git diff --check` completed without findings before commit.
 - G0 remains PASSED; G1–G8 remain NOT_PASSED; formal S13 remains NOT APPROVED; production authorization remains NONE.
 - Exact-range PM review is required before push.
