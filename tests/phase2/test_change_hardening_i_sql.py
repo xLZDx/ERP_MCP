@@ -20,11 +20,12 @@ async def led():
 
 
 async def test_i1_receipt_requirement_moves_to_reclaimed_generation(led):
-    cid = await led.approved()
-    tok = await led.claimed(cid)
+    cid, tok, _call_id = await led.applying()
     old_gen = tok["generation"]
     await led.call("clt_wri", "require_dispatch_receipt", cid, old_gen)
-    await led.call("clt_alice", "release_claim", tok["token_id"])
+    # Simulate recovery of an expired APPLYING claim whose permit was never issued.
+    assert await led.conn.fetchval(
+        "SELECT change_ledger.permit_not_issued_internal($1,$2,$3,0)", T, C, cid) is True
     new_tok = await led.claimed(cid)
     new_gen = new_tok["generation"]
     assert new_gen == old_gen + 1
