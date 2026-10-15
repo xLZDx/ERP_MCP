@@ -40,7 +40,10 @@ receipt functions. The first implementation passed the functional contract tests
 is implemented. The expanded functional file passed 7/7, including a real `task.cancel()` while the
 SQL await was suspended. The task remained cancelled and retained its verified outcome. The E2E file
 passed 18/18 again at the reviewed source HEAD. Independent reviews found no BLOCKER/MAJOR and the
-task-lifecycle MINOR is closed; exact-head GPT-PM review remains pending.
+task-lifecycle MINOR is closed. GPT-PM request `c6f839b8-0a67-4a32-a84b-7b7051034fc1` returned
+APPROVE for exact HEAD `f13e32026737a02bf1bee5e3b86dd91ba4b167ea` against base
+`0ffeb5529f8ec9664942f66a4791968db185d697`, with 0 BLOCKER, 0 MAJOR, 0 MINOR and 1 INFO. The
+approved head was pushed to `origin/main` and verified by `git ls-remote`.
 
 ## Acceptance
 
