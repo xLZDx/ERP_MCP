@@ -177,6 +177,46 @@ def test_non_canonical_and_undecodable_points_false(db):
     _agree(db, (1 | (1 << 255)).to_bytes(32, "little"), msg, sig, False)
 
 
+_SMALL_ORDER = [
+    "0100000000000000000000000000000000000000000000000000000000000000",  # order 1 (neutral)
+    "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",  # order 2
+    "0000000000000000000000000000000000000000000000000000000000000000",  # order 4
+    "0000000000000000000000000000000000000000000000000000000000000080",  # order 4
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",  # order 8
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",  # order 8
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",  # order 8
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",  # order 8
+]
+
+
+def test_neutral_key_forgery_false(db):
+    neutral = bytes.fromhex(_SMALL_ORDER[0])
+    for msg in (b"", b"transfer 1000000", b"any other message"):
+        _agree(db, neutral, msg, neutral + bytes(32), False)
+
+
+def test_small_order_points_rejected_as_key_and_as_r(db):
+    pub, msg, sig = _t2()
+    for hx in _SMALL_ORDER:
+        point = bytes.fromhex(hx)
+        _agree(db, point, msg, sig, False)
+        _agree(db, pub, msg, point + sig[32:], False)
+        _agree(db, point, msg, point + bytes(32), False)
+
+
+def test_is_small_order_helper(db):
+    q = "SELECT change_ledger.ed25519_is_small_order($1::bytea)"
+    for hx in _SMALL_ORDER:
+        assert db.run(db.conn.fetchval(q, bytes.fromhex(hx))) is True
+        assert ed25519.is_small_order(bytes.fromhex(hx)) is True
+    base = ed25519.public_key_from_seed(bytes(32))
+    pub, _, _ = _t2()
+    for b in (base, pub, b"\x02" + bytes(31)):  # regular key, regular key, undecodable
+        assert db.run(db.conn.fetchval(q, b)) is False
+        assert ed25519.is_small_order(b) is False
+    assert db.run(db.conn.fetchval(q, None)) is False
+
+
 def test_null_arguments_return_false(db):
     pub, msg, sig = _t2()
     q = "SELECT change_ledger.ed25519_verify($1::bytea,$2::bytea,$3::bytea)"

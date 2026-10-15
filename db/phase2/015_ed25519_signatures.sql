@@ -87,6 +87,9 @@ BEGIN
   IF change_ledger.ed25519_decompress(pg_catalog.decode(p_key_material,'hex')) IS NULL THEN
    RAISE EXCEPTION 'SCHEMA_INVALID';           -- 64 hex characters that are not a curve point can never verify anything
   END IF;
+  IF change_ledger.ed25519_is_small_order(pg_catalog.decode(p_key_material,'hex')) THEN
+   RAISE EXCEPTION 'SCHEMA_INVALID';           -- a small-order key (e.g. the neutral point) is never a usable signing key
+  END IF;
  ELSIF NOT change_ledger.cosign_session_is_exempt() THEN
   RAISE EXCEPTION 'SCHEMA_INVALID';            -- the keyed-hash stand-in is not accepted for new keys
  END IF;

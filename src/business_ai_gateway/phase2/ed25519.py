@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 
-__all__ = ["public_key_from_seed", "sign", "verify"]
+__all__ = ["is_small_order", "public_key_from_seed", "sign", "verify"]
 
 _P = 2**255 - 19
 _L = 2**252 + 27742317777372353535851937790883648493
@@ -96,6 +96,22 @@ def _decompress(data: bytes) -> _Point | None:
     return (x, y, 1, (x * y) % _P)
 
 
+def _is_small_order_point(p: _Point) -> bool:
+    """True when [8]P is the neutral point, i.e. P has order 1, 2, 4 or 8."""
+    return _equal(_mul(8, p), _NEUTRAL)
+
+
+def is_small_order(point_bytes: bytes) -> bool:
+    """True when the 32-byte encoding decodes to a small-order point (order dividing 8).
+
+    Undecodable input returns False (it is rejected by decompression elsewhere).
+    """
+    if not isinstance(point_bytes, (bytes, bytearray)):
+        return False
+    point = _decompress(bytes(point_bytes))
+    return point is not None and _is_small_order_point(point)
+
+
 _G_Y = (4 * _inv(5)) % _P
 _G_X = _recover_x(_G_Y, 0)
 assert _G_X is not None
@@ -147,6 +163,9 @@ def verify(public_key: bytes, message: bytes, signature: bytes) -> bool:
     r_bytes = signature[:32]
     r_point = _decompress(r_bytes)
     if r_point is None:
+        return False
+    # Small-order A or R makes the cofactorless equation satisfiable for any message (e.g. A = R = neutral, S = 0).
+    if _is_small_order_point(a_point) or _is_small_order_point(r_point):
         return False
     s = int.from_bytes(signature[32:], "little")
     if s >= _L:

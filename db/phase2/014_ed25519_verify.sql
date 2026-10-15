@@ -13,6 +13,8 @@
 --     endian), the top bit is the sign of x; y >= p (non-canonical encoding) is rejected; x is recovered with the
 --     p = 5 (mod 8) square-root trick x = (u/v)^((p+3)/8), multiplied by sqrt(-1) when needed; no root -> false;
 --     x = 0 with sign bit 1 -> false;
+--   * a public key A or signature point R of small order (order 1, 2, 4 or 8: [8]P is the neutral point) is rejected
+--     (otherwise A = R = neutral with S = 0 would verify for every message);
 --   * S (the last 32 bytes, little endian) must be < L (the group order), which also removes S-malleability;
 --   * k = SHA-512(R || A || M) read little endian, reduced mod L (built-in sha512(bytea), PostgreSQL 11+);
 --   * the COFACTORLESS check [S]B = R + [k]A, compared in projective form (no inversion needed).
@@ -25,7 +27,7 @@
 -- keeps the sign of the dividend, so every subtraction is shifted by +p before reducing.
 --
 -- HELPERS (all in change_ledger, all internal, none granted): ed25519_le_to_numeric, ed25519_modpow,
--- ed25519_recover_x, ed25519_decompress, ed25519_point_add, ed25519_point_mul, ed25519_point_equal.
+-- ed25519_recover_x, ed25519_decompress, ed25519_point_add, ed25519_point_mul, ed25519_point_equal, ed25519_is_small_order.
 --
 -- PRIVILEGES. The function is an INTERNAL building block: this migration grants EXECUTE to no role. The wiring block
 -- (last) applies the schema convention of 011: SECURITY DEFINER with search_path = pg_catalog, pg_temp, owner
@@ -144,6 +146,19 @@ BEGIN
  RETURN pg_catalog.mod(p_p[2]*p_q[3] - p_q[2]*p_p[3], p) = 0;
 END $fn$;
 
+-- true when the 32-byte encoding decodes to a point of order 1, 2, 4 or 8 ([8]P is the neutral point); false when it
+-- does not decode. Mirrors ed25519.py is_small_order.
+CREATE OR REPLACE FUNCTION change_ledger.ed25519_is_small_order(p_b bytea) RETURNS boolean
+LANGUAGE plpgsql IMMUTABLE AS $fn$
+DECLARE pt numeric[];
+BEGIN
+ IF p_b IS NULL THEN RETURN false; END IF;
+ pt := change_ledger.ed25519_decompress(p_b);
+ IF pt IS NULL THEN RETURN false; END IF;
+ RETURN change_ledger.ed25519_point_equal(change_ledger.ed25519_point_mul(8, pt),
+  ARRAY[0::numeric, 1::numeric, 1::numeric, 0::numeric]);
+END $fn$;
+
 -- ================================================================== the verifier
 CREATE OR REPLACE FUNCTION change_ledger.ed25519_verify(p_public_key bytea, p_message bytea, p_signature bytea)
 RETURNS boolean LANGUAGE plpgsql IMMUTABLE AS $fn$
@@ -161,6 +176,8 @@ BEGIN
  r_bytes := pg_catalog.substr(p_signature, 1, 32);
  r_point := change_ledger.ed25519_decompress(r_bytes);
  IF r_point IS NULL THEN RETURN false; END IF;
+ -- small-order A or R makes the cofactorless equation satisfiable for any message (A = R = neutral, S = 0)
+ IF change_ledger.ed25519_is_small_order(p_public_key) OR change_ledger.ed25519_is_small_order(r_bytes) THEN RETURN false; END IF;
  s := change_ledger.ed25519_le_to_numeric(pg_catalog.substr(p_signature, 33, 32));
  IF s >= l THEN RETURN false; END IF;
  k := pg_catalog.mod(change_ledger.ed25519_le_to_numeric(pg_catalog.sha512(r_bytes || p_public_key || p_message)), l);

@@ -119,6 +119,40 @@ def test_non_canonical_and_undecodable_points_rejected():
     assert ed25519.verify((2).to_bytes(32, "little"), msg, sig) is False
 
 
+_SMALL_ORDER = [
+    "0100000000000000000000000000000000000000000000000000000000000000",  # order 1 (neutral)
+    "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",  # order 2
+    "0000000000000000000000000000000000000000000000000000000000000000",  # order 4
+    "0000000000000000000000000000000000000000000000000000000000000080",  # order 4
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",  # order 8
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",  # order 8
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",  # order 8
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",  # order 8
+]
+
+
+def test_neutral_key_forgery_rejected():
+    neutral = bytes.fromhex(_SMALL_ORDER[0])
+    forged = neutral + bytes(32)  # R = neutral, S = 0
+    for msg in (b"", b"transfer 1000000", b"any other message"):
+        assert ed25519.verify(neutral, msg, forged) is False
+
+
+def test_small_order_points_detected_and_rejected_as_key_and_as_r():
+    _, pub, msg, sig = _t1()
+    for hx in _SMALL_ORDER:
+        point = bytes.fromhex(hx)
+        assert ed25519.is_small_order(point) is True
+        assert ed25519.verify(point, msg, sig) is False  # small-order A
+        assert ed25519.verify(pub, msg, point + sig[32:]) is False  # small-order R
+        assert ed25519.verify(point, msg, point + bytes(32)) is False
+    base = ed25519.public_key_from_seed(bytes(32))
+    assert ed25519.is_small_order(base) is False
+    assert ed25519.is_small_order(pub) is False
+    assert ed25519.is_small_order(b"\x02" + bytes(31)) is False  # undecodable
+    assert ed25519.is_small_order(b"") is False
+
+
 def test_bad_seed_lengths_raise():
     for bad in (b"", b"\x00" * 31, b"\x00" * 33):
         with pytest.raises(ValueError):

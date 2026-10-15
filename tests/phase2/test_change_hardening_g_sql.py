@@ -217,6 +217,13 @@ async def test_g3_register_new_keys_accept_only_ed25519_for_a_normal_session(led
     # 64 hex characters that are not a curve point can never verify anything: refused for everybody, superuser too
     await fails("SCHEMA_INVALID", sess(led, a, "clt_dave", "register_verifier_key", "vk-new", "clt_wrk", "f" * 64))
     await fails("SCHEMA_INVALID", led.call("clt_dave", "register_verifier_key", "vk-new", "clt_wrk", "f" * 64))
+    # small-order keys (neutral point: 01 + 31 zero bytes) are valid curve points but forge for any message: refused
+    neutral_hex = "01" + "00" * 31
+    await fails("SCHEMA_INVALID", sess(led, a, "clt_dave", "register_verifier_key", "vk-new", "clt_wrk", neutral_hex))
+    await fails("SCHEMA_INVALID", led.call("clt_dave", "register_verifier_key", "vk-new", "clt_wrk", neutral_hex))
+    await fails("SCHEMA_INVALID", sess(led, a, "clt_dave", "propose_registry_change", "VERIFIER_KEY",
+                                       json.dumps({"key_id": "vk-new", "role_name": "clt_wrk",
+                                                   "key_material": neutral_hex})))
     # the two-person road refuses the stand-in at proposal time and accepts an Ed25519 key
     await fails("SCHEMA_INVALID", sess(led, a, "clt_dave", "propose_registry_change", "VERIFIER_KEY",
                                        json.dumps({"key_id": "vk-new", "role_name": "clt_wrk",
