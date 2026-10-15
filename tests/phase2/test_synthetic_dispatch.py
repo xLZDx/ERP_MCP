@@ -205,14 +205,30 @@ class SyntheticDispatchCoordinatorTests(unittest.IsolatedAsyncioTestCase):
     async def test_cancellation_during_receipt_persistence_preserves_verified_outcome(self) -> None:
         payload = _payload()
         outcome = _success_outcome(encode_payload(payload))
-        ledger = FakeLedger(receipt_error=asyncio.CancelledError())
+        entered_persistence = asyncio.Event()
+
+        class PausedReceiptLedger(FakeLedger):
+            async def record_dispatch_receipt(self, scope, change_id, generation, key_id,
+                                              received_payload_sha256, new_version, signature) -> UUID:
+                receipt = (scope, change_id, generation, key_id, received_payload_sha256,
+                           new_version, signature)
+                self.calls.append(("record_receipt", *receipt))
+                self.receipts.append(receipt)
+                entered_persistence.set()
+                await asyncio.Event().wait()
+                raise AssertionError("unreachable")
+
+        ledger = PausedReceiptLedger()
         writer = FakeWriter(outcome)
 
+        task = asyncio.create_task(SyntheticDispatchCoordinator(ledger, writer).dispatch(
+            SCOPE, CHANGE_ID, GENERATION, CALL_ID, ChangeKind.CREATE_DRAFT, payload,
+            "document-a", "V7",
+        ))
+        await asyncio.wait_for(entered_persistence.wait(), timeout=5)
+        task.cancel()
         with self.assertRaises(ReceiptPersistenceCancelled) as raised:
-            await SyntheticDispatchCoordinator(ledger, writer).dispatch(
-                SCOPE, CHANGE_ID, GENERATION, CALL_ID, ChangeKind.CREATE_DRAFT, payload,
-                "document-a", "V7",
-            )
+            await task
 
         self.assertIsInstance(raised.exception, asyncio.CancelledError)
         self.assertEqual(raised.exception.code, "RECEIPT_PERSISTENCE_UNKNOWN")
@@ -220,6 +236,7 @@ class SyntheticDispatchCoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(raised.exception.outcome.receipt, outcome.receipt)
         self.assertEqual(len(writer.calls), 1, "interruption must not trigger a clone retry")
         self.assertEqual(len(ledger.receipts), 1)
+        self.assertTrue(task.cancelled())
 
 
 if __name__ == "__main__":

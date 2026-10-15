@@ -35,7 +35,10 @@ The pre-fix focused functional (5/5) and PostgreSQL 16 E2E (18/18) evidence is r
 typed implementation, including SQL receipt-persistence failure. A subsequent code review found that
 the cancellation path suppressed asyncio cancellation. The final adjustment uses
 `ReceiptPersistenceCancelled`, which remains an `asyncio.CancelledError` and carries the outcome. The
-functional reviewer reran the file after that adjustment: 7/7 passed, including assertions for
-cancellation type, stable code, identical verified outcome and one writer call. PostgreSQL E2E was
-not rerun because the wrapper sequence did not change. Focused independent re-review and exact-head
-GPT-PM review remain pending.
+functional reviewer reran the file: 7/7 passed, including a real `task.cancel()` while the ledger
+await was suspended; the test asserts cancelled task state, stable code, identical verified outcome
+and one writer call. E2E runner reran `python -m pytest tests/phase2/test_simulation_e2e_sql.py -q`
+against the existing disposable PostgreSQL 16 container at source HEAD
+`d659788de46e7037db1b83afa6ef2333c534b92d`: 18/18 passed in 94.05s. Code/Python reviews found no
+BLOCKER/MAJOR; the previously reported MINOR task-lifecycle gap is closed. Exact-head GPT-PM review
+remains pending.

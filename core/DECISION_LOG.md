@@ -735,7 +735,9 @@ Review correction: the Python reviewer found that a SQL receipt-persistence fail
 must not retry because SQL may have committed before the response was lost. A second focused review
 found the cancellation wrapper suppressed normal task-cancellation semantics. The fix is to surface
 `ReceiptPersistenceCancelled`, a subclass of `asyncio.CancelledError` carrying the verified outcome;
-the focused functional file passed 7/7 with assertions for subtype, error code, result preservation
-and one writer call. Focused independent re-review remains pending. See
-`docs/phase2/CHANGE_RECORD_038.md`.
+the functional file passed 7/7 with actual task cancellation during a suspended SQL await, asserting
+cancelled task state, error code, result preservation and one writer call. The E2E file passed 18/18
+on rerun at source HEAD `d659788`. Independent reviews found no BLOCKER/MAJOR; the task-lifecycle
+coverage gap is closed. Exact-head GPT-PM review remains pending. See
+`docs/phase2/CHANGE_RECORD_038.md` and `CHANGE_RECORD_039.md`.
 
