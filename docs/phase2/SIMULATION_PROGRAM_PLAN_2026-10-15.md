@@ -65,7 +65,7 @@ recording. The expanded functional coverage passed 7/7; the PostgreSQL 16 synthe
 post-write receipt-persistence error; the typed failure path is fixed. Cancellation now remains an
 `asyncio.CancelledError` subclass while carrying the verified result; its task-cancellation regression
 passed. The E2E file passed 18/18 on rerun. Independent reviews found no BLOCKER/MAJOR and the
-task-lifecycle test gap is closed. Exact-head GPT-PM review was pending at this plan snapshot and was later\napproved for the exact range recorded below. This remains test-lane
+task-lifecycle test gap is closed. Exact-head GPT-PM review was pending at this plan snapshot and was later approved for the exact range recorded below. This remains test-lane
 plumbing and does not implement the non-operational `OneCWritePort` or change the gates above.
 GPT-PM request `c6f839b8-0a67-4a32-a84b-7b7051034fc1` approved exact HEAD
 `f13e32026737a02bf1bee5e3b86dd91ba4b167ea` against base `0ffeb5529f8ec9664942f66a4791968db185d697`
@@ -73,5 +73,6 @@ for push as a NON-GATING prototype. Push to `origin/main` was verified. The sing
 note that future blocking transport needs an execution model outside the current in-memory simulator.
 
 Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused execution proves only synthetic PostgreSQL/clone behavior. The exact approved five-commit range is on `origin/main`; the S14 scope does not alter G0-G8, formal S13 entry, or Release 2 status in sections 1–3.
+
 
 
