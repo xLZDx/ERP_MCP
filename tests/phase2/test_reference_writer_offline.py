@@ -1,12 +1,12 @@
 """Offline tests for the simulation ReferenceWriter (no Postgres, no docker)."""
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 
 import pytest
 
 from business_ai_gateway.phase2.change.types import ChangeKind
-from business_ai_gateway.phase2.simulation.attestation import SimulatedAttestor
 from business_ai_gateway.phase2.simulation.clone_1c import FAILURE_MODES, SimulatedOneC, encode_payload
 from business_ai_gateway.phase2.simulation.reference_writer import (
     ApprovedDigestMismatch, ReferenceWriter, WriteStatus)
@@ -20,10 +20,9 @@ def _sha(b: bytes) -> str:
 @pytest.fixture()
 def env():
     clone = SimulatedOneC()
-    attestor = SimulatedAttestor()
     payload = SyntheticGenerator(7).draft_payload()
     data = encode_payload(payload)
-    return clone, attestor, ReferenceWriter(clone, attestor), data
+    return clone, None, ReferenceWriter(clone), data
 
 
 def _create(w, data, digest=None):
@@ -31,7 +30,7 @@ def _create(w, data, digest=None):
 
 
 def test_happy_path_sends_exact_bytes(env):
-    clone, attestor, w, data = env
+    clone, _, w, data = env
     out = _create(w, data)
     assert out.success and out.status is WriteStatus.APPLIED_VERIFIED
     assert out.received_payload_sha256 == out.approved_payload_sha256 == _sha(data)
@@ -83,20 +82,43 @@ def test_stale_expected_version_rejected(env):
 
 
 def test_receipt_signature_forgery_rejected(env):
-    clone, attestor, _, data = env
-    forged = ReferenceWriter(clone, attestor, trusted_public_key_hex=SimulatedAttestor("OTHER-KEY").public_key_hex)
+    clone, _, _, data = env
+    forged = ReferenceWriter(clone, trusted_public_key_hex=SimulatedOneC("OTHER-CLONE").receipt_public_key_hex)
     out = _create(forged, data)
-    assert out.status is WriteStatus.RECEIPT_INVALID and not out.success
+    assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_SIGNATURE_INVALID" and not out.success
 
 
 def test_receipt_with_tampered_field_rejected(env):
-    clone, _, _, data = env
+    _, _, _, data = env
 
-    class Forging(SimulatedAttestor):
-        def receipt_attestation(self, *a, **k):
-            r = super().receipt_attestation(*a, **k)
-            r["new_version"] = "V99"  # signature no longer covers this value
-            return r
+    class Forging(SimulatedOneC):
+        def apply(self, *a, **k):
+            r = super().apply(*a, **k)
+            return dataclasses.replace(r, receipt={**r.receipt, "new_version": "V99"})  # signature no longer covers it
 
-    out = _create(ReferenceWriter(clone, Forging()), data)
+    clone = Forging()
+    out = _create(ReferenceWriter(clone), data)
     assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_SIGNATURE_INVALID"
+
+
+def test_missing_receipt_is_not_success(env):
+    _, _, _, data = env
+
+    class NoReceipt(SimulatedOneC):
+        def apply(self, *a, **k):
+            return dataclasses.replace(super().apply(*a, **k), receipt=None)
+
+    out = _create(ReferenceWriter(NoReceipt()), data)
+    assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_MISSING" and not out.success
+
+
+def test_receipt_for_another_dispatch_is_a_binding_mismatch(env):
+    _, _, _, data = env
+
+    class Replaying(SimulatedOneC):
+        def apply(self, kind, payload_bytes, target_ref, expected_version, *, change_id=None, dispatch_id=None):
+            return super().apply(kind, payload_bytes, target_ref, expected_version, change_id=change_id,
+                                 dispatch_id="other-dispatch")
+
+    out = _create(ReferenceWriter(Replaying()), data)
+    assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_BINDING_MISMATCH"

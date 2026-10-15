@@ -21,19 +21,28 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import deque
 from dataclasses import dataclass, replace
 from typing import Final
 
 from ..change.proposal import DraftPayload, DuplicateOverride, Line, canonical_json, derive_allowed_effects, payload_to_dict
-from ..change.types import ChangeKind
+from ..change.types import ChangeKind, is_identity_text
+from ..ed25519 import public_key_from_seed, sign, verify
 
 __all__ = [
     "CloneCrash", "CloneError", "CloneRejected", "CloneTimeout", "ApplyResult", "FAILURE_MODES", "LANE",
-    "PreviewResult", "SYNTHETIC_MARKER", "SimulatedOneC", "decode_payload", "encode_payload",
+    "PreviewResult", "RECEIPT_TEXT_PREFIX", "SYNTHETIC_MARKER", "SimulatedOneC", "decode_payload", "encode_payload",
+    "receipt_signing_text", "verify_clone_receipt",
 ]
 
 LANE: Final = "TEST"
+# The text the clone signs for one applied dispatch. change_ledger.record_dispatch_receipt (migration 016) rebuilds
+# exactly this text from its own columns, so the signature binds change, dispatch, received bytes and new version.
+RECEIPT_TEXT_PREFIX: Final = "change-ledger-receipt|v1|"
+_HEX64: Final = re.compile(r"[0-9a-f]{64}")
+_RECEIPT_FIELDS: Final = frozenset({
+    "type", "lane", "key_id", "change_id", "dispatch_id", "received_payload_sha256", "new_version", "signature"})
 SYNTHETIC_MARKER: Final = "SYNTHETIC-SIM-ONEC-V1"
 FAILURE_MODES: Final = ("timeout", "reject", "duplicate", "crash_after_write", "crash_before_write")
 STATUS_DRAFT: Final = "DRAFT"
@@ -86,10 +95,38 @@ class ApplyResult:
     effects: dict[str, int]
     lane: str = LANE
     synthetic_marker: str = SYNTHETIC_MARKER
+    receipt: dict[str, object] | None = None  # signed by the clone's own key when change_id and dispatch_id were given
 
 
 def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def receipt_signing_text(change_id: str, dispatch_id: str, received_payload_sha256: str, new_version: str) -> str:
+    """The exact text a clone receipt signs (UTF-8 bytes of this string)."""
+    for value in (change_id, dispatch_id, new_version):
+        if not is_identity_text(value) or "|" in value:
+            raise ValueError("RECEIPT_FIELD_INVALID")
+    if type(received_payload_sha256) is not str or _HEX64.fullmatch(received_payload_sha256) is None:
+        raise ValueError("RECEIPT_FIELD_INVALID")
+    return f"{RECEIPT_TEXT_PREFIX}{change_id}|{dispatch_id}|{received_payload_sha256}|{new_version}"
+
+
+def verify_clone_receipt(public_key_hex: str, receipt: object) -> bool:
+    """True only for a well-formed clone receipt whose signature verifies under ``public_key_hex``. Never raises."""
+    try:
+        if type(receipt) is not dict or type(public_key_hex) is not str or set(receipt) != _RECEIPT_FIELDS:
+            return False
+        if receipt["type"] != "CLONE_RECEIPT" or receipt["lane"] != LANE:
+            return False
+        text = receipt_signing_text(receipt["change_id"], receipt["dispatch_id"],
+                                    receipt["received_payload_sha256"], receipt["new_version"])
+        signature = receipt["signature"]
+        if type(signature) is not str:
+            return False
+        return verify(bytes.fromhex(public_key_hex), text.encode("utf-8"), bytes.fromhex(signature))
+    except (ValueError, TypeError, KeyError):
+        return False
 
 
 def encode_payload(payload: DraftPayload | None) -> bytes:
@@ -152,6 +189,10 @@ class SimulatedOneC:
 
     def __init__(self, label: str = "SIM-CLONE-A") -> None:
         self.label = label
+        # The receipt key belongs to the clone alone: the seed never leaves this object and is never given to a writer.
+        self._receipt_seed = hashlib.sha256(("SIM-ONEC-RECEIPT-KEY|" + label).encode("utf-8")).digest()
+        self.receipt_public_key_hex = public_key_from_seed(self._receipt_seed).hex()
+        self.receipt_key_id = "sim-clone-key-" + _sha256_bytes(bytes.fromhex(self.receipt_public_key_hex))[:16]
         self._docs: dict[str, _Document] = {}
         self._next_doc = 1
         self._injections: deque[str] = deque()
@@ -224,10 +265,18 @@ class SimulatedOneC:
     # ---- the only write path ----------------------------------------------------------------------------------
 
     def apply(self, kind: ChangeKind, payload_bytes: bytes, target_ref: str | None,
-              expected_version: str | None) -> ApplyResult:
-        """Apply one change ONLY on this simulated clone. See the module docstring for failure semantics."""
+              expected_version: str | None, *, change_id: str | None = None,
+              dispatch_id: str | None = None) -> ApplyResult:
+        """Apply one change ONLY on this simulated clone. See the module docstring for failure semantics.
+
+        With ``change_id`` and ``dispatch_id`` the successful result carries a receipt signed by the clone's own key
+        over (change id, dispatch id, received payload sha256, new version); a caller only forwards it."""
         if type(kind) is not ChangeKind or not isinstance(payload_bytes, (bytes, bytearray)):
             raise ValueError("APPLY_ARGUMENTS_INVALID")
+        if (change_id is None) != (dispatch_id is None):
+            raise ValueError("APPLY_ARGUMENTS_INVALID")
+        if change_id is not None:
+            receipt_signing_text(change_id, dispatch_id, "0" * 64, "V0")  # validates the identities before any effect
         received = bytes(payload_bytes)
         if self._tamper_next:
             self._tamper_next = False
@@ -266,7 +315,15 @@ class SimulatedOneC:
         if injected == "crash_after_write":
             entry["outcome"] = "CRASH_AFTER_WRITE"
             raise CloneCrash()
+        if change_id is not None:
+            result = replace(result, receipt=self._sign_receipt(change_id, dispatch_id, digest, result.new_version))
         return result
+
+    def _sign_receipt(self, change_id: str, dispatch_id: str, digest: str, new_version: str) -> dict[str, object]:
+        text = receipt_signing_text(change_id, dispatch_id, digest, new_version)
+        return {"type": "CLONE_RECEIPT", "lane": LANE, "key_id": self.receipt_key_id, "change_id": change_id,
+                "dispatch_id": dispatch_id, "received_payload_sha256": digest, "new_version": new_version,
+                "signature": sign(self._receipt_seed, text.encode("utf-8")).hex()}
 
     # ---- internals --------------------------------------------------------------------------------------------
 

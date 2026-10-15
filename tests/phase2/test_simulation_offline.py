@@ -17,6 +17,7 @@ from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.simulation.attestation import SimulatedAttestor, verify_attestation
 from business_ai_gateway.phase2.simulation.clone_1c import (
     LANE, SYNTHETIC_MARKER, CloneCrash, CloneRejected, CloneTimeout, SimulatedOneC, decode_payload, encode_payload,
+    receipt_signing_text, verify_clone_receipt,
 )
 from business_ai_gateway.phase2.simulation.synthetic_data import SyntheticGenerator, populate
 
@@ -407,3 +408,49 @@ def test_attestor_rejects_malformed_inputs_and_binds_to_clone_artifacts():
                                            clone.observed_state_digest(result.target_ref))
     assert verify_attestation(attestor.public_key_hex, state_att)
     assert canonical_json(state_att)  # attestations are canonical-JSON serializable
+
+
+# ---- clone-signed receipt (F-01): the clone owns the key, a caller only forwards the receipt ----------------------
+
+def test_clone_signs_its_own_receipt_over_change_dispatch_digest_version():
+    clone = SimulatedOneC("SIM-CLONE-R1")
+    data = encode_payload(SyntheticGenerator(21).draft_payload())
+    result = clone.apply(CREATE, data, None, None, change_id="chg-1", dispatch_id="disp-1")
+    rc = result.receipt
+    assert rc is not None and rc["received_payload_sha256"] == _sha(data) and rc["new_version"] == result.new_version
+    assert rc["change_id"] == "chg-1" and rc["dispatch_id"] == "disp-1" and rc["key_id"] == clone.receipt_key_id
+    assert verify_clone_receipt(clone.receipt_public_key_hex, rc)
+    assert receipt_signing_text("chg-1", "disp-1", _sha(data), result.new_version).startswith("change-ledger-receipt|v1|")
+    # no secret leaks through the public surface: the receipt and key attributes hold public data only
+    assert clone._receipt_seed.hex() not in repr(rc) + clone.receipt_public_key_hex
+
+
+def test_clone_receipt_fails_for_every_changed_field_and_other_keys():
+    clone, other = SimulatedOneC("SIM-CLONE-R1"), SimulatedOneC("SIM-CLONE-R2")
+    data = encode_payload(SyntheticGenerator(22).draft_payload())
+    rc = clone.apply(CREATE, data, None, None, change_id="chg-1", dispatch_id="disp-1").receipt
+    pub = clone.receipt_public_key_hex
+    assert not verify_clone_receipt(other.receipt_public_key_hex, rc)               # wrong key
+    for field, value in (("change_id", "chg-2"), ("dispatch_id", "disp-2"), ("new_version", "V9"),
+                         ("received_payload_sha256", "0" * 64), ("lane", "PROD"), ("type", "PREVIEW")):
+        assert not verify_clone_receipt(pub, {**rc, field: value}), field
+    assert not verify_clone_receipt(pub, {**rc, "signature": "00" * 64})
+    assert not verify_clone_receipt(pub, {k: v for k, v in rc.items() if k != "signature"})
+    assert not verify_clone_receipt(pub, {**rc, "extra": 1}) and not verify_clone_receipt(pub, None)
+
+
+def test_clone_receipt_binds_the_bytes_actually_received_and_is_absent_without_ids_or_success():
+    clone = SimulatedOneC("SIM-CLONE-R1")
+    data = encode_payload(SyntheticGenerator(23).draft_payload())
+    assert clone.apply(CREATE, data, None, None).receipt is None                    # no ids: no receipt (old callers)
+    clone.tamper()
+    with pytest.raises(CloneRejected) as exc:                                       # tampered bytes never get a receipt
+        clone.apply(CREATE, data, None, None, change_id="chg-1", dispatch_id="disp-1")
+    assert exc.value.received_payload_sha256 != _sha(data)
+    clone.fail_next("timeout")
+    with pytest.raises(CloneTimeout):
+        clone.apply(CREATE, data, None, None, change_id="chg-1", dispatch_id="disp-1")
+    with pytest.raises(ValueError):
+        clone.apply(CREATE, data, None, None, change_id="chg-1")                    # ids come as a pair
+    with pytest.raises(ValueError):
+        clone.apply(CREATE, data, None, None, change_id="a|b", dispatch_id="disp-1")

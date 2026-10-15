@@ -472,7 +472,7 @@ async def test_approvals_of_the_old_version_cannot_authorize_anything_after_009(
     dsn = require_dsn()
     async with throwaway_db(dsn, migrate=False, seed=False) as db:
         db.conn = await db.connect()
-        assert FILES[8] == "009_approval_digest_2.sql" and len(FILES) == 15   # 010 to 015 follow 009
+        assert FILES[8] == "009_approval_digest_2.sql" and len(FILES) == 16   # 010 to 016 follow 009
         await apply_files(db.conn, FILES[:8])                       # the world before 009: SQL-1 digests
         await _setup(db.conn)
         old = L(db)

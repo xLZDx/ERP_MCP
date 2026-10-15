@@ -25,7 +25,7 @@ FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_securit
          "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql",
          "008_change_hardening_b.sql", "009_approval_digest_2.sql", "010_registry_session_hardening.sql",
          "011_event_hash_v2.sql", "012_dispatch_session_hardening.sql", "013_dispatched_invariant.sql",
-         "014_ed25519_verify.sql", "015_ed25519_signatures.sql")
+         "014_ed25519_verify.sql", "015_ed25519_signatures.sql", "016_dispatch_receipt.sql")
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
 FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
