@@ -719,3 +719,13 @@ Verification state: coding is complete; focused functional/E2E agent tests and s
 pending. See `docs/phase2/CHANGE_RECORD_036.md`. G0-G8 remain NOT_PASSED, formal S13 entry NOT
 APPROVED, and Release 2 NO-GO.
 
+Focused test evidence (2026-10-15): `functional-test-reviewer` added and ran
+`python -m unittest tests.phase2.test_synthetic_dispatch -v` with `PYTHONPATH=src`: 5/5 passed.
+`e2e-runner` ran `tests/phase2/test_simulation_e2e_sql.py` on disposable PostgreSQL 16: 18/18 passed
+in 109.77s. The SQL wrapper success scenario persisted the exact clone receipt before APPLIED;
+crash-before/after-write remained APPLYING with zero receipt and one clone call. An initial setup
+run failed because the test registry lacked the clone's actual receipt key; the fixture was corrected
+and the full file passed on rerun. This is test-lane evidence only. Specialist review and exact-head
+GPT-PM review are pending. Agent cleanup of disposable container
+`s14-r03-e2e-c4b4d32f9e39` was rejected before execution; it remains running on localhost port 27780.
+

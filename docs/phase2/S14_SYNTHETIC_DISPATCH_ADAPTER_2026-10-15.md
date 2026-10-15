@@ -30,8 +30,9 @@ receipt. The coordinator is a synthetic test-lane adapter, not an implementation
 ## Implementation state
 
 Implemented in `synthetic_dispatch.py` with scoped `SqlChangeLedger` wrappers for the existing
-receipt functions. Runtime acceptance remains pending the focused functional and end-to-end agent
-tests and review.
+receipt functions. The functional contract tests pass 5/5; the PostgreSQL 16 synthetic E2E file passes
+18/18, including wrapper-driven success and unknown-crash outcomes. Independent specialist review
+and exact-head GPT-PM review remain pending.
 
 ## Acceptance
 
@@ -43,7 +44,9 @@ tests and review.
    outcome remains non-success and does not create a receipt or trigger a retry.
 4. `SqlChangeLedger` exposes scoped wrappers for the receipt requirement and receipt recording SQL
    functions without changing their SQL contracts or caller classes.
-5. Functional and end-to-end reviewers add focused tests after all code is complete. **Pending.**
+5. Functional and end-to-end reviewers add focused tests after all code is complete. **PASS** —
+   `test_synthetic_dispatch.py` 5/5 and `test_simulation_e2e_sql.py` 18/18 on disposable PostgreSQL
+   16; specialist review and exact-head GPT-PM review are still pending.
 
 ## Limits
 

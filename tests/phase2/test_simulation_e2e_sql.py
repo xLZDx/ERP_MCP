@@ -22,8 +22,11 @@ from test_change_ledger_sql import C, C2, DEFAULT_GRANT, ORG, T, T2, _setup, exp
 from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change.proposal import DuplicateOverride, payload_digest, payload_to_dict
 from business_ai_gateway.phase2.change.types import ChangeKind
+from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
 from business_ai_gateway.phase2.simulation.clone_1c import SimulatedOneC, encode_payload
 from business_ai_gateway.phase2.simulation.reference_writer import ReferenceWriter, WriteStatus
+from business_ai_gateway.phase2.simulation.synthetic_dispatch import SyntheticDispatchCoordinator
 from business_ai_gateway.phase2.simulation.synthetic_data import SyntheticGenerator
 
 pytestmark = pytest.mark.integration
@@ -154,6 +157,56 @@ async def test_real_wire_receipt_is_accepted_and_bound_to_canonical_bytes(env):
     assert rid is not None and await n_receipts(e, cid) == 1
     assert await put(e, cid, gen, out.receipt) == rid  # exact clone receipt replay is idempotent
     assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
+
+
+async def test_coordinator_persists_verified_sql_receipt_and_completes(env):
+    """Exercise the production SQL wrapper methods through the synthetic coordinator."""
+    e = env
+    payload = e.gen.draft_payload()
+    cid, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, payload, target="doc-coordinator")
+    # The legacy helper above registers the key alias used by `put`; the coordinator correctly
+    # forwards the clone's signed key ID, which must also exist in the SQL verifier registry.
+    await e.led.conn.execute(
+        "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
+        "VALUES($1,$2,$3,'receipt_role',$4)", T, C, e.clone.receipt_key_id, e.clone.receipt_public_key_hex)
+    sql_ledger = SqlChangeLedger(e.led.conn, {"writer": "clt_wri"})
+    coordinator = SyntheticDispatchCoordinator(sql_ledger, e.writer)
+
+    out = await coordinator.dispatch(Scope(T, C), cid, gen, call_id, ChangeKind.CREATE_DRAFT,
+                                     payload, None, None)
+
+    assert out.status is WriteStatus.APPLIED_VERIFIED and out.receipt is not None
+    row = await e.led.conn.fetchrow(
+        "SELECT signer_key_id,received_payload_sha256,new_version FROM change_ledger.dispatch_receipts "
+        "WHERE change_id=$1 AND generation=$2", cid, gen)
+    assert row is not None
+    assert row["signer_key_id"] == e.clone.receipt_key_id
+    assert row["received_payload_sha256"] == sha(encode_payload(payload))
+    assert row["new_version"] == out.new_version
+    assert await n_receipts(e, cid) == 1
+    assert e.clone.write_count == 1 and len(e.clone.truth_log()) == 1
+    assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
+    assert (await e.led.rec(cid))["execution_state"] == "APPLIED"
+
+
+@pytest.mark.parametrize("failure", ["crash_before_write", "crash_after_write"])
+async def test_coordinator_unknown_outcome_does_not_persist_retry_or_complete(env, failure):
+    """Unknown writer outcomes stop at dispatch; recovery/completion remains a separate decision."""
+    e = env
+    payload = e.gen.draft_payload()
+    cid, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, payload, target=f"doc-{failure}")
+    sql_ledger = SqlChangeLedger(e.led.conn, {"writer": "clt_wri"})
+    coordinator = SyntheticDispatchCoordinator(sql_ledger, e.writer)
+    e.clone.fail_next(failure)
+
+    out = await coordinator.dispatch(Scope(T, C), cid, gen, call_id, ChangeKind.CREATE_DRAFT,
+                                     payload, None, None)
+
+    assert out.status is WriteStatus.UNKNOWN_CRASH and out.receipt is None
+    assert await n_receipts(e, cid) == 0
+    assert (await e.led.rec(cid))["execution_state"] == "APPLYING"
+    assert e.clone.truth_log()[-1]["outcome"] == failure.upper()
+    assert len(e.clone.truth_log()) == 1  # one writer attempt; coordinator issued no retry
 
 
 async def test_noncanonical_wire_encoding_cannot_satisfy_the_canonical_receipt_gate(env):
