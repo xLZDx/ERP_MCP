@@ -397,8 +397,11 @@ class SqlChangeLedger:
 
     async def verify_dispatch_payload(self, scope: Scope, change_id: UUID, generation: int,
                                       payload_text: str | None, as_class: str | None = None) -> bool:
-        """The writer checks the exact payload (canonical JSON text; None for kinds without payload) against the
-        approved envelope before dispatch; a mismatch raises ``LedgerError('DIGEST_MISMATCH')``."""
+        """Check canonical JSON text against the approved payload and persist its distinct wire-byte SHA-256.
+
+        ``None`` represents the canonical ``{}`` bytes for operations without a payload. The typed-payload digest
+        remains the approval identity; the byte digest binds the clone receipt. Non-canonical text is refused.
+        """
         return await self.invoke("verify_dispatch_payload", scope, change_id, generation, payload_text,
                                  as_class=as_class)
 

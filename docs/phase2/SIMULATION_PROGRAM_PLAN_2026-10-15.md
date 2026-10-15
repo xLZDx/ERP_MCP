@@ -46,3 +46,17 @@ CI, lint, typecheck, build, or mutation runs were used. Independent test and mig
 the change records and scratchpad logs. Exact-range GPT-PM approval was recorded above and the approved code range was
 pushed. The approval covers only the stated prototype range; G0-G8 remain NOT_PASSED, formal S13 remains NOT APPROVED,
 and Release 2 remains NO-GO.
+
+## 5. Autonomous continuation: S14 synthetic receipt binding
+
+Operator GO of 2026-10-15 authorizes continued prototype work autonomously. The operator decision in the same-day
+log directs blocked real-system items to synthetic simulation only; simulation never qualifies the real clone, real
+identities, real keys, formal gates, staging or production.
+
+| Item | State | Evidence / limit | Remaining acceptance / owner |
+|---|---|---|---|
+| S14-R02 — bind the clone receipt to received wire bytes | IMPLEMENTED_UNVERIFIED | Design in `S14_WIRE_RECEIPT_DESIGN_2026-10-15.md`; migration 018 records a canonical-byte digest separately from the approved typed-payload digest and checks the clone receipt against it. Migration not run. | Focused functional/E2E evidence, database review and exact-range GPT-PM review remain. Test agents own tests; no human owner is recorded for the prototype code. |
+| S14 remainder — write-port and unknown outcome | PARTIAL / NOT_GATE_EVIDENCE | Existing simulation `ReferenceWriter`, `SimulatedOneC`, and S13 SQL scenarios cover synthetic operation and recovery paths. No real COM adapter or 1C call is used. | Confirm required scenarios on the updated migration 018 path; retain APPLY_UNKNOWN and no-blind-retry behavior. Runtime identity, checkpoint, unknown-call ownership and real clone qualification remain unavailable to this synthetic lane. |
+
+Migration 018 and the S14-R02 design are local prototype changes only. They have not been executed, tested, reviewed or
+approved for push at this checkpoint. R-02 is not yet closed. The S14 scope does not alter the statuses in sections 1–3.
