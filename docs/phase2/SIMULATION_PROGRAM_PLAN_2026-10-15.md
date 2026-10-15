@@ -76,3 +76,7 @@ Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused 
 
 
 
+
+## 6. R-01/R-03 and release-gate continuation
+
+A documentation-only closure packet records proposed fail-closed production dispositions for R-01 and R-03, their acceptance evidence, and the current blockers for G0-G8 and S13: `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`. The proposals do not change the synthetic prototype, close either risk, pass a gate, or authorize real-system work. `governance/GATE_MANIFEST.json` remains authoritative for gate state; all G0-G8 remain `NOT_PASSED`, formal S13 remains `NOT APPROVED`, and Release 2 remains `NO-GO` until new evidence is accepted.

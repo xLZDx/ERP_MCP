@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 101 tracked paths, 1 local-only paths.
+Inventory: 102 tracked paths, 2 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -49,6 +49,7 @@ Inventory: 101 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_040.md | Phase 2 design | "Change record 040 — GPT-PM approval and S14-R03 prototype push" |
 | docs/phase2/CHANGE_RECORD_041.md | Phase 2 design | "Change record 041 — reconcile S14-R03 review status" |
 | docs/phase2/CHANGE_RECORD_042.md | Phase 2 design | "Change record 042 — fix Markdown line text" |
+| docs/phase2/CHANGE_RECORD_043.md | Phase 2 design | "Change record 043 — refresh registry after Markdown review corrections" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -121,4 +122,5 @@ Inventory: 101 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_043.md |
+| docs/phase2/CHANGE_RECORD_044.md |
+| docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md |
