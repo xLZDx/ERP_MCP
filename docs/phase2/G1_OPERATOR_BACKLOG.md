@@ -98,3 +98,7 @@ the existing scoped connection and a fresh connection in both clusters, and no d
 in the 12 changed paths. It closed G1-M01 at source level only. Runtime remains `NOT_RUN`, G1
 remains `NOT_PASSED`, and this review does not authorize push; exact-head runtime evidence and
 remaining capacity, effective-role/approver, and gate-specific acceptance are still required.
+
+The ordered evidence assembly plan and per-item status are in
+`docs/phase2/G1_EVIDENCE_PACKET_PLAN.md`. It classifies the existing capacity drill as prototype
+context and separates runtime permission evidence from static SQL/review evidence.

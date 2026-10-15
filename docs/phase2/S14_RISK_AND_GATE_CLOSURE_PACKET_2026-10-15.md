@@ -59,7 +59,7 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 ## Ordered execution queue
 
 1. Keep the two R-01/R-03 dispositions as proposals until their stated trust/key-governance evidence exists; do not change production defaults or keys in this synthetic slice.
-2. Reconciled the historical G1 blocker list and authored the missing crash/restore scenarios; GPT-PM static review closed G1-M01 at exact HEAD `17b6de7`. Next, obtain exact-head disposable-PostgreSQL runtime evidence when an allowed runner is available, plus the remaining capacity, effective-role/approver evidence and gate-specific review listed in `G1_OPERATOR_BACKLOG.md`.
+2. Reconciled the historical G1 blocker list and authored the missing crash/restore scenarios; GPT-PM static review closed G1-M01 at exact HEAD `17b6de7`. Follow `G1_EVIDENCE_PACKET_PLAN.md` to assemble exact-head runtime results when an allowed runner is available, effective-role/approver evidence, a capacity disposition, and gate-specific review.
 3. Preserve the approved G0 baseline and OB-15 deferrals; advance G1 and G2/S13 evidence in dependency order.
 4. Obtain the external accountant and source evidence for G2/G3. Resolve G4 only if Drive intake is enabled; otherwise record the scope decision without pretending the gate passed.
 5. Complete S16/S17 before G5; establish G6-pre and G8 evidence before any G6 canary discussion.
