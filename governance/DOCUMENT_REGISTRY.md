@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 102 tracked paths, 2 local-only paths.
+Inventory: 104 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -50,6 +50,7 @@ Inventory: 102 tracked paths, 2 local-only paths.
 | docs/phase2/CHANGE_RECORD_041.md | Phase 2 design | "Change record 041 — reconcile S14-R03 review status" |
 | docs/phase2/CHANGE_RECORD_042.md | Phase 2 design | "Change record 042 — fix Markdown line text" |
 | docs/phase2/CHANGE_RECORD_043.md | Phase 2 design | "Change record 043 — refresh registry after Markdown review corrections" |
+| docs/phase2/CHANGE_RECORD_044.md | Phase 2 design | "Change record 044 — R-01/R-03 and gate closure packet" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -81,6 +82,7 @@ Inventory: 102 tracked paths, 2 local-only paths.
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
+| docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md | Phase 2 design | "S14 Risk and Gate Closure Packet — 2026-10-15" |
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
 | docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
@@ -122,5 +124,4 @@ Inventory: 102 tracked paths, 2 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_044.md |
-| docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md |
+| docs/phase2/CHANGE_RECORD_045.md |

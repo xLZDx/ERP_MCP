@@ -25,5 +25,3 @@ No executable source, schema, tests, key material, gate state, or runtime author
 - Cross-referenced against `governance/GATE_MANIFEST.json`, the controlled-change plan, S11 scope record, and operator backlog.
 - No tests or migration/check scripts run; this is documentation-only work.
 - Requires exact-range GPT-PM review before push.
-
-
