@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 83 tracked paths, 1 local-only paths.
+Inventory: 86 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -33,6 +33,8 @@ Inventory: 83 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_024.md | Phase 2 design | "Change record 024 — dump/restore container selection" |
 | docs/phase2/CHANGE_RECORD_025.md | Phase 2 design | "Change record 025 — S13 review closure evidence" |
 | docs/phase2/CHANGE_RECORD_026.md | Phase 2 design | "Change record 026 — GPT-PM approval and report reconciliation" |
+| docs/phase2/CHANGE_RECORD_027.md | Phase 2 design | "Change record 027 — correlated approval for report follow-up" |
+| docs/phase2/CHANGE_RECORD_028.md | Phase 2 design | "Change record 028 — S14 synthetic wire-receipt binding" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -64,6 +66,7 @@ Inventory: 83 tracked paths, 1 local-only paths.
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
+| docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
 | docs/phase2/SIMULATION_PROGRAM_PLAN_2026-10-15.md | Phase 2 design | "Simulation program plan: closing the real-write gaps on a synthetic lane" / "Simulation program plan: synthetic lane checkpoint" |
@@ -103,4 +106,3 @@ Inventory: 83 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_027.md |

@@ -1,20 +1,9 @@
-"""Combined-path PostgreSQL tests (GPT-PM limit R-04): actual wire bytes -> ReferenceWriter -> SimulatedOneC.apply()
--> clone-signed receipt -> change_ledger.record_dispatch_receipt (migrations 016-017) -> completion gate.
+"""Combined-path PostgreSQL tests (GPT-PM limit R-04): exact canonical wire bytes -> ReferenceWriter ->
+SimulatedOneC.apply() -> clone-signed receipt -> change_ledger.record_dispatch_receipt (016-018) -> completion gate.
 
 Needs ERP_PHASE2_TEST_DSN (superuser DSN of a disposable cluster); without it: skip NOT_RUN, or fail when
-ERP_PHASE2_REQUIRE_PG=1. Every test has its own throwaway database with all migrations (001-017) applied and its own
+ERP_PHASE2_REQUIRE_PG=1. Every test has its own throwaway database with all migrations (001-018) applied and its own
 fresh SimulatedOneC (same label, hence the same receipt key, registered in the ledger as 'receipt_role').
-
-WHAT THE LEDGER ACTUALLY COMPARES (named limit of 009 / 012 / 016, asserted below instead of papered over):
-the ledger holds records.payload_digest = sha256(canonical({payload, target_version})) (the 009 typed-payload digest). The
-clone, in contrast, signs sha256(WIRE BYTES it received) (clone_1c.apply). These two digests are never equal, so a REAL
-clone receipt (the one ReferenceWriter verified) is refused by record_dispatch_receipt with DIGEST_MISMATCH
-(test_real_wire_receipt_is_not_accepted_by_the_ledger documents that). The simulation therefore bridges the two
-representations exactly as the 016 header says: the clone's own key signs the LEDGER digest of the payload it received
-(`ledger_receipt` below uses clone._sign_receipt, the clone's private signer, with the ledger digest). What stays real and
-is enforced end to end: the clone's key, the signed text (change id, dispatch id, digest, version), the dispatch binding,
-the equality with the approved/verified digest, and the completion gate. What is NOT proven: that the ledger digest in the
-bridged receipt is derived from the bytes the clone really received (the test supplies it).
 """
 import asyncio
 import hashlib
@@ -137,28 +126,54 @@ async def full_success(e, kind, payload, target_ref, expected_version, *, target
     out = await dispatch(e, cid, gen, call_id, kind, payload, target_ref, expected_version)
     assert out.success and out.status is WriteStatus.APPLIED_VERIFIED, (out.status, out.code)
     assert out.received_payload_sha256 == sha(encode_payload(payload))          # real wire bytes
-    digest = await approved_digest(e, cid)
-    rc = ledger_receipt(e.clone, cid, call_id, digest, out.new_version)
+    rc = out.receipt
+    assert rc is not None and rc["received_payload_sha256"] == sha(encode_payload(payload))
     rid = await put(e, cid, gen, rc)
     assert rid is not None and await n_receipts(e, cid) == 1
     assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
     return cid, out, rid
 
 
-# ======================================================================== (0) the documented digest gap
-async def test_real_wire_receipt_is_not_accepted_by_the_ledger(env):
-    """The receipt ReferenceWriter verified signs sha256(wire bytes); the ledger holds the 009 digest: refused, loudly."""
+# ======================================================================== (0) exact bytes are bound end to end
+async def test_real_wire_receipt_is_accepted_and_bound_to_canonical_bytes(env):
     e = env
     p = e.gen.draft_payload()
     cid, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, p, target="doc-gap")
     out = await dispatch(e, cid, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None)
-    assert out.success
-    real = out.receipt                                                     # verified by the writer against the clone key
-    assert real["received_payload_sha256"] == sha(encode_payload(p)) != await approved_digest(e, cid)
-    await fails("DIGEST_MISMATCH", put(e, cid, gen, real))
-    assert await n_receipts(e, cid) == 0
-    await fails("EVIDENCE_UNSIGNED", e.led.complete(cid, gen, "SUCCESS"))   # marker set, no receipt: cannot complete
+    assert out.success and out.receipt is not None
+    data = encode_payload(p)
+    assert data == canonical_json(payload_to_dict(p)).encode("utf-8")
+    assert out.receipt["received_payload_sha256"] == sha(data)
+    assert out.receipt["change_id"] == str(cid) and out.receipt["dispatch_id"] == str(call_id)
+    row = await e.led.conn.fetchrow(
+        "SELECT payload_digest,wire_payload_sha256 FROM change_ledger.change_dispatch_verifications "
+        "WHERE change_id=$1 AND generation=$2", cid, gen)
+    assert row["payload_digest"] == await approved_digest(e, cid)  # typed approval digest remains independent
+    assert row["wire_payload_sha256"] == sha(data) != row["payload_digest"]
+    rid = await put(e, cid, gen, out.receipt)
+    assert rid is not None and await n_receipts(e, cid) == 1
+    assert await put(e, cid, gen, out.receipt) == rid  # exact clone receipt replay is idempotent
+    assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
+
+
+async def test_noncanonical_wire_encoding_cannot_satisfy_the_canonical_receipt_gate(env):
+    e = env
+    p = e.gen.draft_payload()
+    cid, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, p, target="doc-wire-encoding")
+    alternate = json.dumps(payload_to_dict(p), ensure_ascii=False, indent=2).encode("utf-8")
+    canonical = encode_payload(p)
+    assert alternate != canonical and json.loads(alternate) == json.loads(canonical)
+    out = await dispatch(e, cid, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None, wire=alternate)
+    assert out.success and out.receipt is not None  # clone applied and signed the exact bytes it received
+    assert out.receipt["received_payload_sha256"] == sha(alternate)
+    verified = await e.led.conn.fetchval(
+        "SELECT wire_payload_sha256 FROM change_ledger.change_dispatch_verifications "
+        "WHERE change_id=$1 AND generation=$2", cid, gen)
+    assert verified == sha(canonical) and verified != out.receipt["received_payload_sha256"]
+    await fails("DIGEST_MISMATCH", put(e, cid, gen, out.receipt))
+    await fails("EVIDENCE_UNSIGNED", e.led.complete(cid, gen, "SUCCESS"))
     assert (await e.led.rec(cid))["execution_state"] == "APPLYING"
+    assert await n_receipts(e, cid) == 0
 
 
 # ======================================================================== (1) four kinds, receipt, completion
@@ -221,12 +236,13 @@ async def test_writer_sending_different_bytes_is_caught_by_the_ledger(env):
     # (a) asking the ledger to verify the substituted payload is refused before dispatch; permit stays PERMITTED
     await fails("DIGEST_MISMATCH", e.led.call("clt_wri", "verify_dispatch_payload", cid, gen, verify_text(other)))
     assert (await e.led.rec(cid))["dispatch_state"] != "DISPATCHED"
-    # (b) a writer that verifies the approved text but SENDS other bytes (012 named limit: not visible at dispatch):
+    # (b) a writer that verifies approved text but SENDS other bytes: the clone receipt binds those substituted bytes.
     out = await dispatch(e, cid, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None, wire=encode_payload(other))
     assert out.success                       # the writer only compares its own bytes with its own sha: it cannot know
     assert e.clone.truth_log()[-1]["received_payload_sha256"] == sha(encode_payload(other))
-    # the clone signs what it received; in ledger form that is the digest of `other`, not the approved one
-    rc = ledger_receipt(e.clone, cid, call_id, payload_digest(other, "v1"), out.new_version)
+    # the clone signs what it received; the receipt is rejected against the ledger's canonical verified bytes.
+    rc = out.receipt
+    assert rc is not None and rc["received_payload_sha256"] == sha(encode_payload(other))
     await fails("DIGEST_MISMATCH", put(e, cid, gen, rc))
     await fails("EVIDENCE_UNSIGNED", e.led.complete(cid, gen, "SUCCESS"))
     assert await n_receipts(e, cid) == 0 and (await e.led.rec(cid))["execution_state"] == "APPLYING"
@@ -401,7 +417,8 @@ async def test_duplicate_override_path_end_to_end(env):
     await e.led.call("clt_wrk", "issue_permit", o, tok["generation"])
     out = await dispatch(e, o, tok["generation"], call_id, ChangeKind.CREATE_DRAFT, ovr, None, None)
     assert out.success and len(e.clone.target_refs()) == 2 and len(e.clone.find_duplicates(first_payload)) == 2
-    rc = ledger_receipt(e.clone, o, call_id, await approved_digest(e, o), out.new_version)
+    rc = out.receipt
+    assert rc is not None and rc["received_payload_sha256"] == sha(encode_payload(ovr))
     assert await put(e, o, tok["generation"], rc) is not None
     assert await e.led.complete(o, tok["generation"], "SUCCESS") == "APPLIED"
 
@@ -428,8 +445,7 @@ async def test_kill_switch_blocks_dispatch_so_nothing_is_written_and_resumes_aft
     data = encode_payload(p)
     out = await dispatch(e, resumed, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None)
     assert out.success
-    assert await put(e, resumed, gen, ledger_receipt(e.clone, resumed, call_id,
-                                                     await approved_digest(e, resumed), "V1")) is not None
+    assert out.receipt is not None and await put(e, resumed, gen, out.receipt) is not None
     assert await e.led.complete(resumed, gen, "SUCCESS") == "APPLIED"
 
 
@@ -440,7 +456,8 @@ async def test_second_tenant_cannot_record_a_receipt_for_the_first_tenants_dispa
     cid, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, p, target="doc-i")
     out = await dispatch(e, cid, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None)
     assert out.success
-    rc = ledger_receipt(e.clone, cid, call_id, await approved_digest(e, cid), out.new_version)
+    rc = out.receipt
+    assert rc is not None and rc["received_payload_sha256"] == sha(encode_payload(p))
     # tenant B's requester: addressing tenant A is outside its scope, addressing its own scope finds no such change
     with pytest.raises(asyncpg.PostgresError):
         await put(e, cid, gen, rc, role="clt_zed", t=T, c=C)
@@ -476,7 +493,8 @@ async def test_two_concurrent_writers_on_the_same_change_only_one_dispatches_and
             for r in res if r is True]
     assert len(outs) == 1 and outs[0].success and e.clone.write_count == writes_before + 1
     assert e.clone.read_state(ref)["status"] == "POSTED"
-    rc = ledger_receipt(e.clone, cid, call_id, await approved_digest(e, cid), outs[0].new_version)
+    rc = outs[0].receipt
+    assert rc is not None and rc["received_payload_sha256"] == sha(b"{}")
     assert await put(e, cid, gen, rc) is not None
     assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
     assert await e.led.conn.fetchval("SELECT count(*) FROM change_ledger.dispatch_receipts WHERE change_id=$1", cid) == 1
