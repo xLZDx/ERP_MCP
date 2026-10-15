@@ -88,3 +88,13 @@ these focused files. No PostgreSQL container or database was started or changed.
 `NOT_PASSED`; the authored scenarios do not satisfy runtime acceptance until an allowed focused
 run produces exact-head evidence. Capacity, effective-role/approver evidence and the complete G1
 gate review remain outstanding as separate acceptance items.
+
+### GPT-PM focused static re-review (2026-10-16)
+
+GPT-PM reviewed the complete attached patch for `origin/main..17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`
+under request `8bcc1579-b818-4aef-98a6-eab6a2d470fb`. Verdict: `APPROVE — STATIC REVIEW`, 0
+BLOCKER and 0 MAJOR. The review confirmed the exact `living_reader` A/s1 grant deletion, denial for
+the existing scoped connection and a fresh connection in both clusters, and no direct regressions
+in the 12 changed paths. It closed G1-M01 at source level only. Runtime remains `NOT_RUN`, G1
+remains `NOT_PASSED`, and this review does not authorize push; exact-head runtime evidence and
+remaining capacity, effective-role/approver, and gate-specific acceptance are still required.

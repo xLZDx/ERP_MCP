@@ -24,4 +24,4 @@ The replacement removes exactly one existing grant, requires a fresh connection 
 
 - The `functional-test-reviewer` updated the focused scenario. This is source-level remediation only; no tests or checks were run.
 - Runtime remains `NOT_RUN` because `D:\Repo\AGENTS.md` prohibits pytest. No database, container, or migration was touched.
-- A complete, untruncated PM re-review of the exact resulting range is pending. Push is not authorized by the prior review.
+- At this commit, a complete PM re-review was pending. It was subsequently completed at exact HEAD `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`; see `CHANGE_RECORD_060.md`. This static approval does not satisfy runtime or final push approval.
