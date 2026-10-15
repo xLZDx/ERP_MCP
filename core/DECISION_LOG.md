@@ -729,3 +729,10 @@ and the full file passed on rerun. This is test-lane evidence only. Specialist r
 GPT-PM review are pending. Agent cleanup of disposable container
 `s14-r03-e2e-c4b4d32f9e39` was rejected before execution; it remains running on localhost port 27780.
 
+Review correction: the Python reviewer found that a SQL receipt-persistence failure after
+`APPLIED_VERIFIED` could resemble a pre-write refusal. The fix raises typed
+`ReceiptPersistenceUnknown` with the verified clone outcome; callers must reconcile SQL state and
+must not retry because SQL may have committed before the response was lost. The functional reviewer
+added persistence-error and cancellation cases; the expanded focused file passed 7/7. Focused
+independent re-review and exact-head GPT-PM review remain pending. See `docs/phase2/CHANGE_RECORD_038.md`.
+

@@ -60,9 +60,10 @@ identities, real keys, formal gates, staging or production.
 
 S14-R03 — reusable synthetic dispatch coordination is implemented in
 `simulation/synthetic_dispatch.py`, with scoped SQL port wrappers for receipt requirement and
-recording. Functional coverage passed 5/5; the PostgreSQL 16 synthetic E2E file passed 18/18,
-including coordinator success and unknown-crash behavior. Independent specialist review and
-exact-head GPT-PM review remain pending. This remains test-lane plumbing and does not implement the
-non-operational `OneCWritePort` or change the gates above.
+recording. The expanded functional coverage passed 7/7; the PostgreSQL 16 synthetic E2E file passed
+18/18, including coordinator success and unknown-crash behavior. Python review found ambiguity on a
+post-write receipt-persistence error; the typed outcome fix and its failure/cancellation regressions
+now pass. Focused independent re-review and exact-head GPT-PM review remain pending. This remains
+test-lane plumbing and does not implement the non-operational `OneCWritePort` or change the gates above.
 
 Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused execution proves only synthetic PostgreSQL/clone behavior. The exact approved five-commit range is on `origin/main`; the S14 scope does not alter G0-G8, formal S13 entry, or Release 2 status in sections 1–3.

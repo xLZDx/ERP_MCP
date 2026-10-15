@@ -1,6 +1,7 @@
 """Functional contract tests for the synthetic dispatch coordinator (S14-R03)."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import unittest
 from uuid import UUID
@@ -13,6 +14,7 @@ from business_ai_gateway.phase2.simulation.reference_writer import WriteOutcome,
 from business_ai_gateway.phase2.simulation.synthetic_dispatch import (
     DispatchCallNotRecorded,
     DispatchPayloadNotVerified,
+    ReceiptPersistenceUnknown,
     SyntheticDispatchCoordinator,
 )
 
@@ -38,11 +40,12 @@ def _payload() -> DraftPayload:
 
 class FakeLedger:
     def __init__(self, *, require_error: Exception | None = None, verify: bool = True,
-                 record_call: bool = True) -> None:
+                 record_call: bool = True, receipt_error: Exception | None = None) -> None:
         self.calls: list[tuple[object, ...]] = []
         self.require_error = require_error
         self.verify = verify
         self.record_call_result = record_call
+        self.receipt_error = receipt_error
         self.receipts: list[tuple[object, ...]] = []
 
     async def require_dispatch_receipt(self, scope, change_id, generation) -> None:
@@ -63,6 +66,8 @@ class FakeLedger:
         receipt = (scope, change_id, generation, key_id, received_payload_sha256, new_version, signature)
         self.calls.append(("record_receipt", *receipt))
         self.receipts.append(receipt)
+        if self.receipt_error is not None:
+            raise self.receipt_error
         return UUID("9e9fd01c-6843-4fd6-92a9-33052469ca5b")
 
 
@@ -174,6 +179,45 @@ class SyntheticDispatchCoordinatorTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(writer.calls), 1, "unknown/non-success must not trigger a retry")
                 self.assertEqual(ledger.receipts, [])
                 self.assertNotIn("record_receipt", [call[0] for call in ledger.calls])
+
+    async def test_receipt_persistence_error_preserves_verified_outcome_without_retry(self) -> None:
+        payload = _payload()
+        data = encode_payload(payload)
+        outcome = _success_outcome(data)
+        ledger = FakeLedger(receipt_error=RuntimeError("connection lost after commit attempt"))
+        writer = FakeWriter(outcome)
+
+        with self.assertRaises(ReceiptPersistenceUnknown) as raised:
+            await SyntheticDispatchCoordinator(ledger, writer).dispatch(
+                SCOPE, CHANGE_ID, GENERATION, CALL_ID, ChangeKind.CREATE_DRAFT, payload,
+                "document-a", "V7",
+            )
+
+        self.assertIs(raised.exception.outcome, outcome)
+        self.assertIs(raised.exception.outcome.receipt, outcome.receipt)
+        self.assertEqual(raised.exception.outcome.status, WriteStatus.APPLIED_VERIFIED)
+        self.assertEqual(len(writer.calls), 1, "uncertain receipt persistence must not trigger a retry")
+        self.assertEqual([call[0] for call in ledger.calls],
+                         ["require", "verify", "record_call", "record_receipt"])
+        self.assertEqual(len(ledger.receipts), 1)
+
+    async def test_cancellation_during_receipt_persistence_preserves_verified_outcome(self) -> None:
+        payload = _payload()
+        outcome = _success_outcome(encode_payload(payload))
+        ledger = FakeLedger(receipt_error=asyncio.CancelledError())
+        writer = FakeWriter(outcome)
+
+        with self.assertRaises(ReceiptPersistenceUnknown) as raised:
+            await SyntheticDispatchCoordinator(ledger, writer).dispatch(
+                SCOPE, CHANGE_ID, GENERATION, CALL_ID, ChangeKind.CREATE_DRAFT, payload,
+                "document-a", "V7",
+            )
+
+        self.assertTrue(raised.exception.interrupted)
+        self.assertIs(raised.exception.outcome, outcome)
+        self.assertIs(raised.exception.outcome.receipt, outcome.receipt)
+        self.assertEqual(len(writer.calls), 1, "interruption must not trigger a clone retry")
+        self.assertEqual(len(ledger.receipts), 1)
 
 
 if __name__ == "__main__":

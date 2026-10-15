@@ -24,15 +24,20 @@ receipt. The coordinator is a synthetic test-lane adapter, not an implementation
 - Timeout, crash, tamper, invalid receipt, and refusal outcomes are returned as non-success unchanged;
   there is no automatic retry or completion transition. Recovery and completion stay with their
   existing ledger workflows.
+- If a verified clone write is followed by an SQL receipt-persistence error, the coordinator raises
+  `ReceiptPersistenceUnknown` carrying the verified outcome. The caller must reconcile ledger state
+  and must not retry because SQL may have committed before the response was lost. Cancellation while
+  waiting for that SQL call is surfaced through the same typed outcome with `interrupted = true`.
 - The adapter only accepts a ledger interface that exposes the scoped SQL functions. No real 1C,
   network transport, `OneCWritePort`, production credential, or release-gate evidence is added.
 
 ## Implementation state
 
 Implemented in `synthetic_dispatch.py` with scoped `SqlChangeLedger` wrappers for the existing
-receipt functions. The functional contract tests pass 5/5; the PostgreSQL 16 synthetic E2E file passes
-18/18, including wrapper-driven success and unknown-crash outcomes. Independent specialist review
-and exact-head GPT-PM review remain pending.
+receipt functions. The first implementation passed the functional contract tests 5/5 and PostgreSQL
+16 synthetic E2E 18/18. Python review found a post-write receipt-persistence ambiguity; the typed fix
+is implemented. The expanded functional file passed 7/7, including persistence-error and cancellation
+cases. Focused independent re-review and exact-head GPT-PM review remain pending.
 
 ## Acceptance
 
@@ -44,9 +49,9 @@ and exact-head GPT-PM review remain pending.
    outcome remains non-success and does not create a receipt or trigger a retry.
 4. `SqlChangeLedger` exposes scoped wrappers for the receipt requirement and receipt recording SQL
    functions without changing their SQL contracts or caller classes.
-5. Functional and end-to-end reviewers add focused tests after all code is complete. **PASS** —
-   `test_synthetic_dispatch.py` 5/5 and `test_simulation_e2e_sql.py` 18/18 on disposable PostgreSQL
-   16; specialist review and exact-head GPT-PM review are still pending.
+5. Functional and end-to-end reviewers add focused tests after all code is complete. The expanded
+   functional file passed 7/7 and the PostgreSQL E2E file passed 18/18. The post-write
+   persistence-uncertainty regression passed; focused independent re-review is pending.
 
 ## Limits
 

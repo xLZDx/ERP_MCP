@@ -7,6 +7,9 @@
 - Added scoped `SqlChangeLedger` port wrappers for the existing `require_dispatch_receipt` and
   `record_dispatch_receipt` SQL functions and registered them in `SPEC` with existing ACL classes.
 - Added explicit exceptions for false ledger payload/call gates; neither can proceed to the writer.
+- Python review later identified an ambiguous post-write SQL receipt failure. The follow-up adds
+  `ReceiptPersistenceUnknown`, carrying the verified result and forbidding retry; the regression
+  and cancellation cases passed in the 7/7 functional run recorded in 038.
 
 ## Why
 

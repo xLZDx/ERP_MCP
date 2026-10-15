@@ -6,6 +6,7 @@ bytes and validates the clone-produced receipt. Unknown outcomes are returned wi
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from typing import Protocol
 from uuid import UUID
@@ -16,7 +17,12 @@ from ..change_ledger._common import Scope
 from .clone_1c import encode_payload
 from .reference_writer import ReferenceWriter, WriteOutcome, WriteStatus
 
-__all__ = ["DispatchCallNotRecorded", "DispatchPayloadNotVerified", "SyntheticDispatchCoordinator"]
+__all__ = [
+    "DispatchCallNotRecorded",
+    "DispatchPayloadNotVerified",
+    "ReceiptPersistenceUnknown",
+    "SyntheticDispatchCoordinator",
+]
 
 
 class DispatchLedger(Protocol):
@@ -50,6 +56,20 @@ class DispatchPayloadNotVerified(Exception):
         self.code = "DISPATCH_PAYLOAD_NOT_VERIFIED"
 
 
+class ReceiptPersistenceUnknown(Exception):
+    """Receipt SQL state is uncertain after the clone returned a verified success.
+
+    ``outcome`` retains the clone-signed receipt for reconciliation. The clone write must not be
+    retried because the SQL transaction may have committed even if its response was lost.
+    """
+
+    def __init__(self, outcome: WriteOutcome, *, interrupted: bool = False) -> None:
+        super().__init__("RECEIPT_PERSISTENCE_UNKNOWN")
+        self.code = "RECEIPT_PERSISTENCE_UNKNOWN"
+        self.outcome = outcome
+        self.interrupted = interrupted
+
+
 class SyntheticDispatchCoordinator:
     """Run the existing SQL gates and one verified synthetic writer call, with no retry/completion."""
 
@@ -62,8 +82,10 @@ class SyntheticDispatchCoordinator:
                        expected_version: str | None) -> WriteOutcome:
         """Gate, send exact canonical bytes once, then persist only a verified clone receipt.
 
-        Ledger failures propagate before the writer call. Writer failures and unknown outcomes are
-        returned unchanged; they never trigger receipt persistence, completion, or an automatic retry.
+        Pre-write ledger failures propagate before the writer call. Writer failures and unknown
+        outcomes are returned unchanged. A receipt persistence exception after verified clone
+        success raises ``ReceiptPersistenceUnknown`` with the result; callers must not retry because
+        the SQL transaction may have committed before its response was lost.
         """
         payload_text = None if payload is None else canonical_json(payload_to_dict(payload))
         data = encode_payload(payload)
@@ -84,9 +106,14 @@ class SyntheticDispatchCoordinator:
             # Defensive invariant: ReferenceWriter must never report verified success without a receipt.
             return WriteOutcome(WriteStatus.RECEIPT_INVALID, "RECEIPT_MISSING", approved_sha256,
                                 outcome.received_payload_sha256)
-        await self._ledger.record_dispatch_receipt(
-            scope, change_id, generation, str(receipt["key_id"]),
-            str(receipt["received_payload_sha256"]), str(receipt["new_version"]),
-            str(receipt["signature"]),
-        )
+        try:
+            await self._ledger.record_dispatch_receipt(
+                scope, change_id, generation, str(receipt["key_id"]),
+                str(receipt["received_payload_sha256"]), str(receipt["new_version"]),
+                str(receipt["signature"]),
+            )
+        except asyncio.CancelledError:
+            raise ReceiptPersistenceUnknown(outcome, interrupted=True) from None
+        except Exception:
+            raise ReceiptPersistenceUnknown(outcome) from None
         return outcome
