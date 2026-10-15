@@ -777,3 +777,5 @@ Program-plan status reconciliation (2026-10-15): corrected pre-G0 current-status
 Program-plan verification record correction (2026-10-15): updated `CHANGE_RECORD_053.md` to record the observed successful `git diff --check` rather than a future action. No content, gate state, test result, or runtime evidence changed. See `docs/phase2/CHANGE_RECORD_054.md`.
 
 Follow-up verification wording correction (2026-10-15): corrected `CHANGE_RECORD_054.md` to record its own successful pre-commit diff check. This resolves PM's non-blocking MINOR-01 from request `8f7c411e-696d-4ec0-9966-8c8010bdd2e9`; PM stated no re-review was required. See `docs/phase2/CHANGE_RECORD_055.md`.
+
+S12 design-spec gate snapshot (2026-10-15): labeled the S12-APPROVAL-2 specification's G0–G8 NOT_PASSED line as its original 2026-10-14 snapshot and added the current G0–G8 status. The approved G0 evidence index and manifest were not changed. See `docs/phase2/CHANGE_RECORD_056.md`.

@@ -1,7 +1,8 @@
 # S12-APPROVAL-2: shared canonical approval digest (design specification)
 
 Status: DRAFT for the non-gating prototype. Source: GPT-PM design ruling e5d92b7a (2026-10-14), Option 2.
-Not gate evidence. Release 2: NO-GO. G0-G8: NOT_PASSED. No real 1C write.
+Not gate evidence. Gate status at this specification's 2026-10-14 snapshot: G0-G8 were NOT_PASSED. Current status:
+G0 is PASSED only for the approved isolated prototype scope; G1-G8 remain NOT_PASSED. Release 2: NO-GO. No real 1C write.
 
 ## 1. Purpose
 
