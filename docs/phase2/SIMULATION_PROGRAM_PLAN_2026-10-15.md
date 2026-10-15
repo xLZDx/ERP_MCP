@@ -39,3 +39,8 @@ What simulation can and cannot establish:
 - Each workstream is implemented by an implementation agent, independently re-run by a second agent, then reviewed by
   GPT-PM on the exact head before push.
 - Named limits are written down at the moment they are found and carried into the final report.
+
+## 4. Closure ruling (GPT-PM, 2026-10-15, request 8d2c5e70)
+
+Maximum permissible status of simulated items: F-02 prototype (awaiting independent verification); F-01 PARTIAL (offline simulation; receipt not yet signed by the simulated 1C and not wired into the SQL ledger flow); A7-B02 PARTIAL; B6-g OPEN; D9 OPEN; C-M01, C-M02, MFA PARTIAL (simulated IdP only); G0-G8 NOT_PASSED; S13 formal entry NOT APPROVED; Release 2 NO-GO. Named limit: legacy KEYED_HASH_STANDIN keys remain valid after migration 015 (no algorithm-by-policy rule yet).
+
