@@ -8,11 +8,14 @@
       "id": "G0",
       "name": "Scope and architecture",
       "predecessors": [],
-      "engineering_status": "IN_PROGRESS",
-      "gate_status": "NOT_PASSED",
-      "external_evidence_status": "OPEN",
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
       "production_authorization": "NONE",
-      "evidence": null
+      "evidence": {
+        "path": "docs/phase2/G0_EVIDENCE_INDEX_2026-10-15.md",
+        "sha256": "be3c57eef57e513046a43b35dd95f7a5bbcf22a9354612edc2fe980c1e2ac51a"
+      }
     },
     {
       "id": "G1",
@@ -163,7 +166,7 @@
       "state": "DONE",
       "evidence": {
         "path": "docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md",
-        "sha256": "91d8a14db488c5397a714995ff3423ebc1475dd719c4cdeaa0f0550307ad4a40"
+        "sha256": "146da7154e5225fca487bfd3b282b2e1a871d1589f54d9ad70de5cf4c075c05a"
       }
     },
     {

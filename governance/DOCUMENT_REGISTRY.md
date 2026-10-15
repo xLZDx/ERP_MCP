@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 108 tracked paths, 2 local-only paths.
+Inventory: 110 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -55,6 +55,7 @@ Inventory: 108 tracked paths, 2 local-only paths.
 | docs/phase2/CHANGE_RECORD_046.md | Phase 2 design | "Change record 046 — clarify G0 scope decision status" |
 | docs/phase2/CHANGE_RECORD_047.md | Phase 2 design | "Change record 047 — reconcile G1 and S13 historical evidence" |
 | docs/phase2/CHANGE_RECORD_048.md | Phase 2 design | "Change record 048 — reconcile current G0 decisions" |
+| docs/phase2/CHANGE_RECORD_049.md | Phase 2 design | "Change record 049 — assemble the G0 evidence index" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -64,6 +65,7 @@ Inventory: 108 tracked paths, 2 local-only paths.
 | docs/phase2/DECISION_LOG.md | Phase 2 design | "Phase 2 decision and evidence log" |
 | docs/phase2/EVIDENCE_MATRIX.md | Phase 2 design | "Phase 2 evidence matrix" |
 | docs/phase2/EXTRACTION_NOTE.md | Phase 2 design | "Extraction note: Release 2 split from the Release 1 repository" |
+| docs/phase2/G0_EVIDENCE_INDEX_2026-10-15.md | Phase 2 design | "G0 scope and architecture evidence index — 2026-10-15" |
 | docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md | Phase 2 design | "G1 PostgreSQL Living Registry — implementation note" |
 | docs/phase2/G1_OPERATOR_BACKLOG.md | Phase 2 design | "G1 blockers and operator handoff — 2026-10-08" |
 | docs/phase2/IMPLEMENTATION_CHECKPOINT_2026-10-08.md | Phase 2 design | "ERP_MCP Phase 2 — autonomous implementation checkpoint" |
@@ -128,5 +130,4 @@ Inventory: 108 tracked paths, 2 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_049.md |
-| docs/phase2/G0_EVIDENCE_INDEX_2026-10-15.md |
+| docs/phase2/CHANGE_RECORD_050.md |
