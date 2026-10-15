@@ -22,6 +22,8 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 
 **Status:** OPEN; production-blocking MAJOR in independent static security review at HEAD `8935deda`. This is a design recommendation, not a completed trust-boundary review. The write port remains non-operational, so the review identified a production qualification blocker, not a current production exploit.
 
+**Current code inventory (read-only, HEAD `450f977`):** migration `016_dispatch_receipt.sql` exposes `require_dispatch_receipt` to requester/writer roles, stores a per-generation opt-in marker, and gates the transition to `APPLIED` only when that marker exists. `017_receipt_hardening.sql` carries the marker across claims; `018_wire_payload_receipt.sql` binds the receipt to canonical wire bytes. The only located coordinator is `SyntheticDispatchCoordinator` in `src/business_ai_gateway/phase2/simulation/synthetic_dispatch.py`, which invokes the marker, verifies the approved bytes, records the call, invokes the synthetic `ReferenceWriter`, and persists the receipt without retrying uncertain outcomes. The repository identifies this as a non-gating simulation; no operational production writer or production entry-point inventory is present. Therefore this inventory confirms the known opt-in gap and documents the prototype path, but cannot establish that all future production paths are covered.
+
 ## R-03 — legacy verifier keys
 
 **Disposition proposed:** do not register or use `KEYED_HASH_STANDIN` keys for new authorization or new receipts after production cutover. New authorization keys must be Ed25519 with an independently verified owner, purpose, fingerprint, and custody record. Preserve legacy verification only for explicitly read-only historical evidence where required for audit; historical verification must never grant new write authority. Do not delete or rewrite existing keys or signatures as part of this prototype.
@@ -35,6 +37,8 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 5. Obtain independent key-governance/security review before any production identity qualification.
 
 **Status:** OPEN; production-blocking MAJOR in independent static security review at HEAD `8935deda`. Migration 015's compatibility is unchanged; this proposal authorizes no key mutation or production cutover. The write port remains non-operational, so this is a qualification blocker, not a claim of a current production exploit.
+
+**Current code inventory (read-only, HEAD `450f977`):** migration `015_ed25519_signatures.sql` defaults new key rows to Ed25519 and rejects legacy registration through ordinary sessions, but preserves a superuser exception and keeps `signature_ok`'s `KEYED_HASH_STANDIN` verification branch for existing rows. The dispatcher is used for evidence, checkpoint and permit signatures; receipt verification uses it in `017_receipt_hardening.sql` and `018_wire_payload_receipt.sql`. Migration 017's key-purpose guard checks Ed25519 rows only, so it does not itself establish that every legacy row is barred from receipt use. Actual legacy key rows and historical signatures cannot be inventoried from source alone because they reside in database state; no key material was queried or exposed. This establishes the remaining production-cutover questions, not that any live legacy key exists.
 
 ## Gate closure matrix
 
@@ -61,4 +65,4 @@ Source of truth reviewed: `docs/phase2/OPERATOR_BACKLOG.md`, `docs/phase2/PLAN_V
 5. Complete S16/S17 before G5; establish G6-pre and G8 evidence before any G6 canary discussion.
 6. Keep G7 and Release 2 NO-GO until every applicable gate is actually passed and the release owner records `PRODUCTION_GO`.
 
-No tests, migrations, key changes, real-system access, staging action or production action were performed for this packet update. The focused G1 scenarios were authored in a later continuation but have no runtime result. G0's gate-state change is recorded in the manifest from the separate gate-specific approval; G1–G8 remain NOT_PASSED and production authorization remains NONE.
+No tests, migrations, key changes, real-system access, staging action or production action were performed for this packet update. R-01/R-03 inventory is source-only; no live write paths, key rows, or signatures were inspected. The focused G1 scenarios were authored in a later continuation but have no runtime result. G0's gate-state change is recorded in the manifest from the separate gate-specific approval; G1–G8 remain NOT_PASSED and production authorization remains NONE.
