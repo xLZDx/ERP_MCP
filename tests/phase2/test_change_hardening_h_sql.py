@@ -105,9 +105,9 @@ async def test_h3_wrong_key_wrong_role_and_unregistered_key_are_refused(led):
     await fails("EVIDENCE_UNSIGNED", put(led, cid, gen, good, key="vk-unregistered"))
     await fails("EVIDENCE_UNSIGNED", put(led, cid, gen, good, key="vk-wri"))  # a registered key of another purpose (role)
     # the same clone key registered under another role is not a receipt key either
-    await led.conn.execute("INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
-                           "VALUES($1,$2,'vk-clone-wrk','clt_wrk',$3)", T, C, CLONE.receipt_public_key_hex)
-    await fails("EVIDENCE_UNSIGNED", put(led, cid, gen, good, key="vk-clone-wrk"))
+    await fails("KEY_ROLE_CONFLICT", led.conn.execute(
+        "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
+        "VALUES($1,$2,'vk-clone-wrk','clt_wrk',$3)", T, C, CLONE.receipt_public_key_hex))
     # a runtime actor that is not the requester / writer cannot submit a receipt
     await fails("permission denied", put(led, cid, gen, good, role="clt_wrk"))
     assert await n_receipts(led, cid) == 0

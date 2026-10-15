@@ -1,46 +1,42 @@
-# Simulation program plan: closing the real-write gaps on a synthetic lane
+# Simulation program plan: synthetic lane checkpoint
 
-Date: 2026-10-15. Status: PLAN of the non-gating prototype. Nothing here is gate evidence, and no real 1C is touched.
+Date: 2026-10-15. Status: checkpoint for the NON-GATING prototype. Nothing here is gate evidence, and no real 1C is touched.
 
 ## 1. Decision and limits
 
-The operator (2026-10-15) delegated to the main session everything that was blocked on real systems: simulate the 1C
-clone, the checkpoint host, the witness, identities and signing keys with synthetic data and accounts, and run it
-through review and focused tests to the end of the project.
+The operator delegated simulation of unavailable systems with synthetic accounts, keys, identities and data. The simulation
+can exercise ledger and writer behavior against deterministic stand-ins. It cannot establish behavior of clone
+818HA_p2diff, real hosts, real identities, or real key custody.
 
-What simulation can and cannot establish:
+G0-G8 remain NOT_PASSED, formal S13 entry remains NOT APPROVED, and Release 2 remains NO-GO. The supplied GPT-PM ruling
+allows prototype-level closure and partial findings only. Synthetic accounts, keys and records remain `lane = TEST` and
+must never acquire production authority.
 
-- It can show that the ledger, the writer protocol and the verification chain behave correctly against a deterministic
-  stand-in with the same interface and failure modes as the real systems.
-- It cannot show anything about the real clone 818HA_p2diff, a real host, real keys held by real people, or real
-  identity provisioning. Those stay the real-write qualification items and are never reported as done.
-- Gates G0 to G8, S13 formal dependent entry and Release 2 keep their status (NOT_PASSED, NOT APPROVED, NO-GO) until
-  GPT-PM rules otherwise. The program asks GPT-PM which gate checks, if any, a simulated lane may legitimately close.
-- Every simulated account, key and record is marked `lane = TEST` and synthetic; simulated keys never gain
-  production entitlements (S12-G04).
+## 2. Workstream status
 
-## 2. Workstreams (in order; each ends with an independent focused re-run and a GPT-PM review before push)
+| Id | Workstream | State | Evidence / limit |
+|---|---|---|---|
+| P0 | Migration 013 dispatch invariant and live ACL re-check | F-02 CLOSED as prototype | GPT-PM ruling for 7201cac..598a7a5; not production qualification. |
+| P1 | Ed25519 verifier/signer and RFC 8032 vectors | Implemented in prototype; D9 OPEN | Synthetic crypto fixtures do not establish production identity or key custody. |
+| P2 | Synthetic identities, clone, checkpoint host, witness and MFA lane | PARTIAL | C-M01, C-M02 and MFA remain PARTIAL; identity-provider evidence is simulated. |
+| P3 | Signed preview and observed state | PARTIAL / OPEN | A7-B02 PARTIAL; B6-g OPEN. |
+| P4 | Reference writer and clone-signed receipt wired to SQL ledger | PARTIAL | Combined SQL path and receipt hardening are implemented. Ledger digest remains the 009 typed-payload digest rather than wire-byte digest, and the receipt marker is opt-in. F-01 remains PARTIAL. |
+| P5 | Combined synthetic end-to-end scenarios | Implemented; independent verification pending | Scenario SQL and migration regression code are present; unexecuted scenarios remain NOT_RUN until fresh focused evidence exists. |
+| P6 | RU/EN report, decision log and closure ruling | In progress | This report records the supplied GPT-PM verdict. A new diff review is not claimed. |
 
-| Id | Workstream | Closes (in the simulation only) |
-|---|---|---|
-| P0 | Migration 013: one DISPATCHED invariant (INSERT as DISPATCHED, direct `records.dispatch_state`), live ACL re-check | F-02, E-03, E-04 |
-| P1 | Real Ed25519 (RFC 8032) signature verification in the ledger (pure PL/pgSQL, no extension) and a stdlib Ed25519 signer; keyed-hash stand-ins replaced for evidence, checkpoints and provider attestations; RFC 8032 test vectors | "real signing", D9 Ed25519 |
-| P2 | Simulation toolkit: synthetic identity provisioning (persons, distinct logins and sessions, MFA attestation by a simulated IdP, MFA enforced for the HUMAN approval lane), synthetic 1C clone (documents, versions, duplicates, deterministic fingerprints), simulated checkpoint host with readback, simulated witness | C-M01, C-M02, MFA, D9, D10b, D4 as simulated components |
-| P3 | Trusted preview and state provider: the simulated 1C signs (Ed25519) the preview digest and the observed business-state digest bound to change and target version; the ledger verifies the signature before storing | A7-B02, B6-g |
-| P4 | Reference writer: sends exactly the verified bytes, the simulated 1C returns a signed digest of the bytes it received, the ledger refuses completion if it differs from the approved payload digest | F-01 |
-| P5 | End-to-end scenario suite on synthetic data: all four operation kinds, repair, duplicate override, stale preview, tampered bytes, kill switch, crash mid-apply and restart recovery, anchor gap, two concurrent writers, tenant isolation, dump and restore | evidence for the above |
-| P6 | Final report (RU and EN), decision log, GPT-PM ruling on what the simulated lane may and may not close | closure record |
+## 3. Current review ruling
 
-## 3. Method
+GPT-PM request `e81a6d35` approved range `7201cac..598a7a5` as a prototype. Maximum statuses: F-02 CLOSED prototype,
+F-01 PARTIAL, A7-B02 PARTIAL, B6-g OPEN, D9 OPEN, C-M01/C-M02/MFA PARTIAL. G0-G8 remain NOT_PASSED; formal S13 entry
+remains NOT APPROVED; Release 2 remains NO-GO. Named limits are R-01 opt-in receipt gate, R-02 digest model mismatch,
+R-03 legacy KEYED_HASH_STANDIN keys remain accepted after migration 015, and R-04 no combined bytes-to-clone-to-ledger
+test in the reviewed range.
 
-- Operator rules stay: only focused tests written and run by the named agents on disposable `r2-s13-*` containers,
-  no CI, lint, full suite or mutation runs, one PR-equivalent range per push after GPT-PM approval, English git
-  content, a decision log entry in every commit.
-- Each workstream is implemented by an implementation agent, independently re-run by a second agent, then reviewed by
-  GPT-PM on the exact head before push.
-- Named limits are written down at the moment they are found and carried into the final report.
+The current unreviewed work adds the combined SQL scenario file and migration 017. It does not change the ruling until
+independently verified and reviewed against the exact diff.
 
-## 4. Closure ruling (GPT-PM, 2026-10-15, request 8d2c5e70)
+## 4. Execution method and remaining evidence
 
-Maximum permissible status of simulated items: F-02 prototype (awaiting independent verification); F-01 PARTIAL (offline simulation; receipt not yet signed by the simulated 1C and not wired into the SQL ledger flow); A7-B02 PARTIAL; B6-g OPEN; D9 OPEN; C-M01, C-M02, MFA PARTIAL (simulated IdP only); G0-G8 NOT_PASSED; S13 formal entry NOT APPROVED; Release 2 NO-GO. Named limit: legacy KEYED_HASH_STANDIN keys remain valid after migration 015 (no algorithm-by-policy rule yet).
-
+Only focused tests are in scope, on disposable `r2-s13-*` PostgreSQL containers, one test file at a time. No full suites,
+CI, lint, typecheck, build, or mutation runs are permitted. Independent verification, test outputs, and a fresh exact-diff
+GPT-PM review are not yet recorded for the current changes. No push is authorized by this checkpoint.

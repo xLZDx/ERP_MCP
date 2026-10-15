@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>S13 Synthetic Lane Checkpoint</title></head>
+<body><header><h1>S13 Synthetic Lane Checkpoint</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 598a7a5</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<p>Status as of 2026-10-15. This is a NON-GATING prototype; no real 1C system was touched.</p>
+<h2>Workstream matrix</h2>
+<table><thead><tr><th>Item</th><th>State</th><th>Evidence</th><th>Remaining acceptance / dependency</th><th>Next action and owner</th></tr></thead><tbody>
+<tr><td>P0 — dispatch invariant</td><td>F-02 CLOSED as prototype only</td><td>GPT-PM ruling for 7201cac..598a7a5</td><td>Production qualification is unproven</td><td>Preserve limits; owner: project lane</td></tr>
+<tr><td>P1 — Ed25519</td><td>Implemented in prototype; D9 OPEN</td><td>Migrations and synthetic fixtures in the reviewed range</td><td>No evidence of real key custody or identities</td><td>Qualify separately; owner: key-governance lane</td></tr>
+<tr><td>P2 — synthetic actors</td><td>C-M01/C-M02/MFA PARTIAL</td><td>Simulated identity provider and components</td><td>Real identities/MFA are unverified</td><td>Keep partial; owner: identity lane</td></tr>
+<tr><td>P3 — preview and state</td><td>A7-B02 PARTIAL; B6-g OPEN</td><td>Simulated signed state</td><td>No real-world qualification</td><td>Keep open; owner: state lane</td></tr>
+<tr><td>P4 — receipt</td><td>F-01 PARTIAL</td><td>Combined SQL scenario and migration 017 added</td><td>Ledger digest is the typed-payload digest from 009, not wire-byte SHA-256; receipt requirement is opt-in</td><td>Independent focused run and exact-diff review; owner: test agent, then GPT-PM for review</td></tr>
+<tr><td>P5 — integration scenarios</td><td>Code implemented; independent verification not run</td><td>Existing e2e scenarios plus new 017 regressions</td><td>No test execution is claimed here</td><td>Run permitted focused files one at a time on disposable DB; owner: test agents</td></tr>
+<tr><td>P6 — report and ruling</td><td>This RU/EN checkpoint created</td><td>Matrix, plan, and decision log</td><td>No new GPT-PM transport request was made</td><td>Export exact diff and request adversarial review; owner: local agent, transport unavailable under session rules</td></tr>
+<tr><td>G0–G8 / S13 / Release 2</td><td>NOT_PASSED / NOT APPROVED / NO-GO</td><td>GPT-PM ruling</td><td>Operator-side system dependencies remain</td><td>Do not simulate closure; no human owner assigned in the current decision</td></tr>
+</tbody></table>
+<h2>New changes</h2><p>Migration 017 carries the receipt marker to a new claim generation, rejects receipts after terminal state, and prevents one Ed25519 public key from being used for the receipt role and another role. Focused SQL regressions were added. Independent execution is not yet recorded.</p>
+<h2>Ordered next steps</h2><ol><li>Finish scenario code and its linked change record.</li><li>After coding, run only permitted focused checks, one file at a time.</li><li>Fix confirmed defects and repeat affected scenarios.</li><li>Prepare exact diffs and obtain a new review before any push.</li></ol>
+</main>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

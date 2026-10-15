@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 66 tracked paths, 0 local-only paths.
+Inventory: 73 tracked paths, 2 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -21,6 +21,10 @@ Inventory: 66 tracked paths, 0 local-only paths.
 | docs/PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md | Phase 2 design | "ERP_MCP — Release 1 boundary / Phase 2 requirements backlog (DRAFT)" |
 | docs/phase2/BRANCH_ISOLATION_AND_HANDOFF.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/CAPACITY_DRILL.md | Phase 2 design | "Phase 2 capacity drill (S4b E5)" |
+| docs/phase2/CHANGE_RECORD_015.md | Phase 2 design | "Change record: migration 015 (Ed25519 signatures)" |
+| docs/phase2/CHANGE_RECORD_016.md | Phase 2 design | "Change record: migration 016 (dispatch receipt)" |
+| docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
+| docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
 | docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md | Phase 2 design | "CT14 feasibility spike: measured 1C capabilities on the disposable clone (2026-10-12)" |
 | docs/phase2/CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
@@ -46,10 +50,13 @@ Inventory: 66 tracked paths, 0 local-only paths.
 | docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md | Phase 2 design | "S11 scope record, decisions, glossary, read-back inventory and gate manifest (2026-10-12)" |
 | docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
 | docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
+| docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md | Phase 2 design | "S12-APPROVAL-2: shared canonical approval digest (design specification)" |
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
+| docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
+| docs/phase2/SIMULATION_PROGRAM_PLAN_2026-10-15.md | Phase 2 design | "Simulation program plan: closing the real-write gaps on a synthetic lane" |
 | docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
 | docs/phase2/SPRINT_S4B_PLAN.md | Phase 2 design | "Sprint S4b plan - taxonomy/LDM candidates, aliases, impact tests, capture loop, PostgreSQL concurrency and capacity drill" |
@@ -86,3 +93,5 @@ Inventory: 66 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_017.md |
+| docs/phase2/CHANGE_RECORD_018.md |

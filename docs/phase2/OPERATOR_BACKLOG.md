@@ -52,3 +52,10 @@ Operator decisions of 2026-10-14 (answers to direct multiple-choice questions in
 - OB-03 resolved: `pytest -m integration` with `ERP_PHASE2_REQUIRE_PG=1` runs and is green on the exact head; roles, RLS, immutability, CAS, fencing, outbox crash and backup/restore evidence recorded.
 - OB-02 resolved: plan recorded and approved, one broad GPT-PM sweep on the exact head, correlated APPROVE before push.
 - OB-01/04/05 resolved: decision recorded in `docs/phase2/DECISION_LOG.md`.
+# Simulation lane minor findings (2026-10-15)
+
+- R-01: `require_dispatch_receipt` remains opt-in. Owner: project design lane (no named human recorded). Next action: decide a fail-closed policy only after a production trust-boundary review; do not interpret the prototype marker as a trusted-writer safeguard.
+- R-02: migration 009 stores a typed-payload digest while the clone signs received wire bytes. The synthetic bridge does not prove byte-to-ledger digest equality. Owner: ledger/writer design lane (no named human recorded). Next action: define and review a canonical wire-digest contract before any real integration.
+- R-03: legacy `KEYED_HASH_STANDIN` verifier keys remain accepted. Owner: key-governance lane (no named human recorded). Next action: decide a migration/retirement policy before production identity qualification.
+- R-04: addressed in the current unreviewed combined SQL scenario file; independent test evidence and exact-diff review remain pending.
+- Migration 017 hardens requirement carry-forward, terminal receipt rejection, and receipt-key role separation. Its focused independent verification remains pending.
