@@ -39,3 +39,14 @@ Everything measured on 1C was measured on the disposable clone, file base, COM, 
 ## 5. What the S12 freeze package must contain (from the GPT-PM verdict)
 
 Accepted D4, D6-D8, D12 and the operator person id; the purchase-receipt-only catalogue; CT1 identity and live-epoch contract; CT2 logical key, canonical digest, marker distrust and recovery proof rules; CT3 call ownership and base-wide hold; CT5 checkpoint and signer interface; CT7 independent post and unpost approvals; CT9 kill-switch modes; CT10 full transition table and error codes; CT13 budget matrix; CT14 channel and rights qualification; CT15 conservative recovery and liveness; operation-specific verification evidence; E-series acceptance mapping with the documented NOT_RUN capabilities. A separate GPT-PM approval of that actual interface contract is required.
+
+## 6. Current decision reconciliation (2026-10-15)
+
+The dependency table above is a snapshot from 2026-10-12. The later operator decisions recorded in `docs/phase2/OPERATOR_BACKLOG.md` supersede its OB-01 and OB-15 states:
+
+| Item | Current decision/evidence | Remaining G0 acceptance |
+| --- | --- | --- |
+| OB-01 — scope | DECIDED 2026-10-14: isolated prototype until G0 on the disposable clone `818HA_p2diff`; no R1 scope rebaseline. | Include the recorded decision and its narrow boundary in the G0 evidence package and obtain the gate review. |
+| OB-15 — donor/license inventory | ACCEPTED_WITH_NAMED_DEFERRAL 2026-10-14: inventory sections 9, 9a and 9b accepted; R2 lock file/SBOM and host-binary license, pin and checksum facts deferred to deployment qualification. | Preserve the deferral in the G0 evidence package; do not claim the deferred deployment evidence or broad license-boundary clearance is complete. |
+
+The scope decision record, threat model, R1 boundary and source inventory remain the recorded G0 inputs. This reconciliation does not itself approve G0 or alter `governance/GATE_MANIFEST.json`: G0 remains NOT_PASSED until the exact evidence package is reviewed and the gate manifest carries valid evidence. No production authorization is implied.
