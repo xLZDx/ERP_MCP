@@ -58,4 +58,31 @@ A read-only functional-test review at HEAD `8e923ce` confirmed that the existing
 | Backend termination while SQL `COMMIT` is executing | On a disposable PostgreSQL instance, create uncommitted work and a test-only deferred constraint trigger that waits during explicit COMMIT. From a separate observer connection, record the target PID executing COMMIT and waiting inside that trigger before terminating it. After recovery, assert the committed baseline, the actual all-or-nothing recovered state, and safe same-input replay with no duplicated cursor/outbox effect. | A lock wait inside an API function, or a backend killed before `tx.commit()`, is not evidence. This proves termination during COMMIT processing; it does not prove the narrower post-WAL-commit/pre-acknowledgement ambiguity window. If the observer cannot establish COMMIT execution before termination, report NOT_RUN for this criterion. |
 | Restore into a separate PostgreSQL cluster | Populate and dump the source cluster; restore into a separately provisioned disposable PostgreSQL cluster. Before data setup, record both container identities and `pg_control_system().system_identifier` and prove they differ. Compare schema, data digests, sequences, foreign keys, RLS, effective grants, accepted heads and behavior; then prove the restored target can continue the permitted ledger operation. | Two databases on one server/cluster do not qualify. Require explicit fixture ownership and cleanup guards for each disposable cluster. If the second cluster cannot be safely provisioned, report NOT_RUN with that exact dependency; do not substitute the existing single-container harness. |
 
-These are test-authoring and runtime tasks for the functional-test-reviewer/e2e-runner after in-scope coding is complete. No test code, container, database, or runtime evidence was changed by this documentation update. They close only these two synthetic evidence gaps; capacity, effective-role/approver evidence and the complete G1 gate review remain separate acceptance items.
+These are test-authoring and runtime tasks for the functional-test-reviewer/e2e-runner after in-scope coding is complete. No test code, container, database, or runtime evidence was changed by the earlier documentation update. They close only these two synthetic evidence gaps; capacity, effective-role/approver evidence and the complete G1 gate review remain separate acceptance items.
+
+### Authored focused acceptance tests (2026-10-15)
+
+The `e2e-runner` has authored the two focused acceptance scenarios in
+`tests/phase2/test_g1_crash.py` and `tests/phase2/test_g1_restore.py`, with invocation-owned
+cluster helpers in `tests/phase2/_pg_harness.py`. A read-only functional-test review found no
+remaining BLOCKER or MAJOR in the final reviewed changes. This is source review only; it does not
+prove runtime behavior.
+
+- The COMMIT scenario uses a deferred constraint trigger and a separate observer. It records the
+  backend PID, active query, state, wait event and advisory-lock status before terminating the
+  backend. If the observer cannot establish the boundary, the criterion reports `NOT_RUN`. After
+  termination it checks rollback, committed baseline survival and same-input page replay.
+- The restore scenario uses separately provisioned clusters and records their Docker IDs and
+  PostgreSQL system identifiers. It compares schema, data digests, sequences, constraints,
+  policies, effective grants, accepted heads and behavior, including tenant/source/company scope,
+  GUC spoofing and a revoked scope; it then performs a permitted operation on the restored target.
+- All crash and restore tests in these files now provision uniquely named `r2-s13-dump-*`
+  containers, verify their invocation-specific ownership label before container operations, and
+  remove only verified containers and their anonymous PostgreSQL volumes. They do not attach to
+  the former shared `erp-phase2-test-pg` target.
+
+Runtime evidence is `NOT_RUN`: `D:\Repo\AGENTS.md` explicitly prohibits running `pytest`, including
+these focused files. No PostgreSQL container or database was started or changed. G1 remains
+`NOT_PASSED`; the authored scenarios do not satisfy runtime acceptance until an allowed focused
+run produces exact-head evidence. Capacity, effective-role/approver evidence and the complete G1
+gate review remain outstanding as separate acceptance items.
