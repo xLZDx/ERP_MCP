@@ -27,13 +27,15 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 4dec3bc</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 2edc82e</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -48,12 +50,14 @@
 <tr><td>P3 — preview and state</td><td>A7-B02 PARTIAL; B6-g OPEN</td><td>Simulated signed state</td><td>No real-world qualification</td><td>Keep open; owner: state lane</td></tr>
 <tr><td>P4 — receipt</td><td>F-01 PARTIAL</td><td>E2E PASS 14/14; hardening 017 PASS 4/4; DB review found no BLOCKER/MAJOR</td><td>Ledger digest is the typed-payload digest from 009, not wire-byte SHA-256; receipt requirement is opt-in</td><td>Preserve partial status; owner: project lane</td></tr>
 <tr><td>P5 — integration scenarios</td><td>Runtime-proven on the synthetic lane</td><td>849 PASS across 16 files; dump/restore PASS 6/6; each file ran separately. Review: no BLOCKER/MAJOR; one MINOR clarified in the test comment</td><td>Requested `test_change_port.py` is absent; counterpart `test_change_ledger_port.py` passed 16/16; wire-byte digest gap remains open</td><td>Keep the test claim narrow; define a canonical wire digest before real integration; owner: ledger/writer design lane</td></tr>
-<tr><td>P6 — report and ruling</td><td>Local reports and records complete</td><td>DB reviewer found no findings; code reviewer found no BLOCKER/MAJOR, MINOR addressed. PM Bridge disabled</td><td>No new GPT-PM approval for exact HEAD; push is not authorized</td><td>Exact-diff GPT-PM review unavailable in this session; no external decision owner recorded</td></tr>
+<tr><td>P6 — report and ruling</td><td>Exact-range GPT-PM APPROVE received; approved range pushed</td><td>Request `9e9dc3a4-48f8-405e-a89e-d0903c8d5549` approved `598a7a5..2edc82e` as a NON-GATING prototype; no confirmed BLOCKER/MAJOR</td><td>Production and release gates remain unchanged</td><td>Keep prototype limits; no further action on this approved code range</td></tr>
 <tr><td>G0–G8 / S13 / Release 2</td><td>NOT_PASSED / NOT APPROVED / NO-GO</td><td>GPT-PM ruling</td><td>Operator-side system dependencies remain</td><td>Do not simulate closure; no human owner assigned in the current decision</td></tr>
 </tbody></table>
 <h2>New changes</h2><p>Migration 017 carries the receipt marker to a new claim generation, rejects receipts after terminal state, and prevents one Ed25519 public key from being used for the receipt role and another role. Focused SQL regressions and the combined synthetic SQL journey are complete. Independent focused runs passed 849 tests across 16 files; after a test-comment clarification, the combined journey passed again (14/14). The exact received-wire-byte digest gap remains open.</p>
-<h2>Ordered next steps</h2><ol><li>Local coding, tests, and specialist reviews are complete; evidence is recorded in change records.</li><li>Do not push: a new GPT-PM approval for the exact current diff is required, and PM Bridge is disabled by session instructions.</li><li>In a session where PM Bridge is allowed, request review of the exact final HEAD; without approval, push remains blocked. Release 2 remains NO-GO.</li></ol>
+<h2>Ordered next steps</h2><ol><li>The exact reviewed prototype range has been pushed to `origin/main`.</li><li>Retain the stated synthetic-only limits: G0–G8 NOT_PASSED, formal S13 entry NOT APPROVED, Release 2 NO-GO.</li><li>Before any real integration, resolve the open wire-digest, receipt-policy, key-retirement, identity, and real-system qualification items in their owning lanes.</li></ol>
 </main>
+
+
 
 
 

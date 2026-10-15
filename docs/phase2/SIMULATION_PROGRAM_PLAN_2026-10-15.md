@@ -22,7 +22,7 @@ must never acquire production authority.
 | P3 | Signed preview and observed state | PARTIAL / OPEN | A7-B02 PARTIAL; B6-g OPEN. |
 | P4 | Reference writer and clone-signed receipt wired to SQL ledger | PARTIAL | Combined SQL path and receipt hardening are implemented. Ledger digest remains the 009 typed-payload digest rather than wire-byte digest, and the receipt marker is opt-in. F-01 remains PARTIAL. |
 | P5 | Combined synthetic end-to-end scenarios | Runtime verified on the synthetic lane | Independent focused runs passed 849 tests across 16 files. The requested `test_change_port.py` path does not exist; `test_change_ledger_port.py` passed 16/16. This is not production or release-gate evidence. |
-| P6 | RU/EN report, decision log and closure ruling | Local records complete; exact-diff GPT-PM approval unavailable | RU/EN report, this plan, decision log and document registry updated. Independent database review found no BLOCKER/MAJOR/MINOR; end-to-end code review found no BLOCKER/MAJOR and one MINOR, addressed by clarifying the test's assertion. PM Bridge is disabled by session instructions, so no fresh GPT-PM verdict for the new diff is claimed. |
+| P6 | RU/EN report, decision log and closure ruling | Exact-range GPT-PM APPROVE received; approved code range pushed | GPT-PM request `9e9dc3a4-48f8-405e-a89e-d0903c8d5549` approved `598a7a50bbe131ede43c28f7e1bac39804c70df5..2edc82eab3f2a99a08bc07581ff7a37e08a22e75` as a NON-GATING prototype. No confirmed BLOCKER/MAJOR; two MINOR report references were historical and are corrected in this document follow-up. The approved range was pushed to `origin/main`. |
 
 ## 3. Current review ruling
 
@@ -33,13 +33,16 @@ R-03 legacy KEYED_HASH_STANDIN keys remain accepted after migration 015, and R-0
 test in the reviewed range.
 
 The current work adds the combined SQL scenario file and migration 017 and has passed the listed independent focused runs.
-Independent database and end-to-end reviews are complete. The latter's MINOR wording finding was addressed; the test
-still deliberately does not claim that a receipt over the actual received wire-byte digest is rejected. No new GPT-PM
-ruling was requested or received for the current diff, so the original statuses above remain authoritative.
+Independent database and end-to-end reviews are complete. The latter's MINOR test-wording finding was addressed; the test
+still deliberately does not claim that a receipt over the actual received wire-byte digest is rejected. GPT-PM request
+`9e9dc3a4-48f8-405e-a89e-d0903c8d5549` returned APPROVE for the exact range
+`598a7a50bbe131ede43c28f7e1bac39804c70df5..2edc82eab3f2a99a08bc07581ff7a37e08a22e75`; that approved range is now
+on `origin/main`. Findings and limits did not change G0-G8, S13, or Release 2 status.
 
 ## 4. Execution method and remaining evidence
 
 Only focused tests were run, on one disposable `r2-s13-*` PostgreSQL container, one test file at a time. No full suites,
 CI, lint, typecheck, build, or mutation runs were used. Independent test and migration-review evidence is recorded in
-the change records and scratchpad logs. A fresh exact-diff GPT-PM review is unavailable under the session rule disabling
-PM Bridge; push is not authorized.
+the change records and scratchpad logs. Exact-range GPT-PM approval was recorded above and the approved code range was
+pushed. The approval covers only the stated prototype range; G0-G8 remain NOT_PASSED, formal S13 remains NOT APPROVED,
+and Release 2 remains NO-GO.
