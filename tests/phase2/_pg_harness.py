@@ -29,7 +29,7 @@ FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_securit
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
 FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
-CONTAINER = "erp-phase2-test-pg"
+CONTAINER = os.environ.get("ERP_PHASE2_TEST_CONTAINER", "erp-phase2-test-pg")
 DB_PREFIX = "g1x_"
 REINIT_MARK = b"all server processes terminated; reinitializing"
 

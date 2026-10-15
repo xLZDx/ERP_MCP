@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 73 tracked paths, 2 local-only paths.
+Inventory: 75 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -23,6 +23,8 @@ Inventory: 73 tracked paths, 2 local-only paths.
 | docs/phase2/CAPACITY_DRILL.md | Phase 2 design | "Phase 2 capacity drill (S4b E5)" |
 | docs/phase2/CHANGE_RECORD_015.md | Phase 2 design | "Change record: migration 015 (Ed25519 signatures)" |
 | docs/phase2/CHANGE_RECORD_016.md | Phase 2 design | "Change record: migration 016 (dispatch receipt)" |
+| docs/phase2/CHANGE_RECORD_017.md | Phase 2 design | "Change record 017 — receipt hardening" |
+| docs/phase2/CHANGE_RECORD_018.md | Phase 2 design | "Change record 018 — synthetic SQL end-to-end scenarios" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -56,7 +58,7 @@ Inventory: 73 tracked paths, 2 local-only paths.
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
-| docs/phase2/SIMULATION_PROGRAM_PLAN_2026-10-15.md | Phase 2 design | "Simulation program plan: closing the real-write gaps on a synthetic lane" |
+| docs/phase2/SIMULATION_PROGRAM_PLAN_2026-10-15.md | Phase 2 design | "Simulation program plan: closing the real-write gaps on a synthetic lane" / "Simulation program plan: synthetic lane checkpoint" |
 | docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
 | docs/phase2/SPRINT_S4B_PLAN.md | Phase 2 design | "Sprint S4b plan - taxonomy/LDM candidates, aliases, impact tests, capture loop, PostgreSQL concurrency and capacity drill" |
@@ -93,5 +95,4 @@ Inventory: 73 tracked paths, 2 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_017.md |
-| docs/phase2/CHANGE_RECORD_018.md |
+| docs/phase2/CHANGE_RECORD_019.md |
