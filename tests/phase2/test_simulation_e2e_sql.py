@@ -130,9 +130,10 @@ async def seed_doc(e, payload=None):
     return e.clone.target_refs()[-1], out.new_version, payload
 
 
-async def full_success(e, kind, payload, target_ref, expected_version, *, target=None):
+async def full_success(e, kind, payload, target_ref, expected_version, *, target=None, **permit_args):
     """One change through the whole combined path; returns (cid, outcome, receipt row)."""
-    cid, gen, call_id = await permitted(e, kind, payload, target=target or target_ref or f"doc-{uuid.uuid4().hex[:6]}")
+    cid, gen, call_id = await permitted(e, kind, payload, target=target or target_ref or f"doc-{uuid.uuid4().hex[:6]}",
+                                        **permit_args)
     out = await dispatch(e, cid, gen, call_id, kind, payload, target_ref, expected_version)
     assert out.success and out.status is WriteStatus.APPLIED_VERIFIED, (out.status, out.code)
     assert out.received_payload_sha256 == sha(encode_payload(payload))          # real wire bytes
@@ -333,7 +334,7 @@ async def test_repair_unposts_failed_post_and_verification_releases_halt(env):
 
 async def test_anchor_gap_after_restore_blocks_new_effects(env):
     e = env
-    base = "base-anchor-gap"
+    base = "base-1"
     await e.led.approved(request_id="anchor-before", base=base, target="anchor-doc")
     await e.led.checkpoint()
     earlier = await e.led.call("clt_chk", "ledger_head")
@@ -420,12 +421,15 @@ async def test_kill_switch_blocks_dispatch_so_nothing_is_written_and_resumes_aft
     rc = ledger_receipt(e.clone, cid, call_id, await approved_digest(e, cid), "V1")
     await fails("PERMIT_MISSING", put(e, cid, gen, rc))
     await e.led.call("clt_dave", "kill_switch", "OFF")
+    # STOP_EFFECTS cancels the pending permit; resumption requires a fresh claim and permit.
+    assert (await e.led.rec(cid))["dispatch_state"] == "CANCELLED_UNDISPATCHED"
+    resumed, gen, call_id = await permitted(e, ChangeKind.CREATE_DRAFT, p, target="doc-k-resumed")
     data = encode_payload(p)
-    assert await e.led.call("clt_wri", "record_call", cid, gen, call_id) is True
-    out = e.writer.write(str(cid), gen, ChangeKind.CREATE_DRAFT, data, sha(data), None, None, dispatch_id=str(call_id))
+    out = await dispatch(e, resumed, gen, call_id, ChangeKind.CREATE_DRAFT, p, None, None)
     assert out.success
-    assert await put(e, cid, gen, ledger_receipt(e.clone, cid, call_id, await approved_digest(e, cid), "V1")) is not None
-    assert await e.led.complete(cid, gen, "SUCCESS") == "APPLIED"
+    assert await put(e, resumed, gen, ledger_receipt(e.clone, resumed, call_id,
+                                                     await approved_digest(e, resumed), "V1")) is not None
+    assert await e.led.complete(resumed, gen, "SUCCESS") == "APPLIED"
 
 
 # ======================================================================== (7) tenant isolation

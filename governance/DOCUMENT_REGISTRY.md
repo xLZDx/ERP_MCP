@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 75 tracked paths, 1 local-only paths.
+Inventory: 76 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -25,6 +25,7 @@ Inventory: 75 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_016.md | Phase 2 design | "Change record: migration 016 (dispatch receipt)" |
 | docs/phase2/CHANGE_RECORD_017.md | Phase 2 design | "Change record 017 — receipt hardening" |
 | docs/phase2/CHANGE_RECORD_018.md | Phase 2 design | "Change record 018 — synthetic SQL end-to-end scenarios" |
+| docs/phase2/CHANGE_RECORD_019.md | Phase 2 design | "Change record 019 — isolated test-container selection" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -95,4 +96,4 @@ Inventory: 75 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_019.md |
+| docs/phase2/CHANGE_RECORD_020.md |
