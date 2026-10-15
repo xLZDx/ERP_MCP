@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 90 tracked paths, 0 local-only paths.
+Inventory: 92 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -39,6 +39,8 @@ Inventory: 90 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_030.md | Phase 2 design | "Change record 030 — document registry refresh" |
 | docs/phase2/CHANGE_RECORD_031.md | Phase 2 design | "Change record 031 — correlated GPT-PM approval for S14-R02" |
 | docs/phase2/CHANGE_RECORD_032.md | Phase 2 design | "Change record 032 — decision record registry refresh" |
+| docs/phase2/CHANGE_RECORD_033.md | Phase 2 design | "Change record 033 — S14-R02 approved prototype push" |
+| docs/phase2/CHANGE_RECORD_034.md | Phase 2 design | "Change record 034 — post-push registry refresh" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
