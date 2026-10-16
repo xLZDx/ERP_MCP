@@ -803,3 +803,5 @@ G1 mapping follow-up (2026-10-16): clarified that the separate-cluster restore i
 R-01/R-03 inventory provenance links (2026-10-16): linked the operator backlog and S14 inventory text to `CHANGE_RECORD_058.md`, preserving the distinction between inspected code HEAD `450f977` and documentation commit `99b7d4c`. No source, test, DB, key or gate state changed. See `docs/phase2/CHANGE_RECORD_067.md`.
 
 Operator backlog G0 status reconciliation (2026-10-16): labeled the initial P0/P1 intake and old unblock text as historical, then linked OB-01/OB-15 to the separately approved narrow G0 scope and still-open deployment deferrals. No gate manifest value or authorization changed. See `docs/phase2/CHANGE_RECORD_068.md`.
+
+SDLC checkpoint refresh (2026-10-16): recorded the latest documentation baseline separately from the G1 code review HEAD and refreshed Verify/Gate artifact links. No gate state or runtime evidence changed. See `docs/phase2/CHANGE_RECORD_069.md`.
