@@ -17,6 +17,7 @@ from ..change.evidence import (
     DispatchAttempt,
     DispatchReceipt,
     OutcomeEvidence,
+    canonical_json_bytes,
     verify_record_signature,
 )
 
@@ -196,19 +197,55 @@ class InMemoryGovernedLedger:
                 allowed_states.add(GovernedWriteState.APPLY_UNKNOWN)
             if current.invocation_count != 1 or current.state not in allowed_states:
                 raise ValueError("DISPATCH_ALREADY_CONSUMED")
+
+            # Validate the complete incoming evidence set before changing the snapshot.
+            # This prevents malformed/conflicting partial records from overwriting the
+            # durable evidence that was already attached during an earlier attempt.
+            if not isinstance(result, SyntheticWriterResult):
+                raise ValueError("WRITER_RESULT_INVALID")
             receipt, proof = result.receipt, result.completion
-            # Preserve partial records before any parser, binding, or signature check.
-            if receipt is not None or proof is not None:
+            if receipt is not None and not isinstance(receipt, DispatchReceipt):
+                raise ValueError("WRITER_RECEIPT_INVALID")
+            if proof is not None and not isinstance(proof, CompletionProof):
+                raise ValueError("COMPLETION_PROOF_INVALID")
+            if receipt is not None:
+                receipt.validate_attempt_binding(attempt)
+                if self._valid(receipt, "writer_receipt") is not True:
+                    raise ValueError("WRITER_RECEIPT_SIGNATURE_INVALID")
+            if proof is not None:
+                proof.validate_attempt_binding(attempt, receipt or current.receipt)
+                if self._valid(proof, proof.signer_role) is not True:
+                    raise ValueError("COMPLETION_PROOF_SIGNATURE_INVALID")
+
+            receipt_conflict = self._different_evidence(
+                current.receipt, receipt, "receipt_id"
+            )
+            proof_conflict = self._different_evidence(
+                current.completion, proof, "completion_proof_id"
+            )
+            if receipt_conflict or proof_conflict:
+                # Keep the original state and evidence byte-for-byte, but make sure
+                # a conflict can never release the base-wide hold.
+                if not current.hold_retained:
+                    current = GovernedWriteSnapshot(
+                        attempt, current.state, current.receipt, current.completion,
+                        current.outcome, True, current.invocation_count,
+                    )
+                    self._records[self._key(attempt)] = current
+                self._base_holds[self._base(attempt)] = self._key(attempt)
+                raise ValueError("RECONCILIATION_EVIDENCE_CONFLICT")
+
+            receipt = current.receipt if current.receipt is not None else receipt
+            proof = current.completion if current.completion is not None else proof
+            if receipt is not current.receipt or proof is not current.completion:
+                # Persist only after every supplied record has passed validation and
+                # conflict checks. Partial valid evidence must survive an unknown result.
                 current = GovernedWriteSnapshot(
-                    attempt, current.state, receipt or current.receipt, proof or current.completion,
-                    current.outcome, True, current.invocation_count,
+                    attempt, current.state, receipt, proof, current.outcome,
+                    True, current.invocation_count,
                 )
                 self._records[self._key(attempt)] = current
-            receipt, proof = current.receipt, current.completion
             if receipt is None:
-                return self.mark_unknown(attempt)
-            receipt.validate_attempt_binding(attempt)
-            if self._valid(receipt, "writer_receipt") is not True:
                 return self.mark_unknown(attempt)
             # Only a proven pre-invocation refusal may clear the synthetic base hold.
             guard = result.no_invocation_guard
@@ -232,9 +269,6 @@ class InMemoryGovernedLedger:
                 return updated
             if proof is None:
                 return self.mark_unknown(attempt)
-            proof.validate_attempt_binding(attempt, receipt)
-            if self._valid(proof, proof.signer_role) is not True:
-                return self.mark_unknown(attempt)
             if (result.call_may_have_started is not True or receipt.result_class != "CALL_RETURNED_SUCCESS"
                     or receipt.call_returned is not True
                     or proof.proof_class not in ("WRITER_CALL_RETURNED", "INDEPENDENT_SESSION_AND_PROCESS_CLOSED")):
@@ -244,6 +278,22 @@ class InMemoryGovernedLedger:
             )
             self._records[self._key(attempt)] = updated
             return updated
+
+    @staticmethod
+    def _different_evidence(existing: object | None, incoming: object | None, identity_field: str) -> bool:
+        """Return whether incoming evidence would replace an existing signed record.
+
+        Exact canonical repeats are idempotent. A different identifier or any
+        canonical content change is a conflict, even when both records validate.
+        """
+        if existing is None or incoming is None:
+            return False
+        existing_identity = getattr(existing, identity_field, None)
+        incoming_identity = getattr(incoming, identity_field, None)
+        return (
+            existing_identity != incoming_identity
+            or canonical_json_bytes(existing.to_dict()) != canonical_json_bytes(incoming.to_dict())
+        )
 
     def accept_outcome(self, attempt: DispatchAttempt, evidence: OutcomeEvidence) -> GovernedWriteSnapshot:
         with self._lock:

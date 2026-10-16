@@ -14,7 +14,7 @@ does not establish real 1C behavior, deployment readiness, or release approval.
 
 Details and the release handoff: [docs/phase2/S10_RELEASE_HANDOFF.md](docs/phase2/S10_RELEASE_HANDOFF.md).
 
-Current local engineering is S12 Contract Freeze v2.0. GPT approved the initial synthetic scope, limited to purchase-receipt `CREATE_DRAFT`, `POST`, and `UNPOST`. Receipt-to-read-back consistency was clarified during implementation and is awaiting exact-revision GPT review; final focused tests and specialist re-reviews are in progress. This local work does not authorize real COM calls or change formal gates.
+Current local engineering is S12 Contract Freeze v2.0. GPT approved the initial synthetic scope, limited to purchase-receipt `CREATE_DRAFT`, `POST`, and `UNPOST`. GPT rejected exact-head candidate `7c26c0c` for push because reconciliation could replace previously recorded receipt/completion evidence. A focused remediation is underway; its regression tests have not run. The local series remains unpushed, and this work does not authorize real COM calls or change formal gates.
 
 ## Layout
 
