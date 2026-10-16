@@ -3,6 +3,8 @@
 Date: 2026-10-08. Branch: `phase2/living-model-connectors-reconciliation`. Release 2 status: **NO-GO**.
 Only items that engineering cannot close without the operator. G1-specific blockers stay in `G1_OPERATOR_BACKLOG.md`.
 
+> **Historical intake snapshot.** The P0/P1 tables, dated status paragraphs and original unblock criteria below preserve the 2026-10-08 to 2026-10-14 decision history; do not read their earlier gate states as current. Later dated decisions and reconciliations supersede them. Current gate state is in `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md` and `governance/GATE_MANIFEST.json`; current G1 evidence is in `G1_OPERATOR_BACKLOG.md`.
+
 Evidence source: six read-only local reviews of HEAD `9b4fc0c` (database, security, Python, test adequacy, reliability, architecture) on 2026-10-08. Findings are static; nothing was executed on PostgreSQL.
 
 ## P0 — block G0/G1 and any merge
@@ -39,6 +41,8 @@ Operator decisions of 2026-10-14 (answers to direct multiple-choice questions in
 - Tests: focused functional tests of S12 and S13 written and run by the named agents on disposable containers are allowed. CI, lint, full suites and CI mirroring stay forbidden.
 - D10, D10b, D9, D4: stay AGENT_SELECTED_TEST_PLACEHOLDER until the first real write to 1C. Real D9 (host, account, Ed25519 signer) and a separate D10b witness are required before that first real write.
 - Push: the local R2 commits may be pushed after this decision.
+
+Current status (2026-10-16): G0 has since been marked `PASSED` for its exact isolated-prototype scope by the separate approval recorded in `CHANGE_RECORD_050.md`. OB-01 no longer blocks G0; the scope remains limited to the approved prototype and does not authorize R1 rebaseline, staging, production, or real 1C writes. OB-15 remains `ACCEPTED_WITH_NAMED_DEFERRAL`; its deployment deferrals remain open and `LICENSE_BOUNDARY_APPROVED` remains `NO`. The historical “revisit at G0 review” and “G0 still needs evidence” language above is superseded by that exact G0 record.
 
 ## P2
 

@@ -801,3 +801,5 @@ G1 criterion-to-test mapping refinement (2026-10-16): after a read-only function
 G1 mapping follow-up (2026-10-16): clarified that the separate-cluster restore is the required G1-B08 candidate, same-cluster restore is supplemental, and crash-recovery candidates cover both `page` and `ingest` parameters. The read-only reviewer found no other substantive map gap. No test/check/runtime operation was run. See `docs/phase2/CHANGE_RECORD_066.md`.
 
 R-01/R-03 inventory provenance links (2026-10-16): linked the operator backlog and S14 inventory text to `CHANGE_RECORD_058.md`, preserving the distinction between inspected code HEAD `450f977` and documentation commit `99b7d4c`. No source, test, DB, key or gate state changed. See `docs/phase2/CHANGE_RECORD_067.md`.
+
+Operator backlog G0 status reconciliation (2026-10-16): labeled the initial P0/P1 intake and old unblock text as historical, then linked OB-01/OB-15 to the separately approved narrow G0 scope and still-open deployment deferrals. No gate manifest value or authorization changed. See `docs/phase2/CHANGE_RECORD_068.md`.

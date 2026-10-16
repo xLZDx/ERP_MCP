@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 130 tracked paths, 0 local-only paths.
+Inventory: 131 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -74,6 +74,7 @@ Inventory: 130 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_065.md | Phase 2 design | "Change record 065 — map G1 criteria to concrete test scenarios" |
 | docs/phase2/CHANGE_RECORD_066.md | Phase 2 design | "Change record 066 — clarify required restore and crash-recovery candidates" |
 | docs/phase2/CHANGE_RECORD_067.md | Phase 2 design | "Change record 067 — link R-01/R-03 source inventory provenance" |
+| docs/phase2/CHANGE_RECORD_068.md | Phase 2 design | "Change record 068 — reconcile historical operator backlog with G0 closure" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
