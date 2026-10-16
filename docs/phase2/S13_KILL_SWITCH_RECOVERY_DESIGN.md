@@ -1,6 +1,6 @@
 # S13 design: keep kill switch active until recovery completes
 
-Date: 2026-10-16. Status: design approved for the non-gating S13 prototype at HEAD `5fb4c6e`; the `RLC_UNCLEAN` active-hold refinement is included in local migration 020, with a PM addendum review requested. Migration 020 remains subject to focused verification and exact-head review; no formal S13 approval is implied.
+Date: 2026-10-16. Status: local S13 recovery prototype implemented and focused functional/E2E evidence plus specialist review complete; no formal S13 approval is implied. Current branch and `origin/main` are at `1ec73879ade35b112c428c9885b55c46452aa7df`.
 
 ## Goal and non-goals
 
@@ -10,7 +10,7 @@ This does not establish a production scheduler, guarantee external 1C outcomes, 
 
 ## Current behavior and evidence
 
-Migration 008's `recover_sweep(text,text,jsonb)` selects at most `batch_size` rows per stage (default 100, maximum 500), catches individual failures, records them in `sweep_failures` and returns a JSON report containing `FAILED`. It records each run in `sweep_runs`, whose `run_id` can correlate an attempt. The current `kill_switch(text,text,text)` ignores the report and writes `OFF` unconditionally, despite the migration 006 comment that a failing sweep keeps the switch on. Relevant source: `db/phase2/008_change_hardening_b.sql` (`recover_sweep`, `sweep_item_failed`, `kill_switch`) and `db/phase2/006_change_sweeps.sql` (`sweep_runs`, prior behavior comment).
+Historical behavior before migration 020: migration 008's `recover_sweep(text,text,jsonb)` selects at most `batch_size` rows per stage (default 100, maximum 500), catches individual failures, records them in `sweep_failures` and returns a JSON report containing `FAILED`. The old `kill_switch(text,text,text)` ignored that report and wrote `OFF` unconditionally. Migration 020 replaces that unsafe transition behavior; see the current implementation and evidence below.
 
 The Python port expects the existing `kill_switch -> text`, JSON sweep -> `jsonb`, and compatibility sweep -> `integer` signatures. Each port call owns a transaction. Independent reliability and database reviews agree that both caught failures and work left by a full batch must prevent clearing the switch.
 
@@ -57,6 +57,12 @@ The `database-reviewer` then reviews the completed migration, lock interactions,
 
 Formal S13 entry remains unapproved; the documented real 1C writer/pre-image source, deployed identity and key custody, external checkpoint service, scheduler/alerting, and deployment evidence remain external or separately scoped dependencies. This local fix addresses only the source-level kill-switch re-enable failure and bounded-work gap.
 
+## Implemented behavior and recorded runtime evidence (2026-10-16)
+
+Migration 020 retains STOP when recovery has failed work, unresolved failure rows, more eligible work, or unresolved records/holds; it commits successful bounded progress and failure evidence, then permits an operator retry. A scope-specific advisory lock serializes recovery calls. Migration 020 includes `RLC_UNCLEAN` among active holds. Exact functional and E2E scenarios, commands, fixtures, and results are in CR113. The allowed test agents reported the functional matrix and the critical adapter journey PASS; local disposable PostgreSQL results are not formal S13 evidence or production evidence. Database and security reviews are recorded in the current review chain; reliability review found only the MINOR lock-order issue below.
+
+PASS requires explicit terminal PASS evidence correlated to the exact revision and completed harness. An exit code of zero, `NOT_RUN`, `SKIP`, or absent terminal evidence is not PASS.
+
 ### Nonblocking reliability review follow-up
 
-The 2026-10-16 reliability review found a possible transient deadlock in expired-approval-nonce cleanup: `recover_sweep` may lock a nonce before the corresponding record (`020_kill_switch_recovery_guard.sql`), while `approve` locks the record before the nonce (`008_change_hardening_b.sql`). PostgreSQL aborts one transaction on a deadlock; because the recovery mode update is in the same transaction, this cannot falsely commit `OFF`, and the operator can retry. This is MINOR/INFO, not a release blocker. Backlog: align lock order or move nonce expiration into an independently ordered phase, then add a deterministic contention scenario. No performance or repeated-contention guarantee is claimed.
+The 2026-10-16 reliability review found a possible transient deadlock in expired-approval-nonce cleanup: `recover_sweep` may lock a nonce before the corresponding record (`020_kill_switch_recovery_guard.sql`), while `approve` locks the record before the nonce (`008_change_hardening_b.sql`). PostgreSQL aborts one transaction on a deadlock; because the recovery mode update is in the same transaction, this cannot falsely commit `OFF`, and the operator can retry. This is MINOR/INFO, not a release blocker. GPT owner ruling `b4e09308-7ae8-4170-92df-81ae67177bc1` defers remediation to S18: align lock order or move nonce expiration into an independently ordered phase, then add a deterministic contention scenario. No performance or repeated-contention guarantee is claimed.

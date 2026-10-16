@@ -4,6 +4,12 @@ Status: DRAFT for the non-gating prototype. Source: GPT-PM design ruling e5d92b7
 Not gate evidence. Gate status at this specification's 2026-10-14 snapshot: G0-G8 were NOT_PASSED. Current status:
 G0 is PASSED only for the approved isolated prototype scope; G1-G8 remain NOT_PASSED. Release 2: NO-GO. No real 1C write.
 
+## Current v2.0 reconciliation (2026-10-16)
+
+The owner-approved S12 Contract Freeze v2.0 in `S12_CONTRACT_FREEZE_V2_2026-10-16.md` reuses `S12-APPROVAL-2` as the reviewed-intent digest, but adds separate domain-separated digest/signature formats for `DispatchReceipt`, `OutcomeEvidence`, and `CompletionProof`. Those evidence digests are not interchangeable with `payload_digest`, `approval_digest`, or the synthetic `wire_payload_sha256`.
+
+For the v2.0 write slice, only `CREATE_DRAFT`, `POST`, and `UNPOST` are admitted. `UPDATE_DRAFT` remains in this historical prototype schema/digest specification for compatibility and is rejected by the v2.0 operation allowlist; no prior approval or stored digest is reinterpreted as authorization for a different operation. Any change to the approval envelope itself requires a new digest version and a separate owner-approved contract update. The freeze changes no formal gate or production authorization.
+
 ## 1. Purpose
 
 `Approved(P) => ExecutedPayload = ReviewedPayload(P)`. One digest definition is shared by the SQL ledger and the

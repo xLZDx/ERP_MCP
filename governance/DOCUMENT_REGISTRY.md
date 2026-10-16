@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 183 tracked paths, 0 local-only paths.
+Inventory: 184 tracked paths, 3 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -125,6 +125,7 @@ Inventory: 183 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_116.md | Phase 2 design | "Change record 116 — close R-03 ACL coverage follow-up" |
 | docs/phase2/CHANGE_RECORD_117.md | Phase 2 design | "Change record 117 — record reliability follow-up and refresh the document registry" |
 | docs/phase2/CHANGE_RECORD_118.md | Phase 2 design | "Change record 118 — regenerate the document registry for the final evidence set" |
+| docs/phase2/CHANGE_RECORD_119.md | Phase 2 design | "Change record 119 — regenerate the registry after the final evidence records" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -146,7 +147,7 @@ Inventory: 183 tracked paths, 0 local-only paths.
 | docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
 | docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
-| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 cutover for writes and action evidence" / "R-03 design: Ed25519 for new signed actions" |
+| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 cutover for writes and action evidence" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
@@ -203,3 +204,6 @@ Inventory: 183 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_120.md |
+| docs/phase2/CHANGE_RECORD_121.md |
+| docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md |

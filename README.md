@@ -7,11 +7,14 @@ the Release 1 repository (`ERP_MCP`) with the history of its own paths preserved
 
 ## Status
 
-**NO-GO / IMPLEMENTED_UNVERIFIED.** The code is implemented and its unit tests pass, but it
-is not wired into any gateway runtime and has not been verified against a real 1C or a
-production-like environment. Nothing here is released.
+**Release 2: NO-GO.** The repository contains a local, non-production prototype. The current
+gate manifest records G0 as passed for its narrow approved scope, G1–G8 as not passed, S13 as
+not started for formal entry, and production authorization as none. Local prototype evidence
+does not establish real 1C behavior, deployment readiness, or release approval.
 
 Details and the release handoff: [docs/phase2/S10_RELEASE_HANDOFF.md](docs/phase2/S10_RELEASE_HANDOFF.md).
+
+Current local engineering is S12 Contract Freeze v2.0. GPT approved the initial synthetic scope, limited to purchase-receipt `CREATE_DRAFT`, `POST`, and `UNPOST`. Receipt-to-read-back consistency was clarified during implementation and is awaiting exact-revision GPT review; final focused tests and specialist re-reviews are in progress. This local work does not authorize real COM calls or change formal gates.
 
 ## Layout
 
@@ -22,14 +25,17 @@ Details and the release handoff: [docs/phase2/S10_RELEASE_HANDOFF.md](docs/phase
 - `scripts/phase2/`, `scripts/phase2_capacity_drill.py` - tooling
 - `core/DECISION_LOG.md` - project decision log
 
-## Running the tests
+## Verification and evidence
 
-```
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -e .[dev]
-.venv\Scripts\python.exe -m pytest tests/phase2 -q --ignore=tests/phase2/_red_tmp
-.venv\Scripts\python.exe -m ruff check src tests
-```
+Required focused tests are authored and run by `functional-test-reviewer` and `e2e-runner`
+after in-scope coding is complete. The applicable harnesses, exact revisions, commands, and
+results are recorded in the linked change records and gate evidence plans. Do not treat a
+process exit code alone as a passing result: `NOT_RUN`, `SKIP`, missing terminal evidence, or
+an unavailable dependency is not `PASS`. A `PASS` requires explicit terminal PASS evidence
+correlated to the exact revision and completed harness.
 
-PostgreSQL integration tests are skipped unless `ERP_PHASE2_TEST_DSN` points to a disposable
-database.
+This README does not prescribe full-suite or lint commands. Required test and check work
+follows the current workspace ownership rules; any work that was not run is reported as
+`NOT_RUN`. The current state and remaining formal acceptance are tracked in
+`docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md` and
+`governance/GATE_MANIFEST.json`.
