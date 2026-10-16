@@ -3,7 +3,8 @@
 ## What changed
 
 - Regenerated `governance/DOCUMENT_REGISTRY.md` after `CHANGE_RECORD_095.md` became part of the local `main` history.
-- The refreshed inventory includes 158 tracked Markdown paths and no untracked Markdown paths in attached worktrees at generation time.
+- At the recorded generation time, the refreshed inventory had 158 tracked Markdown paths and 0 local-only Markdown paths in attached worktrees.
+- The current checked-in registry snapshot has 158 tracked Markdown paths and 1 local-only Markdown path: this self-referential `CHANGE_RECORD_096.md` entry.
 
 ## Why
 
@@ -18,7 +19,8 @@ The registry had been generated while record 095 was still untracked, so it list
 
 ## Review and verification state
 
-- Registry generation completed: 158 tracked paths, 0 local-only paths.
+- Historical generator output at the generation time recorded above: 158 tracked paths, 0 local-only paths.
+- Current checked-in `governance/DOCUMENT_REGISTRY.md` snapshot: 158 tracked paths, 1 local-only path, namely this self-referential `CHANGE_RECORD_096.md` entry. These are different snapshots; the current registry does not report 0 local-only paths.
 - The bilingual report `--check` passed after the report edits.
 - No tests, builds, lint, CI, migrations, database operations, or production actions were run.
 - No push was performed; any later push requires a fresh exact-head PM decision.
@@ -31,5 +33,5 @@ The registry had been generated while record 095 was still untracked, so it list
 
 ## Acceptance
 
-- Registry indexes the committed G1 report reconciliation and records the generated counts.
+- Registry indexes the committed G1 report reconciliation. The recorded generation counts describe that run; the current checked-in snapshot separately includes this self-referential record as its one local-only path.
 - Report formatting check passed and the formal G1/S13/release/production statuses remain distinct and unchanged.
