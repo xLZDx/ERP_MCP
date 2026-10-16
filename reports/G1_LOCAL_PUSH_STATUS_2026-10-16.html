@@ -50,7 +50,7 @@
 <!-- report-conform:end -->
 
 
-<p><strong>Date:</strong> 2026-10-16. <strong>Exact code HEAD reviewed by PM:</strong> <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>. <strong>Documentation updated after PM reply:</strong> the later local commit only records status; it does not change the reviewed code diff or authorize a push. <strong>Test correction:</strong> <code>69857fdd9f5c8fc52beb09074db000b50495fdd6</code>. <strong>PM Bridge request:</strong> <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code>. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+<p><strong>Date:</strong> 2026-10-16. <strong>PM-reviewed code HEAD:</strong> <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>. <strong>Runtime evidence HEAD:</strong> <code>5588c06851340751fa574e182da0e9c9b03111e9</code>, a documentation-only commit over the same code. <strong>Test:</strong> <code>test_pg_dump_restore_to_distinct_postgres_cluster</code> in <code>tests/phase2/test_g1_restore.py</code>; SHA-256 <code>DD4F08C1BF5CC3270BB6E6A3C08EC30A73526C592D8F0AC7348EB11742CE66B5</code>. Git blob at the reviewed code HEAD: <code>6bd93ccffaa473bf69d1463913df57c1c44b8a4a</code>. <strong>PM Bridge request:</strong> <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code>. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Request status</h2>
 <table>
@@ -86,29 +86,29 @@
     </tr>
     <tr>
       <td>G1 restore scope revocation</td>
-      <td class="state">Correction committed and statically reviewed; runtime is NOT_RUN</td>
-      <td>The functional run on baseline <code>4b9f3b0</code> reported 46 passed and 1 failed. The failure was a direct call to internal <code>living.assert_scope</code> as <code>living_reader</code>. Commit <code>69857fd</code> checks row visibility before and after deleting the grant through RLS, explicitly selects READ COMMITTED, and keeps a separate fresh-context <code>living.set_scope</code> check. Database-reviewer and silent-failure-hunter reported no remaining issue.</td>
-      <td>The corrected test has not been rerun. The AGENTS.md supplied in this session prohibits the required pytest invocation, so the old result does not validate the new code.</td>
-      <td>The corrected test has not run: the instructions supplied for this session prohibit pytest. PM requires runtime evidence for the exact HEAD before changing PUSH NO-GO.</td>
+      <td class="state">Focused restore case PASS for both test-agent owners; full focused set remains incomplete</td>
+      <td>The initial run on <code>4b9f3b0</code> had 46 passed / 1 failed due to calling <code>living.assert_scope</code> as <code>living_reader</code>. After correction in <code>69857fd</code>, functional-test-reviewer: 1 passed in 17.89s; e2e-runner: 1 passed in 15.27s, repeated with JUnit XML: 1 passed in 14.82s. Assertions covered RLS-visible rows before/after grant deletion on the same READ COMMITTED reader session and fresh-context <code>living.set_scope</code> P0001/<code>SCOPE_NOT_GRANTED</code> on source and target. Source container <code>r2-s13-dump-92fdb996ef79-a</code>, system ID <code>7697154259177177126</code>; target <code>r2-s13-dump-92fdb996ef79-b</code>, system ID <code>7697154262396780582</code>. Both IDs differed; invocation-owned containers were cleaned.</td>
+      <td>One case is proven; it does not establish the whole focused suite or formal G1. The JUnit repeat emitted one PytestWarning because <code>record_property</code> is incompatible with xunit2; XML properties were captured.</td>
+      <td>Continue remaining focused scenarios. Owners: functional-test-reviewer and e2e-runner.</td>
     </tr>
     <tr>
       <td>PM review and push</td>
-      <td class="state">STATIC APPROVE; PUSH NO-GO; not pushed</td>
+      <td class="state">STATIC APPROVE; prior PUSH NO-GO awaits updated decision; not pushed</td>
       <td>PM Bridge reply for request <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> reviewed exact code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>: static approval, no confirmed BLOCKER/MAJOR. The push verdict was NO-GO until exact-head runtime evidence is available.</td>
-      <td>An allowed focused runtime run of the corrected test is required. The test remains NOT_RUN; formal G1 remains NOT_PASSED.</td>
-      <td>First the operator changes the active rule to allow the required run; then functional-test-reviewer/e2e-runner execute it. Obtain an updated PM decision after the result. The implementation agent pushes only after the gate permits it.</td>
+      <td>The PM runtime prerequisite has now been met for this restore scenario, but no updated PM reply is recorded. Other focused criteria and formal G1 remain open.</td>
+      <td>Functional-test-reviewer/e2e-runner finish the remaining scenarios, then GPT-PM updates the push verdict. Owner of push: implementation agent, only after explicit gate approval.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Gate status</h2>
-<p>Local push: <strong>NOT_READY</strong>; PM verdict: <strong>PUSH NO-GO</strong>. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. PM separately returned <code>STATIC APPROVE</code> with no confirmed BLOCKER/MAJOR. The corrected test remains <code>NOT_RUN</code> because the supplied active instructions prohibit pytest. This later documentation record is not push approval. The remote branch was not changed.</p>
+<p>Local push: <strong>NOT_READY</strong>; the last PM reply was <strong>PUSH NO-GO</strong> pending runtime evidence. Both test-agent owners have now supplied that evidence for one corrected restore scenario, but there is no updated PM push verdict and the full focused set is incomplete. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. PM's static response was <code>STATIC APPROVE</code> with no confirmed BLOCKER/MAJOR. This documentation commit changes no code and does not authorize push. The remote branch was not changed.</p>
 
 <h2>Ordered next steps</h2>
 <ol>
-  <li>The operator allows the required focused pytest run in the active instructions; this is the current blocker to runtime evidence.</li>
-  <li>Functional-test-reviewer/e2e-runner run the corrected test at exact code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and record the command and result.</li>
-  <li>Obtain a new PM push decision from that result. If the result is green and the gate permits it, the implementation agent pushes; if it finds a defect, the agents fix it and repeat the required cycle.</li>
+  <li>Functional-test-reviewer/e2e-runner complete the remaining accepted focused criteria and record the exact heads, commands, results and dependencies.</li>
+  <li>After the evidence set is complete, send the exact evidence to GPT-PM and obtain a new push verdict.</li>
+  <li>The implementation agent pushes only if the current gate explicitly allows it. Formal G1 remains a separate open gate.</li>
 </ol>
 
 

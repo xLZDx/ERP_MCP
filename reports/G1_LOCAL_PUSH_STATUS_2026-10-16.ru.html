@@ -50,7 +50,7 @@
 <!-- report-conform:end -->
 
 
-<p><strong>Дата:</strong> 2026-10-16. <strong>Точный code HEAD, рассмотренный PM:</strong> <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>. <strong>Документация обновлена после ответа PM:</strong> последующий локальный commit только фиксирует статус и не меняет reviewed code diff, не даёт разрешения на push. <strong>Изменение теста:</strong> <code>69857fdd9f5c8fc52beb09074db000b50495fdd6</code>. <strong>Запрос PM Bridge:</strong> <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code>. <strong>Репозиторий:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+<p><strong>Дата:</strong> 2026-10-16. <strong>PM-reviewed code HEAD:</strong> <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>. <strong>Runtime evidence HEAD:</strong> <code>5588c06851340751fa574e182da0e9c9b03111e9</code>; это документационный commit поверх того же кода. <strong>Тест:</strong> <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>, файл <code>tests/phase2/test_g1_restore.py</code>, SHA-256 <code>DD4F08C1BF5CC3270BB6E6A3C08EC30A73526C592D8F0AC7348EB11742CE66B5</code>. Git blob файла на reviewed code HEAD: <code>6bd93ccffaa473bf69d1463913df57c1c44b8a4a</code>. <strong>Запрос PM Bridge:</strong> <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code>. <strong>Репозиторий:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Сводка по запросам</h2>
 <table>
@@ -86,29 +86,29 @@
     </tr>
     <tr>
       <td>G1 restore: отзыв scope</td>
-      <td class="state">Правка закоммичена и статически проверена; runtime — NOT_RUN</td>
-      <td>На исходном baseline <code>4b9f3b0</code> функциональный прогон дал 46 успешных и 1 ошибочный результат. Ошибка была в прямом вызове внутренней <code>living.assert_scope</code> от <code>living_reader</code>. Исправление <code>69857fd</code> проверяет видимость строк до и после удаления grant через RLS, явно задаёт READ COMMITTED и сохраняет отдельную проверку свежего <code>living.set_scope</code>. Database-reviewer и silent-failure-hunter замечаний не нашли.</td>
-      <td>Исправленный тест не перезапущен. Переданный в этой сессии AGENTS.md запрещает необходимый pytest-вызов, поэтому старый результат не подтверждает новый код.</td>
-      <td>Исправленный тест не запускался: предоставленные для этой сессии правила запрещают pytest. PM потребовал runtime-результат точного HEAD прежде чем менять PUSH NO-GO.</td>
+      <td class="state">Точечный restore-сценарий PASS у обоих тестовых агентов; полный focused-набор не завершён</td>
+      <td>Исходный прогон на <code>4b9f3b0</code> дал 46 passed / 1 failed из-за вызова <code>living.assert_scope</code> от <code>living_reader</code>. После исправления в <code>69857fd</code> функциональный агент: 1 passed за 17.89s; E2E-агент: 1 passed за 15.27s, повтор с JUnit XML — 1 passed за 14.82s. Проверены строки через RLS до/после удаления grant в том же READ COMMITTED reader-сеансе, а для source и target — свежий <code>living.set_scope</code> с P0001/<code>SCOPE_NOT_GRANTED</code>. Контейнеры source <code>r2-s13-dump-92fdb996ef79-a</code> / system ID <code>7697154259177177126</code> и target <code>r2-s13-dump-92fdb996ef79-b</code> / system ID <code>7697154262396780582</code> различались; принадлежащие этому запуску контейнеры очищены.</td>
+      <td>Подтверждён один сценарий; он не доказывает весь focused suite или формальный G1. В повторе с JUnit XML была одна PytestWarning: <code>record_property</code> несовместим с xunit2; XML properties записались.</td>
+      <td>Продолжить оставшиеся сценарии. Владельцы: functional-test-reviewer и e2e-runner.</td>
     </tr>
     <tr>
       <td>PM review и push</td>
-      <td class="state">STATIC APPROVE; PUSH NO-GO; push не выполнен</td>
+      <td class="state">STATIC APPROVE; прежний PUSH NO-GO требует нового решения; push не выполнен</td>
       <td>Ответ PM Bridge по запросу <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> рассмотрел точный code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>: статически одобрено, подтверждённых BLOCKER/MAJOR нет. Для push ответ дал NO-GO до runtime-доказательства точного HEAD.</td>
-      <td>Требуется разрешённый focused runtime-прогон исправленного теста. Тест остаётся NOT_RUN, G1 остаётся NOT_PASSED.</td>
-      <td>Сначала оператор меняет активное правило, чтобы разрешить только требуемый прогон; затем functional-test-reviewer/e2e-runner выполняют его. После результата получить обновлённое решение PM; push — implementation agent только после разрешения gate.</td>
+      <td>PM prerequisite по runtime теперь выполнен для указанного restore-сценария, однако новый ответ PM отсутствует. Остальные focused criteria и формальный G1 не закрыты.</td>
+      <td>Functional-test-reviewer/e2e-runner завершают остальные требуемые сценарии; затем GPT-PM обновляет push verdict. Владелец push: implementation agent только после явного разрешения gate.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Статус gate</h2>
-<p>Локальный push: <strong>NOT_READY</strong>; PM verdict: <strong>PUSH NO-GO</strong>. Формальный G1: <strong>NOT_PASSED</strong>. Авторизация production: <strong>NONE</strong>. PM отдельно сообщил: <code>STATIC APPROVE</code>, подтверждённых BLOCKER/MAJOR нет. Исправленный тест остаётся <code>NOT_RUN</code> из-за действующего запрета pytest в предоставленных правилах. Эта последующая документационная фиксация не является push approval. Удалённая ветка не изменялась.</p>
+<p>Локальный push: <strong>NOT_READY</strong>; последний PM ответ — <strong>PUSH NO-GO</strong> до runtime-доказательства. Условие теперь подтверждено для одного исправленного restore-сценария обоими тестовыми агентами, но нового PM push verdict нет, а полный focused набор не закрыт. Формальный G1: <strong>NOT_PASSED</strong>. Авторизация production: <strong>NONE</strong>. В PM-ревью было <code>STATIC APPROVE</code>, подтверждённых BLOCKER/MAJOR не найдено. Этот документационный commit не меняет код и не разрешает push; удалённая ветка не изменялась.</p>
 
 <h2>Очередь действий</h2>
 <ol>
-  <li>Оператор разрешает требуемый focused pytest-прогон в активных правилах; это единственный блокирующий шаг для runtime-свидетельства.</li>
-  <li>Functional-test-reviewer/e2e-runner выполняют исправленный тест на точном code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> и записывают команду и результат.</li>
-  <li>По результату получить новое решение PM по push. При успехе и разрешённом gate implementation agent выполняет push; при дефекте агенты исправляют и повторяют необходимый цикл.</li>
+  <li>Functional-test-reviewer/e2e-runner выполняют остальные принятые focused criteria и фиксируют head, команды, результаты и зависимости.</li>
+  <li>После полного набора передать точное evidence GPT-PM и получить новый push verdict.</li>
+  <li>Push выполняет implementation agent только после явного разрешения актуального gate; формальный G1 остаётся отдельным незакрытым gate.</li>
 </ol>
 
 
