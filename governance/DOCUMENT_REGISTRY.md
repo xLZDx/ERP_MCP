@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 161 tracked paths, 0 local-only paths.
+Inventory: 163 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -105,6 +105,7 @@ Inventory: 161 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_096.md | Phase 2 design | "Change record 096 — refresh registry after G1 report reconciliation" |
 | docs/phase2/CHANGE_RECORD_097.md | Phase 2 design | "Change record 097 — clarify registry snapshot counts" |
 | docs/phase2/CHANGE_RECORD_098.md | Phase 2 design | "Change record 098 — clarify R-01/R-03 source findings and current gate state" |
+| docs/phase2/CHANGE_RECORD_099.md | Phase 2 design | "Change record 099 — R-03 Ed25519 new-action design" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -126,6 +127,7 @@ Inventory: 161 tracked paths, 0 local-only paths.
 | docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
 | docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
+| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 for new signed actions" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
@@ -181,3 +183,4 @@ Inventory: 161 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_100.md |
