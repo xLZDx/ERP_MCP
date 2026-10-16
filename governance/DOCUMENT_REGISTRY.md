@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 133 tracked paths, 0 local-only paths.
+Inventory: 137 tracked paths, 2 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -77,6 +77,10 @@ Inventory: 133 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_068.md | Phase 2 design | "Change record 068 — reconcile historical operator backlog with G0 closure" |
 | docs/phase2/CHANGE_RECORD_069.md | Phase 2 design | "Change record 069 — refresh the SDLC state checkpoint" |
 | docs/phase2/CHANGE_RECORD_070.md | Phase 2 design | "Change record 070 — record the proposed minimum G1 runtime set" |
+| docs/phase2/CHANGE_RECORD_071.md | Phase 2 design | "Change record 071 — resolve G1-B07 concurrency coverage scope" |
+| docs/phase2/CHANGE_RECORD_072.md | Phase 2 design | "Change record 072 — reconcile G1-B07 backlog and gate packet" |
+| docs/phase2/CHANGE_RECORD_073.md | Phase 2 design | "Change record 073 — clarify G1 runtime evidence scope" |
+| docs/phase2/CHANGE_RECORD_074.md | Phase 2 design | "Change record 074 — reconcile G1 evidence agents and correct DB policy note" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -153,3 +157,5 @@ Inventory: 133 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_075.md |
+| docs/phase2/CHANGE_RECORD_076.md |

@@ -182,21 +182,23 @@ async def assert_revoked_scope_is_denied(admin, dsn, database):
     try:
         await tx.start()
         tx_open = True
+        await actor.execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
         await actor.execute("SET LOCAL ROLE living_reader")
         await actor.fetchval("SELECT living.set_scope('A','s1',NULL)")
+        visible_before_revoke = await actor.fetchval(
+            "SELECT count(observation_id) FROM living.observations")
+        assert visible_before_revoke > 0, "fixture had no observations visible before scope revocation"
         deleted = await admin.fetch(
             "DELETE FROM living.role_scope WHERE role_name='living_reader' "
             "AND tenant_id='A' AND source_id='s1' AND company_id IS NULL RETURNING role_name")
         assert len(deleted) == 1 and deleted[0]["role_name"] == "living_reader", (
             "expected to delete exactly the living_reader A/s1 grant", deleted)
-        try:
-            await actor.fetchval("SELECT living.assert_scope('A','s1')")
-        except asyncpg.PostgresError as error:
-            assert error.sqlstate == "P0001" and "SCOPE_NOT_GRANTED" in str(error), (
-                error.sqlstate, str(error))
-            existing_context = (error.sqlstate, str(error).splitlines()[0])
-        else:
-            raise AssertionError("existing scoped session remained accepted after grant deletion")
+        visible_after_revoke = await actor.fetchval(
+            "SELECT count(observation_id) FROM living.observations")
+        assert visible_after_revoke == 0, (
+            "existing scoped context still reads observations after grant deletion",
+            visible_before_revoke, visible_after_revoke)
+        existing_context = (visible_before_revoke, visible_after_revoke)
         await tx.rollback()
         tx_open = False
         try:
@@ -371,9 +373,9 @@ async def test_pg_dump_restore_to_distinct_postgres_cluster(record_property):
                                   "SELECT count(*) FROM living.observations") >= 1
                 revoked_src = await assert_revoked_scope_is_denied(c, source_dsn, src.name)
                 revoked_dst = await assert_revoked_scope_is_denied(d, target_dsn, dst.name)
-                assert "SCOPE_NOT_GRANTED" in revoked_src[0][1]
+                assert revoked_src[0][0] > 0 and revoked_src[0][1] == 0
                 assert "SCOPE_NOT_GRANTED" in revoked_src[1][1]
-                assert "SCOPE_NOT_GRANTED" in revoked_dst[0][1]
+                assert revoked_dst[0][0] > 0 and revoked_dst[0][1] == 0
                 assert "SCOPE_NOT_GRANTED" in revoked_dst[1][1]
             finally:
                 await d.close()
