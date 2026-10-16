@@ -1,12 +1,12 @@
 # SDLC state
-Project: ERP_MCP_R2   Sprint: Phase 2 / G1 closure   Phase: 7 Verify   HEAD: `765dc66527a97e750a69e400ad0855cc299e814a` (repository HEAD when this checkpoint update began; subsequent commit is documentation-only)   G1 code review HEAD: `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`   Updated: 2026-10-16
+Project: ERP_MCP_R2   Sprint: Phase 2 / G1 closure   Phase: 7 Verify   HEAD: `d7841996344c94c6db57cfd284dded31dd719a14` (repository HEAD when this checkpoint refresh began; this checkpoint commit is documentation-only)   G1 code review HEAD: `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`   Updated: 2026-10-16
 
 ## Artifacts
 
 | Phase | Artifact path | Author agent/model | Head | Status |
 |---|---|---|---|---|
 | 6 Build | `tests/phase2/test_g1_crash.py`, `tests/phase2/test_g1_restore.py`, `docs/phase2/CHANGE_RECORD_057.md` | `e2e-runner` / GPT-6 Luna; implementation details in linked change record | Recorded there; subsequently revised through `17b6de7` | Source scenarios authored and committed |
-| 7 Verify | `docs/phase2/G1_OPERATOR_BACKLOG.md`, `docs/phase2/G1_EVIDENCE_PACKET_PLAN.md`, `docs/phase2/CHANGE_RECORD_059.md`, `docs/phase2/CHANGE_RECORD_060.md`, `docs/phase2/CHANGE_RECORD_062.md` | `functional-test-reviewer` / GPT-6 Luna; GPT-PM static review, request `8bcc1579-b818-4aef-98a6-eab6a2d470fb` | Exact static review: `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`; docs through `765dc66527a97e750a69e400ad0855cc299e814a` | Static review approved, 0 BLOCKER / 0 MAJOR; runtime `NOT_RUN` because project rules prohibit pytest. Evidence assembly plan prepared; phase exit incomplete. |
+| 7 Verify | `docs/phase2/G1_OPERATOR_BACKLOG.md`, `docs/phase2/G1_EVIDENCE_PACKET_PLAN.md`, `docs/phase2/CHANGE_RECORD_059.md`, `docs/phase2/CHANGE_RECORD_060.md`, `docs/phase2/CHANGE_RECORD_062.md`, `docs/phase2/CHANGE_RECORD_064.md` | `functional-test-reviewer` / GPT-6 Luna; GPT-PM static review, request `8bcc1579-b818-4aef-98a6-eab6a2d470fb` | Exact static review: `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`; supporting docs through `d7841996344c94c6db57cfd284dded31dd719a14` | Static review approved, 0 BLOCKER / 0 MAJOR; runtime `NOT_RUN` because project rules prohibit pytest. Candidate focused-file map prepared for test-agent acceptance; phase exit incomplete. |
 | 8 Gate | `docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`, `governance/GATE_MANIFEST.json` | GPT-PM static review recorded; no G1 gate-specific approval | G1 source finding reviewed at `17b6de7`; gate manifest remains `NOT_PASSED` | Not passed; final exact-head gate approval and push are not authorized |
 
 ## Open questions / backlog items (owner)

@@ -12,6 +12,21 @@ Date: 2026-10-16. Purpose: assemble the outstanding G1 evidence without treating
 | Capacity qualification decision | `CAPACITY_DRILL.md` records single-run measurements on a local disposable PostgreSQL container and explicitly says they are not a production guarantee or G1 exit decision. | Attach that drill as historical prototype context. Record the workload envelope and target environment required for the intended G1 scope, the responsible decision role, and a reasoned accept/reject disposition. If a representative measurement is required, record its exact environment, repeated samples, contention, latency/throughput/error criteria and observed results. Do not infer thresholds from the old noisy runs. | Database/security lane; a workload target and qualification environment are not established by the current evidence. No human is named. | `OPEN` |
 | G1 evidence index and gate review | Static source review and GPT-PM focused review are recorded in `CHANGE_RECORD_060.md`; G1-M01 is closed at source level only. | Create an exact-head index linking every G1 criterion to its evidence artifact, reviewer, result and limitations. Obtain database/security gate-specific review of the complete package. Keep the manifest gate state unchanged until acceptance evidence supports a gate decision. | Database/security review lane. No human is named. | `OPEN` |
 
+## Candidate focused test-file map
+
+This map is based on the test modules' docstrings and filenames. It is a selection aid for the authorized functional-test reviewer, not a claim that every file is required or that any file passed. The reviewer must map the accepted G1 criteria to the minimal falsifiable set and record omissions before execution.
+
+| Evidence area | Candidate files | Boundary |
+|---|---|---|
+| Static migration/safety preflight | `tests/phase2/test_g1_migration_contract.py`, `tests/phase2/test_g1_safety_requirements.py` | SQL-text assertions only; cannot establish database behavior or effective grants. |
+| PostgreSQL integration and hardening | `tests/phase2/test_g1_postgres_integration.py`, `tests/phase2/test_g1_postgres_integration_hardening.py`, `tests/phase2/test_g1_postgres_integration_review2.py` | Disposable DBs; require `ERP_PHASE2_TEST_DSN` and `ERP_PHASE2_REQUIRE_PG=1` to avoid silent skips. |
+| Multi-process concurrency | `tests/phase2/test_g1_concurrency_mp.py` | Real OS processes against disposable PostgreSQL; not covered by source-only preflight. |
+| Crash/restore and fixture ownership | `tests/phase2/test_g1_crash.py`, `tests/phase2/test_g1_restore.py` | Docker opt-in and invocation-owned clusters; exact COMMIT boundary and distinct-cluster restore criteria are detailed in `G1_OPERATOR_BACKLOG.md`. |
+| Capacity smoke | `tests/phase2/test_g1_capacity_smoke.py` | Small-size drill/recount only; does not turn `CAPACITY_DRILL.md` into production capacity evidence or a G1 capacity decision. |
+| Guard mutation evidence | `tests/phase2/test_g1_guard_mutations.py` | Mutant and baseline disposable databases; include only where the gate reviewer confirms guard load-bearing proof is required. |
+
+All candidate files remain unexecuted in this pass. Runtime results, skips, omissions and any failures must be reported individually by the authorized test agents; a static preflight result cannot substitute for a runtime row.
+
 ## Ordered assembly sequence
 
 1. Preserve the current code and source review as source-level evidence only. Current PM approval is for exact source HEAD `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`; later documentation commits do not change that code range, and no runtime result is implied.
