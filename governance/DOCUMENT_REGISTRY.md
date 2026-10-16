@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 184 tracked paths, 3 local-only paths.
+Inventory: 187 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -126,6 +126,8 @@ Inventory: 184 tracked paths, 3 local-only paths.
 | docs/phase2/CHANGE_RECORD_117.md | Phase 2 design | "Change record 117 — record reliability follow-up and refresh the document registry" |
 | docs/phase2/CHANGE_RECORD_118.md | Phase 2 design | "Change record 118 — regenerate the document registry for the final evidence set" |
 | docs/phase2/CHANGE_RECORD_119.md | Phase 2 design | "Change record 119 — regenerate the registry after the final evidence records" |
+| docs/phase2/CHANGE_RECORD_120.md | Phase 2 design | "Change record 120 — reconcile current project status and S12 scope" |
+| docs/phase2/CHANGE_RECORD_121.md | Phase 2 design | "Change record 121 — implement local S12 v2.0 evidence fixtures" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -157,6 +159,7 @@ Inventory: 184 tracked paths, 3 local-only paths.
 | docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
 | docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
 | docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md | Phase 2 design | "S12-APPROVAL-2: shared canonical approval digest (design specification)" |
+| docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md | Phase 2 design | "S12 Contract Freeze v2.0 — governed purchase receipt write" |
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
@@ -204,6 +207,4 @@ Inventory: 184 tracked paths, 3 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_120.md |
-| docs/phase2/CHANGE_RECORD_121.md |
-| docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md |
+| docs/phase2/CHANGE_RECORD_122.md |
