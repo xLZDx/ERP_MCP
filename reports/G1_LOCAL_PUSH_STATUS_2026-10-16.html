@@ -41,7 +41,7 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 0698801</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; PM-reviewed code HEAD 315e831</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -50,7 +50,7 @@
 <!-- report-conform:end -->
 
 
-<p><strong>Date:</strong> 2026-10-16. <strong>Current HEAD:</strong> <code>06988014bf85bc469b2e1e7b15147dfc4d9b3b86</code>. <strong>Test correction:</strong> <code>69857fdd9f5c8fc52beb09074db000b50495fdd6</code>. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+<p><strong>Date:</strong> 2026-10-16. <strong>Exact code HEAD reviewed by PM:</strong> <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>. <strong>Documentation updated after PM reply:</strong> the later local commit only records status; it does not change the reviewed code diff or authorize a push. <strong>Test correction:</strong> <code>69857fdd9f5c8fc52beb09074db000b50495fdd6</code>. <strong>PM Bridge request:</strong> <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code>. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Request status</h2>
 <table>
@@ -89,27 +89,26 @@
       <td class="state">Correction committed and statically reviewed; runtime is NOT_RUN</td>
       <td>The functional run on baseline <code>4b9f3b0</code> reported 46 passed and 1 failed. The failure was a direct call to internal <code>living.assert_scope</code> as <code>living_reader</code>. Commit <code>69857fd</code> checks row visibility before and after deleting the grant through RLS, explicitly selects READ COMMITTED, and keeps a separate fresh-context <code>living.set_scope</code> check. Database-reviewer and silent-failure-hunter reported no remaining issue.</td>
       <td>The corrected test has not been rerun. The AGENTS.md supplied in this session prohibits the required pytest invocation, so the old result does not validate the new code.</td>
-      <td>Allow the test-agent run in the active instructions, then have the test agents rerun the focused case. Until then, push remains NOT_READY.</td>
+      <td>The corrected test has not run: the instructions supplied for this session prohibit pytest. PM requires runtime evidence for the exact HEAD before changing PUSH NO-GO.</td>
     </tr>
     <tr>
       <td>PM review and push</td>
-      <td class="state">PM payload prepared but not sent; no push</td>
-      <td>An adversarial review payload for exact HEAD <code>06988014</code> is staged, request ID <code>84c016d2-5b74-4a0f-92dd-cd7849707b4a</code>. PM Bridge reports that the text is on the clipboard and requires manual paste/send.</td>
-      <td>No GPT-PM response and no permitted runtime result for the corrected test.</td>
-      <td>Paste the prepared text into ChatGPT, send it and return the reply. After a permitted green exact-head run, obtain fresh approval for this HEAD, then push. Reply owner: operator; push owner: implementation agent after the gate.</td>
+      <td class="state">STATIC APPROVE; PUSH NO-GO; not pushed</td>
+      <td>PM Bridge reply for request <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> reviewed exact code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>: static approval, no confirmed BLOCKER/MAJOR. The push verdict was NO-GO until exact-head runtime evidence is available.</td>
+      <td>An allowed focused runtime run of the corrected test is required. The test remains NOT_RUN; formal G1 remains NOT_PASSED.</td>
+      <td>First the operator changes the active rule to allow the required run; then functional-test-reviewer/e2e-runner execute it. Obtain an updated PM decision after the result. The implementation agent pushes only after the gate permits it.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Gate status</h2>
-<p>Local push: <strong>NOT_READY</strong>. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Commits <code>69857fd</code> and <code>0698801</code> are local; the remote branch was not changed. The remaining local G1 push blocker is the lack of a permitted exact-head rerun; the PM response is also pending.</p>
+<p>Local push: <strong>NOT_READY</strong>; PM verdict: <strong>PUSH NO-GO</strong>. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. PM separately returned <code>STATIC APPROVE</code> with no confirmed BLOCKER/MAJOR. The corrected test remains <code>NOT_RUN</code> because the supplied active instructions prohibit pytest. This later documentation record is not push approval. The remote branch was not changed.</p>
 
 <h2>Ordered next steps</h2>
 <ol>
-  <li>Resolve the active AGENTS.md conflict by allowing focused pytest for the test agents, if the original goal still applies. Without this change the test remains NOT_RUN.</li>
-  <li>Paste and send the prepared PM Bridge request; obtain a reply for HEAD <code>06988014</code>.</li>
-  <li>Once test execution is allowed, start the dedicated PostgreSQL instance and have the functional/E2E agents rerun the exact case.</li>
-  <li>If the exact-head result is green and GPT approves this HEAD, push. Otherwise record the concrete defect and repeat the relevant specialist cycle.</li>
+  <li>The operator allows the required focused pytest run in the active instructions; this is the current blocker to runtime evidence.</li>
+  <li>Functional-test-reviewer/e2e-runner run the corrected test at exact code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and record the command and result.</li>
+  <li>Obtain a new PM push decision from that result. If the result is green and the gate permits it, the implementation agent pushes; if it finds a defect, the agents fix it and repeat the required cycle.</li>
 </ol>
 
 

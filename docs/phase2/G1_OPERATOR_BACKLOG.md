@@ -35,7 +35,7 @@ The two drafted SQL migrations must not be deployed until G1-B04/B05/B06 are res
 
 The original blocker table is preserved as history. The later migrations, authored test scenarios and independent reviews supersede several implementation claims, but do not satisfy G1's formal exit criteria. `governance/GATE_MANIFEST.json` remains authoritative: G1 is NOT_PASSED, engineering IN_PROGRESS, external evidence OPEN, and production authorization NONE. **Scope distinction:** local engineering push is gated by focused local tests authored/executed by the functional-test-reviewer and e2e-runner, relevant specialist review, and fresh exact-head GPT approval under `D:\Repo\AGENTS.md`. G1 formal/release items below do not add separate production-database or deployed-identity prerequisites to that local push. They remain applicable to G1/release acceptance and production authorization.
 
-Current local test status: the first focused run at committed HEAD `4b9f3b08b4e75359b549bda75d6f6ec3307f248e` reported 46 passed and 1 failed. The sole failure came from directly calling internal `living.assert_scope` as `living_reader`, which the grants intentionally disallow. The test owner changed the existing-context assertion to check RLS visibility before and after revocation and kept the separate fresh-context `living.set_scope` denial; commit `69857fd` records this correction. It is not runtime-verified: current workspace instructions prohibit the required pytest rerun. Local push remains NOT_READY until authorized exact-head results and GPT approval exist.
+Current local test status: the first focused run at committed HEAD `4b9f3b08b4e75359b549bda75d6f6ec3307f248e` reported 46 passed and 1 failed. The sole failure came from directly calling internal `living.assert_scope` as `living_reader`, which the grants intentionally disallow. The test owner changed the existing-context assertion to check RLS visibility before and after revocation and kept the separate fresh-context `living.set_scope` denial; commit `69857fd` records this correction. It is not runtime-verified: operator-supplied active workspace instructions prohibit the required pytest rerun. PM Bridge request `f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6` reviewed exact code HEAD `315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4`: STATIC APPROVE, no confirmed BLOCKER/MAJOR, PUSH NO-GO pending allowed exact-head runtime evidence. The minimum next step is permission for the run under the active rules (operator owns that rule change); functional-test-reviewer/e2e-runner own executing the allowed test. Local push remains NOT_READY and formal G1 remains NOT_PASSED.
 
 | Historical blocker | Current evidence/status | Remaining acceptance |
 |---|---|---|
@@ -51,7 +51,7 @@ Current local test status: the first focused run at committed HEAD `4b9f3b08b4e7
 
 Formal G1 exit gaps confirmed by the database and security reviewers at HEAD `8935deda`: no recorded kill timed inside COMMIT; no restore into another PostgreSQL cluster at the accepted revision; the capacity drill is a developer-host measurement, not a production-class capacity decision; and the formal G1 evidence package is absent. The focused COMMIT and restore tests are local engineering evidence and are required for local code push, but they do not by themselves pass formal G1 or authorize production. G1 remains NOT_PASSED.
 
-The focused local test report is the execution evidence for the local engineering push. It must use the exact code revision and disposable local fixtures; it does not require a deployed database or production identity/capacity evidence. Formal G1/release acceptance separately retains effective deployed grants, authenticated approver/evidence identity, capacity disposition and gate review. The initial run executed; its corrected restore assertion has not completed a rerun and is `NOT_RUN` under the current workspace instruction prohibiting pytest.
+The focused local test report is the execution evidence for the local engineering push. It must use the exact code revision and disposable local fixtures; it does not require a deployed database or production identity/capacity evidence. Formal G1/release acceptance separately retains effective deployed grants, authenticated approver/evidence identity, capacity disposition and gate review. The initial run executed; its corrected restore assertion has not completed a rerun and is `NOT_RUN` under the current workspace instruction prohibiting pytest. The static approval recorded below does not override its explicit `PUSH NO-GO` until this runtime evidence exists.
 
 ### Focused runtime acceptance for the two remaining crash/restore cases
 
@@ -107,6 +107,17 @@ in the 12 changed paths. It closed G1-M01 at source level only. Focused local te
 push still requires focused test-agent results, relevant specialist review and fresh GPT approval
 for the exact final diff. Capacity, deployed effective-role/approver evidence and gate-specific
 acceptance remain formal G1/release items.
+
+### Current PM Bridge decision for local push (2026-10-16)
+
+PM Bridge request `f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6` reviewed code HEAD
+`315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4`. Exact reported outcome: `STATIC APPROVE`, no
+confirmed BLOCKER/MAJOR, and `PUSH NO-GO` until an allowed exact-head runtime run is available.
+The corrected restore test remains `NOT_RUN` under the operator-supplied active pytest
+prohibition. Therefore G1 remains `NOT_PASSED` and no push is authorized by this static review.
+After the operator permits the required run, functional-test-reviewer/e2e-runner own execution;
+the resulting evidence needs a new PM push decision. A later documentation-only commit records
+this response and does not change the reviewed code SHA or convert the verdict to approval.
 
 The ordered evidence assembly plan and per-item status are in
 `docs/phase2/G1_EVIDENCE_PACKET_PLAN.md`. It separates local test-agent/GPT evidence for code push
