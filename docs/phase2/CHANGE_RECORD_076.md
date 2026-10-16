@@ -21,6 +21,7 @@
 - A first intermediate rerun caught stale result-shape assertions. The test owner corrected them; the final retry was interrupted when the current instructions prohibited the required test invocation. The corrected diff is `NOT_RUN` and no pass is claimed.
 - `database-reviewer` and `silent-failure-hunter` reviewed the corrected semantics and found no remaining issue; the database reviewer confirmed the explicit transaction isolation statement is correctly placed before queries.
 - The formal G1 gate remains `NOT_PASSED`; production authorization remains `NONE`. Local push readiness remains `NOT_READY` pending permitted exact-head test evidence and fresh exact-head GPT approval.
+- The correction is committed as `69857fd`; this commit identity does not change the missing runtime evidence.
 
 ## Review and verification state
 
