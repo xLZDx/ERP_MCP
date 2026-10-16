@@ -807,3 +807,5 @@ Operator backlog G0 status reconciliation (2026-10-16): labeled the initial P0/P
 SDLC checkpoint refresh (2026-10-16): recorded the latest documentation baseline separately from the G1 code review HEAD and refreshed Verify/Gate artifact links. No gate state or runtime evidence changed. See `docs/phase2/CHANGE_RECORD_069.md`.
 
 G1 proposed minimal runtime set (2026-10-16): `functional-test-reviewer` (GPT-6 Luna, low effort) mapped a focused set to G1-B04..B08, identified supplemental scenarios and left concurrent head-promotion/cursor-page scope for gate review. This is a read-only proposal; all results remain NOT_RUN. See `docs/phase2/CHANGE_RECORD_070.md`.
+
+G1-B07 concurrency scope resolution (2026-10-16): based on the explicit backlog acceptance “Concurrent workers, crashes, stale fencing, replay prove pass/fail,” the focused runtime proposal includes distinct head-promotion CAS, competing cursor-page commit, and identical-page replay scenarios. They remain required candidates for a future authorized focused run, not gate approval; results are NOT_RUN. See `docs/phase2/CHANGE_RECORD_071.md`.
