@@ -56,3 +56,7 @@ The `database-reviewer` then reviews the completed migration, lock interactions,
 ## Unknowns and remaining dependencies
 
 Formal S13 entry remains unapproved; the documented real 1C writer/pre-image source, deployed identity and key custody, external checkpoint service, scheduler/alerting, and deployment evidence remain external or separately scoped dependencies. This local fix addresses only the source-level kill-switch re-enable failure and bounded-work gap.
+
+### Nonblocking reliability review follow-up
+
+The 2026-10-16 reliability review found a possible transient deadlock in expired-approval-nonce cleanup: `recover_sweep` may lock a nonce before the corresponding record (`020_kill_switch_recovery_guard.sql`), while `approve` locks the record before the nonce (`008_change_hardening_b.sql`). PostgreSQL aborts one transaction on a deadlock; because the recovery mode update is in the same transaction, this cannot falsely commit `OFF`, and the operator can retry. This is MINOR/INFO, not a release blocker. Backlog: align lock order or move nonce expiration into an independently ordered phase, then add a deterministic contention scenario. No performance or repeated-contention guarantee is claimed.
