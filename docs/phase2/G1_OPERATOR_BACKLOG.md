@@ -35,7 +35,7 @@ The two drafted SQL migrations must not be deployed until G1-B04/B05/B06 are res
 
 The original blocker table is preserved as history. The later migrations, authored test scenarios and independent reviews supersede several implementation claims, but do not satisfy G1's formal exit criteria. `governance/GATE_MANIFEST.json` remains authoritative: G1 is NOT_PASSED, engineering IN_PROGRESS, external evidence OPEN, and production authorization NONE. **Scope distinction:** local engineering push is gated by focused local tests authored/executed by the functional-test-reviewer and e2e-runner, relevant specialist review, and fresh exact-head GPT approval under `D:\Repo\AGENTS.md`. G1 formal/release items below do not add separate production-database or deployed-identity prerequisites to that local push. They remain applicable to G1/release acceptance and production authorization.
 
-Current local test status: the first focused run at committed HEAD `4b9f3b08b4e75359b549bda75d6f6ec3307f248e` reported 46 passed and 1 failed because the reader directly called internal `living.assert_scope`. Commit `69857fd` corrected the assertion to check RLS-visible rows before and after revocation and retained the fresh-context `living.set_scope` denial. The corrected distinct-cluster restore test `test_pg_dump_restore_to_distinct_postgres_cluster` then passed for functional-test-reviewer (1 passed in 17.89s) and e2e-runner (1 passed in 15.27s; repeat with JUnit XML, 1 passed in 14.82s). The repeat emitted one PytestWarning because `record_property` is incompatible with xunit2; XML properties were captured. Both source and target were distinct Docker containers and PostgreSQL system identifiers; exact evidence is in `CHANGE_RECORD_080.md`. This is one focused case, not a green result for the whole selected test set. PM Bridge request `f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6` reviewed code HEAD `315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4`: STATIC APPROVE, no confirmed BLOCKER/MAJOR, PUSH NO-GO pending exact-head runtime evidence. The restore-case dependency is now met, but a fresh PM push decision is not recorded. Local push remains NOT_READY and formal G1 remains NOT_PASSED.
+Current local test status: the first focused run at committed HEAD `4b9f3b08b4e75359b549bda75d6f6ec3307f248e` reported 46 passed and 1 failed because the reader directly called internal `living.assert_scope`. Commit `69857fd` corrected the assertion to check RLS-visible rows before and after revocation and retained the fresh-context `living.set_scope` denial. The corrected distinct-cluster restore test passed for functional-test-reviewer (1 passed in 17.89s) and e2e-runner (1 passed in 15.27s; repeat with JUnit XML, 1 passed in 14.82s), as recorded in `CHANGE_RECORD_080.md`. At code/test HEAD `73e4253b571fa45382af6f954f773e1eae5f91be`, functional-test-reviewer reported raw 45 passed, 0 failed, 0 skipped in 57.13s; e2e-runner separately passed observed explicit-COMMIT (1 in 14.74s). Database-reviewer identified a MAJOR evidence flaw in the original MAJOR-02 test. Functional-test-reviewer fixed it in code commit `a6263e4bafe69aedd14372f394d67da7b6fb3366`; the corrected test observed exact API SQL, Lock wait, transactionid wait event and the revoke backend in `pg_blocking_pids` before revoke commit, and all 24 variants passed in 16.56s. Database-reviewer confirmed the finding resolved. Silent-failure-hunter found no B/M and confirmed the false-pass protection; it reviewed read-only and did not rerun tests, noting the wait-event subtype itself is not asserted. Static code-reviewer found no B/M or direct regression in 40 paths. The previous PM reply `b7f84f7a-3875-4ee1-b839-2556c5eb1f8a` still requires a fresh exact-head push decision. Selected runtime and specialist review are complete; local push is pending PM. Formal G1 remains NOT_PASSED.
 
 | Historical blocker | Current evidence/status | Remaining acceptance |
 |---|---|---|
@@ -88,13 +88,10 @@ prove runtime behavior.
   the former shared `erp-phase2-test-pg` target.
 
 Historical snapshot before the test-agent run: the focused files had not been executed and no
-PostgreSQL container was started during that documentation pass. Current status: the functional
-focused run reported 46 passed and 1 failed at committed HEAD `4b9f3b08`; e2e-runner separately
-passed the explicit-COMMIT case and the restore case failed at the invalid internal-helper call.
-The test-only correction is now authored, but its final rerun is `NOT_RUN` under the current
-workspace instruction. Formal G1 remains `NOT_PASSED`; capacity, effective-role/approver
-production evidence and complete G1 gate review remain separate release acceptance items, not
-prerequisites for pushing local engineering commits.
+PostgreSQL container was started during that documentation pass. That snapshot is superseded by
+the runtime results recorded in `CHANGE_RECORD_080.md` and `CHANGE_RECORD_081.md` below. Formal
+G1 remains `NOT_PASSED`; capacity, effective-role/approver production evidence and complete G1
+gate review remain separate release acceptance items, not prerequisites for local code push.
 
 ### GPT-PM focused static re-review (2026-10-16)
 
@@ -118,6 +115,24 @@ distinct-cluster restore scenario has since passed on code-identical documentati
 This single-case pass does not establish the full selected test set or formal G1. The earlier PM
 verdict is not a new push approval; obtain an updated PM push decision after the required test
 evidence is complete. G1 remains `NOT_PASSED` and production authorization remains `NONE`.
+
+### Post-runtime database review and MAJOR-02 correction (2026-10-16)
+
+The raw functional run at code/test HEAD `73e4253b571fa45382af6f954f773e1eae5f91be` reported
+45 passed, 0 failed, 0 skipped in 57.13s; its 22 selected node IDs include a MAJOR-02
+parameterized node expanded to 24 cases. Database-reviewer identified a gap because sleep plus
+task state did not prove the API reached the source-row-lock wait before revoke. Functional-test-reviewer
+fixed this in code commit `a6263e4bafe69aedd14372f394d67da7b6fb3366` (linked record
+`CHANGE_RECORD_082.md`) and reran all 24 variants: 24 passed, 0 failed, 0 skipped in 16.56s.
+Each case observed the exact API SQL, a `Lock` wait on `transactionid`, and `pg_blocking_pids`
+containing the revoke backend before the revoke transaction committed. Timeout cancels the
+blocked query, rolls back and reports `NOT_RUN`. Database-reviewer confirmed the original finding
+resolved. Silent-failure-hunter found no BLOCKER/MAJOR and confirmed the observer prevents a
+false PASS; the review was read-only and did not rerun tests, and it noted the wait-event subtype
+is not asserted. Static code-reviewer inspected 40 changed paths and found no BLOCKER/MAJOR or
+direct regression. The separate explicit-COMMIT case passed under e2e-runner (1 passed in 14.74s);
+restore passes remain in record 080. The full selected local evidence set is complete; a fresh
+PM decision for the exact current head is still pending. No push was performed.
 
 The ordered evidence assembly plan and per-item status are in
 `docs/phase2/G1_EVIDENCE_PACKET_PLAN.md`. It separates local test-agent/GPT evidence for code push
