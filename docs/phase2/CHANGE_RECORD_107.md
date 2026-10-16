@@ -17,7 +17,7 @@ Migration 008's bounded sweep records item failures, but the kill-switch path ig
 
 - PM approval request correlation: `115ca957-10e5-4efe-ad73-9c4d693d1e3b`.
 - Synthetic, non-gating prototype only. No formal S13/G1–G8 closure or production deployment is claimed.
-- Design-source refinement: migration 004 permits active `RLC_UNCLEAN` holds in addition to the three causes listed in the initial design predicate. Migration 020 treats an active hold of any of those four causes as unresolved. The added predicate is conservative; PM confirmation is pending before the test phase.
+- Design-source refinement: migration 004 permits active `RLC_UNCLEAN` holds in addition to the three causes listed in the initial design predicate. Migration 020 treats an active hold of any of those four causes as unresolved. The addendum review is pending; prototype verification proceeds under the source-backed, fail-closed refinement documented in CR110. This is not formal S13 approval.
 - No real external 1C outcome, scheduler, writer fence, deployed identity/key custody, or live database state is asserted or changed.
 - Migrations 006 and 008 are not edited.
 

@@ -12,13 +12,13 @@ The first design predicate named only three hold causes. Migration 004's `change
 ## Decisions and scope
 
 - Preserve the rule that any active unresolved hold blocks OFF.
-- No schema or runtime behavior is changed by this design record. Migration 020 implements the predicate; PM confirmation for this refinement is requested before focused test work.
+- No schema or runtime behavior is changed by this design record. Migration 020 implements the predicate. The PM addendum review is requested; focused prototype verification proceeds because the full allowed hold set is explicit in migration 004 and including the additional cause only retains STOP until the hold is resolved. This does not approve formal S13.
 - This record does not claim formal S13 or G1–G8 closure.
 
 ## Review and verification state
 
 - Source evidence: `db/phase2/004_change_ledger.sql` constrains `cause` to the four values listed above.
-- PM Bridge addendum review: pending.
+- PM Bridge addendum review: pending; the final exact-head review must consider this refinement.
 - Tests, SQL checks, database commands, migration execution, and runtime evidence: `NOT_RUN`.
 
 ## Contracts and paths

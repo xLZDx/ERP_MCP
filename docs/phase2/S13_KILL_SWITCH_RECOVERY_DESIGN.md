@@ -1,6 +1,6 @@
 # S13 design: keep kill switch active until recovery completes
 
-Date: 2026-10-16. Status: design approved for the non-gating S13 prototype at HEAD `5fb4c6e`; the active-hold predicate addendum for `RLC_UNCLEAN` is awaiting PM review. Migration 020 is present locally but remains unverified; no formal S13 approval is implied.
+Date: 2026-10-16. Status: design approved for the non-gating S13 prototype at HEAD `5fb4c6e`; the `RLC_UNCLEAN` active-hold refinement is included in local migration 020, with a PM addendum review requested. Migration 020 remains subject to focused verification and exact-head review; no formal S13 approval is implied.
 
 ## Goal and non-goals
 
