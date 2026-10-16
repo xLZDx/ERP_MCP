@@ -41,7 +41,7 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ d30c38c</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; origin/main @ 1790034</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -54,10 +54,10 @@
 
 
 
-<p><strong>Date:</strong> 2026-10-16. <strong>Corrected code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. `functional-test-reviewer` reran the selected set of 22 node IDs (45 executions) at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>; test sources match the stated code/test HEAD. Result: 45 passed, 0 failed, 0 skipped. `e2e-runner` executed explicit-COMMIT and distinct-cluster restore at detached <code>a6263e4</code>: 2 passed, 0 failed, 0 skipped. `database-reviewer` reviewed this exact-tree evidence: no database BLOCKER/MAJOR. <strong>Fresh PM verdict:</strong> pending; push remains PENDING_PM. Formal G1 is NOT_PASSED, production authorization is NONE, and Release 2 is NO-GO. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+<p><strong>Date:</strong> 2026-10-16. <strong>Corrected code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. `functional-test-reviewer` reran the selected set of 22 node IDs (45 executions) at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>; test sources match the stated code/test HEAD. Result: 45 passed, 0 failed, 0 skipped. `e2e-runner` executed explicit-COMMIT and distinct-cluster restore at detached <code>a6263e4</code>: 2 passed, 0 failed, 0 skipped. `database-reviewer` reviewed this exact-tree evidence: no database BLOCKER/MAJOR. <strong>Fresh PM verdict:</strong> exact-head approval was granted for HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>. The normal fast-forward push <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac..17900345c88237290c498d73b6f8849c265351d1</code> completed to <code>origin/main</code>; remote HEAD was confirmed equal to the pushed HEAD. Formal G1 is NOT_PASSED, production authorization is NONE, and Release 2 is NO-GO. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Current evidence assessment</h2>
-<p>The earlier functional run at <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> reported 45 passed, 0 failed, 0 skipped in 57.13 s, but its initial 24 MAJOR-02 results were not accepted because the lock boundary was not proven. After the correction in code/test commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, the functional agent reran all selected 22 node IDs at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>: 45 passed, 0 failed, 0 skipped. The corrected MAJOR-02 test blob is identical on both heads: <code>ce5c2c4f86b4751b8f03744fff16831557887d4f</code>. Its observer asserts active API SQL, <code>wait_event_type=Lock</code>, and the revoke backend PID in <code>pg_blocking_pids</code>; <code>wait_event=transactionid</code> is recorded as metadata but is not asserted. Database-reviewer confirmed the original MAJOR correction and, in a fresh read-only review of exact-tree evidence, found no database BLOCKER/MAJOR. At detached code/test HEAD <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, `e2e-runner` ran <code>test_terminate_backend_during_observed_explicit_commit</code> and <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>: 2 passed, 0 failed, 0 skipped. The COMMIT scenario remains bounded: it does not cover the post-WAL-commit/pre-acknowledgement gap. Durations and container IDs for the latest reruns were not provided and are not inferred from earlier executions. Disposable test databases were removed. A fresh PM verdict for the current diff remains pending. Formal G1 is <strong>NOT_PASSED</strong>, production authorization is <strong>NONE</strong>, and Release 2 is <strong>NO-GO</strong>.</p>
+<p>The earlier functional run at <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> reported 45 passed, 0 failed, 0 skipped in 57.13 s, but its initial 24 MAJOR-02 results were not accepted because the lock boundary was not proven. After the correction in code/test commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, the functional agent reran all selected 22 node IDs at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>: 45 passed, 0 failed, 0 skipped. The corrected MAJOR-02 test blob is identical on both heads: <code>ce5c2c4f86b4751b8f03744fff16831557887d4f</code>. Its observer asserts active API SQL, <code>wait_event_type=Lock</code>, and the revoke backend PID in <code>pg_blocking_pids</code>; <code>wait_event=transactionid</code> is recorded as metadata but is not asserted. Database-reviewer confirmed the original MAJOR correction and, in a fresh read-only review of exact-tree evidence, found no database BLOCKER/MAJOR. At detached code/test HEAD <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, `e2e-runner` ran <code>test_terminate_backend_during_observed_explicit_commit</code> and <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>: 2 passed, 0 failed, 0 skipped. The COMMIT scenario remains bounded: it does not cover the post-WAL-commit/pre-acknowledgement gap. Durations and container IDs for the latest reruns were not provided and are not inferred from earlier executions. Disposable test databases were removed. PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>, and the normal fast-forward push from <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> to that HEAD succeeded; post-push lookup confirmed <code>origin/main</code> at the same HEAD. This documentation update creates a new HEAD and is not covered by that approval. Formal G1 is <strong>NOT_PASSED</strong>, production authorization is <strong>NONE</strong>, and Release 2 is <strong>NO-GO</strong>.</p>
 
 <h2>Request status</h2>
 <table>
@@ -100,28 +100,28 @@
     </tr>
     <tr>
       <td>Selected focused scenarios, including MAJOR-02</td>
-      <td class="state">PASS for selected local scenarios; fresh GPT-PM decision pending</td>
+      <td class="state">PASS for selected local scenarios; PM approved and push completed</td>
       <td>Exact-tree functional rerun: 45 passed/0 failed/0 skipped across 22 node IDs at docs HEAD <code>0800269</code>, with test blobs matching code/test HEAD <code>a6263e4</code>. Exact-tree E2E rerun: explicit-COMMIT and distinct-cluster restore, 2 passed/0 failed/0 skipped at detached <code>a6263e4</code>. Database-reviewer found no database B/M and confirmed the lock evidence; COMMIT test does not cover the post-WAL/pre-acknowledgement gap. MAJOR-02 asserts Lock wait type and blocker PID; the observed transactionid subtype is not asserted. Earlier static code review found no B/M across 44 changed paths at <code>c2157e7</code>; silent-failure-hunter found no B/M in read-only review.</td>
-      <td>These local scenarios do not prove formal G1, deployed identity, capacity, or production readiness. Exact final diff still needs fresh PM review.</td>
-      <td>Send the exact current code/documentation diff and evidence to GPT-PM. Owner: implementation agent.</td>
+      <td>These local scenarios do not prove formal G1, deployed identity, capacity, or production readiness. PM approved the pushed range; any subsequent push of a new HEAD requires a fresh exact-head PM decision.</td>
+      <td>For any subsequent push, first obtain a PM decision for that exact new HEAD. Owner: implementation agent.</td>
     </tr>
     <tr>
       <td>PM review and push</td>
-      <td class="state">STATIC APPROVE; prior PUSH NO-GO awaits updated decision; not pushed</td>
-      <td>PM Bridge reply for request <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> reviewed exact code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code>: static approval, no confirmed BLOCKER/MAJOR. The push verdict was NO-GO until exact-head runtime evidence is available.</td>
-      <td>Runtime and specialist evidence are complete; no new PM reply covers the current HEAD.</td>
-      <td>Send the exact head/diff and evidence to GPT-PM; push only after explicit approval. Owner of push: implementation agent.</td>
+      <td class="state">EXACT-HEAD APPROVE; fast-forward push completed</td>
+      <td>The earlier PM Bridge reply <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> covered code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and retained NO-GO pending runtime evidence. After selected runs completed, PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; a normal fast-forward push from the preflight remote HEAD <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> succeeded, and <code>origin/main</code> was confirmed at <code>17900345c88237290c498d73b6f8849c265351d1</code>.</td>
+      <td>Runtime and specialist evidence are complete; PM approved the pushed exact HEAD, and the <code>3aba6e3..1790034</code> range was pushed successfully. This documentation commit creates a new HEAD; a later push requires a new exact-head PM decision.</td>
+      <td>Do not reuse the prior approval for a new push: obtain a separate exact-head GPT-PM decision for any new HEAD. Owner: implementation agent.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Gate status</h2>
-<p>Local push: <strong>PENDING_PM</strong> until a fresh decision for the current diff. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. The latest known PM reply was <strong>PUSH NO-GO</strong>; no new verdict is recorded yet. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. No push was performed; these reports do not authorize one.</p>
+<p>PM approved and the normal fast-forward push completed for <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac..17900345c88237290c498d73b6f8849c265351d1</code>; post-push lookup confirmed <code>origin/main</code> at <code>17900345c88237290c498d73b6f8849c265351d1</code>. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. This documentation update creates a new HEAD and is not covered by the earlier approval; a later push requires fresh exact-head PM approval.</p>
 
 <h2>Ordered next steps</h2>
 <ol>
-  <li>Send the current exact diff and selected runtime evidence to GPT-PM for a new push decision.</li>
-  <li>Do not push until GPT-PM explicitly approves the current HEAD. Formal G1 remains a separate open gate.</li>
+  <li>Commit this report reconciliation and CHANGE_RECORD_091 locally as a documentation-only commit; the earlier PM approval does not cover the new HEAD.</li>
+  <li>Obtain a separate exact-head PM decision before any later push. Formal G1 remains a separate open gate.</li>
 </ol>
 
 
