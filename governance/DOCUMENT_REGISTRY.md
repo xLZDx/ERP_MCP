@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 173 tracked paths, 1 local-only paths.
+Inventory: 182 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -115,6 +115,15 @@ Inventory: 173 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_106.md | Phase 2 design | "Change record 106 — normalize S13 registry snapshot" |
 | docs/phase2/CHANGE_RECORD_107.md | Phase 2 design | "Change record 107 — keep the kill switch active through recovery" |
 | docs/phase2/CHANGE_RECORD_108.md | Phase 2 design | "Change record 108 — include every allowed active hold in S13 recovery" |
+| docs/phase2/CHANGE_RECORD_109.md | Phase 2 design | "Change record 109 — refresh the document registry for R-03 and S13" |
+| docs/phase2/CHANGE_RECORD_110.md | Phase 2 design | "Change record 110 — proceed with source-backed S13 hold refinement" |
+| docs/phase2/CHANGE_RECORD_111.md | Phase 2 design | "Change record 111 — refresh registry after S13 addendum decision" |
+| docs/phase2/CHANGE_RECORD_112.md | Phase 2 design | "Change record 112 — enforce Ed25519 at action evidence consumption" |
+| docs/phase2/CHANGE_RECORD_113.md | Phase 2 design | "Change record 113 — add S13 kill-switch recovery runtime evidence" |
+| docs/phase2/CHANGE_RECORD_114.md | Phase 2 design | "Change record 114 — intermediate document registry refresh after the first R-03 and S13 closure pass" |
+| docs/phase2/CHANGE_RECORD_115.md | Phase 2 design | "Change record 115 — extend R-03 post-cutover consumer coverage" |
+| docs/phase2/CHANGE_RECORD_116.md | Phase 2 design | "Change record 116 — close R-03 ACL coverage follow-up" |
+| docs/phase2/CHANGE_RECORD_117.md | Phase 2 design | "Change record 117 — record reliability follow-up and refresh the document registry" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -136,7 +145,7 @@ Inventory: 173 tracked paths, 1 local-only paths.
 | docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
 | docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
-| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 for new signed actions" |
+| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 cutover for writes and action evidence" / "R-03 design: Ed25519 for new signed actions" |
 | docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
@@ -193,4 +202,4 @@ Inventory: 173 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_109.md |
+| docs/phase2/CHANGE_RECORD_118.md |
