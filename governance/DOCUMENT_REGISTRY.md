@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 182 tracked paths, 1 local-only paths.
+Inventory: 183 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -124,6 +124,7 @@ Inventory: 182 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_115.md | Phase 2 design | "Change record 115 — extend R-03 post-cutover consumer coverage" |
 | docs/phase2/CHANGE_RECORD_116.md | Phase 2 design | "Change record 116 — close R-03 ACL coverage follow-up" |
 | docs/phase2/CHANGE_RECORD_117.md | Phase 2 design | "Change record 117 — record reliability follow-up and refresh the document registry" |
+| docs/phase2/CHANGE_RECORD_118.md | Phase 2 design | "Change record 118 — regenerate the document registry for the final evidence set" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -202,4 +203,3 @@ Inventory: 182 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_118.md |
