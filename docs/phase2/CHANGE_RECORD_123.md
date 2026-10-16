@@ -41,6 +41,14 @@ GPT review identified that writer reconciliation could replace a previously atta
 
 - Implementation: assigned implementation agent.
 - Test authoring and execution: `functional-test-reviewer` and `e2e-runner` after all in-scope coding is complete.
-- Independent review: code-reviewer and reliability-reviewer, GPT-6 Luna medium; no BLOCKER/MAJOR. Fresh exact-head GPT-PM approval remains required before push.
-- This local change record travels with the remediation commit. Fresh exact-head GPT-PM review and approval remain required before push.
+- Independent review: code-reviewer and reliability-reviewer, GPT-6 Luna medium; no BLOCKER/MAJOR. At initial commit time, fresh exact-head approval remained pending; the final approval and push are recorded in the addendum below.
+- This local change record traveled with the remediation commit. The exact-head GPT-PM review and push authorization are recorded in the addendum below.
 - The status reconciliation preserves G0–G8, S13 and production states from the manifest; it records the exact-head rejection and local remediation without treating either as gate passage.
+
+## Post-commit approval and push addendum (2026-10-17)
+
+- Fresh PM Bridge request `41f6d2e2-5710-4c50-9f84-06e23c4b12a7`, correlated GPT reply `1f41c39a-3566-4754-b56f-8bece2b3ad73`, approved the exact range `1ec73879ade35b112c428c9885b55c46452aa7df..705076adaf7e367921812e60a5b1ea13a41107de` with 0 BLOCKER, 0 MAJOR, and one nonblocking documentation MINOR.
+- The approved range was pushed by fast-forward to `origin/main`; command output advanced `1ec7387..705076a main -> main`.
+- GPT verified the submitted patch SHA-256 `f1d24ca50258b32ed307d9611c01a43c82e4aeb99720daa66f793b995ac1eac9` and explicitly limited its decision to the submitted bytes and declared endpoints. Its review did not independently authenticate the Git object graph; the push command's observed result records the actual remote update.
+- This exact-head push closes only the local synthetic delivery gate and MAJOR-01 for this implementation. Formal S12/G8, G1–G8 release acceptance, deployed PostgreSQL enforcement, real 1C/COM qualification, and production authorization remain open/not passed as recorded in the manifest.
+- GPT also found one nonblocking documentation-status MINOR in README/STATE/S14; this following documentation pass reconciles those current-state statements without changing the approved code or formal gates.

@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 187 tracked paths, 1 local-only paths.
+Inventory: 189 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -128,6 +128,8 @@ Inventory: 187 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_119.md | Phase 2 design | "Change record 119 — regenerate the registry after the final evidence records" |
 | docs/phase2/CHANGE_RECORD_120.md | Phase 2 design | "Change record 120 — reconcile current project status and S12 scope" |
 | docs/phase2/CHANGE_RECORD_121.md | Phase 2 design | "Change record 121 — implement local S12 v2.0 evidence fixtures" |
+| docs/phase2/CHANGE_RECORD_122.md | Phase 2 design | "Change record 122 — finalize document registry after S12 commit" |
+| docs/phase2/CHANGE_RECORD_123.md | Phase 2 design | "Change record 123 — make writer reconciliation evidence immutable" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -207,4 +209,4 @@ Inventory: 187 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_122.md |
+| docs/phase2/CHANGE_RECORD_124.md |

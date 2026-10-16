@@ -14,7 +14,7 @@ does not establish real 1C behavior, deployment readiness, or release approval.
 
 Details and the release handoff: [docs/phase2/S10_RELEASE_HANDOFF.md](docs/phase2/S10_RELEASE_HANDOFF.md).
 
-Current local engineering is S12 Contract Freeze v2.0. GPT approved the initial synthetic scope, limited to purchase-receipt `CREATE_DRAFT`, `POST`, and `UNPOST`. GPT rejected exact-head candidate `7c26c0c` for push because reconciliation could replace previously recorded receipt/completion evidence. A focused remediation is underway; its regression tests have not run. The local series remains unpushed, and this work does not authorize real COM calls or change formal gates.
+The S12 Contract Freeze v2.0 local synthetic implementation is pushed through `705076adaf7e367921812e60a5b1ea13a41107de`. GPT approved the initial synthetic scope (`CREATE_DRAFT`, `POST`, and `UNPOST` for purchase receipts), rejected candidate `7c26c0c` for mutable reconciliation evidence, then approved the remediated exact head. CR123 records 7/7 focused functional tests, 1/1 focused E2E scenario, independent reviews with no BLOCKER/MAJOR, and the synthetic-only limits. Formal S12 and G0–G8 status are unchanged; this push does not authorize real COM calls or production use.
 
 ## Layout
 
