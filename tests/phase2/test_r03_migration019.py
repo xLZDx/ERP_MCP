@@ -207,6 +207,8 @@ async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> Non
         ("change_ledger.verify_inconclusive(text,text,uuid,uuid)", "worker_role"),
         ("change_ledger.witness_cosign_signed(text,text,uuid,uuid)", "operator_role"),
     )
+    runtime_roles = ("requester_role", "approver_role", "operator_role", "worker_role",
+                     "writer_role", "checkpoint_role", "auditor_role")
     for signature, allowed_role in action_grants:
         public_execute = await conn.fetchval(
             "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p "
@@ -217,6 +219,32 @@ async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> Non
         assert await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')",
                                    allowed_role, signature), \
             f"intended role {allowed_role} cannot execute {signature}"
+        for runtime_role in runtime_roles:
+            if runtime_role == allowed_role:
+                continue
+            assert not await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')",
+                                           runtime_role, signature), \
+                f"non-intended role {runtime_role} can execute {signature}"
+
+    # Raw state mutators are internal primitives. Only the signed wrappers and higher-level
+    # recovery actions may call them through SECURITY DEFINER ownership.
+    raw_mutators = (
+        "change_ledger.complete(text,text,uuid,bigint,text,jsonb,jsonb)",
+        "change_ledger.resolve_unknown(text,text,uuid,jsonb,boolean,boolean)",
+        "change_ledger.verify(text,text,uuid,jsonb,boolean)",
+        "change_ledger.witness_cosign(text,text,uuid,jsonb)",
+    )
+    for signature in raw_mutators:
+        public_execute = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p "
+            "CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a "
+            "WHERE p.oid=$1::regprocedure AND a.grantee=0 AND a.privilege_type='EXECUTE')",
+            signature)
+        assert not public_execute, f"PUBLIC may execute raw mutator {signature}"
+        for runtime_role in runtime_roles:
+            assert not await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')",
+                                           runtime_role, signature), \
+                f"runtime role {runtime_role} may execute raw mutator {signature}"
 
     cid, tok, completion = fixtures["complete"]
     before = await led.rec(cid)
