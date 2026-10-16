@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 168 tracked paths, 2 local-only paths.
+Inventory: 168 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -189,4 +189,3 @@ Inventory: 168 tracked paths, 2 local-only paths.
 | Path |
 | --- |
 | docs/phase2/CHANGE_RECORD_101.md |
-| docs/phase2/CHANGE_RECORD_105.md |
