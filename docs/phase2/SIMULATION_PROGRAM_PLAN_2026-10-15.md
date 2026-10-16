@@ -81,8 +81,12 @@ Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused 
 
 A documentation-only closure packet records proposed fail-closed production dispositions for R-01 and R-03 and their acceptance evidence. The proposals do not change the synthetic prototype, close either risk, or authorize real-system work. A subsequent read-only database/security review reconciled historical G1/S13 notes; see `G1_OPERATOR_BACKLOG.md` and `S13_REVIEW_FINDINGS_2026-10-12.md`. Current gate status is maintained in `governance/GATE_MANIFEST.json` and reconciled in section 7.
 
-## 7. Current gate status reconciliation (2026-10-15)
+## 7. Gate status snapshot as of 2026-10-15
 
 GPT-PM request `935d6eed-4690-46f6-867f-8085ea38a11d` approved G0 PASS for the exact scope and architecture evidence index at HEAD `fb6362b504a7e9bc3a3b75ca23ac024116729d58`, SHA-256 `be3c57eef57e513046a43b35dd95f7a5bbcf22a9354612edc2fe980c1e2ac51a`. The current manifest records G0 as PASSED / COMPLETE / SATISFIED with no production authorization. This is limited to the isolated prototype on `818HA_p2diff`; OB-15 deployment deferrals remain and `LICENSE_BOUNDARY_APPROVED` is NO.
 
 G1–G8 remain NOT_PASSED; formal S13 remains NOT APPROVED; Release 2 remains NO-GO. R-01 and R-03 remain OPEN. G1's COMMIT-kill and separate-cluster restore scenarios are now authored and passed read-only acceptance review, but runtime evidence is NOT_RUN because `D:\Repo\AGENTS.md` prohibits pytest. Earlier synthetic prototype tests are not evidence for these open gates; see `G1_OPERATOR_BACKLOG.md` for the authored coverage and remaining G1 acceptance.
+
+## 8. Current gate status update (2026-10-16)
+
+After the 2026-10-15 snapshot, selected local G1 scenarios were executed on disposable PostgreSQL fixtures. The corrected MAJOR-02 test matrix passed 24/24 variants after the observer was changed to prove the API query was active and blocked by the revoke transaction; database-reviewer confirmed the original evidence gap is resolved. The selected local runtime and specialist evidence is complete, but formal G1 remains `NOT_PASSED`. G0–G8 remain `NOT_PASSED` as applicable in the current manifest, formal S13 remains `NOT APPROVED`, production authorization remains `NONE`, and Release 2 remains `NO-GO`. A fresh PM decision for the exact current code head is pending before any push. These local scenarios do not establish deployed identity, grants, or production capacity; see `G1_EVIDENCE_PACKET_PLAN.md` for the local-push and formal-gate boundaries.
