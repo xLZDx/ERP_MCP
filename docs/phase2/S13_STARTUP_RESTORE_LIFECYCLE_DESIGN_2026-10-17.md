@@ -1,6 +1,6 @@
 # S13 startup and restore lifecycle design
 
-**Status:** proposed local synthetic implementation; formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
+**Status:** revised after independent security/reliability review; local implementation scope is being reworked to resolve the shared-fence MAJOR. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
 
 ## Goal
 
@@ -15,10 +15,10 @@ Connect the existing PostgreSQL ledger integrity, external checkpoint, and bound
 
 ## Options and decision
 
-1. **Provider-neutral lifecycle coordinator and `latest(scope)` sink capability (recommended):** implement and test orchestration against the existing protocol, with only TEST adapters. Defer selection and qualification of an external provider and signer/key custody to the separately recorded S11 decision.
-2. **Select and integrate a concrete external storage provider now:** this could advance deployed acceptance but would bind the project to an unrecorded service, account, network, retention policy, and key boundary.
+1. **Additive shared-fence database contract plus provider-neutral coordinator (recommended local engineering):** inventory and fence all mutation/permit/dispatch paths, add monotonic lifecycle epoch and suffix query, then implement orchestration against TEST adapters. Defer selection and qualification of an external provider and signer/key custody to the separately recorded S11 decision.
+2. **Defer S13 lifecycle source work until a deployed service and external checkpoint contract exist:** this avoids building an unwired adapter but leaves the startup/restore defect unresolved in the local prototype.
 
-Decision for local engineering: use option 1. It allows local fail-closed lifecycle code without inventing an external account or claiming that an in-memory sink meets CT5. Before formal S13 completion, the external provider, signer, custody owner, authenticated latest read, and retention/immutability evidence must be resolved and qualified.
+Decision for local engineering: use option 1 after the exact expanded scope is recorded and reviewed. The additive fence/suffix DB contract is required for meaningful local READY semantics; a coordinator by itself is insufficient. This does not invent an external account or claim that an in-memory sink meets CT5. Before formal S13 completion, the external provider, signer, custody owner, authenticated anti-rollback latest read, and retention/immutability evidence must be resolved and qualified.
 
 ## Design
 
@@ -26,20 +26,33 @@ Add a small `change_ledger.lifecycle` coordinator with an explicit per-scope rea
 
 The sink protocol gains a read-only `latest(scope) -> CheckpointRecord | None` operation. The TEST-only in-memory implementation returns the greatest stored sequence for the exact tenant/company scope. The lifecycle coordinator:
 
-1. Calls `verify_chain()` first. A failed or unavailable result keeps the scope unready and does not call `check_anchor()`; the SQL routine can append an `ANCHOR_GAP` event, so do not mutate a chain already known invalid.
-2. Reads the newest record from the independent sink and authenticates its signature using the configured verifier. It compares sequence and hash with the local ledger using `check_anchor()`. Missing, stale, mismatched, unauthenticated, or unavailable external evidence keeps admission disabled and preserves/declares the applicable hold.
-3. Runs the bounded JSON `recover_sweep_params()` routine only after chain and anchor checks pass. Any failure, eligible remaining work, unresolved item, or non-STOP safety condition keeps the scope unready; the legacy integer sweep result is insufficient for readiness.
-4. Re-runs `verify_chain()` after recovery. If recovery appended events, writes a checkpoint for the resulting head, reads it back, verifies its signature and exact content, and records the checkpoint through the dedicated checkpoint role. Any failure keeps admission disabled.
-5. Returns READY only after all applicable steps pass. A later reconnect/restore invalidates prior readiness and repeats the sequence. No recovery failure is converted into success, no write is retried, and no database transaction is held across sink I/O.
+1. Before taking the verification snapshot, obtain a cross-process per-scope admission fence that conflicts with every ledger mutation and dispatch transition. The fence must account for already-issued/in-flight dispatch permits, survive stale-process races, have bounded acquisition, and be released on every exit; losing its owning DB session invalidates readiness. The current per-process flag and migration 020 sweep lock do **not** provide this guarantee. No implementation may return READY until the shared fence contract and its complete mutation-path coverage are established.
+2. Call `verify_chain()`. A failed or unavailable result keeps the scope unready and does not call `check_anchor()`; the SQL routine can append an `ANCHOR_GAP` event, so do not mutate a chain already known invalid.
+3. Read the provider-authenticated, anti-rollback latest record and validate signature plus exact `tenant_id`/`company_id` equality with `Scope` before any SQL call that can mutate state. A signature alone does not prove latestness. If the provider cannot prove monotonic latest history (or equivalent anti-rollback consistency), remain NOT_READY.
+4. Confirm the checkpoint is an exact ancestor `(seq, head_hash)` in this scope. `check_anchor()` only checks membership and may append an `ANCHOR_GAP`; it does not prove latestness or classify later events. Query/classify the ordered suffix after the checkpoint against the explicit S12 checkpoint policy: T10, T13 and observation reads may remain in the tail only where their complete transition/evidence state matches the contract; any effect, authorization, terminal, hold, or other checkpoint-required event makes the scope NOT_READY. Do not require checkpoint equality with the current head: S12 §9 explicitly allows these resolution/observation events to be included in the next checkpoint. Missing anchor, ledger behind anchor, invalid chain, disallowed tail, wrong scope, or unavailable evidence stays fail-closed.
+5. Run bounded JSON `recover_sweep_params()` only after the fenced chain/anchor/suffix checks pass. Any error, eligible remaining work, unresolved item, or non-STOP safety condition keeps the scope unready; the legacy integer sweep result is insufficient. Re-run chain and suffix checks after recovery against the same authenticated latest record. If recovery creates a checkpoint-required event, write/read-back/authenticate and record a new checkpoint before admission.
+6. Return READY only while the shared fence remains valid and every check passes. A later reconnect/restore invalidates prior readiness and repeats the sequence. Fence loss, verifier/provider failure, timeout, or retry exhaustion yields structured NOT_READY with reason and last-attempt metadata. No failure is converted to success; retries are bounded with backoff; no database transaction is held across sink I/O.
 
 Genesis handling stays conservative: a non-empty ledger with no external anchor is unready. Provisioning an initial anchor is a separately authorized bootstrap operation, not an implicit startup side effect. An empty scope may become ready only under an explicit, tested genesis policy; otherwise it stays unready until provisioned.
 
 ## State ownership and failure behavior
 
 - The PostgreSQL ledger owns transactional change state; the external store owns its independently retained checkpoint history; the signer/verifier boundary authenticates checkpoint content.
-- The coordinator owns only the process-local readiness decision. It does not clear database holds, authorize a write, or release `SAFE_HOLD` by itself.
+- The coordinator owns the process-local readiness decision and a lease on a shared per-scope fence. It does not clear database holds, authorize a write, or release `SAFE_HOLD` by itself.
 - Checkpoint read/authentication failure, invalid chain, anchor mismatch, recovery error, unresolved work, or post-recovery checkpoint failure yields NOT_READY and zero downstream writer calls.
-- Concurrency remains fenced by the existing SQL scope locks and kill-switch routines. Startup orchestration is serialized per service/scope; no long-running DB transaction spans external I/O.
+- Concurrency is **not yet proven fenced**. Existing SQL scope locks and the migration 020 recovery advisory lock do not couple all writers, dispatch transitions, and startup verification. The implementation design must identify one shared fence protocol and enumerate every mutation/dispatch path that honors it, including crash release, stale-process fencing, and in-flight calls. Until a database review confirms full coverage, the coordinator must remain NOT_READY; a per-process mutex/readiness flag is not an acceptable substitute. No long-running DB transaction may span external I/O.
+
+## Required shared-fence contract before implementation
+
+The database reviewer found no existing lock that can provide this lifecycle boundary. The smallest safe contract to design is an additive per-scope lifecycle state with a monotonically increasing fencing epoch:
+
+1. Startup/recovery atomically transitions the scope to `RECOVERING` under the exclusive per-scope fence and increments the epoch. All ledger mutations, permit issuance, and dispatch compare-and-set paths must participate in the same scope fence within their short transaction and refuse while recovery is active.
+2. The writer checks the current lifecycle epoch in the same transaction as the immediate pre-call dispatch CAS. A stale process or cached permit from an older epoch cannot call the external writer. Session loss invalidates cached readiness.
+3. Recovery holds the durable `RECOVERING` state across short transactions and sink I/O without holding an open database transaction. It must not declare READY while any possibly executing call or unresolved `APPLYING`/`APPLY_UNKNOWN`/`CALL_OWNERSHIP` state lacks independent completion evidence; the fence does not cancel a physical call already sent.
+4. Add a read-only ordered suffix query/result and classify every event after the authenticated checkpoint ancestor under S12 §9 with its associated transition/evidence state. Recheck epoch, chain, suffix, recovery report, and unresolved-call state atomically before transitioning to READY.
+5. Inventory every relevant SQL mutation/API and physical dispatch edge; database review must confirm complete coverage. Recovery fencing and ordinary writes must have explicit lock order, bounded waits, crash recovery, and observable NOT_READY causes. Existing `chain`, `sweep`, and kill-switch locks alone are insufficient.
+
+This is a design boundary, not an already accepted SQL implementation. It will require additive migration/API work and new database-focused story coverage. Do not start a coordinator that can return READY before this contract is reviewed and represented in the implementation scope.
 
 ## Rollout and rollback
 
@@ -47,7 +60,7 @@ The implementation remains unwired library code until a real service composition
 
 ## Acceptance and test handoff
 
-After all S13 local coding is complete, `functional-test-reviewer` and `e2e-runner` own focused PostgreSQL scenarios mapped to V2-S13-01..05 and E13/E18/E25/E31/E32/E36/E38. Lifecycle cases must assert exact call order and zero writer calls for invalid chain, stale/missing/forged anchor, sink outage, incomplete recovery, and post-recovery checkpoint failure; a valid older local chain paired with a newer seeded TEST anchor must remain unready. Include multi-process database locking, dump/restore and tenant/company isolation in the story-mapped suites. A TEST sink proves orchestration only; report real provider/key custody and production startup evidence as `NOT_RUN` with exact dependency.
+After all S13 local coding is complete, `functional-test-reviewer` and `e2e-runner` own focused PostgreSQL scenarios mapped to V2-S13-01..05 and E13/E18/E25/E31/E32/E36/E38. Lifecycle cases must assert exact call order and zero writer calls for invalid chain, stale/missing/forged anchor, anti-rollback failure, wrong tenant/company, disallowed uncheckpointed suffix, sink outage, incomplete recovery, post-recovery checkpoint failure, fence contention/loss, stale process, and in-flight dispatch. Verify the explicitly allowed S12 tail is accepted only when every event is allowed and its transition evidence is consistent. Include multi-process locking, dump/restore and tenant/company isolation in the story-mapped suites. A TEST sink proves orchestration only; report real provider/key custody and production startup evidence as `NOT_RUN` with exact dependency.
 
 Then database-reviewer reviews migration/transaction/RLS/restore implications; reliability-reviewer reviews restart/reconnect and readiness failure handling; security-reviewer reviews signer and trust-boundary claims. Do not claim formal S13 passage from local synthetic tests.
 
@@ -55,5 +68,7 @@ Then database-reviewer reviews migration/transaction/RLS/restore implications; r
 
 - External checkpoint provider, authenticated latest-record API, immutable retention guarantees, signer implementation, key custody, and responsible service owner are not established in canonical records.
 - The deployment service composition and readiness/admission hook do not exist in this repository. Integration cannot be claimed until that service is identified.
+- No shared lifecycle/admission fence currently couples the complete set of SQL mutation and physical dispatch paths. This is a local design blocker; identify and review the additive DB/API contract before implementing a READY-producing coordinator.
+- The sink protocol and provider contract do not yet establish authenticated anti-rollback `latest(scope)` semantics. A valid signature on an old record cannot prove the external store was not rolled back.
 - The safe genesis/bootstrap operation needs an explicit contract before any real environment is initialized.
 - The S13 nonce/record lock-order MINOR and deterministic contention scenario remain deferred to S18 per the existing ruling.

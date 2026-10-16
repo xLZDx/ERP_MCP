@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 189 tracked paths, 1 local-only paths.
+Inventory: 192 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -130,6 +130,8 @@ Inventory: 189 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_121.md | Phase 2 design | "Change record 121 — implement local S12 v2.0 evidence fixtures" |
 | docs/phase2/CHANGE_RECORD_122.md | Phase 2 design | "Change record 122 — finalize document registry after S12 commit" |
 | docs/phase2/CHANGE_RECORD_123.md | Phase 2 design | "Change record 123 — make writer reconciliation evidence immutable" |
+| docs/phase2/CHANGE_RECORD_124.md | Phase 2 design | "Change record 124 — reconcile pushed S12 status and prepare S13" |
+| docs/phase2/CHANGE_RECORD_125.md | Phase 2 design | "Change record 125 — design S13 startup and restore lifecycle" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -166,6 +168,7 @@ Inventory: 189 tracked paths, 1 local-only paths.
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
+| docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md | Phase 2 design | "S13 startup and restore lifecycle design" |
 | docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md | Phase 2 design | "S14 Risk and Gate Closure Packet — 2026-10-15" |
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
 | docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
@@ -209,4 +212,4 @@ Inventory: 189 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_124.md |
+| docs/phase2/CHANGE_RECORD_126.md |
