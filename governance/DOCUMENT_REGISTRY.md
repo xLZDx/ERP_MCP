@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 158 tracked paths, 1 local-only paths.
+Inventory: 161 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -102,6 +102,9 @@ Inventory: 158 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_093.md | Phase 2 design | "Change record 093 — reconcile active G1 status documents" |
 | docs/phase2/CHANGE_RECORD_094.md | Phase 2 design | "Change record 094 — index the reconciled G1 status documents" |
 | docs/phase2/CHANGE_RECORD_095.md | Phase 2 design | "Change record 095 — reconcile G1 push report with current remote state" |
+| docs/phase2/CHANGE_RECORD_096.md | Phase 2 design | "Change record 096 — refresh registry after G1 report reconciliation" |
+| docs/phase2/CHANGE_RECORD_097.md | Phase 2 design | "Change record 097 — clarify registry snapshot counts" |
+| docs/phase2/CHANGE_RECORD_098.md | Phase 2 design | "Change record 098 — clarify R-01/R-03 source findings and current gate state" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -178,4 +181,3 @@ Inventory: 158 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_096.md |
