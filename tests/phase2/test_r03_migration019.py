@@ -115,6 +115,43 @@ async def _seed_legacy_consumer_cases(conn: asyncpg.Connection) -> dict:
         led, close_cid, "COMPLETION_PROOF", {"class": "b", "result_returned": False})
     close_cosign = await led.call("clt_erin", "witness_cosign_signed", close_cid, close_completion)
 
+    # Remaining action wrappers get genuine pre-cutover rows too. Their action preconditions are
+    # arranged before migration 019; consumption is deliberately deferred until after migration 021.
+    for base in ("base-9", "base-10", "base-11", "base-12", "base-13"):
+        await conn.execute(
+            "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,"
+            "target_class) VALUES($1,$2,$3,'org-1','DISPOSABLE_CLONE')", T, C, base)
+    busy_cid, busy_tok, _ = await led.applying(request_id="r03-021-lock-busy", base="base-9")
+    busy_completion = await _legacy_evidence(
+        led, busy_cid, "COMPLETION_PROOF",
+        {"class": "a", "result_returned": False, "stage": "PRE_WRITE",
+         "refusal_code": "LOCK_BUSY", "no_effect_proof": {"lock_busy": True}},
+        role="clt_wri", key_id="vk-legacy-wri")
+
+    verify_cid, verify_tok, _ = await led.dispatched(
+        request_id="r03-021-verify", base="base-10")
+    assert await led.complete(verify_cid, verify_tok["generation"], "SUCCESS") == "APPLIED"
+    verify_evidence = [await _legacy_evidence(led, verify_cid, kind, {"matches": True})
+                       for kind in ("FIELD", "MOVEMENT", "VERSION")]
+
+    retry_cid, retry_tok, _ = await led.dispatched(
+        request_id="r03-021-retry", base="base-11")
+    assert await led.complete(retry_cid, retry_tok["generation"], "SUCCESS") == "APPLIED"
+    assert await led.verify(retry_cid, False) == "FAILED_VERIFY"
+    retry_evidence = [await _legacy_evidence(led, retry_cid, kind, {"matches": True})
+                      for kind in ("FIELD", "MOVEMENT", "VERSION")]
+
+    inconclusive_cid, inconclusive_tok, _ = await led.dispatched(
+        request_id="r03-021-inconclusive", base="base-12")
+    assert await led.complete(inconclusive_cid, inconclusive_tok["generation"], "SUCCESS") == "APPLIED"
+    inconclusive_observation = await _legacy_evidence(
+        led, inconclusive_cid, "OBSERVATION", {"inconclusive": True})
+
+    witness_cid, _, _ = await led.unknown(request_id="r03-021-witness", base="base-13")
+    assert await led.resolve_unknown(witness_cid, None) == "TRIAGE_REQUIRED"
+    deferred_witness_completion = await _legacy_evidence(
+        led, witness_cid, "COMPLETION_PROOF", {"class": "b", "result_returned": False})
+
     # Cross-tenant permit attempt: caller has a legitimate T2/C2 checkpoint key and scope.
     await conn.execute("INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,"
                        "organization_ref,target_class) VALUES($1,$2,'r03-cross-permit',$3,'DISPOSABLE_CLONE')",
@@ -134,11 +171,53 @@ async def _seed_legacy_consumer_cases(conn: asyncpg.Connection) -> dict:
             "observation": (obs_cid, obs_cosign, legacy_observation),
             "cosign": (cosign_cid, cosign_id, legacy_completion),
             "close": (close_cid, close_cosign, close_completion),
+            "lock_busy": (busy_cid, busy_tok, busy_completion),
+            "verify": (verify_cid, verify_evidence),
+            "retry_verify": (retry_cid, retry_evidence),
+            "verify_inconclusive": (inconclusive_cid, inconclusive_observation),
+            "witness_direct": (witness_cid, deferred_witness_completion),
             "permit": (permit_cid, permit_tok, permit_digest)}
 
 
 async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> None:
     led = fixtures["led"]
+
+    # Helpers are definer-only internals. Public and application runtime identities must not
+    # receive direct EXECUTE, while the public action wrappers retain their intended role grants.
+    for signature in (
+        "change_ledger.evidence_ref(text,text,uuid,uuid,text)",
+        "change_ledger.assert_ed25519_cosign_evidence(text,text,uuid,jsonb)",
+        "change_ledger.consume_two_person_cosign(change_ledger.records,text,uuid)",
+    ):
+        public_execute = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p "
+            "CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a "
+            "WHERE p.oid=$1::regprocedure AND a.grantee=0 AND a.privilege_type='EXECUTE')",
+            signature)
+        assert not public_execute, f"PUBLIC may execute internal helper {signature}"
+        for runtime_role in ("requester_role", "approver_role", "operator_role", "worker_role",
+                             "writer_role", "checkpoint_role", "auditor_role"):
+            assert not await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')",
+                                           runtime_role, signature), \
+                f"runtime role {runtime_role} may execute internal helper {signature}"
+    action_grants = (
+        ("change_ledger.complete_lock_busy(text,text,uuid,bigint,uuid,jsonb)", "writer_role"),
+        ("change_ledger.verify_signed(text,text,uuid,uuid,uuid,uuid)", "worker_role"),
+        ("change_ledger.retry_verify(text,text,uuid,uuid,uuid,uuid)", "worker_role"),
+        ("change_ledger.verify_inconclusive(text,text,uuid,uuid)", "worker_role"),
+        ("change_ledger.witness_cosign_signed(text,text,uuid,uuid)", "operator_role"),
+    )
+    for signature, allowed_role in action_grants:
+        public_execute = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p "
+            "CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a "
+            "WHERE p.oid=$1::regprocedure AND a.grantee=0 AND a.privilege_type='EXECUTE')",
+            signature)
+        assert not public_execute, f"PUBLIC may execute action wrapper {signature}"
+        assert await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')",
+                                   allowed_role, signature), \
+            f"intended role {allowed_role} cannot execute {signature}"
+
     cid, tok, completion = fixtures["complete"]
     before = await led.rec(cid)
     before_events = await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid)
@@ -175,6 +254,48 @@ async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> Non
     assert (await led.rec(cid))["execution_state"] == before_state == "TRIAGE_REQUIRED"
     assert await conn.fetchval("SELECT consumed_at IS NULL FROM change_ledger.witness_cosigns "
                                "WHERE cosign_id=$1", cosign_id)
+
+    # Each remaining evidence_ref-backed wrapper rejects a valid historical row before mutation.
+    cid, tok, completion = fixtures["lock_busy"]
+    event_count = await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid)
+    await _expect_error(led.call("clt_wri", "complete_lock_busy", cid, tok["generation"], completion),
+                        "EVIDENCE_UNSIGNED")
+    assert (await led.rec(cid))["execution_state"] == "APPLYING"
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid) == event_count
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.sweep_counters WHERE subject_id=$1 "
+                               "AND kind='LOCK_BUSY'", cid) == 0
+
+    cid, evidence_ids = fixtures["verify"]
+    event_count = await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid)
+    await _expect_error(led.call("clt_wrk", "verify_signed", cid, *evidence_ids), "EVIDENCE_UNSIGNED")
+    assert (await led.rec(cid))["verification_state"] == "NOT_VERIFIED"
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid) == event_count
+
+    cid, evidence_ids = fixtures["retry_verify"]
+    retry_count = await conn.fetchval("SELECT attempts FROM change_ledger.sweep_counters "
+                                      "WHERE subject_id=$1 AND kind='VERIFY_RETRY'", cid)
+    event_count = await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid)
+    await _expect_error(led.call("clt_wrk", "retry_verify", cid, *evidence_ids), "EVIDENCE_UNSIGNED")
+    assert (await led.rec(cid))["verification_state"] == "FAILED_VERIFY"
+    assert await conn.fetchval("SELECT attempts FROM change_ledger.sweep_counters "
+                               "WHERE subject_id=$1 AND kind='VERIFY_RETRY'", cid) == retry_count
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", cid) == event_count
+    assert await conn.fetchval("SELECT released_at IS NULL FROM change_ledger.holds "
+                               "WHERE change_id=$1 AND cause='FAILED_VERIFY_HALT'", cid)
+
+    cid, observation = fixtures["verify_inconclusive"]
+    attempts_before = await conn.fetchval("SELECT count(*) FROM change_ledger.sweep_counters "
+                                          "WHERE subject_id=$1 AND kind='VERIFY'", cid)
+    await _expect_error(led.call("clt_wrk", "verify_inconclusive", cid, observation), "EVIDENCE_UNSIGNED")
+    assert (await led.rec(cid))["verification_state"] == "NOT_VERIFIED"
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.sweep_counters "
+                               "WHERE subject_id=$1 AND kind='VERIFY'", cid) == attempts_before
+
+    cid, completion = fixtures["witness_direct"]
+    cosign_count = await conn.fetchval("SELECT count(*) FROM change_ledger.witness_cosigns WHERE change_id=$1", cid)
+    await _expect_error(led.call("clt_erin", "witness_cosign_signed", cid, completion), "EVIDENCE_UNSIGNED")
+    assert (await led.rec(cid))["execution_state"] == "TRIAGE_REQUIRED"
+    assert await conn.fetchval("SELECT count(*) FROM change_ledger.witness_cosigns WHERE change_id=$1", cid) == cosign_count
 
     cid, cosign_id, _ = fixtures["close"]
     before_hold = await conn.fetchval("SELECT released_at IS NULL FROM change_ledger.holds "
