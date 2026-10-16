@@ -2,6 +2,12 @@
 
 Date: 2026-10-16. Purpose: assemble the outstanding G1 evidence without treating prototype measurements or static review as gate acceptance. This plan does not authorize a database connection, test run, migration, production access, or gate transition.
 
+## What “runtime evidence” means here
+
+“Runtime evidence” is shorthand for recorded observations from executing the specific G1 acceptance scenarios against a disposable PostgreSQL environment at a stated code/migration revision. It is required only where the G1 acceptance asks for behavior that source inspection cannot establish: for example, real transaction/concurrency outcomes, termination while explicit `COMMIT` is underway, or restore behavior on a distinct cluster. The controlled-change plan names the kill-inside-COMMIT and separate-cluster restore in G1's original exit criteria (`PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md`, G1 row); G1-B04–B08 also call for negative behavior and concurrency evidence.
+
+This is a G1 gate-evidence requirement, not a general prerequisite for continuing local development or documentation. It does not mean running against production. A focused test result also cannot replace separate evidence of deployed roles/grants, authenticated approver and evidence identities, or a capacity disposition. Those require their own authorized evidence sources. Current workspace rules prohibit pytest, so the affected execution remains `NOT_RUN`; this plan does not authorize bypassing that prohibition.
+
 ## Acceptance inventory
 
 | Evidence item | Existing evidence | Still required for G1 | Evidence owner / dependency | State |

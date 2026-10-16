@@ -49,6 +49,8 @@ The original blocker table is preserved as history. The later migrations, author
 
 G1 exit gaps confirmed by the database and security reviewers at HEAD `8935deda`: no recorded kill timed inside COMMIT; no restore into another PostgreSQL cluster; the capacity drill is a developer-host measurement, not the G1 decision; and the G1 evidence package is absent. These require disposable-database/runtime evidence and a gate review. G1 remains NOT_PASSED.
 
+Here, “runtime evidence” means exact-revision observations for G1 behaviors that cannot be established by source review alone. It is required for those G1 acceptance criteria, not as a general prerequisite to continue local work, and it must come from an authorized disposable environment rather than production. Effective deployed grants, approver/evidence identity and capacity disposition are separate evidence items; prototype test results cannot close them. Focused execution is currently `NOT_RUN` because workspace rules prohibit pytest.
+
 ### Focused runtime acceptance for the two remaining crash/restore cases
 
 A read-only functional-test review at HEAD `8e923ce` confirmed that the existing integration coverage does not satisfy either boundary: the crash tests terminate a backend after API work but before explicit `tx.commit()`, and the restore tests target another database in the same cluster. The shared G1 harness is single-container. Do not count those scenarios as substitutes for the G1 criteria.
