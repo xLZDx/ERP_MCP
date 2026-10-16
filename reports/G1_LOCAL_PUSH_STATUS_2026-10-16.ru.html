@@ -41,13 +41,15 @@
   <dl>
     <dt>Проект</dt><dd>ERP_MCP_R2</dd>
     <dt>Папка</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; origin/main @ 1790034</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 13b8ee2</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
           data-fail="Выделите вручную">Копировать страницу</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -89,7 +91,7 @@
       <td class="state">Историческая запись; не объясняет текущую блокировку</td>
       <td>Обновлены правила в <code>D:\Repo\AGENTS.md</code>, <code>C:\Users\koros\.codex\AGENTS.md</code>, двух копиях delivery-efficiency и <code>C:\Users\koros\.claude\CLAUDE.md</code>: назначение тестов оставлено тестовым агентам, глобальный запрет на запуск удалён.</td>
       <td>Тестовые агенты выполнили выбранные сценарии; прежний database-reviewer finding для MAJOR-02 исправлен и подтверждён повторной проверкой.</td>
-      <td>Ожидается новое exact-head решение GPT-PM; иных тестовых блокеров не записано.</td>
+      <td>Exact-head review и push завершены; выбранных тестовых блокеров нет. Формальный G1 остаётся NOT_PASSED.</td>
     </tr>
     <tr>
       <td>G1 restore: отзыв scope</td>
@@ -107,23 +109,21 @@
     </tr>
     <tr>
       <td>PM review и push</td>
-      <td class="state">EXACT-HEAD APPROVE; fast-forward push выполнен</td>
-      <td>Предыдущий ответ PM Bridge <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> относился к code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> и сохранял NO-GO до runtime-доказательств. После завершения выбранных прогонов PM одобрил exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; обычный fast-forward push из ранее подтверждённого remote HEAD <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> завершился успешно, и <code>origin/main</code> подтверждён на <code>17900345c88237290c498d73b6f8849c265351d1</code>.</td>
-      <td>Runtime и specialist evidence завершены; PM одобрил отправленный exact HEAD, push диапазона <code>3aba6e3..1790034</code> успешно завершён. Этот документальный коммит создаёт новый HEAD, для его последующего push потребуется новое exact-head PM решение.</td>
-      <td>Новый push не выполнять по старому одобрению: для любого нового HEAD запросить отдельное exact-head решение GPT-PM. Владелец: implementation agent.</td>
+      <td class="state">EXACT-HEAD APPROVE; push завершён до текущего удалённого HEAD</td>
+      <td>Предыдущий ответ PM Bridge <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> относился к code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> и сохранял NO-GO до runtime evidence. После выбранных прогонов PM одобрил exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; fast-forward push из <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> завершился успешно. Позднейшие проверенные документальные коммиты также отправлены; отдельная проверка подтвердила текущий <code>origin/main</code> на <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code>.</td>
+      <td>Все проверенные коммиты до <code>13b8ee2</code> отправлены. Любое будущее локальное изменение создаст новый HEAD и перед push потребует отдельного exact-head решения PM. Формальный G1 остаётся NOT_PASSED.</td>
+      <td>Для проверенного диапазона действий по push не осталось. Для будущего HEAD сначала получить exact-head одобрение PM. Владелец: implementation agent.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Статус gate</h2>
-<p>Локальный push одобрен PM и выполнен обычным fast-forward для диапазона <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac..17900345c88237290c498d73b6f8849c265351d1</code>; проверка после push подтвердила <code>origin/main</code> на <code>17900345c88237290c498d73b6f8849c265351d1</code>. Exact-tree selected runtime завершён: functional 45/45 и E2E 2/2; database-reviewer не нашёл database BLOCKER/MAJOR и указал ограничение COMMIT-сценария. Формальный G1: <strong>NOT_PASSED</strong>. Авторизация production: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. Новый документальный HEAD, создаваемый этим обновлением, не покрыт прежним PM решением; его push требует нового exact-head решения.</p>
+<p>PM одобрил exact code HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>, и fast-forward push завершён. Последующие проверенные документальные коммиты до <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code> также отправлены; свежая проверка подтвердила <code>origin/main</code> на этом HEAD. Exact-tree selected runtime завершён: functional 45/45 и E2E 2/2; database-reviewer не нашёл database BLOCKER/MAJOR и указал ограничение COMMIT-сценария. Формальный G1: <strong>NOT_PASSED</strong>. Формальный S13: <strong>NOT APPROVED</strong>. Авторизация production: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. Любой будущий локальный HEAD перед push требует нового exact-head решения PM.</p>
 
-<h2>Очередь действий</h2>
-<ol>
-  <li>Зафиксировать это обновление отчётов и CHANGE_RECORD_091 локальным docs-only коммитом; прежнее PM одобрение не распространяется на новый HEAD.</li>
-  <li>Не отправлять этот новый документальный HEAD без нового exact-head решения GPT-PM.</li>
-  <li>Формальный G1 остаётся отдельным незакрытым gate; push не закрывает его.</li>
-</ol>
+<h2>Оставшиеся критерии</h2>
+<p>Push и review удалённого диапазона до <code>13b8ee2</code> завершены. Формальный G1 остаётся NOT_PASSED, формальный S13 — NOT APPROVED, Release 2 — NO-GO, авторизация production — NONE. Для этих статусов нужны отдельные gate-доказательства; успешный push документации их не меняет.</p>
+
+
 
 
 

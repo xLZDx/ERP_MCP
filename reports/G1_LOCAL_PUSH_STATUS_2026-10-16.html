@@ -41,13 +41,15 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; origin/main @ 1790034</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 13b8ee2</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
           data-fail="Select manually">Copy page</button>
 </div>
 <!-- report-conform:end -->
+
+
 
 
 
@@ -89,7 +91,7 @@
       <td class="state">Historical note; not the current blocker</td>
       <td>Updated <code>D:\Repo\AGENTS.md</code>, <code>C:\Users\koros\.codex\AGENTS.md</code>, both delivery-efficiency skill copies, and <code>C:\Users\koros\.claude\CLAUDE.md</code>. Test ownership remains with test agents; the global execution ban was removed.</td>
       <td>Test agents executed the selected scenarios; the prior MAJOR-02 database-reviewer finding was corrected and confirmed on rerun.</td>
-      <td>Await the new exact-head GPT-PM decision; no selected test blocker remains.</td>
+      <td>The exact-head review and push are complete; no selected test blocker remains. Formal G1 remains NOT_PASSED.</td>
     </tr>
     <tr>
       <td>G1 restore scope revocation</td>
@@ -107,22 +109,21 @@
     </tr>
     <tr>
       <td>PM review and push</td>
-      <td class="state">EXACT-HEAD APPROVE; fast-forward push completed</td>
-      <td>The earlier PM Bridge reply <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> covered code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and retained NO-GO pending runtime evidence. After selected runs completed, PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; a normal fast-forward push from the preflight remote HEAD <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> succeeded, and <code>origin/main</code> was confirmed at <code>17900345c88237290c498d73b6f8849c265351d1</code>.</td>
-      <td>Runtime and specialist evidence are complete; PM approved the pushed exact HEAD, and the <code>3aba6e3..1790034</code> range was pushed successfully. This documentation commit creates a new HEAD; a later push requires a new exact-head PM decision.</td>
-      <td>Do not reuse the prior approval for a new push: obtain a separate exact-head GPT-PM decision for any new HEAD. Owner: implementation agent.</td>
+      <td class="state">EXACT-HEAD APPROVE; push completed through current remote HEAD</td>
+      <td>The earlier PM Bridge reply <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> covered code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and retained NO-GO pending runtime evidence. After selected runs completed, PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; the normal fast-forward push from <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> succeeded. Later reviewed documentation commits were also pushed; the current remote <code>origin/main</code> was independently confirmed at <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code>.</td>
+      <td>All reviewed commits through <code>13b8ee2</code> are pushed. Any future local change creates a new HEAD and needs its own exact-head PM decision before push. Formal G1 remains NOT_PASSED.</td>
+      <td>No push action remains for this reviewed range. For a later HEAD, obtain exact-head PM approval before pushing. Owner: implementation agent.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Gate status</h2>
-<p>PM approved and the normal fast-forward push completed for <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac..17900345c88237290c498d73b6f8849c265351d1</code>; post-push lookup confirmed <code>origin/main</code> at <code>17900345c88237290c498d73b6f8849c265351d1</code>. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. This documentation update creates a new HEAD and is not covered by the earlier approval; a later push requires fresh exact-head PM approval.</p>
+<p>PM approved the exact reviewed code HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>, and the fast-forward push completed. Subsequent reviewed documentation commits through <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code> were also pushed; a fresh lookup confirmed <code>origin/main</code> at that exact HEAD. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. Formal G1: <strong>NOT_PASSED</strong>. Formal S13: <strong>NOT APPROVED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. Any later local HEAD requires a new exact-head PM decision before push.</p>
 
-<h2>Ordered next steps</h2>
-<ol>
-  <li>Commit this report reconciliation and CHANGE_RECORD_091 locally as a documentation-only commit; the earlier PM approval does not cover the new HEAD.</li>
-  <li>Obtain a separate exact-head PM decision before any later push. Formal G1 remains a separate open gate.</li>
-</ol>
+<h2>Remaining acceptance</h2>
+<p>The push and review for the remote range through <code>13b8ee2</code> are complete. Formal G1 remains NOT_PASSED, formal S13 remains NOT APPROVED, Release 2 remains NO-GO, and production authorization remains NONE. These states require their own gate evidence and are not changed by a successful documentation push.</p>
+
+
 
 
 
