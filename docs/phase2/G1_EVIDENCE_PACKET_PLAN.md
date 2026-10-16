@@ -31,6 +31,26 @@ This source-observed map names candidate scenarios and their evidence limits. It
 
 All candidates remain unexecuted in this pass. The separate workload/capacity disposition, actual effective-role/deployed-grant evidence and deployed approver/evidence identity are not closed by any listed test alone. The authorized test agents must report exact command, head, environment, per-case result, skip, omission and failure; static preflight cannot substitute for a runtime row.
 
+## Functional-test reviewer proposal for the minimal runtime set
+
+Read-only proposal from `functional-test-reviewer` (GPT-6 Luna, low effort; 2026-10-16). This is the recommended focused set for test-agent planning, not a gate approval. Every result remains `NOT_RUN`.
+
+| Acceptance area | Proposed included scenario(s) | Reason / limit |
+|---|---|---|
+| G1-B04 scope isolation, spoofing and revocation | `test_cross_tenant_source_company_reads_empty_and_provenance_hidden`; `test_guc_spoof_returns_nothing`; `test_m2_role_scope_change_bumps_epoch_and_old_context_cannot_commit` | Covers fixture isolation and old-context revocation. `test_major02_scope_rechecked_after_source_lock` is supplemental unless the gate reviewer maps its race to a separate required acceptance. |
+| G1-B05 runtime database privileges | `test_runtime_roles_cannot_update_delete_truncate_or_insert`; `test_n6_add_role_scope_validates_role_and_blocks_direct_dml` | Covers test-role direct DML and role-scope guard behavior; does not establish deployed grants. |
+| G1-B05 database approver/evidence boundary | `test_promote_requires_independent_approver_and_blocks_direct_head_change`; `test_m1_absent_forged_expired_revoked_untrusted_evidence_cannot_promote` | Covers fixture DB enforcement; does not establish deployed approver or producer identity. Add `test_n2_dual_duty_login_cannot_promote` if the gate reviewer finds its dual-duty invariant is not already covered. |
+| G1-B06 database-authoritative record time | `test_backdated_recorded_at_is_overwritten` | Directly checks rejection/overwrite of caller-supplied past time. Commit-order test `test_n3_ingest_seq_recorded_at_and_commit_order_agree` is supplemental unless that ordering is a separate gate criterion. |
+| G1-B07 fencing, replay and outbox leases | `test_stale_fence_rejected`; `test_duplicate_digest_conflict`; `test_b1_page_replay_identical_ok_changed_batch_conflicts`; `test_b2_claim_generation_fences_reclaim_by_same_name`; `test_n8_concurrent_claims_do_not_overlap`; `test_six_processes_acquire_same_job_exactly_one_wins` | A compact set for stale fence, replay/conflict, generation fencing, concurrent outbox claims and process-level lease acquisition. Does not cover every possible interleaving. |
+| G1-B07 observed termination during explicit COMMIT | `test_terminate_backend_during_observed_explicit_commit` | Required for the documented missing boundary; report `NOT_RUN` if the observer cannot prove COMMIT was underway before termination. |
+| G1-B08 separate-cluster restore | `test_pg_dump_restore_to_distinct_postgres_cluster` | Required candidate; same-cluster restore cannot substitute. |
+
+### Gate scope questions left open by the proposal
+
+- G1-B07 names concurrent workers, CAS, stale fencing and replay, but the backlog does not explicitly decide whether racing head promotion and competing cursor-page commits are separate mandatory criteria. Gate reviewer to disposition `test_two_session_concurrent_promote_has_one_winner`, `test_two_processes_commit_same_prior_cursor_different_pages_one_wins`, and `test_two_processes_commit_identical_page_is_applied_once` against the exact acceptance text before execution.
+- The proposal's minimum runtime set does not close actual deployed-role/grant capture, authenticated approver/evidence identity, capacity disposition, or gate-specific review; those remain separate evidence items.
+- Static preflight, capacity smoke, guard mutation, general page/ingest crash-recovery and same-cluster restore remain supplemental or excluded as described in the candidate map unless gate review records a specific reason to add them.
+
 ## Ordered assembly sequence
 
 1. Preserve the current code and source review as source-level evidence only. Current PM approval is for exact source HEAD `17b6de78743f2e40f6ae0f6bca322b4e87ba7d96`; later documentation commits do not change that code range, and no runtime result is implied.

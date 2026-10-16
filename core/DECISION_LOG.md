@@ -805,3 +805,5 @@ R-01/R-03 inventory provenance links (2026-10-16): linked the operator backlog a
 Operator backlog G0 status reconciliation (2026-10-16): labeled the initial P0/P1 intake and old unblock text as historical, then linked OB-01/OB-15 to the separately approved narrow G0 scope and still-open deployment deferrals. No gate manifest value or authorization changed. See `docs/phase2/CHANGE_RECORD_068.md`.
 
 SDLC checkpoint refresh (2026-10-16): recorded the latest documentation baseline separately from the G1 code review HEAD and refreshed Verify/Gate artifact links. No gate state or runtime evidence changed. See `docs/phase2/CHANGE_RECORD_069.md`.
+
+G1 proposed minimal runtime set (2026-10-16): `functional-test-reviewer` (GPT-6 Luna, low effort) mapped a focused set to G1-B04..B08, identified supplemental scenarios and left concurrent head-promotion/cursor-page scope for gate review. This is a read-only proposal; all results remain NOT_RUN. See `docs/phase2/CHANGE_RECORD_070.md`.
