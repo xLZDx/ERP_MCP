@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ERP_MCP_R2 — G1 local push status</title>
+  <style>
+    body{font:16px/1.55 system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17212b}
+    h1,h2{line-height:1.2} table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}
+    th,td{border:1px solid #b8c3cc;padding:.65rem;text-align:left;vertical-align:top}
+    th{background:#edf2f6} code{overflow-wrap:anywhere} .state{font-weight:700}
+  </style>
+</head>
+<body>
+<header>
+  <h1>ERP_MCP_R2 — G1 local push status</h1>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 0698801</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+
+<p><strong>Date:</strong> 2026-10-16. <strong>Current HEAD:</strong> <code>06988014bf85bc469b2e1e7b15147dfc4d9b3b86</code>. <strong>Test correction:</strong> <code>69857fdd9f5c8fc52beb09074db000b50495fdd6</code>. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+
+<h2>Request status</h2>
+<table>
+  <thead><tr><th>Item</th><th>State</th><th>Work and evidence</th><th>Remaining acceptance / dependency</th><th>Next action and owner</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Disposable PostgreSQL for G1</td>
+      <td class="state">Created and used for the initial run; stopped now</td>
+      <td>PostgreSQL 16 in Docker, bound to loopback only. Container <code>erp-r2-g1-ef2e3f349883</code>; owner label was verified before stopping. No unrelated containers were touched.</td>
+      <td>The container must be restarted for a rerun.</td>
+      <td>Test agents restart the dedicated database if execution is allowed. Owner: functional-test-reviewer / e2e-runner.</td>
+    </tr>
+    <tr>
+      <td>Project dependencies</td>
+      <td class="state">Installed</td>
+      <td>Created an isolated <code>.venv</code> and installed project plus development dependencies, including asyncpg and the test runner. Host <code>psql</code> was unnecessary.</td>
+      <td>No additional dependencies were identified for this test.</td>
+      <td>Reuse the local environment. Owner: test agents.</td>
+    </tr>
+    <tr>
+      <td>Reviewer selection</td>
+      <td class="state">Risk-matched roles selected</td>
+      <td>Functional-test-reviewer owns the test correction. Database-reviewer checked ACL/RLS and transaction snapshots; silent-failure-hunter checked that the new assertion cannot pass falsely. E2E-runner separately proved the COMMIT scenario on the earlier version.</td>
+      <td>No SQL query or plan changed, so tune-sql-query did not match the risk. A separate test-engineer role is not in the available Codex launch roster.</td>
+      <td>Keep the same owners for a permitted rerun. Owner: functional and E2E test agents.</td>
+    </tr>
+    <tr>
+      <td>Workflow rule updates</td>
+      <td class="state">Old bans removed from on-disk shared instructions; the AGENTS.md supplied in this session contains a conflicting ban</td>
+      <td>Updated <code>D:\Repo\AGENTS.md</code>, <code>C:\Users\koros\.codex\AGENTS.md</code>, both delivery-efficiency skill copies, and <code>C:\Users\koros\.claude\CLAUDE.md</code>. Test ownership remains with test agents; the global execution ban was removed.</td>
+      <td>The latest operator-provided instruction for this session still prohibits pytest. I stopped the corrected rerun under that newer rule, so there is no runtime result.</td>
+      <td>Reconcile to one authoritative rule and remove the ban if G1 testing is still the goal. Decision owner: operator, who supplied the conflicting rules.</td>
+    </tr>
+    <tr>
+      <td>G1 restore scope revocation</td>
+      <td class="state">Correction committed and statically reviewed; runtime is NOT_RUN</td>
+      <td>The functional run on baseline <code>4b9f3b0</code> reported 46 passed and 1 failed. The failure was a direct call to internal <code>living.assert_scope</code> as <code>living_reader</code>. Commit <code>69857fd</code> checks row visibility before and after deleting the grant through RLS, explicitly selects READ COMMITTED, and keeps a separate fresh-context <code>living.set_scope</code> check. Database-reviewer and silent-failure-hunter reported no remaining issue.</td>
+      <td>The corrected test has not been rerun. The AGENTS.md supplied in this session prohibits the required pytest invocation, so the old result does not validate the new code.</td>
+      <td>Allow the test-agent run in the active instructions, then have the test agents rerun the focused case. Until then, push remains NOT_READY.</td>
+    </tr>
+    <tr>
+      <td>PM review and push</td>
+      <td class="state">PM payload prepared but not sent; no push</td>
+      <td>An adversarial review payload for exact HEAD <code>06988014</code> is staged, request ID <code>84c016d2-5b74-4a0f-92dd-cd7849707b4a</code>. PM Bridge reports that the text is on the clipboard and requires manual paste/send.</td>
+      <td>No GPT-PM response and no permitted runtime result for the corrected test.</td>
+      <td>Paste the prepared text into ChatGPT, send it and return the reply. After a permitted green exact-head run, obtain fresh approval for this HEAD, then push. Reply owner: operator; push owner: implementation agent after the gate.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Gate status</h2>
+<p>Local push: <strong>NOT_READY</strong>. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Commits <code>69857fd</code> and <code>0698801</code> are local; the remote branch was not changed. The remaining local G1 push blocker is the lack of a permitted exact-head rerun; the PM response is also pending.</p>
+
+<h2>Ordered next steps</h2>
+<ol>
+  <li>Resolve the active AGENTS.md conflict by allowing focused pytest for the test agents, if the original goal still applies. Without this change the test remains NOT_RUN.</li>
+  <li>Paste and send the prepared PM Bridge request; obtain a reply for HEAD <code>06988014</code>.</li>
+  <li>Once test execution is allowed, start the dedicated PostgreSQL instance and have the functional/E2E agents rerun the exact case.</li>
+  <li>If the exact-head result is green and GPT approves this HEAD, push. Otherwise record the concrete defect and repeat the relevant specialist cycle.</li>
+</ol>
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>
