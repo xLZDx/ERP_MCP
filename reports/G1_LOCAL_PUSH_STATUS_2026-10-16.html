@@ -41,7 +41,7 @@
   <dl>
     <dt>Project</dt><dd>ERP_MCP_R2</dd>
     <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; PM-reviewed code HEAD 315e831</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ d30c38c</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Copy page" data-done="Copied"
@@ -50,10 +50,14 @@
 <!-- report-conform:end -->
 
 
-<p><strong>Date:</strong> 2026-10-16. <strong>Current code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. <strong>Correction:</strong> all 24 MAJOR-02 variants passed in 16.56 s; database-reviewer confirmed the original evidence gap is resolved. <strong>Latest PM reply:</strong> <code>b7f84f7a-3875-4ee1-b839-2556c5eb1f8a</code> — PUSH NO-GO pending complete evidence; no fresh exact-head verdict is recorded. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+
+
+
+
+<p><strong>Date:</strong> 2026-10-16. <strong>Corrected code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. `functional-test-reviewer` reran the selected set of 22 node IDs (45 executions) at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>; test sources match the stated code/test HEAD. Result: 45 passed, 0 failed, 0 skipped. `e2e-runner` executed explicit-COMMIT and distinct-cluster restore at detached <code>a6263e4</code>: 2 passed, 0 failed, 0 skipped. `database-reviewer` reviewed this exact-tree evidence: no database BLOCKER/MAJOR. <strong>Fresh PM verdict:</strong> pending; push remains PENDING_PM. Formal G1 is NOT_PASSED, production authorization is NONE, and Release 2 is NO-GO. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Current evidence assessment</h2>
-<p>The initial functional run at <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> reported 45 passed, 0 failed, 0 skipped in 57.13 s; the original 24 MAJOR-02 outcomes were raw, not accepted. Code commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code> corrected synchronization to observe active API SQL, Lock/transactionid wait and the revoke backend in <code>pg_blocking_pids</code> before revoke commit. Functional-test-reviewer reran all 24 variants: 24 passed, 0 failed, 0 skipped in 16.56 s, with observer proof for every case. Database-reviewer confirmed resolution. Silent-failure-hunter found no BLOCKER/MAJOR and confirmed false-PASS protection; its review was read-only and did not rerun tests, and noted the wait-event subtype is not asserted (the blocking PID is). E2E explicit-COMMIT passed (1 in 14.74 s); both test agents passed distinct-cluster restore (record 080). A fresh PM verdict for the current HEAD is pending. Formal G1 remains <strong>NOT_PASSED</strong>; production authorization is <strong>NONE</strong>.</p>
+<p>The earlier functional run at <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> reported 45 passed, 0 failed, 0 skipped in 57.13 s, but its initial 24 MAJOR-02 results were not accepted because the lock boundary was not proven. After the correction in code/test commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, the functional agent reran all selected 22 node IDs at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>: 45 passed, 0 failed, 0 skipped. The corrected MAJOR-02 test blob is identical on both heads: <code>ce5c2c4f86b4751b8f03744fff16831557887d4f</code>. Its observer asserts active API SQL, <code>wait_event_type=Lock</code>, and the revoke backend PID in <code>pg_blocking_pids</code>; <code>wait_event=transactionid</code> is recorded as metadata but is not asserted. Database-reviewer confirmed the original MAJOR correction and, in a fresh read-only review of exact-tree evidence, found no database BLOCKER/MAJOR. At detached code/test HEAD <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, `e2e-runner` ran <code>test_terminate_backend_during_observed_explicit_commit</code> and <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>: 2 passed, 0 failed, 0 skipped. The COMMIT scenario remains bounded: it does not cover the post-WAL-commit/pre-acknowledgement gap. Durations and container IDs for the latest reruns were not provided and are not inferred from earlier executions. Disposable test databases were removed. A fresh PM verdict for the current diff remains pending. Formal G1 is <strong>NOT_PASSED</strong>, production authorization is <strong>NONE</strong>, and Release 2 is <strong>NO-GO</strong>.</p>
 
 <h2>Request status</h2>
 <table>
@@ -96,10 +100,10 @@
     </tr>
     <tr>
       <td>Selected focused scenarios, including MAJOR-02</td>
-      <td class="state">PASS; corrected 24-case matrix confirmed by database-reviewer</td>
-      <td>Initial raw run: 45 passed/0 failed/0 skipped in 57.13s. After fix in <code>a6263e4</code>, MAJOR-02 rerun: 24 passed/0 failed/0 skipped in 16.56s. Each case logged active API SQL, Lock/transactionid wait and revoke backend in <code>pg_blocking_pids</code>. Database-reviewer confirmed resolution. Static code-reviewer found no B/M in 40 changed paths; silent-failure-hunter found no B/M, read-only and did not rerun tests.</td>
-      <td>Selected runtime and specialist evidence are complete; this does not prove formal G1 or production readiness.</td>
-      <td>Request a current-head GPT-PM decision. Owner: implementation agent.</td>
+      <td class="state">PASS for selected local scenarios; fresh GPT-PM decision pending</td>
+      <td>Exact-tree functional rerun: 45 passed/0 failed/0 skipped across 22 node IDs at docs HEAD <code>0800269</code>, with test blobs matching code/test HEAD <code>a6263e4</code>. Exact-tree E2E rerun: explicit-COMMIT and distinct-cluster restore, 2 passed/0 failed/0 skipped at detached <code>a6263e4</code>. Database-reviewer found no database B/M and confirmed the lock evidence; COMMIT test does not cover the post-WAL/pre-acknowledgement gap. MAJOR-02 asserts Lock wait type and blocker PID; the observed transactionid subtype is not asserted. Earlier static code review found no B/M across 44 changed paths at <code>c2157e7</code>; silent-failure-hunter found no B/M in read-only review.</td>
+      <td>These local scenarios do not prove formal G1, deployed identity, capacity, or production readiness. Exact final diff still needs fresh PM review.</td>
+      <td>Send the exact current code/documentation diff and evidence to GPT-PM. Owner: implementation agent.</td>
     </tr>
     <tr>
       <td>PM review and push</td>
@@ -112,13 +116,17 @@
 </table>
 
 <h2>Gate status</h2>
-<p>Local push: <strong>PENDING_PM</strong>. Corrected selected runtime and specialist reviews are complete; database-reviewer confirmed the MAJOR-02 evidence gap is closed, and silent-failure-hunter/static code-reviewer found no BLOCKER/MAJOR. The latest PM reply was <strong>PUSH NO-GO</strong>; no fresh verdict for the current exact HEAD is recorded. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. No push was performed; documentation does not authorize one.</p>
+<p>Local push: <strong>PENDING_PM</strong> until a fresh decision for the current diff. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. The latest known PM reply was <strong>PUSH NO-GO</strong>; no new verdict is recorded yet. Formal G1: <strong>NOT_PASSED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. No push was performed; these reports do not authorize one.</p>
 
 <h2>Ordered next steps</h2>
 <ol>
   <li>Send the current exact diff and selected runtime evidence to GPT-PM for a new push decision.</li>
   <li>Do not push until GPT-PM explicitly approves the current HEAD. Formal G1 remains a separate open gate.</li>
 </ol>
+
+
+
+
 
 
 

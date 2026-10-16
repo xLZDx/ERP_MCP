@@ -41,7 +41,7 @@
   <dl>
     <dt>Проект</dt><dd>ERP_MCP_R2</dd>
     <dt>Папка</dt><dd>D:\Repo\ERP_MCP_R2</dd>
-    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; PM-reviewed code HEAD 315e831</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ d30c38c</dd>
   </dl>
   <button id="rc-copy" class="rc-copy" type="button"
           data-idle="Копировать страницу" data-done="Скопировано"
@@ -50,10 +50,14 @@
 <!-- report-conform:end -->
 
 
-<p><strong>Дата:</strong> 2026-10-16. <strong>Текущий code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. <strong>Результат исправления:</strong> все 24 MAJOR-02 варианта прошли за 16.56 s; database-reviewer подтвердил закрытие первоначального evidence gap. <strong>Последний PM ответ:</strong> <code>b7f84f7a-3875-4ee1-b839-2556c5eb1f8a</code> — PUSH NO-GO до завершения evidence; новый exact-head verdict ещё не получен. <strong>Репозиторий:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+
+
+
+
+<p><strong>Дата:</strong> 2026-10-16. <strong>Исправленный code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. Functional-test-reviewer повторил выбранный набор из 22 node IDs (45 исполнений) на docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>; исходники тестов совпадают с указанным code/test HEAD. Результат: 45 passed, 0 failed, 0 skipped. E2E-runner выполнил explicit-COMMIT и distinct-cluster restore на detached <code>a6263e4</code>: 2 passed, 0 failed, 0 skipped. Database-reviewer проверил exact-tree evidence: database BLOCKER/MAJOR нет. <strong>Свежий PM verdict:</strong> ожидается; push остаётся PENDING_PM. Формальный G1 — NOT_PASSED, production authorization — NONE, Release 2 — NO-GO. <strong>Репозиторий:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
 
 <h2>Текущая оценка evidence</h2>
-<p>Исходный functional run на <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> дал 45 passed, 0 failed, 0 skipped за 57.13 s; те 24 MAJOR-02 результата были raw, не accepted. Исправление в code commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code> наблюдает активный SQL API, Lock/transactionid wait и PID revoke backend в <code>pg_blocking_pids</code> до commit revoke. Functional-test-reviewer повторил все 24 варианта: 24 passed, 0 failed, 0 skipped за 16.56 s; каждый вариант подтвердил observer boundary. Database-reviewer подтвердил закрытие прежнего MAJOR evidence gap. Silent-failure-hunter не нашёл BLOCKER/MAJOR, подтвердил защиту от false PASS; review был read-only и не запускал тесты, указано, что subtype <code>wait_event</code> не проверяется (blocking PID проверяется). E2E explicit-COMMIT: 1 passed за 14.74 s; restore прошёл у обоих тестовых агентов (record 080). Новый PM verdict для текущего HEAD ожидается. Формальный G1 <strong>NOT_PASSED</strong>, production authorization <strong>NONE</strong>.</p>
+<p>Ранее исходный functional run на <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> дал 45 passed, 0 failed, 0 skipped за 57.13 s, однако первоначальные 24 MAJOR-02 результата не были приняты из-за отсутствия доказательства границы блокировки. После исправления в code/test commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code> функциональный агент повторил все выбранные 22 node IDs на docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>: 45 passed, 0 failed, 0 skipped. Blob исправленного MAJOR-02 теста на обоих HEAD одинаковый: <code>ce5c2c4f86b4751b8f03744fff16831557887d4f</code>. Наблюдатель проверяет активный SQL API, <code>wait_event_type=Lock</code> и блокирующий PID revoke backend в <code>pg_blocking_pids</code>; <code>wait_event=transactionid</code> записывается как метаданные, но не проверяется assertion’ом. Database-reviewer подтвердил исправление первоначального MAJOR и при свежем read-only review exact-tree evidence не нашёл database BLOCKER/MAJOR. E2E-runner на detached code/test HEAD <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code> выполнил <code>test_terminate_backend_during_observed_explicit_commit</code> и <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>: 2 passed, 0 failed, 0 skipped. Ограничение COMMIT-сценария остаётся: он не покрывает окно после WAL commit до acknowledgement. Длительности и идентификаторы контейнеров последних повторных прогонов не предоставлены; они не выводятся из более ранних запусков. Тестовые БД были disposable и убраны. Свежий PM verdict для текущего diff ещё ожидается. Формальный G1 <strong>NOT_PASSED</strong>, production authorization <strong>NONE</strong>, Release 2 <strong>NO-GO</strong>.</p>
 
 <h2>Сводка по запросам</h2>
 <table>
@@ -95,11 +99,11 @@
       <td>Один сценарий restore PASS не меняет формальный G1; конкретные container/system IDs и cleanup записаны в CHANGE_RECORD_080.</td>
     </tr>
     <tr>
-      <td>Selected focused scenarios, including MAJOR-02</td>
-      <td class="state">PASS; corrected 24-case matrix confirmed by database-reviewer</td>
-      <td>Initial raw run: 45 passed/0 failed/0 skipped in 57.13s. After the fix in <code>a6263e4</code>, MAJOR-02 rerun: 24 passed/0 failed/0 skipped in 16.56s. Every variant logged API SQL active, Lock/transactionid wait and revoke backend in <code>pg_blocking_pids</code>. Database-reviewer confirmed resolution. Static code-reviewer found no B/M in 40 changed paths; silent-failure-hunter found no B/M, read-only and did not rerun tests.</td>
-      <td>Runtime and specialist evidence are complete for this selected local suite. It does not prove formal G1 or production readiness.</td>
-      <td>Request current-head GPT-PM decision. Owner: implementation agent.</td>
+      <td>Выбранные сценарии G1-B04–B08, включая исправленные случаи MAJOR-02</td>
+      <td class="state">Пройдены выбранные локальные сценарии; ожидается новое решение GPT-PM</td>
+      <td>Точный повтор функционального набора: 45 passed/0 failed/0 skipped по 22 node IDs на docs HEAD <code>0800269</code>; blob теста совпадает с code/test HEAD <code>a6263e4</code>. Точный повтор E2E: explicit-COMMIT и restore в отдельный кластер, 2 passed/0 failed/0 skipped на detached <code>a6263e4</code>. Database-reviewer не нашёл BLOCKER/MAJOR в базе данных и подтвердил доказательство блокировки; COMMIT-тест не покрывает окно после WAL commit до acknowledgement. MAJOR-02 проверяет тип ожидания Lock и PID блокирующего backend; subtype transactionid только записывается. Ранний static code review не нашёл BLOCKER/MAJOR в 44 изменённых путях на <code>c2157e7</code>; silent-failure-hunter также не нашёл BLOCKER/MAJOR при read-only review.</td>
+      <td>Эти локальные сценарии не доказывают формальный G1, конфигурацию deployed identity, ёмкость или production readiness. Для текущего diff нужно новое PM review.</td>
+      <td>Передать точный текущий code/documentation diff и evidence GPT-PM. Владелец: implementation agent.</td>
     </tr>
     <tr>
       <td>PM review и push</td>
@@ -112,7 +116,7 @@
 </table>
 
 <h2>Статус gate</h2>
-<p>Локальный push: <strong>PENDING_PM</strong>. Исправленный selected runtime и профильные reviews завершены; database-reviewer подтвердил закрытие MAJOR-02, silent-failure-hunter и static code-reviewer не нашли BLOCKER/MAJOR. Последний PM ответ был <strong>PUSH NO-GO</strong>; свежего verdict для текущего exact HEAD нет. Формальный G1: <strong>NOT_PASSED</strong>. Авторизация production: <strong>NONE</strong>. Push не выполнялся; документы не разрешают push.</p>
+<p>Локальный push: <strong>PENDING_PM</strong> до свежего решения по текущему diff. Exact-tree selected runtime завершён: functional 45/45 и E2E 2/2; database-reviewer не нашёл database BLOCKER/MAJOR и указал ограничение COMMIT-сценария. Последний известный PM ответ — <strong>PUSH NO-GO</strong>; нового verdict пока нет. Формальный G1: <strong>NOT_PASSED</strong>. Авторизация production: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. Push не выполнялся; эти отчёты не разрешают push.</p>
 
 <h2>Очередь действий</h2>
 <ol>
@@ -120,6 +124,10 @@
   <li>Не выполнять push до явного решения GPT-PM для текущего HEAD.</li>
   <li>После ответа PM выполнять push только если он явно разрешит текущий HEAD; формальный G1 остаётся отдельным незакрытым gate.</li>
 </ol>
+
+
+
+
 
 
 
