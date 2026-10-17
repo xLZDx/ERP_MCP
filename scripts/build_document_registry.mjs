@@ -179,7 +179,7 @@ const lines = [
   'directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several',
   'heading variants over the scanned refs lists all of them; an empty cell means no heading was found.',
   '',
-  `Inventory: ${rows.length} tracked paths, ${localOnly.size} local-only paths.`,
+  `Inventory: ${rows.length} tracked ${rows.length === 1 ? "path" : "paths"}, ${localOnly.size} local-only ${localOnly.size === 1 ? "path" : "paths"}.`,
   '',
   '## Documents in git (scanned refs)',
   '',
@@ -225,5 +225,5 @@ if (process.argv.includes('--check')) {
   mkdirSync(dirname(OUT), { recursive: true });
   assertOutputContained();
   writeFileSync(OUT, body, 'utf8');
-  console.log(`wrote ${REGISTRY_REL}: ${rows.length} tracked paths, ${localOnly.size} local-only.`);
+  console.log(`wrote ${REGISTRY_REL}: ${rows.length} tracked ${rows.length === 1 ? "path" : "paths"}, ${localOnly.size} local-only ${localOnly.size === 1 ? "path" : "paths"}.`);
 }
