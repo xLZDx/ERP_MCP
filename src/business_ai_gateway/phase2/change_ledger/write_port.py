@@ -61,6 +61,7 @@ class DispatchPermit:
     signer_key_id: str
     signature: str
     repair_authorization_id: str | None = None
+    lifecycle_epoch: int = 0
 
 
 @dataclass(frozen=True)

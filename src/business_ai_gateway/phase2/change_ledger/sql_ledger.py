@@ -124,6 +124,15 @@ SPEC: dict[str, Fn] = {
     "fence_check": _f("fence_check", "writer", "uuid,bigint,uuid", "jsonb"),
 }
 
+# Migration 022 is an explicitly staged, optional extension. Keep these signatures outside SPEC:
+# consumers that apply the accepted 001-021 test/runtime baseline must remain unchanged.
+_LIFECYCLE_SPEC = {
+    "lifecycle_begin_recovery": _f("lifecycle_begin_recovery", "worker", "", "jsonb"),
+    "lifecycle_status": _f("lifecycle_status", "worker auditor", "", "jsonb"),
+    "lifecycle_writer_epoch": _f("lifecycle_writer_epoch", "writer", "uuid,bigint,bigint", "boolean"),
+    "lifecycle_permit_epoch": _f("lifecycle_permit_epoch", "worker", "uuid,bigint", "bigint"),
+}
+
 _CAST = {"timestamp with time zone": "timestamptz"}
 
 
@@ -142,15 +151,17 @@ def _arg(ty: str, value: Any) -> Any:
 class SqlChangeLedger:
     """Implements ``checkpoint.LedgerPort`` plus the rest of the runtime surface of 004-006."""
 
-    def __init__(self, conn: asyncpg.Connection, actors: Mapping[str, str | None] | None = None):
+    def __init__(self, conn: asyncpg.Connection, actors: Mapping[str, str | None] | None = None, *,
+                 lifecycle_fence_enabled: bool = False):
         self.conn = conn
         self._actors = dict(actors or {})
+        self._lifecycle_fence_enabled = lifecycle_fence_enabled
         for cls, role in self._actors.items():
             if cls not in CLASSES or (role is not None and not _IDENT.fullmatch(role)):
                 raise ValueError("ACTOR_INVALID")
 
     async def invoke(self, key: str, scope: Scope, *args: Any, as_class: str | None = None) -> Any:
-        fn = SPEC[key]
+        fn = SPEC.get(key) or _LIFECYCLE_SPEC[key]
         if len(args) != len(fn.params):
             raise TypeError(f"{key} takes {len(fn.params)} arguments after scope, got {len(args)}")
         cls = as_class or fn.classes[0]
@@ -251,7 +262,17 @@ class SqlChangeLedger:
                                  signature, signed_at, read_back, as_class=as_class)
 
     async def issue_permit(self, scope: Scope, change_id: UUID, generation: int) -> dict:
-        return await self.invoke("issue_permit", scope, change_id, generation)
+        if self._lifecycle_fence_enabled:
+            lifecycle = await self.lifecycle_status(scope)
+            if lifecycle.get("state") != "READY":
+                raise LedgerError("LIFECYCLE_NOT_READY")
+        permit = await self.invoke("issue_permit", scope, change_id, generation)
+        if not self._lifecycle_fence_enabled:
+            return permit
+        epoch = await self.invoke("lifecycle_permit_epoch", scope, change_id, generation)
+        if permit is None or epoch is None:
+            raise LedgerError("LIFECYCLE_NOT_READY")
+        return {**permit, "lifecycle_epoch": int(epoch)}
 
     async def attach_permit_signature(self, scope: Scope, change_id: UUID, generation: int,
                                       key_id: str, signature: str,
@@ -277,6 +298,24 @@ class SqlChangeLedger:
 
     async def fence_check(self, scope: Scope, change_id: UUID, generation: int, call_id: UUID) -> dict:
         return await self.invoke("fence_check", scope, change_id, generation, call_id)
+
+    async def lifecycle_begin_recovery(self, scope: Scope) -> dict:
+        """Atomically invalidate prior writer epochs and fence this scope as RECOVERING."""
+        return await self.invoke("lifecycle_begin_recovery", scope)
+
+    async def lifecycle_status(self, scope: Scope) -> dict:
+        """Read the durable lifecycle fence; absence is reported by SQL as NOT_READY."""
+        return await self.invoke("lifecycle_status", scope)
+
+    async def lifecycle_writer_epoch(self, scope: Scope, change_id: UUID, generation: int,
+                                    expected_epoch: int) -> bool:
+        """Check this persisted permit epoch immediately before a physical writer call.
+
+        The SQL transaction ends before the external call, so this check alone does not close the
+        subsequent recovery-start race; the dispatch CAS remains the last transactional fence.
+        """
+        return await self.invoke("lifecycle_writer_epoch", scope, change_id, generation,
+                                 expected_epoch)
 
     async def observe_target(self, scope: Scope, token_id: UUID, fingerprint: str,
                              target_class: str) -> bool:

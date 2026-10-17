@@ -1,6 +1,6 @@
 # S13 startup and restore lifecycle design
 
-**Status:** revised after independent security/reliability review; local implementation scope is being reworked to resolve the shared-fence MAJOR. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
+**Status:** revised after independent security/reliability review; staged fail-closed fence primitives are implemented locally under CR130. They do not provide a READY transition or complete S13 lifecycle. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
 
 ## Goal
 
@@ -18,7 +18,7 @@ Connect the existing PostgreSQL ledger integrity, external checkpoint, and bound
 1. **Additive shared-fence database contract plus provider-neutral coordinator (recommended local engineering):** inventory and fence all mutation/permit/dispatch paths, add monotonic lifecycle epoch and suffix query, then implement orchestration against TEST adapters. Defer selection and qualification of an external provider and signer/key custody to the separately recorded S11 decision.
 2. **Defer S13 lifecycle source work until a deployed service and external checkpoint contract exist:** this avoids building an unwired adapter but leaves the startup/restore defect unresolved in the local prototype.
 
-Decision for local engineering: use option 1 after the exact expanded scope is recorded and reviewed. The additive fence/suffix DB contract is required for meaningful local READY semantics; a coordinator by itself is insufficient. This does not invent an external account or claim that an in-memory sink meets CT5. Before formal S13 completion, the external provider, signer, custody owner, authenticated anti-rollback latest read, and retention/immutability evidence must be resolved and qualified.
+Decision for local engineering: use option 1. CR130 implements only the preparatory database fence primitives. They intentionally have no READY transition because complete mutation-path coverage, suffix classification, and an authenticated anti-rollback provider are not established. A coordinator by itself remains insufficient. This does not invent an external account or claim that an in-memory sink meets CT5. Before formal S13 completion, the external provider, signer, custody owner, authenticated anti-rollback latest read, and retention/immutability evidence must be resolved and qualified.
 
 ## Design
 
