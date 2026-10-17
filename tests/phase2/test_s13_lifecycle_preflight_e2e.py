@@ -41,6 +41,20 @@ class LedgerPortDouble:
         return self.result
 
 
+class HangingLedgerPortDouble(LedgerPortDouble):
+    def __init__(self):
+        super().__init__()
+        self.cancelled = False
+
+    async def verify_chain(self, scope: Scope):
+        self.calls.append(scope)
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+
+
 class RecordingCheckpointSink(InMemoryCheckpointSink):
     def __init__(self):
         super().__init__("s13-local-orchestration-e2e")
@@ -59,6 +73,20 @@ class RecordingCheckpointSink(InMemoryCheckpointSink):
     async def latest(self, scope: Scope):
         self.latest_calls.append(scope)
         return await super().latest(scope)
+
+
+class HangingCheckpointSink(RecordingCheckpointSink):
+    def __init__(self):
+        super().__init__()
+        self.cancelled = False
+
+    async def latest(self, scope: Scope):
+        self.latest_calls.append(scope)
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
 
 
 def _record(scope: Scope, seq: int, signer: FakeSigner) -> CheckpointRecord:
@@ -96,7 +124,7 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.
         assert list(inspect.signature(LifecycleCoordinator).parameters) == [
-            "ledger", "sink", "verifier"]
+            "ledger", "sink", "verifier", "dependency_timeout_seconds"]
         assert not hasattr(coordinator, "recover")
         assert not hasattr(coordinator, "write")
 
@@ -114,6 +142,44 @@ def test_s13_preflight_chain_failure_stops_before_checkpoint_provider():
         assert result.checkpoint_seq is None
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == []
+        assert sink.write_calls == sink.read_back_calls == 0
+
+    _run(scenario())
+
+
+def test_s13_preflight_chain_timeout_is_bounded_and_stops_before_checkpoint_provider():
+    async def scenario():
+        sink = RecordingCheckpointSink()
+        ledger = HangingLedgerPortDouble()
+        result = await LifecycleCoordinator(
+            ledger, sink, FakeVerifier(), dependency_timeout_seconds=0.01,
+        ).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHAIN_UNAVAILABLE
+        assert result.chain_count is None
+        assert ledger.calls == [SCOPE]
+        assert ledger.cancelled is True
+        assert sink.latest_calls == []
+        assert sink.write_calls == sink.read_back_calls == 0
+
+    _run(scenario())
+
+
+def test_s13_preflight_checkpoint_timeout_is_bounded_and_fail_closed():
+    async def scenario():
+        ledger = LedgerPortDouble()
+        sink = HangingCheckpointSink()
+        result = await LifecycleCoordinator(
+            ledger, sink, FakeVerifier(), dependency_timeout_seconds=0.01,
+        ).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHECKPOINT_UNAVAILABLE
+        assert result.chain_count == 7
+        assert ledger.calls == [SCOPE]
+        assert sink.latest_calls == [SCOPE]
+        assert sink.cancelled is True
         assert sink.write_calls == sink.read_back_calls == 0
 
     _run(scenario())

@@ -56,6 +56,12 @@ class Ledger:
         return self.response
 
 
+class SlowLedger(Ledger):
+    async def verify_chain(self, scope):
+        self.calls.append(("chain", scope))
+        await asyncio.sleep(60)
+
+
 class Sink(InMemoryCheckpointSink):
     def __init__(self, calls, record=None, error=None):
         super().__init__()
@@ -68,6 +74,12 @@ class Sink(InMemoryCheckpointSink):
         if self.error:
             raise self.error
         return self.record
+
+
+class SlowSink(Sink):
+    async def latest(self, scope):
+        self.calls.append(("latest", scope))
+        await asyncio.sleep(60)
 
 
 class ExplodingVerifier:
@@ -118,6 +130,16 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         self.assertEqual(result.reason, LifecycleReason.CHAIN_UNAVAILABLE)
         self.assertEqual(calls, [("chain", SCOPE)])
 
+    def test_chain_timeout_maps_to_chain_unavailable_without_provider_call(self):
+        calls = []
+        result = asyncio.run(LifecycleCoordinator(
+            SlowLedger(calls=calls), Sink(calls, signed_record()), FakeVerifier(),
+            dependency_timeout_seconds=0.001,
+        ).preflight(SCOPE))
+        self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+        self.assertEqual(result.reason, LifecycleReason.CHAIN_UNAVAILABLE)
+        self.assertEqual(calls, [("chain", SCOPE)])
+
     def test_provider_exception_and_missing_record_have_fixed_reasons(self):
         for record, error, expected in (
             (None, RuntimeError("provider private detail"), LifecycleReason.CHECKPOINT_UNAVAILABLE),
@@ -132,6 +154,24 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual(result.reason, expected)
                 self.assertEqual([name for name, _ in calls], ["chain", "latest"])
                 self.assertNotIn("private detail", repr(result))
+
+    def test_checkpoint_latest_timeout_maps_to_checkpoint_unavailable(self):
+        calls = []
+        result = asyncio.run(LifecycleCoordinator(
+            Ledger(calls=calls), SlowSink(calls), FakeVerifier(),
+            dependency_timeout_seconds=0.001,
+        ).preflight(SCOPE))
+        self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+        self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_UNAVAILABLE)
+        self.assertEqual(result.chain_count, 9)
+        self.assertEqual(calls, [("chain", SCOPE), ("latest", SCOPE)])
+
+    def test_dependency_timeout_must_be_finite_positive_number_not_bool(self):
+        for timeout in (0, -0.1, float("inf"), float("nan"), True, "1"):
+            with self.subTest(timeout=timeout):
+                with self.assertRaises(ValueError):
+                    LifecycleCoordinator(Ledger(), Sink([]), FakeVerifier(),
+                                         dependency_timeout_seconds=timeout)
 
     def test_wrong_scope_record_is_rejected_before_signature_check(self):
         calls = []
@@ -156,6 +196,20 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
                 self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
                 self.assertIsNone(result.checkpoint_seq)
+
+    def test_malformed_latest_values_map_to_checkpoint_invalid(self):
+        valid = signed_record()
+        bool_sequence = CheckpointRecord(**{**valid.__dict__, "seq": True})
+        for candidate in (object(), bool_sequence):
+            with self.subTest(candidate_type=type(candidate).__name__,
+                              seq=getattr(candidate, "seq", None)):
+                result = asyncio.run(LifecycleCoordinator(
+                    Ledger(), Sink([], candidate), FakeVerifier(),
+                ).preflight(SCOPE))
+                self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+                self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
+                self.assertIsNone(result.checkpoint_seq)
+                self.assertIsNone(result.checkpoint_hash)
 
     def test_valid_preflight_returns_checkpoint_evidence_but_never_ready(self):
         result = asyncio.run(LifecycleCoordinator(

@@ -6,6 +6,8 @@ a reviewed recovery-to-READY transition. A successful preflight therefore remain
 """
 from __future__ import annotations
 
+import asyncio
+import math
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol
@@ -55,15 +57,23 @@ class LifecycleCoordinator:
     """
 
     def __init__(self, ledger: LifecycleLedger, sink: CheckpointSink,
-                 verifier: SignatureVerifier):
+                 verifier: SignatureVerifier, *, dependency_timeout_seconds: float = 5.0):
+        if (isinstance(dependency_timeout_seconds, bool)
+                or not isinstance(dependency_timeout_seconds, (int, float))
+                or not math.isfinite(dependency_timeout_seconds)
+                or dependency_timeout_seconds <= 0):
+            raise ValueError("dependency_timeout_seconds must be a finite positive number")
         self._ledger = ledger
         self._sink = sink
         self._verifier = verifier
+        self._dependency_timeout_seconds = float(dependency_timeout_seconds)
 
     async def preflight(self, scope: Scope) -> LifecycleResult:
         """Return diagnostic state while keeping effectful admission disabled."""
         try:
-            chain = await self._ledger.verify_chain(scope)
+            chain = await asyncio.wait_for(
+                self._ledger.verify_chain(scope), timeout=self._dependency_timeout_seconds,
+            )
         except Exception:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHAIN_UNAVAILABLE)
@@ -77,7 +87,9 @@ class LifecycleCoordinator:
         chain_count = count
 
         try:
-            record = await self._sink.latest(scope)
+            record = await asyncio.wait_for(
+                self._sink.latest(scope), timeout=self._dependency_timeout_seconds,
+            )
         except Exception:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_UNAVAILABLE,
@@ -87,14 +99,30 @@ class LifecycleCoordinator:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_MISSING,
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
-        if (record.tenant_id != scope.tenant_id or record.company_id != scope.company_id):
+        if not isinstance(record, CheckpointRecord):
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_INVALID,
+                                   chain_count=chain_count if isinstance(chain_count, int) else None)
+        try:
+            scope_matches = (record.tenant_id == scope.tenant_id
+                             and record.company_id == scope.company_id)
+        except Exception:
+            scope_matches = False
+            malformed_scope = True
+        else:
+            malformed_scope = False
+        if malformed_scope:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_INVALID,
+                                   chain_count=chain_count if isinstance(chain_count, int) else None)
+        if not scope_matches:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_SCOPE_MISMATCH,
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
 
         try:
             structurally_valid = (
-                isinstance(record.seq, int) and record.seq > 0
+                type(record.seq) is int and record.seq > 0
                 and isinstance(record.head_hash, str) and len(record.head_hash) == 64
                 and all(ch in "0123456789abcdef" for ch in record.head_hash)
                 and isinstance(record.signature, str) and bool(record.signature)
