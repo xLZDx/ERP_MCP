@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 225 tracked paths, 4 local-only paths.
+Inventory: 229 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -161,6 +161,7 @@ Inventory: 225 tracked paths, 4 local-only paths.
 | docs/phase2/CHANGE_RECORD_152.md | Phase 2 design | "Change record 152 — add bounded S13 checkpoint suffix inspection" |
 | docs/phase2/CHANGE_RECORD_153.md | Phase 2 design | "Change record 153 — prepare S14–S19 sprint acceptance map" |
 | docs/phase2/CHANGE_RECORD_154.md | Phase 2 design | "Change record 154 — minimize S13 checkpoint suffix evidence" |
+| docs/phase2/CHANGE_RECORD_155.md | Phase 2 design | "Change record 155 — reconcile S13 writer inventory and draft dispatch-boundary contract" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -197,12 +198,15 @@ Inventory: 225 tracked paths, 4 local-only paths.
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
+| docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md | Phase 2 design | "S13 API mutation and lifecycle-fence coverage — 2026-10-17" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
 | docs/phase2/S13_MUTATION_AND_WRITER_PATH_INVENTORY_2026-10-17.md | Phase 2 design | "S13 repository mutation and writer-path inventory — 2026-10-17" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
 | docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md | Phase 2 design | "S13 startup and restore lifecycle design" |
+| docs/phase2/S13_WRITER_BOUNDARY_CLAIM_AND_RECOVERY_CONTRACT_2026-10-17.md | Phase 2 design | "S13 writer-boundary claim and recovery contract" |
 | docs/phase2/S14-S19_SPRINT_PLANS_AND_ACCEPTANCE_MAP_2026-10-17.md | Phase 2 design | "S14–S19 sprint plans and acceptance map — 2026-10-17" |
 | docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md | Phase 2 design | "S14 Risk and Gate Closure Packet — 2026-10-15" |
+| docs/phase2/S14_SIMULATED_WRITE_PORT_DESIGN_2026-10-17.md | Phase 2 design | "Local simulated `OneCWritePort` design" |
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
 | docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
@@ -245,7 +249,3 @@ Inventory: 225 tracked paths, 4 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_155.md |
-| docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md |
-| docs/phase2/S13_WRITER_BOUNDARY_CLAIM_AND_RECOVERY_CONTRACT_2026-10-17.md |
-| docs/phase2/S14_SIMULATED_WRITE_PORT_DESIGN_2026-10-17.md |
