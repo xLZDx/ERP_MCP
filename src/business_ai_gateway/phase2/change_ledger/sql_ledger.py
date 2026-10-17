@@ -131,6 +131,8 @@ _LIFECYCLE_SPEC = {
     "lifecycle_status": _f("lifecycle_status", "worker auditor", "", "jsonb"),
     "lifecycle_writer_epoch": _f("lifecycle_writer_epoch", "writer", "uuid,bigint,bigint", "boolean"),
     "lifecycle_permit_epoch": _f("lifecycle_permit_epoch", "worker", "uuid,bigint", "bigint"),
+    "lifecycle_checkpoint_suffix": _f("lifecycle_checkpoint_suffix", "worker auditor",
+                                       "bigint,text,integer", "jsonb"),
 }
 
 _CAST = {"timestamp with time zone": "timestamptz"}
@@ -306,6 +308,12 @@ class SqlChangeLedger:
     async def lifecycle_status(self, scope: Scope) -> dict:
         """Read the durable lifecycle fence; absence is reported by SQL as NOT_READY."""
         return await self.invoke("lifecycle_status", scope)
+
+    async def lifecycle_checkpoint_suffix(self, scope: Scope, checkpoint_seq: int,
+                                          checkpoint_hash: str, limit: int = 128) -> dict:
+        """Read a bounded, scope-bound event suffix; this does not authorize lifecycle readiness."""
+        return await self.invoke("lifecycle_checkpoint_suffix", scope, checkpoint_seq,
+                                 checkpoint_hash, limit)
 
     async def lifecycle_writer_epoch(self, scope: Scope, change_id: UUID, generation: int,
                                     expected_epoch: int) -> bool:
