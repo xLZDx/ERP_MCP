@@ -108,13 +108,17 @@ class LifecycleCoordinator:
                                    LifecycleReason.CHECKPOINT_INVALID,
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
         try:
-            scope_matches = (record.tenant_id == scope.tenant_id
+            scope_fields_valid = (
+                type(record.tenant_id) is str and type(record.company_id) is str
+                and type(scope.tenant_id) is str and type(scope.company_id) is str
+            )
+            scope_matches = (scope_fields_valid and record.tenant_id == scope.tenant_id
                              and record.company_id == scope.company_id)
         except Exception:
             scope_matches = False
             malformed_scope = True
         else:
-            malformed_scope = False
+            malformed_scope = not scope_fields_valid
         if malformed_scope:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_INVALID,

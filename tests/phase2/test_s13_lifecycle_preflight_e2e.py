@@ -111,6 +111,11 @@ class HostileRecordCheckpointSink(RecordingCheckpointSink):
         return self.record
 
 
+class HostileScopeValue:
+    def __eq__(self, other):
+        raise RuntimeError("untrusted scope comparison")
+
+
 def _record(scope: Scope, seq: int, signer: FakeSigner) -> CheckpointRecord:
     unsigned = CheckpointRecord(scope.tenant_id, scope.company_id, seq, HEAD_HASH,
                                 datetime(2026, 10, 17, tzinfo=UTC), signer.key_id, "",
@@ -258,6 +263,27 @@ def test_s13_preflight_checkpoint_record_subclass_is_rejected_before_field_acces
         signer = FakeSigner("s13-test-key")
         hostile_record = HostileCheckpointRecord(**_record(SCOPE, 12, signer).__dict__)
         sink = HostileRecordCheckpointSink(hostile_record)
+        result = await LifecycleCoordinator(
+            LedgerPortDouble(), sink, FakeVerifier()).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHECKPOINT_INVALID
+        assert result.chain_count == 7
+        assert sink.latest_calls == [SCOPE]
+        assert sink.write_calls == sink.read_back_calls == 0
+
+    _run(scenario())
+
+
+def test_s13_preflight_malformed_exact_record_scope_is_invalid_without_exception_escape():
+    async def scenario():
+        signer = FakeSigner("s13-test-key")
+        valid = _record(SCOPE, 12, signer)
+        malformed = CheckpointRecord(
+            HostileScopeValue(), valid.company_id, valid.seq, valid.head_hash,
+            valid.signed_at, valid.key_id, valid.signature, valid.sink_id, valid.sink_kind,
+        )
+        sink = HostileRecordCheckpointSink(malformed)
         result = await LifecycleCoordinator(
             LedgerPortDouble(), sink, FakeVerifier()).preflight(SCOPE)
 

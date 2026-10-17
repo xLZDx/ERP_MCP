@@ -99,6 +99,16 @@ class ExplodingCheckpointRecord(CheckpointRecord):
         return super().__getattribute__(name)
 
 
+class ExplodingBool:
+    def __bool__(self):
+        raise RuntimeError("malformed scope equality result")
+
+
+class MalformedScopeField:
+    def __eq__(self, other):
+        return ExplodingBool()
+
+
 class S13LifecyclePreflightTests(unittest.TestCase):
     def test_in_memory_latest_is_highest_sequence_for_exact_scope(self):
         sink = InMemoryCheckpointSink()
@@ -237,6 +247,16 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         valid = signed_record()
         malformed = ExplodingCheckpointRecord(**valid.__dict__)
         object.__setattr__(malformed, "_explode_field_access", True)
+        result = asyncio.run(LifecycleCoordinator(
+            Ledger(), Sink([], malformed), FakeVerifier(),
+        ).preflight(SCOPE))
+        self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+        self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
+        self.assertIsNone(result.checkpoint_seq)
+
+    def test_exact_record_with_malformed_scope_equality_is_invalid(self):
+        malformed = signed_record()
+        object.__setattr__(malformed, "tenant_id", MalformedScopeField())
         result = asyncio.run(LifecycleCoordinator(
             Ledger(), Sink([], malformed), FakeVerifier(),
         ).preflight(SCOPE))
