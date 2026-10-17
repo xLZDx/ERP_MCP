@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 201 tracked paths, 0 local-only paths.
+Inventory: 203 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -141,6 +141,8 @@ Inventory: 201 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_132.md | Phase 2 design | "Change record 132 — bounded S13 checkpoint preflight dependencies" |
 | docs/phase2/CHANGE_RECORD_133.md | Phase 2 design | "Change record 133 — harden S13 preflight against hostile provider subclasses" |
 | docs/phase2/CHANGE_RECORD_134.md | Phase 2 design | "Change record 134 — validate checkpoint scope field types" |
+| docs/phase2/CHANGE_RECORD_135.md | Phase 2 design | "Change record 135 — regenerate document registry after CR134" |
+| docs/phase2/CHANGE_RECORD_136.md | Phase 2 design | "Change record 136 — reconcile current S13 operator backlog status" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
