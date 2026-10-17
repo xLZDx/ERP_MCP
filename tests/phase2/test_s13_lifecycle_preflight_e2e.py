@@ -55,6 +55,11 @@ class HangingLedgerPortDouble(LedgerPortDouble):
             raise
 
 
+class HostileChainResult(dict):
+    def get(self, key, default=None):
+        raise RuntimeError("untrusted mapping access")
+
+
 class RecordingCheckpointSink(InMemoryCheckpointSink):
     def __init__(self):
         super().__init__("s13-local-orchestration-e2e")
@@ -87,6 +92,23 @@ class HangingCheckpointSink(RecordingCheckpointSink):
         except asyncio.CancelledError:
             self.cancelled = True
             raise
+
+
+class HostileCheckpointRecord(CheckpointRecord):
+    def __getattribute__(self, name):
+        if name == "tenant_id":
+            raise RuntimeError("untrusted record field access")
+        return super().__getattribute__(name)
+
+
+class HostileRecordCheckpointSink(RecordingCheckpointSink):
+    def __init__(self, record):
+        super().__init__()
+        self.record = record
+
+    async def latest(self, scope: Scope):
+        self.latest_calls.append(scope)
+        return self.record
 
 
 def _record(scope: Scope, seq: int, signer: FakeSigner) -> CheckpointRecord:
@@ -211,6 +233,38 @@ def test_s13_preflight_malformed_success_chain_count_stops_before_checkpoint_pro
         assert result.reason is LifecycleReason.CHAIN_INVALID
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == []
+        assert sink.write_calls == sink.read_back_calls == 0
+
+    _run(scenario())
+
+
+def test_s13_preflight_chain_mapping_subclass_is_rejected_without_get_call():
+    async def scenario():
+        sink = RecordingCheckpointSink()
+        ledger = LedgerPortDouble(result=HostileChainResult(ok=True, count=7))
+        result = await LifecycleCoordinator(ledger, sink, FakeVerifier()).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHAIN_INVALID
+        assert result.chain_count is None
+        assert sink.latest_calls == []
+        assert sink.write_calls == sink.read_back_calls == 0
+
+    _run(scenario())
+
+
+def test_s13_preflight_checkpoint_record_subclass_is_rejected_before_field_access():
+    async def scenario():
+        signer = FakeSigner("s13-test-key")
+        hostile_record = HostileCheckpointRecord(**_record(SCOPE, 12, signer).__dict__)
+        sink = HostileRecordCheckpointSink(hostile_record)
+        result = await LifecycleCoordinator(
+            LedgerPortDouble(), sink, FakeVerifier()).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHECKPOINT_INVALID
+        assert result.chain_count == 7
+        assert sink.latest_calls == [SCOPE]
         assert sink.write_calls == sink.read_back_calls == 0
 
     _run(scenario())

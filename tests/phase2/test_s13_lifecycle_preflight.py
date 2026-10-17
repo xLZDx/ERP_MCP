@@ -56,6 +56,11 @@ class Ledger:
         return self.response
 
 
+class ExplodingGetDict(dict):
+    def get(self, key, default=None):
+        raise RuntimeError("untrusted chain result accessor")
+
+
 class SlowLedger(Ledger):
     async def verify_chain(self, scope):
         self.calls.append(("chain", scope))
@@ -85,6 +90,13 @@ class SlowSink(Sink):
 class ExplodingVerifier:
     def verify(self, key_id, payload, signature):
         raise RuntimeError("private verifier diagnostic")
+
+
+class ExplodingCheckpointRecord(CheckpointRecord):
+    def __getattribute__(self, name):
+        if name == "tenant_id" and object.__getattribute__(self, "_explode_field_access"):
+            raise RuntimeError("untrusted checkpoint field accessor")
+        return super().__getattribute__(name)
 
 
 class S13LifecyclePreflightTests(unittest.TestCase):
@@ -119,6 +131,16 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
                 self.assertEqual(result.reason, LifecycleReason.CHAIN_INVALID)
                 self.assertEqual(calls, [("chain", SCOPE)])
+
+    def test_dict_subclass_with_raising_get_maps_to_chain_invalid(self):
+        calls = []
+        result = asyncio.run(LifecycleCoordinator(
+            Ledger(response=ExplodingGetDict(ok=True, count=9), calls=calls),
+            Sink(calls, signed_record()), FakeVerifier(),
+        ).preflight(SCOPE))
+        self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+        self.assertEqual(result.reason, LifecycleReason.CHAIN_INVALID)
+        self.assertEqual(calls, [("chain", SCOPE)])
 
     def test_chain_exception_maps_to_fixed_reason_without_sink_call(self):
         calls = []
@@ -210,6 +232,17 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
                 self.assertIsNone(result.checkpoint_seq)
                 self.assertIsNone(result.checkpoint_hash)
+
+    def test_checkpoint_record_subclass_with_raising_field_access_is_invalid(self):
+        valid = signed_record()
+        malformed = ExplodingCheckpointRecord(**valid.__dict__)
+        object.__setattr__(malformed, "_explode_field_access", True)
+        result = asyncio.run(LifecycleCoordinator(
+            Ledger(), Sink([], malformed), FakeVerifier(),
+        ).preflight(SCOPE))
+        self.assertEqual(result.status, LifecycleStatus.NOT_READY)
+        self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
+        self.assertIsNone(result.checkpoint_seq)
 
     def test_valid_preflight_returns_checkpoint_evidence_but_never_ready(self):
         result = asyncio.run(LifecycleCoordinator(

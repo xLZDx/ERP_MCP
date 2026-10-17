@@ -51,6 +51,10 @@ class LifecycleResult:
 class LifecycleCoordinator:
     """Check chain integrity and the authenticated provider latest record without mutation.
 
+    Dependency timeouts request cancellation; they are cooperative and are not a hard wall-clock
+    guarantee if an adapter suppresses cancellation. Production adapters must enforce their own
+    transport deadlines if startup liveness depends on a strict bound.
+
     The class intentionally has no READY result. Once a reviewed shared fence, suffix reader,
     bounded recovery contract, and durable READY transition exist, a separate implementation can
     extend this preflight without treating a checkpoint signature as proof of anti-rollback.
@@ -78,8 +82,8 @@ class LifecycleCoordinator:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHAIN_UNAVAILABLE)
 
-        count = chain.get("count") if isinstance(chain, dict) else None
-        if (not isinstance(chain, dict) or chain.get("ok") is not True
+        count = chain.get("count") if type(chain) is dict else None
+        if (type(chain) is not dict or chain.get("ok") is not True
                 or type(count) is not int or count < 0):
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHAIN_INVALID,
@@ -99,7 +103,7 @@ class LifecycleCoordinator:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_MISSING,
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
-        if not isinstance(record, CheckpointRecord):
+        if type(record) is not CheckpointRecord:
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_INVALID,
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
