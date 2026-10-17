@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 215 tracked paths, 0 local-only paths.
+Inventory: 216 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -153,6 +153,7 @@ Inventory: 215 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_144.md | Phase 2 design | "Change record 144 — restore caller lock timeout after lifecycle fence read" |
 | docs/phase2/CHANGE_RECORD_145.md | Phase 2 design | "Change record 145 — disposable PostgreSQL evidence for migrations 023–024" |
 | docs/phase2/CHANGE_RECORD_146.md | Phase 2 design | "Change record 146 — reconcile S13 evidence and current project status" |
+| docs/phase2/CHANGE_RECORD_147.md | Phase 2 design | "Change record 147 — refresh document registry after CR146" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
