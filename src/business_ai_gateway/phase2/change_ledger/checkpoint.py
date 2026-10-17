@@ -99,7 +99,12 @@ class SignatureVerifier(Protocol):
 
 
 class CheckpointSink(Protocol):
-    """External append-only store outside the DB administrator's trust boundary (D9)."""
+    """External append-only store outside the DB administrator's trust boundary (D9).
+
+    ``latest`` must return the authenticated, anti-rollback latest record for exactly the
+    requested scope. Signature verification alone does not establish that it is the newest
+    retained record; implementations must preserve that provider guarantee independently.
+    """
 
     kind: str  # 'REAL' or 'TEST'
     sink_id: str
@@ -107,6 +112,8 @@ class CheckpointSink(Protocol):
     async def write(self, record: CheckpointRecord) -> None: ...
 
     async def read_back(self, scope: Scope, seq: int) -> CheckpointRecord | None: ...
+
+    async def latest(self, scope: Scope) -> CheckpointRecord | None: ...
 
 
 class UnwiredVerifier:
@@ -153,6 +160,12 @@ class InMemoryCheckpointSink:
 
     async def read_back(self, scope: Scope, seq: int) -> CheckpointRecord | None:
         return self._rows.get((scope.tenant_id, scope.company_id, seq))
+
+    async def latest(self, scope: Scope) -> CheckpointRecord | None:
+        """Return the highest-sequence record for this exact scope (TEST ONLY)."""
+        records = (record for (tenant_id, company_id, _), record in self._rows.items()
+                   if tenant_id == scope.tenant_id and company_id == scope.company_id)
+        return max(records, key=lambda record: record.seq, default=None)
 
 
 class LedgerPort(Protocol):

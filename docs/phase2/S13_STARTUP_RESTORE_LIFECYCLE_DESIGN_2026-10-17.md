@@ -1,6 +1,6 @@
 # S13 startup and restore lifecycle design
 
-**Status:** revised after independent security/reliability review; staged fail-closed fence primitives are implemented locally under CR130. They do not provide a READY transition or complete S13 lifecycle. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
+**Status:** revised after independent security/reliability review; staged fail-closed fence primitives are implemented locally under CR130. CR131 adds a read-only checkpoint preflight and test-sink latest lookup, but deliberately cannot return READY. It does not provide complete S13 lifecycle acceptance. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
 
 ## Goal
 
@@ -10,7 +10,8 @@ Connect the existing PostgreSQL ledger integrity, external checkpoint, and bound
 
 - `SqlChangeLedger.invoke()` opens one database transaction per SQL function and commits before returning. Lifecycle sequencing therefore crosses committed transaction boundaries and must remain fail-closed if any step fails.
 - `SqlChangeLedger.verify_chain()`, `check_anchor()`, `recover_sweep()` and `recover_sweep_params()` are thin wrappers. No application startup, reconnect, or restore caller currently coordinates them.
-- `CheckpointSink` supports `write()` and `read_back()` only. Startup cannot discover a newer anchor from this interface. `InMemoryCheckpointSink`, `FakeSigner`, and `FakeVerifier` are TEST ONLY; `DispatchGate` refuses them for permits.
+- `CheckpointSink` supports `write()`, `read_back()`, and `latest(scope)`. The latest contract requires an exact-scope, authenticated, anti-rollback provider result; `InMemoryCheckpointSink.latest()` only selects the highest sequence in its TEST ONLY memory store. `FakeSigner` and `FakeVerifier` are TEST ONLY; `DispatchGate` refuses them for permits.
+- `LifecycleCoordinator.preflight()` verifies the ledger chain, reads and validates the latest checkpoint signature and scope, then returns `NOT_READY/SHARED_FENCE_UNAVAILABLE`. It is diagnostic only: it does not inspect the ordered suffix, recover rows, acquire a cross-process fence, or authorize dispatch.
 - Existing SQL routines and migrations are prototypes. This design does not treat them as formal S13 acceptance, production readiness, or an authorization to enable real writes.
 
 ## Options and decision
@@ -22,11 +23,11 @@ Decision for local engineering: use option 1. CR130 implements only the preparat
 
 ## Design
 
-Add a small `change_ledger.lifecycle` coordinator with an explicit per-scope readiness result. The service composition calls it on cold start, database reconnect, and after restore; no web framework, scheduler, or production app lifecycle is invented because none exists in this repository. The caller keeps admission disabled until the coordinator returns READY.
+Add a small `change_ledger.lifecycle` coordinator with an explicit per-scope readiness result. The current preflight is not wired to a service composition; no web framework, scheduler, or production app lifecycle is invented because none exists in this repository. Admission remains disabled because this implementation has no READY-producing path.
 
 The sink protocol gains a read-only `latest(scope) -> CheckpointRecord | None` operation. The TEST-only in-memory implementation returns the greatest stored sequence for the exact tenant/company scope. The lifecycle coordinator:
 
-1. Before taking the verification snapshot, obtain a cross-process per-scope admission fence that conflicts with every ledger mutation and dispatch transition. The fence must account for already-issued/in-flight dispatch permits, survive stale-process races, have bounded acquisition, and be released on every exit; losing its owning DB session invalidates readiness. The current per-process flag and migration 020 sweep lock do **not** provide this guarantee. No implementation may return READY until the shared fence contract and its complete mutation-path coverage are established.
+1. Before taking the verification snapshot, obtain a cross-process per-scope admission fence that conflicts with every ledger mutation and dispatch transition. The fence must account for already-issued/in-flight dispatch permits, survive stale-process races, have bounded acquisition, and be released on every exit; losing its owning DB session invalidates readiness. The current per-process flag and migration 020 sweep lock do **not** provide this guarantee. CR131 does not acquire this fence and therefore cannot return READY.
 2. Call `verify_chain()`. A failed or unavailable result keeps the scope unready and does not call `check_anchor()`; the SQL routine can append an `ANCHOR_GAP` event, so do not mutate a chain already known invalid.
 3. Read the provider-authenticated, anti-rollback latest record and validate signature plus exact `tenant_id`/`company_id` equality with `Scope` before any SQL call that can mutate state. A signature alone does not prove latestness. If the provider cannot prove monotonic latest history (or equivalent anti-rollback consistency), remain NOT_READY.
 4. Confirm the checkpoint is an exact ancestor `(seq, head_hash)` in this scope. `check_anchor()` only checks membership and may append an `ANCHOR_GAP`; it does not prove latestness or classify later events. Query/classify the ordered suffix after the checkpoint against the explicit S12 checkpoint policy: T10, T13 and observation reads may remain in the tail only where their complete transition/evidence state matches the contract; any effect, authorization, terminal, hold, or other checkpoint-required event makes the scope NOT_READY. Do not require checkpoint equality with the current head: S12 §9 explicitly allows these resolution/observation events to be included in the next checkpoint. Missing anchor, ledger behind anchor, invalid chain, disallowed tail, wrong scope, or unavailable evidence stays fail-closed.
@@ -68,7 +69,7 @@ Then database-reviewer reviews migration/transaction/RLS/restore implications; r
 
 - External checkpoint provider, authenticated latest-record API, immutable retention guarantees, signer implementation, key custody, and responsible service owner are not established in canonical records.
 - The deployment service composition and readiness/admission hook do not exist in this repository. Integration cannot be claimed until that service is identified.
-- No shared lifecycle/admission fence currently couples the complete set of SQL mutation and physical dispatch paths. This is a local design blocker; identify and review the additive DB/API contract before implementing a READY-producing coordinator.
+- No shared lifecycle/admission fence currently couples the complete set of SQL mutation and physical dispatch paths. CR131 implements only a read-only preflight; identify and review the additive DB/API contract before implementing a READY-producing coordinator.
 - The sink protocol and provider contract do not yet establish authenticated anti-rollback `latest(scope)` semantics. A valid signature on an old record cannot prove the external store was not rolled back.
 - The safe genesis/bootstrap operation needs an explicit contract before any real environment is initialized.
 - The S13 nonce/record lock-order MINOR and deterministic contention scenario remain deferred to S18 per the existing ruling.
