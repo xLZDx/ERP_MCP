@@ -24,10 +24,14 @@ import json
 import re
 from collections import deque
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
+from threading import RLock
 from typing import Final
 
-from ..change.proposal import DraftPayload, DuplicateOverride, Line, canonical_json, derive_allowed_effects, payload_to_dict
-from ..change.types import ChangeKind, is_identity_text
+from ..change.proposal import (
+    DraftPayload, DuplicateOverride, Line, canonical_json, derive_allowed_effects, payload_digest, payload_to_dict,
+)
+from ..change.types import ChangeKind, is_aware_datetime, is_identity_text
 from ..ed25519 import public_key_from_seed, sign, verify
 
 __all__ = [
@@ -199,6 +203,22 @@ class SimulatedOneC:
         self._tamper_next = False
         self._log: list[dict[str, object]] = []
         self._writes = 0
+        # Owned by the clone so every adapter sharing this instance serializes the
+        # final base-fingerprint/version check with the mutation itself.
+        self._write_lock = RLock()
+        self._simulation_calls: dict[str, tuple[object, ...]] = {}
+        self._simulation_scope: tuple[str, str, str] | None = None
+
+    def bind_simulation_scope(self, tenant_id: str, company_id: str, organization: str) -> None:
+        """Permanently bind this clone instance to one synthetic tenant/company/org tuple."""
+        scope = (tenant_id, company_id, organization)
+        if not all(is_identity_text(value) for value in scope):
+            raise ValueError("SIMULATION_SCOPE_INVALID")
+        with self._write_lock:
+            if self._simulation_scope is None:
+                self._simulation_scope = scope
+            elif self._simulation_scope != scope:
+                raise ValueError("SIMULATION_SCOPE_ALREADY_BOUND")
 
     # ---- scenario hooks ---------------------------------------------------------------------------------------
 
@@ -206,46 +226,60 @@ class SimulatedOneC:
         """Queue one injected failure for the next ``apply`` call (FIFO)."""
         if mode not in FAILURE_MODES:
             raise ValueError("FAILURE_MODE_INVALID")
-        self._injections.append(mode)
+        with self._write_lock:
+            self._injections.append(mode)
 
     def tamper(self) -> None:
         """Flip one byte of the payload received by the next ``apply`` call (bad transport)."""
-        self._tamper_next = True
+        with self._write_lock:
+            self._tamper_next = True
 
     # ---- reads ------------------------------------------------------------------------------------------------
 
     @property
     def write_count(self) -> int:
-        return self._writes
+        with self._write_lock:
+            return self._writes
 
     def truth_log(self) -> tuple[dict[str, object], ...]:
         """Ground-truth record of every apply attempt (scenario oracle; not visible to the caller under test)."""
-        return tuple(dict(e) for e in self._log)
+        with self._write_lock:
+            return tuple(dict(e) for e in self._log)
 
     def target_refs(self) -> tuple[str, ...]:
-        return tuple(sorted(self._docs))
+        with self._write_lock:
+            return tuple(sorted(self._docs))
 
     def read_state(self, target_ref: str) -> dict[str, object]:
-        return self._state_of(self._doc(target_ref))
+        with self._write_lock:
+            return self._state_of(self._doc(target_ref))
 
     def observed_state_digest(self, target_ref: str) -> str:
         """SHA-256 of the canonical business state (status, payload, movements); excludes the version."""
-        state = self._state_of(self._doc(target_ref))
-        state.pop("version")
-        return _sha256_bytes(canonical_json(state).encode("ascii"))
+        with self._write_lock:
+            state = self._state_of(self._doc(target_ref))
+            state.pop("version")
+            return _sha256_bytes(canonical_json(state).encode("ascii"))
 
     def state_fingerprint(self) -> str:
         """Deterministic fingerprint of the whole clone (every document incl. versions)."""
-        body = {"clone": self.label, "lane": LANE, "documents": [self._state_of(self._docs[r]) for r in sorted(self._docs)]}
-        return _sha256_bytes(canonical_json(body).encode("ascii"))
+        with self._write_lock:
+            body = {"clone": self.label, "lane": LANE, "documents": [self._state_of(self._docs[r]) for r in sorted(self._docs)]}
+            return _sha256_bytes(canonical_json(body).encode("ascii"))
 
     def find_duplicates(self, payload: DraftPayload, exclude_ref: str | None = None) -> tuple[str, ...]:
         """Documents with the same (counterparty, supplier document number, supplier document date)."""
-        key = _dup_key(payload)
-        return tuple(sorted(r for r, d in self._docs.items() if r != exclude_ref and _dup_key(d.payload) == key))
+        with self._write_lock:
+            key = _dup_key(payload)
+            return tuple(sorted(r for r, d in self._docs.items() if r != exclude_ref and _dup_key(d.payload) == key))
 
     def preview(self, kind: ChangeKind, payload: DraftPayload | None, target_ref: str | None) -> PreviewResult:
         """Canonical preview text and its SHA-256. Pure: writes nothing and consumes no injected failure."""
+        with self._write_lock:
+            return self._preview_locked(kind, payload, target_ref)
+
+    def _preview_locked(self, kind: ChangeKind, payload: DraftPayload | None,
+                        target_ref: str | None) -> PreviewResult:
         if type(kind) is not ChangeKind:
             raise ValueError("KIND_INVALID")
         doc = self._docs.get(target_ref) if target_ref is not None else None
@@ -271,6 +305,75 @@ class SimulatedOneC:
 
         With ``change_id`` and ``dispatch_id`` the successful result carries a receipt signed by the clone's own key
         over (change id, dispatch id, received payload sha256, new version); a caller only forwards it."""
+        with self._write_lock:
+            return self._apply_locked(kind, payload_bytes, target_ref, expected_version,
+                                      change_id=change_id, dispatch_id=dispatch_id)
+
+    def apply_for_simulation(self, kind: ChangeKind, payload_bytes: bytes, target_ref: str | None,
+                             expected_version: str | None, expected_base_fingerprint: str,
+                             *, expected_tenant_id: str, expected_company_id: str,
+                             expected_organization: str, permit_expires_at: datetime,
+                             change_id: str, generation: int,
+                             call_id: str, digest_set_hash: str) -> ApplyResult:
+        """Simulation-only compare-and-apply under the clone-owned write lock.
+
+        Unlike a caller-side preflight check, the base fingerprint and target version
+        are checked while holding the same lock used for the write.
+        """
+        with self._write_lock:
+            if not is_aware_datetime(permit_expires_at):
+                raise CloneRejected("PERMIT_EXPIRY_INVALID")
+            if datetime.now(timezone.utc) >= permit_expires_at:
+                raise CloneRejected("PERMIT_EXPIRED")
+            if type(kind) is not ChangeKind or kind not in (ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST):
+                raise CloneRejected("OPERATION_NOT_ALLOWED")
+            if (not is_identity_text(change_id) or not is_identity_text(call_id)
+                    or type(generation) is not int or generation <= 0
+                    or type(digest_set_hash) is not str or _HEX64.fullmatch(digest_set_hash) is None):
+                raise CloneRejected("CALL_BINDING_INVALID")
+            if type(expected_base_fingerprint) is not str or expected_base_fingerprint != self.state_fingerprint():
+                raise CloneRejected("BASE_FINGERPRINT_MISMATCH")
+            expected_scope = (expected_tenant_id, expected_company_id, expected_organization)
+            if (not all(is_identity_text(value) for value in expected_scope)
+                    or self._simulation_scope is None or self._simulation_scope != expected_scope):
+                raise CloneRejected("SCOPE_MISMATCH")
+            if not is_identity_text(expected_organization):
+                raise CloneRejected("ORGANIZATION_INVALID")
+            try:
+                if not isinstance(payload_bytes, (bytes, bytearray)):
+                    raise CloneRejected("PAYLOAD_INVALID")
+                payload = decode_payload(bytes(payload_bytes))
+            except (CloneRejected, TypeError, ValueError):
+                raise CloneRejected("PAYLOAD_INVALID") from None
+            if payload_digest(payload, expected_version) != digest_set_hash:
+                raise CloneRejected("DIGEST_MISMATCH")
+            if kind is ChangeKind.CREATE_DRAFT:
+                if payload is None or payload.organization_ref != expected_organization:
+                    raise CloneRejected("ORGANIZATION_MISMATCH")
+            else:
+                if payload is not None:
+                    raise CloneRejected("PAYLOAD_INVALID")
+                doc = self._docs.get(target_ref) if type(target_ref) is str else None
+                if doc is not None and doc.payload.organization_ref != expected_organization:
+                    raise CloneRejected("ORGANIZATION_MISMATCH")
+            call_identity = (
+                change_id, generation, kind.value, target_ref, expected_version,
+                expected_base_fingerprint, expected_organization, digest_set_hash,
+            )
+            previous = self._simulation_calls.get(call_id)
+            if previous is not None:
+                if previous == call_identity:
+                    raise CloneRejected("CALL_REPLAYED")
+                raise CloneRejected("CALL_ID_CONFLICT")
+            # Consume the synthetic call identity before entering the mutation path.
+            # Any uncertain or refused attempt therefore cannot be replayed under a
+            # changed ticket/base to produce a second side effect.
+            self._simulation_calls[call_id] = call_identity
+            return self._apply_locked(kind, payload_bytes, target_ref, expected_version)
+
+    def _apply_locked(self, kind: ChangeKind, payload_bytes: bytes, target_ref: str | None,
+                      expected_version: str | None, *, change_id: str | None = None,
+                      dispatch_id: str | None = None) -> ApplyResult:
         if type(kind) is not ChangeKind or not isinstance(payload_bytes, (bytes, bytearray)):
             raise ValueError("APPLY_ARGUMENTS_INVALID")
         if (change_id is None) != (dispatch_id is None):
