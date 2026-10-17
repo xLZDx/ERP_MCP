@@ -1,6 +1,6 @@
 # S13 startup and restore lifecycle design
 
-**Status:** revised after independent security/reliability review; staged fail-closed fence primitives are implemented locally under CR130. CR131 adds a read-only checkpoint preflight and test-sink latest lookup, but deliberately cannot return READY. It does not provide complete S13 lifecycle acceptance. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
+**Status:** revised after independent security/reliability review; staged fail-closed fence primitives are implemented locally under CR130. CR131–134 add a read-only checkpoint preflight and test-sink latest lookup; it validates chain and checkpoint data, bounds dependency waits with cooperative cancellation, rejects malformed provider values, and deliberately cannot return READY. CR134's local evidence is 14 focused functional and 10 module-boundary E2E scenarios; details and exact hashes are in `CHANGE_RECORD_134.md`. The story-by-story requirements, migration traceability, and evidence gaps are mapped in `S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md`. This does not provide complete S13 lifecycle acceptance. Formal S13 entry remains `NOT_STARTED` / `NOT_APPROVED`.
 
 ## Goal
 
@@ -11,7 +11,7 @@ Connect the existing PostgreSQL ledger integrity, external checkpoint, and bound
 - `SqlChangeLedger.invoke()` opens one database transaction per SQL function and commits before returning. Lifecycle sequencing therefore crosses committed transaction boundaries and must remain fail-closed if any step fails.
 - `SqlChangeLedger.verify_chain()`, `check_anchor()`, `recover_sweep()` and `recover_sweep_params()` are thin wrappers. No application startup, reconnect, or restore caller currently coordinates them.
 - `CheckpointSink` supports `write()`, `read_back()`, and `latest(scope)`. The latest contract requires an exact-scope, authenticated, anti-rollback provider result; `InMemoryCheckpointSink.latest()` only selects the highest sequence in its TEST ONLY memory store. `FakeSigner` and `FakeVerifier` are TEST ONLY; `DispatchGate` refuses them for permits.
-- `LifecycleCoordinator.preflight()` verifies the ledger chain, reads and validates the latest checkpoint signature and scope, then returns `NOT_READY/SHARED_FENCE_UNAVAILABLE`. It is diagnostic only: it does not inspect the ordered suffix, recover rows, acquire a cross-process fence, or authorize dispatch.
+- `LifecycleCoordinator.preflight()` verifies the ledger chain, reads and validates the latest checkpoint signature and exact string scope fields, then returns `NOT_READY/SHARED_FENCE_UNAVAILABLE`. It requests cancellation after a configurable per-dependency timeout (five seconds by default); `asyncio.wait_for` is cooperative and cannot enforce a hard wall-clock bound if an adapter suppresses cancellation. It is diagnostic only: it does not inspect the ordered suffix, recover rows, acquire a cross-process fence, or authorize dispatch.
 - Existing SQL routines and migrations are prototypes. This design does not treat them as formal S13 acceptance, production readiness, or an authorization to enable real writes.
 
 ## Options and decision
