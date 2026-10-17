@@ -55,6 +55,17 @@ The database reviewer found no existing lock that can provide this lifecycle bou
 
 This is a design boundary, not an already accepted SQL implementation. It will require additive migration/API work and new database-focused story coverage. Do not start a coordinator that can return READY before this contract is reviewed and represented in the implementation scope.
 
+## CR130 reliability findings — interim local hardening design
+
+CR130's review found three reliability MAJORs in the preparatory migration: an application worker can start a permanent `RECOVERING` state despite no READY path; a physical call can outlive the database transaction that admitted it; and lifecycle trigger row-lock waits have no bound. The interim local scope is deliberately a **safety cap**, not a completed lifecycle:
+
+- Migration 023 will disable the `lifecycle_begin_recovery` transition for every application role and replace the function body with an unconditional structured refusal. It will not grant a new role access or infer a recovery decision. This prevents a worker from stranding an otherwise legacy scope; it does not repair a scope already persisted as `RECOVERING` by an earlier manual action.
+- The event and dispatch-permit lifecycle triggers will apply a maximum five-second PostgreSQL `lock_timeout`, preserving a shorter caller-configured timeout. A lock timeout aborts the mutation transaction; callers must treat it as a failed operation and retry only through their existing bounded policy.
+- Migration 023 will not clear or rewrite existing lifecycle state, invent an in-flight counter, mark calls complete, or transition a scope to READY. This is restart-safe and preserves evidence, but an existing `RECOVERING` state remains fail-closed for explicit operator/service recovery under a separately reviewed procedure.
+- No SQL-only change can prove that every physical writer uses the permit/epoch check or that an external call remains covered until independently proven completion. The writer overlap finding remains an open S13 acceptance item; migration 023 only makes the current recovery entry point unavailable and must not be described as a physical dispatch fence.
+
+Alternatives considered: (1) grant `lifecycle_begin_recovery` to a new controller role, which still permits permanent fencing without a reviewed READY path; (2) add a recovery-to-READY procedure now, which would exceed available provider, suffix-classifier, and service-admission evidence; (3) make the preparatory API incapable of beginning recovery and bound the existing row locks. Choose (3) for local work because it is fail-closed, additive, and does not manufacture external lifecycle guarantees. Rollback is a forward corrective migration only; never edit already-applied 022 or automatically delete/reset lifecycle rows.
+
 ## Rollout and rollback
 
 The implementation remains unwired library code until a real service composition exists. Existing `DispatchGate` behavior stays fail-closed and TEST doubles remain rejected. Rollback removes the coordinator call and protocol addition; no prior migration is edited and no data migration is needed. Formal enablement requires a qualified external sink and signer, a deployment-specific bootstrap plan, and independent restore/custody evidence.
