@@ -18,8 +18,9 @@
  *     Each ref is read through the object id captured at scan start. Title cell = sorted, de-duplicated
  *     first-heading variants of that path over all scanned refs, each JSON-quoted and joined by " / " (empty
  *     cell = no heading anywhere), so different variant sets can never render identically. The whole blob is
- *     searched for the first heading and a blob that cannot be read aborts generation. No ref names, counts
- *     per ref, version counts or absolute locations are written.
+ *     searched for the first heading and a blob that cannot be read aborts generation. Exact scanned ref names
+ *     and commit IDs are written as snapshot provenance; per-ref path counts, version counts and absolute
+ *     locations are not written.
  *   - Output safety: the registry file and governance/ must be real (non-link) paths inside the repository.
  *   - Local-only rows: repo-relative paths of untracked, non-ignored ".md" files per worktree
  *     (git ls-files --others --exclude-standard). Symlinks/junctions and paths resolving outside their
@@ -173,17 +174,24 @@ const lines = [
   '(operator rule 2026-09-29). `--check` fails when this file is stale.',
   '',
   'Scope: every Markdown file (case-sensitive `.md`) on all local and remote branches, plus untracked Markdown paths',
-  'of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/build directories. Titles are',
-  'the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists',
-  'all of them; an empty cell means the document has no heading.',
+  'of attached worktrees, as observed at the exact Git refs listed below. This is a point-in-time snapshot, not a',
+  'claim about refs created after generation. Excluded are this file, ignored files, symlinks and dependency/build',
+  'directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several',
+  'heading variants over the scanned refs lists all of them; an empty cell means no heading was found.',
   '',
   `Inventory: ${rows.length} tracked paths, ${localOnly.size} local-only paths.`,
   '',
-  '## Documents in git (all branches)',
+  '## Documents in git (scanned refs)',
   '',
   '| Path | Kind | Title |',
   '| --- | --- | --- |',
   ...rows.map(([path, variants]) => `| ${esc(path)} | ${kindOf(path)} | ${esc(titleCell(variants))} |`),
+  '',
+  '## Scanned refs',
+  '',
+  '| Ref | Commit |',
+  '| --- | --- |',
+  ...refs.map(([name, id]) => `| ${esc(name)} | \`${id}\` |`),
   '',
   '## Markdown untracked in at least one attached worktree (paths only)',
   '',

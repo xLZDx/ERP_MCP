@@ -5,13 +5,14 @@ plan, design, TDD, report, ADR, runbook or any other Markdown file is created, m
 (operator rule 2026-09-29). `--check` fails when this file is stale.
 
 Scope: every Markdown file (case-sensitive `.md`) on all local and remote branches, plus untracked Markdown paths
-of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/build directories. Titles are
-the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
-all of them; an empty cell means the document has no heading.
+of attached worktrees, as observed at the exact Git refs listed below. This is a point-in-time snapshot, not a
+claim about refs created after generation. Excluded are this file, ignored files, symlinks and dependency/build
+directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several
+heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 
-Inventory: 237 tracked paths, 0 local-only paths.
+Inventory: 238 tracked paths, 1 local-only paths.
 
-## Documents in git (all branches)
+## Documents in git (scanned refs)
 
 | Path | Kind | Title |
 | --- | --- | --- |
@@ -170,6 +171,7 @@ Inventory: 237 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_161.md | Phase 2 design | "Change record 161 — correct S13 evidence pointer and refresh registry" |
 | docs/phase2/CHANGE_RECORD_162.md | Phase 2 design | "Change record 162 — record CR161 publication and refresh the registry" |
 | docs/phase2/CHANGE_RECORD_163.md | Phase 2 design | "Change record 163 — record CR162 publication and refresh the registry" |
+| docs/phase2/CHANGE_RECORD_164.md | Phase 2 design | "Change record 164 — record CR163 publication and refresh the registry" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -253,7 +255,17 @@ Inventory: 237 tracked paths, 0 local-only paths.
 | testlane/onec_extension/README.md | Other | "CT14 extension spike (disposable 1C clone only)" |
 | testlane/onec_extension/STATUS.md | Other | "CT14 extension spike - final status (clone 818HA_p2diff only)" |
 
+## Scanned refs
+
+| Ref | Commit |
+| --- | --- |
+| refs/heads/main | `29153331028eb50e1dea02b66d2b3defef7be95e` |
+| refs/heads/worktree-agent-abd0046aa55cead7b | `dd819a4a85ff16ecedb0efcaf8e52911076682b8` |
+| refs/heads/worktree-agent-aebf3202355a7a3f7 | `f03852476d66c61c552c66fcb994ad25611d5d57` |
+| refs/remotes/origin/main | `85a179455365dcfadd01f827feb1304cec7fe006` |
+
 ## Markdown untracked in at least one attached worktree (paths only)
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_165.md |
