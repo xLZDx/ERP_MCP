@@ -36,6 +36,16 @@ The sink protocol gains a read-only `latest(scope) -> CheckpointRecord | None` o
 
 Genesis handling stays conservative: a non-empty ledger with no external anchor is unready. Provisioning an initial anchor is a separately authorized bootstrap operation, not an implicit startup side effect. An empty scope may become ready only under an explicit, tested genesis policy; otherwise it stays unready until provisioned.
 
+### S12 checkpoint-tail classification decision
+
+The read-only suffix classifier follows the frozen behavior and the inherited checkpoint schedule together; it does not infer event meaning from event names alone.
+
+- S12 revision 6 §6 requires a signed, read-back checkpoint for T4, the committed T6 `APPLYING` head before T6p, and terminal T7, T8, T11 and T16. T10, T13 and external observation reads may be included in the next checkpoint.
+- Contract Freeze v2.0 §3 is the frozen behavior for unknown outcomes: an effect that exists without attribution stays `TRIAGE_REQUIRED` (T12). The older revision 6 T10 prose that describes `found=true` as APPLIED is superseded for behavior by the freeze's explicit “effect exists but cannot be attributed” rule. In the current SQL implementation, `RESOLVE_UNKNOWN` with `found=false` is T11 and requires a checkpoint; `found=true` is T12 and remains NOT_READY because the hold and unresolved outcome remain. Neither outcome is accepted from the event name or `found` flag alone; the reader must reconcile event, durable record state, completion proof, holds and reservation state.
+- `VERIFY_VERIFIED` is eligible as an uncheckpointed T13 suffix event only when the joined durable record and verification evidence satisfy the frozen S12 state/evidence contract. A failed or malformed verification, unexpected follow-on event, or missing linked state is NOT_READY.
+- “Observation reads” means external read-only observations that do not mutate the ledger. `EVIDENCE_RECORDED` is a ledger mutation and is not whitelisted by that phrase. T9/unknown completion, evidence insertion, sweep, hold, registry, authorization, dispatch, and administrative events are NOT_READY unless a later formally accepted contract explicitly classifies them.
+- Unknown event types, sequence gaps, wrong-scope rows, invalid payloads, inconsistent event-to-state evidence, or query errors are NOT_READY. This is a fail-closed admission classifier only; it never writes a checkpoint, releases a hold, runs recovery, or returns READY by itself.
+
 ## State ownership and failure behavior
 
 - The PostgreSQL ledger owns transactional change state; the external store owns its independently retained checkpoint history; the signer/verifier boundary authenticates checkpoint content.

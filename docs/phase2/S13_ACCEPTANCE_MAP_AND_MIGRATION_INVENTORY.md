@@ -8,6 +8,8 @@ The canonical story subjects are V2-S13-01 through V2-S13-05 in `S11_OPERATION_R
 
 The test-design package DoD requires the PostgreSQL integration set to pass on a disposable instance and an external anchor store to be decided. That is not satisfied by SQL source alone or by the CR130 migration-022 subset. CR130's disposable PostgreSQL evidence and CR134's Python module-boundary evidence are separate narrow evidence classes, detailed in their change records. The full story-mapped S13 suite and production/provider evidence remain `NOT_RUN`.
 
+The local suffix-classifier decision is recorded in `S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md`: revision 6 §6 supplies the checkpoint schedule, while Contract Freeze v2.0 §3 governs the superseding unknown-outcome behavior. In particular, `RESOLVE_UNKNOWN found=true` is T12 and remains unready; `found=false` is T11 and needs its checkpoint. `VERIFY_VERIFIED` is the only presently identified event candidate for an uncheckpointed T13 tail, and must be checked against its linked durable state and evidence. Event-name-only classification, `EVIDENCE_RECORDED`, and unspecified events fail closed.
+
 ## Story-to-source map
 
 | Story and acceptance meaning | Existing implementation evidence | Evidence state | Remaining acceptance and responsible route |
