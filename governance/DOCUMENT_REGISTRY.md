@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 209 tracked paths, 1 local-only paths.
+Inventory: 215 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -148,6 +148,11 @@ Inventory: 209 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_139.md | Phase 2 design | "Change record 139 — refresh registry after current-status reconciliation" |
 | docs/phase2/CHANGE_RECORD_140.md | Phase 2 design | "Change record 140 — add the S13 acceptance and migration map" |
 | docs/phase2/CHANGE_RECORD_141.md | Phase 2 design | "Change record 141 — design an interim cap for S13 lifecycle activation" |
+| docs/phase2/CHANGE_RECORD_142.md | Phase 2 design | "Change record 142 — cap unsafe S13 lifecycle activation" |
+| docs/phase2/CHANGE_RECORD_143.md | Phase 2 design | "Change record 143 — CR142 disposable PostgreSQL evidence" |
+| docs/phase2/CHANGE_RECORD_144.md | Phase 2 design | "Change record 144 — restore caller lock timeout after lifecycle fence read" |
+| docs/phase2/CHANGE_RECORD_145.md | Phase 2 design | "Change record 145 — disposable PostgreSQL evidence for migrations 023–024" |
+| docs/phase2/CHANGE_RECORD_146.md | Phase 2 design | "Change record 146 — reconcile S13 evidence and current project status" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -158,6 +163,7 @@ Inventory: 209 tracked paths, 1 local-only paths.
 | docs/phase2/EVIDENCE_MATRIX.md | Phase 2 design | "Phase 2 evidence matrix" |
 | docs/phase2/EXTRACTION_NOTE.md | Phase 2 design | "Extraction note: Release 2 split from the Release 1 repository" |
 | docs/phase2/G0_EVIDENCE_INDEX_2026-10-15.md | Phase 2 design | "G0 scope and architecture evidence index — 2026-10-15" |
+| docs/phase2/G0_EVIDENCE_STATUS_RECONCILIATION_2026-10-17.md | Phase 2 design | "G0 evidence status reconciliation — 2026-10-17" |
 | docs/phase2/G1_EVIDENCE_PACKET_PLAN.md | Phase 2 design | "G1 evidence packet plan" |
 | docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md | Phase 2 design | "G1 PostgreSQL Living Registry — implementation note" |
 | docs/phase2/G1_OPERATOR_BACKLOG.md | Phase 2 design | "G1 blockers and operator handoff — 2026-10-08" |
@@ -229,4 +235,3 @@ Inventory: 209 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_142.md |
