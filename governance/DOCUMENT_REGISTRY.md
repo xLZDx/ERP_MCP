@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 230 tracked paths, 0 local-only paths.
+Inventory: 231 tracked paths, 0 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -163,6 +163,7 @@ Inventory: 230 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_154.md | Phase 2 design | "Change record 154 — minimize S13 checkpoint suffix evidence" |
 | docs/phase2/CHANGE_RECORD_155.md | Phase 2 design | "Change record 155 — reconcile S13 writer inventory and draft dispatch-boundary contract" |
 | docs/phase2/CHANGE_RECORD_156.md | Phase 2 design | "Change record 156 — finalize document registry after CR155" |
+| docs/phase2/CHANGE_RECORD_157.md | Phase 2 design | "Change record 157 — refresh registry at published HEAD" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |

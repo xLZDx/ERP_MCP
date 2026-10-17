@@ -22,4 +22,4 @@ This index refresh changes no acceptance status: G0 remains narrow `PASSED`; G1â
 - `governance/DOCUMENT_REGISTRY.md` (generated)
 - `docs/phase2/CHANGE_RECORD_157.md`
 
-Next action: include this documentation-only commit in a fresh exact-head GPT-PM review before pushing it. It does not alter the already-approved and published CR155/CR156 commit range.
+Exact-head GPT-PM request `ca1ab3ac-11fe-4b65-9bdf-f9fc8198cbe8` returned `APPROVE PUSH` for commit `71f72f5e52783753b797f12384d5970c6184589d`, with base `4f0f422bf6af091eacbb3f1028fbcd92358c6f8d`. The push completed, and `git ls-remote origin refs/heads/main` confirmed `71f72f5e52783753b797f12384d5970c6184589d`. This documentation-only update did not change formal gate or production state. Its remaining project-level work is the external S13 writer/service evidence recorded in CR155/CR156; no further local action is required for this registry refresh.
