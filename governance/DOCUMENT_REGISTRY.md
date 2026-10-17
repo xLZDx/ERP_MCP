@@ -9,7 +9,7 @@ of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/
 the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
 all of them; an empty cell means the document has no heading.
 
-Inventory: 208 tracked paths, 1 local-only paths.
+Inventory: 209 tracked paths, 1 local-only paths.
 
 ## Documents in git (all branches)
 
@@ -147,6 +147,7 @@ Inventory: 208 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_138.md | Phase 2 design | "Change record 138 — reconcile S14 and SDLC current-head status" |
 | docs/phase2/CHANGE_RECORD_139.md | Phase 2 design | "Change record 139 — refresh registry after current-status reconciliation" |
 | docs/phase2/CHANGE_RECORD_140.md | Phase 2 design | "Change record 140 — add the S13 acceptance and migration map" |
+| docs/phase2/CHANGE_RECORD_141.md | Phase 2 design | "Change record 141 — design an interim cap for S13 lifecycle activation" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -228,4 +229,4 @@ Inventory: 208 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_141.md |
+| docs/phase2/CHANGE_RECORD_142.md |

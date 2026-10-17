@@ -20,9 +20,9 @@ The test-design package DoD requires the PostgreSQL integration set to pass on a
 
 ## Migration sequence and safety boundary
 
-The reviewed migration headers declare 004 after 001–003; 005 after 004; 006 after 001–004; 007 after 006; then 008–020 continue in declared predecessor order. Migration 022 explicitly requires the complete 001–021 predecessor chain. Do not apply 022 to an environment missing those predecessors.
+The reviewed migration headers declare 004 after 001–003; 005 after 004; 006 after 001–004; 007 after 006; then 008–020 continue in declared predecessor order. Migration 022 explicitly requires the complete 001–021 predecessor chain; migration 023 explicitly requires 001–022. Do not apply either migration to an environment missing its declared predecessors.
 
-Migration 022 is not an acceptable live activation yet. Its worker-callable `lifecycle_begin_recovery` can leave the scope permanently `RECOVERING`; it does not fence a physical dispatch already admitted before recovery starts; and fence-row lock waits are not bounded. There is no READY transition in 022. These are three CR130 reliability MAJORs, not resolved by CR131–134. Keep 022 local/disposable only until those contracts and their full path coverage are fixed and reviewed.
+Migration 022 alone is not an acceptable live activation: its worker-callable `lifecycle_begin_recovery` can leave a scope permanently `RECOVERING`, it does not fence a physical dispatch already admitted before recovery starts, and its fence-row lock waits are unbounded. Local migration 023 source revokes the application recovery entry point, makes direct calls fail closed, and bounds lifecycle row-lock waits to five seconds. This is source-level mitigation only; CR142's migration 023 has not been applied or tested yet. The physical writer overlap finding remains unresolved because no real writer/service admission integration exists, and neither migration exposes a READY transition. Keep 022/023 unapplied outside disposable evidence.
 
 ## Acceptance evidence matrix
 
