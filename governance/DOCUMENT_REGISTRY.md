@@ -10,7 +10,7 @@ claim about refs created after generation. Excluded are this file, ignored files
 directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 
-Inventory: 239 tracked paths, 1 local-only paths.
+Inventory: 240 tracked paths, 1 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -173,6 +173,7 @@ Inventory: 239 tracked paths, 1 local-only paths.
 | docs/phase2/CHANGE_RECORD_163.md | Phase 2 design | "Change record 163 — record CR162 publication and refresh the registry" |
 | docs/phase2/CHANGE_RECORD_164.md | Phase 2 design | "Change record 164 — record CR163 publication and refresh the registry" |
 | docs/phase2/CHANGE_RECORD_165.md | Phase 2 design | "Change record 165 — make document-registry provenance explicit" |
+| docs/phase2/CHANGE_RECORD_166.md | Phase 2 design | "Change record 166 — reconcile current S13 evidence and connector status" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
@@ -260,7 +261,7 @@ Inventory: 239 tracked paths, 1 local-only paths.
 
 | Ref | Commit |
 | --- | --- |
-| refs/heads/main | `1441eecbc74db1e6aff73d903f2d5ecbb389e758` |
+| refs/heads/main | `8aaa0d5918a4306b3ae9c0f3c31aabc88106b221` |
 | refs/heads/worktree-agent-abd0046aa55cead7b | `dd819a4a85ff16ecedb0efcaf8e52911076682b8` |
 | refs/heads/worktree-agent-aebf3202355a7a3f7 | `f03852476d66c61c552c66fcb994ad25611d5d57` |
 | refs/remotes/origin/main | `85a179455365dcfadd01f827feb1304cec7fe006` |
@@ -269,4 +270,4 @@ Inventory: 239 tracked paths, 1 local-only paths.
 
 | Path |
 | --- |
-| docs/phase2/CHANGE_RECORD_166.md |
+| docs/phase2/CHANGE_RECORD_167.md |
