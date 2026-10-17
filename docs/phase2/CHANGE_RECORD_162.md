@@ -24,4 +24,4 @@ The CR160–CR161 documentation range was approved and published. Its registry w
 - Registry generator: `node scripts/build_document_registry.mjs`; scanned local and remote `main` at `26be8737353a398ab917b1cf42d14fd258295c61` plus attached worktree refs `dd819a4a85ff16ecedb0efcaf8e52911076682b8` and `f03852476d66c61c552c66fcb994ad25611d5d57`. The expected inventory is 235 tracked Markdown paths and 0 local-only paths.
 - No tests, build, database operation, migration, CI, 1C/CT14 activity, or release/production operation was run for this documentation change.
 - This update does not alter G0–G8, CT14, S12–S19, R-01/R-03, Release 2, or production authorization; see the project risk/gate and sprint-plan records for remaining acceptance.
-- Exact-head GPT-PM review is required before publishing this commit.
+- GPT-PM request `eb4ff2e4-9116-4f5c-ac17-71b2311e9d3a` approved exact HEAD `48e9971da1d0ffb9d21d6b3a7a0037fa16982df9`; the normal fast-forward push completed and `origin/main` was read back at that hash. CR163 records the follow-up registry refresh that includes CR162.
