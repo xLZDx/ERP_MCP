@@ -24,4 +24,4 @@ The documentation reviewer identified the stale pointer in CR160's first committ
 - Generator result: 234 tracked Markdown paths and 0 local-only paths; CR160 is included.
 - CR154 records functional and E2E evidence on disposable PostgreSQL 16 and independent DB/security/reliability review; it does not establish formal S13 entry or full mutation/physical-writer, provider, signer, or service-transaction acceptance.
 - No tests, build, database operation, migration, CI, 1C/CT14 activity, or release/production operation was run for this documentation change.
-- Exact-head GPT-PM review is required before publishing this new commit.
+- GPT-PM request `6ceaf964-1557-4d3e-bbbc-11b8414c57a2` approved exact HEAD `26be8737353a398ab917b1cf42d14fd258295c61`; the fast-forward push completed, and `origin/main` was verified at that hash. The subsequent registry refresh and status-record update are documented in CR162.
