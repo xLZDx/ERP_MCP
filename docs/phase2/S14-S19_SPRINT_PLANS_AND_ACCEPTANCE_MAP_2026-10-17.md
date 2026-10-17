@@ -8,7 +8,7 @@ The target engineering result is C1 / `ENGINEERING_COMPLETE` on the documented t
 
 ## Current entry state
 
-- S13 is in progress. CR143/CR145 provide focused disposable PostgreSQL evidence for migrations 001–024. CR152 implements migration 025 and Python ordered suffix classification, but that code is `NOT_RUN`; complete S13 code and exact-head evidence remain required before S14 depends on it.
+- S13 is in progress. CR143/CR145 provide focused disposable PostgreSQL evidence for migrations 001–024. CR152 adds the bounded suffix reader/classifier; migration 026 minimizes returned evidence and hashes. Corrected focused evidence is PASS (47 classifier assertions, 14 PostgreSQL groups, E2E on PostgreSQL 16.14); final exact-hash database/security/reliability reviews found no remaining BLOCKER/MAJOR. Full S13 fence, provider and writer requirements remain before formal S13 acceptance.
 - S14 has a synthetic SQL dispatch adapter and selected local tests. It does not include an operational COM writer, real marker configuration, deployed least-privilege account, or CT14-qualified production-class evidence.
 - S15–S19 have requirements and test scenarios in the canonical plan/test package but no complete sprint-level implementation/evidence map before this document.
 - S11 story IDs are authoritative in the story register; the IDs below repeat that register rather than inventing new IDs. Detailed implementation acceptance comes from the contracts and plan sections linked per sprint.

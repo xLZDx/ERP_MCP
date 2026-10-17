@@ -1,8 +1,8 @@
 """Fail-closed startup checkpoint preflight for the PostgreSQL change ledger.
 
 This module is deliberately not an admission hook. The repository does not yet have a shared
-fence covering every ledger mutation and physical dispatch, a read-only S12 suffix inspector, or
-a reviewed recovery-to-READY transition. A successful preflight therefore remains NOT_READY.
+fence covering every ledger mutation and physical dispatch, a qualified anti-rollback provider,
+or a reviewed recovery-to-READY transition. A successful preflight therefore remains NOT_READY.
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
                                 ) -> tuple[LifecycleReason | None, int, int | None]:
     """Validate a bounded ordered tail; only proven, terminal T13 events may remain unanchored."""
     expected_keys = {"tenant_id", "company_id", "checkpoint_seq", "checkpoint_hash",
-                     "anchor_matches", "head_seq", "head_hash", "has_more", "events"}
+                     "anchor_matches", "head_seq", "has_more", "events"}
     if type(result) is not dict or set(result) != expected_keys:
         return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, 0, None
     if (result["tenant_id"] != scope.tenant_id or result["company_id"] != scope.company_id
@@ -85,24 +85,18 @@ def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
         return LifecycleReason.CHECKPOINT_NOT_ANCESTOR, 0, None
 
     head_seq = result["head_seq"]
-    head_hash = result["head_hash"]
     events = result["events"]
     if (type(head_seq) is not int or head_seq != expected_head_seq or head_seq < record.seq
             or type(result["has_more"]) is not bool or result["has_more"] is not False
             or type(events) is not list or len(events) > 128):
         return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, 0, None
-    if head_seq == 0:
-        if head_hash is not None or events:
-            return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, 0, head_seq
-    elif not _is_hash(head_hash):
-        return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, 0, head_seq
-
     seen_changes: set[UUID] = set()
     seen_events: set[UUID] = set()
     expected_seq = record.seq + 1
     for event in events:
         if type(event) is not dict or set(event) != {
-                "seq", "event_id", "change_id", "event_type", "payload", "hash", "record"}:
+                "seq", "event_id", "change_id", "event_type", "payload_found",
+                "payload_nonempty", "record"}:
             return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
         try:
             event_id = UUID(event["event_id"])
@@ -113,19 +107,27 @@ def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
             return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
         seen_events.add(event_id)
         if (type(event["seq"]) is not int or event["seq"] != expected_seq
-                or not _is_hash(event["hash"]) or not isinstance(event["event_type"], str)
-                or type(event["payload"]) is not dict):
+                or type(event["event_type"]) is not str
+                or (event["payload_found"] is not None
+                    and type(event["payload_found"]) is not bool)
+                or type(event["payload_nonempty"]) is not bool):
             return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
         expected_seq += 1
 
         if event["event_type"] in _REQUIRED_CHECKPOINT_EVENTS:
             return LifecycleReason.CHECKPOINT_SUFFIX_REQUIRES_CHECKPOINT, len(events), head_seq
         if event["event_type"] == "RESOLVE_UNKNOWN":
-            if event["payload"].get("found") is False:
+            if type(event["payload_found"]) is not bool or event["payload_nonempty"] is not False:
+                return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
+            if event["payload_found"] is False:
                 return LifecycleReason.CHECKPOINT_SUFFIX_REQUIRES_CHECKPOINT, len(events), head_seq
             return LifecycleReason.CHECKPOINT_SUFFIX_UNSUPPORTED, len(events), head_seq
         if event["event_type"] != "VERIFY_VERIFIED":
+            if event["payload_found"] is not None or event["payload_nonempty"] is not False:
+                return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
             return LifecycleReason.CHECKPOINT_SUFFIX_UNSUPPORTED, len(events), head_seq
+        if event["payload_found"] is not None:
+            return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
 
         state = event["record"]
         if (change_id is None or type(state) is not dict or set(state) != {
@@ -140,14 +142,12 @@ def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
                 or state["call_ownership"] != "PROVEN_FINISHED"
                 or state["reservation_state"] != "CONSUMED"
                 or state["dispatch_state"] != "DISPATCHED"
-                or not event["payload"]):
+                or event["payload_nonempty"] is not True):
             return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
 
     if expected_seq - 1 != head_seq:
         return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
-    if events and events[-1]["hash"] != head_hash:
-        return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, len(events), head_seq
-    if not events and (head_seq != record.seq or head_hash != record.head_hash):
+    if not events and head_seq != record.seq:
         return LifecycleReason.CHECKPOINT_SUFFIX_INVALID, 0, head_seq
     return None, len(events), head_seq
 
@@ -159,9 +159,10 @@ class LifecycleCoordinator:
     guarantee if an adapter suppresses cancellation. Production adapters must enforce their own
     transport deadlines if startup liveness depends on a strict bound.
 
-    The class intentionally has no READY result. Once a reviewed shared fence, suffix reader,
-    bounded recovery contract, and durable READY transition exist, a separate implementation can
-    extend this preflight without treating a checkpoint signature as proof of anti-rollback.
+        The class intentionally has no READY result. Once a reviewed shared fence, bounded recovery
+        contract, authenticated anti-rollback provider, and durable READY transition exist, a separate
+        implementation can extend this preflight without treating a checkpoint signature as proof of
+        anti-rollback.
     """
 
     def __init__(self, ledger: LifecycleLedger, sink: CheckpointSink,
