@@ -1,11 +1,12 @@
-"""V2-S13 migration 023 PostgreSQL lifecycle safety journeys.
+"""V2-S13 migrations 023-024 PostgreSQL lifecycle safety journeys.
 
 Run directly with the repository Python, never through pytest:
     .venv/Scripts/python.exe tests/phase2/test_s13_migration023_e2e.py
 
 The runner owns a loopback-only disposable PostgreSQL container and throwaway database, applies
-the complete 001-023 predecessor chain, and checks the lifecycle refusal and bounded-lock
-contract across independent connections. This does not cover a real physical writer or 1C.
+the complete 001-024 predecessor chain, and checks lifecycle refusal, lock-timeout restoration,
+and bounded-lock behavior across independent connections. This does not cover a real physical
+writer or 1C.
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ POST_BASE_MIGRATIONS = (
     "021_ed25519_consumer_cutover.sql",
     "022_lifecycle_epoch_fence.sql",
     "023_lifecycle_activation_cap.sql",
+    "024_restore_caller_lock_timeout.sql",
 )
 
 
@@ -91,8 +93,29 @@ async def journey(db, led: L) -> None:
         assert tuple(privileged_after) == tuple(before), (tuple(before), tuple(privileged_after))
         print("PASS: privileged recovery API fails closed (P0001); durable fence unchanged")
 
+        # Migration 024 caps fence-row acquisition at five seconds, then restores the caller's
+        # larger transaction setting after a successful read. The LEGACY state makes this a
+        # successful read with a false admission result and no durable state change.
+        await observer.execute("BEGIN")
+        try:
+            await observer.execute('SET LOCAL ROLE "clt_wri"')
+            await observer.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+            await observer.execute("SET LOCAL lock_timeout = '9s'")
+            timeout_before = await observer.fetchval("SELECT current_setting('lock_timeout')")
+            assert timeout_before == "9s", timeout_before
+            allowed = await observer.fetchval(
+                "SELECT change_ledger.lifecycle_writer_epoch($1,$2,$3::uuid,$4,$5)",
+                T, C, "00000000-0000-4000-8000-000000000001", 1, 0,
+            )
+            timeout_after = await observer.fetchval("SELECT current_setting('lock_timeout')")
+            assert allowed is False, allowed
+            assert timeout_after == timeout_before, (timeout_before, timeout_after)
+        finally:
+            await observer.execute("ROLLBACK")
+        print("PASS: successful lifecycle fence read restored caller lock_timeout=9s")
+
         # Hold the fence row on one independent connection. Writer epoch admission on another
-        # reaches the migration-023 bounded FOR SHARE lock and must time out at its 5s cap.
+        # reaches the migration-024 bounded FOR SHARE lock and must time out at its 5s cap.
         await locker.execute("BEGIN")
         await locker.fetchrow(
             "SELECT state FROM change_ledger.lifecycle_fences "
@@ -153,17 +176,18 @@ async def main() -> int:
             for filename in POST_BASE_MIGRATIONS[3:]:
                 await apply(db.conn, filename)
             version_rows = await db.conn.fetch(
-                "SELECT version FROM living.schema_migrations WHERE version IN ('001','018','019','020','021','022','023')"
+                "SELECT version FROM living.schema_migrations "
+                "WHERE version IN ('001','018','019','020','021','022','023','024')"
             )
             versions = {row["version"] for row in version_rows}
-            assert versions == {"001", "018", "019", "020", "021", "022", "023"}, versions
+            assert versions == {"001", "018", "019", "020", "021", "022", "023", "024"}, versions
             print(f"PROGRESS: PostgreSQL {await db.conn.fetchval('SHOW server_version')} ready", flush=True)
             await journey(db, L(db))
     assert docker("inspect", container_name, timeout=30).returncode != 0, "owned container remains after cleanup"
     assert docker("volume", "inspect", volume_name, timeout=30).returncode != 0, "owned anonymous volume remains"
     digest = docker("image", "inspect", image_tag, "--format", "{{.Id}}", timeout=30)
     assert digest.returncode == 0 and digest.stdout.decode().strip() == image_id
-    print(f"Suite: PASS — 1 V2-S13 migration 023 lifecycle safety journey; container={container_name}")
+    print(f"Suite: PASS — 1 V2-S13 migration 024 lifecycle safety journey; container={container_name}")
     print(f"CLEANUP: container={container_name} absent; anonymous_volume={volume_name} absent")
     print(f"IMAGE: {image_tag} {image_id}")
     print(f"DATABASE: disposable PostgreSQL 16 image configured by harness; ownership token={token[:8]}")

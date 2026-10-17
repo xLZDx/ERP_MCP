@@ -1,9 +1,9 @@
-"""Focused PostgreSQL acceptance for S13 migration 023.
+"""Focused PostgreSQL acceptance for S13 migrations 023-024.
 
 Run directly (never through pytest):
   .venv/Scripts/python.exe tests/phase2/test_s13_migration023.py
 The test creates an invocation-owned loopback PostgreSQL container and throwaway database,
-applies migrations 001-023, and removes only the container and anonymous volume it created.
+applies migrations 001-024, and removes only the container and anonymous volume it created.
 """
 from __future__ import annotations
 
@@ -26,7 +26,9 @@ MIGRATION_CHAIN = [
     "021_ed25519_consumer_cutover.sql",
     "022_lifecycle_epoch_fence.sql",
     "023_lifecycle_activation_cap.sql",
+    "024_restore_caller_lock_timeout.sql",
 ]
+MIGRATION_023 = "023_lifecycle_activation_cap.sql"
 RECOVERY_SIGNATURE = "change_ledger.lifecycle_begin_recovery(text,text)"
 
 
@@ -83,6 +85,19 @@ async def propose_with_timeout(conn: asyncpg.Connection, *, lock_timeout: str | 
         lock_timeout=lock_timeout)
 
 
+async def propose_and_show_timeout(conn: asyncpg.Connection, lock_timeout: str, base: str):
+    async with conn.transaction():
+        await conn.execute('SET LOCAL ROLE "clt_alice"')
+        await conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+        await conn.fetchval("SELECT set_config('lock_timeout',$1,true)", lock_timeout)
+        await conn.fetchval(
+            "SELECT change_ledger.propose($1::text,$2::text,$3::uuid,$4::text,$5::text,$6::text,"
+            "$7::text,$8::text,$9::text,$10::text,$11::text,$12::uuid,$13::timestamptz,$14::uuid)",
+            T, C, uuid4(), "POST", base, "org-1", "clt_alice", uuid4().hex,
+            fixture_digest_for("POST"), "m024-success-event", "v1", None, exp(), None)
+        return await conn.fetchval("SHOW lock_timeout")
+
+
 async def update_permit_with_timeout(conn: asyncpg.Connection, cid, generation, lock_timeout: str):
     async with conn.transaction():
         await conn.execute("SELECT set_config('change_ledger.tenant_id',$1,true)", T)
@@ -91,6 +106,28 @@ async def update_permit_with_timeout(conn: asyncpg.Connection, cid, generation, 
         return await conn.fetchval(
             "UPDATE change_ledger.dispatch_permits SET expires_at=expires_at "
             "WHERE change_id=$1 AND generation=$2 RETURNING change_id", cid, generation)
+
+
+async def update_permit_and_show_timeout(conn: asyncpg.Connection, cid, generation, lock_timeout: str):
+    async with conn.transaction():
+        await conn.execute("SELECT set_config('change_ledger.tenant_id',$1,true)", T)
+        await conn.execute("SELECT set_config('change_ledger.company_id',$1,true)", C)
+        await conn.execute("SELECT set_config('lock_timeout',$1,true)", lock_timeout)
+        await conn.fetchval(
+            "UPDATE change_ledger.dispatch_permits SET expires_at=expires_at "
+            "WHERE change_id=$1 AND generation=$2 RETURNING change_id", cid, generation)
+        return await conn.fetchval("SHOW lock_timeout")
+
+
+async def writer_epoch_and_show_timeout(conn: asyncpg.Connection, cid, generation, lock_timeout: str):
+    async with conn.transaction():
+        await conn.execute('SET LOCAL ROLE "clt_wri"')
+        await conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+        await conn.fetchval("SELECT set_config('lock_timeout',$1,true)", lock_timeout)
+        allowed = await conn.fetchval(
+            "SELECT change_ledger.lifecycle_writer_epoch($1::text,$2::text,$3::uuid,$4::bigint,$5::bigint)",
+            T, C, cid, generation, 0)
+        return allowed, await conn.fetchval("SHOW lock_timeout")
 
 
 async def test_recovery_is_denied_and_fail_closed(db, led: L) -> None:
@@ -125,9 +162,75 @@ async def test_recovery_is_denied_and_fail_closed(db, led: L) -> None:
 async def test_migration_is_idempotent(db) -> None:
     before = await db.conn.fetchrow("SELECT version,checksum,applied_at FROM living.schema_migrations WHERE version='023'")
     assert before is not None
-    await apply_migration(db.conn, MIGRATIONS / MIGRATION_CHAIN[-1])
+    await apply_migration(db.conn, MIGRATIONS / MIGRATION_023)
     after = await db.conn.fetchrow("SELECT version,checksum,applied_at FROM living.schema_migrations WHERE version='023'")
     assert tuple(after) == tuple(before), (tuple(before), tuple(after))
+
+
+async def test_success_restores_caller_lock_timeout(db, led: L) -> None:
+    base = "m024-timeout-restore-base"
+    await db.conn.execute(
+        "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,target_class) "
+        "VALUES($1,$2,$3,'org-1','DISPOSABLE_CLONE')", T, C, base)
+    cid, token, _call_id = await led.unknown(base=base, kind="POST", target="m024-timeout-restore")
+    generation = token["generation"]
+    event_conn = await db.connect()
+    permit_conn = await db.connect()
+    writer_conn = await db.connect()
+    try:
+        for setting, expected in (("0", "0"), ("150ms", "150ms")):
+            event_value = await propose_and_show_timeout(event_conn, setting, base)
+            assert event_value == expected, ("event guard", setting, event_value)
+
+            permit_value = await update_permit_and_show_timeout(
+                permit_conn, cid, generation, setting)
+            assert permit_value == expected, ("permit guard", setting, permit_value)
+
+            writer_allowed, writer_value = await writer_epoch_and_show_timeout(
+                writer_conn, cid, generation, setting)
+            assert writer_allowed is False  # LEGACY is not READY; row acquisition still succeeds.
+            assert writer_value == expected, ("writer epoch", setting, writer_value)
+    finally:
+        for conn in (event_conn, permit_conn, writer_conn):
+            await conn.close()
+    print("PASS: successful event, permit, and writer-epoch lock acquisitions restore "
+          "caller lock_timeout for default and short settings")
+
+
+async def test_timeout_savepoint_restores_setting_and_outer_transaction(db) -> None:
+    holder = await db.connect()
+    caller = await db.connect()
+    tx = await lock_fence_row(holder)
+    outer = caller.transaction()
+    await outer.start()
+    try:
+        await caller.execute('SET LOCAL ROLE "clt_alice"')
+        await caller.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+        await caller.fetchval("SELECT set_config('lock_timeout','150ms',true)")
+
+        savepoint = caller.transaction()
+        await savepoint.start()
+        await expect_pg_error("lock timeout", propose_with_timeout_in_open_transaction(caller))
+        await savepoint.rollback()
+
+        restored = await caller.fetchval("SHOW lock_timeout")
+        assert restored == "150ms", restored
+        assert await caller.fetchval("SELECT 1") == 1
+        print("PASS: caught lifecycle lock timeout rolls back to savepoint, restores 150ms, "
+              "and leaves outer transaction usable")
+    finally:
+        await outer.rollback()
+        await tx.rollback()
+        await holder.close()
+        await caller.close()
+
+
+async def propose_with_timeout_in_open_transaction(conn: asyncpg.Connection):
+    return await conn.fetchval(
+        "SELECT change_ledger.propose($1::text,$2::text,$3::uuid,$4::text,$5::text,$6::text,"
+        "$7::text,$8::text,$9::text,$10::text,$11::text,$12::uuid,$13::timestamptz,$14::uuid)",
+        T, C, uuid4(), "POST", "base-1", "org-1", "clt_alice", uuid4().hex,
+        fixture_digest_for("POST"), "m024-timeout-savepoint", "v1", None, exp(), None)
 
 
 async def test_bounded_lock_waits(db, led: L) -> None:
@@ -190,21 +293,23 @@ async def run() -> None:
     async with disposable_cluster() as (dsn, container, owner_token):
         async with throwaway_db(dsn) as db:
             # throwaway_db applies 001-018 and seeds the isolated base registry.
-            for filename in MIGRATION_CHAIN[:-2]:
+            for filename in MIGRATION_CHAIN[:-3]:
                 await apply_migration(db.conn, MIGRATIONS / filename)
             await _setup(db.conn)
-            for filename in MIGRATION_CHAIN[-2:]:
+            for filename in MIGRATION_CHAIN[-3:]:
                 await apply_migration(db.conn, MIGRATIONS / filename)
             versions = await db.conn.fetch("SELECT version FROM living.schema_migrations ORDER BY version")
             installed = {row["version"] for row in versions}
-            expected = {f"{version:03d}" for version in range(1, 24)}
+            expected = {f"{version:03d}" for version in range(1, 25)}
             assert installed == expected, (sorted(installed), sorted(expected))
 
             led = L(db)
             await test_recovery_is_denied_and_fail_closed(db, led)
             await test_migration_is_idempotent(db)
             await test_bounded_lock_waits(db, led)
-            print(f"PASS: S13 migration 023 focused acceptance on owned PostgreSQL container "
+            await test_success_restores_caller_lock_timeout(db, led)
+            await test_timeout_savepoint_restores_setting_and_outer_transaction(db)
+            print(f"PASS: S13 migration 023-024 focused acceptance on owned PostgreSQL container "
                   f"{container}; owner token {owner_token[:8]}")
 
 
