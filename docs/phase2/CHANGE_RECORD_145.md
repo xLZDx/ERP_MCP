@@ -32,7 +32,11 @@ Record designated functional and E2E agent evidence for the timeout-restoration 
 - Earlier test invocations exposed test-harness issues: migration/setup ordering, reuse of an unresolved fixture, an invalid transaction-state method in teardown, and one transient client-observed 150 ms lock timeout exceeding the strict 1.5-second threshold. The designated agent corrected fixture/teardown ownership and repeated the focused run without weakening thresholds; the final functional invocation passed. A parse-only E2E attempt stopped before creating a container; the corrected E2E invocation passed.
 - Evidence is limited to the tested migration behavior on disposable PostgreSQL. It does not prove physical-writer or 1C coverage, all ledger mutation paths, service admission integration, a READY transition, or formal S13 acceptance.
 - No shared or production database was accessed. Migrations 022–024 remain unapplied outside the disposable test clusters. Formal S13 is `NOT_STARTED / NOT_APPROVED`; G1–G8 are `NOT_PASSED`; Release 2 is `NO-GO`; production authorization is `NONE`.
-- DB, reliability, and security reviews of this exact committed evidence remain pending.
+- Exact-head DB, reliability, and security reviews completed at `3a5f71d`; their results and qualifications are recorded in the CR146 reconciliation below.
+
+## Review qualification (added by CR146)
+
+The DB reviewer confirmed that the savepoint scenario proves the outer transaction remains usable with its prior timeout after the failed statement is rolled back. It does not isolate the restoration executed by migration 024's exception handler from the setting rollback caused by the savepoint itself. Migration source statically restores the prior value before rethrowing; treat the functional runtime assertion as savepoint/outer-transaction evidence, not isolated proof of that handler branch. CR146 records this qualification and the exact-head DB/reliability/security review outcomes.
 
 ## Ownership and next action
 

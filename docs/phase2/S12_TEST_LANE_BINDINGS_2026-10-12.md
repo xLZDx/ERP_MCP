@@ -1,5 +1,9 @@
 # S12 test-lane identity bindings (2026-10-12)
 
+## Current process note (2026-10-17)
+
+The dated entries below preserve prior test-lane and governance decisions. For current local validation under `D:\Repo\AGENTS.md`, `functional-test-reviewer` and `e2e-runner` own required test authoring and execution; specialist reviewers do not run tests. Focused local disposable scenarios may be run by those agents when the operator requests them, as in CR143 and CR145. Those recorded runs used direct Python scripts rather than pytest or CI. They do not change the historical lane identity bindings, authorize 1C writes, or pass a formal gate. The exact current scope, commands, and evidence are in the linked change records.
+
 Status: TEST-LANE ONLY, FAKE VALUES. On the operator's instruction of 2026-10-12 ("this is all a test environment, invent fake ones, it does not matter") the open identity and host inputs of the S12 interface contract are filled with clearly fake placeholders so that S12 work can proceed on the disposable clone. These values authorize nothing outside the test lane: no staging, no production, no real person, no real host, no real signer. Real values are required before any non-test use and replace these by a new record.
 
 Correction (2026-10-13): the values in the table below were chosen by the agent, not supplied by the operator. The operator stated they do not know these values and asked the agent to sort them out. Only OB-01 and OB-15 are listed as open; no operator acceptance exists for either. The GPT-PM test-lane freeze premise that treated OB-01 and OB-15 as operator-accepted is withdrawn and must be re-reviewed.
