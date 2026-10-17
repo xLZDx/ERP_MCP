@@ -25,4 +25,4 @@ CR162's registry snapshot preceded its publication and therefore omitted CR162. 
 - Generator result: 236 tracked Markdown paths and 0 local-only paths; CR162 is included.
 - No tests, build, database operation, migration, CI, 1C/CT14 activity, or release/production operation was run for this documentation change.
 - This update does not alter G0–G8, CT14, S12–S19, R-01/R-03, Release 2, or production authorization; the remaining acceptance and dependencies are in the gate packet and sprint plan.
-- Exact-head GPT-PM review is required before publishing this commit.
+- GPT-PM request `8b0b481a-b3ef-4e67-941f-4fcd993cf51b` approved exact HEAD `85a179455365dcfadd01f827feb1304cec7fe006`; the normal fast-forward push completed and `origin/main` was read back at that hash. The follow-up inventory and approval reconciliation are documented in CR164.
