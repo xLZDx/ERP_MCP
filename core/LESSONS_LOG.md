@@ -9,3 +9,5 @@
 - 2026-10-20 FAILURE (caught by tests) integrate: the combined tree failed one phase2 test because two branches changed the same invariant independently (validator vs forged-value test). Rule: after combining hardening and tests, run the whole new test directory, and rewrite the forging helper rather than relax the validator.
 
 - 2026-10-20 NEUTRAL integrate: unused-noqa count is a cheap mechanical post-merge check; ruff --fix handled it.
+
+- 2026-10-20 SHORTCOMING integrate: the phase2 merge first appended Russian text verbatim, which broke the English-only git rule and needed a separate translation commit. Rule: translate carried-over text in the same merge commit and run a Cyrillic-in-added-lines check before committing.

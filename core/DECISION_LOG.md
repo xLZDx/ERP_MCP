@@ -571,3 +571,5 @@ eal1c_e2eutostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is id
 - 2026-10-20 integrate: kept BASE reconciliation authority validators; phase2 forged-authority test builds the forged value via object.__setattr__ and also asserts the constructor rejects it.
 
 - 2026-10-20 integrate: removed unused noqa comments via ruff --fix (RUF100 35 -> 0, BASE had 5, now fixed too); comments only.
+
+- 2026-10-20 integrate: translated all appended Russian phase2 status text to English (operator rule: all git text English). Kept functional Cyrillic test data and the seven .ru.html sibling reports; the latter need an operator decision. See docs/commits/2026-10-20-translate-appended-phase2-status-text.md.
