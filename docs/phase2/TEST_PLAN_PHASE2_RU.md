@@ -1,102 +1,148 @@
-# Phase 2 — Тест-стратегия, каталог сценариев и UAT
+# ERP_MCP Phase 2 — Test Strategy, Scenario Catalog and UAT
 
-Версия 0.1 · 08.10.2026 · DRAFT.
+**Version 0.1 · October 8, 2026 · DRAFT.**
 
-Полный локальный перечень IDs и критериев: STORIES_PHASE2_RU.md. Расширенные Given/When/Then, YAML и Gherkin включены в сопровождающий переносимый пакет. Все 144 product acceptance scenarios имеют статус NOT_RUN. Изолированные проверки целостности спецификации выполняются отдельно и не меняют эти статусы.
+The complete local list of IDs and acceptance criteria is in `STORIES_PHASE2_RU.md`. Extended Given/When/Then steps, YAML catalogs and Gherkin are included in the portable companion package.
 
-## 1. Уровни и независимость
+**Historical checkpoint:** All 144 product acceptance scenarios were `NOT_RUN` at the original specification stage. Isolated specification-integrity checks did not change those statuses. Later evidence must be assessed against the actual Git HEAD and test executions.
 
-| Уровень | Что исполняется | Что доказывает |
-|---|---|---|
-| SPEC/L0 | Schemas, fixtures, crosslinks, DAG зависимостей, арифметические контрпримеры | Проверяемость спецификации, не наличие продукта |
-| UNIT/L1 | Реальные canonicalizers, serializers, policy и parser budgets | Локальный код и negative branches, не native reconciliation |
-| INTEGRATION/L2 | Настоящая disposable PostgreSQL, grants/RLS/FKs, leases/outbox, Redis и sandbox provider | Транзакционные и ролевые границы |
-| FUNCTIONAL/L3 | MCP + adapter + разрешённая dev/reference 1С + native export | Реальная scoped цепочка capture/compare |
-| QUALIFICATION/L4 | Manual UI против UI automation/qualified engine на одной копии | Конкретный report recipe и configuration |
-| PROD/UAT | Явно разрешённая canary company с независимым утверждением | Source-specific acceptance, не blanket поддержка всех баз |
+## 1. Verification Levels and Independence
 
-Ожидаемые значения не получаются из самого MCP result. Negative tests намеренно используют неверный scope, изменённые bytes, фиктивный PASS, expired permission и ошибки источника. Positive test alone недостаточен.
+| Level | What executes | What it proves |
+| --- | --- | --- |
+| **SPEC/L0** | JSON Schemas, fixtures, cross-links, dependency DAG and arithmetic counterexamples | Specification consistency, **not** implementation |
+| **UNIT/L1** | Real canonicalizers, serializers, policy checks and bounded parsers | Local code and negative branches, **not** native reconciliation |
+| **INTEGRATION/L2** | Disposable real PostgreSQL, grants/RLS/FKs, leases/outbox, Redis and sandbox provider | Transaction and authorization boundaries |
+| **FUNCTIONAL/L3** | MCP, adapter, approved development/reference 1C, and original native export | Genuine scoped capture/compare chain |
+| **QUALIFICATION/L4** | Manual UI versus qualified UI automation or standard engine on the same copy | Source-specific report procedure and configuration |
+| **PROD/UAT** | Explicitly permitted canary company with independent approval | Source-specific acceptance, **not** universal compatibility |
 
-## 2. Как использовать companion tests
+Expected results must not be generated from the same MCP result under examination. Negative tests deliberately vary scope, modify original bytes, forge a PASS, expire permissions or simulate failures. A positive case alone is insufficient.
 
-`python -m pytest -q tests` в каталоге переносимого пакета выполняет только SPEC/L0 без сети, Windows, 1С, секретов или импорта продукта. Проверяются схемы, ссылки между требованиями/историями/тестами, completeness каталогов и синтетический пример компенсирующих финансовых ошибок.
+## 2. Companion Test Execution
 
-`acceptance/phase2.feature` содержит 144 сценария. Для их исполнения нужны настоящие step definitions и scoped product adapter. Нельзя реализовать шаг как безусловный success или проверку строки в конфигурации. Каждое Then должно утверждать наблюдаемое поведение продукта, БД, источника или evidence workflow.
+Running `python -m pytest -q tests` from the **portable specification package directory** executes only offline SPEC/L0 tests without network, Windows, 1C, secrets or application imports. These cover schemas, requirement/story/test references, catalog completeness and a synthetic counterexample where financial errors compensate.
 
-Отсутствующий adapter, environment, разрешение или native evidence даёт BLOCKED/NOT_RUN и запрещает gate PASS. Файл validation_report.json сопровождающего пакета относится только к SPEC/L0.
+`acceptance/phase2.feature` contains 144 scenarios. Executing them requires **real step definitions and a scoped product adapter**. An unconditional success step or string search in a configuration is not a valid implementation. Every Then must assert observable product, database, source, or evidence-workflow behavior.
 
-## 3. Test data
+A missing adapter, environment, authorization, or native artifact produces `BLOCKED` or `NOT_RUN` and prevents gate PASS. The companion `validation_report.json` applies **only** to SPEC/L0.
 
-Synthetic corpus: минимум два tenants, три companies, одинаковые имена поставщиков, несколько договоров с opposing debit/credit, posted/unposted/deleted receipts, нулевые/отрицательные/округлённые суммы, различные currencies/timezones, три версии схемы, partial pages, late events, moves/shortcuts/revisions/revoke.
+## 3. Test Data
 
-Real reference corpus: утверждённая copy/config identity, native original artifacts и manifest. Цифры из переписки имеют статус USER_SUPPLIED_NOT_ATTESTED и не являются golden fixtures. Точные денежные строки и secrets не добавлять в Git. Десять копий одного comparison не считаются десятью независимыми cases.
+The synthetic corpus includes at least two tenants, three companies, identical supplier names across company scopes, multiple contracts with opposing debits and credits, posted/unposted/deleted purchase receipts, zero/negative/rounded amounts, different currencies/time zones, three schema versions, partial pages, late events, moves/shortcuts/revisions, and revocation.
 
-Reset/write probes разрешаются только отдельному test harness на disposable target с явным разрешением. `reset.ps1`, DROP/TRUNCATE и пробные записи на real/prod запрещены. Не использовать изменение pytest testpaths как обход полномочий для operational script/secret access.
+The real reference corpus requires an approved database copy and configuration identity, original native artifacts and a manifest. Financial figures from the chat are `USER_SUPPLIED_NOT_ATTESTED`, **not** golden test fixtures. Never commit private financial lines or secrets to Git. Ten copies of one comparison are not ten independent cases.
 
-## 4. Наборы тестов
+Reset/write probes are permitted only through a separately approved test harness targeting an authorized disposable environment. Never use `reset.ps1`, `DROP`, `TRUNCATE`, or exploratory writes against a real/production database. Changing pytest test paths is not a way to bypass permission restrictions on operational scripts or secrets.
 
-### Auth и contracts: TC001–018, TC121–123
+## 4. Test Suites
 
-Проверить R1/R2 boundary, exact build и donor inventory. Typed source IDs; arbitrary URL/SQL/command отказ до dispatch. Cross-tenant FK/API/RLS denial, company-only не получает source-wide metadata. Scope epoch проверяется до fetch и disclosure. Secret startup/rotation, missing pair preflight, отсутствие пароля/токена в логах, argv и artifacts. Job annotations, CSRF и idempotency правильны; отказ не обходится через raw COM/DC.
+### Authorization and Contracts — TC001–018, TC121–123
 
-### PDM, LDM и время: TC019–048
+Verify the R1/R2 boundary, exact build, and donor inventory. Typed source IDs; arbitrary URLs, SQL and shell commands rejected **before dispatch**. Cross-tenant FK/API/RLS denials. Company-only access does not grant global metadata. Check the authorization epoch before fetch and again before disclosure. Validate secret startup, rotation, missing-pair preflight and no credential leakage through logs, argv or artifacts. Job annotations, CSRF and idempotency must be correct; raw COM/DC cannot bypass denial.
 
-Full baseline и coverage; namespace-qualified IDs; равнозначный XML formatting не создаёт structural drift. Type/scale/key/navigation/function changes дают diff. Partial/error/ACL narrowing не означают удаление объектов. Recovery не повышает trust автоматически. Append-only SQL privileges, replay, две оси времени, unknown effective time, late corrections и gaps. A→B→A между polls без history API не выдумывается. Candidate aliases/edges scoped; ambiguity требует решения человека. Неполный dependency graph — conservative denial. Accepted head использует CAS; incompatible rollback не снимает drift.
+### PDM, LDM and Temporal Semantics — TC019–048
 
-### Scheduler: TC049–060
+Verify complete baseline/coverage, namespace-qualified IDs, and a canonicalizer that ignores semantically irrelevant XML formatting while detecting type/scale/key/navigation/function changes. Partial results, errors and narrowed ACLs cannot imply object removal. Recovery never increases trust automatically.
 
-Два workers одного source получают не более одного действительного lease/fence. Старый worker после expiry не публикует результат. Crash before page commit вызывает безопасный replay, без потерь/дубликатов. Cursor/outbox/result транзакционны. Один ID с разными bytes — conflict. Budget физической базы общий для source aliases и replicas. Queue bounded; foreground/background fairness; poison source изолирован; pause/reconnect повторно проверяет scope/cursor.
+Check SQL append-only privileges, replay, both time axes, unknown effective dates, late corrections and gaps. A–B–A changes between polls without history API are not invented. Candidate aliases and taxonomy edges are scoped; ambiguities require a human decision. Unknown dependency graphs deny conservatively. Accepted-head changes require CAS; incompatible rollback cannot silently clear drift.
 
-### Native capture: TC061–081
+### Scheduler and Cursor Safety — TC049–060
 
-UI original, header/settings/totals, правильная база и организация. Partial screenshot не доказывает полный отчёт. Edited XLSX требует новой revision/digest. Manual/automated UI equivalence. Unknown modal/selector или wrong base вызывают отказ. Qualified standard engine сохраняет provenance; пустой COM результат не ноль и не повод выдать собственный query как native. Untrusted EPF denied. Prod default OFF, expiry/scope permit, idempotency conflict. No business writes с явной coverage технических effects. Private immutable artifacts должны реально существовать. Sandbox не исполняет macros/formulas/entities; zip-bomb, memory и timeout bounded; truncated result не PASS.
+Two workers on the same source must have at most one valid lease/fence. A worker that has lost its lease cannot publish. Crash before page commit must allow lossless, duplicate-free replay. Cursor/outbox/result writes are transactional. The same event ID with different bytes is a conflict.
 
-### Evidence и финансы: TC082–102
+Budgets apply to the **physical backend** across source aliases and replicas. Verify bounded queueing, foreground/background fairness, isolation of poisoned sources, and fresh scope/cursor validation before resume.
 
-Actual bytes + digest + origin + scope + attestation FK. Независимый authenticated signer; uploader/connector/JSON signed_by не дают VALIDATED. Revocation снимает current applicability, но сохраняет историю. Candidate runner выдаёт EVALUATION_ONLY без public bypass; после approval повторяется canonical tool.
+### Native Capture and Parser — TC061–081
 
-Сверять шесть колонок и строки. Одинаковый closing net при разных opening/turnover должен дать MISMATCH. Expanded debit/credit по договорам не скрываются netting. Explicit account-based AP strategy; отсутствующий register не выдумывается. Balance alone не доказывает aging. Posted purchases MOLDRETAIL проверяются по company/supplier/deletion/pagination. Разные snapshots/cutoff — INCONCLUSIVE. Backdated correction — новый run. Десять arbitrary IDs не заменяют coverage; отдельная purchases policy не открывает AP и не меняет R1.
+Verify original UI report, headers/settings/totals, exact source and company. Partial screenshots cannot prove a complete report. Editing an XLSX artifact requires a new revision/digest. Manual and automated UI capture must be equivalent. Unknown modal/selector or wrong database must fail without guessed clicks.
 
-### Drive: TC103–114
+Qualified standard-engine reports must retain genuine provenance. Empty COM output is not zero and cannot justify relabeling an internally generated query as native. Untrusted EPF content is rejected.
 
-Проверить фактический OAuth/file/folder/shared-drive scope и доступ к новым children. Application folder filter не назвать OAuth isolation широкого токена. Start token до baseline, затем catch-up и durable cursor. Separate account/drive namespaces. Lost cursor вызывает controlled resnapshot/gap. Revision/move/shortcut/revoke проверяют текущий scope. Viewer/readonly не обязан иметь revision history: нельзя выдать writer/keepForever mutation ради теста. Token invalid_grant даёт AUTH_REQUIRED и алерт. Webhook duplicate/out-of-order — только hint; polling работает без watch.
+Production capture defaults OFF. Enforce permit scope, expiry and idempotency conflicts. Prove the absence of business writes, including coverage of technical side effects. Private immutable artifacts must genuinely exist. Parser isolation never evaluates macros, formulas or external entities; zip bombs, memory and time budgets are bounded, and truncated results cannot count as PASS.
 
-### UI, prod, operations и release: TC115–144
+### Independent Evidence and Finance — TC082–102
 
-Workbench связывает mismatch с fragment/строкой/owner; исходные числа immutable; rerun создаёт новую запись. Timeline ясно разделяет known/effective и historical/live. Safe errors без чужих IDs/секретов. Prod canary только с permit, dev PASS не prod approval; kill switch действует только на owned job.
+Require original bytes, digest, origin, scope and a real attestation foreign key. The signer must be independently authenticated; uploaders, connectors and a JSON `signed_by` field cannot confer `VALIDATED`. Revocation ends current applicability while preserving history.
 
-Capacity: sessions отдельно от active clients и source count отдельно от physical backends. Отказы по profile не business throughput. Background interference измеряется. Audit outage блокирует действие до effect; алерт действительно срабатывает и восстанавливается. Worker/provider faults не теряют и не дублируют публикации. Expand/shadow сохраняет R1; rollback не resurrect revoked grants. Restore проверяет artifact hashes/FKs/heads/attestations. Export masking/formula safety; legal hold и no unapproved deletion. Дополнительные donors квалифицируются по pin. Exact release manifest не объявляет NOT_RUN пройденным.
+The candidate runner outputs only `EVALUATION_ONLY`, never a public validation bypass. Canonical tools can be replayed after qualified approval.
 
-## 5. Нагрузочная матрица
+Compare **all six** report aggregates and underlying rows. Equal closing net balances with incorrect openings/turnovers must produce `MISMATCH`. Contract debit/credit sides must not be hidden by netting. Accounting-based AP requires an explicit qualified strategy; a missing settlement register cannot be invented and balances alone do not prove aging.
 
-До нагрузки фиксируются hardware/deployment/build/config/dataset, workload и qualified tools. Сетка: 30/50/100/150 sources; 1/5/10/20/50/100 active clients; отдельно 50/100/500/1000 sessions; один/несколько physical backends; cold/warm; metadata/documents/balances/report capture; discovery off/on. Сначала короткие ступени, затем 2h/8h soak на устойчивом уровне.
+Posted MOLDRETAIL purchases must be checked for company, supplier, deletion state and complete pagination. Differing snapshots or cutoffs yield `INCONCLUSIVE`; a backdated correction creates a new run. Ten arbitrary evidence IDs do not establish coverage. Approving purchases does not enable AP or modify R1 validation.
 
-Real 1С нагружается только с отдельными scope/window/budget/stop criteria. Измерять business reads/sec, p50/p95/p99, queue/pool wait, source busy/timeouts, RSS/CPU, latency пользователей 1С, audit/cursor lag, missed/duplicate events. Config limit не является capacity proof. Останавливать тест при согласованном превышении latency, sustained errors, saturation, unsafe side effects или budget.
+### Google Drive — TC103–114
 
-Предлагаемые targets, не измеренные гарантии: warm metadata p95 ≤500ms; enqueue p95 ≤500ms; увеличение foreground p95 от background ≤20%. Конкретные SLO подтверждаются на выбранном стенде. Отказавшие ACL/profile requests считаются отдельно.
+Prove actual OAuth/file/folder/shared-drive scope and behavior for newly created child files. An application-level folder filter **is not** OAuth permission isolation if the token is broad.
 
-## 6. UAT обычного пользователя
+Acquire the start token before baseline capture; perform catch-up and persist a durable cursor. Separate account/drive namespaces. Lost cursor leads to controlled resnapshot and a declared gap.
 
-UAT-U01: статус собственной компании и safe причина BLOCKED.
-UAT-U02: posted MOLDRETAIL receipts — dates/number/amount/currency/full pagination и native journal.
-UAT-U03: ОСВ521.1 — все шесть показателей, contracts, expanded/net, native provenance, timezone/currency.
-UAT-U04: история с явно выбранными known/effective axes.
-UAT-U05: чужая компания и arbitrary SQL/COM вызывают отказ.
-UAT-U06: revoke mid-job предотвращает выдачу из cache/artifact URL.
+Test revisions, moves, shortcuts and revocation against **current** access scope. Viewer/read-only may not include revision history; do not grant writer access or mutate `keepForever` to make a test pass. `invalid_grant` yields `AUTH_REQUIRED` and an alert. Duplicate or out-of-order webhooks are hints only; polling must function without watch.
 
-## 7. UAT администратора/бухгалтера
+### Workbench, Production, Operations and Release — TC115–144
 
-UAT-A01: connection/scope/secret reference/budget/preflight.
-UAT-A02: observed → diff → impact → accepted; LLM не approver.
-UAT-A03: native UI baseline и квалификация recipe на копии.
-UAT-A04: independent attestation; fake/duplicate ten cases rejected.
-UAT-A05: Drive report/revision/move/revoke; latest applicability отдельно от history.
-UAT-A06: prod OFF, time-bound permit, canary, revoke/kill switch.
-UAT-A07: отказ вызывает алерт, восстановление снимает его корректно.
-UAT-A08: restore/rollback без reset real lane и без возврата отозванных прав.
+The workbench links discrepancies to fragments, rows, owners and deltas. Original numbers are immutable, and reruns produce new records. Timelines distinguish known/effective and historical/current states. Safe errors reveal no foreign IDs or secrets.
 
-## 8. Test evidence и exit
+Production canary requires a separate permit: a development PASS is not production approval. The kill switch controls only owned jobs.
 
-Для каждого actual result: testcase_id, PASS/FAIL/BLOCKED/NOT_RUN, exact build/config/recipe/step hash, environment/source/company, start/end, реальные assertions, sanitized artifact refs/SHA, correlation, scope/authority, reviewer/approver и deviations. Planned expected не смешивается с actual.
+Capacity reports must distinguish sessions from active clients and source counts from physical backends. Denied/unvalidated profile requests do not count as business throughput. Measure background interference. Audit unavailability must block a transaction before its effect and actually trigger/recover an alert. Worker/provider failures must not lose or duplicate publications.
 
-Gate PASS допускается только после выполнения обязательных cases, отсутствия неразобранных correctness/security mismatches и необходимых независимых approvals. Specification tests не заменяют эту приёмку. Никаких production/native тестов данным пакетом не запускалось.
+Expand/shadow rollout preserves R1; rollback cannot resurrect revoked grants. Restore verification includes artifact hashes, foreign keys, accepted heads and attestations. Exports require masking, tenant isolation and spreadsheet-formula safety. Honor legal holds; no unauthorized deletion. Additional donors need pin/licensing qualification. The exact-head release manifest cannot present `NOT_RUN` as PASS.
+
+## 5. Load-Test Matrix
+
+Before load testing, pin hardware, deployment, build, configuration, dataset, workload and qualified tools.
+
+Test across:
+- **Sources:** 30, 50, 100, 150.
+- **Active clients:** 1, 5, 10, 20, 50, 100.
+- **Sessions (independently):** 50, 100, 500, 1,000.
+- **Backends:** One or multiple physical backends; cold/warm; metadata, documents, balances, native report capture; discovery enabled/disabled.
+
+Start with short steps, then 2-hour and 8-hour soak tests at a stable qualified load.
+
+A real 1C backend may be load-tested only with a separately approved scope, time window, budget and stop criteria. Measure business reads/s, p50/p95/p99, queue and connection-pool wait, source busy/timeout rates, RSS/CPU, actual 1C user latency, audit/cursor lag, and missed/duplicate events.
+
+**Configuration limits are not capacity evidence.** Stop when approved latency thresholds, sustained errors, saturation, unsafe side effects, or resource budgets are exceeded.
+
+Proposed targets, **not measured guarantees**: warm metadata p95 no more than 500 ms; enqueue p95 no more than 500 ms; foreground p95 increase under background load no more than 20%. Actual SLOs require qualification on the chosen environment. Report failed ACL/profile requests separately.
+
+## 6. Normal User UAT
+
+| ID | Required scenario |
+| --- | --- |
+| UAT-U01 | View own company's status and a safe explanation for `BLOCKED` |
+| UAT-U02 | Posted MOLDRETAIL receipts: dates, document numbers, amounts, currencies, complete pagination and native journal |
+| UAT-U03 | Account 521.1 trial balance: all six measures, contracts, expanded/net views, native provenance, currency and time zone |
+| UAT-U04 | Historical timeline with explicit known/effective time axis selection |
+| UAT-U05 | Access to another company or arbitrary SQL/COM command is denied |
+| UAT-U06 | Mid-job revocation prevents disclosures from caches and artifact URLs |
+
+## 7. Administrator and Accountant UAT
+
+| ID | Required scenario |
+| --- | --- |
+| UAT-A01 | Connection, scope, secret reference, budget and preflight |
+| UAT-A02 | Observed → diff → impact → accepted; LLM is not an approver |
+| UAT-A03 | Native UI baseline and qualified recipe on a disposable source copy |
+| UAT-A04 | Independent attestation; fake/duplicated ten-case evidence rejected |
+| UAT-A05 | Drive report, revision, move and revoke; current applicability separated from history |
+| UAT-A06 | Production OFF by default, time-bound permit, canary, revocation and kill switch |
+| UAT-A07 | A failure fires a real alert and recovery clears it correctly |
+| UAT-A08 | Restore/rollback without reset of a real source and without reinstating revoked access |
+
+## 8. Test Evidence and Exit Conditions
+
+Every actual result must record:
+- Test-case ID and `PASS`/`FAIL`/`BLOCKED`/`NOT_RUN`.
+- Exact build, configuration, procedure, and step-definition hash.
+- Environment, source/company, start/end times.
+- **Actually executed assertions** and sanitized artifact references/hashes.
+- Correlation ID, scope and authorization basis.
+- Reviewer/approver and recorded deviations.
+
+Planned expected results must never be confused with actual outcomes.
+
+Gate PASS requires all mandatory cases to have executed successfully, no unresolved correctness/security discrepancy, and the required independent approvals. Specification tests **do not replace** product acceptance.
+
+**No production or native 1C tests were performed by the initial design package itself.** Later test evidence must always be reported with its own exact Git HEAD and measured environment.

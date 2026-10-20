@@ -1,37 +1,62 @@
-# ERP_MCP Phase 2 — проектный пакет v0.1
+# ERP_MCP Phase 2 — Design Package v0.1
 
-08.10.2026 · DRAFT FOR REVIEW. R1 остаётся frozen. Это проектные документы, не реализация Phase2 и не изменение release verdict, runtime, migrations, grants или native validation policy R1.
+**October 8, 2026 — Draft for review.** This document describes the initial design-package checkpoint, **not the current implementation status**. Release 1 remained frozen at the time. The package did not change R1 runtime behavior, migrations, grants, native validation policy, or the release decision. For current results, consult the implementation, evidence, and decision logs.
 
-## Основные локальные документы
+## Core Project Documents
 
-- TDD_PHASE2_RU.md — 28 требований, архитектура, connectors, PDM/LDM, taxonomy, Time DB, native capture, reconciliation и безопасность.
-- PLAN_PHASE2_RU.md — 11 спринтов S0–S10, gates G0–G7, dependencies, spikes, rollout/rollback.
-- STORIES_PHASE2_RU.md — 48 историй, связанных со 144 acceptance scenarios.
-- TEST_PLAN_PHASE2_RU.md — уровни, actual assertions, capacity/fault matrix и separate user/admin UAT.
-- NATIVE_REPORT_PROTOCOL_RU.md — manual UI, qualified UI automation, optional qualified standard engine, dev/prod permissions и 12 qualification cases.
-- DECISIONS_AND_SOURCES_RU.md — ADR proposals, риски, источники и открытые решения.
-- CONTRACTS_AND_API_RU.md — уточнение data dictionary, API, scope/time/transaction boundaries и четырёх JSON contracts.
-- PACKAGE_COMPLETION_RU.md — точный итог подготовки, размещение и ограничения проверки.
-- SPEC_VALIDATION_SUMMARY.json — фактический результат SPEC/L0 и SHA-256 архива.
+- **TDD_PHASE2_RU.md** — 28 requirements covering architecture, connectors, PDM/LDM, taxonomy, temporal database, native capture, reconciliation, and security.
+- **PLAN_PHASE2_RU.md** — 11 sprints (S0–S10), gates G0–G7, dependencies, technical spikes, deployment, and rollback.
+- **STORIES_PHASE2_RU.md** — 48 stories linked to 144 acceptance scenarios.
+- **TEST_PLAN_PHASE2_RU.md** — test levels, concrete assertions, the capacity/failure matrix, and independent user/admin acceptance testing.
+- **NATIVE_REPORT_PROTOCOL_RU.md** — manual native UI capture, qualified automation, an optional qualified standard engine, development/production permissions, and 12 qualification cases.
+- **DECISIONS_AND_SOURCES_RU.md** — proposed architecture decisions, risks, references, and unresolved decisions.
+- **CONTRACTS_AND_API_RU.md** — data dictionary, APIs, scope/time/transaction boundaries, and four JSON contracts.
+- **PACKAGE_COMPLETION_RU.md** — precise package preparation results, placement, and verification limits.
+- **SPEC_VALIDATION_SUMMARY.json** — measured specification/L0 results and package SHA-256.
 
-## Переносимый пакет
+The existing filenames are retained to avoid breaking references. Their language suffixes are historical, not proof of English-language completion.
 
-В чате предоставлен ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip: 38 файлов, расширенная редакция документов, offline HTML, requirements/stories/test_cases YAML, traceability.csv, 144 Gherkin scenarios, 4 JSON Schemas, synthetic examples и executable SPEC/L0 tests.
+## Portable Specification Package
 
-На Windows **создана отдельная рабочая копия** `D:\Repo\ERP_MCP-phase2`. В ней уже сохранён `docs\phase2\spec-v0.1\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08\` с YAML/JSON Schema/Gherkin/traceability и отдельный `docs\phase2\artifacts\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip`. Это **пересобранный из текущих документов** пакет, а не исходный ZIP из ChatGPT; его точный SHA проверяется генератором `scripts\phase2\build_spec_bundle.py`.
+The original chat supplied **ERP_MCP_PHASE2_SPEC_v0.1_2026-10-08.zip**: 38 files containing expanded documentation, offline HTML, requirements/stories/test-case YAML, traceability.csv, 144 Gherkin scenarios, four JSON Schemas, synthetic examples, and executable specification/L0 tests.
 
-## Проверка
 
-В контейнере подготовки первоначально выполнены 35 SPEC/L0 checks: все PASS. В **изолированной Windows-копии Phase 2** дополнительно выполнены 23 новых офлайн-теста: PASS, и Ruff lint: PASS. Product tests144, реальные 1С/Drive/PostgreSQL/UI/COM/native/prod проверки — NOT_RUN. Gherkin step implementations ещё нужно разработать. JSON Schema не доказывает genuine artifact, actual permissions или independent attestation.
+Later, a separate working copy was created on Windows at `D:\Repo\ERP_MCP-phase2`. It holds `docs\phase2\spec-v0.1\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08\` (YAML, JSON Schema, Gherkin, traceability) and a separate `docs\phase2\artifacts\ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip`. That bundle was **rebuilt from the current documents** and is not the original ZIP from the ChatGPT session; its exact SHA is checked by the generator `scripts\phase2\build_spec_bundle.py`.
 
-HTML прошёл статическую проверку структуры/ссылок/отсутствия внешних render resources. Визуальный browser run не выполнен: managed Chromium заблокировал file navigation; ограничения не обходились. Подробнее — PACKAGE_COMPLETION_RU.md.
+At the time of preparation, the archive had **not** been copied or extracted on Windows. Until extracted, companion YAML files, schemas, and tests could not be assumed to exist in this directory. A suitable location was a new **docs/phase2/spec-v0.1/** subdirectory without overwriting existing files. Later work must be verified against actual repository contents rather than this historical note.
 
-## Основное решение
+## Verification of the Initial Package
 
-Настоящий штатный отчёт1С может быть independent native oracle и при ручном, и при квалифицированном автоматическом запуске. Файл, созданный из MCP-чисел, не проверяет тот же MCP независимо. Требуются origin/recipe qualification, source consistency, все шесть колонок и строки, затем independent accounting approval. Prod capability сохраняется как default OFF до target-specific permit.
 
-Точные денежные значения пользователя не добавлены в новые Git/package fixtures. Частная арифметическая записка находится отдельно в чате и не является native validation.
+The packaging environment executed **35 specification/L0 checks: all passed, none skipped**. The 144 product test scenarios, real 1C/Drive/PostgreSQL/UI/COM/native/production checks, and Gherkin step implementations were **not run or implemented as part of this design checkpoint**. JSON Schema validation alone does not establish genuine artifact provenance, actual permissions, or independent attestation.
 
-## Статус
+In the isolated Windows copy of Phase 2, 23 additional new offline tests later passed, and Ruff lint passed.
 
-Документационный пакет и первый изолированный кодовый срез Phase 2 созданы и запушены **только** в `phase2/living-model-connectors-reconciliation`. R1 code/config/migrations/permissions не менялись этим этапом, merge в `main` не производился, services/1C не перезапускались, посторонние рабочие изменения не тронуты. Статус и план дальнейшего переключения — `BRANCH_ISOLATION_AND_HANDOFF.md`, `CUTOVER_PLAN_RU.md`.
+The offline HTML passed static checks of structure, links, and absence of external rendering dependencies. A visual browser run was not performed because managed Chromium blocked local-file navigation; no restriction was bypassed. Details are in **PACKAGE_COMPLETION_RU.md**.
+
+## Primary Accounting Evidence Decision
+
+A genuine standard 1C report can serve as an **independent native accounting oracle**, whether generated manually or through qualified automation. A file reconstructed from MCP-reported amounts cannot independently validate those same amounts.
+
+Validation requires qualified source/capture procedure provenance, consistent source identity, all six relevant report columns and underlying rows, and independent accountant approval. Production native-capture capability remains **disabled by default** until a target-specific permit is granted.
+
+No actual user financial amounts were added to the new Git or package test fixtures. A private arithmetic note remained in the chat and is not native-report evidence.
+
+
+
+## Historical Status of This Design Checkpoint
+
+
+
+The design package was complete for review, but Phase 2 implementation had **not begun as part of this preparation step**. R1 code, configuration, migrations, and permissions were unchanged. At the time, there had been no local commit, push, merge, restart, load test, or deletion; unrelated changes were untouched.
+
+
+
+The package was subsequently published only as **draft documentation**, on a separate documentation branch and pull request. Publication did not constitute design acceptance or authorization to implement Phase 2.
+
+
+
+**Current Phase 2 progress must be established from exact Git HEAD, tests, the evidence matrix, and approved gate decisions. This historical document must not be used to infer a current release GO.**
+
+
+Later status: the documentation package and the first isolated Phase 2 code slice were created and pushed **only** to `phase2/living-model-connectors-reconciliation`. R1 code, configuration, migrations, and permissions were not changed by that stage; nothing was merged into `main`; services and 1C were not restarted; unrelated working changes were untouched. For the status and the cutover plan see `BRANCH_ISOLATION_AND_HANDOFF.md` and `CUTOVER_PLAN_RU.md`.
