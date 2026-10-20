@@ -10,6 +10,7 @@
 
 ## 2. Sprints
 
+
 | Sprint | Expected outcome | Dependencies and exit criteria |
 | --- | --- | --- |
 | **S0** | R1 baseline, source/identity ownership, PDCC/ERP/Ferma inventory, proposed ADRs, native report feasibility | G0 scope, architecture, and security; no unverified donor may be declared ready |
@@ -99,3 +100,15 @@ Every spike ends with `SUPPORTED`, `UNSUPPORTED`, or `INCONCLUSIVE` and supporti
 At this initial documentation checkpoint, the plan did **not** modify R1 runtime, migrations, security, or CI; create a branch, commit, push or merge; grant new source access; log into the native 1C application; enable production capture; restart services; execute load; or delete data. The checkpoint consisted of project documents and companion specification tests only.
 
 **This section is historical.** Current implementation and release state must be verified from the actual Git HEAD, measured evidence, approved gates, and decision log, rather than inferred from the initial plan.
+
+### Implementation status annotations for S7-S10 (from the phase2 branch)
+
+<!-- Carried over verbatim from origin/phase2/living-model-connectors-reconciliation; this status text is not yet translated to English. -->
+
+| Sprint | Результат | Зависимости / exit |
+|---|---|---|
+| S7 | Drive least-privilege PoC, baseline+changes/revisions/moves/revoke, auth expiry | G4: actual new-file scope behavior; polling работает без webhook; S7 code: offline coverage only (fake Drive port, IMPLEMENTED_UNVERIFIED), G4 stays open |
+| S8 | Workbench/UI explanations, history/coverage, job/read APIs, safe rerun | G5 user/admin UAT и evidence revocation/current applicability; S8 code: offline view/decision modules only (workbench_types/review, timeline_view, coverage_view, safe_errors, jobs_api, workbench_session; IMPLEMENTED_UNVERIFIED, no real UI/HTTP), G5 stays open |
+| S9 | Capacity/chaos/audit/restore/retention, R1 compatibility, migrations rehearsal | G6-pre: actual workload metrics, fault alarms, repeatable recovery; S9 code: offline decision modules only (ops_types, capacity_model, capacity_interference, audit_gate, delivery_replay, alert_rules, release_migration, release_rollback, restore_verify, export_safety, retention_hold, g6_pre_readiness; IMPLEMENTED_UNVERIFIED, no real load/chaos/restore), G6-pre stays open |
+| S10 | Source-specific prod canary при отдельном разрешении; exact-head R2 release bundle | G6/G7: approved recipe/identity/window/budget, native correctness и формальная приёмка; офлайн-закрытие 2026-10-10: ENGINEERING_HANDOFF (`S10_RELEASE_HANDOFF.md`), canary NOT_RUN до отдельного разрешения оператора и реальных данных, Release 2 NO-GO, G1/G4/G5/G6-pre NOT PASSED |
+

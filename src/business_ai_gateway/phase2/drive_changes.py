@@ -28,6 +28,12 @@ class DriveChange:
     mime_type: str | None = None
     parents: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        # A drive id is compared with ``==`` / ``!=``: only an exact plain str (or None) is allowed, so a
+        # str subclass with a lying comparison can never pass a drive filter.
+        if self.drive_id is not None and type(self.drive_id) is not str:
+            raise ValueError("INVALID_DRIVE_CHANGE")
+
 
 @dataclass(frozen=True, slots=True)
 class DrivePage:
@@ -37,12 +43,28 @@ class DrivePage:
     new_start_page_token: str | None = None
 
     def __post_init__(self):
-        if not self.requested_page_token:
+        # Exact types only: a str / tuple / enum subclass (e.g. one with a lying __eq__) is refused.
+        if type(self.requested_page_token) is not str or not self.requested_page_token:
             raise ValueError("PAGE_TOKEN_REQUIRED")
+        for token in (self.next_page_token, self.new_start_page_token):
+            if token is not None and type(token) is not str:
+                raise ValueError("PAGE_CONTINUATION_XOR_NEW_START_REQUIRED")
         if bool(self.next_page_token) == bool(self.new_start_page_token):
             raise ValueError("PAGE_CONTINUATION_XOR_NEW_START_REQUIRED")
-        if any(not c.file_id or not c.change_id or not isinstance(c.kind, DriveChangeKind)
-               for c in self.changes):
+        if type(self.changes) is not tuple:
+            raise ValueError("INVALID_DRIVE_CHANGE")
+        try:
+            bad = any(
+                type(c) is not DriveChange
+                or type(c.file_id) is not str or not c.file_id
+                or type(c.change_id) is not str or not c.change_id
+                or type(c.kind) is not DriveChangeKind
+                or (c.drive_id is not None and type(c.drive_id) is not str)
+                for c in self.changes
+            )
+        except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
+            bad = True
+        if bad:
             raise ValueError("INVALID_DRIVE_CHANGE")
 
 
@@ -108,10 +130,12 @@ class PreparedDriveBatch:
         With unknown_changes > 0 it stays at prior_cursor unless the caller passes
         the id of a durably recorded history GAP acknowledging the skipped changes.
         """
-        if self.unknown_changes > 0 and (
-            not isinstance(recorded_gap, str) or not recorded_gap.strip()
-        ):
-            return self.prior_cursor
+        if self.unknown_changes > 0:
+            # local import: drive_port imports this module
+            from .drive_port import is_valid_opaque_id
+
+            if not is_valid_opaque_id(recorded_gap):  # exact str, opaque id; blank/whitespace/subclass refused
+                return self.prior_cursor
         return self.proposed_cursor or self.next_cursor
 
 
@@ -127,11 +151,15 @@ class DriveChangeProjector:
     ):
         if not connection_id or not callable(file_scope_allowed):
             raise ValueError("DRIVE_SCOPE_REQUIRED")
+        if drive_id is not None and type(drive_id) is not str:
+            raise ValueError("DRIVE_SCOPE_REQUIRED")
         self.connection_id, self.drive_id = connection_id, drive_id
         self._scope_allowed = file_scope_allowed
 
     def prepare(self, page: DrivePage, *, stored_cursor: str) -> PreparedDriveBatch:
-        if page.requested_page_token != stored_cursor:
+        token = page.requested_page_token
+        # exact str on both sides: a str subclass with a lying __eq__/__ne__ never passes the CAS
+        if type(token) is not str or type(stored_cursor) is not str or token != stored_cursor:
             raise ValueError("CURSOR_COMPARE_AND_SWAP_FAILED")
         candidates: list[EvidenceCandidate] = []
         tombstones: list[TombstoneCandidate] = []
@@ -139,24 +167,46 @@ class DriveChangeProjector:
         denied = 0
         unknown = 0
         seen: set[str] = set()
+        requalify_seen: set[str] = set()
         for item in page.changes:
+            # Re-validate every change at the comparison site (a forged change / page can bypass the
+            # constructors): exact types only, and compare PLAIN copies of the drive ids.
+            try:
+                item_drive = item.drive_id
+                if (
+                    type(item) is not DriveChange
+                    or type(item.change_id) is not str
+                    or type(item.file_id) is not str
+                    or type(item.kind) is not DriveChangeKind
+                    or (item_drive is not None and type(item_drive) is not str)
+                ):
+                    raise ValueError("INVALID_DRIVE_CHANGE")
+                item_mime = item.mime_type
+            except ValueError:
+                raise
+            except Exception:  # noqa: BLE001 - forged change (unset slot): fixed code only
+                raise ValueError("INVALID_DRIVE_CHANGE") from None
             if item.change_id in seen:
                 raise ValueError("DUPLICATE_CHANGE_ID_IN_PAGE")
             seen.add(item.change_id)
-            if self.drive_id is not None and item.drive_id != self.drive_id:
-                if item.drive_id is None and item.kind == DriveChangeKind.UNKNOWN:
+            if self.drive_id is not None and item_drive != self.drive_id:
+                if item_drive is None and item.kind is DriveChangeKind.UNKNOWN:
                     unknown += 1  # ambiguous origin, not provably another drive
+                    continue
+                if item_drive is None and item.kind is DriveChangeKind.REMOVED:
+                    pass  # unknown origin: a removal is never dropped silently (tombstone + requalify below)
                 else:
-                    denied += 1
-                continue
+                    denied += 1  # provably another drive
+                    continue
             if item.kind == DriveChangeKind.UNKNOWN:
                 # Neither evidence nor provably irrelevant: surface it, do not count as denied.
                 unknown += 1
                 continue
-            is_folder = item.mime_type == FOLDER_MIME_TYPE
+            is_folder = type(item_mime) is str and item_mime == FOLDER_MIME_TYPE
             # A tombstone often carries no file metadata: treat it as a possible folder.
-            if ((is_folder or (item.kind == DriveChangeKind.REMOVED and item.mime_type is None))
-                    and item.file_id not in requalify):
+            if ((is_folder or (item.kind == DriveChangeKind.REMOVED and item_mime is None))
+                    and item.file_id not in requalify_seen):
+                requalify_seen.add(item.file_id)
                 requalify.append(item.file_id)
             if item.kind == DriveChangeKind.REMOVED:
                 tombstones.append(TombstoneCandidate(

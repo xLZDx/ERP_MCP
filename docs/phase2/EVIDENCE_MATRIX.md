@@ -59,3 +59,17 @@ Backup/restore: `pg_dump -Fc` of a populated database restored with `pg_restore 
 Not run (explicit): capacity 30/50/100/150 sources, mutation check of guards outside the table above, Release 1 regression, full-repo pytest/ruff, GitHub CI.
 
 Statements elsewhere that SQL was "never executed" or PostgreSQL tests "NOT_RUN" describe 9b4fc0c and are superseded by the rows above.
+
+## Sprint S4b review batch (D-016), 2026-10-09
+
+Measured on the S4b fix commit tree (parent 223a30f): offline `tests/phase2` 1231 passed / 226 skipped; integration (`-m integration`, disposable PostgreSQL, REQUIRE_PG=1) 226 passed, 1231 deselected, exit 0; ruff clean on src, tests/phase2 and the drill script; no NUL bytes. Earlier run on 223a30f before the fixes: 224 integration passed. Covered: capture loop (PARTIAL no longer crashes, scope binding, first-page snapshot, timeout, ledger error), taxonomy/aliases hardening, real-process contention with asserted window overlap, drill failure-path cleanup and secret redaction, independent recount. Not run (explicit): mutation checks (operator ban), Release 1 regression, GitHub CI, full-repo pytest, drill failure paths for the new deadline/kill code (only the happy and bad-password paths executed), capacity re-measurement after the script fixes.
+
+D-017 fix (capacity drill cluster identity): `test_g1_capacity_smoke.py` 6 passed on the disposable PostgreSQL (accept the container cluster, refuse another cluster / unreachable / unknown container identity via seams, real DSN matches, worker identity mismatch exits 4, remote host refused despite the old override); offline tests/phase2 1232 passed / 228 skipped; ruff clean; no NUL bytes. Full integration re-run on the exact head is not repeated for this drill-only change (only the drill script and its smoke test changed). Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.
+
+## Sprint S5 (D-018), 2026-10-09
+
+Measured on the S5 fix commit tree (parent eeafb82): offline `tests/phase2` 1567 passed / 229 skipped; ruff clean on src, tests/phase2 and scripts; no NUL bytes. No database code in this sprint, so no integration run. Covered: TC070-081 plus the review batch (random permit ids, owner registry, params/requester binding, max_uses; vault digest validation, locking, media type; boundary registry freeze and bounds; parser JSON IPC, cross-sheet bounds, namespace and active-part denials, shared identity spoofing). Not run (explicit): mutation checks (operator ban), Release 1 regression, GitHub CI, the POSIX-only RLIMIT memory test (skipped on Windows, the child memory bound is NOT enforced here), real UI / COM (US-021..023 are S5b).
+
+D-019 (issues #28/#33): offline tests/phase2 1586 passed / 229 skipped, ruff clean, no NUL bytes; promotion 105 and resnapshot tests green. The PostgreSQL integration run on the commit carrying this entry is recorded in the follow-up evidence line. Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.
+
+Integration on the pushed S5 head af9f287 (follow-up to D-018/D-019/D-020): `-m integration` on the disposable PostgreSQL with REQUIRE_PG=1: 229 passed, 1641 deselected, exit 0 (732 s). Offline on the same head: 1641 passed / 229 skipped, ruff clean, no NUL bytes. The earlier 'integration on af9f287 NOT_RUN' statement in the GPT-PM request is superseded by this line. Mutation runs, Release 1 regression, CI: NOT_RUN by operator decision.

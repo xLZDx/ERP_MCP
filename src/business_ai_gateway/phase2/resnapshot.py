@@ -27,13 +27,15 @@ does not claim to.
 """
 from __future__ import annotations
 
+import secrets
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
 from .drift import CaptureOutcomeKind, DriftDecision, DriftEventKind
-from .ports import CursorOutboxPort, LedgerPort, PortError, Scope
+from .ports import CursorOutboxPort, CursorView, LedgerPort, PortError, Scope
 
 __all__ = ["ResnapshotBlocked", "ResnapshotReason", "ResnapshotState", "ResnapshotTracker"]
 
@@ -72,10 +74,26 @@ def _check_epoch(epoch: object) -> None:
         raise ValueError("EPOCH_INVALID")
 
 
+_GENERATIONS_LOCK = threading.Lock()
+_GENERATIONS_ISSUED: set[int] = set()  # every generation id this process ever handed out (never evicted)
+
+
+def _new_generation() -> int:
+    """128-bit random tracker-generation id, unique within the process by construction (a repeated value is
+    skipped), and across processes except with probability 2**-128 (no durable counter exists to fence it)."""
+    with _GENERATIONS_LOCK:
+        while True:
+            candidate = secrets.randbits(128)
+            if candidate not in _GENERATIONS_ISSUED:
+                _GENERATIONS_ISSUED.add(candidate)
+                return candidate
+
+
 class ResnapshotTracker:
     def __init__(self, state: ResnapshotState | None = None) -> None:
         self._required: dict[str, tuple[ResnapshotReason, int, int]] = {}
         self._seq = 0  # monotonic order of requirements; a snapshot may clear only older ones
+        self._generation = _new_generation()  # identity of THIS tracker instance (process generation)
         if state is not None:
             self.import_state(state)
 
@@ -111,6 +129,19 @@ class ResnapshotTracker:
             self.require(connection_id, ResnapshotReason.CURSOR_LOST, epoch)
             return True
         return False
+
+    def persistent_marker(self, token: int) -> int:
+        """Marker to PERSIST for a snapshot token: binds the order to this tracker generation."""
+        if type(token) is not int or not 0 <= token < 2**32:
+            raise ValueError("SNAPSHOT_TOKEN_INVALID")
+        return (self._generation << 32) | token
+
+    def token_from_marker(self, marker: object) -> int | None:
+        """Order token of a persisted marker, or None when it was issued by another tracker generation
+        (a restart or a foreign process): such an order is not comparable with this tracker's."""
+        if type(marker) is not int or marker < 0 or (marker >> 32) != self._generation:
+            return None
+        return marker & 0xFFFFFFFF
 
     def begin_snapshot(self) -> int:
         """Ordering marker: take it BEFORE a snapshot capture starts and pass it to ``complete``."""
@@ -164,9 +195,10 @@ class ResnapshotTracker:
                 cursor = await cursors.get_cursor(actor, scope, connection_id)
                 if epoch_changed:
                     found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
-                elif cursor is None:
+                elif type(cursor) is not CursorView or cursor.connection_id != connection_id:
+                    # None, a malformed object or another connection's cursor is no cursor at all
                     found[connection_id] = ResnapshotReason.CURSOR_MISSING
-                elif cursor.scope_epoch != live:
+                elif type(cursor.scope_epoch) is not int or cursor.scope_epoch != live:
                     # the cursor was bound to an older scope epoch (no rebase since the change)
                     found[connection_id] = ResnapshotReason.SCOPE_EPOCH_CHANGED
         except PortError as exc:

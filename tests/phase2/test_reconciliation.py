@@ -174,3 +174,24 @@ def test_native_side_totals_not_matching_rows_is_native_inconsistent():
     result=compare_statements(bad,good,policy=POLICY)
     assert result.state is ComparisonState.INCONCLUSIVE
     assert result.reason_code=="NATIVE_INCOMPLETE_OR_INCONSISTENT"
+
+
+NON_TRUE_COMPLETE = ["false", "False", "true", 1, 0, None]
+
+
+@pytest.mark.parametrize("flag", NON_TRUE_COMPLETE)
+def test_non_bool_complete_is_rejected_at_construction(flag):
+    with pytest.raises(ValueError, match="COMPLETE_FLAG_BOOL_REQUIRED"):
+        statement(complete=flag)
+
+
+@pytest.mark.parametrize("flag", NON_TRUE_COMPLETE)
+@pytest.mark.parametrize("side", ["native", "gateway"])
+def test_non_true_complete_bypassing_constructor_is_inconclusive_never_match(flag, side):
+    bad = statement()
+    object.__setattr__(bad, "complete", flag)
+    good = statement()
+    native, gateway = (bad, good) if side == "native" else (good, bad)
+    result = compare_statements(native, gateway, policy=POLICY)
+    assert result.state is ComparisonState.INCONCLUSIVE
+    assert result.reason_code == f"{side.upper()}_INCOMPLETE_OR_INCONSISTENT"

@@ -541,37 +541,37 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate contract sides/netting отдельно
 
-  @not_implemented @R2TC091
+  @not_implemented @offline_fixture_coverage_only @R2TC091
   Scenario: R2-TC-091 ledger strategy qualified
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate ledger strategy qualified
 
-  @not_implemented @R2TC092
+  @not_implemented @offline_fixture_coverage_only @R2TC092
   Scenario: R2-TC-092 absent register not fabricated
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate absent register not fabricated
 
-  @not_implemented @R2TC093
+  @not_implemented @offline_fixture_coverage_only @R2TC093
   Scenario: R2-TC-093 balance alone no aging
     Given a scoped test environment for R2-US-031
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate balance alone no aging
 
-  @not_implemented @R2TC094
+  @not_implemented @offline_fixture_coverage_only @R2TC094
   Scenario: R2-TC-094 identity/company/Posted correct
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate identity/company/Posted correct
 
-  @not_implemented @R2TC095
+  @not_implemented @offline_fixture_coverage_only @R2TC095
   Scenario: R2-TC-095 unposted/deleted exclusions
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate unposted/deleted exclusions
 
-  @not_implemented @R2TC096
+  @not_implemented @offline_fixture_coverage_only @R2TC096
   Scenario: R2-TC-096 complete pagination/alias proof
     Given a scoped test environment for R2-US-032
     When the relevant Phase 2 capability is exercised
@@ -613,127 +613,127 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate purchases validated не открывает AP и не меняет R1
 
-  @not_implemented @R2TC103
+  @not_implemented @offline_fixture_coverage_only @R2TC103
   Scenario: R2-TC-103 scoped access proven
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate scoped access proven
 
-  @not_implemented @R2TC104
+  @not_implemented @offline_fixture_coverage_only @R2TC104
   Scenario: R2-TC-104 folder/newchild PoC
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate folder/newchild PoC
 
-  @not_implemented @R2TC105
+  @not_implemented @offline_fixture_coverage_only @R2TC105
   Scenario: R2-TC-105 broad OAuth не называется folder isolation
     Given a scoped test environment for R2-US-035
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate broad OAuth не называется folder isolation
 
-  @not_implemented @R2TC106
+  @not_implemented @offline_fixture_coverage_only @R2TC106
   Scenario: R2-TC-106 starttoken-before-baseline catchup
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate starttoken-before-baseline catchup
 
-  @not_implemented @R2TC107
+  @not_implemented @offline_fixture_coverage_only @R2TC107
   Scenario: R2-TC-107 shared-drive namespaces
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate shared-drive namespaces
 
-  @not_implemented @R2TC108
+  @not_implemented @offline_fixture_coverage_only @R2TC108
   Scenario: R2-TC-108 lost cursor gap/resnapshot
     Given a scoped test environment for R2-US-036
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate lost cursor gap/resnapshot
 
-  @not_implemented @R2TC109
+  @not_implemented @offline_fixture_coverage_only @R2TC109
   Scenario: R2-TC-109 newrevision UNATTESTED oldPASS historical
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate newrevision UNATTESTED oldPASS historical
 
-  @not_implemented @R2TC110
+  @not_implemented @offline_fixture_coverage_only @R2TC110
   Scenario: R2-TC-110 shortcut/move scope escape denied
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate shortcut/move scope escape denied
 
-  @not_implemented @R2TC111
+  @not_implemented @offline_fixture_coverage_only @R2TC111
   Scenario: R2-TC-111 removal no guessed replacement
     Given a scoped test environment for R2-US-037
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate removal no guessed replacement
 
-  @not_implemented @R2TC112
+  @not_implemented @offline_fixture_coverage_only @R2TC112
   Scenario: R2-TC-112 invalid_grant AUTH_REQUIRED
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate invalid_grant AUTH_REQUIRED
 
-  @not_implemented @R2TC113
+  @not_implemented @offline_fixture_coverage_only @R2TC113
   Scenario: R2-TC-113 notifications только hint
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate notifications только hint
 
-  @not_implemented @R2TC114
+  @not_implemented @offline_fixture_coverage_only @R2TC114
   Scenario: R2-TC-114 polling корректен без watch
     Given a scoped test environment for R2-US-038
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate polling корректен без watch
 
-  @not_implemented @R2TC115
+  @not_implemented @offline_fixture_coverage_only @R2TC115
   Scenario: R2-TC-115 row/fragment/owner/delta
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate row/fragment/owner/delta
 
-  @not_implemented @R2TC116
+  @not_implemented @offline_fixture_coverage_only @R2TC116
   Scenario: R2-TC-116 original numbers immutable
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate original numbers immutable
 
-  @not_implemented @R2TC117
+  @not_implemented @offline_fixture_coverage_only @R2TC117
   Scenario: R2-TC-117 new evidence -> new run
     Given a scoped test environment for R2-US-039
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate new evidence -> new run
 
-  @not_implemented @R2TC118
+  @not_implemented @offline_fixture_coverage_only @R2TC118
   Scenario: R2-TC-118 known/effective labels
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate known/effective labels
 
-  @not_implemented @R2TC119
+  @not_implemented @offline_fixture_coverage_only @R2TC119
   Scenario: R2-TC-119 historical !=live green
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate historical !=live green
 
-  @not_implemented @R2TC120
+  @not_implemented @offline_fixture_coverage_only @R2TC120
   Scenario: R2-TC-120 diff/evidence scoped
     Given a scoped test environment for R2-US-040
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate diff/evidence scoped
 
-  @not_implemented @R2TC121
+  @not_implemented @offline_fixture_coverage_only @R2TC121
   Scenario: R2-TC-121 safe reason+annotation
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate safe reason+annotation
 
-  @not_implemented @R2TC122
+  @not_implemented @offline_fixture_coverage_only @R2TC122
   Scenario: R2-TC-122 CSRF/idem403/409
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate CSRF/idem403/409
 
-  @not_implemented @R2TC123
+  @not_implemented @offline_fixture_coverage_only @R2TC123
   Scenario: R2-TC-123 отказ не обходится rawCOM/DC
     Given a scoped test environment for R2-US-041
     When the relevant Phase 2 capability is exercised
@@ -757,73 +757,73 @@ Feature: Phase 2 acceptance specifications
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate kill-switch owned job
 
-  @not_implemented @R2TC127
+  @not_implemented @offline_fixture_coverage_only @R2TC127
   Scenario: R2-TC-127 sessions vs active grid
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate sessions vs active grid
 
-  @not_implemented @R2TC128
+  @not_implemented @offline_fixture_coverage_only @R2TC128
   Scenario: R2-TC-128 profile refusals not throughput
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate profile refusals not throughput
 
-  @not_implemented @R2TC129
+  @not_implemented @offline_fixture_coverage_only @R2TC129
   Scenario: R2-TC-129 background interference/budget
     Given a scoped test environment for R2-US-043
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate background interference/budget
 
-  @not_implemented @R2TC130
+  @not_implemented @offline_fixture_coverage_only @R2TC130
   Scenario: R2-TC-130 audit down fail-closed
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate audit down fail-closed
 
-  @not_implemented @R2TC131
+  @not_implemented @offline_fixture_coverage_only @R2TC131
   Scenario: R2-TC-131 replica/network429 no duplicates
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate replica/network429 no duplicates
 
-  @not_implemented @R2TC132
+  @not_implemented @offline_fixture_coverage_only @R2TC132
   Scenario: R2-TC-132 alert fired+recovered
     Given a scoped test environment for R2-US-044
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate alert fired+recovered
 
-  @not_implemented @R2TC133
+  @not_implemented @offline_fixture_coverage_only @R2TC133
   Scenario: R2-TC-133 additive shadow regressions
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate additive shadow regressions
 
-  @not_implemented @R2TC134
+  @not_implemented @offline_fixture_coverage_only @R2TC134
   Scenario: R2-TC-134 destructive rollback denied
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate destructive rollback denied
 
-  @not_implemented @R2TC135
+  @not_implemented @offline_fixture_coverage_only @R2TC135
   Scenario: R2-TC-135 switch rollback no revoked grant resurrection
     Given a scoped test environment for R2-US-045
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate switch rollback no revoked grant resurrection
 
-  @not_implemented @R2TC136
+  @not_implemented @offline_fixture_coverage_only @R2TC136
   Scenario: R2-TC-136 restored FKs/digests/heads
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate restored FKs/digests/heads
 
-  @not_implemented @R2TC137
+  @not_implemented @offline_fixture_coverage_only @R2TC137
   Scenario: R2-TC-137 export masking/tenant/formula safety
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised
     Then the product must demonstrate export masking/tenant/formula safety
 
-  @not_implemented @R2TC138
+  @not_implemented @offline_fixture_coverage_only @R2TC138
   Scenario: R2-TC-138 hold/no unapproved deletion
     Given a scoped test environment for R2-US-046
     When the relevant Phase 2 capability is exercised

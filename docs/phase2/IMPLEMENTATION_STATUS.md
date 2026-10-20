@@ -30,6 +30,7 @@ Remediation rewrote `db/phase2/001`/`002`, added `003_security_hardening.sql`, f
 | G3 | BLOCKED | Authentic native report and independent accountant attestation (OB-11) |
 | G4 | BLOCKED | ERP_MCP-owned narrow Drive OAuth (OB-12) |
 | G5 | NOT_STARTED | Admin workbench and real user/admin acceptance |
+| G6-pre | NOT_STARTED (OPEN, NOT PASSED) | Actual workload metrics, fault alarms, repeatable recovery on real infrastructure; S9 offline decision modules are IMPLEMENTED_UNVERIFIED and are not evidence for this gate (all readiness slots NOT_RUN) |
 | G6 | BLOCKED | Production permission, canary, capacity, chaos, recovery (OB-14) |
 | G7 | BLOCKED | All gates, exact-head manifest, release-owner approval (OB-21) |
 
