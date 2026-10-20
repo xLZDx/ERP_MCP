@@ -283,7 +283,7 @@ def test_unusable_clock_refuses_without_changing_state():
 
     class Naive:
         def now(self):
-            return datetime(2026, 1, 1)  # noqa: DTZ001
+            return datetime(2026, 1, 1)
 
     env.engine._clock = Naive()
     refusal = env.engine.observe(S1, "SRC-1", RuleKind.CURSOR_LAG, 50)
@@ -555,7 +555,7 @@ def test_value_types_validate_and_redact():
         ("e", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, OpsReason.ALERT_RECOVERED, 1, now),
         ("e", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.RECOVERED, OpsReason.ALERT_FIRED, 1, now),
         ("e", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, OpsReason.ALERT_FIRED, 0, now),
-        ("e", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, OpsReason.ALERT_FIRED, 1, datetime(2026, 1, 1)),  # noqa: DTZ001
+        ("e", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, OpsReason.ALERT_FIRED, 1, datetime(2026, 1, 1)),
         ("", "t1", "SRC-1", RuleKind.CURSOR_LAG, EventType.FIRED, OpsReason.ALERT_FIRED, 1, now),
     ]
     for args in bad_args:

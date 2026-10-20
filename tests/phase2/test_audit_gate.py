@@ -170,7 +170,7 @@ def test_slow_sink_that_did_store_does_not_create_a_second_intent_on_retry():
 def test_bad_clock_fails_closed():
     class NaiveClock:
         def now(self):
-            return datetime(2026, 1, 1)  # noqa: DTZ001
+            return datetime(2026, 1, 1)
 
     class RaisingClock:
         def now(self):

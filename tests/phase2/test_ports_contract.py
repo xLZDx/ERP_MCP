@@ -1076,7 +1076,7 @@ async def test_provenance_and_payload_accept_floats_and_nested_json(h):
 
 async def test_naive_datetimes_are_a_typed_rejection(h):
     p = h.p
-    naive = datetime(2024, 1, 2)  # noqa: DTZ001 - naive on purpose
+    naive = datetime(2024, 1, 2)
     await rejected("NAIVE_DATETIME", ing(h, "o1", observed_at=naive))
     await rejected("NAIVE_DATETIME", ing(h, "o1", eff=naive))
     await rejected("NAIVE_DATETIME", p.as_known_at(W, S, naive))

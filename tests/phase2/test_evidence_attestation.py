@@ -251,7 +251,7 @@ def test_tc083_broken_clock_and_id_source_fail_closed():
     res = store.sign(REQ, ACC)
     assert (res.signed, res.code) == (False, "TIME_INVALID") and "secret" not in repr(res)
     assert store.count() == 0
-    naive = AttestationStore(lambda: datetime(2026, 1, 1), accountants={"tenant-a": {"accountant-1"}})  # noqa: DTZ001 - naive on purpose
+    naive = AttestationStore(lambda: datetime(2026, 1, 1), accountants={"tenant-a": {"accountant-1"}})
     assert naive.sign(REQ, ACC).code == "TIME_INVALID"
 
     store2, _ = make(id_source=boom)
@@ -416,7 +416,7 @@ def test_revoke_clamps_revoked_at_to_signed_at_when_clock_goes_backwards():
 def test_check_with_naive_explicit_time_is_invalid():
     store, _ = make()
     att = signed(store)
-    assert chk(store, att, at=datetime(2026, 1, 1, 12, 0)).code == "TIME_INVALID"  # type: ignore[arg-type]  # noqa: DTZ001
+    assert chk(store, att, at=datetime(2026, 1, 1, 12, 0)).code == "TIME_INVALID"  # type: ignore[arg-type]
 
 
 # ----------------------------------------------------------------- audit

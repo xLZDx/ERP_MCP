@@ -125,7 +125,7 @@ def test_is_exact_decimal_finite_only_and_no_subclass():
 def test_is_aware_datetime():
     assert is_aware_datetime(datetime(2026, 1, 1, tzinfo=UTC))
     assert is_aware_datetime(datetime(2026, 1, 1, tzinfo=timezone(timedelta(hours=3))))
-    assert not is_aware_datetime(datetime(2026, 1, 1))  # noqa: DTZ001 - naive on purpose
+    assert not is_aware_datetime(datetime(2026, 1, 1))
     assert not is_aware_datetime(EvilDatetime(2026, 1, 1, tzinfo=UTC))
     for bad in (None, "2026-01-01", 5, object()):
         assert not is_aware_datetime(bad)

@@ -7,3 +7,5 @@
 - 2026-10-20 SHORTCOMING integrate phase2: two parallel branches edited the same docs (one translated, one extended) so text conflicts were unavoidable; status notes were appended untranslated rather than translated. Rule: land translation work after content branches, or translate in the same pass.
 
 - 2026-10-20 FAILURE (caught by tests) integrate: the combined tree failed one phase2 test because two branches changed the same invariant independently (validator vs forged-value test). Rule: after combining hardening and tests, run the whole new test directory, and rewrite the forging helper rather than relax the validator.
+
+- 2026-10-20 NEUTRAL integrate: unused-noqa count is a cheap mechanical post-merge check; ruff --fix handled it.

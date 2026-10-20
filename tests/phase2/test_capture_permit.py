@@ -117,7 +117,7 @@ def test_tc070_wrong_types_return_codes_not_exceptions() -> None:
     assert adm(store, p.permit_id, mode="READ_SNAPSHOT").code == "MODE_MISMATCH"
     assert adm(store, p.permit_id, digest=None).code == "PARAMS_MISMATCH"
     assert adm(store, p.permit_id, requester=None).code == "REQUESTER_MISMATCH"
-    clock.now = datetime(2026, 1, 1, 12, 30)  # type: ignore[assignment]  # noqa: DTZ001 - naive on purpose
+    clock.now = datetime(2026, 1, 1, 12, 30)  # type: ignore[assignment]
     assert adm(store, p.permit_id).code == "TIME_INVALID"
 
 
@@ -256,7 +256,7 @@ def test_tc071_boundary_instants_exact_and_clock_used() -> None:
 
 def test_tc071_naive_datetime_rejected_and_broken_clock_fails_closed() -> None:
     store, clock = make()
-    naive = datetime(2026, 1, 1, 12, 0)  # noqa: DTZ001 - naive on purpose
+    naive = datetime(2026, 1, 1, 12, 0)
     for bad in (replace(REQ, not_before=naive), replace(REQ, not_after=naive)):
         assert store.issue("k", bad, OWNER).code == "WINDOW_INVALID"
     p = issued(store)

@@ -304,7 +304,7 @@ def test_admins_must_be_iterable_of_str():
 
 
 def test_naive_or_non_datetime_clock_gives_none_in_audit():
-    for clock_value in (datetime(2026, 1, 1), "2026", None):  # noqa: DTZ001 - naive on purpose
+    for clock_value in (datetime(2026, 1, 1), "2026", None):
         v = ArtifactVault(lambda cv=clock_value: cv, admins=["admin"])  # type: ignore[misc]
         assert v.grant(S1, ALICE, ADMIN) == av.OK
         assert v.audit()[0].at is None

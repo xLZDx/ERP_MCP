@@ -1,5 +1,5 @@
 """S9 E3 (R2-US-045, TC134/TC135): rollback decision, authority, and "rights are never resurrected"."""
-# ruff: noqa: DTZ001 - naive datetimes are deliberate hostile inputs in this file
+
 import ast
 import dataclasses
 import threading

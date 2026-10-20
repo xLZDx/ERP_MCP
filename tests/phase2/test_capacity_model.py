@@ -581,7 +581,7 @@ class _BadClock:
         return self._value
 
 
-@pytest.mark.parametrize("value", [RuntimeError("POISON-clock"), None, "2026-01-01", datetime(2026, 1, 1)])  # noqa: DTZ001 - naive on purpose
+@pytest.mark.parametrize("value", [RuntimeError("POISON-clock"), None, "2026-01-01", datetime(2026, 1, 1)])
 def test_unusable_clock_fails_closed_and_stores_nothing(value):
     env = Env()
     result = build_report(A1, env, env, env.store, cell(), GOOD_SAMPLES, ReportPolicy(window_us=10),

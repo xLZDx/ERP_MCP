@@ -442,7 +442,7 @@ def test_guid_tenant_and_connection_are_canonicalised_but_drive_namespace_ids_st
 
 def test_clock_naive_subclass_raising_or_wrong_type_is_refused_before_any_state_change():
     for bad_clock in (
-        lambda: datetime(2026, 1, 1),  # noqa: DTZ001 - naive on purpose
+        lambda: datetime(2026, 1, 1),
         lambda: DtSub(2026, 1, 1, tzinfo=UTC),
         lambda: "2026-01-01",
         lambda: None, lambda: 1.0, lambda: (_ for _ in ()).throw(RuntimeError("boom")),
@@ -467,7 +467,7 @@ def test_clock_failure_at_callback_does_not_burn_the_state():
     h = Harness()
     res = h.begin()
     good = h.now
-    h.now = datetime(2026, 1, 1, 12, 1)  # noqa: DTZ001 - naive on purpose
+    h.now = datetime(2026, 1, 1, 12, 1)
     assert h.mgr.complete_consent(IDENT, res.state_value, VERIFIER, CODE).code is ConsentCode.CLOCK_INVALID
     h.now = good
     assert h.mgr.complete_consent(IDENT, res.state_value, VERIFIER, CODE).ok

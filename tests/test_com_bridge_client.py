@@ -120,7 +120,7 @@ async def test_request_wire_and_bearer_header():
 async def test_naive_as_of_refused_locally():
     with pytest.raises(ComBridgeError) as err:
         await client(lambda r: httpx.Response(200, json=good_envelope())).balance_by_analytics(
-            request(as_of=datetime(2026, 1, 1))  # noqa: DTZ001
+            request(as_of=datetime(2026, 1, 1))
         )
     assert err.value.code == "COM_BAD_REQUEST"
 

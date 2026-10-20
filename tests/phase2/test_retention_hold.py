@@ -312,7 +312,7 @@ def test_approver_needs_the_platform_authority(w):
 
 
 def test_approval_ttl_is_bounded_and_future(w):
-    for bad in (w.clock.t, w.clock.t - DAY, w.clock.t + 31 * DAY, "x", None, datetime(2030, 1, 1)):  # noqa: DTZ001
+    for bad in (w.clock.t, w.clock.t - DAY, w.clock.t + 31 * DAY, "x", None, datetime(2030, 1, 1)):
         assert reason(w.ledger.request_approval(A1, w.request(), "bob", bad)) is OpsReason.INPUT_INVALID
 
 

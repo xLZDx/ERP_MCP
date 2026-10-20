@@ -163,7 +163,7 @@ def test_revision_meta_flattens_to_utc_and_refuses_naive_and_subclass():
     class DT(datetime):
         pass
 
-    for bad in (datetime(2026, 1, 1), DT(  # noqa: DTZ001 - naive on purpose
+    for bad in (datetime(2026, 1, 1), DT(
 2026, 1, 1, tzinfo=UTC), "2026-01-01", 5):
         with pytest.raises(ValueError, match="^DRIVE_REVISION_INVALID$"):
             RevisionMeta("rev1", bad)

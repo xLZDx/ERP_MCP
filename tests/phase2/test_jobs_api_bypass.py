@@ -431,7 +431,7 @@ def test_forged_session_with_lying_fields_is_refused():
 
 def test_naive_or_non_utc_expiry_is_handled():
     with pytest.raises(ValueError, match="^SESSION_INVALID$"):
-        SessionRecord("S1", "T1", "alice", datetime(2030, 1, 1), DIGEST)  # noqa: DTZ001 - naive on purpose
+        SessionRecord("S1", "T1", "alice", datetime(2030, 1, 1), DIGEST)
     plus3 = datetime(2026, 1, 1, 3, 30, tzinfo=UTC).astimezone(
         __import__("datetime").timezone(timedelta(hours=3)))
     s = SessionRecord("S1", "T1", "alice", plus3, DIGEST)
@@ -449,7 +449,7 @@ def test_clock_returning_garbage_is_dependency_failed():
         def now(self):
             return self.value
 
-    for value in (None, "2026-01-01", datetime(2026, 1, 1), 5):  # noqa: DTZ001
+    for value in (None, "2026-01-01", datetime(2026, 1, 1), 5):
         bad = dataclasses.replace(ctx, clock=BadClock(value))
         d = decide_enqueue(bad, _valid_request(), SESSION, TOKEN)
         assert d.allowed is False and d.reason_code is R.DEPENDENCY_FAILED

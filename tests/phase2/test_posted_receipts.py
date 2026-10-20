@@ -184,7 +184,7 @@ def test_all_rows_excluded_is_an_empty_complete_listing_that_proves_nothing_down
     ({"posted": 1}, RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED),
     ({"posted": None}, RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED),
     ({"deletion_mark": "False"}, RetrievalReason.PAGE_POSTED_FLAG_UNQUALIFIED),
-    ({"occurred_at": datetime(2026, 8, 5)}, RetrievalReason.PAGE_ROW_INVALID),  # noqa: DTZ001
+    ({"occurred_at": datetime(2026, 8, 5)}, RetrievalReason.PAGE_ROW_INVALID),
     ({"occurred_at": "2026-08-05"}, RetrievalReason.PAGE_ROW_INVALID),
     ({"amount": Decimal("NaN")}, RetrievalReason.PAGE_ROW_INVALID),
     ({"amount": Decimal("Infinity")}, RetrievalReason.PAGE_ROW_INVALID),
@@ -306,7 +306,7 @@ def test_wrong_period_refused_before_any_fetch():
     for bad in (
         forge_scope(scope(), from_inclusive=UNTIL, until_exclusive=FROM),
         forge_scope(scope(), from_inclusive=FROM, until_exclusive=FROM),
-        forge_scope(scope(), from_inclusive=datetime(2026, 8, 1)),  # noqa: DTZ001
+        forge_scope(scope(), from_inclusive=datetime(2026, 8, 1)),
         forge_scope(scope(), until_exclusive="2026-09-01"),
     ):
         assert r.retrieve(request(sc=bad)).reason is RetrievalReason.PERIOD_INVALID

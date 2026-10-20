@@ -348,7 +348,7 @@ def test_listing_is_scoped_by_tenant_and_key():
 @pytest.mark.parametrize("payload,code", [
     ({"f": 1.5}, "PAYLOAD_TYPE_UNSUPPORTED"),
     ({"d": Decimal("NaN")}, "FINITE_DECIMAL_REQUIRED"),
-    ({"d": datetime(2026, 1, 1)}, "TIMEZONE_REQUIRED"),  # noqa: DTZ001
+    ({"d": datetime(2026, 1, 1)}, "TIMEZONE_REQUIRED"),
     ({1: "x"}, "PAYLOAD_KEY_NOT_TEXT"),
     ({"d": Decimal("1e100000")}, "DECIMAL_PRECISION_EXCEEDED"),
     ({"$dec": "1"}, "PAYLOAD_KEY_RESERVED"),
@@ -371,7 +371,7 @@ def test_depth_limit_and_known_at_rules():
         store.create("t1", deep)
     assert exc.value.code == "PAYLOAD_TOO_DEEP"
     with pytest.raises(ComparisonSnapshotError) as exc:
-        store.create("t1", {}, known_at=datetime(2026, 1, 1))  # noqa: DTZ001
+        store.create("t1", {}, known_at=datetime(2026, 1, 1))
     assert exc.value.code == "TIMEZONE_REQUIRED"
     with pytest.raises(ComparisonSnapshotError) as exc:
         store.create("t1", {}, known_at=store.now() + timedelta(seconds=1))

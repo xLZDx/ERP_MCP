@@ -36,7 +36,7 @@ P, M, H, D = (ExportColumnPolicy.PUBLIC, ExportColumnPolicy.MASKED, ExportColumn
 SCOPE = OpsScope("t1", "c1", "a1")
 SCOPE2 = OpsScope("t2", "c2", "a2")
 REQ = ExportRequest("EXP-1")
-NAIVE = datetime(2026, 1, 1)  # noqa: DTZ001 - naive on purpose
+NAIVE = datetime(2026, 1, 1)
 
 
 class EvilStr(str):

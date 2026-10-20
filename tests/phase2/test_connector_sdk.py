@@ -141,7 +141,7 @@ def test_multiple_reasons_are_all_reported():
 # ---- timestamps ----------------------------------------------------------------
 
 def test_naive_timestamp_rejected():
-    r = reasons_of(parse_response, resp_map(prov_map(observed_at=datetime(2026, 10, 9, 12, 0))))  # noqa: DTZ001 - naive on purpose
+    r = reasons_of(parse_response, resp_map(prov_map(observed_at=datetime(2026, 10, 9, 12, 0))))
     assert "provenance.observed_at:NAIVE_TIMESTAMP" in r
 
 

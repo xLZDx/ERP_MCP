@@ -51,7 +51,7 @@ R1, R2, R3 = UUID(int=11), UUID(int=12), UUID(int=13)
 O1, O2 = UUID(int=21), UUID(int=22)
 SCOPE = OpsScope("t1", "c1", "a1")
 SOURCES = ("s1",)
-NAIVE = datetime(2026, 1, 1)  # noqa: DTZ001 - naive on purpose
+NAIVE = datetime(2026, 1, 1)
 
 
 class EvilStr(str):

@@ -492,7 +492,7 @@ def test_unusable_clock_refuses_and_publishes_nothing():
 
     class Naive:
         def now(self):
-            return datetime(2026, 1, 1)  # noqa: DTZ001
+            return datetime(2026, 1, 1)
 
     env.planner._clock = Naive()
     out = env.run()
@@ -507,7 +507,7 @@ def test_outcome_values_validate_and_carry_no_verdict():
                  (DeliveryStatus.STALE, None, 0, 0, 0, None, corr),
                  (DeliveryStatus.FAILED_FINAL, OpsReason.RATE_LIMITED, 0, 0, 0, None, corr),
                  ("COMPLETE", None, 0, 0, 0, None, corr), (DeliveryStatus.COMPLETE, None, True, 0, 0, None, corr),
-                 (DeliveryStatus.COMPLETE, None, 0, 0, 0, datetime(2026, 1, 1), corr),  # noqa: DTZ001
+                 (DeliveryStatus.COMPLETE, None, 0, 0, 0, datetime(2026, 1, 1), corr),
                  (DeliveryStatus.COMPLETE, None, 0, 0, 0, None, "")):
         with pytest.raises(ValueError):
             DeliveryOutcome(*args)

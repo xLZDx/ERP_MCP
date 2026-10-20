@@ -708,7 +708,7 @@ def test_request_types_validate_in_constructor_with_fixed_codes():
     with pytest.raises(ValueError, match="^JOB_REQUEST_INVALID$"):
         JobRequest("not-a-scope", "alice", JobKind.RESCAN, "read_document", (), "k")
     with pytest.raises(ValueError, match="^SESSION_INVALID$"):
-        SessionRecord("S1", "T1", "alice", datetime(2026, 1, 1), DIGEST)  # noqa: DTZ001 - naive on purpose
+        SessionRecord("S1", "T1", "alice", datetime(2026, 1, 1), DIGEST)
     with pytest.raises(ValueError, match="^RERUN_REQUEST_INVALID$"):
         RerunRequest(ViewerScope("T1", "C1", 1), "alice", "", "run-1", "SN-2", "k")
     with pytest.raises(ValueError, match="^IDEMPOTENCY_STORE_INVALID$"):

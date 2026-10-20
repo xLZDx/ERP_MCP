@@ -466,7 +466,7 @@ def test_hostile_forged_object_new_instances_are_refused_without_raising(env):
 
 
 @pytest.mark.parametrize("clock", [
-    lambda: datetime(2026, 9, 11, 12, 0),  # noqa: DTZ001                     # naive
+    lambda: datetime(2026, 9, 11, 12, 0),  # naive
     lambda: LyingDT(2026, 9, 11, 12, 0, tzinfo=UTC),            # datetime subclass with lying __eq__/__lt__
     lambda: "2026-09-11T12:00:00Z",
     lambda: None,
@@ -639,7 +639,7 @@ def test_tc118_two_axes_are_different_types_and_no_single_date_field_exists():
     with pytest.raises(ValueError, match="^TIME_LABEL_INVALID$"):
         EffectiveTimeLabel(T0, EFFECTIVE_UNKNOWN_LABEL, ReasonCode.EFFECTIVE_UNKNOWN)  # lying combination
     with pytest.raises(ValueError, match="^TIME_LABEL_INVALID$"):
-        KnownTimeLabel(datetime(2026, 1, 1))  # noqa: DTZ001 - naive on purpose
+        KnownTimeLabel(datetime(2026, 1, 1))
 
 
 def test_tc118_event_with_effective_time_shows_both_labels_with_different_values(env):
