@@ -1,6 +1,6 @@
 # G1 PostgreSQL Living Registry — implementation note
 
-> **SUPERSEDED 2026-10-08 (partly).** Statements below that SQL was never applied or PostgreSQL tests are NOT_RUN describe the state of commit 9b4fc0c. Current evidence: `EVIDENCE_MATRIX.md` (SQL executed on a disposable PostgreSQL 16, 20 integration tests green on e71d4ff; GPT-PM REJECT of a8b5b4d open).
+> **Historical implementation note (2026-10-08).** The limitations below describe the original implementation snapshot and have been partly superseded by later migrations and test evidence. See the dated reconciliation in `G1_OPERATOR_BACKLOG.md`. G1 remains NOT_PASSED; historical test runs do not establish current gate closure.
 
 
 Date: 2026-10-08. Status: **IMPLEMENTED_UNVERIFIED / G1 NOT PASSED**.

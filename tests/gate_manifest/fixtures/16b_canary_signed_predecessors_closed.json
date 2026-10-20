@@ -1,0 +1,319 @@
+{
+  "schema": 2,
+  "baseline": "docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md revision 5",
+  "release_2": "NO_GO",
+  "drive_intake_enabled": false,
+  "gates": [
+    {
+      "id": "G0",
+      "name": "Scope and architecture",
+      "predecessors": [],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G1",
+      "name": "Database and security",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G2",
+      "name": "Metadata/domain",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G3",
+      "name": "Accountant attestation",
+      "predecessors": [
+        "G2"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G4",
+      "name": "Drive (conditional on drive_intake_enabled)",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "NOT_APPLICABLE",
+      "gate_status": "NOT_APPLICABLE",
+      "external_evidence_status": "NOT_REQUIRED",
+      "production_authorization": "NONE",
+      "evidence": null,
+      "waiver": {
+        "approved_by": "operator",
+        "signer_id": "op-test",
+        "signature": "@SIGN",
+        "reason": "Drive intake is out of scope for this release",
+        "evidence": {
+          "path": "evidence/waiver_operator.txt",
+          "sha256": "fe9a09a60dadd4922d774829dd4b2f0b88a50b242ad12ff088a4dbd6882a9b3d"
+        }
+      }
+    },
+    {
+      "id": "G5",
+      "name": "UAT",
+      "predecessors": [
+        "S16",
+        "S17"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G6-pre",
+      "name": "Operational readiness",
+      "predecessors": [
+        "G1",
+        "G8"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "G6",
+      "name": "Production canary",
+      "predecessors": [
+        "G3",
+        "G5",
+        "G6-pre",
+        "G8"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "PRODUCTION_CANARY_SIGNED",
+      "evidence": null
+    },
+    {
+      "id": "G7",
+      "name": "Release",
+      "predecessors": [
+        "G0",
+        "G1",
+        "G2",
+        "G3",
+        "G5",
+        "G6",
+        "G8"
+      ],
+      "conditional_predecessors": [
+        "G4"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G8",
+      "name": "Controlled-change acceptance",
+      "predecessors": [
+        "G0",
+        "CT14",
+        "S12",
+        "S13",
+        "S14",
+        "S15",
+        "S16",
+        "S17",
+        "S18"
+      ],
+      "engineering_status": "COMPLETE",
+      "gate_status": "PASSED",
+      "external_evidence_status": "SATISFIED",
+      "production_authorization": "NONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "CT14",
+      "name": "Feasibility gate (capability x channel x operation matrix)",
+      "kind": "spike",
+      "predecessors": [],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S11",
+      "name": "Foundations, contracts and feasibility",
+      "kind": "sprint",
+      "predecessors": [],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S12",
+      "name": "Change model, policy, ledger interface",
+      "kind": "sprint",
+      "predecessors": [
+        "S11"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S13",
+      "name": "Change ledger in PostgreSQL and the audit anchor",
+      "kind": "sprint",
+      "predecessors": [
+        "S12"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S14",
+      "name": "1C write port",
+      "kind": "sprint",
+      "predecessors": [
+        "S12",
+        "CT14"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S15",
+      "name": "Verification and reconciliation",
+      "kind": "sprint",
+      "predecessors": [
+        "S13",
+        "S14"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S16",
+      "name": "Independent approval channel and MCP surface",
+      "kind": "sprint",
+      "predecessors": [
+        "S12",
+        "S15"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S17",
+      "name": "Document intake and workbench",
+      "kind": "sprint",
+      "predecessors": [
+        "S16"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S18",
+      "name": "Reliability and independent security verification",
+      "kind": "sprint",
+      "predecessors": [
+        "S13",
+        "S14",
+        "S15",
+        "S16"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    },
+    {
+      "id": "S19",
+      "name": "Release candidate, G8 acceptance, C1 closure",
+      "kind": "sprint",
+      "predecessors": [
+        "S17",
+        "S18"
+      ],
+      "state": "DONE",
+      "evidence": {
+        "path": "evidence/ok.txt",
+        "sha256": "06519109e79cabb821dc92ee8ee7691365cb68b56f9f39179baaec0380c1a8a1"
+      }
+    }
+  ],
+  "_fixture": {
+    "expect": "accept",
+    "match": "gate manifest ok",
+    "desc": "G6 canary signed, all G6 predecessors closed, G6 itself NOT_PASSED"
+  }
+}

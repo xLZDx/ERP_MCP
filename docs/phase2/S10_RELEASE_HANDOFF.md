@@ -52,7 +52,7 @@ Owners and required evidence come from `PLAN_PHASE2_RU.md` section 3; status fro
 
 ## 2. Exact-head bundle recipe
 
-An operator reproduces the engineering evidence for a head `H` as follows. Run from `D:\Repo\ERP_MCP-phase2` on a clean checkout of `H`.
+An operator reproduces the engineering evidence for a head `H` as follows. Run from the root of the Release 2 repository (`D:\Repo\ERP_MCP_R2` or any clean clone of it) on a clean checkout of `H`; every command below resolves inside this repository, and every evidence record must name the exact R2 commit it tested (`git rev-parse HEAD`).
 
 1. Identify the head and confirm it is clean:
    - `git rev-parse HEAD`
@@ -75,6 +75,8 @@ An operator reproduces the engineering evidence for a head `H` as follows. Run f
 
 ### 2.2 GPT-PM approval heads per sprint (from `core/DECISION_LOG.md` and `docs/phase2/DECISION_LOG.md`)
 
+The hashes below are the ORIGINAL source-repository hashes quoted by the approvals. History was rewritten when Release 2 moved to its own repository, so these hashes do not resolve here. Translate them with `docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md` (full source and R2 hashes, plus a check that the Phase 2 code and test trees are identical). The R2 hash, not the source hash, is what a release head names.
+
 | Sprint | Approved exact head | Note |
 | --- | --- | --- |
 | S0 / G1 baseline | `45a7b1a` (APPROVE for push only), `df92cc8` (G1 exit evidence accepted) | G1 itself not passed |
@@ -95,32 +97,32 @@ This document cannot contain its own commit hash. **The release head is whatever
 
 Engineering cannot close these; each is a precise blocker, not a workaround request.
 
-- [ ] Re-issue the token for MCP `erp-mcp-818ha`: it answered 401 `AUTH_HEADER_REJECTED` when last observed on 2026-10-10 (recheck before relying on this). Auth is not bypassed.
+- [x] Token for MCP `erp-mcp-818ha`: re-issued on 2026-10-10 with the operator-owned lane helper (the old long-lived token carried a dead quick-tunnel issuer URL). It breaks again whenever the Cloudflare quick-tunnel host of the lane IdP changes; rerun `D:\ERP_MCP_Testbed\real1c_e2e\refresh_mcp_token.py`.
 - [ ] Real 1C data: scoped read access and the source-specific capture permit for `onec-818ha-reference` (OB-10), native report bytes, MOLDRETAIL posted-receipt data.
 - [ ] Accountant attestation (G3, OB-11): independent export and attestation for 818 HA SRL, account 521.1, 2026-08-01..2026-08-31.
-- [ ] Google OAuth and real Drive (G4, OB-12): ERP_MCP-owned OAuth client and narrow folder / new-child grant.
+- [~] Google OAuth and real Drive (G4, OB-12): the OAuth client (Desktop, project `erp-mcp-phase2`) was supplied and stored outside git; two real-Drive probes were run on 2026-10-10 (see section 6). Still open for the operator: whether read access to the whole Drive (`drive.readonly`) is acceptable for production; refresh-token lifetime while the app is in Testing mode; moves/renames on shared drives.
 - [ ] G5 user/admin UAT on a real UI.
 - [ ] G0-G7 decisions: G0 scope rebaseline or explicit prototype authority (OB-01), donor license approvals (OB-15), the source registry choice (OB-04), secret provider and rotation owner (OB-13), R1 shadow-compatibility and canary approval with rollback owner (OB-14), R2-US-047 scope (OB-20), release-owner approval for `PRODUCTION_GO` only after G0-G7 actual PASS (OB-21).
-- [ ] Close GitHub issues #28, #29, #33, #37 as the owner (they were commented with fix commits and left open for the owner).
-- [ ] S10 canary permission with the four pinned parts: recipe, identity, window, budget (plus kill-switch and copied-environment qualification per G6).
+- [~] GitHub issues: #28 and #33 were closed by the operator's decision on 2026-10-10. #29 (G0-G7 acceptance) and #37 (read access / opaque tool errors) stay open; see section 6 for the cause measured for #37.
+- [~] Canary: the operator allowed ONE read-only pass (confirmed recipe in `docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md`) and it was run on the local lane copy; it could read no ledger data because no semantic profile is validated (G3). Staging is forbidden by the operator. A production-database canary is not authorized.
 - [ ] Any deletion (including retention execution): separately and explicitly authorized; no S9 module deletes anything (`executed=False`).
 
 ## 4. NOT_RUN list
 
 Reported as NOT_RUN, never as PASS:
 
-- Real workload / capacity measurement (the only measurement is the S4b disposable-container drill in `CAPACITY_DRILL.md`, "not a capacity guarantee").
-- Staging alarms and real alert delivery to a human.
+- Production-representative workload / capacity measurement. Only two small measurements exist: the S4b disposable-container drill (`CAPACITY_DRILL.md`) and the single-run read-only latency sample on the local lane gateway (`artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md`); neither is a capacity guarantee.
+- Fault alarms fired and recovered, and real alert delivery to a human (staging is forbidden by the operator, so this cannot be obtained there).
 - PostgreSQL restore beyond the G1 same-cluster `pg_dump -Fc` proof; restore into another cluster or version.
 - Migration rehearsal on the real R1 schema (S9 classifies steps over `db/phase2` SQL text only).
 - Retention approval and any deletion.
 - Release 1 shadow regression.
 - Hosted CI (no CI by operator decision 2026-10-08).
-- Real Google OAuth, real Drive, real UI (all S7/S8 behavior is over fakes).
+- Real UI. S7/S8 behavior is over fakes; the only real-Drive evidence is the 2026-10-10 probes in section 6, run outside the R2 code.
 - Real 1C read, real paginated source, native bytes, MOLDRETAIL data, accountant attestation.
 - PostgreSQL integration for S6-S9 (no DB code; last integration run on `af9f287`).
 - Mutation runs (NOT_RUN by operator rule 2026-10-09).
-- The S10 production canary itself.
+- A production-database canary and any read of ledger data through a validated semantic profile.
 
 ## 5. Accepted backlog (known, not fixed, not blocking the offline closure)
 
@@ -134,3 +136,28 @@ From the S9 closure entry and the S7/S8 decisions in `core/DECISION_LOG.md`:
 6. An unaudited in-memory run stays visible until recovery (S8 session/run behavior).
 
 Documentation gap noted at S9 closure: the S9 section of `S1_S4_TRACEABILITY.md` still shows the counts collected at `50e4c6e`; the S9 report carries the current per-file counts.
+
+## 6. Measurements of 2026-10-10 (operator-authorized, outside the R2 code)
+
+Run by the engineering agent on the operator machine; raw results stay outside git. None of these is a gate pass.
+
+### 6.1 Google Drive (G4 input), one account, project `erp-mcp-phase2`
+
+| Probe | Scope | Result |
+| --- | --- | --- |
+| Operator's pre-existing folder | `drive.file` | not visible (404) |
+| Folder and file created by the app | `drive.file` | works |
+| File uploaded by the operator by hand into the app folder | `drive.file` | NOT visible to the app |
+| Same folder | `drive.readonly` | both files visible; operator's folder readable |
+| New file created in the folder | changes feed with `drive.readonly` | seen on the 2nd poll (3 s interval), right name and parent |
+| Rename and move of an app file | changes feed with `drive.readonly` | both events seen, new name and new parent folder |
+
+Conclusion: in the tested flow a "people drop files into a folder" capture worked with `drive.readonly` (read access to the whole Drive) and did not work with `drive.file`. Narrower designs (per-file authorization through the Google Picker, or an upload flow owned by the app) were not tested and should be assessed before broad Drive access is granted. Not tested: shared drives, access revocation, token expiry in production mode. Test files remain in the operator's Drive (cleanup is the operator's: an attempt to trash the test folder with the `drive.file` token returned 403).
+
+### 6.2 Canary pass and workload sample (G6 / G6-pre input)
+
+See `docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md`. Summary: health and company discovery work; every ledger read fails closed with `SemanticProfileUnavailable` (no validated `payable.balance` / `account.balance_and_turnovers` profile; validation needs the accountant's native-report evidence, G3) and the outward error is opaque (the Release 1 defect behind issue #37). Light reads scale to 8 workers without errors; the fail-closed path reaches the 40-second client timeout with 4 concurrent callers.
+
+### 6.3 Other operator decisions of 2026-10-10
+
+Release 2 lives in its own repository; the source registry stays `living.sources` (OB-04); donor code: none was found in `src/business_ai_gateway/phase2` (only comments referring to inspected paths), so no GPL/AGPL replacement is needed, formal OB-15 approval stays with the operator; G5 UAT is deferred until the UI scope is decided; the secrets provider is unchanged (operator-owned); R2-US-047 stays as is; `PRODUCTION_GO` is signed by the operator at the end.

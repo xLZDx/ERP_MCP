@@ -11,3 +11,5 @@
 - 2026-10-20 NEUTRAL integrate: unused-noqa count is a cheap mechanical post-merge check; ruff --fix handled it.
 
 - 2026-10-20 SHORTCOMING integrate: the phase2 merge first appended Russian text verbatim, which broke the English-only git rule and needed a separate translation commit. Rule: translate carried-over text in the same merge commit and run a Cyrillic-in-added-lines check before committing.
+
+- 2026-10-20 SUCCESS merge ERP_MCP_R2 into ERP_MCP: for an extraction with no merge-base, comparing each conflicting file against the common ancestor-in-spirit (the phase2 branch tip both lines descend from) decided 58 of 64 conflicts mechanically without guessing; the merged failing-test set equals R2's own tip run. Rule: for unrelated-history merges, find the shared source commit and diff both sides against it per file. SHORTCOMING: R2-only code brings about 250 ruff findings and new Russian prose docs; a lint pass and a translation pass are left as separate follow-ups (lint was never a gate on the R2 line).

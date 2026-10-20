@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<Constant uuid="9c4f77d5-a78b-4520-9b1b-bfbab72e4cc8">
+		<InternalInfo>
+			<xr:GeneratedType name="ConstantManager.ОграничиватьДоступНаУровнеЗаписейУниверсально" category="Manager">
+				<xr:TypeId>0ad999ee-1245-425a-89d0-1ac4464083f0</xr:TypeId>
+				<xr:ValueId>49af1283-8464-440b-a2f5-b8fccd12b11a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="ConstantValueManager.ОграничиватьДоступНаУровнеЗаписейУниверсально" category="ValueManager">
+				<xr:TypeId>671a33dd-2c70-4f25-b57e-98c0e412b6f4</xr:TypeId>
+				<xr:ValueId>46d6d31f-89ab-49a0-a9d9-fb9bbeee7e37</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="ConstantValueKey.ОграничиватьДоступНаУровнеЗаписейУниверсально" category="ValueKey">
+				<xr:TypeId>d9ee23ce-c39f-4fcc-b9cd-238ae5fe146f</xr:TypeId>
+				<xr:ValueId>4a95b669-16ad-432f-a06a-50c025b00f4b</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ОграничиватьДоступНаУровнеЗаписейУниверсально</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>a6587758-f7af-4f85-81b4-4312c725824e</ExtendedConfigurationObject>
+		</Properties>
+	</Constant>
+</MetaDataObject>

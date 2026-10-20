@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="6073cb37-3574-4146-a14a-1dcf63cb534c">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСПоПриобретеннымЦенностям" category="Record">
+				<xr:TypeId>9ed696b7-6cf5-40e7-b847-6ef95e9b8bef</xr:TypeId>
+				<xr:ValueId>d6c5f447-a542-4663-b9b5-2e148eae2ac9</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСПоПриобретеннымЦенностям" category="Manager">
+				<xr:TypeId>17f16bf9-96f6-43db-95ea-789dde8a10f4</xr:TypeId>
+				<xr:ValueId>27848ca9-746e-44b8-9ad9-c972e5130880</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСПоПриобретеннымЦенностям" category="Selection">
+				<xr:TypeId>33118f24-6e9d-4d71-935f-02463a5ef6ec</xr:TypeId>
+				<xr:ValueId>d78e8761-eaf3-43d5-8bb0-397914ade507</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСПоПриобретеннымЦенностям" category="List">
+				<xr:TypeId>f1b9a298-42bf-4b6e-9089-90a3ea999337</xr:TypeId>
+				<xr:ValueId>7327f743-3f5d-4d17-94ce-c12146749c8a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСПоПриобретеннымЦенностям" category="RecordSet">
+				<xr:TypeId>1e4a20ab-79bd-4efb-b6d5-fbe33a319012</xr:TypeId>
+				<xr:ValueId>a80b1eae-e254-4521-a580-018cdaf0bee0</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСПоПриобретеннымЦенностям" category="RecordKey">
+				<xr:TypeId>db130c66-a3dd-4062-bbe3-07f098b3ff53</xr:TypeId>
+				<xr:ValueId>a1596ad8-283a-42af-a01a-6d7754570228</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСПоПриобретеннымЦенностям</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>8aaf1caf-b09f-4e14-b9ec-b231b04ee2bc</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

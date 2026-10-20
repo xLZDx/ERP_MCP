@@ -1,15 +1,14 @@
-"""Shared helpers for the G1 restore / crash / guard-mutation PostgreSQL tests.
+"""Shared PostgreSQL test helpers.
 
-Only used by tests/phase2/test_g1_restore.py, test_g1_crash.py and test_g1_guard_mutations.py.
-Reads ERP_PHASE2_TEST_DSN (a superuser DSN of the disposable cluster). Every test creates its own
-throwaway databases named g1x_<uuid8> and drops only those. Docker is used only against the single
-container named exactly erp-phase2-test-pg (never stop/kill/rm it; crash tests SIGKILL one postgres
-backend inside it and let the postmaster recover).
+G1 crash/restore tests provision uniquely named, invocation-owned containers and create isolated
+throwaway databases inside them. Other Phase 2 suites may continue to use ERP_PHASE2_TEST_DSN.
 """
 import asyncio
 import hashlib
 import json
 import os
+import re
+import secrets
 import shutil
 import subprocess
 import uuid
@@ -21,11 +20,15 @@ import asyncpg
 import pytest
 
 MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "phase2"
-FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql")
+FILES = ("001_living_registry.sql", "002_job_cursor_functions.sql", "003_security_hardening.sql",
+         "004_change_ledger.sql", "005_change_registry.sql", "006_change_sweeps.sql", "007_change_hardening_a.sql",
+         "008_change_hardening_b.sql", "009_approval_digest_2.sql", "010_registry_session_hardening.sql",
+         "011_event_hash_v2.sql", "012_dispatch_session_hardening.sql", "013_dispatched_invariant.sql",
+         "014_ed25519_verify.sql", "015_ed25519_signatures.sql", "016_dispatch_receipt.sql", "017_receipt_hardening.sql",
+         "018_wire_payload_receipt.sql")
 D1, D2 = "1" * 64, "2" * 64
 OBS_AT = datetime(2024, 1, 2, tzinfo=UTC)
 FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
-CONTAINER = "erp-phase2-test-pg"
 DB_PREFIX = "g1x_"
 REINIT_MARK = b"all server processes terminated; reinitializing"
 
@@ -47,7 +50,7 @@ def require_dsn():
     return dsn
 
 
-# ---------------------------------------------------------------- docker (single container only)
+# ---------------------------------------------------------------- Docker-owned disposable clusters
 def _docker_exe():
     return (os.environ.get("ERP_PHASE2_DOCKER") or shutil.which("docker")
             or r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
@@ -58,39 +61,139 @@ def docker(*args, stdin=None, timeout=180):
                           timeout=timeout, check=False)
 
 
-def container_exec(*args, stdin=None, timeout=180):
-    """docker exec against the hard-coded disposable container; the name is never a parameter."""
-    flags = ["-i"] if stdin is not None else []
-    return docker("exec", *flags, CONTAINER, *args, stdin=stdin, timeout=timeout)
-
-
-async def container_guard(dsn):
-    """Docker must reach exactly erp-phase2-test-pg AND it must be the cluster behind the DSN."""
+@asynccontextmanager
+async def _owned_cluster_fixture(suffixes):
+    """Provision uniquely named, loopback-only PostgreSQL fixture containers."""
+    if os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS") != "1":
+        _unavailable("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1 is required to provision disposable clusters")
+    if not shutil.which(_docker_exe()) and not Path(_docker_exe()).is_file():
+        _unavailable("Docker executable is unavailable")
+    image = os.environ.get("ERP_PHASE2_TEST_IMAGE", "postgres:16")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/:@-]{0,190}", image):
+        _unavailable("ERP_PHASE2_TEST_IMAGE is not a safe Docker image reference")
+    token = uuid.uuid4().hex
+    label = "codex.g1.owner=" + token
+    password = secrets.token_urlsafe(24)
+    names = [f"r2-s13-dump-{token[:12]}-{suffix}" for suffix in suffixes]
+    created = []
     try:
-        ps = docker("ps", "--filter", f"name=^{CONTAINER}$", "--format", "{{.Names}}", timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        _unavailable(f"docker is unavailable ({e})")
-    if ps.returncode != 0 or ps.stdout.decode().split() != [CONTAINER]:
-        _unavailable(f"container {CONTAINER} is not running")
-    conn = await admin_connect(dsn)
-    try:
-        via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
+        for name in names:
+            r = docker("run", "--detach", "--name", name, "--label", label,
+                       "--publish", "127.0.0.1::5432", "--env", "POSTGRES_PASSWORD=" + password,
+                       "--health-cmd", "pg_isready -U postgres", "--health-interval", "1s",
+                       "--health-timeout", "3s", "--health-retries", "60", image, timeout=120)
+            if r.returncode != 0:
+                _unavailable("could not provision owned PostgreSQL cluster: " +
+                             r.stderr.decode(errors="replace")[-1200:])
+            created.append(name)
+        dsns = []
+        for name in names:
+            r = docker("port", name, "5432/tcp", timeout=30)
+            if r.returncode != 0:
+                _unavailable("Docker did not expose the owned cluster port")
+            m = re.fullmatch(r"127\.0\.0\.1:(\d+)\s*", r.stdout.decode().strip())
+            if not m:
+                _unavailable("owned cluster port is not bound only to loopback")
+            dsns.append(f"postgresql://postgres:{password}@127.0.0.1:{int(m.group(1))}/postgres")
+        for name, dsn in zip(names, dsns):
+            last = None
+            for _ in range(90):
+                try:
+                    c = await asyncpg.connect(dsn, timeout=2)
+                    await c.close()
+                    break
+                except (OSError, asyncpg.PostgresError, TimeoutError) as e:
+                    last = e
+                    await asyncio.sleep(1)
+            else:
+                _unavailable(f"owned cluster {name} did not become ready: {last}")
+        yield dsns, names, token
     finally:
-        await conn.close()
-    r = container_exec("psql", "-U", "postgres", "-Atc",
-                       "SELECT system_identifier FROM pg_control_system()")
-    assert r.returncode == 0, r.stderr.decode()
-    assert int(r.stdout.decode().strip()) == via_dsn, "DSN does not point at the test container"
+        cleanup_errors = []
+        for name in reversed(created):
+            try:
+                inspected = docker(
+                    "inspect", "--format", "{{.Name}}|{{ index .Config.Labels \"codex.g1.owner\" }}",
+                    name, timeout=30)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                cleanup_errors.append(f"{name}: ownership inspection failed: {error}")
+                continue
+            if (inspected.returncode != 0
+                    or inspected.stdout.decode().strip() != "/" + name + "|" + token):
+                reason = inspected.stderr.decode(errors="replace")[-500:]
+                cleanup_errors.append(
+                    f"{name}: ownership not verified; container left untouched ({reason})")
+                continue
+            try:
+                # The official postgres image creates an anonymous data volume. `--volumes`
+                # removes that fixture-owned anonymous volume together with this owned container.
+                removed = docker("rm", "--force", "--volumes", name, timeout=60)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                cleanup_errors.append(f"{name}: removal failed after ownership verification: {error}")
+                continue
+            if removed.returncode != 0:
+                cleanup_errors.append(
+                    f"{name}: removal failed: {removed.stderr.decode(errors='replace')[-500:]}")
+        if cleanup_errors:
+            raise RuntimeError("owned test container cleanup errors: " + "; ".join(cleanup_errors))
 
 
-def container_log_marks():
-    r = docker("logs", CONTAINER, timeout=60)
-    return (r.stdout + r.stderr).count(REINIT_MARK)
+@asynccontextmanager
+async def disposable_cluster_pair():
+    """Provision two owned, isolated PostgreSQL clusters; never attach to existing containers.
+
+    Opt-in via ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1 plus Docker. Containers are uniquely named
+    and ownership is verified with a random label before exact-name cleanup. No pre-existing
+    container is inspected, stopped, reused, or removed.
+    """
+    async with _owned_cluster_fixture(("a", "b")) as (dsns, names, token):
+        yield dsns[0], dsns[1], names, token
 
 
-def kill_backend(pid, sig="KILL"):
-    r = container_exec("sh", "-c", f"kill -{sig} {int(pid)}")
-    assert r.returncode == 0, r.stderr.decode()
+@asynccontextmanager
+async def disposable_cluster():
+    """Provision one invocation-owned cluster for crash-boundary scenarios."""
+    async with _owned_cluster_fixture(("a",)) as (dsns, names, token):
+        yield dsns[0], names[0], token
+
+
+def owned_cluster_exec(name, token, *args, stdin=None, timeout=180):
+    """Run a command only in one of this fixture's exactly named, label-verified containers."""
+    if not re.fullmatch(r"r2-s13-dump-[0-9a-f]{12}-[ab]", name):
+        raise AssertionError("refusing non-fixture container name")
+    r = docker("inspect", "--format", "{{.Name}}|{{ index .Config.Labels \"codex.g1.owner\" }}",
+               name, timeout=30)
+    if r.returncode != 0 or r.stdout.decode().strip() != "/" + name + "|" + token:
+        raise AssertionError("fixture container ownership check failed")
+    flags = ["-i"] if stdin is not None else []
+    return docker("exec", *flags, name, *args, stdin=stdin, timeout=timeout)
+
+
+def owned_cluster_identity(name, token):
+    if not re.fullmatch(r"r2-s13-dump-[0-9a-f]{12}-[ab]", name):
+        raise AssertionError("refusing non-fixture container name")
+    r = docker("inspect", "--format", "{{.Id}}|{{ index .Config.Labels \"codex.g1.owner\" }}",
+               name, timeout=30)
+    if r.returncode != 0:
+        raise AssertionError("fixture container identity unavailable")
+    identity, actual_token = r.stdout.decode().strip().split("|", 1)
+    if actual_token != token or len(identity) < 32:
+        raise AssertionError("fixture container ownership check failed")
+    return identity
+
+
+def owned_cluster_log_marks(name, token):
+    owned_cluster_identity(name, token)
+    result = docker("logs", name, timeout=60)
+    if result.returncode != 0:
+        raise AssertionError("could not read owned cluster logs: " + result.stderr.decode(errors="replace"))
+    return (result.stdout + result.stderr).count(REINIT_MARK)
+
+
+def owned_kill_backend(name, token, pid, sig="KILL"):
+    result = owned_cluster_exec(name, token, "sh", "-c", f"kill -{sig} {int(pid)}")
+    if result.returncode != 0:
+        raise AssertionError("owned backend termination failed: " + result.stderr.decode(errors="replace"))
 
 
 async def admin_connect(dsn, tries=90, database=None):
@@ -105,11 +208,11 @@ async def admin_connect(dsn, tries=90, database=None):
     raise last
 
 
-async def wait_recovered(dsn, timeout=120):
-    """Wait until pg_isready succeeds in the container AND a real session can run a query."""
+async def wait_owned_cluster_recovered(dsn, name, token, timeout=120):
+    """Wait until pg_isready and a real query succeed on this verified owned fixture."""
     end = asyncio.get_running_loop().time() + timeout
     while asyncio.get_running_loop().time() < end:
-        r = container_exec("pg_isready", "-U", "postgres", "-q")
+        r = owned_cluster_exec(name, token, "pg_isready", "-U", "postgres", "-q")
         if r.returncode == 0:
             try:
                 c = await asyncpg.connect(dsn, timeout=5)

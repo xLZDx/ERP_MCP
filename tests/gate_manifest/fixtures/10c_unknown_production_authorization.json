@@ -1,0 +1,260 @@
+{
+  "schema": 2,
+  "baseline": "docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md revision 5",
+  "release_2": "NO_GO",
+  "drive_intake_enabled": false,
+  "gates": [
+    {
+      "id": "G0",
+      "name": "Scope and architecture",
+      "predecessors": [],
+      "engineering_status": "IN_PROGRESS",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "BOGUS",
+      "evidence": null
+    },
+    {
+      "id": "G1",
+      "name": "Database and security",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G2",
+      "name": "Metadata/domain",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G3",
+      "name": "Accountant attestation",
+      "predecessors": [
+        "G2"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G4",
+      "name": "Drive (conditional on drive_intake_enabled)",
+      "predecessors": [
+        "G0"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null,
+      "waiver": null
+    },
+    {
+      "id": "G5",
+      "name": "UAT",
+      "predecessors": [
+        "S16",
+        "S17"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G6-pre",
+      "name": "Operational readiness",
+      "predecessors": [
+        "G1",
+        "G8"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G6",
+      "name": "Production canary",
+      "predecessors": [
+        "G3",
+        "G5",
+        "G6-pre",
+        "G8"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G7",
+      "name": "Release",
+      "predecessors": [
+        "G0",
+        "G1",
+        "G2",
+        "G3",
+        "G5",
+        "G6",
+        "G8"
+      ],
+      "conditional_predecessors": [
+        "G4"
+      ],
+      "engineering_status": "NOT_STARTED",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    },
+    {
+      "id": "G8",
+      "name": "Controlled-change acceptance",
+      "predecessors": [
+        "G0",
+        "CT14",
+        "S12",
+        "S13",
+        "S14",
+        "S15",
+        "S16",
+        "S17",
+        "S18"
+      ],
+      "engineering_status": "IN_PROGRESS",
+      "gate_status": "NOT_PASSED",
+      "external_evidence_status": "OPEN",
+      "production_authorization": "NONE",
+      "evidence": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "CT14",
+      "name": "Feasibility gate (capability x channel x operation matrix)",
+      "kind": "spike",
+      "predecessors": [],
+      "state": "IN_PROGRESS",
+      "evidence": null
+    },
+    {
+      "id": "S11",
+      "name": "Foundations, contracts and feasibility",
+      "kind": "sprint",
+      "predecessors": [],
+      "state": "IN_PROGRESS",
+      "evidence": null
+    },
+    {
+      "id": "S12",
+      "name": "Change model, policy, ledger interface",
+      "kind": "sprint",
+      "predecessors": [
+        "S11"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S13",
+      "name": "Change ledger in PostgreSQL and the audit anchor",
+      "kind": "sprint",
+      "predecessors": [
+        "S12"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S14",
+      "name": "1C write port",
+      "kind": "sprint",
+      "predecessors": [
+        "S12",
+        "CT14"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S15",
+      "name": "Verification and reconciliation",
+      "kind": "sprint",
+      "predecessors": [
+        "S13",
+        "S14"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S16",
+      "name": "Independent approval channel and MCP surface",
+      "kind": "sprint",
+      "predecessors": [
+        "S12",
+        "S15"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S17",
+      "name": "Document intake and workbench",
+      "kind": "sprint",
+      "predecessors": [
+        "S16"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S18",
+      "name": "Reliability and independent security verification",
+      "kind": "sprint",
+      "predecessors": [
+        "S13",
+        "S14",
+        "S15",
+        "S16"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "S19",
+      "name": "Release candidate, G8 acceptance, C1 closure",
+      "kind": "sprint",
+      "predecessors": [
+        "S17",
+        "S18"
+      ],
+      "state": "NOT_STARTED",
+      "evidence": null
+    }
+  ],
+  "_fixture": {
+    "expect": "reject",
+    "match": "^G0: unknown production_authorization BOGUS$",
+    "desc": "unknown production_authorization ",
+    "lines": 1
+  }
+}

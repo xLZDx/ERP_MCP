@@ -1,0 +1,5 @@
+{
+  "schema": 1,
+  "note": "Registered operator public keys (Ed25519, PEM). Empty until the operator registers a key; with no signer no G4 waiver can validate.",
+  "signers": []
+}

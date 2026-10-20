@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Итоговый статус S12 и прототипа S13 (2026-10-14)</title>
+<style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px auto;max-width:980px;padding:0 16px;color:#1b1f23;background:#fff}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #d0d7de;padding:6px 8px;text-align:left;vertical-align:top;font-size:14px}
+th{background:#f6f8fa}
+.warn{background:#fff8c5;border:1px solid #d4a72c;padding:8px 12px}
+</style>
+</head>
+<body>
+<header>
+<h1>Тестовая полоса S12 и прототип S13: итоговый статус</h1>
+<p>ERP_MCP_R2, 2026-10-14. Прототип без статуса gate: ничего здесь не является доказательством для gate. Release 2: NO-GO. G0-G8: NOT_PASSED. Реальной записи в 1C нет.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP_R2</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 6ddf63b</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>Итог</h2>
+<p>Вся запланированная работа по прототипу реализована, независимо перепрогнана отдельным агентом, проверена GPT-PM и запушена в origin/main (последняя запушенная голова 0108a97). Остаток упирается в оператора либо в реальный writer и интеграцию с 1C.</p>
+
+<h2>Сделано и запушено</h2>
+<table>
+<tr><th>Часть</th><th>Коммиты</th><th>Тесты (прогон агентами, по файлам)</th><th>Вердикт GPT-PM</th></tr>
+<tr><td>Вход в S12 (тестовая полоса)</td><td>ранее</td><td>документы</td><td>FORMAL_ENTRY_APPROVED_TEST_LANE (c4a81d36)</td></tr>
+<tr><td>S13, партия A (миграция 007) и dump/restore</td><td>40ce0ee, 8e3db66</td><td>независимый прогон, 702 passed</td><td>принято ранее</td></tr>
+<tr><td>S13, партия B (миграция 008, B1-B6)</td><td>0679ac1 .. e2a09b4</td><td>независимый прогон 9 файлов: 761 passed, 0 failed</td><td>APPROVE_WITH_CONDITIONS (7c3e91d4)</td></tr>
+<tr><td>S12-APPROVAL-2, общий digest согласия (миграция 009)</td><td>15ab13b, fafb654</td><td>независимый прогон 10 файлов: 779 passed, 0 failed</td><td>APPROVE_WITH_CONDITIONS (b81f4c26)</td></tr>
+<tr><td>A7-M01: правило payload в SQL</td><td>72e10ce</td><td>независимый прогон 10 файлов: 784 passed, 0 failed</td><td>APPROVE (d4a7e0b3)</td></tr>
+<tr><td>S13, партия C (миграция 010): двухперсональный контроль реестра, независимость сессий cosign</td><td>8fff7cd, 0108a97</td><td>независимый прогон 11 файлов, затем найденная проверяющим дыра исправлена и перепрогнана основной сессией</td><td>APPROVE_WITH_CONDITIONS (f19c5a72)</td></tr>
+</table>
+
+<h2>Открытые пункты (не регрессии)</h2>
+<table>
+<tr><th>Пункт</th><th>Класс</th><th>Примечание</th></tr>
+<tr><td>A7-B01: writer не связан с verify_dispatch_payload</td><td>Нужен реальный writer</td><td>BLOCKER для готовности к реальной записи</td></tr>
+<tr><td>A7-B02: доверенное происхождение preview и digest состояния бизнеса</td><td>Нужна интеграция с 1C</td><td>BLOCKER для готовности к реальной записи</td></tr>
+<tr><td>C-M01, C-M02, C-M03: bootstrap, привязка логина к человеку, сессия approver</td><td>Нужна выдача идентичностей</td><td>MAJOR для квалификации реальной записи</td></tr>
+<tr><td>B6 g, h, m; обязательный MFA</td><td>Решение по дизайну или источник идентичности</td><td>Записанные ограничения</td></tr>
+<tr><td>Проверка реальных ACL всех функций, меняющих реестр</td><td>Выполнимо на одноразовой БД</td><td>Условие GPT-PM</td></tr>
+<tr><td>Реальный хост чекпойнтов D9, подписант Ed25519, свидетель D10b; SBOM, чексуммы хост-бинарей, LICENSE для R2</td><td>Оператор</td><td>Отложено оператором</td></tr>
+</table>
+
+<h2>Ограничения</h2>
+<p class="warn">Числа тестов получены агентами на одноразовых контейнерах, GPT-PM их не запускал. CI, lint, полные наборы и мутационные прогоны не запускались по правилу оператора. Зелёные тесты показывают, что они проходят на этой голове, а не что каждый assertion упал бы при поломке защиты. Подписи на keyed-hash остаются заглушками до появления подписанта Ed25519.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

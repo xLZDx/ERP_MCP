@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="324f8a22-cae6-4a94-8cdc-526fc096d601">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСКосвенныеРасходы" category="Record">
+				<xr:TypeId>2cc45a6f-20f6-45d7-9eef-4ffbee6b8455</xr:TypeId>
+				<xr:ValueId>2b181da1-b92b-4e76-a9a5-3eef6f09ab66</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСКосвенныеРасходы" category="Manager">
+				<xr:TypeId>a5c1e048-2b44-4361-85e9-66fb56d306dc</xr:TypeId>
+				<xr:ValueId>8ffe0a1f-e411-43df-9de3-11b2f32d95d4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСКосвенныеРасходы" category="Selection">
+				<xr:TypeId>95bd2ca5-f04f-432c-af67-d2ea52bad48c</xr:TypeId>
+				<xr:ValueId>c212f9a9-1584-4973-9fe8-d25f1a477906</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСКосвенныеРасходы" category="List">
+				<xr:TypeId>5299442b-374b-47ab-8787-6452e83ef604</xr:TypeId>
+				<xr:ValueId>67e615fa-ada6-493e-9157-9e4f8e56c3fd</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСКосвенныеРасходы" category="RecordSet">
+				<xr:TypeId>3bb0990d-c96b-4ff4-9eb8-af3a08e47845</xr:TypeId>
+				<xr:ValueId>3a1f5b47-72d2-4859-98a4-55775e5e3941</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСКосвенныеРасходы" category="RecordKey">
+				<xr:TypeId>105b89f6-d628-4a56-ad6e-95a63f716185</xr:TypeId>
+				<xr:ValueId>f85fee28-14cc-4916-9bd5-183175fa720e</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСКосвенныеРасходы</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>2bcd33f9-c2f1-4f80-9dad-9f1937e8c9fc</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

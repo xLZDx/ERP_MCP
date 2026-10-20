@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="71f8d0a3-8b3d-4aaf-9a30-4d1dce45cf61">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСпоОСиНМА" category="Record">
+				<xr:TypeId>bc6cc7c7-7465-409e-813e-3920b833b297</xr:TypeId>
+				<xr:ValueId>179108fe-434a-4776-acdd-6c643e9d8eea</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСпоОСиНМА" category="Manager">
+				<xr:TypeId>694917d7-d87f-4790-8af1-758ed5f0db90</xr:TypeId>
+				<xr:ValueId>280c4908-14b8-4682-8165-cead1afebc9e</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСпоОСиНМА" category="Selection">
+				<xr:TypeId>a9343cff-81a4-44fe-a73c-7a077ebbd5e9</xr:TypeId>
+				<xr:ValueId>aba013ee-ce54-4b41-a9d5-a90a562b4329</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСпоОСиНМА" category="List">
+				<xr:TypeId>6cb20f53-167b-47de-904b-f6594e45915a</xr:TypeId>
+				<xr:ValueId>808fcfa8-8a74-4517-803d-ca8684184755</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСпоОСиНМА" category="RecordSet">
+				<xr:TypeId>583f4e55-65fb-4abe-955a-1d7ff52806f3</xr:TypeId>
+				<xr:ValueId>673170ba-d007-4e4c-822d-c07ea13cae20</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСпоОСиНМА" category="RecordKey">
+				<xr:TypeId>fd891aae-d2d5-4786-b3b6-326a232306d1</xr:TypeId>
+				<xr:ValueId>2263a4f6-054f-49ff-b284-6e901fb4c1a9</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСпоОСиНМА</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>31056012-868e-4495-a49e-03ba80ae2fdf</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

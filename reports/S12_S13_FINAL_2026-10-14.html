@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S12 and S13 prototype final status (2026-10-14)</title>
+<style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px auto;max-width:980px;padding:0 16px;color:#1b1f23;background:#fff}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #d0d7de;padding:6px 8px;text-align:left;vertical-align:top;font-size:14px}
+th{background:#f6f8fa}
+.warn{background:#fff8c5;border:1px solid #d4a72c;padding:8px 12px}
+</style>
+</head>
+<body>
+<header>
+<h1>S12 test lane and S13 prototype: final status</h1>
+<p>ERP_MCP_R2, 2026-10-14. Non-gating prototype: nothing here is gate evidence. Release 2: NO-GO. G0-G8: NOT_PASSED. No real 1C write.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 6ddf63b</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>Summary</h2>
+<p>All planned prototype work is implemented, independently re-run by a separate agent, reviewed by GPT-PM and pushed to origin/main (last pushed head 0108a97). What remains is blocked on the operator or on a real writer and 1C integration.</p>
+
+<h2>Delivered and pushed</h2>
+<table>
+<tr><th>Part</th><th>Commits</th><th>Test evidence (agent-run, per file)</th><th>GPT-PM verdict</th></tr>
+<tr><td>S12 test-lane entry</td><td>earlier</td><td>documents</td><td>FORMAL_ENTRY_APPROVED_TEST_LANE (c4a81d36)</td></tr>
+<tr><td>S13 batch A (migration 007) and dump/restore</td><td>40ce0ee, 8e3db66</td><td>independent run, 702 passed</td><td>accepted earlier</td></tr>
+<tr><td>S13 batch B (migration 008, B1-B6)</td><td>0679ac1 .. e2a09b4</td><td>independent run of 9 files: 761 passed, 0 failed</td><td>APPROVE_WITH_CONDITIONS (7c3e91d4)</td></tr>
+<tr><td>S12-APPROVAL-2 shared approval digest (migration 009)</td><td>15ab13b, fafb654</td><td>independent run of 10 files: 779 passed, 0 failed</td><td>APPROVE_WITH_CONDITIONS (b81f4c26)</td></tr>
+<tr><td>A7-M01 payload rule in SQL</td><td>72e10ce</td><td>independent run of 10 files: 784 passed, 0 failed</td><td>APPROVE (d4a7e0b3)</td></tr>
+<tr><td>S13 batch C (migration 010): two-person registry control, cosign session independence</td><td>8fff7cd, 0108a97</td><td>independent run of 11 files, then a verifier finding fixed and re-run green by the main session</td><td>APPROVE_WITH_CONDITIONS (f19c5a72)</td></tr>
+</table>
+
+<h2>Open items (not regressions)</h2>
+<table>
+<tr><th>Item</th><th>Class</th><th>Note</th></tr>
+<tr><td>A7-B01: writer dispatch is not coupled to verify_dispatch_payload</td><td>Needs real writer</td><td>BLOCKER for real-write readiness</td></tr>
+<tr><td>A7-B02: trusted provenance of preview and business-state digests</td><td>Needs 1C integration</td><td>BLOCKER for real-write readiness</td></tr>
+<tr><td>C-M01, C-M02, C-M03: bootstrap identity, login-to-person binding, approver session</td><td>Needs identity provisioning</td><td>MAJOR for real-write qualification</td></tr>
+<tr><td>B6 items g, h, m; MFA enforcement</td><td>Design ruling or identity source</td><td>Recorded limits</td></tr>
+<tr><td>Live ACL verification of all registry-mutating functions</td><td>Doable on a disposable database</td><td>Condition from GPT-PM</td></tr>
+<tr><td>Real D9 checkpoint host, Ed25519 signer, D10b witness; SBOM, host binary checksums, LICENSE for R2</td><td>Operator</td><td>Deferred by the operator</td></tr>
+</table>
+
+<h2>Limits</h2>
+<p class="warn">Test numbers are agent-run on disposable containers and were not run by GPT-PM. No CI, lint, full suite or mutation run was made, by operator rule. Passing tests show the tests pass at that head, not that each assertion would fail if its guard broke. Keyed-hash signatures are stand-ins until the Ed25519 signer exists.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

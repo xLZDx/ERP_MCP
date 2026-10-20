@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="6dfd6e6a-1aec-406e-8ca7-a2e5272357ce">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="Record">
+				<xr:TypeId>99e88d81-9c8f-4b38-a11a-4761a3587e6b</xr:TypeId>
+				<xr:ValueId>890606e9-6191-4375-9fd2-64463e4ed349</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="Manager">
+				<xr:TypeId>9ac160df-9a0c-4191-b559-72d43f31e90f</xr:TypeId>
+				<xr:ValueId>dcd60201-8b4a-4671-9236-9472e015d227</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="Selection">
+				<xr:TypeId>b41a8aca-7d7f-438c-a373-438e6b9a9e4c</xr:TypeId>
+				<xr:ValueId>10d5b05b-8e2b-40be-8be0-b30540b3446d</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="List">
+				<xr:TypeId>690b1957-029e-4a68-aeb1-6922bc9203e1</xr:TypeId>
+				<xr:ValueId>f14a761d-6d57-45a8-bbb3-e377d2cf7bf0</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="RecordSet">
+				<xr:TypeId>f5ca7980-1883-47d1-afef-4a3313215151</xr:TypeId>
+				<xr:ValueId>8bc92c17-f595-4f8c-b994-d818abeeee77</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.ПодоходныйНалогУдержанныйУИсточникаВыплаты" category="RecordKey">
+				<xr:TypeId>2c8be3d1-240a-4848-a20e-861d1526dcf4</xr:TypeId>
+				<xr:ValueId>98c98e77-7bb1-4159-9d2c-7fda47029dae</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ПодоходныйНалогУдержанныйУИсточникаВыплаты</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>5927cf5a-e436-4445-8bbb-d6b9ba0e2051</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="df4779da-bf03-43d7-8020-a5c93023e213">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСПредъявленныйРеализация0" category="Record">
+				<xr:TypeId>939d2855-a569-456f-a7a5-95247b5c998f</xr:TypeId>
+				<xr:ValueId>becfef72-b128-4bc7-a552-e6a5130b8677</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСПредъявленныйРеализация0" category="Manager">
+				<xr:TypeId>0a768503-e158-430b-a913-4dd42766b011</xr:TypeId>
+				<xr:ValueId>f3423b47-0004-4830-a9ba-0c581a89dc61</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСПредъявленныйРеализация0" category="Selection">
+				<xr:TypeId>24fab5b6-3cae-4607-85a2-4b388e28c701</xr:TypeId>
+				<xr:ValueId>7b039e89-24ad-43d5-99d7-77d26269f38b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСПредъявленныйРеализация0" category="List">
+				<xr:TypeId>e6677960-401d-4649-a1f2-08e56ca3288e</xr:TypeId>
+				<xr:ValueId>44d652aa-181e-40ee-aa5f-10f713078fcf</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСПредъявленныйРеализация0" category="RecordSet">
+				<xr:TypeId>e7e6a17b-c9ce-49f2-9378-cf87db6f6dc4</xr:TypeId>
+				<xr:ValueId>7141e032-43d5-4d38-9226-d46d6ee74878</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСПредъявленныйРеализация0" category="RecordKey">
+				<xr:TypeId>f6dc38c3-bbbe-41a0-9f27-e64db5897697</xr:TypeId>
+				<xr:ValueId>86a9790a-fc05-43b2-a817-3104ccde5103</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСПредъявленныйРеализация0</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>d41b397d-21d9-49a7-8211-4860d565448a</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

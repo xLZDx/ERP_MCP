@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="880316d8-8354-4b2f-b42c-de4c6b96bdd3">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.СобытияОСОрганизаций" category="Record">
+				<xr:TypeId>33f85c3e-7b5d-414a-965c-87c6ee527ca4</xr:TypeId>
+				<xr:ValueId>f7f4efa6-3eb1-499b-a76b-c500e12b0ce1</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.СобытияОСОрганизаций" category="Manager">
+				<xr:TypeId>e00f1c16-51ac-403b-97e8-bd873b004013</xr:TypeId>
+				<xr:ValueId>6025196c-3618-4b7d-a832-77fe01fad602</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.СобытияОСОрганизаций" category="Selection">
+				<xr:TypeId>264548e0-4853-4f7c-ae5a-6c1bd0f40fff</xr:TypeId>
+				<xr:ValueId>3e150f26-f0a6-4834-80c2-4f61d0f988cc</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.СобытияОСОрганизаций" category="List">
+				<xr:TypeId>f9178b60-f63e-419a-bab2-084ea6b38219</xr:TypeId>
+				<xr:ValueId>a8602528-defe-4b0e-a3fe-930c0ac3fb0b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.СобытияОСОрганизаций" category="RecordSet">
+				<xr:TypeId>979034df-5be9-4b6b-8da8-f1dfd658917d</xr:TypeId>
+				<xr:ValueId>701c9953-72aa-4f03-939e-1b3d5aaa0efd</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.СобытияОСОрганизаций" category="RecordKey">
+				<xr:TypeId>6d264b43-8c4c-4adf-a2f1-1d5e7b200d1f</xr:TypeId>
+				<xr:ValueId>4b0e6182-f99d-4357-b256-3bc7a7974df5</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.СобытияОСОрганизаций" category="RecordManager">
+				<xr:TypeId>1c9d094c-b397-432b-bdc2-c76d9cb51332</xr:TypeId>
+				<xr:ValueId>40c415af-0282-477c-b8f1-19cc9cd56c15</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СобытияОСОрганизаций</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>414ee98a-6b7c-4c98-9b89-d365e9861b18</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

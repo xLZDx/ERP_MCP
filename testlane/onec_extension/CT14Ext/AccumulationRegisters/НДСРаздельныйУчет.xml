@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="7596f326-62f6-40f9-82e1-2d1d7b84a814">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСРаздельныйУчет" category="Record">
+				<xr:TypeId>a85a71a6-120e-48ce-b79d-18ed49c1405c</xr:TypeId>
+				<xr:ValueId>4f3a6401-934f-436a-817a-59892327a738</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСРаздельныйУчет" category="Manager">
+				<xr:TypeId>6d060495-c6d1-437f-95d2-1bc02fea9881</xr:TypeId>
+				<xr:ValueId>e2d7158b-1079-4f75-855a-38be5b63a7ee</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСРаздельныйУчет" category="Selection">
+				<xr:TypeId>8f793794-2d77-4fed-b015-e471a126b024</xr:TypeId>
+				<xr:ValueId>aaa026e7-edcd-4d65-8c8c-0ffabd5de97b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСРаздельныйУчет" category="List">
+				<xr:TypeId>443952ea-9f74-4db2-a6dd-45e526a32cae</xr:TypeId>
+				<xr:ValueId>658f9d09-2b9d-43e9-b687-2ce08c51f7d4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСРаздельныйУчет" category="RecordSet">
+				<xr:TypeId>3bbd061b-b9f0-4ac8-80cf-e3a2fb25a486</xr:TypeId>
+				<xr:ValueId>af42ade5-9460-429c-b1b5-f50dbf09ae06</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСРаздельныйУчет" category="RecordKey">
+				<xr:TypeId>6a97ef9e-7370-4e22-aa30-b2da26947db5</xr:TypeId>
+				<xr:ValueId>eec19e21-a6e1-484d-a0ba-6e65cf2ba962</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСРаздельныйУчет</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>651a1037-7044-4d0c-aebd-b0e7515c3a8c</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

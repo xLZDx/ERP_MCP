@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="95dd837f-2c9a-49cd-8e11-0de4499cdae7">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.ЖурналУчетаСчетовФактур" category="Record">
+				<xr:TypeId>a0c07939-214f-455a-92dd-8ecd52522938</xr:TypeId>
+				<xr:ValueId>4b93a34f-ddcd-467c-ab56-900c057aaa54</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.ЖурналУчетаСчетовФактур" category="Manager">
+				<xr:TypeId>5b853d41-1549-4b66-8db3-2d255163cbe8</xr:TypeId>
+				<xr:ValueId>318d209a-26fb-46e9-997b-376a758fded1</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.ЖурналУчетаСчетовФактур" category="Selection">
+				<xr:TypeId>65abeff4-e021-4733-a758-728cf93c2324</xr:TypeId>
+				<xr:ValueId>eecd54f7-8e14-4c19-8d3f-68075a7f7b50</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.ЖурналУчетаСчетовФактур" category="List">
+				<xr:TypeId>dd4f729b-947c-4334-b505-ba073815f77a</xr:TypeId>
+				<xr:ValueId>11f09605-be16-453d-b895-ab494ac0880a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.ЖурналУчетаСчетовФактур" category="RecordSet">
+				<xr:TypeId>c88bf04a-0a4d-4749-a331-6b6732ec1d40</xr:TypeId>
+				<xr:ValueId>26facbdb-d41a-488b-a715-0d1df532ea00</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.ЖурналУчетаСчетовФактур" category="RecordKey">
+				<xr:TypeId>0f2cc795-f92d-4ec0-8a3a-33ad5a824600</xr:TypeId>
+				<xr:ValueId>c982ae07-18de-4e06-8da2-30440f007de0</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.ЖурналУчетаСчетовФактур" category="RecordManager">
+				<xr:TypeId>8748e66a-5cfa-46c9-9bc0-fb6108df8915</xr:TypeId>
+				<xr:ValueId>50313f0f-df01-475d-b926-92751b96940d</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ЖурналУчетаСчетовФактур</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>e3cd2832-710c-4455-b0f1-1225ae1fc53d</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="a7fcf198-2234-48c2-bc72-7ce01f3b9d16">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.БСО" category="Record">
+				<xr:TypeId>40770897-528f-4111-bcb2-0e74d5b097db</xr:TypeId>
+				<xr:ValueId>3674e2bc-bdcd-420d-8086-4fc646a3139f</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.БСО" category="Manager">
+				<xr:TypeId>c0aa36d2-9eec-4d25-8109-db8f51fe8197</xr:TypeId>
+				<xr:ValueId>edf5a3e8-f1ba-44e3-a25b-087947f906ea</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.БСО" category="Selection">
+				<xr:TypeId>cae5917c-22ab-44a8-b7a4-d4b28fda4cae</xr:TypeId>
+				<xr:ValueId>f8d468c5-7821-4651-b72a-73ab26353fa4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.БСО" category="List">
+				<xr:TypeId>3401e2c6-c9f2-40e5-95df-336e1721e83d</xr:TypeId>
+				<xr:ValueId>ffe7c66c-bbb6-4f6e-9a54-069f0474d859</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.БСО" category="RecordSet">
+				<xr:TypeId>f21df4e8-578f-4d8e-b862-1f5f0b6815bf</xr:TypeId>
+				<xr:ValueId>505e05b2-02ba-4c89-adc6-d614fcf35938</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.БСО" category="RecordKey">
+				<xr:TypeId>3b1e5074-f4f5-4aff-b3f1-b02ab8279e65</xr:TypeId>
+				<xr:ValueId>2de37e19-d591-436a-9a3b-3168576a7243</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>БСО</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>532d7b2d-8aa9-4577-8bee-4abfe0370da1</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

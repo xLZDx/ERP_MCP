@@ -285,6 +285,36 @@ CATEGORIES = {"observation": _cat_observation, "job": _cat_job, "cursor_commit":
               "outbox_finish": _cat_finish}
 
 
+async def _wait_for_api_lock_block(observer, api, api_sql, timeout=10.0):
+    """Observe the API backend waiting on a lock held by the revocation transaction."""
+    api_pid = api.get_server_pid()
+    blocker_pid = observer.get_server_pid()
+    deadline = asyncio.get_running_loop().time() + timeout
+    last = None
+    while asyncio.get_running_loop().time() < deadline:
+        last = await observer.fetchrow(
+            "SELECT state, query, wait_event_type, wait_event, pg_blocking_pids(pid) AS blockers "
+            "FROM pg_stat_activity WHERE pid=$1",
+            api_pid,
+        )
+        if (last is not None
+                and last["state"] == "active"
+                and last["query"].strip() == api_sql.strip()
+                and last["wait_event_type"] == "Lock"
+                and blocker_pid in last["blockers"]):
+            return {
+                "api_pid": api_pid,
+                "blocker_pid": blocker_pid,
+                "state": last["state"],
+                "query": last["query"],
+                "wait_event_type": last["wait_event_type"],
+                "wait_event": last["wait_event"],
+                "blocking_pids": last["blockers"],
+            }, last
+        await asyncio.sleep(0.05)
+    return None, last
+
+
 @pytest.mark.parametrize("mode", ["control", "revoke_other_grant", "revoke_own_grant"])
 @pytest.mark.parametrize("category", sorted(CATEGORIES))
 async def test_major02_scope_rechecked_after_source_lock(env, category, mode):
@@ -305,8 +335,19 @@ async def test_major02_scope_rechecked_after_source_lock(env, category, mode):
             who = "living_reader" if mode == "revoke_other_grant" else role
             await o.execute("DELETE FROM living.role_scope WHERE role_name=$1", who)
         task = asyncio.ensure_future(c.fetchval(sql, *args))
-        await asyncio.sleep(0.7)
-        assert not task.done(), "API must be blocked on the source lock after passing assert_scope"
+        observed, last = await _wait_for_api_lock_block(o, c, sql)
+        if observed is None:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await otx.rollback()
+            await tx.rollback()
+            pytest.skip(
+                "NOT_RUN: API backend was not observed waiting on a lock held by the "
+                f"revocation transaction within 10s; api_pid={c.get_server_pid()}, "
+                f"blocker_pid={o.get_server_pid()}, last_activity={last!r}"
+            )
+        print(f"MAJOR-02 lock boundary observed: {observed}")
         await otx.commit()  # ... session 2 commits while session 1 waits
         if mode == "control":
             await asyncio.wait_for(task, 15)

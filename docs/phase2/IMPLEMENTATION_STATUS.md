@@ -1,5 +1,7 @@
 # Phase 2 Implementation Status — 2026-10-08
 
+> **Historical snapshot (2026-10-08, head df92cc8, G1 stage).** The current terminal state is `ENGINEERING_HANDOFF` after S10 (2026-10-10): see `S10_RELEASE_HANDOFF.md` for the gate table G0-G7 and G6-pre, `TASK_LEDGER.md` for story status, and `reports/PHASE2_STATUS_GATES_BLOCKERS_2026-10-11.html` for the consolidated sprint, gate and blocker status. The facts below were not refreshed for S5-S10; where they differ, the handoff and the ledger win. Release 2 stays NO-GO in both.
+
 Release 2: **NO-GO**. Product acceptance: **NOT_RUN**. No gate G0–G7 has passed.
 
 ## Verified scope (single source of truth for this file)

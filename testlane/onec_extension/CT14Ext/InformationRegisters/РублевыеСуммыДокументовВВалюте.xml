@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="2faee648-1904-40f8-8770-3d2c9b3d2bdc">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.РублевыеСуммыДокументовВВалюте" category="Record">
+				<xr:TypeId>22881928-280b-4ffe-bbc4-0358e9c59dbd</xr:TypeId>
+				<xr:ValueId>3d41d56a-ceaa-40bb-b9d0-9467639224a8</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.РублевыеСуммыДокументовВВалюте" category="Manager">
+				<xr:TypeId>c02b1626-4237-4a26-b180-4f4d2b845220</xr:TypeId>
+				<xr:ValueId>e0bd1782-d0b9-4a42-992a-2c9da57088b4</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.РублевыеСуммыДокументовВВалюте" category="Selection">
+				<xr:TypeId>10cc32d5-fb43-4fa3-902a-34210869d02a</xr:TypeId>
+				<xr:ValueId>bd43ed7e-22dc-45e5-aaaa-9c6703018fb5</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.РублевыеСуммыДокументовВВалюте" category="List">
+				<xr:TypeId>3dbc96f6-f78d-4dec-9dfc-1917865bd248</xr:TypeId>
+				<xr:ValueId>bb7c7970-8457-4371-9912-d5b49914e50f</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.РублевыеСуммыДокументовВВалюте" category="RecordSet">
+				<xr:TypeId>53f31d02-43cf-4fd2-a892-b9e122978bb9</xr:TypeId>
+				<xr:ValueId>c6e133f6-dca8-440f-8ef1-12449a27feb7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.РублевыеСуммыДокументовВВалюте" category="RecordKey">
+				<xr:TypeId>c8888369-76ef-4458-afa8-78bce326a73c</xr:TypeId>
+				<xr:ValueId>a5a62269-3909-4d72-9c5c-ffeb58f6269c</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.РублевыеСуммыДокументовВВалюте" category="RecordManager">
+				<xr:TypeId>77b54bc9-aa28-4c1e-9c1e-de46f9a9d6a1</xr:TypeId>
+				<xr:ValueId>65dafc76-9060-4ab0-840a-45416ef1605d</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>РублевыеСуммыДокументовВВалюте</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>894982f5-74d2-4361-93d9-9dde2dcc8118</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

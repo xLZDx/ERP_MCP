@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ERP_MCP_R2 — G1 local push status</title>
+  <style>
+    body{font:16px/1.55 system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17212b}
+    h1,h2{line-height:1.2} table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}
+    th,td{border:1px solid #b8c3cc;padding:.65rem;text-align:left;vertical-align:top}
+    th{background:#edf2f6} code{overflow-wrap:anywhere} .state{font-weight:700}
+  </style>
+</head>
+<body>
+<header>
+  <h1>ERP_MCP_R2 — G1 local push status</h1>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 13b8ee2</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+
+
+
+
+
+
+
+<p><strong>Date:</strong> 2026-10-16. <strong>Corrected code/test HEAD:</strong> <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>. `functional-test-reviewer` reran the selected set of 22 node IDs (45 executions) at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>; test sources match the stated code/test HEAD. Result: 45 passed, 0 failed, 0 skipped. `e2e-runner` executed explicit-COMMIT and distinct-cluster restore at detached <code>a6263e4</code>: 2 passed, 0 failed, 0 skipped. `database-reviewer` reviewed this exact-tree evidence: no database BLOCKER/MAJOR. <strong>Fresh PM verdict:</strong> exact-head approval was granted for HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>. The normal fast-forward push <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac..17900345c88237290c498d73b6f8849c265351d1</code> completed to <code>origin/main</code>; remote HEAD was confirmed equal to the pushed HEAD. Formal G1 is NOT_PASSED, production authorization is NONE, and Release 2 is NO-GO. <strong>Repository:</strong> <code>D:\Repo\ERP_MCP_R2</code>.</p>
+
+<h2>Current evidence assessment</h2>
+<p>The earlier functional run at <code>73e4253b571fa45382af6f954f773e1eae5f91be</code> reported 45 passed, 0 failed, 0 skipped in 57.13 s, but its initial 24 MAJOR-02 results were not accepted because the lock boundary was not proven. After the correction in code/test commit <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, the functional agent reran all selected 22 node IDs at docs HEAD <code>0800269ccf0e9899f1b6e707ac29164c91878c86</code>: 45 passed, 0 failed, 0 skipped. The corrected MAJOR-02 test blob is identical on both heads: <code>ce5c2c4f86b4751b8f03744fff16831557887d4f</code>. Its observer asserts active API SQL, <code>wait_event_type=Lock</code>, and the revoke backend PID in <code>pg_blocking_pids</code>; <code>wait_event=transactionid</code> is recorded as metadata but is not asserted. Database-reviewer confirmed the original MAJOR correction and, in a fresh read-only review of exact-tree evidence, found no database BLOCKER/MAJOR. At detached code/test HEAD <code>a6263e4bafe69aedd14372f394d67da7b6fb3366</code>, `e2e-runner` ran <code>test_terminate_backend_during_observed_explicit_commit</code> and <code>test_pg_dump_restore_to_distinct_postgres_cluster</code>: 2 passed, 0 failed, 0 skipped. The COMMIT scenario remains bounded: it does not cover the post-WAL-commit/pre-acknowledgement gap. Durations and container IDs for the latest reruns were not provided and are not inferred from earlier executions. Disposable test databases were removed. PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>, and the normal fast-forward push from <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> to that HEAD succeeded; post-push lookup confirmed <code>origin/main</code> at the same HEAD. This documentation update creates a new HEAD and is not covered by that approval. Formal G1 is <strong>NOT_PASSED</strong>, production authorization is <strong>NONE</strong>, and Release 2 is <strong>NO-GO</strong>.</p>
+
+<h2>Request status</h2>
+<table>
+  <thead><tr><th>Item</th><th>State</th><th>Work and evidence</th><th>Remaining acceptance / dependency</th><th>Next action and owner</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Disposable PostgreSQL for G1</td>
+      <td class="state">Created and used for the initial run; stopped now</td>
+      <td>PostgreSQL 16 in Docker, bound to loopback only. Container <code>erp-r2-g1-ef2e3f349883</code>; owner label was verified before stopping. No unrelated containers were touched.</td>
+      <td>The container must be restarted for a rerun.</td>
+      <td>Test agents restart the dedicated database if execution is allowed. Owner: functional-test-reviewer / e2e-runner.</td>
+    </tr>
+    <tr>
+      <td>Project dependencies</td>
+      <td class="state">Installed</td>
+      <td>Created an isolated <code>.venv</code> and installed project plus development dependencies, including asyncpg and the test runner. Host <code>psql</code> was unnecessary.</td>
+      <td>No additional dependencies were identified for this test.</td>
+      <td>Reuse the local environment. Owner: test agents.</td>
+    </tr>
+    <tr>
+      <td>Reviewer selection</td>
+      <td class="state">Risk-matched roles selected</td>
+      <td>Functional-test-reviewer owns the test correction. Database-reviewer checked ACL/RLS and transaction snapshots; silent-failure-hunter checked that the new assertion cannot pass falsely. E2E-runner separately proved the COMMIT scenario on the earlier version.</td>
+      <td>No SQL query or plan changed, so tune-sql-query did not match the risk. A separate test-engineer role is not in the available Codex launch roster.</td>
+      <td>Keep the same owners for a permitted rerun. Owner: functional and E2E test agents.</td>
+    </tr>
+    <tr>
+      <td>Workflow rule updates</td>
+      <td class="state">Historical note; not the current blocker</td>
+      <td>Updated <code>D:\Repo\AGENTS.md</code>, <code>C:\Users\koros\.codex\AGENTS.md</code>, both delivery-efficiency skill copies, and <code>C:\Users\koros\.claude\CLAUDE.md</code>. Test ownership remains with test agents; the global execution ban was removed.</td>
+      <td>Test agents executed the selected scenarios; the prior MAJOR-02 database-reviewer finding was corrected and confirmed on rerun.</td>
+      <td>The exact-head review and push are complete; no selected test blocker remains. Formal G1 remains NOT_PASSED.</td>
+    </tr>
+    <tr>
+      <td>G1 restore scope revocation</td>
+      <td class="state">Restore PASS for both test-agent roles</td>
+      <td>The initial run on <code>4b9f3b0</code> had 46 passed / 1 failed due to calling <code>living.assert_scope</code> as <code>living_reader</code>. After correction in <code>69857fd</code>, functional-test-reviewer: 1 passed in 17.89s; e2e-runner: 1 passed in 15.27s, repeated with JUnit XML: 1 passed in 14.82s. Assertions covered RLS-visible rows before/after grant deletion on the same READ COMMITTED reader session and fresh-context <code>living.set_scope</code> P0001/<code>SCOPE_NOT_GRANTED</code> on source and target. Source container <code>r2-s13-dump-92fdb996ef79-a</code>, system ID <code>7697154259177177126</code>; target <code>r2-s13-dump-92fdb996ef79-b</code>, system ID <code>7697154262396780582</code>. Both IDs differed; invocation-owned containers were cleaned.</td>
+      <td>Correction in <code>69857fd</code> checked RLS-visible rows before/after grant deletion in the same READ COMMITTED reader session and fresh <code>living.set_scope</code> denial in both clusters.</td>
+      <td>This restore case does not change formal G1; container/system IDs and cleanup are in record 080.</td>
+    </tr>
+    <tr>
+      <td>Selected focused scenarios, including MAJOR-02</td>
+      <td class="state">PASS for selected local scenarios; PM approved and push completed</td>
+      <td>Exact-tree functional rerun: 45 passed/0 failed/0 skipped across 22 node IDs at docs HEAD <code>0800269</code>, with test blobs matching code/test HEAD <code>a6263e4</code>. Exact-tree E2E rerun: explicit-COMMIT and distinct-cluster restore, 2 passed/0 failed/0 skipped at detached <code>a6263e4</code>. Database-reviewer found no database B/M and confirmed the lock evidence; COMMIT test does not cover the post-WAL/pre-acknowledgement gap. MAJOR-02 asserts Lock wait type and blocker PID; the observed transactionid subtype is not asserted. Earlier static code review found no B/M across 44 changed paths at <code>c2157e7</code>; silent-failure-hunter found no B/M in read-only review.</td>
+      <td>These local scenarios do not prove formal G1, deployed identity, capacity, or production readiness. PM approved the pushed range; any subsequent push of a new HEAD requires a fresh exact-head PM decision.</td>
+      <td>For any subsequent push, first obtain a PM decision for that exact new HEAD. Owner: implementation agent.</td>
+    </tr>
+    <tr>
+      <td>PM review and push</td>
+      <td class="state">EXACT-HEAD APPROVE; push completed through current remote HEAD</td>
+      <td>The earlier PM Bridge reply <code>f4cd1c27-2b3c-4094-80f3-1fd88dbfd1e6</code> covered code HEAD <code>315e83149b48fcef1d3ded7c5e2325d7c3fe7cd4</code> and retained NO-GO pending runtime evidence. After selected runs completed, PM approved exact HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>; the normal fast-forward push from <code>3aba6e37af8d3e5d1d98eb4f5f308e15aec1e3ac</code> succeeded. Later reviewed documentation commits were also pushed; the current remote <code>origin/main</code> was independently confirmed at <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code>.</td>
+      <td>All reviewed commits through <code>13b8ee2</code> are pushed. Any future local change creates a new HEAD and needs its own exact-head PM decision before push. Formal G1 remains NOT_PASSED.</td>
+      <td>No push action remains for this reviewed range. For a later HEAD, obtain exact-head PM approval before pushing. Owner: implementation agent.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Gate status</h2>
+<p>PM approved the exact reviewed code HEAD <code>17900345c88237290c498d73b6f8849c265351d1</code>, and the fast-forward push completed. Subsequent reviewed documentation commits through <code>13b8ee2e067fcd70158b74dc36307d0dfb3332aa</code> were also pushed; a fresh lookup confirmed <code>origin/main</code> at that exact HEAD. Exact-tree selected runtime is complete: functional 45/45 and E2E 2/2; database-reviewer found no database BLOCKER/MAJOR and recorded the COMMIT limitation. Formal G1: <strong>NOT_PASSED</strong>. Formal S13: <strong>NOT APPROVED</strong>. Production authorization: <strong>NONE</strong>. Release 2: <strong>NO-GO</strong>. Any later local HEAD requires a new exact-head PM decision before push.</p>
+
+<h2>Remaining acceptance</h2>
+<p>The push and review for the remote range through <code>13b8ee2</code> are complete. Formal G1 remains NOT_PASSED, formal S13 remains NOT APPROVED, Release 2 remains NO-GO, and production authorization remains NONE. These states require their own gate evidence and are not changed by a successful documentation push.</p>
+
+
+
+
+
+
+
+
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

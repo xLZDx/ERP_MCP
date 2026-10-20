@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="d743323f-9e74-4b63-9676-a39ae69925bc">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.СостоянияОСОрганизаций" category="Record">
+				<xr:TypeId>2358be6c-314b-49cb-afab-6af8695194bd</xr:TypeId>
+				<xr:ValueId>e163009c-d959-4de4-a8cd-8194850adbbb</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.СостоянияОСОрганизаций" category="Manager">
+				<xr:TypeId>76b6ea19-c439-4833-993d-74eac3244dd0</xr:TypeId>
+				<xr:ValueId>425d036a-6e81-409c-bb31-7ca8950dccd8</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.СостоянияОСОрганизаций" category="Selection">
+				<xr:TypeId>3a4b7b3a-c850-43d5-a2f9-d5985c209451</xr:TypeId>
+				<xr:ValueId>931f05a6-dae6-42cd-af4f-675fc350c6ae</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.СостоянияОСОрганизаций" category="List">
+				<xr:TypeId>d8bafd8c-35f7-4cdb-b0d6-a2e37c807756</xr:TypeId>
+				<xr:ValueId>b2b549d2-c824-45fb-a627-b39910472cf0</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.СостоянияОСОрганизаций" category="RecordSet">
+				<xr:TypeId>0abbd4a8-7b0c-4af7-a759-57709eb2499f</xr:TypeId>
+				<xr:ValueId>0d133a03-8291-4f8b-9091-06d7d2ddf7ab</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.СостоянияОСОрганизаций" category="RecordKey">
+				<xr:TypeId>c027f9e7-f56f-42db-9237-b7babdb5af48</xr:TypeId>
+				<xr:ValueId>b58dca9a-77e1-4343-b685-4203c71f1945</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.СостоянияОСОрганизаций" category="RecordManager">
+				<xr:TypeId>448aaed8-e88e-44c6-b7b3-dc6d47e1f17d</xr:TypeId>
+				<xr:ValueId>9c43ded6-3954-44e8-9288-a5811ebe4a53</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СостоянияОСОрганизаций</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>81d0f5e3-9a47-4f24-8216-ec6e2e38e52a</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

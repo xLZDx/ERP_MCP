@@ -16,3 +16,11 @@ coverage.xml
 .e2e/
 reports/real1c_dev/
 .chatgpt/
+tests/phase2/_red_tmp/
+
+# secrets and local credentials must never be committed
+*.pem
+*.key
+*.pfx
+*client_secret*.json
+*token*.json

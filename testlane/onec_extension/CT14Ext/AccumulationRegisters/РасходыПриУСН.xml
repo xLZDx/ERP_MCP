@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="de16e5ae-52ce-492a-a7f3-c4daf87a6aaa">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.РасходыПриУСН" category="Record">
+				<xr:TypeId>7464c176-53bb-449c-83f8-c879119502bd</xr:TypeId>
+				<xr:ValueId>91bdbed4-4c91-4312-8f4b-1da94fcda8a7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.РасходыПриУСН" category="Manager">
+				<xr:TypeId>cc15fd06-7aad-42a3-b19b-dca7ff9e5e21</xr:TypeId>
+				<xr:ValueId>2f597e1c-e5ce-4fc0-9940-5c7df42e60fb</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.РасходыПриУСН" category="Selection">
+				<xr:TypeId>a778bb4c-4ad4-4c94-a614-d2e426d72203</xr:TypeId>
+				<xr:ValueId>662430dd-4943-48e5-8105-3f67e9b3c2bd</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.РасходыПриУСН" category="List">
+				<xr:TypeId>ca1804f9-2887-4c50-9c29-4e7ae05ace19</xr:TypeId>
+				<xr:ValueId>8838d9f6-bfcf-41e4-b07a-8599beb54cfb</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.РасходыПриУСН" category="RecordSet">
+				<xr:TypeId>ee342b9d-6956-41ac-9e4e-4143996e219a</xr:TypeId>
+				<xr:ValueId>cd6082c7-044e-4cb4-8429-0342c00b876d</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.РасходыПриУСН" category="RecordKey">
+				<xr:TypeId>27235352-061c-489a-b911-741478bb1c2c</xr:TypeId>
+				<xr:ValueId>77d47853-0bb8-45d4-942f-41eb1f5156c4</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>РасходыПриУСН</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>46654fa9-d4b7-4da4-aba5-00b56f17d491</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

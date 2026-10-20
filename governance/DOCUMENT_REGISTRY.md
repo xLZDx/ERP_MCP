@@ -5,25 +5,27 @@ plan, design, TDD, report, ADR, runbook or any other Markdown file is created, m
 (operator rule 2026-09-29). `--check` fails when this file is stale.
 
 Scope: every Markdown file (case-sensitive `.md`) on all local and remote branches, plus untracked Markdown paths
-of attached worktrees. Excluded: this file, ignored files, symlinks, dependency/build directories. Titles are
-the first heading of tracked blobs, JSON-quoted; a path with several heading variants over the scanned refs lists
-all of them; an empty cell means the document has no heading.
+of attached worktrees, as observed at the exact Git refs listed below. This is a point-in-time snapshot, not a
+claim about refs created after generation. Excluded are this file, ignored files, symlinks and dependency/build
+directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several
+heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 
-Inventory: 168 tracked paths, 3 local-only paths.
+Inventory: 408 tracked paths, 0 local-only paths.
 
-## Documents in git (all branches)
+## Documents in git (scanned refs)
 
 | Path | Kind | Title |
 | --- | --- | --- |
 | AGENTS.md | Other | "ERP_MCP agent instructions" |
-| CLAUDE.md | Other | "ERP_MCP Claude project guidance" |
+| CLAUDE.md | Other | "ERP_MCP Claude project guidance" / "ERP_MCP Release 2 (Phase 2)" |
 | CODEX.md | Other | "ERP_MCP Codex workspace notes" |
 | CONTRIBUTING.md | Other | "Contributing to ERP_MCP" |
-| README.md | Other | "ERP_MCP" / "ERP_MCP — secure, read-only AI gateway for 1C" |
+| README.md | Other | "ERP_MCP" / "ERP_MCP Release 2 (Phase 2)" / "ERP_MCP — Secure, Read-Only AI Gateway for 1C" / "ERP_MCP — secure, read-only AI gateway for 1C" |
 | SECURITY.md | Other | "Security model" |
 | SKILLS.md | Other | "ERP_MCP skills and operating playbook" |
 | THIRD_PARTY_NOTICES.md | Other | "Third-party notices" |
-| core/DECISION_LOG.md | Governance | "ERP_MCP decision / evidence log" |
+| core/DECISION_LOG.md | Governance | "Decision log" / "ERP_MCP decision / evidence log" |
+| core/LESSONS_LOG.md | Governance | "Lessons log" |
 | deploy/PRODUCTION.md | Other | "Production deployment contract" |
 | deploy/ROLLBACK.md | Other | "Production rollback and recovery runbook" |
 | deploy/runbooks/ADAPTER_CRASH_RECOVERY.md | Runbook | "Adapter crash recovery" |
@@ -37,26 +39,28 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | docs/ADAPTER_INTAKE_PLAN.md | Plan | "Adapter intake plan — reuse, do not rewrite" |
 | docs/ARCHITECTURE.md | Design | "ERP_MCP Architecture" |
 | docs/CHATGPT_MCP_INTEGRATION.md | Other | "ChatGPT ↔ ERP_MCP integration" |
-| docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md | Other | "Плагин ERP_MCP_REAL1 в ChatGPT: как пользоваться после восстановления" |
+| docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md | Other | "ERP_MCP_REAL1 in ChatGPT — Historical User Guide" / "Плагин ERP_MCP_REAL1 в ChatGPT: как пользоваться после восстановления" |
+| docs/CLIENT_SAFETY_REVIEW_2026-10-08.md | Other | "ERP_MCP Client Safety Review — 2026-10-08" |
 | docs/COMPATIBILITY.md | Other | "1C compatibility and capability negotiation" |
+| docs/CONSOLIDATION_RECORD_2026-10-20.md | Other | "Branch consolidation record, 2026-10-20" |
 | docs/DAD_1C_MCP_REQUIREMENTS_COVERAGE.md | Other | "DAD 1C MCP — Source Requirements & Scenario Coverage" |
 | docs/DATA_MODEL.md | Design | "ERP_MCP Data Model" |
 | docs/DEFINITION_OF_DONE.md | Other | "ERP_MCP Definition of Done — 1C Production MVP" |
 | docs/DOCUMENT_INDEX.md | Other | "ERP_MCP — Normative Documentation Index" |
 | docs/E2E_ACCEPTANCE_CONTRACT.md | Design | "ERP_MCP E2E acceptance contract (frozen)" |
 | docs/E2E_ENVIRONMENT.md | Other | "Local E2E environment (disposable, localhost-only)" |
-| docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md | Other | "ERP_MCP ↔ ChatGPT — краткий runbook" |
+| docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md | Other | "ERP_MCP ↔ ChatGPT — Secure Tunnel Runbook" / "ERP_MCP ↔ ChatGPT — краткий runbook" |
 | docs/FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md | Other | "Ferma → 1C Synthetic Testbed & Reconciliation — Implementation Blueprint" |
 | docs/FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md | Other | "Autonomous assignment for Functional Tester" |
 | docs/GOVERNANCE.md | Other | "ERP_MCP Engineering Governance" |
-| docs/INSTALLATION_GUIDE_RU.md | Other | "ERP_MCP — пошаговая установка (Release 1)" |
+| docs/INSTALLATION_GUIDE_RU.md | Other | "ERP_MCP — Step-by-Step Installation Guide (Release 1)" / "ERP_MCP — пошаговая установка (Release 1)" |
 | docs/INTEGRATION.md | Other | "ERP_MCP Integration Contract" |
-| docs/LESSONS_LEARNED_RU.md | Other | "ERP_MCP Release 1 — lessons learned и практические ограничения" |
+| docs/LESSONS_LEARNED_RU.md | Other | "ERP_MCP Release 1 — Lessons Learned and Practical Constraints" / "ERP_MCP Release 1 — lessons learned и практические ограничения" |
 | docs/MANUAL_ACCEPTANCE_ADMIN.md | Other | "Manual acceptance — ADMIN Control Center" |
 | docs/MANUAL_ACCEPTANCE_USER.md | Other | "Manual acceptance — SIMPLE USER (data-plane)" |
 | docs/MASTER_PLAN.md | Plan | "ERP_MCP Master Plan" |
-| docs/MVP_SCOPE.md | Other | "1C Day-1 / DAD Read-Only MVP Acceptance" |
-| docs/NATIVE_REPORT_ACCOUNTANT_REQUEST_RU.md | Other | "Просьба бухгалтеру: отчёты 1С для подтверждения профиля (818 HA)" |
+| docs/MVP_SCOPE.md | Other | "1C Day-1 / DAD Read-Only MVP Acceptance" / "1C Day-1 MVP acceptance" |
+| docs/NATIVE_REPORT_ACCOUNTANT_REQUEST_RU.md | Other | "Accountant Request: Native 1C Reports for Profile Validation (818 HA)" / "Просьба бухгалтеру: отчёты 1С для подтверждения профиля (818 HA)" |
 | docs/NATIVE_REPORT_CAPTURE_RUNBOOK.md | Other | "Native 1C report capture runbook (818HA reference clone)" |
 | docs/OBSERVABILITY_SRE.md | Other | "ERP_MCP Observability and SRE Contract" |
 | docs/PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md | Phase 2 design | "ERP_MCP — Release 1 boundary / Phase 2 requirements backlog (DRAFT)" |
@@ -94,38 +98,234 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | docs/adr/ADR-0006-copyleft-isolation.md | ADR | "ADR-0006 — Copyleft/unknown-license adapters are isolated or reference-only" |
 | docs/adr/ADR-0007-admin-control-center.md | ADR | "ADR-0007 — Admin Control Center boundary and authorization" |
 | docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md | ADR | "ADR-0008 — Hybrid OData + COM read route for balances with analytics" |
+| docs/commits/2026-10-20-integrate-docs-english-only-translation.md | Other | "Integrate origin/docs/english-only-translation-20261010 (2026-10-20)" |
+| docs/commits/2026-10-20-integrate-docs-public-readme-install-guide.md | Other | "Integrate origin/docs/public-readme-install-guide-20261009 (2026-10-20)" |
+| docs/commits/2026-10-20-integrate-fix-evaluation-runner-forged-authority-test.md | Other | "Fix forged-authority test after combining phase2 with BASE hardening (2026-10-20)" |
+| docs/commits/2026-10-20-integrate-phase2-living-model-connectors-reconciliation.md | Other | "Integrate origin/phase2/living-model-connectors-reconciliation (2026-10-20)" |
+| docs/commits/2026-10-20-integrate-remove-unused-noqa.md | Other | "Remove unused noqa comments from phase2 files (2026-10-20)" |
+| docs/commits/2026-10-20-translate-appended-phase2-status-text.md | Other | "Translate appended phase2 status text to English (2026-10-20)" |
 | docs/phase2/BRANCH_ISOLATION_AND_HANDOFF.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/CAPACITY_DRILL.md | Phase 2 design | "Phase 2 capacity drill (S4b E5)" |
+| docs/phase2/CHANGE_RECORD_015.md | Phase 2 design | "Change record: migration 015 (Ed25519 signatures)" |
+| docs/phase2/CHANGE_RECORD_016.md | Phase 2 design | "Change record: migration 016 (dispatch receipt)" |
+| docs/phase2/CHANGE_RECORD_017.md | Phase 2 design | "Change record 017 — receipt hardening" |
+| docs/phase2/CHANGE_RECORD_018.md | Phase 2 design | "Change record 018 — synthetic SQL end-to-end scenarios" |
+| docs/phase2/CHANGE_RECORD_019.md | Phase 2 design | "Change record 019 — isolated test-container selection" |
+| docs/phase2/CHANGE_RECORD_020.md | Phase 2 design | "Change record 020 — end-to-end scenario corrections" |
+| docs/phase2/CHANGE_RECORD_021.md | Phase 2 design | "Change record 021 — repair scenario target fixture" |
+| docs/phase2/CHANGE_RECORD_022.md | Phase 2 design | "Change record 022 — migration 017 regression setup" |
+| docs/phase2/CHANGE_RECORD_023.md | Phase 2 design | "Change record 023 — receipt-marker retry lifecycle" |
+| docs/phase2/CHANGE_RECORD_024.md | Phase 2 design | "Change record 024 — dump/restore container selection" |
+| docs/phase2/CHANGE_RECORD_025.md | Phase 2 design | "Change record 025 — S13 review closure evidence" |
+| docs/phase2/CHANGE_RECORD_026.md | Phase 2 design | "Change record 026 — GPT-PM approval and report reconciliation" |
+| docs/phase2/CHANGE_RECORD_027.md | Phase 2 design | "Change record 027 — correlated approval for report follow-up" |
+| docs/phase2/CHANGE_RECORD_028.md | Phase 2 design | "Change record 028 — S14 synthetic wire-receipt binding" |
+| docs/phase2/CHANGE_RECORD_029.md | Phase 2 design | "Change record 029 — S14-R02 synthetic verification evidence" |
+| docs/phase2/CHANGE_RECORD_030.md | Phase 2 design | "Change record 030 — document registry refresh" |
+| docs/phase2/CHANGE_RECORD_031.md | Phase 2 design | "Change record 031 — correlated GPT-PM approval for S14-R02" |
+| docs/phase2/CHANGE_RECORD_032.md | Phase 2 design | "Change record 032 — decision record registry refresh" |
+| docs/phase2/CHANGE_RECORD_033.md | Phase 2 design | "Change record 033 — S14-R02 approved prototype push" |
+| docs/phase2/CHANGE_RECORD_034.md | Phase 2 design | "Change record 034 — post-push registry refresh" |
+| docs/phase2/CHANGE_RECORD_035.md | Phase 2 design | "Change record 035 — S14 synthetic dispatch adapter contract" |
+| docs/phase2/CHANGE_RECORD_036.md | Phase 2 design | "Change record 036 — synthetic dispatch coordinator implementation" |
+| docs/phase2/CHANGE_RECORD_037.md | Phase 2 design | "Change record 037 — S14-R03 focused tests and evidence" |
+| docs/phase2/CHANGE_RECORD_038.md | Phase 2 design | "Change record 038 — distinguish post-write receipt persistence uncertainty" |
+| docs/phase2/CHANGE_RECORD_039.md | Phase 2 design | "Change record 039 — exercise cancellation during receipt persistence" |
+| docs/phase2/CHANGE_RECORD_040.md | Phase 2 design | "Change record 040 — GPT-PM approval and S14-R03 prototype push" |
+| docs/phase2/CHANGE_RECORD_041.md | Phase 2 design | "Change record 041 — reconcile S14-R03 review status" |
+| docs/phase2/CHANGE_RECORD_042.md | Phase 2 design | "Change record 042 — fix Markdown line text" |
+| docs/phase2/CHANGE_RECORD_043.md | Phase 2 design | "Change record 043 — refresh registry after Markdown review corrections" |
+| docs/phase2/CHANGE_RECORD_044.md | Phase 2 design | "Change record 044 — R-01/R-03 and gate closure packet" |
+| docs/phase2/CHANGE_RECORD_045.md | Phase 2 design | "Change record 045 — clean change-record formatting" |
+| docs/phase2/CHANGE_RECORD_046.md | Phase 2 design | "Change record 046 — clarify G0 scope decision status" |
+| docs/phase2/CHANGE_RECORD_047.md | Phase 2 design | "Change record 047 — reconcile G1 and S13 historical evidence" |
+| docs/phase2/CHANGE_RECORD_048.md | Phase 2 design | "Change record 048 — reconcile current G0 decisions" |
+| docs/phase2/CHANGE_RECORD_049.md | Phase 2 design | "Change record 049 — assemble the G0 evidence index" |
+| docs/phase2/CHANGE_RECORD_050.md | Phase 2 design | "Change record 050 — record approved G0 closure" |
+| docs/phase2/CHANGE_RECORD_051.md | Phase 2 design | "Change record 051 — reconcile G0 status in the closure packet" |
+| docs/phase2/CHANGE_RECORD_052.md | Phase 2 design | "Change record 052 — specify remaining G1 runtime evidence" |
+| docs/phase2/CHANGE_RECORD_053.md | Phase 2 design | "Change record 053 — reconcile program-plan gate status" |
+| docs/phase2/CHANGE_RECORD_054.md | Phase 2 design | "Change record 054 — record G0 status reconciliation verification" |
+| docs/phase2/CHANGE_RECORD_055.md | Phase 2 design | "Change record 055 — record follow-up formatting verification" |
+| docs/phase2/CHANGE_RECORD_056.md | Phase 2 design | "Change record 056 — date the S12 design-spec gate snapshot" |
+| docs/phase2/CHANGE_RECORD_057.md | Phase 2 design | "Change record 057 — author invocation-owned G1 crash and restore scenarios" |
+| docs/phase2/CHANGE_RECORD_058.md | Phase 2 design | "Change record 058 — record R-01 and R-03 source inventories" |
+| docs/phase2/CHANGE_RECORD_059.md | Phase 2 design | "Change record 059 — verify actual G1 scope revocation after restore" |
+| docs/phase2/CHANGE_RECORD_060.md | Phase 2 design | "Change record 060 — record G1 focused static re-review" |
+| docs/phase2/CHANGE_RECORD_061.md | Phase 2 design | "Change record 061 — reconcile G1 engineering state and SDLC checkpoint" |
+| docs/phase2/CHANGE_RECORD_062.md | Phase 2 design | "Change record 062 — prepare the remaining G1 evidence packet" |
+| docs/phase2/CHANGE_RECORD_063.md | Phase 2 design | "Change record 063 — reconcile the SDLC checkpoint head" |
+| docs/phase2/CHANGE_RECORD_064.md | Phase 2 design | "Change record 064 — map candidate G1 focused test files" |
+| docs/phase2/CHANGE_RECORD_065.md | Phase 2 design | "Change record 065 — map G1 criteria to concrete test scenarios" |
+| docs/phase2/CHANGE_RECORD_066.md | Phase 2 design | "Change record 066 — clarify required restore and crash-recovery candidates" |
+| docs/phase2/CHANGE_RECORD_067.md | Phase 2 design | "Change record 067 — link R-01/R-03 source inventory provenance" |
+| docs/phase2/CHANGE_RECORD_068.md | Phase 2 design | "Change record 068 — reconcile historical operator backlog with G0 closure" |
+| docs/phase2/CHANGE_RECORD_069.md | Phase 2 design | "Change record 069 — refresh the SDLC state checkpoint" |
+| docs/phase2/CHANGE_RECORD_070.md | Phase 2 design | "Change record 070 — record the proposed minimum G1 runtime set" |
+| docs/phase2/CHANGE_RECORD_071.md | Phase 2 design | "Change record 071 — resolve G1-B07 concurrency coverage scope" |
+| docs/phase2/CHANGE_RECORD_072.md | Phase 2 design | "Change record 072 — reconcile G1-B07 backlog and gate packet" |
+| docs/phase2/CHANGE_RECORD_073.md | Phase 2 design | "Change record 073 — clarify G1 runtime evidence scope" |
+| docs/phase2/CHANGE_RECORD_074.md | Phase 2 design | "Change record 074 — reconcile G1 evidence agents and correct DB policy note" |
+| docs/phase2/CHANGE_RECORD_075.md | Phase 2 design | "Change record 075 — separate local push evidence from the formal G1 release gate" |
+| docs/phase2/CHANGE_RECORD_076.md | Phase 2 design | "Change record 076 — correct the G1 restore scope-revocation assertion" |
+| docs/phase2/CHANGE_RECORD_077.md | Phase 2 design | "Change record 077 — record the committed G1 test correction" |
+| docs/phase2/CHANGE_RECORD_078.md | Phase 2 design | "Change record 078 — publish G1 local push status report" |
+| docs/phase2/CHANGE_RECORD_079.md | Phase 2 design | "Change record 079 — record G1 PM Bridge push decision" |
+| docs/phase2/CHANGE_RECORD_080.md | Phase 2 design | "Change record 080 — record G1 distinct-cluster restore runtime evidence" |
+| docs/phase2/CHANGE_RECORD_081.md | Phase 2 design | "Change record 081 — record selected G1 runtime and MAJOR-02 evidence gap" |
+| docs/phase2/CHANGE_RECORD_082.md | Phase 2 design | "Change record 082 — observe the MAJOR-02 lock boundary" |
+| docs/phase2/CHANGE_RECORD_083.md | Phase 2 design | "Change record 083 — close the MAJOR-02 test-evidence gap" |
+| docs/phase2/CHANGE_RECORD_084.md | Phase 2 design | "Change record 084 — reconcile G1 runtime and review status" |
+| docs/phase2/CHANGE_RECORD_085.md | Phase 2 design | "Change record 085 — refresh the generated document registry" |
+| docs/phase2/CHANGE_RECORD_086.md | Phase 2 design | "Change record 086 — reconcile the G1 SDLC state" |
+| docs/phase2/CHANGE_RECORD_087.md | Phase 2 design | "Change record 087 — record exact-tree G1 focused reruns" |
+| docs/phase2/CHANGE_RECORD_088.md | Phase 2 design | "Change record 088 — refresh the G1 document inventory" |
+| docs/phase2/CHANGE_RECORD_089.md | Phase 2 design | "Change record 089 — reconcile G1 local-push reports with exact-tree evidence" |
+| docs/phase2/CHANGE_RECORD_090.md | Phase 2 design | "Change record 090 — refresh the report document inventory" |
+| docs/phase2/CHANGE_RECORD_091.md | Phase 2 design | "Change record 091 — record the approved G1 push" |
+| docs/phase2/CHANGE_RECORD_092.md | Phase 2 design | "Change record 092 — refresh the G1 document registry" |
+| docs/phase2/CHANGE_RECORD_093.md | Phase 2 design | "Change record 093 — reconcile active G1 status documents" |
+| docs/phase2/CHANGE_RECORD_094.md | Phase 2 design | "Change record 094 — index the reconciled G1 status documents" |
+| docs/phase2/CHANGE_RECORD_095.md | Phase 2 design | "Change record 095 — reconcile G1 push report with current remote state" |
+| docs/phase2/CHANGE_RECORD_096.md | Phase 2 design | "Change record 096 — refresh registry after G1 report reconciliation" |
+| docs/phase2/CHANGE_RECORD_097.md | Phase 2 design | "Change record 097 — clarify registry snapshot counts" |
+| docs/phase2/CHANGE_RECORD_098.md | Phase 2 design | "Change record 098 — clarify R-01/R-03 source findings and current gate state" |
+| docs/phase2/CHANGE_RECORD_099.md | Phase 2 design | "Change record 099 — R-03 Ed25519 new-action design" |
+| docs/phase2/CHANGE_RECORD_100.md | Phase 2 design | "Change record 100 — document registry refresh" |
+| docs/phase2/CHANGE_RECORD_101.md | Phase 2 design | "Change record 101 — require Ed25519 for new signed actions" |
+| docs/phase2/CHANGE_RECORD_102.md | Phase 2 design | "Change record 102 — S13 kill-switch recovery design" |
+| docs/phase2/CHANGE_RECORD_103.md | Phase 2 design | "Change record 103 — document registry refresh for S13 design" |
+| docs/phase2/CHANGE_RECORD_104.md | Phase 2 design | "Change record 104 — harden S13 recovery design after PM review" |
+| docs/phase2/CHANGE_RECORD_105.md | Phase 2 design | "Change record 105 — index revised S13 recovery design" |
+| docs/phase2/CHANGE_RECORD_106.md | Phase 2 design | "Change record 106 — normalize S13 registry snapshot" |
+| docs/phase2/CHANGE_RECORD_107.md | Phase 2 design | "Change record 107 — keep the kill switch active through recovery" |
+| docs/phase2/CHANGE_RECORD_108.md | Phase 2 design | "Change record 108 — include every allowed active hold in S13 recovery" |
+| docs/phase2/CHANGE_RECORD_109.md | Phase 2 design | "Change record 109 — refresh the document registry for R-03 and S13" |
+| docs/phase2/CHANGE_RECORD_110.md | Phase 2 design | "Change record 110 — proceed with source-backed S13 hold refinement" |
+| docs/phase2/CHANGE_RECORD_111.md | Phase 2 design | "Change record 111 — refresh registry after S13 addendum decision" |
+| docs/phase2/CHANGE_RECORD_112.md | Phase 2 design | "Change record 112 — enforce Ed25519 at action evidence consumption" |
+| docs/phase2/CHANGE_RECORD_113.md | Phase 2 design | "Change record 113 — add S13 kill-switch recovery runtime evidence" |
+| docs/phase2/CHANGE_RECORD_114.md | Phase 2 design | "Change record 114 — intermediate document registry refresh after the first R-03 and S13 closure pass" |
+| docs/phase2/CHANGE_RECORD_115.md | Phase 2 design | "Change record 115 — extend R-03 post-cutover consumer coverage" |
+| docs/phase2/CHANGE_RECORD_116.md | Phase 2 design | "Change record 116 — close R-03 ACL coverage follow-up" |
+| docs/phase2/CHANGE_RECORD_117.md | Phase 2 design | "Change record 117 — record reliability follow-up and refresh the document registry" |
+| docs/phase2/CHANGE_RECORD_118.md | Phase 2 design | "Change record 118 — regenerate the document registry for the final evidence set" |
+| docs/phase2/CHANGE_RECORD_119.md | Phase 2 design | "Change record 119 — regenerate the registry after the final evidence records" |
+| docs/phase2/CHANGE_RECORD_120.md | Phase 2 design | "Change record 120 — reconcile current project status and S12 scope" |
+| docs/phase2/CHANGE_RECORD_121.md | Phase 2 design | "Change record 121 — implement local S12 v2.0 evidence fixtures" |
+| docs/phase2/CHANGE_RECORD_122.md | Phase 2 design | "Change record 122 — finalize document registry after S12 commit" |
+| docs/phase2/CHANGE_RECORD_123.md | Phase 2 design | "Change record 123 — make writer reconciliation evidence immutable" |
+| docs/phase2/CHANGE_RECORD_124.md | Phase 2 design | "Change record 124 — reconcile pushed S12 status and prepare S13" |
+| docs/phase2/CHANGE_RECORD_125.md | Phase 2 design | "Change record 125 — design S13 startup and restore lifecycle" |
+| docs/phase2/CHANGE_RECORD_126.md | Phase 2 design | "Change record 126 — correct S13 startup/restore design from independent reviews" |
+| docs/phase2/CHANGE_RECORD_127.md | Phase 2 design | "Change record 127 — reconcile S13 backlog after fence reviews" |
+| docs/phase2/CHANGE_RECORD_128.md | Phase 2 design | "Change record 128 — reconcile current S14 project status" |
+| docs/phase2/CHANGE_RECORD_129.md | Phase 2 design | "Change record 129 — reconcile SDLC state to current documentation commits" |
+| docs/phase2/CHANGE_RECORD_130.md | Phase 2 design | "Change record 130 — staged S13 lifecycle fence primitives" |
+| docs/phase2/CHANGE_RECORD_131.md | Phase 2 design | "Change record 131 — S13 checkpoint preflight" |
+| docs/phase2/CHANGE_RECORD_132.md | Phase 2 design | "Change record 132 — bounded S13 checkpoint preflight dependencies" |
+| docs/phase2/CHANGE_RECORD_133.md | Phase 2 design | "Change record 133 — harden S13 preflight against hostile provider subclasses" |
+| docs/phase2/CHANGE_RECORD_134.md | Phase 2 design | "Change record 134 — validate checkpoint scope field types" |
+| docs/phase2/CHANGE_RECORD_135.md | Phase 2 design | "Change record 135 — regenerate document registry after CR134" |
+| docs/phase2/CHANGE_RECORD_136.md | Phase 2 design | "Change record 136 — reconcile current S13 operator backlog status" |
+| docs/phase2/CHANGE_RECORD_137.md | Phase 2 design | "Change record 137 — regenerate document registry after S13 backlog reconciliation" |
+| docs/phase2/CHANGE_RECORD_138.md | Phase 2 design | "Change record 138 — reconcile S14 and SDLC current-head status" |
+| docs/phase2/CHANGE_RECORD_139.md | Phase 2 design | "Change record 139 — refresh registry after current-status reconciliation" |
+| docs/phase2/CHANGE_RECORD_140.md | Phase 2 design | "Change record 140 — add the S13 acceptance and migration map" |
+| docs/phase2/CHANGE_RECORD_141.md | Phase 2 design | "Change record 141 — design an interim cap for S13 lifecycle activation" |
+| docs/phase2/CHANGE_RECORD_142.md | Phase 2 design | "Change record 142 — cap unsafe S13 lifecycle activation" |
+| docs/phase2/CHANGE_RECORD_143.md | Phase 2 design | "Change record 143 — CR142 disposable PostgreSQL evidence" |
+| docs/phase2/CHANGE_RECORD_144.md | Phase 2 design | "Change record 144 — restore caller lock timeout after lifecycle fence read" |
+| docs/phase2/CHANGE_RECORD_145.md | Phase 2 design | "Change record 145 — disposable PostgreSQL evidence for migrations 023–024" |
+| docs/phase2/CHANGE_RECORD_146.md | Phase 2 design | "Change record 146 — reconcile S13 evidence and current project status" |
+| docs/phase2/CHANGE_RECORD_147.md | Phase 2 design | "Change record 147 — refresh document registry after CR146" |
+| docs/phase2/CHANGE_RECORD_148.md | Phase 2 design | "Change record 148 — finalize registry after CR147" |
+| docs/phase2/CHANGE_RECORD_149.md | Phase 2 design | "Change record 149 — inventory S13 mutation paths and correct suffix rule references" |
+| docs/phase2/CHANGE_RECORD_150.md | Phase 2 design | "Change record 150 — reconcile S14 closure queue with current S13 evidence" |
+| docs/phase2/CHANGE_RECORD_151.md | Phase 2 design | "Change record 151 — freeze S13 checkpoint-tail classification rules" |
+| docs/phase2/CHANGE_RECORD_152.md | Phase 2 design | "Change record 152 — add bounded S13 checkpoint suffix inspection" |
+| docs/phase2/CHANGE_RECORD_153.md | Phase 2 design | "Change record 153 — prepare S14–S19 sprint acceptance map" |
+| docs/phase2/CHANGE_RECORD_154.md | Phase 2 design | "Change record 154 — minimize S13 checkpoint suffix evidence" |
+| docs/phase2/CHANGE_RECORD_155.md | Phase 2 design | "Change record 155 — reconcile S13 writer inventory and draft dispatch-boundary contract" |
+| docs/phase2/CHANGE_RECORD_156.md | Phase 2 design | "Change record 156 — finalize document registry after CR155" |
+| docs/phase2/CHANGE_RECORD_157.md | Phase 2 design | "Change record 157 — refresh registry at published HEAD" |
+| docs/phase2/CHANGE_RECORD_158.md | Phase 2 design | "Change record 158 — reconcile CR157 publication and refresh registry" |
+| docs/phase2/CHANGE_RECORD_159.md | Phase 2 design | "Change record 159 — refresh registry after CR158 publication" |
+| docs/phase2/CHANGE_RECORD_160.md | Phase 2 design | "Change record 160 — reconcile SDLC state with published repository head" |
+| docs/phase2/CHANGE_RECORD_161.md | Phase 2 design | "Change record 161 — correct S13 evidence pointer and refresh registry" |
+| docs/phase2/CHANGE_RECORD_162.md | Phase 2 design | "Change record 162 — record CR161 publication and refresh the registry" |
+| docs/phase2/CHANGE_RECORD_163.md | Phase 2 design | "Change record 163 — record CR162 publication and refresh the registry" |
+| docs/phase2/CHANGE_RECORD_164.md | Phase 2 design | "Change record 164 — record CR163 publication and refresh the registry" |
+| docs/phase2/CHANGE_RECORD_165.md | Phase 2 design | "Change record 165 — make document-registry provenance explicit" |
+| docs/phase2/CHANGE_RECORD_166.md | Phase 2 design | "Change record 166 — reconcile current S13 evidence and connector status" |
+| docs/phase2/CHANGE_RECORD_167.md | Phase 2 design | "Change record 167 — reconcile the operator backlog to current S13 evidence" |
+| docs/phase2/CHANGE_RECORD_168.md | Phase 2 design | "Change record 168 — correct singular document-registry path counts" |
+| docs/phase2/CHANGE_RECORD_169.md | Phase 2 design | "Change record 169 — order S13 work around the writer boundary" |
+| docs/phase2/CHANGE_RECORD_170.md | Phase 2 design | "Change record 170 — reconcile publication snapshot with committed CR169" |
+| docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
+| docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
 | docs/phase2/CLIENT_SAFETY_TRUST_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — anti-promotion guard on reference results" |
 | docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — combined client-safety hardening acceptance" |
-| docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
+| docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Data and API Contracts: TDD Clarification" / "Phase 2 — Контракты данных и API: уточнение к ТДД" |
 | docs/phase2/CONVERGENCE_FINAL_SECURITY_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — convergence security closure, 2026-10-09" |
 | docs/phase2/CONVERGENCE_SECURITY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — convergence hardening and adversarial review (2026-10-09)" |
+| docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md | Phase 2 design | "CT14 feasibility spike: measured 1C capabilities on the disposable clone (2026-10-12)" |
 | docs/phase2/CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
-| docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "Phase 2 — ADR proposals, решения, риски и источники" |
+| docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "ERP_MCP Phase 2 — ADR Proposals, Decisions, Risks and Sources" / "Phase 2 — ADR proposals, решения, риски и источники" |
 | docs/phase2/DECISION_LOG.md | Phase 2 design | "Phase 2 decision and evidence log" |
 | docs/phase2/DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — DR-01 accepted vs observed structural hash" |
 | docs/phase2/EVIDENCE_MATRIX.md | Phase 2 design | "Phase 2 evidence matrix" |
+| docs/phase2/EXTRACTION_NOTE.md | Phase 2 design | "Extraction note: Release 2 split from the Release 1 repository" |
 | docs/phase2/G0_DONOR_PROVENANCE_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — G0 donor/license intake checkpoint (2026-10-09)" |
+| docs/phase2/G0_EVIDENCE_INDEX_2026-10-15.md | Phase 2 design | "G0 scope and architecture evidence index — 2026-10-15" |
+| docs/phase2/G0_EVIDENCE_STATUS_RECONCILIATION_2026-10-17.md | Phase 2 design | "G0 evidence status reconciliation — 2026-10-17" |
+| docs/phase2/G1_EVIDENCE_PACKET_PLAN.md | Phase 2 design | "G1 evidence packet plan" |
 | docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md | Phase 2 design | "G1 PostgreSQL Living Registry — implementation note" |
 | docs/phase2/G1_OPERATOR_BACKLOG.md | Phase 2 design | "G1 blockers and operator handoff — 2026-10-08" |
 | docs/phase2/G2_REAL_SOURCE_FEASIBILITY_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — G2 real 1C feasibility snapshot" |
 | docs/phase2/IMPLEMENTATION_CHECKPOINT_2026-10-08.md | Phase 2 design | "ERP_MCP Phase 2 — autonomous implementation checkpoint" |
 | docs/phase2/IMPLEMENTATION_SLICE_2026-10-08.md | Phase 2 design | "Phase 2 implementation slice: observed model, temporal history and connector contracts" |
 | docs/phase2/IMPLEMENTATION_STATUS.md | Phase 2 design | "Phase 2 Implementation Status — 2026-10-08" |
-| docs/phase2/NATIVE_REPORT_PROTOCOL_RU.md | Phase 2 design | "Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod" |
+| docs/phase2/NATIVE_REPORT_PROTOCOL_RU.md | Phase 2 design | "Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod" / "Phase 2 — Native 1C Report Capture and Reconciliation: Development / Production" |
 | docs/phase2/OPERATOR_BACKLOG.md | Phase 2 design | "Phase 2 operator backlog" |
-| docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
-| docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
+| docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package Preparation Closure" / "Phase 2 — завершение подготовки проектного пакета" |
+| docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — S0–S10 Plan and G0–G7 Gates" / "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
+| docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
 | docs/phase2/PROMOTION_PM1_HARDENING_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — P-M1 promotion preflight hardening (2026-10-09)" |
 | docs/phase2/PROMOTION_PREFLIGHT_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 promotion preflight — independent review (2026-10-09)" |
-| docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — проектный пакет v0.1" |
+| docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 cutover for writes and action evidence" |
+| docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package v0.1" / "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/RELEASE_READINESS_SNAPSHOT_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — customer release readiness (2026-10-09)" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
+| docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
+| docs/phase2/S11_EXIT_PACKAGE_2026-10-12.md | Phase 2 design | "S11 exit package (2026-10-12)" |
+| docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md | Phase 2 design | "S11 operation rule table and v2 story register (2026-10-12)" |
+| docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md | Phase 2 design | "S11 scope record, decisions, glossary, read-back inventory and gate manifest (2026-10-12)" |
+| docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
+| docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
+| docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md | Phase 2 design | "S12-APPROVAL-2: shared canonical approval digest (design specification)" |
+| docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md | Phase 2 design | "S12 Contract Freeze v2.0 — governed purchase receipt write" |
+| docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
+| docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
+| docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
+| docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md | Phase 2 design | "S13 API mutation and lifecycle-fence coverage — 2026-10-17" |
+| docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
+| docs/phase2/S13_MUTATION_AND_WRITER_PATH_INVENTORY_2026-10-17.md | Phase 2 design | "S13 repository mutation and writer-path inventory — 2026-10-17" |
+| docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
+| docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md | Phase 2 design | "S13 startup and restore lifecycle design" |
+| docs/phase2/S13_WRITER_BOUNDARY_CLAIM_AND_RECOVERY_CONTRACT_2026-10-17.md | Phase 2 design | "S13 writer-boundary claim and recovery contract" |
+| docs/phase2/S14-S19_SPRINT_PLANS_AND_ACCEPTANCE_MAP_2026-10-17.md | Phase 2 design | "S14–S19 sprint plans and acceptance map — 2026-10-17" |
+| docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md | Phase 2 design | "S14 Risk and Gate Closure Packet — 2026-10-15" |
+| docs/phase2/S14_SIMULATED_WRITE_PORT_DESIGN_2026-10-17.md | Phase 2 design | "Local simulated `OneCWritePort` design" |
+| docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
+| docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
+| docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
 | docs/phase2/SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 scheduler and drift safety review — 2026-10-09" |
 | docs/phase2/SCHEDULER_ERROR_REDACTION_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — SCH-02 adapter error redaction" |
+| docs/phase2/SIMULATION_PROGRAM_PLAN_2026-10-15.md | Phase 2 design | "Simulation program plan: synthetic lane checkpoint" |
+| docs/phase2/SOURCE_TO_R2_COMMIT_MAP.md | Phase 2 design | "Source-to-R2 commit map" |
 | docs/phase2/SPRINT_S10_PLAN.md | Phase 2 design | "Sprint S10 plan - offline closure (engineering handoff); production canary NOT_RUN" |
 | docs/phase2/SPRINT_S4B_PLAN.md | Phase 2 design | "Sprint S4b plan - taxonomy/LDM candidates, aliases, impact tests, capture loop, PostgreSQL concurrency and capacity drill" |
 | docs/phase2/SPRINT_S5_PLAN.md | Phase 2 design | "Sprint S5 plan - capture permits, side-effect boundary, immutable artifact vault, isolated parser (first slice)" |
@@ -134,12 +334,16 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | docs/phase2/SPRINT_S7_PLAN.md | Phase 2 design | "Sprint S7 plan - Google Drive connector: ERP_MCP-owned OAuth/consent state machine, least-privilege scope, start-page-token baseline with durable fail-closed cursors, revisions/moves/removal, auth expiry and revoke (offline reference modules over fake ports)" |
 | docs/phase2/SPRINT_S8_PLAN.md | Phase 2 design | "Sprint S8 plan - Workbench/UI explanations, history/coverage timeline, safe job/read API decisions and safe rerun (offline, unwired, in-memory reference modules; no real UI, no HTTP server)" |
 | docs/phase2/SPRINT_S9_PLAN.md | Phase 2 design | "Sprint S9 plan - Capacity/chaos/audit/restore/retention, R1 compatibility, migration rehearsal (offline, unwired, in-memory reference modules; no load generator, no real DB, no real restore, no real alerting)" |
-| docs/phase2/STORIES_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 историй и acceptance mapping" |
+| docs/phase2/STORIES_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 User Stories and Acceptance Mapping" / "ERP_MCP Phase 2 — 48 историй и acceptance mapping" |
 | docs/phase2/TASK_LEDGER.md | Phase 2 design | "Phase 2 Task Ledger — evidence-only inventory (rows for S1-S5 updated 2026-10-09 to head af9f287)" / "Phase 2 Task Ledger — initial evidence-only inventory" |
-| docs/phase2/TDD_PHASE2_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
+| docs/phase2/TDD_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Living Model Registry, Connectors and Native Reconciliation" / "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
 | docs/phase2/TERMINAL_ACCEPTANCE_LEDGER_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — terminal acceptance ledger, 2026-10-09" |
-| docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
+| docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Test Strategy, Scenario Catalog and UAT" / "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
 | docs/phase2/WORKSTATION_VERIFICATION_2026-10-08.md | Phase 2 design | "Phase 2 workstation isolation verification — 2026-10-08" |
+| docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md | Phase 2 design | "G3 engineering reconciliation index: account 521.1, 2026-08" |
+| docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md | Phase 2 design | "G6 / G6-pre: one read-only canary pass and a bounded workload measurement (2026-10-10)" |
+| docs/phase2/artifacts/PHASE2_TESTLANE_MCP_DESIGN.md | Phase 2 design | "Phase 2 test-lane MCP server: design (stage 1)" |
+| docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md | Phase 2 design | "Remote 1C host (Ivan): independent test environment and MCP stack - runbook" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md | Phase 2 design | "Derived Phase 2 specification bundle" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/01_TDD_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/02_PLAN_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
@@ -153,6 +357,8 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/10_CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
 | docs/runbooks/COM_BRIDGE_AND_PARITY.md | Runbook | "COM bridge and parity harness runbook (ADR-0008)" |
 | docs/runbooks/RSV_DATA_BRIDGE.md | Runbook | "RSV Data bridge operations (P6)" |
+| docs/runbooks/SUPPLIER_BALANCE_5211_FIRST_RESPONSE.md | Runbook | "Supplier payable snapshot: account 521.1 (read-only, first-response workflow)" |
+| docs/sdlc/STATE.md | Other | "SDLC state" |
 | reports/ADMIN_CONTROL_CENTER_STATUS.md | Report | "Admin Control Center — current branch status" |
 | reports/BRANCH_MERGE_READINESS.md | Report | "Branch and merge readiness" |
 | reports/CHATGPT_READER_BOOTSTRAP_REPAIR_2026-10-07.md | Report | "ChatGPT / 818HA reader bootstrap repair — 2026-10-07 (executed 2026-10-08)" |
@@ -169,7 +375,7 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | reports/IMPLEMENTATION_STATUS.md | Report | "ERP_MCP implementation status" |
 | reports/INTEGRATION_PR_DESCRIPTION.md | Report |  |
 | reports/LOAD_TEST_REPORT.md | Report | "Measured engineering load evidence — 2026-10-06" |
-| reports/LOCAL_1C_SETUP_HANDOFF.md | Report | "Local 1C live handoff" |
+| reports/LOCAL_1C_SETUP_HANDOFF.md | Report | "Local 1C / RSVData environment handoff" / "Local 1C live handoff" |
 | reports/PR_INTEGRATION_MATRIX.md | Report | "PR integration matrix — 2026-10-06" |
 | reports/RISK_STATUS.md | Report | "Risk status" |
 | reports/RSVDATA_ARTIFACT_PROVENANCE.md | Report | "RSV Data artifact provenance" |
@@ -182,12 +388,92 @@ Inventory: 168 tracked paths, 3 local-only paths.
 | testbed/ferma_onec/README.md | Other | "Ferma / 1C test boundary" |
 | testbed/real1c/README.md | Other | "Real 1C integration target" |
 | testbed/snapshots/README.md | Other | "Snapshot contract" |
+| testlane/onec_extension/README.md | Other | "CT14 extension spike (disposable 1C clone only)" |
+| testlane/onec_extension/STATUS.md | Other | "CT14 extension spike - final status (clone 818HA_p2diff only)" |
 | vendor/UPSTREAMS.md | Other | "Upstream intake — pinned 2026-10-05" |
+| vendor/reference/1c-odata-mcp/CHANGELOG.md | Other | "История изменений" |
+| vendor/reference/1c-odata-mcp/CODE_OF_CONDUCT.md | Other | "Кодекс поведения участников" |
+| vendor/reference/1c-odata-mcp/CONTRIBUTING.md | Other | "Как внести вклад" |
+| vendor/reference/1c-odata-mcp/README.md | Other | "1c-odata-mcp — универсальный MCP-сервер для 1С:Предприятие через OData" |
+| vendor/reference/1c-odata-mcp/SECURITY.md | Other | "Политика безопасности" |
+| vendor/reference/1c-odata-mcp/docs/AUDIT-HISTORY.md | Other | "Хронология документов 1С через стандартный OData" |
+| vendor/reference/1c-odata-mcp/docs/CONNECTING.md | Other | "Подключение и настройка" |
+| vendor/reference/1c-odata-mcp/docs/ODATA-SETUP.md | Other | "Как включить OData при разном развёртывании 1С" |
+| vendor/reference/1c-odata-mcp/docs/PUBLISHING-MCPB.md | Other | "Обновление листинга на Smithery (MCPB-бандл)" |
+| vendor/reference/1c-odata-v3/.changeset/mcp-connection-source-seam.md | Other |  |
+| vendor/reference/1c-odata-v3/.changeset/mcp-db-secret-source-and-verify-connectivity.md | Other |  |
+| vendor/reference/1c-odata-v3/.changeset/mcp-internal-reexports.md | Other |  |
+| vendor/reference/1c-odata-v3/.changeset/node-24-lts-floor.md | Other |  |
+| vendor/reference/1c-odata-v3/CLAUDE.md | Other | "CLAUDE.md" |
+| vendor/reference/1c-odata-v3/README.md | Other | "1c-odata" |
+| vendor/reference/1c-odata-v3/STABILITY.md | Other | "Stability Policy" |
+| vendor/reference/1c-odata-v3/docs/1c/markdown/17.4_-_Cтандартный_интерфейс_OData_8_3_27.md | Other |  |
+| vendor/reference/1c-odata-v3/examples/README.md | Other | "Examples" |
+| vendor/reference/1c-odata-v3/examples/basic/README.md | Other | "basic — 1c-odata example consumer" |
+| vendor/reference/1c-odata-v3/examples/dynamic/README.md | Other | "dynamic — no-codegen mode" |
+| vendor/reference/1c-odata-v3/packages/cli/CHANGELOG.md | Other | "@1c-odata/cli" |
+| vendor/reference/1c-odata-v3/packages/cli/README.md | Other | "@1c-odata/cli" |
+| vendor/reference/1c-odata-v3/packages/client/CHANGELOG.md | Other | "@1c-odata/client" |
+| vendor/reference/1c-odata-v3/packages/client/README.md | Other | "@1c-odata/client" |
+| vendor/reference/1c-odata-v3/packages/mcp/CHANGELOG.md | Other | "@1c-odata/mcp" |
+| vendor/reference/1c-odata-v3/packages/mcp/README.md | Other | "@1c-odata/mcp" |
+| vendor/reference/1c-odata-v3/packages/metadata/CHANGELOG.md | Other | "@1c-odata/metadata" |
+| vendor/reference/1c-odata-v3/packages/metadata/README.md | Other | "@1c-odata/metadata" |
+| vendor/reference/1c-odata-v3/snapshots/README.md | Other | "Snapshots" |
+| vendor/reference/mcp-rsv-data/LICENSE.ru.md | Other | "Лицензия MIT — неофициальный перевод" |
+| vendor/reference/mcp-rsv-data/README.md | Other | "MCP:RSV Data" |
+| vendor/reference/mcp-rsv-data/bridge/README.md | Other | "MCP:RSV Data — мост (Go)" |
+| vendor/reference/mcp-rsv-data/guide.md | Other | "MCP:RSV Data — пользовательское описание" |
+
+## Scanned refs
+
+| Ref | Commit |
+| --- | --- |
+| refs/heads/archive/ERP_MCP-phase2-0-065f3e66 | `065f3e66ab2a09d59b3f580dd27d2cd41f212050` |
+| refs/heads/archive/ERP_MCP-phase2-1-5a63da88 | `5a63da880f5a3897fbfdbaf6370399a32447509c` |
+| refs/heads/archive/ERP_MCP-phase2-2-95a6a92c | `95a6a92c94935673d92f1e46e9da7738e156bf59` |
+| refs/heads/archive/ERP_MCP-phase2-3-aed0948f | `aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e` |
+| refs/heads/archive/ERP_MCP-phase2-4-af2f36a1 | `af2f36a17e16d8bafc3bfa36cbe569898e5b299d` |
+| refs/heads/archive/ERP_MCP-phase2-5-bc25fb6d | `bc25fb6d723382683cfe22e723002011b0020730` |
+| refs/heads/archive/ERP_MCP-phase2-6-c54be14e | `c54be14ee82b5dd2b5c8a52d988b8cf7229527a3` |
+| refs/heads/archive/ERP_MCP-phase2-7-d4bad307 | `d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39` |
+| refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
+| refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
+| refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
+| refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
+| refs/heads/integrate/2026-10-20 | `97e6ef8d80f2a8342da288db400bdf762c11364b` |
+| refs/heads/integration/1c-mvp-production-candidate | `125cd8caff236212202552196290179550bb5597` |
+| refs/heads/main | `97e6ef8d80f2a8342da288db400bdf762c11364b` |
+| refs/heads/phase/p6-rsv-bridge-boundary | `c9a3bf4a70a2b1ad949030f47a65200e09134d14` |
+| refs/heads/rescue/dangling-001-2026-10-20 | `1294b42a280f429d329acf523f0d4d6f1858e50b` |
+| refs/heads/rescue/dangling-002-2026-10-20 | `3225af765887bb5d6d9235b073c2cd67303df4bd` |
+| refs/heads/rescue/dangling-003-2026-10-20 | `aca610e22acdebbf8a68421f3faacffbdb07d121` |
+| refs/heads/rescue/dangling-004-2026-10-20 | `5aaa5ae16957326227ca8634f95dc295474b8999` |
+| refs/heads/rescue/dangling-005-2026-10-20 | `6aaed8c732e8c8546fa171d61044dd88ce1d9947` |
+| refs/heads/rescue/dangling-006-2026-10-20 | `9e3ed8e55991a1d8ff800418df2d90330c5f1acc` |
+| refs/heads/rescue/dangling-007-2026-10-20 | `debf62f5deccf35239ed154c7215144e8e6533b9` |
+| refs/heads/rescue/dangling-008-2026-10-20 | `7b4b9417e50038baca833c2f57311a9304450b8f` |
+| refs/heads/rescue/dangling-009-2026-10-20 | `b354df58ac5671cda81646713e994fe16c3c9b54` |
+| refs/heads/snapshot/ERP_MCP-primary-2026-10-20 | `33fc453246356d24c7e7dc6336aecf41a2e98def` |
+| refs/heads/snapshot/trash-ERP_MCP-chatgpt-2026-10-20 | `04ec959072d95bfa03c104cb8839f300198937d5` |
+| refs/heads/snapshot/trash-ERP_MCP-phase2-2026-10-20 | `8c138f94951f3c882596420ced91ef150e9072d1` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-0-065f3e66 | `065f3e66ab2a09d59b3f580dd27d2cd41f212050` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-1-5a63da88 | `5a63da880f5a3897fbfdbaf6370399a32447509c` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-2-95a6a92c | `95a6a92c94935673d92f1e46e9da7738e156bf59` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-3-aed0948f | `aed0948fb1da1b72f76d5e46a9e3ab5c688ba97e` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-4-af2f36a1 | `af2f36a17e16d8bafc3bfa36cbe569898e5b299d` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-5-bc25fb6d | `bc25fb6d723382683cfe22e723002011b0020730` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e | `c54be14ee82b5dd2b5c8a52d988b8cf7229527a3` |
+| refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307 | `d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39` |
+| refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
+| refs/remotes/origin/docs/english-only-translation-20261010 | `8d17448cf2788f48a2b3f26eb70800cefed4d992` |
+| refs/remotes/origin/docs/public-readme-install-guide-20261009 | `26324d43e9d42af8512f0f531f98770c0cf7daa0` |
+| refs/remotes/origin/integration/1c-mvp-production-candidate | `78493a3ab5a5d7309aeadd1af21c6b69b6d03448` |
+| refs/remotes/origin/main | `0d2a044c3af121017d932209f08c3c0eec9d6bb3` |
+| refs/remotes/origin/phase2/living-model-connectors-reconciliation | `88753c207602927c0a72ce2805534b4929e4879f` |
+| refs/remotes/r2local/main | `7d9a01df9c649b2137bc19bf25590968d63eeaca` |
 
 ## Markdown untracked in at least one attached worktree (paths only)
 
 | Path |
 | --- |
-| docs/phase2/ADR_G0_SOURCE_BINDING_PROPOSAL_2026-10-09.md |
-| docs/phase2/FULL_CLOSURE_BLOCKERS_2026-10-09.md |
-| docs/phase2/RESNAPSHOT_CURSOR_BINDING_REVIEW_2026-10-09.md |

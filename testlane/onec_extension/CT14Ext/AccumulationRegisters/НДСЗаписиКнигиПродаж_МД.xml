@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="8cbb3d62-e966-4779-b745-cd8e143b91a0">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.НДСЗаписиКнигиПродаж_МД" category="Record">
+				<xr:TypeId>a6f5beba-4439-4db0-8105-8c1a39849e42</xr:TypeId>
+				<xr:ValueId>0ef4f33a-50d3-420c-b459-0f208264040b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.НДСЗаписиКнигиПродаж_МД" category="Manager">
+				<xr:TypeId>361b1718-2e34-433c-b40e-4196a244c89f</xr:TypeId>
+				<xr:ValueId>510c8d62-245f-4165-853b-76e69623a06b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.НДСЗаписиКнигиПродаж_МД" category="Selection">
+				<xr:TypeId>1680d235-a3e5-4563-b36b-5246b5da878a</xr:TypeId>
+				<xr:ValueId>a3a36a50-f643-48ff-af5b-ee253124f968</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.НДСЗаписиКнигиПродаж_МД" category="List">
+				<xr:TypeId>991c77a9-3992-4756-bd12-1c602a01103c</xr:TypeId>
+				<xr:ValueId>3316a688-7115-44fe-b7a4-7889fe5e2816</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.НДСЗаписиКнигиПродаж_МД" category="RecordSet">
+				<xr:TypeId>c5464493-ae6f-4ac3-b964-866261fff7c6</xr:TypeId>
+				<xr:ValueId>4343b399-cc06-4867-8f7d-969d2d6d2ed3</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.НДСЗаписиКнигиПродаж_МД" category="RecordKey">
+				<xr:TypeId>92dd8d7b-e8fe-463a-a0a6-b5c11f56fda3</xr:TypeId>
+				<xr:ValueId>c21725bb-a09d-4e38-8a47-fb33415fe28c</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>НДСЗаписиКнигиПродаж_МД</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>349d099a-bbd8-4336-b327-99dba332ddbf</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

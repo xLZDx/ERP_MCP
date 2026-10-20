@@ -1,0 +1,115 @@
+# Simulation program plan: synthetic lane checkpoint
+
+Date: 2026-10-15. Status: checkpoint for the NON-GATING prototype. Nothing here is gate evidence, and no real 1C is touched.
+
+## 1. Decision and limits
+
+The operator delegated simulation of unavailable systems with synthetic accounts, keys, identities and data. The simulation
+can exercise ledger and writer behavior against deterministic stand-ins. It cannot establish behavior of clone
+818HA_p2diff, real hosts, real identities, or real key custody.
+
+Current manifest state: G0 is PASSED for the narrow prototype scope; G1–G8 are NOT_PASSED; formal S13 remains not started/not approved for formal entry; production authorization is NONE; Release 2 is NO-GO. The supplied GPT-PM ruling allows prototype-level closure and partial findings
+only. Synthetic accounts, keys and records remain `lane = TEST` and must never acquire production authority.
+
+## 2. Workstream status
+
+| Id | Workstream | State | Evidence / limit |
+|---|---|---|---|
+| P0 | Migration 013 dispatch invariant and live ACL re-check | F-02 CLOSED as prototype | GPT-PM ruling for 7201cac..598a7a5; not production qualification. |
+| P1 | Ed25519 verifier/signer and RFC 8032 vectors | Implemented in prototype; D9 OPEN | Synthetic crypto fixtures do not establish production identity or key custody. |
+| P2 | Synthetic identities, clone, checkpoint host, witness and MFA lane | PARTIAL | C-M01, C-M02 and MFA remain PARTIAL; identity-provider evidence is simulated. |
+| P3 | Signed preview and observed state | PARTIAL / OPEN | A7-B02 PARTIAL; B6-g OPEN. |
+| P4 | Reference writer and clone-signed receipt wired to SQL ledger | PARTIAL | Combined SQL path and receipt hardening are implemented. Ledger digest remains the 009 typed-payload digest rather than wire-byte digest, and the receipt marker is opt-in. F-01 remains PARTIAL. |
+| P5 | Combined synthetic end-to-end scenarios | Runtime verified on the synthetic lane | Independent focused runs passed 849 tests across 16 files. The requested `test_change_port.py` path does not exist; `test_change_ledger_port.py` passed 16/16. This is not production or release-gate evidence. |
+| P6 | RU/EN report, decision log and closure ruling | Exact-range GPT-PM APPROVE received; approved code range pushed | GPT-PM request `9e9dc3a4-48f8-405e-a89e-d0903c8d5549` approved `598a7a50bbe131ede43c28f7e1bac39804c70df5..2edc82eab3f2a99a08bc07581ff7a37e08a22e75` as a NON-GATING prototype. No confirmed BLOCKER/MAJOR; two MINOR report references were historical and are corrected in this document follow-up. The approved range was pushed to `origin/main`. |
+
+## 3. Earlier review ruling snapshot
+
+GPT-PM request `e81a6d35` approved range `7201cac..598a7a5` as a prototype. Maximum statuses: F-02 CLOSED prototype,
+F-01 PARTIAL, A7-B02 PARTIAL, B6-g OPEN, D9 OPEN, C-M01/C-M02/MFA PARTIAL. At this review snapshot G0-G8 were
+NOT_PASSED; formal S13 entry was NOT APPROVED; Release 2 was NO-GO. The later G0 decision is recorded in section 7.
+Named limits are R-01 opt-in receipt gate, R-02 digest model mismatch,
+R-03 legacy KEYED_HASH_STANDIN keys remain accepted after migration 015, and R-04 no combined bytes-to-clone-to-ledger
+test in the reviewed range.
+
+The earlier prototype work added the combined SQL scenario file and migration 017 and passed the listed independent focused runs.
+Independent database and end-to-end reviews are complete. The latter's MINOR test-wording finding was addressed; the test
+still deliberately does not claim that a receipt over the actual received wire-byte digest is rejected. GPT-PM request
+`9e9dc3a4-48f8-405e-a89e-d0903c8d5549` returned APPROVE for the exact range
+`598a7a50bbe131ede43c28f7e1bac39804c70df5..2edc82eab3f2a99a08bc07581ff7a37e08a22e75`; that approved range is now
+on `origin/main`. That prototype review did not change G0-G8, S13, or Release 2 status at the time; section 7 records the later G0 decision.
+
+## 4. Execution method and remaining evidence
+
+For the earlier prototype range, focused tests were run on one disposable `r2-s13-*` PostgreSQL container, one test file at a time. No full suites,
+CI, lint, typecheck, build, or mutation runs were used in that prototype work. Independent test and migration-review evidence is recorded in
+the change records and scratchpad logs. Exact-range GPT-PM approval was recorded above and the approved code range was
+pushed. The approval covers only the stated prototype range; current gate status is reconciled in section 7.
+
+## 5. Autonomous continuation: S14 synthetic receipt binding
+
+Operator GO of 2026-10-15 authorizes continued prototype work autonomously. The operator decision in the same-day
+log directs blocked real-system items to synthetic simulation only; simulation never qualifies the real clone, real
+identities, real keys, formal gates, staging or production.
+
+| Item | State | Evidence / limit | Remaining acceptance / owner |
+|---|---|---|---|
+| S14-R02 — bind the clone receipt to received wire bytes | CLOSED — NON-GATING SYNTHETIC PROTOTYPE PUSHED | Migration 018 keeps the approved typed digest separate from canonical wire SHA and checks the clone receipt against the latter. Focused SQL and dump/restore tests passed 9/9; combined SimulatedOneC-to-ledger E2E passed 15/15 on disposable PostgreSQL 16. Database review had no findings. GPT-PM approved final exact head `5acbb06b9ca52ebf5635f6e25a9feb4d4c8ab279` against base `3820e71c5acbba0c27ec3aee6ae50122aa865848` (request `77b44c13-73d7-490e-908a-8d1c06888dad`); push was verified on `origin/main`. Evidence: `CHANGE_RECORD_029.md`, `CHANGE_RECORD_031.md`, and `CHANGE_RECORD_033.md`. | Prototype acceptance is complete. Real COM/1C behavior, identity/key custody, staging, production, and release qualification remain outside this synthetic scope. Migration ran only inside disposable test databases; no human owner is recorded for prototype code. |
+| S14 remainder — write-port and unknown outcome | PARTIAL / NOT_GATE_EVIDENCE | Existing `ReferenceWriter`, `SimulatedOneC`, and updated SQL scenarios cover canonical receipt binding, altered wire bytes, noncanonical JSON, replay, and failure outcomes on the synthetic lane. No real COM adapter or 1C call is used. | Runtime identity, checkpoint, unknown-call ownership and real clone qualification remain outside this synthetic lane; they do not change the gate decisions recorded in section 7. |
+
+S14-R03 — reusable synthetic dispatch coordination is implemented in
+`simulation/synthetic_dispatch.py`, with scoped SQL port wrappers for receipt requirement and
+recording. The expanded functional coverage passed 7/7; the PostgreSQL 16 synthetic E2E file passed
+18/18, including coordinator success and unknown-crash behavior. Python review found ambiguity on a
+post-write receipt-persistence error; the typed failure path is fixed. Cancellation now remains an
+`asyncio.CancelledError` subclass while carrying the verified result; its task-cancellation regression
+passed. The E2E file passed 18/18 on rerun. Independent reviews found no BLOCKER/MAJOR and the
+task-lifecycle test gap is closed. Exact-head GPT-PM review was pending at this plan snapshot and was later approved for the exact range recorded below. This remains test-lane
+plumbing and does not implement the non-operational `OneCWritePort` or change the gates above.
+GPT-PM request `c6f839b8-0a67-4a32-a84b-7b7051034fc1` approved exact HEAD
+`f13e32026737a02bf1bee5e3b86dd91ba4b167ea` against base `0ffeb5529f8ec9664942f66a4791968db185d697`
+for push as a NON-GATING prototype. Push to `origin/main` was verified. The single INFO is a roadmap
+note that future blocking transport needs an execution model outside the current in-memory simulator.
+
+Migration 018 and the S14-R02 design are a pushed NON-GATING prototype. Focused execution proves only synthetic PostgreSQL/clone behavior. The exact approved five-commit range is on `origin/main`; the S14 scope does not alter G0-G8, formal S13 entry, or Release 2 status in sections 1–3.
+
+
+
+
+## 6. R-01/R-03 and release-gate continuation
+
+A documentation-only closure packet records proposed fail-closed production dispositions for R-01 and R-03 and their acceptance evidence. The proposals do not change the synthetic prototype, close either risk, or authorize real-system work. A subsequent read-only database/security review reconciled historical G1/S13 notes; see `G1_OPERATOR_BACKLOG.md` and `S13_REVIEW_FINDINGS_2026-10-12.md`. Current gate status is maintained in `governance/GATE_MANIFEST.json` and reconciled in section 7.
+
+## 7. Historical gate status snapshot as of 2026-10-15
+
+GPT-PM request `935d6eed-4690-46f6-867f-8085ea38a11d` approved G0 PASS for the exact scope and architecture evidence index at HEAD `fb6362b504a7e9bc3a3b75ca23ac024116729d58`, SHA-256 `be3c57eef57e513046a43b35dd95f7a5bbcf22a9354612edc2fe980c1e2ac51a`. The current manifest records G0 as PASSED / COMPLETE / SATISFIED with no production authorization. This is limited to the isolated prototype on `818HA_p2diff`; OB-15 deployment deferrals remain and `LICENSE_BOUNDARY_APPROVED` is NO.
+
+At the 2026-10-15 snapshot, G1–G8 were NOT_PASSED; formal S13 was NOT APPROVED; Release 2 was NO-GO. This is historical context; the current manifest records G0 PASSED for its narrow scope and the other gate states below. R-01 and R-03 remain OPEN. Earlier synthetic prototype tests are not evidence for these open gates.
+
+## 8. Current gate status update (2026-10-16)
+
+After the 2026-10-15 snapshot, selected local G1 scenarios were executed on disposable PostgreSQL fixtures. The corrected MAJOR-02 test matrix passed 24/24 variants after the observer was changed to prove the API query was active and blocked by the revoke transaction; database-reviewer confirmed the original evidence gap is resolved. The selected local runtime and specialist evidence is complete, but formal G1 remains `NOT_PASSED`. Current manifest state is G0 `PASSED` for the narrow approved scope; G1–G8 `NOT_PASSED`; formal S13 not started/not approved for formal entry; production authorization `NONE`; Release 2 `NO_GO`. The local series, including the selected G1 evidence, was pushed through `1ec73879ade35b112c428c9885b55c46452aa7df`. Any subsequent push requires the exact-head GPT workflow. These local scenarios do not establish deployed identity, grants, or production capacity; see `G1_EVIDENCE_PACKET_PLAN.md` for the local-push and formal-gate boundaries.
+
+## 9. Historical R-01/R-03 source revalidation (2026-10-16)
+
+The source inventory was revalidated at code HEAD `ecd1779673f00209ac540729f420c2b4d5dddbbe`; the R-03 row below is now historical because migrations 019/021 subsequently addressed the local action-consumer gap. This section establishes repository source behavior at that earlier revision only, not deployment or live database state. Lane labels are work directions; no named human owner is recorded.
+
+| Risk | State and verified source behavior | Required disposition / acceptance | Owner |
+|---|---|---|---|
+| R-01 — receipt required at every production write boundary | OPEN. Migration 016's marker remains opt-in and omission preserves legacy `APPLIED` completion; migration 017 carries an existing marker; 018 wire-binds the receipt without making the marker mandatory. `SyntheticDispatchCoordinator` and `ReferenceWriter` are synthetic, and `OneCWritePort` is only a protocol. No production entry-point/deployment inventory is present. | Inventory actual production entry points, roles and completion paths; enforce fail-closed receipt verification at the trusted boundary; address signer/custody, payload binding, replay and unknown outcomes; provide negative receipt evidence and independent DB/security review. | Project design lane; no named human. |
+| R-03 — legacy verifier keys for new actions (historical pre-019/021 source finding) | At this snapshot migration 015–018 allowed the source behavior described above. This is not the current local implementation. Migrations 019/021 now enforce Ed25519 on new signed writes and state-changing consumption of legacy evidence; CR112/115/116 record focused runtime and DB/security evidence. Formal R-03 remains OPEN. | Obtain deployed non-secret key/use inventory and independently verified custody/provenance; address signing-time algorithm/fingerprint limits; define reversible production cutover and complete gate-specific review. | Key-governance lane; no named human. |
+
+Neither formal risk is closed. No deployed keys, secrets, signatures, production write paths or live database state were inspected for the historical inventory. Current branch and `origin/main` are at `1ec73879ade35b112c428c9885b55c46452aa7df`; this documentation update creates a new unpushed HEAD and is subject to the exact-head GPT workflow before a subsequent push.
+
+## 10. Current owner ruling and next engineering scope (2026-10-16)
+
+GPT owner ruling `b4e09308-7ae8-4170-92df-81ae67177bc1` grants autonomous local engineering GO and selects S12 Contract Freeze v2.0 as the next sprint. GPT subsequently approved Option A: model a signed `DispatchReceipt` separately from independent signed `OutcomeEvidence`; limit v2.0 writes to `CREATE_DRAFT`, `POST`, and `UNPOST`. The S12 freeze artifact is maintained outside this historical simulation plan. These decisions do not change `governance/GATE_MANIFEST.json`: G0 remains PASSED for its narrow scope; G1–G8 remain NOT_PASSED; S13 remains NOT_STARTED for formal entry; Release 2 remains NO_GO; production authorization remains NONE.
+
+| Item | Current state and evidence | Remaining acceptance / owner |
+|---|---|---|
+| R-01 | OPEN formally. Local receipt marker remains optional; no production writer inventory is available. | Define trusted write boundaries and receipt enforcement; engineering design direction, no named human. |
+| R-03 | OPEN formally. Local migrations 019/021 and CR112/115/116 complete prototype implementation and focused evidence. | Deployed key inventory/custody, signing-time provenance limits, reversible cutover and formal review; key-governance direction, no named human. |
+| S13 reliability MINOR | Deferred to S18 by GPT ruling; no known false OFF transition. | Address nonce/record lock order and add deterministic contention evidence in S18; engineering/S18, no named human. |
+| G4 / Drive | v2.0 target excludes Drive; manifest remains unchanged and G4 is not passed. | Obtain applicable formal scope/waiver authority before manifest edit; scope/gate authority, no named human. |
+| CT14 | Partial evidence on disposable file clone only. | Exclude OData writes, contract update, forced session termination, and unrelated work during unresolved call from v2.0 write scope; S12/CT14 engineering. |
+| Evidence results | Local results are recorded by exact command and scenario in CR112–119. | `PASS` requires explicit terminal PASS tied to exact revision and completed harness; zero exit, `NOT_RUN`, or `SKIP` alone is not PASS. Required tests owned by functional-test-reviewer/e2e-runner. |

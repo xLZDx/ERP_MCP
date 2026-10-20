@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<AccumulationRegister uuid="82e483a6-db1e-4028-8e66-936b19ce13e2">
+		<InternalInfo>
+			<xr:GeneratedType name="AccumulationRegisterRecord.СведенияОбИнвестициях" category="Record">
+				<xr:TypeId>7041aeb3-a997-4c89-b1c2-37e06d92df3f</xr:TypeId>
+				<xr:ValueId>b38ed202-caf7-4a63-831f-6c295884c262</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterManager.СведенияОбИнвестициях" category="Manager">
+				<xr:TypeId>967954a2-0820-4ae3-82ca-c10e1c6b01e7</xr:TypeId>
+				<xr:ValueId>4cc3e88a-f0b4-4e03-81d8-e7a6643833c7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterSelection.СведенияОбИнвестициях" category="Selection">
+				<xr:TypeId>1ed54dcd-1332-4303-92d5-6ff63fff40c5</xr:TypeId>
+				<xr:ValueId>fed1fbe3-b565-4919-b588-a4cf753aa65a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterList.СведенияОбИнвестициях" category="List">
+				<xr:TypeId>15fe5ea5-4992-439e-a8a1-80bac3320d41</xr:TypeId>
+				<xr:ValueId>e5f8a399-84c4-4ae9-be83-92a0f02d8107</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordSet.СведенияОбИнвестициях" category="RecordSet">
+				<xr:TypeId>3ba09284-9f79-4ad6-851a-1957320af5f9</xr:TypeId>
+				<xr:ValueId>03768017-49b5-4506-bac9-0d3ecbfe35e1</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="AccumulationRegisterRecordKey.СведенияОбИнвестициях" category="RecordKey">
+				<xr:TypeId>67548665-f274-45b0-a430-12a2b32e66d3</xr:TypeId>
+				<xr:ValueId>a6de58dc-b168-4f86-b59a-e8e1f88b183f</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СведенияОбИнвестициях</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>7900c44a-3a12-4b43-996b-4b1d53248320</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</AccumulationRegister>
+</MetaDataObject>

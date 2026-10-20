@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S12 entry and S13 prototype progress (2026-10-14)</title>
+<style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px auto;max-width:980px;padding:0 16px;color:#1b1f23;background:#fff}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #d0d7de;padding:6px 8px;text-align:left;vertical-align:top;font-size:14px}
+th{background:#f6f8fa}
+.warn{background:#fff8c5;border:1px solid #d4a72c;padding:8px 12px}
+</style>
+</head>
+<body>
+<header>
+<h1>S12 test-lane entry and S13 prototype progress</h1>
+<p>ERP_MCP_R2, 2026-10-14. Non-gating prototype: nothing here is gate evidence. Release 2: NO-GO. G0-G8: NOT_PASSED.</p>
+</header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP_R2</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP_R2</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP_R2.git &mdash; main @ 6d6263a</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+
+<h2>Summary</h2>
+<p>GPT-PM approved formal S12 entry for the isolated test lane (contract revision 6, clone 818HA_p2diff). S13 remediation batches A and B (rounds 1 and 2) are implemented as a non-gating prototype with agent-reported test results; round 3 (B6) is in progress. Nothing authorizes a real write to 1C.</p>
+
+<h2>Gate decisions</h2>
+<table>
+<tr><th>Item</th><th>Status</th><th>Evidence</th></tr>
+<tr><td>S12 contract revision 6 (sha256 0aa4a766...f38)</td><td>Technical APPROVE retained</td><td>GPT-PM reviews 3e9a0f47, b27d5c18, c4a81d36</td></tr>
+<tr><td>S12 formal test-lane entry</td><td>APPROVED (FORMAL_ENTRY_APPROVED_TEST_LANE)</td><td>GPT-PM request c4a81d36 at head eabafaf; local record in core/DECISION_LOG.md</td></tr>
+<tr><td>OB-01</td><td>Accepted: prototype until G0, clone only, no R1 rebaseline</td><td>Operator answers of 2026-10-14</td></tr>
+<tr><td>OB-15</td><td>ACCEPTED_WITH_NAMED_DEFERRAL</td><td>Inventory sections 9, 9a, 9b; deferred: SBOM or lock file, host binary licenses and checksums</td></tr>
+<tr><td>S13 non-gating prototype</td><td>Authorized</td><td>Operator and GPT-PM, 2026-10-14</td></tr>
+<tr><td>S13 formal dependent entry</td><td>NOT APPROVED</td><td>GPT-PM c4a81d36</td></tr>
+<tr><td>D9, D10b and other identities</td><td>Agent-selected test placeholders until the first real 1C write</td><td>Operator decision</td></tr>
+</table>
+
+<h2>S13 prototype work</h2>
+<table>
+<tr><th>Part</th><th>Commit</th><th>Agent-reported test results</th></tr>
+<tr><td>Batch A (migration 007, A1-A8)</td><td>40ce0ee, pushed</td><td>Independent run, one file at a time: port 16, sweeps 26, registry 62, ledger 69, offline 529 passed, 0 failed</td></tr>
+<tr><td>pg_dump / pg_restore round trip</td><td>8e3db66, pushed</td><td>6 passed (agent-reported); one real pg_dump limit: database-wide default privileges are not carried by a schema dump</td></tr>
+<tr><td>Batch B round 1 (B1-B3: budget, scope, registry default)</td><td>0679ac1, local</td><td>14, 16, 26, 62, 69 passed (agent-reported, not independently re-run)</td></tr>
+<tr><td>Batch B round 2 (B4-B5: anchor release, lock order, sweeps)</td><td>1933de5, local</td><td>13, 14, 16, 26, 62, 69, 6 passed (agent-reported, not independently re-run)</td></tr>
+<tr><td>Batch B round 3 (B6 minors)</td><td>in progress</td><td>not committed</td></tr>
+</table>
+
+<h2>Remaining and blocked</h2>
+<table>
+<tr><th>Item</th><th>Class</th><th>Note</th></tr>
+<tr><td>Independent verification of rounds 1-3 and push</td><td>Doable</td><td>After B6</td></tr>
+<tr><td>Registry change two-person control; operator and witness session check</td><td>Doable</td><td>Open items left by round 1</td></tr>
+<tr><td>Approval digest unification (offline versus SQL)</td><td>External</td><td>Needs a GPT-PM design ruling</td></tr>
+<tr><td>Real D9 checkpoint host and Ed25519 signer, real D10b witness</td><td>Operator</td><td>Needed before the first real 1C write</td></tr>
+<tr><td>SBOM, host binary checksums, LICENSE for R2</td><td>Operator</td><td>Deferred by the operator to deployment qualification</td></tr>
+</table>
+
+<h2>Limits</h2>
+<p class="warn">Keyed-hash signatures are stand-ins until the Ed25519 signer exists. No CI, lint or full suite was run, by operator rule. Test numbers marked agent-reported were not re-run by the main session.</p>
+
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body>
+</html>

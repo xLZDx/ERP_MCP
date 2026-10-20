@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<InformationRegister uuid="0c757c2e-00cf-4efd-8ec0-d6209fccad2e">
+		<InternalInfo>
+			<xr:GeneratedType name="InformationRegisterRecord.ПараметрыАмортизацииОСБухгалтерскийУчет" category="Record">
+				<xr:TypeId>61c472aa-8207-4ef9-996c-4754e9d85c41</xr:TypeId>
+				<xr:ValueId>fd1bb073-86f9-48fa-b8c1-ab46df63f95a</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterManager.ПараметрыАмортизацииОСБухгалтерскийУчет" category="Manager">
+				<xr:TypeId>39db815c-5fc4-4214-ad6b-1c5d1f303a3f</xr:TypeId>
+				<xr:ValueId>977db99f-e65e-456e-9a1c-6b2807130cc8</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterSelection.ПараметрыАмортизацииОСБухгалтерскийУчет" category="Selection">
+				<xr:TypeId>e29f8a55-3cdd-4c8d-b275-1738517b5f76</xr:TypeId>
+				<xr:ValueId>fcb541f1-46c3-430a-bfca-ef7627c63ddf</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterList.ПараметрыАмортизацииОСБухгалтерскийУчет" category="List">
+				<xr:TypeId>0662ce3f-2eea-40f8-b731-f85d5d3e6dbb</xr:TypeId>
+				<xr:ValueId>6e4ec09f-4252-44bb-8296-5da5b0029e9c</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordSet.ПараметрыАмортизацииОСБухгалтерскийУчет" category="RecordSet">
+				<xr:TypeId>cfc7c166-6915-4a0f-951f-6c8d58cba27e</xr:TypeId>
+				<xr:ValueId>ec37c34c-5a81-4c8a-90f2-570600de0c43</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordKey.ПараметрыАмортизацииОСБухгалтерскийУчет" category="RecordKey">
+				<xr:TypeId>d060468c-8f56-4c3c-a0f4-f7936a6dc6ce</xr:TypeId>
+				<xr:ValueId>a31edfd3-89c7-4c3e-883f-068dcf73264b</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="InformationRegisterRecordManager.ПараметрыАмортизацииОСБухгалтерскийУчет" category="RecordManager">
+				<xr:TypeId>996fc619-41c2-452a-a248-6523ed572867</xr:TypeId>
+				<xr:ValueId>a419cd91-4aad-4e8f-ba12-907aee6a5237</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ПараметрыАмортизацииОСБухгалтерскийУчет</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>0234b93c-a86c-40c8-8b95-1cfeb665f245</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</InformationRegister>
+</MetaDataObject>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<Sequence uuid="c4bf75e5-b003-4c69-a388-737bcb41de3d">
+		<InternalInfo>
+			<xr:GeneratedType name="SequenceRecord.ДокументыОрганизаций" category="Record">
+				<xr:TypeId>811fb03c-f171-4fb6-8df4-3744b92d85fe</xr:TypeId>
+				<xr:ValueId>e880a921-a010-4bac-9335-73b82daf76d6</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="SequenceManager.ДокументыОрганизаций" category="Manager">
+				<xr:TypeId>7fedbd67-3d13-4a78-8ce2-b236ae44acb1</xr:TypeId>
+				<xr:ValueId>67435fb9-a2e9-445c-9f87-28f8dd7af962</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="SequenceRecordSet.ДокументыОрганизаций" category="RecordSet">
+				<xr:TypeId>5bf66984-0ab8-4d7e-b500-af7b9aa783d5</xr:TypeId>
+				<xr:ValueId>de39dd7f-b5c0-49d0-af39-9f2e7c952c56</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ДокументыОрганизаций</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>4390326e-700d-4708-bc07-83b90394bc0e</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects/>
+	</Sequence>
+</MetaDataObject>
