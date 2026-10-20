@@ -343,7 +343,13 @@ def test_compare_raising_is_masked() -> None:
 def test_compare_returning_wrong_type_or_foreign_authority_is_rejected() -> None:
     env = _Env(compare=lambda n, g: "MATCH")
     _assert_denied(env.runner.run(env.request()), "COMPUTE_FAILED")
-    promoted = Comparison(ComparisonState.MATCH, "X", "p", (), authority="PROMOTED")
+    # Comparison.__post_init__ rejects any authority except EVALUATION_ONLY, so a forged value
+    # cannot be constructed normally; bypass the validator to prove the runner still rejects a
+    # foreign authority returned by a comparator.
+    with pytest.raises(ValueError, match="RECONCILIATION_AUTHORITY_FORBIDDEN"):
+        Comparison(ComparisonState.MATCH, "X", "p", (), authority="PROMOTED")
+    promoted = Comparison(ComparisonState.MATCH, "X", "p", ())
+    object.__setattr__(promoted, "authority", "PROMOTED")
     env2 = _Env(compare=lambda n, g: promoted)
     _assert_denied(env2.runner.run(env2.request()), "COMPUTE_FAILED")
 

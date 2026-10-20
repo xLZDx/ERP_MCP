@@ -5,3 +5,5 @@
 - 2026-10-20 SHORTCOMING integrate docs-english-only: a scripted conflict resolution on a CRLF-checked-out file wrote mixed line endings (found by counting CR/CRLF against the branch blobs). Next time: count bytes against the committed blob after any scripted write.
 
 - 2026-10-20 SHORTCOMING integrate phase2: two parallel branches edited the same docs (one translated, one extended) so text conflicts were unavoidable; status notes were appended untranslated rather than translated. Rule: land translation work after content branches, or translate in the same pass.
+
+- 2026-10-20 FAILURE (caught by tests) integrate: the combined tree failed one phase2 test because two branches changed the same invariant independently (validator vs forged-value test). Rule: after combining hardening and tests, run the whole new test directory, and rewrite the forging helper rather than relax the validator.

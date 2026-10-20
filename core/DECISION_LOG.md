@@ -567,3 +567,5 @@ eal1c_e2eutostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is id
 - 2026-10-20 integrate: merged origin/docs/english-only-translation-20261010 by hand. Kept the English text and added English translations of BASE-only facts in docs/phase2/README.md; PACKAGE_COMPLETION_RU.md took the branch side. See docs/commits/2026-10-20-integrate-docs-english-only-translation.md.
 
 - 2026-10-20 integrate: merged origin/phase2/living-model-connectors-reconciliation by hand. Kept the union of DECISION_LOG entries; English-translated phase2 docs keep English text, branch status text appended untranslated at file end. Known test trap fixed in the next commit. See docs/commits/2026-10-20-integrate-phase2-living-model-connectors-reconciliation.md.
+
+- 2026-10-20 integrate: kept BASE reconciliation authority validators; phase2 forged-authority test builds the forged value via object.__setattr__ and also asserts the constructor rejects it.
