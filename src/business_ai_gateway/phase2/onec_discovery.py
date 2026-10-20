@@ -35,6 +35,10 @@ class ObservedMetadata:
     # Objects removed from fingerprint.objects because entity_allowed did not say True.
     withheld_objects: int = 0
 
+    def __post_init__(self) -> None:
+        if type(self.trust) is not str or self.trust != "OBSERVED_ONLY":
+            raise ValueError("PHASE2_METADATA_TRUST_FORBIDDEN")
+
 
 class OneCMetadataDiscovery:
     """Never makes its own network connection or accepts a URL from the user.
