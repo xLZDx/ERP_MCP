@@ -106,6 +106,50 @@ failed before authentication with the same strict host-key error. No remote comm
 executed. Strict checking was retained; no host-key checking option was weakened and no
 key was written to `known_hosts`.
 
+### SSH identity and trust recheck — 2026-10-22
+
+- Project inventory found no repository-local SSH key or `known_hosts` file. The default
+  local identity at `~/.ssh/id_ed25519` and its public companion have matching SHA-256
+  fingerprints (the client fingerprint is omitted from this project record). Its ACL grants
+  FullControl to the current user, SYSTEM, and Administrators; all three entries are inherited.
+  The SSH agent is unavailable (`ssh-add -l` exited 2 with “Error connecting to agent: No such
+  file or directory”). This establishes local file readability, not that the key is authorized
+  for the ERP host; that association remains **NOT_VERIFIED**.
+- Read-only trust-store commands were `ssh-keygen -F ivan.tail08f9f9.ts.net -f
+  "$env:USERPROFILE/.ssh/known_hosts"` and the same command with `known_hosts.old`. Both
+  exited 1 without a match. `Test-Path C:\ProgramData\ssh\ssh_known_hosts` returned `False`.
+- `ssh-keyscan -T 5 -t ed25519 ivan.tail08f9f9.ts.net` observed host fingerprint
+  `SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ`. This is network-observed key
+  material only; no authenticated out-of-band record in the project matches it, so it
+  was not trusted or written to a known-hosts file.
+- A fresh `tailscale ping --timeout=8s ivan.tail08f9f9.ts.net` returned a pong from
+  `100.88.71.74` in 2 ms. Strict OpenSSH used `ssh -T -o BatchMode=yes
+  -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -i "$env:USERPROFILE/.ssh/id_ed25519"
+  -o "UserKnownHostsFile=$env:USERPROFILE/.ssh/known_hosts" -o ConnectTimeout=8
+  koros@ivan.tail08f9f9.ts.net exit`; it exited 255 with “No ED25519 host key is known” and
+  “Host key verification failed.” `IdentitiesOnly=yes` and the explicit identity limit this
+  attempt to that one identity. `tailscale ssh ivan.tail08f9f9.ts.net whoami` also exited 255
+  with the same host-key error. Both stopped before authentication. No remote command ran.
+- The exact access blocker remains an authenticated out-of-band source for the Ivan
+  host key. A live Tailscale peer, a scanned key, and a matching client key do not
+  establish remote identity or SSH authorization.
+
+Essential command/output summary (PowerShell; no key blobs or credentials recorded):
+
+```text
+ssh-keygen -lf "$env:USERPROFILE/.ssh/id_ed25519"       -> SHA256 fingerprint A
+ssh-keygen -lf "$env:USERPROFILE/.ssh/id_ed25519.pub"   -> same SHA256 fingerprint A
+(Get-Acl "$env:USERPROFILE/.ssh/id_ed25519").Access      -> owner, SYSTEM, Administrators; FullControl; inherited
+ssh-add -l                                                -> exit 2, agent unavailable
+ssh-keygen -F <Ivan-host> -f <known_hosts file>           -> exit 1, no match (both files)
+Test-Path C:\ProgramData\ssh\ssh_known_hosts            -> False
+ssh-keyscan -T 5 -t ed25519 <Ivan-host> | ssh-keygen -lf -
+                                                         -> SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ (untrusted)
+tailscale ping --timeout=8s <Ivan-host>                    -> pong from 100.88.71.74, 2 ms
+strict OpenSSH command above                              -> exit 255, unknown host key
+tailscale ssh <Ivan-host> whoami                           -> exit 255, unknown host key
+```
+
 No remote status, 1C environment verification, MCP read, task start, or token mint was
 performed. Exact dependency: the host key must be trusted by the OpenSSH/Tailscale SSH
 path. A live Tailscale peer and open TCP port are network reachability evidence only.
