@@ -174,3 +174,31 @@ erpmcp-e2e-real1c-redis-1 Up 58 minutes (healthy) 127.0.0.1:19379->6379/tcp
 This records the observed container status and host bindings at that time only. Container
 ownership/origin and later runtime state are not established by this command. No database
 connection, migration, or business read was attempted.
+
+## Local project and SSH key inventory — 2026-10-22
+
+- A path-only inventory of tracked project files found no tracked private-key material
+  file; `git grep -Il -E 'BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY|BEGIN PRIVATE KEY'`
+  returned no matching tracked paths. The repository `.gitignore` excludes `.env` and
+  common private-key extensions such as `.pem`, `.key`, and `.pfx`, while permitting only
+  the tracked `.env.*.example` files. The conventional root `.env`, `.env.development`,
+  `.env.production`, and `.env.local` paths were absent. A path-only ignored/untracked
+  filename inventory found no credential-named candidates outside dependency/cache
+  directories. These path-only inventories did not read file contents. SSH key files were
+  parsed only by `ssh-keygen -lf` to obtain fingerprints; private bytes were not displayed
+  or recorded.
+- A recursive filename-only inventory of the user SSH directory found three private/public
+  identity pairs and no other key files (`id_ed25519`,
+  `trading_bot`, and `vmc_collector_vps`). For each pair, `ssh-keygen -lf` reported matching
+  fingerprints. Private-file ACLs grant access to the current user, SYSTEM, and
+  Administrators; `trading_bot` uses explicit entries and the other two use inherited
+  entries. The public `trading_bot.pub` grants Everyone read access, which is public-key
+  material. Key purpose and authorization to any ERP service remain **NOT_VERIFIED**;
+  filenames do not establish their service association. Fingerprint values are omitted.
+- This inventory does not inspect connected-app OAuth secrets, secret-provider contents,
+  or live database key rows. The existing application connectors did not provide an
+  authenticated ERP source response, and no secret-bearing store was opened.
+
+These checks supplement, but do not change, the Ivan host-trust finding above: no trusted
+Ivan host key was found, and the matching client identity alone does not prove server-side
+authorization.

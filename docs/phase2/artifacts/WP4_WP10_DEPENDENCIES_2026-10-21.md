@@ -54,9 +54,11 @@ dependencies change.
   refs and 423 tracked Markdown paths, and recorded local-only paths as
   **NOT_ENUMERATED**. A later generation against committed base HEAD
   `3b439f2a59c1cb1b8a961b269eae190dceec6083` also exited 0 and observed 46 refs and 424
-  tracked paths. The generated `governance/DOCUMENT_REGISTRY.md` contains no local-only
-  path inventory. This is generation evidence, not functional acceptance; tests and
-  `--check` remain **NOT_RUN** under the active restriction.
+  tracked paths. The current generation against committed base HEAD
+  `41e251e1dcd368d609645b66d990d1401ed0eace` exited 0 and observed 46 refs and 425 tracked
+  paths. The generated `governance/DOCUMENT_REGISTRY.md` contains no local-only path
+  inventory. This is generation evidence, not functional acceptance; tests and `--check`
+  remain **NOT_RUN** under the active restriction.
 - WP0's 2026-10-22 read-only SSH recheck confirms matching local client-key fingerprints
   and a restricted inherited ACL, but does not establish remote authorization. Ivan's
   host key remains untrusted pending authenticated out-of-band confirmation; strict SSH

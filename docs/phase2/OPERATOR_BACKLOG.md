@@ -14,9 +14,13 @@ older gate decisions remain historical and are not changed by this operational u
 - Release 2 remains **NO-GO**; G0 remains PASSED only for its narrow isolated-prototype
   scope, G1–G8 remain **NOT_PASSED**, formal S13 remains **NOT_STARTED / NOT_APPROVED**,
   and production authorization remains **NONE**. This update changes no gate or manifest.
-- The 2026-10-22 SSH recheck confirmed a matching local client keypair and restricted ACL,
-  but no trusted Ivan host key exists in the checked trust stores. Strict SSH stopped
-  before authentication; remote status and 1C environment checks remain **NOT_RUN**.
+- The 2026-10-22 SSH recheck found three matching local private/public identity pairs with
+  private-file ACLs limited to the current user, SYSTEM, and Administrators; their ERP
+  authorization is **NOT_VERIFIED**. No trusted Ivan host key exists in the checked trust
+  stores. Strict SSH stopped before authentication; remote status and 1C environment
+  checks remain **NOT_RUN**. The repository key/path inventory found no tracked private
+  key material or conventional root env file; connected-app secrets and live DB key rows
+  were not inspected.
   See `docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`.
 - Local development PostgreSQL and Redis are currently healthy on loopback ports 5432 and
   6379. The real1c PostgreSQL and Redis containers were also observed healthy on loopback;
@@ -26,8 +30,8 @@ older gate decisions remain historical and are not changed by this operational u
   reauthentication. No business data was read. The local source/gateway path is not
   release or canary evidence.
 - WP3 document navigation now has a reviewed `--exclude-local-only` generator mode. The
-  current generated snapshot at base HEAD `3b439f2a59c1cb1b8a961b269eae190dceec6083`
-  records 46 refs and 424 tracked paths; local-only paths are explicitly
+  current generated snapshot at base HEAD `41e251e1dcd368d609645b66d990d1401ed0eace`
+  records 46 refs and 425 tracked paths; local-only paths are explicitly
   **NOT_ENUMERATED**. Functional tests and generator `--check` remain
   **NOT_RUN** under the active no-tests/checks restriction. See
   the dated addendum in `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md`.
