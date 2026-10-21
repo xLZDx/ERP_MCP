@@ -3,7 +3,39 @@
 Date: 2026-10-08. Branch: `phase2/living-model-connectors-reconciliation`. Release 2 status: **NO-GO**.
 Only items that engineering cannot close without the operator. G1-specific blockers stay in `G1_OPERATOR_BACKLOG.md`.
 
-## Current reconciliation (2026-10-17)
+## Current reconciliation (2026-10-22)
+
+This section supersedes the 2026-10-17 snapshot below where dates or observations differ;
+older gate decisions remain historical and are not changed by this operational update.
+
+- Reconciliation base HEAD was `d82cfa4cd44b105608c294d742c84fa8cdbc950f`. Local commits
+  `33f76b7` and `d82cfa4` record the SSH audit and safe document-registry generation. No
+  push was performed, and remote-head equality was not rechecked in this run.
+- Release 2 remains **NO-GO**; G0 remains PASSED only for its narrow isolated-prototype
+  scope, G1–G8 remain **NOT_PASSED**, formal S13 remains **NOT_STARTED / NOT_APPROVED**,
+  and production authorization remains **NONE**. This update changes no gate or manifest.
+- The 2026-10-22 SSH recheck confirmed a matching local client keypair and restricted ACL,
+  but no trusted Ivan host key exists in the checked trust stores. Strict SSH stopped
+  before authentication; remote status and 1C environment checks remain **NOT_RUN**.
+  See `docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`.
+- Local development PostgreSQL and Redis are currently healthy on loopback ports 5432 and
+  6379. The real1c PostgreSQL and Redis containers were also observed healthy on loopback;
+  their origin was not independently verified. No migration or business write was run.
+- The latest recorded connected ERP MCP calls did not provide source evidence: `ERP_MCP_REAL1` status
+  and source calls returned `-32603`; `erp-mcp-chatgpt` returned `UNAUTHORIZED` requiring
+  reauthentication. No business data was read. The local source/gateway path is not
+  release or canary evidence.
+- WP3 document navigation now has a reviewed `--exclude-local-only` generator mode. The
+  committed registry snapshot records 46 refs and 423 tracked paths; local-only paths are
+  explicitly **NOT_ENUMERATED**. Functional tests and generator `--check` remain
+  **NOT_RUN** under the active no-tests/checks restriction. See
+  `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md`.
+
+The established writer-boundary, signer provisioning, clone qualification, S14–S18,
+Drive deletion, and release dependencies below remain open. No source, authorization,
+production, or manifest status changed.
+
+## Historical reconciliation (2026-10-17)
 
 The tables and dated notes below preserve historical intake and decision snapshots; they are not a current action list where they conflict with this section. GPT owner ruling `b4e09308-7ae8-4170-92df-81ae67177bc1` authorized local S12 engineering. Request `e16939f8-9a6f-4c82-a75c-feb6a594a909` rejected `7c26c0c` for MAJOR-01; request `41f6d2e2-5710-4c50-9f84-06e23c4b12a7` approved and the exact range through `705076a` was pushed. CR123 records the accepted S12 remediation results: functional 7/7 and E2E 1/1, with no BLOCKER/MAJOR in the reviewed scope. CR154 later supplied focused local S13 evidence through migrations 001–026; CR166 records the limit that PASS covers post-026 behavior and that no safe database-only fence completes S13 without the operational writer/service boundary. The latest `ERP_MCP_REAL1` read-only calls failed with connector error `-32603`, yielding no G1/G2 source observation. G0 remains PASSED for its narrow scope; G1–G8 remain NOT_PASSED; formal S13 remains NOT_STARTED / NOT_APPROVED; Release 2 is NO-GO and production authorization is NONE. No manifest status is changed here.
 

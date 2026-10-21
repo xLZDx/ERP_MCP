@@ -159,3 +159,18 @@ path. A live Tailscale peer and open TCP port are network reachability evidence 
 Local listener and anonymous-denial checks: observed as above. Local business read and the Ivan
 remote checks: **NOT_RUN** for the exact dependencies recorded above. This artifact does not claim
 source health, business-read success, or production readiness from liveness alone.
+
+## Local database container binding recheck — 2026-10-22
+
+Read-only command `docker ps --filter "name=erpmcp-e2e-real1c-postgres-1" --filter
+"name=erpmcp-e2e-real1c-redis-1" --format "{{.Names}} {{.Status}} {{.Ports}}"` exited 0 and
+returned:
+
+```text
+erpmcp-e2e-real1c-postgres-1 Up 58 minutes (healthy) 127.0.0.1:18432->5432/tcp
+erpmcp-e2e-real1c-redis-1 Up 58 minutes (healthy) 127.0.0.1:19379->6379/tcp
+```
+
+This records the observed container status and host bindings at that time only. Container
+ownership/origin and later runtime state are not established by this command. No database
+connection, migration, or business read was attempted.
