@@ -82,6 +82,11 @@ reauthentication. Reconnect the app and try again.” No business data was read.
 endpoint returned 401 without a bearer token; this check did not inspect, print, or retrieve any
 token or secret.
 
+Repeat read-only checks later in this turn called `ERP_MCP_REAL1.system_status`,
+`ERP_MCP_REAL1.sources_list`, and `ERP_MCP_REAL1.source_health(source_id="onec-818ha-reference")`.
+All three again returned MCP `-32603: Internal error`; no business-read tool was called and no
+business data was received.
+
 ## Ivan remote lane
 
 `Test-NetConnection -ComputerName 100.88.71.74 -Port 21000 -InformationLevel Quiet` returned

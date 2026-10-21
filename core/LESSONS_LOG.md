@@ -12,6 +12,8 @@
 
 - 2026-10-21 SUCCESS autonomous sequencing: after the operator delegated technical decisions, the project instruction reconciled clone-write authority with the no-manual-mutation and test-owner rules: only authorized test agents may perform mapped mutations on named disposable clones after coding. Keep delegation separate from external proof, identity, and formal gate closure.
 
+- 2026-10-21 SHORTCOMING ERP source connector: repeated safe status, source-list and source-health calls all failed at the MCP layer with `-32603: Internal error`, so the connection yielded no source-health evidence. The failing layer is the connected tool/connector path; the underlying cause is unknown. Do not infer that a reachable local gateway or Tailscale peer makes this business connector healthy; retain `NOT_RUN` and escalate through connector service recovery when available.
+
 - 2026-10-20 SUCCESS integrate docs-public-readme: proving a branch is a subset of BASE via git diff --numstat BASE tip (0 insertions) made the add/add conflicts trivial and safe to resolve by hand.
 
 - 2026-10-20 SHORTCOMING integrate docs-english-only: a scripted conflict resolution on a CRLF-checked-out file wrote mixed line endings (found by counting CR/CRLF against the branch blobs). Next time: count bytes against the committed blob after any scripted write.
