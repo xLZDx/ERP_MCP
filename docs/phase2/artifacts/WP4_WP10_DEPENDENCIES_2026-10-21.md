@@ -17,15 +17,22 @@ production readiness.
 
 ## WP3 registry generation dependency
 
-`scripts/build_document_registry.mjs` inventories Markdown paths from attached
-worktrees, including untracked files, and reads Markdown headings from every local and
-remote branch. The current worktree has two untracked user documents that this task
-must preserve. Running the generator would add those paths to the tracked registry;
-removing that behavior would change the documented registry contract. Removing the
-historical Cyrillic escape may also put old-branch Russian headings or paths back into
-the generated file. The generator was not run and the registry remains unverified.
-Resolve the output policy without excluding historical documents or publishing
-protected user-file paths before regenerating.
+The default `scripts/build_document_registry.mjs` mode inventories Markdown paths from
+attached worktrees, including untracked files. This worktree contains protected
+untracked user files, so default generation is not safe. Chosen policy: preserve the
+default inventory contract and add an explicit `--exclude-local-only` mode for a
+tracked-refs-only snapshot. It must not enumerate local untracked Markdown in that mode,
+and the generated scope must state that local-only paths were excluded. This preserves
+historical Git-ref documents without publishing protected worktree paths. Implementation
+and generation have now completed. `node scripts/build_document_registry.mjs
+--exclude-local-only` exited 0 at `33f76b7f4f49ae773b3f86876940c9c6234a636d`, scanned
+46 Git refs, and wrote a snapshot with 422 tracked paths; local-only paths were
+**NOT_ENUMERATED**. Its
+scope explicitly says local-only files in attached worktrees were not inventoried; this
+mode does not enumerate those files. Cyrillic in generated titles, paths, and ref names
+is encoded with `\uXXXX` escapes. Functional acceptance for the new mode remains
+**NOT_RUN** under the current no-tests policy. The registry is a development navigation
+aid, not release evidence.
 
 ## Overall evidence state
 
