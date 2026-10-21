@@ -42,3 +42,33 @@ Drive deletion, S15–S19 acceptance and production authorization are **NOT_RUN*
 The precise external access blocker for Ivan is the missing trusted ED25519 host key
 for `ivan.tail08f9f9.ts.net`; strict verification was retained. The optional Drive
 delete action is additionally blocked by the operator-only deletion boundary.
+
+## Dated status addendum — 2026-10-22
+
+This addendum supersedes the WP3 registry counts and source revision above; the WP4–WP10
+dependency states remain as recorded unless their named external or authorization
+dependencies change.
+
+- At committed base HEAD `d82cfa4cd44b105608c294d742c84fa8cdbc950f`,
+  `node scripts/build_document_registry.mjs --exclude-local-only` exited 0, scanned 46
+  refs and 423 tracked Markdown paths, and recorded local-only paths as
+  **NOT_ENUMERATED**. A later generation against committed base HEAD
+  `3b439f2a59c1cb1b8a961b269eae190dceec6083` also exited 0 and observed 46 refs and 424
+  tracked paths. The generated `governance/DOCUMENT_REGISTRY.md` contains no local-only
+  path inventory. This is generation evidence, not functional acceptance; tests and
+  `--check` remain **NOT_RUN** under the active restriction.
+- WP0's 2026-10-22 read-only SSH recheck confirms matching local client-key fingerprints
+  and a restricted inherited ACL, but does not establish remote authorization. Ivan's
+  host key remains untrusted pending authenticated out-of-band confirmation; strict SSH
+  stopped before authentication, so remote checks remain **NOT_RUN**.
+- Targeted `docker ps` output observed the real1c PostgreSQL and Redis containers healthy
+  with host bindings `127.0.0.1:18432` and `127.0.0.1:19379`. This is a point-in-time
+  observation only; ownership/origin, database connectivity, and business reads were not
+  established. No migration was run.
+- Connected `ERP_MCP_REAL1` source/status calls returned `-32603`; `erp-mcp-chatgpt`
+  returned `UNAUTHORIZED`. No business data was read. The Phase 2 MCP local handshake and
+  tool listing succeeded, but do not prove a connected source route or release readiness.
+
+The SSH, registry and container details are recorded in
+`docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`; current overall gate states and
+the owner/dependency queue are summarized in `docs/phase2/OPERATOR_BACKLOG.md`.

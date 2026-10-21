@@ -11,7 +11,7 @@ symlinks and dependency/build directories. For tracked rows, titles show the fir
 a path with several heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic characters in titles, paths, or ref names are written as \uXXXX escapes.
 
-Inventory: 423 tracked paths; local-only NOT_ENUMERATED.
+Inventory: 424 tracked paths; local-only NOT_ENUMERATED.
 
 ## Documents in git (scanned refs)
 
@@ -114,6 +114,7 @@ Inventory: 423 tracked paths; local-only NOT_ENUMERATED.
 | docs/commits/2026-10-21-erp-connector-retry.md | Other | "ERP connector retry evidence — 2026-10-21" |
 | docs/commits/2026-10-21-erp-mcp-lock-reconcile.md | Other | "Reconcile uv.lock and requirements-runtime.lock after the ERP_MCP_R2 merge (2026-10-21)" |
 | docs/commits/2026-10-21-tailscale-ssh-diagnostic.md | Other | "Tailscale SSH access diagnostic — 2026-10-21" |
+| docs/commits/2026-10-22-current-status-reconciliation.md | Other | "Change record: Current Phase 2 status reconciliation" |
 | docs/commits/2026-10-22-development-database-loopback.md | Other | "Change record: Bind development databases to loopback" |
 | docs/commits/2026-10-22-registry-safe-generation.md | Other | "Change record: Safe Git-ref-only document registry generation" |
 | docs/commits/2026-10-22-ssh-key-access-audit.md | Other | "Change record: Recheck Ivan SSH keys and trust" |
@@ -456,7 +457,7 @@ Inventory: 423 tracked paths; local-only NOT_ENUMERATED.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `d82cfa4cd44b105608c294d742c84fa8cdbc950f` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `3b439f2a59c1cb1b8a961b269eae190dceec6083` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |

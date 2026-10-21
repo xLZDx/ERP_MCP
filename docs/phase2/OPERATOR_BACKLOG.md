@@ -26,10 +26,11 @@ older gate decisions remain historical and are not changed by this operational u
   reauthentication. No business data was read. The local source/gateway path is not
   release or canary evidence.
 - WP3 document navigation now has a reviewed `--exclude-local-only` generator mode. The
-  committed registry snapshot records 46 refs and 423 tracked paths; local-only paths are
-  explicitly **NOT_ENUMERATED**. Functional tests and generator `--check` remain
+  current generated snapshot at base HEAD `3b439f2a59c1cb1b8a961b269eae190dceec6083`
+  records 46 refs and 424 tracked paths; local-only paths are explicitly
+  **NOT_ENUMERATED**. Functional tests and generator `--check` remain
   **NOT_RUN** under the active no-tests/checks restriction. See
-  `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md`.
+  the dated addendum in `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md`.
 
 The established writer-boundary, signer provisioning, clone qualification, S14–S18,
 Drive deletion, and release dependencies below remain open. No source, authorization,
