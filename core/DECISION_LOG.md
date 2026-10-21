@@ -909,3 +909,7 @@ Decision: distinguish the inherited test-name inventory from a diagnosis. The na
 
 Decision: do not implement a synthetic substitute for the physical S13 writer boundary, generate licensed-host keys without verified host identity, run clone mutation scenarios prohibited by the active process rules, or weaken the document-registry contract to omit protected local files or historical refs. Record exact package dependencies in `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md` and continue only after those dependencies are resolved. Ivan's stack is the plan-selected service boundary, but WP0 did not verify its state because strict SSH host-key validation failed.
 
+## 2026-10-21 - Operator delegates autonomous technical decisions
+
+The operator instructed the agent to make technical decisions, complete the project autonomously, and avoid further routine questions. Decision: resolve ordinary implementation and sequencing choices independently; preserve the explicit project limits on production writes, staging, real money, deletion, secret handling, strict host identity, and test ownership. For later clone qualification, use only mapped functional/E2E agent tests against the named disposable clones after code completion; do not use manual writes or production bases. This delegates execution decisions but does not satisfy external service, key identity, or formal gate evidence.
+
