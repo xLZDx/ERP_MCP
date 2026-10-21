@@ -8,6 +8,8 @@
 
 - 2026-10-21 SHORTCOMING English-policy scanner: the first scanner version silently skipped NUL bytes even in tracked text-suffix files, which could hide Cyrillic from the policy scan. Root cause: binary-file handling was applied by content rather than the already-selected tracked text-file contract. The local code review caught it before verification. Next time, fail closed on malformed bytes in policy-scanned text files; only exclude paths outside the declared text inventory.
 
+- 2026-10-21 FAILURE remote SSH attempt: a nested PowerShell command string was quoted incorrectly while trying the Tailscale SSH wrapper; the shell reported a local parse/command error after the SSH host-key rejection. Root cause: embedding escaped double quotes inside a PowerShell double-quoted argument. No remote command ran and strict host-key checking remained enabled. Next time, use a simple no-argument identity probe first or pass a script file path with PowerShell's native argument handling; never work around the host-key failure.
+
 - 2026-10-20 SUCCESS integrate docs-public-readme: proving a branch is a subset of BASE via git diff --numstat BASE tip (0 insertions) made the add/add conflicts trivial and safe to resolve by hand.
 
 - 2026-10-20 SHORTCOMING integrate docs-english-only: a scripted conflict resolution on a CRLF-checked-out file wrote mixed line endings (found by counting CR/CRLF against the branch blobs). Next time: count bytes against the committed blob after any scripted write.

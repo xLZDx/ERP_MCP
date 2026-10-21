@@ -93,9 +93,17 @@ No ED25519 host key is known for ivan.tail08f9f9.ts.net and you have requested s
 Host key verification failed.
 ```
 
-Strict host-key checking was retained. No remote status, 1C environment verification, MCP read,
-task start, or token mint was performed. Exact dependency: a trusted host key for the named Ivan
-host must be present in the local OpenSSH known-hosts configuration.
+Follow-up after the initial check: `tailscale ping --c 1 ivan.tail08f9f9.ts.net` returned
+`pong from ivan (100.88.71.74)` over the direct Tailscale path. `tailscale status --json`
+showed the Ivan peer online; the peer's `SSHEnabled` field was blank/absent. Both
+`tailscale ssh ivan.tail08f9f9.ts.net whoami` and an attempted remote PowerShell command
+failed before authentication with the same strict host-key error. No remote command was
+executed. Strict checking was retained; no host-key checking option was weakened and no
+key was written to `known_hosts`.
+
+No remote status, 1C environment verification, MCP read, task start, or token mint was
+performed. Exact dependency: the host key must be trusted by the OpenSSH/Tailscale SSH
+path. A live Tailscale peer and open TCP port are network reachability evidence only.
 
 ## WP0 result
 
