@@ -16,3 +16,7 @@
 - 2026-10-20 FAILURE english-policy registry: a generated file carried 33 Cyrillic lines through the merge and was caught only by GPT-PM review (author and gates missed it: no mechanical Cyrillic scan of tracked files). Root cause: generator output depends on all refs, not on the checked-out tree. Rule: scan generated artifacts for policy violations after regeneration; add a Cyrillic checker with an allowlist (inventory next step).
 
 - 2026-10-21 FAILURE merge ERP_MCP_R2 lock drift: the merge changed pyproject.toml dependencies but left uv.lock and requirements-runtime.lock stale; found by GPT-PM review, missed by the author and by the merge checklist (no `uv lock --check` step). Rule: after any merge touching pyproject.toml run `uv lock --check` before committing.
+
+## 2026-10-21 - Commit: record inherited defects backlog
+
+Kind: SUCCESS. Facts: inherited failures and open items were collected from the integration state file and change records into one backlog file instead of being fixed inside the integration. Root cause of the approach: the operator rule that integration must not fix bugs. Layer: operator decision. Rule next time: record each inherited defect with evidence and an acceptance test at integration time.

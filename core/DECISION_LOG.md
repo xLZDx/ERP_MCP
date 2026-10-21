@@ -882,3 +882,7 @@ G1 restore revocation test correction (2026-10-16): the authorized test agents r
 - 2026-10-20 English-only policy: document registry Cyrillic. The registry generator quotes headings from ALL refs, so Russian variants on archive/rescue/snapshot refs and vendored upstream docs leaked into a tracked file although HEAD headings were English. Decision: escape Cyrillic as \uXXXX in the generator (cells), do not rewrite other refs or vendored text. Full Cyrillic inventory with classification: docs/commits/2026-10-20-english-policy-inventory.md (translation of prose is a separate sprint; exception candidates need operator decision).
 
 - 2026-10-21 Lock reconcile after the ERP_MCP_R2 merge: uv.lock and requirements-runtime.lock were regenerated with `uv lock` (no upgrade) and the documented export command, because `uv lock --check` failed at ffbfb608 after pyproject.toml gained PyYAML, jsonschema (dev) and the testlane extra. Only root metadata and one `# via` annotation changed; no pins or hashes moved. Record: docs/commits/2026-10-21-erp-mcp-lock-reconcile.md.
+
+## 2026-10-21 - Commit: record inherited defects backlog
+
+Decision: by operator decision the 2026-10-20 integration does not fix inherited defects; they are recorded in docs/BACKLOG_INHERITED_2026-10-21.md with severity guess, evidence, origin and an acceptance test. Docs only, no code changed.
