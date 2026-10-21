@@ -51,7 +51,12 @@
       "gate_status": "NOT_PASSED",
       "external_evidence_status": "OPEN",
       "production_authorization": "NONE",
-      "evidence": null
+      "evidence": null,
+      "operator_disposition": {
+        "status": "WAIVED_BY_OPERATOR",
+        "statement": "The operator stated that the independent accountant report is not a blocker and that everything is fine.",
+        "recorded_on": "2026-10-21"
+      }
     },
     {
       "id": "G4",

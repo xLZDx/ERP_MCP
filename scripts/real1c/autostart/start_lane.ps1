@@ -15,17 +15,19 @@
   needs a named Cloudflare tunnel on a domain of the operator.
 #>
 [CmdletBinding()]
-param()
+param(
+    [ValidateRange(1024, 65535)][int]$ApachePort = 18088
+)
 $ErrorActionPreference = 'Continue'
 
+$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $Lane      = 'D:\ERP_MCP_Testbed\real1c_e2e'
-$Runtime   = 'D:\Repo\ERP_MCP-supplier-debt-runtime'      # worktree that holds the gateway code and scripts\e2e
-$LaneRepo  = 'D:\Repo\ERP_MCP-integration-candidate'      # owner of the venv used by the lane processes
-$Py        = Join-Path $LaneRepo '.venv\Scripts\python.exe'
+$Runtime   = $ProjectRoot
+$Py        = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
 $Docker    = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
 $DockerUi  = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
 $Httpd     = 'D:\ERP_MCP_Testbed\apache24\bin\httpd.exe'
-$HttpdConf = 'D:/ERP_MCP_Testbed/apache24/conf/httpd-erp-mcp-test-ready.conf'
+$HttpdConf = "D:/ERP_MCP_Testbed/apache24/conf/httpd-erp-mcp-test-ready-$ApachePort.conf"
 $Node      = 'C:\Program Files\nodejs\node.exe'
 $Sidecar   = 'D:\ERP_MCP_Testbed\real1c_sidecar_app'
 $Cloudflared = 'D:\Repo\Personal_DC\vendor\tunnel-client\cloudflared.exe'
@@ -86,9 +88,13 @@ try {
     if (-not (Wait-Port 19379 60)) { Log 'WARN: lane Redis port 19379 is not listening' }
 
     # 2. Apache with the 1C OData publication (file base 818HA_test_ready)
-    if (-not (Test-Port 8088)) {
+    if (-not (Test-Port $ApachePort)) {
+        if (-not (Test-Path -LiteralPath $HttpdConf -PathType Leaf)) {
+            Log ('FAIL: Apache configuration not found for port ' + $ApachePort)
+            exit 1
+        }
         Start-Hidden $Httpd @('-d', 'D:/ERP_MCP_Testbed/apache24', '-f', $HttpdConf) 'D:\ERP_MCP_Testbed\apache24' $null $null | Out-Null
-        Log ('apache started: ' + (Wait-Port 8088 30))
+        Log ('apache started on ' + $ApachePort + ': ' + (Wait-Port $ApachePort 30))
     }
 
     # 3. Lane proxies in front of the 1C OData publication (read-only, GET/HEAD only)
@@ -96,12 +102,13 @@ try {
         if (-not (Test-Port $port)) {
             $env:LANE_PROXY_PORT = [string]$port
             $env:LANE_PROXY_MODE = 'head_compat'
+            $env:LANE_PROXY_UPSTREAM = "http://127.0.0.1:$ApachePort"
             Start-Hidden $Py @((Join-Path $Runtime 'scripts\real1c\lane_proxy.py')) $Runtime `
                 (Join-Path $Logs ('lane_proxy_' + $port + '.out.log')) (Join-Path $Logs ('lane_proxy_' + $port + '.err.log')) | Out-Null
             Log ('lane proxy ' + $port + ' started: ' + (Wait-Port $port 30))
         }
     }
-    Remove-Item Env:\LANE_PROXY_PORT, Env:\LANE_PROXY_MODE -ErrorAction SilentlyContinue
+    Remove-Item Env:\LANE_PROXY_PORT, Env:\LANE_PROXY_MODE, Env:\LANE_PROXY_UPSTREAM -ErrorAction SilentlyContinue
 
     # 4. Real sidecar (loopback only, reads the same token the gateway uses)
     if (-not (Test-Port 21768)) {
@@ -175,7 +182,7 @@ try {
         Log ('tunnel-client started: ' + [bool](Get-CimInstance Win32_Process -Filter "Name='tunnel-client.exe'" | Where-Object { $_.CommandLine -match 'erp-mcp-local' }))
     }
 
-    $state = foreach ($pair in @(@('postgres', 18432), @('redis', 19379), @('apache/1C', 8088), @('proxy8191', 8191), @('proxy8192', 8192),
+    $state = foreach ($pair in @(@('postgres', 18432), @('redis', 19379), @('apache/1C', $ApachePort), @('proxy8191', 8191), @('proxy8192', 8192),
             @('proxy8193', 8193), @('sidecar', 21768), @('idp', 21080), @('gateway', 21000))) { $pair[0] + '=' + (Test-Port $pair[1]) }
     Log ('summary: ' + ($state -join ' '))
 }

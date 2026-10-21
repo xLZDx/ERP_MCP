@@ -1,5 +1,13 @@
 # Lessons log
 
+- 2026-10-21 FAILURE scope-safe search: a broad search across historical docs/reports emitted a matching decision-log excerpt containing customer data. Root cause: output scope was not limited to test identifiers before searching. The project-data boundary did not prevent the output. Next time, query only named test-result files and restrict output to test IDs or sanitized structural fields; do not search historical business evidence for unrelated task terms. No customer values were added to repository changes.
+
+- 2026-10-21 G3 operator disposition: an unsigned waiver statement must be stored as a separate note and must never enter gate closure, predecessor satisfaction, or production authorization logic. Preserve the actual gate status and require the independent evidence for any later PASS; do not reuse G4's cryptographic waiver path for accountant attestation.
+
+- 2026-10-21 FAILURE inherited-test classification: the first hand-over summary omitted two names from the offline-simulation failure set. Root cause: a grouped count was carried forward without reconciling every identifier against the named result files. The correction used an identifier-only filter and emitted no tracebacks or fixture data. Next time, reconcile each recorded test name and aggregate before publishing a classification; label source-based categories as preliminary until authorized execution evidence establishes cause.
+
+- 2026-10-21 SHORTCOMING English-policy scanner: the first scanner version silently skipped NUL bytes even in tracked text-suffix files, which could hide Cyrillic from the policy scan. Root cause: binary-file handling was applied by content rather than the already-selected tracked text-file contract. The local code review caught it before verification. Next time, fail closed on malformed bytes in policy-scanned text files; only exclude paths outside the declared text inventory.
+
 - 2026-10-20 SUCCESS integrate docs-public-readme: proving a branch is a subset of BASE via git diff --numstat BASE tip (0 insertions) made the add/add conflicts trivial and safe to resolve by hand.
 
 - 2026-10-20 SHORTCOMING integrate docs-english-only: a scripted conflict resolution on a CRLF-checked-out file wrote mixed line endings (found by counting CR/CRLF against the branch blobs). Next time: count bytes against the committed blob after any scripted write.

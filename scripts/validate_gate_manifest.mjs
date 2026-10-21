@@ -105,6 +105,29 @@ for (const g of gates.values()) {
     if (!all.has(p)) err(`${g.id}: unknown predecessor ${p}`);
   }
 }
+// The G3 operator disposition is an unsigned historical note only. It is deliberately
+// excluded from closed(), predecessor checks and production authorization checks below.
+for (const g of gates.values()) {
+  if (g.id !== "G3" && g.operator_disposition !== undefined) {
+    err(`${g.id}: operator_disposition is supported only as an inert G3 note`);
+  }
+  if (g.id === "G3" && g.operator_disposition !== undefined) {
+    const d = g.operator_disposition;
+    if (!d || typeof d !== "object" || Array.isArray(d)
+      || d.status !== "WAIVED_BY_OPERATOR"
+      || typeof d.statement !== "string" || d.statement.trim() === ""
+      || typeof d.recorded_on !== "string" || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d.recorded_on)
+      || Number.isNaN(Date.parse(d.recorded_on))
+      || new Date(d.recorded_on).toISOString().slice(0, 10) !== d.recorded_on
+      || Object.keys(d).length !== 3
+      || Object.keys(d).some((key) => !["status", "statement", "recorded_on"].includes(key))) {
+      err("G3: operator_disposition must be an unsigned WAIVED_BY_OPERATOR note with statement and recorded_on date");
+    }
+    if (d && typeof d === "object" && ("signature" in d || "signer_id" in d || "evidence" in d)) {
+      err("G3: operator_disposition is a note, not signed evidence or accountant attestation");
+    }
+  }
+}
 for (const n of nodes.values()) {
   if (!NODE_STATE.has(n.state)) err(`${n.id}: unknown node state ${n.state}`);
   if (n.state === "DONE") evidenceOk(`${n.id} evidence`, n.evidence);

@@ -66,9 +66,7 @@ const esc = (text) =>
     .replaceAll('|', '\\|')
     .replaceAll('\n', '\\n')
     .replaceAll('\r', '\\r')
-    .replaceAll('\t', '\\t')
-    // English-only git policy: Cyrillic from other refs (original Russian headings/paths) is written as \uXXXX.
-    .replace(/[Ѐ-ӿ]/gu, (ch) => `\\u${ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`);
+    .replaceAll('\t', '\\t');
 /** Unambiguous title cell: empty only when the sole variant is "no heading"; otherwise every variant is JSON-quoted. */
 const titleCell = (variants) => {
   const all = [...variants].sort(byCodePoint);
@@ -184,7 +182,7 @@ const lines = [
   'claim about refs created after generation. Excluded are this file, ignored files, symlinks and dependency/build',
   'directories. For tracked rows, titles show the first heading of each blob, JSON-quoted; a path with several',
   'heading variants over the scanned refs lists all of them; an empty cell means no heading was found.',
-  'Cyrillic characters in titles or paths (original Russian text on other refs) are written as \\uXXXX escapes.',
+  'Titles and paths are rendered as recorded in the scanned refs.',
   '',
   `Inventory: ${rows.length} tracked ${rows.length === 1 ? "path" : "paths"}, ${localOnly.size} local-only ${localOnly.size === 1 ? "path" : "paths"}.`,
   '',
