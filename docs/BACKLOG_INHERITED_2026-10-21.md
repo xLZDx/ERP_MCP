@@ -7,18 +7,19 @@ Severity values are guesses made at recording time, not reviewed ratings.
 ## ERPMCP-INH-001: Cyrillic prose inherited from both parents violates the English-only policy
 
 - Severity guess: MAJOR (policy violation across 128 tracked files; translation is broad but mechanical).
-- Evidence: `docs/commits/2026-10-20-english-policy-inventory.md` counts 128 tracked files and 2459 lines with Cyrillic: PROSE-TO-TRANSLATE 38 files / 856 lines, LOCALIZATION 11 / 538, LITERAL-1C-NAMES 8 / 117, SEMANTIC-TEST-DATA 71 / 948. Seven intentionally Russian `reports/PHASE2_S*_SPRINT_*.ru.html` reports are outside the scanned extension set.
+- Evidence: `docs/commits/2026-10-20-english-policy-inventory.md` counts 128 tracked files and 2459 lines with Cyrillic: PROSE-TO-TRANSLATE 38 files / 856 lines, LOCALIZATION 11 / 538, LITERAL-1C-NAMES 8 / 117, SEMANTIC-TEST-DATA 71 / 948. Eight intentionally Russian `reports/PHASE2_S*_SPRINT_*.ru.html` reports were tracked outside the scanned extension set as of 2026-10-21.
 - Origin: both parents (ERP_MCP and ERP_MCP_R2 / branch `phase2/living-model-connectors-reconciliation`); integration origin: merge commit e82022a.
-- Suggested acceptance test: a tracked-file Cyrillic scan with an allowlist file (test data, semantic profiles, LITERAL-1C-NAMES, and the 7 paired `*.ru.html` reports if the operator keeps them) reports zero violations; behavior tests that depend on Russian data still pass unchanged.
-- Status: not fixed by integration by operator decision (translate in a separate sprint; keep the allowlist for test data, semantic profiles and the 7 paired `*.ru.html` reports).
+- Suggested acceptance test: a tracked-file Cyrillic scan with an allowlist file (test data, semantic profiles, LITERAL-1C-NAMES, and the 8 paired `*.ru.html` reports if retained) reports zero violations; behavior tests that depend on Russian data still pass unchanged.
+- Status: not fixed by integration by operator decision (translate in a separate sprint; keep the allowlist for test data, semantic profiles and the 8 paired `*.ru.html` reports).
+- Status update (2026-10-22): still OPEN. The explanatory phrases in `docs/COMPATIBILITY.md` and `docs/INTEGRATION.md` were translated; the SELECT-equivalent query syntax restriction and Latin BP/UT/ZUP/KA identifiers are preserved. `docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md` was manually reviewed and its `ПоступлениеТоваровУслуг` token is a literal 1C document type, so it remains unchanged. The reviewed `RSVData` procedure and native report identifiers also remain literal 1C names. The decision in `core/DECISION_LOG.md` records text-preservation policy, but a line-level scan exposed source-derived evidence mixed into that file; it is now excluded from further content review. `docs/SEMANTIC_PROFILES.md`, `docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md`, `docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md`, `docs/runbooks/COM_BRIDGE_AND_PARITY.md`, and `core/DECISION_LOG.md` are excluded from further content review because they contain real-source, clone-measurement, or source-derived examples; edit only from sanitized copies or with a process that cannot expose business values. The inventory counts above are the 2026-10-20 baseline, not a refreshed scan.
 
 ## ERPMCP-INH-002: document registry generator escapes Cyrillic instead of translating
 
 - Severity guess: MINOR (workaround in a generated file).
 - Evidence: `scripts/build_document_registry.mjs` escapes Cyrillic in generated cells to `\uXXXX` (commit ffbfb60, `docs/commits/2026-10-20-english-policy-registry-fix.md`), because the registry quotes headings from all refs, including Russian variants on archive, rescue and snapshot refs.
 - Origin: integration fix ffbfb60.
-- Suggested acceptance test: after the translation sprint, the generator is run without escaping and `governance/DOCUMENT_REGISTRY.md` contains no `\u04..` sequences and no Cyrillic; the escape code path is removed.
-- Status: not fixed by integration by operator decision (replace the escape with real translation).
+- Revised acceptance: current headings remain readable; Cyrillic escapes are retained only for heading variants found exclusively on archive, rescue, or snapshot refs, as required by the 2026-10-22 operator continuation. Paths and ref names are not escaped. The generated registry is a snapshot and its exact-ref freshness is verified by the named reviewer after WP3 coding.
+- Status update (2026-10-22): the generator implements historical-ref-only heading escaping; the prior blanket-removal acceptance is superseded. Remaining work is WP3 final registry regeneration and post-coding acceptance evidence.
 
 ## ERPMCP-INH-003: inherited test failures to classify
 

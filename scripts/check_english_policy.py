@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report Cyrillic in tracked policy files, allowing only documented exact-path exceptions."""
+"""Report Cyrillic, allowing only documented path/line/hash exceptions."""
 
 from __future__ import annotations
 
@@ -54,10 +54,15 @@ def main() -> int:
                 isinstance(rule, dict)
                 and isinstance(rule.get("reason"), str)
                 and bool(rule["reason"])
-                and isinstance(rule.get("allowed_line_sha256"), list)
+                and isinstance(rule.get("allowed_lines"), list)
                 and all(
-                    isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest)
-                    for digest in rule["allowed_line_sha256"]
+                    isinstance(item, dict)
+                    and isinstance(item.get("line"), int)
+                    and not isinstance(item.get("line"), bool)
+                    and item["line"] > 0
+                    and isinstance(item.get("sha256"), str)
+                    and re.fullmatch(r"[0-9a-f]{64}", item["sha256"])
+                    for item in rule["allowed_lines"]
                 )
             )
         )
@@ -69,8 +74,8 @@ def main() -> int:
 
     tracked_names = {path.as_posix() for path in tracked}
     stale = sorted(set(exceptions) - tracked_names)
-    stale_line_hashes: list[tuple[str, str]] = []
-    violations: list[tuple[str, int]] = []
+    stale_lines: list[tuple[str, int, str]] = []
+    violations: list[tuple[str, int, str]] = []
     read_errors: list[tuple[str, str]] = []
     for relative_path in tracked:
         path_text = relative_path.as_posix()
@@ -84,46 +89,60 @@ def main() -> int:
         except OSError as error:
             read_errors.append((path_text, error.__class__.__name__))
             continue
-        if b"\0" in raw_content:
-            read_errors.append((path_text, "NUL byte in a text-suffix file"))
-            continue
         try:
-            content = raw_content.decode("utf-8-sig")
+            if raw_content.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+                read_errors.append((path_text, "unsupported UTF-32 BOM in a text-suffix file"))
+                continue
+            if raw_content.startswith((b"\xff\xfe", b"\xfe\xff")):
+                content = raw_content.decode("utf-16")
+            else:
+                if b"\0" in raw_content:
+                    read_errors.append((path_text, "NUL byte in a text-suffix file"))
+                    continue
+                content = raw_content.decode("utf-8-sig")
         except UnicodeDecodeError:
-            read_errors.append((path_text, "invalid UTF-8 in a text-suffix file"))
+            read_errors.append((path_text, "invalid BOM-marked UTF-16 or UTF-8 text"))
+            continue
+        if "\0" in content:
+            read_errors.append((path_text, "NUL character in decoded text"))
             continue
         rule = exceptions.get(path_text)
         if isinstance(rule, str):
             continue
-        allowed_hashes = set(rule.get("allowed_line_sha256", [])) if rule else set()
-        seen_hashes: set[str] = set()
+        allowed_lines = {
+            (item["line"], item["sha256"])
+            for item in rule.get("allowed_lines", [])
+        } if rule else set()
+        seen_lines: set[tuple[int, str]] = set()
         for line_number, line in enumerate(content.splitlines(), 1):
             if not CYRILLIC.search(line):
                 continue
             digest = hashlib.sha256(line.encode("utf-8")).hexdigest()
-            seen_hashes.add(digest)
-            if digest not in allowed_hashes:
-                violations.append((path_text, line_number))
-        stale_line_hashes.extend(
-            (path_text, digest) for digest in sorted(allowed_hashes - seen_hashes)
+            line_key = (line_number, digest)
+            seen_lines.add(line_key)
+            if line_key not in allowed_lines:
+                violations.append((path_text, line_number, digest))
+        stale_lines.extend(
+            (path_text, line_number, digest)
+            for line_number, digest in sorted(allowed_lines - seen_lines)
         )
 
     for path, rule in sorted(exceptions.items()):
         if path in stale:
             reason = rule if isinstance(rule, str) else rule["reason"]
             print(f"STALE_ALLOWLIST {path}: {reason}")
-    for path, line_number in violations:
-        print(f"CYRILLIC {path}:{line_number}")
-    for path, digest in stale_line_hashes:
-        print(f"STALE_ALLOWLIST_LINE {path}: sha256={digest}")
+    for path, line_number, digest in violations:
+        print(f"CYRILLIC {path}:{line_number}: sha256={digest}")
+    for path, line_number, digest in stale_lines:
+        print(f"STALE_ALLOWLIST_LINE {path}:{line_number}: sha256={digest}")
     for path, reason in read_errors:
         print(f"UNREADABLE {path}: {reason}")
     print(
         f"tracked files: {len(tracked)}; violations: {len(violations)}; "
-        f"stale allowlist entries: {len(stale)}; stale line exceptions: {len(stale_line_hashes)}; "
+        f"stale allowlist entries: {len(stale)}; stale line exceptions: {len(stale_lines)}; "
         f"unreadable text files: {len(read_errors)}"
     )
-    return 2 if read_errors else (1 if violations or stale or stale_line_hashes else 0)
+    return 2 if read_errors else (1 if violations or stale or stale_lines else 0)
 
 
 if __name__ == "__main__":
