@@ -57,3 +57,5 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 WP3 document registry: generated titles vary across repository refs, so historical Cyrillic policy must be applied to each title variant using the refs that contain it. Escape only a variant found exclusively on archive/rescue/snapshot refs; keep paths, ref names, and current headings readable, and regenerate only after the intended ref snapshot is fixed.
 
+- 2026-10-22 S13 ownership and grant records: distinguish the operator as accountable task owner, Ivan Stack as technical owner of the host/connection boundary, and Codex as implementation executor. A disposable catalog query with no S13 schema establishes `NOT_VERIFIED` grants for that instance; it does not justify calling the boundary unowned or claiming deployed privileges.
+
