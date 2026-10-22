@@ -71,3 +71,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 SUCCESS capability grant hardening: a routine's explicit grant to the intended app role does not remove PostgreSQL's default PUBLIC EXECUTE. Inspect effective ACLs on a disposable database, then add a forward-only migration that revokes PUBLIC while retaining only the code-used role's explicit grant; verify the exact privilege after the migration is run by the authorized test role.
 
+- 2026-10-22 S13 writer decision: when an operator supplies a new channel and owner decision, supersede only the stale ownership/selection claim. Preserve the separate runtime qualification gate; a selected COM lane does not prove idempotency, fencing, outcome lookup, or quiescence.
