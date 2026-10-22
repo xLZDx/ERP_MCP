@@ -95,7 +95,7 @@ async def _verify_future_version_refusal(base_url: str) -> None:
             )
             await conn.execute(
                 "INSERT INTO bag.schema_migrations(version,name,checksum) VALUES($1,$2,$3)",
-                15,
+                16,
                 "future",
                 "0" * 64,
             )
@@ -113,7 +113,7 @@ async def _verify_future_version_refusal(base_url: str) -> None:
             if [row["table_name"] for row in tables] != ["schema_migrations"]:
                 raise AssertionError("future-version refusal mutated the schema")
             row = await conn.fetchrow("SELECT version,name,checksum FROM bag.schema_migrations")
-            if (row["version"], row["name"], row["checksum"]) != (15, "future", "0" * 64):
+            if (row["version"], row["name"], row["checksum"]) != (16, "future", "0" * 64):
                 raise AssertionError("future-version refusal modified the migration ledger")
         finally:
             await conn.close()
@@ -129,11 +129,11 @@ async def main() -> None:
     await _with_database(base_url, upgrade_from_integration_v9=False)
     print("fresh PostgreSQL migration schema: PASS")
     await _with_database(base_url, upgrade_from_integration_v9=True)
-    print("integration v9 -> Admin v14 PostgreSQL upgrade: PASS")
+    print("integration v9 -> Admin v15 PostgreSQL upgrade: PASS")
     await _verify_legacy_admin_refusal(base_url)
     print("ambiguous legacy Admin v11 refusal without DB changes: PASS")
     await _verify_future_version_refusal(base_url)
-    print("ahead-of-code schema v15 refusal without DB changes: PASS")
+    print("ahead-of-code schema v16 refusal without DB changes: PASS")
 
 
 if __name__ == "__main__":
