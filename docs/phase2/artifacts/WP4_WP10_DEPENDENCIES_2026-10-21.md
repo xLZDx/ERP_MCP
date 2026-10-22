@@ -129,3 +129,64 @@ The focused source evidence and design prerequisites are recorded in
 function definitions or propose an additive migration until a complete old/new-key lock-order
 design covers both functions and the remaining mutation/trigger paths. Tests, migration
 execution and runtime database access remain `NOT_RUN`.
+
+## Current autonomous continuation — 2026-10-22
+
+The operator's latest verified answers supersede the 2026-10-21 SSH and service ownership
+statements above. Ivan's key is already trusted for `koros@100.88.71.74`; the Ivan stack
+(`ERP_MCP_Ivan_Stack`) is the technical owner of the host/connection boundary and the operator
+is accountable for the delegated task. The project-venv `testlane.phase2_mcp` listener on 21200
+is the intended process and must not be replaced during coding. The user confirmed the private
+writer design direction: separate service on Ivan's licensed lane, loopback/authenticated
+Tailscale only, starting with a disposable `818HA_p2diff` clone.
+
+The current S13 design is recorded in
+`docs/phase2/S13_IVAN_PRIVATE_WRITER_SERVICE_DESIGN_2026-10-22.md`. Architecture review found no
+contradiction with S12; database review found that the current source does not establish a viable
+all-path lock order or mutation fence. In particular, event-chain/lifecycle lock order, record
+versus business-key advisory locks, verifier-key receipt locks, recovery/kill-switch sweep locks,
+unique-index `ON CONFLICT` waits, and granted APIs outside lifecycle coverage must be reconciled
+before an activating additive migration. The database epoch and
+private service's durable admission/barrier must form one protocol. Recovery therefore remains
+`NOT_READY`; no migration, effective deployed-grant claim, S13 implementation, or physical COM
+writer qualification is complete. The local disposable PostgreSQL endpoint inspected read-only
+contains no `change_ledger` schema/functions, so effective S13 grants there are `NOT_VERIFIED`.
+On 2026-10-22, Codex independently repeated the read-only check through the project virtualenv,
+loading the admin DSN in process from `LaneEnv` without printing it. In a read-only transaction,
+the query captured `current_database()`, `session_user`, and `current_user`; inspected the four
+lane roles in `pg_roles`; queried `information_schema.role_table_grants` for
+`table_schema='change_ledger'`; and evaluated `has_function_privilege(current_user, p.oid,
+'EXECUTE')` for functions in that schema. The connection was to database `business_ai` on the
+disposable local endpoint, with session/current role `business_ai_admin`; the role rows matched
+the read-only review, and the table-grant and function result sets both had zero rows because the
+schema is absent. This is not evidence about grants after S13 migrations or on Ivan's host. No
+migration was run.
+The S12 freeze also records a receipt-to-independent-read-back target/version clarification whose
+exact-revision GPT review is still pending; this approval is separate from S12's disposable
+qualification and formal gate.
+
+WP5–WP8 and WP10 remain dependency-ordered as follows: WP4 implements the S12/S13 contract and
+private service boundary against an injected writer port; WP5 adds receipts and the signer
+registry; WP6 implements the physical COM write port and S14 disposable-clone qualification; WP7
+adds effects-based verification/reconciliation; WP8 adds the approval channel, MCP surface and
+workbench; WP10 completes reliability, security review and release-candidate evidence after
+WP6–WP8. WP9 remains optional and outside the critical path. The S12/S13/S14 formal qualification
+and acceptance record is finalized only after all in-scope WP4–WP8 and WP10 coding is complete and
+the functional/E2E and specialist evidence is available. This supersedes the earlier shorthand
+in this artifact that placed physical COM implementation inside WP4 acceptance; historical
+entries above are retained as records of the earlier sequence. No key was generated and no clone
+write or migration was performed in this continuation. Queue: complete remaining WP2/WP3 coding
+and documentation; implement WP4 S12/S13 service foundation; proceed through WP5, WP6/S14, WP7,
+WP8, then WP10; run required functional/E2E and specialist verification after all in-scope coding;
+then record final S12/S13/S14 acceptance. Preserve `NOT_READY` until its actual evidence exists.
+
+### S13 exact-review corrections — 2026-10-22
+
+An exact-patch GPT review identified a dependency inconsistency and an obsolete mutex test
+description. The plan above now separates the WP4 S13 service foundation (injected writer port)
+from the WP6 S14 physical COM adapter and defers final S12/S13/S14 acceptance until the
+dependency-ordered coding and qualification evidence is complete. The contention scenario now
+uses the proposed private singleton mutex row acquired with `SELECT ... FOR UPDATE NOWAIT`; a
+caller-held unrelated transaction advisory lock is adversarial setup, and refusal requires full
+top-level rollback/discard before a subsequent writer proceeds. This is a documentation correction
+only; no mutex, migration, COM adapter, or runtime qualification was implemented here.
