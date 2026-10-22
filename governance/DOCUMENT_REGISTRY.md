@@ -11,7 +11,7 @@ symlinks and dependency/build directories. For tracked rows, titles show the fir
 a path with several heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic characters in titles, paths, or ref names are written as \uXXXX escapes.
 
-Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
+Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 
 ## Documents in git (scanned refs)
 
@@ -117,8 +117,12 @@ Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
 | docs/commits/2026-10-22-current-status-reconciliation.md | Other | "Change record: Current Phase 2 status reconciliation" |
 | docs/commits/2026-10-22-dependency-evidence-addendum.md | Other | "Change record: Reconcile current dependency evidence" |
 | docs/commits/2026-10-22-development-database-loopback.md | Other | "Change record: Bind development databases to loopback" |
+| docs/commits/2026-10-22-project-and-ssh-key-inventory.md | Other | "Change record: Inventory project and SSH key access evidence" |
 | docs/commits/2026-10-22-registry-safe-generation.md | Other | "Change record: Safe Git-ref-only document registry generation" |
 | docs/commits/2026-10-22-ssh-key-access-audit.md | Other | "Change record: Recheck Ivan SSH keys and trust" |
+| docs/commits/2026-10-22-wp0-access-and-first-prompt-bundle.md | Other | "Change record: WP0 access recheck and first autonomous prompt bundle" |
+| docs/phase2/AUTONOMOUS_AGENT_PROMPT_2026-10-21.md | Phase 2 design | "Prompt for the autonomous ERP_MCP technical agent (2026-10-21)" |
+| docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md | Phase 2 design | "Autonomous execution plan for the next agent (ERP_MCP), 2026-10-21" |
 | docs/phase2/BRANCH_ISOLATION_AND_HANDOFF.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/CAPACITY_DRILL.md | Phase 2 design | "Phase 2 capacity drill (S4b E5)" |
 | docs/phase2/CHANGE_RECORD_015.md | Phase 2 design | "Change record: migration 015 (Ed25519 signatures)" |
@@ -281,6 +285,7 @@ Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
 | docs/phase2/CLIENT_SAFETY_TRUST_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — anti-promotion guard on reference results" |
+| docs/phase2/CODEX_CONTINUATION_PROMPT_2026-10-22.md | Phase 2 design | "Continuation prompt for the autonomous Codex executor (ERP_MCP), 2026-10-22" |
 | docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — combined client-safety hardening acceptance" |
 | docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Data and API Contracts: TDD Clarification" / "Phase 2 — \u041A\u043E\u043D\u0442\u0440\u0430\u043A\u0442\u044B \u0434\u0430\u043D\u043D\u044B\u0445 \u0438 API: \u0443\u0442\u043E\u0447\u043D\u0435\u043D\u0438\u0435 \u043A \u0422\u0414\u0414" |
 | docs/phase2/CONVERGENCE_FINAL_SECURITY_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — convergence security closure, 2026-10-09" |
@@ -325,6 +330,7 @@ Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
 | docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md | Phase 2 design | "S13 API mutation and lifecycle-fence coverage — 2026-10-17" |
+| docs/phase2/S13_BUSINESS_KEY_LOCK_ORDER_NOTE_2026-10-22.md | Phase 2 design | "S13 business-key mutation and validation lock note" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
 | docs/phase2/S13_MUTATION_AND_WRITER_PATH_INVENTORY_2026-10-17.md | Phase 2 design | "S13 repository mutation and writer-path inventory — 2026-10-17" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
@@ -359,6 +365,7 @@ Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md | Phase 2 design | "G6 / G6-pre: one read-only canary pass and a bounded workload measurement (2026-10-10)" |
 | docs/phase2/artifacts/PHASE2_TESTLANE_MCP_DESIGN.md | Phase 2 design | "Phase 2 test-lane MCP server: design (stage 1)" |
 | docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md | Phase 2 design | "Remote 1C host (Ivan): independent test environment and MCP stack - runbook" |
+| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md | Phase 2 design | "WP0 access and source recheck — 2026-10-22" |
 | docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md | Phase 2 design | "WP0 source liveness check — 2026-10-21" |
 | docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md | Phase 2 design | "WP2 inherited red-test classification — 2026-10-21" |
 | docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md | Phase 2 design | "Autonomous work packages WP4–WP10: dependency status — 2026-10-21" |
@@ -458,7 +465,7 @@ Inventory: 425 tracked paths; local-only NOT_ENUMERATED.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `41e251e1dcd368d609645b66d990d1401ed0eace` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `3bd4b126377b23a513a77da445ff29f4935147be` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
