@@ -3,7 +3,10 @@
 No ledger logic lives here. Every method opens one transaction, optionally ``SET LOCAL ROLE`` for the
 caller class, runs ``change_ledger.set_scope`` and then exactly one SQL function (the convention of
 tests/phase2/test_change_ledger_sql.py ``L.call``). A rejected call becomes ``LedgerError(code)`` where
-``code`` is the RAISE EXCEPTION text. ``SPEC`` is the single table of function name, parameter types,
+``code`` is the RAISE EXCEPTION text for contract codes or a safe SQLSTATE-derived fallback. A raw
+SQLSTATE 55P03 remains ``SQL_55P03``; only the future S13 fence helper can identify its own bounded
+lock wait and raise the explicit ``LEDGER_LOCK_TIMEOUT`` contract code. ``SPEC`` is the single table
+of function name, parameter types,
 result type and the caller classes the migrations grant EXECUTE to (the last definition wins; 005, 006 and 007
 redefine earlier functions, 007 also changes some signatures); the port test compares it with pg_proc and the grants.
 
