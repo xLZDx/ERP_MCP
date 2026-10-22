@@ -1,0 +1,103 @@
+# WP0 access and source recheck — 2026-10-22
+
+This note records current-turn runtime observations after the operator corrected the earlier
+environment report. It supersedes conflicting WP0 access claims in
+`WP4_WP10_DEPENDENCIES_2026-10-21.md`; it does not establish S12/S13 qualification, native
+accounting evidence, or release readiness. Observed repository base before this turn's edits:
+`0fe023db1ec2adcf1820356db1dd1db09d23c3ab`.
+
+## Local and Ivan service access
+
+| Check | Evidence | Result and limit |
+|---|---|---|
+| Local listeners | Read-only `Get-NetTCPConnection -State Listen` for 8088, 8191–8193, 18432, 19379, 21000, 21080, 21200 and 21768 | All ten ports were listening. Observed listener PIDs: 8088/7380, 8191/10996, 8192/31516, 8193/2704, 18432 and 19379/32540, 21000/27616, 21080/36088, 21200/32004, 21768/10988. Point-in-time only. |
+| Apache configuration | Read-only process metadata for PID 7380 | Command line referenced `httpd-erp-mcp-test-ready.conf`. No restart was attempted. |
+| Phase2 process identity | Read-only process metadata for PID 32004 | Executable was `C:\Python314\python.exe`; command line identified `-m testlane.phase2_mcp` and the project venv launcher argument. This is consistent with the Windows venv launcher behavior; it is not a process replacement. |
+| Ivan SSH identity and stack | `ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes koros@100.88.71.74 'powershell -NoProfile -ExecutionPolicy Bypass -File D:\1c\mcp\run-mcp-stack.ps1 -Action Status'` | Exit 0; `postgres`, `redis`, `apache`, `proxy8191`, `proxy8192`, `proxy8193`, `sidecar`, `idp` and `gateway` each returned `True`. Host-key verification remained strict. |
+| Ivan stack directory | Same strict SSH identity; `cmd /c dir /b D:\1c\mcp` | Names only were listed; no file contents or credentials were read. The directory contains the stack app/data/env/runtime/scripts and the token/stack management scripts. |
+
+The operator is the accountable owner for this delegated project task. The Ivan stack is the
+technical owner of the remote connection and host boundary, as recorded in the current
+continuation prompt. No human contact for deployed grant confirmation is named in the source
+records inspected so far.
+
+## Read-only source calls
+
+Using `.venv\Scripts\python.exe`, `scripts/real1c/gateway_client.py`, and a short-lived
+`auditor` token held only in process memory, the local gateway at
+`http://127.0.0.1:21000/mcp` returned `source_health.ok=true` and an account 521.1 read for
+`onec-818ha-reference` and the operator-specified company/cutoff. The result contained 15
+rows and was labeled `VALIDATED_MACHINE_RECONCILED`,
+`PROFILE_VALIDATED_MACHINE`, `MACHINE_TWO_SOURCE`, with warning
+`MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT`. No row, amount, or name was printed or stored
+in this note.
+
+The equivalent read through Ivan's gateway used a separate short-lived token minted on Ivan
+with `mint-token.ps1 -Ttl 3600`; stdout was captured in process and not printed. It also
+returned `source_health.ok=true`, with the same machine-evidence labels, but returned 16
+rows. An in-memory row-content digest comparison was unequal. The row contents and digest were
+not printed or persisted. Therefore the two source reads are **not reconciled**; the difference
+requires investigation before treating either lane as a cross-base match.
+
+The 21200 process was reachable and listed the two Phase2 comparison tools. Its
+`phase2_capabilities` reported `side_a_configured=false` and `side_b_configured=false`.
+Calling comparison tools through the running server returned `GATEWAY_TOKEN_UNAVAILABLE`.
+The process was not restarted or replaced. A read-only in-process invocation of the repository's `Reconciler` with separately
+minted short-lived gateway tokens returned:
+
+- Overall authority `EVALUATION_ONLY`, status ceiling `IMPLEMENTED_UNVERIFIED`, release verdict
+  `NO-GO`, and `native_pass=false`.
+- The 521.1 partial closing comparison was `PARTIAL_MISMATCH`, with one difference; the two
+  sides exposed 10 and 11 analytical rows. No values or names were printed.
+- The six-column turnover and purchase sections returned `GATEWAY_TOOL_ERROR`; the synthetic
+  negative-control tool also returned `GATEWAY_TOOL_ERROR`. These are incomplete runtime
+  results, not a pass or a successful negative-control demonstration.
+
+The direct MCP client and in-process reconciler used only read operations; the requested
+synthetic negative control perturbed a row only in memory and returned an error. `show_values=false`;
+no source write or migration was run. A GET on the MCP root is not evidence of the
+published OData anonymous-auth behavior, so that boundary remains operator-reported only.
+
+## Effective grants
+
+The read-only `database-reviewer` inspected the disposable PostgreSQL endpoint configured for
+host loopback port 18432. Docker showed `erpmcp-e2e-real1c-postgres-1` publishing that port to
+container port 5432; the connected database was `business_ai`, with session/current role
+`business_ai_admin`. The reviewer queried `pg_roles`, `pg_auth_members`,
+`information_schema.role_table_grants`, and `has_function_privilege` in a read-only
+transaction. No schema or functions named `change_ledger` existed, so the requested S13
+effective grants could not be established from this database. No migration was applied.
+
+The role inventory included a highly privileged `business_ai` role (superuser, role/database
+creation, replication and RLS bypass) and non-superuser `business_ai_admin`,
+`business_ai_app`, and `business_ai_control_api` roles without RLS bypass. No non-system role
+memberships were present. This is test-database role metadata, not evidence that a runtime
+application uses the elevated role. S13 database grants remain **NOT_VERIFIED** until the
+approved disposable schema is bootstrapped and the same read-only grant review is repeated.
+
+The 1C role evidence remains recorded, not reproduced in this turn:
+`testlane/onec_extension/STATUS.md`,
+`testlane/onec_extension/CT14_FEASIBILITY_SPIKE_2026-10-12.md`,
+`scripts/ct14_rights_state.json`, and
+`testlane/onec_extension/CT14Ext/Roles/CT14Писатель/Ext/Rights.xml`. The recorded clone
+measurement reports 53 allowlisted objects, receipt read/insert/update/post/unpost, sequence
+read/update, read-only support access, and no delete/interactive/admin rights. It also records
+that marker attributes are not protected by role-level rights; marker integrity still needs
+consumer-side enforcement. This is clone evidence, not deployed or production evidence.
+
+## Ordered remaining work
+
+1. Repair the running Phase2 outbound token-provider configuration without weakening
+   authentication or restarting unrelated services; then rerun the read-only comparison and
+   negative control through the actual MCP endpoint. Owner: operator accountable; Codex
+   executor. The 21200 service configuration is the dependency.
+2. Reconcile why local and Ivan 521.1 reads differ (15 vs 16 rows) and why turnover/purchase
+   calls fail; keep values and names in private process memory only. Owner: operator accountable;
+   Ivan stack owns the remote source boundary; no human contact is recorded.
+3. Complete S12/S13 design and implementation on the approved disposable lane, then bootstrap
+   only that disposable database and repeat effective-grant review. The S13 writer service is
+   a private Ivan-lane deliverable with stable call-ID idempotency, stale-epoch rejection,
+   authoritative outcome lookup and a quiescence barrier. No public tunnel write path.
+4. Proceed with WP5–WP8 and WP10 in dependency order. WP9 remains optional and outside the
+   critical path. Functional/E2E agents run after coding is complete; specialist reviews and
+   exact-head GPT-PM approval follow their evidence.
