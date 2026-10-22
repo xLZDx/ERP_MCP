@@ -17,7 +17,8 @@
  *     refs/heads and refs/remotes (symbolic refs and tags excluded; tracked symlinks, mode 120000, excluded).
  *     Each ref is read through the object id captured at scan start. Title cell = sorted, de-duplicated
  *     first-heading variants of that path over all scanned refs, each JSON-quoted and joined by " / " (empty
- *     cell = no heading anywhere), so different variant sets can never render identically. The whole blob is
+ *     cell = no heading anywhere), so different variant sets can never render identically. Cyrillic is escaped
+ *     only when that heading variant occurs exclusively on archive, rescue, or snapshot refs. The whole blob is
  *     searched for the first heading and a blob that cannot be read aborts generation. Exact scanned ref names
  *     and commit IDs are written as snapshot provenance; per-ref path counts, version counts and absolute
  *     locations are not written.
@@ -85,10 +86,18 @@ const escapeCyrillic = (text) =>
     const low = 0xdc00 + (adjusted & 0x3ff);
     return `\\u${high.toString(16).toUpperCase()}\\u${low.toString(16).toUpperCase()}`;
   });
-/** Unambiguous title cell: empty only when the sole variant is "no heading"; otherwise every variant is JSON-quoted. */
+const isHistoricalRef = (ref) => /(?:^|\/)(?:archive|rescue|snapshot)(?:\/|$)/iu.test(ref);
+/** Unambiguous title cell; historical-only Cyrillic headings stay escaped, current headings remain readable. */
 const titleCell = (variants) => {
-  const all = [...variants].sort(byCodePoint);
-  return all.length === 1 && all[0] === '' ? '' : all.map((title) => JSON.stringify(title)).join(' / ');
+  const all = [...variants.entries()].sort(([left], [right]) => byCodePoint(left, right));
+  return all.length === 1 && all[0][0] === ''
+    ? ''
+    : all
+        .map(([title, refsForTitle]) => {
+          const quoted = esc(JSON.stringify(title));
+          return [...refsForTitle].every(isHistoricalRef) ? escapeCyrillic(quoted) : quoted;
+        })
+        .join(' / ');
 };
 
 /** Refuse to read or write through links: the output file and its parent must be real paths inside the repository. */
@@ -132,9 +141,9 @@ const titleOf = (blob) => {
   return title;
 };
 
-/** @type {Map<string, Set<string>>} path -> distinct title variants */
+/** @type {Map<string, Map<string, Set<string>>>} path -> title -> refs that contain it */
 const tracked = new Map();
-for (const [, id] of refs) {
+for (const [refName, id] of refs) {
   // Each ref is read through the object id captured above, so the printed ref list matches the scanned trees.
   const records = git(['ls-tree', '-r', '-z', '--full-tree', id]).split('\0');
   for (const record of records) {
@@ -143,8 +152,11 @@ for (const [, id] of refs) {
     const [mode, type, blob] = record.slice(0, tab).split(' ');
     const path = record.slice(tab + 1);
     if (type !== 'blob' || mode === '120000' || !path.endsWith('.md') || path === REGISTRY_REL) continue;
-    const variants = tracked.get(path) ?? new Set();
-    variants.add(titleOf(blob));
+    const variants = tracked.get(path) ?? new Map();
+    const title = titleOf(blob);
+    const titleRefs = variants.get(title) ?? new Set();
+    titleRefs.add(refName);
+    variants.set(title, titleRefs);
     tracked.set(path, variants);
   }
 }
@@ -210,7 +222,7 @@ const lines = [
   excludeLocalOnly
     ? 'a path with several heading variants over the scanned refs lists all of them; an empty cell means no heading was found.'
     : 'heading variants over the scanned refs lists all of them; an empty cell means no heading was found.',
-  'Cyrillic characters in titles, paths, or ref names are written as \\uXXXX escapes.',
+  'Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.',
   '',
   excludeLocalOnly
     ? `Inventory: ${rows.length} tracked ${rows.length === 1 ? "path" : "paths"}; local-only NOT_ENUMERATED.`
@@ -220,13 +232,13 @@ const lines = [
   '',
   '| Path | Kind | Title |',
   '| --- | --- | --- |',
-  ...rows.map(([path, variants]) => `| ${escapeCyrillic(esc(path))} | ${kindOf(path)} | ${escapeCyrillic(esc(titleCell(variants)))} |`),
+  ...rows.map(([path, variants]) => `| ${esc(path)} | ${kindOf(path)} | ${titleCell(variants)} |`),
   '',
   '## Scanned refs',
   '',
   '| Ref | Commit |',
   '| --- | --- |',
-  ...refs.map(([name, id]) => `| ${escapeCyrillic(esc(name))} | \`${id}\` |`),
+  ...refs.map(([name, id]) => `| ${esc(name)} | \`${id}\` |`),
   '',
   excludeLocalOnly
     ? '## Local-only Markdown inventory'
@@ -234,7 +246,7 @@ const lines = [
   '',
   ...(excludeLocalOnly
     ? ['Local-only Markdown in attached worktrees was not inventoried in this snapshot.']
-    : ['| Path |', '| --- |', ...[...localOnly].sort(byCodePoint).map((path) => `| ${escapeCyrillic(esc(path))} |`)]),
+    : ['| Path |', '| --- |', ...[...localOnly].sort(byCodePoint).map((path) => `| ${esc(path)} |`)]),
   '',
 ];
 const body = lines.join('\n');

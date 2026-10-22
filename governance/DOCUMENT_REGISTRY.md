@@ -9,9 +9,9 @@ Git refs listed below. Local-only files in attached worktrees are intentionally 
 point-in-time snapshot, not a claim about refs created after generation. Excluded are this file, ignored files,
 symlinks and dependency/build directories. For tracked rows, titles show the first heading of each blob, JSON-quoted;
 a path with several heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
-Cyrillic characters in titles, paths, or ref names are written as \uXXXX escapes.
+Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
+Inventory: 436 tracked paths; local-only NOT_ENUMERATED.
 
 ## Documents in git (scanned refs)
 
@@ -41,7 +41,7 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/ARCHITECTURE.md | Design | "ERP_MCP Architecture" |
 | docs/BACKLOG_INHERITED_2026-10-21.md | Other | "Inherited defects backlog (ERP_MCP), 2026-10-21" |
 | docs/CHATGPT_MCP_INTEGRATION.md | Other | "ChatGPT ↔ ERP_MCP integration" |
-| docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md | Other | "ERP_MCP_REAL1 in ChatGPT — Historical User Guide" / "\u041F\u043B\u0430\u0433\u0438\u043D ERP_MCP_REAL1 \u0432 ChatGPT: \u043A\u0430\u043A \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u044C\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F" |
+| docs/CHATGPT_PLUGIN_USER_GUIDE_RU.md | Other | "ERP_MCP_REAL1 in ChatGPT — Historical User Guide" / "Плагин ERP_MCP_REAL1 в ChatGPT: как пользоваться после восстановления" |
 | docs/CLIENT_SAFETY_REVIEW_2026-10-08.md | Other | "ERP_MCP Client Safety Review — 2026-10-08" |
 | docs/COMPATIBILITY.md | Other | "1C compatibility and capability negotiation" |
 | docs/CONSOLIDATION_RECORD_2026-10-20.md | Other | "Branch consolidation record, 2026-10-20" |
@@ -51,18 +51,18 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/DOCUMENT_INDEX.md | Other | "ERP_MCP — Normative Documentation Index" |
 | docs/E2E_ACCEPTANCE_CONTRACT.md | Design | "ERP_MCP E2E acceptance contract (frozen)" |
 | docs/E2E_ENVIRONMENT.md | Other | "Local E2E environment (disposable, localhost-only)" |
-| docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md | Other | "ERP_MCP ↔ ChatGPT — Secure Tunnel Runbook" / "ERP_MCP ↔ ChatGPT — \u043A\u0440\u0430\u0442\u043A\u0438\u0439 runbook" |
+| docs/ERP_MCP_CHATGPT_RUNBOOK_RU.md | Other | "ERP_MCP ↔ ChatGPT — Secure Tunnel Runbook" / "ERP_MCP ↔ ChatGPT — краткий runbook" |
 | docs/FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md | Other | "Ferma → 1C Synthetic Testbed & Reconciliation — Implementation Blueprint" |
 | docs/FUNCTIONAL_TESTER_AUTONOMOUS_PROMPT.md | Other | "Autonomous assignment for Functional Tester" |
 | docs/GOVERNANCE.md | Other | "ERP_MCP Engineering Governance" |
-| docs/INSTALLATION_GUIDE_RU.md | Other | "ERP_MCP — Step-by-Step Installation Guide (Release 1)" / "ERP_MCP — \u043F\u043E\u0448\u0430\u0433\u043E\u0432\u0430\u044F \u0443\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430 (Release 1)" |
+| docs/INSTALLATION_GUIDE_RU.md | Other | "ERP_MCP — Step-by-Step Installation Guide (Release 1)" / "ERP_MCP — пошаговая установка (Release 1)" |
 | docs/INTEGRATION.md | Other | "ERP_MCP Integration Contract" |
-| docs/LESSONS_LEARNED_RU.md | Other | "ERP_MCP Release 1 — Lessons Learned and Practical Constraints" / "ERP_MCP Release 1 — lessons learned \u0438 \u043F\u0440\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u044F" |
+| docs/LESSONS_LEARNED_RU.md | Other | "ERP_MCP Release 1 — Lessons Learned and Practical Constraints" / "ERP_MCP Release 1 — lessons learned и практические ограничения" |
 | docs/MANUAL_ACCEPTANCE_ADMIN.md | Other | "Manual acceptance — ADMIN Control Center" |
 | docs/MANUAL_ACCEPTANCE_USER.md | Other | "Manual acceptance — SIMPLE USER (data-plane)" |
 | docs/MASTER_PLAN.md | Plan | "ERP_MCP Master Plan" |
 | docs/MVP_SCOPE.md | Other | "1C Day-1 / DAD Read-Only MVP Acceptance" / "1C Day-1 MVP acceptance" |
-| docs/NATIVE_REPORT_ACCOUNTANT_REQUEST_RU.md | Other | "Accountant Request: Native 1C Reports for Profile Validation (818 HA)" / "\u041F\u0440\u043E\u0441\u044C\u0431\u0430 \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443: \u043E\u0442\u0447\u0451\u0442\u044B 1\u0421 \u0434\u043B\u044F \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u043F\u0440\u043E\u0444\u0438\u043B\u044F (818 HA)" |
+| docs/NATIVE_REPORT_ACCOUNTANT_REQUEST_RU.md | Other | "Accountant Request: Native 1C Reports for Profile Validation (818 HA)" / "Просьба бухгалтеру: отчёты 1С для подтверждения профиля (818 HA)" |
 | docs/NATIVE_REPORT_CAPTURE_RUNBOOK.md | Other | "Native 1C report capture runbook (818HA reference clone)" |
 | docs/OBSERVABILITY_SRE.md | Other | "ERP_MCP Observability and SRE Contract" |
 | docs/PHASE_2_REQUIREMENTS_BACKLOG_DRAFT_2026-10-08.md | Phase 2 design | "ERP_MCP — Release 1 boundary / Phase 2 requirements backlog (DRAFT)" |
@@ -117,8 +117,11 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/commits/2026-10-22-current-status-reconciliation.md | Other | "Change record: Current Phase 2 status reconciliation" |
 | docs/commits/2026-10-22-dependency-evidence-addendum.md | Other | "Change record: Reconcile current dependency evidence" |
 | docs/commits/2026-10-22-development-database-loopback.md | Other | "Change record: Bind development databases to loopback" |
+| docs/commits/2026-10-22-document-registry-refresh.md | Other | "Change record: document registry refresh after WP0 prompt commit" |
+| docs/commits/2026-10-22-phase2-token-provider.md | Other | "Change record: route-bound Phase 2 gateway token providers" |
 | docs/commits/2026-10-22-project-and-ssh-key-inventory.md | Other | "Change record: Inventory project and SSH key access evidence" |
 | docs/commits/2026-10-22-registry-safe-generation.md | Other | "Change record: Safe Git-ref-only document registry generation" |
+| docs/commits/2026-10-22-s13-ivan-writer-design.md | Design | "Change record: S13 private writer design for Ivan's licensed lane" |
 | docs/commits/2026-10-22-ssh-key-access-audit.md | Other | "Change record: Recheck Ivan SSH keys and trust" |
 | docs/commits/2026-10-22-wp0-access-and-first-prompt-bundle.md | Other | "Change record: WP0 access recheck and first autonomous prompt bundle" |
 | docs/phase2/AUTONOMOUS_AGENT_PROMPT_2026-10-21.md | Phase 2 design | "Prompt for the autonomous ERP_MCP technical agent (2026-10-21)" |
@@ -287,12 +290,12 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/CLIENT_SAFETY_TRUST_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — anti-promotion guard on reference results" |
 | docs/phase2/CODEX_CONTINUATION_PROMPT_2026-10-22.md | Phase 2 design | "Continuation prompt for the autonomous Codex executor (ERP_MCP), 2026-10-22" |
 | docs/phase2/COMBINED_CLIENT_SAFETY_ACCEPTANCE_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — combined client-safety hardening acceptance" |
-| docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Data and API Contracts: TDD Clarification" / "Phase 2 — \u041A\u043E\u043D\u0442\u0440\u0430\u043A\u0442\u044B \u0434\u0430\u043D\u043D\u044B\u0445 \u0438 API: \u0443\u0442\u043E\u0447\u043D\u0435\u043D\u0438\u0435 \u043A \u0422\u0414\u0414" |
+| docs/phase2/CONTRACTS_AND_API_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Data and API Contracts: TDD Clarification" / "Phase 2 — Контракты данных и API: уточнение к ТДД" |
 | docs/phase2/CONVERGENCE_FINAL_SECURITY_REVIEW_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — convergence security closure, 2026-10-09" |
 | docs/phase2/CONVERGENCE_SECURITY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — convergence hardening and adversarial review (2026-10-09)" |
 | docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md | Phase 2 design | "CT14 feasibility spike: measured 1C capabilities on the disposable clone (2026-10-12)" |
 | docs/phase2/CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
-| docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "ERP_MCP Phase 2 — ADR Proposals, Decisions, Risks and Sources" / "Phase 2 — ADR proposals, \u0440\u0435\u0448\u0435\u043D\u0438\u044F, \u0440\u0438\u0441\u043A\u0438 \u0438 \u0438\u0441\u0442\u043E\u0447\u043D\u0438\u043A\u0438" |
+| docs/phase2/DECISIONS_AND_SOURCES_RU.md | Phase 2 design | "ERP_MCP Phase 2 — ADR Proposals, Decisions, Risks and Sources" / "Phase 2 — ADR proposals, решения, риски и источники" |
 | docs/phase2/DECISION_LOG.md | Phase 2 design | "Phase 2 decision and evidence log" |
 | docs/phase2/DRIFT_ACCEPTANCE_BOUNDARY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — DR-01 accepted vs observed structural hash" |
 | docs/phase2/EVIDENCE_MATRIX.md | Phase 2 design | "Phase 2 evidence matrix" |
@@ -309,13 +312,13 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/IMPLEMENTATION_STATUS.md | Phase 2 design | "Phase 2 Implementation Status — 2026-10-08" |
 | docs/phase2/NATIVE_REPORT_PROTOCOL_RU.md | Phase 2 design | "Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod" / "Phase 2 — Native 1C Report Capture and Reconciliation: Development / Production" |
 | docs/phase2/OPERATOR_BACKLOG.md | Phase 2 design | "Phase 2 operator backlog" |
-| docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package Preparation Closure" / "Phase 2 — \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u043F\u0440\u043E\u0435\u043A\u0442\u043D\u043E\u0433\u043E \u043F\u0430\u043A\u0435\u0442\u0430" |
-| docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — S0–S10 Plan and G0–G7 Gates" / "ERP_MCP Phase 2 — \u041F\u043B\u0430\u043D S0–S10 \u0438 gates G0–G7" |
+| docs/phase2/PACKAGE_COMPLETION_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package Preparation Closure" / "Phase 2 — завершение подготовки проектного пакета" |
+| docs/phase2/PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — S0–S10 Plan and G0–G7 Gates" / "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
 | docs/phase2/PLAN_V2_CONTROLLED_CHANGE_2026-10-11.md | Phase 2 design | "ERP_MCP v2 closure plan: controlled change and reconciliation (S11-S19, gate G8)" |
 | docs/phase2/PROMOTION_PM1_HARDENING_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 — P-M1 promotion preflight hardening (2026-10-09)" |
 | docs/phase2/PROMOTION_PREFLIGHT_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 promotion preflight — independent review (2026-10-09)" |
 | docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md | Phase 2 design | "R-03 design: Ed25519 cutover for writes and action evidence" |
-| docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package v0.1" / "ERP_MCP Phase 2 — \u043F\u0440\u043E\u0435\u043A\u0442\u043D\u044B\u0439 \u043F\u0430\u043A\u0435\u0442 v0.1" |
+| docs/phase2/README.md | Phase 2 design | "ERP_MCP Phase 2 — Design Package v0.1" / "ERP_MCP Phase 2 — проектный пакет v0.1" |
 | docs/phase2/RELEASE_READINESS_SNAPSHOT_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — customer release readiness (2026-10-09)" |
 | docs/phase2/S10_RELEASE_HANDOFF.md | Phase 2 design | "Phase 2 S10 offline closure: engineering handoff and release bundle description" |
 | docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md | Phase 2 design | "S11 decision records and threat model (2026-10-12)" |
@@ -331,6 +334,7 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
 | docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md | Phase 2 design | "S13 API mutation and lifecycle-fence coverage — 2026-10-17" |
 | docs/phase2/S13_BUSINESS_KEY_LOCK_ORDER_NOTE_2026-10-22.md | Phase 2 design | "S13 business-key mutation and validation lock note" |
+| docs/phase2/S13_IVAN_PRIVATE_WRITER_SERVICE_DESIGN_2026-10-22.md | Phase 2 design | "S13 private writer service design for Ivan's licensed lane" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
 | docs/phase2/S13_MUTATION_AND_WRITER_PATH_INVENTORY_2026-10-17.md | Phase 2 design | "S13 repository mutation and writer-path inventory — 2026-10-17" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
@@ -355,11 +359,11 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/SPRINT_S7_PLAN.md | Phase 2 design | "Sprint S7 plan - Google Drive connector: ERP_MCP-owned OAuth/consent state machine, least-privilege scope, start-page-token baseline with durable fail-closed cursors, revisions/moves/removal, auth expiry and revoke (offline reference modules over fake ports)" |
 | docs/phase2/SPRINT_S8_PLAN.md | Phase 2 design | "Sprint S8 plan - Workbench/UI explanations, history/coverage timeline, safe job/read API decisions and safe rerun (offline, unwired, in-memory reference modules; no real UI, no HTTP server)" |
 | docs/phase2/SPRINT_S9_PLAN.md | Phase 2 design | "Sprint S9 plan - Capacity/chaos/audit/restore/retention, R1 compatibility, migration rehearsal (offline, unwired, in-memory reference modules; no load generator, no real DB, no real restore, no real alerting)" |
-| docs/phase2/STORIES_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 User Stories and Acceptance Mapping" / "ERP_MCP Phase 2 — 48 \u0438\u0441\u0442\u043E\u0440\u0438\u0439 \u0438 acceptance mapping" |
+| docs/phase2/STORIES_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 User Stories and Acceptance Mapping" / "ERP_MCP Phase 2 — 48 историй и acceptance mapping" |
 | docs/phase2/TASK_LEDGER.md | Phase 2 design | "Phase 2 Task Ledger — evidence-only inventory (rows for S1-S5 updated 2026-10-09 to head af9f287)" / "Phase 2 Task Ledger — initial evidence-only inventory" |
-| docs/phase2/TDD_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Living Model Registry, Connectors and Native Reconciliation" / "ERP_MCP — Phase 2: Living Model Registry, Connectors \u0438 Native Reconciliation" |
+| docs/phase2/TDD_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Living Model Registry, Connectors and Native Reconciliation" / "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
 | docs/phase2/TERMINAL_ACCEPTANCE_LEDGER_2026-10-09.md | Phase 2 design | "ERP_MCP Phase 2 — terminal acceptance ledger, 2026-10-09" |
-| docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Test Strategy, Scenario Catalog and UAT" / "Phase 2 — \u0422\u0435\u0441\u0442-\u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438\u044F, \u043A\u0430\u0442\u0430\u043B\u043E\u0433 \u0441\u0446\u0435\u043D\u0430\u0440\u0438\u0435\u0432 \u0438 UAT" |
+| docs/phase2/TEST_PLAN_PHASE2_RU.md | Phase 2 design | "ERP_MCP Phase 2 — Test Strategy, Scenario Catalog and UAT" / "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
 | docs/phase2/WORKSTATION_VERIFICATION_2026-10-08.md | Phase 2 design | "Phase 2 workstation isolation verification — 2026-10-08" |
 | docs/phase2/artifacts/G3_ENGINEERING_RECONCILIATION_INDEX.md | Phase 2 design | "G3 engineering reconciliation index: account 521.1, 2026-08" |
 | docs/phase2/artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md | Phase 2 design | "G6 / G6-pre: one read-only canary pass and a bounded workload measurement (2026-10-10)" |
@@ -370,14 +374,14 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md | Phase 2 design | "WP2 inherited red-test classification — 2026-10-21" |
 | docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md | Phase 2 design | "Autonomous work packages WP4–WP10: dependency status — 2026-10-21" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md | Phase 2 design | "Derived Phase 2 specification bundle" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/01_TDD_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors \u0438 Native Reconciliation" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/02_PLAN_RU.md | Phase 2 design | "ERP_MCP Phase 2 — \u041F\u043B\u0430\u043D S0–S10 \u0438 gates G0–G7" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/03_STORIES_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 \u0438\u0441\u0442\u043E\u0440\u0438\u0439 \u0438 acceptance mapping" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/04_TEST_PLAN_RU.md | Phase 2 design | "Phase 2 — \u0422\u0435\u0441\u0442-\u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438\u044F, \u043A\u0430\u0442\u0430\u043B\u043E\u0433 \u0441\u0446\u0435\u043D\u0430\u0440\u0438\u0435\u0432 \u0438 UAT" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/01_TDD_RU.md | Phase 2 design | "ERP_MCP — Phase 2: Living Model Registry, Connectors и Native Reconciliation" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/02_PLAN_RU.md | Phase 2 design | "ERP_MCP Phase 2 — План S0–S10 и gates G0–G7" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/03_STORIES_RU.md | Phase 2 design | "ERP_MCP Phase 2 — 48 историй и acceptance mapping" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/04_TEST_PLAN_RU.md | Phase 2 design | "Phase 2 — Тест-стратегия, каталог сценариев и UAT" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/05_NATIVE_REPORT_PROTOCOL_RU.md | Phase 2 design | "Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/06_DECISIONS_SOURCES_RU.md | Phase 2 design | "Phase 2 — ADR proposals, \u0440\u0435\u0448\u0435\u043D\u0438\u044F, \u0440\u0438\u0441\u043A\u0438 \u0438 \u0438\u0441\u0442\u043E\u0447\u043D\u0438\u043A\u0438" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/07_DATA_MODEL_API_RU.md | Phase 2 design | "Phase 2 — \u041A\u043E\u043D\u0442\u0440\u0430\u043A\u0442\u044B \u0434\u0430\u043D\u043D\u044B\u0445 \u0438 API: \u0443\u0442\u043E\u0447\u043D\u0435\u043D\u0438\u0435 \u043A \u0422\u0414\u0414" |
-| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/08_COMPLETION_RU.md | Phase 2 design | "Phase 2 — \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u043F\u0440\u043E\u0435\u043A\u0442\u043D\u043E\u0433\u043E \u043F\u0430\u043A\u0435\u0442\u0430" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/06_DECISIONS_SOURCES_RU.md | Phase 2 design | "Phase 2 — ADR proposals, решения, риски и источники" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/07_DATA_MODEL_API_RU.md | Phase 2 design | "Phase 2 — Контракты данных и API: уточнение к ТДД" |
+| docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/08_COMPLETION_RU.md | Phase 2 design | "Phase 2 — завершение подготовки проектного пакета" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/09_HANDOFF_RU.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/docs/10_CUTOVER_PLAN_RU.md | Phase 2 design | "Phase 2 cutover plan: zero-interference to Release 1 (DRAFT)" |
 | docs/runbooks/COM_BRIDGE_AND_PARITY.md | Runbook | "COM bridge and parity harness runbook (ADR-0008)" |
@@ -432,7 +436,7 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | vendor/reference/1c-odata-v3/CLAUDE.md | Other | "CLAUDE.md" |
 | vendor/reference/1c-odata-v3/README.md | Other | "1c-odata" |
 | vendor/reference/1c-odata-v3/STABILITY.md | Other | "Stability Policy" |
-| vendor/reference/1c-odata-v3/docs/1c/markdown/17.4_-_C\u0442\u0430\u043D\u0434\u0430\u0440\u0442\u043D\u044B\u0439_\u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441_OData_8_3_27.md | Other |  |
+| vendor/reference/1c-odata-v3/docs/1c/markdown/17.4_-_Cтандартный_интерфейс_OData_8_3_27.md | Other |  |
 | vendor/reference/1c-odata-v3/examples/README.md | Other | "Examples" |
 | vendor/reference/1c-odata-v3/examples/basic/README.md | Other | "basic — 1c-odata example consumer" |
 | vendor/reference/1c-odata-v3/examples/dynamic/README.md | Other | "dynamic — no-codegen mode" |
@@ -465,7 +469,7 @@ Inventory: 432 tracked paths; local-only NOT_ENUMERATED.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `3bd4b126377b23a513a77da445ff29f4935147be` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `dd932427fdab2eed625cd320ecbcf5ffdd203ee0` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |

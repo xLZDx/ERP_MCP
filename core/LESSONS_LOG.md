@@ -55,3 +55,5 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 S13 private writer design: source migrations and trigger names do not prove an all-path writer fence. Read-only database review found incompatible advisory/row lock ordering, recovery/kill-switch lock chains, unique-conflict arbitration paths and granted mutation APIs outside lifecycle-trigger coverage; a short database transaction also cannot quiesce an admitted COM call. Before an activating migration, map every granted API/helper and conflict wait, define one reviewed global order, and make database admission and the private writer's durable barrier one protocol. Keep recovery `NOT_READY` until then.
 
+- 2026-10-22 WP3 document registry: generated titles vary across repository refs, so historical Cyrillic policy must be applied to each title variant using the refs that contain it. Escape only a variant found exclusively on archive/rescue/snapshot refs; keep paths, ref names, and current headings readable, and regenerate only after the intended ref snapshot is fixed.
+
