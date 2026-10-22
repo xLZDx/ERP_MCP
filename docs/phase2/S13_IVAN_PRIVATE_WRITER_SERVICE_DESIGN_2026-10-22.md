@@ -113,7 +113,7 @@ An actual architecture review found no contradiction between this design and the
 | Authoritative lookup | **CONTRACTED; NOT_IMPLEMENTED** | Durable service/ledger state and S12-bound receipt/outcome/completion evidence; restart and response-loss tests. |
 | Quiescence barrier | **CONTRACTED; NOT_IMPLEMENTED** | Linearizable admission/barrier race proof, complete pre-barrier enumeration, bounded wait, unresolved-call hold, and cross-process tests. |
 | Effective database rights | **NOT_VERIFIED** | Disposable post-migration effective role/membership/table/function privilege capture and DB review. The current inspected DB has no `change_ledger` schema. |
-| S13 service contract and S14 physical COM behavior | **S13 CONTRACTED / NOT_IMPLEMENTED; S14 NOT_QUALIFIED** | S13 service-boundary behavior is qualified through the injected writer port in WP4. Physical COM adapter, clone-specific fingerprint, CT14 call behavior, signed receipts, independent read-back, and crash/barrier behavior belong to WP6/S14 and remain for post-coding test agents. |
+| S13 service contract and S14 physical COM behavior | **S13 COORDINATOR IMPLEMENTED / NOT_TESTED; S14 NOT_QUALIFIED** | The new private coordinator defines durable-admission, invocation, lookup, and bounded-barrier adapter contracts; no concrete PostgreSQL adapter or listener is wired. Test-agent qualification, transaction-boundary proof, effective grants, physical COM adapter, clone-specific fingerprint, CT14 behavior, signed receipts, independent read-back, and crash/barrier evidence remain open. |
 | S13 readiness/production authority | **NOT_READY / NONE** | Full S13 stories, provider/key custody, complete fence coverage, recovery evidence, exact-head review, and formal gate approval. |
 
 ## Change control
