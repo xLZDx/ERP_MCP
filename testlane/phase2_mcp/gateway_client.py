@@ -6,12 +6,13 @@ Numbers are parsed straight into ``Decimal`` so no float rounding can enter a co
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from decimal import Decimal
 from typing import Any, Protocol
 
-from .config import GatewayConfig, TokenUnavailable
+from .config import GatewayConfig, TokenCredential, TokenUnavailable
 
 
 class GatewayError(Exception):
@@ -34,17 +35,36 @@ class Gateway:
         self._config = config
         self._timeout = timeout
         self._token: str | None = None
+        self._token_refresh_at: float | None = None
         self._sid: str | None = None
 
     def _bearer(self) -> str:
-        if self._token is None:
+        if (self._token is None or (self._token_refresh_at is not None
+                                    and time.monotonic() >= self._token_refresh_at)):
             if self._config.token_provider is None:
                 raise GatewayError("GATEWAY_TOKEN_UNAVAILABLE")
             try:
-                self._token = self._config.token_provider()
+                credential = self._config.token_provider()
             except TokenUnavailable as exc:
                 raise GatewayError("GATEWAY_TOKEN_UNAVAILABLE") from exc
+            if isinstance(credential, TokenCredential):
+                if not credential.access_token or credential.expires_in <= 0:
+                    raise GatewayError("GATEWAY_TOKEN_UNAVAILABLE")
+                self._token = credential.access_token
+                # Refresh before expiry so a live MCP session is not left holding an
+                # expired bearer. Static legacy providers have no known expiry.
+                self._token_refresh_at = time.monotonic() + max(1, credential.expires_in - 60)
+            elif isinstance(credential, str) and credential:
+                self._token = credential
+                self._token_refresh_at = None
+            else:
+                raise GatewayError("GATEWAY_TOKEN_UNAVAILABLE")
         return self._token
+
+    def _clear_auth(self) -> None:
+        self._token = None
+        self._token_refresh_at = None
+        self._sid = None
 
     def _rpc(self, method: str, params: dict[str, Any], *, notify: bool = False) -> Any:
         body: dict[str, Any] = {"jsonrpc": "2.0", "method": method, "params": params}
@@ -64,7 +84,10 @@ class Gateway:
                 self._sid = response.headers.get("Mcp-Session-Id") or self._sid
                 raw = response.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
-            self._sid = None
+            if exc.code in (401, 403):
+                self._clear_auth()
+            else:
+                self._sid = None
             if exc.code in (401, 403):
                 raise GatewayError("GATEWAY_AUTH_REJECTED") from None
             raise GatewayError("GATEWAY_HTTP_ERROR") from None
@@ -92,8 +115,17 @@ class Gateway:
         self._rpc("notifications/initialized", {}, notify=True)
 
     def call(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        self._ensure_session()
-        reply = self._rpc("tools/call", {"name": tool, "arguments": arguments})
+        for attempt in range(2):
+            try:
+                self._ensure_session()
+                reply = self._rpc("tools/call", {"name": tool, "arguments": arguments})
+                break
+            except GatewayError as exc:
+                # All tools exposed by this test lane are read-only. Re-mint once after
+                # token rejection; never loop indefinitely on a real authorization error.
+                if exc.code != "GATEWAY_AUTH_REJECTED" or attempt:
+                    raise
+                self._clear_auth()
         if not isinstance(reply, dict) or "error" in reply:
             raise GatewayError("GATEWAY_RPC_ERROR")
         result = reply.get("result")

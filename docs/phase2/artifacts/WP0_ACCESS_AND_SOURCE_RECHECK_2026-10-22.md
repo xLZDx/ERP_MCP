@@ -58,6 +58,30 @@ synthetic negative control perturbed a row only in memory and returned an error.
 no source write or migration was run. A GET on the MCP root is not evidence of the
 published OData anonymous-auth behavior, so that boundary remains operator-reported only.
 
+## Current-turn outbound-token implementation update
+
+The source cause of `GATEWAY_TOKEN_UNAVAILABLE` was that the running Phase 2 process had no
+configured outbound token providers. In this turn, `testlane/phase2_mcp/config.py` now provides
+the default operator-approved local `auditor` mint through `LaneEnv`/`Idp` and the remote Ivan
+mint through strict SSH host-key checking to `koros@100.88.71.74`. The fixed remote command
+requests a 3600-second token; alternate remote script paths and SSH targets fail closed, and a
+script-path setting without its matching target is a configuration error unless a higher-priority
+token source is selected. The
+gateway client refreshes short-lived credentials before expiry and allows one provider re-read
+after HTTP 401/403 because its exposed tools are read-only. Static legacy providers have no expiry
+metadata, so their retry may return the same credential. Provider precedence and this distinction
+are documented in the design record at
+`artifacts/PHASE2_TESTLANE_MCP_DESIGN.md`.
+
+This is an **implemented source change, not runtime-proven**. The 21200 server was not restarted
+or replaced, so the running process still has its original configuration and its prior
+`GATEWAY_TOKEN_UNAVAILABLE` result is not yet cleared. No new MCP calls, tests, checks, builds, or
+migrations were run after this implementation. Owner: operator is accountable; Codex executed the
+local change; Ivan stack owns the remote host boundary. Next: after all in-scope code is complete,
+the test roles should start an isolated Phase 2 instance on a separate loopback port with the
+verified env and exercise both token providers and read-only comparison scenarios. Leave the
+operator-verified 21200 process in place; no restart or replacement is part of this work.
+
 ## Effective grants
 
 The read-only `database-reviewer` inspected the disposable PostgreSQL endpoint configured for
@@ -87,10 +111,11 @@ consumer-side enforcement. This is clone evidence, not deployed or production ev
 
 ## Ordered remaining work
 
-1. Repair the running Phase2 outbound token-provider configuration without weakening
-   authentication or restarting unrelated services; then rerun the read-only comparison and
-   negative control through the actual MCP endpoint. Owner: operator accountable; Codex
-   executor. The 21200 service configuration is the dependency.
+1. After all in-scope coding is complete, have the test roles start a separate Phase 2 instance
+   on another loopback port with the verified environment, then rerun the read-only comparison
+   and negative control through the actual MCP endpoint. Preserve the operator-verified process
+   on 21200 without restart or replacement. Owner: operator accountable; Codex executor; the
+   functional-test-reviewer and e2e-runner own execution of their mapped scenarios.
 2. Reconcile why local and Ivan 521.1 reads differ (15 vs 16 rows) and why turnover/purchase
    calls fail; keep values and names in private process memory only. Owner: operator accountable;
    Ivan stack owns the remote source boundary; no human contact is recorded.
