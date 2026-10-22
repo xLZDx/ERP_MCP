@@ -63,6 +63,8 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 S13 private writer coordinator: keep stable client call identity separate from the transient process-instance owner. Duplicate/restarted requests must resolve the original durable record and never let a replacement process reissue an uncertain COM call.
 
+- 2026-10-22 S13 operation scope: derive the private writer's callable operation allowlist from the frozen S12 contract. A lower-level port may expose extra methods, but the coordinator must refuse operations explicitly outside the accepted scope such as `UPDATE_DRAFT`.
+
 - 2026-10-22 SHORTCOMING WP0/S13 evidence reconciliation: older connector-route failures and source-owner inventory notes were carried forward as current blockers after the operator supplied the approved local route, trusted Ivan SSH identity, and Ivan Stack technical owner. Preserve the original observations as history, but add a dated superseding correction with direct evidence before recommending reauthentication or calling a boundary unowned. A successful source read proves only its reported machine-evidence level, and a disposable catalog without the S13 schema cannot prove S13 grants.
 
 - 2026-10-22 SUCCESS capability grant hardening: a routine's explicit grant to the intended app role does not remove PostgreSQL's default PUBLIC EXECUTE. Inspect effective ACLs on a disposable database, then add a forward-only migration that revokes PUBLIC while retaining only the code-used role's explicit grant; verify the exact privilege after the migration is run by the authorized test role.

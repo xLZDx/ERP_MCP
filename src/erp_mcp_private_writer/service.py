@@ -160,7 +160,6 @@ class PrivateWriterService:
 
     _WRITER_METHODS = {
         "CREATE_DRAFT": "create_draft",
-        "UPDATE_DRAFT": "update_draft",
         "POST": "post",
         "UNPOST": "unpost",
     }
@@ -331,8 +330,8 @@ class PrivateWriterService:
 
         writer_method = getattr(self._writer, self._WRITER_METHODS[identity.operation])
         try:
-            result = await writer_method(ticket, permit, writer_payload) if identity.operation in {
-                "CREATE_DRAFT", "UPDATE_DRAFT"} else await writer_method(ticket, permit)
+            result = (await writer_method(ticket, permit, writer_payload)
+                      if identity.operation == "CREATE_DRAFT" else await writer_method(ticket, permit))
         except asyncio.CancelledError:
             # Invocation may have reached COM. Preserve durable uncertainty; never dispatch again.
             raise

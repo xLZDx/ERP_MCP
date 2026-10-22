@@ -29,6 +29,7 @@ The approved writer decision requires a private licensed-lane service with stabl
 - The immutable call identity includes organization explicitly; it does not rely on an indirect permit-digest binding to detect cross-organization reuse. Barrier polling must preserve the exact original pre-barrier call set.
 - A call remains unresolved if the process crashes or loses the response after invocation may have started. A timeout after confirmed barrier closure returns `CLOSED_WITH_HOLD`; timeout while establishing closure raises `BARRIER_OUTCOME_UNKNOWN` and does not establish closure or quiescence. Uncertainty never clears a hold.
 - Keep lifecycle recovery refused and `NOT_READY` until the all-path fence, effective grants, recovery evidence, and independent qualification are established.
+- Enforce the frozen S12 v2.0 operation allowlist: `CREATE_DRAFT`, `POST`, and `UNPOST`; `UPDATE_DRAFT` remains unsupported.
 
 ## Verification state
 
