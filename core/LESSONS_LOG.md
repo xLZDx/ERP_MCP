@@ -59,3 +59,5 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 S13 ownership and grant records: distinguish the operator as accountable task owner, Ivan Stack as technical owner of the host/connection boundary, and Codex as implementation executor. A disposable catalog query with no S13 schema establishes `NOT_VERIFIED` grants for that instance; it does not justify calling the boundary unowned or claiming deployed privileges.
 
+- 2026-10-22 WP2 count reconciliation: reconcile acceptance prose against the actual identifier rows and preserve categories (Phase 2 versus main-set) when reporting totals. Counts do not establish per-test causes or runtime acceptance.
+

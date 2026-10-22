@@ -19,7 +19,7 @@ included here.
   inherited run summary. Exact exception causes remain NOT_VERIFIED until an
   authorized test owner captures sanitized failure details with the declared
   disposable database available.
-- The 12 failures below are **code/contract candidates** based on the source test
+- The 14 failures below are **code/contract candidates** based on the source test
   scope. Their individual causes are NOT_VERIFIED. In particular, tests explicitly
   described as offline use synthetic in-memory data and should not be presumed to
   need PostgreSQL or 1C.
@@ -49,7 +49,7 @@ included here.
 | `tests/phase2/test_s13_migration023.py::test_success_restores_caller_lock_timeout` | Database-environment candidate | Database session-setting scenario; exact error unverified. |
 | `tests/phase2/test_s13_migration023.py::test_timeout_savepoint_restores_setting_and_outer_transaction` | Database-environment candidate | Database transaction/savepoint scenario; exact error unverified. |
 
-## Twelve inherited failures
+## Fourteen inherited failures
 
 | Test identifier | Preliminary class | Evidence and remaining acceptance |
 |---|---|---|
@@ -77,8 +77,8 @@ uses identifiers only and does not establish failure causes.
 ## Acceptance and owner
 
 WP2 is **partially classified; runtime acceptance is NOT_RUN**. The test owners are
-`functional-test-reviewer` and `e2e-runner`; they must reconcile the exact 12 + 13
-identifier set against sanitized historical failure metadata, then run only the
+`functional-test-reviewer` and `e2e-runner`; they must reconcile all 14 failure and
+13 error identifiers against sanitized historical failure metadata, then run only the
 focused cases after all coding is complete. Classify each result as code defect,
 declared environment dependency, or historical flake only when the execution
 evidence supports that conclusion. The executor must preserve exact commands,
