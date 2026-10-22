@@ -11,34 +11,76 @@ older gate decisions remain historical and are not changed by this operational u
 - Reconciliation base HEAD was `d82cfa4cd44b105608c294d742c84fa8cdbc950f`. Local commits
   `33f76b7` and `d82cfa4` record the SSH audit and safe document-registry generation. No
   push was performed, and remote-head equality was not rechecked in this run.
+- The current checkout is branch `codex/erp-mcp-autonomous-2026-10-21` at
+  `d0763b0e74be06e0b5d5ba34c1744e7c357ed0a0`; the worktree contains unstaged
+  changes. No branch switch was attempted because that would move the base under those edits.
+  The operator clarified on 2026-10-22 that the prohibition is on a staging deployment, not
+  Git staging: explicit-path `git add` and local commits are authorized, with GPT-PM approval
+  required before each commit and exact-head approval required before push/PR. Earlier wording
+  that treated Git staging as forbidden is superseded.
+- A read-only history audit of the 10 task-branch commits found a dedicated change-record file
+  in every commit. Eight commit messages name that record; commits `ae581ee` and `33f76b7`
+  include the files but omit their paths from the messages. Only the first four commits include
+  `core/LESSONS_LOG.md`; the last six do not. History was not rewritten; link each record and
+  include the required lesson entry in future commits. See
+  `docs/commits/2026-10-22-commit-record-audit.md`.
 - Release 2 remains **NO-GO**; G0 remains PASSED only for its narrow isolated-prototype
   scope, G1–G8 remain **NOT_PASSED**, formal S13 remains **NOT_STARTED / NOT_APPROVED**,
   and production authorization remains **NONE**. This update changes no gate or manifest.
-- The 2026-10-22 SSH recheck found three matching local private/public identity pairs with
-  private-file ACLs limited to the current user, SYSTEM, and Administrators; their ERP
-  authorization is **NOT_VERIFIED**. No trusted Ivan host key exists in the checked trust
-  stores. Strict SSH stopped before authentication; remote status and 1C environment
-  checks remain **NOT_RUN**. The repository key/path inventory found no tracked private
-  key material or conventional root env file; connected-app secrets and live DB key rows
-  were not inspected.
-  See `docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`.
+- **Superseded SSH/host-key observation:** the operator verified Ivan's host key in
+  `known_hosts` under `100.88.71.74` and supplied the matching fingerprint. This turn then
+  connected using `ssh -o BatchMode=yes -o StrictHostKeyChecking=yes koros@100.88.71.74`;
+  the read-only stack status returned exit 0 and all nine components `True`. The command also
+  listed only names in `D:\1c\mcp`. This establishes strict host-key acceptance and current
+  stack status, not the COM writer boundary or deployed PostgreSQL grants. No service was
+  restarted. See `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md`.
 - Local development PostgreSQL and Redis are currently healthy on loopback ports 5432 and
   6379. The real1c PostgreSQL and Redis containers were also observed healthy on loopback;
   their origin was not independently verified. No migration or business write was run.
-- The latest recorded connected ERP MCP calls did not provide source evidence: `ERP_MCP_REAL1` status
-  and source calls returned `-32603`; `erp-mcp-chatgpt` returned `UNAUTHORIZED` requiring
-  reauthentication. No business data was read. The local source/gateway path is not
-  release or canary evidence.
+- The disposable E2E Compose project requires generated owner/Redis passwords in
+  `.e2e/compose.env` (`compose.e2e.yml`). Its documented startup command,
+  `scripts/e2e/up.ps1 -Seed baseline`, generates that environment, starts Compose, runs
+  schema migrations, verifies and seeds the database, then starts host processes
+  (`docs/E2E_ENVIRONMENT.md`, "Commands"; `scripts/e2e/up.ps1`). No separate supported
+  database-only startup path was found in those instructions. The command was not run under
+  the current no-migrations/no-tests restriction; this continuation started no services.
+- **Superseded connector-path observation:** historical `ERP_MCP_REAL1`/`erp-mcp-chatgpt`
+  connector errors do not describe the authorized local gateway path; the operator explicitly
+  directed this work not to use `ERP_MCP_REAL1`. This turn minted a short-lived `auditor`
+  token in process and called `source_health` and `accounting_balance_by_analytics` through
+  `http://127.0.0.1:21000/mcp`. Health returned `ok=true`; the read returned 15 rows labeled
+  `VALIDATED_MACHINE_RECONCILED` / `PROFILE_VALIDATED_MACHINE` / `MACHINE_TWO_SOURCE`, with
+  warning `MACHINE_RECONCILED_NOT_HUMAN_NATIVE_REPORT`. Row values and token were not printed.
+  This is runtime read evidence only; it is not a human-signed report or release/canary
+  acceptance. A previously recorded Ivan read returned 16 rows, so cross-lane reconciliation
+  remains open.
 - WP3 document navigation now has a reviewed `--exclude-local-only` generator mode. The
-  current generated snapshot at base HEAD `41e251e1dcd368d609645b66d990d1401ed0eace`
-  records 46 refs and 425 tracked paths; local-only paths are explicitly
-  **NOT_ENUMERATED**. Functional tests and generator `--check` remain
+  earlier snapshot at base HEAD `0fe023db1ec2adcf1820356db1dd1db09d23c3ab` recorded 46
+  refs and 426 tracked paths; it is historical. Later generation evidence in
+  `docs/commits/2026-10-22-wp3-registry-historical-cyrillic.md` records 46 refs and 436
+  tracked paths at branch ref `dd932427fdab2eed625cd320ecbcf5ffdd203ee0`; this is the latest
+  generation snapshot evidenced in the repository, not a claim about refs created after it.
+  Local-only paths were explicitly **NOT_ENUMERATED**. Functional tests and generator `--check` remain
   **NOT_RUN** under the active no-tests/checks restriction. See
   the dated addendum in `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md`.
 
 The established writer-boundary, signer provisioning, clone qualification, S14–S18,
 Drive deletion, and release dependencies below remain open. No source, authorization,
 production, or manifest status changed.
+
+- A read-only database review reconciled identified runtime grants and traced their
+  helper/trigger effects at source level. `validate` violates the documented
+  advisory-before-row order, and within the event-trigger sequence the chain lock is
+  requested before the lifecycle row lock. No current deadlock cycle is claimed, but a global
+  recovery fence order is unproven; keep recovery refused and lifecycle `NOT_READY`. See
+  `docs/phase2/S13_SOURCE_FINAL_GRANT_AND_LOCK_INVENTORY_2026-10-22.md`.
+- Disposable-lane ACL review found `bag.record_capability_observation(...)` has effective
+  `PUBLIC EXECUTE`; a focused security reviewer rated this MINOR because the ordinary HTTP/MCP
+  route remains authenticated, but the SECURITY DEFINER function lacks caller/source
+  authorization and can write source-scoped capability claims. A forward-only migration 015
+  now revokes PUBLIC and keeps the app-role grant; it is not run or runtime-verified. The
+  disposable database lacks the separate `change_ledger` schema, so S13 effective grants remain
+  **NOT_VERIFIED**. See `docs/commits/2026-10-22-capability-function-execute-revocation.md`.
 
 ## Historical reconciliation (2026-10-17)
 
@@ -53,7 +95,7 @@ The tables and dated notes below preserve historical intake and decision snapsho
 | S13 lock-order MINOR | Deferred to S18 | Reliability review found a possible transient deadlock, not false OFF; CR117 and S13 design record it | Align lock order or separate nonce cleanup and add deterministic contention scenario in S18 | Engineering/S18; no named person |
 | G4 / Drive | v2.0 target excludes Drive; manifest unchanged and G4 NOT_PASSED | `drive_intake_enabled=false`; GPT ruling | Record applicable formal scope/waiver authority before any manifest change; do not infer gate passage | Scope/gate authority; no named person |
 | CT14 / write scope | Partial clone-only evidence | Existing feasibility report; no production capability claim | Exclude OData writes, contract update, forced session termination, and unrelated work during unresolved calls from v2.0 write scope | S12/CT14 engineering; no named person |
-| Authorized ERP source observation (G1/G2 input) | NOT_RUN | 2026-10-17 read-only `ERP_MCP_REAL1.sources_list` and `.system_status` each returned MCP `-32603: Internal error`; no source data was read. The connector tools expose no reauthentication control. | Restore the authorized connector route/principal and retry only gate-scoped reads. This does not replace the independent G3 accountant report or other gate evidence. | ERP connector/service owner not identified; operator remains accountable for delegated project closure |
+| Authorized ERP source observation (G1/G2 input) | PARTIAL; not gate acceptance | Current turn: local direct MCP `source_health.ok=true` and 521.1 analytical read returned 15 rows with `VALIDATED_MACHINE_RECONCILED` / `MACHINE_TWO_SOURCE`; the values were suppressed. The historical 16-row Ivan result remains unreconciled. The operator identifies Ivan Stack as the technical owner of the existing host/connection boundary; operator is accountable for this delegated project task. | Reconcile the 15-versus-16 row set through the approved read-only comparison after all in-scope code is complete; keep human/native accounting attestation and G1/G2 gate evidence separate. Do not use `ERP_MCP_REAL1`. | Operator accountable; Ivan Stack technical owner of the host/connection boundary; test roles own later mapped comparisons |
 | CR164–CR170 local publication snapshot | CR164–CR169 are committed locally through `be33c4f0d529f9afb3f14727ce0557a5fe7f9a24`; CR170 is the current documentation follow-up. `origin/main` remains at base `85a179455365dcfadd01f827feb1304cec7fe006`. | CR164–165 reconcile and correct the registry generator; CR166 reconciles S13 evidence; CR167 updates this backlog; CR168 fixes registry count grammar; CR169 orders S13 work behind the writer boundary. PM Bridge request `826c8867-4d43-40be-8c32-3abdd4435131` requests review of exact HEAD `be33c4f0d529f9afb3f14727ce0557a5fe7f9a24` and is still queued, not sent; no correlated approval exists yet. Earlier requests were for superseded exact heads and cannot approve this range. | Wait for correlated approval of the exact current HEAD; then confirm `origin/main` still equals the reviewed base before the authorized fast-forward push. Any new commit requires a fresh exact-head review. | GPT-PM owns the review decision; GPT/Codex executes an approved push |
 
 Historical R-03 source descriptions below that say migrations 015–018 still allow legacy-signed action use are superseded: migrations 019/021 and CR112/115/116 address the local prototype paths. The formal deployed-key and custody risk remains open. Result semantics: an exit code of zero, `NOT_RUN`, or `SKIP` alone is not PASS; PASS requires explicit terminal PASS evidence correlated to the exact revision and completed harness.

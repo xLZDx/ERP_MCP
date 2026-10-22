@@ -99,6 +99,23 @@ marker-integrity caveat. Operator is accountable owner; Ivan stack is the techni
 the remote host boundary. The next gate is repairing the 21200 outbound token provider and
 resolving the source discrepancy, then completing S12/S13 on the authorized disposable lane.
 
+### Capability-function effective grant follow-up — 2026-10-22
+
+A read-only `database-reviewer` audit through the authorized lane environment connected as
+`business_ai_admin`, `business_ai_app`, and `business_ai_control_api` separately. It confirmed
+that the separate `change_ledger` schema is absent, so S13 effective grants cannot be read
+from this database. A separate lookup also found no `bag.change_ledger` table; absence of
+that table does not establish whether the other schema exists. On the existing `bag` schema,
+all seven inspected routines were executable by the three
+roles, and `bag.record_capability_observation(...)` also had effective `PUBLIC EXECUTE`.
+The focused security review found no unauthenticated HTTP/MCP path; it rated the privilege
+gap MINOR because a database identity with schema usage can write source-scoped capability
+claims through the `SECURITY DEFINER` routine without source authorization in its body.
+Migration 015 now removes the PUBLIC grant and retains the explicitly used app-role grant.
+It is implemented but **NOT_RUN / NOT_RUNTIME_VERIFIED**; only the functional/E2E roles may
+qualify it after coding is complete. No other lane's `bag` grants establish Ivan or production
+access.
+
 ## S13 database review addendum — 2026-10-22
 
 At source HEAD `0fe023db1ec2adcf1820356db1dd1db09d23c3ab`, a read-only database review

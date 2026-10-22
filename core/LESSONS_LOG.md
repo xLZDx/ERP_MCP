@@ -61,3 +61,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the 
 
 - 2026-10-22 WP2 count reconciliation: reconcile acceptance prose against the actual identifier rows and preserve categories (Phase 2 versus main-set) when reporting totals. Counts do not establish per-test causes or runtime acceptance.
 
+- 2026-10-22 SHORTCOMING WP0/S13 evidence reconciliation: older connector-route failures and source-owner inventory notes were carried forward as current blockers after the operator supplied the approved local route, trusted Ivan SSH identity, and Ivan Stack technical owner. Preserve the original observations as history, but add a dated superseding correction with direct evidence before recommending reauthentication or calling a boundary unowned. A successful source read proves only its reported machine-evidence level, and a disposable catalog without the S13 schema cannot prove S13 grants.

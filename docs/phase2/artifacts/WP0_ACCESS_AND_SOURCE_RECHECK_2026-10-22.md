@@ -99,6 +99,17 @@ memberships were present. This is test-database role metadata, not evidence that
 application uses the elevated role. S13 database grants remain **NOT_VERIFIED** until the
 approved disposable schema is bootstrapped and the same read-only grant review is repeated.
 
+The same read-only audit found no RLS-enabled or forced-RLS table among the 15 inspected
+`bag` base tables. The app role had SELECT on 13 `bag` tables plus SELECT/INSERT on
+`audit_events`, and no `company_scope_mappings` grant. The per-role details and function
+privileges were queried through each role's own connection; the admin view alone did not
+represent every role's effective grants. All seven inspected `bag` routines were executable
+by app/admin/control. In particular, `bag.record_capability_observation(...)` is
+`SECURITY DEFINER` with `PUBLIC EXECUTE` and performs an upsert into `source_capabilities`
+without an explicit authorization check in its body; see
+`db/migrations/014_capability_observation_boundary.sql:13-105`. This is an authorization
+review item, not a demonstrated exploit. No schema/data changes were made.
+
 The 1C role evidence remains recorded, not reproduced in this turn:
 `testlane/onec_extension/STATUS.md`,
 `testlane/onec_extension/CT14_FEASIBILITY_SPIKE_2026-10-12.md`,
