@@ -137,3 +137,34 @@ consumer-side enforcement. This is clone evidence, not deployed or production ev
 4. Proceed with WP5–WP8 and WP10 in dependency order. WP9 remains optional and outside the
    critical path. Functional/E2E agents run after coding is complete; specialist reviews and
    exact-head GPT-PM approval follow their evidence.
+
+## Follow-up read-only comparison — current executor turn
+
+After the S13 lock-protocol commit, I repeated the Ivan check with
+`ssh -o BatchMode=yes -o StrictHostKeyChecking=yes koros@100.88.71.74 "powershell -NoProfile -ExecutionPolicy Bypass -File D:\1c\mcp\run-mcp-stack.ps1 -Action Status"`.
+It exited 0 and reported all nine stack components `True`: postgres, redis, apache, proxies 8191–8193,
+sidecar, idp, and gateway. `ssh-keygen -F 100.88.71.74` found the existing known-hosts entry;
+strict host-key verification succeeded. A names-only listing of `D:\1c\mcp` returned the stack app/data/env/logs/runtime/tunnel/venv directories and its management scripts. No service restart or credential-file read occurred.
+
+Using the approved in-process gateway client and short-lived `auditor` tokens, I repeated
+`source_health` and `accounting_balance_by_analytics` for `onec-818ha-reference`, the operator-specified
+company and cutoff, against local `http://127.0.0.1:21000/mcp` and Ivan
+`http://100.88.71.74:21000/mcp`. Both health calls returned `ok=true`; both balance calls returned
+without MCP error and reported `VALIDATED_MACHINE_RECONCILED`. The account payload had 15 local rows
+and 16 Ivan rows. Metadata and profile fingerprints matched, and both routes were `odata`.
+
+I compared normalized row groups in process by account key, typed analytics references, and currency.
+The local payload contained 10 distinct groups (5 repeated rows); Ivan contained 11 (5 repeated rows).
+All 10 common groups had matching multiplicities and matching aggregate debit/credit values; no group
+was local-only, and one group was Ivan-only. Names, references, balances, and tokens were not emitted.
+A first-pass full-payload digest appeared only in the agent tool output and is intentionally omitted
+from this durable record. This narrows the prior mismatch to one additional normalized analytic group
+on Ivan; it does not establish why that group exists or reconcile the two bases.
+
+These were read-only source calls. The gateway's normal audit records may be written by the service;
+no 1C/source mutation, migration, COM write, deployment, or process restart was performed. The prior
+WP0 result and current independent comparison both remain **NOT_RECONCILED** until the Ivan-only group
+is explained and an accepted cross-base rule accounts for it. The next step is a privacy-preserving
+source-side diagnosis on the disposable qualification path after coding is complete; operator is the
+accountable owner, the Ivan stack owns the host/connection boundary, and no individual responsible for
+the data difference is established in the repository.
