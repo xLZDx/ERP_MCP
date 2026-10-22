@@ -184,11 +184,20 @@ class PrivateWriterService:
     def _identity(self, ticket: ApplyTicket, permit: DispatchPermit) -> CallIdentity:
         if type(ticket) is not ApplyTicket or type(permit) is not DispatchPermit:
             raise ServiceError("CALL_IDENTITY_INVALID")
-        if (type(ticket.generation) is not int or ticket.generation <= 0
+        if (type(ticket.kind) is not str
+                or type(ticket.change_id) is not str or type(ticket.call_id) is not str
+                or type(permit.change_id) is not str or type(permit.call_id) is not str
+                or type(ticket.repair_authorization_id) not in (str, type(None))
+                or type(permit.repair_authorization_id) not in (str, type(None))
+                or type(ticket.target_ref) not in (str, type(None))
+                or type(ticket.target_version) not in (str, type(None))
+                or type(ticket.generation) is not int or ticket.generation <= 0
+                or type(permit.generation) is not int or permit.generation <= 0
                 or type(permit.lifecycle_epoch) is not int or permit.lifecycle_epoch <= 0
                 or permit.generation != ticket.generation
                 or permit.change_id != ticket.change_id or permit.call_id != ticket.call_id
                 or permit.repair_authorization_id != ticket.repair_authorization_id
+                or type(ticket.base_fingerprint) is not str
                 or ticket.base_fingerprint != self._base_fingerprint):
             raise ServiceError("CALL_IDENTITY_INVALID")
         if ticket.kind not in self._WRITER_METHODS:
@@ -198,7 +207,8 @@ class PrivateWriterService:
             call_id = str(UUID(ticket.call_id))
         except (ValueError, TypeError, AttributeError):
             raise ServiceError("CALL_IDENTITY_INVALID") from None
-        if not ticket.tenant_id or not ticket.company_id or not ticket.organization:
+        if any(type(value) is not str or not value.strip() for value in (
+                ticket.tenant_id, ticket.company_id, ticket.organization)):
             raise ServiceError("CALL_SCOPE_INVALID")
         if (type(ticket.digest_set_hash) is not str or len(ticket.digest_set_hash) != 64
                 or any(ch not in "0123456789abcdef" for ch in ticket.digest_set_hash)
