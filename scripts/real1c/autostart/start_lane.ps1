@@ -6,13 +6,13 @@
   script is the logon starter and the 5-minute watchdog of the scheduled task "ERP_MCP_Lane_Autostart".
 
   Order: Docker Desktop + lane PostgreSQL/Redis -> Apache (1C OData publication) -> lane proxies 8191-8193
-         -> real sidecar 21768 -> Cloudflare quick tunnel for the test IdP -> IdP 21080 -> gateway 21000
+         -> real sidecar 21768 -> Tailscale Funnel host for the test IdP -> IdP 21080 -> gateway 21000
          -> OpenAI tunnel-client (profile erp-mcp-local).
 
-  Known limitation: the IdP is published through a Cloudflare QUICK tunnel whose host changes whenever that
-  tunnel restarts (for example after a reboot). This script rewrites the issuer host in env.ps1 and
-  idp-config.json to the new host, but ChatGPT must press Reconnect once after such a change. A permanent host
-  needs a named Cloudflare tunnel on a domain of the operator.
+  The IdP is published through Tailscale Funnel on this machine, so its public host is stable. If the host ever
+  differs from the issuer in env.ps1 and idp-config.json, this script rewrites both and restarts the IdP and
+  gateway; ChatGPT must then press Reconnect once. The tunnel-client profile must trust the same origin
+  (mcp.oauth_trusted_origins in the tunnel-client profile erp-mcp-local).
 #>
 [CmdletBinding()]
 param(
@@ -30,7 +30,7 @@ $Httpd     = 'D:\ERP_MCP_Testbed\apache24\bin\httpd.exe'
 $HttpdConf = "D:/ERP_MCP_Testbed/apache24/conf/httpd-erp-mcp-test-ready-$ApachePort.conf"
 $Node      = 'C:\Program Files\nodejs\node.exe'
 $Sidecar   = 'D:\ERP_MCP_Testbed\real1c_sidecar_app'
-$Cloudflared = 'D:\Repo\Personal_DC\vendor\tunnel-client\cloudflared.exe'
+$Tailscale = 'C:\Program Files\Tailscale\tailscale.exe'
 $TunnelPs1 = 'D:\Repo\ERP_MCP-chatgpt\.chatgpt\start-real1c-tunnel.ps1'
 $Logs      = Join-Path $Lane 'logs'
 $LogFile   = Join-Path $Logs 'autostart.log'
@@ -124,42 +124,33 @@ try {
         } else { Log 'FAIL: BAG_ODATA_SIDECAR_TOKEN not found in env.ps1' }
     }
 
-    # 5. Cloudflare quick tunnel for the test IdP, then align the issuer host with whatever host it got
-    $idpUp = Test-Port 21080
-    $tunnelLog = Join-Path $Logs 'idp_quick_tunnel.err.log'
-    $running = Get-CimInstance Win32_Process -Filter "Name='cloudflared.exe'" |
-        Where-Object { $_.CommandLine -match '127\.0\.0\.1:21080' }
-    if (-not $running) {
-        Remove-Item $tunnelLog -ErrorAction SilentlyContinue
-        Start-Hidden $Cloudflared @('tunnel', '--no-autoupdate', '--url', 'http://127.0.0.1:21080') $Lane `
-            (Join-Path $Logs 'idp_quick_tunnel.out.log') $tunnelLog | Out-Null
-        Log 'idp quick tunnel started'
-    }
-    $host21080 = $null
-    $deadline = (Get-Date).AddSeconds(60)
-    while ((Get-Date) -lt $deadline -and -not $host21080) {
-        if (Test-Path $tunnelLog) {
-            $m = Select-String -Path $tunnelLog -Pattern 'https://([a-z0-9-]+\.trycloudflare\.com)' | Select-Object -Last 1
-            if ($m) { $host21080 = $m.Matches[0].Groups[1].Value }
+    # 5. Stable public host for the test IdP: Tailscale Funnel on this machine (the host never changes)
+    $funnelHost = $null
+    try {
+        $dns = ((& $Tailscale status --json 2>$null) | ConvertFrom-Json).Self.DNSName
+        if ($dns) { $funnelHost = $dns.TrimEnd('.') }
+    } catch { }
+    if ($funnelHost) {
+        $funnelState = (& $Tailscale funnel status 2>&1 | Out-String)
+        if ($funnelState -notmatch '21080') {
+            & $Tailscale funnel --bg 21080 *> $null
+            Log ('tailscale funnel to 21080 started for ' + $funnelHost)
         }
-        if (-not $host21080) { Start-Sleep -Seconds 2 }
-    }
-    if ($host21080) {
         $envPath = Join-Path $Lane 'env.ps1'
         $cfgPath = Join-Path $Lane 'idp-config.json'
         $envRaw = [IO.File]::ReadAllText($envPath)
-        $current = [regex]::Match($envRaw, 'https://([a-z0-9-]+\.trycloudflare\.com)/realms/erp-mcp-test').Groups[1].Value
-        if ($current -and $current -ne $host21080) {
+        $current = [regex]::Match($envRaw, 'https://([A-Za-z0-9.-]+)/realms/erp-mcp-test').Groups[1].Value
+        if ($current -and $current -ne $funnelHost) {
             $utf8 = New-Object System.Text.UTF8Encoding($false)
-            [IO.File]::WriteAllText($envPath, $envRaw.Replace($current, $host21080), $utf8)
-            [IO.File]::WriteAllText($cfgPath, [IO.File]::ReadAllText($cfgPath).Replace($current, $host21080), $utf8)
-            Log ('IdP public host changed ' + $current + ' -> ' + $host21080 + '; restarting IdP and gateway. ChatGPT must press Reconnect once.')
+            [IO.File]::WriteAllText($envPath, $envRaw.Replace($current, $funnelHost), $utf8)
+            [IO.File]::WriteAllText($cfgPath, [IO.File]::ReadAllText($cfgPath).Replace($current, $funnelHost), $utf8)
+            Log ('IdP public host changed ' + $current + ' -> ' + $funnelHost + '; restarting IdP and gateway. ChatGPT must press Reconnect once.')
             foreach ($component in 'gateway', 'idp') {
                 $env:E2E_DIR = $Lane; $env:E2E_REAL1C = '1'
                 & (Join-Path $Runtime 'scripts\e2e\fault.ps1') -Component $component -Action stop *> $null
             }
-        } else { Log ('IdP public host unchanged: ' + $host21080) }
-    } else { Log 'WARN: quick tunnel host not detected within 60 s' }
+        } else { Log ('IdP public host unchanged: ' + $funnelHost) }
+    } else { Log 'WARN: Tailscale DNS name not available; IdP host not checked' }
 
     # 6. IdP and gateway through the project scripts (idempotent; they refuse to start without reader credentials)
     $env:E2E_DIR = $Lane
