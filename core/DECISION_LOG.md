@@ -1177,3 +1177,7 @@ Decision: accept the finding; identity text is compared as exact text, only decl
 ## 2026-10-27 - Document registry regenerated
 
 Decision: refresh governance/DOCUMENT_REGISTRY.md by running its generator (760 tracked paths); generated output, not hand-edited; committed locally and pushed with the next approved push.
+
+## 2026-10-27 - S15 sprint plan drafted
+
+Decision: draft the S15 plan from the S14 facts as documentation only; stale statements in the older S14-S19 plan are recorded, not edited. PR 39 was merged as 8e6c8cb at the operator's answer. Detail: `docs/phase2/CHANGE_RECORD_384.md`.
