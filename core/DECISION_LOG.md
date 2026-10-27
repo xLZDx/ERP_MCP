@@ -1089,3 +1089,7 @@ Decision: documentation only. The 16 skip call sites fall into environment-gated
 ## 2026-10-27 - CT14 effective rights measured on the local disposable clone
 
 Decision: the earlier hold on `ct14_effective_rights.py` was an over-block; the script writes only to the disposable clone and the operator authorised autonomous completion. Result: 53 committed objects, 0 mismatches, 0 extra rights, 0 forbidden rights. Detail: `docs/phase2/CHANGE_RECORD_364.md`.
+
+## 2026-10-27 - Draft payload-to-1C crosswalk for CREATE_DRAFT
+
+Decision: documentation only. All 12 destinations of the single-line payload exist in the saved inventory; value types, reference resolution, the VAT enumeration and recomputation of totals are UNKNOWN, so the map is a draft and not a reviewed binding set. Detail: `docs/phase2/CHANGE_RECORD_365.md`.
