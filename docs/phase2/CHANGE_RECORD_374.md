@@ -35,3 +35,14 @@
 - NOT_RUN: Postgres-backed digest tests, mutation runs, reviewer consensus, GPT-PM review. The VAT code table (code to
   enumeration value, Change Record 372) is not wired in yet; the production binding set is still empty and the writer stays
   UNQUALIFIED and disabled.
+
+## Reviewer result (python-reviewer, static read): 0 BLOCKER, 0 MAJOR, 2 MINOR
+
+- Stored payloads: the ledger keeps only the digest, `parse_writer_payload` runs on the payload handed in at dispatch, and the SQL
+  digest function is generic over the JSON it is given; nothing re-parses or re-digests a historical payload.
+- In-flight note (reviewer MINOR 1): a proposal approved before this change in the old five-field shape is now undispatchable
+  (`PAYLOAD_INVALID`) and must be re-proposed. The writer is unqualified and disabled with an empty production binding set, so
+  no such proposal can be dispatched in practice.
+- Reviewer MINOR 2, accepted as a known limit: `Decimal.normalize()` depends on the decimal context precision; at the default
+  and at most 24 digits it is safe. The Python-versus-SQL digest check for the six-field shape needs `ERP_PHASE2_TEST_DSN` and is
+  NOT_RUN.

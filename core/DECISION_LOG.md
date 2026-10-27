@@ -1133,3 +1133,7 @@ Decision: `Line.vat_amount` is required and digest-bound, so the approver sees e
 ## 2026-10-27 - Closed VAT code table drafted (VAT0, VAT10, VAT20 to the values displaying 0%, 10%, 20%)
 
 Decision: the table targets enumeration values by displayed rate, not by legacy name, and is guarded by tests that read the synonyms from the saved artifact. It is not wired into any binding set; the writer stays disabled. Detail: `docs/phase2/CHANGE_RECORD_375.md`.
+
+## 2026-10-27 - Review of the vat_amount contract change: no blocker; in-flight old-shape proposals must be re-proposed
+
+Decision: record the reviewer's result in Change Record 374. Approved-but-undispatched proposals in the old five-field shape are undispatchable and must be re-proposed; the writer is disabled so none can be dispatched. Detail: `docs/phase2/CHANGE_RECORD_374.md`.
