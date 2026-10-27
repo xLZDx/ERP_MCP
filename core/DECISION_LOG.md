@@ -1181,3 +1181,7 @@ Decision: refresh governance/DOCUMENT_REGISTRY.md by running its generator (760 
 ## 2026-10-27 - S15 sprint plan drafted
 
 Decision: draft the S15 plan from the S14 facts as documentation only; stale statements in the older S14-S19 plan are recorded, not edited. PR 39 was merged as 8e6c8cb at the operator's answer. Detail: `docs/phase2/CHANGE_RECORD_384.md`.
+
+## 2026-10-27 - S15 plan revised after two agent reviews
+
+Decision: accept all review items; the v2.0 write catalogue governs and the scenarios that need post/unpost or contract update are DEFERRED with the operator as owner. Detail: `docs/phase2/CHANGE_RECORD_385.md`.
