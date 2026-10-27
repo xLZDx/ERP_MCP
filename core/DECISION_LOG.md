@@ -1153,3 +1153,7 @@ Decision: ERP_PHASE2_TEST_CONTAINER may only choose among containers with an app
 ## 2026-10-27 - Design draft for the COM CREATE_DRAFT executor; reference format is the blocking open decision
 
 Decision: documentation only. The repository has no code that performs the COM calls for a draft. The design proposes one executor, a rolled-back clone probe first, and lists five open decisions; the reference format of the five payload references blocks code. Detail: `docs/phase2/S14_COM_DRAFT_EXECUTOR_DESIGN_2026-10-27.md`, `docs/phase2/CHANGE_RECORD_378.md`.
+
+## 2026-10-27 - COM CREATE_DRAFT executor implemented against fake COM objects; references are resolved as GUIDs
+
+Decision: the executor refuses before the write call with outcome_unknown false and reports outcome_unknown true when the write or its read-back fails; posting is never referenced. The reference-format question was auto-answered (unique identifier) while the operator was silent and can be reverted. 52 agent-run tests passed on fakes; behavior against real 1C is UNKNOWN until the clone probe. Detail: `docs/phase2/CHANGE_RECORD_379.md`.

@@ -44,6 +44,16 @@ disposable clone. No posting, no update, no unpost, no production.
    interactive rights). Which concrete base user the lane uses for the clone is an operator-held credential; the executor never
    sees it.
 
+### 3a. Decision record for item 1 (reference format)
+
+- The question to the operator was auto-answered with the recommended option (unique identifier) because the operator was silent;
+  it can be reverted.
+- Supporting FACT (source read): the read gateway exposes a reference as `Ref_Key` of type `Edm.Guid` and canonicalizes it with
+  `uuid.UUID` (`src/business_ai_gateway/server.py` around line 983; `counterparty_lookup.py` maps `ref` to `Ref_Key`). So payload
+  references that came from the gateway are canonical GUID strings. Still UNKNOWN: whether every payload producer uses this form;
+  the executor therefore parses each reference as a GUID, refuses anything else, and resolves it by identifier in the expected
+  catalog.
+
 ## 4. Clone-only qualification plan
 
 1. Unit tests with a fake COM object graph: property order, refusal before write, unknown outcome after the write call starts,
