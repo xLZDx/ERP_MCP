@@ -1105,3 +1105,7 @@ Decision: documentation only. `vat_rate_code` is free identity text; the draft t
 ## 2026-10-27 - VAT usage in the clone's receipt lines read; VAT10 maps to the ten-percent value in use
 
 Decision: read-only counts per enumeration value (69 without VAT, 751 at eighteen percent, 4 at ten percent). `VAT10` is mapped to `НДС10` as the only ten-percent value in use; `VAT0` and `VAT20` stay name-based. The VAT wording of Change Record 367 is corrected. Detail: `docs/phase2/CHANGE_RECORD_368.md`.
+
+## 2026-10-27 - Closed value vocabulary for enumeration bindings in the COM manifest
+
+Decision: `PayloadPropertyBinding` takes an optional closed `value_map`; unmapped values are refused and the translated 1C value feeds both the digest manifest and the ephemeral COM values. No VAT table is wired into the production binding set yet. Evidence: 38 new tests and 132 tests of the 14 importing files passed (agent-run). Detail: `docs/phase2/CHANGE_RECORD_369.md`.

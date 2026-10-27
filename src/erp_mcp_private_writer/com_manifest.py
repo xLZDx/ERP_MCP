@@ -108,12 +108,36 @@ class PayloadPropertyBinding:
     property_path: str
     assignment_kind: str
     value_type: str
+    # Closed vocabulary for fields that select an enumeration value:
+    # ((payload value, 1C value), ...).
+    # None means the payload value is used as is; a payload value outside the table is refused.
+    value_map: tuple[tuple[str, str], ...] | None = None
 
     def __post_init__(self) -> None:
         _manifest_text(self.payload_path, "COM_PAYLOAD_PATH_INVALID")
         _manifest_text(self.property_path, "COM_PROPERTY_PATH_INVALID")
         _manifest_text(self.assignment_kind, "COM_ASSIGNMENT_KIND_INVALID")
         _manifest_text(self.value_type, "COM_PROPERTY_TYPE_INVALID")
+        if self.value_map is not None:
+            if (type(self.value_map) is not tuple or not self.value_map
+                    or any(type(pair) is not tuple or len(pair) != 2 for pair in self.value_map)):
+                raise ValueError("COM_VALUE_MAP_INVALID")
+            for source, target in self.value_map:
+                _manifest_text(source, "COM_VALUE_MAP_INVALID")
+                _manifest_text(target, "COM_VALUE_MAP_INVALID")
+            if len({source for source, _ in self.value_map}) != len(self.value_map):
+                raise ValueError("COM_VALUE_MAP_INVALID")
+
+    def translate(self, value: object) -> object:
+        """Return the 1C value for a payload value; refuse anything outside the closed table."""
+        if self.value_map is None:
+            return value
+        if type(value) is not str:
+            raise ValueError("COM_VALUE_NOT_MAPPED")
+        for source, target in self.value_map:
+            if source == value:
+                return target
+        raise ValueError("COM_VALUE_NOT_MAPPED")
 
 
 def _payload_leaf_values(value: object, path: str = "") -> dict[str, object]:
@@ -172,7 +196,9 @@ def _bound_payload_values(
             or set(bound_paths) != required_paths):
         raise ValueError("COM_PAYLOAD_BINDING_COVERAGE_INVALID")
 
-    return tuple((binding, values[binding.payload_path]) for binding in bindings)
+    return tuple(
+        (binding, binding.translate(values[binding.payload_path])) for binding in bindings
+    )
 
 
 def draft_payload_from_write_port(value: object) -> DraftPayload:
