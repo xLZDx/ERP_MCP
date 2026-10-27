@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import math
 import time
 from datetime import datetime
@@ -31,6 +32,7 @@ from .postgres_identity import (
     has_expected_database_identity,
 )
 
+_LOG = logging.getLogger(__name__)
 _MAX_TIMEOUT_SECONDS = 5.0
 _MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
 _MAX_JSON_DEPTH = 32
@@ -129,7 +131,7 @@ class PostgresEvidenceTrustSource:
             raise
         except asyncpg.PostgresError as exc:
             sqlstate = getattr(exc, "sqlstate", None)
-            message = str(exc)
+            message = getattr(exc, "message", None)
             if sqlstate == "P0001":
                 for code in (
                     "TRUST_REGISTRY_SERVICE_COLLISION", "TRUST_PROCESS_BINDING_UNAVAILABLE",
@@ -137,7 +139,7 @@ class PostgresEvidenceTrustSource:
                     "TRUST_ROTATION_CHAIN_TOO_DEEP", "TRUST_SNAPSHOT_REQUEST_INVALID",
                     "TRUST_SNAPSHOT_TRANSACTION_INVALID",
                 ):
-                    if code in message:
+                    if message == code:
                         raise EvidenceTrustSourceError(code) from None
                 raise EvidenceTrustSourceError("TRUST_SNAPSHOT_UNAVAILABLE") from None
             if sqlstate == "57014":
@@ -145,7 +147,8 @@ class PostgresEvidenceTrustSource:
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_LOOKUP_FAILED") from None
         except TimeoutError:
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_TIMEOUT") from None
-        except Exception:
+        except Exception as exc:
+            _LOG.error("trust snapshot lookup raised unexpected %s", type(exc).__name__)
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_LOOKUP_FAILED") from None
 
     async def _execute_before_deadline(self, conn: asyncpg.Connection, deadline: float,
@@ -214,7 +217,10 @@ class PostgresEvidenceTrustSource:
                 oracle_artifacts=oracles,
                 outcome_version_floors=floors,
             )
-        except Exception:
+        except Exception as exc:
+            if not isinstance(exc, (ValueError, KeyError, TypeError, OverflowError, RecursionError)):
+                # A malformed payload raises these; anything else points at a decoder defect.
+                _LOG.error("trust snapshot decoder raised unexpected %s", type(exc).__name__)
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_PAYLOAD_INVALID") from None
 
 

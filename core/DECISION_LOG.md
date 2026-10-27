@@ -1011,3 +1011,10 @@ Evidence: new `tests/phase2/test_s13_t16_recovery_error_mapping.py` 3 passed (fi
 Decision: close review finding F5 by logging the exception class (never the message or payload) in the four broad handlers of `private_ingress.py`. The response codes are unchanged on purpose: a failure to serialize the result after a successful dispatch correctly stays `WRITER_OPERATION_UNAVAILABLE` with `outcome_unknown` true, because the client did not receive the outcome and must look the call up. F6 stays open.
 
 Evidence: module imports and passes ruff F,E9; no test in the repository references `private_ingress`, so a handler-level test (needs a real service, authenticator, authorizer and runtime) is NOT_RUN and open. Detail: `docs/phase2/CHANGE_RECORD_351.md`.
+
+
+## 2026-10-27 - Trust snapshot source: exact database message match and diagnostics
+
+Decision: close review finding F6 for the trust snapshot source. The P0001 mapping now compares the exact `exc.message` with each known code instead of searching a substring of `str(exc)` (the SQL raises the bare code, checked in migration 027); decoder defects (an exception class other than ValueError, KeyError, TypeError, OverflowError, RecursionError) and lookup failures are logged by class. The barrier-ack registrar already used exact comparison. All six review findings are now closed or recorded.
+
+Evidence: new `tests/phase2/test_s13_trust_source_error_mapping.py` 2 passed; WP5, composition, T16 and trust tests together passed. Detail: `docs/phase2/CHANGE_RECORD_352.md`.
