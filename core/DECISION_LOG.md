@@ -1085,3 +1085,7 @@ Evidence: 8 new tests passed (seven refusal cases plus a text check); the harden
 ## 2026-10-27 - Skipped phase 2 tests classified from their skip call sites
 
 Decision: documentation only. The 16 skip call sites fall into environment-gated (disposable PostgreSQL DSN), timing-gated, image-gated and platform-gated classes; every database skip text starts with NOT_RUN. The exact split of the 602 skips is UNKNOWN until a test agent runs with -rs. Detail: `docs/phase2/CHANGE_RECORD_363.md`.
+
+## 2026-10-27 - CT14 effective rights measured on the local disposable clone
+
+Decision: the earlier hold on `ct14_effective_rights.py` was an over-block; the script writes only to the disposable clone and the operator authorised autonomous completion. Result: 53 committed objects, 0 mismatches, 0 extra rights, 0 forbidden rights. Detail: `docs/phase2/CHANGE_RECORD_364.md`.

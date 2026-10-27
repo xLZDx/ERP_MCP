@@ -1,0 +1,179 @@
+{
+ "roles": [
+  "CT14Писатель",
+  "ЗапускВнешнегоСоединения"
+ ],
+ "committed_objects": 53,
+ "mismatch": {},
+ "extra_effective_beyond_committed": {},
+ "listed_but_not_effective": {},
+ "effective": {
+  "AccountingRegister.Хозрасчетный": [
+   "Read"
+  ],
+  "AccumulationRegister.БСО": [
+   "Read"
+  ],
+  "AccumulationRegister.ЗакупленныеТоварыКомитентов": [
+   "Read"
+  ],
+  "AccumulationRegister.Импорт": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСВключенныйВСтоимость": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСЗаписиКнигиПокупок_МД": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСЗаписиКнигиПродаж_МД": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСКосвенныеРасходы": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСНачисленный": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСПоПриобретеннымЦенностям": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСПредъявленный": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСПредъявленныйРеализация0": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСРаздельныйУчет": [
+   "Read"
+  ],
+  "AccumulationRegister.НДСпоОСиНМА": [
+   "Read"
+  ],
+  "AccumulationRegister.ОплатыОСДляУСН": [
+   "Read"
+  ],
+  "AccumulationRegister.ПодоходныйНалогУдержанныйУИсточникаВыплаты": [
+   "Read"
+  ],
+  "AccumulationRegister.ПрочиеРасчеты": [
+   "Read"
+  ],
+  "AccumulationRegister.РасходыПриУСН": [
+   "Read"
+  ],
+  "AccumulationRegister.СведенияОбИнвестициях": [
+   "Read"
+  ],
+  "AccumulationRegister.Услуги": [
+   "Read"
+  ],
+  "Catalog.ДоговорыКонтрагентов": [
+   "Read"
+  ],
+  "Catalog.ИдентификаторыОбъектовМетаданных": [
+   "Read"
+  ],
+  "Catalog.Склады": [
+   "Read"
+  ],
+  "Constant.ОграничиватьДоступНаУровнеЗаписейУниверсально": [
+   "Read"
+  ],
+  "Constant.ПервоеОбновлениеДоступаЗавершилось": [
+   "Read"
+  ],
+  "Document.ПоступлениеТоваровУслуг": [
+   "Insert",
+   "Posting",
+   "Read",
+   "UndoPosting",
+   "Update"
+  ],
+  "Document.СчетФактураПолученный": [
+   "Read"
+  ],
+  "InformationRegister.ЖурналУчетаСчетовФактур": [
+   "Read"
+  ],
+  "InformationRegister.ИмпортТоваровТаможенныйСоюз": [
+   "Read"
+  ],
+  "InformationRegister.КурсыВалют": [
+   "Read"
+  ],
+  "InformationRegister.МестонахождениеОСБухгалтерскийУчет": [
+   "Read"
+  ],
+  "InformationRegister.НастройкаВремениДокументов": [
+   "Read"
+  ],
+  "InformationRegister.НачислениеАмортизацииОСБухгалтерскийУчет": [
+   "Read"
+  ],
+  "InformationRegister.НачислениеАмортизацииОСНалоговыйУчет": [
+   "Read"
+  ],
+  "InformationRegister.НачислениеАмортизацииОССпециальныйКоэффициентНалоговыйУчет": [
+   "Read"
+  ],
+  "InformationRegister.ПараметрыАмортизацииОСБухгалтерскийУчет": [
+   "Read"
+  ],
+  "InformationRegister.ПараметрыАмортизацииОСНалоговыйУчет": [
+   "Read"
+  ],
+  "InformationRegister.ПервоначальныеСведенияОСБухгалтерскийУчет": [
+   "Read"
+  ],
+  "InformationRegister.ПервоначальныеСведенияОСНалоговыйУчет": [
+   "Read"
+  ],
+  "InformationRegister.ПервоначальныеСведенияОСНалоговыйУчетУСН": [
+   "Read"
+  ],
+  "InformationRegister.РасшифровкаКУДиР": [
+   "Read"
+  ],
+  "InformationRegister.РублевыеСуммыДокументовВВалюте": [
+   "Read"
+  ],
+  "InformationRegister.СобытияОСОрганизаций": [
+   "Read"
+  ],
+  "InformationRegister.СостоянияОСОрганизаций": [
+   "Read"
+  ],
+  "InformationRegister.СостоянияОСОрганизацийНУ": [
+   "Read"
+  ],
+  "InformationRegister.СпособыОтраженияРасходовПоАмортизацииОСБухгалтерскийУчет": [
+   "Read"
+  ],
+  "InformationRegister.СчетаБухгалтерскогоУчетаОС": [
+   "Read"
+  ],
+  "InformationRegister.ЦеныНоменклатуры": [
+   "Read"
+  ],
+  "Sequence.ДокументыОрганизаций": [
+   "Read",
+   "Update"
+  ],
+  "SessionParameter.ВыполняетсяОбновлениеИБ": [
+   "Get"
+  ],
+  "SessionParameter.ОграничениеДоступаНаУровнеЗаписейУниверсально": [
+   "Get"
+  ],
+  "SessionParameter.ОтключениеОбновленияКлючейДоступа": [
+   "Get"
+  ],
+  "SessionParameter.ПараметрыОбработчикаОбновления": [
+   "Get"
+  ],
+  "Document.ПоступлениеТоваровУслуг.Attribute.CT14ИдентификаторИзменения": [],
+  "Document.ПоступлениеТоваровУслуг.Attribute.CT14ХешИзменения": []
+ },
+ "effective_forbidden_anywhere": {}
+}
