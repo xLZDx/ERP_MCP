@@ -16,6 +16,20 @@
   "enumeration_assigned_as_text": "NO error; the document is written and the stored enumeration value is EMPTY (also for a nonsense string)",
   "enumeration_assigned_as_enumeration_object": "stored correctly"
  },
+ "dates": {
+  "iso_text_assigned_to_date_attribute": "NO error; stored as the empty date",
+  "python_datetime_assigned_over_pywin32": "converted unpredictably (shifted); never assign Python datetimes",
+  "date_built_by_ONisanieTipov_conversion_14_digits": "assigned and stored exactly; date-only attribute reads back as YYYY-MM-DDT00:00:00 via XMLString",
+  "document_own_date_time_of_day": "configuration changes the stored time of day (12:00:00 set, 07:00:00 stored); the calendar day is kept; cause UNKNOWN",
+  "python_datetime_read_back": "tz-shifted; read dates as XMLString text instead"
+ },
+ "phantom_references_on_write": "a document write with a reference to a non-existent element succeeds silently, so the executor must prove existence itself",
+ "least_privilege_run": {
+  "role_read_added": ["Organizations","Counterparties","Currencies","Nomenclature"],
+  "effective_rights": "57 objects, 0 mismatches, 0 extra, 0 forbidden",
+  "narrow_user_lookup": "existing element: get object not None, deletion mark false; random GUID: get object None",
+  "executor_run_as_narrow_user": "OK, rolled back, 0 leftover documents"
+ },
  "totals": {
   "includes_vat_flag_default_false": "document total = line amount + line VAT amount (20 + 1.82 = 21.82)",
   "includes_vat_flag_true": "document total = line amount (20.0)",

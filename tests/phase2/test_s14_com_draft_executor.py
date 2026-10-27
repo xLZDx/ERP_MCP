@@ -35,7 +35,7 @@ CHANGE_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 MANIFEST = "ab" * 32
 SECRET = "SECRET-COM-ERROR-TEXT-XYZZY"
 NUMBER = "SECRET-NUMBER-777"
-QTY = "SECRET-QTY-555"
+QTY = "5550.555"
 CONN_STRING = "Srvr=SECRET-HOST;Ref=SECRET-BASE"
 
 # Real Russian posting member names the fake document must never be asked for.
@@ -70,6 +70,40 @@ class FakeEnumValue:
 
 
 EMPTY_ENUM = FakeEnumValue("")
+
+
+class FakeDate:
+    """Opaque 1C date built by the TypeDescription cast (14 digits YYYYMMDDHHMMSS)."""
+
+    def __init__(self, text14):
+        self.text14 = text14
+
+    @property
+    def xml(self):
+        t = self.text14
+        return f"{t[:4]}-{t[4:6]}-{t[6:8]}T{t[8:10]}:{t[10:12]}:{t[12:14]}"
+
+
+EMPTY_DATE = FakeDate("01000101000000")  # what 1C stores when a date cannot be taken
+ZERO_DATE = FakeDate("00010101000000")
+
+
+class FakeTypeDesc:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def __getattr__(self, name):
+        if name == ex._CAST_VALUE:
+            def cast(text14):
+                conn = self._conn
+                if type(text14) is not str or len(text14) != 14 or not text14.isdigit():
+                    raise ValueError("cast needs 14 digits")
+                if text14 in conn.date_build_fail_on:
+                    raise RuntimeError(SECRET)
+                conn.date_builds.append(text14)
+                return text14 if conn.date_as_text else FakeDate(text14)
+            return cast
+        raise AttributeError(name)
 
 
 class FakeRef:
@@ -178,19 +212,37 @@ class FakeDocRef:
         raise AttributeError(name)
 
 
+NUMERIC_PROPS = {"Qty", "Price", "Amount", "VatAmount"}
+# What real 1C stores when it silently drops a value it cannot take (empty / zero / false).
+COERCED = {"Number": "", "Qty": 0, "Price": 0, "Amount": 0, "VatAmount": 0, "InclVat": False,
+           ex._DOC_DATE: None, "SupplierDate": EMPTY_DATE, "LineDate": EMPTY_DATE}
+DATE_PROPS = {ex._DOC_DATE, "SupplierDate", "LineDate"}
+
+
 def _store(conn, attrs, overrides):
     stored = {}
     for name, value in attrs.items():
+        if name in conn.silent_coerce:
+            value = COERCED[name]
         # Mimic real 1C: a text string assigned to an enumeration property stores EMPTY silently.
-        if name in ENUM_PROPS and type(value) is not FakeEnumValue:
+        elif name in ENUM_PROPS and type(value) is not FakeEnumValue:
             value = EMPTY_ENUM
+        elif name in NUMERIC_PROPS and type(value) is str:
+            value = float(value)  # numbers assigned as text are stored as numbers
+        elif name in DATE_PROPS:
+            if type(value) is not FakeDate:
+                value = EMPTY_DATE  # text assigned to a date is stored as the empty date
+            elif name == ex._DOC_DATE:
+                # the configuration adjusts the time of day of the document's own date
+                value = FakeDate(value.text14[:8] + conn.own_time)
         stored[name] = value
     stored.update(overrides)
     return stored
 
 
 class FakeRow:
-    ALLOWED: ClassVar[set[str]] = {"Item", "Qty", "VatRate"}
+    ALLOWED: ClassVar[set[str]] = {
+        "Item", "Qty", "Price", "Amount", "VatAmount", "VatRate", "LineDate"}
 
     def __init__(self, conn):
         object.__setattr__(self, "_conn", conn)
@@ -200,6 +252,8 @@ class FakeRow:
     def __setattr__(self, name, value):
         if name not in self.ALLOWED:
             raise AttributeError(name)
+        if isinstance(value, datetime.date):
+            raise TypeError("a Python datetime must never be assigned")
         self._attrs[name] = value
         self._conn.log.append(("row_set", name, value))
 
@@ -222,7 +276,8 @@ class FakeSection:
 
 class FakeDoc:
     SETTABLE: ClassVar[set[str]] = {
-        "Org", "Cp", "Number", "Kind", "InclVat", "Marker", "Hash", ex._DOC_DATE}
+        "Org", "Cp", "Number", "Kind", "InclVat", "Marker", "Hash", "SupplierDate",
+        ex._DOC_DATE}
 
     def __init__(self, conn):
         object.__setattr__(self, "_conn", conn)
@@ -235,6 +290,8 @@ class FakeDoc:
         self._conn.doc_names.add(name)
         if name not in self.SETTABLE:
             raise AttributeError(name)
+        if isinstance(value, datetime.date):
+            raise TypeError("a Python datetime must never be assigned")
         if name == "Marker" and self._conn.fail_marker:
             raise RuntimeError(SECRET)
         if name == "Org" and self._conn.fail_header:
@@ -349,6 +406,12 @@ class FakeConnection:
         self.override_row = {}
         self.row_count_override = None
         self.string_override = None
+        self.silent_coerce = set()
+        self.date_builds = []
+        self.date_as_text = False  # the cast "returns" plain text: the silent-empty mistake
+        self.date_build_fail_on = set()
+        self.own_time = "070000"
+        self.xml_override = None
         self.total = 123.45
         self.modes = _WriteModes()
         self._enum_values = {}
@@ -366,6 +429,10 @@ class FakeConnection:
         return self._enum_values.setdefault((enum_name, member), FakeEnumValue(member))
 
     def NewObject(self, type_name, text):
+        if type_name == ex._TYPE_DESCRIPTION:
+            if text != ex._DATE_TYPE:
+                raise AttributeError(text)
+            return FakeTypeDesc(self)
         if type_name != ex._UNIQUE_ID:
             raise AttributeError(type_name)
         self.log.append(("new_object", text))
@@ -379,9 +446,11 @@ class FakeConnection:
         return value.text
 
     def XMLString(self, value):
-        if type(value) is not FakeEnumValue:
-            raise TypeError("XMLString needs an enumeration value")
-        return value.name
+        if type(value) not in (FakeEnumValue, FakeDate):
+            raise TypeError("XMLString needs an enumeration or date value")
+        if self.xml_override is not None:
+            return self.xml_override
+        return value.xml if type(value) is FakeDate else value.name
 
     def __getattr__(self, name):
         if name == ex._DOCUMENTS:
@@ -402,8 +471,10 @@ class FakeConnection:
         return CONN_STRING
 
 
-HEADER = (("h.org", "Org"), ("h.cp", "Cp"), ("h.number", "Number"), ("h.kind", "Kind"))
-LINE = (("l.item", "Item"), ("l.qty", "Qty"), ("l.vat", "VatRate"))
+HEADER = (("h.org", "Org"), ("h.cp", "Cp"), ("h.number", "Number"), ("h.kind", "Kind"),
+          ("h.sdate", "SupplierDate"))
+LINE = (("l.item", "Item"), ("l.qty", "Qty"), ("l.price", "Price"), ("l.amount", "Amount"),
+        ("l.vat_amount", "VatAmount"), ("l.vat", "VatRate"), ("l.ldate", "LineDate"))
 DATE = datetime.datetime(2026, 10, 27)  # noqa: DTZ001 - naive by contract
 
 DESTINATIONS = DraftDestinationSet(
@@ -417,12 +488,15 @@ DESTINATIONS = DraftDestinationSet(
     total_property="TotalProp",
     enumerations=(("h.kind", "Kinds"), ("l.vat", "VatRates")),
     constants=(("InclVat", True),),
+    dates=("h.sdate", "l.ldate"),
 )
 
 
 def make_values(**overrides):
     base = {"h.org": ORG, "h.cp": CP, "h.number": NUMBER, "h.kind": "Purchase",
-            "l.item": ITEM, "l.qty": QTY, "l.vat": "Vat20"}
+            "l.item": ITEM, "l.qty": QTY, "l.price": "10.50", "l.amount": "21.00",
+            "l.vat_amount": "3.50", "l.vat": "Vat20", "h.sdate": "2026-10-20",
+            "l.ldate": "2026-10-21"}
     base.update(overrides)
     return tuple(ComValueAssignment(p, "SetValue", "String", v) for p, v in base.items())
 
@@ -451,23 +525,26 @@ def test_happy_path_order_and_single_plain_write():
     # per reference: new_object, lookup, get_object, read_mark; then create, date, header,
     # constant, row, markers, one write
     assert kinds == ["new_object", "lookup", "get_object", "read_mark"] * 3 + [
-        "create", "hdr_set", "hdr_set", "hdr_set", "hdr_set", "hdr_set", "hdr_set",
-        "add_row", "row_set", "row_set", "row_set", "hdr_set", "hdr_set", "write"]
+        "create", *["hdr_set"] * 7, "add_row", *["row_set"] * 7, "hdr_set", "hdr_set", "write"]
     hdr = [e for e in conn.log if e[0] == "hdr_set"]
-    assert [h[1] for h in hdr] == [ex._DOC_DATE, "Org", "Cp", "Number", "Kind", "InclVat",
-                                   "Marker", "Hash"]
-    assert hdr[0][2] == DATE and type(hdr[0][2]) is datetime.datetime
+    assert [h[1] for h in hdr] == [ex._DOC_DATE, "Org", "Cp", "Number", "Kind", "SupplierDate",
+                                   "InclVat", "Marker", "Hash"]
+    assert type(hdr[0][2]) is FakeDate and hdr[0][2].text14 == "20261027000000"
+    assert type(hdr[5][2]) is FakeDate and hdr[5][2].text14 == "20261020000000"
     assert hdr[1][2] is conn.catalog_data[("Orgs", ORG)]
     assert hdr[2][2] is conn.catalog_data[("Cps", CP)]
     assert hdr[3][2] == NUMBER
     assert type(hdr[4][2]) is FakeEnumValue and hdr[4][2].name == "Purchase"
-    assert hdr[5][2] is True
-    assert (hdr[6][2], hdr[7][2]) == (CHANGE_ID, MANIFEST)
+    assert hdr[6][2] is True
+    assert (hdr[7][2], hdr[8][2]) == (CHANGE_ID, MANIFEST)
     rows = [e for e in conn.log if e[0] == "row_set"]
-    assert [r[1] for r in rows] == ["Item", "Qty", "VatRate"]
+    assert [r[1] for r in rows] == ["Item", "Qty", "Price", "Amount", "VatAmount", "VatRate",
+                                    "LineDate"]
+    assert type(rows[6][2]) is FakeDate and rows[6][2].text14 == "20261021000000"
     assert rows[0][2] is conn.catalog_data[("Items", ITEM)]
     assert rows[1][2] == QTY
-    assert type(rows[2][2]) is FakeEnumValue and rows[2][2].name == "Vat20"
+    assert (rows[2][2], rows[3][2], rows[4][2]) == ("10.50", "21.00", "3.50")
+    assert type(rows[5][2]) is FakeEnumValue and rows[5][2].name == "Vat20"
     assert conn.write_calls == 1
     assert conn.log[-1] == ("write", conn.modes.PLAIN)
     assert conn.log[-1][1] is not conn.modes.POSTING
@@ -477,7 +554,8 @@ def test_happy_path_order_and_single_plain_write():
 def test_document_is_asked_for_exactly_the_expected_names():
     conn = FakeConnection()
     run(conn)
-    assert conn.doc_names == {ex._DOC_DATE, "Org", "Cp", "Number", "Kind", "InclVat", "Marker",
+    assert conn.doc_names == {ex._DOC_DATE, "Org", "Cp", "Number", "Kind", "SupplierDate",
+                              "InclVat", "Marker",
                               "Hash", "Lines", ex._WRITE, ex._REF}
     assert not conn.doc_names & POST_NAMES
 
@@ -771,6 +849,7 @@ def test_no_refusal_message_contains_values(scenario):
 @pytest.mark.parametrize("make", [
     lambda: ExecutorRefusal("COM_WRITE_OUTCOME_UNKNOWN", True),
     lambda: ExecutorRefusal("COM_REFERENCE_NOT_FOUND", False),
+    lambda: ExecutorRefusal("COM_WRITTEN_READBACK_MISMATCH", True, DOC_ID),
 ])
 def test_refusal_survives_copy_and_pickle(make):
     original = make()
@@ -779,7 +858,10 @@ def test_refusal_survives_copy_and_pickle(make):
     for clone in clones:
         assert type(clone) is ExecutorRefusal
         assert (clone.code, clone.outcome_unknown) == (original.code, original.outcome_unknown)
+        assert clone.document_ref == original.document_ref
         assert str(clone) == original.code
+        assert clone.args == (original.code,)
+        assert DOC_ID not in str(clone) + repr(clone)
 
 
 def _failing_scenarios():
@@ -795,7 +877,10 @@ def _failing_scenarios():
     def readback_fails(c):
         c.fail_readback = "total"
 
-    return [write_fails, phantom, header_fails, readback_fails]
+    def mismatch(c):
+        c.silent_coerce = {"Number"}
+
+    return [write_fails, phantom, header_fails, readback_fails, mismatch]
 
 
 @pytest.mark.parametrize("scenario", _failing_scenarios())
@@ -810,6 +895,12 @@ def test_refusal_traceback_keeps_no_com_object_alive(scenario):
     assert alive == []
     # the refusal itself is still held here, so any frame it references is still alive
     assert info.value.__traceback__ is not None
+    # no frame below the test keeps a document id or an amount in a local variable
+    frame_tb = info.value.__traceback__.tb_next
+    while frame_tb is not None:
+        for local in frame_tb.tb_frame.f_locals.values():
+            assert local not in (DOC_ID, "123.45")
+        frame_tb = frame_tb.tb_next
 
 
 def test_posting_is_never_reached_on_happy_path():
@@ -847,11 +938,13 @@ def test_destination_set_rejects_invalid_shapes(kwargs):
 
 
 @pytest.mark.parametrize("kwargs", [
-    {"header_properties": (("h.org", "Org"), ("h.cp", "Org"), ("h.number", "Number"),
-                           ("h.kind", "Kind"))},
-    {"line_properties": (("l.item", "Org"), ("l.qty", "Qty"), ("l.vat", "VatRate"))},
-    {"line_properties": (("l.item", "Item"), ("l.qty", "Item"), ("l.vat", "VatRate"))},
-    {"line_properties": (("l.item", "Item"), ("l.qty", "Qty"), ("l.vat", "Kind"))},
+    {"header_properties": (("h.org", "Org"), ("h.cp", "Org"), *HEADER[2:])},
+    {"line_properties": (("l.item", "Org"), *LINE[1:])},
+    {"line_properties": (LINE[0], ("l.qty", "Item"), *LINE[2:])},
+    {"line_properties": (*LINE[:5], ("l.vat", "Kind"), LINE[6])},
+    {"line_properties": (*LINE[:5], ("l.vat", "Qty"), LINE[6])},
+    {"line_properties": (*LINE[:6], ("l.ldate", "Item"))},
+    {"line_properties": (*LINE[:6], ("l.ldate", "SupplierDate"))},
     {"change_id_attribute": "Org"},
     {"change_id_attribute": "Item"},
     {"manifest_attribute": "Marker"},
@@ -875,7 +968,8 @@ def test_destination_set_rejects_colliding_property_names(kwargs):
 def test_destination_set_with_no_enumerations_or_constants_is_valid():
     dest = dataclasses.replace(
         DESTINATIONS,
-        header_properties=HEADER[:3], line_properties=LINE[:2], enumerations=(), constants=())
+        header_properties=HEADER[:3], line_properties=LINE[:2], enumerations=(), constants=(),
+        dates=())
     assert dest.enumerations == () and dest.constants == ()
 
 
@@ -911,7 +1005,7 @@ def test_document_date_is_set_first_after_creation_and_is_stored():
     index = [e[0] for e in conn.log].index("create")
     first = conn.log[index + 1]
     assert first[:2] == ("hdr_set", ex._DOC_DATE)
-    assert first[2] == datetime.datetime(2026, 1, 2, 3, 4, 5)  # noqa: DTZ001
+    assert type(first[2]) is FakeDate and first[2].text14 == "20260102030405"
 
 
 def test_the_fake_document_without_a_date_fails_on_write():
@@ -990,7 +1084,7 @@ def test_the_fake_mimics_silent_empty_enumeration_for_text():
     conn = FakeConnection()
     doc = getattr(conn, ex._DOCUMENTS).Receipt
     doc = getattr(doc, ex._CREATE_DOCUMENT)()
-    setattr(doc, ex._DOC_DATE, DATE)
+    setattr(doc, ex._DOC_DATE, FakeDate("20261027000000"))
     doc.Kind = "Purchase"  # text instead of the enumeration object: no error
     getattr(doc, ex._WRITE)(conn.modes.PLAIN)
     stored = getattr(getattr(doc, ex._REF), ex._GET_OBJECT)()
@@ -1081,3 +1175,334 @@ def test_total_comes_from_the_stored_object_and_is_not_compared():
     conn = FakeConnection()
     conn.total = 999
     assert run(conn).document_total_text == "999"
+
+
+# ---- F1: every assigned value is verified on the stored object ---------------------------------
+
+SILENT_FIELDS = ["Number", "Qty", "Price", "Amount", "VatAmount", "InclVat", ex._DOC_DATE,
+                 "SupplierDate", "LineDate"]
+
+
+@pytest.mark.parametrize("field", SILENT_FIELDS)
+def test_silent_coercion_of_any_plain_field_is_a_mismatch(field):
+    conn = FakeConnection()
+    conn.silent_coerce = {field}
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert (info.value.code, info.value.outcome_unknown) == (
+        "COM_WRITTEN_READBACK_MISMATCH", True)
+    assert info.value.document_ref == DOC_ID
+    assert conn.write_calls == 1
+    assert_clean(info.value)
+
+
+@pytest.mark.parametrize("header,row", [
+    ({"Number": "other"}, {}),
+    ({"Number": ""}, {}),
+    ({"Number": None}, {}),
+    ({"Number": 5}, {}),
+    ({"InclVat": False}, {}),
+    ({"InclVat": 1}, {}),
+    ({"InclVat": "True"}, {}),
+    ({"InclVat": None}, {}),
+    ({ex._DOC_DATE: FakeDate("20261028070000")}, {}),
+    ({ex._DOC_DATE: None}, {}),
+    ({ex._DOC_DATE: EMPTY_DATE}, {}),
+    ({ex._DOC_DATE: ZERO_DATE}, {}),
+    ({"SupplierDate": FakeDate("20261021000000")}, {}),
+    ({"SupplierDate": FakeDate("20261020070000")}, {}),
+    ({"SupplierDate": EMPTY_DATE}, {}),
+    ({"SupplierDate": ZERO_DATE}, {}),
+    ({"SupplierDate": None}, {}),
+    ({}, {"LineDate": FakeDate("20261022000000")}),
+    ({}, {"LineDate": EMPTY_DATE}),
+    ({}, {"LineDate": None}),
+    ({}, {"Qty": 1.0}),
+    ({}, {"Qty": 0}),
+    ({}, {"Qty": None}),
+    ({}, {"Qty": "5550.555x"}),
+    ({}, {"Price": 10.51}),
+    ({}, {"Price": ""}),
+    ({}, {"Amount": 21.01}),
+    ({}, {"Amount": "21.0"}),  # text is never coerced: stored text must equal exactly
+    ({}, {"VatAmount": None}),
+    ({}, {"VatAmount": 3.51}),
+    ({}, {"VatAmount": True}),
+], ids=lambda v: str(v)[:40])
+def test_stored_value_overrides_are_mismatches(header, row):
+    conn = FakeConnection()
+    conn.override_header = header
+    conn.override_row = row
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert (info.value.code, info.value.outcome_unknown) == (
+        "COM_WRITTEN_READBACK_MISMATCH", True)
+    assert info.value.document_ref == DOC_ID
+    assert_clean(info.value)
+
+
+@pytest.mark.parametrize("header,row", [
+    ({}, {"Price": Decimal("10.5")}),
+    ({}, {"Amount": 21}),
+    ({}, {"Amount": Decimal(21)}),
+    ({}, {"VatAmount": 3.5}),
+    ({}, {"Qty": Decimal("5550.5550")}),
+    ({"Number": NUMBER}, {}),
+])
+def test_equal_numbers_in_other_representations_are_accepted(header, row):
+    conn = FakeConnection()
+    conn.override_header = header
+    conn.override_row = row
+    assert run(conn).document_ref == DOC_ID
+
+
+def test_enumeration_name_read_must_be_text():
+    conn = FakeConnection()
+    conn.xml_override = 5
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert (info.value.code, info.value.outcome_unknown) == (
+        "COM_WRITTEN_READBACK_MISMATCH", True)
+
+
+def test_enumeration_name_read_must_equal_the_member():
+    conn = FakeConnection()
+    conn.xml_override = "Other"
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == "COM_WRITTEN_READBACK_MISMATCH"
+
+
+# ---- unverified_paths -------------------------------------------------------------------------
+
+def test_unverified_path_is_skipped_only_when_reviewed():
+    conn = FakeConnection()
+    conn.silent_coerce = {"Number"}
+    with pytest.raises(ExecutorRefusal):
+        run(conn)
+    conn = FakeConnection()
+    conn.silent_coerce = {"Number"}
+    dest = dataclasses.replace(DESTINATIONS, unverified_paths=("h.number",))
+    assert run(conn, destinations=dest).document_ref == DOC_ID
+
+
+def test_unverified_paths_default_is_empty():
+    assert DESTINATIONS.unverified_paths == ()
+
+
+@pytest.mark.parametrize("paths", [
+    ("missing.path",), ("h.number", "h.number"), ("h.org",), ("h.kind",), ("l.vat",), (5,),
+    ["h.number"], ("",),
+])
+def test_unverified_paths_validation(paths):
+    with pytest.raises(ValueError) as info:
+        dataclasses.replace(DESTINATIONS, unverified_paths=paths)
+    assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+# ---- document_ref on the refusal ---------------------------------------------------------------
+
+def test_mismatch_carries_only_the_document_ref_and_keeps_it_out_of_the_text():
+    conn = FakeConnection()
+    conn.silent_coerce = {"Qty"}
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    exc = info.value
+    assert exc.document_ref == DOC_ID
+    assert exc.args == ("COM_WRITTEN_READBACK_MISMATCH",)
+    assert DOC_ID not in str(exc) + repr(exc) + repr(exc.args)
+    assert_clean(exc)
+    clone = pickle.loads(pickle.dumps(exc))
+    assert clone.document_ref == DOC_ID and clone.outcome_unknown is True
+
+
+@pytest.mark.parametrize("prepare,code", [
+    (lambda c: setattr(c, "fail_write", RuntimeError), "COM_WRITE_OUTCOME_UNKNOWN"),
+    (lambda c: setattr(c, "stored_none", True), "COM_WRITE_OUTCOME_UNKNOWN"),
+    (lambda c: c.boom.add(CP), "COM_REFERENCE_LOOKUP_FAILED"),
+    (lambda c: setattr(c, "fail_header", True), "COM_HEADER_SET_FAILED"),
+])
+def test_document_ref_is_none_for_every_other_code(prepare, code):
+    conn = FakeConnection()
+    prepare(conn)
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == code
+    assert info.value.document_ref is None
+
+
+def test_precondition_refusals_have_no_document_ref():
+    with pytest.raises(ExecutorRefusal) as info:
+        run(FakeConnection(), change_id="x")
+    assert info.value.document_ref is None
+
+
+# ---- dates ------------------------------------------------------------------------------------
+
+def test_dates_are_built_by_the_conversion_and_no_python_datetime_is_assigned():
+    conn = FakeConnection()
+    run(conn, document_date=datetime.datetime(2026, 10, 27, 12, 34, 56, 789))  # noqa: DTZ001
+    assert sorted(conn.date_builds) == ["20261020000000", "20261021000000", "20261027123456"]
+    for entry in conn.log:
+        for value in entry[1:]:
+            assert not isinstance(value, datetime.date)
+    assigned = {e[1]: e[2] for e in conn.log if e[0] in ("hdr_set", "row_set")}
+    assert all(type(assigned[n]) is FakeDate for n in (ex._DOC_DATE, "SupplierDate", "LineDate"))
+
+
+@pytest.mark.parametrize("text", ["2026-02-28", "2024-02-29", "1999-12-31", "2026-01-01"])
+def test_valid_date_texts_are_accepted_and_read_back(text):
+    conn = FakeConnection()
+    run(conn, make_values(**{"h.sdate": text}))
+    assert text.replace("-", "") + "000000" in conn.date_builds
+
+
+@pytest.mark.parametrize("text", [
+    "2026-13-01", "2026-10-32", "2026-02-30", "2023-02-29", "20261027", "2026-1-5",
+    " 2026-10-27", "2026-10-27 ", "2026-10-27T00:00:00", "", "10/27/2026", "2026-10-27\n",
+    5, True, "0001-01-01", "0100-01-01",
+])
+def test_invalid_date_texts_are_refused_before_com(text):
+    conn = FakeConnection()
+    for path in ("h.sdate", "l.ldate"):
+        with pytest.raises(ExecutorRefusal) as info:
+            run(conn, make_values(**{path: text}))
+        assert (info.value.code, info.value.outcome_unknown) == (
+            "COM_EXECUTOR_VALUE_INVALID", False)
+        assert conn.log == [] and conn.date_builds == []
+        assert_clean(info.value, extra=(str(text),) if text else ())
+
+
+@pytest.mark.parametrize("bad", [
+    datetime.datetime(1, 1, 1),  # noqa: DTZ001
+    datetime.datetime(100, 1, 1, 5),  # noqa: DTZ001
+])
+def test_empty_date_calendar_day_is_refused_as_document_date(bad):
+    conn = FakeConnection()
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn, document_date=bad)
+    assert info.value.code == "COM_EXECUTOR_DOCUMENT_DATE_INVALID"
+    assert conn.log == []
+
+
+def test_strict_fake_rejects_python_datetimes():
+    conn = FakeConnection()
+    doc = getattr(conn, ex._DOCUMENTS).Receipt
+    doc = getattr(doc, ex._CREATE_DOCUMENT)()
+    with pytest.raises(TypeError):
+        setattr(doc, ex._DOC_DATE, DATE)
+    with pytest.raises(TypeError):
+        doc.SupplierDate = datetime.date(2026, 10, 20)
+    row = getattr(doc.Lines, ex._ADD_ROW)()
+    with pytest.raises(TypeError):
+        row.LineDate = DATE
+
+
+def test_the_fake_stores_the_empty_date_for_text():
+    conn = FakeConnection()
+    doc = getattr(conn, ex._DOCUMENTS).Receipt
+    doc = getattr(doc, ex._CREATE_DOCUMENT)()
+    setattr(doc, ex._DOC_DATE, FakeDate("20261027000000"))
+    doc.SupplierDate = "2026-10-27"  # ISO text: no error, stored empty
+    getattr(doc, ex._WRITE)(conn.modes.PLAIN)
+    stored = getattr(getattr(doc, ex._REF), ex._GET_OBJECT)()
+    assert stored.SupplierDate is EMPTY_DATE
+
+
+def test_conversion_returning_text_is_a_silent_empty_caught_by_the_readback():
+    conn = FakeConnection()
+    conn.date_as_text = True
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert (info.value.code, info.value.outcome_unknown) == (
+        "COM_WRITTEN_READBACK_MISMATCH", True)
+    assert info.value.document_ref == DOC_ID
+    assert_clean(info.value)
+
+
+def test_document_date_time_of_day_difference_is_accepted_but_the_day_is_checked():
+    conn = FakeConnection()
+    conn.own_time = "123456"  # the configuration moved the time of day: same day is fine
+    assert run(conn).document_ref == DOC_ID
+    conn = FakeConnection()
+    conn.override_header = {ex._DOC_DATE: FakeDate("20261026070000")}
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == "COM_WRITTEN_READBACK_MISMATCH"
+
+
+def test_date_destination_with_a_time_of_day_is_a_mismatch():
+    conn = FakeConnection()
+    conn.override_row = {"LineDate": FakeDate("20261021000001")}
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == "COM_WRITTEN_READBACK_MISMATCH"
+
+
+def test_stored_date_text_must_be_text():
+    conn = FakeConnection()
+    conn.xml_override = 20261027
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == "COM_WRITTEN_READBACK_MISMATCH"
+
+
+@pytest.mark.parametrize("fail_digits,code", [
+    ("20261027000000", "COM_HEADER_SET_FAILED"),
+    ("20261020000000", "COM_HEADER_SET_FAILED"),
+    ("20261021000000", "COM_LINE_SET_FAILED"),
+])
+def test_date_build_failure_maps_to_the_set_codes(fail_digits, code):
+    conn = FakeConnection()
+    conn.date_build_fail_on = {fail_digits}
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert (info.value.code, info.value.outcome_unknown) == (code, False)
+    assert conn.write_calls == 0
+    assert_clean(info.value)
+
+
+def test_broken_date_build_is_a_set_failure():
+    conn = FakeConnection()
+    conn.date_builds = None  # the fake cast would fail on append: stands for a broken build
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn)
+    assert info.value.code == "COM_HEADER_SET_FAILED"
+    assert conn.write_calls == 0
+
+
+def test_unverified_date_path_is_not_compared():
+    conn = FakeConnection()
+    conn.override_header = {"SupplierDate": EMPTY_DATE}
+    with pytest.raises(ExecutorRefusal):
+        run(conn)
+    dest = dataclasses.replace(
+        DESTINATIONS, dates=("l.ldate",), unverified_paths=("h.sdate",))
+    conn = FakeConnection()
+    conn.override_header = {"SupplierDate": EMPTY_DATE}
+    # the date text is a plain (unverified) value now, so it is assigned as given text
+    assert run(conn, destinations=dest).document_ref == DOC_ID
+
+
+@pytest.mark.parametrize("dates", [
+    ("missing.path",), ("h.sdate", "h.sdate"), ("h.org",), ("h.kind",), ("",), (5,),
+    ["h.sdate"],
+])
+def test_dates_validation(dates):
+    with pytest.raises(ValueError) as info:
+        dataclasses.replace(DESTINATIONS, dates=dates)
+    assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+def test_dates_may_not_overlap_unverified_paths():
+    with pytest.raises(ValueError) as info:
+        dataclasses.replace(DESTINATIONS, unverified_paths=("h.sdate",))
+    assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+def test_dates_default_is_empty():
+    dest = DraftDestinationSet(
+        document_manager="Receipt", header_properties=HEADER[:3], line_section="Lines",
+        line_properties=LINE[:2], references=(), change_id_attribute="Marker",
+        manifest_attribute="Hash")
+    assert dest.dates == ()

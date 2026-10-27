@@ -8,6 +8,24 @@ contain values, identifiers, the connection string or COM error text, and no COM
 reachable from a raised refusal. Posting is never called. Run it on the STA worker; it does no
 logging.
 
+Dates: a Python datetime or ISO text must never be assigned (measured on the clone: ISO text is
+stored as the empty date, and a Python datetime is converted with a shift). Every date, including
+the document's own date, is built by 1C through a ``TypeDescription("Date")`` cast of a 14-digit
+``YYYYMMDDHHMMSS`` text and the resulting 1C value is assigned. Dates are read back as text with
+``XMLString``. Date destinations must read back exactly ``YYYY-MM-DDT00:00:00``. The document's own
+date is compared by calendar day only (first 10 characters): the configuration adjusts its time
+of day on write (measured: 12:00:00 assigned, 07:00:00 stored), so the time of day is controlled
+by the configuration and is deliberately not compared.
+
+Read-back: after the write the stored document is fetched afresh and EVERY assigned value is
+compared (dates as described above, constants exactly, references by identifier, enumerations by
+member name, numbers as Decimal, text exactly, both markers, row count). Only paths listed in the
+reviewed ``DraftDestinationSet.unverified_paths`` are skipped. The total is returned, not compared.
+
+Measured to WORK on the clone in a real run: row access (``Count()`` / ``Get(0)``), the row count,
+and the enumeration name read (``XMLString``). Not yet measured: the behavior of this executor
+under the narrow (least-privilege) role.
+
 Value types: ``value_type`` enforcement (string versus number versus enumeration) is a concern of
 the reviewed binding set. The executor assigns values as given and only refuses ``None``.
 """
@@ -17,7 +35,7 @@ import datetime
 import re
 import uuid
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from .com_manifest import ComValueAssignment
 
@@ -57,6 +75,9 @@ _DOC_DATE = "\u0414\u0430\u0442\u0430"  # Date (the document's own date)
 _COUNT = "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e"  # Count (tabular section)
 _GET_ROW = "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c"  # Get (tabular section row by index)
 _XML_STRING = "XML\u0421\u0442\u0440\u043e\u043a\u0430"  # XMLString (enumeration value name)
+_TYPE_DESCRIPTION = "\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435\u0422\u0438\u043f\u043e\u0432"  # TypeDescription (builds 1C values)
+_DATE_TYPE = "\u0414\u0430\u0442\u0430"  # Date (type name given to the type description)
+_CAST_VALUE = "\u041f\u0440\u0438\u0432\u0435\u0441\u0442\u0438\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435"  # AdjustValue / cast text to the described type
 _NEW_OBJECT = "NewObject"  # connector method building 1C values
 _STRING = "String"  # connector method turning a 1C value into canonical text
 
@@ -66,17 +87,22 @@ _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 class ExecutorRefusal(Exception):
     """Stable-code refusal; the message is the code only."""
 
-    def __init__(self, code: str, outcome_unknown: bool = False) -> None:
+    def __init__(self, code: str, outcome_unknown: bool = False,
+                 document_ref: str | None = None) -> None:
         super().__init__(code)
         self.code = code
         self.outcome_unknown = outcome_unknown
+        # Canonical UUID text of the written draft (never a business value); set only for
+        # COM_WRITTEN_READBACK_MISMATCH so the caller can find the document. Not in str/args.
+        self.document_ref = document_ref
 
     def __reduce__(self):
-        return (ExecutorRefusal, (self.code, self.outcome_unknown))
+        return (ExecutorRefusal, (self.code, self.outcome_unknown, self.document_ref))
 
 
-def _refusal(code: str, outcome_unknown: bool = False) -> ExecutorRefusal:
-    return ExecutorRefusal(code, outcome_unknown).with_traceback(None)
+def _refusal(code: str, outcome_unknown: bool = False,
+             document_ref: str | None = None) -> ExecutorRefusal:
+    return ExecutorRefusal(code, outcome_unknown, document_ref).with_traceback(None)
 
 
 def _name_ok(value: object) -> bool:
@@ -116,7 +142,13 @@ class DraftDestinationSet:
     and the executor assigns the enumeration object (never text). ``constants``:
     ((header 1C property name, bool|int|str), ...) reviewed constants set on the header, for
     example the "amount includes VAT" flag. All 1C property names (header, line, constants, both
-    markers, total) must be pairwise distinct.
+    markers, total) must be pairwise distinct. ``unverified_paths``: reviewed property paths of
+    plain (non-reference, non-enumeration) values that the read-back deliberately does NOT
+    compare; it exists only for a field that cannot be read back and defaults to empty.
+    ``dates``: property paths (header or line) whose payload value is an ISO date text
+    ``YYYY-MM-DD``; they are built into 1C dates (never assigned as text) and read back as
+    ``YYYY-MM-DDT00:00:00``. Unique, and disjoint from references, enumerations and
+    ``unverified_paths``.
     """
 
     document_manager: str
@@ -129,6 +161,8 @@ class DraftDestinationSet:
     total_property: str = _DOCUMENT_TOTAL
     enumerations: tuple[tuple[str, str], ...] = ()
     constants: tuple[tuple[str, bool | int | str], ...] = ()
+    unverified_paths: tuple[str, ...] = ()
+    dates: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not (_name_ok(self.document_manager) and _name_ok(self.line_section)
@@ -148,6 +182,16 @@ class DraftDestinationSet:
         enum_paths = [p for p, _ in self.enumerations]
         if (len(enum_paths) != len(set(enum_paths)) or not set(enum_paths) <= set(paths)
                 or set(enum_paths) & set(ref_paths)):
+            raise ValueError("COM_EXECUTOR_DESTINATIONS_INVALID")
+        skipped = self.unverified_paths
+        if (type(skipped) is not tuple or not all(_name_ok(x) for x in skipped)
+                or len(skipped) != len(set(skipped)) or not set(skipped) <= set(paths)
+                or set(skipped) & (set(ref_paths) | set(enum_paths))):
+            raise ValueError("COM_EXECUTOR_DESTINATIONS_INVALID")
+        date_paths = self.dates
+        if (type(date_paths) is not tuple or not all(_name_ok(x) for x in date_paths)
+                or len(date_paths) != len(set(date_paths)) or not set(date_paths) <= set(paths)
+                or set(date_paths) & (set(ref_paths) | set(enum_paths) | set(skipped))):
             raise ValueError("COM_EXECUTOR_DESTINATIONS_INVALID")
         names = ([n for _, n in self.header_properties] + [n for n, _ in self.constants] + [n for _, n in self.line_properties]
                  + [self.change_id_attribute, self.manifest_attribute, self.total_property])
@@ -220,6 +264,72 @@ def _resolve_enumeration(connection: object, enum_name: str, member: object) -> 
     return _guarded("COM_ENUM_VALUE_NOT_FOUND", False, lookup)
 
 
+_EMPTY_DATE_DAYS = frozenset({"0001-01-01", "0100-01-01"})
+
+
+def _date_text_ok(value: object) -> bool:
+    """Strict ``YYYY-MM-DD`` that round-trips and is not an empty-date calendar day."""
+    if type(value) is not str:
+        return False
+    try:
+        return (datetime.date.fromisoformat(value).isoformat() == value
+                and value not in _EMPTY_DATE_DAYS)
+    except ValueError:
+        return False
+
+
+def _digits14(year: int, month: int, day: int, hour: int = 0, minute: int = 0,
+              second: int = 0) -> str:
+    return f"{year:04d}{month:02d}{day:02d}{hour:02d}{minute:02d}{second:02d}"
+
+
+def _build_date(connection: object, digits: str) -> object:
+    """Build a 1C date through the TypeDescription cast; never a Python datetime or text."""
+    description = getattr(connection, _NEW_OBJECT)(_TYPE_DESCRIPTION, _DATE_TYPE)
+    built = getattr(description, _CAST_VALUE)(digits)
+    if built is None:
+        raise ValueError
+    return built
+
+
+def _decimal_of(value: object) -> Decimal | None:
+    if type(value) is float:
+        number = Decimal(repr(value))
+    elif type(value) is int:
+        number = Decimal(value)
+    elif type(value) is Decimal:
+        number = value
+    elif type(value) is str:
+        try:
+            number = Decimal(value)
+        except InvalidOperation:
+            return None
+    else:
+        return None
+    return number if number.is_finite() else None
+
+
+def _plain_equal(expected: object, actual: object) -> bool:
+    """Compare an assigned plain value with the stored one; strings are never coerced.
+
+    A stored text must equal the assigned text exactly. A stored number (int/float/Decimal) must
+    equal the assigned value as a normalized Decimal. A bool must stay a bool.
+    """
+    if type(expected) is str and expected == "":
+        return actual is None or actual == ""
+    if actual is None:
+        return False
+    if type(expected) is bool:
+        return type(actual) is bool and actual == expected
+    if type(actual) is bool:
+        return False
+    if type(actual) is str:
+        return actual == (expected if type(expected) is str else str(expected))
+    wanted = _decimal_of(expected)
+    found = _decimal_of(actual)
+    return wanted is not None and found is not None and wanted == found
+
+
 def _total_text(value: object) -> str:
     if type(value) is float:
         number = Decimal(repr(value))
@@ -250,7 +360,11 @@ def execute_create_draft(
         raise _refusal("COM_EXECUTOR_DESTINATION_MISMATCH")
     if any(v.value is None for v in values):
         raise _refusal("COM_EXECUTOR_VALUE_INVALID")
-    if type(document_date) is not datetime.datetime or document_date.tzinfo is not None:
+    date_paths = frozenset(destinations.dates)
+    if any(not _date_text_ok(v.value) for v in values if v.property_path in date_paths):
+        raise _refusal("COM_EXECUTOR_VALUE_INVALID")
+    if (type(document_date) is not datetime.datetime or document_date.tzinfo is not None
+            or document_date.date().isoformat() in _EMPTY_DATE_DAYS):
         raise _refusal("COM_EXECUTOR_DOCUMENT_DATE_INVALID")
     if not _canonical_uuid(change_id):
         raise _refusal("COM_MARKER_INVALID")
@@ -261,7 +375,11 @@ def execute_create_draft(
     catalog_of = dict(destinations.references)
     enum_of = dict(destinations.enumerations)
     resolved: dict[str, object] | None = {}
-    document = row = mode = None
+    document = row = mode = ref_id = total = None
+    own_digits = _digits14(document_date.year, document_date.month, document_date.day,
+                           document_date.hour, document_date.minute, document_date.second)
+    own_day = document_date.date().isoformat()
+    skipped_paths = frozenset(destinations.unverified_paths)
     try:
         # 1. Resolve references first (in value order); no document object exists yet.
         for v in values:
@@ -273,7 +391,11 @@ def execute_create_draft(
                     connection, enum_of[v.property_path], v.value)
 
         def final(path: str) -> object:
-            return resolved[path] if path in resolved else by_path[path].value
+            if path in resolved:
+                return resolved[path]
+            if path in date_paths:
+                return _build_date(connection, by_path[path].value.replace("-", "") + "000000")
+            return by_path[path].value
 
         # 2. Create the object, set header, add one row and set it, then the markers.
         def create() -> object:
@@ -283,7 +405,7 @@ def execute_create_draft(
         document = _guarded("COM_DOCUMENT_CREATE_FAILED", False, create)
 
         def set_header() -> None:
-            setattr(document, _DOC_DATE, document_date)
+            setattr(document, _DOC_DATE, _build_date(connection, own_digits))
             for path, name in destinations.header_properties:
                 setattr(document, name, final(path))
             for name, constant in destinations.constants:
@@ -314,6 +436,19 @@ def execute_create_draft(
             if (getattr(stored, destinations.change_id_attribute) != change_id
                     or getattr(stored, destinations.manifest_attribute) != manifest_sha256):
                 return False
+            stored_date = getattr(stored, _DOC_DATE)
+            if stored_date is None:
+                return False
+            own_text = getattr(connection, _XML_STRING)(stored_date)
+            if type(own_text) is not str or own_text[:10] != own_day:
+                return False
+            for name, constant in destinations.constants:
+                stored_constant = getattr(stored, name)
+                if type(constant) is bool:
+                    if stored_constant is not constant:
+                        return False
+                elif not _plain_equal(constant, stored_constant):
+                    return False
             section = getattr(stored, destinations.line_section)
             if getattr(section, _COUNT)() != 1:
                 return False
@@ -321,19 +456,27 @@ def execute_create_draft(
             for owner, properties in ((stored, destinations.header_properties),
                                       (line_row, destinations.line_properties)):
                 for path, name in properties:
+                    if path in skipped_paths:
+                        continue
                     expected = by_path[path].value
+                    stored_value = getattr(owner, name)
                     if path in catalog_of:
-                        stored_value = getattr(owner, name)
                         if stored_value is None:
                             return False
                         actual = getattr(connection, _STRING)(
                             getattr(stored_value, _UNIQUE_ID)())
                     elif path in enum_of:
-                        stored_value = getattr(owner, name)
                         if stored_value is None:
                             return False
                         actual = getattr(connection, _XML_STRING)(stored_value)
+                    elif path in date_paths:
+                        if stored_value is None:
+                            return False
+                        actual = getattr(connection, _XML_STRING)(stored_value)
+                        expected = expected + "T00:00:00"
                     else:
+                        if not _plain_equal(expected, stored_value):
+                            return False
                         continue
                     if type(actual) is not str or actual != expected:
                         return False
@@ -357,7 +500,7 @@ def execute_create_draft(
         ref_id, total, matches = _guarded(
             "COM_WRITE_OUTCOME_UNKNOWN", True, write_and_read_back)
         if not matches:
-            raise _refusal("COM_WRITTEN_READBACK_MISMATCH", True)
+            raise _refusal("COM_WRITTEN_READBACK_MISMATCH", True, ref_id)
         return ExecutorResult(document_ref=ref_id, document_total_text=total)
     finally:
-        resolved = document = row = mode = None
+        resolved = document = row = mode = ref_id = total = None

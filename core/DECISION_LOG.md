@@ -1161,3 +1161,7 @@ Decision: the executor refuses before the write call with outcome_unknown false 
 ## 2026-10-27 - COM draft executor hardened; real-clone probes found a silent-failure class that fakes and reviews missed
 
 Decision: assign enumeration values as enumeration objects and read back references, enumerations and markers from the stored document; the document's own date is a required argument; the includes-VAT flag is a reviewed constant. Real 1C stores an enumeration assigned as text as EMPTY without an error. The real executor then ran on the disposable clone in a rolled-back transaction (OK, total 20, 0 leftovers); tests 319 passed. Detail: `docs/phase2/CHANGE_RECORD_380.md`.
+
+## 2026-10-27 - COM draft executor handles dates through 1C values; least-privilege role gets Read on four catalogs
+
+Decision: dates are assigned only as 1C date values built by the type-description conversion and compared as text; the document's own date is compared by calendar day only. The role CT14 writer got Read on four catalogs (operator silent; the recommended option was auto-accepted and is revertible). The executor ran OK on the clone as administrator and as the narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_381.md`.

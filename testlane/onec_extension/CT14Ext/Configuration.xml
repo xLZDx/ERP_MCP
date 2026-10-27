@@ -114,6 +114,10 @@
 			<InformationRegister>ПервоначальныеСведенияОСНалоговыйУчет</InformationRegister>
 			<InformationRegister>НачислениеАмортизацииОСНалоговыйУчет</InformationRegister>
 			<InformationRegister>ИмпортТоваровТаможенныйСоюз</InformationRegister>
+			<Catalog>Организации</Catalog>
+			<Catalog>Контрагенты</Catalog>
+			<Catalog>Валюты</Catalog>
+			<Catalog>Номенклатура</Catalog>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>
