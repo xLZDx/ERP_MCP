@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import logging
 import math
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -37,6 +38,8 @@ from .private_authorization import (
 )
 from .runtime_composition import PrivateWriterRuntime
 from .service import CallSnapshot, PrivateWriterService, ServiceError
+
+_LOG = logging.getLogger(__name__)
 
 _MAX_REQUEST_BYTES = 1_048_576
 _CONFLICT_CODES = frozenset({
@@ -296,7 +299,8 @@ def create_private_writer_app(
             return JSONResponse({"error": "CALL_NOT_AUTHORIZED"}, status_code=403)
         except PrivateWriterAuthorizationUnavailable:
             return JSONResponse({"error": "CALL_AUTHORIZATION_UNAVAILABLE"}, status_code=503)
-        except Exception:
+        except Exception as exc:
+            _LOG.error("dispatch authorizer raised unexpected %s", type(exc).__name__)
             return JSONResponse({"error": "CALL_AUTHORIZATION_UNAVAILABLE"}, status_code=503)
         return None
 
@@ -305,7 +309,8 @@ def create_private_writer_app(
             call_authorizer.authorize_lookup(caller, ticket)
         except PermissionError:
             return JSONResponse({"error": "CALL_NOT_AUTHORIZED"}, status_code=403)
-        except Exception:
+        except Exception as exc:
+            _LOG.error("lookup authorizer raised unexpected %s", type(exc).__name__)
             return JSONResponse({"error": "CALL_AUTHORIZATION_UNAVAILABLE"}, status_code=503)
         return None
 
@@ -349,7 +354,10 @@ def create_private_writer_app(
                 {"error": exc.code, "outcome_unknown": exc.outcome_unknown},
                 status_code=status,
             )
-        except Exception:
+        except Exception as exc:
+            # Also covers a failure to serialize the result after a successful dispatch: the
+            # client did not receive the outcome, so it must look the call up.
+            _LOG.error("dispatch raised unexpected %s", type(exc).__name__)
             return JSONResponse(
                 {"error": "WRITER_OPERATION_UNAVAILABLE", "outcome_unknown": True},
                 status_code=503,
@@ -383,7 +391,8 @@ def create_private_writer_app(
         except ServiceError as exc:
             status = 409 if exc.code in _CONFLICT_CODES else 503
             return JSONResponse({"error": exc.code}, status_code=status)
-        except Exception:
+        except Exception as exc:
+            _LOG.error("lookup raised unexpected %s", type(exc).__name__)
             return JSONResponse({"error": "OUTCOME_LOOKUP_UNAVAILABLE"}, status_code=503)
 
     return Starlette(

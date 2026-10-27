@@ -1004,3 +1004,10 @@ Evidence: the functional-test-reviewer agent ran the four migration harness scri
 Decision: close review finding F4. A malformed `change_id` now fails as `T16_CHANGE_ID_INVALID` (outcome_unknown false) before the resolution gate is called. A `ServiceError` from the gate or from S13 terminalization keeps its code and its own outcome_unknown flag; any other unexpected error still maps to the conservative OUTCOME_UNKNOWN codes and is now logged by class. The broad catches stay on purpose: after the gate was called, the safe assumption is that the outcome may be unknown. F5 and F6 remain open.
 
 Evidence: new `tests/phase2/test_s13_t16_recovery_error_mapping.py` 3 passed (first tests of this coordinator). Detail: `docs/phase2/CHANGE_RECORD_350.md`.
+
+
+## 2026-10-27 - Private ingress: log unexpected errors, keep the outcome-unknown contract
+
+Decision: close review finding F5 by logging the exception class (never the message or payload) in the four broad handlers of `private_ingress.py`. The response codes are unchanged on purpose: a failure to serialize the result after a successful dispatch correctly stays `WRITER_OPERATION_UNAVAILABLE` with `outcome_unknown` true, because the client did not receive the outcome and must look the call up. F6 stays open.
+
+Evidence: module imports and passes ruff F,E9; no test in the repository references `private_ingress`, so a handler-level test (needs a real service, authenticator, authorizer and runtime) is NOT_RUN and open. Detail: `docs/phase2/CHANGE_RECORD_351.md`.
