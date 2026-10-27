@@ -72,8 +72,8 @@ def _from_ssh_mint(target: str, script: str = DEFAULT_IVAN_MINT_SCRIPT) -> Token
         done = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
              "-o", "IdentitiesOnly=yes", target,
-             "powershell -NoProfile -ExecutionPolicy Bypass -File "
-             "D:\\1c\\mcp\\mint-token.ps1 -Ttl 3600"],
+             ("powershell -NoProfile -ExecutionPolicy Bypass -File "
+              "D:\\1c\\mcp\\mint-token.ps1 -Ttl 3600")],
             capture_output=True, text=True, check=True, timeout=60,
         )
     except (OSError, subprocess.SubprocessError):

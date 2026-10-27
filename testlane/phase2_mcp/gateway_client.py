@@ -6,6 +6,7 @@ Numbers are parsed straight into ``Decimal`` so no float rounding can enter a co
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -18,9 +19,34 @@ from .config import GatewayConfig, TokenCredential, TokenUnavailable
 class GatewayError(Exception):
     """Failure with a fixed, safe code (never the underlying exception text)."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, detail_code: str | None = None) -> None:
         super().__init__(code)
         self.code = code
+        # Optional upstream refusal code (for example SEMANTIC_PROFILE_UNVALIDATED); fixed vocabulary only.
+        self.detail_code = detail_code
+
+
+_DETAIL_CODE = re.compile(r"[A-Z][A-Z0-9_]{2,63}")
+
+
+def _safe_detail_code(result: dict[str, Any]) -> str | None:
+    """Return the gateway's refusal code only when it is a bare UPPER_SNAKE token; never free text.
+
+    A tool error carries ``{"error": {"code": ...}}`` either as structured content or as the JSON text of
+    the first content item. Anything else (validation text, malformed JSON) yields no detail.
+    """
+    payload = result.get("structuredContent")
+    if not isinstance(payload, dict):
+        content = result.get("content")
+        first = content[0] if isinstance(content, list) and content else None
+        text = first.get("text") if isinstance(first, dict) else None
+        try:
+            payload = json.loads(text) if isinstance(text, str) else None
+        except ValueError:
+            payload = None
+    error = payload.get("error") if isinstance(payload, dict) else None
+    code = error.get("code") if isinstance(error, dict) else None
+    return code if isinstance(code, str) and _DETAIL_CODE.fullmatch(code) else None
 
 
 class GatewayPort(Protocol):
@@ -132,7 +158,7 @@ class Gateway:
         if not isinstance(result, dict):
             raise GatewayError("GATEWAY_BAD_RESPONSE")
         if result.get("isError"):
-            raise GatewayError("GATEWAY_TOOL_ERROR")
+            raise GatewayError("GATEWAY_TOOL_ERROR", _safe_detail_code(result))
         payload = result.get("structuredContent")
         if not isinstance(payload, dict):
             raise GatewayError("GATEWAY_BAD_RESPONSE")

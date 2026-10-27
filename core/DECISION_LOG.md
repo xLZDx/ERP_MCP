@@ -929,3 +929,9 @@ Decision: implement the missing S13 writer boundary as a private service on Ivan
 
 Decision: the operator's staging prohibition refers to a staging deployment, not Git staging. Explicit-path staging and local commits are authorized, and the first local commit includes the three autonomous prompt documents. Leave `MCP-RSV-Data.zip` untouched. Push/PR remains gated on correlated GPT-PM approval for the exact final head. This records the operator's 2026-10-22 clarification; it does not itself satisfy the GPT-PM gate.
 
+
+## 2026-10-27 - Phase 2 test lane reports gateway refusal codes; two-base recheck
+
+Evidence: strict SSH to koros@100.88.71.74 and all local listeners were healthy; Ivan and local gateways answered `source_health` ok. The two-base comparison of account 521.1 returned `PARTIAL_MISMATCH` (10 rows on the local side, 11 on Ivan, one `ROW_MISSING_IN_A`), a numeric copy-consistency result and not a native 1C PASS. The six-column and purchase sections were refused by the gateway itself with `SEMANTIC_PROFILE_UNVALIDATED`.
+
+Decision: report the gateway's bare refusal code as `detail_code` beside the unchanged `reason_code`, and call `purchase_documents` with only `source_id` and `company_id`. The running 21200 server was not restarted. Cause of the extra row on Ivan is UNKNOWN. Detail: `docs/phase2/CHANGE_RECORD_341.md`, `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-27.md`. pytest NOT_RUN.
