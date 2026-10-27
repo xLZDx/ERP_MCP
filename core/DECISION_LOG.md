@@ -1069,3 +1069,9 @@ Evidence: composition file 16 passed, size test 1 passed. Detail: `docs/phase2/C
 Decision: the operator obtained a 1C developer (community) license on Ivan's host over Remote Desktop with their own account; no license file was copied or transferred and no credential passed through the session (the operator typed all of them). The earlier file on the local machine looked time limited (written 2026-10-12, recorded expired 2026-10-19, seven days). The clone dialog was answered 'This is a copy of the information base' so external exchanges of the copy stay blocked.
 
 Evidence: before, `store-onec-admin.ps1 -TestOnly` returned 'License not found'; after, it printed `COM connect ok     : True` (boolean output only). Not run: the metadata inventory, the CT14 effective-rights check, any COM write; the write port stays uncomposed. The developer license expires and has use restrictions set by 1C; renewal and the terms check belong to the operator. Detail: `docs/phase2/CHANGE_RECORD_360.md`.
+
+## 2026-10-27 - Metadata-only inventory of the licensed clone on Ivan's host
+
+Decision: with the license in place (Change Record 360) a host-side PowerShell inventory was written and run once successfully: it decrypts the stored clone login in process, connects by COM and prints metadata names only (configuration, platform, one document's attributes and tabular sections). No business rows, rights, objects or files; the login is never printed. The script is ASCII only with Unicode escapes for Cyrillic names.
+
+Evidence: platform 8.3.27.2342, configuration with version 3.0.67.1, document with 73 attributes and 9 tabular sections; result saved as `docs/phase2/artifacts/CT14_METADATA_INVENTORY_IVAN_2026-10-27.json`. Not done: the reviewed payload-to-COM crosswalk, CT14 effective-rights check, any write; the write port stays uncomposed. Detail: `docs/phase2/CHANGE_RECORD_361.md`.
