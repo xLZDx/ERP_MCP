@@ -9,9 +9,10 @@ The DSN is read from ERP_PHASE2_TEST_DSN (superuser DSN of erp-phase2-test-pg). 
 worker processes only through the environment, never argv, and is never written to the report: the DSN,
 its password and its user name are redacted from every stored error text and from the final output.
 Only local hosts (localhost, 127.0.0.1, ::1) are accepted, and BEFORE any database is created the
-cluster behind the DSN must be proven to be the disposable container that publishes the DSN port (an r2-s13-dump-*
-container, or the one named by ERP_PHASE2_TEST_CONTAINER; same pg_control_system().system_identifier as
-`docker exec`); there is no other override. Every worker re-checks
+cluster behind the DSN must be proven to be the disposable container that publishes the DSN port (its name must
+start with an approved disposable prefix, r2-s13-dump- or erp-s14-digest-; ERP_PHASE2_TEST_CONTAINER may only
+choose among such containers; same pg_control_system().system_identifier as `docker exec`); there is no
+other override. Every worker re-checks
 that identifier (passed by the parent through the environment) before it touches the database.
 
     ERP_PHASE2_TEST_DSN=... python scripts/phase2_capacity_drill.py --sources 30 --workers 8 \
@@ -117,23 +118,27 @@ class ClusterIdentityError(RuntimeError):
     """The DSN does not provably point at the disposable test container (fail closed)."""
 
 
-DISPOSABLE_PREFIX = "r2-s13-dump-"
+DISPOSABLE_PREFIXES = ("r2-s13-dump-", "erp-s14-digest-")
 
 
 def _disposable_container(dsn: str, docker) -> str:
-    """Name of the single running container that publishes the DSN's port (fail closed otherwise).
+    """Name of the single running disposable container that publishes the DSN's port (fail closed otherwise).
 
-    The harness no longer has a fixed container name. The container is either named by the operator through
-    ERP_PHASE2_TEST_CONTAINER or must be the only one publishing the DSN port and carry the ``r2-s13-dump-`` prefix.
-    The final proof is still the system_identifier comparison in ``verify_cluster``."""
+    The harness no longer has a fixed container name. The container must carry an approved disposable prefix
+    (``DISPOSABLE_PREFIXES``) whether it is found by its published port or named through
+    ERP_PHASE2_TEST_CONTAINER; the variable only resolves ambiguity between several disposable containers and
+    can never make another container qualify. The final proof is still the system_identifier comparison in
+    ``verify_cluster``."""
     port = urlsplit(dsn).port if "://" in dsn else None
     if not port:
         raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
     requested = os.environ.get("ERP_PHASE2_TEST_CONTAINER")
+    if requested and not requested.startswith(DISPOSABLE_PREFIXES):
+        raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
     flt = f"name=^{requested}$" if requested else f"publish={port}"
     ps = docker("ps", "--filter", flt, "--format", "{{.Names}}", timeout=30)
     names = ps.stdout.decode().split()
-    if ps.returncode != 0 or len(names) != 1 or (not requested and not names[0].startswith(DISPOSABLE_PREFIX)):
+    if ps.returncode != 0 or len(names) != 1 or not names[0].startswith(DISPOSABLE_PREFIXES):
         raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
     published = docker("port", names[0], "5432/tcp", timeout=30)
     if published.returncode != 0 or not any(

@@ -1145,3 +1145,7 @@ Decision: all 740 receipt documents in the clone have the includes-VAT flag set 
 ## 2026-10-27 - SQL-backed phase 2 tests run against a disposable Postgres; Python and SQL digests agree for vat_amount
 
 Decision: the 602 skipped DSN tests were run for real on an own `--rm` Postgres 16.14 container. No failure came from vat_amount; the Python and SQL payload digests agree for 0, 3.5 and 1234.56. Eleven tests were stale since migration 018 and two failed on a removed harness name; they were fixed against the SQL contract without weakening assertions. Detail: `docs/phase2/CHANGE_RECORD_376.md`.
+
+## 2026-10-27 - Capacity drill container lookup: an approved prefix is required for explicit selection too (GPT-PM M-01)
+
+Decision: ERP_PHASE2_TEST_CONTAINER may only choose among containers with an approved disposable prefix; it can no longer make another container qualify. Seventeen no-database tests cover the eight scenarios GPT-PM listed plus extras. Detail: `docs/phase2/CHANGE_RECORD_377.md`.
