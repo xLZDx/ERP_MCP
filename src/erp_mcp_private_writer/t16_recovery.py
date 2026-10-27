@@ -1,6 +1,7 @@
 """Continue verified S12 conditional-conflict recovery through T16 and S13 terminalization."""
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -19,6 +20,7 @@ from .service import (
     T16ResolutionPreparation,
 )
 
+_LOG = logging.getLogger(__name__)
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -116,9 +118,14 @@ class T16RecoveryCoordinator:
         identity = preparation.identity
         refs = preparation.evidence_refs
         try:
+            change_uuid = UUID(identity.change_id)
+        except (TypeError, ValueError, AttributeError):
+            # Nothing has been sent to the gate yet, so this is a definitive local rejection.
+            raise T16RecoveryError("T16_CHANGE_ID_INVALID") from None
+        try:
             result = await self._resolution_gate.resolve_t16_s13(
                 identity.scope,
-                UUID(identity.change_id),
+                change_uuid,
                 preparation.dispatch_cas_id,
                 cosign_id,
                 preparation.receipt_ref,
@@ -127,7 +134,10 @@ class T16RecoveryCoordinator:
                 refs.post_completion_challenge_ref,
                 refs.read_attestation_ref,
             )
-        except Exception:
+        except ServiceError as exc:
+            raise T16RecoveryError(exc.code, outcome_unknown=exc.outcome_unknown) from None
+        except Exception as exc:
+            _LOG.error("T16 resolution gate raised unexpected %s", type(exc).__name__)
             raise T16RecoveryError("T16_RESOLUTION_OUTCOME_UNKNOWN",
                                    outcome_unknown=True) from None
 
@@ -184,7 +194,10 @@ class T16RecoveryCoordinator:
                 refs.read_attestation_ref,
                 event_id,
             )
-        except Exception:
+        except ServiceError as exc:
+            raise T16RecoveryError(exc.code, outcome_unknown=exc.outcome_unknown) from None
+        except Exception as exc:
+            _LOG.error("S13 terminalization raised unexpected %s", type(exc).__name__)
             raise T16RecoveryError("S13_TERMINALIZATION_OUTCOME_UNKNOWN",
                                    outcome_unknown=True) from None
         if (type(call) is not CallSnapshot or call.identity != identity

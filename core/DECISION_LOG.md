@@ -997,3 +997,10 @@ Evidence: new regression test drives `_register_on_connection` under an outer ti
 Decision: close review finding F2. In `verify_and_store` and `verify_set_and_store`, OSError and asyncpg transport errors now map to `EVIDENCE_REGISTER_UNAVAILABLE` (retryable) instead of `EVIDENCE_REGISTER_VALIDATION_FAILED`; any other unexpected error stays a validation failure, because hostile input can raise anything while parsing, but it is now logged. Nothing in src or tests asserted the old code for transport errors. F4, F5, F6 remain open in Change Record 348.
 
 Evidence: the functional-test-reviewer agent ran the four migration harness scripts at f06fa2d: migration 020 PASS, 022 PASS, 023 PASS and checkpoint-suffix (026) PASS; the last two passed only with `ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1` because their `__main__` does not set it (test defect). Containers created by the agent were removed. Detail: `docs/phase2/CHANGE_RECORD_349.md`. Migration 027 was not applied.
+
+
+## 2026-10-27 - T16 recovery coordinator: local rejection for a bad change id, definitive gate refusals keep their code
+
+Decision: close review finding F4. A malformed `change_id` now fails as `T16_CHANGE_ID_INVALID` (outcome_unknown false) before the resolution gate is called. A `ServiceError` from the gate or from S13 terminalization keeps its code and its own outcome_unknown flag; any other unexpected error still maps to the conservative OUTCOME_UNKNOWN codes and is now logged by class. The broad catches stay on purpose: after the gate was called, the safe assumption is that the outcome may be unknown. F5 and F6 remain open.
+
+Evidence: new `tests/phase2/test_s13_t16_recovery_error_mapping.py` 3 passed (first tests of this coordinator). Detail: `docs/phase2/CHANGE_RECORD_350.md`.
