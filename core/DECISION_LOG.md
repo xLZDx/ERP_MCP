@@ -1165,3 +1165,7 @@ Decision: assign enumeration values as enumeration objects and read back referen
 ## 2026-10-27 - COM draft executor handles dates through 1C values; least-privilege role gets Read on four catalogs
 
 Decision: dates are assigned only as 1C date values built by the type-description conversion and compared as text; the document's own date is compared by calendar day only. The role CT14 writer got Read on four catalogs (operator silent; the recommended option was auto-accepted and is revertible). The executor ran OK on the clone as administrator and as the narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_381.md`.
+
+## 2026-10-27 - Executor fixes from two independent reviews; document time-of-day measured
+
+Decision: accept the reviews' fixes (pre-write type and date checks, document reference kept after late failures, posted and deletion-mark read-back, case-insensitive names). Rejected one concern: the stored time of the document date is always 07:00:00 for six assigned times, so no midnight crossing exists and the day-only comparison stays. Executor ran OK on the clone as administrator and narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_382.md`.

@@ -20,7 +20,7 @@
   "iso_text_assigned_to_date_attribute": "NO error; stored as the empty date",
   "python_datetime_assigned_over_pywin32": "converted unpredictably (shifted); never assign Python datetimes",
   "date_built_by_ONisanieTipov_conversion_14_digits": "assigned and stored exactly; date-only attribute reads back as YYYY-MM-DDT00:00:00 via XMLString",
-  "document_own_date_time_of_day": "configuration changes the stored time of day (12:00:00 set, 07:00:00 stored); the calendar day is kept; cause UNKNOWN",
+  "document_own_date_time_of_day": "the stored time of day is always 07:00:00 on the clone for assigned times 00:00:00, 01:00:00, 04:30:00, 05:00:00, 12:00:00 and 23:59:59, and the calendar day is always kept (not a fixed offset; the configuration normalizes the time); the reason is UNKNOWN",
   "python_datetime_read_back": "tz-shifted; read dates as XMLString text instead"
  },
  "phantom_references_on_write": "a document write with a reference to a non-existent element succeeds silently, so the executor must prove existence itself",
