@@ -1032,3 +1032,10 @@ Evidence: composition and T16 test files 17 passed after the change. Detail: `do
 Decision: the functional-test-reviewer agent applied migrations 001-026 and then `027_private_writer_admission_schema.sql` in a disposable PostgreSQL chain built by the existing harness. Result: 027 applies cleanly, applies a second time without error, and creates both roles. Privileges for the S13 roles move from NOT_MEASURABLE to MEASURED for this single fresh chain only. This does not qualify the writer: function behavior, tenant scoping inside the SECURITY DEFINER bodies, credentials and an upgraded database were not tested. The push of 735c904 (GPT-PM APPROVE) is unaffected; this note is a later documentation commit.
 
 Evidence: `business_ai_private_writer` has EXECUTE on 13 SECURITY DEFINER `private_writer_*_v1` functions and no table or sequence privilege; `private_writer_evidence_ingest` has no function EXECUTE and no table privilege; PUBLIC has none on `change_ledger`; neither role is superuser, bypassrls or createrole; 0 role memberships; no default ACL grants. Detail: `docs/phase2/CHANGE_RECORD_354.md`.
+
+
+## 2026-10-27 - First request-level tests of the private ingress
+
+Decision: add `tests/phase2/test_s13_private_ingress_boundary.py` (4 tests): an unexpected authenticator failure on dispatch and lookup returns a logged 503 `AUTHENTICATION_UNAVAILABLE` without leaking the exception text, a rejected credential is 401, and a non-loopback peer is refused with 403 before authentication runs. The ingress had no test at all. Still open: dispatch and lookup bodies, authorizer branches, a test that builds a `CallIdentity`, a maximum-size trust snapshot test.
+
+Evidence: 4 passed; ruff F,E9 clean. This is a later local commit and does not change the GPT-PM approved head 735c904 on the remote. Detail: `docs/phase2/CHANGE_RECORD_355.md`.
