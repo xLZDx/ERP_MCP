@@ -1063,3 +1063,9 @@ Evidence: funnel URL returns 200 for the realm discovery document; gateway resou
 Decision: add the tests the reviews asked for. `verify_and_store` is now driven with a real `CallIdentity`: a transport error while loading the attempt maps to `EVIDENCE_REGISTER_UNAVAILABLE`, a domain error stays `EVIDENCE_REGISTER_VALIDATION_FAILED`. A synthetic snapshot with 4200 signers decodes and stays below 75% of the 8 MiB ceiling (about 4.4 MB). The per-signer scope cap (4096) still allows snapshots above the ceiling; the real expected scope count is unknown, so the ceiling stays a fail-closed limit rather than a proven fit.
 
 Evidence: composition file 16 passed, size test 1 passed. Detail: `docs/phase2/CHANGE_RECORD_359.md`.
+
+## 2026-10-27 - 1C license obtained on Ivan's host; read-only COM connection to the clone works
+
+Decision: the operator obtained a 1C developer (community) license on Ivan's host over Remote Desktop with their own account; no license file was copied or transferred and no credential passed through the session (the operator typed all of them). The earlier file on the local machine looked time limited (written 2026-10-12, recorded expired 2026-10-19, seven days). The clone dialog was answered 'This is a copy of the information base' so external exchanges of the copy stay blocked.
+
+Evidence: before, `store-onec-admin.ps1 -TestOnly` returned 'License not found'; after, it printed `COM connect ok     : True` (boolean output only). Not run: the metadata inventory, the CT14 effective-rights check, any COM write; the write port stays uncomposed. The developer license expires and has use restrictions set by 1C; renewal and the terms check belong to the operator. Detail: `docs/phase2/CHANGE_RECORD_360.md`.
