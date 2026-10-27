@@ -116,6 +116,12 @@ def _decimal_text(value: object, positive: bool = False) -> str | None:
     return format(number.normalize(), "f") if number != 0 else "0"
 
 
+def _is_canonical_decimal(value: object, positive: bool = False) -> bool:
+    """True only for a ``str`` that already is its own canonical decimal text (``None`` is never canonical)."""
+    canonical = _decimal_text(value, positive=positive)
+    return canonical is not None and canonical == value
+
+
 def _ref(value: object) -> bool:
     return is_identity_text(value, MAX_REF_CHARS)
 
@@ -132,11 +138,13 @@ class Line:
     price: str
     vat_rate_code: str
     amount: str
+    vat_amount: str
 
     def __post_init__(self) -> None:
         if (not _ref(self.item_ref) or not is_identity_text(self.vat_rate_code, 32)
-                or _decimal_text(self.quantity, positive=True) != self.quantity
-                or _decimal_text(self.price) != self.price or _decimal_text(self.amount) != self.amount):
+                or not _is_canonical_decimal(self.quantity, positive=True)
+                or not _is_canonical_decimal(self.price) or not _is_canonical_decimal(self.amount)
+                or not _is_canonical_decimal(self.vat_amount)):
             raise ValueError("LINE_INVALID")
 
 
@@ -195,7 +203,8 @@ def payload_to_dict(payload: DraftPayload | None) -> dict[str, object]:
         "contract_ref": payload.contract_ref, "supplier_document_number": payload.supplier_document_number,
         "supplier_document_date": payload.supplier_document_date, "currency": payload.currency,
         "lines": [{"item_ref": x.item_ref, "quantity": x.quantity, "price": x.price,
-                   "vat_rate_code": x.vat_rate_code, "amount": x.amount} for x in payload.lines],
+                   "vat_rate_code": x.vat_rate_code, "amount": x.amount,
+                   "vat_amount": x.vat_amount} for x in payload.lines],
         "comment": payload.comment,
         "duplicate_override": None if override is None else {
             "duplicate_of_change_or_ref": override.duplicate_of_change_or_ref, "justification": override.justification},
@@ -395,7 +404,8 @@ _ENVELOPE_KEYS: Final = frozenset({"kind", "request_id", "parent_change_id", "ta
                                    "payload", "reason"})
 _PAYLOAD_KEYS: Final = frozenset({"organization_ref", "counterparty_ref", "contract_ref", "supplier_document_number",
                                   "supplier_document_date", "currency", "lines", "comment", "duplicate_override"})
-_LINE_KEYS: Final = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount"})
+_LINE_KEYS: Final = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount",
+                                "vat_amount"})
 _OVERRIDE_KEYS: Final = frozenset({"duplicate_of_change_or_ref", "justification"})
 _BAD: Final = Refusal(ErrorCode.SCHEMA_INVALID, "propose")
 
@@ -412,12 +422,14 @@ def _parse_lines(raw: object) -> tuple[Line, ...] | None:
     for item in raw:  # type: ignore[attr-defined]
         if not _exact_keys(item, _LINE_KEYS, _LINE_KEYS):
             return None
-        quantity, price, amount = (_decimal_text(item[k], positive=(k == "quantity"))  # type: ignore[index]
-                                   for k in ("quantity", "price", "amount"))
-        if quantity is None or price is None or amount is None:
+        quantity, price, amount, vat_amount = (
+            _decimal_text(item[k], positive=(k == "quantity"))  # type: ignore[index]
+            for k in ("quantity", "price", "amount", "vat_amount"))
+        if quantity is None or price is None or amount is None or vat_amount is None:
             return None
         try:
-            out.append(Line(item["item_ref"], quantity, price, item["vat_rate_code"], amount))  # type: ignore[index]
+            out.append(Line(item["item_ref"], quantity, price, item["vat_rate_code"], amount,  # type: ignore[index]
+                            vat_amount))
         except ValueError:
             return None
     return tuple(out)

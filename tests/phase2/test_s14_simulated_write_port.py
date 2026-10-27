@@ -55,7 +55,7 @@ def _payload(*, organization: str = ORGANIZATION, supplier_number: str = "SIM-IN
         supplier_document_number=supplier_number,
         supplier_document_date="2026-10-17",
         currency="TST",
-        lines=(Line("SIM-ITEM-1", "1", "10", "VAT0", "10"),),
+        lines=(Line("SIM-ITEM-1", "1", "10", "VAT0", "10", "0"),),
         comment="S14 local simulated adapter functional test",
     )
 

@@ -36,7 +36,7 @@ def _payload(vat: str = "VAT20") -> DraftPayload:
         supplier_document_number="supplier-2026-42",
         supplier_document_date="2026-10-25",
         currency="MDL",
-        lines=(Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code=vat, amount="31"),),
+        lines=(Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code=vat, amount="31", vat_amount="5.17"),),
         comment="approved payload value",
         duplicate_override=DuplicateOverride("prior-change-1", "operator approved duplicate"),
         expected_target_version=None,
@@ -46,7 +46,8 @@ def _payload(vat: str = "VAT20") -> DraftPayload:
 _SOURCE_PATHS = (
     "organization_ref", "counterparty_ref", "contract_ref", "supplier_document_number",
     "supplier_document_date", "currency", "lines[0].item_ref", "lines[0].quantity",
-    "lines[0].price", VAT_PATH, "lines[0].amount", "comment",
+    "lines[0].price", VAT_PATH, "lines[0].amount",
+    "lines[0].vat_amount", "comment",
 )
 
 
@@ -83,6 +84,7 @@ def test_mapped_vat_code_is_translated_in_ephemeral_value(code: str, expected: s
     # Unmapped neighbours keep their approved payload value untouched.
     assert values[0].value == "org-7"
     assert values[_SOURCE_PATHS.index("lines[0].amount")].value == "31"
+    assert values[_SOURCE_PATHS.index("lines[0].vat_amount")].value == "5.17"
 
 
 def test_write_port_path_uses_translated_value() -> None:
@@ -121,7 +123,7 @@ def test_unmapped_code_is_refused_before_any_value_is_returned(code: str) -> Non
 def test_empty_code_is_refused_by_payload_contract_and_by_map() -> None:
     # Payload contract: Line refuses an empty vat_rate_code, so it never reaches the map.
     with pytest.raises(ValueError):
-        Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="", amount="31")
+        Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="", amount="31", vat_amount="5.17")
     # The map itself also refuses it (defence in depth).
     binding = PayloadPropertyBinding(VAT_PATH, "Document.Vat", "SetValue", "String", VAT_MAP)
     with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
@@ -132,7 +134,7 @@ def test_33_character_code_is_refused_by_payload_contract_not_by_map() -> None:
     too_long = "V" * 33
     # Refused at payload construction (is_identity_text max 32), before any map is consulted.
     with pytest.raises(ValueError):
-        Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code=too_long, amount="31")
+        Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code=too_long, amount="31", vat_amount="5.17")
     # A 32-character code is accepted by the contract and then refused by the map as unmapped.
     boundary = "V" * 32
     payload = _payload(boundary)
@@ -199,7 +201,7 @@ def test_binding_without_value_map_behaves_as_before() -> None:
     # All other fields are still their exact approved values.
     assert [v.value for v in values] == [
         "org-7", "party-12", "contract-4", "supplier-2026-42", "2026-10-25", "MDL",
-        "item-9", "2", "15.5", "20", "31", "approved payload value",
+        "item-9", "2", "15.5", "20", "31", "5.17", "approved payload value",
     ]
 
 
@@ -331,7 +333,7 @@ def test_none_leaf_with_value_map_fails_closed(monkeypatch: pytest.MonkeyPatch) 
             organization_ref="org-7", counterparty_ref="party-12", contract_ref="contract-4",
             supplier_document_number="supplier-2026-42", supplier_document_date="2026-10-25",
             currency="MDL",
-            lines=(Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="VAT20", amount="31"),),
+            lines=(Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="VAT20", amount="31", vat_amount="5.17"),),
             comment=None,
             duplicate_override=None,
             expected_target_version=None,

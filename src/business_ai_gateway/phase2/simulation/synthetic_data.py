@@ -11,7 +11,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
 from ..change.proposal import DraftPayload, Line, ProposalContext, payload_to_dict
@@ -27,6 +27,15 @@ _EPOCH_START: Final = datetime(2026, 10, 15, 0, 0, 0, tzinfo=timezone.utc)
 
 def _canon(value: Decimal) -> str:
     return format(value.normalize(), "f") if value != 0 else "0"
+
+
+_SYNTHETIC_VAT_PERCENT: Final = {"VAT0": Decimal(0), "VAT10": Decimal(10), "VAT20": Decimal(20)}
+
+
+def _synthetic_vat_amount(amount: Decimal, vat_code: str) -> Decimal:
+    """VAT contained in a VAT-inclusive synthetic amount, rounded to two places; draws no randomness."""
+    rate = _SYNTHETIC_VAT_PERCENT[vat_code]
+    return (amount * rate / (Decimal(100) + rate)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,8 +84,11 @@ class SyntheticGenerator:
         for _ in range(lines):
             quantity = Decimal(rng.randint(1, 200)) / Decimal(rng.choice((1, 2, 4)))
             price = Decimal(rng.randint(100, 99999)) / Decimal(100)
-            built.append(Line(rng.choice(u.items), _canon(quantity), _canon(price), rng.choice(u.vat_codes),
-                              _canon(quantity * price)))
+            item = rng.choice(u.items)
+            vat_code = rng.choice(u.vat_codes)
+            amount = quantity * price
+            built.append(Line(item, _canon(quantity), _canon(price), vat_code, _canon(amount),
+                              _canon(_synthetic_vat_amount(amount, vat_code))))
         document_date = date(2026, 1, 1) + timedelta(days=rng.randrange(0, 280))
         return DraftPayload(
             organization, counterparty, contract_ref,

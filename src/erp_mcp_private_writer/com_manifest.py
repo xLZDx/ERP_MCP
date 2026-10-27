@@ -30,7 +30,7 @@ _DRAFT_PAYLOAD_FIELDS = frozenset({
     "supplier_document_date", "currency", "lines", "comment", "duplicate_override",
     "expected_target_version",
 })
-_DRAFT_LINE_FIELDS = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount"})
+_DRAFT_LINE_FIELDS = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount", "vat_amount"})
 _DUPLICATE_OVERRIDE_FIELDS = frozenset({"duplicate_of_change_or_ref", "justification"})
 
 
@@ -226,6 +226,7 @@ def draft_payload_from_write_port(value: object) -> DraftPayload:
                 price=raw_line["price"],
                 vat_rate_code=raw_line["vat_rate_code"],
                 amount=raw_line["amount"],
+                vat_amount=raw_line["vat_amount"],
             ))
 
         raw_override = value["duplicate_override"]

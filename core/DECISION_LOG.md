@@ -1125,3 +1125,7 @@ Decision: the name-based mapping drafted in Change Records 367 and 368 is withdr
 ## 2026-10-27 - Line VAT amount: measurement and three options, option C recommended
 
 Decision: not made. The formula amount x rate / (100 + rate) reproduced 716 of 755 rated lines exactly in the clone, 32 more within one cent and 6 by more (up to 12.50). Recommended option C: carry the line VAT amount inside the approved, digest-bound payload so the approver sees every booked figure. Detail: `docs/phase2/CHANGE_RECORD_373.md`.
+
+## 2026-10-27 - Line VAT amount becomes part of the approved payload (option C, auto-accepted recommendation)
+
+Decision: `Line.vat_amount` is required and digest-bound, so the approver sees every booked figure. The operator's question was auto-answered with the recommended option; it can be reverted. Full `tests/phase2` after fixes: 7154 passed, 602 skipped, 13 documented by-design errors. Detail: `docs/phase2/CHANGE_RECORD_374.md`.

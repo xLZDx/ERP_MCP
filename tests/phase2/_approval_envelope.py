@@ -15,7 +15,8 @@ from business_ai_gateway.phase2.change import canonical_json, sha256_hex
 FIXTURE_PAYLOAD = {
     "organization_ref": "org-1", "counterparty_ref": "cp-1", "contract_ref": "ct-1",
     "supplier_document_number": "N-1", "supplier_document_date": "2026-10-01", "currency": "EUR",
-    "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VAT20", "amount": "21"}],
+    "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VAT20", "amount": "21",
+               "vat_amount": "3.5"}],
     "comment": "fixture", "duplicate_override": None, "expected_target_version": None,
 }
 FIXTURE_TARGET_VERSION = "v1"

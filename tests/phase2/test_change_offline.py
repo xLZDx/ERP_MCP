@@ -264,7 +264,9 @@ def test_post_and_unpost_have_empty_payload_and_server_derived_effects():
     raw_create(extra_key="x"),
     raw_create(payload_over={"unknown": 1}),
     raw_create(payload_over={"lines": [{"item_ref": "i", "quantity": "1", "price": "1", "vat_rate_code": "V",
-                                        "amount": "1", "extra": "x"}]}),
+                                        "amount": "1", "vat_amount": "0", "extra": "x"}]}),
+    raw_create(payload_over={"lines": [{"item_ref": "i", "quantity": "1", "price": "1", "vat_rate_code": "V",
+                                        "amount": "1"}]}),  # vat_amount missing
     raw_create(payload_over={"duplicate_override": {"duplicate_of_change_or_ref": "c0", "justification": "j",
                                                     "extra": 1}}),
     raw_create(payload_over={"duplicate_override": {"duplicate_of_change_or_ref": "c0"}}),
@@ -300,6 +302,8 @@ def test_identity_and_digest_fields_are_never_accepted_from_the_caller(field):
     ("quantity", "1,5"), ("quantity", " 1"), ("quantity", "-1"), ("quantity", "0"), ("quantity", "01"),
     ("quantity", ""), ("quantity", "NaN"), ("price", 10.5), ("price", "-0.01"), ("price", "1.1234567"),
     ("amount", 21.0), ("amount", "abc"), ("amount", None), ("price", "1" * 19),
+    ("vat_amount", 3.5), ("vat_amount", "abc"), ("vat_amount", None), ("vat_amount", "-0.01"),
+    ("vat_amount", "1e3"), ("vat_amount", Decimal(1)), ("vat_amount", "1.1234567"), ("vat_amount", ""),
 ])
 def test_numeric_fields_must_be_exact_decimal_strings(field, value):
     raw = raw_create()
@@ -309,9 +313,9 @@ def test_numeric_fields_must_be_exact_decimal_strings(field, value):
 
 def test_zero_price_and_zero_amount_are_valid_decimal_strings():
     raw = raw_create()
-    raw["payload"]["lines"][0].update(price="0", amount="0.00")
+    raw["payload"]["lines"][0].update(price="0", amount="0.00", vat_amount="0.000")
     p = h.proposal(raw)
-    assert (p.payload.lines[0].price, p.payload.lines[0].amount) == ("0", "0")
+    assert (p.payload.lines[0].price, p.payload.lines[0].amount, p.payload.lines[0].vat_amount) == ("0", "0", "0")
 
 
 def test_organization_mismatch_is_scope_mismatch_and_other_scope_refs_are_out_of_scope():

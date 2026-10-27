@@ -38,7 +38,8 @@ def _payload(*, lines: tuple[Line, ...] | None = None, expected_target_version: 
         supplier_document_date="2026-10-25",
         currency="MDL",
         lines=lines if lines is not None else (
-            Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="20", amount="31"),
+            Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="20", amount="31",
+                 vat_amount="5.17"),
         ),
         comment="approved payload value",
         duplicate_override=DuplicateOverride("prior-change-1", "operator approved duplicate"),
@@ -59,6 +60,7 @@ def _bindings() -> tuple[PayloadPropertyBinding, ...]:
         "lines[0].price",
         "lines[0].vat_rate_code",
         "lines[0].amount",
+        "lines[0].vat_amount",
         "comment",
     )
     return tuple(
@@ -98,6 +100,7 @@ def test_s14_exact_approved_leaf_values_and_canonical_digests() -> None:
         ("15.5", "lines[0].price"),
         ("20", "lines[0].vat_rate_code"),
         ("31", "lines[0].amount"),
+        ("5.17", "lines[0].vat_amount"),
         ("approved payload value", "comment"),
     )
     assert tuple((item.value, binding.payload_path)
