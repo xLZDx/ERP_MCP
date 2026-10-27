@@ -1025,3 +1025,10 @@ Evidence: new `tests/phase2/test_s13_trust_source_error_mapping.py` 2 passed; WP
 Decision: both reviewers found no BLOCKER or MAJOR. Fixed the valid items: the unexpected-error log no longer prints exception text (class and innermost frame only); T16 lookup and preparation failures are logged; the authenticator call at the ingress is guarded (503, logged); the registration deadline starts after the build re-read; a pool timeout before any connection is `outcome_unknown` false. Left open by decision: confirming the retry policy of consumers of `EVIDENCE_REGISTER_UNAVAILABLE` (callers not in this repository scope) and a largest-realistic-snapshot test for the 8 MiB ceiling.
 
 Evidence: composition and T16 test files 17 passed after the change. Detail: `docs/phase2/CHANGE_RECORD_353.md`.
+
+
+## 2026-10-27 - Migration 027 applied in a disposable database; effective privileges measured
+
+Decision: the functional-test-reviewer agent applied migrations 001-026 and then `027_private_writer_admission_schema.sql` in a disposable PostgreSQL chain built by the existing harness. Result: 027 applies cleanly, applies a second time without error, and creates both roles. Privileges for the S13 roles move from NOT_MEASURABLE to MEASURED for this single fresh chain only. This does not qualify the writer: function behavior, tenant scoping inside the SECURITY DEFINER bodies, credentials and an upgraded database were not tested. The push of 735c904 (GPT-PM APPROVE) is unaffected; this note is a later documentation commit.
+
+Evidence: `business_ai_private_writer` has EXECUTE on 13 SECURITY DEFINER `private_writer_*_v1` functions and no table or sequence privilege; `private_writer_evidence_ingest` has no function EXECUTE and no table privilege; PUBLIC has none on `change_ledger`; neither role is superuser, bypassrls or createrole; 0 role memberships; no default ACL grants. Detail: `docs/phase2/CHANGE_RECORD_354.md`.
