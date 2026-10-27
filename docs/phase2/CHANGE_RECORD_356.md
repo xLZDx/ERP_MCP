@@ -3,7 +3,7 @@
 ## Ownership and scope
 
 - Date: 2026-10-27. Accountable owner: operator; executor: Claude Code session.
-- Covers four additional tests in `tests/phase2/test_s13_private_ingress_boundary.py` and log entries. No source change.
+- Covers three additional collected test cases (two parametrized over both routes plus the oversize case; seven in the file) in `tests/phase2/test_s13_private_ingress_boundary.py` and log entries. No source change.
 
 ## Tests
 
