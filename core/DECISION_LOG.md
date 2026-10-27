@@ -1129,3 +1129,7 @@ Decision: not made. The formula amount x rate / (100 + rate) reproduced 716 of 7
 ## 2026-10-27 - Line VAT amount becomes part of the approved payload (option C, auto-accepted recommendation)
 
 Decision: `Line.vat_amount` is required and digest-bound, so the approver sees every booked figure. The operator's question was auto-answered with the recommended option; it can be reverted. Full `tests/phase2` after fixes: 7154 passed, 602 skipped, 13 documented by-design errors. Detail: `docs/phase2/CHANGE_RECORD_374.md`.
+
+## 2026-10-27 - Closed VAT code table drafted (VAT0, VAT10, VAT20 to the values displaying 0%, 10%, 20%)
+
+Decision: the table targets enumeration values by displayed rate, not by legacy name, and is guarded by tests that read the synonyms from the saved artifact. It is not wired into any binding set; the writer stays disabled. Detail: `docs/phase2/CHANGE_RECORD_375.md`.
