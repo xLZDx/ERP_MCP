@@ -1137,3 +1137,7 @@ Decision: the table targets enumeration values by displayed rate, not by legacy 
 ## 2026-10-27 - Review of the vat_amount contract change: no blocker; in-flight old-shape proposals must be re-proposed
 
 Decision: record the reviewer's result in Change Record 374. Approved-but-undispatched proposals in the old five-field shape are undispatchable and must be re-proposed; the writer is disabled so none can be dispatched. Detail: `docs/phase2/CHANGE_RECORD_374.md`.
+
+## 2026-10-27 - Documentation addenda after the GPT-PM minors on Change Records 372 and 373
+
+Decision: all 740 receipt documents in the clone have the includes-VAT flag set (read-only count), and the Change Record 373 categories reconcile once the stored-zero column is included (751 + 4 = 755). Details: `docs/phase2/CHANGE_RECORD_372.md`, `docs/phase2/CHANGE_RECORD_373.md`.

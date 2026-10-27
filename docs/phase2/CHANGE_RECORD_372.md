@@ -43,3 +43,9 @@ legacy):
 
 - UNKNOWN: the rounding rule of the platform's own form, behavior with the flag unset, other configurations, and whether the
   payload contract should carry the rate as a number instead of a code. NOT_RUN: any test, GPT-PM review of this record.
+
+## Addendum (GPT-PM minor N-02): the includes-VAT flag
+
+- A read-only count of all receipt documents in the clone grouped by the flag "amount includes VAT" returned a single group:
+  true, 740 documents. So "every receipt has the flag set" holds for this clone (no false and no empty values); the aggregates above
+  therefore cover all rated lines.

@@ -32,3 +32,8 @@ amounts there were edited by hand or computed under another rule. The formula is
 ## Not established
 
 - UNKNOWN: the platform form's own rounding rule, behavior with the flag unset, other bases. NOT_RUN: any test, GPT-PM review.
+
+## Addendum (GPT-PM minor N-01): the categories reconcile
+
+- The categories are mutually exclusive and include the stored-zero column: for `НДС18` 713 + 31 + 6 + 1 = 751; for `НДС10`
+  3 + 1 + 0 + 0 = 4; together 716 exact + 32 within one cent + 6 over + 1 stored zero = 755 rated lines.
