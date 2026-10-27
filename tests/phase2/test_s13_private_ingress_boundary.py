@@ -85,3 +85,39 @@ def test_a_non_loopback_peer_is_refused_before_authentication(monkeypatch):
     assert response.status_code == 403
     assert response.json() == {"error": "PRIVATE_LOOPBACK_REQUIRED"}
     assert calls == []
+
+
+def _authenticated_client(monkeypatch):
+    async def _ok(_self, _headers):
+        return object()
+
+    return _client(_app(monkeypatch, _ok))
+
+
+@pytest.mark.parametrize("path", ["/v1/calls/dispatch", "/v1/calls/lookup"])
+def test_malformed_and_unknown_field_bodies_are_400_before_any_service_call(monkeypatch, path):
+    client = _authenticated_client(monkeypatch)
+
+    not_json = client.post(path, content=b"{not json", headers={"content-type": "application/json"})
+    unknown_field = client.post(path, json={"unexpected": 1})
+    duplicate_key = client.post(
+        path, content=b'{"ticket": {}, "ticket": {}}',
+        headers={"content-type": "application/json"},
+    )
+
+    assert not_json.status_code == 400
+    assert unknown_field.status_code == 400
+    assert duplicate_key.status_code == 400
+    assert unknown_field.json() == {"error": "INVALID_REQUEST"}
+
+
+def test_an_oversized_body_is_413(monkeypatch):
+    client = _authenticated_client(monkeypatch)
+
+    response = client.post(
+        "/v1/calls/dispatch", content=b'{"payload": "' + b"x" * (1_048_576 + 1) + b'"}',
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {"error": "REQUEST_TOO_LARGE"}

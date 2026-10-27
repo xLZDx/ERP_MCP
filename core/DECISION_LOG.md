@@ -1039,3 +1039,10 @@ Evidence: `business_ai_private_writer` has EXECUTE on 13 SECURITY DEFINER `priva
 Decision: add `tests/phase2/test_s13_private_ingress_boundary.py` (4 tests): an unexpected authenticator failure on dispatch and lookup returns a logged 503 `AUTHENTICATION_UNAVAILABLE` without leaking the exception text, a rejected credential is 401, and a non-loopback peer is refused with 403 before authentication runs. The ingress had no test at all. Still open: dispatch and lookup bodies, authorizer branches, a test that builds a `CallIdentity`, a maximum-size trust snapshot test.
 
 Evidence: 4 passed; ruff F,E9 clean. This is a later local commit and does not change the GPT-PM approved head 735c904 on the remote. Detail: `docs/phase2/CHANGE_RECORD_355.md`.
+
+
+## 2026-10-27 - Ingress body-level tests added
+
+Decision: extend `test_s13_private_ingress_boundary.py` with request-body checks on both routes: malformed JSON, an unknown field and a duplicate key are 400 `INVALID_REQUEST` before any service call, and a body over 1 MiB is 413 `REQUEST_TOO_LARGE`. Authorizer branches and a full valid dispatch remain open (they need real ticket and permit values).
+
+Evidence: 7 passed in the file. Detail: `docs/phase2/CHANGE_RECORD_356.md`.
