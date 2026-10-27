@@ -1081,3 +1081,7 @@ Evidence: platform 8.3.27.2342, configuration with version 3.0.67.1, document wi
 Decision: accept both findings. The base path of `ct14_metadata_inventory_ivan.ps1` is now checked against an allowlist of one approved clone before the stored login is decrypted or COM is touched, and the error path prints only a stable code and the exception class. The earlier approval of the source (03f2adf) is not reopened; the rejected head f013c0b is not pushed.
 
 Evidence: 8 new tests passed (seven refusal cases plus a text check); the hardened script ran on Ivan's host with the same output shape. Detail: `docs/phase2/CHANGE_RECORD_362.md`.
+
+## 2026-10-27 - Skipped phase 2 tests classified from their skip call sites
+
+Decision: documentation only. The 16 skip call sites fall into environment-gated (disposable PostgreSQL DSN), timing-gated, image-gated and platform-gated classes; every database skip text starts with NOT_RUN. The exact split of the 602 skips is UNKNOWN until a test agent runs with -rs. Detail: `docs/phase2/CHANGE_RECORD_363.md`.
