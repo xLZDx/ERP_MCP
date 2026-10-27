@@ -1,0 +1,90 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index bc9db00..c6ca6e9 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -82,3 +82,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 S13 timeout surface: map PostgreSQL lock-wait SQLSTATE 55P03 to fixed adapter code `LEDGER_LOCK_TIMEOUT`; do not expose driver text or leave timeouts as an undocumented generic SQL code.
+ - 2026-10-22 CORRECTION — S13 PostgreSQL error provenance: SQLSTATE 55P03 also represents non-timeout lock refusals, so do not globally rename it as a fence timeout. Raise a fixed contract code only inside the dedicated bounded blocking-fence helper; order multi-key locks by their actual hashed integer resources after deduplication, and require a fresh READ COMMITTED snapshot for post-fence checks.
+ - 2026-10-22 S13 durable state: keep S12's dispatch CAS as the single authorization source; writer-process ownership and physical invocation progress must be durably bound to that same CAS identity, not a second independently authoritative admission claim.
++- 2026-10-22 WP0 cross-base comparison: when row counts differ, compare privacy-safe normalized identities and aggregate common-group amounts before inferring whether the difference is an extra group or changed shared data; matching profile metadata alone does not reconcile source contents.
+diff --git a/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md b/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
+index 54bb6fb..e03c68b 100644
+--- a/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
++++ b/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
+@@ -137,3 +137,34 @@ consumer-side enforcement. This is clone evidence, not deployed or production ev
+ 4. Proceed with WP5–WP8 and WP10 in dependency order. WP9 remains optional and outside the
+    critical path. Functional/E2E agents run after coding is complete; specialist reviews and
+    exact-head GPT-PM approval follow their evidence.
++
++## Follow-up read-only comparison — current executor turn
++
++After the S13 lock-protocol commit, I repeated the Ivan check with
++`ssh -o BatchMode=yes -o StrictHostKeyChecking=yes koros@100.88.71.74 "powershell -NoProfile -ExecutionPolicy Bypass -File D:\1c\mcp\run-mcp-stack.ps1 -Action Status"`.
++It exited 0 and reported all nine stack components `True`: postgres, redis, apache, proxies 8191–8193,
++sidecar, idp, and gateway. `ssh-keygen -F 100.88.71.74` found the existing known-hosts entry;
++strict host-key verification succeeded. A names-only listing of `D:\1c\mcp` returned the stack app/data/env/logs/runtime/tunnel/venv directories and its management scripts. No service restart or credential-file read occurred.
++
++Using the approved in-process gateway client and short-lived `auditor` tokens, I repeated
++`source_health` and `accounting_balance_by_analytics` for `onec-818ha-reference`, the operator-specified
++company and cutoff, against local `http://127.0.0.1:21000/mcp` and Ivan
++`http://100.88.71.74:21000/mcp`. Both health calls returned `ok=true`; both balance calls returned
++without MCP error and reported `VALIDATED_MACHINE_RECONCILED`. The account payload had 15 local rows
++and 16 Ivan rows. Metadata and profile fingerprints matched, and both routes were `odata`.
++
++I compared normalized row groups in process by account key, typed analytics references, and currency.
++The local payload contained 10 distinct groups (5 repeated rows); Ivan contained 11 (5 repeated rows).
++All 10 common groups had matching multiplicities and matching aggregate debit/credit values; no group
++was local-only, and one group was Ivan-only. Names, references, balances, and tokens were not emitted.
++A first-pass full-payload digest appeared only in the agent tool output and is intentionally omitted
++from this durable record. This narrows the prior mismatch to one additional normalized analytic group
++on Ivan; it does not establish why that group exists or reconcile the two bases.
++
++These were read-only source calls. The gateway's normal audit records may be written by the service;
++no 1C/source mutation, migration, COM write, deployment, or process restart was performed. The prior
++WP0 result and current independent comparison both remain **NOT_RECONCILED** until the Ivan-only group
++is explained and an accepted cross-base rule accounts for it. The next step is a privacy-preserving
++source-side diagnosis on the disposable qualification path after coding is complete; operator is the
++accountable owner, the Ivan stack owns the host/connection boundary, and no individual responsible for
++the data difference is established in the repository.
+diff --git a/docs/commits/2026-10-22-wp0-cross-base-row-group-recheck.md b/docs/commits/2026-10-22-wp0-cross-base-row-group-recheck.md
+new file mode 100644
+index 0000000..cf1236d
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp0-cross-base-row-group-recheck.md
+@@ -0,0 +1,36 @@
++# Change record: narrow the WP0 cross-base row-count discrepancy
++
++Date: 2026-10-22
++Scope: append current-turn read-only SSH and MCP comparison evidence to the WP0 access/source record.
++
++## What changed
++
++- Recorded a strict-host-key Ivan SSH status check and a names-only stack-directory listing.
++- Repeated source-health and account 521.1 analytics reads from the local and Ivan gateways with short-lived auditor tokens held in process.
++- Compared normalized row groups without emitting account amounts, names, references, or tokens. A first-pass payload digest appeared only in the agent tool output and was not copied to the repository record.
++- Narrowed the mismatch from a raw 15-versus-16 row count to 10 common groups and one Ivan-only group; documented that the reason remains unknown and the bases are not reconciled.
++
++## Why
++
++The existing WP0 note recorded 15 local versus 16 Ivan rows but did not identify whether the difference came from changed common groups or an extra normalized group. This follow-up provides a privacy-preserving comparison of the common groups and prevents matching profile metadata from being mistaken for matching source contents.
++
++## Contracts and paths
++
++- `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md`: current read-only observations and remaining discrepancy.
++- `scripts/real1c/gateway_client.py`: in-process token and MCP client helpers.
++- `src/business_ai_gateway/server.py`: source-health and account-balance MCP tools; normal gateway audit behavior.
++- `src/business_ai_gateway/analytics_balance.py`: normalized row identity includes account, typed analytics references, and currency.
++- `core/LESSONS_LOG.md`: lesson to compare grouped identities and aggregate amounts when raw row counts differ.
++
++## Verification state
++
++- Strict SSH used `BatchMode=yes` and `StrictHostKeyChecking=yes` as `koros@100.88.71.74`; status exited 0 with nine components `True`.
++- Local and Ivan `source_health` returned `ok=true`; both account reads returned without MCP error. Row/profile comparisons were calculated in process; only safe counts and Boolean comparisons were emitted.
++- No names, references, balances, full payloads, or access tokens were emitted or copied into repository records. A first-pass payload digest was emitted only in the agent tool output and was not retained in the repository. No 1C writes, COM writes, migrations, deployments, or service restarts were performed.
++- The source difference remains unresolved; no accounting or cross-base PASS is claimed. No tests/checks/builds were run.
++
++## Ownership and next step
++
++- Accountable owner: operator; executor: Codex.
++- Technical host/connection owner: Ivan stack (`ERP_MCP_Ivan_Stack`). No individual owner for the extra data group is recorded.
++- Next: after coding is complete, have the functional/E2E roles run the mapped comparison on the authorized disposable path; retain `NOT_RECONCILED` until the extra group has an evidence-backed disposition.

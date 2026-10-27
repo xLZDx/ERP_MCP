@@ -57,8 +57,9 @@ OData-compatible.
 
 ## Configuration versions
 
-Configuration names/versions (БП, УТ, ERP, ЗУП, КА, industry/custom builds) do not determine the
-low-level transport. The live metadata determines available objects.
+Configuration families (Accounting (BP), Trade Management (UT), ERP, Payroll and HR (ZUP),
+Comprehensive Automation (KA), and industry/custom builds) do not determine the low-level
+transport. Live metadata determines the available objects.
 
 Business semantics are a separate layer and must be reconciled against the actual configuration:
 accounts, registers, dimensions, VAT logic, extensions and custom objects are not assumed globally.

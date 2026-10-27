@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "batch_id": "SUPPLIER_5211_REPORT_20261009",
-  "implementation_sha256": "0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e",
+  "implementation_sha256": "2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b",
   "production_decision": "NO-GO",
   "dod_status": "PARTIAL",
   "pr_number": 11,
@@ -89,5 +89,5 @@
     }
   },
   "current_full_suite_status": "PENDING_ON_NEW_FEATURE_HEAD",
-  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run. Rebound again on 2026-10-14 after hand edits of import order, unused imports and an exception import (commits 1764254 and 1d895bb); those edits were NOT re-tested and the focused-set figures above predate them."
+  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run. Rebound again on 2026-10-14 after hand edits of import order, unused imports and an exception import (commits 1764254 and 1d895bb); those edits were NOT re-tested and the focused-set figures above predate them. Fingerprint rebound on 2026-10-22 after focused WP2 documentation-consistency, read-tool annotation, and disposable-cluster test-seam fixes; previously recorded full-suite and hosted evidence remain historical and do not verify this head. Final fingerprint includes the test-owned receipt assertion update binding change_id to dispatch_id:generation; focused scenarios remain the only new run evidence. Final capacity-drill seam selection now uses an explicit `is not None` check so injected falsey callables are honored."
 }

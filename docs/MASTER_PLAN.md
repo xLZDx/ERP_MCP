@@ -204,6 +204,17 @@ Use Ferma as the deterministic scenario/oracle owner:
 - controlled multi-company, edge-case and scale scenarios;
 - three-plane reconciliation.
 
+### P5-C — Private disposable-writer qualification (operator rebaseline 2026-10-22)
+
+This is an isolated test/assurance boundary authorized by [ADR-0009](adr/ADR-0009-private-test-writer.md),
+not a production write feature. Build the private writer on the licensed Ivan lane, bound to
+loopback/Tailscale and initially to the disposable `818HA_p2diff` clone. Keep the public MCP and
+production 1C surface read-only. Use only `CT14Писатель` and the create-draft/read-back/post/unpost
+lifecycle. Qualify PostgreSQL admission and physical COM behavior independently for global stable
+call-ID idempotency, stale epochs, authoritative outcome lookup, signed recovery and complete
+quiescence. Keep admission disabled and lifecycle `NOT_READY` until both tracks pass. Scope and
+negative target requirements are in Scope Freeze §8.2 and `S13-PRIVATE-WRITER-1`.
+
 L3: controlled target/server-mode production-parity environment.
 
 Exit:

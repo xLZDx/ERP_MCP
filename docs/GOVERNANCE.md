@@ -63,6 +63,13 @@ MUST NOT start until operator rebaseline.
   execution and never switches after an OData failure. Traces to DAD-SMALL-03, DAD-BIZ-02, DAD-BIZ-08. Record:
   [ADR-0008](adr/ADR-0008-hybrid-odata-com-analytics-balance.md), Scope Freeze §2.1. Production deployment stays NO-GO;
   production topology and licensing for the COM host are open.
+- **2026-10-22 — private test-only writer on the licensed Ivan lane (explicit operator decision).** Scope: a separate
+  loopback/Tailscale-bound writer used only on marked disposable 1C clones, initially `818HA_p2diff`, to qualify
+  S12/S13/S14 stable call identity, stale-epoch rejection, outcome lookup and the quiescence barrier. It is not
+  registered on public/model-facing MCP, does not weaken the production read-only invariant, and does not promote
+  §4.3's deferred production write plane. The approved CT14 lifecycle is create-draft/read-back/post/unpost; hard
+  delete, administrator identity, production/real-company writes and arbitrary COM execution remain forbidden.
+  Record: Scope Freeze §8.2, [ADR-0009](adr/ADR-0009-private-test-writer.md), and requirement `S13-PRIVATE-WRITER-1`.
 
 ## 3. Change classes
 

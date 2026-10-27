@@ -964,3 +964,8 @@ Decision: apply ruff autofixes to `transitions.py` and three phase2 SQL/offline 
 Decision: the operator told this session to finish the remaining work itself. The S13 private-writer source, migration 027, its tests and the earlier sessions' log entries had existed for weeks only as modified or untracked files. They are committed locally as a preservation checkpoint (code and logs first, documentation second) without re-reviewing each file. Nothing is pushed.
 
 Evidence: all 71 dirty Python files byte-compile; a scan of all 389 dirty text files found no private keys, tokens, passwords in connection strings or real amounts beyond lines already in HEAD. `MCP-RSV-Data.zip` stays untracked. The writer remains unqualified: privileges `NOT_MEASURABLE`, COM boundary unmeasured, pytest and review NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_344.md`.
+
+
+## 2026-10-27 - Preservation commit of the Phase 2 documentation backlog
+
+Decision: commit the 311 documents that earlier sessions wrote and never committed (change records 300-339, `docs/commits/`, Phase 2 plans and artifacts, reports, governance output) as the documentation companion to the code checkpoint. Content is the earlier sessions' and was not re-verified. Detail: `docs/phase2/CHANGE_RECORD_345.md`. Registry generator, English-policy scanner and reviews NOT_RUN.

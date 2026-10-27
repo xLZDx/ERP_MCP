@@ -1,0 +1,102 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index 786f469..ee13e1e 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -85,3 +85,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 WP0 cross-base comparison: when row counts differ, compare privacy-safe normalized identities and aggregate common-group amounts before inferring whether the difference is an extra group or changed shared data; matching profile metadata alone does not reconcile source contents.
+ - 2026-10-22 S13 lock rank: preserve source-proven namespace dependencies before choosing unused IDs for new locks; a candidate rank is only a design until every granted path, helper, trigger, and unique-conflict edge is reconciled.
+ - 2026-10-22 WP3 policy scanner: decode BOM-marked UTF-16 before byte-NUL checks, reject UTF-32/decoded NUL, and bind each exception to path, line number and normalized-line hash; withhold repeated hashes until the exact occurrence is reviewed. Hashes do not anonymize low-entropy content. In the document registry, escape only headings found exclusively on archive, rescue, or snapshot refs.
++- 2026-10-22 WP3 repeated synthetic fields: an identical reviewed value at multiple locations needs one path/line/hash exception per occurrence; retain only occurrences whose semantics were individually reviewed.
+diff --git a/docs/commits/2026-10-22-wp3-repeated-synthetic-lines.md b/docs/commits/2026-10-22-wp3-repeated-synthetic-lines.md
+new file mode 100644
+index 0000000..3e4c313
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp3-repeated-synthetic-lines.md
+@@ -0,0 +1,24 @@
++# Change record: bind repeated synthetic policy lines separately
++
++Date: 2026-10-22  
++Scope: WP3 exact-line exception precision for synthetic profile fields.
++
++## What changed
++
++- Added occurrence-bound `(path, line, normalized-line SHA-256)` exceptions for the six repeated 1C metadata field lines at lines 84, 85, 103, 163, 164, and 172 of `scripts/synthetic_fixture_profiles.py`.
++- Updated the scanner-policy record and lesson log to distinguish the reviewed synthetic occurrences from 15 withheld duplicate-hash exceptions in two source-evidence paths.
++
++## Why
++
++The scanner requires exact occurrence identity. Identical semantic fields in repeated synthetic schema blocks should remain unchanged, but a digest-only exception would also authorize any duplicate at another line.
++
++## Review and verification
++
++- The six lines were inspected as synthetic schema field names; no source/customer values were involved or emitted into this record.
++- GPT-PM previously approved the scanner's tuple-enforcement mechanism for exact patch SHA-256 `D787DA7D451CB8155B0A9353B74BD902875283680B53A44297216E47F3CF1CB3`; this follow-up changes the allowlist and is not covered by that approval.
++- No tests, checks, builds, CI, or migrations were run. Scanner behavior and full WP3 acceptance remain unverified/open.
++
++## Ownership and next step
++
++- Accountable owner: operator. Executor: Codex.
++- Next: obtain a fresh exact-diff GPT-PM review before local commit; keep the remaining source-evidence duplicates unexcepted until their exact occurrences can be safely reviewed.
+diff --git a/governance/ENGLISH_POLICY_ALLOWLIST.json b/governance/ENGLISH_POLICY_ALLOWLIST.json
+index 3717c37..924c653 100644
+--- a/governance/ENGLISH_POLICY_ALLOWLIST.json
++++ b/governance/ENGLISH_POLICY_ALLOWLIST.json
+@@ -3226,12 +3226,20 @@
+     ]
+   },
+   "scripts/synthetic_fixture_profiles.py": {
+-    "reason": "Russian 1C entity and property names are semantic profile fixture mappings.",
++    "reason": "Exact synthetic 1C field identifiers at reviewed occurrences; each repeated schema field is bound to its own line; all other lines remain subject to scanning.",
+     "allowed_lines": [
+       {
+         "line": 25,
+         "sha256": "ca09a8905d9efe2bd953d9ec81b101db3d2206fff91ffdc0cef108244f8076f1"
+       },
++      {
++        "line": 84,
++        "sha256": "8cf8173bcab437c532622f4fe6ec93e6a351e0174aff322e332d4c7d37b2fb6b"
++      },
++      {
++        "line": 85,
++        "sha256": "66bb4ab4b5509e0a6f9a620361ddbc4417f19ecad9882dc7488be11e1432779a"
++      },
+       {
+         "line": 86,
+         "sha256": "89b278cbf48d47115727c5cfdf249240c7009f3fa1cc0a7eef9cd3117a8da3ab"
+@@ -3240,6 +3248,10 @@
+         "line": 102,
+         "sha256": "4b65037f4bff92c79ed15fdb9ad5cd765c8c1637da4ac8e9aa0e15b2730eb13a"
+       },
++      {
++        "line": 103,
++        "sha256": "603190164a732e237e3e03ce5b7f5acdc96ea84a2ef59fe4f6f003ba511aa3a1"
++      },
+       {
+         "line": 104,
+         "sha256": "8c928602694b4043866712633c376b451cea152f2be5291317b1159e8158b41a"
+@@ -3252,6 +3264,14 @@
+         "line": 122,
+         "sha256": "041752a4bd3d7339da79d884b13d82dbe11cec4f17131c5defe13c5235a854c9"
+       },
++      {
++        "line": 163,
++        "sha256": "8cf8173bcab437c532622f4fe6ec93e6a351e0174aff322e332d4c7d37b2fb6b"
++      },
++      {
++        "line": 164,
++        "sha256": "66bb4ab4b5509e0a6f9a620361ddbc4417f19ecad9882dc7488be11e1432779a"
++      },
+       {
+         "line": 165,
+         "sha256": "a8954fca74c4160f9c0acba4d1830cd5cd34a43c72596db3fafa063b4898e9c3"
+@@ -3260,6 +3280,10 @@
+         "line": 171,
+         "sha256": "f139dcf730a3e17e2cb0f09830c4dd809cab0c3fbf94e68032e6ee3d0dc405c0"
+       },
++      {
++        "line": 172,
++        "sha256": "603190164a732e237e3e03ce5b7f5acdc96ea84a2ef59fe4f6f003ba511aa3a1"
++      },
+       {
+         "line": 173,
+         "sha256": "a213a09915634cbe14deea7d685af43eca03663ca591a7b91129d74aaad97d4c"

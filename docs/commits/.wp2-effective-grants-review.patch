@@ -1,0 +1,208 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index ee13e1eaca67cedb54b416b82c78b2d5bfef09c2..62e961741634c24873df045d47450b829b0990e7 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -82,7 +82,13 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 S13 timeout surface: map PostgreSQL lock-wait SQLSTATE 55P03 to fixed adapter code `LEDGER_LOCK_TIMEOUT`; do not expose driver text or leave timeouts as an undocumented generic SQL code.
+ - 2026-10-22 CORRECTION — S13 PostgreSQL error provenance: SQLSTATE 55P03 also represents non-timeout lock refusals, so do not globally rename it as a fence timeout. Raise a fixed contract code only inside the dedicated bounded blocking-fence helper; order multi-key locks by their actual hashed integer resources after deduplication, and require a fresh READ COMMITTED snapshot for post-fence checks.
+ - 2026-10-22 S13 durable state: keep S12's dispatch CAS as the single authorization source; writer-process ownership and physical invocation progress must be durably bound to that same CAS identity, not a second independently authoritative admission claim.
++- 2026-10-22 WP2 test doubles must match their current adapter contracts: MCP read tools need explicit read-only hints, injected capacity-drill identity probes must not import Docker defaults, and signed 1C receipts bind generations through dispatch_id rather than a standalone generation field.
+ - 2026-10-22 WP0 cross-base comparison: when row counts differ, compare privacy-safe normalized identities and aggregate common-group amounts before inferring whether the difference is an extra group or changed shared data; matching profile metadata alone does not reconcile source contents.
+ - 2026-10-22 S13 lock rank: preserve source-proven namespace dependencies before choosing unused IDs for new locks; a candidate rank is only a design until every granted path, helper, trigger, and unique-conflict edge is reconciled.
+ - 2026-10-22 WP3 policy scanner: decode BOM-marked UTF-16 before byte-NUL checks, reject UTF-32/decoded NUL, and bind each exception to path, line number and normalized-line hash; withhold repeated hashes until the exact occurrence is reviewed. Hashes do not anonymize low-entropy content. In the document registry, escape only headings found exclusively on archive, rescue, or snapshot refs.
++- 2026-10-22 WP0 remote reads: when a gateway binds only to a Tailscale address, preserve its Host header through SSH forwarding; mint the short-lived token on that host and pipe it in memory instead of printing it.
++- 2026-10-22 PM Bridge review routing: verify canonical project ID and durable request/reply correlation before using a conversation-retention result as repository review or commit authority.
+ - 2026-10-22 WP3 repeated synthetic fields: an identical reviewed value at multiple locations needs one path/line/hash exception per occurrence; retain only occurrences whose semantics were individually reviewed.
++
++- WP3: Handle source-derived policy candidates through sanitized exact-occurrence evidence; repair generated evidence at its source rather than editing generated output.
++- WP2: Verify effective grants through each role’s own read-only connection; an absent future schema keeps its writer privileges NOT_VERIFIED.
+diff --git a/docs/BACKLOG_INHERITED_2026-10-21.md b/docs/BACKLOG_INHERITED_2026-10-21.md
+index e98ab1cc5f55b69ec81556b3ace4a43a7fc38fa5..741d02a720e5878cca3dca41b80b11b813667161 100644
+--- a/docs/BACKLOG_INHERITED_2026-10-21.md
++++ b/docs/BACKLOG_INHERITED_2026-10-21.md
+@@ -12,6 +12,7 @@ Severity values are guesses made at recording time, not reviewed ratings.
+ - Suggested acceptance test: a tracked-file Cyrillic scan with an allowlist file (test data, semantic profiles, LITERAL-1C-NAMES, and the 8 paired `*.ru.html` reports if retained) reports zero violations; behavior tests that depend on Russian data still pass unchanged.
+ - Status: not fixed by integration by operator decision (translate in a separate sprint; keep the allowlist for test data, semantic profiles and the 8 paired `*.ru.html` reports).
+ - Status update (2026-10-22): still OPEN. The explanatory phrases in `docs/COMPATIBILITY.md` and `docs/INTEGRATION.md` were translated; the SELECT-equivalent query syntax restriction and Latin BP/UT/ZUP/KA identifiers are preserved. `docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md` was manually reviewed and its `ПоступлениеТоваровУслуг` token is a literal 1C document type, so it remains unchanged. The reviewed `RSVData` procedure and native report identifiers also remain literal 1C names. The decision in `core/DECISION_LOG.md` records text-preservation policy, but a line-level scan exposed source-derived evidence mixed into that file; it is now excluded from further content review. `docs/SEMANTIC_PROFILES.md`, `docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md`, `docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md`, `docs/runbooks/COM_BRIDGE_AND_PARITY.md`, and `core/DECISION_LOG.md` are excluded from further content review because they contain real-source, clone-measurement, or source-derived examples; edit only from sanitized copies or with a process that cannot expose business values. The inventory counts above are the 2026-10-20 baseline, not a refreshed scan.
++- Additional source-evidence boundary (2026-10-22): `docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md`, `scripts/real1c/raw_l2.py`, and `reports/real1c/case_results.json` are not to be reviewed by emitting their source-derived values into chat or durable records. Classify only through a sanitized process that records exact path, line number, and normalized-line digest; all other occurrences remain unclassified until independently reviewed. `scripts/real1c/run_lane.py:540,571` writes `case_results.json`; correct generated content at that generator and regenerate the artifact, never hand-edit it. The 15 withheld repeated-hash occurrences remain open; no scanner pass or WP3 acceptance is claimed.
+ 
+ ## ERPMCP-INH-002: document registry generator escapes Cyrillic instead of translating
+ 
+@@ -28,6 +29,7 @@ Severity values are guesses made at recording time, not reviewed ratings.
+ - Origin: ERP_MCP_R2 tip `7d9a01d`; integration origin: `STATE_ERPMCP.md` R2 merge entries.
+ - Suggested acceptance test: a table classifies all 14 failures (12 Phase 2 and 2 main-set) and 13 errors by evidence-backed cause (for example, declared database dependency, 1C dependency, historical flake, or code defect). With the declared environment available, every environment-class test passes; each of the 2 main-set failures receives a fix or documented waiver.
+ - Status (2026-10-21): preliminary identifier-only classification recorded in `docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md`. The exact 13-error / 14-failure identifier set is reconciled; per-test causes and runtime acceptance remain NOT_RUN. The previous historical aggregate describes causes mainly as environment dependencies, but that does not establish individual causes.
++- Effective-grants follow-up (2026-10-22): the disposable `business_ai` database on loopback 18432 has schema migration versions 1–14 only. `PUBLIC EXECUTE` is currently effective for `bag.record_capability_observation(...)`, so app/admin/control all report effective EXECUTE through PUBLIC; migration 015 and `scripts/verify_schema.py` require PUBLIC/admin/control revoked and app retained. Do not run the migration during the coding phase. After coding, have the authorized disposable qualification path apply the declared migrations, verify schema version 15 and remeasure effective ACLs read-only; until that evidence exists, post-015 grants are NOT_VERIFIED. Evidence: `docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md`.
+ 
+ ## ERPMCP-INH-004: locked install not yet proven after the R2 merge (lock files reconciled)
+ 
+diff --git a/docs/commits/2026-10-22-wp2-effective-grants-recheck.md b/docs/commits/2026-10-22-wp2-effective-grants-recheck.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..b363d10d43f2ce69df868f74a4f193b16e57e1e7
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp2-effective-grants-recheck.md
+@@ -0,0 +1,29 @@
++# Change record: record effective PostgreSQL grants and correct the WP0 claim
++
++Date: 2026-10-22  
++Scope: one read-only effective-grants recheck on the disposable PostgreSQL endpoint and a durable evidence addendum.
++
++## What changed
++
++- Added `docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md` with point-in-time role attributes, table and function privileges, query scope, evidence limits, and next actions.
++- Corrected the WP0 working draft's all-seven routine claim and CT14 feasibility-spike path. It now distinguishes the 15-base-table RLS scan from the 17-relation grant query.
++- Recorded that five of seven inspected `bag` routines have effective `EXECUTE` for app/admin/control; the two trigger functions do not. `record_capability_observation(...)` is effective through `PUBLIC EXECUTE` in this database.
++- Recorded that the disposable schema has migration versions 1–14 and lacks version 15, so its effective rights do not match the grant boundary declared by migration 015 and `scripts/verify_schema.py`.
++- Explicitly superseded the pre-existing all-seven sentence in the mutable WP0 working draft without overwriting its other pending edits.
++- Kept `change_ledger` grants **NOT_VERIFIED** because the schema is absent in the inspected database.
++
++## Why
++
++The requested acceptance is effective grants, not intended grants. The per-role read-only queries show that the inspected database does not satisfy the grant boundary declared in migration 015. A separate addendum preserves that observed environment drift while avoiding unrelated pending changes to the WP0 artifact.
++
++## Verification and limits
++
++- Actual agent role: `database-reviewer`; read-only PostgreSQL review in the repository context. Model/effort override: none specified at launch.
++- Endpoint: host loopback port `18432`; observed database: `business_ai`. Connection material was loaded only in process through `LaneEnv.load()` and `asyncpg`; no DSN, secret, or row data was emitted.
++- Role attributes, memberships, grants, function ACL entries, and migration-version aggregates were queried in `readonly=True` transactions. No business-table rows were queried. The source migration and verifier were read to reconcile measured privileges with the intended boundary; no migration, test, or file write was performed.
++- The exact query timestamp was not recorded. The report uses only the host-context date.
++- No effective grants after migration 015 were measured; the schema was not modified.
++- `CT14Писатель` rights remain clone evidence from `testlane/onec_extension/STATUS.md` and `docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md` sections 4 and 7, not live Ivan-host rights.
++- The existing WP0 transport-verification section was retained; its origin was not re-verified as part of the grant audit.
++- No migration, scanner, test, build, CI, COM call, service restart, push, or PR was performed.
++- GPT-PM exact-patch review: pending.
+diff --git a/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md b/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
+index e03c68bd78829226e0ad90019846be8ab6b9319a..fda39e1dbde8c44dcf855d44d0161ba4958a9ea8 100644
+--- a/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
++++ b/docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md
+@@ -99,20 +99,32 @@ memberships were present. This is test-database role metadata, not evidence that
+ application uses the elevated role. S13 database grants remain **NOT_VERIFIED** until the
+ approved disposable schema is bootstrapped and the same read-only grant review is repeated.
+ 
+-The same read-only audit found no RLS-enabled or forced-RLS table among the 15 inspected
+-`bag` base tables. The app role had SELECT on 13 `bag` tables plus SELECT/INSERT on
+-`audit_events`, and no `company_scope_mappings` grant. The per-role details and function
+-privileges were queried through each role's own connection; the admin view alone did not
+-represent every role's effective grants. All seven inspected `bag` routines were executable
+-by app/admin/control. In particular, `bag.record_capability_observation(...)` is
+-`SECURITY DEFINER` with `PUBLIC EXECUTE` and performs an upsert into `source_capabilities`
+-without an explicit authorization check in its body; see
+-`db/migrations/014_capability_observation_boundary.sql:13-105`. This is an authorization
+-review item, not a demonstrated exploit. No schema/data changes were made.
++The earlier RLS scan covered 15 `bag` base tables; the later effective-grants audit covered
++17 `bag` relations, so those counts describe different query scopes and the RLS coverage
++must be reconciled before claiming it covers every relation. The later audit found SELECT on
++14 relations and INSERT only on `audit_events` for `business_ai_app`, with no
++`company_scope_mappings` grant. Its per-role details and function privileges were queried
++through each role's own connection; the admin view alone did not represent every role's
++effective grants. Five of seven inspected `bag` routines had effective EXECUTE for
++app/admin/control; the two trigger routines
++`invalidate_semantic_profiles_on_metadata_drift()` and
++`invalidate_validated_profile_on_mapping_change()` did not. In particular,
++`bag.record_capability_observation(...)` is
++`SECURITY DEFINER` with `PUBLIC EXECUTE` in the inspected database, and performs an upsert
++into `source_capabilities` without an explicit authorization check in its body; see
++`db/migrations/014_capability_observation_boundary.sql:13-105`. The disposable schema has
++migration versions 1–14 and lacks version 15. Migration
++`db/migrations/015_capability_observation_execute_boundary.sql` revokes `EXECUTE` from
++`PUBLIC`, `business_ai_admin`, and `business_ai_control_api`, leaving it for
++`business_ai_app`; `scripts/verify_schema.py` checks this boundary. Current `PUBLIC EXECUTE`
++is therefore environment drift from the declared contract, not proof that migration 015 is
++incorrect. Post-015 privileges remain **NOT_VERIFIED** until qualification. This is an
++authorization-boundary risk observation, not a demonstrated exploit. No schema/data changes
++were made.
+ 
+ The 1C role evidence remains recorded, not reproduced in this turn:
+ `testlane/onec_extension/STATUS.md`,
+-`testlane/onec_extension/CT14_FEASIBILITY_SPIKE_2026-10-12.md`,
++`docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md`,
+ `scripts/ct14_rights_state.json`, and
+ `testlane/onec_extension/CT14Ext/Roles/CT14Писатель/Ext/Rights.xml`. The recorded clone
+ measurement reports 53 allowlisted objects, receipt read/insert/update/post/unpost, sequence
+@@ -168,3 +180,24 @@ is explained and an accepted cross-base rule accounts for it. The next step is a
+ source-side diagnosis on the disposable qualification path after coding is complete; operator is the
+ accountable owner, the Ivan stack owns the host/connection boundary, and no individual responsible for
+ the data difference is established in the repository.
++
++## Additional transport verification — current executor turn
++
++Read-only local port inspection again found listeners on all ten expected ports; no service was
++restarted. Strict SSH `-Action Status` again reported all nine Ivan stack components `True`.
++
++Direct client calls from this machine to Ivan's gateway did not establish an MCP session. The
++working authenticated path was a temporary SSH local forward to Ivan's documented Tailscale
++gateway bind, with the request `Host` header set to `100.88.71.74:21000`. A short-lived auditor
++token (`-Ttl 3600`, audience `http://100.88.71.74:21000/mcp`) was minted on Ivan by the existing
++`D:\1c\mcp\mint-token.ps1`; stdout was piped directly into the local client process and never
++printed. The MCP request itself used only `source_health` and
++`accounting_balance_by_analytics`. The tunnel was closed after the reads.
++
++The local and Ivan health results both returned `ok=true`, HTTP status 200. Both account reads
++returned without MCP error and had the same `VALIDATED_MACHINE_RECONCILED` profile kind, profile
++fingerprint and metadata fingerprint. The local read had 15 rows; Ivan had 16. Comparing full row
++objects in memory found 15 exact common rows, zero local-only rows and one Ivan-only row. No row
++content, names, amounts, references, hashes of row content, token, or credentials were emitted or
++persisted. This independently confirms the one-row discrepancy but does not explain it; the
++cross-base comparison remains **NOT_RECONCILED**.
+diff --git a/docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md b/docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a27a95dee886aeff5b7ed680124564f9aabbe84c
+--- /dev/null
++++ b/docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md
+@@ -0,0 +1,56 @@
++# WP2 effective-grants recheck — 2026-10-22
++
++## Scope and method
++
++This is a point-in-time, read-only audit of the disposable PostgreSQL database exposed on host loopback port `18432`. Connections used the repository virtual environment, `LaneEnv.load()`, and per-role DSNs loaded only in process. Queries ran in read-only transactions and inspected role attributes, memberships, `bag` table grants, `has_table_privilege`, `has_function_privilege`, function ACL entries, and the aggregate schema-migration version range. No DSN, secret, or business-table row was emitted or queried; no migration, test, or file write was performed. The source migration and verifier were read only to compare the intended grant boundary with the measured database state.
++
++The observed database was `business_ai`. The report records current effective privileges; it does not establish the identity of a future service process or a production writer boundary.
++
++## Role attributes
++
++| Role | Effective attributes and memberships |
++|---|---|
++| `business_ai` | Superuser; can create roles and databases; replication and RLS bypass attributes are enabled. It has no non-system role memberships. This owner/admin identity is not evidence that an application uses it. |
++| `business_ai_admin` | No superuser, role/database creation, replication, or RLS-bypass attributes; no non-system role memberships. |
++| `business_ai_app` | No superuser, role/database creation, replication, or RLS-bypass attributes; no non-system role memberships. |
++| `business_ai_control_api` | No superuser, role/database creation, replication, or RLS-bypass attributes; no non-system role memberships. |
++
++## Effective `bag` table privileges
++
++`has_table_privilege` agreed with the per-role grant rows. No table grant to `business_ai_admin`, `business_ai_app`, or `business_ai_control_api` was grantable.
++
++| Role | Effective table privileges |
++|---|---|
++| `business_ai` | All seven table privilege types on all 17 inspected `bag` relations; this is consistent with its superuser attribute. |
++| `business_ai_admin` | `SELECT` on 15 relations, `INSERT` on 12, and `UPDATE` on 11. `INSERT`, `SELECT`, and `UPDATE`: `access_grants`, `business_role_assignments`, `business_role_capabilities`, `business_roles`, `capability_overrides`, `companies`, `company_scope_mappings`, `platform_role_bindings`, `semantic_mappings`, `semantic_profiles`, `sources`. `INSERT` and `SELECT`: `semantic_profile_events`. `SELECT` only: `audit_events`, `schema_migrations`, `source_capabilities`. |
++| `business_ai_app` | `SELECT` on 14 relations; `INSERT` only on `audit_events`. `SELECT` only: `access_grants`, `business_role_assignments`, `business_role_capabilities`, `business_roles`, `capability_overrides`, `companies`, `platform_role_bindings`, `schema_migrations`, `semantic_mappings`, `semantic_profile_events`, `semantic_profiles`, `source_capabilities`, `sources`. There is no `company_scope_mappings` grant. |
++| `business_ai_control_api` | `SELECT` on 17 relations, `INSERT` on 12, and `UPDATE` on 10. `INSERT`, `SELECT`, and `UPDATE`: `access_grants`, `admin_idempotency`, `business_role_assignments`, `capability_overrides`, `companies`, `company_scope_mappings`, `platform_role_bindings`, `semantic_mappings`, `semantic_profiles`, `sources`. `INSERT` and `SELECT`: `admin_audit_events`, `semantic_profile_events`. `SELECT` only: `audit_events`, `business_role_capabilities`, `business_roles`, `schema_migrations`, `source_capabilities`. |
++
++No row-level security policy is inferred from these grant results. The separate WP0 inventory reports no RLS-enabled or forced-RLS relation among the inspected `bag` tables; that is table metadata, not a substitute for application-level authorization review.
++
++## Effective function privileges
++
++Seven `bag` routines were checked. For `business_ai_app`, `business_ai_admin`, and `business_ai_control_api`, five returned `has_function_privilege(..., 'EXECUTE') = true`; two trigger functions returned `false`:
++
++- `invalidate_semantic_profiles_on_metadata_drift()`
++- `invalidate_validated_profile_on_mapping_change()`
++
++The five routines returning `true` for those three roles were `native_reconciliation_evidence_valid(evidence jsonb)`, `record_capability_observation(...)`, `reject_admin_audit_mutation()`, `reject_audit_mutation()`, and `reject_semantic_profile_event_mutation()`. These are effective privileges, not necessarily direct per-role ACL entries: `record_capability_observation(...)` is executable by all three roles through a `PUBLIC EXECUTE` ACL. Trigger execution does not establish that an application role can invoke a trigger function directly.
++
++The same read-only inspection found 14 rows in `bag.schema_migrations`, versions 1 through 14, with no version 15. Migration `db/migrations/015_capability_observation_execute_boundary.sql` is therefore not applied in this database. Its source revokes `EXECUTE` from `PUBLIC`, `business_ai_admin`, and `business_ai_control_api`, grants it to `business_ai_app`, and checks those conditions; `scripts/verify_schema.py` asserts the same boundary. The currently observed `PUBLIC EXECUTE` is a real environment drift from that source contract, not evidence that migration 015 is incorrect. The expected post-015 effective privileges remain **NOT_VERIFIED** until the disposable schema is brought to the declared migration level and re-audited. No migration was run during this audit.
++
++The pre-existing mutable WP0 evidence draft said that all seven routines were executable by app/admin/control. This recheck contradicts that sentence; the draft has since been corrected. It does not determine whether direct `EXECUTE` is required for the two trigger functions.
++
++## S13 boundary and 1C evidence
++
++The `change_ledger` schema was absent in this database, so S13 installed grants and the effective privileges for a private writer cannot be measured here. S13 grants remain **NOT_VERIFIED** until the approved disposable schema is bootstrapped and audited after implementation.
++
++The existing `testlane/onec_extension/STATUS.md` records CT14 `CT14Писатель` measurements on clone `818HA_p2diff`, including the measured object/right inventory (53 objects) and refusal of deletion and administrative rights. `docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md` sections 4 and 7 corroborate the measured clone rights and reconciliation. These are clone results only; they do not establish live Ivan-host grants.
++
++## Limits and next actions
++
++- No exact audit timestamp was recorded; the date above is the host-context date, not a query timestamp.
++- The WP0 draft's all-seven statement and CT14 path have been corrected in the current working tree while preserving its unrelated pending edits. Exact-patch review and local commit remain pending. Accountable owner: operator; executor: Codex. The author of the pre-existing transport-verification paragraph is not established here.
++- After the coding phase is complete, the functional/E2E test roles may prepare the approved disposable database through migration 015 and run the mapped schema verification. Then `database-reviewer` must re-read the installed ACLs in a read-only transaction. Accountable owner: operator; executor: Codex; no separately named database-service owner is established in the reviewed project records.
++- Recheck `change_ledger` only after the S13 disposable schema exists; until then no S13 grant or writer-boundary acceptance is implied. The owner of the future installed schema has not been established; `database-reviewer` owns the independent grant review, not the service.
++- No test, scan, migration, database write, COM call, service restart, push, or PR was performed.

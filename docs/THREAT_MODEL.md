@@ -203,15 +203,26 @@ Controls:
 ## Test-only write boundary
 
 Threat:
-- Ferma seeder or historical write helper becomes callable from production MCP.
+- Ferma seeder, historical helper, or private writer becomes callable from production MCP or targets a non-disposable base.
+- Duplicate/uncertain COM dispatch creates a second business effect or recovery falsely declares quiescence.
 
 Controls:
-- separate package/process/credentials;
-- synthetic/test target marker;
+- separate private package/process and least-privilege write identity;
+- authenticated private caller identity and least-privilege loopback/Tailscale ingress ACL, with
+  unauthorized callers refused before admission or COM;
+- exact synthetic/disposable target marker and base fingerprint checked before admission and COM;
 - deny production source IDs;
+- bind only to loopback/Tailscale; never expose the service through the public tunnel or model-facing MCP;
+- stable globally unique call ID, stale-epoch rejection, authoritative outcome lookup, signed recovery,
+  and a complete quiescence barrier; timeouts never authorize retries;
+- keep holds and lifecycle `NOT_READY` while any call outcome is unresolved;
 - no production tool registration;
-- package/tool inventory negative tests;
+- production package/process/tool inventory negative tests;
+- separate disposable PostgreSQL and physical COM qualification, with independent database/security/reliability review;
 - no generic arbitrary mutation API.
+
+ADR-0009 permits this boundary only for marked disposable clones. It does not authorize production
+write behavior or alter the production read-only invariant.
 
 ## SC08 duplicate-counterparty candidate tool (explicit operator rebaseline 2026-10-07)
 

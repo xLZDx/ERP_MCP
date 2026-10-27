@@ -1,7 +1,7 @@
 # Technical Design Document — ERP_MCP 1C-first Production MVP
 
-**Version:** 1.1
-**Date:** 2026-10-06
+**Version:** 1.2
+**Date:** 2026-10-23
 **Status:** SCOPE-FROZEN FOR IMPLEMENTATION — see `SCOPE_FREEZE_BASELINE_2026-10-06.md`
 
 ## 1. Purpose
@@ -14,8 +14,9 @@ The first production scope is 1C. ERP and Ferma production adapters reuse the sa
 later. Ferma is already part of the committed **test/assurance** scope as an independent synthetic
 scenario/oracle source; this does not make Ferma a production data adapter.
 
-The current scope is frozen. New feature/scenario/integration families are blocked until the
-committed baseline is closed or explicitly rebaselined by the operator.
+The current scope is frozen except for the explicit 2026-10-22 test-only private writer rebaseline
+recorded in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.2 and ADR-0009. No other feature/scenario/
+integration family is promoted.
 
 ## 2. Problem statement
 
@@ -99,6 +100,9 @@ The MVP does **not**:
 - act as a generic document-management/archive product beyond evidence required by frozen scenarios;
 - add new business-rule families during the active scope freeze without operator rebaseline;
 - promote historical test/write capability into the production MCP.
+
+The separate private disposable-clone writer authorized by ADR-0009 is test/assurance infrastructure,
+not a production 1C capability and not a model-facing tool.
 
 ## 5. Hard invariants
 
@@ -271,6 +275,25 @@ persisted capability evidence; any error of the selected route fails closed and 
 routes return the same canonical rows with `route` provenance. Required tests: route selection (AVAILABLE, UNSUPPORTED
 with and without a binding, UNKNOWN), no runtime fallback, binding mismatch and company-not-in-binding denial, row
 outside the account set fails closed, bridge never accepts caller text. See ADR-0008.
+
+### FR-K Private disposable writer qualification (operator rebaseline 2026-10-22)
+
+Provide a separate private service to qualify S12/S13/S14 change lifecycles only on marked disposable
+1C clones, initially `818HA_p2diff` on the licensed Ivan lane. It must use the least-privilege
+`CT14Писатель` identity; support only create-draft, read-back, post and unpost; and stay bound to
+loopback/Tailscale. It is never registered on public/model-facing MCP and must refuse production,
+real-company, immutable-reference and unknown base identities.
+Its private ingress must authenticate the caller and enforce an explicit least-privilege ACL; the
+disposable qualification must show unauthorized callers are refused before admission or COM.
+
+The durable boundary must enforce globally non-reusable call IDs, stable idempotency, stale lifecycle
+and process-serving epochs, authoritative outcome lookup, exact S12 signed-evidence recovery, T16
+signer independence, and a complete quiescence barrier. PostgreSQL transactions are bounded and end
+before COM invocation. Any call that may have entered COM remains unresolved until independent
+evidence proves its outcome; timeout, restart or lease expiry never authorizes a retry. The database
+and physical COM contracts require separate disposable qualification. Admission stays disabled and
+readiness stays `NOT_READY` until both qualify. This requirement does not change production NFR-S3
+or authorize a public write route. See ADR-0009 and the S12/S13/S14 phase-two contracts.
 
 ## 7. Non-functional requirements
 

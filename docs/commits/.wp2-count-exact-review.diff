@@ -1,0 +1,89 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index 041dccb..af5dee3 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -59,3 +59,5 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ 
+ - 2026-10-22 S13 ownership and grant records: distinguish the operator as accountable task owner, Ivan Stack as technical owner of the host/connection boundary, and Codex as implementation executor. A disposable catalog query with no S13 schema establishes `NOT_VERIFIED` grants for that instance; it does not justify calling the boundary unowned or claiming deployed privileges.
+ 
++- 2026-10-22 WP2 count reconciliation: reconcile acceptance prose against the actual identifier rows and preserve categories (Phase 2 versus main-set) when reporting totals. Counts do not establish per-test causes or runtime acceptance.
++
+diff --git a/docs/BACKLOG_INHERITED_2026-10-21.md b/docs/BACKLOG_INHERITED_2026-10-21.md
+index 8fc87ac..783aec0 100644
+--- a/docs/BACKLOG_INHERITED_2026-10-21.md
++++ b/docs/BACKLOG_INHERITED_2026-10-21.md
+@@ -25,7 +25,7 @@ Severity values are guesses made at recording time, not reviewed ratings.
+ - Severity guess: MAJOR (unclassified red tests; mostly environment-dependent per the record).
+ - Evidence: the merged `tests/phase2` + `tests/gate_manifest` + `tests/testlane` run gave 12 failed and 13 errors (6847 passed); the failing name set is identical to the ERP_MCP_R2 tip run in a detached worktree (12 failed, 13 errors, 6824 passed); causes are mainly disposable-PostgreSQL and other environment dependencies. The main test set has 2 pre-existing failures: `tests/test_chatgpt_mcp_contract.py::test_all_public_mcp_tools_are_explicitly_read_only_for_chatgpt` and `tests/test_operations_artifacts.py::test_fault_injection_and_runbook_artifacts_are_present`. A third main-set failure (`test_script_gate_guards::test_acl_guard...`, jwks timeout) was a load-sensitive flake that passes alone. Name lists: `D:\Repo\Trash\_integrate\out_ERPMCP_r2m.p2.fail.txt` and `out_ERPMCP_base.main.fail.txt`. Also 249 ruff findings in R2 code (subset of 282 on the R2 tip).
+ - Origin: ERP_MCP_R2 tip `7d9a01d`; integration origin: `STATE_ERPMCP.md` R2 merge entries.
+-- Suggested acceptance test: a table classifies every one of the 12 failures and 13 errors (needs PostgreSQL, needs 1C, flake, real defect); with the declared environment available every environment-class test passes; the 2 main-set failures each get a fix or a documented waiver.
++- Suggested acceptance test: a table classifies all 14 failures (12 Phase 2 and 2 main-set) and 13 errors by evidence-backed cause (for example, declared database dependency, 1C dependency, historical flake, or code defect). With the declared environment available, every environment-class test passes; each of the 2 main-set failures receives a fix or documented waiver.
+ - Status (2026-10-21): preliminary identifier-only classification recorded in `docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md`. The exact 13-error / 14-failure identifier set is reconciled; per-test causes and runtime acceptance remain NOT_RUN. The previous historical aggregate describes causes mainly as environment dependencies, but that does not establish individual causes.
+ 
+ ## ERPMCP-INH-004: locked install not yet proven after the R2 merge (lock files reconciled)
+diff --git a/docs/commits/2026-10-22-wp2-count-reconciliation.md b/docs/commits/2026-10-22-wp2-count-reconciliation.md
+new file mode 100644
+index 0000000..99f713e
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp2-count-reconciliation.md
+@@ -0,0 +1,27 @@
++# Change record: Reconcile inherited WP2 test counts
++
++## Change
++
++- Corrected the WP2 classification heading and prose to describe all 14 failures (12 Phase 2 and 2 main-set) plus 13 errors.
++- Updated the inherited-defects backlog acceptance wording to classify the same complete 14-failure / 13-error set by evidence-backed cause.
++
++## Why
++
++The identifier table contained 14 failure rows while its heading and acceptance text said 12. The backlog separately records 12 Phase 2 failures and two main-set failures, so the total is 14. This is a documentation count correction; it does not classify an individual test cause or establish runtime acceptance.
++
++## Contracts and paths
++
++- `docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md`
++- `docs/BACKLOG_INHERITED_2026-10-21.md`
++- Test authorship and execution remain assigned to `functional-test-reviewer` and `e2e-runner`.
++
++## Decisions
++
++- Preserve each test's cause as unverified until sanitized execution evidence supports classification.
++- Do not run tests or database commands under the active restriction.
++- Git staging and local commits are authorized; staging deployment remains forbidden. Include only the two count-correction paths and this change record; leave unrelated inherited backlog edits unstaged.
++
++## Verification state
++
++- Read the identifier-only classification artifact and inherited backlog; the artifact lists 13 error identifiers and 14 failure identifiers, and the backlog explains the 12 Phase 2 plus two main-set failures.
++- No tests, checks, builds, CI, database commands, migrations, or remote calls were performed for this correction. Git staging and the local documentation commit occur only after exact-patch GPT review; no staging deployment is performed.
+diff --git a/docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md b/docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md
+index 10dad55..0014d5a 100644
+--- a/docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md
++++ b/docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md
+@@ -19,7 +19,7 @@ included here.
+   inherited run summary. Exact exception causes remain NOT_VERIFIED until an
+   authorized test owner captures sanitized failure details with the declared
+   disposable database available.
+-- The 12 failures below are **code/contract candidates** based on the source test
++- The 14 failures below are **code/contract candidates** based on the source test
+   scope. Their individual causes are NOT_VERIFIED. In particular, tests explicitly
+   described as offline use synthetic in-memory data and should not be presumed to
+   need PostgreSQL or 1C.
+@@ -49,7 +49,7 @@ included here.
+ | `tests/phase2/test_s13_migration023.py::test_success_restores_caller_lock_timeout` | Database-environment candidate | Database session-setting scenario; exact error unverified. |
+ | `tests/phase2/test_s13_migration023.py::test_timeout_savepoint_restores_setting_and_outer_transaction` | Database-environment candidate | Database transaction/savepoint scenario; exact error unverified. |
+ 
+-## Twelve inherited failures
++## Fourteen inherited failures
+ 
+ | Test identifier | Preliminary class | Evidence and remaining acceptance |
+ |---|---|---|
+@@ -77,8 +77,8 @@ uses identifiers only and does not establish failure causes.
+ ## Acceptance and owner
+ 
+ WP2 is **partially classified; runtime acceptance is NOT_RUN**. The test owners are
+-`functional-test-reviewer` and `e2e-runner`; they must reconcile the exact 12 + 13
+-identifier set against sanitized historical failure metadata, then run only the
++`functional-test-reviewer` and `e2e-runner`; they must reconcile all 14 failure and
++13 error identifiers against sanitized historical failure metadata, then run only the
+ focused cases after all coding is complete. Classify each result as code defect,
+ declared environment dependency, or historical flake only when the execution
+ evidence supports that conclusion. The executor must preserve exact commands,

@@ -22,6 +22,9 @@ ERP_MCP is **read-only by construction** for the 1C Day-1 production MVP.
 - Source credentials never appear in MCP results.
 - External evidence is untrusted read-only input; it cannot change authorization/policy or trigger
   production 1C mutation.
+- ADR-0009 does not weaken this production invariant. Its separately authorized private writer is
+  test-only, confined to marked disposable clones on loopback/Tailscale, absent from public/model-
+  facing MCP, and gated by D19; it must refuse production and real-company bases.
 - Raw private reference bases/documents/credentials/private Drive links never enter Git/public CI.
 - Test-only Ferma/1C seed/write code and credentials are isolated from production MCP routes.
 - Missing evidence never authorizes a guessed accounting/tax/payroll PASS.

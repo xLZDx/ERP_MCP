@@ -206,6 +206,30 @@ Targets are approved from measured results, not guessed.
 - high/blocker risks closed or explicitly accepted;
 - exact production release SHA approved.
 
+## D19 — Isolated private disposable-writer qualification (non-production)
+
+This gate applies only to `S13-PRIVATE-WRITER-1` under ADR-0009 and does not alter D5 or the
+production GO criteria. It passes only when:
+
+- the private service is absent from public/model-facing MCP registration and the production
+  process/package inventory, and rejects production, real-company, immutable-reference and unknown
+  base identities;
+- the selected loopback/Tailscale ingress authenticates the caller and enforces an explicit
+  least-privilege ACL; positive and negative disposable-lane cases prove an authorized caller is
+  accepted and an unauthenticated or unauthorized caller is refused before admission/COM;
+- PostgreSQL admission has effective least-privilege grants, tenant/company enforcement, global
+  call-ID idempotency, stale lifecycle/serving-epoch rejection, exact evidence recovery and complete
+  barrier behavior proven on a disposable schema;
+- physical COM create-draft/read-back/post/unpost behavior is qualified separately on a marked
+  disposable clone under `CT14Писатель`; SQL tests do not substitute for COM evidence;
+- crash, lost response, stale epoch, duplicate call, uncertain outcome and quiescence cases are
+  executed by the designated functional/E2E roles; unresolved calls preserve holds and never retry;
+- exact-head database, security and reliability reviews close all valid BLOCKER/MAJOR findings;
+- no secret, private business row, or immutable-reference data enters repository evidence.
+
+Until D19 passes, private writer admission remains disabled and lifecycle remains `NOT_READY`.
+Passing D19 authorizes only disposable test-lane use; it is not a production write approval.
+
 ## Cross-cutting scope-freeze closure
 
 Before the operator considers lifting/rebaselining the freeze:
@@ -218,12 +242,16 @@ Before the operator considers lifting/rebaselining the freeze:
 - External Evidence dependencies return explicit evidence states rather than guessed PASS;
 - no locally actionable blocker/high risk is hidden as “future”;
 - deferred write/legacy/production ERP-Ferma lanes have not been silently promoted;
+- the explicit ADR-0009 test-only writer rebaseline is not treated as production write scope;
 - Command Center and normative docs match exact release evidence.
 
 SC08 rebaseline 2026-10-07: no production DoD gate change; SC08 adds one read-only candidate tool
 whose evidence is synthetic L1 only and never native reconciliation. See the explicit operator
 rebaseline in `SCOPE_FREEZE_BASELINE_2026-10-06.md` §8.1 and the
 [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
+
+ADR-0009 rebaseline 2026-10-22 adds D19 for isolated disposable-writer qualification only; D0–D18
+and the production terminal condition remain unchanged.
 
 ## Final terminal condition
 

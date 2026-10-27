@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
-**Version:** 1.1
-**Date:** 2026-10-06
+**Version:** 1.2
+**Date:** 2026-10-23
 
 This matrix connects requirements to architecture, implementation areas and release gates.
 
@@ -41,6 +41,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | SCOPE-1 | No new product scope while operator freeze is active | Scope Freeze Baseline, Governance §2A | D0 + freeze closure |
 | SC08-1 | Operator rebaseline 2026-10-07: SC08 `duplicate-counterparty` as one read-only tool `counterparty_duplicate_candidates` (`accounting.read`, no merge/write, synthetic L1 only). Evidence status: IMPLEMENTED on synthetic L1 (src/business_ai_gateway/duplicate_counterparties.py + server handler; exact run counts and head SHA live in the PR #11 body, not here); Amendment A2 PROPOSED until GPT-PM approves; known accepted limitation: empty activity scan is PASS per contract (core/DECISION_LOG.md 2026-10-07) | [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md), Scope Freeze §8.1, TDD FR-E | D9 (read-only/synthetic only); evidence: tests/test_duplicate_counterparties_unit.py, tests/test_sc08_duplicate_counterparty_chain.py, tests/functional/test_10_scenarios_sc01_sc12.py (SC08 cases), tests/e2e/user/test_u18_functional_tester_suite.py (U18 oracle), manual pack U18 step |
 | HYB-1 | Operator rebaseline 2026-10-07: hybrid OData + COM read route for balances with analytics, one read-only tool `accounting_balance_by_analytics`; closes the "analytics balance" gap of DAD-SMALL-03 / DAD-BIZ-02 / DAD-BIZ-08. Evidence status: see core/DECISION_LOG.md 2026-10-07 entries; live parity status is recorded there (parity vs cross-copy comparison) | [ADR-0008](adr/ADR-0008-hybrid-odata-com-analytics-balance.md), Scope Freeze §2.1, TDD FR-J | D5/D7/D9; evidence: tests/test_analytics_balance_routing.py, tests/test_com_bridge.py |
+| S13-PRIVATE-WRITER-1 | Operator rebaseline 2026-10-22: private test-only writer on the licensed Ivan lane for marked disposable clones, initially `818HA_p2diff`; private COM boundary, stable globally unique call identity, stale epochs, authoritative outcome lookup, signed recovery and quiescence; never public MCP or production | [ADR-0009](adr/ADR-0009-private-test-writer.md), Scope Freeze §8.2, TDD FR-K, S12/S13/S14 contracts | D19; functional/E2E database and COM qualification, production inventory negatives, and database/security/reliability reviews on exact tested head; status NOT_RUN/NOT_IMPLEMENTED until evidence is recorded |
 | DAD-1 | Six accountant-selected read-only checks | DAD Requirements Coverage §8, DAD rule engine | D9 + DAD acceptance |
 | DAD-2 | Invoice/e-factura read-only reconciliation | DAD Requirements Coverage §11/§27, External Evidence Plane | D9/D11 |
 | DAD-3 | Versioned applicability-aware month-close rule packs | TDD FR-G, Data Model §10B | D9/D11 |
