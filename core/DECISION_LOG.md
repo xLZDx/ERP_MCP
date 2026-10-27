@@ -935,3 +935,9 @@ Decision: the operator's staging prohibition refers to a staging deployment, not
 Evidence: strict SSH to koros@100.88.71.74 and all local listeners were healthy; Ivan and local gateways answered `source_health` ok. The two-base comparison of account 521.1 returned `PARTIAL_MISMATCH` (10 rows on the local side, 11 on Ivan, one `ROW_MISSING_IN_A`), a numeric copy-consistency result and not a native 1C PASS. The six-column and purchase sections were refused by the gateway itself with `SEMANTIC_PROFILE_UNVALIDATED`.
 
 Decision: report the gateway's bare refusal code as `detail_code` beside the unchanged `reason_code`, and call `purchase_documents` with only `source_id` and `company_id`. The running 21200 server was not restarted. Cause of the extra row on Ivan is UNKNOWN. Detail: `docs/phase2/CHANGE_RECORD_341.md`, `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-27.md`. pytest NOT_RUN.
+
+## 2026-10-27 - Two-base 521.1 mismatch traced to different clones
+
+Evidence: the local `erp_mcp_ref` publication reads `818HA_test_ready`; Ivan's reads `818HA_p2diff`, the write clone. Ten common 521.1 rows are identical and the fingerprints match; Ivan has one extra credit-only counterparty. The two gateways therefore do not read copies of one base, and the earlier `PARTIAL_MISMATCH` is expected, not a defect. The write-clone explanation of the extra row is an inference.
+
+Decision: no configuration change. Whether Ivan's reference source should read a read clone (`818HA_test_ready` or `818HA_reference_ro`) is left to the S13/S15 owners. Detail: `docs/phase2/CHANGE_RECORD_342.md`. pytest NOT_RUN.
