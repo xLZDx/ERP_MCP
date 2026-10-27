@@ -1121,3 +1121,7 @@ Decision: duplicate targets in a value map are refused and the missing guard tes
 ## 2026-10-27 - CORRECTION: VAT enumeration value names do not match their rates in this configuration
 
 Decision: the name-based mapping drafted in Change Records 367 and 368 is withdrawn. Synonyms and aggregates show `НДС18` is 20%, `НДС10` is 8%, `НДС_10` is 10% and `НДС20` is unused; the correct draft is VAT20 to `НДС18`, VAT10 to `НДС_10`, VAT0 to `НДС0`. No wrong mapping reached code. Detail: `docs/phase2/CHANGE_RECORD_372.md`.
+
+## 2026-10-27 - Line VAT amount: measurement and three options, option C recommended
+
+Decision: not made. The formula amount x rate / (100 + rate) reproduced 716 of 755 rated lines exactly in the clone, 32 more within one cent and 6 by more (up to 12.50). Recommended option C: carry the line VAT amount inside the approved, digest-bound payload so the approver sees every booked figure. Detail: `docs/phase2/CHANGE_RECORD_373.md`.
