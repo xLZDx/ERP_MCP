@@ -1173,3 +1173,7 @@ Decision: accept the reviews' fixes (pre-write type and date checks, document re
 ## 2026-10-27 - Read-back comparison made type-aware (GPT-PM M-01)
 
 Decision: accept the finding; identity text is compared as exact text, only declared number paths are compared numerically, and the empty-text-equals-None rule is removed. Executor ran OK on the clone as administrator and narrow user after the change (rolled back). Detail: `docs/phase2/CHANGE_RECORD_383.md`.
+
+## 2026-10-27 - Document registry regenerated
+
+Decision: refresh governance/DOCUMENT_REGISTRY.md by running its generator (760 tracked paths); generated output, not hand-edited; committed locally and pushed with the next approved push.

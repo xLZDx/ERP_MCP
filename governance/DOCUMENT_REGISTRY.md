@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 459 tracked paths, 110 local-only paths.
+Inventory: 760 tracked paths, 0 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -100,6 +100,7 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/adr/ADR-0006-copyleft-isolation.md | ADR | "ADR-0006 — Copyleft/unknown-license adapters are isolated or reference-only" |
 | docs/adr/ADR-0007-admin-control-center.md | ADR | "ADR-0007 — Admin Control Center boundary and authorization" |
 | docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md | ADR | "ADR-0008 — Hybrid OData + COM read route for balances with analytics" |
+| docs/adr/ADR-0009-private-test-writer.md | ADR | "ADR-0009 — Isolated private writer for disposable 1C qualification" |
 | docs/commits/2026-10-20-english-policy-inventory.md | Other | "English-only policy inventory: tracked files containing Cyrillic" |
 | docs/commits/2026-10-20-english-policy-registry-fix.md | Other | "English-only policy: document registry fix and Cyrillic inventory (2026-10-20)" |
 | docs/commits/2026-10-20-integrate-docs-english-only-translation.md | Other | "Integrate origin/docs/english-only-translation-20261010 (2026-10-20)" |
@@ -114,20 +115,29 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/commits/2026-10-21-erp-connector-retry.md | Other | "ERP connector retry evidence — 2026-10-21" |
 | docs/commits/2026-10-21-erp-mcp-lock-reconcile.md | Other | "Reconcile uv.lock and requirements-runtime.lock after the ERP_MCP_R2 merge (2026-10-21)" |
 | docs/commits/2026-10-21-tailscale-ssh-diagnostic.md | Other | "Tailscale SSH access diagnostic — 2026-10-21" |
+| docs/commits/2026-10-22-branch-reconciliation.md | Other | "Change record: Record task branch reconciliation" |
 | docs/commits/2026-10-22-capability-function-execute-revocation.md | Other | "Change record: Restrict capability observation function execution" |
+| docs/commits/2026-10-22-commit-record-audit.md | Other | "Change record: Audit task-branch change-record coverage" |
 | docs/commits/2026-10-22-current-status-reconciliation.md | Other | "Change record: Current Phase 2 status reconciliation" |
 | docs/commits/2026-10-22-dependency-evidence-addendum.md | Other | "Change record: Reconcile current dependency evidence" |
 | docs/commits/2026-10-22-development-database-loopback.md | Other | "Change record: Bind development databases to loopback" |
 | docs/commits/2026-10-22-disposable-db-effective-grants.md | Other | "Change record: capture disposable-database effective grants" |
 | docs/commits/2026-10-22-document-registry-refresh.md | Other | "Change record: document registry refresh after WP0 prompt commit" |
+| docs/commits/2026-10-22-e2e-startup-restriction.md | Other | "Change record: Record E2E startup restriction" |
+| docs/commits/2026-10-22-erp-mcp-gpt-pm-route-correction.md | Other | "Change record: correct GPT-PM project routing for ERP_MCP" |
 | docs/commits/2026-10-22-erp-mcp-route-recheck.md | Other | "Change record: Record ERP MCP route recheck" |
 | docs/commits/2026-10-22-erp-owner-source-audit.md | Other | "Change record: Record ERP service ownership lookup" |
+| docs/commits/2026-10-22-git-staging-process-correction.md | Other | "Change record: distinguish Git staging from deployment staging" |
 | docs/commits/2026-10-22-phase2-token-provider.md | Other | "Change record: route-bound Phase 2 gateway token providers" |
 | docs/commits/2026-10-22-project-and-ssh-key-inventory.md | Other | "Change record: Inventory project and SSH key access evidence" |
 | docs/commits/2026-10-22-registry-safe-generation.md | Other | "Change record: Safe Git-ref-only document registry generation" |
 | docs/commits/2026-10-22-s12-trusted-identity-verification.md | Other | "Change record: Add S12 trusted identity snapshot verification" |
+| docs/commits/2026-10-22-s13-admission-schema-design.md | Design | "Change record: define S13 durable admission schema direction" |
+| docs/commits/2026-10-22-s13-barrier-snapshot-order.md | Other | "Validate S13 barrier snapshot ordering — 2026-10-22" |
 | docs/commits/2026-10-22-s13-cross-scope-conflict-map.md | Other | "Change record: map S13 cross-scope unique conflicts" |
+| docs/commits/2026-10-22-s13-grant-lock-inventory.md | Other | "Change record: Record S13 source-final grant and lock findings" |
 | docs/commits/2026-10-22-s13-ivan-writer-design.md | Design | "Change record: S13 private writer design for Ivan's licensed lane" |
+| docs/commits/2026-10-22-s13-lock-protocol-spec.md | Other | "Change record: specify S13 fence key and lock ranks" |
 | docs/commits/2026-10-22-s13-namespace-rank-source-reconciliation.md | Other | "Change record: reconcile S13 advisory namespace allocation with source" |
 | docs/commits/2026-10-22-s13-owner-and-grant-status.md | Other | "Change record: Reconcile S13 owner and grant status" |
 | docs/commits/2026-10-22-s13-private-coordinator.md | Other | "Change record: Add the S13 private writer coordinator contract" |
@@ -139,11 +149,68 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/commits/2026-10-22-ssh-key-access-audit.md | Other | "Change record: Recheck Ivan SSH keys and trust" |
 | docs/commits/2026-10-22-wp0-access-and-first-prompt-bundle.md | Other | "Change record: WP0 access recheck and first autonomous prompt bundle" |
 | docs/commits/2026-10-22-wp0-cross-base-row-group-recheck.md | Other | "Change record: narrow the WP0 cross-base row-count discrepancy" |
+| docs/commits/2026-10-22-wp0-remote-gateway-read-transport.md | Other | "Change record: record authenticated Ivan gateway read path" |
 | docs/commits/2026-10-22-wp0-s13-access-correction.md | Other | "Change record: Reconcile WP0 access and S13 grant evidence" |
 | docs/commits/2026-10-22-wp2-count-reconciliation.md | Other | "Change record: Reconcile inherited WP2 test counts" |
+| docs/commits/2026-10-22-wp2-effective-grants-recheck.md | Other | "Change record: record effective PostgreSQL grants and correct the WP0 claim" |
+| docs/commits/2026-10-22-wp2-focused-functional-e2e-remediation.md | Other | "WP2 focused functional and E2E remediation — 2026-10-22" |
+| docs/commits/2026-10-22-wp3-english-prose-pass.md | Other | "Change record: Translate reviewed WP3 prose" |
+| docs/commits/2026-10-22-wp3-exception-policy.md | Other | "Change record: Decide WP3 text-preservation policy" |
 | docs/commits/2026-10-22-wp3-registry-historical-cyrillic.md | Other | "Change record: Preserve Cyrillic in current document-registry titles" |
+| docs/commits/2026-10-22-wp3-remove-stale-line-exceptions.md | Other | "Remove stale WP3 line-hash exceptions — 2026-10-22" |
 | docs/commits/2026-10-22-wp3-repeated-synthetic-lines.md | Other | "Change record: bind repeated synthetic policy lines separately" |
+| docs/commits/2026-10-22-wp3-source-evidence-boundary.md | Other | "Change record: isolate source-derived material during WP3 classification" |
 | docs/commits/2026-10-22-wp3-utf16-policy-scanner.md | Other | "Change record: scan BOM-marked UTF-16 policy artifacts" |
+| docs/commits/2026-10-23-s13-budget-grant-rank-qualification.md | Other | "S13 Budget-Grant Parent-Rank Qualification Mapping" |
+| docs/commits/2026-10-23-s13-fg-m01-inventory-boundary-correction.md | Other | "S13-FG-M01 inventory trust-boundary correction" |
+| docs/commits/2026-10-23-s13-proposal-target-rank-qualification.md | Other | "S13 Proposal and Target Parent-Rank Qualification Mapping" |
+| docs/commits/2026-10-23-s13-recovery-affected-row-closure.md | Other | "Change record: map S13 recovery batch affected rows" |
+| docs/commits/2026-10-23-s13-restart-recovery-contract.md | Other | "S13 restart recovery and source lock-path follow-up" |
+| docs/commits/2026-10-23-s13-ta-terminal-recovery-latch.md | Other | "S13-TA terminal recovery and fatal-latch remediation" |
+| docs/commits/2026-10-23-s13-token-lock-order-qualification.md | Other | "S13 Claim-Token Lock-Order Qualification Mapping" |
+| docs/commits/2026-10-24-s13-epoch-dependency-v1.md | Other | "S13 versioned epoch-dependency route" |
+| docs/commits/2026-10-24-s13-evidence-registration-context-boundary.md | Other | "Change record: Define the S13 evidence-registration trust boundary" |
+| docs/commits/2026-10-24-s13-failed-verify-scc-review.md | Other | "S13 failed-verification closure source review" |
+| docs/commits/2026-10-24-s13-invocation-context-validation.md | Other | "Change record: Validate S13 invocation context shape" |
+| docs/commits/2026-10-24-s13-legacy-mutator-cutover-acl.md | Other | "S13 legacy mutation API cutover ACL" |
+| docs/commits/2026-10-24-s13-lifecycle-trigger-cutover.md | Other | "S13 lifecycle-trigger cutover reconciliation" |
+| docs/commits/2026-10-24-s13-observe-target-cutover.md | Other | "S13 observe-target replay cutover" |
+| docs/commits/2026-10-24-s13-source-crosswalk-reconciliation.md | Other | "Change record: Reconcile S13 source lock and replay crosswalks" |
+| docs/commits/2026-10-24-s13-terminal-recovery-readiness.md | Other | "S13 terminal recovery before dispatch readiness" |
+| docs/commits/2026-10-24-s13-verification-worker-cutover.md | Other | "S13 versioned worker verification cutover" |
+| docs/commits/2026-10-24-wp0-listener-refresh.md | Other | "Change record: Refresh local Phase-2 listener evidence" |
+| docs/commits/2026-10-24-wp0-ssh-inventory.md | Other | "WP0 read-only strict-SSH directory inventory" |
+| docs/commits/2026-10-24-wp5-checkpoint-signer-domains.md | Other | "WP5 checkpoint signer domain allowlist" |
+| docs/commits/2026-10-24-wp5-production-trust-source.md | Other | "WP5 production trust source candidate — 2026-10-24" |
+| docs/commits/2026-10-24-wp5-strict-trust-json-decoding.md | Other | "WP5 strict trust-snapshot JSON decoding" |
+| docs/commits/2026-10-25-s13-anchor-check-parent-first-v1.md | Other | "S13 parent-first anchor-check candidate" |
+| docs/commits/2026-10-25-s13-budget-admin-writer-v1.md | Other | "S13 budget grant writers: fenced candidates" |
+| docs/commits/2026-10-25-s13-business-key-writer-v1.md | Other | "S13 candidate business-key writer" |
+| docs/commits/2026-10-25-s13-claim-parent-first-v1.md | Other | "S13 claim parent-first candidate" |
+| docs/commits/2026-10-25-s13-declare-target-class-v1.md | Other | "S13 target class writer candidate" |
+| docs/commits/2026-10-25-s13-dispatch-receipt-requirement-v1.md | Other | "S13 dispatch receipt requirement candidate" |
+| docs/commits/2026-10-25-s13-dispatch-receipt-v1.md | Other | "S13 dispatch receipt writer candidate" |
+| docs/commits/2026-10-25-s13-evidence-barrier-lock-order.md | Other | "S13 evidence and quiescence barrier lock-order correction" |
+| docs/commits/2026-10-25-s13-evidence-replay-v1.md | Other | "S13 candidate: exact signed evidence replay" |
+| docs/commits/2026-10-25-s13-fenced-epoch-writers.md | Other | "S13 fenced epoch-writer candidates" |
+| docs/commits/2026-10-25-s13-gap-bound-report-order.md | Other | "S13 GAP_BOUND report ordering" |
+| docs/commits/2026-10-25-s13-global-id-preflight-before-rows.md | Other | "S13 candidate: preflight global IDs before relation rows" |
+| docs/commits/2026-10-25-s13-observe-target-replay-v1.md | Other | "S13 candidate: exact target observation replay" |
+| docs/commits/2026-10-25-s13-open-hold-ranked-candidates.md | Other | "S13 ranked anchor-gap and unclean-restart hold candidates" |
+| docs/commits/2026-10-25-s13-override-binding-replay-v1.md | Other | "S13 duplicate override binding replay candidate" |
+| docs/commits/2026-10-25-s13-private-writer-nil-uuid-admission.md | Other | "S13 private-writer nil UUID guards" |
+| docs/commits/2026-10-25-s13-recovery-eligibility-report.md | Other | "S13 stale-epoch recovery eligibility report" |
+| docs/commits/2026-10-25-s13-recovery-event-guard.md | Other | "S13 recovery guard and claim replay authorization" |
+| docs/commits/2026-10-25-s13-recovery-void-rank-v1.md | Other | "S13 bounded recovery stages: ranked permits, uncertainty, gap and verification" |
+| docs/commits/2026-10-25-s13-release-claim-parent-first-v1.md | Other | "S13 parent-first claim release candidate" |
+| docs/commits/2026-10-25-s13-release-hold-parent-first-v1.md | Other | "S13 parent-first hold-release candidate" |
+| docs/commits/2026-10-25-s13-renew-writer-lease-parent-first-v1.md | Other | "S13 parent-first writer-lease renewal candidate" |
+| docs/commits/2026-10-25-s13-success-routine-declaration.md | Other | "S13 success-routine declaration correction" |
+| docs/commits/2026-10-25-s13-sweep-policy-v1.md | Other | "S13 sweep policy writer candidate" |
+| docs/commits/2026-10-25-s13-t12-first-pass-isolation.md | Other | "S13 T12 first-pass isolation" |
+| docs/commits/2026-10-25-s13-verifier-key-serialization.md | Other | "S13 candidate verifier-key serialization correction" |
+| docs/commits/2026-10-25-s13-verify-dispatch-payload-v1.md | Other | "S13 dispatch payload verification candidate" |
+| docs/commits/2026-10-25-wp0-ivan-stack-status.md | Other | "WP0 strict-SSH Ivan stack status" |
 | docs/phase2/AUTONOMOUS_AGENT_PROMPT_2026-10-21.md | Phase 2 design | "Prompt for the autonomous ERP_MCP technical agent (2026-10-21)" |
 | docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md | Phase 2 design | "Autonomous execution plan for the next agent (ERP_MCP), 2026-10-21" |
 | docs/phase2/BRANCH_ISOLATION_AND_HANDOFF.md | Phase 2 design | "Phase 2 — Isolation and Windows checkout handoff (2026-10-08)" |
@@ -304,6 +371,219 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/phase2/CHANGE_RECORD_168.md | Phase 2 design | "Change record 168 — correct singular document-registry path counts" |
 | docs/phase2/CHANGE_RECORD_169.md | Phase 2 design | "Change record 169 — order S13 work around the writer boundary" |
 | docs/phase2/CHANGE_RECORD_170.md | Phase 2 design | "Change record 170 — reconcile publication snapshot with committed CR169" |
+| docs/phase2/CHANGE_RECORD_171.md | Phase 2 design | "Change record 171 — shared S12/S13 Python UUID contract" |
+| docs/phase2/CHANGE_RECORD_172.md | Phase 2 design | "Change record 172 — S13 cosign entries" |
+| docs/phase2/CHANGE_RECORD_173.md | Phase 2 design | "Change record 173 — S13 witnessed failed-verification closure" |
+| docs/phase2/CHANGE_RECORD_174.md | Phase 2 design | "Change record 174 — S13 checkpoint permit-signature attachment" |
+| docs/phase2/CHANGE_RECORD_175.md | Phase 2 design | "Change record 175 — T16 witness cosign for entered conditional conflict" |
+| docs/phase2/CHANGE_RECORD_176.md | Phase 2 design | "Change record 176 — typed S13 operator-resolution adapter contract" |
+| docs/phase2/CHANGE_RECORD_177.md | Phase 2 design | "Change record 177 — T16 checkpoint holds and replay" |
+| docs/phase2/CHANGE_RECORD_178.md | Phase 2 design | "Change record 178 — private writer composition and outcome evidence" |
+| docs/phase2/CHANGE_RECORD_179.md | Phase 2 design | "Change record 179 — S12 COM manifest digest primitives" |
+| docs/phase2/CHANGE_RECORD_180.md | Phase 2 design | "Change record 180 — require a unique Windows service SID for the writer mutex" |
+| docs/phase2/CHANGE_RECORD_181.md | Phase 2 design | "Change record 181 — fail-closed private writer caller authentication" |
+| docs/phase2/CHANGE_RECORD_182.md | Phase 2 design | "Change record 182 — bounded loopback private writer ingress" |
+| docs/phase2/CHANGE_RECORD_183.md | Phase 2 design | "Change record 183 — exact caller scope authorization for private writer ingress" |
+| docs/phase2/CHANGE_RECORD_184.md | Phase 2 design | "Change record 184 — safe COM startup failure classification" |
+| docs/phase2/CHANGE_RECORD_185.md | Phase 2 design | "Change record 185 — enforce READ COMMITTED for owned ledger calls" |
+| docs/phase2/CHANGE_RECORD_186.md | Phase 2 design | "Change record 186 — bind private-writer payloads to the approved digest" |
+| docs/phase2/CHANGE_RECORD_187.md | Phase 2 design | "Change record 187 — bound the S13 validation duplicate witness" |
+| docs/phase2/CHANGE_RECORD_188.md | Phase 2 design | "Change record 188 — enforce the measured writer line-count bound" |
+| docs/phase2/CHANGE_RECORD_189.md | Phase 2 design | "Change record 189 — enforce the S13 recovery-witness independence rule" |
+| docs/phase2/CHANGE_RECORD_190.md | Phase 2 design | "Change Record 190 — Recheck requester independence when consuming T16/T17 cosign" |
+| docs/phase2/CHANGE_RECORD_191.md | Phase 2 design | "Change Record 191 — sanitize outcome-bundle locator failures" |
+| docs/phase2/CHANGE_RECORD_192.md | Phase 2 design | "Change Record 192 — reject pre-held relation locks across the database" |
+| docs/phase2/CHANGE_RECORD_193.md | Phase 2 design | "Change Record 193 — pin immutable signer-key material during barrier acknowledgement" |
+| docs/phase2/CHANGE_RECORD_194.md | Phase 2 design | "Change Record 194 — bind private ingress to the accepted socket endpoint" |
+| docs/phase2/CHANGE_RECORD_195.md | Phase 2 design | "Change Record 195 — enforce signer validity at database registration time" |
+| docs/phase2/CHANGE_RECORD_196.md | Phase 2 design | "Change Record 196 — serialize evidence admission with trust-registry revisions" |
+| docs/phase2/CHANGE_RECORD_197.md | Phase 2 design | "Change Record 197 — bound private-writer token verification" |
+| docs/phase2/CHANGE_RECORD_198.md | Phase 2 design | "Change Record 198 — stable bounded-timeout validation" |
+| docs/phase2/CHANGE_RECORD_199.md | Phase 2 design | "Change Record 199 — bounded-batch document registry generation" |
+| docs/phase2/CHANGE_RECORD_200.md | Phase 2 design | "Change Record 200 — bound canonical UUID parsing" |
+| docs/phase2/CHANGE_RECORD_201.md | Phase 2 design | "Change Record 201 — preserve unknown writer outcomes after admission" |
+| docs/phase2/CHANGE_RECORD_202.md | Phase 2 design | "Change Record 202 — bound writer prechecks before admission" |
+| docs/phase2/CHANGE_RECORD_203.md | Phase 2 design | "Change Record 203 — require canonical UUID text at writer admission" |
+| docs/phase2/CHANGE_RECORD_204.md | Phase 2 design | "Change Record 204 — bound the complete startup recovery inventory" |
+| docs/phase2/CHANGE_RECORD_205.md | Phase 2 design | "Change Record 205 — refuse concurrent writer requests before admission" |
+| docs/phase2/CHANGE_RECORD_206.md | Phase 2 design | "Change Record 206 — fence checkpoint signature attachment against verifier-key mutation" |
+| docs/phase2/CHANGE_RECORD_207.md | Phase 2 design | "Change Record 207 — validate private-writer caller scope elements at authorization" |
+| docs/phase2/CHANGE_RECORD_208.md | Phase 2 design | "Change Record 208 — fence dispatch-receipt verification against verifier-key mutation" |
+| docs/phase2/CHANGE_RECORD_209.md | Phase 2 design | "Change Record 209 — fence signed evidence recording against verifier-key mutation" |
+| docs/phase2/CHANGE_RECORD_210.md | Phase 2 design | "Change Record 210 — freeze the S13 schema routing decision" |
+| docs/phase2/CHANGE_RECORD_211.md | Phase 2 design | "Change Record 211 — bound anchor reconciliation by planned effects" |
+| docs/phase2/CHANGE_RECORD_212.md | Phase 2 design | "Change Record 212 — refuse whole-scope S13 hold fan-out" |
+| docs/phase2/CHANGE_RECORD_213.md | Phase 2 design | "Change Record 213 — freeze complete target rows in S13 hold plans" |
+| docs/phase2/CHANGE_RECORD_214.md | Phase 2 design | "Change Record 214 — bind private ingress Host to the ASGI endpoint" |
+| docs/phase2/CHANGE_RECORD_215.md | Phase 2 design | "Change Record 215 — reject overflowing JSON floats at private ingress" |
+| docs/phase2/CHANGE_RECORD_216.md | Phase 2 design | "Change Record 216 — reject forwarded peer metadata at private ingress" |
+| docs/phase2/CHANGE_RECORD_217.md | Phase 2 design | "Change Record 217 — bound the private-writer quiescence wait" |
+| docs/phase2/CHANGE_RECORD_218.md | Phase 2 design | "Change Record 218 — freeze the barrier timeout after construction" |
+| docs/phase2/CHANGE_RECORD_219.md | Phase 2 design | "Change Record 219 — freeze PostgreSQL writer-adapter configuration" |
+| docs/phase2/CHANGE_RECORD_220.md | Phase 2 design | "Change Record 220 — freeze COM STA lifecycle callbacks" |
+| docs/phase2/CHANGE_RECORD_221.md | Phase 2 design | "Change Record 221 — freeze serving-authority mutex identity" |
+| docs/phase2/CHANGE_RECORD_222.md | Phase 2 design | "Change Record 222 — freeze private writer service dependencies" |
+| docs/phase2/CHANGE_RECORD_223.md | Phase 2 design | "Change Record 223 — make the serving-authority lease monotonic" |
+| docs/phase2/CHANGE_RECORD_224.md | Phase 2 design | "Change Record 224 — make Windows mutex closure monotonic" |
+| docs/phase2/CHANGE_RECORD_225.md | Phase 2 design | "Change Record 225 — make the S13 restart-required latch internal" |
+| docs/phase2/CHANGE_RECORD_226.md | Phase 2 design | "Change Record 226 — bind COM STA coordination primitives" |
+| docs/phase2/CHANGE_RECORD_227.md | Phase 2 design | "Change Record 227 — freeze SQL ledger authorization configuration" |
+| docs/phase2/CHANGE_RECORD_228.md | Phase 2 design | "Change Record 228 — reject invalid explicit SQL caller selectors" |
+| docs/phase2/CHANGE_RECORD_229.md | Phase 2 design | "Change Record 229 — freeze S13 dispatch-gate composition" |
+| docs/phase2/CHANGE_RECORD_230.md | Phase 2 design | "Change Record 230 — record current Ivan stack boundary evidence" |
+| docs/phase2/CHANGE_RECORD_231.md | Phase 2 design | "Change Record 231 — freeze SQL adapter function catalogs" |
+| docs/phase2/CHANGE_RECORD_232.md | Phase 2 design | "Change Record 232 — require an explicit operational writer declaration" |
+| docs/phase2/CHANGE_RECORD_233.md | Phase 2 design | "Change Record 233 — inspect composition methods without invoking descriptors" |
+| docs/phase2/CHANGE_RECORD_234.md | Phase 2 design | "Change Record 234 — keep writer marker checks outside metaclass hooks" |
+| docs/phase2/CHANGE_RECORD_235.md | Phase 2 design | "Change Record 235 — reject COM lane architecture mismatch before activation" |
+| docs/phase2/CHANGE_RECORD_236.md | Phase 2 design | "Change Record 236 — fence owner role-scope provisioning" |
+| docs/phase2/CHANGE_RECORD_237.md | Phase 2 design | "Change Record 237 — preserve exact S13 evidence replay identity" |
+| docs/phase2/CHANGE_RECORD_238.md | Phase 2 design | "Change Record 238 — preserve NULL validation lookup error in S13" |
+| docs/phase2/CHANGE_RECORD_239.md | Phase 2 design | "Change Record 239 — validate approval nonce before ranked fences" |
+| docs/phase2/CHANGE_RECORD_240.md | Phase 2 design | "Change Record 240 — preserve current permit guards on S13 replay" |
+| docs/phase2/CHANGE_RECORD_241.md | Phase 2 design | "Change Record 241 — acquire T16 advisory keys before target rows" |
+| docs/phase2/CHANGE_RECORD_242.md | Phase 2 design | "Change Record 242 — align T16 qualification with checkpoint continuation" |
+| docs/phase2/CHANGE_RECORD_243.md | Phase 2 design | "Change record 243 — S13 evidence scope before verifier-key locks" |
+| docs/phase2/CHANGE_RECORD_244.md | Phase 2 design | "Change record 244 — protect COM STA lifecycle fields from ordinary mutation" |
+| docs/phase2/CHANGE_RECORD_245.md | Phase 2 design | "Change record 245 — protect private-writer lifecycle and lock bindings" |
+| docs/phase2/CHANGE_RECORD_246.md | Phase 2 design | "Change record 246 — reject future-dated signed evidence" |
+| docs/phase2/CHANGE_RECORD_247.md | Phase 2 design | "Change record 247 — align trusted process PID with PostgreSQL" |
+| docs/phase2/CHANGE_RECORD_248.md | Phase 2 design | "Change record 248 — enforce signer-role service separation" |
+| docs/phase2/CHANGE_RECORD_249.md | Phase 2 design | "Change record 249 — bridge legacy mutation routes to fenced v1 entries" |
+| docs/phase2/CHANGE_RECORD_250.md | Phase 2 design | "Change record 250 — bind the serving mutex SID to the process token" |
+| docs/phase2/CHANGE_RECORD_251.md | Phase 2 design | "Change Record 251 — S13 versioned nonterminal unknown-outcome route" |
+| docs/phase2/CHANGE_RECORD_252.md | Phase 2 design | "Change Record 252 — derive S12 COM assignments from the approved payload" |
+| docs/phase2/CHANGE_RECORD_253.md | Phase 2 design | "Change Record 253 — remove duplicate PL/pgSQL declaration" |
+| docs/phase2/CHANGE_RECORD_254.md | Phase 2 design | "Change Record 254 — Align T16 hold-list validation" |
+| docs/phase2/CHANGE_RECORD_255.md | Phase 2 design | "Change Record 255 — Align physical barrier boot-ID validation" |
+| docs/phase2/CHANGE_RECORD_256.md | Phase 2 design | "Change Record 256 — Abort stale private-writer admission transactions" |
+| docs/phase2/CHANGE_RECORD_257.md | Phase 2 design | "Change Record 257 — Acquire admission identity fences before row locks" |
+| docs/phase2/CHANGE_RECORD_258.md | Phase 2 design | "Change Record 258 — Fence permit issuance against base barriers" |
+| docs/phase2/CHANGE_RECORD_259.md | Phase 2 design | "Change Record 259 — Preserve bounded 1C transport reason in source-health audit" |
+| docs/phase2/CHANGE_RECORD_260.md | Phase 2 design | "Change Record 260 — deterministic latest approval selection in writer candidates" |
+| docs/phase2/CHANGE_RECORD_261.md | Phase 2 design | "Change Record 261 — reject the zero recovery run identifier" |
+| docs/phase2/CHANGE_RECORD_262.md | Phase 2 design | "Change Record 262 — reuse verified T16 checkpoint on recovery" |
+| docs/phase2/CHANGE_RECORD_263.md | Phase 2 design | "Change Record 263 — preallocate kill-switch recovery run ID" |
+| docs/phase2/CHANGE_RECORD_264.md | Phase 2 design | "Change Record 264 — reject zero preallocated S13 identities" |
+| docs/phase2/CHANGE_RECORD_265.md | Phase 2 design | "Change Record 265 — require an exact caller-class selector" |
+| docs/phase2/CHANGE_RECORD_266.md | Phase 2 design | "Change Record 266 — close cancel-permit key-lock planning" |
+| docs/phase2/CHANGE_RECORD_267.md | Phase 2 design | "Change Record 267 — close revoke-change key-lock planning" |
+| docs/phase2/CHANGE_RECORD_268.md | Phase 2 design | "Change Record 268 — fail closed on mismatched recovery key locks" |
+| docs/phase2/CHANGE_RECORD_269.md | Phase 2 design | "Change Record 269 — reject cross-scope owned key locks" |
+| docs/phase2/CHANGE_RECORD_270.md | Phase 2 design | "Change Record 270 — S13 owned-key-lock scope closure" |
+| docs/phase2/CHANGE_RECORD_271.md | Phase 2 design | "Change Record 271 — target-lock and writer-lease owner scope" |
+| docs/phase2/CHANGE_RECORD_272.md | Phase 2 design | "Change Record 272 — ephemeral approved-payload values for COM" |
+| docs/phase2/CHANGE_RECORD_273.md | Phase 2 design | "Change Record 273 — guarded CT14 metadata-only inventory" |
+| docs/phase2/CHANGE_RECORD_274.md | Phase 2 design | "Change Record 274 — S13 lifecycle-trigger cutover" |
+| docs/phase2/CHANGE_RECORD_275.md | Phase 2 design | "Change Record 275 — fail closed on legacy writer-epoch checks in S13 mode" |
+| docs/phase2/CHANGE_RECORD_276.md | Phase 2 design | "Change Record 276 — retire the legacy fence check from S13 writer authority" |
+| docs/phase2/CHANGE_RECORD_277.md | Phase 2 design | "Change Record 277 — bind the Windows COM lane to its expected 1C user" |
+| docs/phase2/CHANGE_RECORD_278.md | Phase 2 design | "Change Record 278 — allocate one bounded aggregate recovery batch" |
+| docs/phase2/CHANGE_RECORD_279.md | Phase 2 design | "Change Record 279 — cap stale-revocation batches by aggregate closure" |
+| docs/phase2/CHANGE_RECORD_280.md | Phase 2 design | "Change Record 280 — pre-fence the VERIFY counter identity" |
+| docs/phase2/CHANGE_RECORD_281.md | Phase 2 design | "Change Record 281 — prevent cross-base call-ID lookup disclosure" |
+| docs/phase2/CHANGE_RECORD_282.md | Phase 2 design | "Change Record 282 — bound S12 envelope decoder structure" |
+| docs/phase2/CHANGE_RECORD_283.md | Phase 2 design | "Change Record 283 — bound private-writer JSON structure before decoding" |
+| docs/phase2/CHANGE_RECORD_284.md | Phase 2 design | "Change Record 284 — revalidate the bounded stale-revocation prefix" |
+| docs/phase2/CHANGE_RECORD_285.md | Phase 2 design | "Change Record 285 — preserve combined recovery stage rank" |
+| docs/phase2/CHANGE_RECORD_286.md | Phase 2 design | "Change Record 286 — close lifecycle-fence and scope revalidation gaps" |
+| docs/phase2/CHANGE_RECORD_287.md | Phase 2 design | "Change Record 287 — hold serving authority across private-writer dispatch" |
+| docs/phase2/CHANGE_RECORD_288.md | Phase 2 design | "Change Record 288 — keep serving mutex ownership off the event-loop thread" |
+| docs/phase2/CHANGE_RECORD_289.md | Phase 2 design | "Change Record 289 — drain private-writer operations before runtime close" |
+| docs/phase2/CHANGE_RECORD_290.md | Phase 2 design | "Change Record 290 — bound the complete private-writer close sequence" |
+| docs/phase2/CHANGE_RECORD_291.md | Phase 2 design | "Change Record 291 — drain accepted control operations during runtime shutdown" |
+| docs/phase2/CHANGE_RECORD_292.md | Phase 2 design | "Change Record 292 — keep Windows mutex waits off the service event loop" |
+| docs/phase2/CHANGE_RECORD_293.md | Phase 2 design | "Change Record 293 — make mutex owner-thread close single-flight" |
+| docs/phase2/CHANGE_RECORD_294.md | Phase 2 design | "Change Record 294 — bind private ingress to prepared runtime lifecycle" |
+| docs/phase2/CHANGE_RECORD_295.md | Phase 2 design | "Change Record 295 — require runtime ownership for every private ingress factory" |
+| docs/phase2/CHANGE_RECORD_296.md | Phase 2 design | "Change Record 296 — reject mismatched resource FK owners before row locking" |
+| docs/phase2/CHANGE_RECORD_297.md | Phase 2 design | "Change Record 297 — bound revoke-stale resource snapshots and lock acquisition" |
+| docs/phase2/CHANGE_RECORD_298.md | Phase 2 design | "Change Record 298 — align hold plans to target registry identity" |
+| docs/phase2/CHANGE_RECORD_299.md | Phase 2 design | "Change Record 299 — bound combined anchor-check row plans" |
+| docs/phase2/CHANGE_RECORD_300.md | Phase 2 design | "Change Record 300 — revalidate release-claim mutation preconditions" |
+| docs/phase2/CHANGE_RECORD_301.md | Phase 2 design | "Change Record 301 — preserve idempotent kill-switch OFF" |
+| docs/phase2/CHANGE_RECORD_302.md | Phase 2 design | "Change Record 302 — make lease-generation comparison null-safe" |
+| docs/phase2/CHANGE_RECORD_303.md | Phase 2 design | "Change Record 303 — refuse stale lease generations before child locks" |
+| docs/phase2/CHANGE_RECORD_304.md | Phase 2 design | "Change Record 304 — reduce bounded trust-payload preflight overhead" |
+| docs/phase2/CHANGE_RECORD_305.md | Phase 2 design | "Change Record 305 — add safe DPAPI signer-key provisioning primitive" |
+| docs/phase2/CHANGE_RECORD_306.md | Phase 2 design | "Change Record 306 — quote S13 binding session-user identifiers" |
+| docs/phase2/CHANGE_RECORD_307.md | Phase 2 design | "Change Record 307 — normalize private-writer ACLs across the candidate schema" |
+| docs/phase2/CHANGE_RECORD_308.md | Phase 2 design | "Change Record 308 — bound driver-decoded trust snapshots" |
+| docs/phase2/CHANGE_RECORD_309.md | Phase 2 design | "Change Record 309 — refuse dispatch while a cancelled call is retained" |
+| docs/phase2/CHANGE_RECORD_310.md | Phase 2 design | "Change Record 310 — reject non-finite PostgreSQL budget values" |
+| docs/phase2/CHANGE_RECORD_311.md | Phase 2 design | "Change Record 311 — constrain new budget NaN rows" |
+| docs/phase2/CHANGE_RECORD_312.md | Phase 2 design | "Change Record 312 — bound Content-Length comparison before integer parsing" |
+| docs/phase2/CHANGE_RECORD_313.md | Phase 2 design | "Change Record 313 — bound attempt-context UTF-8 sizing allocations" |
+| docs/phase2/CHANGE_RECORD_314.md | Phase 2 design | "Change Record 314 — bound COM current-user identity before encoding" |
+| docs/phase2/CHANGE_RECORD_315.md | Phase 2 design | "Change Record 315 — cap Authorization input before ASCII decoding" |
+| docs/phase2/CHANGE_RECORD_316.md | Phase 2 design | "Change Record 316 — skip generated array types during ACL normalization" |
+| docs/phase2/CHANGE_RECORD_317.md | Phase 2 design | "Change record 317 — S13 persisted evidence resolver and production verification boundary" |
+| docs/phase2/CHANGE_RECORD_318.md | Phase 2 design | "Change record 318 — checkpoint runtime authority fail-closed contract" |
+| docs/phase2/CHANGE_RECORD_319.md | Phase 2 design | "Change record 319 — S14 approved-payload COM value binding evidence" |
+| docs/phase2/CHANGE_RECORD_320.md | Phase 2 design | "Change record 320 — disposable PostgreSQL effective-grant snapshot" |
+| docs/phase2/CHANGE_RECORD_321.md | Phase 2 design | "Change record 321 — S13 universal-fence qualification slice" |
+| docs/phase2/CHANGE_RECORD_322.md | Phase 2 design | "Change record 322 — S13 repair claim target-lock handoff" |
+| docs/phase2/CHANGE_RECORD_323.md | Phase 2 design | "Change record 323 — S13 barrier acknowledgement replay and adapter bridge reachability" |
+| docs/phase2/CHANGE_RECORD_324.md | Phase 2 design | "Change record 324 — Canonical S13 physical barrier acknowledgement protocol" |
+| docs/phase2/CHANGE_RECORD_325.md | Phase 2 design | "Change record 325 — S13 barrier acknowledgement production trust and replay path" |
+| docs/phase2/CHANGE_RECORD_326.md | Phase 2 design | "Change record 326 — bind S13 production evidence composition" |
+| docs/phase2/CHANGE_RECORD_327.md | Phase 2 design | "Change record 327 — verify DPAPI provisioning round-trip before publication" |
+| docs/phase2/CHANGE_RECORD_328.md | Phase 2 design | "Change record 328 — bind barrier acknowledgement registration to an active writer" |
+| docs/phase2/CHANGE_RECORD_329.md | Phase 2 design | "Change record 329 — correct barrier acknowledgement composite field access" |
+| docs/phase2/CHANGE_RECORD_330.md | Phase 2 design | "Change record 330 — disambiguate supervisor revocation lookup in barrier ACK SQL" |
+| docs/phase2/CHANGE_RECORD_331.md | Phase 2 design | "Change record 331 — source-only validator build attestation verifier" |
+| docs/phase2/CHANGE_RECORD_332.md | Phase 2 design | "Change record 332 — S12 outcome-version downgrade binding and trust-source request contract" |
+| docs/phase2/CHANGE_RECORD_333.md | Phase 2 design | "Change record 333 — Ivan stack strict-SSH status recheck" |
+| docs/phase2/CHANGE_RECORD_334.md | Phase 2 design | "Change record 334 — close direct validator-provenance registration bypass" |
+| docs/phase2/CHANGE_RECORD_335.md | Phase 2 design | "Change record 335 — resolve barrier ACK replay state semantics" |
+| docs/phase2/CHANGE_RECORD_336.md | Phase 2 design | "Change record 336 — read-only effective-grants recheck" |
+| docs/phase2/CHANGE_RECORD_337.md | Phase 2 design | "Change record 337 — enforce repeatable-read trust snapshots in SQL" |
+| docs/phase2/CHANGE_RECORD_338.md | Phase 2 design | "Change record 338 — current transport recheck and remaining ERP_MCP gates" |
+| docs/phase2/CHANGE_RECORD_339.md | Phase 2 design | "Change record 339 — bridge write-port payloads to typed COM values" |
+| docs/phase2/CHANGE_RECORD_340.md | Phase 2 design | "Change Record 340 — local 1C license recheck" |
+| docs/phase2/CHANGE_RECORD_341.md | Phase 2 design | "Change Record 341 — Phase 2 test lane: named refusal codes and correct purchase call shape" |
+| docs/phase2/CHANGE_RECORD_342.md | Phase 2 design | "Change Record 342 — record the base mapping behind the 521.1 two-base mismatch" |
+| docs/phase2/CHANGE_RECORD_343.md | Phase 2 design | "Change Record 343 — mechanical ruff cleanup of four clean phase2 files" |
+| docs/phase2/CHANGE_RECORD_344.md | Phase 2 design | "Change Record 344 — preservation commit of the S13 private-writer candidate source and tests" |
+| docs/phase2/CHANGE_RECORD_345.md | Phase 2 design | "Change Record 345 — preservation commit of the Phase 2 documentation backlog" |
+| docs/phase2/CHANGE_RECORD_346.md | Phase 2 design | "Change Record 346 — fix an unreachable evidence registration and repair its red test" |
+| docs/phase2/CHANGE_RECORD_347.md | Phase 2 design | "Change Record 347 — mechanical ruff autofixes in the S13 private-writer source" |
+| docs/phase2/CHANGE_RECORD_348.md | Phase 2 design | "Change Record 348 — evidence registrar cancellation safety and error logging" |
+| docs/phase2/CHANGE_RECORD_349.md | Phase 2 design | "Change Record 349 — transport errors in evidence validation and migration harness results" |
+| docs/phase2/CHANGE_RECORD_350.md | Phase 2 design | "Change Record 350 — T16 recovery error mapping (review finding F4)" |
+| docs/phase2/CHANGE_RECORD_351.md | Phase 2 design | "Change Record 351 — private ingress diagnostics (review finding F5)" |
+| docs/phase2/CHANGE_RECORD_352.md | Phase 2 design | "Change Record 352 — trust snapshot source error mapping (review finding F6)" |
+| docs/phase2/CHANGE_RECORD_353.md | Phase 2 design | "Change Record 353 — fixes from the python and security review of 6ef051b" |
+| docs/phase2/CHANGE_RECORD_354.md | Phase 2 design | "Change Record 354 — migration 027 applied in a disposable database; privileges measured" |
+| docs/phase2/CHANGE_RECORD_355.md | Phase 2 design | "Change Record 355 — request-level tests of the private ingress" |
+| docs/phase2/CHANGE_RECORD_356.md | Phase 2 design | "Change Record 356 — ingress body-level tests" |
+| docs/phase2/CHANGE_RECORD_357.md | Phase 2 design | "Change Record 357 — Ivan reference source repointed to the read-only base" |
+| docs/phase2/CHANGE_RECORD_358.md | Phase 2 design | "Change Record 358 — stable public host for the lane IdP through Tailscale Funnel" |
+| docs/phase2/CHANGE_RECORD_359.md | Phase 2 design | "Change Record 359 — tests for the validation-path error mapping and the trust snapshot size" |
+| docs/phase2/CHANGE_RECORD_360.md | Phase 2 design | "Change Record 360 — 1C license obtained on Ivan's host; COM connection to the disposable clone works" |
+| docs/phase2/CHANGE_RECORD_361.md | Phase 2 design | "Change Record 361 — metadata-only inventory of the licensed disposable clone" |
+| docs/phase2/CHANGE_RECORD_362.md | Phase 2 design | "Change Record 362 — hardening of the host-side CT14 inventory script after the GPT-PM review" |
+| docs/phase2/CHANGE_RECORD_363.md | Phase 2 design | "Change Record 363 - classification of skipped phase 2 tests" |
+| docs/phase2/CHANGE_RECORD_364.md | Phase 2 design | "Change Record 364 - CT14 effective rights measured on the disposable clone" |
+| docs/phase2/CHANGE_RECORD_365.md | Phase 2 design | "Change Record 365 - draft payload-to-1C crosswalk for CREATE_DRAFT" |
+| docs/phase2/CHANGE_RECORD_366.md | Phase 2 design | "Change Record 366 - value types of the CREATE_DRAFT destinations (read-only)" |
+| docs/phase2/CHANGE_RECORD_367.md | Phase 2 design | "Change Record 367 - VAT code to enumeration table (draft, unresolved entries marked)" |
+| docs/phase2/CHANGE_RECORD_368.md | Phase 2 design | "Change Record 368 - VAT enumeration usage in the clone's receipt lines (read-only)" |
+| docs/phase2/CHANGE_RECORD_369.md | Phase 2 design | "Change Record 369 - closed value vocabulary for enumeration bindings" |
+| docs/phase2/CHANGE_RECORD_370.md | Phase 2 design | "Change Record 370 - amount recomputation when a goods line is set (in-memory probe)" |
+| docs/phase2/CHANGE_RECORD_371.md | Phase 2 design | "Change Record 371 - reviewer fixes for the value vocabulary and a write-time recomputation probe" |
+| docs/phase2/CHANGE_RECORD_372.md | Phase 2 design | "Change Record 372 - CORRECTION: the VAT enumeration names do not match their rates" |
+| docs/phase2/CHANGE_RECORD_373.md | Phase 2 design | "Change Record 373 - how the line VAT amount could be produced (options and measurement)" |
+| docs/phase2/CHANGE_RECORD_374.md | Phase 2 design | "Change Record 374 - the line VAT amount is part of the approved payload" |
+| docs/phase2/CHANGE_RECORD_375.md | Phase 2 design | "Change Record 375 - reviewed closed table from payload VAT codes to 1C enumeration values (draft)" |
+| docs/phase2/CHANGE_RECORD_376.md | Phase 2 design | "Change Record 376 - SQL-backed phase 2 tests run for the first time since migration 018" |
+| docs/phase2/CHANGE_RECORD_377.md | Phase 2 design | "Change Record 377 - the capacity drill can no longer be pointed at a non-disposable container (GPT-PM M-01)" |
+| docs/phase2/CHANGE_RECORD_378.md | Phase 2 design | "Change Record 378 - design draft for the COM CREATE_DRAFT executor" |
+| docs/phase2/CHANGE_RECORD_379.md | Phase 2 design | "Change Record 379 - COM CREATE_DRAFT executor (fake-COM tested, not yet run against 1C)" |
+| docs/phase2/CHANGE_RECORD_380.md | Phase 2 design | "Change Record 380 - COM CREATE_DRAFT executor hardened by two reviews and by real-clone probes" |
+| docs/phase2/CHANGE_RECORD_381.md | Phase 2 design | "Change Record 381 - COM draft executor: dates, VAT-line read-back, least-privilege role with Read on four catalogs" |
+| docs/phase2/CHANGE_RECORD_382.md | Phase 2 design | "Change Record 382 - COM draft executor: fixes from two independent reviews of CR-381" |
+| docs/phase2/CHANGE_RECORD_383.md | Phase 2 design | "Change Record 383 - COM draft executor: read-back comparison by destination type (GPT-PM M-01)" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -350,19 +630,27 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md | Phase 2 design | "S12-APPROVAL-2: shared canonical approval digest (design specification)" |
 | docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md | Phase 2 design | "S12 Contract Freeze v2.0 — governed purchase receipt write" |
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
+| docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md | Phase 2 design | "S12/S13 disposable qualification prerequisites" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
 | docs/phase2/S13_API_MUTATION_FENCE_COVERAGE_2026-10-17.md | Phase 2 design | "S13 API mutation and lifecycle-fence coverage — 2026-10-17" |
 | docs/phase2/S13_BUSINESS_KEY_LOCK_ORDER_NOTE_2026-10-22.md | Phase 2 design | "S13 business-key mutation and validation lock note" |
+| docs/phase2/S13_EVIDENCE_REGISTRATION_CONTEXT_DESIGN_2026-10-24.md | Phase 2 design | "S13 evidence registration context boundary — 2026-10-24" |
 | docs/phase2/S13_IVAN_PRIVATE_WRITER_SERVICE_DESIGN_2026-10-22.md | Phase 2 design | "S13 private writer service design for Ivan's licensed lane" |
 | docs/phase2/S13_KILL_SWITCH_RECOVERY_DESIGN.md | Phase 2 design | "S13 design: keep kill switch active until recovery completes" |
+| docs/phase2/S13_LIFECYCLE_RANK_RECONCILIATION_2026-10-25.md | Phase 2 design | "S13 lifecycle-row lock-rank reconciliation" |
 | docs/phase2/S13_MUTATION_AND_WRITER_PATH_INVENTORY_2026-10-17.md | Phase 2 design | "S13 repository mutation and writer-path inventory — 2026-10-17" |
+| docs/phase2/S13_POSTGRES_ADMISSION_SCHEMA_DESIGN_2026-10-22.md | Phase 2 design | "S13 PostgreSQL admission and barrier schema design" |
+| docs/phase2/S13_PYTHON_UUID_CONTRACT_2026-10-25.md | Phase 2 design | "S13 Python UUID contract" |
 | docs/phase2/S13_REVIEW_FINDINGS_2026-10-12.md | Phase 2 design | "S12/S13 independent code review findings and remediation batches (2026-10-12)" |
 | docs/phase2/S13_SCOPE_FENCE_IMPLEMENTATION_DESIGN_2026-10-22.md | Phase 2 design | "S13 scope-fence implementation design" |
 | docs/phase2/S13_SOURCE_FINAL_GRANT_AND_LOCK_INVENTORY_2026-10-22.md | Phase 2 design | "S13 source-final grant and lock inventory — 2026-10-22" |
 | docs/phase2/S13_STARTUP_RESTORE_LIFECYCLE_DESIGN_2026-10-17.md | Phase 2 design | "S13 startup and restore lifecycle design" |
+| docs/phase2/S13_VALIDATOR_BUILD_ATTESTATION_DESIGN_2026-10-27.md | Phase 2 design | "S13 validator build-attestation design" |
 | docs/phase2/S13_WRITER_BOUNDARY_CLAIM_AND_RECOVERY_CONTRACT_2026-10-17.md | Phase 2 design | "S13 writer-boundary claim and recovery contract" |
 | docs/phase2/S14-S19_SPRINT_PLANS_AND_ACCEPTANCE_MAP_2026-10-17.md | Phase 2 design | "S14–S19 sprint plans and acceptance map — 2026-10-17" |
+| docs/phase2/S14_COM_DRAFT_EXECUTOR_DESIGN_2026-10-27.md | Phase 2 design | "S14 COM CREATE_DRAFT executor - design for the clone-only qualification (draft)" |
+| docs/phase2/S14_COM_EPHEMERAL_VALUE_BINDING_DESIGN_2026-10-25.md | Phase 2 design | "S14 COM payload-value binding design" |
 | docs/phase2/S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md | Phase 2 design | "S14 Risk and Gate Closure Packet — 2026-10-15" |
 | docs/phase2/S14_SIMULATED_WRITE_PORT_DESIGN_2026-10-17.md | Phase 2 design | "Local simulated `OneCWritePort` design" |
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
@@ -392,8 +680,21 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | docs/phase2/artifacts/PHASE2_TESTLANE_MCP_DESIGN.md | Phase 2 design | "Phase 2 test-lane MCP server: design (stage 1)" |
 | docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md | Phase 2 design | "Remote 1C host (Ivan): independent test environment and MCP stack - runbook" |
 | docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md | Phase 2 design | "WP0 access and source recheck — 2026-10-22" |
+| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md | Phase 2 design | "WP0 access and source recheck — 2026-10-24" |
+| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-25.md | Phase 2 design | "WP0 access and source recheck — 2026-10-25" |
+| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-27.md | Phase 2 design | "WP0 access and two-base reconciliation recheck, 2026-10-27" |
+| docs/phase2/artifacts/WP0_IVAN_READONLY_STACK_STATUS_2026-10-25.md | Phase 2 design | "WP0 Ivan stack status — read-only recheck" |
+| docs/phase2/artifacts/WP0_IVAN_STACK_STATUS_2026-10-26.md | Phase 2 design | "WP0 Ivan stack status — 2026-10-26 read-only recheck" |
+| docs/phase2/artifacts/WP0_LOCAL_LICENSE_RECHECK_2026-10-27.md | Phase 2 design | "Local 1C License Recheck — 2026-10-27" |
+| docs/phase2/artifacts/WP0_LOCAL_MCP_AND_IVAN_READONLY_RECHECK_2026-10-25.md | Phase 2 design | "WP0 local MCP and Ivan stack recheck — 2026-10-25" |
 | docs/phase2/artifacts/WP0_MCP_ACCESS_RECHECK_2026-10-22.md | Phase 2 design | "WP0 MCP connection and permission recheck" |
 | docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md | Phase 2 design | "WP0 source liveness check — 2026-10-21" |
+| docs/phase2/artifacts/WP0_WP2_CURRENT_TURN_RECHECK_2026-10-26.md | Phase 2 design | "WP0/WP2 current-turn recheck — 2026-10-26" |
+| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_CURRENT_TURN_2026-10-25.md | Phase 2 design | "WP2 effective-grants current-turn observation — 2026-10-25" |
+| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md | Phase 2 design | "WP2 effective-grants recheck — 2026-10-22" |
+| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-24.md | Phase 2 design | "WP2 effective database-grant recheck — 2026-10-24" |
+| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-25.md | Phase 2 design | "WP2/S13 effective-grants recheck — 2026-10-25" |
+| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-26.md | Phase 2 design | "WP2 Effective Grants Recheck — 2026-10-26" |
 | docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md | Phase 2 design | "WP2 inherited red-test classification — 2026-10-21" |
 | docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md | Phase 2 design | "Autonomous work packages WP4–WP10: dependency status — 2026-10-21" |
 | docs/phase2/spec-v0.1/ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08/README.md | Phase 2 design | "Derived Phase 2 specification bundle" |
@@ -492,7 +793,7 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `3e12436bc874f6aa12b33cdee1ef6111ee33b25c` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `de7cd6d6a2131ac4af2973d288da9e1c555a9256` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
@@ -521,6 +822,7 @@ Inventory: 459 tracked paths, 110 local-only paths.
 | refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e | `c54be14ee82b5dd2b5c8a52d988b8cf7229527a3` |
 | refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307 | `d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39` |
 | refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
+| refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21 | `de7cd6d6a2131ac4af2973d288da9e1c555a9256` |
 | refs/remotes/origin/docs/english-only-translation-20261010 | `8d17448cf2788f48a2b3f26eb70800cefed4d992` |
 | refs/remotes/origin/docs/public-readme-install-guide-20261009 | `26324d43e9d42af8512f0f531f98770c0cf7daa0` |
 | refs/remotes/origin/integration/1c-mvp-production-candidate | `78493a3ab5a5d7309aeadd1af21c6b69b6d03448` |
@@ -532,113 +834,3 @@ Inventory: 459 tracked paths, 110 local-only paths.
 
 | Path |
 | --- |
-| docs/adr/ADR-0009-private-test-writer.md |
-| docs/commits/2026-10-22-branch-reconciliation.md |
-| docs/commits/2026-10-22-commit-record-audit.md |
-| docs/commits/2026-10-22-e2e-startup-restriction.md |
-| docs/commits/2026-10-22-erp-mcp-gpt-pm-route-correction.md |
-| docs/commits/2026-10-22-git-staging-process-correction.md |
-| docs/commits/2026-10-22-s13-admission-schema-design.md |
-| docs/commits/2026-10-22-s13-barrier-snapshot-order.md |
-| docs/commits/2026-10-22-s13-grant-lock-inventory.md |
-| docs/commits/2026-10-22-wp0-remote-gateway-read-transport.md |
-| docs/commits/2026-10-22-wp2-effective-grants-recheck.md |
-| docs/commits/2026-10-22-wp3-english-prose-pass.md |
-| docs/commits/2026-10-22-wp3-exception-policy.md |
-| docs/commits/2026-10-22-wp3-remove-stale-line-exceptions.md |
-| docs/commits/2026-10-22-wp3-source-evidence-boundary.md |
-| docs/commits/2026-10-23-s13-budget-grant-rank-qualification.md |
-| docs/commits/2026-10-23-s13-fg-m01-inventory-boundary-correction.md |
-| docs/commits/2026-10-23-s13-proposal-target-rank-qualification.md |
-| docs/commits/2026-10-23-s13-recovery-affected-row-closure.md |
-| docs/commits/2026-10-23-s13-restart-recovery-contract.md |
-| docs/commits/2026-10-23-s13-ta-terminal-recovery-latch.md |
-| docs/commits/2026-10-23-s13-token-lock-order-qualification.md |
-| docs/commits/2026-10-24-s13-epoch-dependency-v1.md |
-| docs/commits/2026-10-24-s13-evidence-registration-context-boundary.md |
-| docs/commits/2026-10-24-s13-failed-verify-scc-review.md |
-| docs/commits/2026-10-24-s13-invocation-context-validation.md |
-| docs/commits/2026-10-24-s13-legacy-mutator-cutover-acl.md |
-| docs/commits/2026-10-24-s13-lifecycle-trigger-cutover.md |
-| docs/commits/2026-10-24-s13-observe-target-cutover.md |
-| docs/commits/2026-10-24-s13-source-crosswalk-reconciliation.md |
-| docs/commits/2026-10-24-s13-terminal-recovery-readiness.md |
-| docs/commits/2026-10-24-s13-verification-worker-cutover.md |
-| docs/commits/2026-10-24-wp0-listener-refresh.md |
-| docs/commits/2026-10-24-wp0-ssh-inventory.md |
-| docs/commits/2026-10-24-wp5-checkpoint-signer-domains.md |
-| docs/commits/2026-10-24-wp5-production-trust-source.md |
-| docs/commits/2026-10-24-wp5-strict-trust-json-decoding.md |
-| docs/commits/2026-10-25-s13-anchor-check-parent-first-v1.md |
-| docs/commits/2026-10-25-s13-budget-admin-writer-v1.md |
-| docs/commits/2026-10-25-s13-business-key-writer-v1.md |
-| docs/commits/2026-10-25-s13-claim-parent-first-v1.md |
-| docs/commits/2026-10-25-s13-declare-target-class-v1.md |
-| docs/commits/2026-10-25-s13-dispatch-receipt-requirement-v1.md |
-| docs/commits/2026-10-25-s13-dispatch-receipt-v1.md |
-| docs/commits/2026-10-25-s13-evidence-barrier-lock-order.md |
-| docs/commits/2026-10-25-s13-evidence-replay-v1.md |
-| docs/commits/2026-10-25-s13-fenced-epoch-writers.md |
-| docs/commits/2026-10-25-s13-gap-bound-report-order.md |
-| docs/commits/2026-10-25-s13-global-id-preflight-before-rows.md |
-| docs/commits/2026-10-25-s13-observe-target-replay-v1.md |
-| docs/commits/2026-10-25-s13-open-hold-ranked-candidates.md |
-| docs/commits/2026-10-25-s13-override-binding-replay-v1.md |
-| docs/commits/2026-10-25-s13-private-writer-nil-uuid-admission.md |
-| docs/commits/2026-10-25-s13-recovery-eligibility-report.md |
-| docs/commits/2026-10-25-s13-recovery-event-guard.md |
-| docs/commits/2026-10-25-s13-recovery-void-rank-v1.md |
-| docs/commits/2026-10-25-s13-release-claim-parent-first-v1.md |
-| docs/commits/2026-10-25-s13-release-hold-parent-first-v1.md |
-| docs/commits/2026-10-25-s13-renew-writer-lease-parent-first-v1.md |
-| docs/commits/2026-10-25-s13-sweep-policy-v1.md |
-| docs/commits/2026-10-25-s13-t12-first-pass-isolation.md |
-| docs/commits/2026-10-25-s13-verifier-key-serialization.md |
-| docs/commits/2026-10-25-s13-verify-dispatch-payload-v1.md |
-| docs/commits/2026-10-25-wp0-ivan-stack-status.md |
-| docs/phase2/CHANGE_RECORD_171.md |
-| docs/phase2/CHANGE_RECORD_172.md |
-| docs/phase2/CHANGE_RECORD_173.md |
-| docs/phase2/CHANGE_RECORD_174.md |
-| docs/phase2/CHANGE_RECORD_175.md |
-| docs/phase2/CHANGE_RECORD_176.md |
-| docs/phase2/CHANGE_RECORD_177.md |
-| docs/phase2/CHANGE_RECORD_178.md |
-| docs/phase2/CHANGE_RECORD_180.md |
-| docs/phase2/CHANGE_RECORD_181.md |
-| docs/phase2/CHANGE_RECORD_182.md |
-| docs/phase2/CHANGE_RECORD_183.md |
-| docs/phase2/CHANGE_RECORD_184.md |
-| docs/phase2/CHANGE_RECORD_185.md |
-| docs/phase2/CHANGE_RECORD_186.md |
-| docs/phase2/CHANGE_RECORD_187.md |
-| docs/phase2/CHANGE_RECORD_188.md |
-| docs/phase2/CHANGE_RECORD_189.md |
-| docs/phase2/CHANGE_RECORD_190.md |
-| docs/phase2/CHANGE_RECORD_191.md |
-| docs/phase2/CHANGE_RECORD_192.md |
-| docs/phase2/CHANGE_RECORD_193.md |
-| docs/phase2/CHANGE_RECORD_194.md |
-| docs/phase2/CHANGE_RECORD_195.md |
-| docs/phase2/CHANGE_RECORD_196.md |
-| docs/phase2/CHANGE_RECORD_197.md |
-| docs/phase2/CHANGE_RECORD_198.md |
-| docs/phase2/CHANGE_RECORD_199.md |
-| docs/phase2/CHANGE_RECORD_200.md |
-| docs/phase2/CHANGE_RECORD_201.md |
-| docs/phase2/CHANGE_RECORD_202.md |
-| docs/phase2/CHANGE_RECORD_203.md |
-| docs/phase2/CHANGE_RECORD_204.md |
-| docs/phase2/CHANGE_RECORD_205.md |
-| docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md |
-| docs/phase2/S13_EVIDENCE_REGISTRATION_CONTEXT_DESIGN_2026-10-24.md |
-| docs/phase2/S13_LIFECYCLE_RANK_RECONCILIATION_2026-10-25.md |
-| docs/phase2/S13_POSTGRES_ADMISSION_SCHEMA_DESIGN_2026-10-22.md |
-| docs/phase2/S13_PYTHON_UUID_CONTRACT_2026-10-25.md |
-| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md |
-| docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-25.md |
-| docs/phase2/artifacts/WP0_LOCAL_MCP_AND_IVAN_READONLY_RECHECK_2026-10-25.md |
-| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_CURRENT_TURN_2026-10-25.md |
-| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-22.md |
-| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-24.md |
-| docs/phase2/artifacts/WP2_EFFECTIVE_GRANTS_RECHECK_2026-10-25.md |
