@@ -5,7 +5,6 @@ import asyncio
 import time
 from typing import Any
 
-
 PRIVATE_WRITER_SESSION_USER = "business_ai_private_writer"
 EVIDENCE_INGEST_SESSION_USER = "private_writer_evidence_ingest"
 

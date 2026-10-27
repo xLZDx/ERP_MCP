@@ -14,21 +14,18 @@ from dataclasses import dataclass, field
 import asyncpg
 
 from business_ai_gateway.phase2.change_ledger.write_port import (
-    OneCWritePort,
     NonOperationalWritePort,
+    OneCWritePort,
 )
 
-from .dependency_shape import has_static_callable_method
 from .barrier_ack_verifier import ProductionBarrierAcknowledgementVerifier
+from .dependency_shape import has_static_callable_method
 from .postgres_barrier_ack_registrar import PostgresBarrierAcknowledgementRegistrar
 from .postgres_barrier_ack_trust import PostgresBarrierAcknowledgementTrustSource
 from .postgres_evidence_registrar import PostgresWriterReceiptRegistrar
 from .postgres_evidence_resolver import PostgresWriterEvidenceResolver
 from .postgres_outcome_provider import PostgresOutcomeEvidenceProvider
 from .postgres_store import PostgresAdmissionStore
-from .validator_build_attestation import (
-    ValidatorBuildAttestationVerifier,
-)
 from .service import (
     BarrierAcknowledgementVerifier,
     OutcomeEvidenceProvider,
@@ -37,8 +34,10 @@ from .service import (
     WriterEvidenceResolver,
     WriterReceiptVerifier,
 )
+from .validator_build_attestation import (
+    ValidatorBuildAttestationVerifier,
+)
 from .windows_authority_mutex import WindowsServingAuthorityMutex
-
 
 _MAX_RUNTIME_CLOSE_SECONDS = 300.0
 

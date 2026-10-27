@@ -15,18 +15,16 @@ from .barrier_ack_protocol import (
     validate_barrier_acknowledgement,
 )
 from .barrier_ack_verifier import BarrierAcknowledgementTrustContext
-from .evidence_trust import EvidenceScope
 from .postgres_evidence_trust import (
     PostgresEvidenceTrustSource,
+    _bounded_json_integer,
     _check_json_text_limits,
     _measure_json_value,
+    _reject_nonfinite_constant,
     _scope,
     _unique_object,
-    _reject_nonfinite_constant,
-    _bounded_json_integer,
 )
 from .postgres_identity import EVIDENCE_INGEST_SESSION_USER, has_expected_database_identity
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 _MAX_PAYLOAD_CHARS = 16 * 1024 * 1024
@@ -85,7 +83,7 @@ class PostgresBarrierAcknowledgementTrustSource:
             raise
         except asyncio.CancelledError:
             raise
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise BarrierAcknowledgementTrustSourceError(
                 "BARRIER_ACK_TRUST_TIMEOUT",
             ) from None

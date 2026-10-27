@@ -26,11 +26,11 @@ from business_ai_gateway.phase2.change.evidence import (
     PostCompletionReadAttestation,
 )
 from business_ai_gateway.phase2.change_ledger.uuid_contract import is_canonical_nonzero_uuid
+
 from .postgres_identity import (
     EVIDENCE_INGEST_SESSION_USER,
     has_expected_database_identity,
 )
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 # Nine SQL-bounded text columns can each occupy 2,048 UTF-8 bytes and expand sixfold when
@@ -239,7 +239,7 @@ class PostgresEvidenceAttemptSource:
             if sqlstate == "42501":
                 raise EvidenceAttemptSourceError("EVIDENCE_ATTEMPT_NOT_AUTHORIZED") from None
             raise EvidenceAttemptSourceError("EVIDENCE_ATTEMPT_LOOKUP_FAILED") from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise EvidenceAttemptSourceError("EVIDENCE_ATTEMPT_LOOKUP_TIMEOUT") from None
         except Exception:
             raise EvidenceAttemptSourceError("EVIDENCE_ATTEMPT_LOOKUP_FAILED") from None

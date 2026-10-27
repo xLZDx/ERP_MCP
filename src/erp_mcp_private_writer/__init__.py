@@ -1,54 +1,7 @@
 """Private, non-public orchestration for the licensed-lane writer process."""
 
-from .service import (
-    AdmissionDecision,
-    AdmissionRefusal,
-    AdmissionState,
-    BarrierProgress,
-    BarrierSnapshot,
-    CallIdentity,
-    CallSnapshot,
-    OutcomeEvidenceProvider,
-    PrivateWriterService,
-    ServiceError,
-    StartupRecoveryState,
-    SuccessfulOutcomeEvidence,
-    T16ResolutionPreparation,
-    WriterReceiptVerifier,
-)
-from .postgres_store import PostgresAdmissionStore
-from .evidence_key_resolver import EvidenceKeyResolutionError, PostgresEvidenceKeyResolver
-from .postgres_evidence_trust import EvidenceTrustSourceError, PostgresEvidenceTrustSource
-from .postgres_attempt_source import (
-    EvidenceAttemptContext,
-    EvidenceAttemptSourceError,
-    PostgresEvidenceAttemptSource,
-)
-from .postgres_evidence_resolver import (
-    PostgresWriterEvidenceResolver,
-    WriterEvidenceResolutionError,
-)
-from .postgres_evidence_registrar import (
-    ApprovedValidatorBuild,
-    EvidenceRegistrationError,
-    PostgresWriterReceiptRegistrar,
-)
-from .validator_build_attestation import (
-    ATTESTATION_DOMAIN,
-    MAX_TRUST_SNAPSHOT_AGE_SECONDS,
-    MAX_ATTESTATION_BYTES,
-    ProductionValidatorBuildInputsSource,
-    RuntimeValidatorArtifact,
-    ValidatorBuildAttestationError,
-    ValidatorBuildAttestationInputs,
-    ValidatorBuildAttestationInputsSource,
-    ValidatorBuildAttestationVerifier,
-    ValidatorBuildPolicy,
-    ValidatorBuildProvenanceSource,
-    ValidatorBuildTrustKey,
-    ValidatorBuildTrustSnapshot,
-    derive_validator_build_id,
-)
+from business_ai_gateway.phase2.change_ledger.write_port import InvocationContext
+
 from .barrier_ack_verifier import (
     BarrierAcknowledgementRegistrar,
     BarrierAcknowledgementTrustContext,
@@ -58,40 +11,10 @@ from .barrier_ack_verifier import (
     ProductionBarrierAcknowledgementVerifier,
     build_postgres_barrier_acknowledgement_verifier,
 )
-from .postgres_barrier_ack_registrar import (
-    BarrierAcknowledgementRegistrationError,
-    PostgresBarrierAcknowledgementRegistrar,
-)
-from .postgres_barrier_ack_trust import (
-    BarrierAcknowledgementTrustSourceError,
-    PostgresBarrierAcknowledgementTrustSource,
-)
-from .evidence_trust import (
-    EvidenceScope,
-    EvidenceTrustSnapshot,
-    OutcomeVersionFloor,
-    ProductionEvidenceTrustSource,
-    SignerKeyRef,
-    TrustSnapshotRequest,
-    TrustedOracleArtifact,
-    TrustedProcessBinding,
-    TrustedSigner,
-)
-from .production_evidence_verifier import (
-    EvidenceRecord,
-    ProductionEvidenceVerificationError,
-    ProductionEvidenceVerifier,
-    VerifiedEvidenceRecord,
-)
-from .runtime_composition import PrivateWriterRuntime, compose_private_writer_runtime
-from .postgres_outcome_provider import (
-    OutcomeEvidenceBundleSource,
-    PostgresOutcomeEvidenceProvider,
-)
-from .t16_recovery import T16RecoveryCoordinator, T16RecoveryError, T16RecoveryResult
+from .checkpoint_signer_adapter import CheckpointSignerHexAdapter
 from .com_manifest import (
-    ComValueAssignment,
     ComOperationManifest,
+    ComValueAssignment,
     MappedPropertyAssignment,
     PayloadPropertyBinding,
     PreparedComManifest,
@@ -102,12 +25,46 @@ from .com_manifest import (
     mapped_property_manifest_sha256,
 )
 from .dpapi_signer import DpapiSignerError, WindowsDpapiEd25519Signer, verify_ed25519
-from .signer_provisioning import (
-    ProvisionedEd25519PublicKey,
-    SignerProvisioningError,
-    provision_windows_dpapi_ed25519_key,
+from .evidence_key_resolver import EvidenceKeyResolutionError, PostgresEvidenceKeyResolver
+from .evidence_trust import (
+    EvidenceScope,
+    EvidenceTrustSnapshot,
+    OutcomeVersionFloor,
+    ProductionEvidenceTrustSource,
+    SignerKeyRef,
+    TrustedOracleArtifact,
+    TrustedProcessBinding,
+    TrustedSigner,
+    TrustSnapshotRequest,
 )
-from .checkpoint_signer_adapter import CheckpointSignerHexAdapter
+from .postgres_attempt_source import (
+    EvidenceAttemptContext,
+    EvidenceAttemptSourceError,
+    PostgresEvidenceAttemptSource,
+)
+from .postgres_barrier_ack_registrar import (
+    BarrierAcknowledgementRegistrationError,
+    PostgresBarrierAcknowledgementRegistrar,
+)
+from .postgres_barrier_ack_trust import (
+    BarrierAcknowledgementTrustSourceError,
+    PostgresBarrierAcknowledgementTrustSource,
+)
+from .postgres_evidence_registrar import (
+    ApprovedValidatorBuild,
+    EvidenceRegistrationError,
+    PostgresWriterReceiptRegistrar,
+)
+from .postgres_evidence_resolver import (
+    PostgresWriterEvidenceResolver,
+    WriterEvidenceResolutionError,
+)
+from .postgres_evidence_trust import EvidenceTrustSourceError, PostgresEvidenceTrustSource
+from .postgres_outcome_provider import (
+    OutcomeEvidenceBundleSource,
+    PostgresOutcomeEvidenceProvider,
+)
+from .postgres_store import PostgresAdmissionStore
 from .private_auth import (
     PRIVATE_WRITER_AUDIENCE,
     PRIVATE_WRITER_SCOPE,
@@ -124,110 +81,154 @@ from .private_authorization import (
     TicketPermitVerifier,
 )
 from .private_ingress import create_private_writer_app, create_private_writer_runtime_app
-from business_ai_gateway.phase2.change_ledger.write_port import InvocationContext
+from .production_evidence_verifier import (
+    EvidenceRecord,
+    ProductionEvidenceVerificationError,
+    ProductionEvidenceVerifier,
+    VerifiedEvidenceRecord,
+)
+from .runtime_composition import PrivateWriterRuntime, compose_private_writer_runtime
+from .service import (
+    AdmissionDecision,
+    AdmissionRefusal,
+    AdmissionState,
+    BarrierProgress,
+    BarrierSnapshot,
+    CallIdentity,
+    CallSnapshot,
+    OutcomeEvidenceProvider,
+    PrivateWriterService,
+    ServiceError,
+    StartupRecoveryState,
+    SuccessfulOutcomeEvidence,
+    T16ResolutionPreparation,
+    WriterReceiptVerifier,
+)
+from .signer_provisioning import (
+    ProvisionedEd25519PublicKey,
+    SignerProvisioningError,
+    provision_windows_dpapi_ed25519_key,
+)
+from .t16_recovery import T16RecoveryCoordinator, T16RecoveryError, T16RecoveryResult
+from .validator_build_attestation import (
+    ATTESTATION_DOMAIN,
+    MAX_ATTESTATION_BYTES,
+    MAX_TRUST_SNAPSHOT_AGE_SECONDS,
+    ProductionValidatorBuildInputsSource,
+    RuntimeValidatorArtifact,
+    ValidatorBuildAttestationError,
+    ValidatorBuildAttestationInputs,
+    ValidatorBuildAttestationInputsSource,
+    ValidatorBuildAttestationVerifier,
+    ValidatorBuildPolicy,
+    ValidatorBuildProvenanceSource,
+    ValidatorBuildTrustKey,
+    ValidatorBuildTrustSnapshot,
+    derive_validator_build_id,
+)
 
 __all__ = [
+    "ATTESTATION_DOMAIN",
+    "MAX_ATTESTATION_BYTES",
+    "MAX_TRUST_SNAPSHOT_AGE_SECONDS",
+    "PRIVATE_WRITER_AUDIENCE",
+    "PRIVATE_WRITER_SCOPE",
     "AdmissionDecision",
     "AdmissionRefusal",
     "AdmissionState",
     "ApprovedValidatorBuild",
-    "ATTESTATION_DOMAIN",
-    "BarrierProgress",
     "BarrierAcknowledgementRegistrar",
     "BarrierAcknowledgementRegistrationError",
     "BarrierAcknowledgementTrustContext",
     "BarrierAcknowledgementTrustRevisionStale",
-    "BarrierAcknowledgementTrustSourceError",
     "BarrierAcknowledgementTrustSource",
+    "BarrierAcknowledgementTrustSourceError",
     "BarrierAcknowledgementVerifierError",
+    "BarrierProgress",
     "BarrierSnapshot",
     "CallIdentity",
     "CallSnapshot",
+    "CheckpointSignerHexAdapter",
     "ComOperationManifest",
     "ComValueAssignment",
-    "CheckpointSignerHexAdapter",
+    "ConfiguredPrivateWriterAuthorizer",
     "DpapiSignerError",
-    "ProvisionedEd25519PublicKey",
-    "SignerProvisioningError",
-    "EvidenceKeyResolutionError",
     "EvidenceAttemptContext",
     "EvidenceAttemptSourceError",
+    "EvidenceKeyResolutionError",
+    "EvidenceRecord",
     "EvidenceRegistrationError",
     "EvidenceScope",
-    "EvidenceRecord",
     "EvidenceTrustSnapshot",
     "EvidenceTrustSourceError",
     "InvocationContext",
-    "OutcomeEvidenceProvider",
-    "OutcomeEvidenceBundleSource",
-    "OutcomeVersionFloor",
-    "PrivateWriterService",
-    "ProductionBarrierAcknowledgementVerifier",
     "MappedPropertyAssignment",
+    "OutcomeEvidenceBundleSource",
+    "OutcomeEvidenceProvider",
+    "OutcomeVersionFloor",
     "PayloadPropertyBinding",
     "PostgresAdmissionStore",
     "PostgresBarrierAcknowledgementRegistrar",
     "PostgresBarrierAcknowledgementTrustSource",
-    "build_postgres_barrier_acknowledgement_verifier",
-    "PostgresEvidenceKeyResolver",
     "PostgresEvidenceAttemptSource",
-    "PostgresWriterEvidenceResolver",
-    "PostgresWriterReceiptRegistrar",
-    "PRIVATE_WRITER_AUDIENCE",
-    "PRIVATE_WRITER_SCOPE",
-    "PrivateWriterAuthenticationError",
-    "PrivateWriterAuthenticator",
-    "ConfiguredPrivateWriterAuthorizer",
-    "PrivateWriterAuthorizationUnavailable",
-    "PrivateWriterPrincipal",
-    "PrivateWriterScopeGrant",
-    "TicketPermitVerifier",
-    "PrivateWriterCaller",
-    "build_private_writer_token_verifier",
-    "create_private_writer_app",
-    "create_private_writer_runtime_app",
+    "PostgresEvidenceKeyResolver",
     "PostgresEvidenceTrustSource",
     "PostgresOutcomeEvidenceProvider",
+    "PostgresWriterEvidenceResolver",
+    "PostgresWriterReceiptRegistrar",
+    "PreparedComManifest",
+    "PrivateWriterAuthenticationError",
+    "PrivateWriterAuthenticator",
+    "PrivateWriterAuthorizationUnavailable",
+    "PrivateWriterCaller",
+    "PrivateWriterPrincipal",
+    "PrivateWriterRuntime",
+    "PrivateWriterScopeGrant",
+    "PrivateWriterService",
+    "ProductionBarrierAcknowledgementVerifier",
     "ProductionEvidenceTrustSource",
     "ProductionEvidenceVerificationError",
     "ProductionEvidenceVerifier",
-    "PreparedComManifest",
-    "PrivateWriterRuntime",
     "ProductionValidatorBuildInputsSource",
+    "ProvisionedEd25519PublicKey",
+    "RuntimeValidatorArtifact",
     "ServiceError",
     "SignerKeyRef",
+    "SignerProvisioningError",
     "StartupRecoveryState",
     "SuccessfulOutcomeEvidence",
-    "TrustSnapshotRequest",
-    "TrustedOracleArtifact",
-    "TrustedProcessBinding",
-    "TrustedSigner",
     "T16RecoveryCoordinator",
     "T16RecoveryError",
     "T16RecoveryResult",
     "T16ResolutionPreparation",
-    "VerifiedEvidenceRecord",
-    "ValidatorBuildProvenanceSource",
-    "RuntimeValidatorArtifact",
+    "TicketPermitVerifier",
+    "TrustSnapshotRequest",
+    "TrustedOracleArtifact",
+    "TrustedProcessBinding",
+    "TrustedSigner",
     "ValidatorBuildAttestationError",
     "ValidatorBuildAttestationInputs",
     "ValidatorBuildAttestationInputsSource",
     "ValidatorBuildAttestationVerifier",
     "ValidatorBuildPolicy",
+    "ValidatorBuildProvenanceSource",
     "ValidatorBuildTrustKey",
     "ValidatorBuildTrustSnapshot",
-    "MAX_ATTESTATION_BYTES",
-    "MAX_TRUST_SNAPSHOT_AGE_SECONDS",
-    "WriterReceiptVerifier",
-    "WriterEvidenceResolutionError",
+    "VerifiedEvidenceRecord",
     "WindowsDpapiEd25519Signer",
-    "verify_ed25519",
-    "provision_windows_dpapi_ed25519_key",
-    "compose_private_writer_runtime",
+    "WriterEvidenceResolutionError",
+    "WriterReceiptVerifier",
     "assignments_from_approved_payload",
+    "build_postgres_barrier_acknowledgement_verifier",
+    "build_private_writer_token_verifier",
     "com_values_from_approved_payload",
     "com_values_from_write_port_payload",
+    "compose_private_writer_runtime",
+    "create_private_writer_app",
+    "create_private_writer_runtime_app",
+    "derive_validator_build_id",
     "draft_payload_from_write_port",
     "mapped_property_manifest_sha256",
-    "derive_validator_build_id",
+    "provision_windows_dpapi_ed25519_key",
+    "verify_ed25519",
 ]

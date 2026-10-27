@@ -12,14 +12,13 @@ import re
 from datetime import datetime
 from uuid import UUID
 
-from business_ai_gateway.phase2.change_ledger.write_port import BarrierAcknowledgement
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
     is_canonical_process_instance_uuid,
 )
+from business_ai_gateway.phase2.change_ledger.write_port import BarrierAcknowledgement
 
 from .dpapi_signer import verify_ed25519
-
 
 _DOMAIN = b"ERP_MCP_R2:S13:PHYSICAL-WRITER-BARRIER:v1\n"
 _REFERENCE_DOMAIN = b"ERP_MCP_R2:S13:PHYSICAL-WRITER-BARRIER-REF:v1\n"

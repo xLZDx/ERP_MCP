@@ -12,20 +12,19 @@ import asyncpg
 from business_ai_gateway.phase2.change_ledger.write_port import BarrierAcknowledgement
 
 from .barrier_ack_protocol import (
-    barrier_acknowledgement_ref,
     barrier_acknowledgement_record_json,
+    barrier_acknowledgement_ref,
     validate_barrier_acknowledgement,
 )
+from .barrier_ack_verifier import BarrierAcknowledgementTrustRevisionStale
 from .postgres_evidence_trust import (
+    _bounded_json_integer,
     _check_json_text_limits,
     _measure_json_value,
-    _unique_object,
     _reject_nonfinite_constant,
-    _bounded_json_integer,
+    _unique_object,
 )
 from .postgres_identity import EVIDENCE_INGEST_SESSION_USER, has_expected_database_identity
-from .barrier_ack_verifier import BarrierAcknowledgementTrustRevisionStale
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 _MAX_LOOKUP_JSON_CHARS = 8 * 1024 * 1024
@@ -79,7 +78,7 @@ class PostgresBarrierAcknowledgementRegistrar:
             raise
         except asyncio.CancelledError:
             raise
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise BarrierAcknowledgementRegistrationError("BARRIER_ACK_LOOKUP_TIMEOUT") from None
         except Exception:
             raise BarrierAcknowledgementRegistrationError("BARRIER_ACK_LOOKUP_UNAVAILABLE") from None
@@ -135,7 +134,7 @@ class PostgresBarrierAcknowledgementRegistrar:
         except asyncio.CancelledError:
             await _rollback_or_terminate(conn, transaction, deadline)
             raise
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             await _rollback_or_terminate(conn, transaction, deadline)
             raise BarrierAcknowledgementRegistrationError("BARRIER_ACK_LOOKUP_TIMEOUT") from None
         except Exception:
@@ -174,7 +173,7 @@ class PostgresBarrierAcknowledgementRegistrar:
             raise
         except asyncio.CancelledError:
             raise
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise BarrierAcknowledgementRegistrationError(
                 "BARRIER_ACK_REGISTRATION_TIMEOUT", outcome_unknown=False,
             ) from None
@@ -258,7 +257,7 @@ class PostgresBarrierAcknowledgementRegistrar:
                 else "BARRIER_ACK_REGISTRATION_UNAVAILABLE",
                 outcome_unknown=attempted,
             ) from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             await _rollback_or_terminate(conn, transaction, deadline)
             raise BarrierAcknowledgementRegistrationError(
                 "BARRIER_ACK_REGISTRATION_TIMEOUT", outcome_unknown=attempted,

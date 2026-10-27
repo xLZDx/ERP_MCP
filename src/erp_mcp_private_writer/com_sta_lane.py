@@ -12,10 +12,11 @@ import asyncio
 import math
 import queue
 import threading
+from collections.abc import Callable
 from concurrent.futures import Future
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 _STOP = object()
@@ -129,8 +130,17 @@ class ComStaLane:
     """
 
     __slots__ = (
-        "_connect", "_disconnect", "_initialize_sta", "_uninitialize_sta", "_lock",
-        "_queue", "_state", "_in_flight", "_ready", "_closed", "_thread",
+        "_closed",
+        "_connect",
+        "_disconnect",
+        "_in_flight",
+        "_initialize_sta",
+        "_lock",
+        "_queue",
+        "_ready",
+        "_state",
+        "_thread",
+        "_uninitialize_sta",
     )
 
     _CONFIGURATION_FIELDS = frozenset({

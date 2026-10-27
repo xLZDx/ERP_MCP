@@ -18,7 +18,6 @@ from business_ai_gateway.phase2.change_ledger.write_port import (
     ServingAuthorityMutex,
 )
 
-
 _WAIT_OBJECT_0 = 0x00000000
 _WAIT_ABANDONED_0 = 0x00000080
 _WAIT_TIMEOUT = 0x00000102
@@ -55,7 +54,7 @@ class _AuthorityRequest:
 
 
 class _WindowsLease(ServingAuthorityLease):
-    __slots__ = ("_mutex", "_lease_id", "_released", "_release_started")
+    __slots__ = ("_lease_id", "_mutex", "_release_started", "_released")
 
     def __setattr__(self, name: str, value: object) -> None:
         if (name in ("_mutex", "_lease_id") and hasattr(self, name)):
@@ -100,9 +99,20 @@ class WindowsServingAuthorityMutex(ServingAuthorityMutex):
     """
 
     __slots__ = (
-        "_name", "_registry_key", "_closed", "_kernel32", "_advapi32", "_handle",
-        "_commands", "_state_lock", "_active_lease_id", "_worker_failed", "_closing",
-        "_worker", "_close_task", "_configuration_frozen",
+        "_active_lease_id",
+        "_advapi32",
+        "_close_task",
+        "_closed",
+        "_closing",
+        "_commands",
+        "_configuration_frozen",
+        "_handle",
+        "_kernel32",
+        "_name",
+        "_registry_key",
+        "_state_lock",
+        "_worker",
+        "_worker_failed",
     )
     _CONFIGURATION_FIELDS = frozenset({
         "_name", "_registry_key", "_kernel32", "_advapi32", "_handle", "_commands",
@@ -391,15 +401,14 @@ class WindowsServingAuthorityMutex(ServingAuthorityMutex):
 
     async def try_acquire(self) -> ServingAuthorityLease | None:
         """Acquire without blocking the event loop or registering an OS waiter."""
-        with _LOCAL_OWNERS_LOCK:
-            with self._state_lock:
-                if self._closed or self._closing:
-                    raise RuntimeError("SERVING_AUTHORITY_MUTEX_CLOSED")
-                if self._worker_failed or not self._worker.is_alive():
-                    raise RuntimeError("SERVING_AUTHORITY_UNAVAILABLE")
-                if self._registry_key in _LOCAL_OWNERS:
-                    return None
-                _LOCAL_OWNERS.add(self._registry_key)
+        with _LOCAL_OWNERS_LOCK, self._state_lock:
+            if self._closed or self._closing:
+                raise RuntimeError("SERVING_AUTHORITY_MUTEX_CLOSED")
+            if self._worker_failed or not self._worker.is_alive():
+                raise RuntimeError("SERVING_AUTHORITY_UNAVAILABLE")
+            if self._registry_key in _LOCAL_OWNERS:
+                return None
+            _LOCAL_OWNERS.add(self._registry_key)
 
         lease_id = str(uuid4())
         try:
@@ -411,9 +420,8 @@ class WindowsServingAuthorityMutex(ServingAuthorityMutex):
             # still processing. Keep the process-local reservation to prevent recursion.
             raise
         if result is None:
-            with _LOCAL_OWNERS_LOCK:
-                with self._state_lock:
-                    _LOCAL_OWNERS.discard(self._registry_key)
+            with _LOCAL_OWNERS_LOCK, self._state_lock:
+                _LOCAL_OWNERS.discard(self._registry_key)
             return None
         if result != lease_id:
             raise RuntimeError("SERVING_AUTHORITY_RESPONSE_INVALID")
@@ -448,14 +456,13 @@ class WindowsServingAuthorityMutex(ServingAuthorityMutex):
     def close(self) -> None:
         """Stop the owner thread and close its handle after all logical leases are released."""
         already_closed = False
-        with _LOCAL_OWNERS_LOCK:
-            with self._state_lock:
-                if self._closed:
-                    already_closed = True
-                elif self._registry_key in _LOCAL_OWNERS:
-                    raise RuntimeError("SERVING_AUTHORITY_MUTEX_STILL_HELD")
-                else:
-                    object.__setattr__(self, "_closing", True)
+        with _LOCAL_OWNERS_LOCK, self._state_lock:
+            if self._closed:
+                already_closed = True
+            elif self._registry_key in _LOCAL_OWNERS:
+                raise RuntimeError("SERVING_AUTHORITY_MUTEX_STILL_HELD")
+            else:
+                object.__setattr__(self, "_closing", True)
         if not already_closed:
             result = self._request("close")
             if result is not True:

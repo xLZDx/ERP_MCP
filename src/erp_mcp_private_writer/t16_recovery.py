@@ -7,9 +7,10 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
-from business_ai_gateway.phase2.change_ledger.write_port import ApplyTicket, DispatchPermit
 from business_ai_gateway.phase2.change_ledger.uuid_contract import is_canonical_nonzero_uuid
+from business_ai_gateway.phase2.change_ledger.write_port import ApplyTicket, DispatchPermit
 
+from .dependency_shape import has_static_callable_method
 from .service import (
     AdmissionState,
     CallSnapshot,
@@ -17,8 +18,6 @@ from .service import (
     ServiceError,
     T16ResolutionPreparation,
 )
-from .dependency_shape import has_static_callable_method
-
 
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
 

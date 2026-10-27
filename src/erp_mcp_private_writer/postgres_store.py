@@ -11,9 +11,10 @@ import json
 import math
 import re
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncIterator
+from typing import Any
 from uuid import UUID
 
 import asyncpg
@@ -24,6 +25,11 @@ from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_process_instance_uuid,
 )
 from business_ai_gateway.phase2.change_ledger.write_port import ServingAuthorityLease
+
+from .postgres_identity import (
+    PRIVATE_WRITER_SESSION_USER,
+    has_expected_database_identity,
+)
 from .service import (
     AdmissionDecision,
     AdmissionRefusal,
@@ -34,10 +40,6 @@ from .service import (
     CallIdentity,
     CallSnapshot,
     StartupRecoveryState,
-)
-from .postgres_identity import (
-    PRIVATE_WRITER_SESSION_USER,
-    has_expected_database_identity,
 )
 
 _DOMAIN_CODES = frozenset({

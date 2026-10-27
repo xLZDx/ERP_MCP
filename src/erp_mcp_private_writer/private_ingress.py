@@ -5,10 +5,10 @@ startup until durable recovery is complete and all qualification gates pass.
 """
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 import ipaddress
 import json
 import math
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit
@@ -21,6 +21,11 @@ from starlette.routing import Route
 
 from business_ai_gateway.phase2.change_ledger.write_port import ApplyTicket, DispatchPermit
 
+from .json_preflight import (
+    MAX_JSON_DOCUMENT_DEPTH,
+    MAX_JSON_DOCUMENT_STRUCTURAL_NODES,
+    check_json_document_limits,
+)
 from .private_auth import (
     PrivateWriterAuthenticationError,
     PrivateWriterAuthenticator,
@@ -30,14 +35,8 @@ from .private_authorization import (
     ConfiguredPrivateWriterAuthorizer,
     PrivateWriterAuthorizationUnavailable,
 )
-from .json_preflight import (
-    MAX_JSON_DOCUMENT_DEPTH,
-    MAX_JSON_DOCUMENT_STRUCTURAL_NODES,
-    check_json_document_limits,
-)
-from .service import CallSnapshot, PrivateWriterService, ServiceError
 from .runtime_composition import PrivateWriterRuntime
-
+from .service import CallSnapshot, PrivateWriterService, ServiceError
 
 _MAX_REQUEST_BYTES = 1_048_576
 _CONFLICT_CODES = frozenset({

@@ -10,8 +10,9 @@ import math
 import re
 import time
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol
 
 from mcp.server.auth.provider import AccessToken
 
@@ -19,7 +20,6 @@ from business_ai_gateway.auth import JWTTokenVerifier
 from business_ai_gateway.settings import Settings
 
 from .dependency_shape import has_static_callable_method
-
 
 PRIVATE_WRITER_AUDIENCE = "urn:erp-mcp:private-writer"
 PRIVATE_WRITER_SCOPE = "erp_mcp:private_writer"
@@ -56,7 +56,7 @@ class PrivateWriterCaller:
 class PrivateWriterAuthenticator:
     """Require a verified JWT, the private audience/scope, and an exact client allowlist."""
 
-    __slots__ = ("_verifier", "_allowed_client_ids", "_verification_timeout_seconds")
+    __slots__ = ("_allowed_client_ids", "_verification_timeout_seconds", "_verifier")
 
     def __init__(
         self,
@@ -135,7 +135,7 @@ class PrivateWriterAuthenticator:
         try:
             async with asyncio.timeout(self._verification_timeout_seconds):
                 verified = await self._verifier.verify_token(token)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise PrivateWriterAuthenticationError("AUTHENTICATION_UNAVAILABLE") from None
         except Exception:
             raise PrivateWriterAuthenticationError("AUTHENTICATION_UNAVAILABLE") from None

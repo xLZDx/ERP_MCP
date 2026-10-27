@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import math
-from typing import Awaitable, Callable, Protocol
+from collections.abc import Awaitable, Callable
+from typing import Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.evidence import (
@@ -16,8 +17,8 @@ from business_ai_gateway.phase2.change.evidence import (
     PostCompletionReadAttestation,
 )
 
-from .postgres_evidence_registrar import PostgresWriterReceiptRegistrar
 from .dependency_shape import has_static_callable_method
+from .postgres_evidence_registrar import PostgresWriterReceiptRegistrar
 from .service import (
     CallIdentity,
     ConditionalConflictEvidenceRefs,
@@ -64,7 +65,7 @@ class PostgresOutcomeEvidenceProvider(OutcomeEvidenceProvider):
     checks signed identities and build provenance, then durably registers each immutable record.
     """
 
-    __slots__ = ("_source", "_registrar", "_timeout")
+    __slots__ = ("_registrar", "_source", "_timeout")
 
     def __setattr__(self, name: str, value: object) -> None:
         if name not in self.__slots__ or hasattr(self, name):

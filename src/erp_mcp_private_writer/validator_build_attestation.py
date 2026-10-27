@@ -12,16 +12,15 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
 from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 
 from .dpapi_signer import verify_ed25519
 from .json_preflight import check_json_document_limits
-
 
 ATTESTATION_DOMAIN = b"ERP_MCP_R2:S13:VALIDATOR-BUILD-ATTESTATION:v1\n"
 BUILD_ID_DOMAIN = b"ERP_MCP_R2:S13:VALIDATOR-BUILD-ID:v1\n"
@@ -196,7 +195,7 @@ class ValidatorBuildAttestationVerifier:
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 inputs = await self._source.load_current_inputs()
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_ATTESTATION_TIMEOUT") from None
         except Exception:
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_ATTESTATION_UNAVAILABLE") from None
@@ -243,15 +242,15 @@ class ValidatorBuildAttestationVerifier:
                 or type(now) is not datetime or now.tzinfo is None or now.utcoffset() is None
                 or now.utcoffset().total_seconds() != 0):
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_AUTHORITY_INPUT_INVALID")
-        snapshot_age = (now.astimezone(timezone.utc) - fetched_at.astimezone(timezone.utc)).total_seconds()
+        snapshot_age = (now.astimezone(UTC) - fetched_at.astimezone(UTC)).total_seconds()
         if not 0 <= snapshot_age <= MAX_TRUST_SNAPSHOT_AGE_SECONDS:
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_TRUST_SNAPSHOT_STALE")
         measured_at = runtime.measured_at
         if (type(measured_at) is not datetime or measured_at.tzinfo is None
                 or measured_at.utcoffset() is None or measured_at.utcoffset().total_seconds() != 0):
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_RUNTIME_MEASUREMENT_INVALID")
-        measurement_age = (now.astimezone(timezone.utc)
-                           - measured_at.astimezone(timezone.utc)).total_seconds()
+        measurement_age = (now.astimezone(UTC)
+                           - measured_at.astimezone(UTC)).total_seconds()
         if not 0 <= measurement_age <= MAX_TRUST_SNAPSHOT_AGE_SECONDS:
             raise ValidatorBuildAttestationError("VALIDATOR_BUILD_RUNTIME_MEASUREMENT_STALE")
         try:
@@ -308,7 +307,7 @@ class ValidatorBuildAttestationVerifier:
         issued = _parse_canonical_utc(claims["issued_at"])
         not_before = _parse_canonical_utc(claims["not_before"])
         expires = _parse_canonical_utc(claims["expires_at"])
-        now_utc = now.astimezone(timezone.utc)
+        now_utc = now.astimezone(UTC)
         if (type(key.valid_from) is not datetime or type(key.valid_until) is not datetime
                 or key.valid_from.tzinfo is None or key.valid_until.tzinfo is None
                 or key.valid_from.utcoffset() is None or key.valid_until.utcoffset() is None
@@ -453,7 +452,7 @@ def _parse_canonical_utc(value: object) -> datetime:
             r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z", value):
         raise ValidatorBuildAttestationError("VALIDATOR_BUILD_TIME_NONCANONICAL")
     try:
-        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     except ValueError:
         raise ValidatorBuildAttestationError("VALIDATOR_BUILD_TIME_INVALID") from None
 
@@ -495,10 +494,10 @@ def _bounded_integer(value: str) -> int:
 
 
 __all__ = [
-    "ApprovedValidatorBuild",
     "ATTESTATION_DOMAIN",
     "MAX_ATTESTATION_BYTES",
     "MAX_TRUST_SNAPSHOT_AGE_SECONDS",
+    "ApprovedValidatorBuild",
     "ProductionValidatorBuildInputsSource",
     "RuntimeValidatorArtifact",
     "ValidatorBuildAttestationError",

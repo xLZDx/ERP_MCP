@@ -13,13 +13,31 @@ from __future__ import annotations
 
 import asyncio
 import math
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Awaitable, Callable, Protocol
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
+from business_ai_gateway.phase2.change.errors import Refusal
+from business_ai_gateway.phase2.change.evidence import (
+    CompletionProof,
+    DispatchAttempt,
+    DispatchReceipt,
+    OutcomeEvidenceV3,
+    PostCompletionChallenge,
+    PostCompletionReadAttestation,
+    validate_conditional_conflict_terminal_evidence,
+)
+from business_ai_gateway.phase2.change.proposal import (
+    parse_writer_payload,
+    payload_digest,
+    payload_to_dict,
+)
+from business_ai_gateway.phase2.change.types import ChangeKind
+from business_ai_gateway.phase2.change.types import Scope as ProposalScope
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
@@ -37,28 +55,12 @@ from business_ai_gateway.phase2.change_ledger.write_port import (
     ServingAuthorityLease,
     ServingAuthorityMutex,
 )
-from business_ai_gateway.phase2.change.evidence import (
-    CompletionProof,
-    DispatchAttempt,
-    DispatchReceipt,
-    OutcomeEvidence,
-    OutcomeEvidenceV3,
-    PostCompletionChallenge,
-    PostCompletionReadAttestation,
-    validate_conditional_conflict_terminal_evidence,
-)
-from business_ai_gateway.phase2.change.errors import Refusal
-from business_ai_gateway.phase2.change.types import ChangeKind, Scope as ProposalScope
-from business_ai_gateway.phase2.change.proposal import (
-    parse_writer_payload,
-    payload_digest,
-    payload_to_dict,
-)
-from .evidence_trust import EvidenceScope
+
 from .barrier_ack_protocol import (
     BarrierAcknowledgementProtocolError,
     validate_barrier_acknowledgement,
 )
+from .evidence_trust import EvidenceScope
 from .production_evidence_verifier import VerifiedEvidenceRecord
 
 _WRITER_PRECHECK_TIMEOUT_SECONDS = 5.0
@@ -66,28 +68,28 @@ _MAX_BARRIER_WAIT_SECONDS = 30.0
 _MAX_SHUTDOWN_WAIT_SECONDS = 300.0
 
 __all__ = [
-    "AdmissionStoreError",
     "AdmissionDecision",
     "AdmissionRefusal",
     "AdmissionState",
-    "BarrierProgress",
+    "AdmissionStoreError",
     "BarrierAcknowledgement",
     "BarrierAcknowledgementRejected",
     "BarrierAcknowledgementVerifier",
+    "BarrierProgress",
     "BarrierSnapshot",
-    "SuccessfulOutcomeEvidence",
-    "ResolvedReceiptEvidence",
-    "ConditionalConflictTerminalRecords",
-    "ConditionalConflictEvidenceRefs",
-    "T16ResolutionPreparation",
-    "ReceiptDisposition",
-    "WriterReceiptVerifier",
-    "WriterEvidenceResolver",
     "CallIdentity",
     "CallSnapshot",
+    "ConditionalConflictEvidenceRefs",
+    "ConditionalConflictTerminalRecords",
     "PrivateWriterService",
+    "ReceiptDisposition",
+    "ResolvedReceiptEvidence",
     "ServiceError",
     "StartupRecoveryState",
+    "SuccessfulOutcomeEvidence",
+    "T16ResolutionPreparation",
+    "WriterEvidenceResolver",
+    "WriterReceiptVerifier",
 ]
 
 
@@ -573,13 +575,30 @@ class PrivateWriterService:
     """Coordinate durable admission and one injected writer call, without retrying COM."""
 
     __slots__ = (
-        "_store", "_writer", "_serving_authority_mutex", "_host_id", "_service_instance_id",
-        "_base_fingerprint", "_barrier_wait_seconds", "_barrier_ack_verifier",
-        "_writer_receipt_verifier", "_outcome_evidence_provider", "_writer_evidence_resolver",
-        "_base_dispatch_lock", "_active_dispatch", "_active_dispatch_done", "_active_quiesce",
-        "_active_control_operations", "_control_operations_done", "_terminal_mutation_lock",
-        "_pending_t16_resolution_calls", "_startup_complete", "_restart_required",
-        "_service_epoch", "_startup_recovery", "_shutdown_started",
+        "_active_control_operations",
+        "_active_dispatch",
+        "_active_dispatch_done",
+        "_active_quiesce",
+        "_barrier_ack_verifier",
+        "_barrier_wait_seconds",
+        "_base_dispatch_lock",
+        "_base_fingerprint",
+        "_control_operations_done",
+        "_host_id",
+        "_outcome_evidence_provider",
+        "_pending_t16_resolution_calls",
+        "_restart_required",
+        "_service_epoch",
+        "_service_instance_id",
+        "_serving_authority_mutex",
+        "_shutdown_started",
+        "_startup_complete",
+        "_startup_recovery",
+        "_store",
+        "_terminal_mutation_lock",
+        "_writer",
+        "_writer_evidence_resolver",
+        "_writer_receipt_verifier",
     )
     _CONFIGURATION_FIELDS = frozenset({
         "_store", "_writer", "_serving_authority_mutex", "_host_id", "_service_instance_id",
@@ -1457,7 +1476,7 @@ class PrivateWriterService:
                 await self._writer.verify_ticket(ticket)
                 await self._writer.verify_permit(ticket, permit)
                 actual_fingerprint = await self._writer.authenticate_base(ticket)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise ServiceError("WRITER_PRECHECK_TIMEOUT") from None
         except Exception:
             raise ServiceError("WRITER_PRECHECK_FAILED") from None

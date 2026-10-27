@@ -11,8 +11,9 @@ from __future__ import annotations
 import hmac
 import re
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from .com_sta_lane import ComLaneError, ComStaLane
 

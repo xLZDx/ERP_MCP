@@ -14,7 +14,7 @@ import json
 import math
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TypeAlias
 
 from business_ai_gateway.phase2.change.evidence import (
@@ -31,22 +31,22 @@ from business_ai_gateway.phase2.change.evidence import (
     validate_conditional_conflict_terminal_evidence,
 )
 
-from .dpapi_signer import verify_ed25519
 from .dependency_shape import has_static_callable_method
-from .json_preflight import (
-    MAX_JSON_DOCUMENT_DEPTH,
-    MAX_JSON_DOCUMENT_STRUCTURAL_NODES,
-    check_json_document_limits,
-)
+from .dpapi_signer import verify_ed25519
 from .evidence_trust import (
     EvidenceScope,
     EvidenceTrustSnapshot,
     ProductionEvidenceTrustSource,
     SignerKeyRef,
-    TrustSnapshotRequest,
     TrustedProcessBinding,
     TrustedSigner,
+    TrustSnapshotRequest,
     is_canonical_positive_trust_revision,
+)
+from .json_preflight import (
+    MAX_JSON_DOCUMENT_DEPTH,
+    MAX_JSON_DOCUMENT_STRUCTURAL_NODES,
+    check_json_document_limits,
 )
 
 EvidenceRecord: TypeAlias = (
@@ -132,7 +132,7 @@ class ProductionEvidenceVerifier:
     single-receipt path; related outcome and completion records still require their own adapters.
     """
 
-    __slots__ = ("_source", "_max_snapshot_age")
+    __slots__ = ("_max_snapshot_age", "_source")
 
     def __setattr__(self, name: str, value: object) -> None:
         if name not in self.__slots__ or hasattr(self, name):
@@ -204,7 +204,7 @@ class ProductionEvidenceVerifier:
         try:
             async with asyncio.timeout(self._max_snapshot_age):
                 snapshot = await self._source.load_snapshot(request)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise ProductionEvidenceVerificationError("EVIDENCE_TRUST_SOURCE_TIMEOUT") from None
         except Exception:
             raise ProductionEvidenceVerificationError("EVIDENCE_TRUST_SOURCE_UNAVAILABLE") from None
@@ -303,7 +303,7 @@ class ProductionEvidenceVerifier:
         try:
             async with asyncio.timeout(self._max_snapshot_age):
                 snapshot = await self._source.load_snapshot(request)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise ProductionEvidenceVerificationError("EVIDENCE_TRUST_SOURCE_TIMEOUT") from None
         except Exception:
             raise ProductionEvidenceVerificationError("EVIDENCE_TRUST_SOURCE_UNAVAILABLE") from None
@@ -422,7 +422,7 @@ class ProductionEvidenceVerifier:
             raise ValueError("EVIDENCE_TYPE_UNSUPPORTED")
         key_id, key_version, role, service_id, host_id, signed_time = values
         signed_at = datetime.strptime(signed_time, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         return SignerKeyRef(key_id, key_version), role, service_id, host_id, signed_at
 
@@ -582,7 +582,7 @@ class ProductionEvidenceVerifier:
             "service_id": process.service_id,
             "host_id": process.host_id,
             "os_pid": process.os_pid,
-            "process_created_at": process.process_created_at.astimezone(timezone.utc).strftime(
+            "process_created_at": process.process_created_at.astimezone(UTC).strftime(
                 "%Y-%m-%dT%H:%M:%S.%fZ"
             ),
             "supervisor_key_id": process.supervisor_key.key_id,
@@ -595,7 +595,7 @@ class ProductionEvidenceVerifier:
 
     @staticmethod
     def _parse_time(value: str) -> datetime:
-        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
 
 
 __all__ = [

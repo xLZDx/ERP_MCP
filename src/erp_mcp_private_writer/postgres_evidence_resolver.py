@@ -23,12 +23,13 @@ from business_ai_gateway.phase2.change.evidence import (
 )
 from business_ai_gateway.phase2.change_ledger.uuid_contract import is_canonical_nonzero_uuid
 
+from .evidence_trust import EvidenceScope
 from .postgres_attempt_source import (
     EvidenceAttemptSourceError,
     PostgresEvidenceAttemptSource,
 )
-from .postgres_identity import EVIDENCE_INGEST_SESSION_USER, has_expected_database_identity
 from .postgres_evidence_trust import PostgresEvidenceTrustSource
+from .postgres_identity import EVIDENCE_INGEST_SESSION_USER, has_expected_database_identity
 from .production_evidence_verifier import (
     ProductionEvidenceVerificationError,
     ProductionEvidenceVerifier,
@@ -39,8 +40,6 @@ from .service import (
     ConditionalConflictTerminalRecords,
     ResolvedReceiptEvidence,
 )
-from .evidence_trust import EvidenceScope
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 _MAX_ENVELOPE_BYTES = 2 * 1024 * 1024
@@ -65,7 +64,7 @@ class WriterEvidenceResolutionError(RuntimeError):
 class PostgresWriterEvidenceResolver:
     """Load exact signed records and verify them against one fresh production trust snapshot."""
 
-    __slots__ = ("_pool", "_attempt_source", "_verifier", "_timeout")
+    __slots__ = ("_attempt_source", "_pool", "_timeout", "_verifier")
 
     def __setattr__(self, name: str, value: object) -> None:
         if name not in self.__slots__ or hasattr(self, name):
@@ -248,7 +247,7 @@ class PostgresWriterEvidenceResolver:
             if sqlstate == "P0001" and message == "SCHEMA_INVALID":
                 raise WriterEvidenceResolutionError("WRITER_EVIDENCE_REQUEST_INVALID") from None
             raise WriterEvidenceResolutionError("WRITER_EVIDENCE_LOOKUP_FAILED") from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise WriterEvidenceResolutionError("WRITER_EVIDENCE_LOOKUP_TIMEOUT") from None
         except Exception:
             raise WriterEvidenceResolutionError("WRITER_EVIDENCE_LOOKUP_FAILED") from None

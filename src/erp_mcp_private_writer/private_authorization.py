@@ -11,15 +11,15 @@ import asyncio
 import math
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from business_ai_gateway.phase2.change_ledger.write_port import ApplyTicket, DispatchPermit
 
 from .dependency_shape import has_static_callable_method
 from .private_auth import PRIVATE_WRITER_SCOPE, PrivateWriterCaller
-
 
 _BASE_FINGERPRINT = re.compile(r"[0-9a-f]{64}\Z")
 _MAX_VERIFICATION_SECONDS = 5.0
@@ -85,7 +85,7 @@ class PrivateWriterAuthorizationUnavailable(RuntimeError):
 class ConfiguredPrivateWriterAuthorizer:
     """Authorize every call using an exact OAuth client grant and trusted ticket/permit checks."""
 
-    __slots__ = ("_verifier", "_grants", "_verification_timeout_seconds")
+    __slots__ = ("_grants", "_verification_timeout_seconds", "_verifier")
 
     def __setattr__(self, name: str, value: object) -> None:
         if hasattr(self, name):

@@ -8,11 +8,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
+
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
     is_canonical_process_instance_uuid,
 )
-
 
 _SIGNER_ROLES = frozenset({
     "writer_receipt", "verification_worker", "completion_supervisor", "read_attestor",

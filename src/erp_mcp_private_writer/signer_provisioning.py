@@ -19,7 +19,6 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-
 _SEED_BYTES = 32
 _PUBLIC_KEY_BYTES = 32
 _MAX_PROTECTED_BLOB_BYTES = 64 * 1024

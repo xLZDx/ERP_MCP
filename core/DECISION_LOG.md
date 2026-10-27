@@ -976,3 +976,10 @@ Decision: commit the 311 documents that earlier sessions wrote and never committ
 Decision: fix the unreachable build-policy comparison in the evidence registrar, repair the red composition test, and set the trust snapshot ceiling to 8 MiB as documented (code had 16 MiB). The barrier-acknowledgement 16 MiB payload limit is a separate contract and is unchanged.
 
 Evidence: full `tests/phase2` run before the fixes: 3 failed, 6995 passed, 602 skipped, 13 errors. The 3 failures were the 8 MiB boundary tests; they pass after the change (31 passed with the composition file). The 13 errors are migration scripts that are documented as direct-run harnesses (disposable PostgreSQL container), not pytest tests (`fixture 'db' not found`), so they are NOT_RUN here. Detail: `docs/phase2/CHANGE_RECORD_346.md`.
+
+
+## 2026-10-27 - Mechanical ruff autofixes in the S13 private-writer source
+
+Decision: apply ruff safe autofixes (no `--unsafe-fixes`) to `src/erp_mcp_private_writer/` (28 files). Remaining non-autofixable findings stay for review.
+
+Evidence: all modules byte-compile; focused S13/WP5/S14 pytest selection 287 passed, 8 skipped, 0 failed after the fixes. Migration harness scripts NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_347.md`.

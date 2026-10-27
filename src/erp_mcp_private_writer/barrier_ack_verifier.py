@@ -11,7 +11,7 @@ import hashlib
 import math
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -34,7 +34,6 @@ from .evidence_trust import (
     TrustedSigner,
     is_canonical_positive_trust_revision,
 )
-
 
 _PROCESS_ATTESTATION_PREFIX = b"ERP_MCP_R2:S13:PROCESS-INSTANCE:v1\n"
 _MAX_TIMEOUT_SECONDS = 5.0
@@ -111,7 +110,7 @@ class ProductionBarrierAcknowledgementVerifier:
     ``BarrierAcknowledgementRejected`` before the registrar is invoked.
     """
 
-    __slots__ = ("_trust", "_registrar", "_timeout")
+    __slots__ = ("_registrar", "_timeout", "_trust")
 
     def __setattr__(self, name: str, value: object) -> None:
         if name not in self.__slots__ or hasattr(self, name):
@@ -165,7 +164,7 @@ class ProductionBarrierAcknowledgementVerifier:
 
         signed_at = datetime.strptime(
             acknowledgement.signed_at, "%Y-%m-%dT%H:%M:%S.%fZ",
-        ).replace(tzinfo=timezone.utc)
+        ).replace(tzinfo=UTC)
         stale_retries = 0
         while True:
             context = await self._load_trust_context(acknowledgement, deadline)
@@ -293,7 +292,7 @@ class ProductionBarrierAcknowledgementVerifier:
             "host_id": process.host_id,
             "os_pid": process.os_pid,
             "process_created_at": process.process_created_at.astimezone(
-                timezone.utc,
+                UTC,
             ).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "supervisor_key_id": process.supervisor_key.key_id,
             "supervisor_key_version": process.supervisor_key.key_version,
@@ -389,9 +388,11 @@ def _is_exact_replay(record: object, acknowledgement: BarrierAcknowledgement,
 
 
 __all__ = [
-    "BarrierAcknowledgementRegistrar", "BarrierAcknowledgementTrustContext",
-    "BarrierAcknowledgementTrustSource", "BarrierAcknowledgementVerifierError",
+    "BarrierAcknowledgementRegistrar",
+    "BarrierAcknowledgementTrustContext",
     "BarrierAcknowledgementTrustRevisionStale",
+    "BarrierAcknowledgementTrustSource",
+    "BarrierAcknowledgementVerifierError",
     "ProductionBarrierAcknowledgementVerifier",
     "build_postgres_barrier_acknowledgement_verifier",
 ]

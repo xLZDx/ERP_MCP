@@ -13,7 +13,6 @@ import hmac
 from pathlib import Path
 from types import MappingProxyType
 
-
 _SEED_BYTES = 32
 _PUBLIC_KEY_BYTES = 32
 _MAX_SIGNING_MESSAGE_BYTES = 2 * 1024 * 1024
@@ -72,7 +71,11 @@ class WindowsDpapiEd25519Signer:
     """
 
     __slots__ = (
-        "_key_id", "_key_version", "_signer_role", "_protected_seed_path", "_public_key_bytes",
+        "_key_id",
+        "_key_version",
+        "_protected_seed_path",
+        "_public_key_bytes",
+        "_signer_role",
     )
 
     def __init__(self, *, key_id: str, key_version: str, signer_role: str,

@@ -14,13 +14,12 @@ from typing import Any
 
 from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from business_ai_gateway.phase2.change.proposal import (
-    DuplicateOverride,
     DraftPayload,
+    DuplicateOverride,
     Line,
     payload_digest,
     payload_to_dict,
 )
-
 
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _PROPERTY_MANIFEST_PREFIX = b"ERP_MCP_R2:S12:MAPPED-PROPERTY-MANIFEST:v1\n"
@@ -418,14 +417,14 @@ class PreparedComManifest:
 
 
 __all__ = [
-    "ComValueAssignment",
-    "draft_payload_from_write_port",
     "ComOperationManifest",
+    "ComValueAssignment",
     "MappedPropertyAssignment",
     "PayloadPropertyBinding",
     "PreparedComManifest",
     "assignments_from_approved_payload",
     "com_values_from_approved_payload",
     "com_values_from_write_port_payload",
+    "draft_payload_from_write_port",
     "mapped_property_manifest_sha256",
 ]

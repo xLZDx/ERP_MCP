@@ -48,13 +48,11 @@ from .production_evidence_verifier import (
 )
 from .service import CallIdentity
 from .validator_build_attestation import (
-    ApprovedValidatorBuild,
     _PRODUCTION_BUILD_AUTHORITY_SEAL,
+    ApprovedValidatorBuild,
     ValidatorBuildAttestationError,
     ValidatorBuildAttestationVerifier,
-    ValidatorBuildProvenanceSource,
 )
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 
@@ -72,8 +70,12 @@ class PostgresWriterReceiptRegistrar:
     """Verify and register one exact writer receipt using the evidence-ingest principal."""
 
     __slots__ = (
-        "_pool", "_attempt_source", "_verifier", "_build_provenance_source",
-        "_approved_build_policy_id", "_timeout",
+        "_approved_build_policy_id",
+        "_attempt_source",
+        "_build_provenance_source",
+        "_pool",
+        "_timeout",
+        "_verifier",
     )
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -255,7 +257,7 @@ class PostgresWriterReceiptRegistrar:
         try:
             async with asyncio.timeout(self._timeout):
                 provenance = await self._build_provenance_source.load_current_approved_build()
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_BUILD_PROVENANCE_TIMEOUT") from None
         except ValidatorBuildAttestationError:
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_BUILD_PROVENANCE_INVALID") from None
@@ -546,7 +548,7 @@ class PostgresWriterReceiptRegistrar:
                     )
         except EvidenceRegistrationError:
             raise
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise EvidenceRegistrationError(
                 "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=True,
             ) from None
@@ -640,7 +642,7 @@ class PostgresWriterReceiptRegistrar:
                 else "EVIDENCE_REGISTER_UNAVAILABLE",
                 outcome_unknown=attempted,
             ) from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             await self._rollback_or_terminate(conn, transaction, deadline)
             raise EvidenceRegistrationError(
                 "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=attempted,

@@ -21,16 +21,15 @@ from .evidence_trust import (
     EvidenceTrustSnapshot,
     OutcomeVersionFloor,
     SignerKeyRef,
-    TrustSnapshotRequest,
     TrustedOracleArtifact,
     TrustedProcessBinding,
     TrustedSigner,
+    TrustSnapshotRequest,
 )
 from .postgres_identity import (
     EVIDENCE_INGEST_SESSION_USER,
     has_expected_database_identity,
 )
-
 
 _MAX_TIMEOUT_SECONDS = 5.0
 _MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
@@ -144,7 +143,7 @@ class PostgresEvidenceTrustSource:
             if sqlstate == "57014":
                 raise EvidenceTrustSourceError("TRUST_SNAPSHOT_TIMEOUT") from None
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_LOOKUP_FAILED") from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_TIMEOUT") from None
         except Exception:
             raise EvidenceTrustSourceError("TRUST_SNAPSHOT_LOOKUP_FAILED") from None
@@ -421,7 +420,7 @@ def _json_string_size(value: str) -> int:
 
 
 def _bounded_json_integer(value: str) -> int:
-    digits = value[1:] if value.startswith("-") else value
+    digits = value.removeprefix("-")
     if len(digits) > _MAX_JSON_INTEGER_DIGITS:
         raise ValueError
     parsed = int(value)

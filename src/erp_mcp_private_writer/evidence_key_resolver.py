@@ -11,7 +11,7 @@ import asyncio
 import math
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import asyncpg
 
@@ -19,7 +19,6 @@ from .postgres_identity import (
     EVIDENCE_INGEST_SESSION_USER,
     has_expected_database_identity,
 )
-
 
 _FINGERPRINT_RE = re.compile(r"[0-9a-f]{64}\Z")
 _SIGNER_ROLES = frozenset({
@@ -120,7 +119,7 @@ class PostgresEvidenceKeyResolver:
                                 "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
                                 key_id, key_version, signer_role, service_id, host_id,
                                 tenant_id, company_id, organization_ref, base_fingerprint,
-                                signed_at.astimezone(timezone.utc),
+                                signed_at.astimezone(UTC),
                             )
                         if type(public_key) is not bytes or len(public_key) != 32:
                             raise EvidenceKeyResolutionError("EVIDENCE_KEY_UNAVAILABLE")
@@ -150,7 +149,7 @@ class PostgresEvidenceKeyResolver:
             if sqlstate == "57014":
                 raise EvidenceKeyResolutionError("EVIDENCE_KEY_LOOKUP_TIMEOUT") from None
             raise EvidenceKeyResolutionError("EVIDENCE_KEY_LOOKUP_FAILED") from None
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             raise EvidenceKeyResolutionError("EVIDENCE_KEY_LOOKUP_TIMEOUT") from None
         except Exception:
             raise EvidenceKeyResolutionError("EVIDENCE_KEY_LOOKUP_FAILED") from None
