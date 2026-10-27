@@ -236,7 +236,9 @@ def _store(conn, attrs, overrides):
         elif name in ENUM_PROPS and type(value) is not FakeEnumValue:
             value = EMPTY_ENUM
         elif name in NUMERIC_PROPS and type(value) is str:
-            value = float(value)  # numbers assigned as text are stored as numbers
+            number = Decimal(value)  # numbers assigned as text are stored as numbers
+            value = int(number) if name != "VatAmount" and number == number.to_integral() \
+                else float(number)
         elif name in DATE_PROPS:
             if type(value) is not FakeDate:
                 value = EMPTY_DATE  # text assigned to a date is stored as the empty date
@@ -520,6 +522,7 @@ DESTINATIONS = DraftDestinationSet(
     enumerations=(("h.kind", "Kinds"), ("l.vat", "VatRates")),
     constants=(("InclVat", True),),
     dates=("h.sdate", "l.ldate"),
+    numbers=("l.qty", "l.price", "l.amount", "l.vat_amount"),
 )
 
 
@@ -726,12 +729,24 @@ def test_none_value_refused_before_com(path):
     assert_clean(info.value)
 
 
-@pytest.mark.parametrize("value", [True, 0, 7, ""])
-def test_other_value_types_are_passed_through(value):
+@pytest.mark.parametrize("value", ["", "0012", "00123", " padded ", "12", "2026-10-27"])
+def test_text_values_of_any_content_are_passed_through(value):
     conn = FakeConnection()
     run(conn, make_values(**{"h.number": value}))
     number_sets = [e for e in conn.log if e[:2] == ("hdr_set", "Number")]
-    assert number_sets[0][2] == value and type(number_sets[0][2]) is type(value)
+    assert number_sets[0][2] == value and type(number_sets[0][2]) is str
+
+
+@pytest.mark.parametrize("value", [True, 0, 7, 1.5, Decimal("2.5")])
+def test_non_text_value_on_a_text_path_is_refused_before_com(value):
+    conn = FakeConnection()
+    values = list(make_values())
+    index = [v.property_path for v in values].index("h.number")
+    object.__setattr__(values[index], "value", value)
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn, tuple(values))
+    assert (info.value.code, info.value.outcome_unknown) == ("COM_EXECUTOR_VALUE_INVALID", False)
+    assert conn.log == []
 
 
 @pytest.mark.parametrize("change_id", [
@@ -1003,7 +1018,7 @@ def test_destination_set_with_no_enumerations_or_constants_is_valid():
     dest = dataclasses.replace(
         DESTINATIONS,
         header_properties=HEADER[:3], line_properties=LINE[:2], enumerations=(), constants=(),
-        dates=())
+        dates=(), numbers=("l.qty",))
     assert dest.enumerations == () and dest.constants == ()
 
 
@@ -1559,7 +1574,7 @@ def test_plain_value_of_a_disallowed_type_is_refused_before_com(bad):
     assert_clean(info.value)
 
 
-@pytest.mark.parametrize("good", [1.5, Decimal("2.50"), 7, True, "text"])
+@pytest.mark.parametrize("good", ["text", "00123", "", "0"])
 def test_plain_value_of_an_allowed_type_is_assigned(good):
     conn = FakeConnection()
     values = list(make_values())
@@ -1787,3 +1802,110 @@ def test_reserved_platform_names_are_refused(position, name):
     with pytest.raises(ValueError) as info:
         dataclasses.replace(DESTINATIONS, **kwargs)
     assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+# ---- M-01: per-type read-back comparison, no cross-type equivalence --------------------------
+
+def _doc_refusal(**overrides):
+    conn = FakeConnection()
+    conn.override_header = overrides.pop("header", {})
+    conn.override_row = overrides.pop("row", {})
+    values = overrides.pop("values", None)
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn, values)
+    return info.value
+
+
+@pytest.mark.parametrize("expected,stored", [
+    ("00123", 123), ("00123", "123"), ("00123", 123.0), ("00123", None), ("00123", " 00123"),
+    ("00123", "00123 "), ("", None), ("", 0), ("", " "), ("0", 0), ("0", False), ("12", 12),
+    ("12", "012"),
+])
+def test_text_path_stored_value_must_be_exactly_the_same_text(expected, stored):
+    exc = _doc_refusal(values=make_values(**{"h.number": expected}), header={"Number": stored})
+    assert (exc.code, exc.outcome_unknown) == ("COM_WRITTEN_READBACK_MISMATCH", True)
+    assert exc.document_ref == DOC_ID
+    assert_clean(exc)
+
+
+@pytest.mark.parametrize("text", ["00123", "", "0012", " x ", "12", "0"])
+def test_text_path_exact_text_passes(text):
+    conn = FakeConnection()
+    conn.override_header = {"Number": text}
+    assert run(conn, make_values(**{"h.number": text})).document_ref == DOC_ID
+
+
+def test_text_with_leading_zeros_is_kept_by_the_fake_without_coercion():
+    conn = FakeConnection()
+    run(conn, make_values(**{"h.number": "00123"}))
+    stored = next(e for e in conn.log if e[:2] == ("hdr_set", "Number"))[2]
+    assert stored == "00123"
+
+
+@pytest.mark.parametrize("text,stored", [
+    ("2", 2), ("1.82", 1.82), ("123.450", 123.45), ("0", 0), ("-3.5", -3.5), ("21.00", 21),
+    ("5550.555", Decimal("5550.5550")), ("007", 7),
+])
+def test_number_path_numeric_equality_passes(text, stored):
+    conn = FakeConnection()
+    conn.override_row = {"VatAmount": stored}
+    assert run(conn, make_values(**{"l.vat_amount": text})).document_ref == DOC_ID
+
+
+@pytest.mark.parametrize("text,stored", [
+    ("2", "2"), ("1", True), ("0", False), ("2", None), ("2", 3), ("1.82", 1.83),
+    ("2", float("nan")), ("2", float("inf")), ("2", Decimal("NaN")), ("2", [2]), ("2", b"2"),
+    ("2", ""),
+])
+def test_number_path_other_stored_types_or_values_are_mismatches(text, stored):
+    exc = _doc_refusal(values=make_values(**{"l.vat_amount": text}),
+                       row={"VatAmount": stored})
+    assert (exc.code, exc.outcome_unknown) == ("COM_WRITTEN_READBACK_MISMATCH", True)
+    assert exc.document_ref == DOC_ID
+
+
+@pytest.mark.parametrize("bad", ["abc", "1e2", "", " 1", "1 ", "1,5", "+1", ".5", "1.", "NaN",
+                                 "0x10", 5, 1.5, True, None, Decimal(1)])
+@pytest.mark.parametrize("path", ["l.qty", "l.price", "l.amount", "l.vat_amount"])
+def test_non_decimal_value_on_a_number_path_is_refused_before_com(path, bad):
+    conn = FakeConnection()
+    values = list(make_values())
+    index = [v.property_path for v in values].index(path)
+    object.__setattr__(values[index], "value", bad)
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn, tuple(values))
+    assert (info.value.code, info.value.outcome_unknown) == ("COM_EXECUTOR_VALUE_INVALID", False)
+    assert conn.log == []
+    assert_clean(info.value)
+
+
+@pytest.mark.parametrize("numbers", [
+    ("l.qty", "l.qty"), ("missing.path",), ("h.org",), ("h.kind",), ("h.sdate",), ("l.ldate",),
+    ("l.item",), ("l.vat",), ("",), (5,), ["l.qty"],
+])
+def test_numbers_validation(numbers):
+    with pytest.raises(ValueError) as info:
+        dataclasses.replace(DESTINATIONS, numbers=numbers)
+    assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+def test_numbers_may_not_overlap_unverified_paths():
+    with pytest.raises(ValueError) as info:
+        dataclasses.replace(DESTINATIONS, unverified_paths=("l.qty",))
+    assert str(info.value) == "COM_EXECUTOR_DESTINATIONS_INVALID"
+
+
+def test_numbers_default_is_empty_and_text_paths_then_need_exact_text():
+    assert DraftDestinationSet(
+        document_manager="Receipt", header_properties=HEADER[:3], line_section="Lines",
+        line_properties=LINE[:2], references=(), change_id_attribute="Marker",
+        manifest_attribute="Hash").numbers == ()
+
+
+def test_number_text_on_a_text_path_must_come_back_as_text():
+    # without `numbers`, a numeric-looking value is identity text: a stored number mismatches
+    dest = dataclasses.replace(DESTINATIONS, numbers=())
+    conn = FakeConnection()
+    with pytest.raises(ExecutorRefusal) as info:
+        run(conn, destinations=dest)
+    assert info.value.code == "COM_WRITTEN_READBACK_MISMATCH"

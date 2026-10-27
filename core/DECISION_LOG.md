@@ -1169,3 +1169,7 @@ Decision: dates are assigned only as 1C date values built by the type-descriptio
 ## 2026-10-27 - Executor fixes from two independent reviews; document time-of-day measured
 
 Decision: accept the reviews' fixes (pre-write type and date checks, document reference kept after late failures, posted and deletion-mark read-back, case-insensitive names). Rejected one concern: the stored time of the document date is always 07:00:00 for six assigned times, so no midnight crossing exists and the day-only comparison stays. Executor ran OK on the clone as administrator and narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_382.md`.
+
+## 2026-10-27 - Read-back comparison made type-aware (GPT-PM M-01)
+
+Decision: accept the finding; identity text is compared as exact text, only declared number paths are compared numerically, and the empty-text-equals-None rule is removed. Executor ran OK on the clone as administrator and narrow user after the change (rolled back). Detail: `docs/phase2/CHANGE_RECORD_383.md`.

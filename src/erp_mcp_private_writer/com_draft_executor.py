@@ -25,9 +25,18 @@ assigned times 00:00:00, 01:00:00, 04:30:00, 05:00:00, 12:00:00 and 23:59:59 the
 always 07:00:00 and the calendar day was always kept (no midnight crossing).
 
 Read-back: after the write the stored document is fetched afresh and EVERY assigned value is
-compared (dates as described above, constants exactly, references by identifier, enumerations by
-member name, numbers as Decimal, text exactly, both markers, row count, and that the stored
-document is neither posted nor marked for deletion). Only paths listed in the reviewed
+compared, by destination type, with no cross-type equivalence:
+
+* references: by identifier text; enumerations: by member name; dates: by ``XMLString`` text;
+* paths listed in ``DraftDestinationSet.numbers``: the payload value is canonical decimal TEXT and
+  the stored value must be an int, float or Decimal (never bool, str or None) that is finite and
+  numerically equal (``Decimal(expected) == Decimal(stored)``);
+* every other plain path (identity / free text): the payload value must be a str and the stored
+  value must be exactly a str equal to it (leading zeros kept, no stripping, no coercion; a stored
+  None or number never equals any text, including the empty text);
+* constants: a bool must come back as the same bool, an int numerically, a str exactly;
+* both markers, the row count, and that the stored document is neither posted nor marked for
+  deletion. Only paths listed in the reviewed
 ``DraftDestinationSet.unverified_paths`` are skipped, and the result lists them. The total is
 returned; it is compared only when the caller passes ``expected_total``. A read-back cannot prove
 an assignment whose value equals the platform default (False, 0, empty text): such a field needs a
@@ -44,8 +53,9 @@ and the enumeration name read (``XMLString``). Not yet measured: the behavior of
 under the narrow (least-privilege) role.
 
 Value types: ``value_type`` enforcement (string versus number versus enumeration) is a concern of
-the reviewed binding set. Plain values must be str, int, float, Decimal (finite) or bool; anything
-else, including ``None`` and date objects, is refused before COM access.
+the reviewed binding set. A plain value must be a str; on a ``numbers`` path it must be canonical
+decimal text. Anything else, including ``None``, numbers and date objects, is refused before COM
+access.
 """
 from __future__ import annotations
 
@@ -53,7 +63,7 @@ import datetime
 import re
 import uuid
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from functools import partial
 
 from .com_manifest import ComValueAssignment
@@ -175,7 +185,10 @@ class DraftDestinationSet:
     ``dates``: property paths (header or line) whose payload value is an ISO date text
     ``YYYY-MM-DD``; they are built into 1C dates (never assigned as text) and read back as
     ``YYYY-MM-DDT00:00:00``. Unique, and disjoint from references, enumerations and
-    ``unverified_paths``.
+    ``unverified_paths``. ``numbers``: header or line paths whose payload value is canonical
+    decimal text and whose stored value is compared numerically (unique, plain paths only:
+    disjoint from references, enumerations, dates and ``unverified_paths``). Every other plain
+    path is identity / free text and is compared as exact text.
     """
 
     document_manager: str
@@ -190,6 +203,7 @@ class DraftDestinationSet:
     constants: tuple[tuple[str, bool | int | str], ...] = ()
     unverified_paths: tuple[str, ...] = ()
     dates: tuple[str, ...] = ()
+    numbers: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not (_name_ok(self.document_manager) and _name_ok(self.line_section)
@@ -219,6 +233,13 @@ class DraftDestinationSet:
         if (type(date_paths) is not tuple or not all(_name_ok(x) for x in date_paths)
                 or len(date_paths) != len(set(date_paths)) or not set(date_paths) <= set(paths)
                 or set(date_paths) & (set(ref_paths) | set(enum_paths) | set(skipped))):
+            raise ValueError("COM_EXECUTOR_DESTINATIONS_INVALID")
+        number_paths = self.numbers
+        if (type(number_paths) is not tuple or not all(_name_ok(x) for x in number_paths)
+                or len(number_paths) != len(set(number_paths))
+                or not set(number_paths) <= set(paths)
+                or set(number_paths) & (set(ref_paths) | set(enum_paths) | set(skipped)
+                                        | set(date_paths))):
             raise ValueError("COM_EXECUTOR_DESTINATIONS_INVALID")
         names = ([n for _, n in self.header_properties] + [n for n, _ in self.constants]
                  + [n for _, n in self.line_properties]
@@ -341,35 +362,22 @@ def _decimal_of(value: object) -> Decimal | None:
         number = Decimal(value)
     elif type(value) is Decimal:
         number = value
-    elif type(value) is str:
-        try:
-            number = Decimal(value)
-        except InvalidOperation:
-            return None
     else:
         return None
     return number if number.is_finite() else None
 
 
-def _plain_equal(expected: object, actual: object) -> bool:
-    """Compare an assigned plain value with the stored one; strings are never coerced.
+def _number_equal(expected_text: str, stored: object) -> bool:
+    """Numeric comparison: the stored value must be an int, float or Decimal (never bool/str)."""
+    if type(stored) not in (int, float, Decimal):
+        return False
+    found = _decimal_of(stored)
+    return found is not None and found == Decimal(expected_text)
 
-    A stored text must equal the assigned text exactly. A stored number (int/float/Decimal) must
-    equal the assigned value as a normalized Decimal. A bool must stay a bool.
-    """
-    if type(expected) is str and expected == "":
-        return actual is None or actual == ""
-    if actual is None:
-        return False
-    if type(expected) is bool:
-        return type(actual) is bool and actual == expected
-    if type(actual) is bool:
-        return False
-    if type(actual) is str:
-        return actual == (expected if type(expected) is str else str(expected))
-    wanted = _decimal_of(expected)
-    found = _decimal_of(actual)
-    return wanted is not None and found is not None and wanted == found
+
+def _text_equal(expected: str, stored: object) -> bool:
+    """Exact text comparison: no stripping, no coercion, None and numbers never equal text."""
+    return type(stored) is str and stored == expected
 
 
 def _total_text(value: object) -> str:
@@ -406,6 +414,7 @@ def execute_create_draft(
     catalog_of = dict(destinations.references)
     enum_of = dict(destinations.enumerations)
     skipped_paths = frozenset(destinations.unverified_paths)
+    number_paths = frozenset(destinations.numbers)
     for v in values:
         path, value = v.property_path, v.value
         if path in date_paths:
@@ -414,11 +423,11 @@ def execute_create_draft(
             ok = True  # a bad reference is refused by the GUID rule
         elif path in enum_of:
             ok = type(value) is not str or not value.startswith("_")
+        elif path in number_paths:
+            ok = type(value) is str and _DECIMAL_TEXT.fullmatch(value) is not None
         else:
-            ok = type(value) in (str, int, bool, float, Decimal)
-            if ok and type(value) in (float, Decimal):
-                ok = _decimal_of(value) is not None
-            if ok and path in skipped_paths and type(value) is str:
+            ok = type(value) is str
+            if ok and path in skipped_paths:
                 ok = (_ISO_DATE_SHAPE.fullmatch(value) is None
                       and _DIGITS14_SHAPE.fullmatch(value) is None)
         if not ok:
@@ -515,7 +524,10 @@ def execute_create_draft(
                 if type(constant) is bool:
                     if stored_constant is not constant:
                         return False
-                elif not _plain_equal(constant, stored_constant):
+                elif type(constant) is int:
+                    if not _number_equal(str(constant), stored_constant):
+                        return False
+                elif not _text_equal(constant, stored_constant):
                     return False
             section = getattr(stored, destinations.line_section)
             if getattr(section, _COUNT)() != 1:
@@ -542,8 +554,12 @@ def execute_create_draft(
                             return False
                         actual = getattr(connection, _XML_STRING)(stored_value)
                         expected = expected + "T00:00:00"
+                    elif path in number_paths:
+                        if not _number_equal(expected, stored_value):
+                            return False
+                        continue
                     else:
-                        if not _plain_equal(expected, stored_value):
+                        if not _text_equal(expected, stored_value):
                             return False
                         continue
                     if type(actual) is not str or actual != expected:
