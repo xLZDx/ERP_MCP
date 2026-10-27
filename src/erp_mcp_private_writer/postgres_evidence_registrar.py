@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import math
 import time
 from datetime import datetime
@@ -55,6 +56,13 @@ from .validator_build_attestation import (
 )
 
 _MAX_TIMEOUT_SECONDS = 5.0
+_LOG = logging.getLogger(__name__)
+
+
+def _log_unexpected(stage: str, exc: Exception) -> None:
+    """Make a defect distinguishable from an outage without logging record content."""
+    detail = str(exc)[:200] if isinstance(exc, (NameError, AttributeError, TypeError)) else ""
+    _LOG.error("evidence registration %s: unexpected %s %s", stage, type(exc).__name__, detail)
 
 
 class EvidenceRegistrationError(RuntimeError):
@@ -552,7 +560,8 @@ class PostgresWriterReceiptRegistrar:
             raise EvidenceRegistrationError(
                 "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=True,
             ) from None
-        except Exception:
+        except Exception as exc:
+            _log_unexpected("register", exc)
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_UNAVAILABLE") from None
 
     @staticmethod
@@ -647,7 +656,13 @@ class PostgresWriterReceiptRegistrar:
             raise EvidenceRegistrationError(
                 "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=attempted,
             ) from None
-        except Exception:
+        except asyncio.CancelledError:
+            # An outer deadline (for example the outcome provider's) cancelled the call. The
+            # commit may or may not have happened, so the connection must not return to the pool.
+            conn.terminate()
+            raise
+        except Exception as exc:
+            _log_unexpected("register_on_connection", exc)
             await self._rollback_or_terminate(conn, transaction, deadline)
             raise EvidenceRegistrationError(
                 "EVIDENCE_REGISTER_OUTCOME_UNKNOWN" if attempted

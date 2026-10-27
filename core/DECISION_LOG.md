@@ -983,3 +983,10 @@ Evidence: full `tests/phase2` run before the fixes: 3 failed, 6995 passed, 602 s
 Decision: apply ruff safe autofixes (no `--unsafe-fixes`) to `src/erp_mcp_private_writer/` (28 files). Remaining non-autofixable findings stay for review.
 
 Evidence: all modules byte-compile; focused S13/WP5/S14 pytest selection 287 passed, 8 skipped, 0 failed after the fixes. Migration harness scripts NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_347.md`.
+
+
+## 2026-10-27 - Evidence registrar: terminate the connection on outer cancellation, log unexpected errors
+
+Decision: from the silent-failure review of the S13 writer (6 findings: 2 MAJOR, 4 MINOR, no BLOCKER) fix F1 now: an outer deadline (the outcome provider timeout) cancelled `_register_on_connection` without terminating the connection, so a possibly committed write could return to the pool as clean. Also log the class (and message for NameError/AttributeError/TypeError only) before translating unexpected errors (part of F3). F2, F4, F5, F6 (error-class narrowing in validation path, T16 recovery, ingress, trust lookup) stay open in the backlog of Change Record 348; they change error codes and need a contract decision.
+
+Evidence: new regression test drives `_register_on_connection` under an outer timeout and asserts `terminate()` ran; composition file 12 passed. Detail: `docs/phase2/CHANGE_RECORD_348.md`.

@@ -265,3 +265,52 @@ def test_register_refuses_before_the_database_when_the_build_policy_changed(monk
 
     assert raised.value.code == "EVIDENCE_REGISTER_BUILD_POLICY_STALE"
     assert pool.acquire_calls == 0
+
+
+def test_outer_cancellation_terminates_the_connection_instead_of_returning_it(monkeypatch):
+    from erp_mcp_private_writer import postgres_evidence_registrar as registrar_module
+
+    class _Transaction:
+        async def start(self):
+            return None
+
+        async def commit(self):
+            return None
+
+        async def rollback(self):
+            return None
+
+    class _HangingConnection:
+        terminated = False
+
+        def transaction(self):
+            return _Transaction()
+
+        def is_in_transaction(self):
+            return True
+
+        def terminate(self):
+            self.terminated = True
+
+        async def execute(self, *_args):
+            return None
+
+        async def fetchval(self, *_args):
+            await asyncio.sleep(3600)
+
+    async def _identity_ok(*_args):
+        return True
+
+    monkeypatch.setattr(registrar_module, "has_expected_database_identity", _identity_ok)
+    _pool, registrar, _approved = _registrar_on_the_register_path(monkeypatch, same_build=True)
+    conn = _HangingConnection()
+
+    async def _run():
+        deadline = registrar_module.time.monotonic() + 30
+        async with asyncio.timeout(0.05):
+            await registrar._register_on_connection(conn, "{}", "ref", deadline)
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(_run())
+
+    assert conn.terminated is True
