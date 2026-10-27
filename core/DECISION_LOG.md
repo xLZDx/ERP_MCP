@@ -1093,3 +1093,7 @@ Decision: the earlier hold on `ct14_effective_rights.py` was an over-block; the 
 ## 2026-10-27 - Draft payload-to-1C crosswalk for CREATE_DRAFT
 
 Decision: documentation only. All 12 destinations of the single-line payload exist in the saved inventory; value types, reference resolution, the VAT enumeration and recomputation of totals are UNKNOWN, so the map is a draft and not a reviewed binding set. Detail: `docs/phase2/CHANGE_RECORD_365.md`.
+
+## 2026-10-27 - Value types of the CREATE_DRAFT destinations read from the clone
+
+Decision: read-only metadata read on the local disposable clone. Five destinations are references, the number is limited to 30 characters, the date is date-time, amounts have two decimals and the VAT rate is an enumeration of 20 values. Detail: `docs/phase2/CHANGE_RECORD_366.md`.
