@@ -1097,3 +1097,7 @@ Decision: documentation only. All 12 destinations of the single-line payload exi
 ## 2026-10-27 - Value types of the CREATE_DRAFT destinations read from the clone
 
 Decision: read-only metadata read on the local disposable clone. Five destinations are references, the number is limited to 30 characters, the date is date-time, amounts have two decimals and the VAT rate is an enumeration of 20 values. Detail: `docs/phase2/CHANGE_RECORD_366.md`.
+
+## 2026-10-27 - VAT code table drafted; the payload contract has no closed VAT vocabulary
+
+Decision: documentation only. `vat_rate_code` is free identity text; the draft table maps VAT0 and VAT20 by name, leaves VAT10 unresolved between two near-duplicate enumeration values and requires refusal of every unmapped code. Detail: `docs/phase2/CHANGE_RECORD_367.md`.
