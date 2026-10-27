@@ -343,3 +343,60 @@ def test_unexpected_error_logging_omits_the_message(monkeypatch, caplog):
     assert "TypeError" in caplog.text
     assert "secret-value" not in caplog.text
     assert "FAKE LOG LINE" not in caplog.text
+
+
+def _call_identity():
+    from erp_mcp_private_writer.service import CallIdentity
+
+    return CallIdentity(
+        tenant_id="tenant", company_id="company", organization_ref="org",
+        change_id="11111111-1111-4111-8111-111111111111", generation=1,
+        call_id="22222222-2222-4222-8222-222222222222", operation="CREATE_DRAFT",
+        target_ref=None, target_version=None, epoch=1, payload_digest="a" * 64,
+        permit_id="33333333-3333-4333-8333-333333333333", permit_digest="b" * 64,
+        base_fingerprint="c" * 64, host_id="host", repair_authorization_id=None,
+    )
+
+
+def _validation_path_registrar(monkeypatch, load_error: Exception):
+    from uuid import uuid4
+
+    from business_ai_gateway.phase2.change.evidence import DispatchReceipt
+
+    _pool, registrar, _approved = _registrar_on_the_register_path(monkeypatch, same_build=True)
+    receipt = object.__new__(DispatchReceipt)
+
+    async def _load(_self, _receipt):
+        raise load_error
+
+    # The collaborators are immutable instances, so the methods are patched on their classes.
+    monkeypatch.setattr(ProductionEvidenceVerifier, "parse_envelope",
+                        lambda _self, _envelope: receipt)
+    monkeypatch.setattr(PostgresEvidenceAttemptSource, "load_for_record", _load)
+    return registrar, uuid4()
+
+
+def test_a_database_outage_while_loading_the_attempt_is_unavailable_not_invalid_evidence(monkeypatch):
+    registrar, cas_id = _validation_path_registrar(monkeypatch, OSError("connection lost"))
+
+    with pytest.raises(EvidenceRegistrationError) as raised:
+        asyncio.run(registrar.verify_and_store(
+            _call_identity(), cas_id, "44444444-4444-4444-8444-444444444444", b"envelope",
+        ))
+
+    assert raised.value.code == "EVIDENCE_REGISTER_UNAVAILABLE"
+
+
+def test_a_domain_error_while_loading_the_attempt_is_still_invalid_evidence(monkeypatch):
+    from erp_mcp_private_writer.postgres_attempt_source import EvidenceAttemptSourceError
+
+    registrar, cas_id = _validation_path_registrar(
+        monkeypatch, EvidenceAttemptSourceError("ATTEMPT_NOT_FOUND"),
+    )
+
+    with pytest.raises(EvidenceRegistrationError) as raised:
+        asyncio.run(registrar.verify_and_store(
+            _call_identity(), cas_id, "44444444-4444-4444-8444-444444444444", b"envelope",
+        ))
+
+    assert raised.value.code == "EVIDENCE_REGISTER_VALIDATION_FAILED"
