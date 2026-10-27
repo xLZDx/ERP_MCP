@@ -1101,3 +1101,7 @@ Decision: read-only metadata read on the local disposable clone. Five destinatio
 ## 2026-10-27 - VAT code table drafted; the payload contract has no closed VAT vocabulary
 
 Decision: documentation only. `vat_rate_code` is free identity text; the draft table maps VAT0 and VAT20 by name, leaves VAT10 unresolved between two near-duplicate enumeration values and requires refusal of every unmapped code. Detail: `docs/phase2/CHANGE_RECORD_367.md`.
+
+## 2026-10-27 - VAT usage in the clone's receipt lines read; VAT10 maps to the ten-percent value in use
+
+Decision: read-only counts per enumeration value (69 without VAT, 751 at eighteen percent, 4 at ten percent). `VAT10` is mapped to `НДС10` as the only ten-percent value in use; `VAT0` and `VAT20` stay name-based. The VAT wording of Change Record 367 is corrected. Detail: `docs/phase2/CHANGE_RECORD_368.md`.
