@@ -1141,3 +1141,7 @@ Decision: record the reviewer's result in Change Record 374. Approved-but-undisp
 ## 2026-10-27 - Documentation addenda after the GPT-PM minors on Change Records 372 and 373
 
 Decision: all 740 receipt documents in the clone have the includes-VAT flag set (read-only count), and the Change Record 373 categories reconcile once the stored-zero column is included (751 + 4 = 755). Details: `docs/phase2/CHANGE_RECORD_372.md`, `docs/phase2/CHANGE_RECORD_373.md`.
+
+## 2026-10-27 - SQL-backed phase 2 tests run against a disposable Postgres; Python and SQL digests agree for vat_amount
+
+Decision: the 602 skipped DSN tests were run for real on an own `--rm` Postgres 16.14 container. No failure came from vat_amount; the Python and SQL payload digests agree for 0, 3.5 and 1234.56. Eleven tests were stale since migration 018 and two failed on a removed harness name; they were fixed against the SQL contract without weakening assertions. Detail: `docs/phase2/CHANGE_RECORD_376.md`.

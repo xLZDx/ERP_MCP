@@ -16,9 +16,11 @@ Item -> tests:
 """
 import asyncpg
 import pytest
+from _approval_envelope import FIXTURE_PAYLOAD
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_ledger_sql import C, T, L, _setup
 
+from business_ai_gateway.phase2.change import canonical_json, sha256_hex
 from business_ai_gateway.phase2.simulation.clone_1c import SimulatedOneC, receipt_signing_text, verify_clone_receipt
 
 pytestmark = pytest.mark.integration
@@ -46,7 +48,12 @@ async def dispatched(led, *, require=True, target="doc1", base="base-1"):
     if require:
         await led.call("clt_wri", "require_dispatch_receipt", cid, tok["generation"])
     assert await led.call("clt_wri", "record_call", cid, tok["generation"], call_id) is True
-    digest = (await led.rec(cid))["payload_digest"]
+    # migration 018: the clone signs the sha256 of the exact canonical wire bytes the ledger verified before
+    # dispatch (change_dispatch_verifications.wire_payload_sha256), not the typed approval payload_digest
+    digest = await led.conn.fetchval(
+        "SELECT wire_payload_sha256 FROM change_ledger.change_dispatch_verifications "
+        "WHERE change_id=$1 AND generation=$2 AND wire_payload_sha256 IS NOT NULL", cid, tok["generation"])
+    assert digest is not None and digest != (await led.rec(cid))["payload_digest"]
     return cid, tok["generation"], call_id, digest
 
 
@@ -67,6 +74,7 @@ async def n_receipts(led, cid):
 # ============================================================================ h1 valid
 async def test_h1_valid_clone_receipt_is_accepted_and_completion_succeeds(led):
     cid, gen, call_id, digest = await dispatched(led)
+    assert digest == sha256_hex(canonical_json(FIXTURE_PAYLOAD))             # independent Python derivation of the wire sha
     rc = receipt(CLONE, cid, call_id, digest)
     assert verify_clone_receipt(CLONE.receipt_public_key_hex, rc)            # the offline verifier agrees with the ledger text
     assert receipt_signing_text(str(cid), str(call_id), digest, VERSION) == await led.conn.fetchval(
@@ -88,6 +96,9 @@ async def test_h2_tampered_received_digest_is_refused(led):
     tampered = "f" * 64
     assert tampered != digest
     await fails("DIGEST_MISMATCH", put(led, cid, gen, receipt(CLONE, cid, call_id, tampered)))   # clone signed other bytes
+    # 018: a receipt over the typed approval payload_digest (not the wire bytes) is refused too
+    typed = (await led.rec(cid))["payload_digest"]
+    await fails("DIGEST_MISMATCH", put(led, cid, gen, receipt(CLONE, cid, call_id, typed)))
     # a field changed after signing no longer verifies
     good = receipt(CLONE, cid, call_id, digest)
     await fails("EVIDENCE_UNSIGNED", put(led, cid, gen, {**good, "new_version": "V2"}))

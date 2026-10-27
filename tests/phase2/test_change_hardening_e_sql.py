@@ -12,6 +12,7 @@ Item -> tests:
   E3 B6-h verification ticks are spaced, sweep frequency cannot burn the bound: e3_*
 """
 import asyncio
+import hashlib
 import json
 import uuid
 
@@ -94,8 +95,9 @@ async def test_e1_marker_replay_is_idempotent_and_the_event_carries_digests_only
     assert await markers(led, cid) == 1
     ev = await verified_events(led, cid)
     assert len(ev) == 1
-    assert set(ev[0]) == {"generation", "payload_digest", "verification_id"}
+    assert set(ev[0]) == {"generation", "payload_digest", "verification_id", "wire_payload_sha256"}   # 018 adds the wire sha
     assert ev[0]["payload_digest"] == (await led.rec(cid))["payload_digest"]
+    assert ev[0]["wire_payload_sha256"] == hashlib.sha256(PAYLOAD.encode("ascii")).hexdigest()
     assert "supplier_document_number" not in json.dumps(ev[0]) and "fixture" not in json.dumps(ev[0])
     # the requester may verify too (existing grant) and it is the same marker
     assert await led.call("clt_alice", "verify_dispatch_payload", cid, gen, PAYLOAD) is True
