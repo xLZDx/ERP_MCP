@@ -13,6 +13,13 @@ param(
     [string]$BasePath = 'D:\1c\env\bases\818HA_p2diff'
 )
 $ErrorActionPreference = 'Stop'
+# The stored login is only ever sent to the approved disposable clone. Anything else (other bases, quotes,
+# semicolons, relative or UNC forms) is refused before the login is decrypted or COM is touched.
+$ApprovedBasePaths = @('D:\1c\env\bases\818HA_p2diff')
+if ($ApprovedBasePaths -cnotcontains $BasePath) {
+    [ordered]@{ error = 'BASE_PATH_NOT_APPROVED' } | ConvertTo-Json -Compress
+    exit 2
+}
 Add-Type -AssemblyName System.Security
 function U([string]$s) { return [regex]::Unescape($s) }
 function GetP($o, [string]$n) { return ,($o.GetType().InvokeMember((U $n), 'GetProperty', $null, $o, $null)) }
@@ -54,9 +61,8 @@ try {
     }
 }
 catch {
-    $msg = ($_.Exception.Message -replace '\s+', ' ')
-    if ($cred -and $cred.password) { $msg = $msg.Replace([string]$cred.password, '<r>') }
-    [ordered]@{ error = 'INVENTORY_FAILED'; exception_type = $_.Exception.GetType().Name; detail = $msg.Substring(0, [Math]::Min(200, $msg.Length)) } | ConvertTo-Json
+    # Only a stable code and the exception class are printed; the message may echo the connection string.
+    [ordered]@{ error = 'INVENTORY_FAILED'; exception_type = $_.Exception.GetType().Name } | ConvertTo-Json -Compress
     exit 1
 }
 finally {
