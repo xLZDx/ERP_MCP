@@ -1157,3 +1157,7 @@ Decision: documentation only. The repository has no code that performs the COM c
 ## 2026-10-27 - COM CREATE_DRAFT executor implemented against fake COM objects; references are resolved as GUIDs
 
 Decision: the executor refuses before the write call with outcome_unknown false and reports outcome_unknown true when the write or its read-back fails; posting is never referenced. The reference-format question was auto-answered (unique identifier) while the operator was silent and can be reverted. 52 agent-run tests passed on fakes; behavior against real 1C is UNKNOWN until the clone probe. Detail: `docs/phase2/CHANGE_RECORD_379.md`.
+
+## 2026-10-27 - COM draft executor hardened; real-clone probes found a silent-failure class that fakes and reviews missed
+
+Decision: assign enumeration values as enumeration objects and read back references, enumerations and markers from the stored document; the document's own date is a required argument; the includes-VAT flag is a reviewed constant. Real 1C stores an enumeration assigned as text as EMPTY without an error. The real executor then ran on the disposable clone in a rolled-back transaction (OK, total 20, 0 leftovers); tests 319 passed. Detail: `docs/phase2/CHANGE_RECORD_380.md`.

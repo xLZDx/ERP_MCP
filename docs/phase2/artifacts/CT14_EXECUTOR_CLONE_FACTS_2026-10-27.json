@@ -1,0 +1,24 @@
+{
+ "clone": "818HA_p2diff",
+ "method": "read-only probes and transactions that were rolled back; no value or identifier is stored here",
+ "reference_semantics": {
+  "get_ref_with_python_str_argument": "raises com_error",
+  "get_ref_with_uuid_object_built_by_NewObject": "works",
+  "nonexistent_guid": {"is_empty": false, "deletion_mark": false, "get_object_is_none": true},
+  "guid_of_another_catalog_in_the_wrong_manager": {"get_object_is_none": true},
+  "document_ref_uuid_value_type": "COM dispatch object; connection.String(value) gives canonical text"
+ },
+ "write_requirements": {
+  "document_own_date_missing": "write fails with a generic 'Failed to save' error",
+  "document_own_date_set": "write succeeds; the document number is assigned on write",
+  "numbers_assigned_as_text": "accepted and stored as numbers",
+  "incoming_date_assigned_as_text": "accepted",
+  "enumeration_assigned_as_text": "NO error; the document is written and the stored enumeration value is EMPTY (also for a nonsense string)",
+  "enumeration_assigned_as_enumeration_object": "stored correctly"
+ },
+ "totals": {
+  "includes_vat_flag_default_false": "document total = line amount + line VAT amount (20 + 1.82 = 21.82)",
+  "includes_vat_flag_true": "document total = line amount (20.0)",
+  "line_vat_amount_not_computed_by_platform": true
+ }
+}
