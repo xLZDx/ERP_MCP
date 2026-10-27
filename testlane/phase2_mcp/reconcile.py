@@ -437,11 +437,18 @@ def purchases_section(
 # ----------------------------------------------------------------------------- service
 
 
+def _error_entry(exc: GatewayError) -> dict[str, Any]:
+    entry: dict[str, Any] = {"state": "ERROR", "reason_code": exc.code}
+    if exc.detail_code:
+        entry["detail_code"] = exc.detail_code
+    return entry
+
+
 def _safe(fn: Callable[[], dict[str, Any]]) -> dict[str, Any]:
     try:
         return fn()
     except GatewayError as exc:
-        return {"state": "ERROR", "reason_code": exc.code}
+        return _error_entry(exc)
     except ShapeError as exc:
         return {"state": "ERROR", "reason_code": str(exc)}
 
@@ -483,16 +490,15 @@ class Reconciler:
               "start_period": start_period, "end_period": end_period}),
             ("accounting_balance_by_analytics",
              {"source_id": src, "company_id": company_id, "as_of": as_of}),
-            ("purchase_documents",
-             {"source_id": src, "company_id": company_id,
-              "start_period": start_period, "end_period": end_period}),
+            # The gateway tool takes only source_id/company_id/top/skip; period arguments are rejected.
+            ("purchase_documents", {"source_id": src, "company_id": company_id}),
         ]
         ra, rb = self._fetch_both(calls)
 
         def pair(tool: str, build: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
             for side in (ra[tool], rb[tool]):
                 if isinstance(side, GatewayError):
-                    return {"state": "ERROR", "reason_code": side.code}
+                    return _error_entry(side)
             return _safe(lambda: build(ra[tool], rb[tool]))
 
         def six(resp_a: dict[str, Any], resp_b: dict[str, Any]) -> dict[str, Any]:
@@ -538,8 +544,8 @@ class Reconciler:
         ra, rb = self._fetch_both([call])
         for side in (ra[call[0]], rb[call[0]]):
             if isinstance(side, GatewayError):
-                return {"tool": "phase2_reconcile_negative_control", "state": "ERROR",
-                        "reason_code": side.code, "label": "SYNTHETIC_NEGATIVE_CONTROL"}
+                return {"tool": "phase2_reconcile_negative_control", **_error_entry(side),
+                        "label": "SYNTHETIC_NEGATIVE_CONTROL"}
 
         def run() -> dict[str, Any]:
             a, b = parse_turnover(ra[call[0]]), parse_turnover(rb[call[0]])

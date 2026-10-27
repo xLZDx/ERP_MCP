@@ -45,8 +45,9 @@ PROSE-TO-TRANSLATE = documentation, reports and script text that should become E
   localization exception or replace by English originals (English versions of most already exist under `docs/phase2/`).
 - Third-party vendored references under `vendor/reference/` on other branches are Russian upstream text and
   must stay unmodified; on this branch they appear only as escaped titles in the document registry.
-- Out of the scanned extension set: seven intentionally Russian `reports/PHASE2_S*_SPRINT_*.ru.html` reports (see the
-  earlier translation commit); they need the same keep-or-drop decision.
+- Out of the scanned extension set: intentionally Russian `reports/PHASE2_S*_SPRINT_*.ru.html` reports (see the
+  earlier translation commit); the original count of seven is stale because `git ls-files` on 2026-10-21 found
+  eight tracked reports. They need the same keep-or-drop decision.
 
 ## Files
 

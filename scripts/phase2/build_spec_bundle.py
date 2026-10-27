@@ -192,11 +192,11 @@ def main():
         for src, dest in DOC_MAP.items()
     )
     save("index.html", (
-        "<!doctype html><html lang='ru'><meta charset='utf-8'>"
-        "<title>ERP_MCP Phase 2 — спецификация</title>"
+        "<!doctype html><html lang='en'><meta charset='utf-8'>"
+        "<title>ERP_MCP Phase 2 — specification</title>"
         "<style>body{max-width:900px;margin:2rem auto;padding:1rem;font:1rem system-ui}"
-        "li{margin:.55rem}a{color:#1673ad}</style><h1>Phase 2 — спецификация</h1>"
-        "<p>Изолированный проектный пакет. 144 проверки продукта: NOT_RUN.</p><ul>"
+        "li{margin:.55rem}a{color:#1673ad}</style><h1>Phase 2 — specification</h1>"
+        "<p>Isolated project package. 144 product checks: NOT_RUN.</p><ul>"
         + links + "</ul></html>"
     ))
     save("validation_report.json", json.dumps({

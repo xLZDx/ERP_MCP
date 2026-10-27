@@ -1,6 +1,6 @@
 # G1 PostgreSQL Living Registry — implementation note
 
-> **Historical implementation note (2026-10-08).** The limitations below describe the original implementation snapshot and have been partly superseded by later migrations and test evidence. See the dated reconciliation in `G1_OPERATOR_BACKLOG.md`. G1 remains NOT_PASSED; historical test runs do not establish current gate closure.
+> **Historical implementation note (2026-10-08). SUPERSEDED 2026-10-08.** The limitations below describe the original implementation snapshot and have been partly superseded by later migrations and test evidence. See the dated reconciliation in `G1_OPERATOR_BACKLOG.md` and the current `EVIDENCE_MATRIX.md`. G1 remains NOT_PASSED; historical test runs do not establish current gate closure.
 
 
 Date: 2026-10-08. Status: **IMPLEMENTED_UNVERIFIED / G1 NOT PASSED**.

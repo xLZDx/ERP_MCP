@@ -422,8 +422,10 @@ async def test_payload_substituted_after_approval_is_refused_before_dispatch_and
     gen = tok["generation"]
     payload = ch.payload_to_dict(k.prop.payload)
     assert await led.call("clt_wri", "verify_dispatch_payload", k.cid, gen, canonical_json(payload)) is True
-    assert await led.call("clt_wri", "verify_dispatch_payload", k.cid, gen,
-                          json.dumps(dict(reversed(list(payload.items()))), indent=2)) is True     # same payload
+    # 018: only the exact canonical bytes stand for the approved wire body; the same payload in another byte
+    # encoding (reordered keys, indentation) is refused instead of verified
+    await fails("SCHEMA_INVALID", led.call("clt_wri", "verify_dispatch_payload", k.cid, gen,
+                                           json.dumps(dict(reversed(list(payload.items()))), indent=2)))
     for name, substituted in {
         "comment": {**payload, "comment": "substituted"},
         "line amount": {**payload, "lines": [{**payload["lines"][0], "amount": "2100"}]},
@@ -450,8 +452,9 @@ async def test_a_payloadless_kind_verifies_the_empty_payload_only(led):
     await assert_equal_and_approvable(led, k, text_of(k))
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='CLAIMED', execution_state='APPLYING', "
                            "claim_generation=1 WHERE change_id=$1", k.cid)          # arranged: POST claims need a verified parent
-    for ok in (None, "{}", "null"):
+    for ok in (None, "{}"):          # 018: NULL means the empty payload; its only wire encoding is "{}"
         assert await led.call("clt_wri", "verify_dispatch_payload", k.cid, 1, ok) is True
+    await fails("SCHEMA_INVALID", led.call("clt_wri", "verify_dispatch_payload", k.cid, 1, "null"))   # not canonical bytes
     await fails("DIGEST_MISMATCH", led.call("clt_wri", "verify_dispatch_payload", k.cid, 1, '{"a":"b"}'))
 
 
@@ -472,7 +475,7 @@ async def test_approvals_of_the_old_version_cannot_authorize_anything_after_009(
     dsn = require_dsn()
     async with throwaway_db(dsn, migrate=False, seed=False) as db:
         db.conn = await db.connect()
-        assert FILES[8] == "009_approval_digest_2.sql" and len(FILES) == 17   # 010 to 017 follow 009
+        assert FILES[8] == "009_approval_digest_2.sql" and len(FILES) == 18   # 010 to 018 follow 009
         await apply_files(db.conn, FILES[:8])                       # the world before 009: SQL-1 digests
         await _setup(db.conn)
         old = L(db)

@@ -92,6 +92,22 @@
 		<right><name>Read</name><value>true</value></right>
 	</object>
 	<object>
+		<name>Catalog.Организации</name>
+		<right><name>Read</name><value>true</value></right>
+	</object>
+	<object>
+		<name>Catalog.Контрагенты</name>
+		<right><name>Read</name><value>true</value></right>
+	</object>
+	<object>
+		<name>Catalog.Валюты</name>
+		<right><name>Read</name><value>true</value></right>
+	</object>
+	<object>
+		<name>Catalog.Номенклатура</name>
+		<right><name>Read</name><value>true</value></right>
+	</object>
+	<object>
 		<name>Catalog.Склады</name>
 		<right><name>Read</name><value>true</value></right>
 	</object>

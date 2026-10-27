@@ -299,3 +299,36 @@ Closing requirement IDs: the SC08 half of Amendment A1 of `docs/E2E_ACCEPTANCE_C
 retired by Amendment A2 once GPT-PM approves it.
 
 [executed on device: Razer (a39db190-4797-4348-a6cc-1ff255947613)]
+
+### 8.2 2026-10-22 — isolated private writer for disposable test qualification
+
+The operator explicitly authorized one private write boundary to qualify the existing S12/S13/S14
+change lifecycle and controlled P5 real-1C/Ferma test assurance. This is a **test-only** lane
+rebaseline, not promotion of the deferred production write plane in §4.3. It closes the gap between
+the already accepted disposable RW-clone/posting evidence in §3.6 and the need to prove durable
+admission, call identity, recovery, and a physical COM boundary on the licensed Ivan lane.
+
+Scope and hard limits:
+
+- The first target is the disposable `818HA_p2diff` clone; only explicitly marked disposable copies
+  may be used. Never target the immutable reference/golden base, any real company base, or production.
+- The writer is a separate private service on Ivan's licensed lane, bound to loopback/Tailscale and
+  protected by authenticated caller identity and least-privilege ingress ACL, never exposed through
+  the public tunnel or model-facing MCP. Public MCP and the production 1C surface remain read-only;
+  no write tool or arbitrary mutation API is added to that surface.
+- Use the least-privilege `CT14Писатель` identity. Only the approved create-draft, read-back, post,
+  and unpost lifecycle is in scope; no hard delete, administrator identity, caller-supplied URL,
+  caller-supplied code, or general-purpose COM execution is permitted.
+- S13 must provide stable call-ID idempotency, stale-epoch rejection, authoritative outcome lookup,
+  signed evidence recovery, and a quiescence barrier. PostgreSQL and physical COM boundaries are
+  independently qualified; neither substitutes for the other. Admission stays disabled and
+  lifecycle `NOT_READY` until both pass their disposable acceptance gates.
+- This rebaseline does not authorize staging-environment deployment, production writes, real-money
+  actions, irreversible deletion, or a production GO decision. The optional WP9 lane remains out of
+  the critical path.
+
+Normative implementation/design: [ADR-0009](adr/ADR-0009-private-test-writer.md),
+`docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md`, and the S13/S14 design and qualification
+documents. The acceptance trace is `S13-PRIVATE-WRITER-1` in
+`docs/REQUIREMENTS_TRACEABILITY.md`. Production DoD remains unchanged; isolated writer qualification
+has its own non-production gate.

@@ -59,10 +59,22 @@
  "AccumulationRegister.Услуги": [
   "Read"
  ],
+ "Catalog.Валюты": [
+  "Read"
+ ],
  "Catalog.ДоговорыКонтрагентов": [
   "Read"
  ],
  "Catalog.ИдентификаторыОбъектовМетаданных": [
+  "Read"
+ ],
+ "Catalog.Контрагенты": [
+  "Read"
+ ],
+ "Catalog.Номенклатура": [
+  "Read"
+ ],
+ "Catalog.Организации": [
   "Read"
  ],
  "Catalog.Склады": [

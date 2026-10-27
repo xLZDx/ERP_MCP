@@ -1,7 +1,7 @@
 # ERP_MCP Architecture
 
-**Version:** 1.1
-**Date:** 2026-10-06
+**Version:** 1.2
+**Date:** 2026-10-23
 **Status:** SCOPE-FROZEN FOR IMPLEMENTATION
 
 ## 1. Architecture principles
@@ -203,6 +203,12 @@ Two complementary L2 paths are required:
   native observer + normal ERP_MCP observer -> independent comparison.
 
 Test-only write capabilities are isolated from the production gateway.
+
+Under the explicit ADR-0009 rebaseline, the test plane may also use a separate private writer on
+marked disposable clones. It is bound to loopback/Tailscale, uses only the approved CT14 lifecycle,
+and is absent from public MCP registration. PostgreSQL admission and physical COM qualification are
+separate gates; until both pass, admission remains disabled and lifecycle remains `NOT_READY`. The
+production control/data planes remain read-only.
 
 ## 4. Trust boundaries
 

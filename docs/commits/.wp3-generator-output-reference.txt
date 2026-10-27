@@ -1,0 +1,2 @@
+D:\Repo\ERP_MCP\scripts\real1c\run_lane.py:540:             texts = {"case_results.json": json.dumps(results, ensure_ascii=False, indent=1), "case_results.csv": build_csv(
+D:\Repo\ERP_MCP\scripts\real1c\run_lane.py:571:         outputs["case_results.json"] = json.dumps(results, ensure_ascii=False, indent=1)

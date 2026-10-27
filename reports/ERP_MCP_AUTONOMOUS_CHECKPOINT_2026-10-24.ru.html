@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>ERP_MCP — контрольная точка автономного продолжения 2026-10-24</title></head>
+<body><header><h1>ERP_MCP — контрольная точка автономного продолжения</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; codex/erp-mcp-autonomous-2026-10-21 @ 3e12436</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<p>Срез на 24 октября 2026 года. Это промежуточная контрольная точка, критерии 1–5 остаются открытыми. Выполнены read-only сверки доступа и источников; обновлены WP0 artifact, OPERATOR_BACKLOG и WP4–WP10 dependency record. В этом срезе код, тесты, миграции, staging, commit и push не выполнялись.</p>
+<h2>Матрица приёмки</h2>
+<table><thead><tr><th>ID / критерий</th><th>Смысл</th><th>Состояние</th><th>Доказательства / выполнено</th><th>Остаток</th><th>Зависимость / блокер</th><th>Владелец</th><th>Следующий шаг</th></tr></thead><tbody>
+<tr><td>1 — ERP MCP, SSH и доступы</td><td>Восстановить подключения и доверенный доступ к Ivan.</td><td>Подтверждено частично; локальный lane неполон</td><td>Свежий strict SSH прошёл; все девять удалённых компонентов показали True, ED25519 fingerprint совпал с SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ. ACL на D:\secrets\erp_mcp ограничен RAZER\koros и Administrators; байты секретов не читались.</td><td>Локальные прокси 8191–8193 и phase2 server 21200 отсутствуют. Анонимный GET OData metadata test_ready завис на 3 секунды; `/` Apache вернул 200 со статического docroot, это не результат авторизации OData. COM identity клона не установлена; ранее Connect вернул 0x80004005.</td><td>Песочница отклонила узкий запуск прокси до выполнения. Общий autostart script ссылается на соседние репозитории и не запускался. Точная команда оператора: scripts\real1c\autostart\start_lane.ps1 -ApachePort 8088. Для COM нужна привязка credential к клону или безопасная диагностика.</td><td>Оператор accountable; Codex исполнитель; Ivan stack — технический владелец удалённого хоста; оператор выполняет локальный запуск из-за sandbox.</td><td>Оператор запускает указанную lane-команду; Codex проверяет local routes read-only и продолжает идентификацию клона.</td></tr>
+<tr><td>2 — Эффективные права и транзакционная граница</td><td>Подтвердить реальные права и DB↔COM границу writer.</td><td>Частично</td><td>Database reviewer read-only подтвердил disposable PostgreSQL head 15, но S13 change_ledger и private-writer роли/функции отсутствуют. Наблюдались только существующие bag grants. Исторические права CT14Писатель — clone-only evidence, не текущая конфигурация Ivan.</td><td>S13 effective grants не измерены; текущая CT14 identity не подтверждена; длительность DB transaction относительно COM не измерена.</td><td>Нужны завершение source coding, post-coding qualification и точно идентифицированный disposable COM clone. Migration 027 не запускалась.</td><td>Оператор accountable; Codex исполнитель; database-reviewer — последующий аудит grants; Ivan stack — host/COM boundary.</td><td>После coding closure выполнить разрешённую disposable qualification и новый read-only grant audit.</td></tr>
+<tr><td>3 — S13 и квалификация S12/S13</td><td>Закрыть дизайн и доказать сценарии в disposable-среде.</td><td>Design candidate; runtime NOT_RUN</td><td>Candidate migration 027 и crosswalk 13 методов AdmissionStore присутствуют в рабочем дереве; S13 остаётся fail-closed. CT14 scripts копируют существующий документ, не отображая canonical S12 DraftPayload.</td><td>Нет metadata-backed COM property/tabular-part manifest, operational writer/listener, установленной S13 схемы, эффективных grants или race/restart proof.</td><td>Текущий полный GPT-PM review request 2ac9e00e-c9bd-4c85-b764-2e46a5e1a738 привязан к projectId erp_mcp и правильному репозиторию ERP_MCP, но статус queued/sendPhase not-started; ответа нет. COM mapping к clone не подтверждён.</td><td>Оператор accountable; Codex исполнитель; Ivan stack владеет host boundary; GPT-PM review pending.</td><td>Сохранить тот же PM Bridge request без повторной отправки; после ответа исправить валидные source findings и строить manifest только по clone metadata.</td></tr>
+<tr><td>4 — Functional/E2E и независимые ревью</td><td>Проводить тестирование и specialist review после завершения кода.</td><td>Ожидает coding closure</td><td>В продолжении не запускались функциональные тесты, build, CI и migration. Обязательная проверка report_conform прошла; адресная проверка whitespace вывела только предупреждение о переводах строк.</td><td>Functional/E2E сценарии, specialist exact-head review и финальный GPT approval отсутствуют.</td><td>S13/COM код остаётся candidate-only.</td><td>functional-test-reviewer и e2e-runner — авторы/исполнители; Codex сверяет покрытие; применимые специалисты — reviewers после тестов.</td><td>После завершения кода передать сценарии фактическим test roles, затем провести релевантные независимые ревью.</td></tr>
+<tr><td>5 — WP5–WP8/WP10; WP9 optional</td><td>Продолжить downstream work по зависимостям.</td><td>Открыто; WP9 вне критического пути</td><td>Порядок зафиксирован в WP4–WP10 dependency record. governance/WAIVER_SIGNERS.json содержит 0 public signers; bounded filename scan не нашёл очевидных private-key файлов. Наличие IdP key не подтверждает S12 signer/witness роли.</td><td>WP5 требует key provider и раздельные роли; D10b human witness не назначен в canonical records. WP6 зависит от WP4/WP5, WP7 от WP6, WP8 от WP7, WP10 следует после WP6–WP8.</td><td>Не создавать или приписывать человеческую witness identity. Ключи не создавались; dispatch выключен.</td><td>Оператор accountable; Codex исполнитель; D10b witness не назначен; Ivan stack — host boundary.</td><td>Сначала закрыть WP4 и exact clone/account identity, затем WP5→WP6→WP7→WP8→WP10.</td></tr>
+<tr><td>6 — Git история и release gate</td><td>Сохранить историю; push/PR только после approval точного HEAD.</td><td>История не переписывалась</td><td>Branch codex/erp-mcp-autonomous-2026-10-21; HEAD 3e12436bc874f6aa12b33cdee1ef6111ee33b25c. Worktree был грязным на старте; в этом срезе добавлены только документальные секции в WP0 artifact, backlog и WP4–WP10 dependency record.</td><td>Pre-existing staged/unstaged/untracked изменения не разбирались. В этом срезе ничего не staged/committed/pushed.</td><td>Каждый commit требует detail record и exact GPT-PM review; push/PR требует correlated approval exact final HEAD.</td><td>Оператор accountable; Codex исполнитель.</td><td>Сохранить все pre-existing hunks; коммитить только явные reviewed paths с change record; не push до exact-head approval.</td></tr>
+</tbody></table>
+<h2>Выполнено в контрольной точке</h2>
+<h3>Дополнительные доказательства — продолжение 2026-10-24</h3>
+<p>Свежий strict-host-key SSH-вызов статуса подтвердил все девять компонентов Ivan stack значением <code>True</code>. Локальный known_hosts для <code>100.88.71.74</code> отдельно показывает ожидаемый ED25519 fingerprint <code>SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ</code>. Службы не перезапускались.</p>
+<p>Анонимный GET к локальному и удалённому gateway endpoint <code>/mcp</code> вернул HTTP 401, что подтверждает доступность gateway и обязательную аутентификацию. Удалённые Apache root и OData metadata test_ready ответили HTTP 403; локальный Apache root вернул 200 со статического document root, а локальный OData metadata завис. Это разные route-specific результаты, не общее утверждение о едином 401.</p>
+<p>Первичная read-only проверка ACL указанного CT14-проектом локального пути <code>D:\secrets\erp_mcp</code> обнаружила унаследованный <code>Authenticated Users: Modify</code> на <code>admin_1c_clone_password.dpapi</code> и <code>admin_1c_clone_user.txt</code>. По образцу доступа из <code>scripts/remote/register-stack-task.ps1</code> наследование отключено на каталоге и трёх credential-файлах, а FullControl явно оставлен за RAZER\koros и Administrators. После изменения проверено отсутствие ACE для <code>Authenticated Users</code>, <code>Users</code> и <code>Everyone</code>; на reader DPAPI-файле сохранён прежний SYSTEM FullControl. Значения/байты не читались и не менялись. Это закрывает широкий доступ на запись к этим локальным файлам; не доказывает, что другой субъект может расшифровать DPAPI или войти в клон Ivan. Доказательства: <a href="../docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md">WP0 access/source artifact</a> и <a href="../docs/phase2/OPERATOR_BACKLOG.md">operator backlog</a>.</p>
+<ul>
+<li>Подтверждены SSH fingerprint и ограниченные ACL без чтения секретов.</li>
+<li>Ужесточён локальный CT14 secret-каталог и три файла, удалён широкий унаследованный доступ Users/Authenticated Users; ACL проверены после изменения, байты секретов не читались и не менялись.</li>
+<li>Подтверждено, что локальный и удалённый MCP gateway возвращают HTTP 401 для анонимного /mcp; локальные прокси и phase2 listener отсутствуют, локальный OData metadata запрос завис. Запуск процессов блокирует sandbox policy.</li>
+<li>Исправлена интерпретация первого COM probe: он передал DPAPI JSON как пароль; один последующий вызов по loader-схеме также не прошёл Connect. Дальнейших попыток не было.</li>
+<li>Уточнено отсутствие canonical payload-to-COM mapping в исторических CT14 scripts; evidence добавлено в WP0 artifact, OPERATOR_BACKLOG и WP4–WP10 record.</li>
+<li>PM Bridge использует projectId erp_mcp и conversation 6adcbe7f-15b4-83ed-bd37-9804f556ecf8. В истории есть старые сообщения с ERP.git; текущий payload указывает ERP_MCP.git. Review всё ещё queued, GPT verdict не получен.</li>
+</ul>
+<h2>Упорядоченные следующие шаги</h2>
+<ol>
+<li>Продолжить проверять статус того же PM Bridge request ID; не отменять и не дублировать queued request.</li>
+<li>Read-only установить credential-to-clone identity и получить metadata-backed property/type/tabular-part map для 818HA_p2diff; службы не перезапускать.</li>
+<li>После review закрыть source findings, завершить private COM writer/manifest и signer-provider contracts, сохраняя dispatch fail-closed.</li>
+<li>После coding closure передать functional/E2E сценарии назначенным test roles, затем выполнить независимые specialist reviews и disposable qualification.</li>
+<li>Продолжить WP5→WP6→WP7→WP8→WP10; WP9 остаётся optional. Не push/PR до approval точного final HEAD.</li>
+</ol>
+</main>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+<section id="superseding-local-recovery-2026-10-24"><h2>Актуальное восстановление локального транспорта — 24.10.2026</h2><p>Эта запись заменяет прежнее указание оператору запускать локальную lane. Codex напрямую запустил отдельными foreground-сессиями только недостающие процессы проекта: прокси 8191–8193 (PID 43096, 38016, 15944) и Phase 2 MCP 21200 (PID 15680). Apache и уже работавшие службы не перезапускались. Анонимный запрос OData metadata через каждый прокси вернул HTTP 401. Авторизованный вызов <code>phase2_capabilities</code> на 21200 вернул <code>TESTLANE_EVALUATION_ONLY / NO-GO</code>.</p><p>Краткоживущий токен auditor использовался только в процессе и не выводился/не сохранялся. Авторизованный <code>source_health</code> через gateway для <code>onec-818ha-reference</code> вернул повторяемую ошибку <code>SOURCE_UNAVAILABLE</code>, категория <code>dependency</code>, correlation ID <code>dce220aa-e744-4234-8171-0c967dbfc2af</code>. Ограниченный просмотр диагностических записей gateway, sidecar и Apache не выявил этот correlation ID или безопасную причину ошибки. Локальный транспорт доступен, но состояние источника и writer boundary S13 не квалифицированы. Деловые данные не читались; COM повторно не вызывался; записи в БД или 1C не выполнялись.</p><p>Оставить foreground-процессы работающими; не перезапускать их. Ответственный за задачу: оператор; исполнитель: Codex; технический владелец удалённого host boundary: Ivan stack.</p></section><section id="pm-bridge-queue-2026-10-24"><h2>Очередь PM Bridge — 24.10.2026, 15:49 UTC</h2><p>Существующая точная проверка S13 остаётся запросом <code>2ac9e00e-c9bd-4c85-b764-2e46a5e1a738</code>, job <code>62f5e6f5-a189-4e73-b7a5-41ffee8dc7d9</code>, canonical project <code>erp_mcp</code>, conversation <code>6adcbe7f-15b4-83ed-bd37-9804f556ecf8</code>. Read-only статус: queued, отправка не началась, attempts 0, нет связанного user turn или ответа. PM Bridge health: OK, worker свободен, в очереди четыре job по двум проектам; для ERP_MCP gate не зарегистрирован. Запрос не отменялся и не дублировался; commit не выполнялся. Продолжаю независимую работу с кодом и дизайном, проверяя тот же request ID.</p></section><section id="superseding-source-health-2026-10-24"><h2>Поздний результат проверки источника — 24.10.2026</h2><p>Эта более поздняя проверка заменяет предыдущий временный SOURCE_UNAVAILABLE как актуальное состояние. Авторизованные read-only вызовы через локальный gateway вернули 920 наборов объектов из <code>onec_metadata_summary</code> и <code>ok=true</code> из <code>source_health</code> для <code>onec-818ha-reference</code>. Более ранний correlation остаётся необъяснённым историческим сбоем. Отдельный разрешённый запрос 521.1 для указанной компании/даты был отправлен, но оболочка завершила ожидание до результата, пока Python-процесс ещё наблюдался; статус <code>NOT_VERIFIED</code>, запрос не повторялся. Суммы и контрагенты не выводились.</p></section><section id="5211-timeout-2026-10-24"><h2>Read-only 521.1 — таймаут</h2><p>Запрос 521.1 с тем же разрешённым источником, компанией и датой с часовым поясом завершился клиентским <code>httpx2.ReadTimeout</code> по таймауту чтения MCP. Суммы и контрагенты не выводились. Результат не показывает, завершил ли gateway запрос и почему ответ задержался. Повторные запросы приостановлены до ограниченной серверной диагностики. Health и metadata источника ранее прошли; бизнес-чтение 521.1 остаётся <code>NOT_VERIFIED</code>.</p></section><section id="current-runtime-2026-10-24-1619"><h2>Текущее состояние локальной среды — 24.10.2026, 16:19 UTC</h2><p>После новой проверки с остановленными портами Codex запустил Docker Desktop; ограниченные контейнеры PostgreSQL/Redis стали healthy на 18432/19379. Apache слушает 8088. IdP/gateway запущены проектным real1c fault helper; прокси 8191–8193 отвечают HTTP 401 на анонимный запрос OData metadata. Phase 2 MCP на 21200 принял вызов capabilities. Sidecar 21768 уже работал и не перезапускался. Строгий SSH к Ivan снова подтвердил все девять компонентов. Текущий local source_health вернул <code>ok=true</code>, metadata — 920 наборов объектов.</p><p>Разрешённое чтение 521.1 остаётся <code>NOT_VERIFIED</code>: один вызов завершился клиентским <code>httpx2.ReadTimeout</code>, второй процесс с увеличенным таймаутом завершился кодом <code>0x40010004</code> без payload. Значения не выводились. Не повторять до ограниченной серверной диагностики.</p></section></body></html>

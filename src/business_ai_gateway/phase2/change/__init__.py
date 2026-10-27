@@ -30,6 +30,10 @@ from .transitions import (
     RetryVerifyEvidence, RevokeCause, RevokeEvidence, TransitionRow, ValidateEvidence, VerifyEvidence,
     apply_transition, classify_completion, forbidden_transition, repair_authorization_error,
 )
+from .trust_registry import (
+    IdentityScope, KeyVersion, OracleArtifact, ProcessInstanceAttestation, SignerIdentity, TrustedIdentityRegistry,
+    process_attestation_preimage, validate_conditional_conflict_terminal_record_set, verify_authorized_record,
+)
 from .types import (
     ApprovalType, Attribution, Authorization, BudgetCheck, CallOwnership, CallerClass, ChangeKind, ChangeRecord,
     Dispatch, EffectKnown, EvidenceKind, Execution, FailureStage, Hold, HoldCause, KillMode, Lifecycle, NonceState,
@@ -49,12 +53,16 @@ __all__ = [
     "PermitNotIssuedEvidence", "ProofClass", "ProposalContext", "ProposeEvidence", "RULE_TABLE_VERSION", "Refusal",
     "RejectEvidence", "ReleaseClaimEvidence", "ReleaseReason", "RepairAuth", "RepairContext", "RepairPhase",
     "Reservation", "ResolveEvidence", "ResolveOutcome", "RetryVerifyEvidence", "RevokeCause", "RevokeEvidence",
+    "IdentityScope", "KeyVersion", "OracleArtifact", "ProcessInstanceAttestation", "SignerIdentity",
+    "TrustedIdentityRegistry",
     "SWITCH_OFF", "Scope", "SwitchReading", "TRANSITION_TABLE", "TokenState", "TransitionRow", "ValidateEvidence",
     "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "digest_of_canonical_text",
     "Verification", "VerifyEvidence", "amount_to_reserve", "apply_transition", "approval_digest",
     "authorize_operation", "canonical_json", "check_operation", "classify_completion", "consume",
     "derive_allowed_effects", "effective_mode", "evaluate", "forbidden_transition", "is_aware_datetime",
     "is_identity_text", "ledger_invariant_holds", "mode_rank", "parse_proposal", "payload_digest", "payload_to_dict",
+    "process_attestation_preimage", "validate_conditional_conflict_terminal_record_set",
+    "verify_authorized_record",
     "release", "release_hold_error", "render", "repair_authorization_error", "reservation_for_effect", "reserve",
     "settle_reservation", "sha256_hex",
 ]

@@ -220,7 +220,7 @@ EVENT_COLS = ("tenant_id, company_id, event_id, change_id, seq, event_type, payl
 async def old_world(db):
     """001-010 only: a ledger whose events are v1 and whose checkpoints are anchored on v1 heads."""
     db.conn = await db.connect()
-    assert FILES[10] == FILE_011 and len(FILES) == 17      # 012 to 017 follow 011 and are not part of the old world
+    assert FILES[10] == FILE_011 and len(FILES) == 18      # 012 to 018 follow 011 and are not part of the old world
     await apply_files(db.conn, FILES[:10])
     await _setup(db.conn)
     led = L(db)

@@ -115,6 +115,38 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
         if not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname=$1)", role):
             raise AssertionError(f"required database role is missing: {role}")
 
+    capability_function_oid = await conn.fetchval(
+        "SELECT to_regprocedure($1)::oid",
+        "bag.record_capability_observation(text,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)",
+    )
+    public_execute = await conn.fetchval(
+        """SELECT EXISTS (
+               SELECT 1
+               FROM pg_proc p
+               CROSS JOIN LATERAL aclexplode(
+                   COALESCE(p.proacl, acldefault('f', p.proowner))
+               ) a
+               WHERE p.oid=$1 AND a.grantee=0 AND a.privilege_type='EXECUTE'
+           )""",
+        capability_function_oid,
+    )
+    if public_execute:
+        raise AssertionError("PUBLIC must not execute bag.record_capability_observation")
+    if not await conn.fetchval(
+        "SELECT has_function_privilege('business_ai_app',$1::oid,'EXECUTE')",
+        capability_function_oid,
+    ):
+        raise AssertionError("business_ai_app must execute bag.record_capability_observation")
+    for role in ("business_ai_admin", "business_ai_control_api"):
+        if await conn.fetchval(
+            "SELECT has_function_privilege($1::name,$2::oid,'EXECUTE')",
+            role,
+            capability_function_oid,
+        ):
+            raise AssertionError(
+                f"{role} must not execute bag.record_capability_observation"
+            )
+
     privilege_checks = {
         "control_can_insert_admin_audit": ("business_ai_control_api", "bag.admin_audit_events", "INSERT", True),
         "control_cannot_truncate_admin_audit": ("business_ai_control_api", "bag.admin_audit_events", "TRUNCATE", False),

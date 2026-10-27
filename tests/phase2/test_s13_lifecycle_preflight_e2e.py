@@ -41,6 +41,20 @@ class LedgerPortDouble:
         return self.result
 
 
+class ValidSuffixLedgerPortDouble(LedgerPortDouble):
+    async def lifecycle_checkpoint_suffix(self, scope: Scope, checkpoint_seq: int, checkpoint_hash: str):
+        return {
+            "tenant_id": scope.tenant_id,
+            "company_id": scope.company_id,
+            "checkpoint_seq": checkpoint_seq,
+            "checkpoint_hash": checkpoint_hash,
+            "anchor_matches": True,
+            "head_seq": checkpoint_seq,
+            "has_more": False,
+            "events": [],
+        }
+
+
 class HangingLedgerPortDouble(LedgerPortDouble):
     def __init__(self):
         super().__init__()
@@ -136,7 +150,7 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         await sink.write(_record(SCOPE, 12, signer))
         await sink.write(_record(OTHER_SCOPE, 99, signer))
         sink.write_calls = 0
-        ledger = LedgerPortDouble()
+        ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
         coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier())
 
         result = await coordinator.preflight(SCOPE)
@@ -144,7 +158,7 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert result.scope == SCOPE
         assert result.status is LifecycleStatus.NOT_READY
         assert result.reason is LifecycleReason.SHARED_FENCE_UNAVAILABLE
-        assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 7)
+        assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 12)
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == [SCOPE]
         assert sink.write_calls == 0

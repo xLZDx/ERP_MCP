@@ -8,6 +8,7 @@ applies migrations 001-024, and removes only the container and anonymous volume 
 from __future__ import annotations
 
 import asyncio
+import os
 import hashlib
 import time
 from pathlib import Path
@@ -314,4 +315,6 @@ async def run() -> None:
 
 
 if __name__ == "__main__":
+    # Direct runs provision their own disposable cluster, as the sibling migration scripts do.
+    os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     asyncio.run(run())

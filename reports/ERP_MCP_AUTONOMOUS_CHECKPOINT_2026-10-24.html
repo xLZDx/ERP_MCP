@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ERP_MCP — autonomous continuation checkpoint 2026-10-24</title></head>
+<body><header><h1>ERP_MCP — autonomous continuation checkpoint</h1></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:var(--surface,#fff);
+  border:1px solid var(--border,var(--rule,#d9d9d9));
+  border-left:3px solid var(--accent,#6a6a6a);border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:var(--text-3,var(--muted,#888));text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:var(--text,var(--ink,#222));word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--accent,#6a6a6a);background:var(--surface-2,var(--surface,#fff));
+  border:1px solid var(--border,var(--rule,#d9d9d9));border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:var(--accent,#6a6a6a)}
+.rc-copy:focus-visible{outline:2px solid var(--accent,#6a6a6a);outline-offset:2px}
+.rc-copy.is-done{color:var(--ok,#1c6f53);border-color:currentColor}
+.rc-copy.is-fail{color:var(--bad,#9e2f2a);border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Project</dt><dd>ERP_MCP</dd>
+    <dt>Folder</dt><dd>D:\Repo\ERP_MCP</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; codex/erp-mcp-autonomous-2026-10-21 @ 3e12436</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Copy page" data-done="Copied"
+          data-fail="Select manually">Copy page</button>
+</div>
+<!-- report-conform:end -->
+<main>
+<p>State as of 2026-10-24. This is an interim checkpoint; criteria 1–5 remain open. This slice completed read-only access/source reconciliation and updated durable WP0, backlog, and WP4–WP10 dependency evidence. No code, tests, migrations, staging, commit, or push ran in this slice.</p>
+<h2>Acceptance matrix</h2>
+<table><thead><tr><th>ID / criterion</th><th>Meaning</th><th>State</th><th>Evidence / completed work</th><th>Remaining acceptance</th><th>Dependency / blocker</th><th>Owner</th><th>Next action</th></tr></thead><tbody>
+<tr><td>1 — ERP MCP, SSH and access</td><td>Restore connections and trusted access to Ivan.</td><td>Partially confirmed; local lane incomplete</td><td>Fresh strict SSH succeeded; all nine reported Ivan components were True and the ED25519 fingerprint matched SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ. Local ACL on D:\secrets\erp_mcp was hardened to RAZER\koros and Administrators; no secret bytes were read.</td><td>Local proxies 8191–8193 and phase2 server 21200 are absent. Anonymous GET of the test_ready OData metadata route timed out in 3 seconds; Apache / returned 200 from its static root, not an OData auth result. Clone-specific COM identity remains unknown and Connect previously failed 0x80004005.</td><td>Sandbox rejected the narrowly scoped proxy process launch before execution. The bundled autostart script references neighboring repositories and was not run. Operator's exact recovery step is scripts\real1c\autostart\start_lane.ps1 -ApachePort 8088. COM needs clone-specific mapping or safe diagnostics.</td><td>Operator accountable; Codex executor; Ivan stack technical owner of remote host; operator owns local start action required by sandbox.</td><td>Operator runs the exact lane-start command; Codex then verifies local routes read-only and continues clone identity work.</td></tr>
+<tr><td>2 — Effective grants and transaction boundary</td><td>Confirm actual rights and the DB-to-COM writer boundary.</td><td>Partial</td><td>Read-only database reviewer confirmed disposable PostgreSQL at head 15, with no S13 change_ledger schema or private-writer roles/functions. Only existing bag grants were observed. Historical CT14Писатель rights are clone-only evidence, not current Ivan configuration.</td><td>S13 grants, current Ivan CT14 identity, and DB transaction lifetime relative to COM remain unmeasured.</td><td>Requires source coding closure, post-code qualification, and the exactly identified disposable COM clone. Migration 027 was not run.</td><td>Operator accountable; Codex executor; database-reviewer for later grants audit; Ivan stack for host/COM boundary.</td><td>After coding closure, perform authorized disposable qualification and a fresh read-only grant audit.</td></tr>
+<tr><td>3 — S13 design and S12/S13 qualification</td><td>Finish the design and prove scenarios in a disposable environment.</td><td>Design candidate; runtime NOT_RUN</td><td>Candidate migration 027 and a crosswalk for 13 AdmissionStore methods exist in the worktree; S13 remains fail-closed. Historical CT14 scripts copy an existing document and do not map canonical S12 DraftPayload.</td><td>No metadata-backed COM property/tabular-part manifest, operational writer/listener, installed S13 schema, effective grants, or race/restart proof.</td><td>Full GPT-PM review request 2ac9e00e-c9bd-4c85-b764-2e46a5e1a738 is bound to projectId erp_mcp and the correct ERP_MCP repository, but last status is queued/sendPhase not-started; no reply exists. Clone credential mapping remains unconfirmed.</td><td>Operator accountable; Codex executor; Ivan stack owns host; GPT-PM review pending.</td><td>Keep the same PM Bridge request without resending; remediate valid findings after reply and derive the manifest only from clone metadata.</td></tr>
+<tr><td>4 — Functional/E2E and independent reviews</td><td>Test and review after coding completes.</td><td>Waiting on coding closure</td><td>No functional tests, build, CI, or migration ran in this continuation. The mandated report_conform check passed; a targeted whitespace check returned only a line-ending warning.</td><td>Functional/E2E scenarios, specialist exact-head reviews, and final GPT approval are absent.</td><td>S13/COM code is still candidate-only.</td><td>functional-test-reviewer and e2e-runner author/execute tests; Codex checks coverage; relevant specialists review after tests.</td><td>After coding closure, assign scenarios to the actual test roles, then perform relevant independent reviews.</td></tr>
+<tr><td>5 — WP5–WP8/WP10; WP9 optional</td><td>Continue downstream work in dependency order.</td><td>Open; WP9 outside the critical path</td><td>Order is in the WP4–WP10 dependency record. governance/WAIVER_SIGNERS.json has 0 public signers; a bounded filename scan found no obvious private-key files. The IdP key does not prove S12 signer/witness roles.</td><td>WP5 needs a key provider and separated roles; no human D10b witness is named in canonical records. WP6 depends on WP4/WP5, WP7 on WP6, WP8 on WP7, WP10 follows WP6–WP8.</td><td>Do not invent or attribute a human witness. No keys were generated; dispatch remains disabled.</td><td>Operator accountable; Codex executor; no D10b witness assigned; Ivan stack owns host boundary.</td><td>Close WP4 and exact clone/account identity first, then WP5→WP6→WP7→WP8→WP10.</td></tr>
+<tr><td>6 — Git history and release gate</td><td>Preserve history; push/PR only after approval of the exact HEAD.</td><td>History preserved</td><td>Branch codex/erp-mcp-autonomous-2026-10-21; HEAD 3e12436bc874f6aa12b33cdee1ef6111ee33b25c. The worktree was already dirty at slice start; this slice appended documentation only to the WP0 artifact, backlog, and WP4–WP10 dependency record.</td><td>Pre-existing staged/unstaged/untracked changes were not reconciled or rewritten. Nothing was staged/committed/pushed in this slice.</td><td>Each commit requires a detail record and exact GPT-PM review; push/PR requires correlated approval for the exact final HEAD.</td><td>Operator accountable; Codex executor.</td><td>Preserve all pre-existing hunks; commit only explicit reviewed paths with a change record; do not push before exact-head approval.</td></tr>
+</tbody></table>
+<h2>Completed in this checkpoint</h2>
+<h3>Additional evidence — 2026-10-24 continuation</h3>
+<p>A fresh strict-host-key SSH status call returned all nine Ivan stack components as <code>True</code>. The local known_hosts key for <code>100.88.71.74</code> independently fingerprints to the expected ED25519 value <code>SHA256:Y/7fmEZDlL/+RpcokSA3OKtajipmEPdg/7BsK02VwmQ</code>. No service was restarted.</p>
+<p>Anonymous GET to local and remote gateway <code>/mcp</code> endpoints returned HTTP 401, confirming reachability with authentication enforced. Anonymous remote Apache root and test_ready OData metadata returned HTTP 403; local Apache root returned 200 from the static document root and local OData metadata timed out. These are route-specific outcomes; no blanket 401 claim is made.</p>
+<p>Initial read-only ACL inspection of the project-named local CT14 secret path <code>D:\secrets\erp_mcp</code> found inherited <code>Authenticated Users: Modify</code> on <code>admin_1c_clone_password.dpapi</code> and <code>admin_1c_clone_user.txt</code>. Following the repository's <code>scripts/remote/register-stack-task.ps1</code> access pattern, inheritance was disabled on this directory and its three credential files, with explicit FullControl for RAZER\koros and Administrators. Post-change inspection confirmed no <code>Authenticated Users</code>, <code>Users</code>, or <code>Everyone</code> ACEs; the reader DPAPI file retains its prior SYSTEM FullControl ACE. No values/bytes were read or changed. This closes the local broad-write risk on these files only; it does not establish that another principal can decrypt DPAPI or access Ivan's clone. Evidence: <a href="../docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md">WP0 access/source artifact</a> and <a href="../docs/phase2/OPERATOR_BACKLOG.md">operator backlog</a>.</p>
+<ul>
+<li>Confirmed SSH fingerprint and restricted ACLs without reading secret values.</li>
+<li>Hardened the named local CT14 secret directory and three files against broad inherited Users/Authenticated Users access; post-change ACLs were inspected, and no secret bytes were read or changed.</li>
+<li>Confirmed local and remote MCP gateways reject anonymous /mcp with HTTP 401; local proxies and phase2 listener are absent, and the local OData metadata route timed out. Process startup remains blocked by sandbox policy.</li>
+<li>Corrected the first COM probe interpretation: it passed DPAPI JSON as a password. One subsequent loader-shaped attempt also failed at Connect; no further attempts were made.</li>
+<li>Established that historical CT14 scripts do not define the canonical payload-to-COM mapping; evidence was added to the WP0 artifact, OPERATOR_BACKLOG, and WP4–WP10 record.</li>
+<li>PM Bridge uses projectId erp_mcp and conversation 6adcbe7f-15b4-83ed-bd37-9804f556ecf8. Historical ERP.git messages remain in the log; the current payload names ERP_MCP.git. The review remains queued, so no GPT verdict is available.</li>
+</ul>
+<h2>Ordered next steps</h2>
+<ol>
+<li>Continue checking the same PM Bridge request ID; do not cancel or duplicate the queued request.</li>
+<li>Continue read-only work to establish credential-to-clone identity and a metadata-backed property/type/tabular-part map for 818HA_p2diff; do not restart services.</li>
+<li>After review, fix valid source findings, complete the private COM writer/manifest and signer-provider contracts, and keep dispatch fail-closed.</li>
+<li>After coding closure, assign functional/E2E scenarios to the named test roles, then conduct independent specialist reviews and disposable qualification.</li>
+<li>Continue WP5→WP6→WP7→WP8→WP10; WP9 remains optional. Do not push/PR before approval of the exact final HEAD.</li>
+</ol>
+</main>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+<section id="superseding-local-recovery-2026-10-24"><h2>Superseding local transport recovery — 2026-10-24</h2><p>This addendum supersedes the earlier instruction that the operator must start the local lane. Codex directly launched repository-scoped foreground sessions for proxies 8191–8193 (PIDs 43096, 38016, 15944) and Phase 2 MCP 21200 (PID 15680); Apache and existing services were not restarted. Anonymous OData metadata through each proxy returned HTTP 401. Authenticated <code>phase2_capabilities</code> on 21200 returned <code>TESTLANE_EVALUATION_ONLY / NO-GO</code>.</p><p>An in-process short-lived auditor token was used without printing or persisting it. The authenticated gateway <code>source_health</code> call for <code>onec-818ha-reference</code> returned retryable <code>SOURCE_UNAVAILABLE</code>, category <code>dependency</code>, correlation <code>dce220aa-e744-4234-8171-0c967dbfc2af</code>. Bounded gateway, sidecar and Apache diagnostics did not identify the exact correlation or a sanitized upstream cause. Local transport is reachable; source health and the S13 writer boundary remain unqualified. No business data, COM retry, database write or 1C write was performed.</p><p>Keep the foreground processes running; do not restart them. Accountable owner: operator; executor: Codex; Ivan stack: technical owner of the remote host boundary.</p></section><section id="pm-bridge-queue-2026-10-24"><h2>PM Bridge review queue — 2026-10-24 15:49 UTC</h2><p>The existing exact S13 review remains under request <code>2ac9e00e-c9bd-4c85-b764-2e46a5e1a738</code>, job <code>62f5e6f5-a189-4e73-b7a5-41ffee8dc7d9</code>, canonical project <code>erp_mcp</code> and conversation <code>6adcbe7f-15b4-83ed-bd37-9804f556ecf8</code>. Read-only status: queued, send not started, attempts 0, no correlated user turn or reply. PM Bridge health was OK with an idle worker and four queued jobs across two projects; no ERP_MCP gate is recorded. The request was neither cancelled nor duplicated, and no commit was made. Continue independent source/design work while polling this same request.</p></section><section id="superseding-source-health-2026-10-24"><h2>Later source-health result — 2026-10-24</h2><p>This later observation supersedes the immediately preceding transient SOURCE_UNAVAILABLE as current status. Authenticated read-only calls through the local gateway returned 920 entity sets from <code>onec_metadata_summary</code> and <code>ok=true</code> from <code>source_health</code> for <code>onec-818ha-reference</code>. The earlier correlation remains an unexplained historical transient failure. A separately authorized 521.1 query was issued for the named company/date, but the shell yielded before returning a result while its Python process remained observable; it is NOT_VERIFIED and was not repeated. No amounts or counterparties were printed.</p></section><section id="5211-timeout-2026-10-24"><h2>Scoped 521.1 read — timeout</h2><p>The 521.1 request using the same authorized source, company and offset-aware date ended with a client-side <code>httpx2.ReadTimeout</code> after the MCP read timeout. No accounting values or counterparties were emitted. This does not show whether the gateway completed or why it was slow. Further retries are paused pending bounded server-side diagnosis. Source health and metadata still returned successfully; the 521.1 business-read acceptance is <code>NOT_VERIFIED</code>.</p></section><section id="current-runtime-2026-10-24-1619"><h2>Current local runtime — 2026-10-24 16:19 UTC</h2><p>After a fresh check found the lane down, Codex launched Docker Desktop; the scoped PostgreSQL/Redis containers returned healthy on 18432/19379. Apache now listens on 8088. IdP/gateway were started with the project real1c fault helper; proxies 8191–8193 return anonymous OData metadata HTTP 401. Phase 2 MCP on 21200 accepted a capability-tool call. Sidecar 21768 was already listening and was not restarted. Strict SSH to Ivan again returned all nine stack components true. Local source_health is currently <code>ok=true</code>; metadata returned 920 entity sets.</p><p>The authorized 521.1 read remains <code>NOT_VERIFIED</code>: one attempt raised client-side <code>httpx2.ReadTimeout</code>, and a later longer-timeout process ended with code <code>0x40010004</code> without a payload. No values were emitted. Do not retry pending bounded server-side diagnosis.</p></section></body></html>

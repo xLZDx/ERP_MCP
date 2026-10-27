@@ -33,7 +33,10 @@ class LedgerError(Exception):
 def code_from_message(message: str, sqlstate: str | None = None) -> str:
     """The contract code of a SQL error: the RAISE EXCEPTION text when it is an UPPER_SNAKE code
     (``CODE`` or ``CODE: detail``); a privilege error (42501, a caller class that was not granted the
-    function) is NOT_ENTITLED; anything else keeps its SQLSTATE as ``SQL_<state>`` and never leaks text."""
+    function) is NOT_ENTITLED; other errors keep their SQLSTATE as ``SQL_<state>`` and never leak text.
+    A raw 55P03 is not enough to identify the S13 fence timeout because PostgreSQL also uses it for
+    other lock-not-available conditions. The dedicated fence helper must raise its explicit contract
+    code instead."""
     head = (message.splitlines() or [""])[0].split(":")[0].strip()
     if _CODE.fullmatch(head):
         return head

@@ -37,8 +37,7 @@ def _classify_crash(clone: SimulatedOneC, refs_before: tuple[str, ...], target_r
 @pytest.fixture()
 def env():
     clone = SimulatedOneC("SIM-CLONE-P5")
-    attestor = SimulatedAttestor("SIM-ATTESTOR-P5")
-    return clone, ReferenceWriter(clone, attestor), SyntheticGenerator(seed=20261015)
+    return clone, ReferenceWriter(clone, clone.receipt_public_key_hex), SyntheticGenerator(seed=20261015)
 
 
 def test_all_four_operation_kinds_applied_with_verified_receipts(env):
@@ -65,7 +64,9 @@ def test_all_four_operation_kinds_applied_with_verified_receipts(env):
     assert state["status"] == "DRAFT" and state["movements"] == {}
 
     for out, gen_no in ((created, 1), (updated, 2), (posted, 3), (unposted, 4)):
-        assert out.receipt["generation"] == gen_no and out.received_payload_sha256 == out.approved_payload_sha256
+        assert out.receipt["change_id"] == "SIM-CHG-000001"
+        assert out.receipt["dispatch_id"] == f"{out.receipt['change_id']}:g{gen_no}"
+        assert out.received_payload_sha256 == out.approved_payload_sha256
     assert clone.write_count == 4
     assert [e["write_applied"] for e in clone.truth_log()] == [True] * 4
 
@@ -250,7 +251,7 @@ def test_populate_50_plus_documents_is_deterministic_by_seed():
 
 def test_two_interleaved_writers_only_one_wins_on_expected_version(env):
     clone, writer_a, gen = env
-    writer_b = ReferenceWriter(clone, SimulatedAttestor("SIM-ATTESTOR-P5"))
+    writer_b = ReferenceWriter(clone, clone.receipt_public_key_hex)
     populate(clone, gen, 1)
     ref = clone.target_refs()[0]
     cpt = clone.read_state(ref)["payload"]["counterparty_ref"]
@@ -276,7 +277,8 @@ def test_separate_clone_labels_are_isolated():
     gen = SyntheticGenerator(seed=5)
     a, b = SimulatedOneC("SIM-TENANT-A"), SimulatedOneC("SIM-TENANT-B")
     att_a, att_b = SimulatedAttestor("SIM-ATT-A"), SimulatedAttestor("SIM-ATT-B")
-    wa, wb = ReferenceWriter(a, att_a), ReferenceWriter(b, att_b)
+    wa = ReferenceWriter(a, a.receipt_public_key_hex)
+    wb = ReferenceWriter(b, b.receipt_public_key_hex)
     p = gen.draft_payload()
     assert _send(wa, ChangeKind.CREATE_DRAFT, p).success
     assert b.target_refs() == () and b.write_count == 0 and b.truth_log() == ()
@@ -294,6 +296,6 @@ def test_separate_clone_labels_are_isolated():
     assert _send(wb, ChangeKind.POST, None, b.target_refs()[0], "V1", change_id="SIM-CHG-000003").success
     assert a.state_fingerprint() == fp_a and a.read_state(a.target_refs()[0])["status"] == "DRAFT"
     # a receipt from attestor A is not accepted under B's trusted key
-    cross = ReferenceWriter(a, att_a, trusted_public_key_hex=att_b.public_key_hex)
+    cross = ReferenceWriter(a, trusted_public_key_hex=att_b.public_key_hex)
     out = _send(cross, ChangeKind.POST, None, a.target_refs()[0], "V1", change_id="SIM-CHG-000004")
     assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_SIGNATURE_INVALID"

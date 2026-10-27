@@ -16,7 +16,7 @@ powershell -File scripts\e2e\status.ps1
 ```
 
 Expected: `status.ps1` ends with every component `healthy` (PostgreSQL, Redis, Fake1C, test IdP,
-gateway), schema version 14, exit code 0. If anything is not healthy: stop, do not test, copy the
+gateway), schema version 15, exit code 0. If anything is not healthy: stop, do not test, copy the
 status output into the evidence sheet.
 
 To return to a clean state at any time: `powershell -File scripts\e2e\reset.ps1`.

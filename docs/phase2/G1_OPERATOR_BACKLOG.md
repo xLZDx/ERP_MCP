@@ -1,6 +1,6 @@
 # G1 blockers and operator handoff — 2026-10-08
 
-> **Historical snapshot (2026-10-08).** The blocker table below describes commit 9b4fc0c; it is not a current inventory. See “Current reconciliation (2026-10-15)” at the end and `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`. G1 remains NOT_PASSED.
+> **Historical snapshot (2026-10-08). SUPERSEDED 2026-10-08.** The blocker table below describes commit 9b4fc0c; it is not a current inventory. See “Current reconciliation (2026-10-15)” at the end, `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`, and the current `EVIDENCE_MATRIX.md`. G1 remains NOT_PASSED.
 
 
 ## State

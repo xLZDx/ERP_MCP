@@ -13,6 +13,7 @@ from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl, Field
 
 from .adapters.onec.com_contract import COM_MAX_ROWS, ComBalanceRequest
+from .adapters.onec.client import OneCTransportError
 from .adapters.onec.rsv_bridge import METADATA_TOOLS
 from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
 from .analytics_balance import (
@@ -390,7 +391,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source_id=source_id,
                 outcome="error",
                 started_at=started,
-                detail_code=type(exc).__name__,
+                detail_code=(
+                    exc.code if isinstance(exc, OneCTransportError) else type(exc).__name__
+                ),
             )
             raise
 
@@ -630,14 +633,22 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         source_id: str,
         contains: str = "",
         limit: int = 50,
+        include_property_types: bool = False,
     ) -> list[dict[str, Any]]:
-        """Search allowed EntitySets and fields in live 1C metadata."""
+        """Search allowed EntitySets; optionally include their OData property types."""
         started = time.monotonic()
         principal = await ctx()
-        query = {"contains": contains, "limit": limit}
+        query = {
+            "contains": contains,
+            "limit": limit,
+            "include_property_types": include_property_types,
+        }
         source = await resolve_source(principal, source_id, "onec_find_entities", started, query)
         try:
-            result = await runtime.onec.find(source, contains, limit)
+            result = await runtime.onec.find(
+                source, contains, limit,
+                include_property_types=include_property_types,
+            )
             await runtime.audit.write(
                 principal=principal,
                 tool="onec_find_entities",
@@ -1085,7 +1096,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
 
-    @mcp.tool()
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def counterparty_find(
         source_id: str, company_id: str, name: str
     ) -> dict[str, Any]:

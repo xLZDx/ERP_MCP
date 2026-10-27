@@ -55,6 +55,36 @@ class Ledger:
             raise self.error
         return self.response
 
+    async def lifecycle_checkpoint_suffix(self, scope, checkpoint_seq, checkpoint_hash):
+        head_seq = self.response["count"]
+        events = []
+        for seq in range(checkpoint_seq + 1, head_seq + 1):
+            events.append({
+                "seq": seq,
+                "event_id": f"00000000-0000-4000-8000-{seq:012d}",
+                "change_id": f"00000000-0000-4000-9000-{seq:012d}",
+                "event_type": "VERIFY_VERIFIED",
+                "payload_found": None,
+                "payload_nonempty": True,
+                "record": {
+                    "execution_state": "APPLIED",
+                    "verification_state": "VERIFIED",
+                    "call_ownership": "PROVEN_FINISHED",
+                    "reservation_state": "CONSUMED",
+                    "dispatch_state": "DISPATCHED",
+                },
+            })
+        return {
+            "tenant_id": scope.tenant_id,
+            "company_id": scope.company_id,
+            "checkpoint_seq": checkpoint_seq,
+            "checkpoint_hash": checkpoint_hash,
+            "anchor_matches": True,
+            "head_seq": head_seq,
+            "has_more": False,
+            "events": events,
+        }
+
 
 class ExplodingGetDict(dict):
     def get(self, key, default=None):

@@ -1,0 +1,112 @@
+{
+ "clone": "818HA_p2diff",
+ "enumeration": "СтавкиНДС",
+ "values": [
+  {
+   "name": "НДС18",
+   "synonym": "20%"
+  },
+  {
+   "name": "НДС18_118",
+   "synonym": "(не используется) 18/118"
+  },
+  {
+   "name": "НДС10",
+   "synonym": "8%"
+  },
+  {
+   "name": "НДС10_110",
+   "synonym": "(не используется)  10/110"
+  },
+  {
+   "name": "НДС_10",
+   "synonym": "10%"
+  },
+  {
+   "name": "НДС15",
+   "synonym": "15%"
+  },
+  {
+   "name": "НДС0",
+   "synonym": "0%"
+  },
+  {
+   "name": "БезНДС",
+   "synonym": "Fara TVA"
+  },
+  {
+   "name": "НДС20",
+   "synonym": "(не используется) 20%"
+  },
+  {
+   "name": "НДС20_120",
+   "synonym": "(не используется) 20/120"
+  },
+  {
+   "name": "НДСИмпорт",
+   "synonym": "НДС Импорт"
+  },
+  {
+   "name": "НДСАвансы",
+   "synonym": "НДС Авансы 20%"
+  },
+  {
+   "name": "НДСАвансы10",
+   "synonym": "НДС Авансы 10%"
+  },
+  {
+   "name": "НДСАвансы8",
+   "synonym": "НДС Авансы 8%"
+  },
+  {
+   "name": "НДСАвансы15",
+   "synonym": "НДС Авансы 15%"
+  },
+  {
+   "name": "НДС12",
+   "synonym": "12%"
+  },
+  {
+   "name": "НДСАвансы12",
+   "synonym": "НДС Авансы 12%"
+  },
+  {
+   "name": "НДС6",
+   "synonym": "6%"
+  },
+  {
+   "name": "НДСАвансы6",
+   "synonym": "НДС Авансы 6%"
+  },
+  {
+   "name": "ОбратноеНалогообложение",
+   "synonym": "Обратное налогообложение"
+  }
+ ],
+ "receipt_line_aggregates": [
+  {
+   "rate_value": "БезНДС",
+   "sum_includes_vat": true,
+   "lines": 69,
+   "sum": 71075.91,
+   "vat": 0.0,
+   "zero_vat_lines": 69
+  },
+  {
+   "rate_value": "НДС18",
+   "sum_includes_vat": true,
+   "lines": 751,
+   "sum": 2686943.24,
+   "vat": 447811.48,
+   "zero_vat_lines": 1
+  },
+  {
+   "rate_value": "НДС10",
+   "sum_includes_vat": true,
+   "lines": 4,
+   "sum": 706.56,
+   "vat": 52.33,
+   "zero_vat_lines": 0
+  }
+ ]
+}

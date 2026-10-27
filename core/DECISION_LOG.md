@@ -467,8 +467,7 @@ Two-source check of account 521.1 (operator intent 2026-10-08: "you do it yourse
 
 ## 2026-10-09 — Windows Task Scheduler autostart for the real-1C lane
 
-- Operator order: the MCP lane and the 1C test environment must come up by themselves after a reboot of this machine. Scheduled task `ERP_MCP_Lane_Autostart` (at logon, 1 min delay, repeated every 5 min as a watchdog) runs `D:\ERP_MCP_Testbed
-eal1c_e2eutostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is idempotent: Docker Desktop and lane PostgreSQL/Redis, Apache with the 1C OData publication, lane proxies 8191-8193, real sidecar 21768, the IdP quick tunnel, IdP 21080, gateway 21000 and the ChatGPT tunnel-client are started only when missing.
+- Operator order: the MCP lane and the 1C test environment must come up by themselves after a reboot of this machine. Scheduled task `ERP_MCP_Lane_Autostart` (at logon, 1 min delay, repeated every 5 min as a watchdog) runs `D:\ERP_MCP_Testbed\real1c_e2e\autostart\start_lane.ps1` (copy in scripts/real1c/autostart/). It is idempotent: Docker Desktop and lane PostgreSQL/Redis, Apache with the 1C OData publication, lane proxies 8191-8193, real sidecar 21768, the IdP quick tunnel, IdP 21080, gateway 21000 and the ChatGPT tunnel-client are started only when missing.
 - Evidence: with apache, proxy 8193 and the sidecar killed, one task run restored all three (log lines apache/lane proxy/real sidecar started: True); gateway pid unchanged on a no-op pass. A cold start after a real reboot is not yet exercised.
 - Limitation: the IdP is published through a Cloudflare quick tunnel; a new host after reboot is written into env.ps1 and idp-config.json by the script, but ChatGPT must press Reconnect once. Needs an interactive Windows logon (DPAPI key, Docker Desktop are per-user). No production change.
 - 2026-10-12: Commit pending integration work on integration/1c-mvp-production-candidate: OAuth additional audience for the ChatGPT tunnel resource (auth, settings, tests) and the matching envctl client and audience configuration. Nothing executed by this commit; nothing pushed.
@@ -886,3 +885,291 @@ G1 restore revocation test correction (2026-10-16): the authorized test agents r
 ## 2026-10-21 - Commit: record inherited defects backlog
 
 Decision: by operator decision the 2026-10-20 integration does not fix inherited defects; they are recorded in docs/BACKLOG_INHERITED_2026-10-21.md with severity guess, evidence, origin and an acceptance test. Docs only, no code changed.
+
+## 2026-10-21 - Operator decisions A1-A7 recorded for autonomous ERP_MCP work
+
+Evidence basis: `docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md` records the operator statements and the agent's repository/host verification. This entry preserves the limits from that verification; a recorded operator statement is not upgraded into runtime evidence.
+
+- A1 — Source availability: operator statement, “A 1C database exists on this computer and on the remote computer, so real-source access is not a blocker.” WP0 observed the local listeners, anonymous-access denial, gateway `/readyz` and `/healthz` responses, and IdP JWKS reachability (`docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`). The local business read remains NOT_RUN. Ivan remote checks also remain NOT_RUN because strict SSH host-key verification rejected the untrusted host key. Local liveness does not establish a successful business read or remote source health.
+- A2 — G3 accountant report: operator statement, “The independent accountant report (gate G3) is not a blocker; the report does not exist, but everything is fine.” Decision: record `WAIVED_BY_OPERATOR` as an unsigned G3 note only. Engineering reconciliation is not accountant attestation. G3 remains `NOT_PASSED`; the note cannot satisfy predecessors, authorize production, or be reported as PASS. No accountant report was found in the cited plan evidence.
+- A3 — Key registry: operator statement, “Key and signature registry (risks R-01, R-03): permitted.” This authorizes the planned implementation only; it is not evidence that keys, signers, or witnesses exist. Before the first real write, the plan still requires the actual licensed-host signer and separate witness, with private keys protected and public keys registered.
+- A4 — Donor licenses: operator statement, “Donor-code licenses are not needed: it is the operator’s own code from other projects.” This closes the donor-code approval item as an operator decision. It does not close the inventory's unverified transitive dependency, setuptools/wheel, or License-File checks; no complete license audit is claimed.
+- A5 — Google Drive OAuth: operator statement, “Google Drive OAuth: create, delete and read of documents were already fully verified.” Repository records cited by the plan support create, read/list and changes-feed probes, but no delete probe was found. Keep Drive intake disabled and outside the critical path until its scope, token lifetime and evidence are resolved; do not claim delete verification.
+- A6 — Secrets, canary and rollback: operator delegated the choices with “decide yourself.” Decision: use the existing per-host Windows DPAPI CurrentUser-to-environment (`BAG_SECRET_PROVIDER=env`) arrangement; a read-only recipe on `onec-818ha-reference` via the Ivan gateway, with a two-hour window, gateway row limit 200 and 100 calls per run; use the S13 kill-switch design. Operator remains accountable for rollback, executed through that kill switch. Staging remains forbidden per the recorded 2026-10-10 operator decision. These are selected operating parameters, not evidence of a canary run.
+- A7 — 1C writes: operator statement, “you have everything”; follow-up: “on production there will be no tests, an exact clone is enough.” Authorization is limited to disposable test clones / the named lane copy. Production company bases are never test targets; no production base write is authorized. CT14 evidence covers only the measured COM purchase-receipt create/post/unpost path on `818HA_p2diff`; the plan lists unmeasured OData, forced termination, concurrent unresolved-call and client/server-base cases.
+
+G3 manifest mechanics: `governance/GATE_MANIFEST.json` may carry a structured `operator_disposition` note with status `WAIVED_BY_OPERATOR`, statement and recording date. The validator accepts this only on G3, rejects signature/signer/evidence fields on the note, and never treats it as gate evidence. G3's gate status and external evidence status remain unchanged. G4 retains its separate signed-waiver mechanics. Tests for this change are owned by the named gate-manifest test agents and were not run by this implementation pass.
+
+## 2026-10-21 - WP2 inherited failures receive identifier-only triage
+
+Decision: distinguish the inherited test-name inventory from a diagnosis. The named result files yielded 13 errors and 14 failures (12 Phase 2 plus two main-set failures). The 13 migration/database errors are environment-dependency candidates, not individually proven causes. The 12 Phase 2 failures and two main-set failures are categorized by source-test boundary in `docs/phase2/artifacts/WP2_INHERITED_TEST_CLASSIFICATION_2026-10-21.md`; all individual causes remain NOT_VERIFIED. No tests were run in this coding phase.
+
+## 2026-10-21 - Downstream package evidence remains gated by writer and host boundaries
+
+Decision: do not implement a synthetic substitute for the physical S13 writer boundary, generate licensed-host keys without verified host identity, run clone mutation scenarios prohibited by the active process rules, or weaken the document-registry contract to omit protected local files or historical refs. Record exact package dependencies in `docs/phase2/artifacts/WP4_WP10_DEPENDENCIES_2026-10-21.md` and continue only after those dependencies are resolved. Ivan's stack is the plan-selected service boundary, but WP0 did not verify its state because strict SSH host-key validation failed.
+
+## 2026-10-21 - Operator delegates autonomous technical decisions
+
+The operator instructed the agent to make technical decisions, complete the project autonomously, and avoid further routine questions. Decision: resolve ordinary implementation and sequencing choices independently; preserve the explicit project limits on production writes, staging, real money, deletion, secret handling, strict host identity, and test ownership. For later clone qualification, use only mapped functional/E2E agent tests against the named disposable clones after code completion; do not use manual writes or production bases. This delegates execution decisions but does not satisfy external service, key identity, or formal gate evidence.
+
+## 2026-10-22 - Preserve localized and semantic text during WP3 cleanup
+
+Decision: preserve Russian-localized documentation, Russian semantic/test strings, and literal 1C identifiers rather than deleting them or translating values that define behavior. For future English-text scanning, do not grant an entire mixed source/test-data directory a broad exception based only on the path-based inventory. Build exceptions from exact paths and reviewed line/pattern scope; keep prose outside those scopes subject to translation. The 2026-10-20 inventory remains a historical heuristic, not line-level proof. No scanner, test, or current allowlist is approved by this decision.
+
+Authority: the operator delegated routine technical decisions to Codex in the autonomous ERP_MCP task; this choice preserves product/test semantics and avoids deletion. Evidence: `docs/commits/2026-10-20-english-policy-inventory.md` records the localization, literal-identifier, and semantic-data classes as exception candidates and warns that classification is path-based. The precise allowlist remains open until a value-safe line-level inventory is available.
+
+For direct operator quotations in this decision log, preserve short verbatim wording in its original language for audit fidelity and translate only the surrounding narrative. Any future English-text scanner exception must be anchored to the specific quoted text in a value-safe way; do not exempt the whole decision-log file. This applies the operator's broad delegation of ordinary policy decisions while keeping attribution exact.
+
+## 2026-10-22 - Current lane access, ownership, writer boundary, and Git scope
+
+Decision: use the operator's current verified environment report as the active lane baseline, with runtime observations recorded in `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-22.md`. Apache and proxies are already running on 8088 and 8191–8193 and are not to be restarted; the 21200 process is the project venv-launched `testlane.phase2_mcp` and is not to be replaced. Use `koros@100.88.71.74` with strict SSH host-key checking. The operator is accountable for the delegated project task; the Ivan stack is the technical owner of the remote connection/host stack. Do not use the `ERP_MCP_REAL1` ChatGPT connector for this work; local gateway calls use a short-lived in-process auditor token that is never printed.
+
+Decision: implement the missing S13 writer boundary as a private service on Ivan's licensed lane, beginning with a clone of `818HA_p2diff`, bound to loopback/Tailscale and never to the public tunnel. The frozen requirements include stable call-ID idempotency, stale-epoch rejection, authoritative outcome lookup, and a quiescence barrier. No deployed transaction boundary is claimed by this decision.
+
+Decision: the operator's staging prohibition refers to a staging deployment, not Git staging. Explicit-path staging and local commits are authorized, and the first local commit includes the three autonomous prompt documents. Leave `MCP-RSV-Data.zip` untouched. Push/PR remains gated on correlated GPT-PM approval for the exact final head. This records the operator's 2026-10-22 clarification; it does not itself satisfy the GPT-PM gate.
+
+
+## 2026-10-24 - WP5 production evidence trust snapshot source candidate
+
+Decision: keep production evidence trust separate from evaluation registries. The schema-027 candidate exposes one revisioned signer/process/oracle/outcome-policy snapshot through a SECURITY DEFINER routine restricted to `private_writer_evidence_ingest`; runtime roles retain no direct table access. The Python adapter requests a bounded top-level REPEATABLE READ READ ONLY transaction, pins timestamp rendering to UTC, and strictly decodes a bounded payload into immutable trust records. Historical rotation ancestors remain available even when no longer scoped for new evidence. Missing operation policy stays explicit and causes verifier refusal.
+
+This is an implementation direction under the operator's delegated technical authority, not an installed schema, effective-grant result, production trust approval or qualification. SQL remains unparsed/uninstalled; no database write, test or specialist review ran. Evidence and current limitations: `docs/phase2/S13_POSTGRES_ADMISSION_SCHEMA_DESIGN_2026-10-22.md`, `docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md`, and `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md`. Validator build provenance and trust-policy/key-custody human owners remain unknown in project records.
+
+## 2026-10-24 - Keep S13 evidence registration uncomposed until context is authenticated
+
+Decision: do not wire the candidate production verifier to `private_writer_register_evidence_v1` while validation time is caller-selected, the verification-result type is constructible, the database attempt projection is incomplete in `DispatchAttempt`, and `validator_build_id` has no authenticated provenance. Require an authenticated clock, exact least-privilege immutable attempt/intent context, a complete closed typed projection, and an approved build-attestation source; retain the SQL routine's tuple and revocation rechecks. The detailed boundary and acceptance evidence are in `docs/phase2/S13_EVIDENCE_REGISTRATION_CONTEXT_DESIGN_2026-10-24.md`. This does not block unrelated S13 source work and does not claim migration, grant or runtime qualification.
+
+## 2026-10-27 - Phase 2 test lane reports gateway refusal codes; two-base recheck
+
+Evidence: strict SSH to koros@100.88.71.74 and all local listeners were healthy; Ivan and local gateways answered `source_health` ok. The two-base comparison of account 521.1 returned `PARTIAL_MISMATCH` (10 rows on the local side, 11 on Ivan, one `ROW_MISSING_IN_A`), a numeric copy-consistency result and not a native 1C PASS. The six-column and purchase sections were refused by the gateway itself with `SEMANTIC_PROFILE_UNVALIDATED`.
+
+Decision: report the gateway's bare refusal code as `detail_code` beside the unchanged `reason_code`, and call `purchase_documents` with only `source_id` and `company_id`. The running 21200 server was not restarted. Cause of the extra row on Ivan is UNKNOWN. Detail: `docs/phase2/CHANGE_RECORD_341.md`, `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-27.md`. pytest NOT_RUN.
+
+
+## 2026-10-27 - Two-base 521.1 mismatch traced to different clones
+
+Evidence: the local `erp_mcp_ref` publication reads `818HA_test_ready`; Ivan's reads `818HA_p2diff`, the write clone. Ten common 521.1 rows are identical and the fingerprints match; Ivan has one extra credit-only counterparty. The two gateways therefore do not read copies of one base, and the earlier `PARTIAL_MISMATCH` is expected, not a defect. The write-clone explanation of the extra row is an inference.
+
+Decision: no configuration change. Whether Ivan's reference source should read a read clone (`818HA_test_ready` or `818HA_reference_ro`) is left to the S13/S15 owners. Detail: `docs/phase2/CHANGE_RECORD_342.md`. pytest NOT_RUN.
+
+
+## 2026-10-27 - Mechanical ruff cleanup of four clean phase2 files
+
+Decision: apply ruff autofixes to `transitions.py` and three phase2 SQL/offline tests that had no pending modification, and leave files under active S13 work and the evidence-bound `ct14_measure.py` untouched. Definitions and signatures in `transitions.py` were compared with HEAD and are identical; three `DTZ001` findings remain. Detail: `docs/phase2/CHANGE_RECORD_343.md`. pytest NOT_RUN.
+
+
+## 2026-10-27 - Preservation commit of the S13 private-writer candidate; takeover by Claude Code
+
+Decision: the operator told this session to finish the remaining work itself. The S13 private-writer source, migration 027, its tests and the earlier sessions' log entries had existed for weeks only as modified or untracked files. They are committed locally as a preservation checkpoint (code and logs first, documentation second) without re-reviewing each file. Nothing is pushed.
+
+Evidence: all 71 dirty Python files byte-compile; a scan of all 389 dirty text files found no private keys, tokens, passwords in connection strings or real amounts beyond lines already in HEAD. `MCP-RSV-Data.zip` stays untracked. The writer remains unqualified: privileges `NOT_MEASURABLE`, COM boundary unmeasured, pytest and review NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_344.md`.
+
+
+## 2026-10-27 - Preservation commit of the Phase 2 documentation backlog
+
+Decision: commit the 311 documents that earlier sessions wrote and never committed (change records 300-339, `docs/commits/`, Phase 2 plans and artifacts, reports, governance output) as the documentation companion to the code checkpoint. Content is the earlier sessions' and was not re-verified. Detail: `docs/phase2/CHANGE_RECORD_345.md`. Registry generator, English-policy scanner and reviews NOT_RUN.
+
+
+## 2026-10-27 - Registrar NameError fix and trust snapshot limit aligned to 8 MiB
+
+Decision: fix the unreachable build-policy comparison in the evidence registrar, repair the red composition test, and set the trust snapshot ceiling to 8 MiB as documented (code had 16 MiB). The barrier-acknowledgement 16 MiB payload limit is a separate contract and is unchanged.
+
+Evidence: full `tests/phase2` run before the fixes: 3 failed, 6995 passed, 602 skipped, 13 errors. The 3 failures were the 8 MiB boundary tests; they pass after the change (31 passed with the composition file). The 13 errors are migration scripts that are documented as direct-run harnesses (disposable PostgreSQL container), not pytest tests (`fixture 'db' not found`), so they are NOT_RUN here. Detail: `docs/phase2/CHANGE_RECORD_346.md`.
+
+
+## 2026-10-27 - Mechanical ruff autofixes in the S13 private-writer source
+
+Decision: apply ruff safe autofixes (no `--unsafe-fixes`) to `src/erp_mcp_private_writer/` (28 files). Remaining non-autofixable findings stay for review.
+
+Evidence: all modules byte-compile; focused S13/WP5/S14 pytest selection 287 passed, 8 skipped, 0 failed after the fixes. Migration harness scripts NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_347.md`.
+
+
+## 2026-10-27 - Evidence registrar: terminate the connection on outer cancellation, log unexpected errors
+
+Decision: from the silent-failure review of the S13 writer (6 findings: 2 MAJOR, 4 MINOR, no BLOCKER) fix F1 now: an outer deadline (the outcome provider timeout) cancelled `_register_on_connection` without terminating the connection, so a possibly committed write could return to the pool as clean. Also log the class (and message for NameError/AttributeError/TypeError only) before translating unexpected errors (part of F3). F2, F4, F5, F6 (error-class narrowing in validation path, T16 recovery, ingress, trust lookup) stay open in the backlog of Change Record 348; they change error codes and need a contract decision.
+
+Evidence: new regression test drives `_register_on_connection` under an outer timeout and asserts `terminate()` ran; composition file 12 passed. Detail: `docs/phase2/CHANGE_RECORD_348.md`.
+
+
+## 2026-10-27 - Evidence validation path: transport errors are UNAVAILABLE; migration harness evidence
+
+Decision: close review finding F2. In `verify_and_store` and `verify_set_and_store`, OSError and asyncpg transport errors now map to `EVIDENCE_REGISTER_UNAVAILABLE` (retryable) instead of `EVIDENCE_REGISTER_VALIDATION_FAILED`; any other unexpected error stays a validation failure, because hostile input can raise anything while parsing, but it is now logged. Nothing in src or tests asserted the old code for transport errors. F4, F5, F6 remain open in Change Record 348.
+
+Evidence: the functional-test-reviewer agent ran the four migration harness scripts at f06fa2d: migration 020 PASS, 022 PASS, 023 PASS and checkpoint-suffix (026) PASS; the last two passed only with `ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1` because their `__main__` does not set it (test defect). Containers created by the agent were removed. Detail: `docs/phase2/CHANGE_RECORD_349.md`. Migration 027 was not applied.
+
+
+## 2026-10-27 - T16 recovery coordinator: local rejection for a bad change id, definitive gate refusals keep their code
+
+Decision: close review finding F4. A malformed `change_id` now fails as `T16_CHANGE_ID_INVALID` (outcome_unknown false) before the resolution gate is called. A `ServiceError` from the gate or from S13 terminalization keeps its code and its own outcome_unknown flag; any other unexpected error still maps to the conservative OUTCOME_UNKNOWN codes and is now logged by class. The broad catches stay on purpose: after the gate was called, the safe assumption is that the outcome may be unknown. F5 and F6 remain open.
+
+Evidence: new `tests/phase2/test_s13_t16_recovery_error_mapping.py` 3 passed (first tests of this coordinator). Detail: `docs/phase2/CHANGE_RECORD_350.md`.
+
+
+## 2026-10-27 - Private ingress: log unexpected errors, keep the outcome-unknown contract
+
+Decision: close review finding F5 by logging the exception class (never the message or payload) in the four broad handlers of `private_ingress.py`. The response codes are unchanged on purpose: a failure to serialize the result after a successful dispatch correctly stays `WRITER_OPERATION_UNAVAILABLE` with `outcome_unknown` true, because the client did not receive the outcome and must look the call up. F6 stays open.
+
+Evidence: module imports and passes ruff F,E9; no test in the repository references `private_ingress`, so a handler-level test (needs a real service, authenticator, authorizer and runtime) is NOT_RUN and open. Detail: `docs/phase2/CHANGE_RECORD_351.md`.
+
+
+## 2026-10-27 - Trust snapshot source: exact database message match and diagnostics
+
+Decision: close review finding F6 for the trust snapshot source. The P0001 mapping now compares the exact `exc.message` with each known code instead of searching a substring of `str(exc)` (the SQL raises the bare code, checked in migration 027); decoder defects (an exception class other than ValueError, KeyError, TypeError, OverflowError, RecursionError) and lookup failures are logged by class. The barrier-ack registrar already used exact comparison. All six review findings are now closed or recorded.
+
+Evidence: new `tests/phase2/test_s13_trust_source_error_mapping.py` 2 passed; WP5, composition, T16 and trust tests together passed. Detail: `docs/phase2/CHANGE_RECORD_352.md`.
+
+
+## 2026-10-27 - Review round on 6ef051b: python-reviewer and security-reviewer findings fixed
+
+Decision: both reviewers found no BLOCKER or MAJOR. Fixed the valid items: the unexpected-error log no longer prints exception text (class and innermost frame only); T16 lookup and preparation failures are logged; the authenticator call at the ingress is guarded (503, logged); the registration deadline starts after the build re-read; a pool timeout before any connection is `outcome_unknown` false. Left open by decision: confirming the retry policy of consumers of `EVIDENCE_REGISTER_UNAVAILABLE` (callers not in this repository scope) and a largest-realistic-snapshot test for the 8 MiB ceiling.
+
+Evidence: composition and T16 test files 17 passed after the change. Detail: `docs/phase2/CHANGE_RECORD_353.md`.
+
+
+## 2026-10-27 - Migration 027 applied in a disposable database; effective privileges measured
+
+Decision: the functional-test-reviewer agent applied migrations 001-026 and then `027_private_writer_admission_schema.sql` in a disposable PostgreSQL chain built by the existing harness. Result: 027 applies cleanly, applies a second time without error, and creates both roles. Privileges for the S13 roles move from NOT_MEASURABLE to MEASURED for this single fresh chain only. This does not qualify the writer: function behavior, tenant scoping inside the SECURITY DEFINER bodies, credentials and an upgraded database were not tested. The push of 735c904 (GPT-PM APPROVE) is unaffected; this note is a later documentation commit.
+
+Evidence: `business_ai_private_writer` has EXECUTE on 13 SECURITY DEFINER `private_writer_*_v1` functions and no table or sequence privilege; `private_writer_evidence_ingest` has no function EXECUTE and no table privilege; PUBLIC has none on `change_ledger`; neither role is superuser, bypassrls or createrole; 0 role memberships; no default ACL grants. Detail: `docs/phase2/CHANGE_RECORD_354.md`.
+
+
+## 2026-10-27 - First request-level tests of the private ingress
+
+Decision: add `tests/phase2/test_s13_private_ingress_boundary.py` (4 tests): an unexpected authenticator failure on dispatch and lookup returns a logged 503 `AUTHENTICATION_UNAVAILABLE` without leaking the exception text, a rejected credential is 401, and a non-loopback peer is refused with 403 before authentication runs. The ingress had no test at all. Still open: dispatch and lookup bodies, authorizer branches, a test that builds a `CallIdentity`, a maximum-size trust snapshot test.
+
+Evidence: 4 passed; ruff F,E9 clean. This is a later local commit and does not change the GPT-PM approved head 735c904 on the remote. Detail: `docs/phase2/CHANGE_RECORD_355.md`.
+
+
+## 2026-10-27 - Ingress body-level tests added
+
+Decision: extend `test_s13_private_ingress_boundary.py` with request-body checks on both routes: malformed JSON, an unknown field and a duplicate key are 400 `INVALID_REQUEST` before any service call, and a body over 1 MiB is 413 `REQUEST_TOO_LARGE`. Authorizer branches and a full valid dispatch remain open (they need real ticket and permit values).
+
+Evidence: 7 passed in the file. Detail: `docs/phase2/CHANGE_RECORD_356.md`.
+
+## 2026-10-27 - Ivan's reference source repointed to the read-only base; 521.1 closing comparison now equal
+
+Decision (operator answered yes to the question about a read-only source): on Ivan's host the OData publication `erp_mcp_ref` was repointed from the write clone `818HA_p2diff` to `818HA_test_ready` with the existing `D:\1c\mcp\ivan_repoint.ps1` over the strict SSH channel (host-key checking unchanged). The script stopped Apache on Ivan's host and restarted it through the `ERP_MCP_Ivan_Stack` scheduled task; Apache is listening again. Rollback: run the same script with `-BaseName 818HA_p2diff`. No 1C data was changed.
+
+Evidence: `phase2_reconcile_two_bases` for the real reference company after the change: the 521.1 closing comparison is PARTIAL_MATCH, reason CLOSING_VALUES_EQUAL, 10 rows on each side with the same rows digest, 0 differences (before: the sides read different clones and always differed). Not fixed by this change: the six-column section returns GATEWAY_HTTP_ERROR and the purchase section returns GATEWAY_TOOL_ERROR; MATCH is never a native 1C PASS. Named Cloudflare tunnel for the IdP (operator answered yes) is blocked: no cloudflared credentials exist on this machine, so it needs an interactive Cloudflare login and a domain from the operator. Also repaired the escape-damaged autostart script path in an older entry. Detail: `docs/phase2/CHANGE_RECORD_357.md`.
+
+## 2026-10-27 - Stable IdP host through Tailscale Funnel; tunnel-client launch folder restored
+
+Decision: the operator asked to look for an existing Cloudflare setup and then chose Tailscale Funnel. No Cloudflare account material exists on this machine (empty `.cloudflared`, no named tunnel); the earlier ERP_MCP setup on Ivan's host used an OpenAI Secure MCP Tunnel plus Tailscale Funnel. The lane IdP is now published at `https://razer.tail08f9f9.ts.net`, the lane issuer, the tunnel-client trusted origin and the autostart script use that host, and the quick tunnel is gone. The autostart script had also been failing to start the tunnel-client since the `ERP_MCP-chatgpt` folder was moved to Trash; the three needed files were copied back (nothing was moved or deleted). Consequence for the operator: the ChatGPT connector ERP_MCP_REAL1 must be deleted and created once more because the issuer changed.
+
+Evidence: funnel URL returns 200 for the realm discovery document; gateway resource metadata lists the funnel host; tunnel-client `erp-mcp-local` runs without the untrusted-origin warning; one full autostart pass ended with all ports listening; the 521.1 comparison still returns PARTIAL_MATCH with equal digests. Real ChatGPT login against the new issuer is NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_358.md`.
+
+## 2026-10-27 - Coverage for the validation-path error mapping and the trust snapshot size
+
+Decision: add the tests the reviews asked for. `verify_and_store` is now driven with a real `CallIdentity`: a transport error while loading the attempt maps to `EVIDENCE_REGISTER_UNAVAILABLE`, a domain error stays `EVIDENCE_REGISTER_VALIDATION_FAILED`. A synthetic snapshot with 4200 signers decodes and stays below 75% of the 8 MiB ceiling (about 4.4 MB). The per-signer scope cap (4096) still allows snapshots above the ceiling; the real expected scope count is unknown, so the ceiling stays a fail-closed limit rather than a proven fit.
+
+Evidence: composition file 16 passed, size test 1 passed. Detail: `docs/phase2/CHANGE_RECORD_359.md`.
+
+## 2026-10-27 - 1C license obtained on Ivan's host; read-only COM connection to the clone works
+
+Decision: the operator obtained a 1C developer (community) license on Ivan's host over Remote Desktop with their own account; no license file was copied or transferred and no credential passed through the session (the operator typed all of them). The earlier file on the local machine looked time limited (written 2026-10-12, recorded expired 2026-10-19, seven days). The clone dialog was answered 'This is a copy of the information base' so external exchanges of the copy stay blocked.
+
+Evidence: before, `store-onec-admin.ps1 -TestOnly` returned 'License not found'; after, it printed `COM connect ok     : True` (boolean output only). Not run: the metadata inventory, the CT14 effective-rights check, any COM write; the write port stays uncomposed. The developer license expires and has use restrictions set by 1C; renewal and the terms check belong to the operator. Detail: `docs/phase2/CHANGE_RECORD_360.md`.
+
+## 2026-10-27 - Metadata-only inventory of the licensed clone on Ivan's host
+
+Decision: with the license in place (Change Record 360) a host-side PowerShell inventory was written and run once successfully: it decrypts the stored clone login in process, connects by COM and prints metadata names only (configuration, platform, one document's attributes and tabular sections). No business rows, rights, objects or files; the login is never printed. The script is ASCII only with Unicode escapes for Cyrillic names.
+
+Evidence: platform 8.3.27.2342, configuration with version 3.0.67.1, document with 73 attributes and 9 tabular sections; result saved as `docs/phase2/artifacts/CT14_METADATA_INVENTORY_IVAN_2026-10-27.json`. Not done: the reviewed payload-to-COM crosswalk, CT14 effective-rights check, any write; the write port stays uncomposed. Detail: `docs/phase2/CHANGE_RECORD_361.md`.
+
+## 2026-10-27 - CT14 inventory script hardened after GPT-PM delta gate 2 (REJECT, 1 MAJOR, 1 MINOR)
+
+Decision: accept both findings. The base path of `ct14_metadata_inventory_ivan.ps1` is now checked against an allowlist of one approved clone before the stored login is decrypted or COM is touched, and the error path prints only a stable code and the exception class. The earlier approval of the source (03f2adf) is not reopened; the rejected head f013c0b is not pushed.
+
+Evidence: 8 new tests passed (seven refusal cases plus a text check); the hardened script ran on Ivan's host with the same output shape. Detail: `docs/phase2/CHANGE_RECORD_362.md`.
+
+## 2026-10-27 - Skipped phase 2 tests classified from their skip call sites
+
+Decision: documentation only. The 16 skip call sites fall into environment-gated (disposable PostgreSQL DSN), timing-gated, image-gated and platform-gated classes; every database skip text starts with NOT_RUN. The exact split of the 602 skips is UNKNOWN until a test agent runs with -rs. Detail: `docs/phase2/CHANGE_RECORD_363.md`.
+
+## 2026-10-27 - CT14 effective rights measured on the local disposable clone
+
+Decision: the earlier hold on `ct14_effective_rights.py` was an over-block; the script writes only to the disposable clone and the operator authorised autonomous completion. Result: 53 committed objects, 0 mismatches, 0 extra rights, 0 forbidden rights. Detail: `docs/phase2/CHANGE_RECORD_364.md`.
+
+## 2026-10-27 - Draft payload-to-1C crosswalk for CREATE_DRAFT
+
+Decision: documentation only. All 12 destinations of the single-line payload exist in the saved inventory; value types, reference resolution, the VAT enumeration and recomputation of totals are UNKNOWN, so the map is a draft and not a reviewed binding set. Detail: `docs/phase2/CHANGE_RECORD_365.md`.
+
+## 2026-10-27 - Value types of the CREATE_DRAFT destinations read from the clone
+
+Decision: read-only metadata read on the local disposable clone. Five destinations are references, the number is limited to 30 characters, the date is date-time, amounts have two decimals and the VAT rate is an enumeration of 20 values. Detail: `docs/phase2/CHANGE_RECORD_366.md`.
+
+## 2026-10-27 - VAT code table drafted; the payload contract has no closed VAT vocabulary
+
+Decision: documentation only. `vat_rate_code` is free identity text; the draft table maps VAT0 and VAT20 by name, leaves VAT10 unresolved between two near-duplicate enumeration values and requires refusal of every unmapped code. Detail: `docs/phase2/CHANGE_RECORD_367.md`.
+
+## 2026-10-27 - VAT usage in the clone's receipt lines read; VAT10 maps to the ten-percent value in use
+
+Decision: read-only counts per enumeration value (69 without VAT, 751 at eighteen percent, 4 at ten percent). `VAT10` is mapped to `НДС10` as the only ten-percent value in use; `VAT0` and `VAT20` stay name-based. The VAT wording of Change Record 367 is corrected. Detail: `docs/phase2/CHANGE_RECORD_368.md`.
+
+## 2026-10-27 - Closed value vocabulary for enumeration bindings in the COM manifest
+
+Decision: `PayloadPropertyBinding` takes an optional closed `value_map`; unmapped values are refused and the translated 1C value feeds both the digest manifest and the ephemeral COM values. No VAT table is wired into the production binding set yet. Evidence: 38 new tests and 132 tests of the 14 importing files passed (agent-run). Detail: `docs/phase2/CHANGE_RECORD_369.md`.
+
+## 2026-10-27 - In-memory probe: setting a goods line does not recompute VAT amount or document total
+
+Decision: evidence only. A new goods row set to quantity 2, price 10, amount 20 leaves the VAT amount and the document total at zero in memory. Write-time recomputation is not measured and is the next step; the payload has no VAT amount or total field. Detail: `docs/phase2/CHANGE_RECORD_370.md`.
+
+## 2026-10-27 - Reviewer fixes for the value vocabulary; write-time probe shows the document total is recomputed but not the line VAT amount
+
+Decision: duplicate targets in a value map are refused and the missing guard tests were added (54 agent-run tests passed). A rolled-back draft write on the disposable clone gave VAT amount 0, line amount 20, document total 20; no probe document persisted. Whether the binding set must set the line VAT amount is open. Detail: `docs/phase2/CHANGE_RECORD_371.md`.
+
+## 2026-10-27 - CORRECTION: VAT enumeration value names do not match their rates in this configuration
+
+Decision: the name-based mapping drafted in Change Records 367 and 368 is withdrawn. Synonyms and aggregates show `НДС18` is 20%, `НДС10` is 8%, `НДС_10` is 10% and `НДС20` is unused; the correct draft is VAT20 to `НДС18`, VAT10 to `НДС_10`, VAT0 to `НДС0`. No wrong mapping reached code. Detail: `docs/phase2/CHANGE_RECORD_372.md`.
+
+## 2026-10-27 - Line VAT amount: measurement and three options, option C recommended
+
+Decision: not made. The formula amount x rate / (100 + rate) reproduced 716 of 755 rated lines exactly in the clone, 32 more within one cent and 6 by more (up to 12.50). Recommended option C: carry the line VAT amount inside the approved, digest-bound payload so the approver sees every booked figure. Detail: `docs/phase2/CHANGE_RECORD_373.md`.
+
+## 2026-10-27 - Line VAT amount becomes part of the approved payload (option C, auto-accepted recommendation)
+
+Decision: `Line.vat_amount` is required and digest-bound, so the approver sees every booked figure. The operator's question was auto-answered with the recommended option; it can be reverted. Full `tests/phase2` after fixes: 7154 passed, 602 skipped, 13 documented by-design errors. Detail: `docs/phase2/CHANGE_RECORD_374.md`.
+
+## 2026-10-27 - Closed VAT code table drafted (VAT0, VAT10, VAT20 to the values displaying 0%, 10%, 20%)
+
+Decision: the table targets enumeration values by displayed rate, not by legacy name, and is guarded by tests that read the synonyms from the saved artifact. It is not wired into any binding set; the writer stays disabled. Detail: `docs/phase2/CHANGE_RECORD_375.md`.
+
+## 2026-10-27 - Review of the vat_amount contract change: no blocker; in-flight old-shape proposals must be re-proposed
+
+Decision: record the reviewer's result in Change Record 374. Approved-but-undispatched proposals in the old five-field shape are undispatchable and must be re-proposed; the writer is disabled so none can be dispatched. Detail: `docs/phase2/CHANGE_RECORD_374.md`.
+
+## 2026-10-27 - Documentation addenda after the GPT-PM minors on Change Records 372 and 373
+
+Decision: all 740 receipt documents in the clone have the includes-VAT flag set (read-only count), and the Change Record 373 categories reconcile once the stored-zero column is included (751 + 4 = 755). Details: `docs/phase2/CHANGE_RECORD_372.md`, `docs/phase2/CHANGE_RECORD_373.md`.
+
+## 2026-10-27 - SQL-backed phase 2 tests run against a disposable Postgres; Python and SQL digests agree for vat_amount
+
+Decision: the 602 skipped DSN tests were run for real on an own `--rm` Postgres 16.14 container. No failure came from vat_amount; the Python and SQL payload digests agree for 0, 3.5 and 1234.56. Eleven tests were stale since migration 018 and two failed on a removed harness name; they were fixed against the SQL contract without weakening assertions. Detail: `docs/phase2/CHANGE_RECORD_376.md`.
+
+## 2026-10-27 - Capacity drill container lookup: an approved prefix is required for explicit selection too (GPT-PM M-01)
+
+Decision: ERP_PHASE2_TEST_CONTAINER may only choose among containers with an approved disposable prefix; it can no longer make another container qualify. Seventeen no-database tests cover the eight scenarios GPT-PM listed plus extras. Detail: `docs/phase2/CHANGE_RECORD_377.md`.
+
+## 2026-10-27 - Design draft for the COM CREATE_DRAFT executor; reference format is the blocking open decision
+
+Decision: documentation only. The repository has no code that performs the COM calls for a draft. The design proposes one executor, a rolled-back clone probe first, and lists five open decisions; the reference format of the five payload references blocks code. Detail: `docs/phase2/S14_COM_DRAFT_EXECUTOR_DESIGN_2026-10-27.md`, `docs/phase2/CHANGE_RECORD_378.md`.
+
+## 2026-10-27 - COM CREATE_DRAFT executor implemented against fake COM objects; references are resolved as GUIDs
+
+Decision: the executor refuses before the write call with outcome_unknown false and reports outcome_unknown true when the write or its read-back fails; posting is never referenced. The reference-format question was auto-answered (unique identifier) while the operator was silent and can be reverted. 52 agent-run tests passed on fakes; behavior against real 1C is UNKNOWN until the clone probe. Detail: `docs/phase2/CHANGE_RECORD_379.md`.
+
+## 2026-10-27 - COM draft executor hardened; real-clone probes found a silent-failure class that fakes and reviews missed
+
+Decision: assign enumeration values as enumeration objects and read back references, enumerations and markers from the stored document; the document's own date is a required argument; the includes-VAT flag is a reviewed constant. Real 1C stores an enumeration assigned as text as EMPTY without an error. The real executor then ran on the disposable clone in a rolled-back transaction (OK, total 20, 0 leftovers); tests 319 passed. Detail: `docs/phase2/CHANGE_RECORD_380.md`.
+
+## 2026-10-27 - COM draft executor handles dates through 1C values; least-privilege role gets Read on four catalogs
+
+Decision: dates are assigned only as 1C date values built by the type-description conversion and compared as text; the document's own date is compared by calendar day only. The role CT14 writer got Read on four catalogs (operator silent; the recommended option was auto-accepted and is revertible). The executor ran OK on the clone as administrator and as the narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_381.md`.
+
+## 2026-10-27 - Executor fixes from two independent reviews; document time-of-day measured
+
+Decision: accept the reviews' fixes (pre-write type and date checks, document reference kept after late failures, posted and deletion-mark read-back, case-insensitive names). Rejected one concern: the stored time of the document date is always 07:00:00 for six assigned times, so no midnight crossing exists and the day-only comparison stays. Executor ran OK on the clone as administrator and narrow user (rolled back). Detail: `docs/phase2/CHANGE_RECORD_382.md`.
+
+## 2026-10-27 - Read-back comparison made type-aware (GPT-PM M-01)
+
+Decision: accept the finding; identity text is compared as exact text, only declared number paths are compared numerically, and the empty-text-equals-None rule is removed. Executor ran OK on the clone as administrator and narrow user after the change (rolled back). Detail: `docs/phase2/CHANGE_RECORD_383.md`.

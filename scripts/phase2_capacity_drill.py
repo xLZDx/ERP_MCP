@@ -9,8 +9,10 @@ The DSN is read from ERP_PHASE2_TEST_DSN (superuser DSN of erp-phase2-test-pg). 
 worker processes only through the environment, never argv, and is never written to the report: the DSN,
 its password and its user name are redacted from every stored error text and from the final output.
 Only local hosts (localhost, 127.0.0.1, ::1) are accepted, and BEFORE any database is created the
-cluster behind the DSN must be proven to be the container erp-phase2-test-pg (same
-pg_control_system().system_identifier as `docker exec`); there is no override. Every worker re-checks
+cluster behind the DSN must be proven to be the disposable container that publishes the DSN port (its name must
+start with an approved disposable prefix, r2-s13-dump- or erp-s14-digest-; ERP_PHASE2_TEST_CONTAINER may only
+choose among such containers; same pg_control_system().system_identifier as `docker exec`); there is no
+other override. Every worker re-checks
 that identifier (passed by the parent through the environment) before it touches the database.
 
     ERP_PHASE2_TEST_DSN=... python scripts/phase2_capacity_drill.py --sources 30 --workers 8 \
@@ -116,31 +118,59 @@ class ClusterIdentityError(RuntimeError):
     """The DSN does not provably point at the disposable test container (fail closed)."""
 
 
+DISPOSABLE_PREFIXES = ("r2-s13-dump-", "erp-s14-digest-")
+
+
+def _disposable_container(dsn: str, docker) -> str:
+    """Name of the single running disposable container that publishes the DSN's port (fail closed otherwise).
+
+    The harness no longer has a fixed container name. The container must carry an approved disposable prefix
+    (``DISPOSABLE_PREFIXES``) whether it is found by its published port or named through
+    ERP_PHASE2_TEST_CONTAINER; the variable only resolves ambiguity between several disposable containers and
+    can never make another container qualify. The final proof is still the system_identifier comparison in
+    ``verify_cluster``."""
+    port = urlsplit(dsn).port if "://" in dsn else None
+    if not port:
+        raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+    requested = os.environ.get("ERP_PHASE2_TEST_CONTAINER")
+    if requested and not requested.startswith(DISPOSABLE_PREFIXES):
+        raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+    flt = f"name=^{requested}$" if requested else f"publish={port}"
+    ps = docker("ps", "--filter", flt, "--format", "{{.Names}}", timeout=30)
+    names = ps.stdout.decode().split()
+    if ps.returncode != 0 or len(names) != 1 or not names[0].startswith(DISPOSABLE_PREFIXES):
+        raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+    published = docker("port", names[0], "5432/tcp", timeout=30)
+    if published.returncode != 0 or not any(
+            line.rsplit(":", 1)[-1] == str(port) for line in published.stdout.decode().splitlines()):
+        raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+    return names[0]
+
+
 async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -> int:
     """Return the system_identifier of the cluster behind the DSN, only if it is the test container.
 
     Runs BEFORE any CREATE DATABASE. ``connect`` / ``container_identifier`` are test seams; the
     defaults ask the DSN and ``docker exec`` into the hard-coded container."""
-    from _pg_harness import CONTAINER, container_exec, docker
-
-    async def default_ident() -> int:
-        r = container_exec("psql", "-U", "postgres", "-Atc",
-                           "SELECT system_identifier FROM pg_control_system()")
-        if r.returncode != 0:
-            raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
-        return int(r.stdout.decode().strip())
-
     try:
         if container_identifier is None:
-            ps = docker("ps", "--filter", f"name=^{CONTAINER}$", "--format", "{{.Names}}", timeout=30)
-            if ps.returncode != 0 or ps.stdout.decode().split() != [CONTAINER]:
-                raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+            from _pg_harness import docker
+
+            container = _disposable_container(dsn, docker)
+
+            async def default_ident() -> int:
+                r = docker("exec", container, "psql", "-U", "postgres", "-Atc",
+                           "SELECT system_identifier FROM pg_control_system()", timeout=60)
+                if r.returncode != 0:
+                    raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
+                return int(r.stdout.decode().strip())
         conn = await (connect or (lambda: asyncpg.connect(dsn, timeout=10)))()
         try:
             via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
         finally:
             await conn.close()
-        via_container = await (container_identifier or default_ident)()
+        ident = container_identifier if container_identifier is not None else default_ident
+        via_container = await ident()
     except ClusterIdentityError:
         raise
     except Exception as e:  # any failure to prove identity is a refusal

@@ -30,6 +30,11 @@ Initial system/source tools:
 - `onec_metadata_summary`;
 - `onec_find_entities`.
 
+`onec_find_entities` returns the existing entity/property fields by default. Callers may pass
+`include_property_types=true` to additionally receive each property's OData metadata type; omitted
+or false preserves the existing response shape. This option is metadata-only and does not read
+business rows or imply that an OData type has an approved COM write mapping.
+
 Generic raw read tools may exist for controlled diagnostics/development, but production user value
 should increasingly flow through semantic tools.
 
@@ -129,7 +134,7 @@ Supported virtual-table names are capability-driven.
 Allowed only on an explicitly approved adapter that guarantees read-only execution.
 
 Requirements:
-- SELECT/ВЫБРАТЬ-only equivalent validation;
+- SELECT-equivalent query syntax only;
 - no arbitrary server-side code;
 - timeout/row/byte caps;
 - audit fingerprint;

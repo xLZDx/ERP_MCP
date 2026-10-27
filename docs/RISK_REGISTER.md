@@ -42,6 +42,7 @@ Ratings: Probability (P) / Impact (I): Low, Medium, High, Critical.
 | R-33 | Private real-reference 1C/customer artifacts leak into public repo/CI | Low | Critical | private storage, aliases/hashes only, pre-commit/review scan | public/private evidence review |
 | R-34 | Ferma oracle becomes correlated with 1C/ERP_MCP actual and creates false green | Medium | Critical | import/data-flow isolation, seeder cannot read expected results, independent observers | oracle-independence architecture tests |
 | R-35 | Test-only write seeder or historical R/W helper becomes reachable from production MCP | Low | Critical | separate package/credential/target marker, production inventory negative tests | production tool/package inventory test |
+| R-36 | Private S13 writer reaches a non-disposable base or repeats/forgets an uncertain COM effect | Medium | Critical | ADR-0009 boundary; disposable fingerprint allowlist; loopback/Tailscale only; CT14 least privilege; stable global call ID; stale-epoch refusal; authoritative lookup; signed recovery; unresolved hold + quiescence barrier; D19 | independent PostgreSQL and COM disposable qualification, exact-head security/reliability/database review, production inventory negatives |
 
 ## Risk acceptance
 

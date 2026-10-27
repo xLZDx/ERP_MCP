@@ -8,6 +8,7 @@ to arrange state that no API can produce (clock back-dating, tampering) and to r
 """
 import asyncio
 import hashlib
+import itertools
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,7 @@ import pytest
 from _approval_envelope import FIXTURE_DIGEST, FIXTURE_PAYLOAD, ensure_envelope, fixture_digest_for
 from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails, require_dsn, throwaway_db
+
 from business_ai_gateway.phase2.change import canonical_json
 
 pytestmark = pytest.mark.integration
@@ -358,7 +360,7 @@ async def _setup(conn):
                 await conn.execute(
                     "INSERT INTO change_ledger.principals(tenant_id,company_id,principal,person_id,capabilities) "
                     "VALUES($1,$2,$3,$4,$5)", t, c, role, "person-" + role, CAPS[role])
-    for _actor, (kid, kmat, krole) in SIGN_KEYS.items():
+    for (kid, kmat, krole) in SIGN_KEYS.values():
         await conn.execute(
             "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
             "VALUES($1,$2,$3,$4,$5)", T, C, kid, krole, kmat)
@@ -420,8 +422,8 @@ async def test_no_direct_dml_for_any_runtime_role(led, role):
         "DELETE FROM change_ledger.holds",
         "INSERT INTO change_ledger.holds(tenant_id,company_id,base_fingerprint,cause) VALUES('T1','C1','base-1','ANCHOR_GAP')",
         "UPDATE change_ledger.target_locks SET owner_change_id=gen_random_uuid()",
-        "INSERT INTO change_ledger.checkpoints(tenant_id,company_id,ledger_seq,head_hash,sink_kind,sink_id,"
-        "signer_key_id,signature,signed_at) VALUES('T1','C1',1,repeat('a',64),'REAL','s','k','s',now())",
+        ("INSERT INTO change_ledger.checkpoints(tenant_id,company_id,ledger_seq,head_hash,sink_kind,sink_id,"
+        "signer_key_id,signature,signed_at) VALUES('T1','C1',1,repeat('a',64),'REAL','s','k','s',now())"),
         "UPDATE change_ledger.grants SET amount_limit=1",
         "DELETE FROM change_ledger.approvals",
         "UPDATE change_ledger.dispatch_permits SET state='DISPATCHED'",
@@ -474,7 +476,7 @@ async def test_event_log_is_append_only_even_for_the_owner_path(led):
 
 
 async def test_hash_chain_verifies_and_every_tamper_is_detected(led):
-    cid = await led.approved()
+    await led.approved()
     await led.call("clt_dave", "kill_switch", "OFF")   # NULL change_id event must chain too
     await led.call("clt_dave", "kill_switch", "OFF")
     ok = await led.call("clt_aud", "verify_chain")
@@ -483,7 +485,7 @@ async def test_hash_chain_verifies_and_every_tamper_is_detected(led):
     rows = await led.conn.fetch("SELECT seq, prev_hash, hash FROM change_ledger.events ORDER BY seq")
     assert [r["seq"] for r in rows] == list(range(1, n + 1))
     assert rows[0]["prev_hash"] is None
-    for a, b in zip(rows, rows[1:]):
+    for a, b in itertools.pairwise(rows):
         assert b["prev_hash"] == a["hash"]
     head = await led.call("clt_aud", "ledger_head")
     assert head == {"seq": n, "head_hash": rows[-1]["hash"]}
@@ -829,8 +831,8 @@ async def test_recover_sweep_releases_expired_claim_reservation_and_expired_perm
     assert await led.locks(fresh) == (1, 1, 1) and await led.res_state(fresh) == "RESERVED"   # untouched
     assert await led.call("clt_wrk", "recover_sweep") == 0                                     # idempotent
     # permit TTL: PERMITTED and expired -> cancelled by the same CAS; a DISPATCHED permit is never touched
-    p, ptok, _, _ = await led.permitted(request_id="s3", base="base-3")
-    d, dtok, dcall = await led.dispatched(request_id="s4", base="base-4")
+    p, _ptok, _, _ = await led.permitted(request_id="s3", base="base-3")
+    d, _dtok, _dcall = await led.dispatched(request_id="s4", base="base-4")
     await led.conn.execute("UPDATE change_ledger.dispatch_permits SET expires_at=now()-interval '1 second'")
     assert await led.call("clt_wrk", "recover_sweep") == 1
     assert (await led.rec(p))["dispatch_state"] == "CANCELLED_UNDISPATCHED" and await led.locks(p) == (0, 0, 0)
@@ -843,7 +845,7 @@ async def test_complete_outcomes_success_prewrite_refusal_and_verification(led):
     await led.call("clt_dave", "budget_admin", gid, "EUR", 1000, 5, 5, datetime.now(UTC) - timedelta(hours=1),
                    datetime.now(UTC) + timedelta(hours=1))
     # nothing may be completed as effect-bearing before the dispatch CAS
-    cid, tok, call_id, _ = await led.permitted(request_id="o1", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="o1", base="base-1")
     gen = tok["generation"]
     await fails("PERMIT_MISSING", led.complete(cid, gen, "SUCCESS"))
     await fails("PERMIT_MISSING", led.complete(cid, gen, "UNKNOWN"))
@@ -855,7 +857,7 @@ async def test_complete_outcomes_success_prewrite_refusal_and_verification(led):
     assert await led.locks(cid) == (0, 0, 0)
     assert (await led.rec(cid))["dispatch_state"] == "CANCELLED_UNDISPATCHED"
     # SUCCESS: APPLIED/PROVEN, reservation consumed, target lock kept until T13
-    s, stok, scall = await led.dispatched(request_id="o2", base="base-2")
+    s, stok, _scall = await led.dispatched(request_id="o2", base="base-2")
     assert await led.complete(s, stok["generation"], "SUCCESS") == "APPLIED"
     r = await led.rec(s)
     assert (r["attribution"], r["call_ownership"], r["execution_state"]) == ("PROVEN", "PROVEN_FINISHED", "APPLIED")
@@ -901,7 +903,7 @@ async def test_unknown_outcome_keeps_lock_lease_reservation_and_opens_call_owner
 
 # ============================================================================ T10 / T11 / T12
 async def test_resolve_unknown_needs_completion_proof_and_never_attributes_presence(led):
-    cid, tok, _ = await led.unknown(request_id="r1", base="base-1")
+    cid, _tok, _ = await led.unknown(request_id="r1", base="base-1")
     # absence without an independent PROVEN_FINISHED proof is refused, nothing changes
     await fails("COMPLETION_PROOF_MISSING", led.resolve_unknown(cid, False))
     r = await led.rec(cid)
@@ -972,7 +974,7 @@ async def test_operator_resolve_needs_two_distinct_signers_and_completion_proof(
 
 
 async def test_operator_resolve_absent_releases_and_requester_cannot_witness_own_change(led):
-    cid, tok, _ = await led.triage(request_id="t16b", base="base-1", requester="clt_dave")
+    cid, _tok, _ = await led.triage(request_id="t16b", base="base-1", requester="clt_dave")
     # dave is the requester of this change: he can neither sign as witness nor operate it
     own = await led.cosign("clt_dave", cid, cls="b", present=False)
     await fails("APPROVER_NOT_INDEPENDENT", led.call("clt_erin", "operator_resolve", cid, own, False, False))
@@ -1281,9 +1283,9 @@ async def test_a1_evidence_content_hash_generation_and_call_id_are_bound(led):
 
 
 async def test_a1_outcome_is_derived_from_the_typed_signed_record_not_from_flags(led):
-    cid, tok, call_id, _ = await led.permitted(request_id="a1o", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="a1o", base="base-1")
     gen = tok["generation"]
-    other, otok, _, _ = await led.permitted(request_id="a1o2", base="base-2")
+    other, _otok, _, _ = await led.permitted(request_id="a1o2", base="base-2")
     refusal = {"class": "a", "result_returned": False, "stage": "PRE_WRITE", "refusal_code": "STALE_VERSION",
                "no_effect_proof": {"proof": "no-effect"}}
     succ = await led.evidence(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": True}, role="clt_wri")
@@ -1500,7 +1502,7 @@ async def test_a5_null_inputs_fail_closed_and_change_nothing(led):
 
 
 async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_permits(led):
-    cid, tok, call_id = await led.applying(request_id="a6", base="base-1")
+    cid, tok, _call_id = await led.applying(request_id="a6", base="base-1")
     gen = tok["generation"]
     head = await led.head()
     for role in ("clt_wrk", "clt_wri", "clt_alice", "clt_bob", "clt_dave", "clt_aud"):
@@ -1521,8 +1523,8 @@ async def test_a6_only_the_checkpoint_identity_writes_checkpoints_and_signs_perm
     sa = datetime.now(UTC)
     other_payload = await led.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                             T, C, head["seq"], "f" * 64, sa, "vk-chk", "REAL", "sink-1")
-    for kw in (dict(sig="0" * 64), dict(key_id="vk-unknown"), dict(key_id="vk-wrk"),
-               dict(sig=sign_hex("vk-chk", other_payload), signed_at=sa)):
+    for kw in ({"sig": "0" * 64}, {"key_id": "vk-unknown"}, {"key_id": "vk-wrk"},
+               {"sig": sign_hex("vk-chk", other_payload), "signed_at": sa}):
         await fails("CHECKPOINT_UNAVAILABLE", led.checkpoint_at(head["seq"], head["head_hash"], **kw))
     assert await led.conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 2
     await fails("CHECKPOINT_UNAVAILABLE", led.call("clt_wrk", "issue_permit", cid, gen))

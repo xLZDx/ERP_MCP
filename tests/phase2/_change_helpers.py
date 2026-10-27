@@ -43,7 +43,7 @@ def raw_create(**over) -> dict:
         "organization_ref": "org-1", "counterparty_ref": "cp-1", "contract_ref": "ct-1",
         "supplier_document_number": "N-1", "supplier_document_date": "2026-10-01", "currency": "RUB",
         "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.50", "vat_rate_code": "VAT20",
-                   "amount": "21.00"}],
+                   "amount": "21.00", "vat_amount": "3.50"}],
         "comment": "note",
     }
     payload.update(over.pop("payload_over", {}))

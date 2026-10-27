@@ -15,24 +15,82 @@ from decimal import Decimal
 import pytest
 
 import business_ai_gateway.phase2.change as ch
-import business_ai_gateway.phase2.change.errors as errors_mod
 import business_ai_gateway.phase2.change.killswitch as kill_mod
 import business_ai_gateway.phase2.change.policy as policy_mod
 import business_ai_gateway.phase2.change.proposal as proposal_mod
 import business_ai_gateway.phase2.change.transitions as tr_mod
 import business_ai_gateway.phase2.change.types as types_mod
 from business_ai_gateway.phase2.change import (
-    SWITCH_OFF, Applied, ApprovalType, Attribution, Authorization, BudgetCheck, CallerClass, CallOwnership,
-    ChangeKind, ChangeProposal, ChangeRecord, CompletionEvidence, Dispatch, EffectKind, EffectKnown, ErrorCode,
-    Event, Execution, FailureStage, Grant, Hold, HoldCause, KillDecision, KillMode, KillSubject, LedgerOperation,
-    Lifecycle, LogicalKeyState, NonceState, ProofClass, Refusal, Reservation, ResolveOutcome, RevokeCause,
-    ReleaseReason, RepairAuth, Scope, SwitchReading, TokenState, Verification, apply_transition,
+    SWITCH_OFF,
+    Applied,
+    ApprovalType,
+    Attribution,
+    Authorization,
+    BudgetCheck,
+    CallerClass,
+    CallOwnership,
+    ChangeKind,
+    ChangeProposal,
+    ChangeRecord,
+    Dispatch,
+    EffectKind,
+    EffectKnown,
+    ErrorCode,
+    Event,
+    Execution,
+    FailureStage,
+    Grant,
+    Hold,
+    HoldCause,
+    KillDecision,
+    KillMode,
+    KillSubject,
+    LedgerOperation,
+    Lifecycle,
+    LogicalKeyState,
+    NonceState,
+    ProofClass,
+    Refusal,
+    ReleaseReason,
+    RepairAuth,
+    Reservation,
+    ResolveOutcome,
+    RevokeCause,
+    Scope,
+    SwitchReading,
+    TokenState,
+    Verification,
+    apply_transition,
 )
 from tests.phase2 import _change_helpers as h
 from tests.phase2._change_helpers import (
-    APPROVAL_EXPIRES, APPROVER, HALT, OPERATOR, PARENT_REQUESTER, REPAIR_APPROVER, REPAIR_AUTH, REPAIR_ID,
-    REQUESTER, SCOPE, T0, UNREADABLE, WITNESS, applied, applying, approved, claimed, dispatched, failed_verify,
-    good, kill, proposed, raw_create, raw_post, rec, repair_ctx, repair_live, repair_rec, triage, unknown,
+    APPROVAL_EXPIRES,
+    APPROVER,
+    HALT,
+    OPERATOR,
+    REPAIR_APPROVER,
+    REPAIR_AUTH,
+    REPAIR_ID,
+    REQUESTER,
+    SCOPE,
+    T0,
+    UNREADABLE,
+    applied,
+    applying,
+    approved,
+    claimed,
+    dispatched,
+    failed_verify,
+    good,
+    kill,
+    proposed,
+    raw_create,
+    raw_post,
+    repair_ctx,
+    repair_live,
+    repair_rec,
+    triage,
+    unknown,
     validated,
 )
 
@@ -206,7 +264,9 @@ def test_post_and_unpost_have_empty_payload_and_server_derived_effects():
     raw_create(extra_key="x"),
     raw_create(payload_over={"unknown": 1}),
     raw_create(payload_over={"lines": [{"item_ref": "i", "quantity": "1", "price": "1", "vat_rate_code": "V",
-                                        "amount": "1", "extra": "x"}]}),
+                                        "amount": "1", "vat_amount": "0", "extra": "x"}]}),
+    raw_create(payload_over={"lines": [{"item_ref": "i", "quantity": "1", "price": "1", "vat_rate_code": "V",
+                                        "amount": "1"}]}),  # vat_amount missing
     raw_create(payload_over={"duplicate_override": {"duplicate_of_change_or_ref": "c0", "justification": "j",
                                                     "extra": 1}}),
     raw_create(payload_over={"duplicate_override": {"duplicate_of_change_or_ref": "c0"}}),
@@ -238,10 +298,12 @@ def test_identity_and_digest_fields_are_never_accepted_from_the_caller(field):
 
 
 @pytest.mark.parametrize("field, value", [
-    ("quantity", 2), ("quantity", 2.0), ("quantity", Decimal("2")), ("quantity", "2.0000001"), ("quantity", "1e3"),
+    ("quantity", 2), ("quantity", 2.0), ("quantity", Decimal(2)), ("quantity", "2.0000001"), ("quantity", "1e3"),
     ("quantity", "1,5"), ("quantity", " 1"), ("quantity", "-1"), ("quantity", "0"), ("quantity", "01"),
     ("quantity", ""), ("quantity", "NaN"), ("price", 10.5), ("price", "-0.01"), ("price", "1.1234567"),
     ("amount", 21.0), ("amount", "abc"), ("amount", None), ("price", "1" * 19),
+    ("vat_amount", 3.5), ("vat_amount", "abc"), ("vat_amount", None), ("vat_amount", "-0.01"),
+    ("vat_amount", "1e3"), ("vat_amount", Decimal(1)), ("vat_amount", "1.1234567"), ("vat_amount", ""),
 ])
 def test_numeric_fields_must_be_exact_decimal_strings(field, value):
     raw = raw_create()
@@ -251,9 +313,9 @@ def test_numeric_fields_must_be_exact_decimal_strings(field, value):
 
 def test_zero_price_and_zero_amount_are_valid_decimal_strings():
     raw = raw_create()
-    raw["payload"]["lines"][0].update(price="0", amount="0.00")
+    raw["payload"]["lines"][0].update(price="0", amount="0.00", vat_amount="0.000")
     p = h.proposal(raw)
-    assert (p.payload.lines[0].price, p.payload.lines[0].amount) == ("0", "0")
+    assert (p.payload.lines[0].price, p.payload.lines[0].amount, p.payload.lines[0].vat_amount) == ("0", "0", "0")
 
 
 def test_organization_mismatch_is_scope_mismatch_and_other_scope_refs_are_out_of_scope():
@@ -354,7 +416,7 @@ def test_scope_is_immutable_and_redacted():
 # ---- canonical form and digests ---------------------------------------------------------------------------------
 
 def test_canonical_json_is_sorted_compact_ascii_and_normalizes_decimals():
-    assert ch.canonical_json({"b": Decimal("1.50"), "a": [Decimal("100"), None, True, 3]}) == \
+    assert ch.canonical_json({"b": Decimal("1.50"), "a": [Decimal(100), None, True, 3]}) == \
         '{"a":["100",null,true,3],"b":"1.5"}'
     assert ch.canonical_json({"k": "я"}) == '{"k":"\\u044f"}'
     same_instant_utc = datetime(2026, 10, 12, 9, 0, tzinfo=UTC)
@@ -1171,7 +1233,7 @@ def test_t10_session_end_observed_is_an_independent_proof_class():
 
 def test_in_this_contract_version_an_unknown_outcome_effect_cannot_be_attributed_so_it_goes_to_triage():
     # exclusivity is UNPROVEN for every unknown-outcome resolution (section 5): T10 refuses, T12 accepts
-    unattributed = dict(exclusivity_proven=False)
+    unattributed = {"exclusivity_proven": False}
     refused(step(unknown(), Event.RESOLVE_FOUND, **unattributed), "ATTRIBUTION_UNPROVEN", "T10")
     res = step(unknown(), Event.AGE_LIMIT, attempts=0, first_attempt_at=None, effect_present=True,
                observation_complete=True, signed=True, effect_identity_match=True, exclusivity_proven=False)
@@ -1227,7 +1289,7 @@ def test_t12_age_limit_needs_five_attempts_over_fifteen_minutes_and_keeps_everyt
 
 
 def test_t12_present_effect_rules():
-    present = dict(attempts=0, first_attempt_at=None, effect_present=True, observation_complete=True)
+    present = {"attempts": 0, "first_attempt_at": None, "effect_present": True, "observation_complete": True}
     refused(step(unknown(), Event.AGE_LIMIT, signed=False, **present), "EVIDENCE_UNSIGNED", "T12")
     # an attributable effect must go through T10, not triage
     refused(step(unknown(), Event.AGE_LIMIT, signed=True, effect_identity_match=True, exclusivity_proven=True,
@@ -1344,7 +1406,7 @@ def test_t16_present_unattributed_is_marked_and_consumes_but_keeps_the_target_lo
 
 
 def test_t16_present_attributed_needs_identity_and_exclusivity():
-    attributed = dict(outcome=ResolveOutcome.PRESENT_ATTRIBUTED)
+    attributed = {"outcome": ResolveOutcome.PRESENT_ATTRIBUTED}
     refused(step(triage(), Event.OPERATOR_RESOLVE, **attributed), "ATTRIBUTION_UNPROVEN", "T16")
     refused(step(triage(), Event.OPERATOR_RESOLVE, effect_identity_match=True, **attributed),
             "ATTRIBUTION_UNPROVEN", "T16")
@@ -1843,7 +1905,7 @@ def test_consume_and_release_move_only_reserved_amounts():
 
 
 def test_grant_construction_enforces_reserved_plus_consumed_within_limit():
-    for bad in (dict(limit="10", reserved="6", consumed="5"), dict(limit="-1"), dict(reserved="-1")):
+    for bad in ({"limit": "10", "reserved": "6", "consumed": "5"}, {"limit": "-1"}, {"reserved": "-1"}):
         with pytest.raises(ValueError):
             grant(**bad)
     with pytest.raises(ValueError):

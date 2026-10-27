@@ -34,7 +34,7 @@ def _payload() -> DraftPayload:
         supplier_document_number="INV-42",
         supplier_document_date="2026-10-15",
         currency="EUR",
-        lines=(Line("item-a", "2", "10.5", "VAT20", "21"),),
+        lines=(Line("item-a", "2", "10.5", "VAT20", "21", "3.5"),),
         comment="synthetic dispatch",
     )
 

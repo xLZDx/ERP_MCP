@@ -1,0 +1,35 @@
+# Change record 322 — S13 repair claim target-lock handoff
+
+## Ownership and scope
+
+- Date: 2026-10-26.
+- Accountable owner: operator, by explicit delegation.
+- Executor: Codex.
+- Technical boundary: candidate PostgreSQL migration `db/phase2/027_private_writer_admission_schema.sql` only; no historical migration was changed.
+- The candidate was already untracked at the initial worktree snapshot. Its pre-edit SHA-256 was `F344CA5BD839D2DCA284545F27049E7D7F34F81B0F3F907ED7076DE9AF33F91F`; after the one-line correction it is `E22E9C39021D309F743E8DB0C66ADAE13E7AD11B4EB7A27302936655EDC1D01F`.
+- No configured database, Ivan COM session, business data, service restart, key operation, Git staging, commit, or push was used for this change.
+
+## Finding and correction
+
+The bounded `release_claim` repair scenario initially reached `LOCK_BUSY` while creating a repair claim. Source comparison isolated the cause in candidate `claim_v1` around lines 7328–7330: it passed `(rec.change_id, rec.repair_for)` to `handoff_target_lock`, reversing the helper's ownership arguments.
+
+Migration 004 defines the helper arguments as `(expected_owner, new_owner)` and updates only a target-lock row currently owned by `expected_owner` (`db/phase2/004_change_ledger.sql:296–306`). Its legacy claim transfers ownership from the repair parent to the repair record (`:714–720`), while zero-effect release transfers it back from the repair record to its parent (`:452–456`). Candidate `claim_v1` now passes `(rec.repair_for, rec.change_id)`, matching the established contract. No transaction, lock, grant, or historical migration changes were made.
+
+## Review and verification state
+
+- An actual `database-reviewer` performed a read-only source review of exact candidate SHA-256 `E22E9C39021D309F743E8DB0C66ADAE13E7AD11B4EB7A27302936655EDC1D01F`; no actionable finding. The reviewer confirmed helper semantics, legacy claim/release directions, and unchanged surrounding transaction/lock order. This was static review only; no test or database was run.
+- The `e2e-runner` reran `tests/phase2/test_s13_global_id_contention_e2e.py` (SHA-256 `C00D669AE71F9A6FCDD8227402356E3C81CE4EC97BC0801B03842DB8D6499481`) with `uv run pytest -q tests/phase2/test_s13_global_id_contention_e2e.py -s`: **1 passed in 19.11 seconds** on invocation-owned disposable PG16 container `r2-s13-dump-57ec17e77058-a`. Its fixture applies migrations 019–027, including this candidate; the before/after migration hash was `E22E9C39021D309F743E8DB0C66ADAE13E7AD11B4EB7A27302936655EDC1D01F`. The scenario confirms namespace-6 same-ID cross-scope contention, no pre-release row/event effects, one committed proposal/event and one `CHANGE_ID_CONFLICT`. The owner label was verified and an exact-name post-run query found no container. A fresh `database-reviewer` reviewed the exact test/migration hash pair and found no actionable finding; it did not run tests or access a database.
+- On corrected candidate SHA `E22E…01F`, the functional-test reviewer ran `uv run pytest -q -s tests/phase2/test_s13_release_claim_fence.py`: **9 passed in 106.46 seconds**, test-module SHA-256 `66A1050BE925F382C24EC01BA646479D10F74A6C04C20835739505FAE68632E5`. This includes `S13-UF54-RELEASE-CLAIM-REPAIR-HANDOFF-01` (real candidate proposal/approval/claim/release path, parent-lock wait, unchanged pre-release snapshot and handback to parent) and `S13-UF54-RELEASE-CLAIM-PLAN-STALE-01` (namespace-6 lock wait after plan snapshot, stale-plan refusal, no additional state/event delta). The remaining seven cases cover successful ordinary release, replay, missing target, wrong owner, missing token, wrong scope, authorized worker, and expiry as detailed in CHANGE_RECORD_321.
+- On the same corrected migration SHA, functional-test reviewer regressions passed: `uv run pytest -q -s tests/phase2/test_s13_universal_fence_matrix.py` — **11 passed in 73.36 seconds**, module SHA-256 `0FEEBEF7B443AFE481C8115A013A23018D259A1E71A1DEF4AEE56027C6AC98F4`; `uv run pytest -q -s tests/phase2/test_s13_current_turn_sql.py` — **38 passed in 170.37 seconds**, module SHA-256 `EC85FCDC550ABC69D19BFECB49CDE3145CA3989778E4BCDBBE46D81829297853`.
+- The e2e-runner reran `uv run pytest -q tests/phase2/test_s13_global_id_contention_e2e.py -s` against the corrected migration: **1 passed in 19.11 seconds**, test SHA-256 `C00D669AE71F9A6FCDD8227402356E3C81CE4EC97BC0801B03842DB8D6499481`. Its fixture applies migrations 019–027. Invocation-owned PG16 container `r2-s13-dump-57ec17e77058-a` had its owner label verified and was absent from the exact-name post-run query. A fresh database-reviewer checked this test/migration hash pair and found no actionable finding, no test or DB action by that reviewer.
+- Release and universal fixtures used disposable PostgreSQL 16 only; exact containers `r2-s13-dump-658803e601d4-a`, `r2-s13-dump-0fb489ddf10b-a`, and `r2-s13-dump-f637fac16e98-a` were absent after teardown. The current-turn SQL fixture did not print its container/database names, so no per-object names are asserted; pytest teardown succeeded. The release module's disposable DB list and invocation container `r2-s13-dump-1ab01bc38863-a` is from the prior candidate hash run, not this corrected-hash run.
+- A fresh code-reviewer reviewed the final release-module hash `66A1050BE925F382C24EC01BA646479D10F74A6C04C20835739505FAE68632E5` against E22 and found no actionable issue; the reviewer confirmed repair and stale-plan assertions and documented remaining concurrency/configured-grant gaps. A fresh database-reviewer reviewed the exact candidate/test hash pairs for the corrected migration, release module, universal matrix, and SQL regression module; no actionable finding. The reviewer confirmed parent-to-repair claim and repair-to-parent release semantics, scenario assertions, and exact-run evidence while explicitly leaving full row-lock ordering, all stale-plan variants, multi-generation histories, and races with `begin_apply`/parallel release `NOT_RUN`. Reviewer profiles were GPT-6 Luna; reasoning-effort metadata was not exposed by the launch results. Prior results on candidate SHA `F344…F91F` are historical; the runs above provide current-hash runtime evidence only for their named bounded modules.
+
+## Ordered next work
+
+1. Obtain independent code/database review of final current-hash functional modules and regression coverage; fix any valid finding and rerun only affected owned tests.
+2. Continue the remaining S13 API and lock-order/parallel-reservation qualification. The completed bounded modules do not close all S12/S13 exit scenarios.
+3. Obtain configured-lane effective-grant evidence read-only when a candidate schema is authorized there; current results are disposable-only.
+4. Establish the licensed clone's authenticated identity, crosswalk, actual 1C writer transaction boundary, and provider/trust evidence before attempting physical writer qualification.
+
+No commit or push was made. Any later commit must include its own dedicated linked detail record and requires the previously stated exact-head GPT-PM consultation before committing.

@@ -1,0 +1,394 @@
+diff --git a/ERP_MCP_ENGINEERING_COMMAND_CENTER.html b/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
+index 118a071..500fd2f 100644
+--- a/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
++++ b/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
+@@ -62,7 +62,7 @@
+ </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
+ </section>
+ <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2998028f79f1796d447a09aefedf4796abf2cea4c9ccd94911ba91667130249d -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+ 
+ <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index c88b4c3..ab33145 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -82,5 +82,6 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 S13 timeout surface: map PostgreSQL lock-wait SQLSTATE 55P03 to fixed adapter code `LEDGER_LOCK_TIMEOUT`; do not expose driver text or leave timeouts as an undocumented generic SQL code.
+ - 2026-10-22 CORRECTION — S13 PostgreSQL error provenance: SQLSTATE 55P03 also represents non-timeout lock refusals, so do not globally rename it as a fence timeout. Raise a fixed contract code only inside the dedicated bounded blocking-fence helper; order multi-key locks by their actual hashed integer resources after deduplication, and require a fresh READ COMMITTED snapshot for post-fence checks.
+ - 2026-10-22 S13 durable state: keep S12's dispatch CAS as the single authorization source; writer-process ownership and physical invocation progress must be durably bound to that same CAS identity, not a second independently authoritative admission claim.
++- 2026-10-22 WP2 test doubles must match their current adapter contracts: MCP read tools need explicit read-only hints, injected capacity-drill identity probes must not import Docker defaults, and signed 1C receipts bind generations through dispatch_id rather than a standalone generation field.
+ - 2026-10-22 WP0 cross-base comparison: when row counts differ, compare privacy-safe normalized identities and aggregate common-group amounts before inferring whether the difference is an extra group or changed shared data; matching profile metadata alone does not reconcile source contents.
+ - 2026-10-22 S13 lock rank: preserve source-proven namespace dependencies before choosing unused IDs for new locks; a candidate rank is only a design until every granted path, helper, trigger, and unique-conflict edge is reconciled.
+diff --git a/docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html b/docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
+index 118a071..500fd2f 100644
+--- a/docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
++++ b/docs/ERP_MCP_ENGINEERING_COMMAND_CENTER.html
+@@ -62,7 +62,7 @@
+ </ul><p><strong>Unfreeze only after:</strong> current committed scope reaches declared acceptance, P5/DAD evidence closes, mandatory DoD gates close and no actionable blocker/high risk is hidden.</p></div></div>
+ </section>
+ <section class="panel" id="current-mvp-status" style="margin-top:18px;border-left:5px solid #e4a22b">
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2998028f79f1796d447a09aefedf4796abf2cea4c9ccd94911ba91667130249d -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ <p><strong>Internal settlement aging — 2026-10-06:</strong> FR-E1/D9: internal exact-profile AR/AP document/payment/allocation→aging contract implemented; REUSES existing aggregate_open_items, no second bucket engine/source protocol. Source/company/config/semantic/metadata/as-of/timezone/due-date/relationship/native-report/sign encoding fingerprinted. Partial settlement and multiple explicit allocation identities preserved; counterparty+contract+document/payment chronology exact, no FIFO/guessing or cross-currency conversion. Advances remain credits without netting other debt; payment overallocation blocked, document oversettlement visible anomaly/credit. Unknown opening/incomplete/stale/cross-scope/duplicate/nonfinite relationships cannot PASS. Canonical reused aggregator now bounds 2000 rows/schema/IDs/as-of/decimal precision, rejects float/hidden query fields, sanitizes errors and preserves micro-units at 120-digit local context. 34 focused aging/allocation contracts PASS; synthetic-only source semantics/native approval not inferred; private money/party output not public evidence. Parent 672fec4 CI 37501690166 FOUR jobs PASS (tested merge c12409bb4f8b6cc6a53e7de73e9f32dbef9654a9). Full current suite 769 passed/18 skipped; Ruff, runtime/testbed Bandit, compileall, checkpoint/report/source-render/release gates PASS. Own hosted run pending. Runtime public AR/AP-aging tools/live source collectors/approved real mapping/native reconciliation, frozen month-close/tax/payroll/native parsers/Ferma/fault/deployment/retention remain OPEN. Production NO-GO; DoD PARTIAL; PR #11 Draft.</p>
+ 
+ <!-- ENGINEERING_CHECKPOINT=FINANCIAL_PROJECTION_20261006 ENGINEERING_IMPLEMENTATION=af6dabd96d613dfed3d4265ee0941b472abb90b0572ea97bdf52f74bdd09b4d8 -->
+diff --git a/docs/commits/2026-10-22-wp2-focused-functional-e2e-remediation.md b/docs/commits/2026-10-22-wp2-focused-functional-e2e-remediation.md
+new file mode 100644
+index 0000000..c19f527
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp2-focused-functional-e2e-remediation.md
+@@ -0,0 +1,65 @@
++# WP2 focused functional and E2E remediation — 2026-10-22
++
++## Scope
++
++This change repairs four concrete issues surfaced by the mapped WP2 test-agent run: missing
++read-only MCP metadata on `counterparty_find`, an eager Docker-harness import in the injected
++capacity-drill test path, stale lifecycle test doubles, and simulation tests that assumed an older
++receipt schema. It also rebinds the existing engineering checkpoint to the resulting implementation
++fingerprint without changing any frozen gate status.
++
++## Changes and rationale
++
++- `src/business_ai_gateway/server.py`: declares the same `CHATGPT_READ_ONLY_ANNOTATIONS` on
++  `counterparty_find` that the other public read tools expose. Principal resolution and company
++  authorization remain in place; annotations are client-facing metadata, not access control.
++- `scripts/phase2_capacity_drill.py`: imports `_pg_harness` only when the default container identity
++  probe is needed. An explicitly supplied `container_identifier` is selected by `is not None`, so
++  even a falsey callable is used as injected. The default path still verifies the named test
++  container and compares its system identifier with the DSN before any database creation.
++- `tests/phase2/test_s13_lifecycle_preflight.py` and
++  `tests/phase2/test_s13_lifecycle_preflight_e2e.py`: add ledger doubles that provide the current
++  checkpoint-suffix contract. The E2E fixture uses a chain head consistent with checkpoint sequence
++  12 while preserving `NOT_READY / SHARED_FENCE_UNAVAILABLE`.
++- `tests/phase2/test_simulation_scenarios_offline.py`: constructs writers with each clone's trusted
++  receipt public key and asserts generation binding through the signed receipt's
++  `dispatch_id = change_id:generation` contract. The cross-key signature rejection remains tested.
++- The two historical G1 notes now mark their dated snapshots as superseded and point to
++  `EVIDENCE_MATRIX.md`.
++- `reports/CURRENT_ENGINEERING_CHECKPOINT.json`, its four Markdown status reports and the two
++  synchronized engineering dashboard copies carry implementation fingerprint
++  `2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b`. The checkpoint remains
++  production `NO-GO`, DoD `PARTIAL`, PR 11 `DRAFT`; earlier run results remain historical.
++
++## Verification
++
++All tests were authored/executed by the designated functional-test-reviewer or e2e-runner roles;
++the primary agent did not run tests.
++
++- Functional tests: the four targeted nodes for historical G1 markers, public MCP read-only
++  annotations, engineering checkpoint/artifact consistency, and S13 lifecycle preflight passed
++  (`4 passed in 1.43s`). After the final checkpoint rebound, the artifact/checkpoint node passed
++  again (`1 passed in 0.97s`).
++- E2E/offline tests: seven offline simulation nodes passed in the initial focused run; the remaining
++  operation-kind/receipt node initially exposed the stale `receipt['generation']` assertion. After
++  correcting it to verify the current `dispatch_id` binding, that node passed separately. Thus all
++  eight assigned offline nodes passed, with one node verified in a follow-up run.
++- E2E lifecycle preflight passed; G1 capacity smoke passed after the lazy import and explicit
++  injected-probe selection changes (`1 passed` on the final capacity rerun).
++- No database, Docker container, migration, external 1C, or COM test was run. WP2 migration-backed
++  database cases remain `NOT_RUN` because their current harness creates containers and no approved
++  adapter to the declared disposable PostgreSQL service was available in this test pass.
++- Read-only Python review found no BLOCKER/MAJOR/MINOR findings and rechecked the final explicit
++  selector. Read-only security review found no findings in the annotated read tool or the fail-closed
++  identity verification path; its pass preceded the selector-only robustness clarification.
++
++## Limits and next action
++
++This is not S13 implementation or runtime qualification and does not close WP2 database coverage,
++WP3 language-scan findings, G1 formal acceptance, or production authorization. Continue by designing
++a test-role-owned adapter for the declared disposable database, resolving WP3 scanner findings
++without broad path exemptions, and then proceed with dependency-ordered WP5–WP8/WP10 work. WP9
++remains optional.
++
++Accountable task owner: operator. Executor: Codex. Required test owners: functional-test-reviewer
++and e2e-runner. No push or PR is authorized by this record.
+diff --git a/docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md b/docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md
+index 9978798..4533f50 100644
+--- a/docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md
++++ b/docs/phase2/G1_IMPLEMENTATION_NOTE_2026-10-08.md
+@@ -1,6 +1,6 @@
+ # G1 PostgreSQL Living Registry — implementation note
+ 
+-> **Historical implementation note (2026-10-08).** The limitations below describe the original implementation snapshot and have been partly superseded by later migrations and test evidence. See the dated reconciliation in `G1_OPERATOR_BACKLOG.md`. G1 remains NOT_PASSED; historical test runs do not establish current gate closure.
++> **Historical implementation note (2026-10-08). SUPERSEDED 2026-10-08.** The limitations below describe the original implementation snapshot and have been partly superseded by later migrations and test evidence. See the dated reconciliation in `G1_OPERATOR_BACKLOG.md` and the current `EVIDENCE_MATRIX.md`. G1 remains NOT_PASSED; historical test runs do not establish current gate closure.
+ 
+ 
+ Date: 2026-10-08. Status: **IMPLEMENTED_UNVERIFIED / G1 NOT PASSED**.
+diff --git a/docs/phase2/G1_OPERATOR_BACKLOG.md b/docs/phase2/G1_OPERATOR_BACKLOG.md
+index 4da0671..7c6d4ff 100644
+--- a/docs/phase2/G1_OPERATOR_BACKLOG.md
++++ b/docs/phase2/G1_OPERATOR_BACKLOG.md
+@@ -1,6 +1,6 @@
+ # G1 blockers and operator handoff — 2026-10-08
+ 
+-> **Historical snapshot (2026-10-08).** The blocker table below describes commit 9b4fc0c; it is not a current inventory. See “Current reconciliation (2026-10-15)” at the end and `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`. G1 remains NOT_PASSED.
++> **Historical snapshot (2026-10-08). SUPERSEDED 2026-10-08.** The blocker table below describes commit 9b4fc0c; it is not a current inventory. See “Current reconciliation (2026-10-15)” at the end, `S14_RISK_AND_GATE_CLOSURE_PACKET_2026-10-15.md`, and the current `EVIDENCE_MATRIX.md`. G1 remains NOT_PASSED.
+ 
+ 
+ ## State
+diff --git a/reports/CURRENT_ENGINEERING_CHECKPOINT.json b/reports/CURRENT_ENGINEERING_CHECKPOINT.json
+index 77f04d3..5dcb168 100644
+--- a/reports/CURRENT_ENGINEERING_CHECKPOINT.json
++++ b/reports/CURRENT_ENGINEERING_CHECKPOINT.json
+@@ -1,7 +1,7 @@
+ {
+   "schema_version": 1,
+   "batch_id": "SUPPLIER_5211_REPORT_20261009",
+-  "implementation_sha256": "0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e",
++  "implementation_sha256": "2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b",
+   "production_decision": "NO-GO",
+   "dod_status": "PARTIAL",
+   "pr_number": 11,
+@@ -89,5 +89,5 @@
+     }
+   },
+   "current_full_suite_status": "PENDING_ON_NEW_FEATURE_HEAD",
+-  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run. Rebound again on 2026-10-14 after hand edits of import order, unused imports and an exception import (commits 1764254 and 1d895bb); those edits were NOT re-tested and the focused-set figures above predate them."
++  "rebound_note": "Rebound after merging five ERP_MCP branches into main (head f3a9a7b, 2026-10-12): implementation fingerprint moved from the batch value to the merged tree. Test figures in this snapshot belong to batch SUPPLIER_5211_REPORT_20261009 and were NOT re-run at the new fingerprint; focused set of 16 test files on the merged head: 401 passed, 41 skipped, 0 failed; full suite not run. Rebound again on 2026-10-14 after hand edits of import order, unused imports and an exception import (commits 1764254 and 1d895bb); those edits were NOT re-tested and the focused-set figures above predate them. Fingerprint rebound on 2026-10-22 after focused WP2 documentation-consistency, read-tool annotation, and disposable-cluster test-seam fixes; previously recorded full-suite and hosted evidence remain historical and do not verify this head. Final fingerprint includes the test-owned receipt assertion update binding change_id to dispatch_id:generation; focused scenarios remain the only new run evidence. Final capacity-drill seam selection now uses an explicit `is not None` check so injected falsey callables are honored."
+ }
+diff --git a/reports/DOD_STATUS.md b/reports/DOD_STATUS.md
+index 31e37cd..a72654c 100644
+--- a/reports/DOD_STATUS.md
++++ b/reports/DOD_STATUS.md
+@@ -2,7 +2,7 @@
+ 
+ # Definition of Done status
+ 
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ 
+ ## Final local client-safety validation — 2026-10-09
+ 
+diff --git a/reports/EXECUTION_LOG.md b/reports/EXECUTION_LOG.md
+index 55670a9..04ff374 100644
+--- a/reports/EXECUTION_LOG.md
++++ b/reports/EXECUTION_LOG.md
+@@ -1,7 +1,7 @@
+ <!-- ENGINEERING_CHECKPOINT=CLIENT_SAFETY_20261009 ENGINEERING_IMPLEMENTATION=9c52ddd81209c95ee99494d65d2d133e6b88b2d6e62c25d1a2e7477f12dbead2 -->
+ # Autonomous engineering execution log
+ 
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ 
+ ## Capability observation boundary — 2026-10-06
+ 
+diff --git a/reports/IMPLEMENTATION_STATUS.md b/reports/IMPLEMENTATION_STATUS.md
+index 692643a..58a0a07 100644
+--- a/reports/IMPLEMENTATION_STATUS.md
++++ b/reports/IMPLEMENTATION_STATUS.md
+@@ -2,7 +2,7 @@
+ 
+ # ERP_MCP implementation status
+ 
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ 
+ ## Final local OAuth validation — 2026-10-09
+ 
+diff --git a/reports/RISK_STATUS.md b/reports/RISK_STATUS.md
+index 617cf68..1831418 100644
+--- a/reports/RISK_STATUS.md
++++ b/reports/RISK_STATUS.md
+@@ -3,7 +3,7 @@
+ 
+ # Risk status
+ 
+-<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=0230069aaa8268007c9b855bbe25482f995bcc7811ce9bd56a1e4f4c78fdc42e -->
++<!-- ENGINEERING_CHECKPOINT=SUPPLIER_5211_REPORT_20261009 ENGINEERING_IMPLEMENTATION=2d964faf481b83402823e920e21cb745b9b10b44972f08fd160851c981d2651b -->
+ 
+ ## Capability observation boundary — 2026-10-06
+ 
+diff --git a/scripts/phase2_capacity_drill.py b/scripts/phase2_capacity_drill.py
+index 520cba0..8a32141 100644
+--- a/scripts/phase2_capacity_drill.py
++++ b/scripts/phase2_capacity_drill.py
+@@ -121,17 +121,17 @@ async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -
+ 
+     Runs BEFORE any CREATE DATABASE. ``connect`` / ``container_identifier`` are test seams; the
+     defaults ask the DSN and ``docker exec`` into the hard-coded container."""
+-    from _pg_harness import CONTAINER, container_exec, docker
+-
+-    async def default_ident() -> int:
+-        r = container_exec("psql", "-U", "postgres", "-Atc",
+-                           "SELECT system_identifier FROM pg_control_system()")
+-        if r.returncode != 0:
+-            raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
+-        return int(r.stdout.decode().strip())
+-
+     try:
+         if container_identifier is None:
++            from _pg_harness import CONTAINER, container_exec, docker
++
++            async def default_ident() -> int:
++                r = container_exec("psql", "-U", "postgres", "-Atc",
++                                   "SELECT system_identifier FROM pg_control_system()")
++                if r.returncode != 0:
++                    raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
++                return int(r.stdout.decode().strip())
++
+             ps = docker("ps", "--filter", f"name=^{CONTAINER}$", "--format", "{{.Names}}", timeout=30)
+             if ps.returncode != 0 or ps.stdout.decode().split() != [CONTAINER]:
+                 raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
+@@ -140,7 +140,8 @@ async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -
+             via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
+         finally:
+             await conn.close()
+-        via_container = await (container_identifier or default_ident)()
++        ident = container_identifier if container_identifier is not None else default_ident
++        via_container = await ident()
+     except ClusterIdentityError:
+         raise
+     except Exception as e:  # any failure to prove identity is a refusal
+diff --git a/src/business_ai_gateway/server.py b/src/business_ai_gateway/server.py
+index 7d4ba42..d77e8b0 100644
+--- a/src/business_ai_gateway/server.py
++++ b/src/business_ai_gateway/server.py
+@@ -1085,7 +1085,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
+             raise
+ 
+ 
+-    @mcp.tool()
++    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+     async def counterparty_find(
+         source_id: str, company_id: str, name: str
+     ) -> dict[str, Any]:
+diff --git a/tests/phase2/test_s13_lifecycle_preflight.py b/tests/phase2/test_s13_lifecycle_preflight.py
+index 21c7b0c..0d87a43 100644
+--- a/tests/phase2/test_s13_lifecycle_preflight.py
++++ b/tests/phase2/test_s13_lifecycle_preflight.py
+@@ -55,6 +55,36 @@ class Ledger:
+             raise self.error
+         return self.response
+ 
++    async def lifecycle_checkpoint_suffix(self, scope, checkpoint_seq, checkpoint_hash):
++        head_seq = self.response["count"]
++        events = []
++        for seq in range(checkpoint_seq + 1, head_seq + 1):
++            events.append({
++                "seq": seq,
++                "event_id": f"00000000-0000-4000-8000-{seq:012d}",
++                "change_id": f"00000000-0000-4000-9000-{seq:012d}",
++                "event_type": "VERIFY_VERIFIED",
++                "payload_found": None,
++                "payload_nonempty": True,
++                "record": {
++                    "execution_state": "APPLIED",
++                    "verification_state": "VERIFIED",
++                    "call_ownership": "PROVEN_FINISHED",
++                    "reservation_state": "CONSUMED",
++                    "dispatch_state": "DISPATCHED",
++                },
++            })
++        return {
++            "tenant_id": scope.tenant_id,
++            "company_id": scope.company_id,
++            "checkpoint_seq": checkpoint_seq,
++            "checkpoint_hash": checkpoint_hash,
++            "anchor_matches": True,
++            "head_seq": head_seq,
++            "has_more": False,
++            "events": events,
++        }
++
+ 
+ class ExplodingGetDict(dict):
+     def get(self, key, default=None):
+diff --git a/tests/phase2/test_s13_lifecycle_preflight_e2e.py b/tests/phase2/test_s13_lifecycle_preflight_e2e.py
+index 7039296..1867844 100644
+--- a/tests/phase2/test_s13_lifecycle_preflight_e2e.py
++++ b/tests/phase2/test_s13_lifecycle_preflight_e2e.py
+@@ -41,6 +41,20 @@ class LedgerPortDouble:
+         return self.result
+ 
+ 
++class ValidSuffixLedgerPortDouble(LedgerPortDouble):
++    async def lifecycle_checkpoint_suffix(self, scope: Scope, checkpoint_seq: int, checkpoint_hash: str):
++        return {
++            "tenant_id": scope.tenant_id,
++            "company_id": scope.company_id,
++            "checkpoint_seq": checkpoint_seq,
++            "checkpoint_hash": checkpoint_hash,
++            "anchor_matches": True,
++            "head_seq": checkpoint_seq,
++            "has_more": False,
++            "events": [],
++        }
++
++
+ class HangingLedgerPortDouble(LedgerPortDouble):
+     def __init__(self):
+         super().__init__()
+@@ -136,7 +150,7 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
+         await sink.write(_record(SCOPE, 12, signer))
+         await sink.write(_record(OTHER_SCOPE, 99, signer))
+         sink.write_calls = 0
+-        ledger = LedgerPortDouble()
++        ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
+         coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier())
+ 
+         result = await coordinator.preflight(SCOPE)
+@@ -144,7 +158,7 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
+         assert result.scope == SCOPE
+         assert result.status is LifecycleStatus.NOT_READY
+         assert result.reason is LifecycleReason.SHARED_FENCE_UNAVAILABLE
+-        assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 7)
++        assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 12)
+         assert ledger.calls == [SCOPE]
+         assert sink.latest_calls == [SCOPE]
+         assert sink.write_calls == 0
+diff --git a/tests/phase2/test_simulation_scenarios_offline.py b/tests/phase2/test_simulation_scenarios_offline.py
+index aaf1947..3035669 100644
+--- a/tests/phase2/test_simulation_scenarios_offline.py
++++ b/tests/phase2/test_simulation_scenarios_offline.py
+@@ -37,8 +37,7 @@ def _classify_crash(clone: SimulatedOneC, refs_before: tuple[str, ...], target_r
+ @pytest.fixture()
+ def env():
+     clone = SimulatedOneC("SIM-CLONE-P5")
+-    attestor = SimulatedAttestor("SIM-ATTESTOR-P5")
+-    return clone, ReferenceWriter(clone, attestor), SyntheticGenerator(seed=20261015)
++    return clone, ReferenceWriter(clone, clone.receipt_public_key_hex), SyntheticGenerator(seed=20261015)
+ 
+ 
+ def test_all_four_operation_kinds_applied_with_verified_receipts(env):
+@@ -65,7 +64,9 @@ def test_all_four_operation_kinds_applied_with_verified_receipts(env):
+     assert state["status"] == "DRAFT" and state["movements"] == {}
+ 
+     for out, gen_no in ((created, 1), (updated, 2), (posted, 3), (unposted, 4)):
+-        assert out.receipt["generation"] == gen_no and out.received_payload_sha256 == out.approved_payload_sha256
++        assert out.receipt["change_id"] == "SIM-CHG-000001"
++        assert out.receipt["dispatch_id"] == f"{out.receipt['change_id']}:g{gen_no}"
++        assert out.received_payload_sha256 == out.approved_payload_sha256
+     assert clone.write_count == 4
+     assert [e["write_applied"] for e in clone.truth_log()] == [True] * 4
+ 
+@@ -250,7 +251,7 @@ def test_populate_50_plus_documents_is_deterministic_by_seed():
+ 
+ def test_two_interleaved_writers_only_one_wins_on_expected_version(env):
+     clone, writer_a, gen = env
+-    writer_b = ReferenceWriter(clone, SimulatedAttestor("SIM-ATTESTOR-P5"))
++    writer_b = ReferenceWriter(clone, clone.receipt_public_key_hex)
+     populate(clone, gen, 1)
+     ref = clone.target_refs()[0]
+     cpt = clone.read_state(ref)["payload"]["counterparty_ref"]
+@@ -276,7 +277,8 @@ def test_separate_clone_labels_are_isolated():
+     gen = SyntheticGenerator(seed=5)
+     a, b = SimulatedOneC("SIM-TENANT-A"), SimulatedOneC("SIM-TENANT-B")
+     att_a, att_b = SimulatedAttestor("SIM-ATT-A"), SimulatedAttestor("SIM-ATT-B")
+-    wa, wb = ReferenceWriter(a, att_a), ReferenceWriter(b, att_b)
++    wa = ReferenceWriter(a, a.receipt_public_key_hex)
++    wb = ReferenceWriter(b, b.receipt_public_key_hex)
+     p = gen.draft_payload()
+     assert _send(wa, ChangeKind.CREATE_DRAFT, p).success
+     assert b.target_refs() == () and b.write_count == 0 and b.truth_log() == ()
+@@ -294,6 +296,6 @@ def test_separate_clone_labels_are_isolated():
+     assert _send(wb, ChangeKind.POST, None, b.target_refs()[0], "V1", change_id="SIM-CHG-000003").success
+     assert a.state_fingerprint() == fp_a and a.read_state(a.target_refs()[0])["status"] == "DRAFT"
+     # a receipt from attestor A is not accepted under B's trusted key
+-    cross = ReferenceWriter(a, att_a, trusted_public_key_hex=att_b.public_key_hex)
++    cross = ReferenceWriter(a, trusted_public_key_hex=att_b.public_key_hex)
+     out = _send(cross, ChangeKind.POST, None, a.target_refs()[0], "V1", change_id="SIM-CHG-000004")
+     assert out.status is WriteStatus.RECEIPT_INVALID and out.code == "RECEIPT_SIGNATURE_INVALID"

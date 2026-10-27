@@ -1,0 +1,49 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index ee13e1e..e5c7e78 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -86,3 +86,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 S13 lock rank: preserve source-proven namespace dependencies before choosing unused IDs for new locks; a candidate rank is only a design until every granted path, helper, trigger, and unique-conflict edge is reconciled.
+ - 2026-10-22 WP3 policy scanner: decode BOM-marked UTF-16 before byte-NUL checks, reject UTF-32/decoded NUL, and bind each exception to path, line number and normalized-line hash; withhold repeated hashes until the exact occurrence is reviewed. Hashes do not anonymize low-entropy content. In the document registry, escape only headings found exclusively on archive, rescue, or snapshot refs.
+ - 2026-10-22 WP3 repeated synthetic fields: an identical reviewed value at multiple locations needs one path/line/hash exception per occurrence; retain only occurrences whose semantics were individually reviewed.
++- WP3: Handle source-derived policy candidates through sanitized exact-occurrence evidence; repair generated evidence at its source rather than editing generated output.
+diff --git a/docs/BACKLOG_INHERITED_2026-10-21.md b/docs/BACKLOG_INHERITED_2026-10-21.md
+index e98ab1c..728c5d0 100644
+--- a/docs/BACKLOG_INHERITED_2026-10-21.md
++++ b/docs/BACKLOG_INHERITED_2026-10-21.md
+@@ -12,6 +12,7 @@ Severity values are guesses made at recording time, not reviewed ratings.
+ - Suggested acceptance test: a tracked-file Cyrillic scan with an allowlist file (test data, semantic profiles, LITERAL-1C-NAMES, and the 8 paired `*.ru.html` reports if retained) reports zero violations; behavior tests that depend on Russian data still pass unchanged.
+ - Status: not fixed by integration by operator decision (translate in a separate sprint; keep the allowlist for test data, semantic profiles and the 8 paired `*.ru.html` reports).
+ - Status update (2026-10-22): still OPEN. The explanatory phrases in `docs/COMPATIBILITY.md` and `docs/INTEGRATION.md` were translated; the SELECT-equivalent query syntax restriction and Latin BP/UT/ZUP/KA identifiers are preserved. `docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md` was manually reviewed and its `ПоступлениеТоваровУслуг` token is a literal 1C document type, so it remains unchanged. The reviewed `RSVData` procedure and native report identifiers also remain literal 1C names. The decision in `core/DECISION_LOG.md` records text-preservation policy, but a line-level scan exposed source-derived evidence mixed into that file; it is now excluded from further content review. `docs/SEMANTIC_PROFILES.md`, `docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md`, `docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md`, `docs/runbooks/COM_BRIDGE_AND_PARITY.md`, and `core/DECISION_LOG.md` are excluded from further content review because they contain real-source, clone-measurement, or source-derived examples; edit only from sanitized copies or with a process that cannot expose business values. The inventory counts above are the 2026-10-20 baseline, not a refreshed scan.
++- Additional source-evidence boundary (2026-10-22): `docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md`, `scripts/real1c/raw_l2.py`, and `reports/real1c/case_results.json` are not to be reviewed by emitting their source-derived values into chat or durable records. Classify only through a sanitized process that records exact path, line number, and normalized-line digest; all other occurrences remain unclassified until independently reviewed. `scripts/real1c/run_lane.py:540,571` writes `case_results.json`; correct generated content at that generator and regenerate the artifact, never hand-edit it. The 15 withheld repeated-hash occurrences remain open; no scanner pass or WP3 acceptance is claimed.
+ 
+ ## ERPMCP-INH-002: document registry generator escapes Cyrillic instead of translating
+ 
+diff --git a/docs/commits/2026-10-22-wp3-source-evidence-boundary.md b/docs/commits/2026-10-22-wp3-source-evidence-boundary.md
+new file mode 100644
+index 0000000..6ea9406
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp3-source-evidence-boundary.md
+@@ -0,0 +1,22 @@
++# Change record: isolate source-derived material during WP3 classification
++
++Date: 2026-10-22  
++Scope: WP3 documentation-only handling rule for remaining source-derived English-policy candidates.
++
++## What changed
++
++- Recorded a sanitized review boundary for `docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md`, `scripts/real1c/raw_l2.py`, and generated `reports/real1c/case_results.json` in the inherited backlog.
++- Required occurrence-level classification by exact path, line number, and normalized-line digest without emitting source-derived values into chat or durable records.
++- Recorded that `case_results.json` must be corrected in `scripts/real1c/run_lane.py` and regenerated, not hand-edited; the current output references are `run_lane.py:540,571`.
++- Kept the 15 repeated-hash occurrences withheld and WP3 acceptance open.
++
++## Why
++
++These files contain source-derived evidence or generated output. A broad exception or an output that copies source values would weaken the policy and expose material unnecessarily. Exact occurrence metadata allows review without placing the values into the change record.
++
++## Verification state
++
++- Manually reconciled the paths with the existing WP3 inventory. A repository-source check confirmed that `scripts/real1c/run_lane.py:540,571` writes `case_results.json`; the source contents are outside this documentation patch.
++- No source-derived values were added to this record.
++- No scanner, test, check, build, CI, or migration was run. This change does not establish a scanner pass or WP3 acceptance.
++- GPT-PM exact-patch review: pending.

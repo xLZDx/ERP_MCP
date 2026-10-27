@@ -45,6 +45,7 @@ from business_ai_gateway.phase2.change_ledger.sql_ledger import CLASSES, SPEC, S
 from business_ai_gateway.phase2.change_ledger.write_port import (
     ApplyTicket,
     DispatchPermit,
+    InvocationContext,
     NonOperationalWritePort,
     NotWired,
 )
@@ -181,8 +182,29 @@ async def apply_seq(conn, cid):
                                "AND event_type='APPLYING'", cid)
 
 
+class _UnitRuntimeAuthority:
+    """TEST ONLY: accepts the authority interface so existing gate-path tests can proceed.
+
+    This double performs no provider or startup qualification and must not be used as runtime
+    evidence. The separate unit-only contract tests assert its call ordering and refusal behavior.
+    """
+
+    is_test_double = False
+
+    async def require_provider_qualified(self, scope, *, sink_id, sink_kind,
+                                         signer_key_id, signer_key_version):
+        return None
+
+    async def require_admission_ready(self, scope):
+        return None
+
+
 def real_gate(port, sink=None):
-    return DispatchGate(port, sink or RealSink(), RealSigner(), RealVerifier(), real_checkpoint_sink=True)
+    return DispatchGate(
+        port, sink or RealSink(), RealSigner(), RealVerifier(), real_checkpoint_sink=True,
+        private_writer_schema_enabled=getattr(port, "private_writer_schema_enabled", False),
+        runtime_authority=_UnitRuntimeAuthority(),
+    )
 
 
 async def refused(coro, code):
@@ -380,11 +402,45 @@ async def test_approve_compares_the_sql_computed_digest(env):
 
 
 # ============================================================================ gate consistency with SQL
+@pytest.mark.asyncio
+async def test_dispatch_gate_without_runtime_authority_fails_closed_before_port_or_sink_calls():
+    events = []
+
+    class PortWithoutSideEffects:
+        private_writer_schema_enabled = True
+
+        def __getattr__(self, name):
+            async def unexpected(*args, **kwargs):
+                events.append("port." + name)
+                raise AssertionError("disabled gate must not call the ledger port")
+            return unexpected
+
+    gate = DispatchGate(
+        PortWithoutSideEffects(), RealSink(), RealSigner(), RealVerifier(),
+        real_checkpoint_sink=True, private_writer_schema_enabled=True,
+    )
+    assert gate.enabled is False
+    with pytest.raises(GateDisabled):
+        await gate.issue_permit(SCOPE, uuid.uuid4(), 1, 1, uuid.uuid4())
+    assert events == []
+
+
+def test_real_gate_test_helper_supplies_only_a_unit_authority_contract():
+    class Port:
+        private_writer_schema_enabled = False
+
+    gate = real_gate(Port())
+    assert gate.enabled is True
+    # This tests fixture composition only. _UnitRuntimeAuthority performs no provider qualification.
+
+
 async def test_gate_stays_disabled_unless_real_sink_and_non_test_signer(env):
     conn, port = env
     cid, gen, _ = await applying(port)
     cases = [
         DispatchGate(port, RealSink(), RealSigner(), RealVerifier()),                          # flag off
+        DispatchGate(port, RealSink(), RealSigner(), RealVerifier(),
+                     real_checkpoint_sink=True),                                                # no runtime authority
         DispatchGate(port, InMemoryCheckpointSink(), RealSigner(), RealVerifier(),
                      real_checkpoint_sink=True),                                                # TEST sink
         DispatchGate(port, RealSink(), FakeSigner(), RealVerifier(), real_checkpoint_sink=True),
@@ -414,8 +470,11 @@ async def test_gate_refuses_when_read_back_does_not_match_and_writes_no_checkpoi
         await real_gate(port, LyingSink()).issue_permit(SCOPE, cid, gen)
     # the Unwired verifier (no Ed25519 yet) fails closed as well
     with pytest.raises(CheckpointUnavailable):
-        await DispatchGate(port, RealSink(), RealSigner(), UnwiredVerifier(),
-                           real_checkpoint_sink=True).issue_permit(SCOPE, cid, gen)
+        await DispatchGate(
+            port, RealSink(), RealSigner(), UnwiredVerifier(), real_checkpoint_sink=True,
+            private_writer_schema_enabled=getattr(port, "private_writer_schema_enabled", False),
+            runtime_authority=_UnitRuntimeAuthority(),
+        ).issue_permit(SCOPE, cid, gen)
     assert await conn.fetchval("SELECT count(*) FROM change_ledger.checkpoints") == 0
 
 
@@ -505,11 +564,29 @@ async def test_concurrent_port_calls_keep_one_chain(env):
 # ============================================================================ the non-operational write port
 async def test_write_port_is_not_wired():
     port = NonOperationalWritePort()
-    ticket = ApplyTicket("c", 1, "call", "POST", T, C, ORG, BASE, "doc1", "v1", "d" * 64)
-    permit = DispatchPermit("p", "d", "c", 1, "call", datetime.now(UTC), 1, "k", "s")
+    change_id, call_id, permit_id = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    permit_digest, digest_set_hash, approved_digest = "a" * 64, "d" * 64, "e" * 64
+    ticket = ApplyTicket(change_id, 1, call_id, "POST", T, C, ORG, "f" * 64, "doc1", "v1",
+                         digest_set_hash, approved_payload_digest=approved_digest)
+    permit = DispatchPermit(permit_id, permit_digest, change_id, 1, call_id,
+                            datetime.now(UTC), 1, "k", "s", lifecycle_epoch=2)
+
+    async def authorize_com_entry():
+        return False
+
+    context = InvocationContext(
+        dispatch_cas_id=uuid.uuid4(), service_instance_id=str(uuid.uuid4()), service_epoch=1,
+        host_id="test-host", base_fingerprint=ticket.base_fingerprint,
+        tenant_id=ticket.tenant_id, company_id=ticket.company_id, organization_ref=ticket.organization,
+        change_id=change_id, generation=1, call_id=call_id, operation=ticket.kind,
+        target_ref=ticket.target_ref, expected_pre_version=ticket.target_version,
+        authority_epoch=2, permit_id=permit_id, permit_digest=permit_digest,
+        digest_set_hash=digest_set_hash, approved_payload_digest=approved_digest,
+        repair_authorization_id=None, authorize_com_entry=authorize_com_entry,
+    )
     calls = [port.verify_ticket(ticket), port.verify_permit(ticket, permit), port.authenticate_base(ticket),
-             port.create_draft(ticket, permit, {}), port.update_draft(ticket, permit, {}),
-             port.post(ticket, permit), port.unpost(ticket, permit)]
+             port.create_draft(ticket, permit, context, {}),
+             port.post(ticket, permit, context), port.unpost(ticket, permit, context)]
     for coro in calls:
         with pytest.raises(NotWired, match="WRITE_PORT_NOT_WIRED"):
             await coro

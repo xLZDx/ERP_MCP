@@ -1,0 +1,111 @@
+diff --git a/core/LESSONS_LOG.md b/core/LESSONS_LOG.md
+index ee13e1eaca67cedb54b416b82c78b2d5bfef09c2..272aa88814ec330d295745cf9ca361d7faae13ba 100644
+--- a/core/LESSONS_LOG.md
++++ b/core/LESSONS_LOG.md
+@@ -86,3 +86,4 @@ Kind: SUCCESS. Facts: inherited failures and open items were collected from the
+ - 2026-10-22 S13 lock rank: preserve source-proven namespace dependencies before choosing unused IDs for new locks; a candidate rank is only a design until every granted path, helper, trigger, and unique-conflict edge is reconciled.
+ - 2026-10-22 WP3 policy scanner: decode BOM-marked UTF-16 before byte-NUL checks, reject UTF-32/decoded NUL, and bind each exception to path, line number and normalized-line hash; withhold repeated hashes until the exact occurrence is reviewed. Hashes do not anonymize low-entropy content. In the document registry, escape only headings found exclusively on archive, rescue, or snapshot refs.
+ - 2026-10-22 WP3 repeated synthetic fields: an identical reviewed value at multiple locations needs one path/line/hash exception per occurrence; retain only occurrences whose semantics were individually reviewed.
++- 2026-10-22 — Separate staging-environment deployment restrictions from Git staging; record explicit-path Git staging and local commits with exact-patch review.
+diff --git a/docs/commits/2026-10-22-git-staging-process-correction.md b/docs/commits/2026-10-22-git-staging-process-correction.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..3a9a253d56a7677d5b015b88b9d9a63728c6f9d6
+--- /dev/null
++++ b/docs/commits/2026-10-22-git-staging-process-correction.md
+@@ -0,0 +1,29 @@
++# Change record: distinguish Git staging from deployment staging
++
++Date: 2026-10-22  
++Scope: clarify active workflow documentation after the operator's correction.
++
++## What changed
++
++- Updated `docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md` to identify forbidden staging as
++  a staging-environment deployment and state that explicit-path Git staging and local commits
++  are authorized.
++- Updated `docs/commits/2026-10-22-wp3-english-prose-pass.md` so its active next-step guidance
++  defers tests during coding but permits Git staging/local commits with exact-patch GPT-PM
++  review.
++
++## Why
++
++The operator clarified on 2026-10-22 that the prohibition concerns a pre-production staging
++deployment, not Git's index. The plan already had a current-state notice, but a later hard-rule
++line and a WP3 decision still said “no staging” or “do not stage or commit,” which could be read
++as blocking authorized local development.
++
++## Boundaries
++
++- Staging-environment deployment remains forbidden.
++- Git staging must use explicit paths; every local commit needs its own detailed change record
++  and lesson entry, and exact-patch GPT-PM review.
++- Push and PR remain gated on approval of the exact final head after required tests and reviews.
++- No tests, checks, builds, CI, migrations, service action, push, or PR were performed for this
++  documentation correction.
+diff --git a/docs/commits/2026-10-22-wp3-english-prose-pass.md b/docs/commits/2026-10-22-wp3-english-prose-pass.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ddf1ed18dfe3a1784d7f6307faf0b497e0547016
+--- /dev/null
++++ b/docs/commits/2026-10-22-wp3-english-prose-pass.md
+@@ -0,0 +1,39 @@
++# Change record: Translate reviewed WP3 prose
++
++## Change
++
++- Translated the configuration-family description in `docs/COMPATIBILITY.md` into English.
++- Kept the `native_query.read` grammar restriction in `docs/INTEGRATION.md` explicit: SELECT-equivalent query syntax only.
++- Retained the Latin configuration identifiers BP, UT, ZUP, and KA alongside their English family names in `docs/COMPATIBILITY.md` for traceability.
++- Corrected the inherited WP3 backlog's paired Russian HTML report count from seven to eight, using the 2026-10-21 inventory note.
++- Recorded this limited pass and the reviewed literal 1C exceptions in `docs/BACKLOG_INHERITED_2026-10-21.md`.
++
++## Why
++
++The English-policy inventory classifies these paths as prose candidates, but its classification is explicitly path-based. A line-level review found that other Cyrillic matches in the reviewed small documents were literal 1C method, query, configuration, or report identifiers and should remain exact. The inventory also records eight tracked Russian HTML reports outside its scanned extension set; the inherited backlog still said seven.
++
++## Contracts and paths
++
++- The changes affect documentation only; no query code, report values, test data, or 1C identifiers changed.
++- `docs/ADAPTER_INTAKE_PLAN.md` and `docs/NATIVE_REPORT_CAPTURE_RUNBOOK.md` were inspected only at their Cyrillic lines; their literal identifiers remain unchanged.
++- `docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md` was reviewed as a bounded technical contract; its remaining Cyrillic token is the literal 1C document type `ПоступлениеТоваровУслуг` and was preserved.
++- `docs/SEMANTIC_PROFILES.md`, `docs/adr/ADR-0008-hybrid-odata-com-analytics-balance.md`, `docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md`, `docs/runbooks/COM_BRIDGE_AND_PARITY.md`, and `core/DECISION_LOG.md` were excluded from further content review after inspection showed real-source, clone-measurement, or source-derived examples. No business values are copied into this record. Further edits require sanitized copies or a value-safe review method.
++- The 2026-10-20 inventory counts remain historical baseline counts and were not regenerated.
++
++## Decisions
++
++- Preserve literal 1C identifiers even when they contain Cyrillic; translate surrounding prose instead.
++- Preserve the SELECT-equivalent syntax restriction for `native_query.read`; wording must not broaden the accepted query grammar.
++- Preserve Russian localized reports and semantic/test data under their documented exception candidates; do not delete them.
++- Continue WP3 only on pre-screened documentation that can be reviewed without exposing real-source evidence.
++- Record unsafe content-selection incidents in `core/LESSONS_LOG.md`; do not repeat source values in follow-up artifacts.
++- Following the additional runbook-selection incident, keep that path excluded and do not copy its source-derived contents into project records.
++- Following the decision-log scan incident, keep `core/DECISION_LOG.md` excluded from further content scans; use only sanitized or independently value-safe summaries.
++- During the coding phase, do not run tests/checks or regenerate customer evidence. Staging deployment remains forbidden; explicit-path Git staging and local commits are authorized by the operator's 2026-10-22 clarification and require exact-patch GPT-PM review per commit.
++
++## Verification state
++
++- Manually reviewed the two translated sentences and the identified literal 1C lines in the listed documents.
++- A read-only code-reviewer pass found one MAJOR ambiguity in the `native_query.read` syntax restriction and one traceability concern for configuration abbreviations. Both were corrected; the reviewer rechecked those exact findings and reported no remaining finding in scope.
++- The inherited inventory states that eight paired Russian HTML reports were tracked as of 2026-10-21.
++- No Cyrillic scanner, tests, checks, builds, CI, database commands, migrations, remote calls, staging, or commit were run for this pass.
+diff --git a/docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md b/docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md
+index 5854d302794042e54aedfe4584abfdfe898a3c15..62688f7c659acaff9cddfdf9c1cc9ebd6906934c 100644
+--- a/docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md
++++ b/docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md
+@@ -24,7 +24,7 @@ The operator answered the blocker list in chat. Each answer was checked against
+ | A3 | Key and signature registry (risks R-01, R-03): permitted. | Authorization recorded; work not done. Design: `docs/phase2/R03_ED25519_NEW_ACTION_DESIGN.md`, code `src/business_ai_gateway/phase2/ed25519.py`, migrations 019/021. Placeholders D9, D10, D10b, D4 stay `AGENT_SELECTED_TEST_PLACEHOLDER` until the first real write; a real signer host/account/Ed25519 key and a separate witness (D10b) are required before it. | WP5. Private keys are generated on the licensed host, DPAPI-protected, never printed or committed; only public keys go into `governance/WAIVER_SIGNERS.json` and the key registry. |
+ | A4 | Donor-code licenses are not needed: it is the operator's own code from other projects. | CONSISTENT with `docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md` (donors carry no third-party license; 41 distributions, no GPL/AGPL; one weak-copyleft `certifi` MPL-2.0 used unmodified). Still NOT_VERIFIED there: transitive licenses, setuptools/wheel, License-File texts. | Record the operator statement as closing the donor-license approval (OB-15: donor code/license inventory approval). Keep the NOT_VERIFIED transitive items as a named deferral; do not claim a license audit. |
+ | A5 | Google Drive OAuth: create, delete and read of documents were already fully verified. | PARTLY CONFIRMED. `core/DECISION_LOG.md` (commits 903eaba, 7dae655, bc25fb6, 2026-10-10) records real probes: drive.file creates an app folder and file; drive.readonly reads/lists; changes feed returned a new file on the 2nd poll. NOT FOUND in any record: a delete probe. Also recorded: the OAuth app is in Testing mode (refresh tokens may expire after 7 days) and the scope decision (drive.readonly sees the whole Drive) was left open. Tokens and client file live in `D:\secure\erp_mcp\` (names only: `google_oauth_client.json`, `google_drive_token.json`, `google_drive_token_readonly.json`, `g4_probe_state.json`). The manifest still has `drive_intake_enabled=false` and G4 NOT_PASSED, and the v2.0 target excludes Drive. | Drive stays out of the critical path. WP9 is optional: add a delete probe, decide the scope, write the evidence file, then flip `drive_intake_enabled` only with a valid waiver or passed G4 evidence. |
+-| A6 | Secrets provider, canary window, rollback owner: "decide yourself". | Delegated decision, made here (record it in `core/DECISION_LOG.md`): secrets provider = per-host Windows DPAPI CurrentUser blobs decrypted in-process into the environment (`BAG_SECRET_PROVIDER=env`), exactly as the stack already works; canary = read-only recipe on source `onec-818ha-reference` through the Ivan gateway, one 2-hour window per run, budget = gateway row limit 200 plus 100 calls per run, kill switch = the S13 kill-switch design; rollback owner = the operator as accountable owner, executed by the agent via the kill switch. Staging is FORBIDDEN (operator, 2026-10-10): never create staging steps. | WP10 uses these values. |
++| A6 | Secrets provider, canary window, rollback owner: "decide yourself". | Delegated decision, made here (record it in `core/DECISION_LOG.md`): secrets provider = per-host Windows DPAPI CurrentUser blobs decrypted in-process into the environment (`BAG_SECRET_PROVIDER=env`), exactly as the stack already works; canary = read-only recipe on source `onec-818ha-reference` through the Ivan gateway, one 2-hour window per run, budget = gateway row limit 200 plus 100 calls per run, kill switch = the S13 kill-switch design; rollback owner = the operator as accountable owner, executed by the agent via the kill switch. Staging deployment is FORBIDDEN (operator, 2026-10-10): never create deployment steps. Git staging and local commits are authorized by the 2026-10-22 operator clarification. | WP10 uses these values. |
+ | A7 | Real write into 1C: "you have everything". Follow-up of 2026-10-21: no production base needs to be named; every base on both machines is a test clone, "on production there will be no tests, an exact clone is enough". | CONFIRMED for the clone only; the follow-up closes the "name a production base" question: the agent may choose any disposable clone or the Ivan copy, and production company bases are never a test target. CT14 (`docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md`) measured create/post/unpost of a purchase receipt through COM on `818HA_p2diff`; extension `CT14Cust` and role `CT14Писатель` in `testlane/onec_extension/`. NOT measured: OData writes, forced session kill, an unresolved call while another target writes, client-server base. No record names a production company base or authorizes writing to one. | Real writes target disposable clones and the Ivan copy of the lane base. A production company base is a named-target step: it needs the infobase name, hash and a one-line operator confirmation. All other work does not wait for it. |
+ 
+ ## 2. Where things are
+@@ -97,7 +97,7 @@ Findings the next agent must know:
+ 1. Development rules v4 (workspace `D:\Repo\AGENTS.md` and global contract): finish a sprint's coding first; then `functional-test-reviewer` and `e2e-runner` write and run focused tests per epic and everything once more after the last epic; the coordinator never runs tests itself; then relevant specialist reviewers; then one GPT-PM review of the exact head; push and PR only after APPROVE; one PR per sprint.
+ 2. Reviewer models: Claude Sonnet 5.5 at medium effort, or GPT-5.6 Luna at low/medium. GPT-5.6 Sol is prohibited; no substitution. Opus only with explicit operator authorization.
+ 3. Every commit carries a detailed change-record file and a `core/LESSONS_LOG.md` entry; all text committed to git is English; chat with the operator is Russian and every code or ID shown there is explained in words.
+-4. No CI reading or fixing, no CI-mimicking Docker, no mutation runs, no staging. Evidence the operator accepts is local focused test output by the named agents.
++4. No CI reading or fixing, no CI-mimicking Docker, and no mutation runs. Staging deployments remain forbidden; explicit-path Git staging and local commits are authorized, with exact-patch GPT-PM review per commit. Evidence the operator accepts is local focused test output by the named agents.
+ 5. Never print, search for or commit secrets, tokens, DSNs or customer data; never use RSVDataAudit generic query tools as a shortcut; never guess EntitySet/register/field names.
+ 6. Writes into 1C only on disposable clones (`818HA_p2diff`, probe clone) or the Ivan copy, only through the controlled write path, never through the administrator account as the write identity (CT14 section 4), never against the immutable DT. Forced session termination stays DENIED until measured on an isolated copy.
+ 7. Operator-only regardless of this plan: unrecoverable deletion, remote branch/ref deletion, `git reset --hard`, live-money actions, any production company base write (see A7).

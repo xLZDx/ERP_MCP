@@ -82,6 +82,48 @@ See the [Phase 2 Overview](phase2/README.md) and [Phase 2 Plan](phase2/PLAN_PHAS
 
 **Second verified case:** The test `AUDITOR` platform role was created successfully, but the new separate test database had no data-plane source grant. `source_health` and `onec_capabilities` returned `AccessDenied`—a correct security outcome, not a broken capability schema. A limited test-only bootstrap for the exact real-1C source and an idempotent repair allowed the authorized positive case to be verified. **7/7** positive and negative checks passed on the real test source. See the [Verification Report](../reports/FRESH_INSTALL_REAL1C_VERIFICATION_2026-10-09.md).
 
+## 14. Batch Git Object Reads by Bytes When Generating the Document Registry
+
+**Lesson.** A registry generator that starts one `git cat-file` process per distinct Markdown blob scales with document count and can stall across many refs. A count-only batch limit is also unsafe because a few large documents can exceed the child-process output limit.
+
+**Rule.** Read object sizes in bounded metadata batches, then cap content batches by total bytes while retaining strict object-ID, type, size, delimiter, and complete-output validation. Generation must finish the full inventory before replacing the registry. See [Change Record 199](phase2/CHANGE_RECORD_199.md).
+
+## 15. Bound Canonical Identifier Parsing Before Normalization
+
+**Lesson.** Parsing first and comparing with the canonical form rejects alternate spellings, but still makes the parser process arbitrarily long attacker-controlled strings.
+
+**Rule.** Check the exact wire length and built-in input type before parsing canonical identifiers; parse once and retain the parsed value for any additional version/variant policy. Keep SQL constraints as a separate boundary. See [Change Record 200](phase2/CHANGE_RECORD_200.md).
+
+## 16. Do Not Downgrade a Post-Admission Writer Error to a Known Failure
+
+**Lesson.** Once the durable invocation stage is committed, an adapter exception is not proof that the external call did not enter or complete.
+
+**Rule.** Keep the call unresolved and return an unknown outcome until authoritative signed evidence resolves it; retries must look up the same call ID and never dispatch again. See [Change Record 201](phase2/CHANGE_RECORD_201.md).
+
+## 17. Bound Pre-Admission Dependency Calls Before They Hold a Request Open
+
+**Lesson.** A remote check before durable admission cannot mutate the writer state, but an unbounded wait can still consume request and worker capacity indefinitely.
+
+**Rule.** Put the entire awaited precheck sequence under one deadline and return a fixed pre-admission timeout without claiming an unknown write outcome. See [Change Record 202](phase2/CHANGE_RECORD_202.md).
+
+## 18. Reject Noncanonical UUID Text Before Admission
+
+**Lesson.** Parsing an uppercase, braced, or otherwise equivalent UUID and then storing its normalized value silently changes the caller's exact identifier at the writer boundary.
+
+**Rule.** Bound UUID text to its exact wire length before parsing, then require the parsed canonical lowercase representation to equal the original input before durable admission. See [Change Record 203](phase2/CHANGE_RECORD_203.md).
+
+## 19. Bound the Complete Startup Recovery Inventory
+
+**Lesson.** Returning every pending call and open barrier in one startup response without a total bound can consume unbounded database, network, and process memory; truncating the inventory could incorrectly open the writer.
+
+**Rule.** Count the complete fenced inventory before changing serving epoch or readiness, refuse above the explicit aggregate cap, and never return a partial inventory as ready. See [Change Record 204](phase2/CHANGE_RECORD_204.md).
+
+## 20. Refuse Concurrent Writer Requests Before Building a Wait Queue
+
+**Lesson.** Serializing physical writes with a lock is not sufficient if every concurrent HTTP request can wait indefinitely while retaining its parsed payload.
+
+**Rule.** Allow one in-process base operation at a time and refuse other dispatches before prechecks or durable admission; keep cross-process serialization in the database fence. See [Change Record 205](phase2/CHANGE_RECORD_205.md).
+
 ## Checklist Before Any Public Claim of Readiness
 
 - Identify the exact Git SHA, configuration version, and environment level.

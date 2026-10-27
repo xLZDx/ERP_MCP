@@ -1,0 +1,38 @@
+{
+ "clone": "818HA_p2diff",
+ "method": "read-only probes and transactions that were rolled back; no value or identifier is stored here",
+ "reference_semantics": {
+  "get_ref_with_python_str_argument": "raises com_error",
+  "get_ref_with_uuid_object_built_by_NewObject": "works",
+  "nonexistent_guid": {"is_empty": false, "deletion_mark": false, "get_object_is_none": true},
+  "guid_of_another_catalog_in_the_wrong_manager": {"get_object_is_none": true},
+  "document_ref_uuid_value_type": "COM dispatch object; connection.String(value) gives canonical text"
+ },
+ "write_requirements": {
+  "document_own_date_missing": "write fails with a generic 'Failed to save' error",
+  "document_own_date_set": "write succeeds; the document number is assigned on write",
+  "numbers_assigned_as_text": "accepted and stored as numbers",
+  "incoming_date_assigned_as_text": "accepted",
+  "enumeration_assigned_as_text": "NO error; the document is written and the stored enumeration value is EMPTY (also for a nonsense string)",
+  "enumeration_assigned_as_enumeration_object": "stored correctly"
+ },
+ "dates": {
+  "iso_text_assigned_to_date_attribute": "NO error; stored as the empty date",
+  "python_datetime_assigned_over_pywin32": "converted unpredictably (shifted); never assign Python datetimes",
+  "date_built_by_ONisanieTipov_conversion_14_digits": "assigned and stored exactly; date-only attribute reads back as YYYY-MM-DDT00:00:00 via XMLString",
+  "document_own_date_time_of_day": "the stored time of day is always 07:00:00 on the clone for assigned times 00:00:00, 01:00:00, 04:30:00, 05:00:00, 12:00:00 and 23:59:59, and the calendar day is always kept (not a fixed offset; the configuration normalizes the time); the reason is UNKNOWN",
+  "python_datetime_read_back": "tz-shifted; read dates as XMLString text instead"
+ },
+ "phantom_references_on_write": "a document write with a reference to a non-existent element succeeds silently, so the executor must prove existence itself",
+ "least_privilege_run": {
+  "role_read_added": ["Organizations","Counterparties","Currencies","Nomenclature"],
+  "effective_rights": "57 objects, 0 mismatches, 0 extra, 0 forbidden",
+  "narrow_user_lookup": "existing element: get object not None, deletion mark false; random GUID: get object None",
+  "executor_run_as_narrow_user": "OK, rolled back, 0 leftover documents"
+ },
+ "totals": {
+  "includes_vat_flag_default_false": "document total = line amount + line VAT amount (20 + 1.82 = 21.82)",
+  "includes_vat_flag_true": "document total = line amount (20.0)",
+  "line_vat_amount_not_computed_by_platform": true
+ }
+}

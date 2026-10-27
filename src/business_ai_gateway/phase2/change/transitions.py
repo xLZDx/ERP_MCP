@@ -22,20 +22,77 @@ from .errors import ErrorCode, Refusal
 from .killswitch import SwitchReading, effective_mode
 from .proposal import ChangeProposal
 from .types import (
-    ApprovalType, Attribution, Authorization, BudgetCheck, CallOwnership, CallerClass, ChangeKind, ChangeRecord,
-    Dispatch, EffectKnown, EvidenceKind, Execution, FailureStage, Hold, HoldCause, KillMode, Lifecycle, NonceState,
-    ProofClass, RepairAuth, Reservation, TokenState, Verification, is_aware_datetime, is_identity_text,
+    ApprovalType,
+    Attribution,
+    Authorization,
+    BudgetCheck,
+    CallerClass,
+    CallOwnership,
+    ChangeKind,
+    ChangeRecord,
+    Dispatch,
+    EffectKnown,
+    EvidenceKind,
+    Execution,
+    FailureStage,
+    Hold,
+    HoldCause,
+    KillMode,
+    Lifecycle,
+    NonceState,
+    ProofClass,
+    RepairAuth,
+    Reservation,
+    TokenState,
+    Verification,
+    is_aware_datetime,
+    is_identity_text,
 )
 
 __all__ = [
-    "Applied", "ApproveEvidence", "BeginApplyEvidence", "BusinessKeyState", "CallUnknownEvidence", "CancelPermitEvidence",
-    "ClaimEvidence", "CompletionEvidence", "DispatchEvidence", "EVENT_EVIDENCE", "EffectKind", "Event", "Evidence",
-    "ExpireEvidence", "FORBIDDEN_TRANSITIONS", "ForbiddenTransition", "HoldAction", "LOCK_MATRIX", "LockAction",
-    "LockRow", "LogicalKeyState", "OperatorResolveEvidence", "PermitEvidence", "PermitNotIssuedEvidence",
-    "ProposeEvidence", "RejectEvidence", "ReleaseClaimEvidence", "ReleaseReason", "RepairContext", "RepairPhase",
-    "ResolveEvidence", "ResolveOutcome", "RetryVerifyEvidence", "RevokeCause", "RevokeEvidence", "TRANSITION_TABLE",
-    "TransitionRow", "ValidateEvidence", "VerifyEvidence", "apply_transition", "classify_completion",
-    "forbidden_transition", "repair_authorization_error",
+    "EVENT_EVIDENCE",
+    "FORBIDDEN_TRANSITIONS",
+    "LOCK_MATRIX",
+    "TRANSITION_TABLE",
+    "Applied",
+    "ApproveEvidence",
+    "BeginApplyEvidence",
+    "BusinessKeyState",
+    "CallUnknownEvidence",
+    "CancelPermitEvidence",
+    "ClaimEvidence",
+    "CompletionEvidence",
+    "DispatchEvidence",
+    "EffectKind",
+    "Event",
+    "Evidence",
+    "ExpireEvidence",
+    "ForbiddenTransition",
+    "HoldAction",
+    "LockAction",
+    "LockRow",
+    "LogicalKeyState",
+    "OperatorResolveEvidence",
+    "PermitEvidence",
+    "PermitNotIssuedEvidence",
+    "ProposeEvidence",
+    "RejectEvidence",
+    "ReleaseClaimEvidence",
+    "ReleaseReason",
+    "RepairContext",
+    "RepairPhase",
+    "ResolveEvidence",
+    "ResolveOutcome",
+    "RetryVerifyEvidence",
+    "RevokeCause",
+    "RevokeEvidence",
+    "TransitionRow",
+    "ValidateEvidence",
+    "VerifyEvidence",
+    "apply_transition",
+    "classify_completion",
+    "forbidden_transition",
+    "repair_authorization_error",
 ]
 
 CLAIM_TTL: Final = timedelta(seconds=120)
@@ -1057,7 +1114,7 @@ def _req(**dims: tuple[object, ...]) -> Mapping[str, frozenset[object]]:
 
 
 _LC, _AU, _EX, _VE, _DI, _TK = Lifecycle, Authorization, Execution, Verification, Dispatch, TokenState
-_VALIDATED_APPROVED = dict(lifecycle=(_LC.VALIDATED,), authorization=(_AU.APPROVED,), execution=(_EX.NOT_STARTED,))
+_VALIDATED_APPROVED = {"lifecycle": (_LC.VALIDATED,), "authorization": (_AU.APPROVED,), "execution": (_EX.NOT_STARTED,)}
 TRANSITION_TABLE: Final = (
     TransitionRow("T1", "T1", Event.PROPOSE, _req(), "lifecycle=PROPOSED",
                   ("kill_off", "schema_valid", "scope_resolved", "requester_entitled", "epoch_read",
@@ -1188,9 +1245,9 @@ def _unwound_authorization(record: ChangeRecord, ev: Evidence) -> Authorization:
 
 def _unwind(record: ChangeRecord, ev: Evidence, tid: str, key: str, extra: dict[str, object] | None = None,
             effects: tuple[EffectKind, ...] = ()) -> Applied:
-    changes: dict[str, object] = dict(
-        authorization=_unwound_authorization(record, ev), execution=Execution.NOT_STARTED, token=TokenState.SUPERSEDED,
-        claim_expires_at=None, permit_expires_at=None)
+    changes: dict[str, object] = {
+        "authorization": _unwound_authorization(record, ev), "execution": Execution.NOT_STARTED, "token": TokenState.SUPERSEDED,
+        "claim_expires_at": None, "permit_expires_at": None}
     changes.update(extra or {})
     return _commit(record, tid, key, changes, effects)
 
@@ -1232,10 +1289,10 @@ def _h_approve(record: ChangeRecord, ev: ApproveEvidence, row: TransitionRow) ->
 def _h_claim(record: ChangeRecord, ev: ClaimEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
     ctx = ev.repair_ctx if _claim_repair_path(record, ev) else None
     generation = record.claim_generation + 1
-    changes: dict[str, object] = dict(
-        authorization=Authorization.CLAIMED, execution=Execution.NOT_STARTED, dispatch=Dispatch.NOT_PERMITTED,
-        token=TokenState.ISSUED, claim_generation=generation, claim_expires_at=ev.now + CLAIM_TTL,  # type: ignore[operator]
-        permit_expires_at=None)
+    changes: dict[str, object] = {
+        "authorization": Authorization.CLAIMED, "execution": Execution.NOT_STARTED, "dispatch": Dispatch.NOT_PERMITTED,
+        "token": TokenState.ISSUED, "claim_generation": generation, "claim_expires_at": ev.now + CLAIM_TTL,  # type: ignore[operator]
+        "permit_expires_at": None}
     if ctx is not None:
         assert ctx.halt is not None and record.target_ref is not None and record.approval_id is not None
         changes.update(repair_for=ctx.parent_change_id, repair=RepairAuth(
@@ -1250,9 +1307,9 @@ def _h_release_claim(record: ChangeRecord, ev: ReleaseClaimEvidence, row: Transi
 
 
 def _h_begin_apply(record: ChangeRecord, ev: BeginApplyEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T6", dict(
-        execution=Execution.APPLYING, token=TokenState.CONSUMED, dispatch=Dispatch.NOT_PERMITTED,
-        permit_expires_at=ev.now + PERMIT_TTL),  # type: ignore[operator]
+    return _commit(record, row.tid, "T6", {
+        "execution": Execution.APPLYING, "token": TokenState.CONSUMED, "dispatch": Dispatch.NOT_PERMITTED,
+        "permit_expires_at": ev.now + PERMIT_TTL},  # type: ignore[operator]
         (EffectKind.COMMIT_APPLYING_AND_OWNERSHIP_ROW,))
 
 
@@ -1261,12 +1318,12 @@ def _h_begin_replay(record: ChangeRecord, ev: BeginApplyEvidence, row: Transitio
 
 
 def _h_issue_permit(record: ChangeRecord, ev: PermitEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T6p", dict(dispatch=Dispatch.PERMITTED, permit_expires_at=ev.now + PERMIT_TTL),  # type: ignore[operator]
+    return _commit(record, row.tid, "T6p", {"dispatch": Dispatch.PERMITTED, "permit_expires_at": ev.now + PERMIT_TTL},  # type: ignore[operator]
                    (EffectKind.SIGN_PERMIT,))
 
 
 def _h_mark_dispatched(record: ChangeRecord, ev: DispatchEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T6p", dict(dispatch=Dispatch.DISPATCHED), (EffectKind.RECORD_DISPATCHED,))
+    return _commit(record, row.tid, "T6p", {"dispatch": Dispatch.DISPATCHED}, (EffectKind.RECORD_DISPATCHED,))
 
 
 def _h_permit_not_issued(record: ChangeRecord, ev: PermitNotIssuedEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
@@ -1274,13 +1331,13 @@ def _h_permit_not_issued(record: ChangeRecord, ev: PermitNotIssuedEvidence, row:
 
 
 def _h_cancel_permit(record: ChangeRecord, ev: CancelPermitEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _unwind(record, ev, row.tid, "T6c", dict(dispatch=Dispatch.CANCELLED_UNDISPATCHED),
+    return _unwind(record, ev, row.tid, "T6c", {"dispatch": Dispatch.CANCELLED_UNDISPATCHED},
                    (EffectKind.INVALIDATE_PERMIT,))
 
 
 def _h_call_success(record: ChangeRecord, ev: CompletionEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T7", dict(
-        execution=Execution.APPLIED, call_ownership=CallOwnership.PROVEN_FINISHED, attribution=Attribution.PROVEN))
+    return _commit(record, row.tid, "T7", {
+        "execution": Execution.APPLIED, "call_ownership": CallOwnership.PROVEN_FINISHED, "attribution": Attribution.PROVEN})
 
 
 def _h_refused_before_write(record: ChangeRecord, ev: CompletionEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
@@ -1289,29 +1346,29 @@ def _h_refused_before_write(record: ChangeRecord, ev: CompletionEvidence, row: T
         first = record.first_attempt_at or ev.now
         in_window = is_aware_datetime(first) and is_aware_datetime(ev.now) and ev.now - first <= LOCK_BUSY_WINDOW  # type: ignore[operator]
         if attempts < LOCK_BUSY_MAX_ATTEMPTS and in_window:
-            return _unwind(record, ev, row.tid, "T8", dict(lock_busy_attempts=attempts, first_attempt_at=first))
+            return _unwind(record, ev, row.tid, "T8", {"lock_busy_attempts": attempts, "first_attempt_at": first})
     refused = ev.refusal_code is ErrorCode.ROLLBACK_REFUSED and record.kind is ChangeKind.UNPOST
-    return _commit(record, row.tid, "T8", dict(
-        execution=Execution.ROLLBACK_REFUSED if refused else Execution.FAILED_APPLY))
+    return _commit(record, row.tid, "T8", {
+        "execution": Execution.ROLLBACK_REFUSED if refused else Execution.FAILED_APPLY})
 
 
 def _h_call_unknown(record: ChangeRecord, ev: CompletionEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T9", dict(
-        execution=Execution.APPLY_UNKNOWN, call_ownership=CallOwnership.POSSIBLY_EXECUTING))
+    return _commit(record, row.tid, "T9", {
+        "execution": Execution.APPLY_UNKNOWN, "call_ownership": CallOwnership.POSSIBLY_EXECUTING})
 
 
 def _h_resolve_found(record: ChangeRecord, ev: ResolveEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T10", dict(
-        execution=Execution.APPLIED, call_ownership=CallOwnership.PROVEN_FINISHED, attribution=Attribution.PROVEN))
+    return _commit(record, row.tid, "T10", {
+        "execution": Execution.APPLIED, "call_ownership": CallOwnership.PROVEN_FINISHED, "attribution": Attribution.PROVEN})
 
 
 def _h_resolve_absent(record: ChangeRecord, ev: ResolveEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T11", dict(
-        execution=Execution.FAILED_APPLY, call_ownership=CallOwnership.PROVEN_FINISHED))
+    return _commit(record, row.tid, "T11", {
+        "execution": Execution.FAILED_APPLY, "call_ownership": CallOwnership.PROVEN_FINISHED})
 
 
 def _h_age_limit(record: ChangeRecord, ev: ResolveEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T12", dict(execution=Execution.TRIAGE_REQUIRED), (EffectKind.ALERT_HUMAN,))
+    return _commit(record, row.tid, "T12", {"execution": Execution.TRIAGE_REQUIRED}, (EffectKind.ALERT_HUMAN,))
 
 
 def _h_verify_ok(record: ChangeRecord, ev: VerifyEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
@@ -1319,18 +1376,18 @@ def _h_verify_ok(record: ChangeRecord, ev: VerifyEvidence, row: TransitionRow) -
     if record.repair is not None:  # a verified repair reconciles the failed parent (4.2)
         effects = (EffectKind.MARK_PARENT_SUPERSEDED, EffectKind.RELEASE_HOLD_FAILED_VERIFY_HALT,
                    EffectKind.RECONCILE_AMOUNT_CONSUMED)
-    return _commit(record, row.tid, "T13", dict(verification=Verification.VERIFIED), effects)
+    return _commit(record, row.tid, "T13", {"verification": Verification.VERIFIED}, effects)
 
 
 def _h_verify_failed(record: ChangeRecord, ev: VerifyEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T14", dict(verification=Verification.FAILED_VERIFY, effect_known=ev.effect_known),
+    return _commit(record, row.tid, "T14", {"verification": Verification.FAILED_VERIFY, "effect_known": ev.effect_known},
                    (EffectKind.ALERT_HUMAN,))
 
 
 def _h_revoke(record: ChangeRecord, ev: RevokeEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
     voided = ev.cause in (RevokeCause.EPOCH_DEPENDENCY_CHANGED, RevokeCause.KILL_SWITCH_REVOKE)
-    changes: dict[str, object] = dict(authorization=Authorization.VOIDED if voided else Authorization.REVOKED,
-                                      claim_expires_at=None, permit_expires_at=None)
+    changes: dict[str, object] = {"authorization": Authorization.VOIDED if voided else Authorization.REVOKED,
+                                      "claim_expires_at": None, "permit_expires_at": None}
     if record.token is TokenState.ISSUED:
         changes["token"] = TokenState.REVOKED
     return _commit(record, row.tid, "T15", changes)
@@ -1338,22 +1395,22 @@ def _h_revoke(record: ChangeRecord, ev: RevokeEvidence, row: TransitionRow) -> A
 
 def _h_operator_resolve(record: ChangeRecord, ev: OperatorResolveEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
     if ev.outcome is ResolveOutcome.ABSENT:
-        return _commit(record, row.tid, "T16_ABSENT", dict(
-            execution=Execution.FAILED_APPLY, call_ownership=CallOwnership.PROVEN_FINISHED))
+        return _commit(record, row.tid, "T16_ABSENT", {
+            "execution": Execution.FAILED_APPLY, "call_ownership": CallOwnership.PROVEN_FINISHED})
     attribution = (Attribution.PROVEN if ev.outcome is ResolveOutcome.PRESENT_ATTRIBUTED
                    else Attribution.UNPROVEN_OPERATOR_ATTESTED)
-    return _commit(record, row.tid, "T16_PRESENT", dict(
-        execution=Execution.APPLIED, call_ownership=CallOwnership.PROVEN_FINISHED, attribution=attribution))
+    return _commit(record, row.tid, "T16_PRESENT", {
+        "execution": Execution.APPLIED, "call_ownership": CallOwnership.PROVEN_FINISHED, "attribution": attribution})
 
 
 def _h_retry_verify(record: ChangeRecord, ev: VerifyEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
     if ev.matches is True:
-        return _commit(record, row.tid, "T17_RETRY_OK", dict(verification=Verification.VERIFIED))
+        return _commit(record, row.tid, "T17_RETRY_OK", {"verification": Verification.VERIFIED})
     return Applied(replace(record, verify_attempts=record.verify_attempts + 1), (), row.tid)
 
 
 def _h_close_failed_verify(record: ChangeRecord, ev: OperatorResolveEvidence, row: TransitionRow) -> Applied:  # type: ignore[override]
-    return _commit(record, row.tid, "T17_RETRY_OK", dict(closed=True))
+    return _commit(record, row.tid, "T17_RETRY_OK", {"closed": True})
 
 
 _HANDLERS: Final = {

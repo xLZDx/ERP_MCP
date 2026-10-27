@@ -159,7 +159,8 @@ def decode_payload(data: bytes) -> DraftPayload | None:
         for item in lines_raw:
             if type(item) is not dict or set(item) != _LINE_KEYS:
                 raise bad
-            lines.append(Line(item["item_ref"], item["quantity"], item["price"], item["vat_rate_code"], item["amount"]))
+            lines.append(Line(item["item_ref"], item["quantity"], item["price"], item["vat_rate_code"], item["amount"],
+                              item["vat_amount"]))
         override_raw = raw["duplicate_override"]
         override = None
         if override_raw is not None:
@@ -177,7 +178,7 @@ def decode_payload(data: bytes) -> DraftPayload | None:
 _FULL_KEYS: Final = frozenset({
     "organization_ref", "counterparty_ref", "contract_ref", "supplier_document_number", "supplier_document_date",
     "currency", "lines", "comment", "duplicate_override", "expected_target_version"})
-_LINE_KEYS: Final = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount"})
+_LINE_KEYS: Final = frozenset({"item_ref", "quantity", "price", "vat_rate_code", "amount", "vat_amount"})
 
 
 @dataclass(slots=True)

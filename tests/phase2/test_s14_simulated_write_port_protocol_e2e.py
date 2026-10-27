@@ -46,7 +46,7 @@ def _typed_payload(organization: str = _ORG, *, document_number: str = "SIM-RECE
         supplier_document_number=document_number,
         supplier_document_date="2026-10-17",
         currency="MDL",
-        lines=(Line("ITEM-SIM-1", "1", "10", "VAT-20", "10"),),
+        lines=(Line("ITEM-SIM-1", "1", "10", "VAT-20", "10", "2"),),
         comment="synthetic protocol journey",
     )
 

@@ -101,7 +101,7 @@ Python 3.12+, `uv`, and Node.js only if using the optional MCP Inspector.
    uv run --locked python scripts/check_db_privileges.py
    ```
 
-   Expected schema is version 14. Fix any role/grant failures before continuing.
+   Expected schema is version 15. Fix any role/grant failures before continuing.
 
 7. Start Fake1C in its own PowerShell window:
 

@@ -1,4 +1,4 @@
-"""Closed v1 S12 evidence envelopes for local synthetic contract fixtures.
+"""Closed-version S12 evidence envelopes for local synthetic contract fixtures.
 
 These value objects validate and serialize evidence; they do not establish a
 trusted identity, authorize a write, or connect to a database/1C. Their Ed25519
@@ -17,7 +17,10 @@ from typing import ClassVar, Final
 from .. import ed25519
 
 __all__ = [
-    "DispatchReceipt", "OutcomeEvidence", "CompletionProof", "canonical_json_bytes",
+    "DispatchReceipt", "OutcomeEvidence", "OutcomeEvidenceV2", "OutcomeEvidenceV3",
+    "CompletionProof", "PostCompletionChallenge", "PostCompletionReadAttestation", "canonical_json_bytes",
+    "challenged_read_request_digest", "outcome_observation_digest",
+    "validate_conditional_conflict_terminal_evidence",
     "DispatchAttempt", "record_digest", "verify_record_signature", "sign_record_fixture", "seal_record_fixture",
 ]
 
@@ -26,16 +29,20 @@ _HEX128: Final = re.compile(r"[0-9a-f]{128}\Z")
 _UTC_MICROS: Final = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z\Z")
 _UUID: Final = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z")
 _OPERATIONS: Final = frozenset(("CREATE_DRAFT", "POST", "UNPOST"))
-_WRITE_STAGES: Final = frozenset(("NOT_INVOKED", "INVOKED"))
+# Keep INVOKED for existing local fixtures; new entered-conflict receipts use ENTERED.
+_WRITE_STAGES: Final = frozenset(("NOT_INVOKED", "ENTERED", "INVOKED"))
 _RESULT_CLASSES: Final = frozenset((
     "PRE_WRITE_NO_EFFECT", "CALL_RETURNED_SUCCESS", "CALL_RETURNED_ERROR", "POST_START_UNKNOWN",
-    "RECEIPT_PERSISTENCE_UNKNOWN",
+    "RECEIPT_PERSISTENCE_UNKNOWN", "CONDITIONAL_VERSION_CONFLICT",
 ))
 _COMPLETION_CLASSES: Final = frozenset(("WRITER_CALL_RETURNED", "INDEPENDENT_SESSION_AND_PROCESS_CLOSED"))
-_SIGNER_ROLES: Final = frozenset(("writer_receipt", "verification_worker", "completion_supervisor"))
+_SIGNER_ROLES: Final = frozenset(("writer_receipt", "verification_worker", "completion_supervisor", "read_attestor"))
 _DISPATCH_PREFIX: Final = b"ERP_MCP_R2:S12:DISPATCH-RECEIPT:v1\n"
 _OUTCOME_PREFIX: Final = b"ERP_MCP_R2:S12:OUTCOME-EVIDENCE:v1\n"
+_OUTCOME_V2_PREFIX: Final = b"ERP_MCP_R2:S12:OUTCOME-EVIDENCE:v2\n"
 _COMPLETION_PREFIX: Final = b"ERP_MCP_R2:S12:COMPLETION-PROOF:v1\n"
+_POST_COMPLETION_PREFIX: Final = b"ERP_MCP_R2:S13:POST-COMPLETION-CHALLENGE:v1\n"
+_POST_COMPLETION_READ_PREFIX: Final = b"ERP_MCP_R2:S13:POST-COMPLETION-READ-ATTESTATION:v1\n"
 
 
 def _text(value: object, field: str, *, nullable: bool = False) -> None:
@@ -173,7 +180,7 @@ class DispatchAttempt:
             raise ValueError("DISPATCH_GENERATION_INVALID")
         if type(self.auth_epoch) is not int or self.auth_epoch < 1:
             raise ValueError("AUTH_EPOCH_INVALID")
-        if self.operation_kind not in _OPERATIONS:
+        if type(self.operation_kind) is not str or self.operation_kind not in _OPERATIONS:
             raise ValueError("OPERATION_KIND_INVALID")
         if type(self.approval_digest) is not str or _HEX64.fullmatch(self.approval_digest) is None:
             raise ValueError("APPROVAL_DIGEST_INVALID")
@@ -262,11 +269,20 @@ class _Envelope:
         try:
             text = data.decode("utf-8", errors="strict")
             parsed = json.loads(text, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
-        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        except (UnicodeDecodeError, json.JSONDecodeError, RecursionError, ValueError) as exc:
             raise ValueError("JSON_INVALID") from exc
-        if not isinstance(parsed, dict) or canonical_json_bytes(parsed) != data:
+        if not isinstance(parsed, dict):
             raise ValueError("JSON_NON_CANONICAL")
-        return cls(parsed)
+        try:
+            canonical = canonical_json_bytes(parsed)
+        except RecursionError as exc:
+            raise ValueError("JSON_INVALID") from exc
+        if canonical != data:
+            raise ValueError("JSON_NON_CANONICAL")
+        try:
+            return cls(parsed)
+        except RecursionError as exc:
+            raise ValueError("JSON_INVALID") from exc
 
     def to_dict(self) -> dict[str, object]:
         return {k: _thaw(v) for k, v in self._fields.items()}
@@ -355,12 +371,21 @@ class DispatchReceipt(_Envelope):
         else:
             if f["result_class"] == "PRE_WRITE_NO_EFFECT" or f["no_effect_evidence_digest"] is not None:
                 raise ValueError("NO_EFFECT_EVIDENCE_UNEXPECTED")
-            if f["result_class"] in ("CALL_RETURNED_SUCCESS", "CALL_RETURNED_ERROR", "RECEIPT_PERSISTENCE_UNKNOWN"):
+            if f["result_class"] in (
+                "CALL_RETURNED_SUCCESS", "CALL_RETURNED_ERROR", "RECEIPT_PERSISTENCE_UNKNOWN",
+                "CONDITIONAL_VERSION_CONFLICT",
+            ):
                 if not f["call_returned"] or f["returned_at"] is None:
                     raise ValueError("RETURN_BOUNDARY_REQUIRED")
             elif f["result_class"] == "POST_START_UNKNOWN":
                 if f["call_returned"] or f["returned_at"] is not None:
                     raise ValueError("UNKNOWN_RETURN_BOUNDARY_INVALID")
+        if f["result_class"] == "CONDITIONAL_VERSION_CONFLICT":
+            if (f["operation_kind"] not in ("POST", "UNPOST")
+                    or f["write_invocation_stage"] != "ENTERED"
+                    or f["returned_target_ref"] is not None
+                    or f["returned_version"] is not None):
+                raise ValueError("CONDITIONAL_CONFLICT_PROOF_INVALID")
         if f["call_returned"] != (f["returned_at"] is not None):
             raise ValueError("RETURN_BOUNDARY_INVALID")
         if f["operation_kind"] in ("POST", "UNPOST") and f["returned_target_ref"] is not None \
@@ -493,9 +518,94 @@ class OutcomeEvidence(_Envelope):
         elif self.target_ref != bound.expected_target_ref or self.pre_version != bound.expected_pre_version:
             raise ValueError("OUTCOME_PREIMAGE_BINDING_INVALID")
 
+        # A successful read-back must match the values returned by the writer,
+        # as well as the approved pre-image. The receipt is not interchangeable
+        # with caller-provided target/version fields.
+        if receipt is not None and receipt.result_class == "CALL_RETURNED_SUCCESS":
+            if self.operation_kind == "CREATE_DRAFT":
+                if (self.target_ref != receipt.returned_target_ref
+                        or self.observed_version != receipt.returned_version):
+                    raise ValueError("OUTCOME_CREATED_TARGET_INVALID")
+            elif (self.target_ref != receipt.returned_target_ref
+                  or self.observed_version != receipt.returned_version
+                  or self.observed_version == self.pre_version):
+                raise ValueError("OUTCOME_VERSION_NOT_ADVANCED")
+
+        # An entered conditional conflict can authorize terminal no-effect
+        # recovery only with the oracle-pinned v3 envelope that binds completion.
+        if receipt is not None and receipt.result_class == "CONDITIONAL_VERSION_CONFLICT":
+            if type(self) is not OutcomeEvidenceV3:
+                raise ValueError("CONFLICT_REQUIRES_OUTCOME_V3")
+            if (self.operation_kind not in ("POST", "UNPOST")
+                    or not self.observation_complete
+                    or self.effect_presence != "ABSENT"
+                    or self.effect_identity != "NO_GOVERNED_EFFECT"
+                    or self.attribution_result != "COMPETING_WRITER"
+                    or self.version_relation != "DIFFERENT_COMPETING_WRITER"
+                    or self.observed_version == self.pre_version
+                    or not self.attribution_evidence_ref
+                    or self.uncertainties):
+                raise ValueError("CONFLICT_NO_EFFECT_ATTRIBUTION_INVALID")
+
     def validate_dispatch_binding(self, receipt: DispatchReceipt) -> None:
         """Compatibility convenience for a receipt-backed observation."""
         self.validate_attempt_binding(DispatchAttempt.from_receipt(receipt), receipt)
+
+
+_OUTCOME_V2_FIELDS: Final = _OUTCOME_FIELDS | frozenset((
+    "document_shape_revision", "configuration_fingerprint", "oracle_id", "oracle_version",
+    "oracle_digest", "expected_effect_schema_version",
+))
+
+
+class OutcomeEvidenceV2(OutcomeEvidence):
+    """Closed v2 read-back envelope pinned to an immutable oracle/configuration contract."""
+
+    PREFIX = _OUTCOME_V2_PREFIX
+    SCHEMA = _OUTCOME_V2_FIELDS
+
+    def _validate(self, f: Mapping[str, object]) -> None:
+        if f["evidence_version"] != "2":
+            raise ValueError("OUTCOME_METADATA_INVALID")
+        # Reuse the complete v1 structural and movement validation without
+        # changing the signed v2 envelope or its version discriminator.
+        common = dict(f)
+        common["evidence_version"] = "1"
+        super()._validate(common)
+        for name in ("document_shape_revision", "oracle_id", "oracle_version",
+                     "expected_effect_schema_version"):
+            _text(f[name], name)
+        for name in ("configuration_fingerprint", "oracle_digest"):
+            if type(f[name]) is not str or _HEX64.fullmatch(f[name]) is None:
+                raise ValueError(f"{name.upper()}_INVALID")
+
+
+_OUTCOME_V3_FIELDS: Final = _OUTCOME_V2_FIELDS | frozenset(("completion_proof_digest",))
+_OUTCOME_V3_FIELDS = _OUTCOME_V3_FIELDS | frozenset((
+    "post_completion_challenge_id", "verification_sequence", "read_attestation_digest",
+))
+
+
+class OutcomeEvidenceV3(OutcomeEvidenceV2):
+    """V3 binds a challenged read-back and durable sequence to completion evidence."""
+
+    PREFIX = b"ERP_MCP_R2:S12:OUTCOME-EVIDENCE:v3\n"
+    SCHEMA = _OUTCOME_V3_FIELDS
+
+    def _validate(self, f: Mapping[str, object]) -> None:
+        if f["evidence_version"] != "3":
+            raise ValueError("OUTCOME_METADATA_INVALID")
+        common = dict(f)
+        common["evidence_version"] = "2"
+        super()._validate(common)
+        if type(f["completion_proof_digest"]) is not str or _HEX64.fullmatch(f["completion_proof_digest"]) is None:
+            raise ValueError("COMPLETION_PROOF_DIGEST_INVALID")
+        if _UUID.fullmatch(str(f["post_completion_challenge_id"])) is None:
+            raise ValueError("POST_COMPLETION_CHALLENGE_ID_INVALID")
+        if type(f["verification_sequence"]) is not int or f["verification_sequence"] < 1:
+            raise ValueError("VERIFICATION_SEQUENCE_INVALID")
+        if type(f["read_attestation_digest"]) is not str or _HEX64.fullmatch(f["read_attestation_digest"]) is None:
+            raise ValueError("READ_ATTESTATION_DIGEST_INVALID")
 
 
 _COMPLETION_FIELDS: Final = frozenset((
@@ -588,6 +698,220 @@ class CompletionProof(_Envelope):
     def validate_dispatch_binding(self, receipt: DispatchReceipt) -> None:
         """Compatibility convenience for a receipt-backed completion proof."""
         self.validate_attempt_binding(DispatchAttempt.from_receipt(receipt), receipt)
+
+
+_POST_COMPLETION_CHALLENGE_FIELDS: Final = frozenset((
+    "challenge_version", "challenge_id", "tenant_id", "company_id", "organization_ref",
+    "base_fingerprint", "change_id", "claim_generation", "dispatch_generation", "dispatch_cas_id",
+    "call_id", "completion_proof_digest", "verifier_service_id", "verifier_host_id",
+    "verification_sequence_floor", "challenge_nonce", "query_spec_digest",
+    "read_attestor_service_id", "read_attestor_host_id", "issued_at", "issuer_service_id", "issuer_host_id",
+    "signer_key_id", "key_version", "signer_role", "algorithm", "canonical_challenge_digest", "signature",
+))
+
+
+class PostCompletionChallenge(_Envelope):
+    """Supervisor-issued unpredictable read challenge bound to one verified completion proof.
+
+    The verifier's durable monotonic sequence must advance beyond the captured floor
+    before it performs and signs the challenged read-back.
+    """
+
+    PREFIX = _POST_COMPLETION_PREFIX
+    SCHEMA = _POST_COMPLETION_CHALLENGE_FIELDS
+    DIGEST_FIELD = "canonical_challenge_digest"
+
+    def _validate(self, f: Mapping[str, object]) -> None:
+        if f["challenge_version"] != "1" or f["signer_role"] != "completion_supervisor" or f["algorithm"] != "Ed25519":
+            raise ValueError("POST_COMPLETION_CHALLENGE_METADATA_INVALID")
+        _timestamp(f["issued_at"], "issued_at")
+        for name in ("challenge_id", "dispatch_cas_id", "call_id"):
+            if _UUID.fullmatch(str(f[name])) is None:
+                raise ValueError(f"{name.upper()}_INVALID")
+        for name in ("tenant_id", "company_id", "organization_ref", "base_fingerprint", "change_id",
+                     "completion_proof_digest", "verifier_service_id", "verifier_host_id", "issuer_service_id",
+                     "issuer_host_id", "signer_key_id", "key_version", "canonical_challenge_digest",
+                     "query_spec_digest", "read_attestor_service_id", "read_attestor_host_id"):
+            _text(f[name], name)
+        for name in ("completion_proof_digest", "canonical_challenge_digest", "query_spec_digest"):
+            if type(f[name]) is not str or _HEX64.fullmatch(f[name]) is None:
+                raise ValueError(f"{name.upper()}_INVALID")
+        if type(f["challenge_nonce"]) is not str or _HEX64.fullmatch(f["challenge_nonce"]) is None:
+            raise ValueError("CHALLENGE_NONCE_INVALID")
+        for name in ("claim_generation", "dispatch_generation", "verification_sequence_floor"):
+            if type(f[name]) is not int or f[name] < 0:
+                raise ValueError(f"{name.upper()}_INVALID")
+        if f["claim_generation"] < 1 or f["dispatch_generation"] < 1:
+            raise ValueError("DISPATCH_GENERATION_INVALID")
+        if type(f["signature"]) is not str or (f["signature"] != "" and _HEX128.fullmatch(f["signature"]) is None):
+            raise ValueError("SIGNATURE_INVALID")
+
+    def validate_attempt_binding(self, attempt: DispatchAttempt, completion: CompletionProof) -> None:
+        if type(attempt) is not DispatchAttempt or type(completion) is not CompletionProof:
+            raise ValueError("POST_COMPLETION_BINDING_REQUIRED")
+        pairs = {
+            "tenant_id": "tenant_id", "company_id": "company_id", "organization_ref": "organization_ref",
+            "base_fingerprint": "base_fingerprint", "change_id": "change_id",
+            "claim_generation": "claim_generation", "dispatch_generation": "dispatch_generation",
+            "dispatch_cas_id": "dispatch_cas_id", "call_id": "call_id",
+        }
+        if any(getattr(self, name) != getattr(attempt, target) for name, target in pairs.items()):
+            raise ValueError("POST_COMPLETION_ATTEMPT_BINDING_INVALID")
+        if (self.completion_proof_digest != completion.calculated_digest()
+                or self.verifier_service_id == attempt.writer_service_id
+                or self.issuer_service_id in (attempt.writer_service_id, self.verifier_service_id,
+                                              self.read_attestor_service_id)
+                or self.read_attestor_service_id in (attempt.writer_service_id, self.verifier_service_id)):
+            raise ValueError("POST_COMPLETION_PROOF_BINDING_INVALID")
+
+
+_POST_COMPLETION_READ_FIELDS: Final = frozenset((
+    "attestation_version", "attestation_id", "tenant_id", "company_id", "organization_ref",
+    "base_fingerprint", "change_id", "claim_generation", "dispatch_generation", "dispatch_cas_id",
+    "call_id", "challenge_id", "challenge_nonce_digest", "query_spec_digest", "query_request_digest",
+    "source_response_digest", "outcome_observation_digest", "verification_sequence", "process_instance_id",
+    "attestor_service_id", "attestor_host_id", "completed_at", "signer_key_id", "key_version",
+    "signer_role", "algorithm", "canonical_attestation_digest", "signature",
+))
+
+
+class PostCompletionReadAttestation(_Envelope):
+    """Independent attestor receipt for one nonce-bound live read and exact outcome claims."""
+
+    PREFIX = _POST_COMPLETION_READ_PREFIX
+    SCHEMA = _POST_COMPLETION_READ_FIELDS
+    DIGEST_FIELD = "canonical_attestation_digest"
+
+    def _validate(self, f: Mapping[str, object]) -> None:
+        if (f["attestation_version"] != "1" or f["signer_role"] != "read_attestor"
+                or f["algorithm"] != "Ed25519"):
+            raise ValueError("READ_ATTESTATION_METADATA_INVALID")
+        _timestamp(f["completed_at"], "completed_at")
+        for name in ("attestation_id", "dispatch_cas_id", "call_id", "challenge_id", "process_instance_id"):
+            if _UUID.fullmatch(str(f[name])) is None:
+                raise ValueError(f"{name.upper()}_INVALID")
+        for name in ("tenant_id", "company_id", "organization_ref", "base_fingerprint", "change_id",
+                     "attestor_service_id", "attestor_host_id", "signer_key_id", "key_version"):
+            _text(f[name], name)
+        for name in ("challenge_nonce_digest", "query_spec_digest", "query_request_digest",
+                     "source_response_digest", "outcome_observation_digest", "canonical_attestation_digest"):
+            if type(f[name]) is not str or _HEX64.fullmatch(f[name]) is None:
+                raise ValueError(f"{name.upper()}_INVALID")
+        for name in ("claim_generation", "dispatch_generation", "verification_sequence"):
+            if type(f[name]) is not int or f[name] < 1:
+                raise ValueError(f"{name.upper()}_INVALID")
+        if type(f["signature"]) is not str or (f["signature"] != "" and _HEX128.fullmatch(f["signature"]) is None):
+            raise ValueError("SIGNATURE_INVALID")
+
+    def validate_attempt_binding(self, attempt: DispatchAttempt, challenge: PostCompletionChallenge) -> None:
+        if type(attempt) is not DispatchAttempt or type(challenge) is not PostCompletionChallenge:
+            raise ValueError("READ_ATTESTATION_BINDING_REQUIRED")
+        pairs = {
+            "tenant_id": "tenant_id", "company_id": "company_id", "organization_ref": "organization_ref",
+            "base_fingerprint": "base_fingerprint", "change_id": "change_id",
+            "claim_generation": "claim_generation", "dispatch_generation": "dispatch_generation",
+            "dispatch_cas_id": "dispatch_cas_id", "call_id": "call_id",
+        }
+        if any(getattr(self, name) != getattr(attempt, target) for name, target in pairs.items()):
+            raise ValueError("READ_ATTESTATION_ATTEMPT_BINDING_INVALID")
+        if (self.challenge_id != challenge.challenge_id
+                or self.challenge_nonce_digest != hashlib.sha256(challenge.challenge_nonce.encode("ascii")).hexdigest()
+                or self.query_spec_digest != challenge.query_spec_digest
+                or self.attestor_service_id != challenge.read_attestor_service_id
+                or self.attestor_host_id != challenge.read_attestor_host_id
+                or self.verification_sequence <= challenge.verification_sequence_floor
+                or self.verification_sequence <= 0):
+            raise ValueError("READ_ATTESTATION_CHALLENGE_BINDING_INVALID")
+        expected_request = challenged_read_request_digest(challenge, self.verification_sequence)
+        if (self.query_request_digest != expected_request
+                or self.attestor_service_id in (
+                    attempt.writer_service_id, challenge.verifier_service_id, challenge.issuer_service_id,
+                )
+                or (self.attestor_host_id == challenge.issuer_host_id
+                    and self.completed_at < challenge.issued_at)):
+            raise ValueError("READ_ATTESTATION_REQUEST_INVALID")
+
+
+def challenged_read_request_digest(challenge: PostCompletionChallenge, sequence: int) -> str:
+    """Digest the exact challenge nonce, pinned query plan and attestor sequence sent to the reader."""
+    if (type(challenge) is not PostCompletionChallenge
+            or type(sequence) is not int or sequence < 1):
+        raise ValueError("CHALLENGED_READ_REQUEST_INVALID")
+    return hashlib.sha256(
+        b"ERP_MCP_R2:S13:CHALLENGED-READ-REQUEST:v1\n" + canonical_json_bytes({
+            "challenge_id": challenge.challenge_id,
+            "challenge_nonce": challenge.challenge_nonce,
+            "query_spec_digest": challenge.query_spec_digest,
+            "verification_sequence": sequence,
+        })
+    ).hexdigest()
+
+
+def outcome_observation_digest(outcome: OutcomeEvidenceV3) -> str:
+    """Digest V3 observation claims without the attestor/canonical-digest cycle fields."""
+    if type(outcome) is not OutcomeEvidenceV3:
+        raise ValueError("OUTCOME_V3_REQUIRED")
+    fields = outcome.to_dict()
+    fields.pop("read_attestation_digest")
+    fields.pop(type(outcome).DIGEST_FIELD)
+    fields.pop("signature")
+    return hashlib.sha256(
+        b"ERP_MCP_R2:S13:CHALLENGED-READ-OBSERVATION:v1\n" + canonical_json_bytes(fields)
+    ).hexdigest()
+
+
+def validate_conditional_conflict_terminal_evidence(
+    attempt: DispatchAttempt | Mapping[str, object],
+    receipt: DispatchReceipt,
+    outcome: OutcomeEvidence,
+    completion: CompletionProof,
+    challenge: PostCompletionChallenge,
+    read_attestation: PostCompletionReadAttestation,
+) -> None:
+    """Require all exact S12 records before a conditional-conflict terminal transition.
+
+    This helper validates bindings and the closed no-effect/attribution predicate.
+    The trusted registry must verify every record signature and the registered oracle
+    artifact; the database must atomically enforce the inherited
+    T16 signer rules and hold transition before storing FAILED_APPLY.
+    """
+    if (type(receipt) is not DispatchReceipt
+            or receipt.result_class != "CONDITIONAL_VERSION_CONFLICT"
+            or receipt.write_invocation_stage != "ENTERED"
+            or not receipt.call_returned
+            or type(outcome) is not OutcomeEvidenceV3
+            or type(completion) is not CompletionProof
+            or type(challenge) is not PostCompletionChallenge
+            or type(read_attestation) is not PostCompletionReadAttestation):
+        raise ValueError("CONFLICT_TERMINAL_EVIDENCE_REQUIRED")
+    _assert_receipt_attempt(receipt, _attempt(attempt))
+    outcome.validate_attempt_binding(attempt, receipt)
+    completion.validate_attempt_binding(attempt, receipt)
+    challenge.validate_attempt_binding(_attempt(attempt), completion)
+    read_attestation.validate_attempt_binding(_attempt(attempt), challenge)
+    # Compare wall clocks only when both records name the same host; the signed proof
+    # binding and challenge issuance protocol establish cross-host causal order.
+    if (challenge.issuer_host_id == completion.source_host_id
+            and challenge.issued_at <= completion.observed_at):
+        raise ValueError("CONFLICT_CHALLENGE_PRECEDES_COMPLETION")
+    if outcome.completion_proof_class != completion.proof_class:
+        raise ValueError("CONFLICT_COMPLETION_CLASS_MISMATCH")
+    if outcome.completion_proof_digest != completion.calculated_digest():
+        raise ValueError("CONFLICT_OBSERVATION_PRECEDES_COMPLETION_BOUNDARY")
+    if (outcome.post_completion_challenge_id != challenge.challenge_id
+            or outcome.verifier_service_id != challenge.verifier_service_id
+            or outcome.verifier_host_id != challenge.verifier_host_id
+            or outcome.verification_sequence <= challenge.verification_sequence_floor
+            or outcome.verification_sequence != read_attestation.verification_sequence
+            or outcome.read_attestation_digest != read_attestation.calculated_digest()
+            or read_attestation.outcome_observation_digest != outcome_observation_digest(outcome)):
+        raise ValueError("CONFLICT_POST_COMPLETION_CHALLENGE_INVALID")
+    if (outcome.verifier_host_id == challenge.issuer_host_id
+            and outcome.observed_at < challenge.issued_at):
+        raise ValueError("CONFLICT_OBSERVATION_PRECEDES_CHALLENGE")
+    if (completion.source_host_id == outcome.verifier_host_id
+            and outcome.observed_at < completion.observed_at):
+        raise ValueError("CONFLICT_OBSERVATION_PRECEDES_COMPLETION_TIMESTAMP")
 
 
 def record_digest(record: _Envelope) -> str:
