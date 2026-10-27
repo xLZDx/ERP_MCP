@@ -125,7 +125,8 @@ class PayloadPropertyBinding:
             for source, target in self.value_map:
                 _manifest_text(source, "COM_VALUE_MAP_INVALID")
                 _manifest_text(target, "COM_VALUE_MAP_INVALID")
-            if len({source for source, _ in self.value_map}) != len(self.value_map):
+            if (len({source for source, _ in self.value_map}) != len(self.value_map)
+                    or len({target for _, target in self.value_map}) != len(self.value_map)):
                 raise ValueError("COM_VALUE_MAP_INVALID")
 
     def translate(self, value: object) -> object:

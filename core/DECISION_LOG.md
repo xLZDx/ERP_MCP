@@ -1113,3 +1113,7 @@ Decision: `PayloadPropertyBinding` takes an optional closed `value_map`; unmappe
 ## 2026-10-27 - In-memory probe: setting a goods line does not recompute VAT amount or document total
 
 Decision: evidence only. A new goods row set to quantity 2, price 10, amount 20 leaves the VAT amount and the document total at zero in memory. Write-time recomputation is not measured and is the next step; the payload has no VAT amount or total field. Detail: `docs/phase2/CHANGE_RECORD_370.md`.
+
+## 2026-10-27 - Reviewer fixes for the value vocabulary; write-time probe shows the document total is recomputed but not the line VAT amount
+
+Decision: duplicate targets in a value map are refused and the missing guard tests were added (54 agent-run tests passed). A rolled-back draft write on the disposable clone gave VAT amount 0, line amount 20, document total 20; no probe document persisted. Whether the binding set must set the line VAT amount is open. Detail: `docs/phase2/CHANGE_RECORD_371.md`.

@@ -207,3 +207,149 @@ def test_map_does_not_change_coverage_rules() -> None:
     payload = _payload()
     with pytest.raises(ValueError, match="^COM_PAYLOAD_BINDING_COVERAGE_INVALID$"):
         _extract(payload, _bindings()[:-1])
+
+
+# --- reviewer findings: many-to-one maps, str/tuple subclasses, None leaf ---------------------
+
+
+class _AlwaysEqualStr(str):
+    """A str subclass that claims equality with everything (spoofs a map source match)."""
+
+    def __eq__(self, other: object) -> bool:  # noqa: D105
+        return True
+
+    def __ne__(self, other: object) -> bool:  # noqa: D105
+        return False
+
+    __hash__ = str.__hash__
+
+
+class _TupleSub(tuple):
+    pass
+
+
+class _Pair(tuple):
+    pass
+
+
+_NT = __import__("collections").namedtuple("_NT", "source target")
+
+
+def _binding(value_map: object) -> PayloadPropertyBinding:
+    return PayloadPropertyBinding(VAT_PATH, "Document.Vat", "SetValue", "String", value_map)  # type: ignore[arg-type]
+
+
+def test_many_to_one_map_is_refused() -> None:
+    with pytest.raises(ValueError, match="^COM_VALUE_MAP_INVALID$"):
+        _binding((("VAT20", "X"), ("VAT0", "X")))
+    # Control: a one-to-one map with the same sources is accepted.
+    assert _binding((("VAT20", "X"), ("VAT0", "Y"))).translate("VAT0") == "Y"
+
+
+def test_str_subclass_value_is_refused_by_translate() -> None:
+    binding = _binding(VAT_MAP)
+    spoof = _AlwaysEqualStr("anything")
+    assert spoof == "VAT20"  # the spoof really equals a map source
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        binding.translate(spoof)
+    # Even a subclass instance holding a legitimate code is refused (exact type guard).
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        binding.translate(_AlwaysEqualStr("VAT20"))
+
+
+def _spoof_leaf(monkeypatch: pytest.MonkeyPatch, path: str, leaf: object) -> None:
+    """Make the leaf flattener see ``leaf`` at ``path``; the typed payload stays valid.
+
+    DraftPayload/Line validation already rejects such leaves upstream, so the translate guard is
+    only reachable by injecting at the flattening seam. All three public paths share that seam.
+    """
+    import erp_mcp_private_writer.com_manifest as module
+
+    real = module.payload_to_dict
+
+    def patched(payload: object) -> dict:
+        data = real(payload)
+        if path == "comment":
+            data["comment"] = leaf
+        else:
+            data["lines"][0]["vat_rate_code"] = leaf
+        return data
+
+    monkeypatch.setattr(module, "payload_to_dict", patched)
+
+
+def test_str_subclass_leaf_is_refused_through_all_three_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _payload()
+    raw = payload_to_dict(payload)
+    digest = payload_digest(payload, None)
+    bindings = _bindings()
+    _spoof_leaf(monkeypatch, VAT_PATH, _AlwaysEqualStr("anything"))
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        com_values_from_approved_payload(
+            payload, bindings, approved_payload_digest=digest, target_version=None)
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        assignments_from_approved_payload(payload, bindings)
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        com_values_from_write_port_payload(raw, bindings, approved_payload_digest=digest)
+
+
+def test_str_subclass_in_payload_is_refused_upstream_on_natural_paths() -> None:
+    payload = _payload()
+    digest = payload_digest(payload, None)
+    bindings = _bindings()
+    # Write-port dict path: rebuilding the typed payload rejects the subclass (fails closed).
+    raw = payload_to_dict(payload)
+    raw["lines"][0]["vat_rate_code"] = _AlwaysEqualStr("anything")
+    with pytest.raises(ValueError):
+        com_values_from_write_port_payload(raw, bindings, approved_payload_digest=digest)
+    # Typed path: a subclass smuggled into the frozen Line never yields a value.
+    object.__setattr__(payload.lines[0], "vat_rate_code", _AlwaysEqualStr("anything"))
+    with pytest.raises(ValueError):
+        com_values_from_approved_payload(
+            payload, bindings, approved_payload_digest=digest, target_version=None)
+    with pytest.raises(ValueError):
+        assignments_from_approved_payload(payload, bindings)
+
+
+@pytest.mark.parametrize("bad_map", [
+    _TupleSub((("VAT20", "A"),)),
+    _NT("VAT20", "A"),
+    (_Pair(("VAT20", "A")),),
+    (_NT("VAT20", "A"),),
+    ((_AlwaysEqualStr("VAT20"), "A"),),
+    (("VAT20", _AlwaysEqualStr("A")),),
+])
+def test_tuple_or_str_subclass_in_map_is_refused(bad_map: object) -> None:
+    with pytest.raises(ValueError, match="^COM_VALUE_MAP_INVALID$"):
+        _binding(bad_map)
+
+
+def test_none_leaf_with_value_map_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    # DraftPayload refuses comment=None itself; assert that, then inject None at the leaf seam.
+    with pytest.raises(ValueError, match="^DRAFT_PAYLOAD_INVALID$"):
+        DraftPayload(
+            organization_ref="org-7", counterparty_ref="party-12", contract_ref="contract-4",
+            supplier_document_number="supplier-2026-42", supplier_document_date="2026-10-25",
+            currency="MDL",
+            lines=(Line(item_ref="item-9", quantity="2", price="15.5", vat_rate_code="VAT20", amount="31"),),
+            comment=None,
+            duplicate_override=None,
+            expected_target_version=None,
+        )
+    payload = _payload()
+    raw = payload_to_dict(payload)
+    digest = payload_digest(payload, None)
+    bindings = tuple(
+        PayloadPropertyBinding(
+            path, f"Document.{path.replace('.', '_').replace('[0]', '')}", "SetValue", "String",
+            VAT_MAP if path == "comment" else None)
+        for path in _SOURCE_PATHS
+    )
+    _spoof_leaf(monkeypatch, "comment", None)
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        com_values_from_approved_payload(
+            payload, bindings, approved_payload_digest=digest, target_version=None)
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        assignments_from_approved_payload(payload, bindings)
+    with pytest.raises(ValueError, match="^COM_VALUE_NOT_MAPPED$"):
+        com_values_from_write_port_payload(raw, bindings, approved_payload_digest=digest)
