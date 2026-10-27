@@ -97,7 +97,8 @@ class T16RecoveryCoordinator:
             existing = await self._writer.lookup(ticket, permit)
         except ServiceError as exc:
             raise T16RecoveryError(exc.code, outcome_unknown=exc.outcome_unknown) from None
-        except Exception:
+        except Exception as exc:
+            _LOG.error("T16 lookup raised unexpected %s", type(exc).__name__)
             raise T16RecoveryError("T16_RECOVERY_LOOKUP_UNAVAILABLE",
                                    outcome_unknown=True) from None
         if (type(existing) is CallSnapshot
@@ -109,7 +110,8 @@ class T16RecoveryCoordinator:
             )
         except ServiceError as exc:
             raise T16RecoveryError(exc.code, outcome_unknown=exc.outcome_unknown) from None
-        except Exception:
+        except Exception as exc:
+            _LOG.error("T16 preparation raised unexpected %s", type(exc).__name__)
             raise T16RecoveryError("T16_EVIDENCE_PREPARATION_UNAVAILABLE",
                                    outcome_unknown=True) from None
         if type(preparation) is not T16ResolutionPreparation:

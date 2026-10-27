@@ -322,6 +322,9 @@ def create_private_writer_app(
         except PrivateWriterAuthenticationError as exc:
             status = 503 if exc.code == "AUTHENTICATION_UNAVAILABLE" else 401
             return JSONResponse({"error": exc.code}, status_code=status)
+        except Exception as exc:
+            _LOG.error("authenticator raised unexpected %s", type(exc).__name__)
+            return JSONResponse({"error": "AUTHENTICATION_UNAVAILABLE"}, status_code=503)
 
     async def dispatch(request: Request) -> Response:
         caller = await authorize(request)

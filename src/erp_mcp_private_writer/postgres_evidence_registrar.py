@@ -13,7 +13,9 @@ import asyncio
 import json
 import logging
 import math
+import os
 import time
+import traceback
 from datetime import datetime
 from uuid import UUID
 
@@ -61,9 +63,13 @@ _TRANSPORT_ERRORS = (OSError, asyncpg.PostgresError, asyncpg.InterfaceError)
 
 
 def _log_unexpected(stage: str, exc: Exception) -> None:
-    """Make a defect distinguishable from an outage without logging record content."""
-    detail = str(exc)[:200] if isinstance(exc, (NameError, AttributeError, TypeError)) else ""
-    _LOG.error("evidence registration %s: unexpected %s %s", stage, type(exc).__name__, detail)
+    """Make a defect distinguishable from an outage without logging record content.
+
+    Only the exception class and the innermost frame are logged; the message may embed input.
+    """
+    frames = traceback.extract_tb(exc.__traceback__)
+    where = f"{os.path.basename(frames[-1].filename)}:{frames[-1].lineno}" if frames else "?"
+    _LOG.error("evidence registration %s: unexpected %s at %s", stage, type(exc).__name__, where)
 
 
 class EvidenceRegistrationError(RuntimeError):
@@ -548,7 +554,7 @@ class PostgresWriterReceiptRegistrar:
     async def _register(self, record_json: str, expected_ref: str,
                         approved_build: ApprovedValidatorBuild) -> str:
         self._require_registration_authority(approved_build)
-        deadline = time.monotonic() + self._timeout
+        connected = False
         try:
             # Re-read the current attestation/policy immediately before registration. A policy,
             # revocation, deployment or artifact change between envelope verification and this
@@ -556,8 +562,12 @@ class PostgresWriterReceiptRegistrar:
             current_build = await self._approved_validator_build()
             if not self._same_validator_build_authority(approved_build, current_build):
                 raise EvidenceRegistrationError("EVIDENCE_REGISTER_BUILD_POLICY_STALE")
+            # The registration budget starts after the re-read so that a slow re-read cannot
+            # consume the time the evidence transaction needs.
+            deadline = time.monotonic() + self._timeout
             async with asyncio.timeout(self._timeout):
                 async with self._pool.acquire(timeout=self._timeout) as conn:
+                    connected = True
                     if conn.is_in_transaction():
                         raise EvidenceRegistrationError(
                             "EVIDENCE_REGISTER_OUTCOME_UNKNOWN", outcome_unknown=True,
@@ -568,8 +578,9 @@ class PostgresWriterReceiptRegistrar:
         except EvidenceRegistrationError:
             raise
         except TimeoutError:
+            # Nothing was sent when the pool never produced a connection.
             raise EvidenceRegistrationError(
-                "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=True,
+                "EVIDENCE_REGISTER_TIMEOUT", outcome_unknown=connected,
             ) from None
         except Exception as exc:
             _log_unexpected("register", exc)

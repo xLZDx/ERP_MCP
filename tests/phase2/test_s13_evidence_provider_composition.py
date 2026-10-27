@@ -314,3 +314,32 @@ def test_outer_cancellation_terminates_the_connection_instead_of_returning_it(mo
         asyncio.run(_run())
 
     assert conn.terminated is True
+
+
+def test_a_pool_timeout_before_any_statement_is_not_reported_as_outcome_unknown(monkeypatch):
+    pool, registrar, approved = _registrar_on_the_register_path(monkeypatch, same_build=True)
+
+    def _acquire_times_out(*_args, **_kwargs):
+        raise TimeoutError
+
+    monkeypatch.setattr(pool, "acquire", _acquire_times_out)
+
+    with pytest.raises(EvidenceRegistrationError) as raised:
+        asyncio.run(registrar._register("{}", "ref", approved))
+
+    assert raised.value.code == "EVIDENCE_REGISTER_TIMEOUT"
+    assert raised.value.outcome_unknown is False
+
+
+def test_unexpected_error_logging_omits_the_message(monkeypatch, caplog):
+    from erp_mcp_private_writer import postgres_evidence_registrar as registrar_module
+
+    try:
+        raise TypeError("secret-value\nFAKE LOG LINE")
+    except TypeError as exc:
+        with caplog.at_level("ERROR"):
+            registrar_module._log_unexpected("test", exc)
+
+    assert "TypeError" in caplog.text
+    assert "secret-value" not in caplog.text
+    assert "FAKE LOG LINE" not in caplog.text

@@ -1018,3 +1018,10 @@ Evidence: module imports and passes ruff F,E9; no test in the repository referen
 Decision: close review finding F6 for the trust snapshot source. The P0001 mapping now compares the exact `exc.message` with each known code instead of searching a substring of `str(exc)` (the SQL raises the bare code, checked in migration 027); decoder defects (an exception class other than ValueError, KeyError, TypeError, OverflowError, RecursionError) and lookup failures are logged by class. The barrier-ack registrar already used exact comparison. All six review findings are now closed or recorded.
 
 Evidence: new `tests/phase2/test_s13_trust_source_error_mapping.py` 2 passed; WP5, composition, T16 and trust tests together passed. Detail: `docs/phase2/CHANGE_RECORD_352.md`.
+
+
+## 2026-10-27 - Review round on 6ef051b: python-reviewer and security-reviewer findings fixed
+
+Decision: both reviewers found no BLOCKER or MAJOR. Fixed the valid items: the unexpected-error log no longer prints exception text (class and innermost frame only); T16 lookup and preparation failures are logged; the authenticator call at the ingress is guarded (503, logged); the registration deadline starts after the build re-read; a pool timeout before any connection is `outcome_unknown` false. Left open by decision: confirming the retry policy of consumers of `EVIDENCE_REGISTER_UNAVAILABLE` (callers not in this repository scope) and a largest-realistic-snapshot test for the 8 MiB ceiling.
+
+Evidence: composition and T16 test files 17 passed after the change. Detail: `docs/phase2/CHANGE_RECORD_353.md`.
