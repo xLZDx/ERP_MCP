@@ -941,3 +941,7 @@ Decision: report the gateway's bare refusal code as `detail_code` beside the unc
 Evidence: the local `erp_mcp_ref` publication reads `818HA_test_ready`; Ivan's reads `818HA_p2diff`, the write clone. Ten common 521.1 rows are identical and the fingerprints match; Ivan has one extra credit-only counterparty. The two gateways therefore do not read copies of one base, and the earlier `PARTIAL_MISMATCH` is expected, not a defect. The write-clone explanation of the extra row is an inference.
 
 Decision: no configuration change. Whether Ivan's reference source should read a read clone (`818HA_test_ready` or `818HA_reference_ro`) is left to the S13/S15 owners. Detail: `docs/phase2/CHANGE_RECORD_342.md`. pytest NOT_RUN.
+
+## 2026-10-27 - Mechanical ruff cleanup of four clean phase2 files
+
+Decision: apply ruff autofixes to `transitions.py` and three phase2 SQL/offline tests that had no pending modification, and leave files under active S13 work and the evidence-bound `ct14_measure.py` untouched. Definitions and signatures in `transitions.py` were compared with HEAD and are identical; three `DTZ001` findings remain. Detail: `docs/phase2/CHANGE_RECORD_343.md`. pytest NOT_RUN.

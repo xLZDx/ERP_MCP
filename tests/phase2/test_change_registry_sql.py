@@ -22,17 +22,16 @@ from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import FILES, MIGRATIONS, fails, require_dsn, throwaway_db
 from test_change_ledger_sql import (
     BASE,
-    BASES,
-    C,
     C2,
     DEFAULT_GRANT,
     DIGEST,
     KH,
     ORG,
     SIGN_KEYS,
-    T,
     T2,
+    C,
     L,
+    T,
     _failed_parent,
     _setup,
     exp,
@@ -89,7 +88,7 @@ class R(L):
         at = at or datetime.now(UTC) + timedelta(seconds=1)
         ch = ch or await self.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)",
                                             json.dumps(content))
-        kid, kmat, _ = SIGN_KEYS[role]
+        kid, _kmat, _ = SIGN_KEYS[role]
         b = bind or await self.bind(cid, kind, ch, at, gen, call_id)
         s = sig if sig is not None else sign_hex(signer or kid, b)    # `signer`: key id whose (synthetic) seed signs
         return {"kind": kind, "ch": ch, "at": at, "content": json.dumps(content), "key_id": key_id or kid,
@@ -192,17 +191,17 @@ async def test_no_direct_dml_on_the_new_tables(reg, role):
         "INSERT INTO change_ledger.epochs(tenant_id,company_id,epoch_key,value) VALUES('T1','C1','k',1)",
         "UPDATE change_ledger.epochs SET value=0",
         "DELETE FROM change_ledger.epochs",
-        "INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
-        "VALUES('T1','C1','x','r',repeat('k',16))",
+        ("INSERT INTO change_ledger.verifier_keys(tenant_id,company_id,key_id,role_name,key_material) "
+        "VALUES('T1','C1','x','r',repeat('k',16))"),
         "UPDATE change_ledger.verifier_keys SET status='REVOKED'",
         "DELETE FROM change_ledger.evidence_records",
         "UPDATE change_ledger.evidence_records SET kind='FIELD'",
-        f"INSERT INTO change_ledger.evidence_records(tenant_id,company_id,change_id,kind,content_hash,observed_at,"
+        (f"INSERT INTO change_ledger.evidence_records(tenant_id,company_id,change_id,kind,content_hash,observed_at,"
         f"signer_key_id,signature,binding_hash,recorded_by) VALUES('T1','C1','{cid}','FIELD',repeat('a',64),now(),"
-        f"'k','s',repeat('a',64),'x')",
+        f"'k','s',repeat('a',64),'x')"),
         "UPDATE change_ledger.business_keys SET key_hash=repeat('a',64)",
-        f"INSERT INTO change_ledger.override_bindings(change_id,approver,override_digest) "
-        f"VALUES('{cid}','x',repeat('a',64))",
+        (f"INSERT INTO change_ledger.override_bindings(change_id,approver,override_digest) "
+        f"VALUES('{cid}','x',repeat('a',64))"),
         "DELETE FROM change_ledger.target_observations",
         "UPDATE change_ledger.records SET declared_target_class='PRODUCTION'",
         "UPDATE change_ledger.records SET epoch_dependencies='{}'::jsonb",
@@ -530,7 +529,7 @@ async def test_t15_revoke_voids_a_claimed_change_and_releases_everything_but_nev
     assert await reg.call("clt_dave", "revoke_change", o, "SESSION_REVOKED") == "REVOKED"
     await fails("APPROVAL_VOIDED", reg.claimed(o, key="2" * 64))
     # after begin_apply or dispatch the contract has no pre-dispatch revoke: refused, nothing changes
-    ap, aptok, _ = await reg.applying(request_id="t15a", base="base-3")
+    ap, _aptok, _ = await reg.applying(request_id="t15a", base="base-3")
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_dave", "revoke_change", ap, "SESSION_REVOKED"))
     dp, _, _ = await reg.dispatched(request_id="t15d", base="base-4")
     await fails("FORBIDDEN_TRANSITION", reg.call("clt_dave", "revoke_change", dp, "SESSION_REVOKED"))
@@ -562,7 +561,7 @@ async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(
     # 007 (A1): a record needs the change's current generation and the call id of its permit, so the changes are
     # taken to begin_apply (permit row NOT_PERMITTED); the content is hashed and bound, generation and call id too
     cid, tok, call_id = await reg.applying(request_id="ev")
-    other, otok, ocall = await reg.applying(request_id="ev2", base="base-2")
+    other, _otok, ocall = await reg.applying(request_id="ev2", base="base-2")
     gen = tok["generation"]
     at = datetime.now(UTC)
     body = {"matches": True, "f": 1}
@@ -623,7 +622,7 @@ async def test_record_evidence_refuses_unsigned_misbound_and_foreign_signatures(
 
 
 async def test_completion_proof_class_and_auth_receipt_rules(reg):
-    cid, tok, call_id = await reg.applying(request_id="cp")      # 007: records need a generation and a permit row
+    cid, _tok, _call_id = await reg.applying(request_id="cp")      # 007: records need a generation and a permit row
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF", {}))
     await fails("SCHEMA_INVALID", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "c", "result_returned": False}))  # forced kill: disabled
     await fails("NOT_ENTITLED", reg.rec_ev(cid, "COMPLETION_PROOF", {"class": "a", "result_returned": False}, role="clt_wrk"))
@@ -644,7 +643,7 @@ async def test_completion_proof_class_and_auth_receipt_rules(reg):
 # ============================================================================ (5) reads and RLS
 async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_reads(reg):
     # 007: evidence needs a generation and a permit row, so the change is read at CLAIMED / APPLYING
-    cid, tok, _ = await reg.applying(request_id="rd")                    # alice's, approved by bob
+    cid, _tok, _ = await reg.applying(request_id="rd")                    # alice's, approved by bob
     mine2 = await reg.propose(request_id="rd2", base="base-2", requester="clt_mallory")
     ev = await reg.rec_ev(cid, "FIELD", {"matches": True, "k": "v"})
     st = await reg.jcall("clt_alice", "read_status", cid)
@@ -684,7 +683,7 @@ async def test_read_status_and_read_evidence_are_scoped_and_rls_filters_direct_r
 
 async def test_signed_wrappers_reference_records_and_extend_without_changing_004_behavior(reg):
     # ---- complete_signed: the outcome evidence is a writer-signed proof class a, typed by the outcome (007)
-    cid, tok, call_id = await reg.dispatched(request_id="sw1", base="base-1")
+    cid, tok, _call_id = await reg.dispatched(request_id="sw1", base="base-1")
     gen = tok["generation"]
     await fails("EVIDENCE_UNSIGNED", reg.call("clt_wri", "complete_signed", cid, gen, "SUCCESS", None))
     worker_proof = await reg.evidence(cid, "COMPLETION_PROOF", {"class": "b", "result_returned": True}, role="clt_wrk")
@@ -725,7 +724,7 @@ async def test_signed_wrappers_reference_records_and_extend_without_changing_004
     await fails("FORBIDDEN_TRANSITION", reg.verify(bad, True))
     assert (await reg.rec(bad))["verification_state"] == "FAILED_VERIFY" and await reg.open_holds("FAILED_VERIFY_HALT") == 1
     # ---- resolve_unknown_signed
-    u, utok, _ = await reg.unknown(request_id="sw3", base="base-4")
+    u, _utok, _ = await reg.unknown(request_id="sw3", base="base-4")
     obs = await reg.observation(u, False)
     await fails("COMPLETION_PROOF_MISSING", reg.call("clt_wrk", "resolve_unknown_signed", u, obs, None, False, False))
     await fails("EVIDENCE_UNSIGNED", reg.call("clt_wrk", "resolve_unknown_signed", u, None, None, False, False))
@@ -813,13 +812,13 @@ async def test_duplicate_business_key_parks_and_the_override_needs_the_approvers
 
 async def test_update_draft_key_change_is_rechecked_and_the_own_document_is_not_a_collision(reg):
     k1, k2, k3 = "1" * 64, "2" * 64, "3" * 64
-    a, _ = await _keyed(reg, "a", k1, target="docA")
-    other, _ = await _keyed(reg, "other", k3, target="docO")
+    _a, _ = await _keyed(reg, "a", k1, target="docA")
+    _other, _ = await _keyed(reg, "other", k3, target="docO")
     # the update keeps the document's own key: no collision with its own history
-    u, st = await _keyed(reg, "u", k1, target="docA", kind="UPDATE_DRAFT")
+    _u, st = await _keyed(reg, "u", k1, target="docA", kind="UPDATE_DRAFT")
     assert st == "VALIDATED"
     # the update moves the document onto another document's key: parked
-    u2, st = await _keyed(reg, "u2", k3, target="docA", kind="UPDATE_DRAFT")
+    _u2, st = await _keyed(reg, "u2", k3, target="docA", kind="UPDATE_DRAFT")
     assert st == "DUPLICATE_PARKED"
     # a key change after validation (before approval) sends the change back to PROPOSED and re-checks
     u3, st = await _keyed(reg, "u3", k2, target="docA", kind="UPDATE_DRAFT")
