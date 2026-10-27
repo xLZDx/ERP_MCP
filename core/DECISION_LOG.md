@@ -990,3 +990,10 @@ Evidence: all modules byte-compile; focused S13/WP5/S14 pytest selection 287 pas
 Decision: from the silent-failure review of the S13 writer (6 findings: 2 MAJOR, 4 MINOR, no BLOCKER) fix F1 now: an outer deadline (the outcome provider timeout) cancelled `_register_on_connection` without terminating the connection, so a possibly committed write could return to the pool as clean. Also log the class (and message for NameError/AttributeError/TypeError only) before translating unexpected errors (part of F3). F2, F4, F5, F6 (error-class narrowing in validation path, T16 recovery, ingress, trust lookup) stay open in the backlog of Change Record 348; they change error codes and need a contract decision.
 
 Evidence: new regression test drives `_register_on_connection` under an outer timeout and asserts `terminate()` ran; composition file 12 passed. Detail: `docs/phase2/CHANGE_RECORD_348.md`.
+
+
+## 2026-10-27 - Evidence validation path: transport errors are UNAVAILABLE; migration harness evidence
+
+Decision: close review finding F2. In `verify_and_store` and `verify_set_and_store`, OSError and asyncpg transport errors now map to `EVIDENCE_REGISTER_UNAVAILABLE` (retryable) instead of `EVIDENCE_REGISTER_VALIDATION_FAILED`; any other unexpected error stays a validation failure, because hostile input can raise anything while parsing, but it is now logged. Nothing in src or tests asserted the old code for transport errors. F4, F5, F6 remain open in Change Record 348.
+
+Evidence: the functional-test-reviewer agent ran the four migration harness scripts at f06fa2d: migration 020 PASS, 022 PASS, 023 PASS and checkpoint-suffix (026) PASS; the last two passed only with `ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1` because their `__main__` does not set it (test defect). Containers created by the agent were removed. Detail: `docs/phase2/CHANGE_RECORD_349.md`. Migration 027 was not applied.

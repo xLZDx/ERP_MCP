@@ -57,6 +57,7 @@ from .validator_build_attestation import (
 
 _MAX_TIMEOUT_SECONDS = 5.0
 _LOG = logging.getLogger(__name__)
+_TRANSPORT_ERRORS = (OSError, asyncpg.PostgresError, asyncpg.InterfaceError)
 
 
 def _log_unexpected(stage: str, exc: Exception) -> None:
@@ -176,7 +177,12 @@ class PostgresWriterReceiptRegistrar:
             raise
         except (EvidenceAttemptSourceError, ProductionEvidenceVerificationError, ValueError):
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_VALIDATION_FAILED") from None
-        except Exception:
+        except _TRANSPORT_ERRORS:
+            raise EvidenceRegistrationError("EVIDENCE_REGISTER_UNAVAILABLE") from None
+        except Exception as exc:
+            # Hostile input can raise anything while parsing, so this stays a validation failure,
+            # but it is logged so that a code defect is not mistaken for bad evidence.
+            _log_unexpected("validation", exc)
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_VALIDATION_FAILED") from None
 
         payload, evidence_ref = self._record_payload(
@@ -231,7 +237,12 @@ class PostgresWriterReceiptRegistrar:
             raise
         except (EvidenceAttemptSourceError, ProductionEvidenceVerificationError, ValueError):
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_VALIDATION_FAILED") from None
-        except Exception:
+        except _TRANSPORT_ERRORS:
+            raise EvidenceRegistrationError("EVIDENCE_REGISTER_UNAVAILABLE") from None
+        except Exception as exc:
+            # Hostile input can raise anything while parsing, so this stays a validation failure,
+            # but it is logged so that a code defect is not mistaken for bad evidence.
+            _log_unexpected("validation", exc)
             raise EvidenceRegistrationError("EVIDENCE_REGISTER_VALIDATION_FAILED") from None
 
         refs: list[str] = []

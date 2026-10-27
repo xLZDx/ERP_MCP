@@ -10,6 +10,7 @@ Coverage is limited to CR152/153's read-only suffix inspection contract; it does
 from __future__ import annotations
 
 import asyncio
+import os
 import hashlib
 import json
 from pathlib import Path
@@ -388,4 +389,6 @@ async def run() -> None:
 
 
 if __name__ == "__main__":
+    # Direct runs provision their own disposable cluster, as the sibling migration scripts do.
+    os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     asyncio.run(run())
