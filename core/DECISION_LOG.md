@@ -1149,3 +1149,7 @@ Decision: the 602 skipped DSN tests were run for real on an own `--rm` Postgres 
 ## 2026-10-27 - Capacity drill container lookup: an approved prefix is required for explicit selection too (GPT-PM M-01)
 
 Decision: ERP_PHASE2_TEST_CONTAINER may only choose among containers with an approved disposable prefix; it can no longer make another container qualify. Seventeen no-database tests cover the eight scenarios GPT-PM listed plus extras. Detail: `docs/phase2/CHANGE_RECORD_377.md`.
+
+## 2026-10-27 - Design draft for the COM CREATE_DRAFT executor; reference format is the blocking open decision
+
+Decision: documentation only. The repository has no code that performs the COM calls for a draft. The design proposes one executor, a rolled-back clone probe first, and lists five open decisions; the reference format of the five payload references blocks code. Detail: `docs/phase2/S14_COM_DRAFT_EXECUTOR_DESIGN_2026-10-27.md`, `docs/phase2/CHANGE_RECORD_378.md`.
