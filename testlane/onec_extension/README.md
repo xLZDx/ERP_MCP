@@ -6,8 +6,14 @@ least-privilege role `CT14Писатель`. The extension has no modules and no
 
 ## Clone-only guard
 
-`scripts/ct14_common.py` refuses to run unless the target folder name is exactly `818HA_p2diff`
-(`guard()`), and every script goes through it. Credentials are never stored in this folder: they are
+`scripts/ct14_common.py` refuses to run unless the resolved full path equals the single approved
+`818HA_p2diff` clone path (`guard()`), and every script goes through it. The explicit check is not
+disabled by optimized Python. The Designer helper proceeds only when `tasklist` positively confirms
+that neither `1cv8.exe` nor `1cv8c.exe` is running; command failure or unrecognized output refuses.
+Caller-provided Designer arguments are snapshotted and cannot override the base/server, credentials,
+alternate infobase connection string, or output log switches; the documented `-Files` and
+`-partial` selectors remain available for partial source loads.
+Credentials are never stored in this folder: they are
 read from DPAPI-protected files under `D:\secrets\erp_mcp` inside the Python process and injected into the
 Designer command line / COM connection string only in memory. The infobase user `CT14_NARROW` gets a fresh
 random password on each run (`ct14_narrow_ops.prepare_user`), kept in memory only.

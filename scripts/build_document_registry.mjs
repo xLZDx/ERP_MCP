@@ -131,18 +131,8 @@ const refs = git(['for-each-ref', '--format=%(refname)\t%(objectname)\t%(symref)
   .sort((a, b) => byCodePoint(a[0], b[0]));
 
 // ---- git-backed inventory ----
-const titleByBlob = new Map();
-const titleOf = (blob) => {
-  if (titleByBlob.has(blob)) return titleByBlob.get(blob);
-  // The whole blob is searched, and an unreadable blob aborts generation: it is never reported as "no heading".
-  const text = execFileSync('git', ['cat-file', 'blob', blob], { cwd: REPO, maxBuffer: 512 * 1024 * 1024 }).toString('utf8');
-  const title = /^#[ \t]+(.+)$/mu.exec(text)?.[1]?.trim() ?? '';
-  titleByBlob.set(blob, title);
-  return title;
-};
-
-/** @type {Map<string, Map<string, Set<string>>>} path -> title -> refs that contain it */
-const tracked = new Map();
+const treeRows = [];
+const blobIds = new Set();
 for (const [refName, id] of refs) {
   // Each ref is read through the object id captured above, so the printed ref list matches the scanned trees.
   const records = git(['ls-tree', '-r', '-z', '--full-tree', id]).split('\0');
@@ -152,13 +142,88 @@ for (const [refName, id] of refs) {
     const [mode, type, blob] = record.slice(0, tab).split(' ');
     const path = record.slice(tab + 1);
     if (type !== 'blob' || mode === '120000' || !path.endsWith('.md') || path === REGISTRY_REL) continue;
-    const variants = tracked.get(path) ?? new Map();
-    const title = titleOf(blob);
-    const titleRefs = variants.get(title) ?? new Set();
-    titleRefs.add(refName);
-    variants.set(title, titleRefs);
-    tracked.set(path, variants);
+    treeRows.push([refName, path, blob]);
+    blobIds.add(blob);
   }
+}
+
+// Read unique Markdown objects in byte-bounded batches instead of starting one Git process per blob.
+const titleByBlob = new Map();
+const uniqueBlobIds = [...blobIds];
+const BLOB_METADATA_BATCH_SIZE = 256;
+const BLOB_BATCH_BYTE_LIMIT = 64 * 1024 * 1024;
+const blobSizes = new Map();
+for (let start = 0; start < uniqueBlobIds.length; start += BLOB_METADATA_BATCH_SIZE) {
+  const batch = uniqueBlobIds.slice(start, start + BLOB_METADATA_BATCH_SIZE);
+  const metadata = execFileSync('git', ['cat-file', '--batch-check'], {
+    cwd: REPO,
+    input: Buffer.from(`${batch.join('\n')}\n`, 'ascii'),
+    maxBuffer: 16 * 1024 * 1024,
+  }).toString('ascii').split('\n').filter(Boolean);
+  if (metadata.length !== batch.length) throw new Error('incomplete Git blob metadata output');
+  for (let index = 0; index < batch.length; index += 1) {
+    const [actual, type, rawSize] = metadata[index].split(' ');
+    if (actual !== batch[index] || type !== 'blob' || !/^\d+$/u.test(rawSize ?? '')) {
+      throw new Error(`unreadable Git blob metadata: ${batch[index]}`);
+    }
+    const size = Number(rawSize);
+    if (!Number.isSafeInteger(size) || size < 0) throw new Error(`invalid Git blob size: ${batch[index]}`);
+    blobSizes.set(batch[index], size);
+  }
+}
+
+const blobBatches = [];
+let currentBatch = [];
+let currentBatchBytes = 0;
+for (const blob of uniqueBlobIds) {
+  const size = blobSizes.get(blob);
+  if (currentBatch.length > 0 && currentBatchBytes + size > BLOB_BATCH_BYTE_LIMIT) {
+    blobBatches.push(currentBatch);
+    currentBatch = [];
+    currentBatchBytes = 0;
+  }
+  currentBatch.push(blob);
+  currentBatchBytes += size;
+}
+if (currentBatch.length > 0) blobBatches.push(currentBatch);
+
+for (const batch of blobBatches) {
+  const output = execFileSync('git', ['cat-file', '--batch'], {
+    cwd: REPO,
+    input: Buffer.from(`${batch.join('\n')}\n`, 'ascii'),
+    maxBuffer: 512 * 1024 * 1024,
+  });
+  let offset = 0;
+  for (const blob of batch) {
+    const headerEnd = output.indexOf(0x0a, offset);
+    if (headerEnd < 0) throw new Error(`unreadable Git blob header: ${blob}`);
+    const [actual, type, rawSize] = output.subarray(offset, headerEnd).toString('ascii').split(' ');
+    if (actual !== blob || type !== 'blob' || !/^\d+$/u.test(rawSize ?? '')) {
+      throw new Error(`unreadable Git blob: ${blob}`);
+    }
+    const size = Number(rawSize);
+    const contentStart = headerEnd + 1;
+    const contentEnd = contentStart + size;
+    if (!Number.isSafeInteger(size) || contentEnd >= output.length || output[contentEnd] !== 0x0a) {
+      throw new Error(`invalid Git blob length: ${blob}`);
+    }
+    const text = output.subarray(contentStart, contentEnd).toString('utf8');
+    const title = /^#[ \t]+(.+)$/mu.exec(text)?.[1]?.trim() ?? '';
+    titleByBlob.set(blob, title);
+    offset = contentEnd + 1;
+  }
+  if (offset !== output.length) throw new Error('unexpected trailing Git batch output');
+}
+
+/** @type {Map<string, Map<string, Set<string>>>} path -> title -> refs that contain it */
+const tracked = new Map();
+for (const [refName, path, blob] of treeRows) {
+  const title = titleByBlob.get(blob);
+  const variants = tracked.get(path) ?? new Map();
+  const titleRefs = variants.get(title) ?? new Set();
+  titleRefs.add(refName);
+  variants.set(title, titleRefs);
+  tracked.set(path, variants);
 }
 
 // ---- local-only inventory (ignore-aware, containment-checked, path only) ----

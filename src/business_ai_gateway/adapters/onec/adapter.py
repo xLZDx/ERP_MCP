@@ -197,22 +197,29 @@ class OneCAdapter:
             "groups": dict(sorted(groups.items())),
         }
 
-    async def find(self, source: Source, contains: str, limit: int):
+    async def find(self, source: Source, contains: str, limit: int,
+                   include_property_types: bool = False):
         index = await self.metadata(source)
         found = [
             x
             for x in index.find(contains, max(1, min(limit, 200)))
             if source.entity_allowed(x.name)
         ]
-        return [
-            {
-                "name": x.name,
-                "entity_type": x.entity_type,
-                "properties": list(x.properties),
-                "navigation_properties": list(x.navigation_properties),
+        results = []
+        for entity in found:
+            item = {
+                "name": entity.name,
+                "entity_type": entity.entity_type,
+                "properties": list(entity.properties),
+                "navigation_properties": list(entity.navigation_properties),
             }
-            for x in found
-        ]
+            if include_property_types:
+                item["property_types"] = [
+                    {"name": property_name, "type": property_type}
+                    for property_name, property_type in entity.property_types
+                ]
+            results.append(item)
+        return results
 
     async def read(
         self,

@@ -14,17 +14,21 @@ from uuid import UUID
 
 from .. import ed25519
 from .evidence import (
-    CompletionProof, DispatchAttempt, DispatchReceipt, OutcomeEvidence, _Envelope,
-    canonical_json_bytes, verify_record_signature,
+    CompletionProof, DispatchAttempt, DispatchReceipt, OutcomeEvidence, OutcomeEvidenceV2, OutcomeEvidenceV3,
+    PostCompletionChallenge, PostCompletionReadAttestation, _Envelope,
+    canonical_json_bytes, validate_conditional_conflict_terminal_evidence, verify_record_signature,
 )
 
 __all__ = [
-    "IdentityScope", "KeyVersion", "ProcessInstanceAttestation", "SignerIdentity",
-    "TrustedIdentityRegistry", "process_attestation_preimage", "verify_authorized_record",
+    "IdentityScope", "KeyVersion", "OracleArtifact", "ProcessInstanceAttestation", "SignerIdentity",
+    "TrustedIdentityRegistry", "process_attestation_preimage",
+    "validate_conditional_conflict_terminal_record_set", "verify_authorized_record",
 ]
 
 _PROCESS_PREFIX = b"ERP_MCP_R2:S13:PROCESS-INSTANCE:v1\n"
-_ROLES = frozenset(("writer_receipt", "verification_worker", "completion_supervisor", "checkpoint_signer"))
+_ROLES = frozenset((
+    "writer_receipt", "verification_worker", "completion_supervisor", "read_attestor", "checkpoint_signer",
+))
 
 
 def _aware_utc(value: object, field: str) -> datetime:
@@ -53,6 +57,37 @@ class IdentityScope:
                or len(v) > 512
                for v in (self.tenant_id, self.company_id, self.organization_ref, self.base_fingerprint)):
             raise ValueError("IDENTITY_SCOPE_INVALID")
+
+
+@dataclass(frozen=True, slots=True)
+class OracleArtifact:
+    """One immutable approved operation-oracle binding in a trusted registry snapshot."""
+
+    scope: IdentityScope
+    operation_kind: str
+    document_shape_revision: str
+    configuration_fingerprint: str
+    oracle_id: str
+    oracle_version: str
+    oracle_digest: str
+    query_plan_digest: str
+    expected_effect_schema_version: str
+
+    def __post_init__(self) -> None:
+        text_fields = (
+            self.document_shape_revision, self.oracle_id, self.oracle_version,
+            self.expected_effect_schema_version,
+        )
+        if (type(self.scope) is not IdentityScope
+                or type(self.operation_kind) is not str
+                or self.operation_kind not in ("CREATE_DRAFT", "POST", "UNPOST")
+                or any(type(v) is not str or not v or v != v.strip() or len(v) > 512
+                       for v in text_fields)):
+            raise ValueError("ORACLE_ARTIFACT_INVALID")
+        for value in (self.configuration_fingerprint, self.oracle_digest, self.query_plan_digest):
+            if (type(value) is not str or len(value) != 64
+                    or any(ch not in "0123456789abcdef" for ch in value)):
+                raise ValueError("ORACLE_ARTIFACT_DIGEST_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,11 +181,13 @@ class ProcessInstanceAttestation:
 class TrustedIdentityRegistry:
     """Immutable evaluation registry snapshot; provider authenticity is an external prerequisite."""
 
-    __slots__ = ("_keys", "_processes", "_frozen")
+    __slots__ = ("_keys", "_processes", "_oracles", "_frozen")
 
     def __init__(self, identities: tuple[SignerIdentity, ...],
-                 process_instances: tuple[ProcessInstanceAttestation, ...] = ()) -> None:
-        if type(identities) is not tuple or type(process_instances) is not tuple:
+                 process_instances: tuple[ProcessInstanceAttestation, ...] = (), *,
+                 oracle_artifacts: tuple[OracleArtifact, ...] = ()) -> None:
+        if (type(identities) is not tuple or type(process_instances) is not tuple
+                or type(oracle_artifacts) is not tuple):
             raise ValueError("REGISTRY_SNAPSHOT_INVALID")
         keys: dict[tuple[str, str], SignerIdentity] = {}
         public_keys: set[bytes] = set()
@@ -172,13 +209,28 @@ class TrustedIdentityRegistry:
                 if (previous.role != item.role or previous.service_id != item.service_id
                         or previous.host_id != item.host_id):
                     raise ValueError("ROTATION_IDENTITY_MISMATCH")
+        writer_services = {item.service_id for item in keys.values() if item.role == "writer_receipt"}
+        verifier_services = {item.service_id for item in keys.values() if item.role == "verification_worker"}
+        attestor_services = {item.service_id for item in keys.values() if item.role == "read_attestor"}
+        if (writer_services & verifier_services or writer_services & attestor_services
+                or verifier_services & attestor_services):
+            raise ValueError("WRITER_VERIFIER_SERVICE_COLLISION")
         processes: dict[str, ProcessInstanceAttestation] = {}
         for item in process_instances:
             if type(item) is not ProcessInstanceAttestation or item.process_instance_id in processes:
                 raise ValueError("PROCESS_INSTANCE_DUPLICATE")
             processes[item.process_instance_id] = item
+        oracles: dict[tuple[IdentityScope, str, str, str], OracleArtifact] = {}
+        for item in oracle_artifacts:
+            if type(item) is not OracleArtifact:
+                raise ValueError("ORACLE_ARTIFACT_INVALID")
+            ref = (item.scope, item.operation_kind, item.oracle_id, item.oracle_version)
+            if ref in oracles:
+                raise ValueError("ORACLE_ARTIFACT_DUPLICATE")
+            oracles[ref] = item
         self._keys: Mapping[tuple[str, str], SignerIdentity] = MappingProxyType(keys)
         self._processes: Mapping[str, ProcessInstanceAttestation] = MappingProxyType(processes)
+        self._oracles: Mapping[tuple[IdentityScope, str, str, str], OracleArtifact] = MappingProxyType(oracles)
         self._frozen = True
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -196,6 +248,15 @@ class TrustedIdentityRegistry:
 
     def resolve_process(self, process_instance_id: str) -> ProcessInstanceAttestation | None:
         return self._processes.get(process_instance_id)
+
+    def resolve_oracle(self, scope: IdentityScope, operation_kind: str,
+                       oracle_id: str, oracle_version: str) -> OracleArtifact | None:
+        return self._oracles.get((scope, operation_kind, oracle_id, oracle_version))
+
+    def requires_outcome_v2(self, scope: IdentityScope, operation_kind: str) -> bool:
+        """A registry snapshot with a pinned v2 oracle contract rejects new v1 evidence."""
+        return any(item.scope == scope and item.operation_kind == operation_kind
+                   for item in self._oracles.values())
 
 
 def process_attestation_preimage(attestation: ProcessInstanceAttestation) -> bytes:
@@ -218,6 +279,14 @@ def _record_identity(record: _Envelope) -> tuple[str, str, str, str, IdentitySco
         return (record.signer_key_id, record.key_version, record.signer_role, record.source_service_id,
                 IdentityScope(record.tenant_id, record.company_id, record.organization_ref, record.base_fingerprint),
                 record.source_host_id)
+    if isinstance(record, PostCompletionChallenge):
+        return (record.signer_key_id, record.key_version, record.signer_role, record.issuer_service_id,
+                IdentityScope(record.tenant_id, record.company_id, record.organization_ref, record.base_fingerprint),
+                record.issuer_host_id)
+    if isinstance(record, PostCompletionReadAttestation):
+        return (record.signer_key_id, record.key_version, record.signer_role, record.attestor_service_id,
+                IdentityScope(record.tenant_id, record.company_id, record.organization_ref, record.base_fingerprint),
+                record.attestor_host_id)
     raise ValueError("EVIDENCE_TYPE_UNSUPPORTED")
 
 
@@ -252,14 +321,17 @@ def _check_key_time(identity: SignerIdentity, signed_at: datetime, now: datetime
 def verify_authorized_record(record: _Envelope, registry: TrustedIdentityRegistry, *,
                              expected_scope: IdentityScope, attempt: DispatchAttempt,
                              now: datetime | None = None,
-                             receipt: DispatchReceipt | None = None) -> None:
+                             receipt: DispatchReceipt | None = None,
+                             completion: CompletionProof | None = None,
+                             challenge: PostCompletionChallenge | None = None) -> None:
     """Verify signature, current key authorization, scope, attempt binding, and process identity.
 
     Raises only fixed refusal codes. A trusted registry snapshot and audited production Ed25519
     provider are required before this evaluation-only reference may be used for real actions.
     """
     current = _aware_utc(now or datetime.now(timezone.utc), "NOW")
-    if type(record) not in (DispatchReceipt, OutcomeEvidence, CompletionProof):
+    if type(record) not in (DispatchReceipt, OutcomeEvidence, OutcomeEvidenceV2, OutcomeEvidenceV3,
+                            CompletionProof, PostCompletionChallenge, PostCompletionReadAttestation):
         raise ValueError("EVIDENCE_TYPE_UNSUPPORTED")
     if type(registry) is not TrustedIdentityRegistry or type(expected_scope) is not IdentityScope:
         raise ValueError("TRUST_CONTEXT_INVALID")
@@ -271,12 +343,35 @@ def verify_authorized_record(record: _Envelope, registry: TrustedIdentityRegistr
     elif isinstance(record, OutcomeEvidence):
         record.validate_attempt_binding(attempt, receipt)
         signed_at = _record_time(record.observed_at)
-    else:
+    elif isinstance(record, CompletionProof):
         record.validate_attempt_binding(attempt, receipt)
         signed_at = _record_time(record.observed_at)
+    elif isinstance(record, PostCompletionReadAttestation):
+        if challenge is None:
+            raise ValueError("POST_COMPLETION_CHALLENGE_REQUIRED")
+        record.validate_attempt_binding(attempt, challenge)
+        signed_at = _record_time(record.completed_at)
+    else:
+        if completion is None:
+            raise ValueError("COMPLETION_PROOF_REQUIRED")
+        record.validate_attempt_binding(attempt, completion)
+        signed_at = _record_time(record.issued_at)
     key_id, version, role, service_id, scope, host_id = _record_identity(record)
     if scope != expected_scope:
         raise ValueError("EVIDENCE_SCOPE_MISMATCH")
+    if type(record) in (OutcomeEvidenceV2, OutcomeEvidenceV3):
+        artifact = registry.resolve_oracle(
+            scope, record.operation_kind, record.oracle_id, record.oracle_version,
+        )
+        if (artifact is None
+                or artifact.document_shape_revision != record.document_shape_revision
+                or artifact.configuration_fingerprint != record.configuration_fingerprint
+                or artifact.oracle_digest != record.oracle_digest
+                or artifact.expected_effect_schema_version != record.expected_effect_schema_version):
+            raise ValueError("ORACLE_ARTIFACT_UNTRUSTED")
+    elif (type(record) is OutcomeEvidence
+          and registry.requires_outcome_v2(scope, record.operation_kind)):
+        raise ValueError("OUTCOME_V1_DOWNGRADE")
     identity = registry.resolve_signer(key_id, version)
     if identity is None:
         raise ValueError("SIGNER_IDENTITY_UNKNOWN")
@@ -296,3 +391,56 @@ def verify_authorized_record(record: _Envelope, registry: TrustedIdentityRegistr
         if record.proof_class == "INDEPENDENT_SESSION_AND_PROCESS_CLOSED":
             _verify_process_attestation(registry, record.source_process_instance_id,
                                         record.source_service_id, record.source_host_id, scope, signed_at, current)
+    elif isinstance(record, PostCompletionReadAttestation):
+        _verify_process_attestation(registry, record.process_instance_id,
+                                    record.attestor_service_id, record.attestor_host_id,
+                                    scope, signed_at, current)
+
+
+def validate_conditional_conflict_terminal_record_set(
+    attempt: DispatchAttempt,
+    receipt: DispatchReceipt,
+    outcome: OutcomeEvidence,
+    completion: CompletionProof,
+    challenge: PostCompletionChallenge,
+    read_attestation: PostCompletionReadAttestation,
+    registry: TrustedIdentityRegistry,
+    *,
+    expected_scope: IdentityScope,
+    now: datetime | None = None,
+) -> None:
+    """Authenticate and bind the exact S12 record set before FAILED_APPLY is attempted.
+
+    The database still has to recheck immutable evidence IDs/digests and atomically
+    enforce T16 signatures, permanent call-ID consumption, and hold release.
+    """
+    current = _aware_utc(now or datetime.now(timezone.utc), "NOW")
+    verify_authorized_record(
+        receipt, registry, expected_scope=expected_scope, attempt=attempt, now=current,
+    )
+    # Authenticate completion before validating the supervisor challenge and
+    # the verifier's challenged post-completion read-back.
+    verify_authorized_record(
+        completion, registry, expected_scope=expected_scope, attempt=attempt,
+        now=current, receipt=receipt,
+    )
+    verify_authorized_record(
+        challenge, registry, expected_scope=expected_scope, attempt=attempt,
+        now=current, receipt=receipt, completion=completion,
+    )
+    verify_authorized_record(
+        read_attestation, registry, expected_scope=expected_scope, attempt=attempt,
+        now=current, receipt=receipt, completion=completion, challenge=challenge,
+    )
+    verify_authorized_record(
+        outcome, registry, expected_scope=expected_scope, attempt=attempt,
+        now=current, receipt=receipt,
+    )
+    artifact = registry.resolve_oracle(
+        expected_scope, outcome.operation_kind, outcome.oracle_id, outcome.oracle_version,
+    )
+    if artifact is None or challenge.query_spec_digest != artifact.query_plan_digest:
+        raise ValueError("POST_COMPLETION_QUERY_PLAN_UNTRUSTED")
+    validate_conditional_conflict_terminal_evidence(
+        attempt, receipt, outcome, completion, challenge, read_attestation,
+    )

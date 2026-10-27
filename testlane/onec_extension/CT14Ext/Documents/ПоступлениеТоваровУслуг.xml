@@ -39,7 +39,7 @@
 							<v8:content>CT14 Идентификатор изменения</v8:content>
 						</v8:item>
 					</Synonym>
-					<Comment>Durable change marker. Edit right is granted only to role CT14Писатель.</Comment>
+					<Comment>Change marker only; API writers may alter it, so consumers must verify integrity independently.</Comment>
 					<Type>
 						<v8:Type>xs:string</v8:Type>
 						<v8:StringQualifiers>
@@ -82,7 +82,7 @@
 							<v8:content>CT14 Хеш изменения</v8:content>
 						</v8:item>
 					</Synonym>
-					<Comment>Durable change hash. Edit right is granted only to role CT14Писатель.</Comment>
+					<Comment>Change hash only; API writers may alter it, so consumers must verify integrity independently.</Comment>
 					<Type>
 						<v8:Type>xs:string</v8:Type>
 						<v8:StringQualifiers>

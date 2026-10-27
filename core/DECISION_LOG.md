@@ -930,11 +930,22 @@ Decision: implement the missing S13 writer boundary as a private service on Ivan
 Decision: the operator's staging prohibition refers to a staging deployment, not Git staging. Explicit-path staging and local commits are authorized, and the first local commit includes the three autonomous prompt documents. Leave `MCP-RSV-Data.zip` untouched. Push/PR remains gated on correlated GPT-PM approval for the exact final head. This records the operator's 2026-10-22 clarification; it does not itself satisfy the GPT-PM gate.
 
 
+## 2026-10-24 - WP5 production evidence trust snapshot source candidate
+
+Decision: keep production evidence trust separate from evaluation registries. The schema-027 candidate exposes one revisioned signer/process/oracle/outcome-policy snapshot through a SECURITY DEFINER routine restricted to `private_writer_evidence_ingest`; runtime roles retain no direct table access. The Python adapter requests a bounded top-level REPEATABLE READ READ ONLY transaction, pins timestamp rendering to UTC, and strictly decodes a bounded payload into immutable trust records. Historical rotation ancestors remain available even when no longer scoped for new evidence. Missing operation policy stays explicit and causes verifier refusal.
+
+This is an implementation direction under the operator's delegated technical authority, not an installed schema, effective-grant result, production trust approval or qualification. SQL remains unparsed/uninstalled; no database write, test or specialist review ran. Evidence and current limitations: `docs/phase2/S13_POSTGRES_ADMISSION_SCHEMA_DESIGN_2026-10-22.md`, `docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md`, and `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md`. Validator build provenance and trust-policy/key-custody human owners remain unknown in project records.
+
+## 2026-10-24 - Keep S13 evidence registration uncomposed until context is authenticated
+
+Decision: do not wire the candidate production verifier to `private_writer_register_evidence_v1` while validation time is caller-selected, the verification-result type is constructible, the database attempt projection is incomplete in `DispatchAttempt`, and `validator_build_id` has no authenticated provenance. Require an authenticated clock, exact least-privilege immutable attempt/intent context, a complete closed typed projection, and an approved build-attestation source; retain the SQL routine's tuple and revocation rechecks. The detailed boundary and acceptance evidence are in `docs/phase2/S13_EVIDENCE_REGISTRATION_CONTEXT_DESIGN_2026-10-24.md`. This does not block unrelated S13 source work and does not claim migration, grant or runtime qualification.
+
 ## 2026-10-27 - Phase 2 test lane reports gateway refusal codes; two-base recheck
 
 Evidence: strict SSH to koros@100.88.71.74 and all local listeners were healthy; Ivan and local gateways answered `source_health` ok. The two-base comparison of account 521.1 returned `PARTIAL_MISMATCH` (10 rows on the local side, 11 on Ivan, one `ROW_MISSING_IN_A`), a numeric copy-consistency result and not a native 1C PASS. The six-column and purchase sections were refused by the gateway itself with `SEMANTIC_PROFILE_UNVALIDATED`.
 
 Decision: report the gateway's bare refusal code as `detail_code` beside the unchanged `reason_code`, and call `purchase_documents` with only `source_id` and `company_id`. The running 21200 server was not restarted. Cause of the extra row on Ivan is UNKNOWN. Detail: `docs/phase2/CHANGE_RECORD_341.md`, `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-27.md`. pytest NOT_RUN.
+
 
 ## 2026-10-27 - Two-base 521.1 mismatch traced to different clones
 
@@ -942,6 +953,14 @@ Evidence: the local `erp_mcp_ref` publication reads `818HA_test_ready`; Ivan's r
 
 Decision: no configuration change. Whether Ivan's reference source should read a read clone (`818HA_test_ready` or `818HA_reference_ro`) is left to the S13/S15 owners. Detail: `docs/phase2/CHANGE_RECORD_342.md`. pytest NOT_RUN.
 
+
 ## 2026-10-27 - Mechanical ruff cleanup of four clean phase2 files
 
 Decision: apply ruff autofixes to `transitions.py` and three phase2 SQL/offline tests that had no pending modification, and leave files under active S13 work and the evidence-bound `ct14_measure.py` untouched. Definitions and signatures in `transitions.py` were compared with HEAD and are identical; three `DTZ001` findings remain. Detail: `docs/phase2/CHANGE_RECORD_343.md`. pytest NOT_RUN.
+
+
+## 2026-10-27 - Preservation commit of the S13 private-writer candidate; takeover by Claude Code
+
+Decision: the operator told this session to finish the remaining work itself. The S13 private-writer source, migration 027, its tests and the earlier sessions' log entries had existed for weeks only as modified or untracked files. They are committed locally as a preservation checkpoint (code and logs first, documentation second) without re-reviewing each file. Nothing is pushed.
+
+Evidence: all 71 dirty Python files byte-compile; a scan of all 389 dirty text files found no private keys, tokens, passwords in connection strings or real amounts beyond lines already in HEAD. `MCP-RSV-Data.zip` stays untracked. The writer remains unqualified: privileges `NOT_MEASURABLE`, COM boundary unmeasured, pytest and review NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_344.md`.

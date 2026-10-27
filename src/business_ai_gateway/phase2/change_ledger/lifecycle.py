@@ -58,9 +58,9 @@ class LifecycleResult:
     suffix_head_seq: int | None = None
 
 
-_REQUIRED_CHECKPOINT_EVENTS = {
+_REQUIRED_CHECKPOINT_EVENTS = frozenset({
     "APPROVED", "APPLYING", "COMPLETE_SUCCESS", "COMPLETE_PRE_WRITE_REFUSAL", "OPERATOR_RESOLVE",
-}
+})
 
 
 def _is_hash(value: Any) -> bool:

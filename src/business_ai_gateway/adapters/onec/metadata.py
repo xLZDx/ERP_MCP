@@ -41,6 +41,7 @@ def parse_metadata(xml_bytes: bytes) -> MetadataIndex:
         raise ValueError("response is not OData $metadata")
 
     type_props: dict[str, tuple[str, ...]] = {}
+    type_property_types: dict[str, tuple[tuple[str, str | None], ...]] = {}
     type_nav: dict[str, tuple[str, ...]] = {}
     for element in root.iter():
         if element.tag.rsplit("}", 1)[-1] != "EntityType":
@@ -49,6 +50,7 @@ def parse_metadata(xml_bytes: bytes) -> MetadataIndex:
         if not type_name:
             continue
         props: list[str] = []
+        property_types: list[tuple[str, str | None]] = []
         nav: list[str] = []
         for child in element:
             local = child.tag.rsplit("}", 1)[-1]
@@ -57,9 +59,11 @@ def parse_metadata(xml_bytes: bytes) -> MetadataIndex:
                 continue
             if local == "Property":
                 props.append(name)
+                property_types.append((name, child.attrib.get("Type")))
             elif local == "NavigationProperty":
                 nav.append(name)
         type_props[type_name] = tuple(props)
+        type_property_types[type_name] = tuple(property_types)
         type_nav[type_name] = tuple(nav)
 
     entities = []
@@ -77,6 +81,7 @@ def parse_metadata(xml_bytes: bytes) -> MetadataIndex:
                 entity_type=entity_type,
                 properties=type_props.get(short_type, ()),
                 navigation_properties=type_nav.get(short_type, ()),
+                property_types=type_property_types.get(short_type, ()),
             )
         )
     entities.sort(key=lambda x: x.name)

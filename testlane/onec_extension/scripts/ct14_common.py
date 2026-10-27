@@ -1,8 +1,8 @@
 """Shared helpers for the CT14 extension spike.
 
-Clone-only guard: every script refuses to run unless the target base path ends with the
-disposable clone folder name. Credentials are read from DPAPI-protected files inside the
-process and are never printed or written anywhere.
+Clone-only guard: every script refuses to run unless the resolved target base is the single
+approved disposable clone. Credentials are read from DPAPI-protected files inside the process
+and are never printed or written anywhere.
 """
 import subprocess
 import time
@@ -23,10 +23,16 @@ NARROW_USER = "CT14_NARROW"
 
 
 def guard(base: str = CLONE_PATH) -> str:
-    norm = base.rstrip("\\/")
-    assert norm.lower().endswith(CLONE_NAME.lower()), "refusing: only the disposable clone " + CLONE_NAME
-    assert Path(norm).name == CLONE_NAME
-    return norm
+    if type(base) is not str or not base:
+        raise ValueError("refusing: only the disposable clone " + CLONE_NAME)
+    try:
+        normalized = Path(base).resolve(strict=True)
+        expected = Path(CLONE_PATH).resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        raise ValueError("refusing: only the disposable clone " + CLONE_NAME) from None
+    if normalized != expected or normalized.name.casefold() != CLONE_NAME.casefold():
+        raise ValueError("refusing: only the disposable clone " + CLONE_NAME)
+    return str(normalized)
 
 
 def admin_creds():
@@ -46,18 +52,58 @@ def connect_admin(base: str = CLONE_PATH):
 
 
 def no_1c_running() -> bool:
-    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq 1cv8.exe"], capture_output=True, text=True).stdout
-    out2 = subprocess.run(["tasklist", "/FI", "IMAGENAME eq 1cv8c.exe"], capture_output=True, text=True).stdout
-    return "1cv8" not in (out + out2).lower().replace("no tasks", "")
+    for image_name in ("1cv8.exe", "1cv8c.exe"):
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {image_name}"],
+                capture_output=True, text=True, check=False,
+            )
+        except OSError:
+            return False
+        if (result.returncode != 0 or type(result.stdout) is not str
+                or type(result.stderr) is not str or result.stderr != ""):
+            return False
+        output = result.stdout.casefold()
+        if any(line.lstrip().startswith(image_name) for line in output.splitlines()):
+            return False
+        if output.strip() != "info: no tasks are running which match the specified criteria.":
+            # An unrecognized, mixed, or empty tasklist response does not prove absence.
+            return False
+    return True
+
+
+def _validated_designer_args(args: object) -> tuple[str, ...]:
+    """Snapshot arguments and reject switches that can replace the guarded clone binding."""
+    if type(args) is not list:
+        raise ValueError("refusing: Designer arguments cannot override the guarded clone binding")
+    snapshot = tuple(args)
+    if any(type(item) is not str or "\x00" in item for item in snapshot):
+        raise ValueError("refusing: Designer arguments cannot override the guarded clone binding")
+    protected_prefixes = (
+        "/f", "/s", "/n", "/p", "/out", "/ib", "-s", "-n", "-p", "-out", "-ib",
+    )
+    for item in snapshot:
+        folded = item.casefold()
+        if folded in ("-files", "-partial"):
+            # These documented partial-load selectors are not connection overrides.
+            continue
+        if (folded.startswith(protected_prefixes)
+                or (folded.startswith("-f") and folded != "-files")):
+            raise ValueError("refusing: Designer arguments cannot override the guarded clone binding")
+    return snapshot
 
 
 def run_designer(args: list, out_file: str, base: str = CLONE_PATH, timeout: int = 3600) -> int:
     """Run the platform Designer in batch mode against the clone. Credentials are injected here
     and never logged; only the argument list WITHOUT credentials is returned to the caller's log."""
     base = guard(base)
-    assert no_1c_running(), "a 1cv8 process is running; Designer needs exclusive access"
+    args_snapshot = _validated_designer_args(args)
+    if not no_1c_running():
+        raise RuntimeError("refusing: 1C process state is active or could not be verified")
     u, p = admin_creds()
-    cmd = [DESIGNER, "DESIGNER", "/F", base, "/N", u, "/P", p] + args + ["/Out", out_file]
+    cmd = [DESIGNER, "DESIGNER", "/F", base, "/N", u, "/P", p]
+    cmd.extend(args_snapshot)
+    cmd.extend(("/Out", out_file))
     # Designer shows modal error dialogs even in batch mode and then waits for a click; watch our own child
     # process, record the dialog text (the only place the real error appears) and click OK.
     ps1 = str(Path(__file__).with_name("designer_dialog.ps1"))

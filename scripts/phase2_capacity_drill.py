@@ -121,17 +121,17 @@ async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -
 
     Runs BEFORE any CREATE DATABASE. ``connect`` / ``container_identifier`` are test seams; the
     defaults ask the DSN and ``docker exec`` into the hard-coded container."""
-    from _pg_harness import CONTAINER, container_exec, docker
-
-    async def default_ident() -> int:
-        r = container_exec("psql", "-U", "postgres", "-Atc",
-                           "SELECT system_identifier FROM pg_control_system()")
-        if r.returncode != 0:
-            raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
-        return int(r.stdout.decode().strip())
-
     try:
         if container_identifier is None:
+            from _pg_harness import CONTAINER, container_exec, docker
+
+            async def default_ident() -> int:
+                r = container_exec("psql", "-U", "postgres", "-Atc",
+                                   "SELECT system_identifier FROM pg_control_system()")
+                if r.returncode != 0:
+                    raise ClusterIdentityError("CONTAINER_IDENTITY_UNAVAILABLE")
+                return int(r.stdout.decode().strip())
+
             ps = docker("ps", "--filter", f"name=^{CONTAINER}$", "--format", "{{.Names}}", timeout=30)
             if ps.returncode != 0 or ps.stdout.decode().split() != [CONTAINER]:
                 raise ClusterIdentityError("TEST_CONTAINER_NOT_RUNNING")
@@ -140,7 +140,8 @@ async def verify_cluster(dsn: str, *, connect=None, container_identifier=None) -
             via_dsn = await conn.fetchval("SELECT system_identifier FROM pg_control_system()")
         finally:
             await conn.close()
-        via_container = await (container_identifier or default_ident)()
+        ident = container_identifier if container_identifier is not None else default_ident
+        via_container = await ident()
     except ClusterIdentityError:
         raise
     except Exception as e:  # any failure to prove identity is a refusal

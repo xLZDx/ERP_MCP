@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any, ClassVar
 from urllib.parse import unquote, urljoin, urlparse
 
@@ -11,7 +12,16 @@ from ...network_policy import EgressPolicyError, pinned_egress_transport, valida
 
 
 class OneCTransportError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, code: str | None = None):
+        # Keep the externally rendered failure generic. This bounded code is for internal audit
+        # correlation only; never put exception text, credentials, URLs or response bodies there.
+        candidate = code if code is not None else message
+        self.code = (
+            candidate
+            if type(candidate) is str and re.fullmatch(r"[A-Z0-9_]{1,48}", candidate)
+            else "TRANSPORT_ERROR"
+        )
+        super().__init__(message)
 
 
 class OneCReadClient:
@@ -58,16 +68,18 @@ class OneCReadClient:
                 or any(segment in {".", ".."} for segment in decoded.split("/"))
                 or urlparse(decoded).scheme or "?" in decoded or "#" in decoded
             ):
-                raise OneCTransportError("unsafe relative OData path")
+                raise OneCTransportError("unsafe relative OData path", code="UNSAFE_ODATA_PATH")
             next_decoded = unquote(decoded)
             if next_decoded == decoded:
                 break
             decoded = next_decoded
         else:
-            raise OneCTransportError("unsafe relative OData path")
+            raise OneCTransportError("unsafe relative OData path", code="UNSAFE_ODATA_PATH")
         target = urljoin(base, clean)
         if urlparse(base).hostname != urlparse(target).hostname:
-            raise OneCTransportError("target host differs from registered source")
+            raise OneCTransportError(
+                "target host differs from registered source", code="TARGET_HOST_MISMATCH"
+            )
         return target
 
     async def get_bytes(
@@ -114,19 +126,23 @@ class OneCReadClient:
                 if response.is_error or 300 <= response.status_code < 400:
                     raise OneCTransportError(f"1C_UPSTREAM_HTTP_{response.status_code}")
                 if response.headers.get("content-encoding", "identity").lower() != "identity":
-                    raise OneCTransportError("encoded response is unsupported by bounded native transport")
+                    raise OneCTransportError(
+                        "encoded response is unsupported by bounded native transport",
+                        code="UNSUPPORTED_CONTENT_ENCODING",
+                    )
                 data = bytearray()
                 async for chunk in response.aiter_bytes():
                     data.extend(chunk)
                     if len(data) > self.max_response_bytes:
                         raise OneCTransportError(
-                            f"response exceeded {self.max_response_bytes} bytes"
+                            f"response exceeded {self.max_response_bytes} bytes",
+                            code="RESPONSE_TOO_LARGE",
                         )
                 return bytes(data)
             finally:
                 await response.aclose()
 
-        raise OneCTransportError("unreachable retry state")
+        raise OneCTransportError("unreachable retry state", code="TRANSPORT_RETRY_EXHAUSTED")
 
     async def head_metadata(
         self,

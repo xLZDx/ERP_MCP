@@ -73,6 +73,7 @@ class MetadataEntity:
     entity_type: str
     properties: tuple[str, ...]
     navigation_properties: tuple[str, ...] = ()
+    property_types: tuple[tuple[str, str | None], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

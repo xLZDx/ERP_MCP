@@ -28,7 +28,7 @@ __all__ = [
     "ChangeProposal", "DraftPayload", "DuplicateOverride", "Line", "MEASURED_SHAPE_MAX_LINES", "OPERATION_RULES",
     "ProposalContext", "RULE_TABLE_VERSION", "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "approval_digest",
     "canonical_json", "derive_allowed_effects", "digest_of_canonical_text",
-    "payload_digest", "payload_to_dict", "parse_proposal", "sha256_hex",
+    "payload_digest", "payload_to_dict", "parse_proposal", "parse_writer_payload", "sha256_hex",
 ]
 
 RULE_TABLE_VERSION: Final = "S11-RULES-2026-10-12"
@@ -449,6 +449,27 @@ def _parse_draft(raw: object, kind: ChangeKind, scope: Scope, target_version: st
             raw["comment"], override, raw.get("expected_target_version"))  # type: ignore[index,attr-defined]
     except ValueError:
         return _BAD
+
+
+def parse_writer_payload(raw: object, kind: object, scope: object) -> DraftPayload | None | Refusal:
+    """Parse the exact physical-writer payload using the proposal's CT2 value rules.
+
+    CREATE_DRAFT returns the normalized typed payload whose digest the approval binds.
+    POST and UNPOST accept only an empty object and return ``None``. UPDATE_DRAFT is
+    outside the frozen COM writer scope.
+    """
+    if type(kind) is not ChangeKind or type(scope) is not Scope:
+        return _BAD
+    if kind is ChangeKind.CREATE_DRAFT:
+        parsed = _parse_draft(raw, kind, scope, None)
+        if type(parsed) is Refusal:
+            return parsed
+        if len(parsed.lines) > MEASURED_SHAPE_MAX_LINES:
+            return _BAD
+        return parsed
+    if kind in (ChangeKind.POST, ChangeKind.UNPOST) and type(raw) is dict and not raw:
+        return None
+    return _BAD
 
 
 def parse_proposal(raw: object, ctx: object) -> ChangeProposal | Refusal:

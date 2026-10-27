@@ -62,6 +62,17 @@ def load_migrations(directory: Path = Path("db/migrations")) -> list[Migration]:
     return migrations
 
 
+def _migration_checksum_matches(content: bytes, checksum: str) -> bool:
+    """Accept LF/CRLF checkout differences without accepting changed SQL content."""
+    lf = content.replace(b"\r\n", b"\n")
+    candidates = {
+        hashlib.sha256(content).hexdigest(),
+        hashlib.sha256(lf).hexdigest(),
+        hashlib.sha256(lf.replace(b"\n", b"\r\n")).hexdigest(),
+    }
+    return checksum in candidates
+
+
 async def _migration_applied(conn, version: int) -> bool:
     history_exists = await conn.fetchval(
         "SELECT to_regclass('bag.schema_migrations') IS NOT NULL"
@@ -216,7 +227,9 @@ async def _assert_history_identity(conn, migration: Migration) -> None:
     )
     if row is None:
         return
-    if row["name"] != migration.name or row["checksum"] != migration.checksum:
+    if row["name"] != migration.name or not _migration_checksum_matches(
+        migration.path.read_bytes(), row["checksum"] or ""
+    ):
         raise RuntimeError(
             f"applied migration {migration.version:03d} identity/checksum changed; "
             "manual migration review required"
@@ -270,7 +283,9 @@ async def _preflight_history(conn, migrations: list[Migration]) -> None:
         migration = by_version[int(row["version"])]
         if row["name"] is None or row["checksum"] is None:
             raise RuntimeError("migration ledger has partial immutable identities; manual repair required")
-        if row["name"] != migration.name or row["checksum"] != migration.checksum:
+        if row["name"] != migration.name or not _migration_checksum_matches(
+            migration.path.read_bytes(), row["checksum"] or ""
+        ):
             raise RuntimeError(
                 f"applied migration {migration.version:03d} identity/checksum changed; "
                 "manual migration review required"
