@@ -227,3 +227,11 @@ paths), security-reviewer if read credentials change. GPT approves the exact hea
 16. Periodic R-c interval; baseline capture for CREATE_DRAFT.
 17. Whether a GPT-PM review of the exact final S14 head exists.
 18. Owners of the licensed clone/channel and target operations.
+
+## Operator decisions recorded 2026-10-27
+
+These answers were given through the question tool; the recommended option was chosen each time (the question policy accepts the recommended option when the operator is silent for 5 minutes, so treat them as revisable by the operator).
+
+- Deferred scenarios (E2, E10, E26, E37 and the E1 post step) stay DEFERRED outside the v2.0 scope; PLAN_V2 is not amended.
+- Clone fixtures: a documented procedure re-creates the clone from the reference copy; the A/B baseline is re-captured after every re-creation. Fixture owner remains UNKNOWN until assigned.
+- S13 is not formally accepted without evidence; S15 uses fake interfaces for S12/S13 and the affected checks stay NOT_RUN.

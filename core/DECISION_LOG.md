@@ -1185,3 +1185,7 @@ Decision: draft the S15 plan from the S14 facts as documentation only; stale sta
 ## 2026-10-27 - S15 plan revised after two agent reviews
 
 Decision: accept all review items; the v2.0 write catalogue governs and the scenarios that need post/unpost or contract update are DEFERRED with the operator as owner. Detail: `docs/phase2/CHANGE_RECORD_385.md`.
+
+## 2026-10-27 - Operator answers on S15 scope, fixtures and S13
+
+Decision: keep E2, E10, E26, E37 and the E1 post step deferred; re-create the clone from the reference copy for fixtures; do not accept S13 without evidence. The answers equal the recommended options and may have been auto-accepted by the question policy during operator silence, so they stay revisable. Detail: S15 plan section 'Operator decisions recorded'.
