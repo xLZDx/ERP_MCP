@@ -1,10 +1,13 @@
 """S13-EVIDENCE-PROVIDER-COMPOSITION-01: production evidence graph is bound fail-closed."""
 from __future__ import annotations
 
+import asyncio
+
 import asyncpg
 import pytest
 
 from erp_mcp_private_writer import runtime_composition as composition
+from erp_mcp_private_writer import validator_build_attestation as build_attestation
 from erp_mcp_private_writer.barrier_ack_verifier import ProductionBarrierAcknowledgementVerifier
 from erp_mcp_private_writer.postgres_barrier_ack_registrar import (
     PostgresBarrierAcknowledgementRegistrar,
@@ -13,11 +16,18 @@ from erp_mcp_private_writer.postgres_barrier_ack_trust import (
     PostgresBarrierAcknowledgementTrustSource,
 )
 from erp_mcp_private_writer.postgres_attempt_source import PostgresEvidenceAttemptSource
-from erp_mcp_private_writer.postgres_evidence_registrar import PostgresWriterReceiptRegistrar
+from erp_mcp_private_writer.postgres_evidence_registrar import (
+    EvidenceRegistrationError,
+    PostgresWriterReceiptRegistrar,
+)
 from erp_mcp_private_writer.postgres_evidence_resolver import PostgresWriterEvidenceResolver
 from erp_mcp_private_writer.postgres_evidence_trust import PostgresEvidenceTrustSource
 from erp_mcp_private_writer.postgres_outcome_provider import PostgresOutcomeEvidenceProvider
 from erp_mcp_private_writer.production_evidence_verifier import ProductionEvidenceVerifier
+from erp_mcp_private_writer.validator_build_attestation import (
+    ProductionValidatorBuildInputsSource,
+    ValidatorBuildAttestationVerifier,
+)
 
 
 class _SpyPool(asyncpg.Pool):
@@ -43,8 +53,22 @@ class _WriterStub:
     def close_after_drain(self, *_args, **_kwargs): ...
 
 
-class _BuildSource:
-    async def load_current_approved_build(self): ...
+class _ProductionInputsStub(ProductionValidatorBuildInputsSource):
+    """Concrete stand-in for the future host-authorized source; never contacted by these tests."""
+
+    async def load_current_inputs(self):  # pragma: no cover - must not be reached
+        raise AssertionError("composition must not load attestation inputs")
+
+
+def _BuildSource():  # noqa: N802 - keeps the call sites reading as a source constructor
+    return ValidatorBuildAttestationVerifier(_ProductionInputsStub())
+
+
+@pytest.fixture(autouse=True)
+def _allow_the_stub_as_a_production_build_source(monkeypatch):
+    # The production allowlist is empty until a host-bound source is reviewed, so the registrar refuses
+    # every real source by design. These tests exercise the composition around that gate, not the gate.
+    monkeypatch.setattr(build_attestation, "_PRODUCTION_INPUT_SOURCE_TYPES", (_ProductionInputsStub,))
 
 
 class _BundleSource:
@@ -198,3 +222,46 @@ def test_invalid_evidence_graph_fails_before_database_access(
         _compose(graph)
 
     _assert_no_pool_acquisition(graph)
+
+
+def _registrar_on_the_register_path(monkeypatch, *, same_build: bool):
+    """A registrar whose build re-read and comparison are stubbed so only the call site is exercised."""
+    pool = _SpyPool()
+    registrar = PostgresWriterReceiptRegistrar(
+        pool, PostgresEvidenceAttemptSource(pool),
+        ProductionEvidenceVerifier(PostgresEvidenceTrustSource(pool)),
+        build_provenance_source=_BuildSource(), approved_build_policy_id="test-policy",
+    )
+    approved = object()
+
+    async def reread_current_build(self):
+        return object()
+
+    monkeypatch.setattr(PostgresWriterReceiptRegistrar, "_require_registration_authority",
+                        lambda self, build: None)
+    monkeypatch.setattr(PostgresWriterReceiptRegistrar, "_approved_validator_build", reread_current_build)
+    monkeypatch.setattr(PostgresWriterReceiptRegistrar, "_same_validator_build_authority",
+                        staticmethod(lambda expected, current: same_build))
+    return pool, registrar, approved
+
+
+def test_register_compares_the_reread_build_and_then_reaches_the_database(monkeypatch):
+    pool, registrar, approved = _registrar_on_the_register_path(monkeypatch, same_build=True)
+
+    with pytest.raises(EvidenceRegistrationError) as raised:
+        asyncio.run(registrar._register("{}", "ref", approved))
+
+    # The spy pool refuses the connection, so the registration ends as UNAVAILABLE; what matters is that
+    # the build comparison ran (a bare-name call raised NameError first) and the pool was then reached.
+    assert raised.value.code == "EVIDENCE_REGISTER_UNAVAILABLE"
+    assert pool.acquire_calls == 1
+
+
+def test_register_refuses_before_the_database_when_the_build_policy_changed(monkeypatch):
+    pool, registrar, approved = _registrar_on_the_register_path(monkeypatch, same_build=False)
+
+    with pytest.raises(EvidenceRegistrationError) as raised:
+        asyncio.run(registrar._register("{}", "ref", approved))
+
+    assert raised.value.code == "EVIDENCE_REGISTER_BUILD_POLICY_STALE"
+    assert pool.acquire_calls == 0

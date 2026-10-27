@@ -969,3 +969,10 @@ Evidence: all 71 dirty Python files byte-compile; a scan of all 389 dirty text f
 ## 2026-10-27 - Preservation commit of the Phase 2 documentation backlog
 
 Decision: commit the 311 documents that earlier sessions wrote and never committed (change records 300-339, `docs/commits/`, Phase 2 plans and artifacts, reports, governance output) as the documentation companion to the code checkpoint. Content is the earlier sessions' and was not re-verified. Detail: `docs/phase2/CHANGE_RECORD_345.md`. Registry generator, English-policy scanner and reviews NOT_RUN.
+
+
+## 2026-10-27 - Registrar NameError fix and trust snapshot limit aligned to 8 MiB
+
+Decision: fix the unreachable build-policy comparison in the evidence registrar, repair the red composition test, and set the trust snapshot ceiling to 8 MiB as documented (code had 16 MiB). The barrier-acknowledgement 16 MiB payload limit is a separate contract and is unchanged.
+
+Evidence: full `tests/phase2` run before the fixes: 3 failed, 6995 passed, 602 skipped, 13 errors. The 3 failures were the 8 MiB boundary tests; they pass after the change (31 passed with the composition file). The 13 errors are migration scripts that are documented as direct-run harnesses (disposable PostgreSQL container), not pytest tests (`fixture 'db' not found`), so they are NOT_RUN here. Detail: `docs/phase2/CHANGE_RECORD_346.md`.

@@ -19,6 +19,7 @@ from business_ai_gateway.phase2.change.proposal import DraftPayload, Line, paylo
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change_ledger.write_port import (
     ApplyTicket,
+    DispatchPermit,
     FailureEvidence,
     NotWired,
     NonOperationalWritePort,

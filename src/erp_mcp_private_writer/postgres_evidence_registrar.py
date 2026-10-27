@@ -533,7 +533,7 @@ class PostgresWriterReceiptRegistrar:
             # revocation, deployment or artifact change between envelope verification and this
             # point refuses before opening the evidence transaction or issuing its INSERT.
             current_build = await self._approved_validator_build()
-            if not _same_validator_build_authority(approved_build, current_build):
+            if not self._same_validator_build_authority(approved_build, current_build):
                 raise EvidenceRegistrationError("EVIDENCE_REGISTER_BUILD_POLICY_STALE")
             async with asyncio.timeout(self._timeout):
                 async with self._pool.acquire(timeout=self._timeout) as conn:
