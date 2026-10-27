@@ -1109,3 +1109,7 @@ Decision: read-only counts per enumeration value (69 without VAT, 751 at eightee
 ## 2026-10-27 - Closed value vocabulary for enumeration bindings in the COM manifest
 
 Decision: `PayloadPropertyBinding` takes an optional closed `value_map`; unmapped values are refused and the translated 1C value feeds both the digest manifest and the ephemeral COM values. No VAT table is wired into the production binding set yet. Evidence: 38 new tests and 132 tests of the 14 importing files passed (agent-run). Detail: `docs/phase2/CHANGE_RECORD_369.md`.
+
+## 2026-10-27 - In-memory probe: setting a goods line does not recompute VAT amount or document total
+
+Decision: evidence only. A new goods row set to quantity 2, price 10, amount 20 leaves the VAT amount and the document total at zero in memory. Write-time recomputation is not measured and is the next step; the payload has no VAT amount or total field. Detail: `docs/phase2/CHANGE_RECORD_370.md`.
