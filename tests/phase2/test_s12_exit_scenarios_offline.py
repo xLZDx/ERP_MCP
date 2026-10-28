@@ -51,6 +51,7 @@ from business_ai_gateway.phase2.change import (
     Verification,
     apply_transition,
 )
+from business_ai_gateway.phase2.change.proposal import parse_writer_payload
 from tests.phase2 import _change_helpers as h
 from tests.phase2._change_helpers import (
     APPROVAL_EXPIRES,
@@ -141,6 +142,8 @@ def budget_check(result) -> BudgetCheck:
         return BudgetCheck.CURRENCY_NOT_BUDGETED
     if result is ErrorCode.BUDGET_EXCEEDED:
         return BudgetCheck.EXCEEDED
+    if result is ErrorCode.GRANT_EXHAUSTED:
+        return BudgetCheck.EXHAUSTED
     return BudgetCheck.NOT_CHECKED
 
 
@@ -282,7 +285,7 @@ def test_e5_read_class_caller_is_refused_every_write_operation_with_a_safe_code(
     ("0", "100.00", "OK"),                 # zero
     ("99.99", "100.00", "OK"),
     ("100.004", "100.00", "BUDGET_EXCEEDED"),  # rounding: a fraction over the limit is over (no silent rounding down)
-    ("0.001", "0.00", "BUDGET_EXCEEDED"),
+    ("0.001", "0.00", "GRANT_EXHAUSTED"),  # a zero-limit grant has nothing left at all (CR-395)
     ("0", "0.00", "OK"),
 ])
 def test_e6_limit_boundaries_decide_exactly(amount, limit, expected):
@@ -292,10 +295,10 @@ def test_e6_limit_boundaries_decide_exactly(amount, limit, expected):
         assert isinstance(res, Grant) and res.reserved == Decimal(amount) and res.limit == g.limit
         assert budget_check(res) is BudgetCheck.OK
     else:
-        assert res is ErrorCode.BUDGET_EXCEEDED
+        assert res is ErrorCode(expected)
         # on refusal the claim is refused with the same code, zero port calls, the grant is untouched
         s = Svc(approved())
-        refused(s.ev(Event.CLAIM, budget=budget_check(res)), "BUDGET_EXCEEDED")
+        refused(s.ev(Event.CLAIM, budget=budget_check(res)), expected)
         assert s.dispatches == 0 and s.base == {"doc1": "v1"} and g.reserved == 0
 
 
@@ -346,13 +349,24 @@ def test_e6_vat_rates_are_accepted_as_data_and_are_bound_into_the_approval_diges
     assert (line.vat_rate_code, line.vat_amount, line.amount) == (vat_code, Decimal(vat_amount).normalize().__format__("f"), "21")
     # changing only the VAT code or only the VAT amount changes what the approver approves
     base = ch.approval_digest(h.proposal())
-    other_vat = raw_create()
-    other_vat["payload"]["lines"][0].update(vat_rate_code=vat_code, vat_amount=vat_amount)
-    digests = {ch.approval_digest(h.proposal(other_vat))}
+    digest = ch.approval_digest(p)
+    if vat_code == "VAT20":
+        assert digest == base  # the default fixture is the VAT20 line
+    else:
+        assert digest != base
+    # since CR-395 a VAT amount that disagrees with the rate is refused before any digest exists (AMOUNT_INCONSISTENT)
     tweaked = raw_create()
     tweaked["payload"]["lines"][0].update(vat_rate_code=vat_code, vat_amount="9.99")
-    digests.add(ch.approval_digest(h.proposal(tweaked)))
-    assert len(digests) == 2 and ch.approval_digest(h.proposal(tweaked)) != base
+    refused(ch.parse_proposal(tweaked, h.ctx()), "AMOUNT_INCONSISTENT")
+
+
+def test_e6_the_three_admitted_vat_rates_have_three_distinct_approval_digests():
+    digests = set()
+    for code, vat in (("VAT0", "0"), ("VAT10", "1.91"), ("VAT20", "3.50")):
+        raw = raw_create()
+        raw["payload"]["lines"][0].update(vat_rate_code=code, vat_amount=vat)
+        digests.add(ch.approval_digest(h.proposal(raw)))
+    assert len(digests) == 3
 
 
 def test_e6_mixed_vat_in_one_document_is_not_an_admitted_shape():
@@ -362,19 +376,17 @@ def test_e6_mixed_vat_in_one_document_is_not_an_admitted_shape():
     refused(ch.parse_proposal(raw, h.ctx()), "SHAPE_NOT_QUALIFIED")
 
 
-def test_e6_total_amount_is_carried_exactly_as_the_approver_saw_it():
-    """What the offline package guarantees about total vs lines+VAT: the stated numbers are digest-bound.
-
-    The package does NOT refuse a stated total that differs from quantity*price+VAT (see report, gap G1): a changed
-    total yields a different approval digest, so it cannot slip past an approval of the other number.
-    """
+def test_e6_total_amount_different_from_lines_plus_vat_is_refused_as_amount_inconsistent():
+    """CR-395 (gap G1 resolved): a stated total that is not quantity x price (VAT-inclusive) never becomes a proposal."""
     honest = h.proposal(raw_create())
+    assert honest.payload.lines[0].amount == "21"
     inflated = raw_create()
     inflated["payload"]["lines"][0]["amount"] = "999.00"
-    inflated_p = h.proposal(inflated)
-    assert ch.approval_digest(honest) != ch.approval_digest(inflated_p)
-    assert inflated_p.payload_digest != honest.payload_digest
-    assert inflated_p.payload.lines[0].amount == "999"
+    refused(ch.parse_proposal(inflated, h.ctx()), "AMOUNT_INCONSISTENT")
+    refused(parse_writer_payload(inflated["payload"], ChangeKind.CREATE_DRAFT, h.SCOPE), "AMOUNT_INCONSISTENT")
+    # the refusal carries the code and the fixed message only, never the offending number
+    res = ch.parse_proposal(inflated, h.ctx())
+    assert "999" not in repr(res) and res.message == ch.ERROR_INFO[ErrorCode.AMOUNT_INCONSISTENT].message
 
 
 @pytest.mark.parametrize("over, expected", [
@@ -390,14 +402,21 @@ def test_e6_another_company_or_organization_is_refused_before_any_port_call(over
     refused(out, "REF_OUT_OF_SCOPE")  # item it-1 is not in this company's scope
 
 
-def test_e6_closed_period_shows_up_as_a_changed_business_state_digest_and_blocks_before_the_port():
-    """Offline analogue of a closed period: the period status is part of ``business_state_digest`` (contract sec. 3)."""
+def test_e6_closed_period_is_period_closed_and_any_other_state_change_stays_digest_mismatch():
+    """The period status is part of ``business_state_digest`` (contract sec. 3); CR-395 adds a positively observed
+    closed period as the distinct code ``PERIOD_CLOSED`` at begin_apply."""
     open_period = h.proposal(raw_post("POST"), business_state_digest="a" * 64)
     closed_period = h.proposal(raw_post("POST"), business_state_digest="b" * 64)
     assert ch.approval_digest(open_period) != ch.approval_digest(closed_period)
     s = Svc(claimed(kind=ChangeKind.POST, parent_change_id="parent9", target_ref="doc9"))
-    refused(s.ev(Event.BEGIN_APPLY, state_digest_equal=False), "DIGEST_MISMATCH")
+    refused(s.ev(Event.BEGIN_APPLY, state_digest_equal=False), "DIGEST_MISMATCH")  # changed, period not observed closed
     assert s.dispatches == 0 and s.rec.execution is Execution.NOT_STARTED
+    # period observed closed: the distinct code, with or without a digest change; the record is untouched
+    for equal in (False, True):
+        closed = Svc(claimed(kind=ChangeKind.POST, parent_change_id="parent9", target_ref="doc9"))
+        before = closed.rec
+        refused(closed.ev(Event.BEGIN_APPLY, period_closed=True, state_digest_equal=equal), "PERIOD_CLOSED")
+        assert closed.rec == before and closed.dispatches == 0 and closed.rec.execution is Execution.NOT_STARTED
 
 
 @pytest.mark.parametrize("order_seed", range(5))
@@ -414,7 +433,9 @@ def test_e6_aggregate_budget_is_never_exceeded_for_any_arrival_order(order_seed)
                 g = res
                 admitted.append(a)
             else:
-                assert res is ErrorCode.BUDGET_EXCEEDED
+                # nothing left at all is GRANT_EXHAUSTED; a request larger than a non-zero remainder is BUDGET_EXCEEDED
+                full = g.reserved + g.consumed >= g.limit
+                assert res is (ErrorCode.GRANT_EXHAUSTED if full else ErrorCode.BUDGET_EXCEEDED)
             assert g.reserved + g.consumed <= g.limit
         assert sum(admitted) == g.reserved <= Decimal("100.00")
         # greedy admission: every refused amount really would not have fitted
@@ -773,13 +794,13 @@ def test_e23_edit_inside_the_compare_and_write_interval_is_refused_by_the_writer
 def test_e24_queued_expiry_period_change_and_exhausted_grant_are_refused_with_zero_port_calls():
     expired = Svc(approved(), now=APPROVAL_EXPIRES + timedelta(seconds=1))
     refused(expired.ev(Event.CLAIM), "APPROVAL_EXPIRED")
-    exhausted = grant(limit="100.00", consumed="100.00")                       # GRANT_EXHAUSTED analogue
+    exhausted = grant(limit="100.00", consumed="100.00")
     res = ch.reserve(exhausted, Decimal("0.01"), "RUB", T0)
-    assert res is ErrorCode.BUDGET_EXCEEDED
+    assert res is ErrorCode.GRANT_EXHAUSTED
     spent = Svc(approved())
-    refused(spent.ev(Event.CLAIM, budget=budget_check(res)), "BUDGET_EXCEEDED")
-    period = Svc(claimed(kind=ChangeKind.POST, parent_change_id="parent9", target_ref="doc9"))  # PERIOD_CLOSED analogue
-    refused(period.ev(Event.BEGIN_APPLY, state_digest_equal=False), "DIGEST_MISMATCH")
+    refused(spent.ev(Event.CLAIM, budget=budget_check(res)), "GRANT_EXHAUSTED")
+    period = Svc(claimed(kind=ChangeKind.POST, parent_change_id="parent9", target_ref="doc9"))
+    refused(period.ev(Event.BEGIN_APPLY, period_closed=True, state_digest_equal=False), "PERIOD_CLOSED")
     for s in (expired, spent, period):
         assert s.dispatches == 0 and s.base == {"doc1": "v1"}
     assert spent.rec == approved() and expired.rec == approved()
@@ -814,7 +835,9 @@ def test_e24_exhausted_while_running_current_write_completes_reservation_is_cons
     # no new step: no second dispatch, no new claim, no new reservation
     assert type(s.ev(Event.MARK_DISPATCHED)) is Refusal and s.dispatches == 1
     assert type(s.ev(Event.CLAIM)) is Refusal and type(s.ev(Event.BEGIN_APPLY)) is Refusal
+    # the window ended too, so the window refusal (BUDGET_EXCEEDED) comes before the exhausted-grant one
     assert ch.reserve(settled, Decimal("0.01"), "RUB", s.now) is ErrorCode.BUDGET_EXCEEDED
+    assert ch.reserve(settled, Decimal("0.01"), "RUB", T0) is ErrorCode.GRANT_EXHAUSTED  # inside the window: exhausted
 
 
 def test_e24_expiry_while_the_outcome_is_unknown_keeps_the_reservation_and_never_fails_the_apply():
@@ -977,7 +1000,7 @@ def test_e38_chain_create_post_unpost_at_exact_limit_is_checked_after_every_oper
     assert post_amount == 0
     g2 = ch.reserve(g, post_amount, "RUB", T0)
     assert isinstance(g2, Grant); g = g2; check()
-    assert ch.reserve(g, Decimal("0.01"), "RUB", T0) is ErrorCode.BUDGET_EXCEEDED               # one cent over
+    assert ch.reserve(g, Decimal("0.01"), "RUB", T0) is ErrorCode.GRANT_EXHAUSTED               # one cent over, nothing left
     g = ch.release(ch.reserve(g, Decimal(0), "RUB", T0), Decimal(0)); check()                   # unpost reserves nothing
     # a rolled-back apply does not return consumed money
     assert g.consumed == Decimal("100.00") and ch.settle_reservation(Reservation.CONSUMED, Reservation.RELEASED) \
@@ -1138,7 +1161,7 @@ SCENARIO_MAP = {
         "not_run": "token audience/scope validation and 1C-side rights (read token on the write service): live service",
     },
     "E6": {
-        "status": "PARTIAL",
+        "status": "PASS",
         "offline": [
             _t("test_e6_limit_boundaries_decide_exactly"),
             _t("test_e6_negative_or_non_decimal_amount_is_never_reserved"),
@@ -1146,13 +1169,15 @@ SCENARIO_MAP = {
             _t("test_e6_contract_currency_different_from_document_currency_is_not_budgeted_and_unqualified_is_refused"),
             _t("test_e6_vat_rates_are_accepted_as_data_and_are_bound_into_the_approval_digest"),
             _t("test_e6_mixed_vat_in_one_document_is_not_an_admitted_shape"),
-            _t("test_e6_total_amount_is_carried_exactly_as_the_approver_saw_it"),
+            _t("test_e6_the_three_admitted_vat_rates_have_three_distinct_approval_digests"),
+            _t("test_e6_total_amount_different_from_lines_plus_vat_is_refused_as_amount_inconsistent"),
             _t("test_e6_another_company_or_organization_is_refused_before_any_port_call"),
-            _t("test_e6_closed_period_shows_up_as_a_changed_business_state_digest_and_blocks_before_the_port"),
+            _t("test_e6_closed_period_is_period_closed_and_any_other_state_change_stays_digest_mismatch"),
             _t("test_e6_aggregate_budget_is_never_exceeded_for_any_arrival_order"),
         ],
-        "not_run": "closed-period decision from 1C period settings, contract currency lookup, and total != lines+VAT "
-                   "refusal are not implemented in the offline package (gaps G1, G2); concurrent reservations need PostgreSQL",
+        "not_run": "the closed-period observation itself comes from the 1C read (no producer of period_closed yet), "
+                   "contract currency lookup, and the VAT-inclusive convention against the real 1C includes-VAT flag "
+                   "(open operator decision); concurrent reservations need PostgreSQL",
     },
     "E11": {
         "status": "PARTIAL",
@@ -1218,7 +1243,7 @@ SCENARIO_MAP = {
                    "port in this file only stands in for it",
     },
     "E24": {
-        "status": "PARTIAL",
+        "status": "PASS",
         "offline": [
             _t("test_e24_queued_expiry_period_change_and_exhausted_grant_are_refused_with_zero_port_calls"),
             _t("test_e24_claim_expired_while_queued_is_released_as_expired_and_cannot_resume"),
@@ -1226,8 +1251,8 @@ SCENARIO_MAP = {
             _t("test_e24_expiry_while_the_outcome_is_unknown_keeps_the_reservation_and_never_fails_the_apply"),
             _o("test_t5x_ttl_expiry_releases_everything_and_supersedes_the_token"),
         ],
-        "not_run": "no PERIOD_CLOSED or GRANT_EXHAUSTED error code exists in the 36-code registry (gap G2): the offline "
-                   "package maps them to DIGEST_MISMATCH and BUDGET_EXCEEDED; real period state comes from 1C",
+        "not_run": "the real closed-period observation from 1C (no producer of period_closed yet) and SQL ledger "
+                   "emission of GRANT_EXHAUSTED (migrations still raise BUDGET_EXCEEDED)",
     },
     "E29": {
         "status": "PARTIAL",

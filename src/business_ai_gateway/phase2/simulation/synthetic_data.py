@@ -86,7 +86,7 @@ class SyntheticGenerator:
             price = Decimal(rng.randint(100, 99999)) / Decimal(100)
             item = rng.choice(u.items)
             vat_code = rng.choice(u.vat_codes)
-            amount = quantity * price
+            amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)  # CR-395: amount rule
             built.append(Line(item, _canon(quantity), _canon(price), vat_code, _canon(amount),
                               _canon(_synthetic_vat_amount(amount, vat_code))))
         document_date = date(2026, 1, 1) + timedelta(days=rng.randrange(0, 280))

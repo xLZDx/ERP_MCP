@@ -1251,3 +1251,9 @@ Decision: rename script helpers so pytest does not collect them instead of addin
 
 
 Decision: record the clone results as partial live evidence; keep real POST/UNPOST and the update-interval race NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_397.md`.
+
+## 2026-10-28 - S12 contract amendment: amount consistency and distinct refusal codes
+
+
+
+Decision (operator answers, auto-accepted recommended options, revisable): refuse proposals whose amount or VAT amount contradict quantity x price and the VAT rate; add PERIOD_CLOSED and GRANT_EXHAUSTED. Assumption: VAT-inclusive convention, so the production binding must set the 1C includes-VAT constant to TRUE. SQL migrations unchanged. Detail: `docs/phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md`, `docs/phase2/CHANGE_RECORD_395.md`.

@@ -12,6 +12,7 @@ Authority: EVALUATION_ONLY. Nothing here is a live or native-1C result.
 | 2. New file | `... -m pytest tests/phase2/test_s12_exit_scenarios_offline.py -q -p no:cacheprovider` | 369 passed |
 | 3. Combined | the four files above in one invocation | 914 passed, 34 skipped, 0 failed |
 | 4. Lint | `... -m ruff check tests/phase2/test_s12_exit_scenarios_offline.py` | All checks passed |
+| 5. CR-395 re-run | `... -m pytest -q -p no:cacheprovider` over 50 files (test_change_*, test_s12_*, test_s14*, files importing `phase2.change`, `phase2.simulation`, `erp_mcp_private_writer`; `ERP_PHASE2_TEST_DSN` = own postgres:16.14 container) | 2143 passed, 6 skipped (test_change_ledger_dump_restore: needs r2-s13-dump-* containers), 0 failed |
 
 The other `test_change_*_sql.py`, `test_change_ledger_dump_restore.py`, `test_change_registry_sql.py`, `test_change_sweeps_sql.py` files need PostgreSQL and were not run.
 
@@ -25,14 +26,14 @@ The new file drives the real `apply_transition` engine through a small driver (`
 | --- | --- | --- | --- |
 | E4 | PASS | `test_e4_*` (7 tests), `test_t4_refusals`, `test_t6_refusals_per_guard` | ledger rows and B snapshot (PostgreSQL + 1C) |
 | E5 | PASS | `test_e5_*` (4 tests incl. caller-class parametrization), cross-class matrix tests | token audience/scope, 1C rights |
-| E6 | PARTIAL | limit boundaries, negative/non-decimal, window first/last instant and +03:00 offset, currency, VAT 0/10/20, mixed VAT, scope, all arrival orders of the budget | closed-period from 1C settings; contract currency lookup; total != lines+VAT refusal (G1, G2); concurrent reservations |
+| E6 | PASS (offline) | limit boundaries (exhausted vs exceeded), negative/non-decimal, window first/last instant and +03:00 offset, currency, VAT 0/10/20 with rate-consistent amounts, mixed VAT, scope, all arrival orders of the budget; total != lines+VAT refused as `AMOUNT_INCONSISTENT` on both parse paths (`test_s12_amendment_395_offline.py`, G1); closed period as `PERIOD_CLOSED` (G2) | real closed-period observation from 1C (no `period_closed` producer yet); contract currency lookup; VAT-inclusive convention vs the real 1C includes-VAT flag (open operator decision); concurrent reservations |
 | E11 | PARTIAL | off writes once; unavailable store = STOP_EFFECTS for every subject; matrix tests | real store and port counter |
 | E13 | PARTIAL | checkpoint/ownership-row failures give zero port calls and never APPLIED | raising audit sink, service layer, 1C snapshot |
 | E14 | PARTIAL | own approval needed, parent verified, digest change, nonce replay, expiry, expired grant | posted flag and registrar rows in B |
 | E15 | PASS (offline half) | closed catalogue, delete/pay fields refused | natural-language mapping above this package; E42 indirect paths |
 | E20 | PASS (model) | 47 interleavings of approve/claim/begin with edit/revoke/role change, oracle written from the scenario | multi-process races |
 | E23 | PARTIAL | version check before any call; edit inside compare-and-write gives PRE_WRITE refusal, FAILED_APPLY, reservation released | the real compare-and-write and B snapshot |
-| E24 | PARTIAL | queued: expired, digest (period analogue), exhausted grant; running: write completes, reservation consumed, no new step; unknown outcome keeps reservation | PERIOD_CLOSED / GRANT_EXHAUSTED codes absent (G2); real period state |
+| E24 | PASS (offline) | queued: expired, `PERIOD_CLOSED` (with and without a digest change), `GRANT_EXHAUSTED`; window miss and oversized request stay `BUDGET_EXCEEDED`; running: write completes, reservation consumed, no new step; unknown outcome keeps reservation | real period state from 1C; SQL ledger still raises `BUDGET_EXCEEDED` for an exhausted grant (migrations not edited) |
 | E29 | PARTIAL | no approve for the author class, spoofed fields refused, chat-like text is inert data | absence of an approve tool on the MCP surface; HTTP rejection |
 | E32 | PARTIAL | 4 scopes, cross-company claim, cross-execution, revoked role, IdP outage (blank evidence refuses all 24 events), mixed-source refs | denial at the port, real IdP, altered queue row |
 | E38 | PARTIAL | exact-limit chain create/post/unpost with invariant after each step, mixed currency, unknown keeps reservation | parallel processes, CT13 three-limit matrix on rows |
@@ -43,6 +44,6 @@ The new file drives the real `apply_transition` engine through a small driver (`
 
 No defect was found in `src/business_ai_gateway/phase2/change`, and no source or existing test was changed. Two failures during authoring were wrong test expectations (guard order: `CLAIM_EXPIRED` precedes `APPROVAL_EXPIRED`; ref scope check precedes shape check) and were corrected in the new file.
 
-- G1 (product/spec gap, not fixed): `parse_proposal` accepts a line `amount` / `vat_amount` that disagrees with quantity * price and the VAT rate. The numbers are digest-bound, so the approver sees them, but E6 "a total different from lines+VAT" is not refused offline. Needs a spec decision (rounding and VAT rules) before code.
-- G2: the 36-code registry has no `PERIOD_CLOSED` or `GRANT_EXHAUSTED`; the model reports these as `DIGEST_MISMATCH` and `BUDGET_EXCEEDED`. The plan text names them; decide whether to add codes or amend the plan.
-- G3: the package has no operator-facing in-flight/unresolved listing or status projection (E41, E45 parts).
+- G1 (RESOLVED by CR-395, 2026-10-28): `parse_proposal` / `parse_writer_payload` now refuse a line whose amount differs from round(quantity x price, 2) or whose VAT differs from round(amount x rate / (100 + rate), 2) (VAT0/10/20; other codes: amount check only) with `AMOUNT_INCONSISTENT`. Evidence: `tests/phase2/test_s12_amendment_395_offline.py` (amount, VAT, half-up edges, zero rate, unknown code, wide operands, both paths) and `test_e6_total_amount_different_from_lines_plus_vat_is_refused_as_amount_inconsistent`. Open: VAT-inclusive convention requires the writer to set the 1C includes-VAT flag TRUE.
+- G2 (RESOLVED by CR-395): the registry has 39 codes; `PERIOD_CLOSED` (T6, only for a positively observed closed period) and `GRANT_EXHAUSTED` (reserved + consumed >= limit, positive request) are distinct. Evidence: `test_s12_amendment_395_offline.py`, `test_e24_*`, `test_t6_refusals_per_guard`, `test_t5_refusals_per_guard`. Not done: `period_closed` producer (1C read), SQL ledger emission of `GRANT_EXHAUSTED`.
+- G3 (STILL OPEN): the package has no operator-facing in-flight/unresolved listing or status projection (E41, E45 parts).

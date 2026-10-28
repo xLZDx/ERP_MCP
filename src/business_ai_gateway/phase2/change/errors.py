@@ -1,6 +1,7 @@
 """Phase 2 sprint S12: the closed error-code registry of section 10 of the interface contract.
 
-Offline and pure. One fixed message and one fixed next action per ``ErrorCode``; the render functions take a
+Offline and pure. The registry has 39 codes: the 36 of the frozen contract plus three added by the 2026-10-28
+amendment (``AMOUNT_INCONSISTENT``, ``PERIOD_CLOSED``, ``GRANT_EXHAUSTED``). One fixed message and one fixed next action per ``ErrorCode``; the render functions take a
 code and nothing else, so no payload content, credential, foreign tenant id or path can be echoed. A value that
 is not an ``ErrorCode`` renders as ``SCHEMA_INVALID``. Authority is ``EVALUATION_ONLY``.
 """
@@ -51,6 +52,13 @@ class ErrorCode(StrEnum):
     VERIFY_FAILED = "VERIFY_FAILED"
     MARKER_UNTRUSTED = "MARKER_UNTRUSTED"
     EVIDENCE_UNSIGNED = "EVIDENCE_UNSIGNED"
+    # Added by the S12 contract amendment of 2026-10-28 (docs/phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md).
+    AMOUNT_INCONSISTENT = "AMOUNT_INCONSISTENT"  # a line amount or VAT amount disagrees with quantity, price, rate
+    PERIOD_CLOSED = "PERIOD_CLOSED"  # the accounting period of the target was observed closed at begin_apply
+    # GRANT_EXHAUSTED: the grant has no remaining amount (reserved + consumed already equal the limit) and a positive
+    # amount was requested. BUDGET_EXCEEDED stays for every other budget refusal: a positive request that is larger
+    # than a non-zero remainder, a request outside the grant window, an unknown or inactive grant.
+    GRANT_EXHAUSTED = "GRANT_EXHAUSTED"
 
 
 class NextAction(StrEnum):
@@ -109,6 +117,10 @@ ERROR_INFO: Final = MappingProxyType({
     _E.MARKER_UNTRUSTED: ErrorInfo("The marker is not accepted as evidence.", _A.NO_ACTION),
     _E.EVIDENCE_UNSIGNED: ErrorInfo("The evidence record is not signed or not bound to this change.",
                                     _A.CONTACT_OPERATOR),
+    _E.AMOUNT_INCONSISTENT: ErrorInfo("The line amounts do not match the quantity, price and VAT rate.",
+                                      _A.FIX_REQUEST),
+    _E.PERIOD_CLOSED: ErrorInfo("The accounting period is closed.", _A.CONTACT_OPERATOR),
+    _E.GRANT_EXHAUSTED: ErrorInfo("The budget grant has no remaining amount.", _A.CONTACT_OPERATOR),
 })
 if (set(ERROR_INFO) != set(ErrorCode) or any(type(i.message) is not str or not i.message or "{" in i.message
                                              or type(i.next_action) is not NextAction

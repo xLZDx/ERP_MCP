@@ -179,6 +179,8 @@ def reserve(grant: object, amount: object, currency: object, now: object) -> Gra
         return ErrorCode.CURRENCY_NOT_BUDGETED
     if not grant.valid_from <= now < grant.valid_to:  # type: ignore[operator]
         return ErrorCode.BUDGET_EXCEEDED
+    if grant.reserved + grant.consumed >= grant.limit and amount > 0:  # type: ignore[operator]
+        return ErrorCode.GRANT_EXHAUSTED  # nothing remains at all; a larger-than-remainder request stays BUDGET_EXCEEDED
     if grant.reserved + grant.consumed + amount > grant.limit:  # type: ignore[operator]
         return ErrorCode.BUDGET_EXCEEDED
     return replace(grant, reserved=grant.reserved + amount)  # type: ignore[operator]

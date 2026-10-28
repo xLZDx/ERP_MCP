@@ -24,6 +24,7 @@ from business_ai_gateway.phase2.change.proposal import (
 pytestmark = pytest.mark.integration
 
 SCOPE = Scope("tenant-1", "company-1", "org-1", "base-1")
+# CR-395: VAT20 would refuse every value but 3.5; a rate code outside the closed table leaves vat_amount free data here
 VAT_VALUES = ("0", "3.5", "1234.56")
 
 
@@ -31,7 +32,7 @@ def _typed(vat_amount: str) -> DraftPayload:
     raw = {
         "organization_ref": "org-1", "counterparty_ref": "cp-1", "contract_ref": "ct-1",
         "supplier_document_number": "N-1", "supplier_document_date": "2026-10-01", "currency": "RUB",
-        "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VAT20",
+        "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VATX",
                    "amount": "21", "vat_amount": vat_amount}],
         "comment": "note",
     }
