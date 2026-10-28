@@ -326,6 +326,73 @@ def test_extra_controls_beyond_the_required_set_keep_coverage():
     assert len(report.outcomes) == 20
 
 
+# --- CR-390: coverage compares the exact canonical controls, not id prefixes -------------------------------
+
+def _swap(controls, control_id, replacement):
+    return tuple(replacement if c.control_id == control_id else c for c in controls)
+
+
+def test_a_renamed_substitute_with_the_required_prefix_does_not_satisfy_coverage():
+    # P01_WRONG_ACCOUNT is replaced by a different, red control that merely starts with "P01".
+    substitute = Control("P01_SUBSTITUTE", "plan", "x", "reads 61 instead of 41 debit",
+                         movement_ops=(MovementOp("replace", 0, "debit", "61"),))
+    report = run_all(_swap(NEGATIVE_CONTROLS, "P01_WRONG_ACCOUNT", substitute))
+    assert report.undetected == ()  # the substitute itself is red ...
+    assert len(report.outcomes) == 19
+    assert report.covers_required_set is False  # ... but the required control never ran
+    assert report.all_detected is False
+
+
+def test_a_substitute_using_only_the_bare_required_id_does_not_satisfy_coverage():
+    substitute = Control("F03", "s14_fact", "x", "header.incoming_date reads 2026-01-15 instead",
+                         mutations=(Mutation("header", "header.incoming_date",
+                                             "2026-01-15T00:00:00"),))
+    report = run_all(_swap(NEGATIVE_CONTROLS, "F03_DATE_SHIFT_ONE_DAY", substitute))
+    assert report.undetected == ()
+    assert report.covers_required_set is False and report.all_detected is False
+
+
+def test_a_substitute_with_the_canonical_id_but_different_content_does_not_satisfy_coverage():
+    weaker = Control("P06_DISTORTED_AMOUNT", "plan", "Amount differs on the first movement line",
+                     "movement value reads 20.02 instead of 20.00",
+                     movement_ops=(MovementOp("replace", 0, "amount", "20.02"),))
+    report = run_all(_swap(NEGATIVE_CONTROLS, "P06_DISTORTED_AMOUNT", weaker))
+    assert report.undetected == () and len(report.outcomes) == 19  # still red when run
+    assert report.covers_required_set is False
+    assert report.all_detected is False
+
+
+def test_a_substitute_with_the_canonical_id_that_distorts_nothing_is_undetected_and_uncovered():
+    hollow = Control("F08_POSTED_DRAFT", "s14_fact", "The draft is stored as posted",
+                     "document posted flag reads True instead of False")  # no mutation
+    report = run_all(_swap(NEGATIVE_CONTROLS, "F08_POSTED_DRAFT", hollow))
+    assert report.undetected == ("F08_POSTED_DRAFT",)
+    assert report.covers_required_set is False and report.all_detected is False
+
+
+@pytest.mark.parametrize("control", NEGATIVE_CONTROLS, ids=[c.control_id for c in NEGATIVE_CONTROLS])
+@pytest.mark.parametrize("field", ["description", "observable_note", "group"])
+def test_changing_any_single_field_of_a_required_control_breaks_coverage(control, field):
+    changed = dataclasses.replace(control, **{field: getattr(control, field) + "!"})
+    report = run_all(_swap(NEGATIVE_CONTROLS, control.control_id, changed))
+    assert report.covers_required_set is False
+    assert report.all_detected is False
+
+
+def test_the_exact_canonical_controls_are_covered_regardless_of_order():
+    report = run_all(tuple(reversed(NEGATIVE_CONTROLS)))
+    assert report.covers_required_set is True and report.all_detected is True
+
+
+def test_a_prefix_only_extra_control_neither_replaces_nor_breaks_the_canonical_one():
+    extra = Control("P01_OTHER", "plan", "x", "reads 62 instead of 41 debit",
+                    movement_ops=(MovementOp("replace", 0, "debit", "62"),))
+    assert run_all(NEGATIVE_CONTROLS + (extra,)).all_detected is True
+    partial = tuple(c for c in NEGATIVE_CONTROLS if c.control_id != "P01_WRONG_ACCOUNT")
+    report = run_all(partial + (extra,))
+    assert report.covers_required_set is False and report.all_detected is False
+
+
 def test_a_failed_pre_flight_baseline_makes_all_detected_false_even_if_every_control_is_red(
         monkeypatch):
     posted = dataclasses.replace(nc.baseline_stored_document(), posted=True)

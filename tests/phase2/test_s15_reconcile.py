@@ -30,6 +30,7 @@ from erp_mcp_s15.reconcile import (
 
 C = ReconcileStatus
 APPLIED, UNKNOWN, PENDING = "APPLIED", "UNKNOWN_OUTCOME", "PENDING"
+SCOPE = "supplier_receipt:company-1"  # the population the caller requires (CR-390, M-01)
 CLEAN_REPORT = ReconciliationReport(Trigger.STARTUP, ReconcileStatus.CLEAN)
 DIRTY_REPORT = ReconciliationReport(Trigger.STARTUP, ReconcileStatus.DIRTY)
 
@@ -109,8 +110,10 @@ class FakeOneC:
     """Read port; every attribute outside the read port is recorded as an unexpected call."""
 
     def __init__(self, docs=(), complete=True, list_error=None, find_error=None, payload=None,
-                 find_docs=None, find_payload=None):
+                 find_docs=None, find_payload=None, scope=SCOPE, enumerates_unmarked=True):
         self.docs = list(docs)
+        self.scope = scope
+        self.enumerates_unmarked = enumerates_unmarked
         self.find_docs = find_docs  # what the marker lookup sees when it differs from the listing
         self.find_payload = find_payload  # raw lookup result (overrides everything)
         self.complete = complete
@@ -128,7 +131,8 @@ class FakeOneC:
             raise self.list_error
         if self.payload is not None:
             return self.payload
-        return OneCListing(self.complete, tuple(self.docs))
+        return OneCListing(self.complete, tuple(self.docs), population_scope=self.scope,
+                           enumerates_unmarked=self.enumerates_unmarked)
 
     def find_by_change_id(self, change_id):
         self.find_calls.append(change_id)
@@ -154,7 +158,30 @@ def kinds(report):
 
 
 def run_reconcile(ledger, onec, trigger=Trigger.STARTUP, **kw):
+    kw.setdefault("required_scope", SCOPE)
     return reconcile(trigger, ledger, onec, **kw)
+
+
+def onec_listing(documents=(), **kw):  # documents passed through untouched (malformed on purpose)
+    """A well-formed listing that declares the required population; ``kw`` overrides fields."""
+    kw.setdefault("population_scope", SCOPE)
+    kw.setdefault("enumerates_unmarked", True)
+    return OneCListing(kw.pop("complete", True), documents, **kw)
+
+
+class MarkerIndexOnlyOneC(FakeOneC):
+    """A reader backed by the marker index only: it lists marked documents and honestly declares
+    that it does not enumerate unmarked ones. ``hidden`` documents exist in 1C but are invisible
+    to this reader (an unmarked out-of-band document)."""
+
+    def __init__(self, docs=(), hidden=(), **kw):
+        super().__init__(docs, enumerates_unmarked=False, **kw)
+        self.hidden = list(hidden)
+
+
+class FullPopulationOneC(FakeOneC):
+    """A reader that enumerates the whole population, marked or not, and says so (the default
+    FakeOneC behaviour, named for readability of the tests that contrast it with the index)."""
 
 
 # --- clean state and labels ----------------------------------------------------------------------
@@ -359,13 +386,13 @@ BAD_LEDGER_PAYLOADS = [
     LedgerListing(True, None),
 ]
 BAD_ONEC_PAYLOADS = [
-    OneCListing(True, ("not-a-doc",)),
-    OneCListing(True, (OneCDocument(1, "c1", "h", "h"),)),
-    OneCListing(True, (OneCDocument("r", 5, "h", "h"),)),
-    OneCListing(True, (OneCDocument("r", "c1", 5, "h"),)),
-    OneCListing(True, (OneCDocument("r", "c1", "h", None),)),
-    OneCListing(True, {doc("c1")}),
-    OneCListing(True, None),
+    onec_listing(("not-a-doc",)),
+    onec_listing((OneCDocument(1, "c1", "h", "h"),)),
+    onec_listing((OneCDocument("r", 5, "h", "h"),)),
+    onec_listing((OneCDocument("r", "c1", 5, "h"),)),
+    onec_listing((OneCDocument("r", "c1", "h", None),)),
+    onec_listing({doc("c1")}),
+    onec_listing(None),
 ]
 
 
@@ -390,6 +417,7 @@ def test_malformed_1c_element_is_inconclusive_with_a_reason(payload):
 def test_an_internal_failure_inside_the_check_is_inconclusive_with_the_exception_class():
     # A non-numeric lookup cap fails inside the comparison body; reconcile must not raise.
     report = reconcile(Trigger.STARTUP, FakeLedger([change("c9", UNKNOWN)]), FakeOneC([]),
+                       required_scope=SCOPE,
                        max_unknown_lookups=None)  # type: ignore[arg-type]
     assert report.status is C.INCONCLUSIVE
     assert report.reason == "INTERNAL_ERROR:TypeError"
@@ -569,6 +597,7 @@ def make_runner(ledger, onec, enabled=True, interval=60.0, clock=None, max_age=1
     flag = {"on": enabled}
     clock = Clock() if clock is None else clock
     gate = ApplyGate(lambda: flag["on"], max_age, clock)
+    kw.setdefault("required_scope", SCOPE)
     return ReconciliationRunner(ledger, onec, gate, interval, clock=clock, **kw), gate, flag
 
 
@@ -647,14 +676,15 @@ def test_every_trigger_run_reads_both_sides_afresh():
 @pytest.mark.parametrize("interval", [0, -1, -0.5, float("nan")])
 def test_runner_rejects_a_non_positive_interval(interval):
     with pytest.raises(ValueError, match="RECONCILE_INTERVAL_INVALID"):
-        ReconciliationRunner(FakeLedger(), FakeOneC(), ApplyGate(lambda: True, 10.0), interval)
+        ReconciliationRunner(FakeLedger(), FakeOneC(), ApplyGate(lambda: True, 10.0), interval,
+                             required_scope=SCOPE)
 
 
 @pytest.mark.parametrize("retry", [0, -1, float("nan")])
 def test_runner_rejects_a_non_positive_retry_interval(retry):
     with pytest.raises(ValueError, match="RECONCILE_RETRY_INTERVAL_INVALID"):
         ReconciliationRunner(FakeLedger(), FakeOneC(), ApplyGate(lambda: True, 10.0), 60.0,
-                             retry_interval_seconds=retry)
+                             required_scope=SCOPE, retry_interval_seconds=retry)
 
 
 @pytest.mark.parametrize("max_age", [0, -1, float("nan")])
@@ -832,11 +862,11 @@ def test_an_exception_escaping_reconcile_becomes_a_runner_error_and_blocks_the_g
 
 def test_a_gate_that_fails_to_record_is_reported_as_a_runner_error_not_raised():
     class BrokenGate(ApplyGate):
-        def record(self, report, epoch=None):
+        def record(self, report, epoch, observed_at=None):
             raise OSError("disk")
 
     gate = BrokenGate(lambda: True, 10.0)
-    runner = ReconciliationRunner(FakeLedger(), FakeOneC(), gate, 60.0)
+    runner = ReconciliationRunner(FakeLedger(), FakeOneC(), gate, 60.0, required_scope=SCOPE)
     report = runner.run(Trigger.STARTUP)
     assert report.status is C.INCONCLUSIVE and report.reason == "RUNNER_ERROR:OSError"
     assert runner.status().consecutive_non_clean == 1
@@ -921,9 +951,9 @@ def test_only_a_clean_report_unblocks(make_report_state):
 def test_a_non_clean_report_closes_a_gate_that_was_clean():
     clock = Clock(0.0)
     gate = ApplyGate(lambda: True, 100.0, clock)
-    assert gate.record(CLEAN_REPORT) is True
+    assert gate.record(CLEAN_REPORT, gate.epoch) is True
     assert gate.applies_blocked() is False
-    assert gate.record(DIRTY_REPORT) is True
+    assert gate.record(DIRTY_REPORT, gate.epoch) is True
     assert gate.applies_blocked() is True
     assert gate.clean_at is None
 
@@ -932,7 +962,7 @@ def test_a_non_clean_report_closes_a_gate_that_was_clean():
 
 def test_mark_restore_bumps_the_epoch_blocks_and_forgets_the_clean_time():
     gate = ApplyGate(lambda: True, 100.0, Clock(5.0))
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     assert gate.epoch == 0 and gate.clean_at == 5.0
     gate.mark_restore()
     assert gate.epoch == 1 and gate.clean_at is None
@@ -950,14 +980,32 @@ def test_a_clean_report_from_before_the_restore_is_discarded_and_does_not_unbloc
     assert gate.clean_at is None
 
 
-def test_a_report_with_the_current_epoch_or_without_one_is_applied():
+def test_a_report_with_the_current_epoch_is_applied():
     gate = ApplyGate(lambda: True, 100.0, Clock())
     gate.mark_restore()
     assert gate.record(CLEAN_REPORT, gate.epoch) is True
     assert gate.applies_blocked() is False
     gate.mark_restore()
-    assert gate.record(CLEAN_REPORT) is True  # None means "current"
+    assert gate.applies_blocked() is True
+    assert gate.record(CLEAN_REPORT, gate.epoch) is True
     assert gate.applies_blocked() is False
+
+
+def test_record_requires_an_epoch_and_a_call_without_one_changes_nothing():
+    # CR-390 N-03: the epoch is mandatory, "None means current" no longer exists.
+    gate = ApplyGate(lambda: True, 100.0, Clock())
+    with pytest.raises(TypeError):
+        gate.record(CLEAN_REPORT)  # type: ignore[call-arg]
+    assert gate.applies_blocked() is True
+    assert gate.clean_at is None
+
+
+def test_a_stale_epoch_is_discarded_even_for_a_clean_report_with_observed_at():
+    gate = ApplyGate(lambda: True, 100.0, Clock(50.0))
+    old = gate.epoch
+    gate.mark_restore()
+    assert gate.record(CLEAN_REPORT, old, 10.0) is False
+    assert gate.clean_at is None and gate.applies_blocked() is True
 
 
 def test_a_stale_non_clean_report_is_discarded_as_well():
@@ -980,7 +1028,8 @@ def test_a_periodic_report_finishing_after_a_restore_leaves_the_gate_blocked():
     clock.now = 61.0
     report = runner.tick()
     ledger.on_list = None
-    assert report.status is C.CLEAN  # computed from pre-restore data ...
+    # computed from pre-restore data, so the CLEAN is discarded and reported as stale (CR-390 N-01)
+    assert report.status is C.INCONCLUSIVE and report.reason == "STALE_EPOCH"
     assert gate.epoch == 1
     assert gate.applies_blocked() is True  # ... and must not unblock the post-restore gate
     with pytest.raises(ApplyBlockedError):
@@ -1138,7 +1187,7 @@ def test_a_failing_writer_flag_is_enabled_and_blocking_and_raises_the_apply_refu
 @pytest.mark.parametrize("value", [None, 0, True])
 def test_an_enabled_but_unclear_flag_is_still_open_after_a_fresh_clean_run(value):
     gate = ApplyGate(lambda: value, 10.0, Clock())
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     assert gate.applies_blocked() is False
 
 
@@ -1147,14 +1196,14 @@ def test_an_enabled_but_unclear_flag_is_still_open_after_a_fresh_clean_run(value
 def test_clean_expires_after_the_max_age_and_a_new_clean_reopens_the_gate():
     clock = Clock(0.0)
     gate = ApplyGate(lambda: True, 30.0, clock)
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     clock.now = 30.0
     assert gate.applies_blocked() is False  # exactly max_age is still fresh
     clock.now = 30.001
     assert gate.applies_blocked() is True
     with pytest.raises(ApplyBlockedError, match="RECONCILIATION_NOT_CLEAN"):
         gate.ensure_apply_allowed()
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     assert gate.applies_blocked() is False
 
 
@@ -1162,7 +1211,7 @@ def test_an_expired_clean_does_not_block_while_the_writer_is_disabled():
     clock = Clock(0.0)
     flag = {"on": False}
     gate = ApplyGate(lambda: flag["on"], 30.0, clock)
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     clock.now = 500.0
     assert gate.applies_blocked() is False
     flag["on"] = True
@@ -1172,7 +1221,7 @@ def test_an_expired_clean_does_not_block_while_the_writer_is_disabled():
 def test_a_clock_that_went_backwards_never_leaves_a_clean_open():
     clock = Clock(100.0)
     gate = ApplyGate(lambda: True, 30.0, clock)
-    gate.record(CLEAN_REPORT)
+    gate.record(CLEAN_REPORT, gate.epoch)
     assert gate.applies_blocked() is False
     clock.now = 50.0
     assert gate.applies_blocked() is True
@@ -1188,3 +1237,255 @@ def test_a_stalled_scheduler_lets_the_clean_expire_until_the_next_clean_tick():
     assert gate.applies_blocked() is True
     assert runner.tick() is not None
     assert gate.applies_blocked() is False
+
+
+# --- CR-390 M-01: the 1C population must be established, not assumed -----------------------------------------
+
+def test_marker_index_only_reader_with_a_hidden_unmarked_document_is_never_clean():
+    # The defect: the reader only sees marked documents, so an unmarked out-of-band document
+    # that exists in 1C is invisible and the old check reported CLEAN.
+    onec = MarkerIndexOnlyOneC([doc("c1")], hidden=[doc(None, "ref-oob", marker=None)])
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.INCONCLUSIVE
+    assert report.status is not C.CLEAN
+    assert report.reason == "POPULATION_NOT_ESTABLISHED"
+    assert report.findings == ()
+
+
+def test_full_population_reader_sees_the_unmarked_document_and_is_dirty():
+    onec = FullPopulationOneC([doc("c1"), doc(None, "ref-oob", marker=None)])
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.DIRTY
+    assert report.reason == ""
+    assert [(f.kind, f.document_ref) for f in report.findings] == [
+        ("UNMARKED_DOCUMENT", "ref-oob")]
+
+
+def test_full_population_reader_without_unmarked_documents_is_clean():
+    # Guards against an over-eager fix that makes every listing INCONCLUSIVE.
+    report = run_reconcile(FakeLedger([change("c1")]), FullPopulationOneC([doc("c1")]))
+    assert report.status is C.CLEAN and report.reason == ""
+
+
+def test_marker_index_only_reader_is_inconclusive_even_when_ledger_and_index_agree_perfectly():
+    report = run_reconcile(FakeLedger(), MarkerIndexOnlyOneC([]))
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+@pytest.mark.parametrize("declared", ["supplier_receipt:company-2", "SUPPLIER_RECEIPT:COMPANY-1",
+                                      " supplier_receipt:company-1", "supplier_receipt:company-1 ",
+                                      "supplier_receipt", ""],
+                         ids=["other_company", "case_differs", "leading_space", "trailing_space",
+                              "prefix_only", "empty"])
+def test_a_declared_scope_that_is_not_exactly_the_required_scope_is_inconclusive(declared):
+    onec = FakeOneC([doc("c1")], scope=declared)
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+@pytest.mark.parametrize("declared", [None, 7, b"supplier_receipt:company-1", ["x"], True],
+                         ids=["none", "int", "bytes", "list", "bool"])
+def test_a_non_text_declared_scope_is_inconclusive(declared):
+    onec = FakeOneC([doc("c1")], scope=declared)
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+class StrSubclass(str):
+    pass
+
+
+def test_a_str_subclass_scope_is_not_accepted_as_the_declared_scope():
+    onec = FakeOneC([doc("c1")], scope=StrSubclass(SCOPE))
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+@pytest.mark.parametrize("flag", [1, "yes", "True", [True], object(), None, 0, ""],
+                         ids=["one", "yes", "text_true", "list", "object", "none", "zero",
+                              "empty_text"])
+def test_enumerates_unmarked_must_be_exactly_true(flag):
+    onec = FakeOneC([doc("c1")], enumerates_unmarked=flag)
+    report = run_reconcile(FakeLedger([change("c1")]), onec)
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+@pytest.mark.parametrize("required", ["", None, 5, b"x", ["x"]],
+                         ids=["empty", "none", "int", "bytes", "list"])
+def test_an_empty_or_non_text_required_scope_never_yields_clean(required):
+    # Even a reader declaring the same empty/non-text scope cannot satisfy a bad requirement.
+    onec = FakeOneC([doc("c1")], scope=required)
+    report = reconcile(Trigger.STARTUP, FakeLedger([change("c1")]), onec,
+                       required_scope=required)  # type: ignore[arg-type]
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+
+
+def test_required_scope_is_keyword_only_and_mandatory():
+    with pytest.raises(TypeError):
+        reconcile(Trigger.STARTUP, FakeLedger(), FakeOneC())  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        reconcile(Trigger.STARTUP, FakeLedger(), FakeOneC(), SCOPE)  # type: ignore[misc]
+
+
+def test_onec_listing_requires_the_population_declaration_keywords():
+    with pytest.raises(TypeError):
+        OneCListing(True, ())  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        OneCListing(True, (), population_scope=SCOPE)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        OneCListing(True, (), enumerates_unmarked=True)  # type: ignore[call-arg]
+
+
+def test_listing_incomplete_outranks_the_population_check():
+    onec = FakeOneC([], complete=False, enumerates_unmarked=False)
+    report = run_reconcile(FakeLedger(), onec)
+    assert report.reason == "LISTING_INCOMPLETE"
+
+
+def test_population_not_established_is_decided_before_any_marker_lookup():
+    onec = MarkerIndexOnlyOneC([doc("c9")])
+    report = run_reconcile(FakeLedger([change("c9", UNKNOWN)]), onec)
+    assert report.reason == "POPULATION_NOT_ESTABLISHED"
+    assert onec.find_calls == [] and report.unknown_outcomes == ()
+
+
+@pytest.mark.parametrize("scope", ["", None, 5, b"x", ["x"]],
+                         ids=["empty", "none", "int", "bytes", "list"])
+def test_runner_rejects_an_empty_or_non_text_required_scope(scope):
+    with pytest.raises(ValueError, match="RECONCILE_REQUIRED_SCOPE_INVALID"):
+        ReconciliationRunner(FakeLedger(), FakeOneC(), ApplyGate(lambda: True, 10.0), 60.0,
+                             required_scope=scope)
+
+
+def test_runner_requires_the_scope_keyword():
+    with pytest.raises(TypeError):
+        ReconciliationRunner(FakeLedger(), FakeOneC(),  # type: ignore[call-arg]
+                             ApplyGate(lambda: True, 10.0), 60.0)
+
+
+def test_runner_with_a_marker_index_only_reader_keeps_the_gate_blocked_and_never_clean():
+    onec = MarkerIndexOnlyOneC([doc("c1")], hidden=[doc(None, "ref-oob", marker=None)])
+    runner, gate, _ = make_runner(FakeLedger([change("c1")]), onec)
+    report = runner.run(Trigger.STARTUP)
+    assert report.status is C.INCONCLUSIVE and report.reason == "POPULATION_NOT_ESTABLISHED"
+    assert gate.applies_blocked() is True
+    assert runner.status().last_clean_at is None
+    assert runner.status().consecutive_non_clean == 1
+
+
+def test_runner_passes_its_required_scope_to_the_check():
+    onec = FakeOneC([doc("c1")], scope="supplier_receipt:company-2")
+    runner, gate, _ = make_runner(FakeLedger([change("c1")]), onec)  # runner requires company-1
+    assert runner.run(Trigger.STARTUP).reason == "POPULATION_NOT_ESTABLISHED"
+    other, gate2, _ = make_runner(FakeLedger([change("c1")]), onec,
+                                  required_scope="supplier_receipt:company-2")
+    assert other.run(Trigger.STARTUP).status is C.CLEAN
+    assert gate.applies_blocked() is True and gate2.applies_blocked() is False
+
+
+# --- CR-390 N-01: a CLEAN discarded by the epoch check is reported as stale ------------------------------------
+
+def test_a_clean_discarded_by_the_epoch_check_is_stored_and_returned_as_stale_epoch(caplog):
+    ledger, onec = FakeLedger([change("c1")]), FakeOneC([doc("c1")])
+    clock = Clock(0.0)
+    runner, gate, _ = make_runner(ledger, onec, interval=60.0, clock=clock)
+    runner.start()
+    before = runner.status()
+    assert before.last_clean_at == 0.0 and before.consecutive_non_clean == 0
+
+    ledger.on_list = gate.mark_restore  # a restore lands while the next run is reading
+    clock.now = 61.0
+    with caplog.at_level(logging.INFO, logger="erp_mcp_s15.reconcile"):
+        report = runner.tick()
+    ledger.on_list = None
+
+    assert report.status is C.INCONCLUSIVE and report.reason == "STALE_EPOCH"
+    assert report.status is not C.CLEAN
+    status = runner.status()
+    assert status.last_report is report
+    assert status.last_clean_at == 0.0  # the discarded CLEAN did not refresh it
+    assert status.last_run_at == 61.0
+    assert status.consecutive_non_clean == 1
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "STALE_EPOCH" in warnings[0].getMessage() and "INCONCLUSIVE" in warnings[0].getMessage()
+    assert gate.applies_blocked() is True
+
+
+def test_a_stale_epoch_run_makes_the_next_tick_use_the_retry_interval():
+    ledger, onec = FakeLedger([change("c1")]), FakeOneC([doc("c1")])
+    clock = Clock(0.0)
+    runner, gate, _ = make_runner(ledger, onec, interval=40.0, clock=clock)
+    ledger.on_list = gate.mark_restore
+    assert runner.start().reason == "STALE_EPOCH"
+    ledger.on_list = None
+    clock.now = 1.0  # inside the retry window, but a restore is still pending
+    assert runner.tick() is not None
+
+
+def test_a_clean_that_is_not_stale_keeps_clean_and_logs_info_only(caplog):
+    runner, _, _ = make_runner(FakeLedger([change("c1")]), FakeOneC([doc("c1")]))
+    with caplog.at_level(logging.INFO, logger="erp_mcp_s15.reconcile"):
+        report = runner.run(Trigger.STARTUP)
+    assert report.status is C.CLEAN and report.reason == ""
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+# --- CR-390 N-02: CLEAN age counts from before the reads --------------------------------------------------------
+
+def test_gate_now_reads_the_gate_clock():
+    clock = Clock(12.5)
+    gate = ApplyGate(lambda: True, 30.0, clock)
+    assert gate.now() == 12.5
+    clock.now = 99.0
+    assert gate.now() == 99.0
+
+
+def test_record_ages_a_clean_from_observed_at_not_from_the_record_time():
+    clock = Clock(100.0)
+    gate = ApplyGate(lambda: True, 30.0, clock)
+    assert gate.record(CLEAN_REPORT, gate.epoch, 60.0) is True
+    assert gate.clean_at == 60.0
+    assert gate.applies_blocked() is True  # 100 - 60 = 40 > 30
+    assert gate.record(CLEAN_REPORT, gate.epoch, 70.0) is True
+    assert gate.applies_blocked() is False  # 100 - 70 = 30 is still fresh
+    assert gate.record(CLEAN_REPORT, gate.epoch) is True  # default: now
+    assert gate.clean_at == 100.0
+
+
+def test_a_non_clean_record_ignores_observed_at_and_blocks():
+    gate = ApplyGate(lambda: True, 30.0, Clock(10.0))
+    gate.record(CLEAN_REPORT, gate.epoch, 10.0)
+    assert gate.record(DIRTY_REPORT, gate.epoch, 10.0) is True
+    assert gate.applies_blocked() is True and gate.clean_at is None
+
+
+def test_a_slow_run_is_blocked_right_after_its_clean_because_age_counts_from_before_the_reads():
+    max_age = 30.0
+    clock = Clock(0.0)
+    ledger, onec = FakeLedger([change("c1")]), FakeOneC([doc("c1")])
+    runner, gate, _ = make_runner(ledger, onec, clock=clock, max_age=max_age)
+    ledger.on_list = lambda: setattr(clock, "now", clock.now + max_age + 1.0)
+    report = runner.run(Trigger.STARTUP)
+    assert report.status is C.CLEAN  # the data itself was consistent ...
+    assert gate.clean_at == 0.0  # ... but it is dated from before the reads
+    assert gate.applies_blocked() is True  # 31 - 0 > 30: the stale snapshot does not open applies
+    with pytest.raises(ApplyBlockedError):
+        gate.ensure_apply_allowed()
+
+
+def test_a_run_that_advances_the_clock_by_exactly_max_age_is_still_inside_the_window():
+    max_age = 30.0
+    clock = Clock(0.0)
+    ledger = FakeLedger([change("c1")])
+    runner, gate, _ = make_runner(ledger, FakeOneC([doc("c1")]), clock=clock, max_age=max_age)
+    ledger.on_list = lambda: setattr(clock, "now", clock.now + max_age)
+    assert runner.run(Trigger.STARTUP).status is C.CLEAN
+    assert gate.applies_blocked() is False  # boundary: age == max_age is fresh, as for record()
+
+
+def test_a_fast_run_is_unaffected_by_the_earlier_capture_of_the_time():
+    clock = Clock(5.0)
+    runner, gate, _ = make_runner(FakeLedger([change("c1")]), FakeOneC([doc("c1")]), clock=clock)
+    runner.run(Trigger.STARTUP)
+    assert gate.clean_at == 5.0 and gate.applies_blocked() is False

@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 767 tracked paths, 0 local-only paths.
+Inventory: 768 tracked paths, 1 local-only path.
 
 ## Documents in git (scanned refs)
 
@@ -590,6 +590,7 @@ Inventory: 767 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_387.md | Phase 2 design | "Change Record 387 - S15 functional tests" |
 | docs/phase2/CHANGE_RECORD_388.md | Phase 2 design | "Change Record 388 - S15 source fixes from three specialist reviews" |
 | docs/phase2/CHANGE_RECORD_389.md | Phase 2 design | "Change Record 389 - S15 tests adapted and extended after the review fixes" |
+| docs/phase2/CHANGE_RECORD_390.md | Phase 2 design | "Change Record 390 - S15 source fixes from the GPT-PM gate review (M-01, M-02, residual minors)" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -800,7 +801,7 @@ Inventory: 767 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `15f9b704b41ec0bcc9365d9afc659da45de238c3` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `ba01714ca49d65a2a995d0567af0be507b7e5e5e` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
@@ -841,3 +842,4 @@ Inventory: 767 tracked paths, 0 local-only paths.
 
 | Path |
 | --- |
+| docs/phase2/CHANGE_RECORD_391.md |

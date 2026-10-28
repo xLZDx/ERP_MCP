@@ -1213,3 +1213,7 @@ Decision: refresh governance/DOCUMENT_REGISTRY.md with the generator (767 tracke
 ## 2026-10-28 - S15 source fixed after the GPT-PM gate review
 
 Decision: accept both MAJOR findings and the residual minors; a reconciliation listing must prove it enumerates unmarked documents of the required scope, and an A-to-B comparison must prove two distinct source identities. Detail: `docs/phase2/CHANGE_RECORD_390.md`.
+
+## 2026-10-28 - S15 tests for the GPT-PM gate fixes
+
+Decision: 899 agent-run passing tests are the functional evidence after the GPT-PM fixes; the gate re-review is limited to the two MAJOR fixes and their regressions. Detail: `docs/phase2/CHANGE_RECORD_391.md`.
