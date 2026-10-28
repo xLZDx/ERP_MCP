@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 769 tracked paths, 0 local-only paths.
+Inventory: 771 tracked paths, 0 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -592,6 +592,7 @@ Inventory: 769 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_389.md | Phase 2 design | "Change Record 389 - S15 tests adapted and extended after the review fixes" |
 | docs/phase2/CHANGE_RECORD_390.md | Phase 2 design | "Change Record 390 - S15 source fixes from the GPT-PM gate review (M-01, M-02, residual minors)" |
 | docs/phase2/CHANGE_RECORD_391.md | Phase 2 design | "Change Record 391 - S15 tests for the GPT-PM gate fixes" |
+| docs/phase2/CHANGE_RECORD_392.md | Phase 2 design | "Change Record 392 - S16 sprint plan document and operator ordering decision" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -664,6 +665,7 @@ Inventory: 769 tracked paths, 0 local-only paths.
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
 | docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
 | docs/phase2/S15_SPRINT_PLAN_2026-10-27.md | Phase 2 design | "S15 verification and reconciliation - sprint plan (draft, rev 2) - 2026-10-27" |
+| docs/phase2/S16_SPRINT_PLAN_2026-10-28.md | Phase 2 design | "S16 approval channel and MCP surface - sprint plan (draft, rev 1) - 2026-10-28" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
 | docs/phase2/SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 scheduler and drift safety review — 2026-10-09" |
@@ -802,7 +804,7 @@ Inventory: 769 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `c002a4ccceb60b15786ecde80e6a37c65f8d3508` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `16c626e68d9d9cdee97b4d20f32ef5f9409249cf` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
@@ -831,7 +833,7 @@ Inventory: 769 tracked paths, 0 local-only paths.
 | refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e | `c54be14ee82b5dd2b5c8a52d988b8cf7229527a3` |
 | refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307 | `d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39` |
 | refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
-| refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21 | `de7cd6d6a2131ac4af2973d288da9e1c555a9256` |
+| refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21 | `7ccfee86c54af512e07349f2be9b099f27817caf` |
 | refs/remotes/origin/docs/english-only-translation-20261010 | `8d17448cf2788f48a2b3f26eb70800cefed4d992` |
 | refs/remotes/origin/docs/public-readme-install-guide-20261009 | `26324d43e9d42af8512f0f531f98770c0cf7daa0` |
 | refs/remotes/origin/integration/1c-mvp-production-candidate | `78493a3ab5a5d7309aeadd1af21c6b69b6d03448` |
