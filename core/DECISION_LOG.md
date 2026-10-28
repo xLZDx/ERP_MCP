@@ -1245,3 +1245,9 @@ Decision: record the agent-run results at the current head as evidence, keep eve
 
 
 Decision: rename script helpers so pytest does not collect them instead of adding fixtures; keep the scripts runnable. Detail: `docs/phase2/CHANGE_RECORD_396.md`.
+
+## 2026-10-28 - Live clone scenarios recorded
+
+
+
+Decision: record the clone results as partial live evidence; keep real POST/UNPOST and the update-interval race NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_397.md`.
