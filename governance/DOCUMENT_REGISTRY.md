@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 782 tracked paths, 0 local-only paths.
+Inventory: 783 tracked paths, 0 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -600,6 +600,7 @@ Inventory: 782 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_397.md | Phase 2 design | "Change Record 397 - live-1C scenarios on the disposable clone (E4, E14, E23, E25, E41)" |
 | docs/phase2/CHANGE_RECORD_398.md | Phase 2 design | "Change Record 398 - review fixes for the S12 amendment (CR-395)" |
 | docs/phase2/CHANGE_RECORD_399.md | Phase 2 design | "Change Record 399 - GPT-PM fixes for the S12/S13 qualification batch" |
+| docs/phase2/CHANGE_RECORD_400.md | Phase 2 design | "Change Record 400 - merge of PR #40 and recovery of the local real-1C lane gateway (erp-mcp-818ha)" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -815,7 +816,7 @@ Inventory: 782 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `1c43f61276f45072a3508f7e35d33a9841a7fa93` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `4fa98ea4576972ee437d6ce4486625d0118b38cb` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
@@ -844,7 +845,7 @@ Inventory: 782 tracked paths, 0 local-only paths.
 | refs/remotes/origin/archive/ERP_MCP-phase2-6-c54be14e | `c54be14ee82b5dd2b5c8a52d988b8cf7229527a3` |
 | refs/remotes/origin/archive/ERP_MCP-phase2-7-d4bad307 | `d4bad30705525fdaaea3a1fe1ef9a06a4b18ea39` |
 | refs/remotes/origin/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
-| refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21 | `7ccfee86c54af512e07349f2be9b099f27817caf` |
+| refs/remotes/origin/codex/erp-mcp-autonomous-2026-10-21 | `d26617a316e770c279868803e16c4289e311b926` |
 | refs/remotes/origin/docs/english-only-translation-20261010 | `8d17448cf2788f48a2b3f26eb70800cefed4d992` |
 | refs/remotes/origin/docs/public-readme-install-guide-20261009 | `26324d43e9d42af8512f0f531f98770c0cf7daa0` |
 | refs/remotes/origin/integration/1c-mvp-production-candidate | `78493a3ab5a5d7309aeadd1af21c6b69b6d03448` |
