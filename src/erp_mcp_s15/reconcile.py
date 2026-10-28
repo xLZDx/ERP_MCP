@@ -10,6 +10,11 @@ implemented (UNKNOWN until S13 is checked); the gate state is in memory only.
 Port contract: both ports are synchronous and MUST enforce their own timeout (a port call that
 can hang is a defect of the port, not of this module). A timeout must surface as an exception or
 as an incomplete listing; the check then reports INCONCLUSIVE and never CLEAN.
+The 1C listing must be scoped and complete over ALL documents of the reconciled document types
+(supplier receipt) in the declared population, marked or not. The port declares that population
+(``population_scope``, ``enumerates_unmarked``) and the caller states the scope it requires; a
+marker-index-only reader cannot see an unmarked out-of-band document and is INCONCLUSIVE
+(POPULATION_NOT_ESTABLISHED), never CLEAN.
 """
 from __future__ import annotations
 
@@ -18,7 +23,7 @@ import threading
 import time
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
 
@@ -92,8 +97,13 @@ class OneCDocument:
 
 @dataclass(frozen=True, slots=True)
 class OneCListing:
+    """``population_scope`` names the enumerated population (e.g. the document type and company
+    scope); ``enumerates_unmarked`` is True only when unmarked documents are enumerated too."""
+
     complete: bool
     documents: tuple[OneCDocument, ...] = ()
+    population_scope: str = field(kw_only=True)
+    enumerates_unmarked: bool = field(kw_only=True)
 
 
 class LedgerPort(Protocol):
@@ -104,7 +114,10 @@ class LedgerPort(Protocol):
 
 class OneCLookupPort(Protocol):
     def list_documents(self) -> OneCListing:
-        """List every marked 1C document. The implementation MUST enforce its own timeout and
+        """List ALL 1C documents of the reconciled document types (supplier receipt) in the
+        declared population, marked or not, and declare that population in the result
+        (``population_scope``, ``enumerates_unmarked=True``). A marker-index-only listing must
+        not claim ``enumerates_unmarked``. The implementation MUST enforce its own timeout and
         raise (or return ``complete=False``) instead of blocking."""
 
     def find_by_change_id(self, change_id: str) -> OneCDocument | None:
@@ -133,7 +146,8 @@ class ReconciliationReport:
     unknown_outcomes: tuple[tuple[str, str], ...] = ()
     label: str = LABEL_MACHINE_VERIFIED
     # Why the run is INCONCLUSIVE: PORT_ERROR:<ExceptionType>, LISTING_INCOMPLETE,
-    # MALFORMED_ELEMENT, LOOKUP_CAP_EXCEEDED, RUNNER_ERROR:<ExceptionType>,
+    # MALFORMED_ELEMENT, POPULATION_NOT_ESTABLISHED, STALE_EPOCH, LOOKUP_CAP_EXCEEDED,
+    # RUNNER_ERROR:<ExceptionType>,
     # INTERNAL_ERROR:<ExceptionType>. Class names and codes only, never values.
     reason: str = ""
 
@@ -208,8 +222,14 @@ def _resolve_unknown(onec: OneCLookupPort, change: LedgerChange,
     return "FOUND_BY_MARKER", ""
 
 
+def _population_established(docs: OneCListing, required_scope: object) -> bool:
+    return (docs.enumerates_unmarked is True and type(docs.population_scope) is str
+            and bool(docs.population_scope) and type(required_scope) is str
+            and bool(required_scope) and docs.population_scope == required_scope)
+
+
 def _reconcile(trigger: Trigger, ledger: LedgerPort, onec: OneCLookupPort,
-               max_unknown_lookups: int) -> ReconciliationReport:
+               max_unknown_lookups: int, required_scope: str) -> ReconciliationReport:
     try:
         led = ledger.list_changes()
         docs = onec.list_documents()
@@ -219,6 +239,8 @@ def _reconcile(trigger: Trigger, ledger: LedgerPort, onec: OneCLookupPort,
         return _inconclusive(trigger, "MALFORMED_ELEMENT")
     if led.complete is not True or docs.complete is not True:
         return _inconclusive(trigger, "LISTING_INCOMPLETE")
+    if not _population_established(docs, required_scope):
+        return _inconclusive(trigger, "POPULATION_NOT_ESTABLISHED")
     if not _elements_valid(led, docs):
         return _inconclusive(trigger, "MALFORMED_ELEMENT")
     findings: list[Finding] = []
@@ -278,15 +300,17 @@ def _reconcile(trigger: Trigger, ledger: LedgerPort, onec: OneCLookupPort,
 
 
 def reconcile(trigger: Trigger, ledger: LedgerPort, onec: OneCLookupPort, *,
-              max_unknown_lookups: int = 50) -> ReconciliationReport:
+              required_scope: str, max_unknown_lookups: int = 50) -> ReconciliationReport:
     """One full two-direction pass; incomplete or failed reads give INCONCLUSIVE, not CLEAN.
 
     Never raises: any failure (port error, malformed element, internal error) is INCONCLUSIVE
     with a ``reason``. More than ``max_unknown_lookups`` UNKNOWN_OUTCOME lookups in one run is
-    INCONCLUSIVE with reason LOOKUP_CAP_EXCEEDED.
+    INCONCLUSIVE with reason LOOKUP_CAP_EXCEEDED. ``required_scope`` is the population the
+    caller requires; a listing that does not declare exactly that scope with
+    ``enumerates_unmarked=True`` is INCONCLUSIVE with reason POPULATION_NOT_ESTABLISHED.
     """
     try:
-        return _reconcile(trigger, ledger, onec, max_unknown_lookups)
+        return _reconcile(trigger, ledger, onec, max_unknown_lookups, required_scope)
     except Exception as exc:  # noqa: BLE001 - fail closed
         return _inconclusive(trigger, f"INTERNAL_ERROR:{type(exc).__name__}")
 
@@ -328,24 +352,30 @@ class ApplyGate:
         with self._lock:
             return self._clean_at
 
+    def now(self) -> float:
+        """Current time on the gate clock (capture it BEFORE a run's reads start)."""
+        return self._clock()
+
     def mark_restore(self) -> None:
         with self._lock:
             self._epoch += 1
             self._blocked = True
             self._clean_at = None
 
-    def record(self, report: ReconciliationReport, epoch: int | None = None) -> bool:
+    def record(self, report: ReconciliationReport, epoch: int,
+               observed_at: float | None = None) -> bool:
         """Apply ``report``; False when it was computed before the latest restore (discarded).
 
-        ``epoch`` is the gate epoch captured before the report's run started; ``None`` means
-        "current" (only safe for a caller that cannot overlap a restore).
+        ``epoch`` (required) is the gate epoch captured before the report's run started.
+        ``observed_at`` is the gate-clock time captured before the run's reads started; a CLEAN
+        report ages from it (default: now, only for callers that did not capture it).
         """
         with self._lock:
-            if epoch is not None and epoch != self._epoch:
+            if epoch != self._epoch:
                 return False
             if report.status is ReconcileStatus.CLEAN:
                 self._blocked = False
-                self._clean_at = self._clock()
+                self._clean_at = self._clock() if observed_at is None else observed_at
             else:
                 self._blocked = True
                 self._clean_at = None
@@ -394,11 +424,14 @@ class ReconciliationRunner:
     """
 
     def __init__(self, ledger: LedgerPort, onec: OneCLookupPort, gate: ApplyGate,
-                 interval_seconds: float, *, retry_interval_seconds: float | None = None,
+                 interval_seconds: float, *, required_scope: str,
+                 retry_interval_seconds: float | None = None,
                  clock: Callable[[], float] = time.monotonic,
                  max_unknown_lookups: int = 50) -> None:
         if not interval_seconds > 0:
             raise ValueError("RECONCILE_INTERVAL_INVALID")
+        if type(required_scope) is not str or not required_scope:
+            raise ValueError("RECONCILE_REQUIRED_SCOPE_INVALID")
         retry = interval_seconds / 4 if retry_interval_seconds is None else retry_interval_seconds
         if not retry > 0:
             raise ValueError("RECONCILE_RETRY_INTERVAL_INVALID")
@@ -409,6 +442,7 @@ class ReconciliationRunner:
         self._retry = min(retry, interval_seconds)
         self._clock = clock
         self._max_lookups = max_unknown_lookups
+        self._required_scope = required_scope
         self._run_lock = threading.Lock()
         self._state_lock = threading.Lock()
         self._last_run: float | None = None
@@ -452,13 +486,16 @@ class ReconciliationRunner:
 
     def _execute(self, trigger: Trigger) -> ReconciliationReport:
         epoch = self._gate.epoch
+        observed_at = self._gate.now()  # before any read: CLEAN age counts from here
         try:
             report = reconcile(trigger, self._ledger, self._onec,
+                               required_scope=self._required_scope,
                                max_unknown_lookups=self._max_lookups)
         except Exception as exc:  # noqa: BLE001 - fail closed
             report = _inconclusive(trigger, f"RUNNER_ERROR:{type(exc).__name__}")
         try:
-            self._gate.record(report, epoch)
+            if not self._gate.record(report, epoch, observed_at):
+                report = _inconclusive(trigger, "STALE_EPOCH")
         except Exception as exc:  # noqa: BLE001 - the gate keeps its previous state
             report = _inconclusive(trigger, f"RUNNER_ERROR:{type(exc).__name__}")
         ended = self._clock()

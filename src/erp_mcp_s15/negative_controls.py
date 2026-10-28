@@ -325,9 +325,16 @@ REQUIRED_CONTROL_IDS = frozenset(
     {f"P{n:02d}" for n in range(1, 9)} | {f"F{n:02d}" for n in range(1, 12)})
 
 
-def _covers_required(outcomes: tuple[ControlOutcome, ...]) -> bool:
-    prefixes = {o.control_id.split("_", 1)[0] for o in outcomes}
-    return REQUIRED_CONTROL_IDS <= prefixes
+def _covers_required(controls: tuple[Control, ...]) -> bool:
+    """True only when the supplied controls contain, for every required id (P01-P08, F01-F11),
+    exactly the canonical control (same full id and an equal object from NEGATIVE_CONTROLS)."""
+    canonical = {c.control_id: c for c in NEGATIVE_CONTROLS
+                 if c.control_id.split("_", 1)[0] in REQUIRED_CONTROL_IDS}
+    if {c.control_id.split("_", 1)[0] for c in canonical.values()} != REQUIRED_CONTROL_IDS:
+        return False
+    supplied = [c for c in controls if c.control_id in canonical]
+    return (all(canonical[c.control_id] == c for c in supplied)
+            and {c.control_id for c in supplied} == set(canonical))
 
 
 def run_all(controls: tuple[Control, ...] = NEGATIVE_CONTROLS) -> ControlReport:
@@ -341,7 +348,7 @@ def run_all(controls: tuple[Control, ...] = NEGATIVE_CONTROLS) -> ControlReport:
         and _movement_status(()) == ComparisonStatus.MATCH.value)
     outcomes = tuple(run_control(c) for c in controls)
     undetected = tuple(o.control_id for o in outcomes if not o.detected)
-    covers = _covers_required(outcomes)
+    covers = _covers_required(controls)
     return ControlReport(baseline_ok, outcomes, undetected,
                          baseline_ok and bool(outcomes) and covers and not undetected,
                          covers_required_set=covers)

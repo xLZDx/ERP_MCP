@@ -1209,3 +1209,7 @@ Decision: 713 agent-run passing tests are the functional evidence for the synthe
 ## 2026-10-28 - Document registry regenerated for S15
 
 Decision: refresh governance/DOCUMENT_REGISTRY.md with the generator (767 tracked paths); generated output, not hand-edited.
+
+## 2026-10-28 - S15 source fixed after the GPT-PM gate review
+
+Decision: accept both MAJOR findings and the residual minors; a reconciliation listing must prove it enumerates unmarked documents of the required scope, and an A-to-B comparison must prove two distinct source identities. Detail: `docs/phase2/CHANGE_RECORD_390.md`.
