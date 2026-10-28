@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 775 tracked paths, 0 local-only paths.
+Inventory: 781 tracked paths, 0 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -595,6 +595,10 @@ Inventory: 775 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_392.md | Phase 2 design | "Change Record 392 - S16 sprint plan document and operator ordering decision" |
 | docs/phase2/CHANGE_RECORD_393.md | Phase 2 design | "Change Record 393 - S16 sprint plan rev 2 after security and architecture review" |
 | docs/phase2/CHANGE_RECORD_394.md | Phase 2 design | "Change Record 394 - S12 offline and S13 PostgreSQL qualification runs at the current head" |
+| docs/phase2/CHANGE_RECORD_395.md | Phase 2 design | "Change record 395 - S12 contract amendment: amount consistency and distinct refusal codes" |
+| docs/phase2/CHANGE_RECORD_396.md | Phase 2 design | "Change Record 396 - E38 parallel budget-reservation test and pytest collection fix" |
+| docs/phase2/CHANGE_RECORD_397.md | Phase 2 design | "Change Record 397 - live-1C scenarios on the disposable clone (E4, E14, E23, E25, E41)" |
+| docs/phase2/CHANGE_RECORD_398.md | Phase 2 design | "Change Record 398 - review fixes for the S12 amendment (CR-395)" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -639,9 +643,11 @@ Inventory: 775 tracked paths, 0 local-only paths.
 | docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md | Phase 2 design | "S11 source-evidence inventory: what the existing R2 modules really contain (2026-10-12)" |
 | docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md | Phase 2 design | "S11 test-design package: invariants, scenarios, coverage gaps, sprint stories (2026-10-12)" |
 | docs/phase2/S12_APPROVAL_DIGEST_2_SPEC.md | Phase 2 design | "S12-APPROVAL-2: shared canonical approval digest (design specification)" |
+| docs/phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md | Phase 2 design | "S12 contract amendment (2026-10-28)" |
 | docs/phase2/S12_CONTRACT_FREEZE_V2_2026-10-16.md | Phase 2 design | "S12 Contract Freeze v2.0 — governed purchase receipt write" |
 | docs/phase2/S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md | Phase 2 design | "S12 interface contract draft: governed purchase-receipt write (2026-10-12, revision 6)" |
 | docs/phase2/S12_OFFLINE_QUALIFICATION_REPORT_2026-10-28.md | Phase 2 design | "S12 offline qualification report (2026-10-28)" |
+| docs/phase2/S12_S13_COM_CLONE_REPORT_2026-10-28.md | Phase 2 design | "S12/S13 live-1C halves on the disposable clone (2026-10-28)" |
 | docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md | Phase 2 design | "S12/S13 disposable qualification prerequisites" |
 | docs/phase2/S12_TEST_LANE_BINDINGS_2026-10-12.md | Phase 2 design | "S12 test-lane identity bindings (2026-10-12)" |
 | docs/phase2/S13_ACCEPTANCE_MAP_AND_MIGRATION_INVENTORY.md | Phase 2 design | "S13 acceptance map and migration inventory" |
@@ -808,7 +814,7 @@ Inventory: 775 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `ac458eb44f59bbb0947b2c97755213f174867382` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `fbb36b15e9270ba83c924de55bca4f92cf665bdd` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
