@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 from enum import Enum
 
@@ -43,6 +44,7 @@ EMPTY_DATE_DAYS = frozenset({"0001-01-01", "0100-01-01"})
 _DECIMAL_TEXT = re.compile(r"-?[0-9]+(\.[0-9]+)?\Z")
 _ISO_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
 _DATE_SUFFIX = "T00:00:00"
+_XML_DATETIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\Z")
 
 
 class FieldType(str, Enum):
@@ -109,6 +111,17 @@ RECEIPT_TYPING_TABLE = TypingTable((
 ))
 
 
+def _real_day(text: str) -> bool:
+    """True for a YYYY-MM-DD text that is an existing calendar date."""
+    if _ISO_DAY.fullmatch(text) is None:
+        return False
+    try:
+        date.fromisoformat(text)
+    except ValueError:
+        return False
+    return True
+
+
 def _decimal_of(value: object) -> Decimal | None:
     if type(value) is float:
         number = Decimal(repr(value))
@@ -150,9 +163,9 @@ def value_matches(rule: FieldRule, expected: object, stored: object) -> bool:
         found = _decimal_of(stored)
         return found is not None and found == Decimal(expected)
     if kind is FieldType.IDENTITY_TEXT:
-        return type(stored) is str and stored == expected
+        return type(stored) is str and bool(expected) and stored == expected
     if kind is FieldType.DATE:
-        if _ISO_DAY.fullmatch(expected) is None or expected in EMPTY_DATE_DAYS:
+        if not _real_day(expected) or expected in EMPTY_DATE_DAYS:
             return False
         return type(stored) is str and stored == expected + _DATE_SUFFIX
     # ENUMERATION and REFERENCE: non-empty text identity.
@@ -160,8 +173,17 @@ def value_matches(rule: FieldRule, expected: object, stored: object) -> bool:
 
 
 def own_date_matches(expected_day: str, stored_text: object) -> bool:
-    """The document's own date is compared by calendar day only (the time of day is normalized)."""
-    if (type(expected_day) is not str or _ISO_DAY.fullmatch(expected_day) is None
-            or expected_day in EMPTY_DATE_DAYS or type(stored_text) is not str):
+    """The document's own date is compared by calendar day only (the time of day is normalized).
+
+    Both sides must be real calendar dates; the stored text must be the full XMLString form
+    ``YYYY-MM-DDTHH:MM:SS`` (trailing garbage or an impossible date or time is red).
+    """
+    if (type(expected_day) is not str or not _real_day(expected_day)
+            or expected_day in EMPTY_DATE_DAYS or type(stored_text) is not str
+            or _XML_DATETIME.fullmatch(stored_text) is None
+            or not _real_day(stored_text[:10])):
+        return False
+    hour, minute, second = (int(part) for part in stored_text[11:].split(":"))
+    if hour > 23 or minute > 59 or second > 59:
         return False
     return stored_text[:10] == expected_day

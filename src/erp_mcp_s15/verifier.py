@@ -8,7 +8,7 @@ Output is machine verified, not accountant attested; it is not a production-read
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 
@@ -75,7 +75,10 @@ class ExpectedReceipt:
 class Finding:
     path: str
     field_class: str
-    code: str  # MISMATCH, EMPTY, NOT_RESOLVING, DELETION_MARKED, INCOMPLETE, EXPECTED_MISSING
+    # MISMATCH, EMPTY, NOT_RESOLVING, DELETION_MARKED, INCOMPLETE, EXPECTED_MISSING, READ_ERROR
+    # (READ_ERROR: a read raised something other than ReadIncomplete; inconclusive, not red).
+    code: str
+    detail: str = ""  # exception class name for READ_ERROR only, never a value
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,12 +88,15 @@ class VerificationResult:
     label: str
     findings: tuple[Finding, ...] = ()
     unverified_paths: tuple[str, ...] = ()
+    # True only when writer_declared_types covered every oracle table path and none diverged.
+    typing_checked: bool = False
 
 
 def _result(status: VerificationStatus, findings: list[Finding] | None = None,
-            unverified: list[str] | None = None) -> VerificationResult:
+            unverified: list[str] | None = None, typing_checked: bool = False
+            ) -> VerificationResult:
     return VerificationResult(status, ORACLE_VERSION, LABEL_MACHINE_VERIFIED,
-                              tuple(findings or ()), tuple(unverified or ()))
+                              tuple(findings or ()), tuple(unverified or ()), typing_checked)
 
 
 def _canonical_uuid(value: object) -> bool:
@@ -108,8 +114,17 @@ class _Checker:
         self.stored = stored
         self.findings: list[Finding] = []
 
-    def add(self, path: str, field_class: str, code: str) -> None:
-        self.findings.append(Finding(path, field_class, code))
+    def add(self, path: str, field_class: str, code: str, detail: str = "") -> None:
+        self.findings.append(Finding(path, field_class, code, detail))
+
+    def guard(self, path: str, field_class: str, check: Callable[[], None]) -> None:
+        """Run one independent check; a failure becomes a finding and never skips the others."""
+        try:
+            check()
+        except ReadIncomplete:
+            self.add(path, field_class, "INCOMPLETE")
+        except Exception as exc:  # noqa: BLE001 - one failed check must not skip the rest
+            self.add(path, field_class, "READ_ERROR", type(exc).__name__)
 
     def field(self, rule: FieldRule, expected: str, source: Mapping[str, object]) -> None:
         stored = source.get(rule.path, _MISSING)
@@ -135,13 +150,16 @@ class _Checker:
         except ReadIncomplete:
             self.add(rule.path, "reference", "INCOMPLETE")
             return
-        if type(lookup) is not ReferenceLookup:
+        except Exception as exc:  # noqa: BLE001 - class name only
+            self.add(rule.path, "reference", "READ_ERROR", type(exc).__name__)
+            return
+        if type(lookup) is not ReferenceLookup or type(lookup.exists) is not bool:
             self.add(rule.path, "reference", "INCOMPLETE")
-        elif not lookup.exists:
+        elif lookup.exists is False:
             self.add(rule.path, "reference", "NOT_RESOLVING")
-        elif lookup.deletion_mark is None:
+        elif type(lookup.deletion_mark) is not bool:
             self.add(rule.path, "reference", "INCOMPLETE")
-        elif lookup.deletion_mark is not False:
+        elif lookup.deletion_mark is True:
             self.add(rule.path, "reference", "DELETION_MARKED")
 
     def flag_false(self, path: str, value: object) -> None:
@@ -153,10 +171,11 @@ class _Checker:
 
 def _check_document(checker: _Checker, expected: ExpectedReceipt, table: TypingTable
                     ) -> list[str]:
-    """Run every comparison; returns the expected paths the oracle table does not cover."""
+    """Run every comparison (each reference field independently guarded); returns the expected
+    paths the oracle table does not cover."""
     stored = checker.stored
     uncovered: list[str] = []
-    for path, value in expected.values.items():
+    for path in expected.values:
         if table.get(path) is None:
             uncovered.append(path)
     if len(stored.lines) != 1:
@@ -167,14 +186,18 @@ def _check_document(checker: _Checker, expected: ExpectedReceipt, table: TypingT
             checker.add(rule.path, rule.field_type.value, "EXPECTED_MISSING")
             continue
         if rule.scope is Scope.HEADER:
-            checker.field(rule, value, stored.header)
+            checker.guard(rule.path, rule.field_type.value,
+                          lambda r=rule, v=value: checker.field(r, v, stored.header))
         elif len(stored.lines) == 1:
-            checker.field(rule, value, stored.lines[0])
-    # Markers: exact text.
+            checker.guard(rule.path, rule.field_type.value,
+                          lambda r=rule, v=value: checker.field(r, v, stored.lines[0]))
+    # Markers: exact text; an empty or non-text expected value is EXPECTED_MISSING.
     for path, expected_text, found in (
             ("marker.change_id", expected.change_id, stored.change_id),
             ("marker.change_hash", expected.manifest_hash, stored.change_hash)):
-        if found is None:
+        if type(expected_text) is not str or not expected_text:
+            checker.add(path, "marker", "EXPECTED_MISSING")
+        elif found is None:
             checker.add(path, "marker", "EMPTY")
         elif type(found) is not str or found != expected_text:
             checker.add(path, "marker", "MISMATCH")
@@ -215,40 +238,56 @@ def verify_receipt(
         table: TypingTable = RECEIPT_TYPING_TABLE) -> VerificationResult:
     """Verify one stored receipt draft; any non-VERIFIED status is a failure to verify.
 
-    ``writer_declared_types`` optionally maps paths to type names as the writer declares them
-    (the caller derives it; this module never imports the writer). Any path whose type differs
-    from the oracle table is ``TYPING_DIVERGENCE`` (red). ``writer_unverified_paths`` that the
-    oracle does not cover are reported and prevent VERIFIED.
+    ``writer_declared_types`` maps paths to type names as the writer declares them (the caller
+    derives it; this module never imports the writer). Any path whose type differs from the
+    oracle table is ``TYPING_DIVERGENCE`` (red). When it is omitted or does not cover every
+    oracle table path the typing was not checked: the result is at best ``PARTIAL_UNVERIFIED``
+    and ``typing_checked`` is False. ``writer_unverified_paths`` that the oracle does not cover
+    are reported and prevent VERIFIED. READ_ERROR (a read raised something other than
+    ``ReadIncomplete``) is inconclusive like INCOMPLETE, never red and never a pass.
     """
     if shape != SUPPORTED_SHAPE:
         return _result(VerificationStatus.UNSUPPORTED_SHAPE)
+    oracle_types = table.types_by_path()
+    typing_checked = (writer_declared_types is not None
+                      and all(p in writer_declared_types for p in oracle_types))
     if writer_declared_types is not None:
-        oracle_types = table.types_by_path()
         divergent = [Finding(p, oracle_types.get(p, "unknown"), "TYPING_DIVERGENCE")
                      for p, t in writer_declared_types.items() if oracle_types.get(p) != t]
         if divergent:
-            return _result(VerificationStatus.TYPING_DIVERGENCE, divergent)
+            return _result(VerificationStatus.TYPING_DIVERGENCE, divergent,
+                           typing_checked=typing_checked)
     try:
         stored = reader.read_document(document_ref)
     except ReadIncomplete:
-        return _result(VerificationStatus.INCONCLUSIVE, [Finding("document", "read", "INCOMPLETE")])
-    except Exception:  # noqa: BLE001 - any failed read is incomplete data, never a pass
-        return _result(VerificationStatus.INCONCLUSIVE, [Finding("document", "read", "INCOMPLETE")])
+        return _result(VerificationStatus.INCONCLUSIVE,
+                       [Finding("document", "read", "INCOMPLETE")], typing_checked=typing_checked)
+    except Exception as exc:  # noqa: BLE001 - any failed read is incomplete data, never a pass
+        return _result(VerificationStatus.INCONCLUSIVE,
+                       [Finding("document", "read", "READ_ERROR", type(exc).__name__)],
+                       typing_checked=typing_checked)
     if type(stored) is not StoredDocument:
-        return _result(VerificationStatus.INCONCLUSIVE, [Finding("document", "read", "INCOMPLETE")])
+        return _result(VerificationStatus.INCONCLUSIVE,
+                       [Finding("document", "read", "INCOMPLETE")], typing_checked=typing_checked)
     checker = _Checker(reader, stored)
     try:
         uncovered = _check_document(checker, expected, table)
-    except Exception:  # noqa: BLE001 - an unexpected read-side failure is incomplete, not a pass
-        checker.add("document", "read", "INCOMPLETE")
+    except Exception as exc:  # noqa: BLE001 - an unexpected failure is incomplete, not a pass
+        checker.add("document", "read", "READ_ERROR", type(exc).__name__)
         uncovered = []
-    unverified = sorted(set(uncovered) | {p for p in writer_unverified_paths
-                                          if table.get(p) is None})
-    red = [f for f in checker.findings if f.code != "INCOMPLETE"]
+    unverified = set(uncovered) | {p for p in writer_unverified_paths if table.get(p) is None}
+    if not typing_checked:
+        declared = writer_declared_types or {}
+        unverified |= {p for p in oracle_types if p not in declared}
+    unverified_sorted = sorted(unverified)
+    red = [f for f in checker.findings if f.code not in ("INCOMPLETE", "READ_ERROR")]
     if red:
-        return _result(VerificationStatus.MISMATCH, checker.findings, unverified)
+        return _result(VerificationStatus.MISMATCH, checker.findings, unverified_sorted,
+                       typing_checked)
     if checker.findings:
-        return _result(VerificationStatus.INCONCLUSIVE, checker.findings, unverified)
-    if unverified:
-        return _result(VerificationStatus.PARTIAL_UNVERIFIED, [], unverified)
-    return _result(VerificationStatus.VERIFIED)
+        return _result(VerificationStatus.INCONCLUSIVE, checker.findings, unverified_sorted,
+                       typing_checked)
+    if unverified_sorted or not typing_checked:
+        return _result(VerificationStatus.PARTIAL_UNVERIFIED, [], unverified_sorted,
+                       typing_checked)
+    return _result(VerificationStatus.VERIFIED, typing_checked=True)

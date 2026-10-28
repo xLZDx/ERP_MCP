@@ -22,7 +22,7 @@ from .ab_compare import (
     compare_ab,
 )
 from .labels import LABEL_MACHINE_VERIFIED
-from .oracle import AMOUNT_PATH, VAT_AMOUNT_PATH
+from .oracle import AMOUNT_PATH, RECEIPT_TYPING_TABLE, VAT_AMOUNT_PATH
 from .read_interface import ReadIncomplete, ReferenceLookup, StoredDocument
 from .verifier import (
     SUPPORTED_SHAPE,
@@ -34,6 +34,7 @@ from .verifier import (
 __all__ = [
     "BASELINE_DOCUMENT_REF",
     "NEGATIVE_CONTROLS",
+    "REQUIRED_CONTROL_IDS",
     "Control",
     "ControlOutcome",
     "ControlReport",
@@ -287,6 +288,8 @@ class ControlReport:
     undetected: tuple[str, ...]
     all_detected: bool
     label: str = LABEL_MACHINE_VERIFIED
+    # True only when every plan control (P01-P08) and fact control (F01-F11) id was run.
+    covers_required_set: bool = False
 
 
 def _movement_status(ops: tuple[MovementOp, ...]) -> str:
@@ -298,8 +301,12 @@ def _movement_status(ops: tuple[MovementOp, ...]) -> str:
 
 def _field_status(control: Control) -> str:
     reader = _apply_field(control)
+    # The synthetic writer declaration is the oracle table itself (no divergence by design);
+    # without it the verifier can never report VERIFIED.
     return verify_receipt(reader, BASELINE_DOCUMENT_REF, baseline_expected_receipt(),
-                          SUPPORTED_SHAPE).status.value
+                          SUPPORTED_SHAPE,
+                          writer_declared_types=RECEIPT_TYPING_TABLE.types_by_path()
+                          ).status.value
 
 
 def run_control(control: Control) -> ControlOutcome:
@@ -314,12 +321,27 @@ def run_control(control: Control) -> ControlOutcome:
                           control.observable_note)
 
 
+REQUIRED_CONTROL_IDS = frozenset(
+    {f"P{n:02d}" for n in range(1, 9)} | {f"F{n:02d}" for n in range(1, 12)})
+
+
+def _covers_required(outcomes: tuple[ControlOutcome, ...]) -> bool:
+    prefixes = {o.control_id.split("_", 1)[0] for o in outcomes}
+    return REQUIRED_CONTROL_IDS <= prefixes
+
+
 def run_all(controls: tuple[Control, ...] = NEGATIVE_CONTROLS) -> ControlReport:
-    """Run the pre-flight baseline and every control; no control may be VERIFIED / MATCH."""
+    """Run the pre-flight baseline and every control; no control may be VERIFIED / MATCH.
+
+    ``all_detected`` also requires a non-empty outcome list that covers the whole required set
+    (plan P01-P08 and fact F01-F11), so an empty or partial control set is never "all detected".
+    """
     baseline_ok = (
         _field_status(Control("BASE", "plan", "", "")) == VerificationStatus.VERIFIED.value
         and _movement_status(()) == ComparisonStatus.MATCH.value)
     outcomes = tuple(run_control(c) for c in controls)
     undetected = tuple(o.control_id for o in outcomes if not o.detected)
+    covers = _covers_required(outcomes)
     return ControlReport(baseline_ok, outcomes, undetected,
-                         baseline_ok and not undetected)
+                         baseline_ok and bool(outcomes) and covers and not undetected,
+                         covers_required_set=covers)

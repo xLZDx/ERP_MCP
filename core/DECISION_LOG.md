@@ -1197,3 +1197,7 @@ Decision: S15 code lives in a new top-level package `src/erp_mcp_s15/` so the or
 ## 2026-10-28 - S15 functional tests written and run by the test agent
 
 Decision: accept 322 passing agent-run tests as the functional evidence for the synthetic scope; real-1C, S13 ledger and deferred scenarios stay NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_387.md`.
+
+## 2026-10-28 - S15 source fixed after three specialist reviews
+
+Decision: accept all MAJOR and the actionable MINOR findings in one batch; found-by-marker unknown outcomes keep reconciliation non-clean until the ledger records the resolution; a stale clean report never unblocks after a restore. Detail: `docs/phase2/CHANGE_RECORD_388.md`.
