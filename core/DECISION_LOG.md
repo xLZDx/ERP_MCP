@@ -1227,3 +1227,9 @@ Decision: regenerate governance/DOCUMENT_REGISTRY.md once CR-391 is tracked; gen
 
 
 Decision: the operator chose to finish S12/S13 qualification first; S16 gets a plan document only until then. The operator also stated that a new 1C licence is in place; the clone connection was probed live and works, so licence is not a blocker. Detail: next change record.
+
+## 2026-10-28 - S16 plan rev 2 accepted after two reviews
+
+
+
+Decision: apply all review findings to the S16 plan (S16-owned decision core, apply-time re-validation, positive authentication on the private listener, VerifyPort limited to the S15-supported shape). Detail: `docs/phase2/CHANGE_RECORD_393.md`. Re-review and GPT-PM NOT_RUN.
