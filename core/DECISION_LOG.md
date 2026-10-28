@@ -1233,3 +1233,9 @@ Decision: the operator chose to finish S12/S13 qualification first; S16 gets a p
 
 
 Decision: apply all review findings to the S16 plan (S16-owned decision core, apply-time re-validation, positive authentication on the private listener, VerifyPort limited to the S15-supported shape). Detail: `docs/phase2/CHANGE_RECORD_393.md`. Re-review and GPT-PM NOT_RUN.
+
+## 2026-10-28 - S12 offline and S13 PostgreSQL qualification evidence recorded
+
+
+
+Decision: record the agent-run results at the current head as evidence, keep every live-1C and external half NOT_RUN, and keep S12/S13 formally NOT accepted. Gaps G1-G3 and the missing E38 parallel test are listed for decision. Detail: `docs/phase2/CHANGE_RECORD_394.md`.

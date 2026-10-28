@@ -1,0 +1,2926 @@
+{
+ "generated_for": "S13 disposable PG qualification 2026-10-28",
+ "method": "Each role is assumed with SET LOCAL ROLE (session_user stays the bootstrap superuser, current_user is the role); every check uses has_function_privilege/has_table_privilege/has_schema_privilege(current_user, ...), which evaluates the ROLE's effective privileges including inherited memberships and PUBLIC, never the owner's. Attributes from pg_roles.",
+ "postgres_version": "16.14 (Debian 16.14-1.pgdg13+1)",
+ "database": "s13_qual_chain",
+ "no_secrets": true,
+ "objects": {
+  "functions": 331,
+  "relations": 77,
+  "owners": [
+   "ledger_owner",
+   "living_owner"
+  ],
+  "private_writer_v1_entry_points": [
+   "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)",
+   "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)",
+   "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)",
+   "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)",
+   "change_ledger.private_writer_assert_transaction_v1()",
+   "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)",
+   "change_ledger.private_writer_attempt_evidence_guard_v1()",
+   "change_ledger.private_writer_attempt_transition_guard_v1()",
+   "change_ledger.private_writer_barrier_ack_guard_v1()",
+   "change_ledger.private_writer_barrier_transition_guard_v1()",
+   "change_ledger.private_writer_base_slot_transition_guard_v1()",
+   "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)",
+   "change_ledger.private_writer_bump_trust_revision_v1()",
+   "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)",
+   "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)",
+   "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)",
+   "change_ledger.private_writer_evidence_binding_guard_v1()",
+   "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)",
+   "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)",
+   "change_ledger.private_writer_key_revocation_guard_v1()",
+   "change_ledger.private_writer_key_rotation_guard_v1()",
+   "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)",
+   "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])",
+   "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)",
+   "change_ledger.private_writer_lock_trust_revision_v1()",
+   "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)",
+   "change_ledger.private_writer_lookup_barrier_v1(uuid)",
+   "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)",
+   "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)",
+   "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)",
+   "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)",
+   "change_ledger.private_writer_permit_signature_guard_v1()",
+   "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)",
+   "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)",
+   "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)",
+   "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)",
+   "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)",
+   "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)",
+   "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)",
+   "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)",
+   "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)",
+   "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)",
+   "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)",
+   "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)",
+   "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)",
+   "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)",
+   "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)",
+   "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)",
+   "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)",
+   "change_ledger.private_writer_service_binding_guard_v1()",
+   "change_ledger.private_writer_serving_fence_guard_v1()",
+   "change_ledger.private_writer_startup_recovery_state_v1(text)",
+   "change_ledger.private_writer_take_base_fence_v1(text)",
+   "change_ledger.private_writer_take_global_fences_v1(text[])",
+   "change_ledger.private_writer_take_scope_fence_v1(text,text)",
+   "change_ledger.private_writer_take_switch_fence_v1(text,text)",
+   "change_ledger.private_writer_trust_revision_guard_v1()"
+  ]
+ },
+ "public_execute_functions": [],
+ "public_schema_usage": {
+  "change_ledger": false,
+  "living": false
+ },
+ "public_table_or_sequence_privileges": [],
+ "rls_tables": [
+  "living.tenants",
+  "living.sources",
+  "living.observations",
+  "living.accepted_heads",
+  "living.acceptance_events",
+  "living.jobs",
+  "living.cursors",
+  "living.outbox",
+  "living.role_scope",
+  "living.trusted_reviewers",
+  "living.attestations",
+  "change_ledger.role_scope",
+  "change_ledger.targets",
+  "change_ledger.kill_switch_state",
+  "change_ledger.events",
+  "change_ledger.records",
+  "change_ledger.target_locks",
+  "change_ledger.key_locks",
+  "change_ledger.writer_leases",
+  "change_ledger.holds",
+  "change_ledger.claim_tokens",
+  "change_ledger.dispatch_permits",
+  "change_ledger.grants",
+  "change_ledger.reservations",
+  "change_ledger.approval_nonces",
+  "change_ledger.approvals",
+  "change_ledger.witness_cosigns",
+  "change_ledger.checkpoints",
+  "change_ledger.epochs",
+  "change_ledger.principals",
+  "change_ledger.registry_policy",
+  "change_ledger.verifier_keys",
+  "change_ledger.evidence_records",
+  "change_ledger.business_keys",
+  "change_ledger.override_bindings",
+  "change_ledger.target_observations",
+  "change_ledger.sweep_counters",
+  "change_ledger.sweep_runs",
+  "change_ledger.call_deadlines",
+  "change_ledger.change_closures",
+  "change_ledger.change_budget",
+  "change_ledger.hold_cosigns",
+  "change_ledger.sweep_policy",
+  "change_ledger.sweep_failures",
+  "change_ledger.verify_attempt_log",
+  "change_ledger.approval_envelopes",
+  "change_ledger.registry_changes",
+  "change_ledger.registry_change_approvals",
+  "change_ledger.change_dispatch_verifications",
+  "change_ledger.dispatch_receipt_requirements",
+  "change_ledger.dispatch_receipts",
+  "change_ledger.private_writer_service_bindings",
+  "change_ledger.private_writer_serving_fences",
+  "change_ledger.private_writer_service_instance_history",
+  "change_ledger.private_writer_signer_key_versions",
+  "change_ledger.private_writer_signer_key_scopes",
+  "change_ledger.private_writer_signer_key_revocations",
+  "change_ledger.private_writer_signer_key_rotations",
+  "change_ledger.private_writer_trust_registry_revision",
+  "change_ledger.private_writer_process_attestations",
+  "change_ledger.private_writer_oracle_artifacts",
+  "change_ledger.private_writer_outcome_version_floors",
+  "change_ledger.private_writer_dispatch_intents",
+  "change_ledger.private_writer_permit_bindings",
+  "change_ledger.dispatch_attempts",
+  "change_ledger.private_writer_evidence",
+  "change_ledger.private_writer_attempt_evidence",
+  "change_ledger.writer_barriers",
+  "change_ledger.writer_barrier_calls",
+  "change_ledger.writer_barrier_acknowledgements",
+  "change_ledger.physical_base_slots"
+ ],
+ "force_rls_tables": [
+  "living.tenants",
+  "living.sources",
+  "living.observations",
+  "living.accepted_heads",
+  "living.acceptance_events",
+  "living.jobs",
+  "living.cursors",
+  "living.outbox",
+  "living.role_scope",
+  "living.trusted_reviewers",
+  "living.attestations",
+  "change_ledger.role_scope",
+  "change_ledger.targets",
+  "change_ledger.kill_switch_state",
+  "change_ledger.events",
+  "change_ledger.records",
+  "change_ledger.target_locks",
+  "change_ledger.key_locks",
+  "change_ledger.writer_leases",
+  "change_ledger.holds",
+  "change_ledger.claim_tokens",
+  "change_ledger.dispatch_permits",
+  "change_ledger.grants",
+  "change_ledger.reservations",
+  "change_ledger.approval_nonces",
+  "change_ledger.approvals",
+  "change_ledger.witness_cosigns",
+  "change_ledger.checkpoints",
+  "change_ledger.epochs",
+  "change_ledger.principals",
+  "change_ledger.registry_policy",
+  "change_ledger.verifier_keys",
+  "change_ledger.evidence_records",
+  "change_ledger.business_keys",
+  "change_ledger.override_bindings",
+  "change_ledger.target_observations",
+  "change_ledger.sweep_counters",
+  "change_ledger.sweep_runs",
+  "change_ledger.call_deadlines",
+  "change_ledger.change_closures",
+  "change_ledger.change_budget",
+  "change_ledger.hold_cosigns",
+  "change_ledger.sweep_policy",
+  "change_ledger.sweep_failures",
+  "change_ledger.verify_attempt_log",
+  "change_ledger.approval_envelopes",
+  "change_ledger.registry_changes",
+  "change_ledger.registry_change_approvals",
+  "change_ledger.change_dispatch_verifications",
+  "change_ledger.dispatch_receipt_requirements",
+  "change_ledger.dispatch_receipts",
+  "change_ledger.private_writer_service_bindings",
+  "change_ledger.private_writer_serving_fences",
+  "change_ledger.private_writer_service_instance_history",
+  "change_ledger.private_writer_signer_key_versions",
+  "change_ledger.private_writer_signer_key_scopes",
+  "change_ledger.private_writer_signer_key_revocations",
+  "change_ledger.private_writer_signer_key_rotations",
+  "change_ledger.private_writer_trust_registry_revision",
+  "change_ledger.private_writer_process_attestations",
+  "change_ledger.private_writer_oracle_artifacts",
+  "change_ledger.private_writer_outcome_version_floors",
+  "change_ledger.private_writer_dispatch_intents",
+  "change_ledger.private_writer_permit_bindings",
+  "change_ledger.dispatch_attempts",
+  "change_ledger.private_writer_evidence",
+  "change_ledger.private_writer_attempt_evidence",
+  "change_ledger.writer_barriers",
+  "change_ledger.writer_barrier_calls",
+  "change_ledger.writer_barrier_acknowledgements",
+  "change_ledger.physical_base_slots"
+ ],
+ "rls_policies": [
+  {
+   "schemaname": "change_ledger",
+   "tablename": "approval_envelopes",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "approval_nonces",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "approval_nonces",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "approvals",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "approvals",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "business_keys",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "business_keys",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "call_deadlines",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "call_deadlines",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "change_budget",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "change_closures",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "change_closures",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "change_dispatch_verifications",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "change_dispatch_verifications",
+   "policyname": "scope_read",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "checkpoints",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "checkpoints",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "claim_tokens",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "claim_tokens",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_attempts",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_permits",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_permits",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_receipt_requirements",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_receipt_requirements",
+   "policyname": "scope_read",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_receipts",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "dispatch_receipts",
+   "policyname": "scope_read",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "epochs",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "epochs",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "events",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "events",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "evidence_records",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "evidence_records",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "grants",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "grants",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "hold_cosigns",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "hold_cosigns",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "holds",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "holds",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "key_locks",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "key_locks",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "kill_switch_state",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "kill_switch_state",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "override_bindings",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "override_bindings",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "physical_base_slots",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "principals",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "principals",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_attempt_evidence",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_dispatch_intents",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_evidence",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_oracle_artifacts",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_outcome_version_floors",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_permit_bindings",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_process_attestations",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_service_bindings",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_service_instance_history",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_serving_fences",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_signer_key_revocations",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_signer_key_rotations",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_signer_key_scopes",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_signer_key_versions",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "private_writer_trust_registry_revision",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "records",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "records",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_change_approvals",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_change_approvals",
+   "policyname": "scope_read",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_changes",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_changes",
+   "policyname": "scope_read",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_policy",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "registry_policy",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "reservations",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "reservations",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "role_scope",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "role_scope",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_counters",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_counters",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_failures",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_failures",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_policy",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_policy",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_runs",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "sweep_runs",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "target_locks",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "target_locks",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "target_observations",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "target_observations",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "targets",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "targets",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "verifier_keys",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "verifier_keys",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "verify_attempt_log",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "witness_cosigns",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "witness_cosigns",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "writer_barrier_acknowledgements",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "writer_barrier_calls",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "writer_barriers",
+   "policyname": "ledger_owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "writer_leases",
+   "policyname": "owner_all",
+   "roles": "{ledger_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "change_ledger",
+   "tablename": "writer_leases",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "acceptance_events",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "acceptance_events",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "accepted_heads",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "accepted_heads",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "attestations",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "attestations",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "cursors",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "cursors",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "jobs",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "jobs",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "observations",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "observations",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "outbox",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "outbox",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "role_scope",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "role_scope",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "SELECT"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "sources",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "sources",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "tenants",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "tenants",
+   "policyname": "scope_isolation",
+   "roles": "{public}",
+   "cmd": "ALL"
+  },
+  {
+   "schemaname": "living",
+   "tablename": "trusted_reviewers",
+   "policyname": "owner_all",
+   "roles": "{living_owner}",
+   "cmd": "ALL"
+  }
+ ],
+ "default_acls": [
+  {
+   "role": "living_owner",
+   "ns": "-",
+   "objtype": "f",
+   "acl": "{living_owner=X/living_owner}"
+  },
+  {
+   "role": "ledger_owner",
+   "ns": "-",
+   "objtype": "f",
+   "acl": "{ledger_owner=X/ledger_owner}"
+  },
+  {
+   "role": "ledger_owner",
+   "ns": "-",
+   "objtype": "T",
+   "acl": "{ledger_owner=U/ledger_owner}"
+  }
+ ],
+ "roles": {
+  "requester_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": true,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 1,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.add_epoch_dependency(text,text,uuid,text)",
+    "change_ledger.caller_role()",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.change_ledger_begin_apply_v1(text,text,uuid,uuid,text,text)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.claim(text,text,uuid,text,uuid,numeric,boolean,boolean)",
+    "change_ledger.claim_with_id_v1(text,text,uuid,text,uuid,numeric,boolean,boolean,uuid)",
+    "change_ledger.declare_budget(text,text,uuid,uuid,text,numeric,boolean,boolean)",
+    "change_ledger.declare_business_key(text,text,uuid,text,text,text)",
+    "change_ledger.declare_target_class(text,text,uuid,text)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)",
+    "change_ledger.propose(text,text,uuid,text,text,text,text,text,text,text,text,uuid,timestamp with time zone,uuid)",
+    "change_ledger.read_approval_text(text,text,uuid)",
+    "change_ledger.read_evidence(text,text,uuid)",
+    "change_ledger.read_status(text,text,uuid)",
+    "change_ledger.record_dispatch_receipt(text,text,uuid,bigint,text,text,text,text)",
+    "change_ledger.release_claim(text,text,uuid)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.require_dispatch_receipt(text,text,uuid,bigint)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)",
+    "change_ledger.store_approval_text(text,text,uuid,text,text)",
+    "change_ledger.validate(text,text,uuid)",
+    "change_ledger.verify_dispatch_payload(text,text,uuid,bigint,text)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ],
+    "change_ledger.evidence_records": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "approver_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.approve(text,text,uuid,text,text)",
+    "change_ledger.bind_duplicate_override(text,text,uuid,text)",
+    "change_ledger.caller_role()",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.issue_approval_nonce(text,text,uuid)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.read_approval_text(text,text,uuid)",
+    "change_ledger.read_status(text,text,uuid)",
+    "change_ledger.reject(text,text,uuid,text)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "operator_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.amount_consumed(text,text,text,uuid)",
+    "change_ledger.anchor_gap_cosign(text,text,uuid,jsonb)",
+    "change_ledger.approve_registry_change(text,text,uuid,text)",
+    "change_ledger.budget_admin(text,text,uuid,text,numeric,integer,integer,timestamp with time zone,timestamp with time zone)",
+    "change_ledger.budget_revoke(text,text,uuid)",
+    "change_ledger.bump_epoch(text,text,text)",
+    "change_ledger.caller_role()",
+    "change_ledger.cancel_permit(text,text,uuid,bigint)",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.declare_anchor_gap(text,text,text,jsonb)",
+    "change_ledger.declare_unclean_restart(text,text,text,jsonb)",
+    "change_ledger.enforce_registry(text,text)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.kill_switch(text,text,text)",
+    "change_ledger.propose_registry_change(text,text,text,jsonb)",
+    "change_ledger.register_principal(text,text,text,text,text[],boolean)",
+    "change_ledger.register_target(text,text,text,text,text,text,timestamp with time zone)",
+    "change_ledger.register_verifier_key(text,text,text,text,text)",
+    "change_ledger.release_hold(text,text,uuid,jsonb)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.revoke_change(text,text,uuid,text)",
+    "change_ledger.revoke_verifier_key(text,text,text)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)",
+    "change_ledger.set_sweep_policy(text,text,jsonb)",
+    "change_ledger.verify_chain(text,text)",
+    "change_ledger.witness_cosign_signed(text,text,uuid,uuid)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.records": [
+     "SELECT"
+    ],
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ],
+    "change_ledger.holds": [
+     "SELECT"
+    ],
+    "change_ledger.claim_tokens": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_counters": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_runs": [
+     "SELECT"
+    ],
+    "change_ledger.call_deadlines": [
+     "SELECT"
+    ],
+    "change_ledger.change_closures": [
+     "SELECT"
+    ],
+    "change_ledger.hold_cosigns": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_policy": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_failures": [
+     "SELECT"
+    ],
+    "change_ledger.registry_change_approvals": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "writer_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": true,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 1,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.caller_role()",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.change_ledger_begin_apply_v1(text,text,uuid,uuid,text,text)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.declare_anchor_gap(text,text,text,jsonb)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.ledger_head(text,text)",
+    "change_ledger.observe_target(text,text,uuid,text,text)",
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)",
+    "change_ledger.record_dispatch_receipt(text,text,uuid,bigint,text,text,text,text)",
+    "change_ledger.record_evidence(text,text,uuid,text,text,timestamp with time zone,jsonb,text,text,text,bigint,uuid)",
+    "change_ledger.renew_writer_lease(text,text,uuid,bigint,integer)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.require_dispatch_receipt(text,text,uuid,bigint)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)",
+    "change_ledger.verify_dispatch_payload(text,text,uuid,bigint,text)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.records": [
+     "SELECT"
+    ],
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ],
+    "change_ledger.holds": [
+     "SELECT"
+    ],
+    "change_ledger.claim_tokens": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "worker_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": true,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": true,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": true,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 3,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.amount_consumed(text,text,text,uuid)",
+    "change_ledger.caller_role()",
+    "change_ledger.cancel_permit(text,text,uuid,bigint)",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.check_anchor(text,text,bigint,text)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.declare_anchor_gap(text,text,text,jsonb)",
+    "change_ledger.declare_unclean_restart(text,text,text,jsonb)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.ledger_head(text,text)",
+    "change_ledger.lifecycle_checkpoint_suffix(text,text,bigint,text,integer)",
+    "change_ledger.lifecycle_permit_epoch(text,text,uuid,bigint)",
+    "change_ledger.lifecycle_status(text,text)",
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)",
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)",
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)",
+    "change_ledger.record_evidence(text,text,uuid,text,text,timestamp with time zone,jsonb,text,text,text,bigint,uuid)",
+    "change_ledger.release_claim(text,text,uuid)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.revoke_change(text,text,uuid,text)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)",
+    "change_ledger.verify_chain(text,text)",
+    "change_ledger.verify_inconclusive_v1(text,text,uuid,uuid)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.records": [
+     "SELECT"
+    ],
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ],
+    "change_ledger.holds": [
+     "SELECT"
+    ],
+    "change_ledger.claim_tokens": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_counters": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_runs": [
+     "SELECT"
+    ],
+    "change_ledger.call_deadlines": [
+     "SELECT"
+    ],
+    "change_ledger.change_closures": [
+     "SELECT"
+    ],
+    "change_ledger.hold_cosigns": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_policy": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_failures": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "auditor_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.amount_consumed(text,text,text,uuid)",
+    "change_ledger.caller_role()",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.event_hash_v2(text,bigint,text,text,uuid,uuid,text,jsonb,timestamp with time zone)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.ledger_head(text,text)",
+    "change_ledger.lifecycle_checkpoint_suffix(text,text,bigint,text,integer)",
+    "change_ledger.lifecycle_status(text,text)",
+    "change_ledger.read_evidence(text,text,uuid)",
+    "change_ledger.read_status(text,text,uuid)",
+    "change_ledger.requested_by_caller(uuid)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)",
+    "change_ledger.verify_chain(text,text)"
+   ],
+   "table_or_sequence_privileges": {
+    "change_ledger.targets": [
+     "SELECT"
+    ],
+    "change_ledger.kill_switch_state": [
+     "SELECT"
+    ],
+    "change_ledger.events": [
+     "SELECT"
+    ],
+    "change_ledger.records": [
+     "SELECT"
+    ],
+    "change_ledger.target_locks": [
+     "SELECT"
+    ],
+    "change_ledger.key_locks": [
+     "SELECT"
+    ],
+    "change_ledger.writer_leases": [
+     "SELECT"
+    ],
+    "change_ledger.holds": [
+     "SELECT"
+    ],
+    "change_ledger.claim_tokens": [
+     "SELECT"
+    ],
+    "change_ledger.dispatch_permits": [
+     "SELECT"
+    ],
+    "change_ledger.grants": [
+     "SELECT"
+    ],
+    "change_ledger.reservations": [
+     "SELECT"
+    ],
+    "change_ledger.approval_nonces": [
+     "SELECT"
+    ],
+    "change_ledger.approvals": [
+     "SELECT"
+    ],
+    "change_ledger.checkpoints": [
+     "SELECT"
+    ],
+    "change_ledger.epochs": [
+     "SELECT"
+    ],
+    "change_ledger.principals": [
+     "SELECT"
+    ],
+    "change_ledger.registry_policy": [
+     "SELECT"
+    ],
+    "change_ledger.evidence_records": [
+     "SELECT"
+    ],
+    "change_ledger.business_keys": [
+     "SELECT"
+    ],
+    "change_ledger.override_bindings": [
+     "SELECT"
+    ],
+    "change_ledger.target_observations": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_counters": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_runs": [
+     "SELECT"
+    ],
+    "change_ledger.call_deadlines": [
+     "SELECT"
+    ],
+    "change_ledger.change_closures": [
+     "SELECT"
+    ],
+    "change_ledger.hold_cosigns": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_policy": [
+     "SELECT"
+    ],
+    "change_ledger.sweep_failures": [
+     "SELECT"
+    ],
+    "change_ledger.registry_change_approvals": [
+     "SELECT"
+    ],
+    "change_ledger.change_dispatch_verifications": [
+     "SELECT"
+    ],
+    "change_ledger.dispatch_receipt_requirements": [
+     "SELECT"
+    ],
+    "change_ledger.dispatch_receipts": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "checkpoint_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.attach_permit_signature(text,text,uuid,bigint,text,text)",
+    "change_ledger.caller_role()",
+    "change_ledger.canonical_content_hash(jsonb)",
+    "change_ledger.checkpoint_payload(text,text,bigint,text,timestamp with time zone,text,text,text)",
+    "change_ledger.keyed_signature(text,text)",
+    "change_ledger.ledger_head(text,text)",
+    "change_ledger.record_checkpoint(text,text,bigint,text,text,text,text,text,timestamp with time zone,boolean)",
+    "change_ledger.row_in_scope(text,text)",
+    "change_ledger.set_scope(text,text)"
+   ],
+   "table_or_sequence_privileges": {},
+   "direct_dml_tables": []
+  },
+  "receipt_role": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": false,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [],
+   "table_or_sequence_privileges": {},
+   "direct_dml_tables": []
+  },
+  "business_ai_private_writer": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": true,
+   "rolinherit": false,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": true,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": true,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": true,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": true,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": true,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": true,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": true,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": true,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": true,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": true,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": true,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": true,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": true,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 13,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)",
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)",
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)",
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)",
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)",
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)",
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)",
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)",
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)",
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)",
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)",
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)",
+    "change_ledger.private_writer_startup_recovery_state_v1(text)"
+   ],
+   "table_or_sequence_privileges": {},
+   "direct_dml_tables": []
+  },
+  "private_writer_evidence_ingest": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": true,
+   "rolinherit": false,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": true,
+    "living": false
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [],
+   "table_or_sequence_privileges": {},
+   "direct_dml_tables": []
+  },
+  "living_worker": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": false,
+    "living": true
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "living.acquire_job(text,text,uuid,text,integer)",
+    "living.as_effective_at(text,text,timestamp with time zone,timestamp with time zone)",
+    "living.as_known_at(text,text,timestamp with time zone)",
+    "living.assert_knowledge_settled(text,text,timestamp with time zone)",
+    "living.caller_role()",
+    "living.commit_cursor_page(text,text,text,uuid,text,bigint,text,bigint,bigint,text,jsonb)",
+    "living.create_cursor(text,text,text,text)",
+    "living.enqueue_job(text,text,uuid,text,text,text,jsonb)",
+    "living.finish_job(text,text,uuid,text,bigint,text,text)",
+    "living.ingest_observation(text,text,uuid,text,uuid,text,text,timestamp with time zone,timestamp with time zone,uuid,jsonb)",
+    "living.knowledge_horizon(text,text)",
+    "living.reap_expired_jobs(text,text)",
+    "living.record_attestation(text,text,uuid,uuid,text,text,text,text,timestamp with time zone)",
+    "living.renew_lease(text,text,uuid,text,bigint,integer)",
+    "living.revoke_attestation(text,text,uuid)",
+    "living.row_in_scope(text,text,text)",
+    "living.set_scope(text,text,text)",
+    "living.tenant_in_scope(text)"
+   ],
+   "table_or_sequence_privileges": {
+    "living.tenants": [
+     "SELECT"
+    ],
+    "living.sources": [
+     "SELECT"
+    ],
+    "living.observations": [
+     "SELECT"
+    ],
+    "living.accepted_heads": [
+     "SELECT"
+    ],
+    "living.acceptance_events": [
+     "SELECT"
+    ],
+    "living.jobs": [
+     "SELECT"
+    ],
+    "living.cursors": [
+     "SELECT"
+    ],
+    "living.outbox": [
+     "SELECT"
+    ],
+    "living.role_scope": [
+     "SELECT"
+    ],
+    "living.attestations": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "living_reader": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": false,
+    "living": true
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "living.as_effective_at(text,text,timestamp with time zone,timestamp with time zone)",
+    "living.as_known_at(text,text,timestamp with time zone)",
+    "living.assert_knowledge_settled(text,text,timestamp with time zone)",
+    "living.caller_role()",
+    "living.knowledge_horizon(text,text)",
+    "living.row_in_scope(text,text,text)",
+    "living.set_scope(text,text,text)",
+    "living.tenant_in_scope(text)"
+   ],
+   "table_or_sequence_privileges": {
+    "living.tenants": [
+     "SELECT"
+    ],
+    "living.sources": [
+     "SELECT"
+    ],
+    "living.accepted_heads": [
+     "SELECT"
+    ],
+    "living.acceptance_events": [
+     "SELECT"
+    ],
+    "living.role_scope": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "living_promoter": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": false,
+    "living": true
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "living.as_effective_at(text,text,timestamp with time zone,timestamp with time zone)",
+    "living.as_known_at(text,text,timestamp with time zone)",
+    "living.assert_knowledge_settled(text,text,timestamp with time zone)",
+    "living.caller_role()",
+    "living.create_head(text,text,text)",
+    "living.knowledge_horizon(text,text)",
+    "living.promote_head(text,text,text,bigint,uuid,uuid,text)",
+    "living.revoke_attestation(text,text,uuid)",
+    "living.row_in_scope(text,text,text)",
+    "living.set_scope(text,text,text)",
+    "living.tenant_in_scope(text)"
+   ],
+   "table_or_sequence_privileges": {
+    "living.tenants": [
+     "SELECT"
+    ],
+    "living.sources": [
+     "SELECT"
+    ],
+    "living.accepted_heads": [
+     "SELECT"
+    ],
+    "living.acceptance_events": [
+     "SELECT"
+    ],
+    "living.role_scope": [
+     "SELECT"
+    ],
+    "living.attestations": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  },
+  "living_publisher": {
+   "exists": true,
+   "rolsuper": false,
+   "rolbypassrls": false,
+   "rolcanlogin": false,
+   "rolinherit": true,
+   "rolcreaterole": false,
+   "rolcreatedb": false,
+   "rolreplication": false,
+   "direct_memberships": [],
+   "effective_super_or_bypassrls": false,
+   "schema_usage": {
+    "change_ledger": false,
+    "living": true
+   },
+   "private_writer_execute": {
+    "change_ledger.private_writer_admit_v1(change_ledger.private_writer_identity_v1,text,bigint)": false,
+    "change_ledger.private_writer_append_queued_events_v1(text,text,jsonb)": false,
+    "change_ledger.private_writer_assert_planned_resource_owner_scope_v1(text,text,uuid[],text,text,text,boolean)": false,
+    "change_ledger.private_writer_assert_target_lease_owner_scope_v1(text,text,uuid,text)": false,
+    "change_ledger.private_writer_assert_transaction_v1()": false,
+    "change_ledger.private_writer_attach_recovered_receipt_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text)": false,
+    "change_ledger.private_writer_attempt_evidence_guard_v1()": false,
+    "change_ledger.private_writer_attempt_transition_guard_v1()": false,
+    "change_ledger.private_writer_barrier_ack_guard_v1()": false,
+    "change_ledger.private_writer_barrier_transition_guard_v1()": false,
+    "change_ledger.private_writer_base_slot_transition_guard_v1()": false,
+    "change_ledger.private_writer_begin_com_entry_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_bump_trust_revision_v1()": false,
+    "change_ledger.private_writer_close_and_advance_v1(text,change_ledger.private_writer_scope_v1,bigint,uuid,text,bigint)": false,
+    "change_ledger.private_writer_dispatch_intent_for_call_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_evidence_attempt_v1(uuid,uuid,text,text,text,text)": false,
+    "change_ledger.private_writer_evidence_binding_guard_v1()": false,
+    "change_ledger.private_writer_finish_barrier_v1(change_ledger.private_writer_barrier_snapshot_v1,text,text,bigint)": false,
+    "change_ledger.private_writer_issue_permit_v1(text,text,uuid,bigint,uuid,uuid,text,text,text)": false,
+    "change_ledger.private_writer_key_revocation_guard_v1()": false,
+    "change_ledger.private_writer_key_rotation_guard_v1()": false,
+    "change_ledger.private_writer_load_barrier_ack_trust_v1(change_ledger.private_writer_barrier_ack_v1)": false,
+    "change_ledger.private_writer_load_evidence_records_v1(uuid,uuid,text,text,text,text,uuid,bigint,text,text[])": false,
+    "change_ledger.private_writer_load_trust_snapshot_v1(text,text,text,text,text,text[],text[],uuid[],text,text,boolean)": false,
+    "change_ledger.private_writer_lock_trust_revision_v1()": false,
+    "change_ledger.private_writer_lookup_barrier_ack_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_barrier_v1(uuid)": false,
+    "change_ledger.private_writer_lookup_v1(change_ledger.private_writer_identity_v1)": false,
+    "change_ledger.private_writer_mark_invoking_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint)": false,
+    "change_ledger.private_writer_open_hold_v1(text,text,text,text,text,jsonb)": false,
+    "change_ledger.private_writer_permit_binding_for_intent_v1(text,text,uuid)": false,
+    "change_ledger.private_writer_permit_signature_guard_v1()": false,
+    "change_ledger.private_writer_record_recovered_not_invoked_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text)": false,
+    "change_ledger.private_writer_record_recovered_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text,text,uuid)": false,
+    "change_ledger.private_writer_record_terminal_v1(change_ledger.private_writer_identity_v1,uuid,text,text)": false,
+    "change_ledger.private_writer_record_verified_success_v1(change_ledger.private_writer_identity_v1,uuid,text,bigint,text,text,text)": false,
+    "change_ledger.private_writer_recover_sweep_core_v1(text,text,jsonb,uuid,boolean)": false,
+    "change_ledger.private_writer_recover_sweep_deferred_v1(text,text,jsonb,uuid)": false,
+    "change_ledger.private_writer_recovery_gap_bound_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_gap_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_has_eligible_v1(text,text,jsonb,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_recovery_permit_v1(text,text,uuid,bigint,jsonb,text,timestamp with time zone,uuid,text,integer)": false,
+    "change_ledger.private_writer_recovery_t12_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_t5x_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_recovery_verify_v1(text,text,uuid,jsonb,text,timestamp with time zone,uuid,integer)": false,
+    "change_ledger.private_writer_refusal_v1(change_ledger.private_writer_identity_v1,text)": false,
+    "change_ledger.private_writer_register_barrier_ack_v1(change_ledger.private_writer_barrier_ack_v1,text,bytea,bigint)": false,
+    "change_ledger.private_writer_register_evidence_v1(change_ledger.private_writer_evidence)": false,
+    "change_ledger.private_writer_resolve_signer_key_v1(text,text,text,text,text,text,text,text,text,timestamp with time zone)": false,
+    "change_ledger.private_writer_service_binding_guard_v1()": false,
+    "change_ledger.private_writer_serving_fence_guard_v1()": false,
+    "change_ledger.private_writer_startup_recovery_state_v1(text)": false,
+    "change_ledger.private_writer_take_base_fence_v1(text)": false,
+    "change_ledger.private_writer_take_global_fences_v1(text[])": false,
+    "change_ledger.private_writer_take_scope_fence_v1(text,text)": false,
+    "change_ledger.private_writer_take_switch_fence_v1(text,text)": false,
+    "change_ledger.private_writer_trust_revision_guard_v1()": false
+   },
+   "private_writer_execute_true_count": 0,
+   "private_writer_total": 57,
+   "executable_functions_all": [
+    "living.caller_role()",
+    "living.claim_outbox(text,text,integer,integer,integer)",
+    "living.finish_outbox(text,text,text,text,bigint,boolean,integer)",
+    "living.row_in_scope(text,text,text)",
+    "living.set_scope(text,text,text)",
+    "living.tenant_in_scope(text)"
+   ],
+   "table_or_sequence_privileges": {
+    "living.tenants": [
+     "SELECT"
+    ],
+    "living.sources": [
+     "SELECT"
+    ],
+    "living.role_scope": [
+     "SELECT"
+    ]
+   },
+   "direct_dml_tables": []
+  }
+ },
+ "add_role_scope_runtime_execute": {
+  "requester_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "approver_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "operator_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "writer_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "worker_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "auditor_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "checkpoint_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "receipt_role": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "business_ai_private_writer": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "private_writer_evidence_ingest": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "living_worker": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "living_reader": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "living_promoter": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  },
+  "living_publisher": {
+   "change_ledger.add_role_scope(text,text,text)": false,
+   "living.add_role_scope(text,text,text,text)": false
+  }
+ },
+ "owner_check": {
+  "private_writer_functions_owner": [
+   "ledger_owner"
+  ],
+  "private_writer_secdef_count": 57,
+  "private_writer_total": 57,
+  "private_writer_secdef_without_search_path": []
+ },
+ "environment": {
+  "container_name": "s13-qual-a9870afd",
+  "container_id": "a3e4935a3d55834bd5d08805fa6462de7ebe87fdab7cc2934416daa26e4f7ab5",
+  "image": "postgres:16.14",
+  "server_version": "PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+  "loopback_only": true,
+  "system_identifier": 7701773942855077926,
+  "database": "s13_qual_chain",
+  "migrations": [
+   {
+    "file": "001_living_registry.sql",
+    "sha256": "d8c9d4a5a9d5f52a6e88dc31414dca02678f262e75748d596374ddcf04e7d0cf",
+    "status": "APPLIED"
+   },
+   {
+    "file": "002_job_cursor_functions.sql",
+    "sha256": "74776d7f165a25288ef6cfbfa5a4decbc470260d671f265c2a51dd74ad36a138",
+    "status": "APPLIED"
+   },
+   {
+    "file": "003_security_hardening.sql",
+    "sha256": "294d24d6c7981697c3f3336e603137edada46f5caae9e6ff672141b044854c9f",
+    "status": "APPLIED"
+   },
+   {
+    "file": "004_change_ledger.sql",
+    "sha256": "6b7e1efa11f43e39648051b8184de2a97ad8ef2b578aba696af658253bed7340",
+    "status": "APPLIED"
+   },
+   {
+    "file": "005_change_registry.sql",
+    "sha256": "99522e7ca803f5972c88588069e0408af3a51a60340fd34da26cc02eb23d1373",
+    "status": "APPLIED"
+   },
+   {
+    "file": "006_change_sweeps.sql",
+    "sha256": "dd147300993ca1d5db4680ab013069b4ce59879e670120cd930a2d155ac05de9",
+    "status": "APPLIED"
+   },
+   {
+    "file": "007_change_hardening_a.sql",
+    "sha256": "91434b315e5586e656a633e101783800559e6a299bd21187feaa5629fdb43c86",
+    "status": "APPLIED"
+   },
+   {
+    "file": "008_change_hardening_b.sql",
+    "sha256": "5812a7c72afe7ddab9f29d1b1ba02ad3e8a1ea14f6c7c0dfeff2cd671c70c8e9",
+    "status": "APPLIED"
+   },
+   {
+    "file": "009_approval_digest_2.sql",
+    "sha256": "68af5fd28aec77dd14d83a108979733d14fa592afba7b459a7e7ff524c981ef8",
+    "status": "APPLIED"
+   },
+   {
+    "file": "010_registry_session_hardening.sql",
+    "sha256": "31dd17112a22b17128ca5fa4cf77250ca864f75bf2840326b32e69a6ddc73b0f",
+    "status": "APPLIED"
+   },
+   {
+    "file": "011_event_hash_v2.sql",
+    "sha256": "b9e11476b8bd5119bcb4d0beb96290a6f150fbab4898e94d14cc396ac9f28842",
+    "status": "APPLIED"
+   },
+   {
+    "file": "012_dispatch_session_hardening.sql",
+    "sha256": "a6c5680b85a49b648e4fdaad7014825441f8e59a4b0f44ca590e2d39c2a3c9c9",
+    "status": "APPLIED"
+   },
+   {
+    "file": "013_dispatched_invariant.sql",
+    "sha256": "4a0c7a5ce3467809467f8cf619cea6334c851e82503035beb7ffd60444ec62aa",
+    "status": "APPLIED"
+   },
+   {
+    "file": "014_ed25519_verify.sql",
+    "sha256": "db96004c9c6fbc7a4ab9000b84af33a76a74ef8bde0d18966b76005219919afe",
+    "status": "APPLIED"
+   },
+   {
+    "file": "015_ed25519_signatures.sql",
+    "sha256": "11f9ee2c887af23c6983778b6134edad4c376bf0e508d5776cf69684d70036e6",
+    "status": "APPLIED"
+   },
+   {
+    "file": "016_dispatch_receipt.sql",
+    "sha256": "f9b0a1e9d5ec4d3f7d8365b11f226d37a6f9eafc896c47d9fd759d8f9f8ac11e",
+    "status": "APPLIED"
+   },
+   {
+    "file": "017_receipt_hardening.sql",
+    "sha256": "732bbb6d841f2cf3e5fc57504cc7925b778185b44167841986f7c6ec5b3b8f83",
+    "status": "APPLIED"
+   },
+   {
+    "file": "018_wire_payload_receipt.sql",
+    "sha256": "c3a081ed0e1fcc7b0b68dac98d914070fe5cd72645d1691d66c3999c65ccd154",
+    "status": "APPLIED"
+   },
+   {
+    "file": "019_ed25519_action_only.sql",
+    "sha256": "1662f8ca4d7ecc7641473d1cfdc0b27f47d3fdcdeb4fa2260d82a0885bf97904",
+    "status": "APPLIED"
+   },
+   {
+    "file": "020_kill_switch_recovery_guard.sql",
+    "sha256": "ab9337ec9fd8b56d612d916be50af4be6a0be1a5e8ba3b70cbb52884f7e3c9cc",
+    "status": "APPLIED"
+   },
+   {
+    "file": "021_ed25519_consumer_cutover.sql",
+    "sha256": "fa8dc4c8dcc14d4aacb30faf1866d7dbe0624af3eba720adc71bb3c124e7b70c",
+    "status": "APPLIED"
+   },
+   {
+    "file": "022_lifecycle_epoch_fence.sql",
+    "sha256": "9af22ec1291474a13031cd9ad928980e9af8b81e01c806b998d5f2317c566acc",
+    "status": "APPLIED"
+   },
+   {
+    "file": "023_lifecycle_activation_cap.sql",
+    "sha256": "5cda75adb082eaf2e71f0acb9f0def18fb2374c9245e9613186d53ddbad19381",
+    "status": "APPLIED"
+   },
+   {
+    "file": "024_restore_caller_lock_timeout.sql",
+    "sha256": "96ac22e6d207ca1d7c6069625cfa3738c0e9346907daf95855ec6bf7c531dea2",
+    "status": "APPLIED"
+   },
+   {
+    "file": "025_lifecycle_checkpoint_suffix.sql",
+    "sha256": "8fe3ebb50ac9a27261c0d692c812a27988ede9990bb4a4c635259fd47c1d709d",
+    "status": "APPLIED"
+   },
+   {
+    "file": "026_lifecycle_checkpoint_payload_minimization.sql",
+    "sha256": "217b99df9f13570f0f0275bc9aa4e181ba8609ccede77a6bf47ec252e4cdfb81",
+    "status": "APPLIED"
+   },
+   {
+    "file": "027_private_writer_admission_schema.sql",
+    "sha256": "d60423aafb89ca3f7d4c9e0b8b48e563a083550162df7c710b2fe45690a0b90b",
+    "status": "APPLIED"
+   }
+  ],
+  "idempotent_027": {
+   "status": "CLEAN",
+   "catalog_snapshot_equal": true,
+   "before": {
+    "roles": "3ebb1912f5b4246aba62cf67087ea470",
+    "class": "235",
+    "tbl_acl_digest": "ce18328d50198f7fd068c9955b96a37d",
+    "proc": "331",
+    "acl_digest": "2e4cbfb0b4fc7d4bc1b75a6517e4d6cf"
+   },
+   "after": {
+    "roles": "3ebb1912f5b4246aba62cf67087ea470",
+    "class": "235",
+    "tbl_acl_digest": "ce18328d50198f7fd068c9955b96a37d",
+    "proc": "331",
+    "acl_digest": "2e4cbfb0b4fc7d4bc1b75a6517e4d6cf"
+   }
+  }
+ }
+}
