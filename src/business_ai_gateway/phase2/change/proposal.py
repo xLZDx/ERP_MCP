@@ -16,7 +16,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Context, Decimal
 from enum import Enum
 from types import MappingProxyType
 from typing import Final
@@ -29,6 +29,7 @@ __all__ = [
     "ProposalContext", "RULE_TABLE_VERSION", "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "approval_digest",
     "canonical_json", "derive_allowed_effects", "digest_of_canonical_text",
     "payload_digest", "payload_to_dict", "parse_proposal", "parse_writer_payload", "sha256_hex",
+    "vat_rate_percent_table",
 ]
 
 RULE_TABLE_VERSION: Final = "S11-RULES-2026-10-12"
@@ -435,6 +436,39 @@ def _parse_lines(raw: object) -> tuple[Line, ...] | None:
     return tuple(out)
 
 
+# Amount consistency (S12 contract amendment 2026-10-28, gap G1). The supported receipt shape is VAT-inclusive (the
+# 1C "amount includes VAT" document flag TRUE, so the stored total equals the line amount; every S12/S14 fixture and
+# the synthetic generator already use this convention): a line carries amount = quantity x price and
+# vat_amount = amount x rate / (100 + rate). Both are rounded half up to the 2-decimal currency unit. The rate comes from the closed code table below (it mirrors
+# ``erp_mcp_private_writer.com_vat_table``, which this package must not import; the keys are the writer's payload codes
+# and the values are percent, the same semantics the writer table documents: VAT20 targets the 1C value named
+# ``НДС18``, a legacy name that holds 20 percent). A ``vat_rate_code`` outside the closed table has no known rate and
+# is refused as ``AMOUNT_INCONSISTENT``, because its VAT amount cannot be verified. VAT-on-top documents
+# (vat_amount = amount x rate / 100) are unsupported and refused the same way. The platform does not compute line VAT,
+# so the numbers the approver sees are the numbers written; this check makes them arithmetically honest before they
+# are digest-bound.
+_VAT_RATE_PERCENT: Final = MappingProxyType({"VAT0": Decimal(0), "VAT10": Decimal(10), "VAT20": Decimal(20)})
+
+
+def vat_rate_percent_table() -> dict[str, str]:
+    """Pure data view of the closed engine VAT table (code -> percent text) for cross-checks against the writer table."""
+    return {code: str(rate) for code, rate in _VAT_RATE_PERCENT.items()}
+_MONEY_UNIT: Final = Decimal("0.01")
+_MONEY_CONTEXT: Final = Context(prec=80, rounding=ROUND_HALF_UP)  # quantity x price may need up to 48 digits
+
+
+def _line_amounts_consistent(line: Line) -> bool:
+    quantity, price = Decimal(line.quantity), Decimal(line.price)
+    amount, vat_amount = Decimal(line.amount), Decimal(line.vat_amount)
+    if amount != _MONEY_CONTEXT.multiply(quantity, price).quantize(_MONEY_UNIT, context=_MONEY_CONTEXT):
+        return False
+    rate = _VAT_RATE_PERCENT.get(line.vat_rate_code)
+    if rate is None:
+        return False  # unknown rate code: the VAT amount cannot be verified, fail closed
+    expected_vat = _MONEY_CONTEXT.divide(_MONEY_CONTEXT.multiply(amount, rate), Decimal(100) + rate)
+    return vat_amount == expected_vat.quantize(_MONEY_UNIT, context=_MONEY_CONTEXT)
+
+
 def _parse_draft(raw: object, kind: ChangeKind, scope: Scope, target_version: str | None) -> DraftPayload | Refusal:
     keys = _PAYLOAD_KEYS | ({"expected_target_version"} if kind is ChangeKind.UPDATE_DRAFT else frozenset())
     required = keys - {"duplicate_override"}
@@ -455,12 +489,19 @@ def _parse_draft(raw: object, kind: ChangeKind, scope: Scope, target_version: st
     if raw["organization_ref"] != scope.organization:  # type: ignore[index]
         return Refusal(ErrorCode.SCOPE_MISMATCH, "propose")
     try:
-        return DraftPayload(
+        draft = DraftPayload(
             raw["organization_ref"], raw["counterparty_ref"], raw["contract_ref"],  # type: ignore[index]
             raw["supplier_document_number"], raw["supplier_document_date"], raw["currency"], lines,  # type: ignore[index]
             raw["comment"], override, raw.get("expected_target_version"))  # type: ignore[index,attr-defined]
     except ValueError:
         return _BAD
+    try:
+        consistent = all(_line_amounts_consistent(x) for x in draft.lines)
+    except ArithmeticError:  # decimal.InvalidOperation and friends: never escape, same bad-input refusal
+        return _BAD
+    if not consistent:
+        return Refusal(ErrorCode.AMOUNT_INCONSISTENT, "propose")
+    return draft
 
 
 def parse_writer_payload(raw: object, kind: object, scope: object) -> DraftPayload | None | Refusal:
@@ -473,7 +514,10 @@ def parse_writer_payload(raw: object, kind: object, scope: object) -> DraftPaylo
     if type(kind) is not ChangeKind or type(scope) is not Scope:
         return _BAD
     if kind is ChangeKind.CREATE_DRAFT:
-        parsed = _parse_draft(raw, kind, scope, None)
+        try:
+            parsed = _parse_draft(raw, kind, scope, None)
+        except (ValueError, TypeError, KeyError, ArithmeticError):
+            return _BAD
         if type(parsed) is Refusal:
             return parsed
         if len(parsed.lines) > MEASURED_SHAPE_MAX_LINES:
@@ -487,12 +531,12 @@ def parse_writer_payload(raw: object, kind: object, scope: object) -> DraftPaylo
 def parse_proposal(raw: object, ctx: object) -> ChangeProposal | Refusal:
     """Build a ``ChangeProposal`` from caller input plus server-derived context, or return a code-only refusal.
 
-    Order: structure (unknown keys, including any caller ``allowed_effects``) -> scope -> reference scope ->
-    shape qualification. Never raises and never echoes input.
+    Order: structure (unknown keys, including any caller ``allowed_effects``) -> scope -> amount consistency
+    (``AMOUNT_INCONSISTENT``) -> reference scope -> shape qualification. Never raises and never echoes input.
     """
     try:
         return _parse(raw, ctx)
-    except (ValueError, TypeError, KeyError):
+    except (ValueError, TypeError, KeyError, ArithmeticError):
         return _BAD
 
 

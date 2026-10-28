@@ -1173,3 +1173,105 @@ Decision: accept the reviews' fixes (pre-write type and date checks, document re
 ## 2026-10-27 - Read-back comparison made type-aware (GPT-PM M-01)
 
 Decision: accept the finding; identity text is compared as exact text, only declared number paths are compared numerically, and the empty-text-equals-None rule is removed. Executor ran OK on the clone as administrator and narrow user after the change (rolled back). Detail: `docs/phase2/CHANGE_RECORD_383.md`.
+
+## 2026-10-27 - Document registry regenerated
+
+Decision: refresh governance/DOCUMENT_REGISTRY.md by running its generator (760 tracked paths); generated output, not hand-edited; committed locally and pushed with the next approved push.
+
+## 2026-10-27 - S15 sprint plan drafted
+
+Decision: draft the S15 plan from the S14 facts as documentation only; stale statements in the older S14-S19 plan are recorded, not edited. PR 39 was merged as 8e6c8cb at the operator's answer. Detail: `docs/phase2/CHANGE_RECORD_384.md`.
+
+## 2026-10-27 - S15 plan revised after two agent reviews
+
+Decision: accept all review items; the v2.0 write catalogue governs and the scenarios that need post/unpost or contract update are DEFERRED with the operator as owner. Detail: `docs/phase2/CHANGE_RECORD_385.md`.
+
+## 2026-10-27 - Operator answers on S15 scope, fixtures and S13
+
+Decision: keep E2, E10, E26, E37 and the E1 post step deferred; re-create the clone from the reference copy for fixtures; do not accept S13 without evidence. The answers equal the recommended options and may have been auto-accepted by the question policy during operator silence, so they stay revisable. Detail: S15 plan section 'Operator decisions recorded'.
+
+## 2026-10-28 - S15 code written
+
+Decision: S15 code lives in a new top-level package `src/erp_mcp_s15/` so the oracle import graph stays independent of the writer; ports are fakes because S13 is not accepted; tests and reviews follow. Detail: `docs/phase2/CHANGE_RECORD_386.md`.
+
+## 2026-10-28 - S15 functional tests written and run by the test agent
+
+Decision: accept 322 passing agent-run tests as the functional evidence for the synthetic scope; real-1C, S13 ledger and deferred scenarios stay NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_387.md`.
+
+## 2026-10-28 - S15 source fixed after three specialist reviews
+
+Decision: accept all MAJOR and the actionable MINOR findings in one batch; found-by-marker unknown outcomes keep reconciliation non-clean until the ledger records the resolution; a stale clean report never unblocks after a restore. Detail: `docs/phase2/CHANGE_RECORD_388.md`.
+
+## 2026-10-28 - S15 tests adapted to the reviewed behaviour
+
+Decision: 713 agent-run passing tests are the functional evidence for the synthetic scope; two minor observations (runner status after a discarded report, id-prefix control coverage) are recorded, not changed. Detail: `docs/phase2/CHANGE_RECORD_389.md`.
+
+## 2026-10-28 - Document registry regenerated for S15
+
+Decision: refresh governance/DOCUMENT_REGISTRY.md with the generator (767 tracked paths); generated output, not hand-edited.
+
+## 2026-10-28 - S15 source fixed after the GPT-PM gate review
+
+Decision: accept both MAJOR findings and the residual minors; a reconciliation listing must prove it enumerates unmarked documents of the required scope, and an A-to-B comparison must prove two distinct source identities. Detail: `docs/phase2/CHANGE_RECORD_390.md`.
+
+## 2026-10-28 - S15 tests for the GPT-PM gate fixes
+
+Decision: 899 agent-run passing tests are the functional evidence after the GPT-PM fixes; the gate re-review is limited to the two MAJOR fixes and their regressions. Detail: `docs/phase2/CHANGE_RECORD_391.md`.
+
+## 2026-10-28 - Document registry regenerated after CR-391
+
+Decision: regenerate governance/DOCUMENT_REGISTRY.md once CR-391 is tracked; generated output, not hand-edited.
+
+## 2026-10-28 - Operator order: finish S12/S13 before S16 code
+
+
+
+Decision: the operator chose to finish S12/S13 qualification first; S16 gets a plan document only until then. The operator also stated that a new 1C licence is in place; the clone connection was probed live and works, so licence is not a blocker. Detail: next change record.
+
+## 2026-10-28 - S16 plan rev 2 accepted after two reviews
+
+
+
+Decision: apply all review findings to the S16 plan (S16-owned decision core, apply-time re-validation, positive authentication on the private listener, VerifyPort limited to the S15-supported shape). Detail: `docs/phase2/CHANGE_RECORD_393.md`. Re-review and GPT-PM NOT_RUN.
+
+## 2026-10-28 - S12 offline and S13 PostgreSQL qualification evidence recorded
+
+
+
+Decision: record the agent-run results at the current head as evidence, keep every live-1C and external half NOT_RUN, and keep S12/S13 formally NOT accepted. Gaps G1-G3 and the missing E38 parallel test are listed for decision. Detail: `docs/phase2/CHANGE_RECORD_394.md`.
+
+## 2026-10-28 - E38 parallel reservation evidence and pytest collection fix
+
+
+
+Decision: rename script helpers so pytest does not collect them instead of adding fixtures; keep the scripts runnable. Detail: `docs/phase2/CHANGE_RECORD_396.md`.
+
+## 2026-10-28 - Live clone scenarios recorded
+
+
+
+Decision: record the clone results as partial live evidence; keep real POST/UNPOST and the update-interval race NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_397.md`.
+
+## 2026-10-28 - S12 contract amendment: amount consistency and distinct refusal codes
+
+
+
+Decision (operator answers, auto-accepted recommended options, revisable): refuse proposals whose amount or VAT amount contradict quantity x price and the VAT rate; add PERIOD_CLOSED and GRANT_EXHAUSTED. Assumption: VAT-inclusive convention, so the production binding must set the 1C includes-VAT constant to TRUE. SQL migrations unchanged. Detail: `docs/phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md`, `docs/phase2/CHANGE_RECORD_395.md`.
+
+## 2026-10-28 - Review fixes for the S12 amendment accepted
+
+
+
+Decision: fail closed on a missing period observation, refuse unknown VAT codes, keep SQL out of scope until a new migration. Detail: `docs/phase2/CHANGE_RECORD_398.md`.
+
+## 2026-10-28 - GPT-PM fixes: clone principal snapshot, honest E4/E25 labels, Python-only codes
+
+
+
+Decision: record the CT14_NARROW reset as an authorized persistent mutation with before/after principal verification; relabel E4/E25 PARTIAL; state Python-only scope of the new codes. Detail: `docs/phase2/CHANGE_RECORD_399.md`.
+
+## 2026-10-28 - Principal verification now covers every setup failure path
+
+
+
+Decision: register the principal verifier before the first clone mutation and treat any post-mutation setup failure as a test failure (never a skip), per the GPT-PM verification round. Detail: `docs/phase2/CHANGE_RECORD_399.md`.

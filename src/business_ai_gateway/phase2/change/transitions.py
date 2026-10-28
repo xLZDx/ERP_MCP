@@ -358,6 +358,8 @@ class BeginApplyEvidence(Evidence):
     holds: tuple[Hold, ...] | None = None
     version_equals_approved: bool = False
     fingerprint_authenticated: bool = False
+    period_closed: bool = False  # True only when the authenticated target read observed a closed period
+    period_observed_open: bool = False  # True only when that read positively observed an open period (fail closed)
     state_digest_equal: bool = False
     writer_lock_held: bool = False
     ownership_row_committed: bool = False
@@ -554,7 +556,9 @@ def _elapsed(deadline: datetime | None, now: object) -> bool:
 def _budget_error(budget: object) -> ErrorCode | None:
     if budget is BudgetCheck.OK:
         return None
-    return ErrorCode.CURRENCY_NOT_BUDGETED if budget is BudgetCheck.CURRENCY_NOT_BUDGETED else ErrorCode.BUDGET_EXCEEDED
+    if budget is BudgetCheck.CURRENCY_NOT_BUDGETED:
+        return ErrorCode.CURRENCY_NOT_BUDGETED
+    return ErrorCode.GRANT_EXHAUSTED if budget is BudgetCheck.EXHAUSTED else ErrorCode.BUDGET_EXCEEDED
 
 
 def _holds_error(holds: object) -> ErrorCode | None:
@@ -796,6 +800,17 @@ def g_version_equals_approved(record: ChangeRecord | None, ev: BeginApplyEvidenc
 @_guard
 def g_fingerprint_authenticated(record: ChangeRecord | None, ev: BeginApplyEvidence) -> ErrorCode | None:  # type: ignore[override]
     return _ok(ev.fingerprint_authenticated, ErrorCode.TARGET_REJECTED)
+
+
+@_guard
+def g_period_open(record: ChangeRecord | None, ev: BeginApplyEvidence) -> ErrorCode | None:  # type: ignore[override]
+    # Runs before the state-digest guard: a positively observed closed period is reported as PERIOD_CLOSED; any other
+    # change of the business state stays DIGEST_MISMATCH. Fail closed: a period status that was not positively observed
+    # open (no evidence) is refused as DIGEST_MISMATCH, the code of the digest guard that follows, so missing period
+    # evidence can never let BEGIN_APPLY pass.
+    if ev.period_closed is True:
+        return ErrorCode.PERIOD_CLOSED
+    return None if ev.period_observed_open is True else ErrorCode.DIGEST_MISMATCH
 
 
 @_guard
@@ -1149,7 +1164,8 @@ TRANSITION_TABLE: Final = (
                   "execution=APPLYING, dispatch=NOT_PERMITTED",
                   ("generation_current", "caller_may_begin", "claim_alive", "epoch_equals_claim", "kill_off",
                    "holds_and_repair_t6", "approval_window_open", "version_equals_approved",
-                   "fingerprint_authenticated", "state_digest_equal", "writer_lock_held", "ownership_row_committed"),
+                   "fingerprint_authenticated", "period_open", "state_digest_equal", "writer_lock_held",
+                   "ownership_row_committed"),
                   ErrorCode.TICKET_SUPERSEDED),
     TransitionRow("T6_REPLAY", "T6", Event.BEGIN_APPLY,
                   _req(authorization=(_AU.CLAIMED,), execution=(_EX.APPLYING,), token=(_TK.CONSUMED,),

@@ -167,6 +167,7 @@ class BudgetCheck(StrEnum):
     EXCEEDED = "EXCEEDED"
     CURRENCY_NOT_BUDGETED = "CURRENCY_NOT_BUDGETED"
     NOT_CHECKED = "NOT_CHECKED"
+    EXHAUSTED = "EXHAUSTED"  # amendment 2026-10-28: no remaining amount in the grant (see ErrorCode.GRANT_EXHAUSTED)
 
 
 _EXPECTED: Final = (
@@ -191,7 +192,7 @@ _EXPECTED: Final = (
     (ProofClass, ("NONE", "WRITER_COMPLETION", "SESSION_END_OBSERVED", "FORCED_TERMINATION")),
     (FailureStage, ("PRE_WRITE", "WRITE_STARTED", "UNCLASSIFIED")),
     (EvidenceKind, ("FIELD", "MOVEMENT", "VERSION", "AUTHORIZATION_RECEIPT")),
-    (BudgetCheck, ("OK", "EXCEEDED", "CURRENCY_NOT_BUDGETED", "NOT_CHECKED")),
+    (BudgetCheck, ("OK", "EXCEEDED", "CURRENCY_NOT_BUDGETED", "NOT_CHECKED", "EXHAUSTED")),
 )
 for _cls, _names in _EXPECTED:
     # import-time guard: the closed vocabulary must equal the contract list exactly

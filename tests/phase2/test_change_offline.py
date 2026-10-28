@@ -102,6 +102,7 @@ CONTRACT_ERROR_CODES = (
     "KILL_SWITCH_ACTIVE", "BASE_HOLD", "PARENT_NOT_VERIFIED", "CLAIM_EXPIRED", "BUDGET_EXCEEDED",
     "CURRENCY_NOT_BUDGETED", "AUDIT_UNAVAILABLE", "CHECKPOINT_UNAVAILABLE", "LOCK_BUSY", "WRITE_REFUSED",
     "APPLY_UNKNOWN", "TRIAGE_REQUIRED", "ROLLBACK_REFUSED", "VERIFY_FAILED", "MARKER_UNTRUSTED", "EVIDENCE_UNSIGNED",
+    "AMOUNT_INCONSISTENT", "PERIOD_CLOSED", "GRANT_EXHAUSTED",  # appended by CR-395 (S12 amendment 2026-10-28)
 )
 
 
@@ -192,7 +193,7 @@ def test_import_time_guards_are_live_not_vacuous():
 
 def test_error_registry_has_exactly_the_contract_codes():
     assert [c.value for c in ErrorCode] == list(CONTRACT_ERROR_CODES)
-    assert len(CONTRACT_ERROR_CODES) == 36
+    assert len(CONTRACT_ERROR_CODES) == 39
     assert set(ch.ERROR_INFO) == set(ErrorCode)
 
 
@@ -585,6 +586,7 @@ def test_t2_business_key_collision_parks_the_change_unless_an_override_is_bound(
 @pytest.mark.parametrize("over, code", [
     ({"preview_built": False}, "SCHEMA_INVALID"), ({"shape_qualified": False}, "SHAPE_NOT_QUALIFIED"),
     ({"allowed_effects_derived": False}, "SCHEMA_INVALID"), ({"budget": BudgetCheck.EXCEEDED}, "BUDGET_EXCEEDED"),
+    ({"budget": BudgetCheck.EXHAUSTED}, "GRANT_EXHAUSTED"),
     ({"budget": BudgetCheck.NOT_CHECKED}, "BUDGET_EXCEEDED"),
     ({"budget": BudgetCheck.CURRENCY_NOT_BUDGETED}, "CURRENCY_NOT_BUDGETED"),
     ({"key_state": h.BusinessKeyState.NOT_CHECKED}, "DUPLICATE_SUSPECTED"),
@@ -697,6 +699,7 @@ def test_t5_claim_is_one_transition_that_takes_locks_budget_and_a_generation():
     ({"target_class_equal": False}, "TARGET_REJECTED"), ({"locks_read": False}, "LOCK_BUSY"),
     ({"target_lock_owner": "other"}, "LOCK_BUSY"), ({"key_lock_free": False}, "LOCK_BUSY"),
     ({"lease_free": False}, "LOCK_BUSY"), ({"budget": BudgetCheck.EXCEEDED}, "BUDGET_EXCEEDED"),
+    ({"budget": BudgetCheck.EXHAUSTED}, "GRANT_EXHAUSTED"),
     ({"budget": BudgetCheck.NOT_CHECKED}, "BUDGET_EXCEEDED"),
     ({"budget": BudgetCheck.CURRENCY_NOT_BUDGETED}, "CURRENCY_NOT_BUDGETED"),
 ])
@@ -868,6 +871,7 @@ def test_t6_begin_apply_opens_applying_without_a_permit_and_keeps_every_lock():
     ({"holds": (Hold("x", HoldCause.RLC_UNCLEAN, "c9"),)}, "BASE_HOLD"), ({"holds": None}, "BASE_HOLD"),
     ({"version_equals_approved": False}, "STALE_VERSION"),
     ({"fingerprint_authenticated": False}, "TARGET_REJECTED"), ({"state_digest_equal": False}, "DIGEST_MISMATCH"),
+    ({"period_closed": True}, "PERIOD_CLOSED"), ({"period_closed": True, "state_digest_equal": False}, "PERIOD_CLOSED"),
     ({"writer_lock_held": False}, "LOCK_BUSY"), ({"ownership_row_committed": False}, "AUDIT_UNAVAILABLE"),
 ])
 def test_t6_refusals_per_guard(over, code):
@@ -1872,7 +1876,8 @@ def test_reserve_respects_limit_currency_and_window():
     assert type(g) is Grant and g.reserved == D("40") and g.consumed == D(0)
     g = ch.reserve(g, D("60"), "RUB", T0)  # exactly at the limit
     assert type(g) is Grant and g.reserved == D("100")
-    assert ch.reserve(g, D("0.01"), "RUB", T0) is ErrorCode.BUDGET_EXCEEDED
+    assert ch.reserve(g, D("0.01"), "RUB", T0) is ErrorCode.GRANT_EXHAUSTED  # nothing left at all (CR-395)
+    assert type(ch.reserve(g, D(0), "RUB", T0)) is Grant  # a zero request on a full grant is still accepted
     assert ch.reserve(grant(), D("100.01"), "RUB", T0) is ErrorCode.BUDGET_EXCEEDED
     assert ch.reserve(grant(consumed="70"), D("30.01"), "RUB", T0) is ErrorCode.BUDGET_EXCEEDED
     assert type(ch.reserve(grant(consumed="70"), D("30"), "RUB", T0)) is Grant
