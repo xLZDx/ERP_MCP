@@ -38,19 +38,20 @@ _PATHS = (
 )
 
 
-# CR-395: for a rate code in the closed table (VAT0/VAT10/VAT20) the parser refuses a vat_amount that disagrees with the
-# rate. Tests that sweep arbitrary vat_amount values (digest binding, canonical spelling, value domain) therefore use a
-# rate code outside the table, for which only amount == quantity x price is enforced and the vat_amount is free data.
-FREE_VAT_CODE = "VATX"
+# CR-395: the parser refuses a vat_amount that disagrees with the closed-table rate (VAT0/VAT10/VAT20) and refuses any
+# rate code outside the table (AMOUNT_INCONSISTENT). Tests that sweep arbitrary vat_amount values (digest binding,
+# value domain) therefore build the typed payload directly (``_direct``): the typed ``Line`` path does no arithmetic.
+# Parse-path canonicalization is tested with arithmetically consistent triples instead.
 
 
-def _raw(vat_amount: object = "3.5", vat_rate_code: str = "VAT20") -> dict:
+def _raw(vat_amount: object = "3.5", vat_rate_code: str = "VAT20", quantity: str = "2", price: str = "10.5",
+         amount: str = "21") -> dict:
     """Write-port / proposal-shaped CREATE_DRAFT payload (all values already canonical)."""
     return {
         "organization_ref": "org-1", "counterparty_ref": "cp-1", "contract_ref": "ct-1",
         "supplier_document_number": "N-1", "supplier_document_date": "2026-10-01", "currency": "RUB",
-        "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": vat_rate_code,
-                   "amount": "21", "vat_amount": vat_amount}],
+        "lines": [{"item_ref": "it-1", "quantity": quantity, "price": price, "vat_rate_code": vat_rate_code,
+                   "amount": amount, "vat_amount": vat_amount}],
         "comment": "note",
     }
 
@@ -59,10 +60,15 @@ def _parse(raw: dict) -> object:
     return parse_writer_payload(raw, ChangeKind.CREATE_DRAFT, SCOPE)
 
 
-def _typed(vat_amount: str = "3.5", vat_rate_code: str = "VAT20") -> DraftPayload:
-    parsed = _parse(_raw(vat_amount, vat_rate_code))
+def _typed(vat_amount: str = "3.5", vat_rate_code: str = "VAT20", **line: str) -> DraftPayload:
+    parsed = _parse(_raw(vat_amount, vat_rate_code, **line))
     assert type(parsed) is DraftPayload, parsed
     return parsed
+
+
+def _direct(vat_amount: str) -> DraftPayload:
+    """A typed payload carrying an arbitrary (canonical-format) vat_amount; bypasses the parser's arithmetic check."""
+    return replace(_typed(), lines=(Line("it-1", "2", "10.5", "VAT20", "21", vat_amount),))
 
 
 def _port_dict(payload: DraftPayload) -> dict:
@@ -82,17 +88,17 @@ def _value_digest(value: object) -> str:
 # (a) digest binding -----------------------------------------------------------------------------------------------
 
 def test_changing_only_vat_amount_changes_payload_digest() -> None:
-    a, b = _typed("3.5", FREE_VAT_CODE), _typed("3.6", FREE_VAT_CODE)
+    a, b = _direct("3.5"), _direct("3.6")
     assert payload_to_dict(a) == {**payload_to_dict(b), "lines": [{**payload_to_dict(b)["lines"][0],
                                                                    "vat_amount": "3.5"}]}
     assert payload_digest(a, None) != payload_digest(b, None)
-    assert payload_digest(a, None) == payload_digest(_typed("3.5", FREE_VAT_CODE), None)  # stable for equal input
-    # on a table rate the other number is not even a payload (CR-395)
-    assert getattr(_parse(_raw("3.6")), "code", None) is not None
+    assert payload_digest(a, None) == payload_digest(_direct("3.5"), None)  # stable for equal input
+    # on the parse path the other number is not even a payload (CR-395)
+    assert getattr(_parse(_raw("3.6")), "code", None) is ErrorCode.AMOUNT_INCONSISTENT
 
 
 def test_vat_amount_is_present_in_canonical_dict_line() -> None:
-    assert payload_to_dict(_typed("0", FREE_VAT_CODE))["lines"][0]["vat_amount"] == "0"
+    assert payload_to_dict(_direct("0"))["lines"][0]["vat_amount"] == "0"
 
 
 # (b) com_manifest binding -----------------------------------------------------------------------------------------
@@ -110,7 +116,7 @@ def test_binding_set_omitting_vat_amount_is_refused() -> None:
 
 
 def test_bound_vat_amount_value_equals_payload_text_and_digest_matches_manifest() -> None:
-    payload = _typed("3.5", FREE_VAT_CODE)
+    payload = _direct("3.5")
     bindings = _bindings()
     digest = payload_digest(payload, None)
     values = com_values_from_approved_payload(payload, bindings, approved_payload_digest=digest,
@@ -124,7 +130,7 @@ def test_bound_vat_amount_value_equals_payload_text_and_digest_matches_manifest(
     assert values[index].value_sha256 == _value_digest("3.5") == manifest.assignments[index].value_sha256
 
     # A different vat_amount yields a different value digest at that position only.
-    other = _typed("3.6", FREE_VAT_CODE)
+    other = _direct("3.6")
     other_manifest = PreparedComManifest.from_approved_payload(
         ComOperationManifest("CREATE_DRAFT", "CreateDocument", "WRITE", None, None), "SetValue",
         other, bindings, approved_payload_digest=payload_digest(other, None), target_version=None)
@@ -175,26 +181,32 @@ def test_canonicalization_same_on_typed_and_parse_paths() -> None:
     with pytest.raises(ValueError, match="LINE_INVALID"):
         Line("it-1", "2", "10.5", "VAT20", "21", "3.50")
     # Same rule for every spelling that normalises to one canonical text.
-    for spelled, canonical in (("0.00", "0"), ("0.000000", "0"), ("7.10", "7.1"), ("100", "100")):
-        assert _typed(spelled, FREE_VAT_CODE).lines[0].vat_amount == canonical
+    # (each spelling sits in an arithmetically consistent line, so it reaches canonicalization on the parse path)
+    for spelled, canonical, code, qty, price, amount in (
+            ("0.00", "0", "VAT0", "2", "10.5", "21"), ("0.000000", "0", "VAT0", "2", "10.5", "21"),
+            ("7.10", "7.1", "VAT20", "2", "21.3", "42.6"), ("100", "100", "VAT20", "2", "300", "600")):
+        assert _typed(spelled, code, quantity=qty, price=price, amount=amount).lines[0].vat_amount == canonical
         assert Line("it-1", "2", "10.5", "VAT20", "21", canonical).vat_amount == canonical
 
 
 # (e) value domain -------------------------------------------------------------------------------------------------
 
 def test_zero_is_accepted_on_both_paths() -> None:
-    assert _typed("0", FREE_VAT_CODE).lines[0].vat_amount == "0"
+    assert _direct("0").lines[0].vat_amount == "0"
     assert Line("it-1", "2", "10.5", "VAT20", "21", "0").vat_amount == "0"  # the typed path does not do arithmetic
-    assert _typed("0.00", FREE_VAT_CODE).lines[0].vat_amount == "0"
+    assert _typed("0.00", "VAT0").lines[0].vat_amount == "0"
     # zero VAT with a zero rate is consistent on the parse path; zero under VAT20 is not
     assert _typed("0", "VAT0").lines[0].vat_amount == "0"
     assert getattr(_parse(_raw("0")), "code", None) is not None
 
 
 def test_boundary_values_accepted() -> None:
-    assert _typed("0.000001", FREE_VAT_CODE).lines[0].vat_amount == "0.000001"
+    assert _direct("0.000001").lines[0].vat_amount == "0.000001"
     big = "9" * 18
-    assert _typed(big, FREE_VAT_CODE).lines[0].vat_amount == big
+    assert _direct(big).lines[0].vat_amount == big
+    # the same well-formed texts are not consistent VAT for line 2 x 10.5 and are refused by arithmetic, not by format
+    for text in ("0.000001", big):
+        assert getattr(_parse(_raw(text)), "code", None) is ErrorCode.AMOUNT_INCONSISTENT
 
 
 _REJECTED = ["-1", "-0.01", "-0", 3.5, 0.0, Decimal("3.5"), Decimal(0), "1e3", "1E3", "3.5e0",

@@ -57,6 +57,7 @@ from erp_mcp_private_writer.com_draft_executor import (
     execute_create_draft,
 )
 from erp_mcp_private_writer.com_manifest import ComValueAssignment
+from erp_mcp_private_writer.refusal_mapping import map_executor_refusal
 from erp_mcp_s15.labels import LABEL_MACHINE_VERIFIED
 from erp_mcp_s15.reconcile import (
     LedgerChange,
@@ -322,6 +323,59 @@ def make_port(connection, values, digest, change_id, expected_total=None):
     return call
 
 
+class WriteCountingConnection:
+    """Wraps the connection that is really passed to the executor and counts document creates and writes.
+
+    A refused path must leave both counters at 0 (the guarded connection is the one the code under test uses); the
+    control path must make them positive, which proves the counter can see a write.
+    """
+
+    class _Doc:
+        def __init__(self, doc, owner):
+            object.__setattr__(self, "_d", doc)
+            object.__setattr__(self, "_o", owner)
+
+        def __getattr__(self, name):
+            value = getattr(self._d, name)
+            if name == "Записать":
+                def counted(*args):
+                    self._o.writes += 1
+                    return value(*args)
+                return counted
+            return value
+
+        def __setattr__(self, name, value):
+            setattr(self._d, name, value)
+
+    class _Manager:
+        def __init__(self, manager, owner):
+            self._m, self._o = manager, owner
+
+        def __getattr__(self, name):
+            if name == "СоздатьДокумент":
+                def create():
+                    self._o.creates += 1
+                    return WriteCountingConnection._Doc(self._m.СоздатьДокумент(), self._o)
+                return create
+            return getattr(self._m, name)
+
+    class _Documents:
+        def __init__(self, documents, owner):
+            self._ds, self._o = documents, owner
+
+        def __getattr__(self, name):
+            return WriteCountingConnection._Manager(getattr(self._ds, name), self._o)
+
+    def __init__(self, conn):
+        self._c = conn
+        self.writes = 0
+        self.creates = 0
+
+    def __getattr__(self, name):
+        value = getattr(self._c, name)
+        return WriteCountingConnection._Documents(value, self) if name == "Документы" else value
+
+
 class LostResponseConnection:
     """Wraps a real connection: the document write really happens, then the call raises as if the reply was lost."""
 
@@ -414,6 +468,11 @@ class LiveSvc:
             return exc
         return result
 
+    @staticmethod
+    def refusal_event(refusal: ExecutorRefusal) -> Event:
+        """The engine event for an executor refusal, from the production mapping (not hand-picked in the test)."""
+        return Event[map_executor_refusal(refusal.code, refusal.outcome_unknown).value]
+
 
 apply_transition = ch.apply_transition
 
@@ -437,12 +496,8 @@ def test_e4_live_rejected_expired_digest_changed_and_stale_approval_paths_write_
     number = TAG + uuid.uuid4().hex[:8]
     values, digest = draft_values(onec, number)
     marker = str(uuid.uuid4())
-    calls: list[str] = []
-    port = make_port(narrow, values, digest, marker)
-
-    def guarded_port():
-        calls.append("called")
-        return port()
+    counting = WriteCountingConnection(narrow)      # the connection handed to the executor: counts creates and writes
+    port = make_port(counting, values, digest, marker)
 
     with rolled_back_txn(narrow):
         in_txn_before = count_receipts(narrow)
@@ -468,8 +523,13 @@ def test_e4_live_rejected_expired_digest_changed_and_stale_approval_paths_write_
         refused(s2.ev(Event.BEGIN_APPLY, state_digest_equal=False), "DIGEST_MISMATCH")
         for who in (s, late, swept, s2):
             assert who.port_calls == 0
-        assert not calls
+        assert (counting.creates, counting.writes) == (0, 0)      # the counted connection saw nothing on refused paths
         assert count_receipts(narrow) == in_txn_before            # no write inside the transaction either
+        # control: the very same counted port, once the approved path reaches it, is seen creating and writing
+        ctl = LiveSvc().run(7)
+        assert not isinstance(ctl.call_port(port), ExecutorRefusal)
+        assert ctl.port_calls == 1 and counting.creates >= 1 and counting.writes >= 1
+        assert count_receipts(narrow) == in_txn_before + 1
 
 
 def test_e4_live_control_the_harness_can_see_a_write_and_rollback_restores_the_snapshot(onec, bracket):
@@ -577,7 +637,9 @@ def test_e23_live_executor_total_check_detects_a_stale_preview_only_after_the_wr
         outcome = s.call_port(make_port(narrow, values, digest, marker, expected_total=stale_preview_total))
         assert isinstance(outcome, ExecutorRefusal) and outcome.code == "COM_WRITTEN_READBACK_MISMATCH"
         assert outcome.outcome_unknown is True and uuid.UUID(outcome.document_ref)
-        res = ok(s.ev(Event.CALL_UNKNOWN))
+        event = s.refusal_event(outcome)
+        assert event is Event.CALL_UNKNOWN
+        res = ok(s.ev(event))
         assert res.execution is Execution.APPLY_UNKNOWN and res.execution is not Execution.FAILED_APPLY
         assert count_receipts(narrow) == before + 1              # the draft landed (detected after, not before)
         assert read_one(narrow, marker)["posted"] is False
@@ -592,7 +654,8 @@ def test_e41_live_kill_switch_blocks_every_boundary_with_zero_com_writes(onec, b
     values, digest = draft_values(onec, TAG + uuid.uuid4().hex[:8])
     marker = str(uuid.uuid4())
     port_calls = []
-    port = make_port(narrow, values, digest, marker)
+    counting = WriteCountingConnection(narrow)
+    port = make_port(counting, values, digest, marker)
     with rolled_back_txn(narrow):
         before = count_receipts(narrow)
         for reading in ALL_READINGS:
@@ -605,7 +668,12 @@ def test_e41_live_kill_switch_blocks_every_boundary_with_zero_com_writes(onec, b
                     s.call_port(port)                            # the COM-reaching path is shut at the engine state
                 port_calls.append(s.port_calls)
         assert sum(port_calls) == 0 and len(port_calls) == len(ALL_READINGS) * len(PATH)
+        assert (counting.creates, counting.writes) == (0, 0)
         assert count_receipts(narrow) == before
+        # control: the same counted port written through a fully approved path is seen (the counter is not vacuous)
+        ctl = LiveSvc().run(7)
+        assert not isinstance(ctl.call_port(port), ExecutorRefusal)
+        assert counting.creates >= 1 and counting.writes >= 1 and count_receipts(narrow) == before + 1
 
 
 @pytest.mark.parametrize("reading", ALL_READINGS, ids=READING_IDS)
@@ -620,7 +688,8 @@ def test_e41_live_in_flight_call_with_a_lost_reply_stays_unknown_not_failed_and_
         assert isinstance(outcome, ExecutorRefusal) and outcome.code == "COM_WRITE_OUTCOME_UNKNOWN"
         assert outcome.outcome_unknown is True
         # the switch is active while the call is in flight: the outcome is UNKNOWN, never FAILED, reservation kept
-        rec = ok(s.ev(Event.CALL_UNKNOWN, kill=reading))
+        assert s.refusal_event(outcome) is Event.CALL_UNKNOWN
+        rec = ok(s.ev(s.refusal_event(outcome), kill=reading))
         assert rec.execution is Execution.APPLY_UNKNOWN and rec.execution is not Execution.FAILED_APPLY
         assert rec.reservation is Reservation.RESERVED
         assert type(s.ev(Event.MARK_DISPATCHED, kill=reading)) is Refusal and s.port_calls == 1
@@ -638,13 +707,17 @@ def test_e41_live_a_refusal_before_any_write_is_failed_apply_not_unknown_and_wri
     broken = tuple(ComValueAssignment(v.property_path, "SetValue", "String",
                                       str(uuid.uuid4()) if v.property_path == "l.item" else v.value) for v in values)
     marker = str(uuid.uuid4())
+    counting = WriteCountingConnection(narrow)
     with rolled_back_txn(narrow):
         before = count_receipts(narrow)
         s = LiveSvc().run(7)
-        outcome = s.call_port(make_port(narrow, broken, digest, marker))
+        outcome = s.call_port(make_port(counting, broken, digest, marker))
         assert isinstance(outcome, ExecutorRefusal) and outcome.code == "COM_REFERENCE_NOT_FOUND"
         assert outcome.outcome_unknown is False
-        rec = ok(s.ev(Event.REFUSED_BEFORE_WRITE))
+        assert (counting.creates, counting.writes) == (0, 0)     # refused before any document object existed
+        event = s.refusal_event(outcome)
+        assert event is Event.REFUSED_BEFORE_WRITE
+        rec = ok(s.ev(event))
         assert rec.execution is Execution.FAILED_APPLY and rec.reservation is Reservation.RELEASED
         assert count_receipts(narrow) == before
 

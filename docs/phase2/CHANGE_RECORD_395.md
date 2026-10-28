@@ -33,3 +33,14 @@ Byte-compiled the five changed modules and `ruff check --select F,E9` passed. A 
 ## Still open
 
 - SQL migrations still raise BUDGET_EXCEEDED for an exhausted grant (a new migration would be needed); nothing yet produces period_closed from a real 1C read; no independent review of this diff yet; GPT-PM NOT_RUN.
+
+## Review resolutions
+
+- BEGIN_APPLY period evidence now fails closed. `BeginApplyEvidence.period_observed_open` (default False) must be True to proceed. A positive closed observation (`period_closed` True) is refused as PERIOD_CLOSED; an absent observation is refused as DIGEST_MISMATCH (the existing code for an unobserved business-state change).
+- A `vat_rate_code` outside the closed table (VAT0, VAT10, VAT20) is refused as AMOUNT_INCONSISTENT. `vat_rate_percent_table()` exposes the engine table as pure data so a test can compare it with `erp_mcp_private_writer.com_vat_table` (VAT20 maps to the legacy 1C value name `НДС18`, which holds 20 percent, per that module).
+- Decimal `ArithmeticError` can no longer escape `parse_proposal` or `parse_writer_payload`; it returns the SCHEMA_INVALID bad-input refusal.
+- `erp_mcp_private_writer.refusal_mapping.map_executor_refusal(code, outcome_unknown)` is the production mapping from executor refusals to `CALL_UNKNOWN` or `REFUSED_BEFORE_WRITE`. Any ambiguity or unknown code stays `CALL_UNKNOWN`.
+- Out of scope, backlog: the SQL layer (db/phase2 reservation/claim raising BUDGET_EXCEEDED for an exhausted grant) needs a new migration; until then the Python policy and the SQL ledger intentionally differ.
+- VAT-on-top documents (vat_amount = amount x rate / 100) are unsupported and refused as AMOUNT_INCONSISTENT.
+- The production binding must set the includes-VAT constant TRUE.
+- Producers still missing: nothing yet produces `BudgetCheck.EXHAUSTED` or the period observation (`period_closed` / `period_observed_open`) from a real read.

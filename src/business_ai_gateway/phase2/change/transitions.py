@@ -359,6 +359,7 @@ class BeginApplyEvidence(Evidence):
     version_equals_approved: bool = False
     fingerprint_authenticated: bool = False
     period_closed: bool = False  # True only when the authenticated target read observed a closed period
+    period_observed_open: bool = False  # True only when that read positively observed an open period (fail closed)
     state_digest_equal: bool = False
     writer_lock_held: bool = False
     ownership_row_committed: bool = False
@@ -804,8 +805,12 @@ def g_fingerprint_authenticated(record: ChangeRecord | None, ev: BeginApplyEvide
 @_guard
 def g_period_open(record: ChangeRecord | None, ev: BeginApplyEvidence) -> ErrorCode | None:  # type: ignore[override]
     # Runs before the state-digest guard: a positively observed closed period is reported as PERIOD_CLOSED; any other
-    # change of the business state (including a period status that was not observed) stays DIGEST_MISMATCH.
-    return None if ev.period_closed is not True else ErrorCode.PERIOD_CLOSED
+    # change of the business state stays DIGEST_MISMATCH. Fail closed: a period status that was not positively observed
+    # open (no evidence) is refused as DIGEST_MISMATCH, the code of the digest guard that follows, so missing period
+    # evidence can never let BEGIN_APPLY pass.
+    if ev.period_closed is True:
+        return ErrorCode.PERIOD_CLOSED
+    return None if ev.period_observed_open is True else ErrorCode.DIGEST_MISMATCH
 
 
 @_guard

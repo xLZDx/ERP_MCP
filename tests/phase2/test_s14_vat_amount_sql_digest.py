@@ -8,6 +8,7 @@ Run: .venv\\Scripts\\python.exe -m pytest -p no:cacheprovider -q -rs tests/phase
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 from _pg_harness import require_dsn, throwaway_db
@@ -15,6 +16,7 @@ from _pg_harness import require_dsn, throwaway_db
 from business_ai_gateway.phase2.change import ChangeKind, Scope
 from business_ai_gateway.phase2.change.proposal import (
     DraftPayload,
+    Line,
     canonical_json,
     parse_writer_payload,
     payload_digest,
@@ -24,7 +26,7 @@ from business_ai_gateway.phase2.change.proposal import (
 pytestmark = pytest.mark.integration
 
 SCOPE = Scope("tenant-1", "company-1", "org-1", "base-1")
-# CR-395: VAT20 would refuse every value but 3.5; a rate code outside the closed table leaves vat_amount free data here
+# CR-395: the parser refuses every VAT20 vat_amount but 3.5, so the sweep builds the typed payload directly
 VAT_VALUES = ("0", "3.5", "1234.56")
 
 
@@ -32,13 +34,14 @@ def _typed(vat_amount: str) -> DraftPayload:
     raw = {
         "organization_ref": "org-1", "counterparty_ref": "cp-1", "contract_ref": "ct-1",
         "supplier_document_number": "N-1", "supplier_document_date": "2026-10-01", "currency": "RUB",
-        "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VATX",
+        "lines": [{"item_ref": "it-1", "quantity": "2", "price": "10.5", "vat_rate_code": "VAT20",
                    "amount": "21", "vat_amount": vat_amount}],
         "comment": "note",
     }
+    raw["lines"][0]["vat_amount"] = "3.5"          # the only value the parser accepts for 2 x 10.5 at VAT20
     parsed = parse_writer_payload(raw, ChangeKind.CREATE_DRAFT, SCOPE)
     assert type(parsed) is DraftPayload, parsed
-    return parsed
+    return replace(parsed, lines=(Line("it-1", "2", "10.5", "VAT20", "21", vat_amount),))
 
 
 async def _sql_digest(conn, payload: DraftPayload, target_version: str | None) -> str:

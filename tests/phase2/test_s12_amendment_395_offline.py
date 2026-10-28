@@ -7,7 +7,7 @@ Run: .venv\\Scripts\\python.exe -m pytest -p no:cacheprovider -q tests/phase2/te
 
 Conventions of the amount rule (VAT-inclusive, half-up to 0.01, Decimal-exact):
   amount     == round(quantity x price, 2)
-  vat_amount == round(amount x rate / (100 + rate), 2) for VAT0 / VAT10 / VAT20; any other code: amount check only.
+  vat_amount == round(amount x rate / (100 + rate), 2) for VAT0 / VAT10 / VAT20; any other code: AMOUNT_INCONSISTENT.
 """
 from __future__ import annotations
 
@@ -186,10 +186,11 @@ def test_zero_rate_requires_a_zero_vat_amount_and_accepts_zero_amount_lines():
 
 
 @pytest.mark.parametrize("code", ["VATX", "VAT18", "vat20", "NOVAT", "VAT_20"])
-def test_unknown_rate_code_gets_the_amount_check_only(code):
+def test_unknown_rate_code_is_refused_whatever_the_amounts(code):
+    # review resolution: the VAT amount of an unmapped code can not be verified, so the line fails closed
     for vat in ("0", "3.50", "17", "999999.123456"):
-        _accepted(_raw(_line(code=code, vat=vat)))  # the vat_amount of an unmapped code is free data
-    _inconsistent(_raw(_line(code=code, amount="21.01", vat="3.50")))  # but amount == quantity x price still holds
+        _inconsistent(_raw(_line(code=code, vat=vat)))
+    _inconsistent(_raw(_line(code=code, amount="21.01", vat="3.50")))
     _inconsistent(_raw(_line(code=code, amount="0", vat="0")))
 
 

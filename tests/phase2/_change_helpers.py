@@ -194,6 +194,7 @@ def good(event: Event, record: ChangeRecord | None = None, now: datetime = T0, *
         Event.BEGIN_APPLY: lambda: BeginApplyEvidence(
             generation=gen, caller=CallerClass.REQUESTER, own_change=True, epoch_deps_equal_claim_epoch=True,
             holds=holds, version_equals_approved=True, fingerprint_authenticated=True, state_digest_equal=True,
+            period_observed_open=True,
             writer_lock_held=True, ownership_row_committed=True,
             repair_ctx=repair_ctx(REPAIR_ID) if is_repair else None, **common),
         Event.ISSUE_PERMIT: lambda: PermitEvidence(

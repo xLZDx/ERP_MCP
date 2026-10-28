@@ -39,3 +39,11 @@ The payload carries no includes-VAT flag. The rule above uses the VAT-inclusive 
 - `tests/phase2/test_change_offline.py` line 316 area (`price="0", amount="0.00", vat_amount="0.000"`): still consistent.
 - Tests that call the parser with hand-set amounts: `tests/phase2/test_s14_vat_amount_contract.py` (`_raw` helper: amount 21, VAT20 default 3.5 is consistent; any case passing a different `vat_amount` through the parser, e.g. the vat_amount sweep tests, now gets a refusal), and `tests/phase2/test_s14_vat_amount_sql_digest.py` (same helper shape). Tests that build `Line(...)` directly are unaffected.
 - New tests needed: AMOUNT_INCONSISTENT (amount, VAT, rounding half-up, unmapped code, 48-digit product), GRANT_EXHAUSTED vs BUDGET_EXCEEDED boundary, PERIOD_CLOSED at T6 with and without a digest change.
+
+## Review resolutions (CR-395)
+
+- Period evidence fails closed: `BeginApplyEvidence.period_observed_open` must be True; `period_closed` True gives PERIOD_CLOSED, a missing observation gives DIGEST_MISMATCH.
+- Unknown `vat_rate_code` values are refused as AMOUNT_INCONSISTENT. VAT-on-top documents (vat_amount = amount x rate / 100) are unsupported and refused the same way. The production binding must set the includes-VAT constant TRUE.
+- The SQL layer (db/phase2 reservation/claim raising BUDGET_EXCEEDED for an exhausted grant) is explicitly OUT of scope of this amendment. It needs a new migration (backlog item); the Python policy and the SQL ledger intentionally differ until then.
+- Executor refusal mapping lives in `src/erp_mcp_private_writer/refusal_mapping.py`.
+- Missing producers: `BudgetCheck.EXHAUSTED` and the period observation have no real producer yet.

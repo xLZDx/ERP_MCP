@@ -1257,3 +1257,9 @@ Decision: record the clone results as partial live evidence; keep real POST/UNPO
 
 
 Decision (operator answers, auto-accepted recommended options, revisable): refuse proposals whose amount or VAT amount contradict quantity x price and the VAT rate; add PERIOD_CLOSED and GRANT_EXHAUSTED. Assumption: VAT-inclusive convention, so the production binding must set the 1C includes-VAT constant to TRUE. SQL migrations unchanged. Detail: `docs/phase2/S12_CONTRACT_AMENDMENT_2026-10-28.md`, `docs/phase2/CHANGE_RECORD_395.md`.
+
+## 2026-10-28 - Review fixes for the S12 amendment accepted
+
+
+
+Decision: fail closed on a missing period observation, refuse unknown VAT codes, keep SQL out of scope until a new migration. Detail: `docs/phase2/CHANGE_RECORD_398.md`.

@@ -41,6 +41,7 @@ CTX = multiprocessing.get_context("spawn")
 GATE = 7_313_038
 N = 10                      # racing processes (>= 8)
 UNIT = 10                   # amount of every change in the amount-limit matrix
+# The SQL ledger intentionally keeps BUDGET_EXCEEDED for an exhausted grant until a new migration (S12 amendment 2026-10-28).
 STABLE_ERROR = "BUDGET_EXCEEDED"
 WAIT = 120                  # generous bounded wait for spawn + connect on a slow Windows host
 
