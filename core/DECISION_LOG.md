@@ -1275,3 +1275,9 @@ Decision: record the CT14_NARROW reset as an authorized persistent mutation with
 
 
 Decision: register the principal verifier before the first clone mutation and treat any post-mutation setup failure as a test failure (never a skip), per the GPT-PM verification round. Detail: `docs/phase2/CHANGE_RECORD_399.md`.
+
+## 2026-10-29 - PR #40 merged; local lane gateway restored from Trash copies
+
+
+
+Decision (operator orders): merge PR #40 (done, db30f96); restore the lane by copying from Trash with the saved secrets and the current volume, then sync current code and rebuild the venv because the copy was older than the database; fix the watchdog project root; re-issue the Claude token. Nothing deleted. Detail: `docs/phase2/CHANGE_RECORD_400.md`.
