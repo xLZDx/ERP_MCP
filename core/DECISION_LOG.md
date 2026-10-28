@@ -1205,3 +1205,7 @@ Decision: accept all MAJOR and the actionable MINOR findings in one batch; found
 ## 2026-10-28 - S15 tests adapted to the reviewed behaviour
 
 Decision: 713 agent-run passing tests are the functional evidence for the synthetic scope; two minor observations (runner status after a discarded report, id-prefix control coverage) are recorded, not changed. Detail: `docs/phase2/CHANGE_RECORD_389.md`.
+
+## 2026-10-28 - Document registry regenerated for S15
+
+Decision: refresh governance/DOCUMENT_REGISTRY.md with the generator (767 tracked paths); generated output, not hand-edited.

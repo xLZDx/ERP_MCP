@@ -11,7 +11,7 @@ directories. For tracked rows, titles show the first heading of each blob, JSON-
 heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 760 tracked paths, 0 local-only paths.
+Inventory: 767 tracked paths, 0 local-only paths.
 
 ## Documents in git (scanned refs)
 
@@ -584,6 +584,12 @@ Inventory: 760 tracked paths, 0 local-only paths.
 | docs/phase2/CHANGE_RECORD_381.md | Phase 2 design | "Change Record 381 - COM draft executor: dates, VAT-line read-back, least-privilege role with Read on four catalogs" |
 | docs/phase2/CHANGE_RECORD_382.md | Phase 2 design | "Change Record 382 - COM draft executor: fixes from two independent reviews of CR-381" |
 | docs/phase2/CHANGE_RECORD_383.md | Phase 2 design | "Change Record 383 - COM draft executor: read-back comparison by destination type (GPT-PM M-01)" |
+| docs/phase2/CHANGE_RECORD_384.md | Phase 2 design | "Change Record 384 - S15 sprint plan drafted" |
+| docs/phase2/CHANGE_RECORD_385.md | Phase 2 design | "Change Record 385 - S15 sprint plan revised after two agent reviews" |
+| docs/phase2/CHANGE_RECORD_386.md | Phase 2 design | "Change Record 386 - S15 verifier, oracle, negative controls, A-B comparison and ledger reconciliation (code)" |
+| docs/phase2/CHANGE_RECORD_387.md | Phase 2 design | "Change Record 387 - S15 functional tests" |
+| docs/phase2/CHANGE_RECORD_388.md | Phase 2 design | "Change Record 388 - S15 source fixes from three specialist reviews" |
+| docs/phase2/CHANGE_RECORD_389.md | Phase 2 design | "Change Record 389 - S15 tests adapted and extended after the review fixes" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -655,6 +661,7 @@ Inventory: 760 tracked paths, 0 local-only paths.
 | docs/phase2/S14_SIMULATED_WRITE_PORT_DESIGN_2026-10-17.md | Phase 2 design | "Local simulated `OneCWritePort` design" |
 | docs/phase2/S14_SYNTHETIC_DISPATCH_ADAPTER_2026-10-15.md | Phase 2 design | "S14 synthetic dispatch adapter" |
 | docs/phase2/S14_WIRE_RECEIPT_DESIGN_2026-10-15.md | Phase 2 design | "S14 synthetic write-port design: bind clone receipt to canonical wire bytes" |
+| docs/phase2/S15_SPRINT_PLAN_2026-10-27.md | Phase 2 design | "S15 verification and reconciliation - sprint plan (draft, rev 2) - 2026-10-27" |
 | docs/phase2/S1_S4_TRACEABILITY.md | Phase 2 design | "S1-S4 offline slice - test traceability (2026-10-09)" |
 | docs/phase2/SBOM_README_2026-10-14.md | Phase 2 design | "SBOM and pinned dependency lock (2026-10-14)" |
 | docs/phase2/SCHEDULER_DRIFT_CLIENT_SAFETY_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 scheduler and drift safety review — 2026-10-09" |
@@ -793,7 +800,7 @@ Inventory: 760 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `de7cd6d6a2131ac4af2973d288da9e1c555a9256` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `15f9b704b41ec0bcc9365d9afc659da45de238c3` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
@@ -826,7 +833,7 @@ Inventory: 760 tracked paths, 0 local-only paths.
 | refs/remotes/origin/docs/english-only-translation-20261010 | `8d17448cf2788f48a2b3f26eb70800cefed4d992` |
 | refs/remotes/origin/docs/public-readme-install-guide-20261009 | `26324d43e9d42af8512f0f531f98770c0cf7daa0` |
 | refs/remotes/origin/integration/1c-mvp-production-candidate | `78493a3ab5a5d7309aeadd1af21c6b69b6d03448` |
-| refs/remotes/origin/main | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
+| refs/remotes/origin/main | `8e6c8cbaa56becea7a60a0748d9df89aa0391f30` |
 | refs/remotes/origin/phase2/living-model-connectors-reconciliation | `88753c207602927c0a72ce2805534b4929e4879f` |
 | refs/remotes/r2local/main | `7d9a01df9c649b2137bc19bf25590968d63eeaca` |
 
