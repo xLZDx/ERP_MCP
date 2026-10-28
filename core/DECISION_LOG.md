@@ -1189,3 +1189,7 @@ Decision: accept all review items; the v2.0 write catalogue governs and the scen
 ## 2026-10-27 - Operator answers on S15 scope, fixtures and S13
 
 Decision: keep E2, E10, E26, E37 and the E1 post step deferred; re-create the clone from the reference copy for fixtures; do not accept S13 without evidence. The answers equal the recommended options and may have been auto-accepted by the question policy during operator silence, so they stay revisable. Detail: S15 plan section 'Operator decisions recorded'.
+
+## 2026-10-28 - S15 code written
+
+Decision: S15 code lives in a new top-level package `src/erp_mcp_s15/` so the oracle import graph stays independent of the writer; ports are fakes because S13 is not accepted; tests and reviews follow. Detail: `docs/phase2/CHANGE_RECORD_386.md`.
