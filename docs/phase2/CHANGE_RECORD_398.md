@@ -17,6 +17,12 @@
 
 - One invocation over 56 files: 2082 passed, 159 subtests passed, 0 failed, 0 skipped (116 new tests in `test_s12_review_resolutions_offline.py`, 75 in the amendment file, 16 live clone tests, 9 budget-concurrency tests), PostgreSQL 16.14 on a task-owned container (removed). The slow SQL/e2e suites (`test_change_*_sql.py`, `test_s13_*` SQL/e2e) were not rerun after these fixes; a grep shows none imports the changed parsers or helpers, so their last green run (CR-394, 957 passed) stands but is not re-proved at this head.
 
+## Contract status (no end-to-end claim)
+
+- `PERIOD_CLOSED` and `GRANT_EXHAUSTED` exist in the PYTHON model only. The SQL ledger still raises `BUDGET_EXCEEDED` for an exhausted grant (E38 asserts exactly that), no cross-layer parity test exists, and no real-1C producer of the period observation exists. No end-to-end qualification of these codes is claimed.
+- E4 and E25 are relabelled: PARTIAL at exit-scenario level; PASS only for the measured component/live-clone subset. Not run / unknown: PostgreSQL ledger integration (E25 uses FakeLedger), production evidence/content-hash derivation, production glue for 1C reads and executor-to-engine events.
+- The slow SQL/e2e suites and the S15 suites were not rerun at this head; the combined regression is NOT claimed green.
+
 ## Still open
 
 - Producers for BudgetCheck.EXHAUSTED and the period observation from real data; SQL migration for the new codes; G3 (operator list of in-flight changes, status function). GPT-PM review NOT_RUN.

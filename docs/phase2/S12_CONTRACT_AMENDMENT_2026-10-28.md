@@ -2,6 +2,16 @@
 
 Amends the frozen S12 interface contract (`S12_INTERFACE_CONTRACT_DRAFT_2026-10-12.md` section 10, error registry; `S12_CONTRACT_FREEZE_V2_2026-10-16.md`). Authority: operator decisions of 2026-10-28 (G1, G2) from `S12_OFFLINE_QUALIFICATION_REPORT_2026-10-28.md`. Scenario ids E6 and E24. The approval digest format (`S12-APPROVAL-2`) and the SQL ledger are not changed.
 
+## Contract status
+
+`PERIOD_CLOSED` and `GRANT_EXHAUSTED` exist in the PYTHON model only. The SQL ledger still raises `BUDGET_EXCEEDED` for an exhausted grant (E38 asserts exactly that), no cross-layer parity test exists, and no real-1C producer of the period observation exists. No end-to-end qualification of these codes is claimed.
+
+| Layer | AMOUNT_INCONSISTENT | PERIOD_CLOSED | GRANT_EXHAUSTED |
+| --- | --- | --- | --- |
+| Python model | implemented and tested (parsers) | implemented and tested (T6 guard) | implemented and tested (`BudgetCheck.EXHAUSTED`) |
+| SQL ledger | not applicable (parsing is above the ledger) | not implemented | not implemented (raises `BUDGET_EXCEEDED`) |
+| Real producer | not applicable (derived from the proposal payload) | none (needs an authenticated 1C period read; NOT_RUN) | none (needs a real budget read feeding `BudgetCheck`) |
+
 ## What changed
 
 1. Registry grows from 36 to 39 codes (appended, existing order kept):
@@ -42,6 +52,7 @@ The payload carries no includes-VAT flag. The rule above uses the VAT-inclusive 
 
 ## Review resolutions (CR-395)
 
+- `period_closed` and `period_observed_open` are independent booleans. A future producer must bind both to ONE authenticated observation. Unknown, contradictory (both True or both False) and stale observation tests are future work, not done.
 - Period evidence fails closed: `BeginApplyEvidence.period_observed_open` must be True; `period_closed` True gives PERIOD_CLOSED, a missing observation gives DIGEST_MISMATCH.
 - Unknown `vat_rate_code` values are refused as AMOUNT_INCONSISTENT. VAT-on-top documents (vat_amount = amount x rate / 100) are unsupported and refused the same way. The production binding must set the includes-VAT constant TRUE.
 - The SQL layer (db/phase2 reservation/claim raising BUDGET_EXCEEDED for an exhausted grant) is explicitly OUT of scope of this amendment. It needs a new migration (backlog item); the Python policy and the SQL ledger intentionally differ until then.

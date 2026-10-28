@@ -7,6 +7,10 @@ Scope and safety (these are the rules the file enforces, not only describes):
 * Every document write happens inside ``НачатьТранзакцию`` ... ``ОтменитьТранзакцию`` and is rolled back. All
   writes use the least-privilege account ``CT14_NARROW`` (role ``CT14Писатель``). The administrator account is used
   for the setup that ``ct14_narrow_ops.prepare_user`` already performs and for read-only snapshots.
+* The ONE persistent, authorized mutation is ``prepare_user``: it resets the password (fresh random, memory only) and
+  the role set of the disposable test account ``CT14_NARROW`` and may create/bind its Users catalog item. It is not
+  covered by the transaction bracket, so a PRINCIPAL SNAPSHOT (names, authentication flags, sorted role names, Users
+  catalog count; never passwords or hashes) is taken before it and compared after the module (teardown) and in a test.
 * No POST, no UNPOST, no hard delete. The real CREATE_DRAFT executor (``execute_create_draft``) is the writer.
 * Every live test is bracketed: a snapshot of the clone (document count of every document type, plus a hash over
   the key fields of every supplier receipt, plus the number of leftover test documents) is taken before and after
@@ -145,7 +149,8 @@ def count_tagged(conn) -> int:
 
 
 def snapshot(conn, doc_types) -> dict:
-    """Counts of every document type plus a hash over key fields of every supplier receipt (and its data version)."""
+    """Selected-field regression snapshot: counts of every document type plus a 12-hex digest of selected receipt
+    fields (and the data version) of every supplier receipt. It is not full-object equivalence."""
     counts = {}
     for name in doc_types:
         n = _one_int(conn, f"ВЫБРАТЬ КОЛИЧЕСТВО(*) КАК N ИЗ Документ.{name} КАК Д")
@@ -169,8 +174,57 @@ def snapshot(conn, doc_types) -> dict:
             "receipts_hash12": digest.hexdigest()[:12], "tagged_leftovers": count_tagged(conn)}
 
 
+REVIEWED_NARROW_ROLES = ("CT14Писатель", "ЗапускВнешнегоСоединения")
+_USER_FLAGS = ("АутентификацияСтандартная", "АутентификацияОС", "АутентификацияOpenID",
+               "ПоказыватьВСпискеВыбора", "ЗапрещеноИзменятьПароль", "ПарольУстановлен", "РежимЗапуска", "Язык",
+               "ПолноеИмя", "ПользовательОС")
+
+
+def principal_snapshot(admin, narrow_name: str) -> dict:
+    """Read-only (admin): every infobase user with its authentication flags and sorted role names, plus the Users
+    catalog item count and whether a ``narrow_name`` item exists. Passwords and hashes are never read."""
+    users = {}
+    for user in admin.ПользователиИнформационнойБазы.ПолучитьПользователей():
+        attrs = {}
+        for flag in _USER_FLAGS:
+            try:
+                attrs[flag] = str(getattr(user, flag))
+            except Exception:  # noqa: BLE001 - attribute not available in this platform build: recorded as such
+                attrs[flag] = "<n/a>"
+        attrs["roles"] = sorted(str(r.Имя) for r in user.Роли)
+        users[str(user.Имя)] = attrs
+    items = _one_int(admin, "ВЫБРАТЬ КОЛИЧЕСТВО(*) КАК N ИЗ Справочник.Пользователи КАК П")
+    bound = _one_int(admin, "ВЫБРАТЬ КОЛИЧЕСТВО(*) КАК N ИЗ Справочник.Пользователи КАК П ГДЕ П.Наименование = &Н",
+                     Н=narrow_name)
+    return {"users": users, "users_catalog_items": items, "narrow_item_exists": bound > 0}
+
+
+def principal_violations(before: dict, after: dict, narrow_name: str) -> list[str]:
+    """Differences that the authorized CT14_NARROW reset does not explain (empty list = clean)."""
+    bad = []
+    added = sorted(set(after["users"]) - set(before["users"]))
+    removed = sorted(set(before["users"]) - set(after["users"]))
+    if added:
+        bad.append(f"users added: {added}")
+    if removed:
+        bad.append(f"users removed: {removed}")
+    for name in sorted(set(before["users"]) & set(after["users"])):
+        if name == narrow_name:
+            continue
+        old, new = before["users"][name], after["users"][name]
+        if old != new:
+            bad.append(f"user {name} changed: {({k: (old[k], new[k]) for k in old if old[k] != new[k]})}")
+    if narrow_name in after["users"] and after["users"][narrow_name]["roles"] != sorted(REVIEWED_NARROW_ROLES):
+        bad.append(f"{narrow_name} roles are {after['users'][narrow_name]['roles']}")
+    created = int(after["narrow_item_exists"]) - int(before["narrow_item_exists"])
+    rise = after["users_catalog_items"] - before["users_catalog_items"]
+    if rise != created or rise not in (0, 1):
+        bad.append(f"Users catalog items rose by {rise} (allowed: only the one {narrow_name} binding item)")
+    return bad
+
+
 @pytest.fixture(scope="module")
-def onec():
+def onec(request):
     if sys.platform != "win32":
         pytest.skip("SKIP_REASON: the 1C COM clone lane runs on Windows only")
     try:
@@ -191,6 +245,8 @@ def onec():
     if not (cc.SECRETS / "admin_1c_clone_user.txt").is_file() or not (cc.SECRETS / "admin_1c_clone_password.dpapi").is_file():
         pytest.skip("SKIP_REASON: the DPAPI clone administrator credentials are not provisioned")
     try:
+        pre_admin = cc.connect_admin()
+        principals_before = principal_snapshot(pre_admin, cc.NARROW_USER)     # BEFORE the persistent mutation
         admin, narrow_pw = ops.prepare_user(ops.ROLES)     # existing setup: CT14_NARROW with the two narrow roles only
         narrow = cc.connect(cc.NARROW_USER, narrow_pw)
     except Exception as exc:  # noqa: BLE001 - explicit skip reason, class name only (a message could carry secrets)
@@ -208,8 +264,25 @@ def onec():
         pytest.skip("SKIP_REASON: the clone has no nomenclature item to reference")
     refs["item"] = _xml(admin, item.Р)
     doc_types = [str(md.Имя) for md in admin.Метаданные.Документы]
-    yield types.SimpleNamespace(admin=admin, narrow=narrow, refs=refs, doc_types=doc_types, name=cc.CLONE_NAME,
-                                narrow_user=cc.NARROW_USER)
+    ns = types.SimpleNamespace(admin=admin, narrow=narrow, refs=refs, doc_types=doc_types, name=cc.CLONE_NAME,
+                               narrow_user=cc.NARROW_USER, principals_before=principals_before)
+
+    def verify_principals():          # module-scoped finalizer: a violation is reported as a teardown error
+        after = principal_snapshot(admin, cc.NARROW_USER)
+        pre = principals_before
+        print("PRINCIPALS " + json.dumps(
+            {"before": {"users": {k: v["roles"] for k, v in sorted(pre["users"].items())},
+                        "catalog_items": pre["users_catalog_items"], "narrow_item_exists": pre["narrow_item_exists"]},
+             "after": {"users": {k: v["roles"] for k, v in sorted(after["users"].items())},
+                       "catalog_items": after["users_catalog_items"], "narrow_item_exists": after["narrow_item_exists"]},
+             "narrow_pre_run_roles": pre["users"].get(cc.NARROW_USER, {}).get("roles"),
+             "narrow_item_created_in_this_run": after["narrow_item_exists"] and not pre["narrow_item_exists"]},
+            ensure_ascii=True, sort_keys=True))
+        bad = principal_violations(pre, after, cc.NARROW_USER)
+        assert not bad, f"PRINCIPALS CHANGED beyond the authorized {cc.NARROW_USER} reset: {bad}"
+
+    request.addfinalizer(verify_principals)
+    yield ns
 
 
 @pytest.fixture
@@ -226,6 +299,30 @@ def bracket(onec, request):
         _STOPPED.append(request.node.name)
         diff = {k: (before[k], after[k]) for k in before if before[k] != after[k]}
         pytest.fail(f"CLONE CHANGED by {request.node.name}: {diff}")
+
+
+def test_principals_are_unchanged_except_the_authorized_narrow_reset_and_narrow_has_only_the_two_reviewed_roles(onec):
+    after = principal_snapshot(onec.admin, onec.narrow_user)
+    assert principal_violations(onec.principals_before, after, onec.narrow_user) == []
+    assert after["users"][onec.narrow_user]["roles"] == sorted(REVIEWED_NARROW_ROLES)
+    # effective roles seen from the narrow session itself: nothing beyond the two reviewed roles
+    current = onec.narrow.ПользователиИнформационнойБазы.ТекущийПользователь()
+    assert sorted(str(r.Имя) for r in current.Роли) == sorted(REVIEWED_NARROW_ROLES)
+    # the checker can fail: an extra role / a changed other user / a removed user / extra catalog items are reported
+    tampered = json.loads(json.dumps(after))
+    tampered["users"][onec.narrow_user]["roles"] = sorted([*REVIEWED_NARROW_ROLES, "Полные права"])
+    assert principal_violations(onec.principals_before, tampered, onec.narrow_user)
+    others = [n for n in after["users"] if n != onec.narrow_user]
+    if others:
+        tampered = json.loads(json.dumps(after))
+        tampered["users"][others[0]]["roles"] = [*tampered["users"][others[0]]["roles"], "X"]
+        assert principal_violations(onec.principals_before, tampered, onec.narrow_user)
+        tampered = json.loads(json.dumps(after))
+        del tampered["users"][others[0]]
+        assert principal_violations(onec.principals_before, tampered, onec.narrow_user)
+    tampered = json.loads(json.dumps(after))
+    tampered["users_catalog_items"] += 2
+    assert principal_violations(onec.principals_before, tampered, onec.narrow_user)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -678,6 +775,8 @@ def test_e41_live_kill_switch_blocks_every_boundary_with_zero_com_writes(onec, b
 
 @pytest.mark.parametrize("reading", ALL_READINGS, ids=READING_IDS)
 def test_e41_live_in_flight_call_with_a_lost_reply_stays_unknown_not_failed_and_is_found_by_marker(onec, bracket, reading):
+    """Reply loss is INJECTED inside an open, rolled-back transaction (real write, then a raised error). A real session
+    loss and an uncertain commit are NOT_RUN."""
     narrow = onec.narrow
     values, digest = draft_values(onec, TAG + uuid.uuid4().hex[:8])
     marker = str(uuid.uuid4())
@@ -854,11 +953,13 @@ def _o(name: str) -> str:
 STATUSES = ("PASS", "PARTIAL", "NOT_RUN")
 SCENARIO_MAP = {
     "E4": {
-        "status": "PASS",
+        "status": "PARTIAL",
+        "status_note": "PARTIAL at exit-scenario level; PASS only for the measured component/live-clone subset",
         "live": [_t("test_e4_live_rejected_expired_digest_changed_and_stale_approval_paths_write_nothing_to_1c"),
                  _t("test_e4_live_control_the_harness_can_see_a_write_and_rollback_restores_the_snapshot")],
         "offline": [_o("test_e4_rejected_change_can_never_be_approved_claimed_or_written")],
-        "not_run": "ledger rows (PostgreSQL); production glue that reads the real 1C version/digest",
+        "not_run": "ledger rows (PostgreSQL integration); production glue that reads the real 1C version/digest and maps "
+                   "executor refusals to engine events; production evidence/content-hash derivation (UNKNOWN)",
     },
     "E14": {
         "status": "PARTIAL",
@@ -874,11 +975,13 @@ SCENARIO_MAP = {
         "not_run": "edit inside the compare-and-write interval: no live UPDATE executor exists; the executor has no expected-version check",
     },
     "E25": {
-        "status": "PASS",
+        "status": "PARTIAL",
+        "status_note": "PARTIAL at exit-scenario level; PASS only for the measured component/live-clone subset",
         "live": [_t("test_e25_live_ledger_vs_1c_skew_is_surfaced_in_both_directions_from_a_real_listing"),
                  _t("test_e41_e25_live_unknown_outcome_ledger_row_is_resolved_by_marker_lookup_never_by_resend")],
         "offline": [],
-        "not_run": "the real PostgreSQL ledger (a fake LedgerPort is used); the production content-hash definition (plan A10)",
+        "not_run": "the real PostgreSQL ledger (FakeLedger is used); the production evidence/content-hash definition "
+                   "(test-local, production UNKNOWN, plan A10); production glue for 1C reads",
     },
     "E41": {
         "status": "PARTIAL",
@@ -887,7 +990,8 @@ SCENARIO_MAP = {
                  _t("test_e41_live_a_refusal_before_any_write_is_failed_apply_not_unknown_and_writes_nothing"),
                  _t("test_e41_e25_live_unknown_outcome_ledger_row_is_resolved_by_marker_lookup_never_by_resend")],
         "offline": [_o("test_e41_in_flight_call_reaches_a_terminal_or_unknown_state_and_no_new_call_begins")],
-        "not_run": "the real kill-switch store and an operator in-flight list (gap G3); a genuinely severed COM session",
+        "not_run": "the real kill-switch store and an operator in-flight list (gap G3); a genuinely severed COM session "
+                   "and an uncertain commit (reply loss is injected inside an open, rolled-back transaction)",
     },
 }
 
@@ -902,6 +1006,8 @@ def test_scenario_map_covers_exactly_the_live_exit_ids_and_has_valid_statuses():
     for eid, entry in SCENARIO_MAP.items():
         assert entry["status"] in STATUSES, eid
         assert entry["live"] and entry["not_run"].strip(), eid
+        if eid in ("E4", "E25"):
+            assert "PASS only for the measured component/live-clone subset" in entry["status_note"], eid
 
 
 def test_scenario_map_references_resolve_to_existing_test_functions():

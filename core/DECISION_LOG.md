@@ -1263,3 +1263,9 @@ Decision (operator answers, auto-accepted recommended options, revisable): refus
 
 
 Decision: fail closed on a missing period observation, refuse unknown VAT codes, keep SQL out of scope until a new migration. Detail: `docs/phase2/CHANGE_RECORD_398.md`.
+
+## 2026-10-28 - GPT-PM fixes: clone principal snapshot, honest E4/E25 labels, Python-only codes
+
+
+
+Decision: record the CT14_NARROW reset as an authorized persistent mutation with before/after principal verification; relabel E4/E25 PARTIAL; state Python-only scope of the new codes. Detail: `docs/phase2/CHANGE_RECORD_399.md`.

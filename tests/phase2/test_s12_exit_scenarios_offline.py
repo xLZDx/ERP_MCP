@@ -1134,7 +1134,8 @@ def _o(name):
 
 SCENARIO_MAP = {
     "E4": {
-        "status": "PASS",
+        "status": "PARTIAL",
+        "status_note": "PARTIAL at exit-scenario level; PASS only for the measured component/live-clone subset",
         "offline": [
             _t("test_e4_rejected_change_can_never_be_approved_claimed_or_written"),
             _t("test_e4_rejecting_an_approved_change_revokes_the_approval_and_blocks_claim"),
@@ -1146,7 +1147,8 @@ SCENARIO_MAP = {
             _o("test_t4_refusals"), _o("test_t6_refusals_per_guard"),
         ],
         "not_run": "ledger holds REJECTED/EXPIRED/DIGEST_MISMATCH/STALE_VERSION rows and independent B snapshot: "
-                   "needs PostgreSQL ledger + live 1C clone",
+                   "needs PostgreSQL ledger integration + live 1C clone; production evidence/content-hash derivation "
+                   "(UNKNOWN); production glue for 1C reads and executor-to-engine events",
     },
     "E5": {
         "status": "PASS",
