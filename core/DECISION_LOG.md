@@ -1201,3 +1201,7 @@ Decision: accept 322 passing agent-run tests as the functional evidence for the 
 ## 2026-10-28 - S15 source fixed after three specialist reviews
 
 Decision: accept all MAJOR and the actionable MINOR findings in one batch; found-by-marker unknown outcomes keep reconciliation non-clean until the ledger records the resolution; a stale clean report never unblocks after a restore. Detail: `docs/phase2/CHANGE_RECORD_388.md`.
+
+## 2026-10-28 - S15 tests adapted to the reviewed behaviour
+
+Decision: 713 agent-run passing tests are the functional evidence for the synthetic scope; two minor observations (runner status after a discarded report, id-prefix control coverage) are recorded, not changed. Detail: `docs/phase2/CHANGE_RECORD_389.md`.

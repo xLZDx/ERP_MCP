@@ -8,7 +8,7 @@ from __future__ import annotations
 import dataclasses
 from decimal import Decimal
 
-from erp_mcp_s15.oracle import AMOUNT_PATH, VAT_AMOUNT_PATH
+from erp_mcp_s15.oracle import AMOUNT_PATH, RECEIPT_TYPING_TABLE, VAT_AMOUNT_PATH
 from erp_mcp_s15.read_interface import ReferenceLookup, StoredDocument
 from erp_mcp_s15.verifier import ExpectedReceipt
 
@@ -16,6 +16,15 @@ DOCUMENT_REF = "11111111-1111-4111-8111-111111111111"
 CHANGE_ID = "22222222-2222-4222-8222-222222222222"
 MANIFEST_HASH = "cd" * 32
 DROP = object()  # remove a path from the stored mapping (value was not read)
+
+
+def full_declared_types() -> dict[str, str]:
+    """A complete writer type declaration (every oracle path, no divergence).
+
+    Without a complete declaration the verifier cannot report VERIFIED (typing not checked).
+    """
+    return dict(RECEIPT_TYPING_TABLE.types_by_path())
+
 
 ORGANIZATION = "aaaaaaaa-0000-4000-8000-000000000001"
 COUNTERPARTY = "aaaaaaaa-0000-4000-8000-000000000002"
@@ -101,3 +110,16 @@ class FakeReader:
         if ref_text in self.lookup_errors:
             raise self.lookup_errors[ref_text]
         return self.lookups.get(ref_text, ReferenceLookup(True, False))
+
+
+class ExplodingMapping(dict):
+    """Stored header/line mapping whose ``get`` fails for chosen keys (an unexpected read fault)."""
+
+    def __init__(self, data: dict, fail_on: dict[str, BaseException]) -> None:
+        super().__init__(data)
+        self.fail_on = fail_on
+
+    def get(self, key, default=None):
+        if key in self.fail_on:
+            raise self.fail_on[key]
+        return super().get(key, default)

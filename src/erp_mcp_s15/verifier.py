@@ -256,7 +256,7 @@ def verify_receipt(
                      for p, t in writer_declared_types.items() if oracle_types.get(p) != t]
         if divergent:
             return _result(VerificationStatus.TYPING_DIVERGENCE, divergent,
-                           typing_checked=typing_checked)
+                           typing_checked=False)
     try:
         stored = reader.read_document(document_ref)
     except ReadIncomplete:

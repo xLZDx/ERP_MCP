@@ -254,3 +254,125 @@ def test_match_and_inconclusive_carry_no_items_even_with_show_values():
 def test_show_values_must_be_keyword_only():
     with pytest.raises(TypeError):
         compare_ab(snap(), snap(), snap(), snap(), ExpectedDifferences(), True)  # type: ignore[misc]
+
+
+# --- CR-388: item validation (kind set, decimal values for movement and balance) -----------------
+
+BAD_ITEMS = [
+    DiffItem("other", "K"),  # unknown kind
+    DiffItem("", "K"),
+    DiffItem("MOVEMENT", "K", "1.00"),  # kinds are case-sensitive
+    DiffItem("movement", "K"),  # movement without a value
+    DiffItem("movement", "K", ""),
+    DiffItem("balance", "K", ""),
+    DiffItem("movement", "K", "abc"),
+    DiffItem("movement", "K", "1e3"),
+    DiffItem("movement", "K", " 1.00"),
+    DiffItem("movement", "K", "1.00 "),
+    DiffItem("movement", "K", "20."),
+    DiffItem("movement", "K", ".5"),
+    DiffItem("balance", "K", "+5"),
+    DiffItem("balance", "K", "NaN"),
+    DiffItem("balance", "K", "1,5"),
+    DiffItem("movement", "K", None),
+    DiffItem("movement", "K", 20),
+    DiffItem("document", None),
+    DiffItem("document", 7),
+    DiffItem("document", "K", None),
+    "not-an-item",
+    None,
+    ("document", "K", ""),
+]
+BAD_IDS = [f"bad{i}" for i in range(len(BAD_ITEMS))]
+
+
+@pytest.mark.parametrize("bad", BAD_ITEMS, ids=BAD_IDS)
+@pytest.mark.parametrize("where", ["base_a", "base_b", "post_a", "post_b"])
+def test_invalid_item_in_any_snapshot_is_inconclusive_never_match(where, bad):
+    snaps = {"base_a": snap(), "base_b": snap(), "post_a": snap(), "post_b": snap(*EFFECT)}
+    snaps[where] = LaneSnapshot(True, snaps[where].items + (bad,))
+    result = compare_ab(snaps["base_a"], snaps["base_b"], snaps["post_a"], snaps["post_b"],
+                        ExpectedDifferences(EFFECT))
+    assert result.status is S.INCONCLUSIVE
+    assert (result.extra_count, result.missing_count) == (0, 0)
+
+
+@pytest.mark.parametrize("bad", BAD_ITEMS, ids=BAD_IDS)
+@pytest.mark.parametrize("side", ["added", "removed"])
+def test_invalid_item_in_the_expected_differences_is_inconclusive(side, bad):
+    expected = (ExpectedDifferences(EFFECT + (bad,)) if side == "added"
+                else ExpectedDifferences(EFFECT, (bad,)))
+    result = compare_ab(snap(), snap(), snap(), snap(*EFFECT), expected)
+    assert result.status is S.INCONCLUSIVE
+
+
+def test_an_unreadable_value_cannot_be_hidden_by_an_equal_unreadable_value_on_the_other_side():
+    # Two identical garbage movement rows would cancel in a signed multiset; they must not.
+    garbage = DiffItem("movement", "K", "garbage")
+    result = compare_ab(snap(garbage), snap(), snap(garbage), snap(garbage),
+                        ExpectedDifferences())
+    assert result.status is S.INCONCLUSIVE
+
+
+def test_non_container_items_are_inconclusive():
+    for items in (None, "abc", {DOC}, iter(EFFECT), 5):
+        bad = LaneSnapshot(True, items)  # type: ignore[arg-type]
+        result = compare_ab(snap(), snap(), snap(), bad, ExpectedDifferences())
+        assert result.status is S.INCONCLUSIVE, items
+
+
+def test_non_expected_differences_object_is_inconclusive():
+    for bad in (None, EFFECT, {"added": EFFECT}):
+        result = compare_ab(snap(), snap(), snap(), snap(*EFFECT), bad)  # type: ignore[arg-type]
+        assert result.status is S.INCONCLUSIVE
+
+
+@pytest.mark.parametrize("value", ["0", "0.00", "-5", "-0.01", "123456789012345678.123456789"])
+@pytest.mark.parametrize("kind", ["movement", "balance"])
+def test_well_formed_decimal_values_are_accepted(kind, value):
+    item = DiffItem(kind, "K", value)
+    assert compare((item,), expected_added=(item,)).status is S.MATCH
+
+
+def test_document_items_may_have_an_empty_value_and_carry_no_decimal_requirement():
+    item = DiffItem("document", "DOC-1", "")
+    assert compare((item,), expected_added=(item,)).status is S.MATCH
+
+
+def test_via_readers_invalid_item_from_a_lane_is_inconclusive():
+    bad = DiffItem("movement", "K", "not-a-number")
+    reader = FakeLaneReader({"A": snap(), "B": snap(*EFFECT, bad)})
+    result = compare_via_readers(reader, "A", "B", (snap(), snap()), ExpectedDifferences(EFFECT))
+    assert result.status is S.INCONCLUSIVE
+
+
+def test_via_readers_non_snapshot_from_a_lane_is_inconclusive():
+    reader = FakeLaneReader({"A": snap(), "B": None})
+    result = compare_via_readers(reader, "A", "B", (snap(), snap()), ExpectedDifferences(EFFECT))
+    assert result.status is S.INCONCLUSIVE
+
+
+def test_via_readers_invalid_item_in_the_baseline_is_inconclusive():
+    bad_baseline = LaneSnapshot(True, (DiffItem("bogus", "K"),))
+    reader = FakeLaneReader({"A": snap(), "B": snap(*EFFECT)})
+    result = compare_via_readers(reader, "A", "B", (bad_baseline, snap()),
+                                 ExpectedDifferences(EFFECT))
+    assert result.status is S.INCONCLUSIVE
+
+
+# --- CR-388: balance items are deltas (compared like any other signed fact) ----------------------------
+
+def test_balance_delta_is_compared_by_exact_value_and_net_of_the_baseline():
+    assert compare(EFFECT).status is S.MATCH
+    wrong = DiffItem("balance", BAL.key, "21.83")
+    result = compare((DOC, MOV1, MOV2, wrong))
+    assert result.status is S.MISMATCH
+    assert (result.extra_count, result.missing_count) == (1, 1)
+
+
+def test_an_absolute_balance_that_includes_the_pre_operation_amount_is_not_a_match():
+    # The reader must supply the DELTA 21.82; an absolute balance (100.00 + 21.82) differs.
+    absolute = DiffItem("balance", BAL.key, "121.82")
+    result = compare((DOC, MOV1, MOV2, absolute))
+    assert result.status is S.MISMATCH
+    assert (result.extra_count, result.missing_count) == (1, 1)

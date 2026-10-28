@@ -6,6 +6,7 @@ signed-multiset count it must produce, which the assertions below pin down.
 """
 from __future__ import annotations
 
+import dataclasses
 from decimal import Decimal
 
 import pytest
@@ -28,6 +29,7 @@ from erp_mcp_s15.negative_controls import (
     run_control,
 )
 from erp_mcp_s15.verifier import SUPPORTED_SHAPE, VerificationStatus, verify_receipt
+from tests.phase2._s15_fixtures import full_declared_types
 
 PLAN_IDS = [
     "P01_WRONG_ACCOUNT", "P02_WRONG_COUNTERPARTY", "P03_WRONG_PERIOD",
@@ -145,7 +147,7 @@ def test_notes_are_unique_per_control():
 def test_field_control_yields_exactly_the_intended_verifier_finding(control_id):
     reader = nc._apply_field(BY_ID[control_id])
     result = verify_receipt(reader, nc.BASELINE_DOCUMENT_REF, nc.baseline_expected_receipt(),
-                            SUPPORTED_SHAPE)
+                            SUPPORTED_SHAPE, writer_declared_types=full_declared_types())
     path, code = FIELD_EXPECTATION[control_id]
     assert result.status is VerificationStatus.MISMATCH
     assert [(f.path, f.code) for f in result.findings] == [(path, code)]
@@ -180,16 +182,45 @@ def test_run_all_reports_every_control_detected_on_a_valid_baseline():
 def test_the_undistorted_baseline_is_verified_and_matches_so_reds_are_caused_by_the_control():
     result = verify_receipt(nc._apply_field(Control("BASE", "plan", "", "")),
                             nc.BASELINE_DOCUMENT_REF, nc.baseline_expected_receipt(),
-                            SUPPORTED_SHAPE)
+                            SUPPORTED_SHAPE, writer_declared_types=full_declared_types())
     assert result.status is VerificationStatus.VERIFIED
     assert nc._movement_status(()) == "MATCH"
 
 
-def test_baseline_document_values_survive_unchanged_after_controls_run():
-    before = nc.baseline_stored_document()
+def test_the_baseline_without_a_type_declaration_is_not_verified():
+    # The production controls declare the oracle types themselves; without a declaration the
+    # baseline could never be VERIFIED, which is why that declaration is part of the harness.
+    result = verify_receipt(nc._apply_field(Control("BASE", "plan", "", "")),
+                            nc.BASELINE_DOCUMENT_REF, nc.baseline_expected_receipt(),
+                            SUPPORTED_SHAPE)
+    assert result.status is VerificationStatus.PARTIAL_UNVERIFIED
+
+
+def test_running_every_control_leaves_no_state_behind_that_could_distort_the_baseline():
+    # A control that leaked into shared state would turn the next undistorted baseline red.
     run_all()
-    assert nc.baseline_stored_document() == before
-    assert nc.baseline_stored_document().total == Decimal("21.82")
+    after = run_control(Control("BASE_AFTER", "plan", "", "reads same instead of same"))
+    assert after.status == "VERIFIED"
+    assert nc._movement_status(()) == "MATCH"
+    # The baseline values are pinned to literals, not compared with another fresh copy.
+    document = nc.baseline_stored_document()
+    assert document.total == Decimal("21.82")
+    assert document.header["header.incoming_date"] == "2026-01-14T00:00:00"
+    assert document.posted is False and document.deletion_mark is False
+
+
+def test_mutating_a_returned_baseline_document_does_not_change_the_next_baseline():
+    first = nc.baseline_stored_document()
+    first.header["header.incoming_number"] = "tampered"
+    first.lines[0]["line.quantity"] = 999
+    second = nc.baseline_stored_document()
+    assert second.header["header.incoming_number"] == "00123"
+    assert second.lines[0]["line.quantity"] == 1
+    assert run_control(Control("BASE_AFTER", "plan", "", "x")).status == "VERIFIED"
+
+
+def test_repeated_run_all_gives_identical_reports():
+    assert run_all() == run_all()
 
 
 def test_a_control_that_distorts_nothing_is_reported_undetected():
@@ -245,3 +276,60 @@ def test_movement_baseline_has_a_document_two_movement_lines_and_a_balance():
     kinds = sorted(i.kind for i in nc._baseline_items())
     assert kinds == ["balance", "document", "movement", "movement"]
     assert isinstance(nc._baseline_items()[0], DiffItem)
+
+
+# --- CR-388: required-set coverage ---------------------------------------------------------------------
+
+def test_required_control_ids_are_exactly_the_plan_and_fact_prefixes():
+    assert nc.REQUIRED_CONTROL_IDS == frozenset(
+        {f"P{n:02d}" for n in range(1, 9)} | {f"F{n:02d}" for n in range(1, 12)})
+    assert {i.split("_", 1)[0] for i in PLAN_IDS + FACT_IDS} == nc.REQUIRED_CONTROL_IDS
+
+
+def test_the_full_set_covers_the_required_set():
+    report = run_all()
+    assert report.covers_required_set is True
+    assert report.all_detected is True
+
+
+def test_an_empty_control_set_is_not_all_detected():
+    report = run_all(())
+    assert report.baseline_ok is True
+    assert report.outcomes == () and report.undetected == ()
+    assert report.covers_required_set is False
+    assert report.all_detected is False
+
+
+@pytest.mark.parametrize("dropped", PLAN_IDS + FACT_IDS)
+def test_a_set_missing_any_single_required_control_is_not_all_detected(dropped):
+    partial = tuple(c for c in NEGATIVE_CONTROLS if c.control_id != dropped)
+    report = run_all(partial)
+    assert len(report.outcomes) == 18
+    assert report.undetected == ()  # everything that ran was detected ...
+    assert report.covers_required_set is False
+    assert report.all_detected is False  # ... but the set is incomplete
+
+
+def test_only_the_plan_group_or_only_the_fact_group_is_not_all_detected():
+    for group in ("plan", "s14_fact"):
+        subset = tuple(c for c in NEGATIVE_CONTROLS if c.group == group)
+        report = run_all(subset)
+        assert report.undetected == ()
+        assert report.all_detected is False
+
+
+def test_extra_controls_beyond_the_required_set_keep_coverage():
+    extra = Control("X01_EXTRA", "plan", "x", "reads 60 instead of 41 debit",
+                    movement_ops=(MovementOp("replace", 0, "debit", "60"),))
+    report = run_all(NEGATIVE_CONTROLS + (extra,))
+    assert report.covers_required_set is True and report.all_detected is True
+    assert len(report.outcomes) == 20
+
+
+def test_a_failed_pre_flight_baseline_makes_all_detected_false_even_if_every_control_is_red(
+        monkeypatch):
+    posted = dataclasses.replace(nc.baseline_stored_document(), posted=True)
+    monkeypatch.setattr(nc, "baseline_stored_document", lambda: posted)
+    report = run_all()
+    assert report.baseline_ok is False
+    assert report.all_detected is False

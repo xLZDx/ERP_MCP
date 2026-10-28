@@ -19,7 +19,12 @@ from erp_mcp_s15.oracle import (
     value_matches,
 )
 from erp_mcp_s15.verifier import SUPPORTED_SHAPE, VerificationStatus, verify_receipt
-from tests.phase2._s15_fixtures import FakeReader, make_expected, make_stored
+from tests.phase2._s15_fixtures import (
+    FakeReader,
+    full_declared_types,
+    make_expected,
+    make_stored,
+)
 
 
 def _rule(kind: FieldType, catalog: str | None = None) -> FieldRule:
@@ -29,7 +34,8 @@ def _rule(kind: FieldType, catalog: str | None = None) -> FieldRule:
 # --- versioning (assertion 1) ---------------------------------------------------------------
 
 def test_oracle_version_is_recorded_in_a_verified_result():
-    result = verify_receipt(FakeReader(), "ref", make_expected(), SUPPORTED_SHAPE)
+    result = verify_receipt(FakeReader(), "ref", make_expected(), SUPPORTED_SHAPE,
+                            writer_declared_types=full_declared_types())
     assert result.status is VerificationStatus.VERIFIED
     assert result.oracle_version == ORACLE_VERSION == "s15-oracle-1"
 
@@ -169,10 +175,14 @@ def test_writer_declaring_a_path_the_oracle_does_not_know_is_divergent():
     assert result.findings[0].path == "line.mystery"
 
 
-def test_writer_declaring_a_subset_with_matching_types_is_not_divergent():
+def test_writer_declaring_a_subset_with_matching_types_is_not_divergent_but_not_verified():
     result = verify_receipt(FakeReader(), "r", make_expected(), SUPPORTED_SHAPE,
                             writer_declared_types={"line.amount": "number"})
-    assert result.status is VerificationStatus.VERIFIED
+    # The declared part agrees, but the undeclared remainder was never type-checked.
+    assert result.status is VerificationStatus.PARTIAL_UNVERIFIED
+    assert result.typing_checked is False
+    assert result.unverified_paths == tuple(
+        sorted(set(RECEIPT_TYPING_TABLE.types_by_path()) - {"line.amount"}))
 
 
 def test_oracle_table_is_used_not_the_writer_table_for_comparison():
@@ -185,8 +195,9 @@ def test_oracle_table_is_used_not_the_writer_table_for_comparison():
     expected = make_expected(header__incoming_number="123")
     stored = make_stored(header={"header.incoming_number": 123})
     custom_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE,
-                                   table=custom)
-    default_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE)
+                                   writer_declared_types=custom.types_by_path(), table=custom)
+    default_result = verify_receipt(FakeReader(stored), "r", expected, SUPPORTED_SHAPE,
+                                    writer_declared_types=full_declared_types())
     assert custom_result.status is VerificationStatus.VERIFIED
     assert default_result.status is VerificationStatus.MISMATCH
 
@@ -195,13 +206,16 @@ def test_oracle_table_is_used_not_the_writer_table_for_comparison():
 
 def test_executor_unverified_path_not_covered_by_oracle_is_reported_and_blocks_verified():
     result = verify_receipt(FakeReader(), "r", make_expected(), SUPPORTED_SHAPE,
+                            writer_declared_types=full_declared_types(),
                             writer_unverified_paths=("line.discount",))
     assert result.status is VerificationStatus.PARTIAL_UNVERIFIED
     assert result.unverified_paths == ("line.discount",)
+    assert result.typing_checked is True
 
 
 def test_executor_unverified_path_covered_by_oracle_is_not_reported():
     result = verify_receipt(FakeReader(), "r", make_expected(), SUPPORTED_SHAPE,
+                            writer_declared_types=full_declared_types(),
                             writer_unverified_paths=("line.amount", "header.incoming_date"))
     assert result.status is VerificationStatus.VERIFIED
     assert result.unverified_paths == ()
@@ -209,7 +223,7 @@ def test_executor_unverified_path_covered_by_oracle_is_not_reported():
 
 def test_expected_path_outside_the_table_is_reported_unverified():
     result = verify_receipt(FakeReader(), "r", make_expected(line__discount="5"),
-                            SUPPORTED_SHAPE)
+                            SUPPORTED_SHAPE, writer_declared_types=full_declared_types())
     assert result.status is VerificationStatus.PARTIAL_UNVERIFIED
     assert result.unverified_paths == ("line.discount",)
 
@@ -217,6 +231,7 @@ def test_expected_path_outside_the_table_is_reported_unverified():
 def test_unverified_paths_are_kept_alongside_a_mismatch():
     reader = FakeReader(make_stored(posted=True))
     result = verify_receipt(reader, "r", make_expected(), SUPPORTED_SHAPE,
+                            writer_declared_types=full_declared_types(),
                             writer_unverified_paths=("line.discount",))
     assert result.status is VerificationStatus.MISMATCH
     assert result.unverified_paths == ("line.discount",)
@@ -298,6 +313,42 @@ def test_own_date_compares_calendar_day_only():
     assert own_date_matches("0001-01-01", "0001-01-01T00:00:00") is False
     assert own_date_matches("2026-3-11", "2026-3-11T00:00:00") is False
     assert own_date_matches(None, "2026-03-11T07:00:00") is False
+
+
+@pytest.mark.parametrize("stored", [
+    "2026-03-11",  # no time part
+    "2026-03-11T07:00",  # no seconds
+    "2026-03-11T07:00:00Z",  # trailing zone garbage
+    "2026-03-11T07:00:00.5",  # fractional seconds are not XMLString
+    "2026-03-11T07:00:00junk",
+    "2026-03-11T07:00:00" + chr(10),  # a trailing newline must not slip through the end anchor
+    "2026-03-11 07:00:00",  # wrong separator
+    "2026-03-11T24:00:00", "2026-03-11T07:60:00", "2026-03-11T07:00:60",  # impossible time
+    "2026-02-30T07:00:00", "2026-13-11T07:00:00", "2026-00-11T07:00:00",  # impossible date
+    "2026-03-32T07:00:00", "2025-02-29T07:00:00",  # 2025 is not a leap year
+    chr(0xFF12) + "026-03-11T07:00:00",  # non-ASCII digit
+    " 2026-03-11T07:00:00",
+])
+def test_own_date_rejects_a_stored_text_that_is_not_a_full_real_xml_datetime(stored):
+    # The expected day is a real day on the stored day, so only the stored text can make it red.
+    assert own_date_matches("2026-03-11", stored) is False
+
+
+def test_own_date_accepts_a_real_leap_day_and_boundary_times():
+    assert own_date_matches("2024-02-29", "2024-02-29T00:00:00") is True
+    assert own_date_matches("2024-02-29", "2024-02-29T23:59:59") is True
+
+
+@pytest.mark.parametrize("day", [
+    "2026-02-30", "2025-02-29", "2026-13-01", "2026-00-10", "2026-03-00", "2026-03-11T00:00:00",
+    "", "2026-3-11", "26-03-11", "2026-03-11 ", "2026-03-11" + chr(10), None, 20260311,
+    "0001-01-01", "0100-01-01",
+])
+def test_own_date_rejects_an_expected_day_that_is_not_a_real_calendar_day(day):
+    # The stored text starts with the same characters as the expected day, so a plain prefix
+    # comparison would accept it; the calendar validation must refuse it.
+    stored = f"{day}T07:00:00" if isinstance(day, str) else "2026-03-11T07:00:00"
+    assert own_date_matches(day, stored) is False
 
 
 def test_empty_date_days_constant_covers_both_1c_empty_dates():
