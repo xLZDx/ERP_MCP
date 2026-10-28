@@ -1221,3 +1221,9 @@ Decision: 899 agent-run passing tests are the functional evidence after the GPT-
 ## 2026-10-28 - Document registry regenerated after CR-391
 
 Decision: regenerate governance/DOCUMENT_REGISTRY.md once CR-391 is tracked; generated output, not hand-edited.
+
+## 2026-10-28 - Operator order: finish S12/S13 before S16 code
+
+
+
+Decision: the operator chose to finish S12/S13 qualification first; S16 gets a plan document only until then. The operator also stated that a new 1C licence is in place; the clone connection was probed live and works, so licence is not a blocker. Detail: next change record.
