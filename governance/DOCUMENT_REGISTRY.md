@@ -815,7 +815,7 @@ Inventory: 782 tracked paths, 0 local-only paths.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `f0adef8d2264c55ecbea80703b10e9b6080b9fd0` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `1c43f61276f45072a3508f7e35d33a9841a7fa93` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |
