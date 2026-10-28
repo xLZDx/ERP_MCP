@@ -40,7 +40,7 @@ async def lifecycle(led: L, role: str, name: str, *args, t: str = T, c: str = C)
     return json.loads(value) if isinstance(value, str) else value
 
 
-async def test_cross_connection_recovery_fence(db, led: L) -> None:
+async def run_cross_connection_recovery_fence(db, led: L) -> None:
     other = await db.connect()
     other_led = L(SimpleNamespace(conn=other))
     try:
@@ -96,7 +96,7 @@ async def test_cross_connection_recovery_fence(db, led: L) -> None:
     print("PASS: separate connections observe durable RECOVERING; epoch advances; writer epoch is denied; scope isolation holds")
 
 
-async def test_unresolved_calls_hold_recovery(db, led: L) -> None:
+async def run_unresolved_calls_hold_recovery(db, led: L) -> None:
     # Create a legitimate unresolved dispatch through the SQL API while the scope is LEGACY.
     print("PROGRESS: creating unresolved dispatch", flush=True)
     change_id, _unresolved_token, _unresolved_call_id = await led.unknown(
@@ -167,7 +167,7 @@ async def main() -> int:
             await apply(db.conn, MIGRATIONS / MIGRATION_022)
             led = L(db)
             print("PROGRESS: first database ready", flush=True)
-            await test_cross_connection_recovery_fence(db, led)
+            await run_cross_connection_recovery_fence(db, led)
             # A new database is required so the unresolved flow starts in LEGACY state.
             async with throwaway_db(dsn) as second_db:
                 for filename in PRIOR_MIGRATION_FILES:
@@ -175,7 +175,7 @@ async def main() -> int:
                 await _setup(second_db.conn)
                 await apply(second_db.conn, MIGRATIONS / MIGRATION_022)
                 print("PROGRESS: second database ready", flush=True)
-                await test_unresolved_calls_hold_recovery(second_db, L(second_db))
+                await run_unresolved_calls_hold_recovery(second_db, L(second_db))
     print(f"Suite: PASS — 2 focused S13 lifecycle journeys on owned PostgreSQL container {container_name}")
     return 0
 

@@ -79,7 +79,7 @@ async def seed_failure(led: L, subject, stage: str) -> None:
         "SET failures=1,last_sqlstate='P0001',last_error='fixture failure'", T, C, subject, stage)
 
 
-async def test_api_and_clean_off(led: L) -> None:
+async def run_api_and_clean_off(led: L) -> None:
     for signature, result in (
         ("change_ledger.kill_switch(text,text,text)", "text"),
         ("change_ledger.recover_sweep(text,text,jsonb)", "jsonb"),
@@ -115,7 +115,7 @@ async def test_api_and_clean_off(led: L) -> None:
     print("PASS: signatures/grants, invalid mode/scope/role, clean STOP->OFF, repeated OFF")
 
 
-async def test_each_active_hold_blocks_off(led: L) -> None:
+async def run_each_active_hold_blocks_off(led: L) -> None:
     for cause in ("CALL_OWNERSHIP", "FAILED_VERIFY_HALT", "ANCHOR_GAP", "RLC_UNCLEAN"):
         await call(led, "clt_dave", "kill_switch", "STOP_ADMIT")
         hold_id = uuid4()
@@ -144,7 +144,7 @@ async def remove_record_poison(conn, trigger_name: str, function_name: str) -> N
     await conn.execute(f"DROP FUNCTION public.{function_name}()")
 
 
-async def test_partial_failure_t9_retry_and_repair(led: L) -> None:
+async def run_partial_failure_t9_retry_and_repair(led: L) -> None:
     await add_base(led.conn, "s13-poison")
     bad, token = await led.approved(request_id="s13-poison", base="s13-poison"), None
     token = await led.claimed(bad)
@@ -182,7 +182,7 @@ async def test_partial_failure_t9_retry_and_repair(led: L) -> None:
     print("PASS: poisoned item failure and T9 partial progress commit; repair/retry clears failure before OFF")
 
 
-async def test_t9_t12_delays_and_cleanup_stages(led: L) -> None:
+async def run_t9_t12_delays_and_cleanup_stages(led: L) -> None:
     # Delayed T12: selection may inspect the item, but no attempt/failure cleanup is allowed before due time.
     unk, _, _ = await led.unknown(request_id="s13-delayed-t12", base="base-2")
     await led.conn.execute("INSERT INTO change_ledger.sweep_counters(tenant_id,company_id,subject_id,kind,started_at,"
@@ -262,7 +262,7 @@ async def test_t9_t12_delays_and_cleanup_stages(led: L) -> None:
     print("PASS: delayed T12/VERIFY remain unresolved; REVOKE_STALE and GAP_BOUND failures clear only after terminal evidence")
 
 
-async def test_batch_bound_and_concurrent_serialization(led: L) -> None:
+async def run_batch_bound_and_concurrent_serialization(led: L) -> None:
     # Default effective batch_size is 100. Create 101 actual issued claims with distinct base locks.
     bases = [f"s13-batch-{i:03d}" for i in range(101)]
     await led.conn.executemany("INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,"
@@ -340,11 +340,11 @@ async def main() -> int:
                 found = await db.conn.fetchval("SELECT count(*) FROM living.schema_migrations WHERE version=$1", version)
                 assert found == 1, (version, found)
             led = L(db)
-            await test_api_and_clean_off(led)
-            await test_each_active_hold_blocks_off(led)
-            await test_partial_failure_t9_retry_and_repair(led)
-            await test_t9_t12_delays_and_cleanup_stages(led)
-            await test_batch_bound_and_concurrent_serialization(led)
+            await run_api_and_clean_off(led)
+            await run_each_active_hold_blocks_off(led)
+            await run_partial_failure_t9_retry_and_repair(led)
+            await run_t9_t12_delays_and_cleanup_stages(led)
+            await run_batch_bound_and_concurrent_serialization(led)
     print(f"PASS: S13 migration 020 focused acceptance on owned PostgreSQL container {container_name}")
     return 0
 

@@ -179,7 +179,7 @@ async def scoped_suffix(conn, role: str, seq: int, digest: str, *, t=T, c=C,
         return json.loads(value) if isinstance(value, str) else value
 
 
-async def test_migration_026(db) -> int:
+async def run_migration_026(db) -> int:
     conn = db.conn
     versions = {r["version"] for r in await conn.fetch("SELECT version FROM living.schema_migrations")}
     assert versions == {f"{n:03d}" for n in range(1, 27)}, (len(versions), sorted(versions))
@@ -383,7 +383,7 @@ async def run() -> None:
             await _setup(db.conn)
             for filename in MIGRATION_CHAIN[3:]:
                 await apply_migration(db.conn, filename)
-            sql_checks = await test_migration_026(db)
+            sql_checks = await run_migration_026(db)
             print(f"PASS: migration 026 PostgreSQL contract ({sql_checks} grouped checks); "
                   f"owned container {container}; token {owner_token[:8]}", flush=True)
 

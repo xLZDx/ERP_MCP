@@ -131,7 +131,7 @@ async def writer_epoch_and_show_timeout(conn: asyncpg.Connection, cid, generatio
         return allowed, await conn.fetchval("SHOW lock_timeout")
 
 
-async def test_recovery_is_denied_and_fail_closed(db, led: L) -> None:
+async def run_recovery_is_denied_and_fail_closed(db, led: L) -> None:
     assert not await db.conn.fetchval(
         "SELECT has_function_privilege('clt_wrk',$1,'EXECUTE')", RECOVERY_SIGNATURE)
     await expect_pg_error("permission denied for function lifecycle_begin_recovery",
@@ -160,7 +160,7 @@ async def test_recovery_is_denied_and_fail_closed(db, led: L) -> None:
     assert tuple(after) == tuple(before), (tuple(before), tuple(after))
 
 
-async def test_migration_is_idempotent(db) -> None:
+async def run_migration_is_idempotent(db) -> None:
     before = await db.conn.fetchrow("SELECT version,checksum,applied_at FROM living.schema_migrations WHERE version='023'")
     assert before is not None
     await apply_migration(db.conn, MIGRATIONS / MIGRATION_023)
@@ -168,7 +168,7 @@ async def test_migration_is_idempotent(db) -> None:
     assert tuple(after) == tuple(before), (tuple(before), tuple(after))
 
 
-async def test_success_restores_caller_lock_timeout(db, led: L) -> None:
+async def run_success_restores_caller_lock_timeout(db, led: L) -> None:
     base = "m024-timeout-restore-base"
     await db.conn.execute(
         "INSERT INTO change_ledger.targets(tenant_id,company_id,base_fingerprint,organization_ref,target_class) "
@@ -198,7 +198,7 @@ async def test_success_restores_caller_lock_timeout(db, led: L) -> None:
           "caller lock_timeout for default and short settings")
 
 
-async def test_timeout_savepoint_restores_setting_and_outer_transaction(db) -> None:
+async def run_timeout_savepoint_restores_setting_and_outer_transaction(db) -> None:
     holder = await db.connect()
     caller = await db.connect()
     tx = await lock_fence_row(holder)
@@ -234,7 +234,7 @@ async def propose_with_timeout_in_open_transaction(conn: asyncpg.Connection):
         fixture_digest_for("POST"), "m024-timeout-savepoint", "v1", None, exp(), None)
 
 
-async def test_bounded_lock_waits(db, led: L) -> None:
+async def run_bounded_lock_waits(db, led: L) -> None:
     # Prepare a genuine permit before holding the lifecycle fence row.
     cid, token, _call_id = await led.unknown(kind="POST", target="m023-lock-guard")
     generation = token["generation"]
@@ -305,11 +305,11 @@ async def run() -> None:
             assert installed == expected, (sorted(installed), sorted(expected))
 
             led = L(db)
-            await test_recovery_is_denied_and_fail_closed(db, led)
-            await test_migration_is_idempotent(db)
-            await test_bounded_lock_waits(db, led)
-            await test_success_restores_caller_lock_timeout(db, led)
-            await test_timeout_savepoint_restores_setting_and_outer_transaction(db)
+            await run_recovery_is_denied_and_fail_closed(db, led)
+            await run_migration_is_idempotent(db)
+            await run_bounded_lock_waits(db, led)
+            await run_success_restores_caller_lock_timeout(db, led)
+            await run_timeout_savepoint_restores_setting_and_outer_transaction(db)
             print(f"PASS: S13 migration 023-024 focused acceptance on owned PostgreSQL container "
                   f"{container}; owner token {owner_token[:8]}")
 

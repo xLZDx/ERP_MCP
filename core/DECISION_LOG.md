@@ -1239,3 +1239,9 @@ Decision: apply all review findings to the S16 plan (S16-owned decision core, ap
 
 
 Decision: record the agent-run results at the current head as evidence, keep every live-1C and external half NOT_RUN, and keep S12/S13 formally NOT accepted. Gaps G1-G3 and the missing E38 parallel test are listed for decision. Detail: `docs/phase2/CHANGE_RECORD_394.md`.
+
+## 2026-10-28 - E38 parallel reservation evidence and pytest collection fix
+
+
+
+Decision: rename script helpers so pytest does not collect them instead of adding fixtures; keep the scripts runnable. Detail: `docs/phase2/CHANGE_RECORD_396.md`.
