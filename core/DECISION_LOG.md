@@ -1217,3 +1217,7 @@ Decision: accept both MAJOR findings and the residual minors; a reconciliation l
 ## 2026-10-28 - S15 tests for the GPT-PM gate fixes
 
 Decision: 899 agent-run passing tests are the functional evidence after the GPT-PM fixes; the gate re-review is limited to the two MAJOR fixes and their regressions. Detail: `docs/phase2/CHANGE_RECORD_391.md`.
+
+## 2026-10-28 - Document registry regenerated after CR-391
+
+Decision: regenerate governance/DOCUMENT_REGISTRY.md once CR-391 is tracked; generated output, not hand-edited.
