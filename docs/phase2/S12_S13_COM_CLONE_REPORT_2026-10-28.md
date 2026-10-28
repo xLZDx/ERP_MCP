@@ -62,3 +62,7 @@ The `CT14_NARROW` password was reset to a fresh random value by design and is no
 ## Not rerun at this head
 
 The slow SQL/e2e suites (`test_change_*_sql.py`, `test_s13_*` SQL/e2e) and the S15 suites were not rerun at this head. The combined regression is NOT claimed green here.
+
+## Principal-verification failure-path coverage
+
+The verifying finalizer is registered immediately after the baseline snapshot and before `prepare_user`; it therefore runs when setup raises after the account mutation, when setup is skipped, and on normal completion. Only failures before `prepare_user` may skip (clone/COM unavailable); a failure after it is a test failure, and a principal mismatch is a teardown error, never a skip. Five offline tests (fake ops, fake connections, monkeypatched snapshots; no extra clone mutation) cover: baseline-before-mutation ordering, failure after mutation is not a skip and the after-snapshot still runs, extra narrow role / changed other user / catalog count +2 each give a mismatch error, and a pre-mutation failure is the only skip. Run: 392 passed (370 offline + 22 clone file), ruff clean.

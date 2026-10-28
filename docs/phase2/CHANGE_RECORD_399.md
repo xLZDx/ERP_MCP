@@ -14,3 +14,9 @@
 ## Evidence (agent-run, no mutation runs)
 
 - 387 passed, 0 failed, 0 skipped (370 offline scenario file, 17 clone file incl. the principal-snapshot tests); ruff clean.
+
+## Failure-path fix (GPT-PM verification round, head 7c5686f)
+
+- The principal-verification finalizer is now registered right after the baseline snapshot and BEFORE `prepare_user`, so it runs on setup exceptions, skipped setup and normal completion. Session setup moved into `open_session`. Reference lookups run read-only before the mutation. Only failures before `prepare_user` may skip; a failure after it (`prepare_user` or the narrow connect) is `pytest.fail`. A principal mismatch raises AssertionError in teardown (error), never a skip.
+- Offline tests with fake ops/connections and monkeypatched snapshots (no clone mutation): ordering (baseline before mutation, finalizer registered), failure after mutation is a failure not a skip with the after-snapshot still running, three mismatch kinds yield AssertionError, and a failure before mutation is the only skip.
+- Evidence: 392 passed, 0 failed, 0 skipped (370 offline scenario file + 22 clone file: 14 live, 5 failure-path, 3 map); ruff clean on both files.

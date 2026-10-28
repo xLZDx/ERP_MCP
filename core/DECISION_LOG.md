@@ -1269,3 +1269,9 @@ Decision: fail closed on a missing period observation, refuse unknown VAT codes,
 
 
 Decision: record the CT14_NARROW reset as an authorized persistent mutation with before/after principal verification; relabel E4/E25 PARTIAL; state Python-only scope of the new codes. Detail: `docs/phase2/CHANGE_RECORD_399.md`.
+
+## 2026-10-28 - Principal verification now covers every setup failure path
+
+
+
+Decision: register the principal verifier before the first clone mutation and treat any post-mutation setup failure as a test failure (never a skip), per the GPT-PM verification round. Detail: `docs/phase2/CHANGE_RECORD_399.md`.

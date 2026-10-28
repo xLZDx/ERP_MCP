@@ -223,6 +223,63 @@ def principal_violations(before: dict, after: dict, narrow_name: str) -> list[st
     return bad
 
 
+def _lookup_refs(conn):
+    """Read-only reference lookup (pre-mutation). Skips with an explicit reason when the clone lacks the data."""
+    sel = _q(conn, "ВЫБРАТЬ ПЕРВЫЕ 1 Д.Ссылка КАК Р, Д.Владелец КАК Кон, Д.Организация КАК Орг, "
+                   "Д.ВалютаВзаиморасчетов КАК Вал ИЗ Справочник.ДоговорыКонтрагентов КАК Д "
+                   "ГДЕ НЕ Д.ЭтоГруппа И НЕ Д.ПометкаУдаления")
+    if not sel.Следующий():
+        pytest.skip("SKIP_REASON: the clone has no counterparty contract to reference")
+    refs = {"ctr": _xml(conn, sel.Р), "cpt": _xml(conn, sel.Кон), "org": _xml(conn, sel.Орг),
+            "cur": _xml(conn, sel.Вал)}
+    item = _q(conn, "ВЫБРАТЬ ПЕРВЫЕ 1 Н.Ссылка КАК Р ИЗ Справочник.Номенклатура КАК Н "
+                    "ГДЕ НЕ Н.ЭтоГруппа И НЕ Н.ПометкаУдаления")
+    if not item.Следующий():
+        pytest.skip("SKIP_REASON: the clone has no nomenclature item to reference")
+    refs["item"] = _xml(conn, item.Р)
+    return refs, [str(md.Имя) for md in conn.Метаданные.Документы]
+
+
+def _verify_principals(conn, before: dict, narrow_name: str) -> None:
+    """Take the after-snapshot and fail (never skip) on any difference the authorized reset does not explain."""
+    after = principal_snapshot(conn, narrow_name)
+    print("PRINCIPALS " + json.dumps(
+        {"before": {"users": {k: v["roles"] for k, v in sorted(before["users"].items())},
+                    "catalog_items": before["users_catalog_items"], "narrow_item_exists": before["narrow_item_exists"]},
+         "after": {"users": {k: v["roles"] for k, v in sorted(after["users"].items())},
+                   "catalog_items": after["users_catalog_items"], "narrow_item_exists": after["narrow_item_exists"]},
+         "narrow_pre_run_roles": before["users"].get(narrow_name, {}).get("roles"),
+         "narrow_item_created_in_this_run": after["narrow_item_exists"] and not before["narrow_item_exists"]},
+        ensure_ascii=True, sort_keys=True))
+    bad = principal_violations(before, after, narrow_name)
+    assert not bad, f"PRINCIPALS CHANGED beyond the authorized {narrow_name} reset: {bad}"
+
+
+def open_session(add_finalizer, cc, ops):
+    """Session setup with the failure-path contract:
+
+    * everything BEFORE ``prepare_user`` may skip (nothing was mutated);
+    * the principal-verification finalizer is registered right after the baseline snapshot, i.e. before the mutation,
+      so it runs on setup exceptions, skipped setup and normal completion;
+    * a failure AFTER ``prepare_user`` was called is a test FAILURE (``pytest.fail``), never a skip.
+    """
+    try:
+        pre_admin = cc.connect_admin()
+        principals_before = principal_snapshot(pre_admin, cc.NARROW_USER)     # BEFORE the persistent mutation
+    except Exception as exc:  # noqa: BLE001 - explicit skip reason, class name only (a message could carry secrets)
+        pytest.skip(f"SKIP_REASON: COM connection to the clone failed ({type(exc).__name__})")
+    add_finalizer(lambda: _verify_principals(pre_admin, principals_before, cc.NARROW_USER))
+    refs, doc_types = _lookup_refs(pre_admin)                     # read-only; may still skip (no mutation yet)
+    try:
+        admin, narrow_pw = ops.prepare_user(ops.ROLES)     # existing setup: CT14_NARROW with the two narrow roles only
+        narrow = cc.connect(cc.NARROW_USER, narrow_pw)
+    except Exception as exc:  # noqa: BLE001 - class name only (a message could carry secrets)
+        pytest.fail(f"SETUP FAILED after the CT14_NARROW mutation started ({type(exc).__name__}); "
+                    "principal verification still runs", pytrace=False)
+    return types.SimpleNamespace(admin=admin, narrow=narrow, refs=refs, doc_types=doc_types, name=cc.CLONE_NAME,
+                                 narrow_user=cc.NARROW_USER, principals_before=principals_before)
+
+
 @pytest.fixture(scope="module")
 def onec(request):
     if sys.platform != "win32":
@@ -244,45 +301,7 @@ def onec(request):
         pytest.skip(f"SKIP_REASON: the disposable clone {cc.CLONE_NAME} is not present on this machine")
     if not (cc.SECRETS / "admin_1c_clone_user.txt").is_file() or not (cc.SECRETS / "admin_1c_clone_password.dpapi").is_file():
         pytest.skip("SKIP_REASON: the DPAPI clone administrator credentials are not provisioned")
-    try:
-        pre_admin = cc.connect_admin()
-        principals_before = principal_snapshot(pre_admin, cc.NARROW_USER)     # BEFORE the persistent mutation
-        admin, narrow_pw = ops.prepare_user(ops.ROLES)     # existing setup: CT14_NARROW with the two narrow roles only
-        narrow = cc.connect(cc.NARROW_USER, narrow_pw)
-    except Exception as exc:  # noqa: BLE001 - explicit skip reason, class name only (a message could carry secrets)
-        pytest.skip(f"SKIP_REASON: COM connection to the clone failed ({type(exc).__name__})")
-    sel = _q(admin, "ВЫБРАТЬ ПЕРВЫЕ 1 Д.Ссылка КАК Р, Д.Владелец КАК Кон, Д.Организация КАК Орг, "
-                    "Д.ВалютаВзаиморасчетов КАК Вал ИЗ Справочник.ДоговорыКонтрагентов КАК Д "
-                    "ГДЕ НЕ Д.ЭтоГруппа И НЕ Д.ПометкаУдаления")
-    if not sel.Следующий():
-        pytest.skip("SKIP_REASON: the clone has no counterparty contract to reference")
-    refs = {"ctr": _xml(admin, sel.Р), "cpt": _xml(admin, sel.Кон), "org": _xml(admin, sel.Орг),
-            "cur": _xml(admin, sel.Вал)}
-    item = _q(admin, "ВЫБРАТЬ ПЕРВЫЕ 1 Н.Ссылка КАК Р ИЗ Справочник.Номенклатура КАК Н "
-                     "ГДЕ НЕ Н.ЭтоГруппа И НЕ Н.ПометкаУдаления")
-    if not item.Следующий():
-        pytest.skip("SKIP_REASON: the clone has no nomenclature item to reference")
-    refs["item"] = _xml(admin, item.Р)
-    doc_types = [str(md.Имя) for md in admin.Метаданные.Документы]
-    ns = types.SimpleNamespace(admin=admin, narrow=narrow, refs=refs, doc_types=doc_types, name=cc.CLONE_NAME,
-                               narrow_user=cc.NARROW_USER, principals_before=principals_before)
-
-    def verify_principals():          # module-scoped finalizer: a violation is reported as a teardown error
-        after = principal_snapshot(admin, cc.NARROW_USER)
-        pre = principals_before
-        print("PRINCIPALS " + json.dumps(
-            {"before": {"users": {k: v["roles"] for k, v in sorted(pre["users"].items())},
-                        "catalog_items": pre["users_catalog_items"], "narrow_item_exists": pre["narrow_item_exists"]},
-             "after": {"users": {k: v["roles"] for k, v in sorted(after["users"].items())},
-                       "catalog_items": after["users_catalog_items"], "narrow_item_exists": after["narrow_item_exists"]},
-             "narrow_pre_run_roles": pre["users"].get(cc.NARROW_USER, {}).get("roles"),
-             "narrow_item_created_in_this_run": after["narrow_item_exists"] and not pre["narrow_item_exists"]},
-            ensure_ascii=True, sort_keys=True))
-        bad = principal_violations(pre, after, cc.NARROW_USER)
-        assert not bad, f"PRINCIPALS CHANGED beyond the authorized {cc.NARROW_USER} reset: {bad}"
-
-    request.addfinalizer(verify_principals)
-    yield ns
+    yield open_session(request.addfinalizer, cc, ops)
 
 
 @pytest.fixture
@@ -299,6 +318,83 @@ def bracket(onec, request):
         _STOPPED.append(request.node.name)
         diff = {k: (before[k], after[k]) for k in before if before[k] != after[k]}
         pytest.fail(f"CLONE CHANGED by {request.node.name}: {diff}")
+
+
+class _FakeCc:
+    CLONE_NAME = "fake-clone"
+    NARROW_USER = "CT14_NARROW"
+
+    def __init__(self, log, *, admin_fails=False, connect_fails=False):
+        self.log, self.admin_fails, self.connect_fails = log, admin_fails, connect_fails
+
+    def connect_admin(self):
+        self.log.append("connect_admin")
+        if self.admin_fails:
+            raise OSError("no clone")
+        return "ADMIN"
+
+    def connect(self, user, pw):
+        self.log.append("connect_narrow")
+        if self.connect_fails:
+            raise OSError("narrow connect failed")
+        return "NARROW"
+
+
+class _FakeOps:
+    ROLES = tuple(REVIEWED_NARROW_ROLES)
+
+    def __init__(self, log):
+        self.log = log
+
+    def prepare_user(self, roles):
+        self.log.append("prepare_user")
+        return "ADMIN2", "pw"
+
+
+def _snap(narrow_roles=REVIEWED_NARROW_ROLES, other_roles=("Читатель",), items=30):
+    return {"users": {"CT14_NARROW": {"roles": sorted(narrow_roles)}, "other": {"roles": sorted(other_roles)}},
+            "users_catalog_items": items, "narrow_item_exists": True}
+
+
+def _fake_session(monkeypatch, *, admin_fails=False, connect_fails=False, after=None):
+    log, finalizers = [], []
+    snaps = iter([_snap(), after or _snap()])
+    monkeypatch.setattr(sys.modules[__name__], "principal_snapshot", lambda conn, name: (log.append("snapshot"), next(snaps))[1])
+    monkeypatch.setattr(sys.modules[__name__], "_lookup_refs", lambda conn: (log.append("lookup"), ({}, []))[1])
+    cc, ops = _FakeCc(log, admin_fails=admin_fails, connect_fails=connect_fails), _FakeOps(log)
+    return log, finalizers, cc, ops
+
+
+def test_failure_path_registers_verification_before_the_mutation_and_a_failure_after_it_is_not_a_skip(monkeypatch):
+    log, finalizers, cc, ops = _fake_session(monkeypatch, connect_fails=True)
+    with pytest.raises(pytest.fail.Exception):
+        open_session(finalizers.append, cc, ops)
+    assert not issubclass(pytest.fail.Exception, pytest.skip.Exception)
+    assert log.index("snapshot") < log.index("prepare_user")       # baseline captured before the mutation
+    assert len(finalizers) == 1                                    # registered although setup raised after the mutation
+    finalizers[0]()                                                # clean comparison: no error
+    assert log.count("snapshot") == 2                              # the after-snapshot really ran
+
+
+@pytest.mark.parametrize("after", [
+    _snap(narrow_roles=(*REVIEWED_NARROW_ROLES, "Полные права")),
+    _snap(other_roles=("Читатель", "Администратор")),
+    _snap(items=32),
+], ids=["extra-narrow-role", "other-user-changed", "catalog-items-rose-by-two"])
+def test_failure_path_principal_mismatch_after_a_failed_setup_is_an_error_never_a_skip(monkeypatch, after):
+    _log, finalizers, cc, ops = _fake_session(monkeypatch, connect_fails=True, after=after)
+    with pytest.raises(pytest.fail.Exception):
+        open_session(finalizers.append, cc, ops)
+    with pytest.raises(AssertionError, match="PRINCIPALS CHANGED"):
+        finalizers[0]()
+
+
+def test_failure_path_setup_failure_before_any_mutation_is_the_only_skip(monkeypatch):
+    log, finalizers, cc, ops = _fake_session(monkeypatch, admin_fails=True)
+    with pytest.raises(pytest.skip.Exception):
+        open_session(finalizers.append, cc, ops)
+    assert "prepare_user" not in log and finalizers == []
+
 
 
 def test_principals_are_unchanged_except_the_authorized_narrow_reset_and_narrow_has_only_the_two_reviewed_roles(onec):
