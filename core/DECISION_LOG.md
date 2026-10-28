@@ -1193,3 +1193,7 @@ Decision: keep E2, E10, E26, E37 and the E1 post step deferred; re-create the cl
 ## 2026-10-28 - S15 code written
 
 Decision: S15 code lives in a new top-level package `src/erp_mcp_s15/` so the oracle import graph stays independent of the writer; ports are fakes because S13 is not accepted; tests and reviews follow. Detail: `docs/phase2/CHANGE_RECORD_386.md`.
+
+## 2026-10-28 - S15 functional tests written and run by the test agent
+
+Decision: accept 322 passing agent-run tests as the functional evidence for the synthetic scope; real-1C, S13 ledger and deferred scenarios stay NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_387.md`.
