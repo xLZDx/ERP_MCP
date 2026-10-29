@@ -204,7 +204,8 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
             else:
                 client = scope.get("client")
                 server = scope.get("server")
-                if (type(client) is not tuple or len(client) != 2 or type(server) is not tuple or len(server) != 2
+                if (type(client) not in (tuple, list) or len(client) != 2
+                        or type(server) not in (tuple, list) or len(server) != 2
                         or type(client[0]) is not str or type(server[0]) is not str
                         or type(server[1]) is not int or not 1 <= server[1] <= 65535):
                     raise ValueError("ENDPOINT_INVALID")

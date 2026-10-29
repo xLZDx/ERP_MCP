@@ -1301,3 +1301,7 @@ Decision: implement S16 as an unwired library over injected fake-backed ports wi
 ## 2026-10-29 - Preserve apply-time epoch classification
 
 Decision: let the ordered apply-time epoch guard classify registry/token/proposal epoch divergence as EPOCH_CHANGED after the independent identity, role and expiry checks. Preserve the failing acceptance assertion. Detail: `docs/phase2/CHANGE_RECORD_409.md`.
+
+## 2026-10-29 - Native ASGI client compatibility
+
+Decision: accept tuple/list address-pair representations while retaining all private-network, route and authentication validation; keep the native unwrapped ASGI client regression rather than a test wrapper that masks rejection. Detail: `docs/phase2/CHANGE_RECORD_410.md`.
