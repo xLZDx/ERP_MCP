@@ -67,7 +67,8 @@ class S16Core:
                 and type(principal.person_id) is str and bool(principal.person_id)
                 and _aware(principal.expires_at))
 
-    def _live_requester(self, principal: AuthenticatedPrincipal, now: datetime) -> bool:
+    def _live_requester(self, principal: AuthenticatedPrincipal, now: datetime, *,
+                        check_epoch: bool = True) -> bool:
         from .contracts import PrincipalRole, TokenClass
         if (not self._principal(principal, TokenClass.CHAT_WRITE)
                 or PrincipalRole.REQUESTER not in principal.roles or principal.expires_at <= now):
@@ -75,7 +76,8 @@ class S16Core:
         current = self.principals.current(principal.principal_id)
         return (type(current) is PrincipalRecord and not current.revoked
                 and current.principal_id == principal.principal_id
-                and current.person_id == principal.person_id and current.epoch == principal.epoch
+                and current.person_id == principal.person_id
+                and (not check_epoch or current.epoch == principal.epoch)
                 and PrincipalRole.REQUESTER in current.roles)
 
     def decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
@@ -238,7 +240,8 @@ class S16Core:
 
     def apply(self, requester: AuthenticatedPrincipal, change_id: UUID, *, now: datetime) -> Result[ApplyReceipt]:
         from .contracts import PrincipalRole, TokenClass
-        if type(change_id) is not UUID or not _aware(now) or not self._live_requester(requester, now):
+        if (type(change_id) is not UUID or not _aware(now)
+                or not self._live_requester(requester, now, check_epoch=False)):
             return Result.refused(ErrorCode.NOT_ENTITLED)
         # Same-process serialization is deliberately held across claim and apply. Unknown apply is terminal.
         with self._lock:
@@ -274,7 +277,8 @@ class S16Core:
             if fingerprint != receipt.scope.base_fingerprint or requester.scope != receipt.scope:
                 return Result.refused(ErrorCode.SCOPE_MISMATCH)
             current = self.principals.current(requester.principal_id)
-            if (type(current) is not PrincipalRecord or current.epoch != receipt.proposal.auth_epoch_at_proposal
+            if (type(current) is not PrincipalRecord or current.epoch != requester.epoch
+                    or current.epoch != receipt.proposal.auth_epoch_at_proposal
                     or not self.principals.epochs_current(receipt.proposal.epoch_dependencies)):
                 return Result.refused(ErrorCode.EPOCH_CHANGED)
             approver_current = self.principals.current(approval.approver_principal_id)

@@ -1297,3 +1297,7 @@ Decision: append migration 028 without altering historical migrations; mirror th
 ## 2026-10-29 - Isolated S16 source integration
 
 Decision: implement S16 as an unwired library over injected fake-backed ports with S12 policy/transition reuse and explicit transport boundaries. Keep raw nonce/CSRF state server-side, use one-use session-bound decision references, and enforce positive authentication independent of network location. Scope period evidence to organization and immutable base identity as well as tenant/company/source. Runtime qualification remains pending the post-code agent-owned tests. Details: `docs/phase2/CHANGE_RECORD_404.md`, `CHANGE_RECORD_405.md`, `CHANGE_RECORD_406.md`.
+
+## 2026-10-29 - Preserve apply-time epoch classification
+
+Decision: let the ordered apply-time epoch guard classify registry/token/proposal epoch divergence as EPOCH_CHANGED after the independent identity, role and expiry checks. Preserve the failing acceptance assertion. Detail: `docs/phase2/CHANGE_RECORD_409.md`.
