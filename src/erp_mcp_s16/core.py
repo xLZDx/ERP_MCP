@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import threading
+from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Mapping
@@ -12,16 +14,19 @@ from uuid import UUID
 from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import KillDecision, KillSubject, evaluate
 from business_ai_gateway.phase2.change.proposal import digest_of_canonical_text
+from business_ai_gateway.phase2.change.proposal import approval_canonical_text
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
 from business_ai_gateway.phase2.change.transitions import (
-    ApproveEvidence, ClaimEvidence, Event, ExpireEvidence, NonceState, RejectEvidence, apply_transition,
+    ApproveEvidence, BeginApplyEvidence, ClaimEvidence, Event, ExpireEvidence, NonceState,
+    RejectEvidence, apply_transition,
 )
 from business_ai_gateway.phase2.change.types import ApprovalType, Authorization, BudgetCheck, CallerClass, Lifecycle
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult
 
 from .contracts import (
     ApprovalDecision, ApproverSession, ApplyPort, ApplyReceipt, AuthenticatedPrincipal,
-    ChangeStore, ClaimRefused, Claimed, DecisionBinding, DomainReceipt, KillSwitchPort,
+    BeginApplyEvidencePort, ChangeStore, ClaimRefused, Claimed, Clock, DecisionBinding, DomainReceipt,
+    KillSwitchPort, canonical_preview_bytes,
     PrincipalRecord, PrincipalRegistryPort, Result, TargetRegistryPort, VerifyPort,
     VerifyRequest,
 )
@@ -48,17 +53,108 @@ class S16Core:
 
     def __init__(self, *, store: ChangeStore, principals: PrincipalRegistryPort,
                  targets: TargetRegistryPort, kill_switch: KillSwitchPort,
-                 apply_port: ApplyPort, verify_port: VerifyPort) -> None:
+                 apply_port: ApplyPort, verify_port: VerifyPort,
+                 begin_apply_evidence: BeginApplyEvidencePort | None = None,
+                 clock: Clock | None = None) -> None:
         self.store = store
         self.principals = principals
         self.targets = targets
         self.kill_switch = kill_switch
         self.apply_port = apply_port
         self.verify_port = verify_port
+        self.begin_apply_evidence = begin_apply_evidence
+        self.clock = clock
         self._lock = threading.RLock()
         self._consumed_nonce_digests: set[str] = set()
         self._consumed_ref_digests: set[str] = set()
         self._apply_started: set[UUID] = set()
+        self._issuance_anchors: dict[UUID, tuple[object, ...]] = {}
+        self._s12_anchors: dict[UUID, object] = {}
+        self._approval_anchors: dict[UUID, ApprovalDecision] = {}
+        self._apply_receipt_anchors: dict[UUID, ApplyReceipt] = {}
+
+    def anchor_issuance(self, receipt: DomainReceipt) -> ErrorCode | None:
+        """Bind newly issued local values to this core instance; restart without anchors fails closed."""
+        if type(receipt) is not DomainReceipt or not self._snapshot_matches_content(receipt):
+            return ErrorCode.DIGEST_MISMATCH
+        if receipt.s12_record is None:
+            return ErrorCode.SCHEMA_INVALID
+        snap = receipt.snapshot
+        anchor = (receipt.proposal, receipt.scope, receipt.version, receipt.target_version,
+                  snap.canonical_preview_bytes, snap.preview_digest, snap.approval_canonical_text,
+                  snap.approval_digest, snap.nonce_digest)
+        with self._lock:
+            if receipt.change_id in self._issuance_anchors:
+                return ErrorCode.IDEMPOTENCY_CONFLICT
+            self._issuance_anchors[receipt.change_id] = anchor
+            self._s12_anchors[receipt.change_id] = receipt.s12_record
+        return None
+
+    @staticmethod
+    def _snapshot_matches_content(receipt: DomainReceipt) -> bool:
+        try:
+            snap = receipt.snapshot
+            if (snap.proposal != receipt.proposal or snap.change_id != receipt.change_id
+                    or snap.scope != receipt.scope or snap.version != receipt.version
+                    or receipt.target_version != snap.target_version
+                    or receipt.requester_person_id != receipt.proposal.requester_person_id
+                    or receipt.proposal.change_id != str(receipt.change_id)
+                    or receipt.proposal.scope.as_tuple() != receipt.scope.as_tuple()[:4]
+                    or receipt.proposal.preview_digest != snap.preview_digest
+                    or snap.canonical_preview_bytes != canonical_preview_bytes(
+                        receipt.proposal, target_version=snap.target_version.value,
+                        target_class=receipt.scope.target_class)):
+                return False
+            if not hmac.compare_digest(hashlib.sha256(snap.canonical_preview_bytes).hexdigest(),
+                                       snap.preview_digest):
+                return False
+            envelope = json.loads(snap.approval_canonical_text)
+            if type(envelope) is not dict or type(envelope.get("approval_nonce")) is not str:
+                return False
+            nonce = envelope["approval_nonce"]
+            expected_text = approval_canonical_text(
+                receipt.proposal, approval_nonce=nonce,
+                declared_target_class=receipt.scope.target_class)
+            return (hmac.compare_digest(expected_text, snap.approval_canonical_text)
+                    and hmac.compare_digest(digest_of_canonical_text(expected_text), snap.approval_digest)
+                    and hmac.compare_digest(_sha(nonce), snap.nonce_digest))
+        except Exception:
+            return False
+
+    def validate_issued_receipt(self, receipt: DomainReceipt) -> ErrorCode | None:
+        if not self._snapshot_matches_content(receipt):
+            return ErrorCode.DIGEST_MISMATCH
+        snap = receipt.snapshot
+        actual = (receipt.proposal, receipt.scope, receipt.version, receipt.target_version,
+                  snap.canonical_preview_bytes, snap.preview_digest, snap.approval_canonical_text,
+                  snap.approval_digest, snap.nonce_digest)
+        with self._lock:
+            expected = self._issuance_anchors.get(receipt.change_id)
+            expected_s12 = self._s12_anchors.get(receipt.change_id)
+            expected_approval = self._approval_anchors.get(receipt.change_id)
+        if expected is None or expected_s12 is None:
+            return ErrorCode.APPROVAL_VOIDED
+        if expected != actual:
+            return ErrorCode.DIGEST_MISMATCH
+        if expected_s12 != receipt.s12_record:
+            return ErrorCode.APPROVAL_VOIDED
+        if receipt.approval != expected_approval:
+            return ErrorCode.APPROVAL_VOIDED
+        return None
+
+    def validate_current_target(self, receipt: DomainReceipt) -> ErrorCode | None:
+        try:
+            target = self.targets.current(receipt.scope)
+            fingerprint = self.targets.resolve_fingerprint(receipt.scope)
+        except Exception:
+            return ErrorCode.TARGET_REJECTED
+        if target is None or not target.allowed or target.scope != receipt.scope:
+            return ErrorCode.TARGET_REJECTED
+        if fingerprint != receipt.scope.base_fingerprint:
+            return ErrorCode.SCOPE_MISMATCH
+        if target.version != receipt.snapshot.target_version:
+            return ErrorCode.STALE_VERSION
+        return None
 
     @staticmethod
     def _principal(principal: object, token_class: object) -> bool:
@@ -73,12 +169,31 @@ class S16Core:
         if (not self._principal(principal, TokenClass.CHAT_WRITE)
                 or PrincipalRole.REQUESTER not in principal.roles or principal.expires_at <= now):
             return False
-        current = self.principals.current(principal.principal_id)
+        try:
+            current = self.principals.current(principal.principal_id)
+        except Exception:
+            return False
         return (type(current) is PrincipalRecord and not current.revoked
                 and current.principal_id == principal.principal_id
                 and current.person_id == principal.person_id
                 and (not check_epoch or current.epoch == principal.epoch)
                 and PrincipalRole.REQUESTER in current.roles)
+
+    def validate_current_requester(self, principal: AuthenticatedPrincipal,
+                                   now: datetime) -> ErrorCode | None:
+        """Validate transport-resolved identity, live registry state, exact scope, and allowlisted target."""
+        if not _aware(now) or not self._live_requester(principal, now):
+            return ErrorCode.NOT_ENTITLED
+        try:
+            target = self.targets.current(principal.scope)
+            fingerprint = self.targets.resolve_fingerprint(principal.scope)
+        except Exception:
+            return ErrorCode.TARGET_REJECTED
+        if target is None or not target.allowed or target.scope != principal.scope:
+            return ErrorCode.TARGET_REJECTED
+        if fingerprint != principal.scope.base_fingerprint:
+            return ErrorCode.SCOPE_MISMATCH
+        return None
 
     def decide(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
@@ -119,6 +234,15 @@ class S16Core:
             receipt = self.store.get(binding.change_id)
             if receipt is None or receipt.version != binding.version or receipt.scope != binding.scope:
                 return Result.refused(ErrorCode.STALE_VERSION)
+            issued_error = self.validate_issued_receipt(receipt)
+            if issued_error is not None:
+                return Result.refused(issued_error)
+            current_target_error = self.validate_current_target(receipt)
+            if current_target_error is not None:
+                return Result.refused(current_target_error)
+            if receipt.approval is not None or (receipt.s12_record is not None
+                    and receipt.s12_record.authorization is not Authorization.NONE):
+                return Result.refused(ErrorCode.TICKET_SUPERSEDED)
             snap = receipt.snapshot
             if (snap.version != binding.version or snap.change_id != binding.change_id
                     or snap.scope != binding.scope or snap.preview_digest != binding.preview_digest
@@ -199,8 +323,14 @@ class S16Core:
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             if consumed is not True:
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
+            stored_decision = self.store.get(binding.change_id)
+            if (stored_decision is None or stored_decision.approval != result
+                    or stored_decision.s12_record != transitioned.record):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             self._consumed_nonce_digests.add(binding.nonce_digest)
             self._consumed_ref_digests.add(binding.decision_ref_digest)
+            self._approval_anchors[binding.change_id] = result
+            self._s12_anchors[binding.change_id] = transitioned.record
             return Result.success(result)
 
     def expire(self, change_id: UUID, *, now: datetime) -> Result[DomainReceipt]:
@@ -210,6 +340,9 @@ class S16Core:
             receipt = self.store.get(change_id)
             if receipt is None:
                 return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+            issued_error = self.validate_issued_receipt(receipt)
+            if issued_error is not None:
+                return Result.refused(issued_error)
             if receipt.proposal.expires_at > now:
                 return Result.refused(ErrorCode.APPROVAL_EXPIRED)
             record = receipt.s12_record
@@ -227,7 +360,10 @@ class S16Core:
             except Exception:
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             updated = self.store.get(change_id)
-            return Result.success(updated) if updated is not None else Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            if updated is None or updated.s12_record != transitioned.record:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            self._s12_anchors[change_id] = transitioned.record
+            return Result.success(updated)
 
     @staticmethod
     def _live_approver(record: PrincipalRecord | None, principal: AuthenticatedPrincipal,
@@ -255,11 +391,17 @@ class S16Core:
             receipt = self.store.get(change_id)
             if receipt is None:
                 return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+            issued_error = self.validate_issued_receipt(receipt)
+            if issued_error is not None:
+                return Result.refused(issued_error)
             if receipt.proposal.requester_principal != requester.principal_id:
                 return Result.refused(ErrorCode.NOT_ENTITLED)
             approval = receipt.approval
             if approval is None:
                 return Result.refused(ErrorCode.APPROVAL_MISSING)
+            with self._lock:
+                if self._approval_anchors.get(change_id) != approval:
+                    return Result.refused(ErrorCode.APPROVAL_VOIDED)
             if (approval.change_id != receipt.change_id or approval.version != receipt.version
                     or approval.scope != receipt.scope
                     or approval.requester_person_id != receipt.requester_person_id
@@ -273,15 +415,27 @@ class S16Core:
                     return Result.refused(ErrorCode.KILL_SWITCH_ACTIVE)
             except Exception:
                 return Result.refused(ErrorCode.KILL_SWITCH_ACTIVE)
-            fingerprint = self.targets.resolve_fingerprint(receipt.scope)
-            if fingerprint != receipt.scope.base_fingerprint or requester.scope != receipt.scope:
+            current_target_error = self.validate_current_target(receipt)
+            if current_target_error is not None:
+                return Result.refused(current_target_error)
+            if requester.scope != receipt.scope:
                 return Result.refused(ErrorCode.SCOPE_MISMATCH)
-            current = self.principals.current(requester.principal_id)
-            if (type(current) is not PrincipalRecord or current.epoch != requester.epoch
-                    or current.epoch != receipt.proposal.auth_epoch_at_proposal
-                    or not self.principals.epochs_current(receipt.proposal.epoch_dependencies)):
+            try:
+                current = self.principals.current(requester.principal_id)
+                epochs_ok = self.principals.epochs_current(receipt.proposal.epoch_dependencies)
+            except Exception:
                 return Result.refused(ErrorCode.EPOCH_CHANGED)
-            approver_current = self.principals.current(approval.approver_principal_id)
+            if (type(current) is not PrincipalRecord or current.revoked
+                    or current.person_id != requester.person_id
+                    or PrincipalRole.REQUESTER not in current.roles):
+                return Result.refused(ErrorCode.NOT_ENTITLED)
+            if (current.epoch != requester.epoch or current.epoch != receipt.proposal.auth_epoch_at_proposal
+                    or not epochs_ok):
+                return Result.refused(ErrorCode.EPOCH_CHANGED)
+            try:
+                approver_current = self.principals.current(approval.approver_principal_id)
+            except Exception:
+                return Result.refused(ErrorCode.APPROVAL_VOIDED)
             if not self._live_approver_record(approver_current, approval):
                 return Result.refused(ErrorCode.APPROVAL_VOIDED)
             if approval.expires_at <= now or receipt.snapshot.expires_at <= now:
@@ -337,8 +491,115 @@ class S16Core:
                     or claim.token.version != receipt.version
                     or claim.token.approval_digest != approval.approval_digest):
                 return Result.refused(ErrorCode.CLAIM_EXPIRED)
+            self._s12_anchors[change_id] = transitioned.record
+            claimed_receipt = self.store.get(change_id)
+            if claimed_receipt is None or claimed_receipt.s12_record != transitioned.record:
+                return Result.refused(ErrorCode.CLAIM_EXPIRED)
+            if self.begin_apply_evidence is None:
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
             try:
-                applied = self.apply_port.apply(receipt, claim.token)
+                observed = self.begin_apply_evidence.read(claimed_receipt, claim.token, now)
+            except Exception:
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+            if type(observed) is not BeginApplyEvidence:
+                return Result.refused(observed if type(observed) is ErrorCode
+                                      else ErrorCode.CHECKPOINT_UNAVAILABLE)
+            # Re-read core-owned identity/target facts after evidence collection. Only source observations
+            # (holds, period, state digest, writer lock, ownership row, repair context) come from the port.
+            try:
+                current_target = self.targets.current(receipt.scope)
+                current_fingerprint = self.targets.resolve_fingerprint(receipt.scope)
+                current_requester = self.principals.current(requester.principal_id)
+                current_kill = self.kill_switch.reading(receipt.scope)
+                current_now = self.clock.now() if self.clock is not None else now
+            except Exception:
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+            if not _aware(current_now):
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+            if (approval.expires_at <= current_now or receipt.snapshot.expires_at <= current_now
+                    or requester.expires_at <= current_now):
+                self.expire(change_id, now=current_now)
+                return Result.refused(ErrorCode.APPROVAL_EXPIRED)
+            if current_target is None or not current_target.allowed or current_target.scope != receipt.scope:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
+            if current_fingerprint != receipt.scope.base_fingerprint:
+                return Result.refused(ErrorCode.SCOPE_MISMATCH)
+            if current_target.version != receipt.target_version:
+                return Result.refused(ErrorCode.STALE_VERSION)
+            if (current_requester is None or current_requester.revoked
+                    or current_requester.person_id != requester.person_id
+                    or PrincipalRole.REQUESTER not in current_requester.roles):
+                return Result.refused(ErrorCode.NOT_ENTITLED)
+            try:
+                epoch_dependencies_current = self.principals.epochs_current(receipt.proposal.epoch_dependencies)
+            except Exception:
+                return Result.refused(ErrorCode.EPOCH_CHANGED)
+            if (current_requester.epoch != receipt.proposal.auth_epoch_at_proposal
+                    or not epoch_dependencies_current):
+                return Result.refused(ErrorCode.EPOCH_CHANGED)
+            try:
+                current_approver = self.principals.current(approval.approver_principal_id)
+            except Exception:
+                return Result.refused(ErrorCode.APPROVAL_VOIDED)
+            if not self._live_approver_record(current_approver, approval):
+                return Result.refused(ErrorCode.APPROVAL_VOIDED)
+            begin_evidence = replace(
+                observed, now=current_now, kill=current_kill,
+                generation=transitioned.record.claim_generation,
+                caller=CallerClass.REQUESTER,
+                own_change=receipt.proposal.requester_principal == requester.principal_id,
+                epoch_deps_equal_claim_epoch=(current_requester.epoch == receipt.proposal.auth_epoch_at_proposal),
+                version_equals_approved=(current_target.version == receipt.target_version),
+                fingerprint_authenticated=(current_fingerprint == receipt.scope.base_fingerprint),
+                repair_ctx=None,
+            )
+            began = apply_transition(transitioned.record, Event.BEGIN_APPLY, begin_evidence)
+            if type(began).__name__ == "Refusal":
+                return Result.refused(began.code)
+            if began.record is None:
+                return Result.refused(ErrorCode.SCHEMA_INVALID)
+            try:
+                self.store.save_s12_record(change_id, began.record)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            self._s12_anchors[change_id] = began.record
+            applying_receipt = self.store.get(change_id)
+            if applying_receipt is None or applying_receipt.s12_record != began.record:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            issued_error = self.validate_issued_receipt(applying_receipt)
+            if issued_error is not None:
+                return Result.refused(issued_error)
+            target_error = self.validate_current_target(applying_receipt)
+            if target_error is not None:
+                return Result.refused(target_error)
+            try:
+                final_now = self.clock.now() if self.clock is not None else current_now
+                final_requester = self.principals.current(requester.principal_id)
+                final_approver = self.principals.current(approval.approver_principal_id)
+                final_kill = self.kill_switch.reading(receipt.scope)
+                dependencies_current = self.principals.epochs_current(receipt.proposal.epoch_dependencies)
+            except Exception:
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+            if not _aware(final_now):
+                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+            if (approval.expires_at <= final_now or applying_receipt.snapshot.expires_at <= final_now
+                    or requester.expires_at <= final_now):
+                self.expire(change_id, now=final_now)
+                return Result.refused(ErrorCode.APPROVAL_EXPIRED)
+            if (final_requester is None or final_requester.revoked
+                    or final_requester.person_id != requester.person_id
+                    or PrincipalRole.REQUESTER not in final_requester.roles):
+                return Result.refused(ErrorCode.NOT_ENTITLED)
+            if (final_requester.epoch != receipt.proposal.auth_epoch_at_proposal
+                    or not dependencies_current):
+                return Result.refused(ErrorCode.EPOCH_CHANGED)
+            if not self._live_approver_record(final_approver, approval):
+                return Result.refused(ErrorCode.APPROVAL_VOIDED)
+            if evaluate(KillSubject.BEGIN_APPLY_ISSUE_PERMIT, final_kill) is not KillDecision.PROCEED:
+                return Result.refused(ErrorCode.KILL_SWITCH_ACTIVE)
+            apply_receipt = applying_receipt
+            try:
+                applied = self.apply_port.apply(apply_receipt, claim.token)
             except Exception:
                 # The call may have crossed the port boundary; never retry an unknown outcome.
                 return Result.refused(ErrorCode.APPLY_UNKNOWN)
@@ -348,6 +609,7 @@ class S16Core:
                 self.store.save_apply_receipt(change_id, applied)
             except Exception:
                 return Result.refused(ErrorCode.APPLY_UNKNOWN)
+            self._apply_receipt_anchors[change_id] = applied
             return Result.success(applied)
 
     @staticmethod
@@ -367,6 +629,9 @@ class S16Core:
         receipt = self.store.get(change_id)
         if receipt is None:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+        issued_error = self.validate_issued_receipt(receipt)
+        if issued_error is not None:
+            return Result.refused(issued_error)
         if receipt.scope != requester.scope or receipt.proposal.requester_principal != requester.principal_id:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)
         return Result.success(receipt)
@@ -380,9 +645,19 @@ class S16Core:
         receipt = self.store.get(request.change_id)
         if receipt is None or receipt.scope != requester.scope:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+        issued_error = self.validate_issued_receipt(receipt)
+        if issued_error is not None:
+            return Result.refused(issued_error)
         if receipt.proposal.requester_principal != requester.principal_id:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)
         document_ref = receipt.document_ref or receipt.proposal.target_ref
+        with self._lock:
+            applied_anchor = self._apply_receipt_anchors.get(request.change_id)
+        if applied_anchor is not None and (applied_anchor.document_ref != receipt.document_ref
+                                           or applied_anchor.change_id != receipt.change_id):
+            return Result.refused(ErrorCode.DIGEST_MISMATCH)
+        if receipt.document_ref is not None and applied_anchor is None:
+            return Result.refused(ErrorCode.APPROVAL_VOIDED)
         if not document_ref or (request.document_ref is not None and request.document_ref != document_ref):
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
         proposal = receipt.proposal

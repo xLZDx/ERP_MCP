@@ -4,13 +4,13 @@ from __future__ import annotations
 import threading
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 from typing import Callable
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
 from business_ai_gateway.phase2.change.killswitch import SWITCH_OFF
 from business_ai_gateway.phase2.change.proposal import ProposalContext, parse_proposal
+from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from business_ai_gateway.phase2.change.types import Scope
 from erp_mcp_s15.verifier import VerificationResult, VerificationStatus
 
@@ -167,6 +167,19 @@ class FakeApplyPort:
             return self.result or ApplyReceipt(receipt.change_id, "APPLIED", "fake-correlation", "fake-document")
 
 
+class FakeBeginApplyEvidencePort:
+    """Explicit evidence fixture only. Callers must supply the complete typed observation."""
+    def __init__(self, evidence: BeginApplyEvidence) -> None:
+        if type(evidence) is not BeginApplyEvidence:
+            raise TypeError("BEGIN_APPLY_EVIDENCE_INVALID")
+        self.evidence = evidence
+        self.calls = 0
+
+    def read(self, receipt: DomainReceipt, claim: ClaimToken, now: datetime):
+        self.calls += 1
+        return self.evidence
+
+
 class FakeVerifyPort(VerifyPort):
     def __init__(self, result: VerificationResult | None = None) -> None:
         self.result = result or VerificationResult(VerificationStatus.INCONCLUSIVE, "fake", "MACHINE_VERIFIED")
@@ -225,14 +238,11 @@ class FakeSecretStore:
 
 class FakeProposalPort:
     """S12 parser adapter with fixture-only scope, version, and currency admission."""
-    def __init__(self, targets, principals, *, qualified_currencies: frozenset[str] = frozenset({"USD", "EUR"}),
-                 lifetime: timedelta = timedelta(minutes=5)) -> None:
+    def __init__(self, targets, principals) -> None:
         self.targets = targets
         self.principals = principals
-        self.qualified_currencies = qualified_currencies
-        self.lifetime = lifetime
 
-    def build(self, requester, raw_request, *, now, preview_digest, nonce, change_id):
+    def build(self, requester, raw_request, *, now, expires_at, preview_digest, change_id):
         from .contracts import PrincipalRole, TokenClass
         if (requester.token_class is not TokenClass.CHAT_WRITE or PrincipalRole.REQUESTER not in requester.roles
                 or requester.scope is None):
@@ -243,21 +253,20 @@ class FakeProposalPort:
             return ErrorCode.TARGET_REJECTED
         if target.scope != requester.scope or principal.person_id != requester.person_id:
             return ErrorCode.SCOPE_MISMATCH
-        business_digest = __import__("hashlib").sha256(
-            (target.scope.base_fingerprint + "\0" + target.version.value).encode()).hexdigest()
         context = ProposalContext(change_id, requester.principal_id, requester.person_id,
                                   Scope(requester.scope.tenant, requester.scope.company,
                                         requester.scope.organization, requester.scope.base_fingerprint),
-                                  now, now + self.lifetime, requester.epoch,
+                                  now, expires_at, requester.epoch,
                                   principal.epoch_dependencies, preview_digest,
-                                  business_state_digest=business_digest,
-                                  qualified_currencies=self.qualified_currencies)
+                                  business_state_digest=target.business_state_digest,
+                                  qualified_currencies=target.qualified_currencies,
+                                  in_scope_refs=target.in_scope_refs)
         parsed = parse_proposal(raw_request, context)
         if type(parsed) is Refusal:
             return parsed.code
         return parsed, target
 
-    def rollback(self, requester, receipt, *, now, preview_digest, nonce, change_id):
+    def rollback(self, requester, receipt, *, now, expires_at, preview_digest, change_id):
         from .contracts import PrincipalRole, TokenClass
         if (requester.token_class is not TokenClass.CHAT_WRITE or PrincipalRole.REQUESTER not in requester.roles
                 or requester.scope != receipt.scope):
@@ -266,14 +275,14 @@ class FakeProposalPort:
         principal = self.principals.current(requester.principal_id)
         if target is None or principal is None:
             return ErrorCode.TARGET_REJECTED
-        business_digest = __import__("hashlib").sha256(
-            (target.scope.base_fingerprint + "\0" + target.version.value).encode()).hexdigest()
         context = ProposalContext(change_id, requester.principal_id, requester.person_id,
                                   Scope(receipt.scope.tenant, receipt.scope.company,
                                         receipt.scope.organization, receipt.scope.base_fingerprint),
-                                  now, now + self.lifetime, requester.epoch,
+                                  now, expires_at, requester.epoch,
                                   principal.epoch_dependencies, preview_digest,
-                                  business_state_digest=business_digest)
+                                  business_state_digest=target.business_state_digest,
+                                  qualified_currencies=target.qualified_currencies,
+                                  in_scope_refs=target.in_scope_refs)
         raw = {"kind": "UNPOST", "request_id": "rollback-" + change_id,
                "parent_change_id": receipt.proposal.change_id,
                "target_ref": receipt.proposal.target_ref,

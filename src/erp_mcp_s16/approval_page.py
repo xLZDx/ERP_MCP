@@ -171,6 +171,33 @@ def _render_preview(page: DecisionPage) -> tuple[str, dict[str, Any]] | None:
             "</pre></section>"), payload
 
 
+def _current_context(page: DecisionPage, session: ApproverSession) -> str | None:
+    """Validate and render authoritative service metadata outside immutable preview bytes."""
+    lifecycle = page.lifecycle_status
+    authorization = page.authorization_status
+    label = page.approver_person_label
+    created = page.created_at
+    version = page.snapshot_version
+    if (type(lifecycle) is not str or not lifecycle or len(lifecycle) > 64
+            or type(authorization) is not str or not authorization or len(authorization) > 64
+            or type(label) is not str or not label.strip() or len(label) > 256
+            or any(ord(char) < 32 for char in label)
+            or label in {session.session_id, session.principal.principal_id, session.principal.person_id}
+            or type(created) is not datetime or created.tzinfo is None or created.utcoffset() is None
+            or type(version) is not int or version < 1 or type(page.decision_allowed) is not bool):
+        return None
+    created_text = created.isoformat()
+    return ("<section aria-labelledby=\"current-record-heading\"><h2 id=\"current-record-heading\">"
+            "Current record status</h2><dl>"
+            "<dt>Lifecycle status</dt><dd>" + _safe_text(lifecycle) + "</dd>"
+            "<dt>Authorization status</dt><dd>" + _safe_text(authorization) + "</dd>"
+            "<dt>Version</dt><dd>" + str(version) + "</dd>"
+            "<dt>Proposal created</dt><dd><time datetime=\"" + html.escape(created_text, quote=True) + "\">"
+            + html.escape(created_text) + "</time></dd>"
+            "<dt>Current approver</dt><dd>" + _safe_text(label) + "</dd>"
+            "</dl></section>")
+
+
 def create_approval_app(service: ApprovalServicePort,
                         authenticator: ApproverSessionAuthenticator, *, origin: str,
                         clock: Clock) -> Callable[..., Any]:
@@ -251,16 +278,27 @@ def create_approval_app(service: ApprovalServicePort,
                             response = _error(result.error if type(result) is Result and result.error else
                                               ErrorCode.AUDIT_UNAVAILABLE)
                         elif parsed_ticket is not None and str(parsed_ticket) == ticket:
+                            current_context = _current_context(result.value, session)
                             rendered = _render_preview(result.value)
-                            if rendered is None:
+                            if current_context is None:
+                                response = _error(ErrorCode.NOT_ENTITLED)
+                            elif rendered is None:
                                 response = _error(ErrorCode.DIGEST_MISMATCH)
                             else:
-                                content, payload = rendered
+                                preview_content, _payload = rendered
+                                content = current_context + preview_content
                                 confirmation_required = result.value.confirmation_required
                                 confirmation_phrase = result.value.confirmation_phrase
-                                if confirmation_required and (type(confirmation_phrase) is not str or
-                                                              not confirmation_phrase):
+                                if (type(confirmation_required) is not bool
+                                        or type(result.value.decision_allowed) is not bool
+                                        or (confirmation_required and
+                                            (type(confirmation_phrase) is not str or not confirmation_phrase))
+                                        or (not confirmation_required and confirmation_phrase is not None)):
                                     response = _error(ErrorCode.TARGET_REJECTED)
+                                elif not result.value.decision_allowed:
+                                    content += ("<p role=\"status\">This change no longer requires a decision. "
+                                                "The current record status is shown above.</p>")
+                                    response = _page("Review change", content)
                                 else:
                                     confirmation = ""
                                     if confirmation_required:

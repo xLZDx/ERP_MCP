@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Mapping
 from uuid import UUID, uuid4
@@ -12,9 +10,9 @@ from uuid import UUID, uuid4
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
 from business_ai_gateway.phase2.change.proposal import (
-    approval_canonical_text, canonical_json, digest_of_canonical_text, payload_to_dict,
+    ProposalContext, approval_canonical_text, digest_of_canonical_text, parse_proposal,
 )
-from business_ai_gateway.phase2.change.types import ChangeKind
+from business_ai_gateway.phase2.change.types import ChangeKind, Scope
 from business_ai_gateway.phase2.change.transitions import (
     BusinessKeyState, Event, LogicalKeyState, ProposeEvidence, ValidateEvidence, apply_transition,
 )
@@ -23,10 +21,12 @@ from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Ve
 from .contracts import (
     ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
     DomainReceipt, NonceSource, PreviewSnapshot, ProposalPort, Result, TargetRecord,
+    canonical_preview_bytes,
 )
 from .core import S16Core
 
 APPROVAL_NONCE_LIFETIME = timedelta(minutes=5)
+PROPOSAL_LIFETIME = timedelta(minutes=5)
 APPROVER_SESSION_LIFETIME = timedelta(minutes=15)
 
 
@@ -41,24 +41,16 @@ def _now(clock, now: datetime | None) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _preview_object(proposal, target: TargetRecord) -> dict[str, object]:
-    """One allowlisted display model; no caller claim fields or digest are serialized into it."""
-    payload = payload_to_dict(proposal.payload)
-    return {
-        "change_id": proposal.change_id,
-        "kind": proposal.kind.value,
-        "scope": {
-            "tenant": proposal.scope.tenant, "company": proposal.scope.company,
-            "organization": proposal.scope.organization,
-            "base_fingerprint": proposal.scope.base_fingerprint,
-            "target_class": target.scope.target_class,
-        },
-        "target_version": target.version.value,
-        "requester_person_id": proposal.requester_person_id,
-        "reason": proposal.reason,
-        "payload": payload,
-        "expires_at": proposal.expires_at.isoformat(),
-    }
+def _proposal_context(requester, principal_record, target, *, now, expires_at, change_id, preview_digest):
+    return ProposalContext(
+        change_id, requester.principal_id, requester.person_id,
+        Scope(target.scope.tenant, target.scope.company, target.scope.organization,
+              target.scope.base_fingerprint), now, expires_at, principal_record.epoch,
+        principal_record.epoch_dependencies, preview_digest,
+        business_state_digest=target.business_state_digest,
+        qualified_currencies=target.qualified_currencies,
+        in_scope_refs=target.in_scope_refs,
+    )
 
 
 class ChangeService:
@@ -74,32 +66,86 @@ class ChangeService:
                 now: datetime | None = None) -> Result[PreviewSnapshot]:
         timestamp = _now(self.clock, now)
         try:
+            auth_error = self.core.validate_current_requester(requester, timestamp)
+            if auth_error is not None:
+                return Result.refused(auth_error)
+            if not isinstance(raw_request, Mapping):
+                return Result.refused(ErrorCode.SCHEMA_INVALID)
+            request_id = raw_request.get("request_id")
+            kind_text = raw_request.get("kind")
+            if (type(request_id) is not str or type(kind_text) is not str
+                    or kind_text not in ChangeKind.__members__):
+                return Result.refused(ErrorCode.SCHEMA_INVALID)
+            target = self.core.targets.current(requester.scope)
+            principal_record = self.core.principals.current(requester.principal_id)
+            if target is None or principal_record is None:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
+            expiry = timestamp + PROPOSAL_LIFETIME
             nonce = self.nonce_source.issue()
             if type(nonce) is not str or len(nonce) < 32:
                 return Result.refused(ErrorCode.SCHEMA_INVALID)
             change_id = str(uuid4())
+            provisional_context = _proposal_context(
+                requester, principal_record, target, now=timestamp, expires_at=expiry,
+                change_id=change_id, preview_digest="0" * 64)
+            expected_provisional = parse_proposal(raw_request, provisional_context)
+            if type(expected_provisional) is Refusal:
+                return Result.refused(expected_provisional.code)
             built = self.proposal_port.build(requester, raw_request, now=timestamp,
-                                             preview_digest="0" * 64, nonce=nonce, change_id=change_id)
+                                             expires_at=expiry, preview_digest="0" * 64,
+                                             change_id=change_id)
             if type(built) is ErrorCode:
                 return Result.refused(built)
-            proposal, target = built
-            preview_bytes = canonical_json(_preview_object(proposal, target)).encode("utf-8")
+            proposal, returned_target = built
+            if (type(proposal) is not type(expected_provisional) or proposal != expected_provisional
+                    or type(returned_target) is not TargetRecord
+                    or returned_target != target):
+                return Result.refused(ErrorCode.DIGEST_MISMATCH)
+            preview_bytes = canonical_preview_bytes(
+                proposal, target_version=target.version.value, target_class=target.scope.target_class)
             preview_digest = _digest(preview_bytes)
+            expected_context = _proposal_context(
+                requester, principal_record, target, now=timestamp, expires_at=expiry,
+                change_id=change_id, preview_digest=preview_digest)
+            expected_proposal = parse_proposal(raw_request, expected_context)
+            if type(expected_proposal) is Refusal:
+                return Result.refused(expected_proposal.code)
             rebuilt = self.proposal_port.build(requester, raw_request, now=timestamp,
-                                               preview_digest=preview_digest, nonce=nonce, change_id=change_id)
+                                               expires_at=expiry, preview_digest=preview_digest,
+                                               change_id=change_id)
             if type(rebuilt) is ErrorCode:
                 return Result.refused(rebuilt)
-            proposal, target = rebuilt
-            # The second build must preserve the exact user-visible bytes used to derive the digest.
-            if not hmac.compare_digest(canonical_json(_preview_object(proposal, target)).encode("utf-8"),
-                                       preview_bytes):
+            proposal, returned_target = rebuilt
+            if (type(proposal) is not type(expected_proposal) or proposal != expected_proposal
+                    or type(returned_target) is not TargetRecord
+                    or returned_target != target
+                    or proposal.change_id != change_id or proposal.request_id != request_id
+                    or proposal.requester_principal != requester.principal_id
+                    or proposal.requester_person_id != requester.person_id
+                    or proposal.scope.as_tuple() != target.scope.as_tuple()[:4]
+                    or proposal.auth_epoch_at_proposal != principal_record.epoch
+                    or proposal.created_at != timestamp or proposal.expires_at != expiry
+                    or proposal.preview_digest != preview_digest
+                    or proposal.kind is not ChangeKind(kind_text)):
                 return Result.refused(ErrorCode.DIGEST_MISMATCH)
-            return self._store_proposal(proposal, target, preview_bytes, preview_digest, nonce, timestamp)
+            return self._store_proposal(requester, proposal, target, preview_bytes, preview_digest,
+                                        nonce, timestamp, expiry)
         except Exception:
             return Result.refused(ErrorCode.SCHEMA_INVALID)
 
-    def _store_proposal(self, proposal, target: TargetRecord, preview_bytes: bytes,
-                        preview_digest: str, nonce: str, now: datetime) -> Result[PreviewSnapshot]:
+    def _store_proposal(self, requester, proposal, target: TargetRecord, preview_bytes: bytes,
+                        preview_digest: str, nonce: str, now: datetime,
+                        expires_at: datetime) -> Result[PreviewSnapshot]:
+        auth_error = self.core.validate_current_requester(requester, now)
+        if auth_error is not None:
+            return Result.refused(auth_error)
+        current_target = self.core.targets.current(requester.scope)
+        if current_target != target:
+            return Result.refused(ErrorCode.STALE_VERSION)
+        expected_preview = canonical_preview_bytes(
+            proposal, target_version=target.version.value, target_class=target.scope.target_class)
+        if expected_preview != preview_bytes or proposal.expires_at != expires_at:
+            return Result.refused(ErrorCode.DIGEST_MISMATCH)
         approval_text = approval_canonical_text(proposal, approval_nonce=nonce,
                                                 declared_target_class=target.scope.target_class)
         approval_digest = digest_of_canonical_text(approval_text)
@@ -115,10 +161,12 @@ class ChangeService:
                 refusal = authorize_operation(CallerClass.REQUESTER, operation)
                 if refusal is not None:
                     return Result.refused(refusal.code)
+            current_auth = self.core.validate_current_requester(requester, now) is None
             reading = self.core.kill_switch.reading(snapshot.scope)
             proposed = apply_transition(None, Event.PROPOSE, ProposeEvidence(
                 now=now, kill=reading, proposal=proposal, schema_valid=True, scope_resolved=True,
-                requester_entitled=True, epoch_read=True, logical_key=LogicalKeyState.UNUSED,
+                requester_entitled=current_auth, epoch_read=current_auth,
+                logical_key=LogicalKeyState.UNUSED,
                 parent_attribution_unproven=False))
             if type(proposed).__name__ == "Refusal":
                 return Result.refused(proposed.code)
@@ -147,6 +195,9 @@ class ChangeService:
             self.store.insert_proposal(receipt)
         except Exception:
             return Result.refused(ErrorCode.IDEMPOTENCY_CONFLICT)
+        anchor_error = self.core.anchor_issuance(receipt)
+        if anchor_error is not None:
+            return Result.refused(anchor_error)
         return Result.success(snapshot)
 
     def status(self, requester: AuthenticatedPrincipal, change_id: UUID):
@@ -161,34 +212,73 @@ class ChangeService:
     def rollback_propose(self, requester: AuthenticatedPrincipal, change_id: UUID, *,
                          now: datetime | None = None) -> Result[PreviewSnapshot]:
         timestamp = _now(self.clock, now)
+        auth_error = self.core.validate_current_requester(requester, timestamp)
+        if auth_error is not None:
+            return Result.refused(auth_error)
         original = self.store.get(change_id)
         if original is None or original.scope != requester.scope:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+        anchor_error = self.core.validate_issued_receipt(original)
+        if anchor_error is not None:
+            return Result.refused(anchor_error)
         if (original.s12_record is None or original.s12_record.verification is not Verification.VERIFIED
                 or original.proposal.kind is not ChangeKind.POST):
             return Result.refused(ErrorCode.ROLLBACK_REFUSED)
         try:
             nonce = self.nonce_source.issue()
             rollback_id = str(uuid4())
+            expiry = timestamp + PROPOSAL_LIFETIME
+            target = self.core.targets.current(requester.scope)
+            principal_record = self.core.principals.current(requester.principal_id)
+            if target is None or principal_record is None:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
+            request_id = "rollback-" + rollback_id
+            raw_rollback = {"kind": "UNPOST", "request_id": request_id,
+                            "parent_change_id": original.proposal.change_id,
+                            "target_ref": original.proposal.target_ref,
+                            "target_version": target.version.value,
+                            "reason": "S16 rollback proposal"}
+            provisional_context = _proposal_context(
+                requester, principal_record, target, now=timestamp, expires_at=expiry,
+                change_id=rollback_id, preview_digest="0" * 64)
+            expected_provisional = parse_proposal(raw_rollback, provisional_context)
+            if type(expected_provisional) is Refusal:
+                return Result.refused(expected_provisional.code)
             provisional = self.proposal_port.rollback(requester, original, now=timestamp,
-                                                      preview_digest="0" * 64, nonce=nonce, change_id=rollback_id)
+                                                      expires_at=expiry, preview_digest="0" * 64,
+                                                      change_id=rollback_id)
             if type(provisional) is ErrorCode:
                 return Result.refused(provisional)
-            proposal, target = provisional
-            if proposal.kind is not ChangeKind.UNPOST or proposal.parent_change_id != original.proposal.change_id:
+            proposal, returned_target = provisional
+            if (type(proposal) is not type(expected_provisional)
+                    or type(returned_target) is not TargetRecord
+                    or proposal != expected_provisional or returned_target != target
+                    or proposal.kind is not ChangeKind.UNPOST
+                    or proposal.parent_change_id != original.proposal.change_id):
                 return Result.refused(ErrorCode.ROLLBACK_REFUSED)
-            visible = canonical_json(_preview_object(proposal, target)).encode("utf-8")
+            visible = canonical_preview_bytes(
+                proposal, target_version=target.version.value, target_class=target.scope.target_class)
             digest = _digest(visible)
+            expected_context = _proposal_context(
+                requester, principal_record, target, now=timestamp, expires_at=expiry,
+                change_id=rollback_id, preview_digest=digest)
+            expected_proposal = parse_proposal(raw_rollback, expected_context)
+            if type(expected_proposal) is Refusal:
+                return Result.refused(expected_proposal.code)
             rebuilt = self.proposal_port.rollback(requester, original, now=timestamp,
-                                                  preview_digest=digest, nonce=nonce, change_id=rollback_id)
+                                                  expires_at=expiry, preview_digest=digest,
+                                                  change_id=rollback_id)
             if type(rebuilt) is ErrorCode:
                 return Result.refused(rebuilt)
-            proposal, target = rebuilt
-            if proposal.kind is not ChangeKind.UNPOST or proposal.parent_change_id != original.proposal.change_id:
+            proposal, returned_target = rebuilt
+            if (type(proposal) is not type(expected_proposal)
+                    or type(returned_target) is not TargetRecord
+                    or proposal != expected_proposal or returned_target != target
+                    or proposal.kind is not ChangeKind.UNPOST
+                    or proposal.parent_change_id != original.proposal.change_id):
                 return Result.refused(ErrorCode.ROLLBACK_REFUSED)
-            if canonical_json(_preview_object(proposal, target)).encode("utf-8") != visible:
-                return Result.refused(ErrorCode.DIGEST_MISMATCH)
-            return self._store_proposal(proposal, target, visible, digest, nonce, timestamp)
+            return self._store_proposal(requester, proposal, target, visible, digest,
+                                        nonce, timestamp, expiry)
         except Exception:
             return Result.refused(ErrorCode.ROLLBACK_REFUSED)
 
@@ -219,12 +309,25 @@ class ApprovalService:
         receipt = self.store.get(ticket)
         if receipt is None:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+        issued_error = self.core.validate_issued_receipt(receipt)
+        if issued_error is not None:
+            return Result.refused(issued_error)
+        target_error = self.core.validate_current_target(receipt)
+        if target_error is not None:
+            return Result.refused(target_error)
         if receipt.scope != approver.scope:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)
         if receipt.requester_person_id == approver.person_id:
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
         if not self.core.principals.are_independent(receipt.requester_person_id, approver.person_id):
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
+        from business_ai_gateway.phase2.change.types import Authorization, Lifecycle
+        if (receipt.s12_record is None or receipt.s12_record.lifecycle is not Lifecycle.VALIDATED
+                or receipt.s12_record.authorization is not Authorization.NONE
+                or receipt.approval is not None):
+            return Result.refused(ErrorCode.TICKET_SUPERSEDED)
+        if not current_principal.display_label or not current_principal.display_label.strip():
+            return Result.refused(ErrorCode.NOT_ENTITLED)
         snap = receipt.snapshot
         if snap.expires_at <= timestamp:
             if receipt.proposal.expires_at <= timestamp:
@@ -254,8 +357,20 @@ class ApprovalService:
                                       _digest(ref + "\0" + session.csrf_secret), snap.preview_digest,
                                       snap.approval_digest, decision_expires, requires, phrase)
             self.store.issue_decision_ref(ref, binding)
-            return Result.success(DecisionPage(ref, snap.canonical_preview_bytes, snap.preview_digest,
-                                               decision_expires, requires, phrase))
+            return Result.success(DecisionPage(
+                decision_ref=ref,
+                canonical_preview_bytes=snap.canonical_preview_bytes,
+                preview_digest=snap.preview_digest,
+                expires_at=decision_expires,
+                confirmation_required=requires,
+                confirmation_phrase=phrase,
+                lifecycle_status=receipt.s12_record.lifecycle.value,
+                authorization_status=receipt.s12_record.authorization.value,
+                snapshot_version=receipt.version,
+                created_at=receipt.proposal.created_at,
+                approver_person_label=current_principal.display_label,
+                decision_allowed=True,
+            ))
         except Exception:
             return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
 

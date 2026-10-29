@@ -1305,3 +1305,7 @@ Decision: let the ordered apply-time epoch guard classify registry/token/proposa
 ## 2026-10-29 - Native ASGI client compatibility
 
 Decision: accept tuple/list address-pair representations while retaining all private-network, route and authentication validation; keep the native unwrapped ASGI client regression rather than a test wrapper that masks rejection. Detail: `docs/phase2/CHANGE_RECORD_410.md`.
+
+## 2026-10-29 - Complete specialist remediation batch
+
+Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, independent proposal authority, store-substitution-resistant canonical bindings and core anchors, and complete service-owned approval context. Core restart without an issuance anchor fails closed; no durable/real-source qualification is inferred. Details: `docs/phase2/CHANGE_RECORD_411.md`, `CHANGE_RECORD_412.md`, `CHANGE_RECORD_413.md`.

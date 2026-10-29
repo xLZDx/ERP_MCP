@@ -8,7 +8,8 @@ from typing import Generic, Literal, Mapping, Protocol, TypeVar
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
-from business_ai_gateway.phase2.change.proposal import ChangeProposal
+from business_ai_gateway.phase2.change.proposal import ChangeProposal, canonical_json, payload_to_dict
+from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from business_ai_gateway.phase2.change.types import ChangeRecord
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult
 
@@ -130,6 +131,12 @@ class DecisionPage:
     expires_at: datetime
     confirmation_required: bool = False
     confirmation_phrase: str | None = None
+    lifecycle_status: str | None = None
+    authorization_status: str | None = None
+    snapshot_version: int | None = None
+    created_at: datetime | None = None
+    approver_person_label: str | None = None
+    decision_allowed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +197,7 @@ class PrincipalRecord:
     epoch: int
     revoked: bool = False
     epoch_dependencies: tuple[tuple[str, int], ...] = ()
+    display_label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +209,9 @@ class TargetRecord:
     parent_verified: bool = False
     qualified_operations: frozenset[str] = frozenset({"CREATE_DRAFT", "UPDATE_DRAFT", "POST", "UNPOST"})
     business_key_free: bool | None = None
+    business_state_digest: str | None = None
+    qualified_currencies: frozenset[str] = frozenset()
+    in_scope_refs: frozenset[str] | None = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,9 +282,35 @@ class VerifyPort(Protocol):
                shape: OperationShape) -> VerificationResult: ...
 
 
+class BeginApplyEvidencePort(Protocol):
+    def read(self, receipt: DomainReceipt, claim: ClaimToken,
+             now: datetime) -> BeginApplyEvidence | ErrorCode: ...
+
+
 class ProposalPort(Protocol):
     def build(self, requester: AuthenticatedPrincipal, raw_request: Mapping[str, object], *,
-              now: datetime, preview_digest: str, nonce: str, change_id: str) -> tuple[ChangeProposal, TargetRecord] | ErrorCode: ...
+              now: datetime, expires_at: datetime, preview_digest: str,
+              change_id: str) -> tuple[ChangeProposal, TargetRecord] | ErrorCode: ...
     def rollback(self, requester: AuthenticatedPrincipal, receipt: DomainReceipt, *,
-                 now: datetime, preview_digest: str, nonce: str, change_id: str) -> tuple[ChangeProposal, TargetRecord] | ErrorCode: ...
+                 now: datetime, expires_at: datetime, preview_digest: str,
+                 change_id: str) -> tuple[ChangeProposal, TargetRecord] | ErrorCode: ...
+
+
+def canonical_preview_bytes(proposal: ChangeProposal, *, target_version: str,
+                            target_class: str) -> bytes:
+    """Canonical allowlisted display bytes shared by issuance and every core revalidation."""
+    value = {
+        "change_id": proposal.change_id,
+        "kind": proposal.kind.value,
+        "scope": {"tenant": proposal.scope.tenant, "company": proposal.scope.company,
+                  "organization": proposal.scope.organization,
+                  "base_fingerprint": proposal.scope.base_fingerprint,
+                  "target_class": target_class},
+        "target_version": target_version,
+        "requester_person_id": proposal.requester_person_id,
+        "reason": proposal.reason,
+        "payload": payload_to_dict(proposal.payload),
+        "expires_at": proposal.expires_at.isoformat(),
+    }
+    return canonical_json(value).encode("utf-8")
 
