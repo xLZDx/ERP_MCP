@@ -1285,3 +1285,7 @@ Decision (operator orders): merge PR #40 (done, db30f96); restore the lane by co
 ## 2026-10-29 - Sibling ERP_MCP folders merged into D:\Repo\ERP_MCP
 
 Decision (operator order): keep one folder. Evidence showed R2, integration-candidate and chatgpt hold nothing absent from the main history except runtime files, which were copied and git-excluded; the lane now runs from `D:\Repo\ERP_MCP`. Deletion of the siblings waits for the operator's explicit command (shell policy hook). Detail: `docs/phase2/CHANGE_RECORD_401.md`.
+
+## 2026-10-29 - Autonomous finisher GO and scoped handoff
+
+Decision (operator GO 1-4): execute the finisher queue using existing contracts and actual role agents; complete coding before agent-owned tests, keep one final exact-head GPT-PM review before push/PR. Choose 15-minute isolated approver sessions and 5-minute nonces; refuse absent registry thresholds. Do not equate an unqualified period observation port with a working real producer. Detail: `docs/phase2/CHANGE_RECORD_402.md`.
