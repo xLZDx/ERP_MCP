@@ -11,7 +11,7 @@ symlinks and dependency/build directories. For tracked rows, titles show the fir
 a path with several heading variants over the scanned refs lists all of them; an empty cell means no heading was found.
 Cyrillic is escaped only in headings found exclusively on archive, rescue, or snapshot refs.
 
-Inventory: 784 tracked paths; local-only NOT_ENUMERATED.
+Inventory: 795 tracked paths; local-only NOT_ENUMERATED.
 
 ## Documents in git (scanned refs)
 
@@ -602,6 +602,8 @@ Inventory: 784 tracked paths; local-only NOT_ENUMERATED.
 | docs/phase2/CHANGE_RECORD_399.md | Phase 2 design | "Change Record 399 - GPT-PM fixes for the S12/S13 qualification batch" |
 | docs/phase2/CHANGE_RECORD_400.md | Phase 2 design | "Change Record 400 - merge of PR #40 and recovery of the local real-1C lane gateway (erp-mcp-818ha)" |
 | docs/phase2/CHANGE_RECORD_401.md | Phase 2 design | "Change Record 401 - Consolidate sibling ERP_MCP folders into D:\\Repo\\ERP_MCP" |
+| docs/phase2/CHANGE_RECORD_402.md | Phase 2 design | "Change Record 402 - Autonomous finisher scope and implementation handoff" |
+| docs/phase2/CHANGE_RECORD_403.md | Phase 2 design | "Change Record 403 — S12/S13 refusal parity and scoped operator reads" |
 | docs/phase2/CHANGE_RECORD_CLOSURE_RULING.md | Phase 2 design | "Change record: closure ruling" |
 | docs/phase2/CHANGE_RECORD_SEC_ED25519_01.md | Phase 2 design | "Change record: SEC-ED25519-01 fix" |
 | docs/phase2/CLIENT_SAFETY_BUDGET_REVIEW_2026-10-09.md | Phase 2 design | "Phase 2 client safety — physical-backend budget validation" |
@@ -736,6 +738,15 @@ Inventory: 784 tracked paths; local-only NOT_ENUMERATED.
 | docs/runbooks/RSV_DATA_BRIDGE.md | Runbook | "RSV Data bridge operations (P6)" |
 | docs/runbooks/SUPPLIER_BALANCE_5211_FIRST_RESPONSE.md | Runbook | "Supplier payable snapshot: account 521.1 (read-only, first-response workflow)" |
 | docs/sdlc/STATE.md | Other | "SDLC state" |
+| docs/sdlc/backlog.md | Other | "Phase 2 Finisher Backlog" |
+| docs/sdlc/code-design.md | Design | "S16 Code Design — Approval Channel and MCP Tool Boundary" |
+| docs/sdlc/design.md | Design | "Phase 2 finisher integration design" |
+| docs/sdlc/e2e-plan.md | Plan | "Phase 2 Finisher E2E and Runtime Evidence Plan" |
+| docs/sdlc/requirements.md | Other | "ERP_MCP Phase 2 Finisher Requirements" |
+| docs/sdlc/review-record.md | Other | "Documentation Review Record — Sprint beea27520b33" |
+| docs/sdlc/tdd.md | Other | "Phase 2 Finisher Technical Design Handoff" |
+| docs/sdlc/test-plan.md | Plan | "Phase 2 Finisher Functional Test Plan" |
+| docs/sdlc/ui-spec.md | Other | "S16 Approval Page UI Specification" |
 | reports/ADMIN_CONTROL_CENTER_STATUS.md | Report | "Admin Control Center — current branch status" |
 | reports/BRANCH_MERGE_READINESS.md | Report | "Branch and merge readiness" |
 | reports/CHATGPT_READER_BOOTSTRAP_REPAIR_2026-10-07.md | Report | "ChatGPT / 818HA reader bootstrap repair — 2026-10-07 (executed 2026-10-08)" |
@@ -817,7 +828,7 @@ Inventory: 784 tracked paths; local-only NOT_ENUMERATED.
 | refs/heads/archive/wt-ERP_MCP-supplier-debt-runtime | `ea4defaaccbf52b7cd2fe1d9cca163408dc8ab56` |
 | refs/heads/backlog/2026-10-21 | `e738ef35c4c7453af32a54a53b15bb148d5d2968` |
 | refs/heads/backlog/2026-10-21-final | `4dfceeddb071a63e7d8f815e7c276555de6d2375` |
-| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `9454d904d60d371920608088cb326b688895f0cf` |
+| refs/heads/codex/erp-mcp-autonomous-2026-10-21 | `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` |
 | refs/heads/consolidation-broken-2026-10-20 | `99b091da80dff38727021c8f48f372624233b288` |
 | refs/heads/feature/admin-control-center-implementation | `d66fbdcac823895ce1937b701f2f5bae21b60ed2` |
 | refs/heads/feature/chatgpt-mcp-integration | `39623fbc0c916bde996d8208faf361c71edccfae` |

@@ -37,7 +37,9 @@ claim/reservation logic remains authoritative.
 `change/observations.py` defines a server-bound period snapshot reader contract and the async
 `build_begin_apply_evidence` producer. It calls the configured reader, ignores and clears any
 pre-existing period flags, and derives the closed/open flags only when authentication reference,
-source/tenant/company binding, period, source version, and freshness all match. Missing, stale,
+tenant/company/source/organization/base-fingerprint binding, period, source version, and UTC
+freshness all match. It does not assert `fingerprint_authenticated`; that remains a separate trusted
+target-authentication guard. Missing, stale,
 mismatched, or reader-error evidence fails closed with a fixed safe error. No arbitrary URL, SQL,
 COM call, or caller boolean is accepted. No qualified concrete 1C reader is established in the
 reviewed evidence, so the boundary is implemented but real period production remains unqualified
@@ -74,7 +76,7 @@ content. `SqlChangeLedger` exposes matching `SPEC` entries and typed async wrapp
 | Item | State | Evidence in this change | Remaining acceptance / dependency | Owner and next action |
 | --- | --- | --- | --- | --- |
 | S1.1 public 39-code SQL mirror and exhausted-budget code | Implemented, unverified | Migration 028 explicit 39-code insertion and narrow `budget_precheck` override; source Python registry has 39 enum members by inspection | Functional SQL/Python parity and boundary scenarios; disposable PostgreSQL application | Codex: delegate focused tests after coding phase; test owner runs them; no migration execution in this turn |
-| S1.2 period and budget producers | Budget snapshot implemented, unverified; period reader producer boundary implemented, source qualification NOT_RUN | `budget_snapshot` reads live grant/reservation rows; `build_begin_apply_evidence` calls configured `PeriodSnapshotReader`, clears caller flags and validates binding/version/auth reference/freshness | Disposable PostgreSQL behavior; evidence-backed authenticated source operation and gateway integration | Codex: coordinate database qualification and qualify a supported read-only source operation; keep real period production unavailable until then |
+| S1.2 period and budget producers | Budget snapshot implemented, unverified; period reader producer boundary implemented, source qualification NOT_RUN | `budget_snapshot` reads live grant/reservation rows; `build_begin_apply_evidence` calls configured `PeriodSnapshotReader`, clears caller flags and validates tenant/company/source/organization/base fingerprint, version, auth reference, and UTC freshness; it does not assert `fingerprint_authenticated` | Disposable PostgreSQL behavior; evidence-backed authenticated source operation and gateway integration | Codex: coordinate database qualification and qualify a supported read-only source operation; keep real period production unavailable until then |
 | S1.3 scoped operator/auditor reads | Implemented, unverified | `list_inflight`, `operator_status`, `assert_scope`, bounded pagination, explicit `PUBLIC` revoke and role grants; wrappers/spec in `sql_ledger.py` | Verify exact SQL catalog signatures/grants and tenant isolation against a disposable database | Codex: arrange independent database review and test-owner qualification after coding |
 | Runtime and migration evidence | NOT_RUN | Explicitly no tests/checks/builds/migrations/live/COM calls were run | Required disposable SQL and focused functional evidence | Codex: queue with test owners after all assigned coding is complete |
 

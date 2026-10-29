@@ -20,6 +20,8 @@ class SourceBinding:
     tenant_id: str
     company_id: str
     source_id: str
+    organization_ref: str
+    base_fingerprint: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,15 +40,25 @@ class PeriodSnapshotReader(Protocol):
     async def read_period(self, binding: SourceBinding, period_id: str) -> AuthenticatedPeriodSnapshot: ...
 
 
+def _is_utc_datetime(value: object) -> bool:
+    if type(value) is not datetime or value.tzinfo is None:
+        return False
+    try:
+        return value.utcoffset() == timedelta(0)
+    except Exception:
+        return False
+
+
 def _validate_request(binding: SourceBinding, period_id: str, expected_version: str,
                       now: datetime, max_age: timedelta) -> None:
     if (type(binding) is not SourceBinding
             or any(type(value) is not str or not value.strip()
-                   for value in (binding.tenant_id, binding.company_id, binding.source_id))
+                   for value in (binding.tenant_id, binding.company_id, binding.source_id,
+                                 binding.organization_ref, binding.base_fingerprint))
             or type(period_id) is not str or not period_id.strip()
             or type(expected_version) is not str or not expected_version.strip()
-            or not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None
-            or not isinstance(max_age, timedelta) or max_age <= timedelta(0)):
+            or not _is_utc_datetime(now)
+            or type(max_age) is not timedelta or max_age <= timedelta(0)):
         raise ObservationUnavailable("PERIOD_OBSERVATION_UNSUPPORTED")
 
 
@@ -68,13 +80,12 @@ def derive_period_observation(
     if type(snapshot) is not AuthenticatedPeriodSnapshot:
         raise ObservationUnavailable("PERIOD_OBSERVATION_UNSUPPORTED")
     _validate_request(binding, period_id, expected_version, now, max_age)
-    if (snapshot.binding != binding
-            or snapshot.period_id != period_id or not period_id
-            or snapshot.source_version != expected_version or not expected_version
+    if (type(snapshot.binding) is not SourceBinding or snapshot.binding != binding
+            or type(snapshot.period_id) is not str or snapshot.period_id != period_id
+            or type(snapshot.source_version) is not str or snapshot.source_version != expected_version
             or type(snapshot.closed) is not bool
-            or not isinstance(snapshot.authentication_ref, str) or not snapshot.authentication_ref.strip()
-            or not isinstance(snapshot.observed_at, datetime) or snapshot.observed_at.tzinfo is None
-            or snapshot.observed_at.utcoffset() is None):
+            or type(snapshot.authentication_ref) is not str or not snapshot.authentication_ref.strip()
+            or not _is_utc_datetime(snapshot.observed_at)):
         raise ObservationUnavailable("PERIOD_OBSERVATION_UNSUPPORTED")
     age = now - snapshot.observed_at
     if age < timedelta(0) or age > max_age:
@@ -96,8 +107,10 @@ async def build_begin_apply_evidence(
 
     ``binding``, ``expected_version``, ``now`` and ``max_age`` must come from the application's
     trusted source registry, approval/version context and injected clock/policy. This function
-    deliberately ignores and clears any period flags already present on ``evidence``. Reader
-    exceptions and malformed replies are converted to fixed safe refusals without exposing
+    deliberately ignores and clears any period flags already present on ``evidence``. It does
+    not establish ``fingerprint_authenticated``; that separate guard must come from trusted
+    target authentication bound to this expected ``base_fingerprint``. Reader exceptions and
+    malformed replies are converted to fixed safe refusals without exposing
     provider text, credentials, or source data. The function is an integration boundary; no
     qualified concrete 1C reader is currently supplied by this repository.
     """

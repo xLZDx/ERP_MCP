@@ -1293,3 +1293,7 @@ Decision (operator GO 1-4): execute the finisher queue using existing contracts 
 ## 2026-10-29 - Additive S12/S13 parity and scoped observations
 
 Decision: append migration 028 without altering historical migrations; mirror the public 39-code vocabulary without claiming all technical SQL errors use that vocabulary, and keep budget snapshots advisory to atomic ledger enforcement. Operator reads are explicitly scoped; the period producer calls only a configured trusted reader and remains unqualified without an evidenced source operation. Coding-phase runtime evidence is NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_403.md`.
+
+## 2026-10-29 - Isolated S16 source integration
+
+Decision: implement S16 as an unwired library over injected fake-backed ports with S12 policy/transition reuse and explicit transport boundaries. Keep raw nonce/CSRF state server-side, use one-use session-bound decision references, and enforce positive authentication independent of network location. Scope period evidence to organization and immutable base identity as well as tenant/company/source. Runtime qualification remains pending the post-code agent-owned tests. Details: `docs/phase2/CHANGE_RECORD_404.md`, `CHANGE_RECORD_405.md`, `CHANGE_RECORD_406.md`.
