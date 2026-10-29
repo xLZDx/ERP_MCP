@@ -1289,3 +1289,7 @@ Decision (operator order): keep one folder. Evidence showed R2, integration-cand
 ## 2026-10-29 - Autonomous finisher GO and scoped handoff
 
 Decision (operator GO 1-4): execute the finisher queue using existing contracts and actual role agents; complete coding before agent-owned tests, keep one final exact-head GPT-PM review before push/PR. Choose 15-minute isolated approver sessions and 5-minute nonces; refuse absent registry thresholds. Do not equate an unqualified period observation port with a working real producer. Detail: `docs/phase2/CHANGE_RECORD_402.md`.
+
+## 2026-10-29 - Additive S12/S13 parity and scoped observations
+
+Decision: append migration 028 without altering historical migrations; mirror the public 39-code vocabulary without claiming all technical SQL errors use that vocabulary, and keep budget snapshots advisory to atomic ledger enforcement. Operator reads are explicitly scoped; the period producer calls only a configured trusted reader and remains unqualified without an evidenced source operation. Coding-phase runtime evidence is NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_403.md`.
