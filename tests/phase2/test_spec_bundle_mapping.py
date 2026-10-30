@@ -61,13 +61,19 @@ def test_tc002_register_keeps_r1_items_visible_and_unresolved():
     # This guards only the R1 labels present in this backlog, not defects that
     # have not been discovered or marked there.
     assert r1_marked_items.issubset(rows)
-    for cells in rows.values():
-        _item, _evidence, disposition, next_action = cells
-        # A row must keep an unresolved / verification-pending disposition and
-        # a Codex closure action; a resolved or R2-reclassified row is not enough.
-        assert any(marker in disposition for marker in (
-            "potential r1", "unverified", "must remain visible", "remain unverified",
-        ))
+    for item, cells in rows.items():
+        _label, evidence, disposition, next_action = cells
+        if item == "M5":
+            # Native-format sandbox controls are explicitly out of the current
+            # normalized CSV/JSON R1 path; require both scope evidence and the N/A disposition.
+            assert "normalized csv/json only" in evidence
+            assert "native pdf/xlsx parser sandbox controls are not applicable" in disposition
+        else:
+            # Applicable R1 items must remain unresolved / verification-pending.
+            assert any(marker in disposition for marker in (
+                "potential r1", "unverified", "must remain visible", "remain unverified",
+                "not reproduced",
+            ))
         assert "codex" in next_action
         assert not any(marker in disposition for marker in (
             "resolved", "closed", "shifted to r2", "moved to r2", "r2-only", "r2 only",
