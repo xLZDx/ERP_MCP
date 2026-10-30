@@ -1,0 +1,97 @@
+{
+  "title": "Sprint",
+  "phase": 8,
+  "mode": "hard",
+  "paused": false,
+  "history": [
+    {
+      "phase": 1,
+      "left": "2026-10-29T03:07:26+00:00",
+      "head": "9454d904d60d371920608088cb326b688895f0cf",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949"
+      }
+    },
+    {
+      "phase": 2,
+      "left": "2026-10-29T03:08:41+00:00",
+      "head": "9454d904d60d371920608088cb326b688895f0cf",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47"
+      }
+    },
+    {
+      "phase": 3,
+      "left": "2026-10-29T03:10:53+00:00",
+      "head": "9454d904d60d371920608088cb326b688895f0cf",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47",
+        "design.md": "36804c4aed10ec19a045e95694da2d8d806bb55797c3f3bf822fe6d36e9c30d2"
+      }
+    },
+    {
+      "phase": 4,
+      "left": "2026-10-29T03:12:57+00:00",
+      "head": "9454d904d60d371920608088cb326b688895f0cf",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47",
+        "design.md": "36804c4aed10ec19a045e95694da2d8d806bb55797c3f3bf822fe6d36e9c30d2",
+        "test-plan.md": "f1e465af2790d6c41e81c9313b6e79a1871694057c58237caa6c381f1b55a29c"
+      }
+    },
+    {
+      "phase": 5,
+      "left": "2026-10-29T03:16:54+00:00",
+      "head": "d24277d85f53154e18acd082986b6c24e6632704",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47",
+        "design.md": "9a3711885219ad403f9764897235876634dc0a681a3f399003609b3b73cde58a",
+        "test-plan.md": "e382be93dfaa4e9dd91091f63d0886deda12e98e1bbed277bf2dde091e03ad9e",
+        "review-record.md": "e0f899688508e3594fd50e24c534419e80fea2e17d33fa5a7187ac1b1cf7d6df"
+      }
+    },
+    {
+      "phase": 6,
+      "left": "2026-10-29T03:29:01+00:00",
+      "head": "bbf2d9fd5ae28ebb2f756d9c6b856d6ef207223a",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47",
+        "design.md": "9a3711885219ad403f9764897235876634dc0a681a3f399003609b3b73cde58a",
+        "test-plan.md": "e382be93dfaa4e9dd91091f63d0886deda12e98e1bbed277bf2dde091e03ad9e",
+        "review-record.md": "e0f899688508e3594fd50e24c534419e80fea2e17d33fa5a7187ac1b1cf7d6df",
+        "change-records/finisher-build.md": "ef61e0d773543cec8dfc246e119e2fa80a2fda5da07909c6a3ae53152142caf7"
+      }
+    },
+    {
+      "phase": 7,
+      "left": "2026-10-30T19:47:42+00:00",
+      "head": "3af73797533e7cb4d8dd6762c42e847416b4cea8",
+      "forced": false,
+      "artifacts": {
+        "requirements.md": "866a880763da884b651094fc5da3f39cd04146a2a5c8c7c3b4f61a022af0e949",
+        "backlog.md": "bbf974a1fbf9a2a88015ae34470e6bb5901a224d4ca8a93aeab32cfcdd014d47",
+        "design.md": "9a3711885219ad403f9764897235876634dc0a681a3f399003609b3b73cde58a",
+        "test-plan.md": "e382be93dfaa4e9dd91091f63d0886deda12e98e1bbed277bf2dde091e03ad9e",
+        "review-record.md": "e0f899688508e3594fd50e24c534419e80fea2e17d33fa5a7187ac1b1cf7d6df",
+        "change-records/finisher-build.md": "ef61e0d773543cec8dfc246e119e2fa80a2fda5da07909c6a3ae53152142caf7",
+        "verify-evidence.md": "e82c0646eed27f60ce3bca5f4f5040af6a06924fd3311b77f3030afb82932404",
+        "verify-evidence.json": "c70a699f9587106bbb28141a036351b32cdaca263133c6db806d8be4a6aef9b8"
+      }
+    }
+  ],
+  "sprint_id": "beea27520b33",
+  "started_epoch": 1793238911.268134,
+  "start_head": "9454d904d60d371920608088cb326b688895f0cf",
+  "updated": "2026-10-30T21:10:23+00:00"
+}
