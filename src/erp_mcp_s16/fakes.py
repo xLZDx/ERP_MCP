@@ -62,6 +62,7 @@ class InMemoryChangeStore(ChangeStore):
         self._used_refs: set[str] = set()
         self._used_nonces: set[str] = set()
         self._claims: dict[UUID, ClaimToken] = {}
+        self._claim_serial = 0
         self.permissive_decisions = permissive_decisions
 
     def get(self, change_id: UUID) -> DomainReceipt | None:
@@ -101,13 +102,31 @@ class InMemoryChangeStore(ChangeStore):
                     or receipt.approval.approval_digest != expected_approval_digest
                     or change_id in self._claims):
                 return ClaimRefused(ErrorCode.TICKET_SUPERSEDED)
-            token = ClaimToken(f"claim-{len(self._claims) + 1}", change_id,
+            self._claim_serial += 1
+            token = ClaimToken(f"claim-{self._claim_serial}", change_id,
                                expected_version, expected_approval_digest)
             self._claims[change_id] = token
             self._receipts[change_id] = replace(
                 receipt, status=(f"{s12_record.lifecycle.value}:{s12_record.authorization.value}"
                                  if s12_record else "CLAIMED"), s12_record=s12_record)
             return Claimed(token)
+
+    def release_claim(self, change_id: UUID, claim: ClaimToken, *,
+                      expected_record, released_record) -> bool:
+        """Atomically unwind the exact pre-apply claim; acknowledge a replay of the same release."""
+        with self._lock:
+            receipt = self._receipts.get(change_id)
+            if receipt is None:
+                return False
+            if receipt.s12_record == released_record and change_id not in self._claims:
+                return True
+            if self._claims.get(change_id) != claim or receipt.s12_record != expected_record:
+                return False
+            self._receipts[change_id] = replace(
+                receipt, status=f"{released_record.lifecycle.value}:{released_record.authorization.value}",
+                s12_record=released_record)
+            del self._claims[change_id]
+            return True
 
     def save_apply_receipt(self, change_id: UUID, receipt: ApplyReceipt) -> None:
         with self._lock:

@@ -18,7 +18,7 @@ from business_ai_gateway.phase2.change.proposal import approval_canonical_text
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
 from business_ai_gateway.phase2.change.transitions import (
     ApproveEvidence, BeginApplyEvidence, ClaimEvidence, Event, ExpireEvidence, NonceState,
-    RejectEvidence, apply_transition,
+    RejectEvidence, ReleaseClaimEvidence, ReleaseReason, apply_transition,
 )
 from business_ai_gateway.phase2.change.types import ApprovalType, Authorization, BudgetCheck, CallerClass, Lifecycle
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult
@@ -68,6 +68,7 @@ class S16Core:
         self._consumed_nonce_digests: set[str] = set()
         self._consumed_ref_digests: set[str] = set()
         self._apply_started: set[UUID] = set()
+        self._pending_releases: dict[UUID, tuple[object, ...]] = {}
         self._issuance_anchors: dict[UUID, tuple[object, ...]] = {}
         self._s12_anchors: dict[UUID, object] = {}
         self._approval_anchors: dict[UUID, ApprovalDecision] = {}
@@ -374,6 +375,45 @@ class S16Core:
                 and "APPROVER" in {r.value for r in record.roles}
                 and principal.mfa_authenticated is True and principal.expires_at > now)
 
+    def _release_before_begin(self, receipt: DomainReceipt, claim, claimed_record,
+                              error: ErrorCode, *, now: datetime) -> Result[ApplyReceipt]:
+        """Release only a known claim that has not passed T6 or reached the apply port."""
+        change_id = receipt.change_id
+        pending = self._pending_releases.get(change_id)
+        if pending is None:
+            evidence = ReleaseClaimEvidence(now=now, reason=ReleaseReason.T6_GUARD_FAILED)
+            try:
+                evidence = replace(evidence, kill=self.kill_switch.reading(receipt.scope))
+            except Exception:
+                # Keep the model's unreadable kill state; releasing is not permission to apply.
+                pass
+            try:
+                released = apply_transition(claimed_record, Event.RELEASE_CLAIM, evidence)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            if type(released).__name__ == "Refusal" or released.record is None:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            pending = (receipt, claim, claimed_record, released.record)
+            self._pending_releases[change_id] = pending
+        original, token, expected_record, released_record = pending
+        try:
+            if self.store.release_claim(change_id, token, expected_record=expected_record,
+                                        released_record=released_record) is not True:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            updated = self.store.get(change_id)
+            if updated is None or updated.s12_record != released_record:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            previous_anchor = self._s12_anchors.get(change_id)
+            self._s12_anchors[change_id] = released_record
+            if self.validate_issued_receipt(updated) is not None or updated.approval != original.approval:
+                self._s12_anchors[change_id] = previous_anchor
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        self._pending_releases.pop(change_id, None)
+        self._apply_started.discard(change_id)
+        return Result.refused(error)
+
     def apply(self, requester: AuthenticatedPrincipal, change_id: UUID, *, now: datetime) -> Result[ApplyReceipt]:
         from .contracts import PrincipalRole, TokenClass
         if (type(change_id) is not UUID or not _aware(now)
@@ -381,6 +421,16 @@ class S16Core:
             return Result.refused(ErrorCode.NOT_ENTITLED)
         # Same-process serialization is deliberately held across claim and apply. Unknown apply is terminal.
         with self._lock:
+            pending = self._pending_releases.get(change_id)
+            if pending is not None:
+                original, token, claimed_record, _ = pending
+                if (original.proposal.requester_principal != requester.principal_id
+                        or original.scope != requester.scope):
+                    return Result.refused(ErrorCode.NOT_ENTITLED)
+                recovered = self._release_before_begin(original, token, claimed_record,
+                                                       ErrorCode.AUDIT_UNAVAILABLE, now=now)
+                if change_id in self._pending_releases:
+                    return recovered
             if change_id in self._apply_started:
                 prior = self.store.get(change_id)
                 if prior is not None and prior.s12_record is not None:
@@ -495,15 +545,20 @@ class S16Core:
             claimed_receipt = self.store.get(change_id)
             if claimed_receipt is None or claimed_receipt.s12_record != transitioned.record:
                 return Result.refused(ErrorCode.CLAIM_EXPIRED)
+
+            def refuse_before_begin(code, stamp=now):
+                return self._release_before_begin(claimed_receipt, claim.token, transitioned.record,
+                                                  code, now=stamp)
+
             if self.begin_apply_evidence is None:
-                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+                return refuse_before_begin(ErrorCode.CHECKPOINT_UNAVAILABLE)
             try:
                 observed = self.begin_apply_evidence.read(claimed_receipt, claim.token, now)
             except Exception:
-                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+                return refuse_before_begin(ErrorCode.CHECKPOINT_UNAVAILABLE)
             if type(observed) is not BeginApplyEvidence:
-                return Result.refused(observed if type(observed) is ErrorCode
-                                      else ErrorCode.CHECKPOINT_UNAVAILABLE)
+                return refuse_before_begin(observed if type(observed) is ErrorCode
+                                           else ErrorCode.CHECKPOINT_UNAVAILABLE)
             # Re-read core-owned identity/target facts after evidence collection. Only source observations
             # (holds, period, state digest, writer lock, ownership row, repair context) come from the port.
             try:
@@ -513,36 +568,35 @@ class S16Core:
                 current_kill = self.kill_switch.reading(receipt.scope)
                 current_now = self.clock.now() if self.clock is not None else now
             except Exception:
-                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+                return refuse_before_begin(ErrorCode.CHECKPOINT_UNAVAILABLE)
             if not _aware(current_now):
-                return Result.refused(ErrorCode.CHECKPOINT_UNAVAILABLE)
+                return refuse_before_begin(ErrorCode.CHECKPOINT_UNAVAILABLE)
             if (approval.expires_at <= current_now or receipt.snapshot.expires_at <= current_now
                     or requester.expires_at <= current_now):
-                self.expire(change_id, now=current_now)
-                return Result.refused(ErrorCode.APPROVAL_EXPIRED)
+                return refuse_before_begin(ErrorCode.APPROVAL_EXPIRED, current_now)
             if current_target is None or not current_target.allowed or current_target.scope != receipt.scope:
-                return Result.refused(ErrorCode.TARGET_REJECTED)
+                return refuse_before_begin(ErrorCode.TARGET_REJECTED, current_now)
             if current_fingerprint != receipt.scope.base_fingerprint:
-                return Result.refused(ErrorCode.SCOPE_MISMATCH)
+                return refuse_before_begin(ErrorCode.SCOPE_MISMATCH, current_now)
             if current_target.version != receipt.target_version:
-                return Result.refused(ErrorCode.STALE_VERSION)
+                return refuse_before_begin(ErrorCode.STALE_VERSION, current_now)
             if (current_requester is None or current_requester.revoked
                     or current_requester.person_id != requester.person_id
                     or PrincipalRole.REQUESTER not in current_requester.roles):
-                return Result.refused(ErrorCode.NOT_ENTITLED)
+                return refuse_before_begin(ErrorCode.NOT_ENTITLED, current_now)
             try:
                 epoch_dependencies_current = self.principals.epochs_current(receipt.proposal.epoch_dependencies)
             except Exception:
-                return Result.refused(ErrorCode.EPOCH_CHANGED)
+                return refuse_before_begin(ErrorCode.EPOCH_CHANGED, current_now)
             if (current_requester.epoch != receipt.proposal.auth_epoch_at_proposal
                     or not epoch_dependencies_current):
-                return Result.refused(ErrorCode.EPOCH_CHANGED)
+                return refuse_before_begin(ErrorCode.EPOCH_CHANGED, current_now)
             try:
                 current_approver = self.principals.current(approval.approver_principal_id)
             except Exception:
-                return Result.refused(ErrorCode.APPROVAL_VOIDED)
+                return refuse_before_begin(ErrorCode.APPROVAL_VOIDED, current_now)
             if not self._live_approver_record(current_approver, approval):
-                return Result.refused(ErrorCode.APPROVAL_VOIDED)
+                return refuse_before_begin(ErrorCode.APPROVAL_VOIDED, current_now)
             begin_evidence = replace(
                 observed, now=current_now, kill=current_kill,
                 generation=transitioned.record.claim_generation,
@@ -555,9 +609,9 @@ class S16Core:
             )
             began = apply_transition(transitioned.record, Event.BEGIN_APPLY, begin_evidence)
             if type(began).__name__ == "Refusal":
-                return Result.refused(began.code)
+                return refuse_before_begin(began.code, current_now)
             if began.record is None:
-                return Result.refused(ErrorCode.SCHEMA_INVALID)
+                return refuse_before_begin(ErrorCode.SCHEMA_INVALID, current_now)
             try:
                 self.store.save_s12_record(change_id, began.record)
             except Exception:
