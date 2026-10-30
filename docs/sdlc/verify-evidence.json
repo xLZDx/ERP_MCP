@@ -91,7 +91,7 @@
     },
     {
       "item": "Official AF phase-8 PM-GPT approval bound to the current reviewed HEAD",
-      "reason": "No gate-approval.md exists. The prior full-range review returned MAJOR for redacted expressions; supplementary source verification closed the evidence concern but is not the official AF approval artifact."
+      "reason": "The single official review completed with a correlated GPT reply saying APPROVE and 0 blocker/major, but af_cli recorded UNRECOGNIZED (verdict_contradiction=true, final_overridden=true) because the body was prefixed with \"ChatGPT said:\". No gate-approval.md or approval.json was written; phase 8 remains open."
     }
   ],
   "findings": {
@@ -158,6 +158,12 @@
       "model": "not surfaced by bridge",
       "effort": "not reported",
       "verdict": "APPROVE for scoped S0 source delta; 0 blocker/major/minor; request 8ef0f90a-4770-4fd1-bfb1-13c1072a6f60, reply 466685b6-29b1-5982-9a80-65c039553b17; not an AF approval artifact."
+    },
+    {
+      "role": "GPT-PM via Agentic_Framework phase 8",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "Reply text APPROVE; AF tool disposition UNRECOGNIZED due wrapper prefix, 0 blocker/major and 2 non-blocking minor; no approval artifact. Request 62ce3be7-1c54-4694-98ad-8ae5f17be34a, reply b8137d03-e618-5926-8ca2-a66c030dd822."
     }
   ],
   "sprint_review_source_head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
@@ -255,5 +261,24 @@
       "item": "Exhaustive R1 behavior preservation / zero-impact proof",
       "reason": "Completed only a bounded path/evidence comparison and selected regression tests."
     }
-  ]
+  ],
+  "af_phase8_attempt": {
+    "head": "4e327147cde0d10e9cee206495cbc384bc3a24d7",
+    "base": "9454d904d60d371920608088cb326b688895f0cf",
+    "command": "python D:/Repo/Agentic_Framework/tools/af_cli.py pm-review --kind code --base 9454d904d60d371920608088cb326b688895f0cf",
+    "review_status": "RAN",
+    "correlated": true,
+    "tool_verdict": "UNRECOGNIZED",
+    "verdict_contradiction": true,
+    "final_overridden": true,
+    "reply_verdict": "APPROVE",
+    "open_blocker": 0,
+    "open_major": 0,
+    "open_minor": 2,
+    "request_id": "62ce3be7-1c54-4694-98ad-8ae5f17be34a",
+    "reply_id": "b8137d03-e618-5926-8ca2-a66c030dd822",
+    "review_input_hash": "11316e9de3cbd03486661e2fe41a01af757712dce409e17548f2ae4c9307649c",
+    "approval_artifact_written": false,
+    "reason": "Returned body started with \"ChatGPT said:\" before the required verdict line; no source blocker or major was identified, but tool did not record approval."
+  }
 }
