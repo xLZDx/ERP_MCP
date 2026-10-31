@@ -1,6 +1,35 @@
 Sprint: beea27520b33
 
-# Phase 7 verification evidence — S2.1
+# Phase 7 verification evidence — S1.1 and S2.1
+
+## S1.1 follow-up — SQL refusal-code parity and exhausted grant
+
+- Accepted criteria: S1.1 AC-1 exact SQL/Python set parity for the 39 public refusal codes, including
+  `PERIOD_CLOSED` and `GRANT_EXHAUSTED`; AC-2 exhausted positive grants return `GRANT_EXHAUSTED`
+  while non-exhaustion budget refusals remain `BUDGET_EXCEEDED`; AC-3 names the limits of SQL
+  parity in `docs/phase2/CHANGE_RECORD_403.md`.
+- Implementation: migration `db/phase2/028_refusal_codes_parity.sql`, committed at
+  `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` (base `d24277d85f53154e18acd082986b6c24e6632704`).
+  The migration commit is in local HEAD history but is not reachable from the fetched sprint branch.
+- Tested code HEAD: `e523b3727e8d86050e48fd3d62f281a3764fe174`. `e2e-runner` executed
+  `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_s12_sql_code_parity.py` using the
+  invocation-owned disposable PostgreSQL harness. Result: **2 passed in 24.72s**. The test applies
+  predecessors 019–027, applies 028, verifies the complete code set and privilege boundaries,
+  reapplies 028, and checks exhausted, over-budget-with-remainder and zero-amount cases. No
+  shared/staging/production database was modified.
+- Test provenance: `tests/phase2/test_s12_sql_code_parity.py` was already untracked before the run;
+  its SHA-256 remained `0373605827DAFEAFCF025F8084C9582309DB4975182ECF137DA651CE2480755B` before and
+  after. The file author is not established here. A system-Python attempt stopped at conftest import
+  because `asyncpg` is absent; the project's `.venv` command above succeeded.
+- Internal review: read-only `database-reviewer` review of the S1.1 SQL delta found no database
+  correctness blocker. It did not rerun tests or apply a migration. Its documentation requests for
+  the AC-3 boundary and post-apply rollback path are recorded in `CHANGE_RECORD_403.md`.
+- State: AC-1 and AC-2 have disposable-runtime evidence; AC-3's limitations are documented. The
+  task is **not delivered**: exact-head GPT-PM approval is outstanding, and the local branch is
+  ahead of the fetched upstream with no push recorded. Real period observation remains `NOT_RUN`.
+  No approval artifact was created by this verification.
+
+## Existing S2.1 evidence
 
 - Tested code HEAD: `3af73797533e7cb4d8dd6762c42e847416b4cea8`.
 - Task: S2.1, core-owned approval validation, apply-time revalidation, single-use claims, and canonical preview provenance.
