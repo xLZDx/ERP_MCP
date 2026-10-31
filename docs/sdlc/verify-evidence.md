@@ -24,10 +24,21 @@ Sprint: beea27520b33
 - Internal review: read-only `database-reviewer` review of the S1.1 SQL delta found no database
   correctness blocker. It did not rerun tests or apply a migration. Its documentation requests for
   the AC-3 boundary and post-apply rollback path are recorded in `CHANGE_RECORD_403.md`.
-- State: AC-1 and AC-2 have disposable-runtime evidence; AC-3's limitations are documented. The
-  task is **not delivered**: exact-head GPT-PM approval is outstanding, and the local branch is
-  ahead of the fetched upstream with no push recorded. Real period observation remains `NOT_RUN`.
-  No approval artifact was created by this verification.
+- State: S1.1 AC-1 and AC-2 have disposable-runtime evidence; AC-3's limitations are documented.
+  GPT-PM returned `APPROVE` with 0 BLOCKER / 0 MAJOR / 0 MINOR for the S1.1 scope of commit
+  `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` against base
+  `d24277d85f53154e18acd082986b6c24e6632704` (PM Bridge request
+  `d7b9c1f0-6a42-4c83-9f1e-2058de37a4b6`; the reply reproduced this request ID). This is a scoped
+  review, not a formal AF phase-8 approval and not approval of the separate S1.3 changes also
+  included in commit 4779ae9. An AF phase-8 preflight from a clean detached worktree at HEAD
+  `03297eca8fb4939bbc3f3677acdc4be1672af618`, base `9454d904d60d371920608088cb326b688895f0cf`,
+  was refused before PM submission because `verify-evidence.json` still binds `tested_head` to
+  `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9` and lists later changed code; no formal approval
+  artifact was written. The S1.1 source commit is not reachable from the configured upstream;
+  the current branch is 19 commits ahead and the range contains mixed prior work, so no push was
+  performed. S1.1 is implementation-complete against AC-1–AC-3 but is **not delivered** until its
+  task commit is safely publishable. Real period observation remains `NOT_RUN` and belongs to
+  S1.2, not S1.1.
 
 ## Existing S2.1 evidence
 

@@ -88,10 +88,10 @@ content. `SqlChangeLedger` exposes matching `SPEC` entries and typed async wrapp
 
 | Item | State | Evidence in this change | Remaining acceptance / dependency | Owner and next action |
 | --- | --- | --- | --- | --- |
-| S1.1 public 39-code SQL mirror and exhausted-budget code | Implemented; disposable-PostgreSQL runtime-proven; formal GPT-PM review outstanding | Migration 028 and the exact set of 39 Python enum codes; focused test and database-review evidence are recorded in the follow-up below and `docs/sdlc/verify-evidence.md` | No shared/production migration or real period producer is claimed. AC-1/AC-2 have disposable SQL evidence; AC-3 limitations and rollback are recorded above. | Codex: obtain required exact-head GPT-PM adjudication after the evidence packet is committed; preserve push gate until formal approval |
+| S1.1 public 39-code SQL mirror and exhausted-budget code | Implemented; disposable-PostgreSQL runtime-proven; scoped GPT-PM review APPROVE (0 findings); not delivered | Migration 028 and the exact set of 39 Python enum codes; focused test, database review and scoped GPT-PM result are recorded below and in `docs/sdlc/verify-evidence.md` | AC-1–AC-3 are satisfied for S1.1 scope. Source commit also contains S1.3 code; full commit is not upstream and cannot be pushed as the current mixed 19-commit branch. No shared/production migration or real period producer is claimed. | Codex: prepare a safely isolated S1.1 delivery range; keep the hard push gate and do not start S1.2 until delivery is resolved |
 | S1.2 period and budget producers | Budget snapshot implemented, unverified; period reader producer boundary implemented, source qualification NOT_RUN | `budget_snapshot` reads live grant/reservation rows; `build_begin_apply_evidence` calls configured `PeriodSnapshotReader`, clears caller flags and validates tenant/company/source/organization/base fingerprint, version, auth reference, and UTC freshness; it does not assert `fingerprint_authenticated` | Disposable PostgreSQL behavior; evidence-backed authenticated source operation and gateway integration | Codex: coordinate database qualification and qualify a supported read-only source operation; keep real period production unavailable until then |
 | S1.3 scoped operator/auditor reads | Implemented, unverified | `list_inflight`, `operator_status`, `assert_scope`, bounded pagination, explicit `PUBLIC` revoke and role grants; wrappers/spec in `sql_ledger.py` | Verify exact SQL catalog signatures/grants and tenant isolation against a disposable database | Codex: arrange independent database review and test-owner qualification after coding |
-| S1.1 SQL parity and exhausted-grant behavior | Runtime-proven in an invocation-owned disposable PostgreSQL database | The focused S1.1 run below passed 2/2, including migration application/reapplication, exact code-set equality and budget boundaries | Formal GPT-PM adjudication remains outstanding; shared database migration and real period observation remain NOT_RUN | Codex: reconcile the exact-head evidence packet and obtain required review |
+| S1.1 SQL parity and exhausted-grant behavior | Runtime-proven in an invocation-owned disposable PostgreSQL database; scoped GPT-PM APPROVE | The focused S1.1 run below passed 2/2, including migration application/reapplication, exact code-set equality and budget boundaries; request `d7b9c1f0-6a42-4c83-9f1e-2058de37a4b6` returned APPROVE with 0 BLOCKER / 0 MAJOR / 0 MINOR for the S1.1 scope | Not pushed; the source commit also contains S1.3 changes and current branch has 19 mixed commits ahead. Shared migration and real period observation remain NOT_RUN. Sprint-level AF phase-8 preflight separately refused due to stale tested-head evidence; it is not an additional S1.1 AC. | Codex: isolate a task-specific delivery path and resolve the branch-level hard push gate before starting S1.2 |
 | S1.2/S1.3 runtime and real-data evidence | NOT_RUN / UNQUALIFIED as stated above | CR-403 records the implemented boundaries and their test/data limitations | Qualified real period/budget readers and SQL scope/grant verification are not established by the S1.1 run | Codex: preserve those separate states; do not infer their closure from S1.1 |
 
 ## S1.1 verification follow-up — 2026-10-31
@@ -110,8 +110,14 @@ content. `SqlChangeLedger` exposes matching `SPEC` entries and typed async wrapp
   correctness blocker. It confirmed the registry guard, transaction boundary, retained lock path,
   grant classifications, and runtime test coverage. It did not rerun tests or apply a migration.
 - The reviewer requested the explicit AC-3 boundaries and post-apply rollback path now recorded
-  above. No shared/staging/production database was changed. Formal GPT-PM approval remains
-  outstanding; this evidence does not close the release/push gate.
+  above. No shared/staging/production database was changed. GPT-PM returned `APPROVE` with 0
+  BLOCKER / 0 MAJOR / 0 MINOR for the S1.1 scope of commit
+  `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` (request
+  `d7b9c1f0-6a42-4c83-9f1e-2058de37a4b6`); this does not approve the separate S1.3 changes in that
+  commit or create the formal AF phase-8 artifact. A phase-8 preflight at HEAD
+  `03297eca8fb4939bbc3f3677acdc4be1672af618` was refused before PM submission because the sprint
+  `verify-evidence.json` remains bound to tested HEAD `6caf3d65e998` and reports later code changes.
+  The migration has not been pushed or applied to a shared/staging/production database.
 
 ## Changed files
 
@@ -120,4 +126,6 @@ content. `SqlChangeLedger` exposes matching `SPEC` entries and typed async wrapp
 - `src/business_ai_gateway/phase2/change/observations.py` — new fail-closed period reader and evidence producer boundary.
 - `docs/phase2/CHANGE_RECORD_403.md` — this record.
 
-No commit was created. No unrelated dirty files were changed.
+The source commit is `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a`; it also contains S1.3 observation
+code, which was outside the scoped S1.1 review. Later evidence reconciliation was committed as
+`03297eca8fb4939bbc3f3677acdc4be1672af618`. No unrelated dirty files were changed.
