@@ -34,9 +34,10 @@ Sprint: beea27520b33
   `03297eca8fb4939bbc3f3677acdc4be1672af618`, base `9454d904d60d371920608088cb326b688895f0cf`,
   was refused before PM submission because `verify-evidence.json` still binds `tested_head` to
   `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9` and lists later changed code; no formal approval
-  artifact was written. The S1.1 source commit is not reachable from the configured upstream;
-  the current branch is 19 commits ahead and the range contains mixed prior work, so no push was
-  performed. S1.1 is implementation-complete against AC-1–AC-3 but is **not delivered** until its
+  artifact was written. The S1.1 source commit is not reachable from the configured upstream.
+  At the review snapshot HEAD `03297eca8fb4939bbc3f3677acdc4be1672af618`, the branch was 19 commits
+  ahead and the range contained mixed prior work, so no push was performed. S1.1 is
+  implementation-complete against AC-1–AC-3 but is **not delivered** until its
   task commit is safely publishable. Real period observation remains `NOT_RUN` and belongs to
   S1.2, not S1.1.
 
