@@ -8,14 +8,18 @@ from argparse import Namespace
 from dataclasses import replace
 
 import asyncpg
+import httpx
 import pytest
 
+from business_ai_gateway.adapters.onec.client import OneCReadClient
 from business_ai_gateway.audit import Audit, query_fingerprint
 from business_ai_gateway.compatibility import (
     AdapterProfile,
     CompatibilityStatus,
+    OneCCapabilityDetector,
     OneCCapabilities,
 )
+from business_ai_gateway.models import Source
 from business_ai_gateway.principal import Principal
 from business_ai_gateway.registry import AccessDenied, Registry
 from business_ai_gateway.semantic import SemanticProfileUnavailable
@@ -1214,6 +1218,92 @@ async def test_postgres_capability_drift_is_sticky_until_admin_acknowledges():
 
         refreshed = await registry.save_capabilities(capability("b" * 64))
         assert refreshed["source_capability_evidence"] == evidence_profile
+    finally:
+        await tx.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_metadata_timeout_preserves_last_fingerprint_and_requires_validation():
+    conn = await asyncpg.connect(DATABASE_URL)
+    tx = conn.transaction()
+    await tx.start()
+    source_id = f"timeout-observation-{uuid.uuid4()}"
+    timeout_paths = []
+    try:
+        await conn.execute(
+            """
+            INSERT INTO bag.sources(source_id, project, kind, display_name, base_url)
+            VALUES($1, 'onec', 'onec_auto', 'Timeout observation source',
+                   'http://fake.invalid/odata')
+            """,
+            source_id,
+        )
+        registry = Registry(ConnectionDatabase(conn), production=True)
+        prior_fingerprint = "a" * 64
+        initial = OneCCapabilities(
+            source_id=source_id,
+            platform_version="8.3.test",
+            metadata_fingerprint=prior_fingerprint,
+            metadata_supported=True,
+            json_supported=True,
+            atom_supported=False,
+            expand_supported=None,
+            entity_set_count=1,
+            adapter_profile=AdapterProfile.ODATA_JSON_V3,
+            compatibility_status=CompatibilityStatus.SUPPORTED,
+            evidence={"metadata": "ok"},
+        )
+        await registry.save_capabilities(initial)
+
+        def timeout_handler(request):
+            timeout_paths.append(request.url.path)
+            raise httpx.ReadTimeout("injected metadata timeout", request=request)
+
+        client = OneCReadClient(
+            timeout_seconds=1,
+            max_response_bytes=1024,
+            transport=httpx.MockTransport(timeout_handler),
+        )
+
+        class NoSecrets:
+            async def get(self, _ref):
+                raise AssertionError("the synthetic source has no secret references")
+
+        source = Source(
+            id=source_id,
+            project="onec",
+            kind="onec_auto",
+            display_name="Timeout observation source",
+            base_url="http://fake.invalid/odata",
+            username_secret_ref=None,
+            password_secret_ref=None,
+            read_only=True,
+            enabled=True,
+            tags=("test",),
+            entity_allow_patterns=(),
+            entity_deny_patterns=(),
+        )
+        try:
+            detector = OneCCapabilityDetector(client=client, secrets=NoSecrets())
+            timed_out, index = await detector.detect(source)
+        finally:
+            await client.close()
+
+        assert timeout_paths and all(path.endswith("/$metadata") for path in timeout_paths)
+        assert index is None
+        assert timed_out.metadata_supported is False
+        assert timed_out.metadata_fingerprint is None
+        assert timed_out.evidence["metadata"] == "OneCTransportError"
+
+        result = await registry.save_capabilities(timed_out)
+        stored = await conn.fetchrow(
+            "SELECT metadata_fingerprint, drift_status FROM bag.source_capabilities WHERE source_id=$1",
+            source_id,
+        )
+        assert stored["metadata_fingerprint"] == prior_fingerprint
+        assert stored["drift_status"] == "NEEDS_VALIDATION"
+        assert result["drift_status"] == "NEEDS_VALIDATION"
     finally:
         await tx.rollback()
         await conn.close()
