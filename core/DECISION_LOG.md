@@ -1309,3 +1309,7 @@ Decision: accept tuple/list address-pair representations while retaining all pri
 ## 2026-10-29 - Complete specialist remediation batch
 
 Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, independent proposal authority, store-substitution-resistant canonical bindings and core anchors, and complete service-owned approval context. Core restart without an issuance anchor fails closed; no durable/real-source qualification is inferred. Details: `docs/phase2/CHANGE_RECORD_411.md`, `CHANGE_RECORD_412.md`, `CHANGE_RECORD_413.md`.
+
+## 2026-11-01 - Merge remote refusal parity migration, keep local copy
+
+Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (commit f23a7af) for the add/add merge conflict, and keep the operator's uncommitted local version as db/phase2/028_refusal_codes_parity.local.sql for manual comparison. Nothing was deleted.

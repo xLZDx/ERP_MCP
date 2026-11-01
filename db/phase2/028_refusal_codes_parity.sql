@@ -4,6 +4,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS change_ledger.refusal_code_registry (
  code text PRIMARY KEY CHECK (code ~ '^[A-Z][A-Z0-9_]*$')
 );
+ALTER TABLE change_ledger.refusal_code_registry OWNER TO ledger_owner;
 INSERT INTO change_ledger.refusal_code_registry(code) VALUES
  ('SCHEMA_INVALID'),('SHAPE_NOT_QUALIFIED'),('SCOPE_MISMATCH'),('REF_OUT_OF_SCOPE'),
  ('NOT_ENTITLED'),('APPROVER_NOT_INDEPENDENT'),('APPROVAL_MISSING'),('APPROVAL_EXPIRED'),
@@ -104,89 +105,6 @@ END $fn$;
 ALTER FUNCTION change_ledger.budget_precheck(text,text,change_ledger.records,boolean,boolean)
  OWNER TO ledger_owner;
 
-CREATE OR REPLACE FUNCTION change_ledger.list_inflight(t text,c text,p_limit integer DEFAULT 50,
- p_offset integer DEFAULT 0) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
-DECLARE who text; result jsonb;
-BEGIN
- PERFORM change_ledger.assert_scope(t,c);
- who:=change_ledger.caller_role();
- IF NOT (pg_has_role(who::name,'operator_role','USAGE') OR pg_has_role(who::name,'auditor_role','USAGE')) THEN
-  RAISE EXCEPTION 'SCOPE_NOT_GRANTED';
- END IF;
- IF p_limit IS NULL OR p_limit<1 OR p_limit>100 OR p_offset IS NULL OR p_offset<0 THEN
-  RAISE EXCEPTION 'INVALID_ARGUMENT';
- END IF;
- SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.created_at,x.change_id),'[]'::jsonb) INTO result
- FROM (SELECT change_id,kind,lifecycle,authorization_state,execution_state,verification_state,
-              call_ownership,reservation_state,dispatch_state,claim_generation,created_at,updated_at
-       FROM change_ledger.records r
-       WHERE r.tenant_id=t AND r.company_id=c
-         AND r.execution_state IN ('NOT_STARTED','APPLYING','APPLY_UNKNOWN','TRIAGE_REQUIRED')
-       ORDER BY r.created_at,r.change_id LIMIT p_limit OFFSET p_offset) x;
- RETURN result;
-END $fn$;
-ALTER FUNCTION change_ledger.list_inflight(text,text,integer,integer) OWNER TO ledger_owner;
-
-CREATE OR REPLACE FUNCTION change_ledger.operator_status(t text,c text,p_change_id uuid) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
-DECLARE who text; result jsonb;
-BEGIN
- PERFORM change_ledger.assert_scope(t,c);
- who:=change_ledger.caller_role();
- IF NOT (pg_has_role(who::name,'operator_role','USAGE') OR pg_has_role(who::name,'auditor_role','USAGE')) THEN
-  RAISE EXCEPTION 'SCOPE_NOT_GRANTED';
- END IF;
- SELECT jsonb_build_object('change_id',r.change_id,'kind',r.kind,'requester',r.requester,
-  'base_fingerprint',r.base_fingerprint,'organization_ref',r.organization_ref,'lifecycle',r.lifecycle,
-  'authorization',r.authorization_state,'execution',r.execution_state,'verification',r.verification_state,
-  'call_ownership',r.call_ownership,'attribution',r.attribution,'effect_known',r.effect_known,
-  'reservation',r.reservation_state,'dispatch',r.dispatch_state,'claim_generation',r.claim_generation,
-  'expires_at',r.expires_at,'created_at',r.created_at,'updated_at',r.updated_at)
- INTO result FROM change_ledger.records r
- WHERE r.tenant_id=t AND r.company_id=c AND r.change_id=p_change_id;
- IF result IS NULL THEN RAISE EXCEPTION 'CHANGE_NOT_FOUND'; END IF;
- RETURN result;
-END $fn$;
-ALTER FUNCTION change_ledger.operator_status(text,text,uuid) OWNER TO ledger_owner;
-
--- Live database budget snapshot. This is advisory; claim/reservation routines remain the atomic gate.
-CREATE OR REPLACE FUNCTION change_ledger.budget_snapshot(t text,c text,p_grant_id uuid,
- p_amount numeric,p_currency text) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
-DECLARE g change_ledger.grants%ROWTYPE; reserved_amount numeric; remaining numeric; check_code text;
-BEGIN
- PERFORM change_ledger.assert_scope(t,c);
- IF p_amount IS NULL OR pg_catalog.lower(p_amount::text) IN ('nan','infinity','-infinity')
-    OR p_amount<0 OR p_currency IS NULL THEN RAISE EXCEPTION 'SCHEMA_INVALID'; END IF;
- SELECT * INTO g FROM change_ledger.grants x
- WHERE x.grant_id=p_grant_id AND x.tenant_id=t AND x.company_id=c;
- IF NOT FOUND OR g.status<>'ACTIVE' THEN RAISE EXCEPTION 'BUDGET_EXCEEDED'; END IF;
- IF pg_catalog.lower(g.amount_limit::text) IN ('nan','infinity','-infinity') THEN
-  RAISE EXCEPTION 'BUDGET_EXCEEDED';
- END IF;
- IF g.currency IS DISTINCT FROM p_currency THEN RAISE EXCEPTION 'CURRENCY_NOT_BUDGETED'; END IF;
- IF statement_timestamp()<g.window_start OR statement_timestamp()>=g.window_end THEN RAISE EXCEPTION 'BUDGET_EXCEEDED'; END IF;
- SELECT coalesce(sum(r.amount),0) INTO reserved_amount FROM change_ledger.reservations r
- WHERE r.grant_id=p_grant_id AND r.state IN ('RESERVED','CONSUMED');
- IF pg_catalog.lower(reserved_amount::text) IN ('nan','infinity','-infinity') THEN
-  RAISE EXCEPTION 'BUDGET_EXCEEDED';
- END IF;
- remaining:=g.amount_limit-reserved_amount;
- check_code:=CASE WHEN p_amount>0 AND remaining<=0 THEN 'EXHAUSTED'
-                  WHEN p_amount>remaining THEN 'EXCEEDED' ELSE 'OK' END;
- RETURN jsonb_build_object('grant_id',p_grant_id,'currency',g.currency,'limit',g.amount_limit,
-  'reserved_and_consumed',reserved_amount,'remaining',remaining,'check',check_code,
-  'observed_at',statement_timestamp());
-END $fn$;
-ALTER FUNCTION change_ledger.budget_snapshot(text,text,uuid,numeric,text) OWNER TO ledger_owner;
-
-REVOKE ALL ON FUNCTION change_ledger.list_inflight(text,text,integer,integer),
- change_ledger.operator_status(text,text,uuid),
- change_ledger.budget_snapshot(text,text,uuid,numeric,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION change_ledger.list_inflight(text,text,integer,integer),
- change_ledger.operator_status(text,text,uuid),
- change_ledger.budget_snapshot(text,text,uuid,numeric,text) TO operator_role,auditor_role;
 REVOKE ALL ON TABLE change_ledger.refusal_code_registry FROM PUBLIC,requester_role,approver_role,
  operator_role,writer_role,worker_role,auditor_role,checkpoint_role;
 COMMIT;
