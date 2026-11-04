@@ -260,6 +260,16 @@ def candidate_blob_oid(ref: str, relative_path: str) -> str | None:
     return result.stdout.strip() or None
 
 
+def candidate_path_blob_identity(
+    ref: str, relative_path: str, content: bytes,
+) -> dict[str, str | None]:
+    """Identify working-tree bytes by the Git blob they clean to for this path."""
+    return {
+        "working_file_git_clean_blob_oid": git_clean_blob_oid(relative_path, content),
+        "candidate_head_blob_oid": candidate_blob_oid(ref, relative_path),
+    }
+
+
 def candidate_blob_inventory_matches(artifact_hashes: dict[str, dict[str, Any]]) -> bool:
     return bool(artifact_hashes) and all(
         row.get("candidate_head_blob_oid") is not None
@@ -1172,8 +1182,10 @@ def run_pytest() -> dict[str, Any]:
 
 
 def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
-    manifest_path = ROOT / "adapters/odata-sidecar/package.json"
-    lock_path = ROOT / "adapters/odata-sidecar/package-lock.json"
+    manifest_relative_path = "adapters/odata-sidecar/package.json"
+    lock_relative_path = "adapters/odata-sidecar/package-lock.json"
+    manifest_path = ROOT / manifest_relative_path
+    lock_path = ROOT / lock_relative_path
     manifest_bytes = manifest_path.read_bytes()
     lock_bytes = lock_path.read_bytes()
     manifest = json.loads(manifest_bytes)
@@ -1194,6 +1206,12 @@ def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
         json.loads(candidate_lock_result.stdout)
         if candidate_lock_result.returncode == 0 else None
     )
+    manifest_blob_identity = candidate_path_blob_identity(
+        candidate, manifest_relative_path, manifest_bytes,
+    )
+    lock_blob_identity = candidate_path_blob_identity(
+        candidate, lock_relative_path, lock_bytes,
+    )
     return {
         "manifest_path": "adapters/odata-sidecar/package.json",
         "lockfile_path": "adapters/odata-sidecar/package-lock.json",
@@ -1204,13 +1222,19 @@ def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
         "working_tree_lock_resolved_undici": lock.get("packages", {}).get("node_modules/undici", {}).get("version"),
         "candidate_head_manifest_sha256": hashlib.sha256(candidate_manifest_result.stdout).hexdigest() if candidate_manifest is not None else None,
         "candidate_head_lockfile_sha256": hashlib.sha256(candidate_lock_result.stdout).hexdigest() if candidate_lock is not None else None,
+        "working_tree_manifest_git_clean_blob_oid": manifest_blob_identity["working_file_git_clean_blob_oid"],
+        "candidate_head_manifest_blob_oid": manifest_blob_identity["candidate_head_blob_oid"],
+        "working_tree_lockfile_git_clean_blob_oid": lock_blob_identity["working_file_git_clean_blob_oid"],
+        "candidate_head_lockfile_blob_oid": lock_blob_identity["candidate_head_blob_oid"],
         "candidate_head_manifest_undici": candidate_manifest.get("dependencies", {}).get("undici") if candidate_manifest is not None else None,
         "candidate_head_lock_root_undici": candidate_lock.get("packages", {}).get("", {}).get("dependencies", {}).get("undici") if candidate_lock is not None else None,
         "candidate_head_lock_resolved_undici": candidate_lock.get("packages", {}).get("node_modules/undici", {}).get("version") if candidate_lock is not None else None,
         "working_tree_matches_candidate_head": (
             candidate_manifest is not None and candidate_lock is not None
-            and hashlib.sha256(manifest_bytes).digest() == hashlib.sha256(candidate_manifest_result.stdout).digest()
-            and hashlib.sha256(lock_bytes).digest() == hashlib.sha256(candidate_lock_result.stdout).digest()
+            and candidate_blob_inventory_matches({
+                manifest_relative_path: manifest_blob_identity,
+                lock_relative_path: lock_blob_identity,
+            })
         ),
         "candidate_head_commit": candidate,
     }

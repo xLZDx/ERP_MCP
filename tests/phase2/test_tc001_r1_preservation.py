@@ -110,6 +110,66 @@ def test_p12_git_clean_blob_identity_normalizes_crlf_but_rejects_content_changes
     })
 
 
+def test_p12_sidecar_manifest_and_lock_identity_normalizes_crlf_and_rejects_content_changes():
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    paths = (
+        "adapters/odata-sidecar/package.json",
+        "adapters/odata-sidecar/package-lock.json",
+    )
+
+    actual_provenance = TC001_RUNNER.sidecar_dependency_provenance(candidate)
+    assert actual_provenance["working_tree_matches_candidate_head"]
+    assert actual_provenance["working_tree_manifest_git_clean_blob_oid"] == actual_provenance[
+        "candidate_head_manifest_blob_oid"
+    ]
+    assert actual_provenance["working_tree_lockfile_git_clean_blob_oid"] == actual_provenance[
+        "candidate_head_lockfile_blob_oid"
+    ]
+
+    for path in paths:
+        candidate_content = TC001_RUNNER.git_blob(candidate, path)
+        assert candidate_content is not None
+        assert b"8.12.3" in candidate_content
+        lf_checkout = candidate_content.replace(b"\r\n", b"\n")
+        crlf_checkout = lf_checkout.replace(b"\n", b"\r\n")
+        changed_content = crlf_checkout.replace(b"8.12.3", b"8.12.4", 1)
+
+        unchanged_identity = TC001_RUNNER.candidate_path_blob_identity(
+            candidate, path, crlf_checkout,
+        )
+        changed_identity = TC001_RUNNER.candidate_path_blob_identity(
+            candidate, path, changed_content,
+        )
+
+        assert TC001_RUNNER.candidate_blob_inventory_matches({path: unchanged_identity})
+        assert not TC001_RUNNER.candidate_blob_inventory_matches({path: changed_identity})
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "adapters/odata-sidecar/package.json",
+        "adapters/odata-sidecar/package-lock.json",
+    ),
+)
+def test_p12_sidecar_provenance_rejects_changed_dependency_file(monkeypatch, relative_path):
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    target_path = TC001_RUNNER.ROOT / relative_path
+    original_read_bytes = TC001_RUNNER.Path.read_bytes
+
+    def read_bytes(path):
+        content = original_read_bytes(path)
+        if path == target_path:
+            assert b"8.12.3" in content
+            return content.replace(b"8.12.3", b"8.12.4", 1)
+        return content
+
+    monkeypatch.setattr(TC001_RUNNER.Path, "read_bytes", read_bytes)
+    provenance = TC001_RUNNER.sidecar_dependency_provenance(candidate)
+
+    assert not provenance["working_tree_matches_candidate_head"]
+
+
 def test_p12_rejects_matching_image_version_without_candidate_build_provenance():
     checks = _p12_case(image_build={})
     assert checks["image_installed_undici_matches_candidate"]
