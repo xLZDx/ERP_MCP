@@ -131,6 +131,9 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "receivable_aging",
     "payable_aging",
     "counterparty_duplicate_candidates",
+    "onec_find_entities_with_property_types",
+    "accounting_balance_and_turnovers_by_account",
+    "purchase_documents_filtered",
 })
 
 CHATGPT_SERVER_INSTRUCTIONS = (
@@ -152,7 +155,9 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "onec_capabilities": "metadata.read",
     "onec_metadata_summary": "metadata.read",
     "onec_find_entities": "metadata.read",
+    "onec_find_entities_with_property_types": "metadata.read",
     "accounting_balance_and_turnovers": "accounting.read",
+    "accounting_balance_and_turnovers_by_account": "accounting.read",
     "accounting_balance_by_analytics": "accounting.read",
     "inventory_balance": "inventory.read",
     "inventory_movements": "inventory.read",
@@ -167,6 +172,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "counterparty_find": "accounting.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
+    "purchase_documents_filtered": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
     # semantic accounting capabilities and have no seeded business-role grant.
     "onec_read": "onec.raw.read",
@@ -659,30 +665,30 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def onec_find_entities(
+    async def read_entity_catalog(
         source_id: str,
-        contains: str = "",
-        limit: int = 50,
-        include_property_types: bool = False,
+        contains: str,
+        limit: int,
+        *,
+        include_property_types: bool,
+        tool_name: str,
     ) -> list[dict[str, Any]]:
-        """Search allowed EntitySets; optionally include their OData property types."""
         started = time.monotonic()
         principal = await ctx()
-        query = {
-            "contains": contains,
-            "limit": limit,
-            "include_property_types": include_property_types,
-        }
-        source = await resolve_source(principal, source_id, "onec_find_entities", started, query)
+        query = {"contains": contains, "limit": limit}
+        if include_property_types:
+            query["include_property_types"] = True
+        source = await resolve_source(principal, source_id, tool_name, started, query)
         try:
-            result = await runtime.onec.find(
-                source, contains, limit,
-                include_property_types=include_property_types,
-            )
+            if include_property_types:
+                result = await runtime.onec.find(
+                    source, contains, limit, include_property_types=True
+                )
+            else:
+                result = await runtime.onec.find(source, contains, limit)
             await runtime.audit.write(
                 principal=principal,
-                tool="onec_find_entities",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -693,7 +699,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="onec_find_entities",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="error",
                 started_at=started,
@@ -703,22 +709,44 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def accounting_balance_and_turnovers(
+    async def onec_find_entities(
+        source_id: str,
+        contains: str = "",
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Search allowed EntitySets; use the property-types tool for OData property types."""
+        return await read_entity_catalog(
+            source_id,
+            contains,
+            limit,
+            include_property_types=False,
+            tool_name="onec_find_entities",
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def onec_find_entities_with_property_types(
+        source_id: str,
+        contains: str = "",
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Search allowed EntitySets and include their OData property types."""
+        return await read_entity_catalog(
+            source_id,
+            contains,
+            limit,
+            include_property_types=True,
+            tool_name="onec_find_entities_with_property_types",
+        )
+
+    async def read_account_balance_and_turnovers(
         source_id: str,
         company_id: str,
         start_period: str,
         end_period: str,
-        account_code: str | None = None,
+        *,
+        account_code: str | None,
+        tool_name: str,
     ) -> dict[str, Any]:
-        """Read company-filtered account opening/turnover/closing figures via its validated profile.
-
-        ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset, for example
-        ``2026-08-01T00:00:00+03:00`` and ``2026-08-31T23:59:59+03:00``. ``account_code`` (for example
-        "521.1") narrows the read to one account the profile declares; ``totals`` carries exact
-        server-side per-account sums so nothing has to be added up by the caller. Rows are per analytics
-        combination and carry no counterparty names: for a breakdown by supplier or contract with names
-        use ``accounting_balance_by_analytics``; to find a counterparty use ``counterparty_find``.
-        """
         started = time.monotonic()
         principal = await ctx()
         try:
@@ -726,7 +754,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -739,12 +767,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": ACCOUNT_TURNOVERS_CONCEPT,
             "start_period": start_period,
             "end_period": end_period,
-            "account_code": account_code,
         }
+        if account_code is not None:
+            query["account_code"] = account_code
         source = await resolve_source(
             principal,
             source_id,
-            "accounting_balance_and_turnovers",
+            tool_name,
             started,
             query,
             company_id=parsed_company_id,
@@ -761,12 +790,15 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 source_id, parsed_company_id
             )
             mapping = profile["mapping"]
+            builder_kwargs = {
+                "company_external_ref": company.external_ref,
+                "start_period": start_period,
+                "end_period": end_period,
+            }
+            if account_code is not None:
+                builder_kwargs["account_code"] = account_code
             register_set, method, arguments = build_account_turnovers_arguments(
-                mapping,
-                company_external_ref=company.external_ref,
-                start_period=start_period,
-                end_period=end_period,
-                account_code=account_code,
+                mapping, **builder_kwargs
             )
             result = await runtime.onec.register_read(
                 source,
@@ -788,7 +820,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -817,7 +849,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -840,6 +872,47 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_balance_and_turnovers(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+    ) -> dict[str, Any]:
+        """Read company-filtered account opening/turnover/closing figures via its validated profile.
+
+        ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset. Rows are
+        per analytics combination and carry no counterparty names: for a breakdown by supplier or
+        contract with names use ``accounting_balance_by_analytics``; to find a counterparty use
+        ``counterparty_find``.
+        """
+        return await read_account_balance_and_turnovers(
+            source_id,
+            company_id,
+            start_period,
+            end_period,
+            account_code=None,
+            tool_name="accounting_balance_and_turnovers",
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_balance_and_turnovers_by_account(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        account_code: str,
+    ) -> dict[str, Any]:
+        """Read company-filtered account turnovers for one profile-declared account."""
+        return await read_account_balance_and_turnovers(
+            source_id,
+            company_id,
+            start_period,
+            end_period,
+            account_code=account_code,
+            tool_name="accounting_balance_and_turnovers_by_account",
+        )
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def accounting_balance_by_analytics(
@@ -2414,19 +2487,36 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         company_id: str,
         top: int = 50,
         skip: int = 0,
-        counterparty_ref: str | None = None,
-        posted_only: bool = False,
     ) -> dict[str, Any]:
-        """List company-scoped purchase documents using a validated semantic mapping.
-
-        ``counterparty_ref`` (a GUID, e.g. from counterparty_find) narrows the list to one supplier and
-        ``posted_only`` keeps only posted documents; ``amount_totals`` carries exact per-currency sums.
-        """
+        """List company-scoped purchase documents using a validated semantic mapping."""
         return await read_company_documents(
             source_id,
             company_id,
             concept="purchases",
             tool_name="purchase_documents",
+            top=top,
+            skip=skip,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def purchase_documents_filtered(
+        source_id: str,
+        company_id: str,
+        top: int = 50,
+        skip: int = 0,
+        counterparty_ref: str | None = None,
+        posted_only: bool = False,
+    ) -> dict[str, Any]:
+        """List purchase documents with optional supplier and posting-state filters.
+
+        ``counterparty_ref`` (a GUID, e.g. from ``counterparty_find``) narrows the list to one supplier;
+        ``posted_only`` keeps only posted documents. ``amount_totals`` carries exact per-currency sums.
+        """
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="purchases",
+            tool_name="purchase_documents_filtered",
             top=top,
             skip=skip,
             counterparty_ref=counterparty_ref,

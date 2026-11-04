@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from business_ai_gateway.server import (
+    BUSINESS_CAPABILITY_BY_TOOL,
     CHATGPT_READ_ONLY_ANNOTATIONS,
     CHATGPT_SERVER_INSTRUCTIONS,
     build_mcp,
@@ -28,6 +29,55 @@ async def test_all_public_mcp_tools_are_explicitly_read_only_for_chatgpt():
         assert wire["readOnlyHint"] is True, tool.name
         assert wire["destructiveHint"] is False, tool.name
         assert wire["openWorldHint"] is True, tool.name
+
+
+@pytest.mark.asyncio
+async def test_r1_tool_schemas_stay_pinned_and_optional_capabilities_are_r2_additions():
+    tools = {tool.name: tool for tool in await build_mcp(
+        Settings(_env_file=None), SimpleNamespace()
+    ).list_tools()}
+
+    expected = {
+        "onec_find_entities": (
+            {"source_id", "contains", "limit"}, {"source_id"}
+        ),
+        "accounting_balance_and_turnovers": (
+            {"source_id", "company_id", "start_period", "end_period"},
+            {"source_id", "company_id", "start_period", "end_period"},
+        ),
+        "purchase_documents": (
+            {"source_id", "company_id", "top", "skip"}, {"source_id", "company_id"}
+        ),
+    }
+    for name, (properties, required) in expected.items():
+        schema = tools[name].input_schema
+        assert set(schema["properties"]) == properties
+        assert set(schema["required"]) == required
+        assert schema["additionalProperties"] is False
+
+    r2_expected = {
+        "onec_find_entities_with_property_types": (
+            {"source_id", "contains", "limit"}, {"source_id"}, "metadata.read"
+        ),
+        "accounting_balance_and_turnovers_by_account": (
+            {"source_id", "company_id", "start_period", "end_period", "account_code"},
+            {"source_id", "company_id", "start_period", "end_period", "account_code"},
+            "accounting.read",
+        ),
+        "purchase_documents_filtered": (
+            {"source_id", "company_id", "top", "skip", "counterparty_ref", "posted_only"},
+            {"source_id", "company_id"}, "purchases.read",
+        ),
+    }
+    for name, (properties, required, capability) in r2_expected.items():
+        tool = tools[name]
+        assert set(tool.input_schema["properties"]) == properties
+        assert set(tool.input_schema["required"]) == required
+        assert tool.input_schema["additionalProperties"] is False
+        assert BUSINESS_CAPABILITY_BY_TOOL[name] == capability
+        assert tool.annotations is not None
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.destructive_hint is False
 
 
 def test_chatgpt_server_instructions_preserve_policy_boundaries():
