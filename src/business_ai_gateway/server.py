@@ -102,6 +102,37 @@ CHATGPT_READ_ONLY_ANNOTATIONS = ToolAnnotations(
     openWorldHint=True,
 )
 
+BASELINE_R1_TOOL_NAMES = frozenset({
+    "system_status",
+    "sources_list",
+    "source_health",
+    "rsv_metadata",
+    "companies_list",
+    "onec_capabilities",
+    "onec_metadata_summary",
+    "onec_find_entities",
+    "accounting_balance_and_turnovers",
+    "inventory_balance",
+    "inventory_movements",
+    "accounting_posting_rows",
+    "cash_movements",
+    "bank_balance",
+    "receivable_balance",
+    "payable_balance",
+    "sales_documents",
+    "purchase_documents",
+    "onec_read",
+})
+
+R2_ADDITIVE_TOOL_NAMES = frozenset({
+    "external_evidence_manifest",
+    "accounting_balance_by_analytics",
+    "counterparty_find",
+    "receivable_aging",
+    "payable_aging",
+    "counterparty_duplicate_candidates",
+})
+
 CHATGPT_SERVER_INSTRUCTIONS = (
     "ERP_MCP is a read-only ERP/1C data gateway. Use only sources and companies returned for "
     "the authenticated principal. Never invent identifiers, broaden company scope, request or "
@@ -2491,5 +2522,17 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     for required_tool in ("accounting_balance_by_analytics", "counterparty_find"):
         if mcp._tool_manager.get_tool(required_tool) is None:
             raise RuntimeError(f"{required_tool} tool is not registered")
+
+    registered_tool_names = {
+        tool.name for tool in mcp._tool_manager.list_tools()
+    }
+    expected_tool_names = BASELINE_R1_TOOL_NAMES | R2_ADDITIVE_TOOL_NAMES
+    if registered_tool_names != expected_tool_names:
+        missing = sorted(expected_tool_names - registered_tool_names)
+        unexpected = sorted(registered_tool_names - expected_tool_names)
+        raise RuntimeError(
+            f"MCP tool compatibility inventory changed; missing={missing}, unexpected={unexpected}"
+        )
+    mcp.configure_structured_error_tools(R2_ADDITIVE_TOOL_NAMES)
 
     return mcp
