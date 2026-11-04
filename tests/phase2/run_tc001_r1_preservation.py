@@ -235,10 +235,35 @@ def selected_pytest_support_paths() -> list[str]:
     return sorted(selected | support)
 
 
+def git_clean_blob_oid(relative_path: str, content: bytes) -> str | None:
+    """Return the blob OID Git would store after path-specific clean filters."""
+    result = subprocess.run(
+        ["git", "hash-object", f"--path={relative_path}", "--stdin"],
+        cwd=ROOT,
+        input=content,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.decode("ascii", errors="replace").strip() or None
+
+
+def candidate_blob_oid(ref: str, relative_path: str) -> str | None:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{ref}:{relative_path}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
 def candidate_blob_inventory_matches(artifact_hashes: dict[str, dict[str, Any]]) -> bool:
     return bool(artifact_hashes) and all(
-        row.get("candidate_head_blob_sha256") is not None
-        and row.get("working_file_sha256") == row.get("candidate_head_blob_sha256")
+        row.get("candidate_head_blob_oid") is not None
+        and row.get("working_file_git_clean_blob_oid") == row.get("candidate_head_blob_oid")
         for row in artifact_hashes.values()
     )
 
@@ -1274,15 +1299,21 @@ def p12_run_provenance(
     test_artifact_hashes = {}
     for relative_path in test_artifact_paths:
         source_path = ROOT / relative_path
-        current_hash = hashlib.sha256(source_path.read_bytes()).hexdigest() if source_path.is_file() else None
+        working_content = source_path.read_bytes() if source_path.is_file() else None
+        current_hash = hashlib.sha256(working_content).hexdigest() if working_content is not None else None
         candidate_hash = sha256_at(candidate, relative_path)
+        working_blob_oid = (
+            git_clean_blob_oid(relative_path, working_content)
+            if working_content is not None else None
+        )
+        candidate_oid = candidate_blob_oid(candidate, relative_path)
         test_artifact_hashes[relative_path] = {
             "path": relative_path,
             "working_file_sha256": current_hash,
             "candidate_head_blob_sha256": candidate_hash,
-            "working_file_matches_candidate_blob": (
-                candidate_hash is not None and current_hash == candidate_hash
-            ),
+            "working_file_git_clean_blob_oid": working_blob_oid,
+            "candidate_head_blob_oid": candidate_oid,
+            "working_file_matches_candidate_blob": candidate_oid is not None and working_blob_oid == candidate_oid,
         }
     test_artifacts_match = candidate_blob_inventory_matches(test_artifact_hashes)
     head_unchanged = head_after_run == candidate

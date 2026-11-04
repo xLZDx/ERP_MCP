@@ -65,17 +65,49 @@ def test_p12_rejects_modified_selected_test_outside_tc001_module():
     assert unrelated_selected_test != "tests/phase2/test_tc001_r1_preservation.py"
     identities = {
         path: {
-            "working_file_sha256": "same-sha",
-            "candidate_head_blob_sha256": "same-sha",
+            "working_file_git_clean_blob_oid": "same-oid",
+            "candidate_head_blob_oid": "same-oid",
         }
         for path in selected
     }
-    identities[unrelated_selected_test]["working_file_sha256"] = "modified-sha"
+    identities[unrelated_selected_test]["working_file_git_clean_blob_oid"] = "modified-oid"
     matches = TC001_RUNNER.candidate_blob_inventory_matches(identities)
     assert not matches
     checks = _p12_case(selected_test_hashes_match_candidate=matches)
     assert not checks["selected_test_and_support_hashes_match_candidate"]
     assert not all(checks.values())
+
+
+def test_p12_git_clean_blob_identity_normalizes_crlf_but_rejects_content_changes():
+    path = "testbed/fake1c/fixtures/synthetic_profiles.json"
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    candidate_content = TC001_RUNNER.git_blob(candidate, path)
+    assert candidate_content is not None
+    lf_checkout = candidate_content.replace(b"\r\n", b"\n")
+    crlf_checkout = lf_checkout.replace(b"\n", b"\r\n")
+    edited_content = crlf_checkout + b"changed"
+
+    candidate_oid = TC001_RUNNER.candidate_blob_oid(candidate, path)
+    lf_oid = TC001_RUNNER.git_clean_blob_oid(path, lf_checkout)
+    crlf_oid = TC001_RUNNER.git_clean_blob_oid(path, crlf_checkout)
+    edited_oid = TC001_RUNNER.git_clean_blob_oid(path, edited_content)
+
+    assert candidate_oid is not None
+    assert lf_oid == candidate_oid
+    assert crlf_oid == candidate_oid
+    assert edited_oid is not None and edited_oid != candidate_oid
+    assert TC001_RUNNER.candidate_blob_inventory_matches({
+        path: {
+            "working_file_git_clean_blob_oid": crlf_oid,
+            "candidate_head_blob_oid": candidate_oid,
+        },
+    })
+    assert not TC001_RUNNER.candidate_blob_inventory_matches({
+        path: {
+            "working_file_git_clean_blob_oid": edited_oid,
+            "candidate_head_blob_oid": candidate_oid,
+        },
+    })
 
 
 def test_p12_rejects_matching_image_version_without_candidate_build_provenance():
