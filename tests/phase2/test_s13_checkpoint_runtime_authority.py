@@ -179,7 +179,7 @@ class _UnitOnlyLedger:
             "dispatch_intent_id": str(dispatch_intent_id),
             "permit_id": str(permit_id),
             "permit_digest": hashlib.sha256(
-                f"{change_id}:{generation}:41".encode("utf-8")
+                f"{change_id}:{generation}:41".encode()
             ).hexdigest(),
             "checkpoint_seq": 41,
             "signer_key_id": signer_key_id,

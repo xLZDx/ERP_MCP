@@ -6,8 +6,9 @@ import html
 import inspect
 import json
 import re
+from collections.abc import Callable, Mapping
 from datetime import datetime
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlsplit
 from uuid import UUID
 
@@ -82,7 +83,7 @@ def _page(title: str, body: str, status: int = 200, *, extra_headers: list[tuple
                 "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                 "<link rel=\"stylesheet\" href=\"/approval/s16.css\">"
                 f"<title>{html.escape(title)}</title></head><body><main><h1 tabindex=\"-1\">"
-                f"{html.escape(title)}</h1>{body}</main></body></html>").encode("utf-8")
+                f"{html.escape(title)}</h1>{body}</main></body></html>").encode()
     headers = [
         (b"content-type", b"text/html; charset=utf-8"),
         (b"content-length", str(len(document)).encode("ascii")),

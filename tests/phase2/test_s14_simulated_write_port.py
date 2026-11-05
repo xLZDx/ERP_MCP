@@ -12,7 +12,7 @@ import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from threading import Barrier
 
 from business_ai_gateway.phase2.change.proposal import (
@@ -123,7 +123,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
     def _permit(self, ticket: ApplyTicket, *, expires_at: datetime | None = None) -> DispatchPermit:
         return self.authority.issue(
             ticket,
-            expires_at or datetime.now(timezone.utc) + timedelta(minutes=5),
+            expires_at or datetime.now(UTC) + timedelta(minutes=5),
             checkpoint_seq=1,
         )
 
@@ -272,7 +272,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(self.clone.write_count, 0)
 
-        expired = self._permit(ticket, expires_at=datetime.now(timezone.utc) - timedelta(seconds=1))
+        expired = self._permit(ticket, expires_at=datetime.now(UTC) - timedelta(seconds=1))
         with self.assertRaises(SyntheticPortRefusal) as raised:
             await self.port.verify_permit(ticket, expired)
         self.assertEqual(raised.exception.code, "SYNTHETIC_PERMIT_INVALID_OR_EXPIRED")
@@ -466,7 +466,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(SyntheticOutcomeUnknown) as unknown:
             await unknown_port.create_draft(
                 unknown_ticket,
-                unknown_authority.issue(unknown_ticket, datetime.now(timezone.utc) + timedelta(minutes=5)),
+                unknown_authority.issue(unknown_ticket, datetime.now(UTC) + timedelta(minutes=5)),
                 payload_to_dict(_payload()),
             )
         self.assertEqual(unknown.exception.certainty, "UNKNOWN_AFTER_INVOCATION")
@@ -493,7 +493,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(SyntheticOutcomeUnknown) as raised:
                     await port.create_draft(
                         ticket,
-                        authority.issue(ticket, datetime.now(timezone.utc) + timedelta(minutes=5)),
+                        authority.issue(ticket, datetime.now(UTC) + timedelta(minutes=5)),
                         payload_to_dict(_payload(supplier_number=f"SIM-FAIL-{index}")),
                     )
                 self.assertEqual(raised.exception.certainty, "UNKNOWN_AFTER_INVOCATION")
@@ -597,7 +597,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             call_id="SIM-PERMIT-EXPIRES-BEFORE-ADMISSION",
             payload=payload,
         )
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=1)
+        expires_at = datetime.now(UTC) + timedelta(seconds=1)
         permit = self._permit(ticket, expires_at=expires_at)
         preflight_results: list[tuple[bool, datetime]] = []
         original_verify = self.authority.verify
@@ -609,7 +609,7 @@ class SimulatedOneCWritePortFunctionalTests(unittest.IsolatedAsyncioTestCase):
             return verified
 
         def expire_before_admission(*args, **kwargs):
-            remaining = (expires_at - datetime.now(timezone.utc)).total_seconds()
+            remaining = (expires_at - datetime.now(UTC)).total_seconds()
             time.sleep(max(0.01, remaining + 0.05))
             return original_apply(*args, **kwargs)
 

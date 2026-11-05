@@ -6,7 +6,7 @@ does not exercise a real 1C channel, CT14, production evidence, or gate approval
 from __future__ import annotations
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from business_ai_gateway.phase2.change.proposal import (
     DraftPayload,
@@ -95,7 +95,7 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
     def _permit(self, ticket: ApplyTicket) -> DispatchPermit:
         return self.authority.issue(
             ticket,
-            datetime.now(timezone.utc) + timedelta(minutes=5),
+            datetime.now(UTC) + timedelta(minutes=5),
             checkpoint_seq=1,
         )
 

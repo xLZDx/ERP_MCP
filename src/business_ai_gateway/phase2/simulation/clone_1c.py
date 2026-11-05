@@ -24,7 +24,7 @@ import json
 import re
 from collections import deque
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import RLock
 from typing import Final
 
@@ -330,7 +330,7 @@ class SimulatedOneC:
         with self._write_lock:
             if not is_aware_datetime(permit_expires_at):
                 raise CloneRejected("PERMIT_EXPIRY_INVALID")
-            if datetime.now(timezone.utc) >= permit_expires_at:
+            if datetime.now(UTC) >= permit_expires_at:
                 raise CloneRejected("PERMIT_EXPIRED")
             if type(kind) is not ChangeKind or kind not in (ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST):
                 raise CloneRejected("OPERATION_NOT_ALLOWED")

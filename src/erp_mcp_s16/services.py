@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta, timezone
-from typing import Literal, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import UUID, uuid4
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
@@ -59,7 +60,7 @@ def _now(clock, now: datetime | None) -> datetime:
     value = now if now is not None else clock.now()
     if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("CLOCK_NOT_UTC_AWARE")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def _proposal_context(requester, principal_record, target, *, now, expires_at, change_id, preview_digest):

@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
@@ -31,7 +31,7 @@ from .contracts import (
 
 class FakeClock:
     def __init__(self, now: datetime | None = None) -> None:
-        self._now = now or datetime.now(timezone.utc)
+        self._now = now or datetime.now(UTC)
         self._lock = threading.Lock()
 
     def now(self) -> datetime:

@@ -624,7 +624,7 @@ class DispatchGate:
                     if head_seq < apply_event_seq:
                         raise CheckpointUnavailable("HEAD_BEHIND_APPLY_EVENT")
                 permit_digest = hashlib.sha256(
-                    f"{change_id}:{generation}:{checkpoint_seq}".encode("utf-8")
+                    f"{change_id}:{generation}:{checkpoint_seq}".encode()
                 ).hexdigest()
                 if existing.get("permit_digest") != permit_digest:
                     raise PermitRefused("S13_PERMIT_DIGEST_CONFLICT")
@@ -666,7 +666,7 @@ class DispatchGate:
 
             if self._private_writer_schema_enabled:
                 permit_digest = hashlib.sha256(
-                    f"{change_id}:{generation}:{checkpoint_seq}".encode("utf-8")
+                    f"{change_id}:{generation}:{checkpoint_seq}".encode()
                 ).hexdigest()
                 sig = self._signer.sign(permit_signing_payload(permit_digest))
                 if (type(sig) is not str or len(sig) != 128

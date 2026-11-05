@@ -15,7 +15,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Context, Decimal
 from enum import Enum
 from types import MappingProxyType
@@ -81,7 +81,7 @@ def _encode(value: object) -> object:
     if type(value) is datetime:
         if not is_aware_datetime(value):
             raise ValueError("NON_CANONICAL_VALUE")
-        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     if type(value) in (tuple, list):
         return [_encode(v) for v in value]  # type: ignore[attr-defined]
     if type(value) in (frozenset, set):

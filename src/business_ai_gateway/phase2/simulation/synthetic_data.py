@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
@@ -22,7 +22,7 @@ __all__ = ["SyntheticGenerator", "SyntheticUniverse", "populate"]
 
 CURRENCIES: Final = ("TSTA", "TSTB")
 VAT_CODES: Final = ("VAT0", "VAT10", "VAT20")
-_EPOCH_START: Final = datetime(2026, 10, 15, 0, 0, 0, tzinfo=timezone.utc)
+_EPOCH_START: Final = datetime(2026, 10, 15, 0, 0, 0, tzinfo=UTC)
 
 
 def _canon(value: Decimal) -> str:

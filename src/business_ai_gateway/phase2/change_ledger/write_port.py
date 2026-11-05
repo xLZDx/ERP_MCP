@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Awaitable, Callable, ClassVar, Protocol
+from typing import Any, ClassVar, Protocol
 from uuid import UUID
 
 from .uuid_contract import is_canonical_nonzero_uuid
