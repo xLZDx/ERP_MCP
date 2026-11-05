@@ -11,7 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "governance" / "ENGLISH_POLICY_ALLOWLIST.json"
 SCANNED_SUFFIXES = {
