@@ -11,7 +11,7 @@ No story marked VERIFIED or DONE without exact-head end-to-end acceptance.
 | R2-US-003 | S1 | BOUNDED_SCOPE_COMPLETE | US-002 | GPT-PM approved offline SDK contract at e35497f; focused SDK tests 189 passed; canonical TC007-009 remain NOT_RUN; no live registry/runtime connector |
 | R2-US-004 | S1 | BOUNDED_SCOPE_COMPLETE | US-003 | GPT-PM request 69ec1ee8 approved bounded SQL TC010-TC012; 10 disposable PostgreSQL tests passed; commit 72d90a8 pushed to PR #42; product TC010-TC012 remain NOT_RUN and not wired |
 | R2-US-005 | S1 | BOUNDED_SCOPE_COMPLETE | US-004 | GPT-PM request `a6d63e49-665f-4c6c-b8e2-4f19fe183b18` approved bounded SQL TC013–TC015; 5 disposable PostgreSQL/fake tests passed at base `985d6f4`, test delta commit `9cbfbf2` pushed to PR #42; canonical product TC013–TC015 remain NOT_RUN and Gherkin remains `@not_implemented` |
-| R2-US-006 | S1 | NOT_STARTED | US-003 | No exact-head acceptance proof |
+| R2-US-006 | S1 | BOUNDED_SCOPE_COMPLETE | US-003 | GPT-PM request `0d7dfd56-c1d3-4cd2-aee8-5748c6f0b19b` approved bounded TC016–TC018 (TC018 FILE provider only); A21/A22 2 passed and secret/MCP schema tests 3 passed; test commit `0de9a2e` pushed to PR #42; canonical product cases remain NOT_RUN |
 | R2-US-007 | S3 | NOT_STARTED | US-003, US-009, US-017 | No exact-head acceptance proof |
 | R2-US-008 | S3 | IMPLEMENTED_UNVERIFIED | US-010 | Isolated module only; no product acceptance |
 | R2-US-009 | S3 | IN_PROGRESS | US-010 | Failure-vs-drift classification (drift.py) and capture loop (capture_loop.py); PARTIAL completeness path tested; baseline hash in memory only |

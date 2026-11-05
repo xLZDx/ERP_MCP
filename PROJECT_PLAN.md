@@ -1,6 +1,6 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-01
+as_of: 2026-11-05
 active_sprint: FIN
 scope: single_sprint
 approved_sprints: FIN
@@ -8,7 +8,7 @@ operator_approved: true
 ---
 # ERP_MCP - project plan
 
-Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (snapshot 2026-10-31 22:12 Europe/Chisinau, local HEAD f22fa64, origin tip f23a7af) and docs/sdlc/backlog.md. Sprint FIN is the Phase 2 finisher sprint beea27520b33 (10 ordered stories S1.1-S3.3); its task IDs carry the FIN- prefix to avoid clashing with the program sprints S1-S19. Statuses for other sprints are the last recorded ones; the report does not confirm current per-task status, so no task there is marked ACCEPTED. Release 2 is NO_GO and production authorization is NONE.
+Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (historical snapshot at local HEAD f22fa64 / origin tip f23a7af), docs/sdlc/backlog.md, governance/GATE_MANIFEST.json, and current phase-2 task/evidence records. S0 R2-US-001–002 and S1 R2-US-003–006 have bounded evidence recorded through 2026-11-05; their canonical product cases remain NOT_RUN, so their plan state is PARTIAL rather than fully accepted. Sprint FIN is the Phase 2 finisher sprint beea27520b33 (10 ordered stories S1.1-S3.3); its task IDs carry the FIN- prefix to avoid clashing with program sprints S0-S19. For other task rows, the displayed status is the last recorded plan/ledger status, not an independently reconfirmed current acceptance at this HEAD. S11 has sprint-level completion evidence but its child task IDs/count are not enumerated in this plan. Release 2 is NO_GO and production authorization is NONE.
 
 ## Roadmap
 | Sprint | Title | Status | Goal |
@@ -57,18 +57,18 @@ Goal: Baseline.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | BOUNDED_SCOPE_COMPLETE | GPT-PM request 36f90e3f-3df7-46fe-81a8-753d19208f49 adjudicated all three bounded criteria SATISFIED; canonical product TC001–TC003 remain NOT_RUN and Gherkin @not_implemented. TC003 implementation commit 2f606c2f2c773331c11db58de4121c411a90ad35 is pushed to PR #42. This is not product/runtime acceptance. | Codex |  |  |
-| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | BOUNDED_SCOPE_COMPLETE | GPT-PM request 9550946b-a01e-4148-86c0-79db24d9e591 approved the TC004 test-only reuse disposition; TC004–TC006 bounded criteria SATISFIED, with Ferma license recorded as NO_LICENSE_FOUND and reuse limited to private test-only/no redistribution. Canonical product TC004–TC006 remain NOT_RUN and Gherkin @not_implemented. | Codex | R2-US-001 | 427d244 |
+| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | PARTIAL | GPT-PM request 36f90e3f-3df7-46fe-81a8-753d19208f49 adjudicated all three bounded criteria SATISFIED; canonical product TC001–TC003 remain NOT_RUN and Gherkin @not_implemented. TC003 implementation commit 2f606c2f2c773331c11db58de4121c411a90ad35 is pushed to PR #42. This is not product/runtime acceptance. | Codex |  |  |
+| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | PARTIAL | GPT-PM request 9550946b-a01e-4148-86c0-79db24d9e591 approved the TC004 test-only reuse disposition; TC004–TC006 bounded criteria SATISFIED, with Ferma license recorded as NO_LICENSE_FOUND and reuse limited to private test-only/no redistribution. Canonical product TC004–TC006 remain NOT_RUN and Gherkin @not_implemented. | Codex | R2-US-001 | 427d244 |
 
 ## Sprint S1 - Connector contracts
 Goal: Connector contracts.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-003 | Connector engineer uses a bounded read-only SDK | REQ03,26; TC007 typed scope and provenance; TC008 arbitrary URL/SQL/command denied; TC009 unsupported change feed maps to SNAPSHOT_ONLY | BOUNDED_SCOPE_COMPLETE | GPT-PM approved offline SDK TC007–009 at commit e35497f; focused suite 189 passed; product TC007–009 remain NOT_RUN, no live registry or connector | Codex | R2-US-002 | e35497f |
-| R2-US-004 | Administrator defines tenant/company membership | REQ02,27; TC010 permitted company read; TC011 cross-tenant FK/API denied; TC012 company-only grant does not authorize global metadata | PARTIAL | Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; Scope epoch/revocation at port level on fake and real SQL (S1-S4); not wired | Codex | R2-US-003 |  |
-| R2-US-005 | Owner revokes access without stale disclosures | REQ02,27; TC013 revoke blocks jobs/bumps epoch; TC014 revoke before disclosure denies result; TC015 reconnect never restores revoked grants | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof | Codex | R2-US-004 |  |
-| R2-US-006 | Operator runs jobs through an approved secret provider | REQ03,15,27; TC016 no secrets in logs/arguments; TC017 missing credential pair fails preflight without gateway shutdown; TC018 rotation uses the new version | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof | Codex | R2-US-003 |  |
+| R2-US-003 | Connector engineer uses a bounded read-only SDK | REQ03,26; TC007 typed scope and provenance; TC008 arbitrary URL/SQL/command denied; TC009 unsupported change feed maps to SNAPSHOT_ONLY | PARTIAL | GPT-PM approved offline SDK TC007–009 at commit e35497f; focused suite 189 passed; product TC007–009 remain NOT_RUN, no live registry or connector | Codex | R2-US-002 | e35497f |
+| R2-US-004 | Administrator defines tenant/company membership | REQ02,27; TC010 permitted company read; TC011 cross-tenant FK/API denied; TC012 company-only grant does not authorize global metadata | PARTIAL | GPT-PM request 69ec1ee8 approved bounded SQL TC010–TC012; assigned runner: 10 disposable PostgreSQL tests passed; commit 72d90a8 pushed to PR #42; canonical product cases remain NOT_RUN | Codex | R2-US-003 | 72d90a8 |
+| R2-US-005 | Owner revokes access without stale disclosures | REQ02,27; TC013 revoke blocks jobs/bumps epoch; TC014 revoke before disclosure denies result; TC015 reconnect never restores revoked grants | PARTIAL | GPT-PM request a6d63e49 approved bounded SQL TC013–TC015; assigned runner: 5 fake/SQL tests passed on disposable PostgreSQL; commit 9cbfbf2 pushed to PR #42; product scheduler/cache/runtime integration and canonical product cases remain NOT_RUN | Codex | R2-US-004 | 9cbfbf2 |
+| R2-US-006 | Operator runs jobs through an approved secret provider | REQ03,15,27; TC016 no secrets in logs/arguments; TC017 missing credential pair fails preflight without gateway shutdown; TC018 rotation uses the new version | PARTIAL | GPT-PM request 0d7dfd56 approved bounded TC016–TC017 and TC018 for FILE provider only; A21/A22: 2 passed, unit/schema/rotation: 3 passed; test commit 0de9a2e pushed to PR #42; real GCP rotation and canonical product cases remain NOT_RUN | Codex | R2-US-003 | 0de9a2e |
 
 ## Sprint S2 - Ledger and budget
 Goal: Ledger and budget.

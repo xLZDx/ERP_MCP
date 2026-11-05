@@ -217,3 +217,13 @@ At base HEAD `985d6f4f2eb35544e30f666526d4b7fc7a5a2e37`, the exact test-file SHA
 Database-reviewer, security-reviewer and code-reviewer found no actionable findings. GPT-PM request `a6d63e49-665f-4c6c-b8e2-4f19fe183b18` approved the exact test hash for local commit and normal update of PR #42, with 0 BLOCKER, 0 MAJOR and 0 MINOR findings. Test-only commit `9cbfbf252a494c675760d31ea92b91ef8313d002` was pushed normally.
 
 Boundaries: this is bounded SQL evidence only. Canonical product cases TC013–TC015 remain `NOT_RUN` and Gherkin remains `@not_implemented`. Scheduler/product reconnect integration, invalidation of application-memory caches or already disclosed data, and full product acceptance were not established. No product status transition, merge, deployment, release or production authority was granted.
+
+## 2026-11-05 — R2-US-006 bounded secret-provider evidence
+
+At base HEAD `6ecd6e9a984ea5eb8adc816bb67bff2591033556`, the exact test-file hash `55695d308245883a0af9155f3ff8a23ec0c3ae71bc809d2c44371a7adc64d9f3` updated A21 to assert gateway liveness after each rejected credential-reference case and updated A22 to include password values in the gateway-log scan. Assigned e2e-runner executed A21/A22 on a fresh isolated bootstrap-only environment: 2 passed in 7.48s, exit 0; the owned stack was stopped and its containers/network and ready marker were absent afterward. The environment used synthetic values only.
+
+The related assigned unit command for `tests/test_secrets.py` and the strict MCP schema contract returned 3 passed in 0.43s. This covers file-provider rotation and public argument schema; source inspection confirms GCP requests the latest version, but no real GCP rotation was performed. No real or production secret was used.
+
+Code-reviewer and security-reviewer found no actionable findings in the final test delta. GPT-PM request `0d7dfd56-c1d3-4cd2-aee8-5748c6f0b19b` closed the previous A22 password-log finding and approved bounded TC016–TC017 plus TC018 for the FILE provider only; it authorized local commit and normal PR #42 update. Test-only commit `0de9a2e4e6f815e8db9bdc3dbe8336a8dc35da54` was pushed normally.
+
+Boundaries: internal R2-US-006 status may be `BOUNDED_SCOPE_COMPLETE`, but canonical product TC016–TC018 remain `NOT_RUN` and Gherkin remains `@not_implemented`. GCP rotation, production credential handling, runtime integration, merge, release and production authority are not established.
