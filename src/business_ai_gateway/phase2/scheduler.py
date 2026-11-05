@@ -31,9 +31,10 @@ transition); the scheduler-side ``not_before`` gate is therefore never earlier t
 Restart: the scheduler state (source state machine, pause count, failure counter, poisoned set and
 retry gates) lives in memory. ``export_state()`` returns a ``SchedulerState`` snapshot and the
 constructor / ``import_state()`` restores it. PERSISTING THE SNAPSHOT IS THE CALLER'S DUTY; a
-scheduler built without a snapshot is a cold start (ACTIVE, zero counters). Poison is additionally
-derived from the port: a FAILED job whose ``last_error`` starts with ``POISONED:`` is poisoned even
-if the local set was lost.
+scheduler built without a snapshot starts ACTIVE with zero counters but remains fenced until the
+caller completes the scope/cursor revalidation handshake. Poison is additionally derived from the
+port: a FAILED job whose ``last_error`` starts with ``POISONED:`` is poisoned even if the local set
+was lost.
 """
 from __future__ import annotations
 
@@ -47,7 +48,7 @@ from enum import StrEnum
 from typing import Final
 from uuid import UUID
 
-from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget
+from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget, WorkClass
 from .drift import CaptureOutcomeKind, FailureCounter
 from .ports import CursorOutboxPort, JobQueuePort, LedgerPort, PortError, Scope
 from .resnapshot import ResnapshotTracker
@@ -116,6 +117,7 @@ class SourceStateMachine:
         self.state = state
         self.reason = ""
         self.pause_count = 0
+        self.resume_validation_required = False
 
     def _go(self, target: SourceState, reason: str) -> None:
         if (self.state, target) not in _ALLOWED:
@@ -134,6 +136,7 @@ class SourceStateMachine:
         if not by or not by.strip():
             raise IllegalTransition("RESUME_REQUIRES_EXPLICIT_ACTOR")
         self._go(SourceState.ACTIVE, f"resumed by {by}")
+        self.resume_validation_required = True
 
 
 # --------------------------------------------------------------------------- scheduler
@@ -205,7 +208,7 @@ class SchedulerConfig:
 
 @dataclass(frozen=True, slots=True)
 class SchedulerState:
-    """Persistable snapshot of the in-memory scheduler state (the caller stores it)."""
+    """Persistable, source-bound snapshot of in-memory scheduler state (caller stores it)."""
     source_state: SourceState = SourceState.ACTIVE
     reason: str = ""
     pause_count: int = 0
@@ -213,6 +216,10 @@ class SchedulerState:
     failure_threshold: int = 3
     poisoned: frozenset[UUID] = frozenset()
     not_before: tuple[tuple[UUID, datetime], ...] = ()
+    # None identifies snapshots produced before this field existed; import fails closed.
+    resume_validation_required: bool | None = None
+    # Snapshots are only valid for the exact tenant/source pair that produced them.
+    scope: Scope | None = None
 
 
 class LeaseHandle:
@@ -269,6 +276,9 @@ class SourceScheduler:
         self._clock, self._jitter = clock, jitter_source
         self.config = config or SchedulerConfig()
         self.machine = machine or SourceStateMachine()
+        # Missing state cannot prove that this is a first-ever start rather than a restart.
+        # Require the same scope/cursor handshake used by resume before any job can execute.
+        self.machine.resume_validation_required = True
         self.counter = counter or FailureCounter()
         self._not_before: dict[UUID, datetime] = {}
         self._deferrals: dict[UUID, int] = {}
@@ -283,17 +293,25 @@ class SourceScheduler:
         return SchedulerState(
             self.machine.state, self.machine.reason, self.machine.pause_count,
             self.counter.consecutive_failures, self.counter.threshold,
-            frozenset(self._poisoned), tuple(sorted(self._not_before.items())))
+            frozenset(self._poisoned), tuple(sorted(self._not_before.items())),
+            self.machine.resume_validation_required, self._scope)
 
     def import_state(self, state: SchedulerState) -> None:
         """Restore a persisted snapshot (QUARANTINED stays QUARANTINED).
 
-        The input is validated completely before anything is changed (``ValueError`` with the fixed
-        code ``SCHEDULER_STATE_INVALID``). Poison is MERGED with the live local set: a stale
-        snapshot never un-poisons a job.
+        The input is validated completely before anything is changed. A snapshot without the exact
+        source scope is rejected so pause, poison and retry state cannot bleed across sources.
+        Every imported snapshot also requires fresh scope/cursor revalidation; persisted validation
+        is not proof that permissions or cursors are still current after a restart. Poison is merged
+        with the live local set, so a stale same-source snapshot never un-poisons a job.
         """
         if not isinstance(state, SchedulerState) or not isinstance(state.source_state, SourceState):
             raise TypeError("SCHEDULER_STATE_INVALID")
+        if not isinstance(getattr(state, "scope", None), Scope) or state.scope != self._scope:
+            raise ValueError("SCHEDULER_STATE_SCOPE_MISMATCH")
+        resume_validation_required = getattr(state, "resume_validation_required", None)
+        if resume_validation_required is not None and type(resume_validation_required) is not bool:
+            raise ValueError("SCHEDULER_STATE_INVALID")
         for count in (state.pause_count, state.consecutive_failures, state.failure_threshold):
             if type(count) is not int or count < 0:
                 raise ValueError("SCHEDULER_STATE_INVALID")
@@ -312,6 +330,9 @@ class SourceScheduler:
             raise ValueError("SCHEDULER_STATE_INVALID") from None
         machine = SourceStateMachine(state.source_state)
         machine.reason, machine.pause_count = str(state.reason), state.pause_count
+        # A persisted `False` can go stale while the scheduler is stopped. Every restore must
+        # revalidate scope and cursors before work, including snapshots previously marked current.
+        machine.resume_validation_required = True
         self.machine, self.counter = machine, counter
         self._poisoned |= poisoned
         self._not_before = gates
@@ -328,7 +349,7 @@ class SourceScheduler:
         return await self._port.reap_expired_jobs(self._actor, self._scope)
 
     def resume(self, by: str) -> None:
-        """Explicit operator resume; also clears the consecutive-failure counter."""
+        """Request resume; jobs remain fenced until ``resume_revalidated`` succeeds."""
         self.machine.resume(by)
         self.counter = FailureCounter(0, self.counter.threshold)
 
@@ -342,7 +363,14 @@ class SourceScheduler:
         """
         required = await tracker.revalidate(
             ledger, cursors, self._actor, self._scope, connection_ids, recorded_epoch)
-        self.resume(by)
+        if self.machine.state is not SourceState.ACTIVE:
+            self.machine.resume(by)
+        elif not self.machine.resume_validation_required:
+            raise IllegalTransition("RESUME_REVALIDATION_NOT_REQUIRED")
+        elif not by or not by.strip():
+            raise IllegalTransition("RESUME_REQUIRES_EXPLICIT_ACTOR")
+        self.machine.resume_validation_required = False
+        self.counter = FailureCounter(0, self.counter.threshold)
         return required
 
     def _delay(self, n: int) -> timedelta:
@@ -352,6 +380,7 @@ class SourceScheduler:
     def _forget(self, job_id: UUID) -> None:
         self._not_before.pop(job_id, None)
         self._deferrals.pop(job_id, None)
+        self._budget.cancel_waiter(trusted_backend_id=self._backend, waiter_id=job_id)
 
     def _gate_for_abandoned(self, job_id: UUID, handle: LeaseHandle, own_at: datetime) -> datetime:
         """Gate never earlier than the instant the port requeues the abandoned lease."""
@@ -364,21 +393,25 @@ class SourceScheduler:
         return min(self.config.poison_after, max_attempts)
 
     # ------------------------------------------------------------------ run
-    async def run_job(self, job_id: UUID, work: Work) -> RunResult:
+    async def run_job(self, job_id: UUID, work: Work,
+                      work_class: WorkClass = WorkClass.CAPTURE) -> RunResult:
         if job_id in self._poisoned:
             return RunResult(RunStatus.POISONED, detail="already poisoned")
         if self.machine.state is not SourceState.ACTIVE:
             return RunResult(RunStatus.SOURCE_NOT_ACTIVE, detail=self.machine.state.value)
+        if self.machine.resume_validation_required:
+            return RunResult(RunStatus.SOURCE_NOT_ACTIVE, detail="RESUME_REVALIDATION_REQUIRED")
         gate = self._not_before.get(job_id)
         if gate is not None and self._clock() < gate:
             return RunResult(RunStatus.NOT_YET, gate)
         with ExitStack() as stack:
             try:
-                stack.enter_context(self._budget.reserve(trusted_backend_id=self._backend))
+                stack.enter_context(self._budget.reserve(
+                    trusted_backend_id=self._backend, work_class=work_class, waiter_id=job_id))
             except BackendCapacityError as exc:
-                if str(exc) != "BACKEND_CAPACITY_EXCEEDED":
+                if str(exc) not in {"BACKEND_CAPACITY_EXCEEDED", "BACKEND_WAIT_QUEUE_FULL"}:
                     raise
-                return self._defer(job_id)
+                return self._defer(job_id, str(exc))
             # Reap separately: a JOB_UNAVAILABLE acquire aborts its own transaction, which would
             # roll back a reap done inside it and leave an abandoned lease RUNNING forever.
             try:
@@ -419,13 +452,13 @@ class SourceScheduler:
                 return await self._succeeded(job_id, handle, outcome)
             return await self._failed(job_id, handle, outcome, outcome.value)
 
-    def _defer(self, job_id: UUID) -> RunResult:
+    def _defer(self, job_id: UUID, reason: str = "BACKEND_CAPACITY_EXCEEDED") -> RunResult:
         n = self._deferrals.get(job_id, 0)
         self._deferrals[job_id] = n + 1
         delay = min(self._delay(n), timedelta(seconds=self.config.deferral_cap_seconds))
         at = self._clock() + delay
         self._not_before[job_id] = at
-        return RunResult(RunStatus.DEFERRED_BUDGET, at, "BACKEND_CAPACITY_EXCEEDED",
+        return RunResult(RunStatus.DEFERRED_BUDGET, at, reason,
                          deferrals=n + 1, starved=n + 1 >= self.config.deferral_alert_threshold)
 
     async def _unavailable(self, job_id: UUID) -> RunResult:
