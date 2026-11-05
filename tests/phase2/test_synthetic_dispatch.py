@@ -6,7 +6,12 @@ import hashlib
 import unittest
 from uuid import UUID
 
-from business_ai_gateway.phase2.change.proposal import DraftPayload, Line, canonical_json, payload_to_dict
+from business_ai_gateway.phase2.change.proposal import (
+    DraftPayload,
+    Line,
+    canonical_json,
+    payload_to_dict,
+)
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.simulation.clone_1c import encode_payload
@@ -18,7 +23,6 @@ from business_ai_gateway.phase2.simulation.synthetic_dispatch import (
     ReceiptPersistenceUnknown,
     SyntheticDispatchCoordinator,
 )
-
 
 SCOPE = Scope("tenant-a", "company-a")
 CHANGE_ID = UUID("8ebc1df0-6a54-4d30-989d-59b2bef44390")

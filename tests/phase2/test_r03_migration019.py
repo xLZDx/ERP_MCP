@@ -21,12 +21,10 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-
-from _pg_harness import FILES, disposable_cluster, seed_basic, throwaway_db
 from _ed25519_fixtures import pub_hex, sign_hex
+from _pg_harness import FILES, disposable_cluster, seed_basic, throwaway_db
 from r03_application_e2e import run_api_boundary
-from test_change_ledger_sql import L, SIGN_KEYS, T, C, _setup
-
+from test_change_ledger_sql import SIGN_KEYS, C, L, T, _setup
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_019 = ROOT / "db" / "phase2" / "019_ed25519_action_only.sql"
@@ -267,7 +265,7 @@ async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> Non
     assert any(row["evidence_id"] == str(observation) and row["signer_key_id"] == "vk-legacy-wrk"
                for row in evidence)
 
-    cid, valid_cosign, legacy_obs = fixtures["observation"]
+    cid, valid_cosign, _legacy_obs = fixtures["observation"]
     before_state = (await led.rec(cid))["execution_state"]
     await _expect_error(led.call("clt_dave", "operator_resolve", cid, valid_cosign, True, False),
                         "COMPLETION_PROOF_MISSING")
@@ -275,7 +273,7 @@ async def _assert_021_consumers(conn: asyncpg.Connection, fixtures: dict) -> Non
     assert await conn.fetchval("SELECT consumed_at IS NULL FROM change_ledger.witness_cosigns "
                                "WHERE cosign_id=$1", valid_cosign)
 
-    cid, cosign_id, legacy_completion = fixtures["cosign"]
+    cid, cosign_id, _legacy_completion = fixtures["cosign"]
     before_state = (await led.rec(cid))["execution_state"]
     await _expect_error(led.call("clt_dave", "operator_resolve", cid, cosign_id, False, False),
                         "COMPLETION_PROOF_MISSING")
@@ -538,29 +536,31 @@ async def main() -> int:
     # This test owns the cluster for its complete lifetime; never attach to a pre-existing DB.
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     try:
-        async with disposable_cluster() as (dsn, container_name, _token):
-            async with throwaway_db(dsn, migrate=False) as db:
-                db.conn = await db.connect()
-                for name in FILES[:14]:
-                    await _apply_migration(db.conn, ROOT / "db" / "phase2" / name)
-                await seed_basic(db.conn)
-                fixtures = await _seed_legacy_consumer_cases(db.conn)
-                for name in FILES[14:]:
-                    await _apply_migration(db.conn, ROOT / "db" / "phase2" / name)
-                fixtures["led"].keyed = False
-                await _install_post_cutover_ed25519_test_keys(db.conn)
-                await _apply_019(db.conn)
-                await _apply_migration(db.conn, MIGRATION_020)
-                await _apply_migration(db.conn, MIGRATION_021)
-                version = await db.conn.fetchval(
-                    "SELECT count(*) FROM living.schema_migrations WHERE version='019'")
-                assert version == 1, f"migration 019 record count is {version}, expected 1"
-                for migration in ("020", "021"):
-                    count = await db.conn.fetchval(
-                        "SELECT count(*) FROM living.schema_migrations WHERE version=$1", migration)
-                    assert count == 1, f"migration {migration} record count is {count}, expected 1"
-                await _assert_021_consumers(db.conn, fixtures)
-                await _run_scenarios(db.conn, setup=False)
+        async with (
+            disposable_cluster() as (dsn, container_name, _token),
+            throwaway_db(dsn, migrate=False) as db,
+        ):
+            db.conn = await db.connect()
+            for name in FILES[:14]:
+                await _apply_migration(db.conn, ROOT / "db" / "phase2" / name)
+            await seed_basic(db.conn)
+            fixtures = await _seed_legacy_consumer_cases(db.conn)
+            for name in FILES[14:]:
+                await _apply_migration(db.conn, ROOT / "db" / "phase2" / name)
+            fixtures["led"].keyed = False
+            await _install_post_cutover_ed25519_test_keys(db.conn)
+            await _apply_019(db.conn)
+            await _apply_migration(db.conn, MIGRATION_020)
+            await _apply_migration(db.conn, MIGRATION_021)
+            version = await db.conn.fetchval(
+                "SELECT count(*) FROM living.schema_migrations WHERE version='019'")
+            assert version == 1, f"migration 019 record count is {version}, expected 1"
+            for migration in ("020", "021"):
+                count = await db.conn.fetchval(
+                    "SELECT count(*) FROM living.schema_migrations WHERE version=$1", migration)
+                assert count == 1, f"migration {migration} record count is {count}, expected 1"
+            await _assert_021_consumers(db.conn, fixtures)
+            await _run_scenarios(db.conn, setup=False)
     except pytest.skip.Exception as unavailable:
         print(f"NOT_RUN: {unavailable}")
         return 0
