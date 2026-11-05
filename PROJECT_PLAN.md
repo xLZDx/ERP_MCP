@@ -57,8 +57,8 @@ Goal: Baseline.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | IN_PROGRESS | Historical ledger IN_PROGRESS, current status unconfirmed; Supporting tests passed at 3af73797 (spec catalog 13, mapping/assembly/TC003 7); product TC001-TC003 remain NOT_RUN; GPT-PM read-only APPROVE of the uncommitted delta is not product acceptance | Codex |  |  |
-| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof | Codex | R2-US-001 |  |
+| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | BOUNDED_SCOPE_COMPLETE | GPT-PM request 36f90e3f-3df7-46fe-81a8-753d19208f49 adjudicated all three bounded criteria SATISFIED; canonical product TC001–TC003 remain NOT_RUN and Gherkin @not_implemented. TC003 implementation commit 2f606c2f2c773331c11db58de4121c411a90ad35 is pushed to PR #42. This is not product/runtime acceptance. | Codex |  |  |
+| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | IN_PROGRESS | Authorized by GPT-PM request 36f90e3f-3df7-46fe-81a8-753d19208f49 after bounded-scope completion of R2-US-001; current step is verify each TC004–TC006 against repository evidence before any implementation | Codex | R2-US-001 |  |
 
 ## Sprint S1 - Connector contracts
 Goal: Connector contracts.
