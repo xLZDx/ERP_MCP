@@ -12,10 +12,12 @@ import pytest
 from _approval_envelope import FIXTURE_PAYLOAD
 from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails
-from test_change_ledger_sql import DIGEST, C, T, led
+from test_change_ledger_sql import DIGEST, C, T
+from test_change_ledger_sql import led as _led_fixture
 
 from business_ai_gateway.phase2.change import canonical_json
 
+led = _led_fixture
 pytestmark = pytest.mark.integration
 
 RECEIPT_KEY = "vk-s14-wire"

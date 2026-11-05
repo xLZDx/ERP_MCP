@@ -28,9 +28,12 @@ from test_s13_current_turn_sql import (
     L,
     _ledger_snapshot,
     _OwnedClusterDsn,
-    ledger,
+)
+from test_s13_current_turn_sql import (
+    ledger as _ledger_fixture,
 )
 
+ledger = _ledger_fixture
 pytestmark = pytest.mark.integration
 
 T = "T1"
