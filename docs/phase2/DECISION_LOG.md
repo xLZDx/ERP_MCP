@@ -209,3 +209,11 @@ At base HEAD `f5f210864ac40101f77ba17d69c4a7cf2e759d1b`, Codex added checksum-gu
 Internal database-reviewer, security-reviewer and code-reviewer found no actionable findings. GPT-PM request `69ec1ee8-e9c1-4e3f-9f44-5a5f8e36dfbe` approved the bounded SQL criteria TC010–TC012 for commit and normal PR update, with 0 BLOCKER, 0 MAJOR and one non-blocking MINOR: add direct negative coverage for a different company row under the same source. This test is recorded as roadmap work and does not invalidate the approved candidate.
 
 Boundaries: canonical product TC010–TC012 remain `NOT_RUN`; Gherkin remains `@not_implemented`. The code is not wired to product runtime and does not establish full product acceptance, merge, deployment, release or production authority.
+
+## 2026-11-05 — R2-US-005 bounded revocation SQL completion
+
+At base HEAD `985d6f4f2eb35544e30f666526d4b7fc7a5a2e37`, the exact test-file SHA-256 `7a0003d401209d481679f75222208e197e9d6214e9935eae344af04852a71140` added focused TC013–TC015 coverage in `tests/phase2/test_ports_contract.py`. The assigned e2e-runner executed the three selected tests: 5 passed in 5.20s, exit 0, using an invocation-owned loopback PostgreSQL 16 container; the container was absent after cleanup. TC013 covers revoke/epoch bump and rejection of a pre-revoke queued job after explicit regrant; TC014 covers denial of a subsequent SQL read after revocation; TC015 covers a fresh SQL connection failing to restore a deleted persistent grant.
+
+Database-reviewer, security-reviewer and code-reviewer found no actionable findings. GPT-PM request `a6d63e49-665f-4c6c-b8e2-4f19fe183b18` approved the exact test hash for local commit and normal update of PR #42, with 0 BLOCKER, 0 MAJOR and 0 MINOR findings. Test-only commit `9cbfbf252a494c675760d31ea92b91ef8313d002` was pushed normally.
+
+Boundaries: this is bounded SQL evidence only. Canonical product cases TC013–TC015 remain `NOT_RUN` and Gherkin remains `@not_implemented`. Scheduler/product reconnect integration, invalidation of application-memory caches or already disclosed data, and full product acceptance were not established. No product status transition, merge, deployment, release or production authority was granted.
