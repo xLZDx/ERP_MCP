@@ -1,5 +1,6 @@
 """Offline specification quality checks; NOT product or native-1C acceptance."""
 import hashlib
+import importlib.util
 import json
 import re
 import zipfile
@@ -13,10 +14,19 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[2]
 PKG = ROOT / "docs" / "phase2" / "spec-v0.1" / "ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08"
 ZIP = ROOT / "docs" / "phase2" / "artifacts" / "ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08.zip"
+SPEC_BUILDER_PATH = ROOT / "scripts" / "phase2" / "build_spec_bundle.py"
 
 
 def load(rel):
     return yaml.safe_load((PKG / rel).read_text(encoding="utf-8"))
+
+
+def load_spec_builder():
+    spec = importlib.util.spec_from_file_location("phase2_spec_bundle_builder", SPEC_BUILDER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 @pytest.fixture(scope="module")
@@ -43,6 +53,103 @@ def test_all_requirements_traced(catalogs):
 def test_not_run_is_explicit(catalogs):
     _, _, cases = catalogs
     assert all(c["actual_status"] == "NOT_RUN" for c in cases)
+
+
+def test_tc001_bounded_acceptance_is_separate_from_product_status(catalogs):
+    _, _, cases = catalogs
+    tc001 = [case for case in cases if case["id"] == "R2-TC-001"]
+    assert len(tc001) == 1
+    tc001 = tc001[0]
+    assert tc001["actual_status"] == "NOT_RUN"
+    bounded = tc001["bounded_acceptance"]
+    assert bounded == load("docs/11_TC001_BOUNDED_ACCEPTANCE.yaml")["bounded_acceptance"]
+    assert bounded["status"] == "SATISFIED"
+    assert bounded["criterion"] == "R1 unchanged"
+    assert bounded["scope"] == "exercised R1 public MCP compatibility only; not full R1 equivalence"
+    assert bounded["exact_head"] == "5336867aab8070139e61fb39b6b4ba73a9ac59b0"
+    assert bounded["evidence_sha256"] == "6669c29217d5729633c71d694912ee278b3ca8486b7804469f50da2967001853"
+    assert bounded["gpt_pm_decision_request_id"] == "3f51d1d2-49dc-49d5-871c-f916405d35d4"
+    assert "does not change the canonical product_status from NOT_RUN" in bounded["transition_rule"]
+    assert "Does not establish full R1 behavioral equivalence." in bounded["limitations"]
+    assert "Does not establish production acceptance, deployment, merge, or release authority." in bounded["limitations"]
+    assert bounded["source_evidence_path"] == "artifacts/phase2/r2-tc001-5336867-evidence.json"
+    assert not Path(bounded["evidence_path"]).is_absolute()
+    assert ".." not in Path(bounded["evidence_path"]).parts
+    assert all(
+        "bounded_acceptance" not in case
+        for case in cases
+        if case["id"] != "R2-TC-001"
+    )
+
+    evidence_path = PKG / bounded["evidence_path"]
+    evidence_bytes = evidence_path.read_bytes()
+    assert hashlib.sha256(evidence_bytes).hexdigest() == bounded["evidence_sha256"]
+    evidence = json.loads(evidence_bytes)
+    assert evidence["scenario"] == "R2-TC-001"
+    assert evidence["candidate"]["commit"] == bounded["exact_head"]
+    assert evidence["scope"] == bounded["scope"]
+    assert evidence["differential_result"] == "PASS"
+    assert evidence["product_acceptance_status"] == "OPEN_PENDING_GPT_PM_ADJUDICATION"
+    assert evidence["test_harness"]["status"] == "PASS"
+    assert evidence["test_harness"]["negative_controls"] == "PASS"
+    assert len(evidence["negative_controls"]) == 17
+    assert all(evidence["negative_controls"].values())
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("status", "OPEN"),
+        ("gpt_pm_decision_request_id", "00000000-0000-0000-0000-000000000000"),
+        ("criterion", "Full R1 behavioral equivalence"),
+        ("scope", "full R1 equivalence and production acceptance"),
+    ],
+)
+def test_tc001_decision_loader_rejects_bounded_contract_mutations(field, value, tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision_path = ROOT / "docs" / "phase2" / "TC001_BOUNDED_ACCEPTANCE.yaml"
+    decision = yaml.safe_load(decision_path.read_text(encoding="utf-8"))
+    decision["bounded_acceptance"][field] = value
+    mutated_path = tmp_path / "mutated-decision.yaml"
+    mutated_path.write_text(yaml.safe_dump(decision, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(builder, "TC001_BOUNDED_DECISION", mutated_path)
+
+    with pytest.raises(ValueError):
+        builder.load_tc001_bounded_acceptance()
+
+
+def test_tc001_decision_loader_rejects_unexpected_bounded_metadata(tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision_path = ROOT / "docs" / "phase2" / "TC001_BOUNDED_ACCEPTANCE.yaml"
+    decision = yaml.safe_load(decision_path.read_text(encoding="utf-8"))
+    decision["bounded_acceptance"]["unreviewed_metadata"] = "must not be silently accepted"
+    mutated_path = tmp_path / "unexpected-metadata.yaml"
+    mutated_path.write_text(yaml.safe_dump(decision, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(builder, "TC001_BOUNDED_DECISION", mutated_path)
+
+    with pytest.raises(ValueError, match="TC001_BOUNDED_DECISION_FIELDS_MISMATCH"):
+        builder.load_tc001_bounded_acceptance()
+
+
+@pytest.mark.parametrize(
+    "source_path",
+    [
+        "../docs/phase2/TC001_BOUNDED_ACCEPTANCE.yaml",
+        "artifacts/phase2/../../docs/phase2/TC001_BOUNDED_ACCEPTANCE.yaml",
+    ],
+)
+def test_tc001_source_evidence_resolver_rejects_traversal(source_path):
+    builder = load_spec_builder()
+    with pytest.raises(ValueError):
+        builder.resolve_tc001_source_evidence(source_path)
+
+
+def test_tc001_source_evidence_resolver_rejects_absolute_outside_path(tmp_path):
+    builder = load_spec_builder()
+    outside_path = tmp_path / "outside-evidence.json"
+    outside_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError):
+        builder.resolve_tc001_source_evidence(outside_path)
 
 
 def test_three_distinct_kinds_per_story(catalogs):

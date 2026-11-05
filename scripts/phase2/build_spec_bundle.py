@@ -20,6 +20,28 @@ DOCS = ROOT / "docs" / "phase2"
 NAME = "ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08"
 PACKAGE = DOCS / "spec-v0.1" / NAME
 ARCHIVE = DOCS / "artifacts" / f"{NAME}.zip"
+TC001_BOUNDED_DECISION = DOCS / "TC001_BOUNDED_ACCEPTANCE.yaml"
+TC001_BOUNDED_EXPECTED = {
+    "case_id": "R2-TC-001",
+    "product_status": "NOT_RUN",
+    "status": "SATISFIED",
+    "criterion": "R1 unchanged",
+    "scope": "exercised R1 public MCP compatibility only; not full R1 equivalence",
+    "exact_head": "5336867aab8070139e61fb39b6b4ba73a9ac59b0",
+    "source_evidence_path": "artifacts/phase2/r2-tc001-5336867-evidence.json",
+    "evidence_path": "evidence/r2-tc001-5336867-evidence.json",
+    "evidence_sha256": "6669c29217d5729633c71d694912ee278b3ca8486b7804469f50da2967001853",
+    "gpt_pm_decision_request_id": "3f51d1d2-49dc-49d5-871c-f916405d35d4",
+    "transition_rule": (
+        "The bounded acceptance may be SATISFIED only when the exact-HEAD differential "
+        "evidence is PASS and the correlated GPT-PM adjudication accepts this bounded "
+        "criterion. This does not change the canonical product_status from NOT_RUN."
+    ),
+    "limitations": [
+        "Does not establish full R1 behavioral equivalence.",
+        "Does not establish production acceptance, deployment, merge, or release authority.",
+    ],
+}
 
 DOC_MAP = {
     "TDD_PHASE2_RU.md": "docs/01_TDD_RU.md",
@@ -46,7 +68,85 @@ def save(rel: str, value: str | bytes) -> None:
         target.write_text(value, encoding="utf-8", newline="\n")
 
 
-def make_data():
+def validate_tc001_bounded_fields(bounded: dict) -> None:
+    if not isinstance(bounded, dict):
+        raise ValueError("TC001_BOUNDED_DECISION_MISSING_ACCEPTANCE")
+    expected_fields = set(TC001_BOUNDED_EXPECTED) - {"case_id", "product_status"}
+    if set(bounded) != expected_fields:
+        raise ValueError("TC001_BOUNDED_DECISION_FIELDS_MISMATCH")
+    for field in (
+        "status", "criterion", "scope", "exact_head", "source_evidence_path",
+        "evidence_path", "evidence_sha256", "gpt_pm_decision_request_id",
+        "transition_rule", "limitations",
+    ):
+        if bounded.get(field) != TC001_BOUNDED_EXPECTED[field]:
+            raise ValueError(f"TC001_BOUNDED_DECISION_{field.upper()}_MISMATCH")
+
+
+def resolve_tc001_source_evidence(source_ref: str | Path) -> Path:
+    source_ref = Path(source_ref)
+    if source_ref.is_absolute() or ".." in source_ref.parts or not source_ref.parts:
+        raise ValueError("TC001_BOUNDED_SOURCE_EVIDENCE_PATH_INVALID")
+    try:
+        evidence_root = (ROOT / "artifacts" / "phase2").resolve(strict=True)
+        evidence_path = (ROOT / source_ref).resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("TC001_BOUNDED_SOURCE_EVIDENCE_NOT_FOUND") from exc
+    try:
+        evidence_path.relative_to(evidence_root)
+    except ValueError as exc:
+        raise ValueError("TC001_BOUNDED_SOURCE_EVIDENCE_OUTSIDE_ARTIFACTS_PHASE2") from exc
+    if not evidence_path.is_file():
+        raise ValueError("TC001_BOUNDED_SOURCE_EVIDENCE_NOT_FILE")
+    return evidence_path
+
+
+def load_tc001_bounded_acceptance() -> tuple[dict, bytes]:
+    decision = yaml.safe_load(TC001_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    if not isinstance(decision, dict) or set(decision) != {
+        "schema_version", "case_id", "product_status", "bounded_acceptance",
+    } or decision.get("schema_version") != 1:
+        raise ValueError("TC001_BOUNDED_DECISION_SCHEMA_MISMATCH")
+    if decision.get("case_id") != TC001_BOUNDED_EXPECTED["case_id"]:
+        raise ValueError("TC001_BOUNDED_DECISION_CASE_ID_MISMATCH")
+    if decision.get("product_status") != TC001_BOUNDED_EXPECTED["product_status"]:
+        raise ValueError("TC001_BOUNDED_DECISION_MUST_PRESERVE_PRODUCT_NOT_RUN")
+    bounded = decision.get("bounded_acceptance")
+    validate_tc001_bounded_fields(bounded)
+
+    evidence_path = resolve_tc001_source_evidence(bounded["source_evidence_path"])
+
+    package_ref = Path(bounded["evidence_path"])
+    if package_ref.is_absolute() or ".." in package_ref.parts or not package_ref.parts:
+        raise ValueError("TC001_BOUNDED_EVIDENCE_PATH_MUST_STAY_IN_PACKAGE")
+    evidence_bytes = evidence_path.read_bytes()
+    if hashlib.sha256(evidence_bytes).hexdigest() != bounded["evidence_sha256"]:
+        raise ValueError("TC001_BOUNDED_EVIDENCE_SHA256_MISMATCH")
+    evidence = json.loads(evidence_bytes)
+    inventory = evidence.get("tool_inventory", {})
+    negative_controls = evidence.get("negative_controls", {})
+    if (
+        evidence.get("scenario") != "R2-TC-001"
+        or evidence.get("baseline", {}).get("requested_ref") != "57eb5b0696063237a43f5d1baf0a646278f5d832"
+        or evidence.get("baseline", {}).get("commit") != "57eb5b0696063237a43f5d1baf0a646278f5d832"
+        or evidence.get("candidate", {}).get("requested_ref") != bounded["exact_head"]
+        or evidence.get("candidate", {}).get("commit") != bounded["exact_head"]
+        or evidence.get("scope") != bounded["scope"]
+        or evidence.get("differential_result") != "PASS"
+        or evidence.get("product_acceptance_status") != "OPEN_PENDING_GPT_PM_ADJUDICATION"
+        or evidence.get("test_harness", {}).get("status") != "PASS"
+        or evidence.get("test_harness", {}).get("negative_controls") != "PASS"
+        or len(negative_controls) != 17
+        or not all(negative_controls.values())
+        or len(inventory.get("baseline_r1", [])) != 19
+        or inventory.get("candidate_missing") != []
+        or len(inventory.get("candidate_additions", [])) != 9
+    ):
+        raise ValueError("TC001_BOUNDED_EVIDENCE_CONTENT_MISMATCH")
+    return bounded, evidence_bytes
+
+
+def make_data(bounded_acceptance: dict | None = None):
     tdd = (DOCS / "TDD_PHASE2_RU.md").read_text(encoding="utf-8")
     stories_md = (DOCS / "STORIES_PHASE2_RU.md").read_text(encoding="utf-8")
     requirements = []
@@ -82,6 +182,14 @@ def make_data():
                 "story": story_id, "requirements": req_ids, "kind": ["positive", "negative", "boundary_recovery"][j],
                 "expectation": description.strip(), "actual_status": "NOT_RUN",
             })
+    if bounded_acceptance is None:
+        bounded_acceptance, _ = load_tc001_bounded_acceptance()
+    else:
+        validate_tc001_bounded_fields(bounded_acceptance)
+    tc001 = [case for case in tests if case["id"] == "R2-TC-001"]
+    if len(tc001) != 1:
+        raise AssertionError("expected exactly one R2-TC-001")
+    tc001[0]["bounded_acceptance"] = bounded_acceptance
     if (len(requirements), len(stories), len(tests)) != (28, 48, 144):
         raise AssertionError((len(requirements), len(stories), len(tests)))
     if len({i["id"] for i in requirements}) != 28 or len({i["id"] for i in stories}) != 48 or len({i["id"] for i in tests}) != 144:
@@ -172,12 +280,17 @@ def main():
         if not file.exists():
             raise FileNotFoundError(file)
         save(dest, file.read_text(encoding="utf-8"))
-    reqs, stories, cases = make_data()
+    bounded, evidence_bytes = load_tc001_bounded_acceptance()
+    reqs, stories, cases = make_data(bounded)
+    decision = TC001_BOUNDED_DECISION.read_bytes()
+    save("docs/11_TC001_BOUNDED_ACCEPTANCE.yaml", decision)
+    save(bounded["evidence_path"], evidence_bytes)
     schemas_and_fixtures()
     save("README.md", "# Derived Phase 2 specification bundle\n\n"
          "This package is rebuilt from the committed Phase 2 documents on the local checkout. "
          "It is NOT byte-for-byte the original ZIP attached in the earlier ChatGPT turn. "
-         "All acceptance cases are NOT_RUN; no 1C/production work is represented.\n")
+         "All product acceptance cases are NOT_RUN; bounded adjudication metadata does not change product status. "
+         "No 1C/production work is represented.\n")
     save("acceptance/phase2.feature", (
         "# Specification-only Gherkin: steps deliberately NOT implemented, product results NOT_RUN.\n"
         "Feature: Phase 2 acceptance specifications\n\n"

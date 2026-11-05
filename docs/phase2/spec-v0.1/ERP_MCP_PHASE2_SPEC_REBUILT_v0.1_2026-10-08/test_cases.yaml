@@ -5,6 +5,22 @@
   kind: positive
   expectation: R1 unchanged
   actual_status: NOT_RUN
+  bounded_acceptance:
+    status: SATISFIED
+    criterion: R1 unchanged
+    scope: exercised R1 public MCP compatibility only; not full R1 equivalence
+    exact_head: 5336867aab8070139e61fb39b6b4ba73a9ac59b0
+    source_evidence_path: artifacts/phase2/r2-tc001-5336867-evidence.json
+    evidence_path: evidence/r2-tc001-5336867-evidence.json
+    evidence_sha256: 6669c29217d5729633c71d694912ee278b3ca8486b7804469f50da2967001853
+    gpt_pm_decision_request_id: 3f51d1d2-49dc-49d5-871c-f916405d35d4
+    transition_rule: The bounded acceptance may be SATISFIED only when the exact-HEAD
+      differential evidence is PASS and the correlated GPT-PM adjudication accepts
+      this bounded criterion. This does not change the canonical product_status from
+      NOT_RUN.
+    limitations:
+    - Does not establish full R1 behavioral equivalence.
+    - Does not establish production acceptance, deployment, merge, or release authority.
 - id: R2-TC-002
   story: R2-US-001
   requirements: *id001

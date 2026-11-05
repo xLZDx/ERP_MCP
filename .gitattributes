@@ -1,2 +1,3 @@
 testbed/fake1c/fixtures/*.json text eol=lf
 docs/REAL_1C_STORY_CATALOG_818HA.md text eol=lf
+/artifacts/phase2/r2-tc001-5336867-evidence.json -text
