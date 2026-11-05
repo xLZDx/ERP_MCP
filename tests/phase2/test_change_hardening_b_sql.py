@@ -65,7 +65,7 @@ async def test_b1_claim_refuses_a_null_grant_a_foreign_grant_and_a_changed_amoun
     cid = await led.approved(amount=40)
     cb = await stored(led, cid)
     assert (cb["grant_id"], cb["amount"]) == (DEFAULT_GRANT[(T, C)], 40)
-    kw = dict(requester="clt_alice")
+    kw = {"requester": "clt_alice"}
     await fails("BUDGET_EXCEEDED", led.call("clt_alice", "claim", cid, None, None, 40, False, False))
     await fails("BUDGET_EXCEEDED", led.call("clt_alice", "claim", cid, None, other, 40, False, False))
     await fails("DIGEST_MISMATCH", led.call("clt_alice", "claim", cid, None, cb["grant_id"], 1, False, False))

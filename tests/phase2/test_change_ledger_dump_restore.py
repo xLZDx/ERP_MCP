@@ -391,8 +391,8 @@ async def probe(conn):
             ("append_event", "SELECT change_ledger.append_event('T1','C1',NULL,'X','{}'::jsonb)"),
             ("budget_reserve", "SELECT change_ledger.budget_reserve('T1','C1',gen_random_uuid(),gen_random_uuid(),1)"),
             ("dispatch_cas", "SELECT change_ledger.dispatch_cas(gen_random_uuid(),1,'PERMITTED','DISPATCHED')"),
-            ("insert_event", "INSERT INTO change_ledger.events(tenant_id,company_id,event_type,hash) "
-                             "VALUES('T1','C1','X',repeat('a',64))"),
+            ("insert_event", ("INSERT INTO change_ledger.events(tenant_id,company_id,event_type,hash) "
+                             "VALUES('T1','C1','X',repeat('a',64))")),
             ("delete_records", "DELETE FROM change_ledger.records"),
             ("update_records", "UPDATE change_ledger.records SET lifecycle='VALIDATED'")):
         got["denied_" + label] = (await err(led.sql("clt_alice", stmt)))[0]

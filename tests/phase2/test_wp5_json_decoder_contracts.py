@@ -259,16 +259,16 @@ class TrustSnapshotDecoderAcceptance(unittest.TestCase):
     def test_duplicate_keys_constants_floats_and_overflow_are_stable_refusals(self) -> None:
         for payload in (
             '{"revision":"1","revision":"2"}',
-            '{"revision":"1","loaded_at":"x","signers":[],"process_bindings":[],'
-            '"oracle_artifacts":[],"outcome_version_floors":[],"loaded_\\u0061t":"x"}',
-            '{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":1,"a":2}],'
-            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}',
-            '{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":1,'
-            '"\\u0061":2}],"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}',
-            '{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":{"b":{"c":1,"c":2}}}],'
-            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}',
-            '{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":{"b":{"key":1,'
-            '"\\u006b":2}}}],"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}',
+            ('{"revision":"1","loaded_at":"x","signers":[],"process_bindings":[],'
+            '"oracle_artifacts":[],"outcome_version_floors":[],"loaded_\\u0061t":"x"}'),
+            ('{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":1,"a":2}],'
+            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}'),
+            ('{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":1,'
+            '"\\u0061":2}],"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}'),
+            ('{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":{"b":{"c":1,"c":2}}}],'
+            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}'),
+            ('{"revision":"1","loaded_at":"2026-10-26T00:00:00Z","signers":[{"a":{"b":{"key":1,'
+            '"\\u006b":2}}}],"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}'),
             json.dumps(_trust_payload())[:-1] + ',"extra":NaN}',
             json.dumps(_trust_payload())[:-1] + ',"extra":Infinity}',
             json.dumps(_trust_payload())[:-1] + ',"extra":-Infinity}',
@@ -288,8 +288,8 @@ class TrustSnapshotDecoderAcceptance(unittest.TestCase):
             valid[:-1],
             valid + "{}",
             valid[:-1] + ',"extra":1',
-            '{"revision":"1","loaded_at":"x","signers":[{"name":"\\ud800"}],'
-            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}',
+            ('{"revision":"1","loaded_at":"x","signers":[{"name":"\\ud800"}],'
+            '"process_bindings":[],"oracle_artifacts":[],"outcome_version_floors":[]}'),
         ):
             with self.subTest(payload=payload[-32:]):
                 self.assert_invalid_snapshot(payload)

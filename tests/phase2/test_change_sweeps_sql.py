@@ -103,8 +103,8 @@ async def test_006_objects_are_hardened_and_not_reachable_directly(led):
     assert not bad
     cid = await led.propose()
     for role in ("clt_alice", "clt_bob", "clt_dave", "clt_wri", "clt_wrk", "clt_aud"):
-        for stmt in ("INSERT INTO change_ledger.sweep_counters(tenant_id,company_id,subject_id,kind) "
-                     "VALUES('T1','C1',gen_random_uuid(),'RESOLVE')",
+        for stmt in (("INSERT INTO change_ledger.sweep_counters(tenant_id,company_id,subject_id,kind) "
+                     "VALUES('T1','C1',gen_random_uuid(),'RESOLVE')"),
                      "UPDATE change_ledger.call_deadlines SET deadline_seconds=1",
                      "DELETE FROM change_ledger.sweep_runs",
                      "UPDATE change_ledger.writer_leases SET lease_expires_at=now()",

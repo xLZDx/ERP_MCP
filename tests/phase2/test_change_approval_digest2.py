@@ -100,7 +100,7 @@ async def make_case(led, kind, *, payload_over=None, amount="12.50", override=No
 
 
 def text_of(k, **over):
-    args = dict(approval_nonce=k.nonce, repair_for=k.repair, declared_target_class=k.cls, budget=k.budget)
+    args = {"approval_nonce": k.nonce, "repair_for": k.repair, "declared_target_class": k.cls, "budget": k.budget}
     args.update(over)
     return ch.approval_canonical_text(k.prop, **args)
 
@@ -475,8 +475,10 @@ async def test_approvals_of_the_old_version_cannot_authorize_anything_after_009(
     dsn = require_dsn()
     async with throwaway_db(dsn, migrate=False, seed=False) as db:
         db.conn = await db.connect()
-        assert FILES[8] == "009_approval_digest_2.sql" and len(FILES) == 18   # 010 to 018 follow 009
-        await apply_files(db.conn, FILES[:8])                       # the world before 009: SQL-1 digests
+        migration_prefix = FILES[:18]
+        assert tuple(name[:3] for name in migration_prefix) == tuple(f"{number:03d}" for number in range(1, 19))
+        assert migration_prefix[8] == "009_approval_digest_2.sql"
+        await apply_files(db.conn, migration_prefix[:8])             # the world before 009: SQL-1 digests
         await _setup(db.conn)
         old = L(db)
 
@@ -494,7 +496,7 @@ async def test_approvals_of_the_old_version_cannot_authorize_anything_after_009(
         n_p = await old.call("clt_bob", "issue_approval_nonce", pending)
         dg_p = (await old.status(pending))["approval_digest"]       # a SQL-1 digest of a still unapproved change
         assert len(dg_p) == 64
-        await apply_files(db.conn, FILES[8:])                        # migration 009
+        await apply_files(db.conn, migration_prefix[8:])             # migrations 009-018
 
         v = await db.conn.fetch("SELECT change_id, digest, digest_version FROM change_ledger.approvals")
         assert {r["digest_version"] for r in v} == {"S12-APPROVAL-SQL-1"} and len(v) == 2
