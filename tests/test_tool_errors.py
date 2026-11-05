@@ -81,7 +81,7 @@ async def test_each_failure_class_becomes_a_structured_payload(exc_factory, code
     assert isinstance(raised, StructuredToolError)  # still an UnexpectedToolError for existing callers
     assert (error["code"], error["category"], error["retryable"]) == (code, category, retryable)
     assert error["tool"] == error["operation"] == "boom"
-    assert error["source_id"] == "onec-818ha-reference"
+    assert error["source_id"] is None
     assert error["safe_message"] and "Error executing tool" not in error["safe_message"]
     assert set(error) == {"code", "category", "retryable", "safe_message", "tool", "source_id",
                           "operation", "correlation_id"}
@@ -100,7 +100,7 @@ async def test_as_of_without_timezone_is_reported_as_invalid_argument():
     error, _ = await failure(lambda: ValueError("as_of must include an explicit timezone"))
 
     assert error["code"] == "INVALID_ARGUMENT"
-    assert "timezone" in error["safe_message"]
+    assert error["safe_message"] == "Invalid argument."
 
 
 @pytest.mark.parametrize("exc_factory", [
@@ -118,12 +118,13 @@ async def test_unsafe_exception_text_never_reaches_the_client(exc_factory):
         assert leaked not in text
 
 
-async def test_text_from_classes_allowed_to_speak_is_redacted_and_bounded():
-    error, _ = await failure(lambda: ValueError(SECRET_TEXT * 5))
+async def test_value_error_uses_generic_message_without_echoing_unlabelled_values():
+    private_value = "synthetic-unlabelled-tenant-value-93c1"
+    error, _ = await failure(lambda: ValueError(private_value), source_id=private_value)
 
-    for leaked in ("hunter2", "eyJhbGci", "10.0.0.5", "D:\\secret", "/etc/erp", "user:pw"):
-        assert leaked not in error["safe_message"]
-    assert len(error["safe_message"]) <= 240
+    assert error["safe_message"] == "Invalid argument."
+    assert error["source_id"] is None
+    assert private_value not in str(error)
 
 
 def test_redact_is_idempotent_and_keeps_plain_text():
