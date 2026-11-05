@@ -126,7 +126,7 @@ async def test_u15_postgres_outage_fails_closed_then_recovers(
         with outage("postgres"):
             status = await call(tokens["uc1"], "system_status")
             read = await call(tokens["uc1"], "onec_read", read_args)
-            company_read = await call(tokens["uc1"], "sales_documents", {
+            company_read = await call(tokens["uc1"], "sales_documents_with_provenance", {
                 "source_id": ids["source"], "company_id": ids["one"], "top": 5})
         restored_at = await db_clock(db)
         for outcome in (status, read, company_read):  # no authorization without the database

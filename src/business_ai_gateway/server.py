@@ -141,6 +141,7 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "payable_balance_with_provenance",
     "receivable_balance_with_provenance",
     "purchase_documents_filtered",
+    "sales_documents_with_provenance",
 })
 
 CHATGPT_SERVER_INSTRUCTIONS = (
@@ -187,6 +188,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
     "purchase_documents_filtered": "purchases.read",
+    "sales_documents_with_provenance": "sales.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
     # semantic accounting capabilities and have no seeded business-role grant.
     "onec_read": "onec.raw.read",
@@ -2578,6 +2580,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         tool_name: str,
         top: int,
         skip: int,
+        include_provenance: bool,
         counterparty_ref: str | None = None,
         posted_only: bool = False,
     ) -> dict[str, Any]:
@@ -2603,9 +2606,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "concept": concept,
             "top": bounded_top,
             "skip": skip,
-            "counterparty_ref": counterparty_ref,
-            "posted_only": posted_only,
         }
+        if include_provenance:
+            query.update(counterparty_ref=counterparty_ref, posted_only=posted_only)
         source = await resolve_source(
             principal,
             source_id,
@@ -2625,6 +2628,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                provenance_tool = (
+                    "sales_documents_with_provenance"
+                    if concept == "sales"
+                    else "purchase_documents_filtered"
+                )
+                raise SemanticProfileUnavailable(f"Use {provenance_tool} for this profile.")
             mapping = profile["mapping"]
             company_filter = build_document_filter(
                 mapping,
@@ -2645,7 +2655,22 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_document_rows(raw_rows, mapping, concept)
             page = result.get("page") if isinstance(result, dict) else None
-            amount_totals = summarize_document_amounts(normalized_rows)
+            response = {
+                "source_id": source_id,
+                "company_id": str(parsed_company_id),
+                "concept": concept,
+                "profile_fingerprint": profile["profile_fingerprint"],
+                "metadata_fingerprint": capabilities.metadata_fingerprint,
+                "value": normalized_rows,
+                "page": page,
+                "warnings": [],
+            }
+            if include_provenance:
+                response.update(
+                    amount_totals=summarize_document_amounts(normalized_rows),
+                    amount_totals_complete=isinstance(page, dict) and page.get("has_more") is False,
+                    **profile_provenance(profile),
+                )
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -2664,18 +2689,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
-            return {
-                "source_id": source_id,
-                "company_id": str(parsed_company_id),
-                "concept": concept,
-                "profile_fingerprint": profile["profile_fingerprint"],
-                "metadata_fingerprint": capabilities.metadata_fingerprint,
-                "value": normalized_rows,
-                "page": page,
-                "amount_totals": amount_totals,
-                "amount_totals_complete": isinstance(page, dict) and page.get("has_more") is False,
-                **profile_provenance(profile),
-            }
+            return response
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
@@ -2707,12 +2721,13 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     async def sales_documents(
         source_id: str, company_id: str, top: int = 50, skip: int = 0
     ) -> dict[str, Any]:
-        """List company-scoped sales documents using a validated semantic mapping."""
+        """List native sales documents. Use sales_documents_with_provenance for other profiles."""
         return await read_company_documents(
             source_id,
             company_id,
             concept="sales",
             tool_name="sales_documents",
+            include_provenance=False,
             top=top,
             skip=skip,
         )
@@ -2724,12 +2739,28 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         top: int = 50,
         skip: int = 0,
     ) -> dict[str, Any]:
-        """List company-scoped purchase documents using a validated semantic mapping."""
+        """List native purchases. Use purchase_documents_filtered for other profiles."""
         return await read_company_documents(
             source_id,
             company_id,
             concept="purchases",
             tool_name="purchase_documents",
+            include_provenance=False,
+            top=top,
+            skip=skip,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def sales_documents_with_provenance(
+        source_id: str, company_id: str, top: int = 50, skip: int = 0
+    ) -> dict[str, Any]:
+        """List sales documents with profile provenance and per-currency totals for the page."""
+        return await read_company_documents(
+            source_id,
+            company_id,
+            concept="sales",
+            tool_name="sales_documents_with_provenance",
+            include_provenance=True,
             top=top,
             skip=skip,
         )
@@ -2746,13 +2777,14 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         """List purchase documents with optional supplier and posting-state filters.
 
         ``counterparty_ref`` (a GUID, e.g. from ``counterparty_find``) narrows the list to one supplier;
-        ``posted_only`` keeps only posted documents. ``amount_totals`` carries exact per-currency sums.
+        ``posted_only`` keeps only posted documents. Includes profile provenance and per-currency totals for the page.
         """
         return await read_company_documents(
             source_id,
             company_id,
             concept="purchases",
             tool_name="purchase_documents_filtered",
+            include_provenance=True,
             top=top,
             skip=skip,
             counterparty_ref=counterparty_ref,

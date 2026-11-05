@@ -48,6 +48,9 @@ async def test_r1_tool_schemas_stay_pinned_and_optional_capabilities_are_r2_addi
         "purchase_documents": (
             {"source_id", "company_id", "top", "skip"}, {"source_id", "company_id"}
         ),
+        "sales_documents": (
+            {"source_id", "company_id", "top", "skip"}, {"source_id", "company_id"}
+        ),
     }
     for name, (properties, required) in expected.items():
         schema = tools[name].input_schema
@@ -102,6 +105,10 @@ async def test_r1_tool_schemas_stay_pinned_and_optional_capabilities_are_r2_addi
         "purchase_documents_filtered": (
             {"source_id", "company_id", "top", "skip", "counterparty_ref", "posted_only"},
             {"source_id", "company_id"}, "purchases.read",
+        ),
+        "sales_documents_with_provenance": (
+            {"source_id", "company_id", "top", "skip"},
+            {"source_id", "company_id"}, "sales.read",
         ),
     }
     for name, (properties, required, capability) in r2_expected.items():

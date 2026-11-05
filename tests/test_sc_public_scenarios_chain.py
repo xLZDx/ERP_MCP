@@ -35,7 +35,7 @@ async def _call(stack, tool, org=ORG_ONE, **arguments):
 async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar, tmp_path, monkeypatch):
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
-        sales = (await _call(stack, "sales_documents"))["value"]
+        sales = (await _call(stack, "sales_documents_with_provenance"))["value"]
         posted = {r["document_number"]: r["posted"] for r in sales}
         assert posted["SALE-001"] is True and posted["SALE-003"] is False
         assert "SALE-002" not in posted  # belongs to organization two
@@ -52,7 +52,7 @@ async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar
             ("success", "ACCESS_AUTHORIZED"), ("success", "SYNTHETIC_FIXTURE_PROFILE"),
         ]
         assert {r["company_id"] for r in posting} == {stack.companies[ORG_ONE]}
-        sales_audit = await stack.audit_rows("sales_documents")
+        sales_audit = await stack.audit_rows("sales_documents_with_provenance")
         assert [r["detail_code"] for r in sales_audit] == [
             "ACCESS_AUTHORIZED", "SYNTHETIC_FIXTURE_PROFILE",
         ]
@@ -66,7 +66,7 @@ async def test_sc07_backdated_sale_posts_to_its_accounting_period(
 ):
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
-        sales = {r["document_number"]: r for r in (await _call(stack, "sales_documents"))["value"]}
+        sales = {r["document_number"]: r for r in (await _call(stack, "sales_documents_with_provenance"))["value"]}
         backdated = sales["SALE-004"]
         assert backdated["date"].startswith("2025-12-31")
         december = (await _call(

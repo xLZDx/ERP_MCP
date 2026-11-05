@@ -13,7 +13,8 @@ EXPECTED_TOOLS = {
     "cash_movements", "bank_balance", "cash_movements_with_provenance",
     "bank_balance_with_provenance", "receivable_balance",
     "payable_balance", "receivable_balance_with_provenance",
-    "payable_balance_with_provenance", "sales_documents", "purchase_documents", "onec_read",
+    "payable_balance_with_provenance", "sales_documents", "purchase_documents",
+    "sales_documents_with_provenance", "purchase_documents_filtered", "onec_read",
     "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
 }
 

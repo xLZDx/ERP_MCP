@@ -37,7 +37,7 @@ class OperationalMetrics:
         "cash_movements_with_provenance", "bank_balance_with_provenance",
         "receivable_balance_with_provenance", "payable_balance_with_provenance",
         "payable_balance", "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
-        "sales_documents", "purchase_documents", "onec_read", "audit",
+        "sales_documents", "sales_documents_with_provenance", "purchase_documents", "onec_read", "audit",
         "external_evidence_manifest", "counterparty_find",
     })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(

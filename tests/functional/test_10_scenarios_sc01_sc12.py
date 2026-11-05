@@ -103,7 +103,7 @@ async def eval_sc03():
 
 
 async def eval_sc04():
-    sales = by_key((await ok_call("sales_documents")).data["value"], "document_number")
+    sales = by_key((await ok_call("sales_documents_with_provenance")).data["value"], "document_number")
     assert sales["SALE-003"]["posted"] is False and sales["SALE-001"]["posted"] is True
     assert "SALE-002" not in sales, "other company's document leaked"
     rows = (await ok_call("accounting_posting_rows", **WIDE)).data["value"]
@@ -130,7 +130,7 @@ async def eval_sc05():
 
 
 async def eval_sc07():
-    sales = by_key((await ok_call("sales_documents")).data["value"], "document_number")
+    sales = by_key((await ok_call("sales_documents_with_provenance")).data["value"], "document_number")
     ref = sales["SALE-004"]["document_ref"]
     assert sales["SALE-004"]["date"].startswith(FIX["backdated-document"]["document_date"])
     dec = (await ok_call("accounting_posting_rows", **DECEMBER)).data["value"]
@@ -272,7 +272,7 @@ async def _isolation(case: str):
         assert parties == {PARTY_OVERDUE}, parties
         assert by_key(body["summary"], "counterparty_id")[PARTY_OVERDUE]["open_balance"] == "999"
     elif case in {"SC04", "SC07"}:
-        sales = {r["document_number"] for r in (await ok_call("sales_documents", two)).data["value"]}
+        sales = {r["document_number"] for r in (await ok_call("sales_documents_with_provenance", two)).data["value"]}
         assert sales.isdisjoint({"SALE-001", "SALE-003", "SALE-004"}), sales
         assert (await ok_call("accounting_posting_rows", two, **WIDE)).data["value"] == []
     elif case in {"SC05", "SC11"}:
