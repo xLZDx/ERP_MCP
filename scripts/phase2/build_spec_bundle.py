@@ -151,6 +151,53 @@ TC003_BOUNDED_EXPECTED = {
     ],
 }
 
+TC004_006_BOUNDED_DECISION = DOCS / "R2US002_BOUNDED_ACCEPTANCE.yaml"
+TC004_006_BOUNDED_EXPECTED = {
+    "schema_version": 1,
+    "story_id": "R2-US-002",
+    "product_status": "NOT_RUN",
+    "story_status": "BOUNDED_SCOPE_COMPLETE",
+    "exact_head": "c624b701e8f42076441f9b8c6a3cf4dbe60414e7",
+    "evidence_path": "artifacts/phase2/r2-us-002-bounded-evidence.json",
+    "evidence_sha256": "81dcbc02cc2c6cfcfab4f8bd8c99bbe188f2cc490d03a9b448f4138d469ba64c",
+    "package_evidence_path": "evidence/r2-us-002-bounded-evidence.json",
+    "pm_receipt_path": "artifacts/phase2/r2-us-002-gpt-pm-adjudication.json",
+    "pm_receipt_sha256": "28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e",
+    "package_pm_receipt_path": "evidence/r2-us-002-gpt-pm-adjudication.json",
+    "prior_pm_receipt_path": "artifacts/phase2/r2-us-002-gpt-pm-adjudication-initial.json",
+    "prior_pm_receipt_sha256": "ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1",
+    "package_prior_pm_receipt_path": "evidence/r2-us-002-gpt-pm-adjudication-initial.json",
+    "pm_request_id": "9550946b-a01e-4148-86c0-79db24d9e591",
+    "pm_job_id": "30ecc691-6f42-4eba-8f3c-3756923bcf10",
+    "pm_reply_id": "cdc59815-9533-5d4b-b85c-6d3b3a1d0e9b",
+    "pm_payload_sha256": "11806e704255a993f3f27fcb61b631692590501c9520b63616349d604b468fb6",
+    "pm_reply_sha256": "cd6af9cc33eaf1f23622eea96f3e07d47481c289b6c0e82b9a72f1a303d4b93e",
+    "criteria": [
+        {
+            "case_id": "R2-TC-004",
+            "status": "SATISFIED",
+            "criterion": "pin file path/SHA/license",
+            "scope": "Exact Ferma repository, pinned commit, source paths, and independently reproduced 132-file digest are verified. No formal license was found. GPT-PM accepted the recorded operator authorization only for private test-only reuse without source redistribution or production source inclusion.",
+            "remaining": "Canonical product R2-TC-004 remains NOT_RUN; any redistribution, production inclusion, or broader reuse requires separate authorization.",
+        },
+        {
+            "case_id": "R2-TC-005",
+            "status": "SATISFIED",
+            "criterion": "an empty placeholder is not ready",
+            "scope": "Static ERP_MCP evidence shows ERP/Ferma adapters disabled and reserved, with no runtime construction or MCP registration.",
+            "remaining": "Canonical product acceptance remains NOT_RUN.",
+        },
+        {
+            "case_id": "R2-TC-006",
+            "status": "SATISFIED",
+            "criterion": "donor write APIs are not exposed",
+            "scope": "Static production MCP composition has read-only annotations, an exact tool registration allowlist, and no ERP/Ferma adapter imports or donor-derived write registration.",
+            "remaining": "Static source review does not prove absence of unmarked code similarity or exact shipped artifact contents; canonical product acceptance remains NOT_RUN.",
+        },
+    ],
+    "transition_rule": "A bounded status is recorded only from this correlated GPT-PM adjudication; canonical product_status remains NOT_RUN and Gherkin remains @not_implemented.",
+}
+
 DOC_MAP = {
     "TDD_PHASE2_RU.md": "docs/01_TDD_RU.md",
     "PLAN_PHASE2_RU.md": "docs/02_PLAN_RU.md",
@@ -663,10 +710,207 @@ def load_tc003_bounded_acceptance() -> tuple[dict, bytes, bytes]:
     return bounded, evidence_bytes, receipt_bytes
 
 
+def resolve_tc004_006_source_artifact(source_ref: str | Path) -> Path:
+    source_ref = Path(source_ref)
+    if source_ref.is_absolute() or ".." in source_ref.parts or not source_ref.parts:
+        raise ValueError("TC004_006_BOUNDED_SOURCE_PATH_INVALID")
+    try:
+        artifact_root = (ROOT / "artifacts" / "phase2").resolve(strict=True)
+        source_path = (ROOT / source_ref).resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("TC004_006_BOUNDED_SOURCE_NOT_FOUND") from exc
+    try:
+        source_path.relative_to(artifact_root)
+    except ValueError as exc:
+        raise ValueError("TC004_006_BOUNDED_SOURCE_OUTSIDE_ARTIFACTS_PHASE2") from exc
+    if not source_path.is_file():
+        raise ValueError("TC004_006_BOUNDED_SOURCE_NOT_FILE")
+    return source_path
+
+
+def load_tc004_006_bounded_acceptance() -> tuple[dict, bytes, bytes, bytes]:
+    decision = yaml.safe_load(TC004_006_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    if decision != TC004_006_BOUNDED_EXPECTED:
+        raise ValueError("TC004_006_BOUNDED_DECISION_MISMATCH")
+
+    evidence_bytes = resolve_tc004_006_source_artifact(decision["evidence_path"]).read_bytes().replace(b"\r\n", b"\n")
+    receipt_bytes = resolve_tc004_006_source_artifact(decision["pm_receipt_path"]).read_bytes().replace(b"\r\n", b"\n")
+    prior_receipt_bytes = resolve_tc004_006_source_artifact(decision["prior_pm_receipt_path"]).read_bytes().replace(b"\r\n", b"\n")
+    if hashlib.sha256(evidence_bytes).hexdigest() != decision["evidence_sha256"]:
+        raise ValueError("TC004_006_BOUNDED_EVIDENCE_SHA256_MISMATCH")
+    if hashlib.sha256(receipt_bytes).hexdigest() != decision["pm_receipt_sha256"]:
+        raise ValueError("TC004_006_BOUNDED_PM_RECEIPT_SHA256_MISMATCH")
+    if hashlib.sha256(prior_receipt_bytes).hexdigest() != decision["prior_pm_receipt_sha256"]:
+        raise ValueError("TC004_006_BOUNDED_PRIOR_PM_RECEIPT_SHA256_MISMATCH")
+
+    def reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict:
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("TC004_006_BOUNDED_DUPLICATE_JSON_KEY")
+            result[key] = value
+        return result
+
+    try:
+        evidence = json.loads(evidence_bytes, object_pairs_hook=reject_duplicate_json_keys)
+        receipt = json.loads(receipt_bytes, object_pairs_hook=reject_duplicate_json_keys)
+        prior_receipt = json.loads(prior_receipt_bytes, object_pairs_hook=reject_duplicate_json_keys)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ValueError("TC004_006_BOUNDED_INVALID_JSON") from exc
+    expected_receipt_fields = {
+        "schema_version", "project_id", "conversation_id", "job_id", "request_id",
+        "reply_id", "payload_hash", "correlated", "candidate_head", "verdict",
+        "story_status", "bounded_statuses", "product_status", "reply_text", "reply_sha256",
+    }
+    reply_text = receipt.get("reply_text") if isinstance(receipt, dict) else None
+    if not isinstance(reply_text, str):
+        raise ValueError("TC004_006_BOUNDED_PM_REPLY_MISSING")
+    required_reply_lines = {
+        f"REQUEST_ID: {decision['pm_request_id']}",
+        "FINAL VERDICT: APPROVE",
+        "TC004_BOUNDED_ACCEPTANCE: SATISFIED",
+        "R2-US-002_STORY_STATUS: BOUNDED_SCOPE_COMPLETE",
+        "TC004_LICENSE_DISPOSITION: NO_LICENSE_FOUND",
+        "TC004_REUSE_DISPOSITION: OPERATOR_AUTHORIZED_TEST_ONLY_REUSE",
+        "R2-US-002_PRODUCT_STATUS: NOT_RUN",
+        "BOUNDED_STATUS_MAPPING_UPDATE: AUTHORIZED",
+        "S0_PLAN_LEDGER_UPDATE: AUTHORIZED",
+        "PRODUCT_STATUS_TRANSITION: NOT_AUTHORIZED",
+        "PUSH: NOT_AUTHORIZED_BY_THIS_REVIEW",
+        "MERGE: NOT_AUTHORIZED",
+        "DEPLOYMENT: NOT_AUTHORIZED",
+    }
+    receipt_statuses = {
+        "R2-TC-004": "SATISFIED",
+        "R2-TC-005": "SATISFIED",
+        "R2-TC-006": "SATISFIED",
+    }
+    if (
+        not isinstance(receipt, dict)
+        or set(receipt) != expected_receipt_fields
+        or receipt.get("schema_version") != 1
+        or receipt.get("project_id") != "erp_mcp"
+        or receipt.get("conversation_id") != "6aeb9f0a-e3ec-83ed-8782-296b5106fbd5"
+        or receipt.get("job_id") != decision["pm_job_id"]
+        or receipt.get("request_id") != decision["pm_request_id"]
+        or receipt.get("reply_id") != decision["pm_reply_id"]
+        or receipt.get("payload_hash") != decision["pm_payload_sha256"]
+        or receipt.get("correlated") is not True
+        or receipt.get("candidate_head") != decision["exact_head"]
+        or receipt.get("verdict") != "APPROVE"
+        or receipt.get("story_status") != decision["story_status"]
+        or receipt.get("bounded_statuses") != receipt_statuses
+        or receipt.get("product_status") != "NOT_RUN"
+        or not required_reply_lines.issubset(set(reply_text.splitlines()))
+        or receipt.get("reply_sha256") != decision["pm_reply_sha256"]
+        or hashlib.sha256(reply_text.encode("utf-8")).hexdigest() != decision["pm_reply_sha256"]
+        or prior_receipt.get("request_id") != "6da144da-0cc2-4fcf-8bf5-18b72cf20385"
+        or prior_receipt.get("verdict") != "MODIFY"
+        or prior_receipt.get("bounded_statuses") != {
+            "R2-TC-004": "PARTIAL_SOURCE_PROVENANCE_VERIFICATION_PENDING",
+            "R2-TC-005": "SATISFIED",
+            "R2-TC-006": "SATISFIED",
+        }
+    ):
+        raise ValueError("TC004_006_BOUNDED_PM_RECEIPT_CONTENT_MISMATCH")
+
+    if (
+        not isinstance(evidence, dict)
+        or evidence.get("scenario") != "R2-US-002"
+        or evidence.get("candidate", {}).get("commit") != decision["exact_head"]
+        or evidence.get("product_status") != "NOT_RUN"
+        or evidence.get("gherkin_status") != "@not_implemented"
+        or evidence.get("bounded_story_status") != decision["story_status"]
+        or evidence.get("limitations") != [
+            "Canonical product R2-TC-004, R2-TC-005, and R2-TC-006 remain NOT_RUN.",
+            "Ferma exact repository, commit, 132-file tree digest, and absence of license metadata/files are verified; GPT-PM accepted the recorded operator authorization only for private test-only reuse. This is not a formal license and does not authorize redistribution or production inclusion.",
+            "Static source reachability does not prove absence of unmarked code similarity or exact built deployment artifact contents.",
+            "No runtime product acceptance, merge, deployment, release, or production authorization is established.",
+        ]
+    ):
+        raise ValueError("TC004_006_BOUNDED_EVIDENCE_CONTENT_MISMATCH")
+    if evidence.get("pm_adjudication") != {
+        "project_id": "erp_mcp",
+        "conversation_id": "6aeb9f0a-e3ec-83ed-8782-296b5106fbd5",
+        "request_id": decision["pm_request_id"],
+        "job_id": decision["pm_job_id"],
+        "reply_id": decision["pm_reply_id"],
+        "payload_sha256": decision["pm_payload_sha256"],
+        "reply_sha256": decision["pm_reply_sha256"],
+        "correlated": True,
+        "verdict": "APPROVE",
+        "story_status": decision["story_status"],
+        "bounded_statuses": {
+            "R2-TC-004": "SATISFIED",
+            "R2-TC-005": "SATISFIED",
+            "R2-TC-006": "SATISFIED",
+        },
+        "product_status": "NOT_RUN",
+        "receipt_path": decision["pm_receipt_path"],
+        "receipt_sha256": decision["pm_receipt_sha256"],
+        "source_evidence_sha256_submitted": "4b66e779ac6373106451aeee2dac8cfe48c2fc09e32e438201b9f63a6d9a6101",
+        "post_adjudication_reconciliation": "Bounded statuses were finalized and the Ferma source-verification flag aligned to the already-reproduced 132-file digest; repository, commit, source paths, and digest are unchanged.",
+    }:
+        raise ValueError("TC004_006_BOUNDED_EVIDENCE_PM_ADJUDICATION_MISMATCH")
+    if evidence.get("prior_pm_adjudication") != {
+        "request_id": "6da144da-0cc2-4fcf-8bf5-18b72cf20385",
+        "job_id": "5dec4390-5863-4146-a00a-ac0bc7d4b8d1",
+        "reply_id": "a3e854ce-ce4b-546a-a322-2e5cc91972c7",
+        "receipt_path": decision["prior_pm_receipt_path"],
+        "receipt_sha256": decision["prior_pm_receipt_sha256"],
+        "disposition": "TC004 open; TC005 and TC006 bounded satisfied",
+    }:
+        raise ValueError("TC004_006_BOUNDED_EVIDENCE_PRIOR_ADJUDICATION_MISMATCH")
+    case_evidence = {row.get("case_id"): row for row in evidence.get("criteria", []) if isinstance(row, dict)}
+    if set(case_evidence) != {row["case_id"] for row in decision["criteria"]}:
+        raise ValueError("TC004_006_BOUNDED_EVIDENCE_CASE_SET_MISMATCH")
+    source_blobs = evidence.get("local_sources")
+    if not isinstance(source_blobs, list) or len(source_blobs) != 7:
+        raise ValueError("TC004_006_BOUNDED_LOCAL_SOURCE_SET_MISMATCH")
+    seen_paths = set()
+    for source in source_blobs:
+        path = source.get("path") if isinstance(source, dict) else None
+        if not isinstance(path, str) or path in seen_paths or Path(path).is_absolute() or ".." in Path(path).parts:
+            raise ValueError("TC004_006_BOUNDED_LOCAL_SOURCE_PATH_INVALID")
+        seen_paths.add(path)
+        blob = _git_file_at_revision(decision["exact_head"], path)
+        actual_oid = subprocess.check_output(["git", "rev-parse", f"{decision['exact_head']}:{path}"], cwd=ROOT, text=True).strip()
+        if (
+            actual_oid != source.get("git_blob_oid")
+            or hashlib.sha256(blob).hexdigest() != source.get("git_blob_sha256")
+        ):
+            raise ValueError("TC004_006_BOUNDED_LOCAL_SOURCE_IDENTITY_MISMATCH")
+    expected_cases = {row["case_id"]: row for row in decision["criteria"]}
+    for case_id, expected in expected_cases.items():
+        actual = case_evidence[case_id]
+        if actual.get("bounded_status") != expected.get("status") or actual.get("criterion") != expected.get("criterion"):
+            raise ValueError("TC004_006_BOUNDED_EVIDENCE_STATUS_MISMATCH")
+    case_acceptance = {
+        row["case_id"]: {
+            "status": row["status"],
+            "criterion": row["criterion"],
+            "scope": row["scope"],
+            "remaining": row["remaining"],
+            "product_status": "NOT_RUN",
+            "exact_head": decision["exact_head"],
+            "gpt_pm_request_id": decision["pm_request_id"],
+            "evidence_path": decision["package_evidence_path"],
+            "evidence_sha256": decision["evidence_sha256"],
+            "pm_receipt_path": decision["package_pm_receipt_path"],
+            "pm_receipt_sha256": decision["pm_receipt_sha256"],
+            "prior_pm_receipt_path": decision["package_prior_pm_receipt_path"],
+            "prior_pm_receipt_sha256": decision["prior_pm_receipt_sha256"],
+        }
+        for row in decision["criteria"]
+    }
+    return case_acceptance, evidence_bytes, receipt_bytes, prior_receipt_bytes
+
+
 def make_data(
     tc001_bounded_acceptance: dict | None = None,
     tc002_bounded_acceptance: dict | None = None,
     tc003_bounded_acceptance: dict | None = None,
+    tc004_006_bounded_acceptance: dict | None = None,
 ):
     tdd = (DOCS / "TDD_PHASE2_RU.md").read_text(encoding="utf-8")
     stories_md = (DOCS / "STORIES_PHASE2_RU.md").read_text(encoding="utf-8")
@@ -731,6 +975,16 @@ def make_data(
     if len(tc003) != 1:
         raise AssertionError("expected exactly one R2-TC-003")
     tc003[0]["bounded_acceptance"] = tc003_bounded_acceptance
+    validated_tc004_006_bounded_acceptance, _, _, _ = load_tc004_006_bounded_acceptance()
+    if tc004_006_bounded_acceptance is not None and tc004_006_bounded_acceptance != validated_tc004_006_bounded_acceptance:
+        raise ValueError("TC004_006_BOUNDED_CALLER_OVERRIDE_MISMATCH")
+    tc004_006_bounded_acceptance = validated_tc004_006_bounded_acceptance
+    tc004_006_cases = {f"R2-TC-{number}": number for number in ("004", "005", "006")}
+    if set(tc004_006_bounded_acceptance) != set(tc004_006_cases):
+        raise ValueError("TC004_006_BOUNDED_CASE_SET_MISMATCH")
+    for case in tests:
+        if case["id"] in tc004_006_cases:
+            case["bounded_acceptance"] = tc004_006_bounded_acceptance[case["id"]]
     if (len(requirements), len(stories), len(tests)) != (28, 48, 144):
         raise AssertionError((len(requirements), len(stories), len(tests)))
     if len({i["id"] for i in requirements}) != 28 or len({i["id"] for i in stories}) != 48 or len({i["id"] for i in tests}) != 144:
@@ -824,7 +1078,8 @@ def main():
     bounded, evidence_bytes = load_tc001_bounded_acceptance()
     tc002_bounded, tc002_evidence_bytes, tc002_receipt_bytes = load_tc002_bounded_acceptance()
     tc003_bounded, tc003_evidence_bytes, tc003_receipt_bytes = load_tc003_bounded_acceptance()
-    reqs, stories, cases = make_data(bounded, tc002_bounded, tc003_bounded)
+    tc004_006_bounded, tc004_006_evidence_bytes, tc004_006_receipt_bytes, tc004_006_prior_receipt_bytes = load_tc004_006_bounded_acceptance()
+    reqs, stories, cases = make_data(bounded, tc002_bounded, tc003_bounded, tc004_006_bounded)
     decision = TC001_BOUNDED_DECISION.read_bytes()
     save("docs/11_TC001_BOUNDED_ACCEPTANCE.yaml", decision)
     save(bounded["evidence_path"], evidence_bytes)
@@ -836,6 +1091,10 @@ def main():
     save("docs/13_TC003_BOUNDED_ACCEPTANCE.yaml", TC003_BOUNDED_DECISION.read_bytes())
     save(tc003_bounded["evidence_path"], tc003_evidence_bytes)
     save(tc003_bounded["gpt_pm_adjudication_package_receipt_path"], tc003_receipt_bytes)
+    save("docs/14_R2US002_BOUNDED_ACCEPTANCE.yaml", TC004_006_BOUNDED_DECISION.read_bytes())
+    save("evidence/r2-us-002-bounded-evidence.json", tc004_006_evidence_bytes)
+    save("evidence/r2-us-002-gpt-pm-adjudication.json", tc004_006_receipt_bytes)
+    save("evidence/r2-us-002-gpt-pm-adjudication-initial.json", tc004_006_prior_receipt_bytes)
     schemas_and_fixtures()
     save("README.md", "# Derived Phase 2 specification bundle\n\n"
          "This package is rebuilt from the committed Phase 2 documents on the local checkout. "

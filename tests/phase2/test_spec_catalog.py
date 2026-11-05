@@ -75,11 +75,17 @@ def test_tc001_bounded_acceptance_is_separate_from_product_status(catalogs):
     assert bounded["source_evidence_path"] == "artifacts/phase2/r2-tc001-5336867-evidence.json"
     assert not Path(bounded["evidence_path"]).is_absolute()
     assert ".." not in Path(bounded["evidence_path"]).parts
-    assert all(
-        "bounded_acceptance" not in case
-        for case in cases
-        if case["id"] not in {"R2-TC-001", "R2-TC-002", "R2-TC-003"}
-    )
+    bounded_case_ids = {
+        case["id"] for case in cases if "bounded_acceptance" in case
+    }
+    assert bounded_case_ids == {
+        "R2-TC-001",
+        "R2-TC-002",
+        "R2-TC-003",
+        "R2-TC-004",
+        "R2-TC-005",
+        "R2-TC-006",
+    }
 
     evidence_path = PKG / bounded["evidence_path"]
     evidence_bytes = evidence_path.read_bytes()
@@ -94,6 +100,48 @@ def test_tc001_bounded_acceptance_is_separate_from_product_status(catalogs):
     assert evidence["test_harness"]["negative_controls"] == "PASS"
     assert len(evidence["negative_controls"]) == 17
     assert all(evidence["negative_controls"].values())
+
+
+def test_tc004_to_tc006_bounded_acceptance_preserves_product_not_run(catalogs):
+    _, _, cases = catalogs
+    selected = {
+        case["id"]: case
+        for case in cases
+        if case["id"] in {"R2-TC-004", "R2-TC-005", "R2-TC-006"}
+    }
+    assert set(selected) == {"R2-TC-004", "R2-TC-005", "R2-TC-006"}
+
+    decision = yaml.safe_load(
+        (ROOT / "docs" / "phase2" / "R2US002_BOUNDED_ACCEPTANCE.yaml").read_text(encoding="utf-8")
+    )
+    assert decision["product_status"] == "NOT_RUN"
+    assert decision["story_status"] == "BOUNDED_SCOPE_COMPLETE"
+    expected_statuses = {
+        row["case_id"]: row["status"] for row in decision["criteria"]
+    }
+    assert expected_statuses == {
+        "R2-TC-004": "SATISFIED",
+        "R2-TC-005": "SATISFIED",
+        "R2-TC-006": "SATISFIED",
+    }
+    for case_id, case in selected.items():
+        bounded = case["bounded_acceptance"]
+        assert bounded["status"] == expected_statuses[case_id]
+        assert bounded["product_status"] == "NOT_RUN"
+        assert case["actual_status"] == "NOT_RUN"
+        assert bounded["exact_head"] == decision["exact_head"]
+
+    feature = (
+        ROOT
+        / "docs"
+        / "phase2"
+        / "spec-v0.1"
+        / "ERP_MCP_PHASE2_SPEC_REBUILT_v0.1_2026-10-08"
+        / "acceptance"
+        / "phase2.feature"
+    ).read_text(encoding="utf-8")
+    for number in ("004", "005", "006"):
+        assert f"@not_implemented @R2TC{number}\n  Scenario: R2-TC-{number}" in feature
 
 
 @pytest.mark.parametrize(

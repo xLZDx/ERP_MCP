@@ -127,18 +127,68 @@
   kind: positive
   expectation: pin file path/SHA/license
   actual_status: NOT_RUN
+  bounded_acceptance:
+    status: SATISFIED
+    criterion: pin file path/SHA/license
+    scope: Exact Ferma repository, pinned commit, source paths, and independently
+      reproduced 132-file digest are verified. No formal license was found. GPT-PM
+      accepted the recorded operator authorization only for private test-only reuse
+      without source redistribution or production source inclusion.
+    remaining: Canonical product R2-TC-004 remains NOT_RUN; any redistribution, production
+      inclusion, or broader reuse requires separate authorization.
+    product_status: NOT_RUN
+    exact_head: c624b701e8f42076441f9b8c6a3cf4dbe60414e7
+    gpt_pm_request_id: 9550946b-a01e-4148-86c0-79db24d9e591
+    evidence_path: evidence/r2-us-002-bounded-evidence.json
+    evidence_sha256: 81dcbc02cc2c6cfcfab4f8bd8c99bbe188f2cc490d03a9b448f4138d469ba64c
+    pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication.json
+    pm_receipt_sha256: 28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e
+    prior_pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication-initial.json
+    prior_pm_receipt_sha256: ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1
 - id: R2-TC-005
   story: R2-US-002
   requirements: *id002
   kind: negative
   expectation: an empty placeholder is not ready
   actual_status: NOT_RUN
+  bounded_acceptance:
+    status: SATISFIED
+    criterion: an empty placeholder is not ready
+    scope: Static ERP_MCP evidence shows ERP/Ferma adapters disabled and reserved,
+      with no runtime construction or MCP registration.
+    remaining: Canonical product acceptance remains NOT_RUN.
+    product_status: NOT_RUN
+    exact_head: c624b701e8f42076441f9b8c6a3cf4dbe60414e7
+    gpt_pm_request_id: 9550946b-a01e-4148-86c0-79db24d9e591
+    evidence_path: evidence/r2-us-002-bounded-evidence.json
+    evidence_sha256: 81dcbc02cc2c6cfcfab4f8bd8c99bbe188f2cc490d03a9b448f4138d469ba64c
+    pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication.json
+    pm_receipt_sha256: 28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e
+    prior_pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication-initial.json
+    prior_pm_receipt_sha256: ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1
 - id: R2-TC-006
   story: R2-US-002
   requirements: *id002
   kind: boundary_recovery
   expectation: donor write APIs are not exposed
   actual_status: NOT_RUN
+  bounded_acceptance:
+    status: SATISFIED
+    criterion: donor write APIs are not exposed
+    scope: Static production MCP composition has read-only annotations, an exact tool
+      registration allowlist, and no ERP/Ferma adapter imports or donor-derived write
+      registration.
+    remaining: Static source review does not prove absence of unmarked code similarity
+      or exact shipped artifact contents; canonical product acceptance remains NOT_RUN.
+    product_status: NOT_RUN
+    exact_head: c624b701e8f42076441f9b8c6a3cf4dbe60414e7
+    gpt_pm_request_id: 9550946b-a01e-4148-86c0-79db24d9e591
+    evidence_path: evidence/r2-us-002-bounded-evidence.json
+    evidence_sha256: 81dcbc02cc2c6cfcfab4f8bd8c99bbe188f2cc490d03a9b448f4138d469ba64c
+    pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication.json
+    pm_receipt_sha256: 28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e
+    prior_pm_receipt_path: evidence/r2-us-002-gpt-pm-adjudication-initial.json
+    prior_pm_receipt_sha256: ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1
 - id: R2-TC-007
   story: R2-US-003
   requirements: &id003
