@@ -1381,3 +1381,38 @@ async def test_rls_hides_other_tenants_from_an_unfiltered_select():
             await db.conn.fetchval("SELECT living.set_scope($1,$2,$3)", "A", "s1", None)
             rows = await db.conn.fetch("SELECT tenant_id, source_id FROM living.jobs")
         assert [(r["tenant_id"], r["source_id"]) for r in rows] == [("A", "s1")]
+
+
+@pytest.mark.integration
+async def test_company_scope_allows_own_company_but_not_global_metadata_or_source_rows():
+    """TC010/TC012: company grants permit matching rows without exposing wider scope."""
+    async with throwaway_db(require_dsn()) as db:
+        await db.conn.execute(
+            "INSERT INTO living.observations(tenant_id,source_id,observation_id,object_id,"
+            "revision_id,kind,digest,observed_at) VALUES('A','s4',$1,'company-row',$2,"
+            "'OBSERVED',$3,'2024-01-01T00:00:00Z')",
+            uuid.uuid4(), uuid.uuid4(), D1)
+
+        async with db.conn.transaction():
+            await db.conn.execute(f'SET LOCAL ROLE "{R}"')
+            await db.conn.fetchval("SELECT living.set_scope('A','s4','c1')")
+            company_sources = await db.conn.fetch(
+                "SELECT tenant_id,source_id,company_id FROM living.sources ORDER BY source_id")
+            tenant_metadata = await db.conn.fetch("SELECT tenant_id FROM living.tenants")
+            source_wide_rows = await db.conn.fetch("SELECT object_id FROM living.observations")
+
+        assert [tuple(row) for row in company_sources] == [("A", "s4", "c1")]
+        assert tenant_metadata == []
+        assert source_wide_rows == []
+
+
+@pytest.mark.integration
+async def test_composite_foreign_key_rejects_source_from_another_tenant():
+    """TC011: a tenant/source grant cannot pair a tenant with another tenant's source."""
+    async with throwaway_db(require_dsn()) as db:
+        await db.conn.execute(
+            "INSERT INTO living.sources(tenant_id,source_id,company_id) VALUES('B','b-only',NULL)")
+        with pytest.raises(asyncpg.ForeignKeyViolationError):
+            await db.conn.execute(
+                "INSERT INTO living.role_scope(role_name,tenant_id,source_id,company_id) "
+                "VALUES('living_reader','A','b-only',NULL)")
