@@ -44,7 +44,7 @@ SPECS = {
     "SC04": dict(slug="unposted-document", question="Unposted document does not create accounting movement",
                  tools=["sales_documents", "accounting_posting_rows"], neg_tool="purchase_documents"),
     "SC05": dict(slug="return", question="Return reduces the relevant movement",
-                 tools=["inventory_movements", "inventory_balance"], neg_tool="receivable_balance"),
+                 tools=["inventory_movements_with_provenance", "inventory_balance_with_provenance"], neg_tool="receivable_balance"),
     "SC06": dict(slug="vat-mixed", question="Different VAT treatments remain distinguishable",
                  tools=["sales_documents"], neg_tool="purchase_documents",
                  disposition="EXTERNAL-GATE", missing_regex=r"vat|tax",
@@ -59,7 +59,7 @@ SPECS = {
     "SC10": dict(slug="account-turnover", question="Opening, turnover and closing values reconcile",
                  tools=["accounting_balance_and_turnovers"], neg_tool="receivable_balance"),
     "SC11": dict(slug="inventory-receipt-expense", question="Inventory movement signs reconcile to net quantity",
-                 tools=["inventory_movements"], neg_tool="receivable_balance"),
+                 tools=["inventory_movements_with_provenance"], neg_tool="receivable_balance"),
     "SC12": dict(slug="cash-receipt-expense", question="Cash movement signs reconcile to net amount",
                  tools=["cash_movements"], neg_tool="payable_balance"),
 }
@@ -71,11 +71,11 @@ def args_for(tool: str, source_id: str, company_id: str, **extra) -> dict:
         return {**base, "as_of": AS_OF, **extra}
     if tool == "counterparty_duplicate_candidates":
         return {**base, **extra}  # input is exactly source_id, company_id, top (default 2000)
-    if tool in {"inventory_balance", "receivable_balance", "payable_balance"}:
+    if tool in {"inventory_balance", "inventory_balance_with_provenance", "receivable_balance", "payable_balance"}:
         return {**base, "period": AS_OF, **extra}
     if tool == "bank_balance":
         return {**base, "period": BANK_AS_OF, **extra}
-    if tool in {"inventory_movements", "cash_movements", "accounting_posting_rows",
+    if tool in {"inventory_movements", "inventory_movements_with_provenance", "cash_movements", "accounting_posting_rows",
                 "accounting_balance_and_turnovers"}:
         return {**base, **APRIL, **extra}
     return {**base, **extra}

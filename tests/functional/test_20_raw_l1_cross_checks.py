@@ -35,7 +35,7 @@ async def test_sc11_sc05_tool_item_nets_match_raw_register_and_balance_register(
     raw_net: dict[str, Decimal] = defaultdict(D)
     for r in raw_moves:
         raw_net[r["Номенклатура_Key"]] += D(str(r["Количество"])) * (1 if r["RecordType"] == "Receipt" else -1)
-    tool = (await h.call("inventory_movements", args_for("inventory_movements", h.SOURCE_ID, h.COMPANY_ONE))).data["value"]
+    tool = (await h.call("inventory_movements_with_provenance", args_for("inventory_movements_with_provenance", h.SOURCE_ID, h.COMPANY_ONE))).data["value"]
     tool_net: dict[str, Decimal] = defaultdict(D)
     for r in tool:
         tool_net[r["item_ref"]] += D(r["quantity_delta"])

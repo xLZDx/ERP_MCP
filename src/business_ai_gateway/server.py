@@ -134,6 +134,8 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "onec_find_entities_with_property_types",
     "accounting_balance_and_turnovers_by_account",
     "accounting_posting_rows_with_provenance",
+    "inventory_movements_with_provenance",
+    "inventory_balance_with_provenance",
     "purchase_documents_filtered",
 })
 
@@ -161,7 +163,9 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "accounting_balance_and_turnovers_by_account": "accounting.read",
     "accounting_balance_by_analytics": "accounting.read",
     "inventory_balance": "inventory.read",
+    "inventory_balance_with_provenance": "inventory.read",
     "inventory_movements": "inventory.read",
+    "inventory_movements_with_provenance": "inventory.read",
     "accounting_posting_rows": "accounting.read",
     "accounting_posting_rows_with_provenance": "accounting.read",
     "cash_movements": "cash.read",
@@ -1285,8 +1289,14 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def inventory_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+    async def read_inventory_balance(
+        source_id: str,
+        company_id: str,
+        period: str,
+        *,
+        tool_name: str,
+        include_provenance: bool,
+    ) -> dict[str, Any]:
         """Read a point-in-time, company-scoped inventory balance via a validated profile."""
         started = time.monotonic()
         principal = await ctx()
@@ -1295,7 +1305,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -1310,7 +1320,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         source = await resolve_source(
             principal,
             source_id,
-            "inventory_balance",
+            tool_name,
             started,
             query,
             company_id=parsed_company_id,
@@ -1326,6 +1336,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_BALANCE_CONCEPT
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                raise SemanticProfileUnavailable("Use the inventory tool with provenance for this profile.")
+            provenance = profile_provenance(profile) if include_provenance else {"warnings": []}
             mapping = profile["mapping"]
             register_set, method, arguments = build_inventory_balance_arguments(
                 mapping, company_external_ref=company.external_ref, period=period
@@ -1344,7 +1357,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -1366,12 +1379,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -1396,13 +1409,38 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def inventory_movements(
+    async def inventory_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+        """Read a company-scoped inventory balance with a validated native profile.
+
+        Use inventory_balance_with_provenance for other supported profile types.
+        """
+        return await read_inventory_balance(
+            source_id, company_id, period,
+            tool_name="inventory_balance", include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def inventory_balance_with_provenance(
+        source_id: str,
+        company_id: str,
+        period: str,
+    ) -> dict[str, Any]:
+        """Read company-scoped inventory data with explicit profile provenance."""
+        return await read_inventory_balance(
+            source_id, company_id, period,
+            tool_name="inventory_balance_with_provenance", include_provenance=True,
+        )
+
+    async def read_inventory_movements(
         source_id: str,
         company_id: str,
         start_period: str,
         end_period: str,
-        top: int = 100,
-        skip: int = 0,
+        top: int,
+        skip: int,
+        *,
+        tool_name: str,
+        include_provenance: bool,
     ) -> dict[str, Any]:
         """Read company-scoped inventory register records; quantity sign follows mapped record type."""
         started = time.monotonic()
@@ -1412,7 +1450,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_movements",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -1433,7 +1471,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         source = await resolve_source(
             principal,
             source_id,
-            "inventory_movements",
+            tool_name,
             started,
             query,
             company_id=parsed_company_id,
@@ -1449,6 +1487,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_MOVEMENTS_CONCEPT
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                raise SemanticProfileUnavailable("Use the inventory tool with provenance for this profile.")
+            provenance = profile_provenance(profile) if include_provenance else {"warnings": []}
             mapping = profile["mapping"]
             entity_set, select, filter_expr = build_inventory_movement_query(
                 mapping,
@@ -1500,7 +1541,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_movements",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -1522,12 +1563,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="inventory_movements",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -1550,6 +1591,40 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def inventory_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped inventory movements with a validated native profile.
+
+        Quantity sign follows mapped record type. Use inventory_movements_with_provenance
+        for other supported profile types.
+        """
+        return await read_inventory_movements(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="inventory_movements", include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def inventory_movements_with_provenance(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped inventory data with explicit profile provenance."""
+        return await read_inventory_movements(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="inventory_movements_with_provenance", include_provenance=True,
+        )
 
     async def read_accounting_posting_rows(
         source_id: str,

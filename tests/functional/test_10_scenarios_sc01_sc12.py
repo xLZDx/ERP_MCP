@@ -117,14 +117,14 @@ async def eval_sc04():
 
 
 async def eval_sc05():
-    moves = (await ok_call("inventory_movements")).data["value"]
+    moves = (await ok_call("inventory_movements_with_provenance")).data["value"]
     item2 = [D(r["quantity_delta"]) for r in moves if r["item_ref"] == ITEM_2]
     assert item2 == [D(10), D(-3)], "return recorded as a negative movement"
     assert D(10) - D(3) == sum(item2) == D(7)
     net: dict[str, Decimal] = {}
     for r in moves:
         net[r["item_ref"]] = net.get(r["item_ref"], D(0)) + D(r["quantity_delta"])
-    bal = {r["item_ref"]: D(r["quantity"]) for r in (await ok_call("inventory_balance")).data["value"]}
+    bal = {r["item_ref"]: D(r["quantity"]) for r in (await ok_call("inventory_balance_with_provenance")).data["value"]}
     assert bal == net == {ITEM_1: D(5), ITEM_2: D(7)}
     return "item 002: receipt 10 - return 3 = on-hand 7; item 001 net 5 = balance 5"
 
@@ -163,7 +163,7 @@ async def eval_sc10():
 
 
 async def eval_sc11():
-    moves = (await ok_call("inventory_movements")).data["value"]
+    moves = (await ok_call("inventory_movements_with_provenance")).data["value"]
     item1 = [r for r in moves if r["item_ref"] == ITEM_1]
     receipts = sum(D(r["quantity_delta"]) for r in item1 if r["direction"] == "receipt")
     expense = [D(r["quantity_delta"]) for r in item1 if r["direction"] == "expense"]
@@ -276,8 +276,8 @@ async def _isolation(case: str):
         assert sales.isdisjoint({"SALE-001", "SALE-003", "SALE-004"}), sales
         assert (await ok_call("accounting_posting_rows", two, **WIDE)).data["value"] == []
     elif case in {"SC05", "SC11"}:
-        assert (await ok_call("inventory_movements", two)).data["value"] == []
-        assert (await ok_call("inventory_balance", two)).data["value"] == []
+        assert (await ok_call("inventory_movements_with_provenance", two)).data["value"] == []
+        assert (await ok_call("inventory_balance_with_provenance", two)).data["value"] == []
     elif case in {"SC09", "SC12"}:
         assert (await ok_call("cash_movements", two, **CASH_WINDOW)).data["value"] == []
         assert (await ok_call("bank_balance", two)).data["value"] == []

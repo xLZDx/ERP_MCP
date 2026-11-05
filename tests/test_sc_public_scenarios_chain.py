@@ -91,7 +91,7 @@ async def test_sc05_return_reduces_movement_and_reconciles_to_balance_per_item(
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         moves = (await _call(
-            stack, "inventory_movements",
+            stack, "inventory_movements_with_provenance",
             start_period="2026-04-01T00:00:00+00:00", end_period="2026-04-30T00:00:00+00:00",
         ))["value"]
         net: dict[str, Decimal] = defaultdict(Decimal)
@@ -99,7 +99,7 @@ async def test_sc05_return_reduces_movement_and_reconciles_to_balance_per_item(
             net[row["item_ref"]] += Decimal(row["quantity_delta"])
         item2 = [r for r in moves if r["item_ref"] == ITEM_2]
         assert [Decimal(r["quantity_delta"]) for r in item2] == [Decimal(10), Decimal(-3)]
-        balance = (await _call(stack, "inventory_balance", period="2026-04-30T00:00:00+00:00"))
+        balance = (await _call(stack, "inventory_balance_with_provenance", period="2026-04-30T00:00:00+00:00"))
         by_item = {r["item_ref"]: Decimal(str(r["quantity"])) for r in balance["value"]}
         assert by_item == dict(net) == {ITEM_1: Decimal(5), ITEM_2: Decimal(7)}
     finally:
