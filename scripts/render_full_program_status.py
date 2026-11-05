@@ -6,9 +6,8 @@ import html
 import re
 import subprocess
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "reports"
@@ -154,7 +153,7 @@ def parse_plan() -> tuple[dict[str, str], list[dict[str, str]], dict[str, dict[s
     active = ""
     title = ""
     while i < len(lines):
-        m = re.match(r"^##\s+Sprint\s+(\S+)\s*[-—–:]*\s*(.*)$", lines[i], re.I)
+        m = re.match(r"^##\s+Sprint\s+(\S+)\s*[-—–:]*\s*(.*)$", lines[i], re.IGNORECASE)
         if m:
             active, title = m.group(1).rstrip(":"), m.group(2).strip()
             goal = ""
@@ -185,7 +184,7 @@ def parse_plan() -> tuple[dict[str, str], list[dict[str, str]], dict[str, dict[s
                                       "owner": row.get("owner", ""), "depends": row.get("depends", ""), "commit": row.get("commit", "")})
                     i += 1
             continue
-        if re.match(r"^##\s+Roadmap\s*$", lines[i], re.I):
+        if re.match(r"^##\s+Roadmap\s*$", lines[i], re.IGNORECASE):
             i += 1
             while i < len(lines) and not lines[i].lstrip().startswith("|"):
                 i += 1
@@ -209,7 +208,7 @@ def remote_task_commits() -> dict[str, list[tuple[str, int, str]]]:
     for line in log:
         sha, ts, subject = line.split("\t", 2)
         for task_id in plan_ids:
-            if re.search(r"(?<![A-Z0-9])" + re.escape(task_id) + r"(?![A-Z0-9])", subject, re.I):
+            if re.search(r"(?<![A-Z0-9])" + re.escape(task_id) + r"(?![A-Z0-9])", subject, re.IGNORECASE):
                 tasks.setdefault(task_id, []).append((sha, int(ts), subject))
     return tasks
 
@@ -229,8 +228,8 @@ def commit_info(t: dict[str, str], commits: dict[str, list[tuple[str, int, str]]
     if not linked:
         return f"NR — no exact-ID commit message on {REMOTE}; absence does not prove no code"
     linked = sorted(linked, key=lambda x: x[1])
-    first = datetime.fromtimestamp(linked[0][1], timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
-    last = datetime.fromtimestamp(linked[-1][1], timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+    first = datetime.fromtimestamp(linked[0][1], UTC).astimezone().strftime("%Y-%m-%d %H:%M")
+    last = datetime.fromtimestamp(linked[-1][1], UTC).astimezone().strftime("%Y-%m-%d %H:%M")
     info = f"{len(linked)}; first {linked[0][0][:12]} {first}; last {linked[-1][0][:12]} {last} Europe/Chisinau; on {REMOTE}"
     if t["sprint"] == "FIN":
         info += "; diff share NR"
@@ -243,7 +242,7 @@ def plan_commit(t: dict[str, str]) -> str:
         return "—"
     try:
         full = git("rev-parse", "--verify", ref + "^{commit}")
-        reachable = subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor", full, REMOTE], capture_output=True).returncode == 0
+        reachable = subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor", full, REMOTE], check=False, capture_output=True).returncode == 0
         return f"{html.escape(ref)} — {html.escape(full[:12])}; {'remote reachable' if reachable else 'not on remote ref'}"
     except subprocess.CalledProcessError:
         return f"{html.escape(ref)} — NOT VERIFIED"
@@ -260,7 +259,6 @@ def render(lang: str, meta: dict[str, str], tasks: list[dict[str, str]], info: d
     by_sprint: dict[str, list[dict[str, str]]] = {}
     for task in tasks:
         by_sprint.setdefault(task["sprint"], []).append(task)
-    rows = len(tasks)
     bounded = sum(current_kind(x) == "bounded" for x in tasks)
     program_sprints = [f"S{i}" for i in range(20)] + ["FIN"]
     active = meta.get("active_sprint", "")

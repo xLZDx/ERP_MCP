@@ -445,7 +445,7 @@ def test_tc002_receipt_parser_rejects_mismatched_correlated_receipt_fields(
 
 
 def test_tc002_receipt_parser_rejects_wrong_reply_and_receipt_hashes(tmp_path, monkeypatch):
-    builder, bounded, receipt, receipt_path = _tc002_synthetic_approved_receipt(tmp_path, monkeypatch)
+    builder, bounded, receipt, _receipt_path = _tc002_synthetic_approved_receipt(tmp_path, monkeypatch)
     builder.validate_tc002_pm_adjudication_receipt(bounded)
 
     bounded["gpt_pm_adjudication_reply_sha256"] = "0" * 64
@@ -674,7 +674,7 @@ def test_tc003_loader_rejects_duplicate_pm_receipt_json_keys(tmp_path, monkeypat
     decision = yaml.safe_load(builder.TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
     bounded = decision["bounded_acceptance"]
     original_path = ROOT / bounded["gpt_pm_adjudication_receipt_path"]
-    receipt_bytes = original_path.read_bytes()
+    receipt_bytes = original_path.read_bytes().replace(b"\r\n", b"\n")
     needle = b'"schema_version": 1,'
     assert receipt_bytes.count(needle) == 1
     duplicate_receipt = receipt_bytes.replace(needle, b'"schema_version": 1, "schema_version": 1,', 1)

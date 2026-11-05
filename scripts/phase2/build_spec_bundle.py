@@ -225,7 +225,7 @@ def save(rel: str, value: str | bytes) -> None:
 
 def validate_tc001_bounded_fields(bounded: dict) -> None:
     if not isinstance(bounded, dict):
-        raise ValueError("TC001_BOUNDED_DECISION_MISSING_ACCEPTANCE")
+        raise ValueError("TC001_BOUNDED_DECISION_MISSING_ACCEPTANCE")  # noqa: TRY004 - malformed evidence is a validation error
     expected_fields = set(TC001_BOUNDED_EXPECTED) - {"case_id", "product_status"}
     if set(bounded) != expected_fields:
         raise ValueError("TC001_BOUNDED_DECISION_FIELDS_MISMATCH")
@@ -303,7 +303,7 @@ def load_tc001_bounded_acceptance() -> tuple[dict, bytes]:
 
 def validate_tc002_bounded_fields(bounded: dict) -> None:
     if not isinstance(bounded, dict):
-        raise ValueError("TC002_BOUNDED_DECISION_MISSING_ACCEPTANCE")
+        raise ValueError("TC002_BOUNDED_DECISION_MISSING_ACCEPTANCE")  # noqa: TRY004 - malformed evidence is a validation error
     expected_fields = set(TC002_BOUNDED_EXPECTED) - {"case_id", "product_status"}
     if set(bounded) != expected_fields:
         raise ValueError("TC002_BOUNDED_DECISION_FIELDS_MISMATCH")
@@ -405,10 +405,10 @@ def validate_tc002_pm_adjudication_receipt(bounded: dict) -> bytes | None:
 
     receipt = json.loads(receipt_bytes, object_pairs_hook=reject_duplicate_json_keys)
     if not isinstance(receipt, dict):
-        raise ValueError("TC002_BOUNDED_PM_RECEIPT_SCHEMA_MISMATCH")
+        raise ValueError("TC002_BOUNDED_PM_RECEIPT_SCHEMA_MISMATCH")  # noqa: TRY004 - malformed evidence is a validation error
     reply_text = receipt.get("reply_text")
     if not isinstance(reply_text, str):
-        raise ValueError("TC002_BOUNDED_PM_RECEIPT_REPLY_MISSING")
+        raise ValueError("TC002_BOUNDED_PM_RECEIPT_REPLY_MISSING")  # noqa: TRY004 - malformed evidence is a validation error
     decision_labels = (
         "PROJECT:", "TASK:", "REQUEST_ID:", "FINAL VERDICT:",
         "COMMIT_UPDATE_PR42:", "BOUNDED_TC002:", "PRODUCT_TC002:",
@@ -592,10 +592,10 @@ def load_tc003_bounded_acceptance() -> tuple[dict, bytes, bytes]:
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ValueError("TC003_BOUNDED_EVIDENCE_OR_RECEIPT_INVALID_JSON") from exc
     if not isinstance(evidence, dict) or not isinstance(receipt, dict):
-        raise ValueError("TC003_BOUNDED_EVIDENCE_OR_RECEIPT_SCHEMA_MISMATCH")
+        raise ValueError("TC003_BOUNDED_EVIDENCE_OR_RECEIPT_SCHEMA_MISMATCH")  # noqa: TRY004 - malformed evidence is a validation error
     reply_text = receipt.get("reply_text")
     if not isinstance(reply_text, str):
-        raise ValueError("TC003_BOUNDED_PM_RECEIPT_REPLY_MISSING")
+        raise ValueError("TC003_BOUNDED_PM_RECEIPT_REPLY_MISSING")  # noqa: TRY004 - malformed evidence is a validation error
     labels = ("PROJECT:", "TASK:", "REQUEST_ID:", "FINAL VERDICT:", "BOUNDED_TC003:", "PRODUCT_TC003:")
     if any(line.lstrip() != line and line.lstrip().startswith(labels) for line in reply_text.splitlines()):
         raise ValueError("TC003_BOUNDED_PM_RECEIPT_CONTENT_MISMATCH")
@@ -764,7 +764,7 @@ def load_tc004_006_bounded_acceptance() -> tuple[dict, bytes, bytes, bytes]:
     }
     reply_text = receipt.get("reply_text") if isinstance(receipt, dict) else None
     if not isinstance(reply_text, str):
-        raise ValueError("TC004_006_BOUNDED_PM_REPLY_MISSING")
+        raise ValueError("TC004_006_BOUNDED_PM_REPLY_MISSING")  # noqa: TRY004 - malformed evidence is a validation error
     required_reply_lines = {
         f"REQUEST_ID: {decision['pm_request_id']}",
         "FINAL VERDICT: APPROVE",
@@ -1080,18 +1080,18 @@ def main():
     tc003_bounded, tc003_evidence_bytes, tc003_receipt_bytes = load_tc003_bounded_acceptance()
     tc004_006_bounded, tc004_006_evidence_bytes, tc004_006_receipt_bytes, tc004_006_prior_receipt_bytes = load_tc004_006_bounded_acceptance()
     reqs, stories, cases = make_data(bounded, tc002_bounded, tc003_bounded, tc004_006_bounded)
-    decision = TC001_BOUNDED_DECISION.read_bytes()
+    decision = TC001_BOUNDED_DECISION.read_text(encoding="utf-8")
     save("docs/11_TC001_BOUNDED_ACCEPTANCE.yaml", decision)
     save(bounded["evidence_path"], evidence_bytes)
-    tc002_decision = TC002_BOUNDED_DECISION.read_bytes()
+    tc002_decision = TC002_BOUNDED_DECISION.read_text(encoding="utf-8")
     save("docs/12_TC002_BOUNDED_ACCEPTANCE.yaml", tc002_decision)
     save(tc002_bounded["evidence_path"], tc002_evidence_bytes)
     if tc002_receipt_bytes is not None:
         save(tc002_bounded["gpt_pm_adjudication_package_receipt_path"], tc002_receipt_bytes)
-    save("docs/13_TC003_BOUNDED_ACCEPTANCE.yaml", TC003_BOUNDED_DECISION.read_bytes())
+    save("docs/13_TC003_BOUNDED_ACCEPTANCE.yaml", TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
     save(tc003_bounded["evidence_path"], tc003_evidence_bytes)
     save(tc003_bounded["gpt_pm_adjudication_package_receipt_path"], tc003_receipt_bytes)
-    save("docs/14_R2US002_BOUNDED_ACCEPTANCE.yaml", TC004_006_BOUNDED_DECISION.read_bytes())
+    save("docs/14_R2US002_BOUNDED_ACCEPTANCE.yaml", TC004_006_BOUNDED_DECISION.read_text(encoding="utf-8"))
     save("evidence/r2-us-002-bounded-evidence.json", tc004_006_evidence_bytes)
     save("evidence/r2-us-002-gpt-pm-adjudication.json", tc004_006_receipt_bytes)
     save("evidence/r2-us-002-gpt-pm-adjudication-initial.json", tc004_006_prior_receipt_bytes)

@@ -20,7 +20,7 @@ def _safe_settings(settings) -> dict:
     values = settings.model_dump(mode="json")
     sensitive = re.compile(
         r"(?:url|dsn|database|token|secret|password|credential|key|root|file|cidr|host|ip|path)",
-        re.I,
+        re.IGNORECASE,
     )
     redacted = sorted(name for name in values if sensitive.search(name))
     return {

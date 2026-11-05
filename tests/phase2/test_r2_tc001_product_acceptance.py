@@ -7,7 +7,6 @@ import os
 import subprocess
 
 import pytest
-
 from r2_tc001_oracle import DifferentialMismatch, _oracle_pair, negative_controls
 from run_r2_tc001 import (
     DEFAULT_BASELINE,
@@ -16,7 +15,6 @@ from run_r2_tc001 import (
     run_scenario,
     serialize_differential_outcome,
 )
-
 
 EXPECTED_NEGATIVE_CONTROLS = {
     "removed_tool", "removed_property", "incompatible_field_type", "changed_required",
