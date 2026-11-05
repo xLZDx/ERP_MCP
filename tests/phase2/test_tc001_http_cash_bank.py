@@ -3,19 +3,18 @@ from __future__ import annotations
 
 import json
 import os
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID
-from decimal import Decimal
 
 import pytest
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.testclient import TestClient
 
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
-from mcp.server.transport_security import TransportSecuritySettings
 from scripts.synthetic_fixture_profiles import concept_mappings
-
 
 COMPANY_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_COMPANY_ID = UUID("00000000-0000-0000-0000-000000000002")

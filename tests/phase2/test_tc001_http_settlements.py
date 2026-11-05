@@ -8,12 +8,11 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.testclient import TestClient
 
 from business_ai_gateway.server import build_mcp
 from business_ai_gateway.settings import Settings
-from mcp.server.transport_security import TransportSecuritySettings
-
 
 COMPANY_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_COMPANY_ID = UUID("00000000-0000-0000-0000-000000000002")
