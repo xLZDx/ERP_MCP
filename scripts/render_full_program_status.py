@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Render an evidence-conscious RU/EN status report from PROJECT_PLAN.md."""
 from __future__ import annotations
 

@@ -12,8 +12,8 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl, Field
 
-from .adapters.onec.com_contract import COM_MAX_ROWS, ComBalanceRequest
 from .adapters.onec.client import OneCTransportError
+from .adapters.onec.com_contract import COM_MAX_ROWS, ComBalanceRequest
 from .adapters.onec.rsv_bridge import METADATA_TOOLS
 from .adapters.onec.rsv_bridge import UPSTREAM_SHA as RSV_UPSTREAM_SHA
 from .analytics_balance import (

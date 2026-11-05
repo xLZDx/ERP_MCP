@@ -18,7 +18,6 @@ import pytest
 from business_ai_gateway.adapters.onec.client import OneCReadClient, OneCTransportError
 from business_ai_gateway.models import Source
 
-
 ROOT = Path(__file__).resolve().parents[2]
 _RUNNER_SPEC = importlib.util.spec_from_file_location(
     "tc001_preservation_runner", ROOT / "tests/phase2/run_tc001_r1_preservation.py"
