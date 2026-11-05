@@ -296,7 +296,10 @@ class SqlChangeLedger:
     """Implements ``checkpoint.LedgerPort`` plus the rest of the runtime surface of 004-006."""
 
     __slots__ = (
-        "conn", "_actors", "_lifecycle_fence_enabled", "_private_writer_schema_enabled",
+        "_actors",
+        "_lifecycle_fence_enabled",
+        "_private_writer_schema_enabled",
+        "conn",
     )
 
     def __setattr__(self, name: str, value: Any) -> None:

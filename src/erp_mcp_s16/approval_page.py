@@ -16,7 +16,7 @@ from business_ai_gateway.phase2.change.errors import ErrorCode, render
 
 from .contracts import ApproverSession, AuthenticatedPrincipal, DecisionPage, PrincipalRole, Result
 
-__all__ = ["create_approval_app", "SESSION_COOKIE_NAME"]
+__all__ = ["SESSION_COOKIE_NAME", "create_approval_app"]
 
 SESSION_COOKIE_NAME = "__Secure-s16_approval"
 SESSION_COOKIE_ATTRIBUTES = "Path=/approval; Secure; HttpOnly; SameSite=Strict"

@@ -30,10 +30,10 @@ from .clone_1c import (
 
 __all__ = [
     "SimulatedOneCWritePort",
-    "SyntheticPermitAuthority",
-    "SyntheticPortResult",
-    "SyntheticPortRefusal",
     "SyntheticOutcomeUnknown",
+    "SyntheticPermitAuthority",
+    "SyntheticPortRefusal",
+    "SyntheticPortResult",
 ]
 
 _HEX64: Final = re.compile(r"[0-9a-f]{64}")

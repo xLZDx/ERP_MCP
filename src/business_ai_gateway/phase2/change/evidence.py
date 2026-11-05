@@ -17,11 +17,22 @@ from typing import ClassVar, Final
 from .. import ed25519
 
 __all__ = [
-    "DispatchReceipt", "OutcomeEvidence", "OutcomeEvidenceV2", "OutcomeEvidenceV3",
-    "CompletionProof", "PostCompletionChallenge", "PostCompletionReadAttestation", "canonical_json_bytes",
-    "challenged_read_request_digest", "outcome_observation_digest",
+    "CompletionProof",
+    "DispatchAttempt",
+    "DispatchReceipt",
+    "OutcomeEvidence",
+    "OutcomeEvidenceV2",
+    "OutcomeEvidenceV3",
+    "PostCompletionChallenge",
+    "PostCompletionReadAttestation",
+    "canonical_json_bytes",
+    "challenged_read_request_digest",
+    "outcome_observation_digest",
+    "record_digest",
+    "seal_record_fixture",
+    "sign_record_fixture",
     "validate_conditional_conflict_terminal_evidence",
-    "DispatchAttempt", "record_digest", "verify_record_signature", "sign_record_fixture", "seal_record_fixture",
+    "verify_record_signature",
 ]
 
 _HEX64: Final = re.compile(r"[0-9a-f]{64}\Z")

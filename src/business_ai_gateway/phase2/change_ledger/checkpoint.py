@@ -314,8 +314,13 @@ class DispatchGate:
     """
 
     __slots__ = (
-        "_ledger", "_sink", "_signer", "_verifier", "_flag",
-        "_private_writer_schema_enabled", "_runtime_authority",
+        "_flag",
+        "_ledger",
+        "_private_writer_schema_enabled",
+        "_runtime_authority",
+        "_signer",
+        "_sink",
+        "_verifier",
     )
 
     def __setattr__(self, name: str, value: object) -> None:

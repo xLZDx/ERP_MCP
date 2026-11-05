@@ -190,7 +190,7 @@ class ProcessInstanceAttestation:
 class TrustedIdentityRegistry:
     """Immutable evaluation registry snapshot; provider authenticity is an external prerequisite."""
 
-    __slots__ = ("_keys", "_processes", "_oracles", "_frozen")
+    __slots__ = ("_frozen", "_keys", "_oracles", "_processes")
 
     def __init__(self, identities: tuple[SignerIdentity, ...],
                  process_instances: tuple[ProcessInstanceAttestation, ...] = (), *,
