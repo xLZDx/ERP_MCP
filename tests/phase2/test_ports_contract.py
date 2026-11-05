@@ -945,6 +945,33 @@ async def test_revoking_a_grant_denies_the_role_and_bumps_the_epoch(h):
     assert await p.as_known_at(W, S, await p.now()) == ()
 
 
+async def test_revoking_scope_invalidates_queued_job_even_after_regrant(h):
+    """TC013: deletion bumps the epoch; regrant cannot revive work queued before revoke."""
+    p = h.p
+    job_id = uuid.uuid4()
+    epoch_before = await p.scope_epoch(S)
+    await p.enqueue_job(W, S, job_id, "sync", "c" * 64, "revoke-before-acquire")
+
+    await p.revoke_scope(W, S)
+    assert await p.scope_epoch(S) == epoch_before + 1
+    await p.grant_scope(W, S)  # models a later explicit authorization, not implicit reconnect
+
+    await rejected("SCOPE_REVOKED", p.acquire_job(W, S, job_id, "w1", 30))
+    assert (await p.get_job(W, S, job_id)).state == "PENDING"
+
+
+async def test_revocation_before_disclosure_denies_a_subsequent_read(h):
+    """TC014: a previously readable object is denied after its role grant is revoked."""
+    p = h.p
+    await ing(h, "restricted-after-revoke")
+    before = await p.as_known_at(R, S, await p.now())
+    assert any(row.observation.object_id == "restricted-after-revoke" for row in before)
+
+    await p.revoke_scope(R, S)
+
+    await rejected("SCOPE_NOT_GRANTED", p.as_known_at(R, S, await p.now()))
+
+
 async def test_scope_epoch_of_an_unknown_source_is_none(h):
     assert await h.p.scope_epoch(Scope("A", "missing")) is None
 
@@ -1416,3 +1443,29 @@ async def test_composite_foreign_key_rejects_source_from_another_tenant():
             await db.conn.execute(
                 "INSERT INTO living.role_scope(role_name,tenant_id,source_id,company_id) "
                 "VALUES('living_reader','A','b-only',NULL)")
+
+
+@pytest.mark.integration
+async def test_fresh_connection_does_not_restore_a_revoked_scope_grant():
+    """TC015: reconnecting cannot recreate a deleted persistent role_scope grant."""
+    async with throwaway_db(require_dsn()) as db:
+        async with db.conn.transaction():
+            await db.conn.execute(f'SET LOCAL ROLE "{R}"')
+            await db.conn.fetchval("SELECT living.set_scope('A','s1',NULL)")
+            rows = await db.conn.fetch("SELECT tenant_id,source_id FROM living.sources")
+        assert [(row["tenant_id"], row["source_id"]) for row in rows] == [("A", "s1")]
+
+        await db.conn.execute(
+            "DELETE FROM living.role_scope WHERE role_name=$1 AND tenant_id='A' AND source_id='s1'", R)
+        fresh = await db.connect()
+        try:
+            with pytest.raises(asyncpg.PostgresError) as error:
+                async with fresh.transaction():
+                    await fresh.execute(f'SET LOCAL ROLE "{R}"')
+                    await fresh.fetchval("SELECT living.set_scope('A','s1',NULL)")
+            assert str(error.value) == "SCOPE_NOT_GRANTED"
+            assert await db.conn.fetchval(
+                "SELECT count(*) FROM living.role_scope WHERE role_name=$1 AND tenant_id='A' "
+                "AND source_id='s1'", R) == 0
+        finally:
+            await fresh.close()
