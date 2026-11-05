@@ -325,7 +325,7 @@ class GovernedWriteE2ETests(unittest.TestCase):
         for label, guard, may_have_started in variants:
             with self.subTest(label=label):
                 attempt = _attempt()
-                coordinator, ledger = _system()
+                coordinator, _ledger = _system()
                 valid_guard = _no_invocation_guard(attempt)
                 receipt = _receipt(
                     attempt, no_effect=True, no_effect_digest=valid_guard.evidence_digest,

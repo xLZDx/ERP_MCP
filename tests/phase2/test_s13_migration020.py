@@ -147,7 +147,7 @@ async def run_partial_failure_t9_retry_and_repair(led: L) -> None:
     await add_base(led.conn, "s13-poison")
     bad, token = await led.approved(request_id="s13-poison", base="s13-poison"), None
     token = await led.claimed(bad)
-    good, good_token, _ = await led.dispatched(request_id="s13-t9", base="base-1")
+    good, _good_token, _ = await led.dispatched(request_id="s13-t9", base="base-1")
     await led.conn.execute("UPDATE change_ledger.call_deadlines SET hard_deadline_at=now()-interval '1 second' "
                            "WHERE change_id=$1", good)
     await install_record_poison(led.conn, bad, "s13_poison_claim_trigger", "s13_poison_claim",

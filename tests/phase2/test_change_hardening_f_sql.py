@@ -102,7 +102,7 @@ async def test_f1_begin_apply_still_creates_its_permit_and_replay_is_idempotent(
 # ============================================================================ F2: the permit transition guard
 async def test_f2_a_permit_only_becomes_dispatched_from_permitted(led):
     # NOT_PERMITTED -> DISPATCHED with a valid marker: 012 accepted it (no issue_permit, no checkpoint, no TTL, no fence)
-    cid, tok, call_id = await led.applying(request_id="f2a", base="base-1")
+    cid, tok, _call_id = await led.applying(request_id="f2a", base="base-1")
     gen = tok["generation"]
     assert await led.call("clt_wri", "verify_dispatch_payload", cid, gen, PAYLOAD) is True
     assert await markers(led, cid) == 1
@@ -115,7 +115,7 @@ async def test_f2_a_permit_only_becomes_dispatched_from_permitted(led):
 
 
 async def test_f2_a_dispatched_permit_cannot_leave_dispatched(led):
-    cid, tok, call_id = await led.dispatched(request_id="f2b", base="base-1")
+    cid, tok, _call_id = await led.dispatched(request_id="f2b", base="base-1")
     for target in ("PERMITTED", "NOT_PERMITTED", "CANCELLED_UNDISPATCHED"):
         await refused(led, f"UPDATE change_ledger.dispatch_permits SET state='{target}' WHERE change_id=$1", cid)
     await refused(led, "SELECT change_ledger.dispatch_cas($1,$2,'DISPATCHED','PERMITTED')", cid, tok["generation"])
@@ -130,7 +130,7 @@ async def test_f3_direct_update_to_dispatched_is_refused_without_a_dispatched_pe
     plain = await led.propose(request_id="f3a")                           # no permit at all
     await refused(led, upd, plain)
     assert await dstate(led, plain) == "NOT_PERMITTED"
-    cid, tok, call_id, _ = await led.permitted(request_id="f3b", base="base-2")   # permit PERMITTED, no marker
+    cid, tok, _call_id, _ = await led.permitted(request_id="f3b", base="base-2")   # permit PERMITTED, no marker
     await refused(led, upd, cid)
     assert await dstate(led, cid) == "PERMITTED" and await permit_state(led, cid) == "PERMITTED"
     assert await led.call("clt_wri", "verify_dispatch_payload", cid, tok["generation"], PAYLOAD) is True
@@ -146,7 +146,7 @@ async def test_f3_direct_update_to_dispatched_is_refused_without_a_dispatched_pe
 
 
 async def test_f3_dispatched_is_refused_when_the_verification_no_longer_matches(led):
-    cid, tok, call_id = await led.dispatched(request_id="f3c", base="base-1")
+    cid, _tok, _call_id = await led.dispatched(request_id="f3c", base="base-1")
     # a DISPATCHED permit exists, but the record is rolled back by hand and re-set after the digest changed under it:
     # the 012 gate (assert_dispatch_verified) is reused, so the changed digest is refused even with a DISPATCHED permit
     await led.conn.execute("ALTER TABLE change_ledger.records DISABLE TRIGGER records_dispatch_state_guard")
@@ -161,7 +161,7 @@ async def test_f3_dispatched_is_refused_when_the_verification_no_longer_matches(
 
 
 async def test_f3_dispatched_is_refused_when_the_same_statement_moves_the_proven_facts(led):
-    cid, tok, call_id = await led.dispatched(request_id="f3d", base="base-1")
+    cid, _tok, _call_id = await led.dispatched(request_id="f3d", base="base-1")
     await led.conn.execute("ALTER TABLE change_ledger.records DISABLE TRIGGER records_dispatch_state_guard")
     await led.conn.execute("UPDATE change_ledger.records SET dispatch_state='PERMITTED' WHERE change_id=$1", cid)
     await led.conn.execute("ALTER TABLE change_ledger.records ENABLE TRIGGER records_dispatch_state_guard")
@@ -173,10 +173,10 @@ async def test_f3_dispatched_is_refused_when_the_same_statement_moves_the_proven
 
 async def test_f3_permitted_needs_a_permitted_permit_and_a_dispatched_record_cannot_fall_back(led):
     to_permitted = "UPDATE change_ledger.records SET dispatch_state='PERMITTED' WHERE change_id=$1"
-    cid, tok, call_id = await led.applying(request_id="f3e", base="base-1")        # permit NOT_PERMITTED
+    cid, _tok, _call_id = await led.applying(request_id="f3e", base="base-1")        # permit NOT_PERMITTED
     await refused(led, to_permitted, cid)
     assert await dstate(led, cid) == "NOT_PERMITTED"
-    done, dtok, _ = await led.dispatched(request_id="f3f", base="base-2")          # permit and record DISPATCHED
+    done, _dtok, _ = await led.dispatched(request_id="f3f", base="base-2")          # permit and record DISPATCHED
     await refused(led, to_permitted, done)
     assert await dstate(led, done) == "DISPATCHED" and await permit_state(led, done) == "DISPATCHED"
     # an update that leaves the column unchanged is not a transition (record_call-like no-op, complete's CASE)
@@ -221,7 +221,7 @@ async def test_f5_normal_path_replay_and_events(led):
 
 
 async def test_f5_cancel_and_the_next_generation_dispatch_normally(led):
-    cid, tok, call_id, _ = await led.permitted(request_id="f5b", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="f5b", base="base-1")
     gen = tok["generation"]
     assert await led.call("clt_wrk", "cancel_permit", cid, gen) is True
     assert await dstate(led, cid) == "CANCELLED_UNDISPATCHED" and await permit_state(led, cid, gen) == "CANCELLED_UNDISPATCHED"

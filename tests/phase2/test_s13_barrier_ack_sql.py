@@ -131,11 +131,12 @@ def _raw_public_key(key: Ed25519PrivateKey) -> bytes:
 
 async def _valid_ack_fixture(conn: asyncpg.Connection):
     """Seed only the rows that the real registration routine and its table guard consume."""
-    unsigned = _acknowledgement()
+    signed_at = await conn.fetchval("SELECT clock_timestamp()")
+    signed_at_text = signed_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    unsigned = replace(_acknowledgement(), signed_at=signed_at_text)
     writer_key = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
     supervisor_key = Ed25519PrivateKey.from_private_bytes(bytes(range(32, 64)))
     ack = replace(unsigned, signature=writer_key.sign(unsigned.signature_preimage()))
-    signed_at = datetime.strptime(ack.signed_at, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     process_created = signed_at - timedelta(minutes=1)
     process_doc = {
         "attestation_version": "1",
@@ -151,8 +152,8 @@ async def _valid_ack_fixture(conn: asyncpg.Connection):
     process_signature = supervisor_key.sign(
         _PROCESS_ATTESTATION_PREFIX + canonical_json_bytes(process_doc),
     )
-    valid_from = datetime(2026, 10, 1, tzinfo=UTC)
-    valid_until = datetime(2026, 11, 1, tzinfo=UTC)
+    valid_from = signed_at - timedelta(days=1)
+    valid_until = signed_at + timedelta(days=1)
     await conn.execute("""
         INSERT INTO change_ledger.private_writer_service_bindings
             ("session_user",base_fingerprint,writer_service_id,writer_host_id)
@@ -213,7 +214,7 @@ async def _wait_for_backend_event(
     deadline = asyncio.get_running_loop().time() + 10
     while asyncio.get_running_loop().time() < deadline:
         if monitor is not None and monitor.done():
-            result, error = monitor.result()
+            _result, error = monitor.result()
             assert error is None, f"backend failed before expected lock window: {error}"
             raise AssertionError("backend completed before entering the expected lock window")
         row = await observer.fetchrow("""

@@ -156,7 +156,7 @@ async def main() -> int:
     import os
 
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    container_name = image_tag = image_id = volume_name = None
+    image_tag = image_id = volume_name = None
     async with disposable_cluster() as (dsn, container_name, token):
         identity = docker(
             "inspect", "--format",

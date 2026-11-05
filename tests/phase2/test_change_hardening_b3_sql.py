@@ -231,7 +231,7 @@ async def repair_applying(led):
 
 
 async def test_b6f_issue_permit_and_dispatch_rerun_the_repair_authorization(led):
-    parent, rep, tok, call_id = await repair_applying(led)
+    parent, rep, tok, _call_id = await repair_applying(led)
     await led.conn.execute("UPDATE change_ledger.holds SET released_at=now() WHERE cause='FAILED_VERIFY_HALT' "
                            "AND change_id=$1", parent)                              # arrangement: the halt is gone
     await fails("PARENT_NOT_VERIFIED", led.call("clt_wrk", "issue_permit", rep, tok["generation"]))
@@ -239,7 +239,7 @@ async def test_b6f_issue_permit_and_dispatch_rerun_the_repair_authorization(led)
 
 
 async def test_b6f_a_foreign_hold_stops_the_permit_and_a_lost_halt_stops_the_dispatch(led):
-    parent, rep, tok, call_id = await repair_applying(led)
+    _parent, rep, tok, _call_id = await repair_applying(led)
     await led.call("clt_wrk", "declare_anchor_gap", BASE, json.dumps({"why": "test"}))
     await fails("BASE_HOLD", led.call("clt_wrk", "issue_permit", rep, tok["generation"]))
 
@@ -255,7 +255,7 @@ async def test_b6f_dispatch_of_a_repair_whose_halt_was_lost_is_refused(led):
 
 # ============================================================================ (g) T6 ownership row
 async def test_b6g_the_ownership_row_stores_host_session_and_pre_image_hashes(led):
-    cid, tok, call_id = await led.dispatched(request_id="own1")
+    cid, _tok, _call_id = await led.dispatched(request_id="own1")
     row = await led.conn.fetchrow("SELECT * FROM change_ledger.call_deadlines WHERE change_id=$1", cid)
     assert (row["writer_host"], row["onec_session"]) == ("host-1", "sess-1")
     pre = jl(row["pre_image_hashes"])

@@ -173,7 +173,7 @@ async def evidence(conn, port, cid, kind, content, actor="worker", gen=None, cal
     at = datetime.now(UTC) + timedelta(seconds=1)
     ch = await conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
     binding = evidence_binding(str(cid), kind, ch, at, gen, call_id)
-    kid, kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
+    kid, _kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
     return await port.record_evidence(SCOPE, cid, kind, ch, at, content, kid, binding, sign_hex(kid, binding),
                                       gen, call_id, as_class=actor)
 
@@ -391,7 +391,7 @@ async def test_signed_completion_and_verification_through_the_port(env):
 
 
 async def test_approve_compares_the_sql_computed_digest(env):
-    conn, port = env
+    _conn, port = env
     cid = uuid.uuid4()
     await port.propose(SCOPE, cid, "CREATE_DRAFT", BASE, ORG, "clt_alice", uuid.uuid4().hex, DIGEST, "doc1", "v1",
                        None, exp())
@@ -490,7 +490,7 @@ async def test_gate_refuses_when_read_back_does_not_match_and_writes_no_checkpoi
 
 
 async def test_gate_maps_a_sql_refusal_after_the_checkpoint(env):
-    conn, port = env
+    _conn, port = env
     cid, gen, _ = await applying(port)
     await port.kill_switch(SCOPE, "STOP_ADMIT")
     with pytest.raises(PermitRefused) as e:

@@ -182,7 +182,7 @@ async def test_b1_claim_on_a_finished_or_running_change_is_a_forbidden_transitio
     assert await led.verify(v, True) == "VERIFIED"
     await fails("FORBIDDEN_TRANSITION", led.claimed(v))
     # a change whose dispatch is recorded cannot be claimed again either (authorization arranged back to APPROVED)
-    d, dtok, _ = await led.dispatched(request_id="disp", base="base-4")
+    d, _dtok, _ = await led.dispatched(request_id="disp", base="base-4")
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='APPROVED', execution_state='NOT_STARTED' "
                            "WHERE change_id=$1", d)
     await fails("FORBIDDEN_TRANSITION", led.claimed(d))

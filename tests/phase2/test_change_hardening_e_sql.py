@@ -88,7 +88,7 @@ async def test_e1_dispatch_without_verification_is_refused_then_allowed_after_it
 
 
 async def test_e1_marker_replay_is_idempotent_and_the_event_carries_digests_only(led):
-    cid, tok, call_id, _ = await led.permitted(request_id="e1b", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="e1b", base="base-1")
     gen = tok["generation"]
     for _ in range(3):
         assert await led.call("clt_wri", "verify_dispatch_payload", cid, gen, PAYLOAD) is True
@@ -115,7 +115,7 @@ async def test_e1_a_substituted_payload_leaves_no_marker_and_dispatch_stays_refu
 
 
 async def test_e1_a_marker_of_an_older_generation_does_not_authorize_the_new_claim(led):
-    cid, tok, call_id, _ = await led.permitted(request_id="e1d", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="e1d", base="base-1")
     gen = tok["generation"]
     assert await led.call("clt_wri", "verify_dispatch_payload", cid, gen, PAYLOAD) is True
     assert await led.call("clt_wrk", "cancel_permit", cid, gen) is True            # the claim is given back
@@ -145,7 +145,7 @@ async def test_e1_a_marker_for_another_payload_digest_does_not_count(led):
 
 
 async def test_e1_every_path_to_dispatched_is_gated_not_only_record_call(led):
-    cid, tok, call_id, _ = await led.permitted(request_id="e1f", base="base-1")
+    cid, tok, _call_id, _ = await led.permitted(request_id="e1f", base="base-1")
     gen = tok["generation"]
     with pytest.raises(asyncpg.PostgresError, match="FORBIDDEN_TRANSITION"):
         await led.conn.execute("UPDATE change_ledger.dispatch_permits SET state='DISPATCHED' WHERE change_id=$1", cid)

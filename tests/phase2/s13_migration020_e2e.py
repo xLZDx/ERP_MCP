@@ -141,7 +141,7 @@ async def _journey(conn) -> dict[str, str]:
 
 async def main() -> int:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    container_name = image_id = volume_name = None
+    image_id = volume_name = None
     async with disposable_cluster() as (dsn, container_name, _token):
         identity = docker("inspect", "--format", "{{.Config.Image}}|{{.Image}}|{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}}{{end}}{{end}}",
                           container_name, timeout=30)

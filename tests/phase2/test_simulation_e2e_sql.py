@@ -237,7 +237,7 @@ async def test_noncanonical_wire_encoding_cannot_satisfy_the_canonical_receipt_g
 async def test_all_four_operation_kinds_through_writer_receipt_and_ledger_completion(env):
     e = env
     p = e.gen.draft_payload()
-    cid1, out1, rid1 = await full_success(e, ChangeKind.CREATE_DRAFT, p, None, None, target="doc-new")
+    cid1, out1, _rid1 = await full_success(e, ChangeKind.CREATE_DRAFT, p, None, None, target="doc-new")
     ref = e.clone.target_refs()[0]
     assert out1.new_version == "V1" and e.clone.read_state(ref)["status"] == "DRAFT"
 
@@ -437,7 +437,7 @@ async def test_duplicate_override_path_end_to_end(env):
     e = env
     first_payload = e.gen.draft_payload()
     # the first document exists on the clone through its own change
-    cid_a, _, _ = await full_success(e, ChangeKind.CREATE_DRAFT, first_payload, None, None, target="doc-a")
+    _cid_a, _, _ = await full_success(e, ChangeKind.CREATE_DRAFT, first_payload, None, None, target="doc-a")
     first_ref = e.clone.target_refs()[0]
     twin = replace(e.gen.draft_payload(), counterparty_ref=first_payload.counterparty_ref,
                    supplier_document_number=first_payload.supplier_document_number,

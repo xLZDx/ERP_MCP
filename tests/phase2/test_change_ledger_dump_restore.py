@@ -193,7 +193,7 @@ class L:
     async def checkpoint(self):
         head = await self.call("clt_chk", "ledger_head")
         signed_at = datetime.now(UTC)
-        kid, kmat, _ = SIGN_KEYS["clt_chk"]
+        kid, _kmat, _ = SIGN_KEYS["clt_chk"]
         payload = await self.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                            T, C, head["seq"], head["head_hash"], signed_at, kid, "REAL", "sink-1")
         await self.call("clt_chk", "record_checkpoint", head["seq"], head["head_hash"], "REAL", "sink-1", kid,
@@ -207,7 +207,7 @@ class L:
         ch = await self.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
         b = await self.conn.fetchval("SELECT change_ledger.evidence_binding($1,$2,$3,$4,$5,$6)",
                                      cid, kind, ch, at, gen, call_id)
-        kid, kmat, _ = SIGN_KEYS[role]
+        kid, _kmat, _ = SIGN_KEYS[role]
         return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content), kid, b,
                                sign_hex(kid, b), gen, call_id)
 

@@ -110,7 +110,7 @@ def test_two_person_approval_ok():
 
 
 def test_two_person_refusals():
-    idp, sa, sb = _setup()
+    idp, sa, _sb = _setup()
     sa2 = idp.open_session("ALICE")
     for args, code in [(("ALICE", sa, "ALICE", sa2), "SAME_PERSON"),
                        (("ALICE", sa, "BOB", sa), "SAME_SESSION"),

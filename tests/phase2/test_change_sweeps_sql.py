@@ -160,7 +160,7 @@ async def test_t3_expires_proposed_validated_and_approved_but_not_live_changes(l
 # ============================================================================ T6r
 async def test_t6r_releases_applying_without_permit_only_after_the_ttl(led):
     cid, tok, _ = await led.applying(request_id="r1", base="base-1")
-    p, ptok, _, _ = await led.permitted(request_id="r2", base="base-2")
+    p, _ptok, _, _ = await led.permitted(request_id="r2", base="base-2")
     assert (await sweep(led))["T6r"] == []                                  # default 60 s TTL not elapsed
     assert (await led.rec(cid))["execution_state"] == "APPLYING"
     got = await sweep(led, permit_ttl_seconds=0)

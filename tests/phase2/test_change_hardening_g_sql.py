@@ -188,7 +188,7 @@ async def test_g2_checkpoint_signature_is_refused_with_the_old_code_unless_ed255
 
 
 async def test_g2_permit_signature_is_refused_with_the_old_code_unless_ed25519_valid(led):
-    cid, tok, call_id, permit = await led.permitted()
+    cid, tok, _call_id, permit = await led.permitted()
     payload = "change-ledger-permit|v1|" + permit["permit_digest"]
     gen = tok["generation"]
 
