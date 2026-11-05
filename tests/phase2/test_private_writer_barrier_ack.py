@@ -23,7 +23,6 @@ from erp_mcp_private_writer.service import (
     StartupRecoveryState,
 )
 
-
 BASE = "a" * 64
 SCOPE = Scope("tenant-1", "company-1")
 BARRIER_ID = UUID("00000000-0000-4000-8000-000000000001")

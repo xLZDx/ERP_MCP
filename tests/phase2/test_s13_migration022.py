@@ -15,10 +15,8 @@ import json
 from pathlib import Path
 
 import asyncpg
-
 from _pg_harness import MIGRATIONS, disposable_cluster, throwaway_db
-from test_change_ledger_sql import C, T, L, _setup
-
+from test_change_ledger_sql import C, L, T, _setup
 
 MIGRATION_CHAIN = [
     "019_ed25519_action_only.sql",

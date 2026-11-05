@@ -25,7 +25,7 @@ from datetime import UTC
 import asyncpg
 import pytest
 from _pg_harness import FILES, MIGRATIONS, fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASES, C, DIGEST, ORG, T, L, _setup, exp
+from test_change_ledger_sql import BASES, DIGEST, ORG, C, L, T, _setup, exp
 
 pytestmark = pytest.mark.integration
 

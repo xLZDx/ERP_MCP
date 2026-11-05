@@ -21,7 +21,7 @@ import pytest
 from _approval_envelope import FIXTURE_PAYLOAD
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_hardening_c_sql import login, sess, witness
-from test_change_ledger_sql import C, T, L, _setup
+from test_change_ledger_sql import C, L, T, _setup
 from test_change_sweeps_sql import FAST, age_verify_counter, applied, counter, sweep
 
 from business_ai_gateway.phase2.change import canonical_json

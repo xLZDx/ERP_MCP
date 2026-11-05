@@ -7,14 +7,22 @@ reconciliation). These in-memory tests do not establish formal S12 or G8.
 """
 from __future__ import annotations
 
-from dataclasses import replace
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests" / "phase2"))
+
+from test_s12_governed_write_v2_e2e import (  # noqa: E402
+    _WRITER_SEED,
+    _attempt,
+    _completion,
+    _receipt,
+    _system,
+)
 
 from business_ai_gateway.phase2.change.evidence import (  # noqa: E402
     CompletionProof,
@@ -24,13 +32,6 @@ from business_ai_gateway.phase2.change.evidence import (  # noqa: E402
 from business_ai_gateway.phase2.simulation.governed_write_v2 import (  # noqa: E402
     GovernedWriteState,
     SyntheticWriterResult,
-)
-from test_s12_governed_write_v2_e2e import (  # noqa: E402
-    _WRITER_SEED,
-    _attempt,
-    _completion,
-    _receipt,
-    _system,
 )
 
 

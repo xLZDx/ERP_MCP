@@ -16,12 +16,11 @@ import os
 from pathlib import Path
 
 import pytest
-
 from _pg_harness import disposable_cluster, docker, throwaway_db
-from test_change_ledger_sql import C, L, ORG, T, _setup
+from test_change_ledger_sql import ORG, C, L, T, _setup
+
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
-
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"

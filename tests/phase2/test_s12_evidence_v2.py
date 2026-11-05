@@ -27,7 +27,6 @@ from business_ai_gateway.phase2.change.evidence import (
     verify_record_signature,
 )
 
-
 H = "a" * 64
 UUID_CHANGE = "123e4567-e89b-42d3-a456-426614174000"
 UUID_CALL = "123e4567-e89b-42d3-a456-426614174001"

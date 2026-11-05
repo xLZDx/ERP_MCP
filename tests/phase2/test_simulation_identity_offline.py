@@ -4,7 +4,12 @@ from __future__ import annotations
 import pytest
 
 from business_ai_gateway.phase2.simulation.identity import (
-    MfaAttestationError, SimulatedIdP, TwoPersonError, build_two_person_approval, verify_mfa_attestation)
+    MfaAttestationError,
+    SimulatedIdP,
+    TwoPersonError,
+    build_two_person_approval,
+    verify_mfa_attestation,
+)
 
 NOW = 1_000_000
 

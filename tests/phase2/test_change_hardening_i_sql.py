@@ -1,9 +1,8 @@
 """Focused PostgreSQL regressions for receipt hardening migration 017."""
 import pytest
-
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import C, T, L, _setup
 from test_change_hardening_h_sql import CLONE, KEY, OTHER_CLONE, dispatched, put, receipt
+from test_change_ledger_sql import C, L, T, _setup
 
 pytestmark = pytest.mark.integration
 

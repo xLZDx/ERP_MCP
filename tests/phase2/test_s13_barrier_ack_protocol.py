@@ -6,11 +6,12 @@ import json
 import unittest
 from dataclasses import replace
 from pathlib import Path
-from uuid import UUID
 from unittest.mock import patch
+from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from test_private_writer_barrier_ack import _acknowledgement, _service
 
 from business_ai_gateway.phase2.change_ledger.write_port import BarrierAcknowledgement
 from erp_mcp_private_writer.barrier_ack_protocol import (
@@ -21,8 +22,6 @@ from erp_mcp_private_writer.barrier_ack_protocol import (
     verify_barrier_acknowledgement_signature,
 )
 from erp_mcp_private_writer.dpapi_signer import DpapiSignerError, WindowsDpapiEd25519Signer
-from test_private_writer_barrier_ack import _acknowledgement, _service
-
 
 _DOMAIN = b"ERP_MCP_R2:S13:PHYSICAL-WRITER-BARRIER:v1\n"
 

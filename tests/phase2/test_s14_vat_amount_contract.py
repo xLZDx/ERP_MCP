@@ -12,6 +12,7 @@ from decimal import Decimal
 
 import pytest
 
+from business_ai_gateway.phase2.change import ChangeKind, ErrorCode, Scope
 from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from business_ai_gateway.phase2.change.proposal import (
     DraftPayload,
@@ -20,7 +21,6 @@ from business_ai_gateway.phase2.change.proposal import (
     payload_digest,
     payload_to_dict,
 )
-from business_ai_gateway.phase2.change import ChangeKind, ErrorCode, Scope
 from erp_mcp_private_writer.com_manifest import (
     ComOperationManifest,
     PayloadPropertyBinding,

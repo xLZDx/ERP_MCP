@@ -15,14 +15,19 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
 
-from business_ai_gateway.phase2.change.proposal import DraftPayload, Line, payload_digest, payload_to_dict
+from business_ai_gateway.phase2.change.proposal import (
+    DraftPayload,
+    Line,
+    payload_digest,
+    payload_to_dict,
+)
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change_ledger.write_port import (
     ApplyTicket,
     DispatchPermit,
     FailureEvidence,
-    NotWired,
     NonOperationalWritePort,
+    NotWired,
 )
 from business_ai_gateway.phase2.simulation.clone_1c import (
     LANE,
@@ -37,7 +42,6 @@ from business_ai_gateway.phase2.simulation.simulated_write_port import (
     SyntheticPortRefusal,
     SyntheticPortResult,
 )
-
 
 TENANT = "SIM-TENANT-A"
 COMPANY = "SIM-COMPANY-A"

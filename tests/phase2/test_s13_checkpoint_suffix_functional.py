@@ -10,22 +10,23 @@ Coverage is limited to CR152/153's read-only suffix inspection contract; it does
 from __future__ import annotations
 
 import asyncio
-import os
 import hashlib
 import json
-from pathlib import Path
+import os
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
-
 from _pg_harness import MIGRATIONS, disposable_cluster, throwaway_db
+from test_change_ledger_sql import C, L, T, _setup
+
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import CheckpointRecord
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
-    LifecycleReason, _classify_checkpoint_suffix,
+    LifecycleReason,
+    _classify_checkpoint_suffix,
 )
-from test_change_ledger_sql import C, L, T, _setup
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_CHAIN = [f"{i:03d}_{name}.sql" for i, name in [

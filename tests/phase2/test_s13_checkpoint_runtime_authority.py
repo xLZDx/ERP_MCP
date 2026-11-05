@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import business_ai_gateway.phase2.change_ledger.checkpoint as checkpoint_module
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointRecord,
@@ -22,8 +23,6 @@ from business_ai_gateway.phase2.change_ledger.checkpoint import (
     DispatchGate,
     GateDisabled,
 )
-import business_ai_gateway.phase2.change_ledger.checkpoint as checkpoint_module
-
 
 SCOPE = Scope("unit-tenant", "unit-company")
 CHANGE_ID = uuid4()

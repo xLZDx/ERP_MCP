@@ -6,8 +6,8 @@ small port doubles. It is not evidence for PostgreSQL, an external anti-rollback
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
 import inspect
+from datetime import UTC, datetime
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
@@ -21,7 +21,6 @@ from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleReason,
     LifecycleStatus,
 )
-
 
 SCOPE = Scope("T-S13", "C-S13")
 OTHER_SCOPE = Scope("T-OTHER", "C-OTHER")

@@ -13,9 +13,8 @@ from collections.abc import AsyncIterator
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import apply_files, disposable_cluster, throwaway_db
-from test_change_ledger_sql import C, C2, DIGEST, L, ORG, T, T2, _setup, exp
+from test_change_ledger_sql import C2, DIGEST, ORG, T2, C, L, T, _setup, exp
 from test_s13_current_turn_sql import MIGRATIONS_019_027, _apply_migration, _ledger_snapshot
 
 pytestmark = pytest.mark.integration

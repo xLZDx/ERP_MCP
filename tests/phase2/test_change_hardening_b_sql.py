@@ -13,7 +13,20 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, C2, DEFAULT_GRANT, DIGEST, ORG, T, T2, L, _setup, exp, sha
+from test_change_ledger_sql import (
+    BASE,
+    C2,
+    DEFAULT_GRANT,
+    DIGEST,
+    ORG,
+    T2,
+    C,
+    L,
+    T,
+    _setup,
+    exp,
+    sha,
+)
 
 pytestmark = pytest.mark.integration
 

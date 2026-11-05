@@ -29,11 +29,20 @@ from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
+from _approval_envelope import fixture_digest_for
 from _pg_harness import require_dsn, throwaway_db
 from _s13_budget_worker import worker
-from test_change_ledger_sql import BASES, C, DEFAULT_GRANT, L, ORG, T, _setup, exp, sha  # noqa: F401
-
-from _approval_envelope import fixture_digest_for
+from test_change_ledger_sql import (  # noqa: F401
+    BASES,
+    DEFAULT_GRANT,
+    ORG,
+    C,
+    L,
+    T,
+    _setup,
+    exp,
+    sha,
+)
 
 pytestmark = pytest.mark.integration
 

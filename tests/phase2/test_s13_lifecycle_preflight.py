@@ -26,7 +26,6 @@ from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleStatus,
 )
 
-
 SCOPE = Scope("tenant-a", "company-a")
 NOW = datetime(2026, 10, 17, tzinfo=UTC)
 

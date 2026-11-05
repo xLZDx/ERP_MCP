@@ -6,13 +6,15 @@ tests use the existing `led` fixture, which creates and drops a throwaway databa
 on the guarded disposable PostgreSQL cluster. They do not call a real 1C instance.
 """
 import hashlib
+
 import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_PAYLOAD
 from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails
+from test_change_ledger_sql import DIGEST, C, T, led
+
 from business_ai_gateway.phase2.change import canonical_json
-from test_change_ledger_sql import DIGEST, T, C, led
 
 pytestmark = pytest.mark.integration
 

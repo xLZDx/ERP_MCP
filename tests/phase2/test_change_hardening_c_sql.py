@@ -24,7 +24,7 @@ import pytest
 from _ed25519_fixtures import pub_hex
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_hardening_b2_sql import hold_of, restored_ledger
-from test_change_ledger_sql import BASE, C, C2, ORG, T, T2, L, _setup, sha
+from test_change_ledger_sql import BASE, C2, ORG, T2, C, L, T, _setup, sha
 
 pytestmark = pytest.mark.integration
 

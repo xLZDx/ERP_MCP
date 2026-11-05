@@ -8,9 +8,9 @@ from pathlib import Path
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import disposable_cluster, throwaway_db
-from test_change_ledger_sql import C, DEFAULT_GRANT, L, T, _setup
+from test_change_ledger_sql import DEFAULT_GRANT, C, L, T, _setup
+
 from business_ai_gateway.phase2.change.errors import ErrorCode
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="module")]

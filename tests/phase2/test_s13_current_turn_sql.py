@@ -17,7 +17,6 @@ from dataclasses import dataclass
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import MIGRATIONS, apply_files, disposable_cluster, throwaway_db
 from test_change_ledger_sql import C, L, T, _setup
 

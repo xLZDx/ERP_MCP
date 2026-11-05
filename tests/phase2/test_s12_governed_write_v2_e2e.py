@@ -6,11 +6,11 @@ for bounded local dispatch state transitions, not formal runtime gate evidence.
 """
 from __future__ import annotations
 
+import hashlib
+import unittest
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-import hashlib
 from threading import Event, Lock
-import unittest
 
 from business_ai_gateway.phase2 import ed25519
 from business_ai_gateway.phase2.change.evidence import (

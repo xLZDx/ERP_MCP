@@ -8,18 +8,16 @@ applies migrations 001-024, and removes only the container and anonymous volume 
 from __future__ import annotations
 
 import asyncio
-import os
 import hashlib
+import os
 import time
 from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
-
+from _approval_envelope import fixture_digest_for
 from _pg_harness import MIGRATIONS, disposable_cluster, throwaway_db
 from test_change_ledger_sql import C, L, T, _setup, exp
-from _approval_envelope import fixture_digest_for
-
 
 MIGRATION_CHAIN = [
     "019_ed25519_action_only.sql",

@@ -9,13 +9,24 @@ from business_ai_gateway.phase2.change.killswitch import SWITCH_OFF
 from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from business_ai_gateway.phase2.change.types import CallerClass
 from erp_mcp_s16.contracts import (
-    AuthenticatedPrincipal, PrincipalRecord, PrincipalRole, TargetRecord, TargetScope,
-    TargetVersion, TokenClass,
+    AuthenticatedPrincipal,
+    PrincipalRecord,
+    PrincipalRole,
+    TargetRecord,
+    TargetScope,
+    TargetVersion,
+    TokenClass,
 )
 from erp_mcp_s16.core import S16Core
 from erp_mcp_s16.fakes import (
-    FakeApplyPort, FakeBeginApplyEvidencePort, FakeClock, FakeKillSwitch, FakeNonceSource, FakeProposalPort,
-    FakeVerifyPort, InMemoryChangeStore,
+    FakeApplyPort,
+    FakeBeginApplyEvidencePort,
+    FakeClock,
+    FakeKillSwitch,
+    FakeNonceSource,
+    FakeProposalPort,
+    FakeVerifyPort,
+    InMemoryChangeStore,
 )
 from erp_mcp_s16.registries import InMemoryPrincipalRegistry, InMemoryTargetRegistry, TestIdP
 from erp_mcp_s16.services import ApprovalService, ChangeService

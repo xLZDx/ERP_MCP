@@ -14,10 +14,9 @@ from collections.abc import AsyncIterator
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import disposable_cluster
 from test_change_ledger_sql import _repair
-from test_s13_current_turn_sql import L, _OwnedClusterDsn, _expect_code, _ledger_snapshot, ledger
+from test_s13_current_turn_sql import L, _expect_code, _ledger_snapshot, _OwnedClusterDsn, ledger
 
 pytestmark = pytest.mark.integration
 

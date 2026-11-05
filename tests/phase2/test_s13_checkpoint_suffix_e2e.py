@@ -16,16 +16,21 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from _pg_harness import disposable_cluster, throwaway_db
-from test_change_ledger_sql import C, T, L, _setup
+from test_change_ledger_sql import C, L, T, _setup
+
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
-    CheckpointRecord, FakeSigner, FakeVerifier, InMemoryCheckpointSink,
+    CheckpointRecord,
+    FakeSigner,
+    FakeVerifier,
+    InMemoryCheckpointSink,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
-    LifecycleCoordinator, LifecycleReason, LifecycleStatus,
+    LifecycleCoordinator,
+    LifecycleReason,
+    LifecycleStatus,
 )
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
-
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"

@@ -16,7 +16,6 @@ from unittest.mock import Mock, patch
 
 import erp_mcp_private_writer.signer_provisioning as provisioning
 
-
 _SEED = b"test-private-seed-material-00000"
 _PUBLIC = b"P" * 32
 _CIPHERTEXT = b"mocked-dpapi-ciphertext"

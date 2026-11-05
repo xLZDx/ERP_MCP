@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, BASES, C, DIGEST, KH, T, L, _setup  # noqa: F401
+from test_change_ledger_sql import BASE, BASES, DIGEST, KH, C, L, T, _setup  # noqa: F401
 
 pytestmark = pytest.mark.integration
 

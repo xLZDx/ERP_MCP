@@ -7,9 +7,16 @@ import hashlib
 import pytest
 
 from business_ai_gateway.phase2.change.types import ChangeKind
-from business_ai_gateway.phase2.simulation.clone_1c import FAILURE_MODES, SimulatedOneC, encode_payload
+from business_ai_gateway.phase2.simulation.clone_1c import (
+    FAILURE_MODES,
+    SimulatedOneC,
+    encode_payload,
+)
 from business_ai_gateway.phase2.simulation.reference_writer import (
-    ApprovedDigestMismatch, ReferenceWriter, WriteStatus)
+    ApprovedDigestMismatch,
+    ReferenceWriter,
+    WriteStatus,
+)
 from business_ai_gateway.phase2.simulation.synthetic_data import SyntheticGenerator
 
 

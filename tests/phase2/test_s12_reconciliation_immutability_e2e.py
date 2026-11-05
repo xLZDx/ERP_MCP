@@ -7,11 +7,6 @@ from __future__ import annotations
 
 import unittest
 
-from business_ai_gateway.phase2.change.evidence import DispatchReceipt, seal_record_fixture
-from business_ai_gateway.phase2.simulation.governed_write_v2 import (
-    GovernedWriteState,
-    SyntheticWriterResult,
-)
 from test_s12_governed_write_v2_e2e import (
     _WRITER_SEED,
     _attempt,
@@ -19,6 +14,12 @@ from test_s12_governed_write_v2_e2e import (
     _outcome,
     _receipt,
     _system,
+)
+
+from business_ai_gateway.phase2.change.evidence import DispatchReceipt, seal_record_fixture
+from business_ai_gateway.phase2.simulation.governed_write_v2 import (
+    GovernedWriteState,
+    SyntheticWriterResult,
 )
 
 

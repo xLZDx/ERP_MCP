@@ -18,7 +18,21 @@ import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_hardening_b2_sql import add_base, sweep, wait_blocked
-from test_change_ledger_sql import BASE, C, C2, DIGEST, ORG, T, T2, L, _failed_parent, _repair, _setup, exp, sha
+from test_change_ledger_sql import (
+    BASE,
+    C2,
+    DIGEST,
+    ORG,
+    T2,
+    C,
+    L,
+    T,
+    _failed_parent,
+    _repair,
+    _setup,
+    exp,
+    sha,
+)
 
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger

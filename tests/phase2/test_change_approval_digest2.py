@@ -20,7 +20,7 @@ import asyncpg
 import pytest
 from _approval_envelope import ensure_envelope
 from _pg_harness import FILES, MIGRATIONS, fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, ORG, T, L, _setup, exp, sha
+from test_change_ledger_sql import BASE, DEFAULT_GRANT, ORG, C, L, T, _setup, exp, sha
 
 from business_ai_gateway.phase2 import change as ch
 from business_ai_gateway.phase2.change import Scope, canonical_json

@@ -14,6 +14,7 @@ from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from test_private_writer_barrier_ack import _acknowledgement
 
 from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from erp_mcp_private_writer.barrier_ack_protocol import (
@@ -21,11 +22,11 @@ from erp_mcp_private_writer.barrier_ack_protocol import (
     barrier_acknowledgement_signed_bytes,
 )
 from erp_mcp_private_writer.barrier_ack_verifier import (
+    _PROCESS_ATTESTATION_PREFIX,
     BarrierAcknowledgementTrustContext,
     BarrierAcknowledgementTrustRevisionStale,
     BarrierAcknowledgementVerifierError,
     ProductionBarrierAcknowledgementVerifier,
-    _PROCESS_ATTESTATION_PREFIX,
 )
 from erp_mcp_private_writer.evidence_trust import (
     EvidenceScope,
@@ -35,8 +36,6 @@ from erp_mcp_private_writer.evidence_trust import (
     TrustedSigner,
 )
 from erp_mcp_private_writer.service import BarrierAcknowledgementRejected
-from test_private_writer_barrier_ack import _acknowledgement
-
 
 NOW = datetime(2026, 10, 27, 12, 0, tzinfo=UTC)
 SCOPE = EvidenceScope("tenant-1", "company-1", "org-1", "a" * 64)

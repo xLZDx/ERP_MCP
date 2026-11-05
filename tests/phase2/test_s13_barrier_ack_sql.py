@@ -13,15 +13,15 @@ from uuid import UUID
 import asyncpg
 import pytest
 import pytest_asyncio
+from _pg_harness import admin_connect, apply_files, disposable_cluster, throwaway_db
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-from _pg_harness import admin_connect, apply_files, disposable_cluster, throwaway_db
-from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from test_change_ledger_sql import _setup
-from test_s13_current_turn_sql import MIGRATIONS_019_027, _apply_migration
 from test_private_writer_barrier_ack import _acknowledgement
 from test_s13_barrier_ack_verifier import _PROCESS_ATTESTATION_PREFIX
+from test_s13_current_turn_sql import MIGRATIONS_019_027, _apply_migration
+
+from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from erp_mcp_private_writer.barrier_ack_protocol import (
     barrier_acknowledgement_ref,
     barrier_acknowledgement_signed_bytes,

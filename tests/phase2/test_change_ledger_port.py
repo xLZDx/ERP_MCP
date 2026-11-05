@@ -23,7 +23,18 @@ import pytest
 from _approval_envelope import FIXTURE_PAYLOAD, envelope_dict
 from _ed25519_fixtures import sign_hex
 from _pg_harness import require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
+from test_change_ledger_sql import (
+    BASE,
+    DEFAULT_GRANT,
+    DIGEST,
+    KH,
+    ORG,
+    SIGN_KEYS,
+    C,
+    T,
+    _setup,
+    exp,
+)
 
 from business_ai_gateway.phase2 import ed25519
 from business_ai_gateway.phase2.change import canonical_json
