@@ -36,7 +36,7 @@ for (const entry of await readdir(root, { withFileTypes: true })) {
     inventory.set(manifest.name, versions);
   }
 }
-if (!inventory.has('undici') || !inventory.get('undici').has('8.10.2')) {
+if (!inventory.has('undici') || !inventory.get('undici').has('8.12.3')) {
   throw new Error('Missing pinned runtime dispatcher');
 }
 const packages = Object.fromEntries([...inventory].sort().map(([name, versions]) =>
