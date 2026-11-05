@@ -810,11 +810,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             normalized_rows = normalize_account_turnovers(raw_rows, mapping)
             page = result.get("page") if isinstance(result, dict) else None
+            include_totals = tool_name == "accounting_balance_and_turnovers_by_account"
             truncated = (
                 (not isinstance(page, dict) or page.get("has_more") is not False)
                 or len(normalized_rows) >= settings.max_rows
             )
-            totals = summarize_account_turnovers(normalized_rows, mapping)
+            totals = summarize_account_turnovers(normalized_rows, mapping) if include_totals else []
             response_bytes = len(
                 json.dumps(normalized_rows, ensure_ascii=False, default=str).encode("utf-8")
             )
@@ -833,7 +834,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=profile.get("audit_detail_code"),
                 response_bytes=response_bytes,
             )
-            return {
+            response = {
                 "source_id": source_id,
                 "company_id": str(parsed_company_id),
                 "concept": ACCOUNT_TURNOVERS_CONCEPT,
@@ -841,11 +842,16 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": page,
-                "totals": totals,
-                "totals_complete": bool(totals) and not truncated,
-                "truncated": truncated,
-                **profile_provenance(profile),
+                "warnings": [],
             }
+            if include_totals:
+                response.update({
+                    "totals": totals,
+                    "totals_complete": bool(totals) and not truncated,
+                    "truncated": truncated,
+                    **profile_provenance(profile),
+                })
+            return response
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
@@ -882,6 +888,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
     ) -> dict[str, Any]:
         """Read company-filtered account opening/turnover/closing figures via its validated profile.
 
+        Use ``accounting_balance_and_turnovers_by_account`` for per-account totals and profile provenance.
         ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset. Rows are
         per analytics combination and carry no counterparty names: for a breakdown by supplier or
         contract with names use ``accounting_balance_by_analytics``; to find a counterparty use
