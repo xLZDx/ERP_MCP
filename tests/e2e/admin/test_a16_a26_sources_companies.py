@@ -169,6 +169,7 @@ def test_A21_missing_or_broken_secret_reference_fails_closed(e2e_env, world, evi
         for resp in (probe, register):
             assert resp.status >= 400, f"{name} accepted: {resp.describe()}"
             _sanitized(resp, e2e_env)
+        assert world.pa.alive(), f"gateway stopped after rejecting {name}"
     assert evidence.count("sources") == before, "a source with a broken secret ref was stored"
 
 
@@ -197,8 +198,7 @@ def test_A22_no_secret_value_in_api_responses_audit_or_logs(e2e_env, world, evid
     assert logs, f"no gateway log files found under {LOG_DIR} to scan"
     for path in logs:
         text = path.read_text(encoding="utf-8", errors="replace")
-        leaks = find_leaks(text, {k: v for k, v in values.items()
-                                  if not k.startswith("password:")})
+        leaks = find_leaks(text, values)
         assert not leaks, f"secret values in {path}: {leaks}"
 
 
