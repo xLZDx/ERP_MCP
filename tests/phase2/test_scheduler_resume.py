@@ -13,15 +13,20 @@ from business_ai_gateway.phase2.resnapshot import (
     ResnapshotReason,
     ResnapshotTracker,
 )
-from business_ai_gateway.phase2.scheduler import SourceScheduler, SourceState
+from business_ai_gateway.phase2.scheduler import (
+    RunStatus,
+    SchedulerState,
+    SourceScheduler,
+    SourceState,
+)
 
 SCOPE = Scope("A", "s1")
 
 
 async def setup(*cursors):
     living = InMemoryLiving()
-    await living.enqueue_job(WORKER, SCOPE, UUID(int=1), "sync", "a" * 64, "k")
     await living.bump_scope_epoch(SCOPE)  # live epoch is 1 (a fresh source starts at 0)
+    await living.enqueue_job(WORKER, SCOPE, UUID(int=1), "sync", "a" * 64, "k")
     for c in cursors:  # created AFTER the bump so they are bound to the live epoch
         await living.create_cursor(WORKER, SCOPE, c, "c0")
     sched = SourceScheduler(
@@ -138,11 +143,100 @@ def test_guard_other_port_error_propagates_without_resume():
     asyncio.run(go())
 
 
-def test_plain_resume_unchanged_without_revalidation():
+def test_plain_resume_requires_revalidation_without_reading_revoked_scope():
     async def go():
         living, sched = await setup()
         paused(sched)
         await living.revoke_scope(WORKER, SCOPE)
         sched.resume("op")  # existing behaviour: no port call, no revalidation
         assert sched.machine.state is SourceState.ACTIVE
+        calls = []
+
+        async def work(handle):
+            calls.append(handle)
+            return CaptureOutcomeKind.OK_COMPLETE
+
+        result = await sched.run_job(UUID(int=1), work)
+        assert result.status is RunStatus.SOURCE_NOT_ACTIVE
+        assert result.detail == "RESUME_REVALIDATION_REQUIRED"
+        assert calls == []  # no callback runs, and no read is attempted through the revoked scope
+    asyncio.run(go())
+
+
+def test_cold_start_without_state_fails_closed_before_work():
+    async def go():
+        living, sched = await setup()
+        calls = []
+
+        async def work(handle):
+            calls.append(handle)
+            return CaptureOutcomeKind.OK_COMPLETE
+
+        result = await sched.run_job(UUID(int=1), work)
+        assert result.status is RunStatus.SOURCE_NOT_ACTIVE
+        assert result.detail == "RESUME_REVALIDATION_REQUIRED"
+        assert calls == []
+        assert (await living.get_job(WORKER, SCOPE, UUID(int=1))).attempt == 0
+    asyncio.run(go())
+
+
+def test_legacy_snapshot_without_resume_flag_requires_revalidation():
+    async def go():
+        living, _ = await setup()
+        sched = SourceScheduler(
+            living, actor=WORKER, scope=SCOPE, worker="w1",
+            backend_id=BackendId.normalize("db-1"),
+            budget=PhysicalBackendBudget(per_backend_limit=1, total_limit=4),
+            clock=living.clock.now, jitter_source=lambda: 0.0,
+            state=SchedulerState(scope=SCOPE))
+        assert sched.machine.resume_validation_required is True
+        result = await sched.run_job(UUID(int=1), lambda handle: None)
+        assert result.status is RunStatus.SOURCE_NOT_ACTIVE
+        assert result.detail == "RESUME_REVALIDATION_REQUIRED"
+        assert (await living.get_job(WORKER, SCOPE, UUID(int=1))).attempt == 0
+    asyncio.run(go())
+
+
+def test_active_same_scope_snapshot_always_requires_fresh_revalidation():
+    async def go():
+        living, original = await setup("c1")
+        assert await call(original, living, ResnapshotTracker(), ["c1"], 1) == ()
+        snapshot = original.export_state()
+        assert snapshot.source_state is SourceState.ACTIVE
+        assert snapshot.resume_validation_required is False
+        assert snapshot.scope == SCOPE
+
+        restored = SourceScheduler(
+            living, actor=WORKER, scope=SCOPE, worker="w1",
+            backend_id=BackendId.normalize("db-1"),
+            budget=PhysicalBackendBudget(per_backend_limit=1, total_limit=4),
+            clock=living.clock.now, jitter_source=lambda: 0.0, state=snapshot)
+        calls = []
+
+        async def work(handle):
+            calls.append(handle)
+            return CaptureOutcomeKind.OK_COMPLETE
+
+        result = await restored.run_job(UUID(int=1), work)
+        assert result.status is RunStatus.SOURCE_NOT_ACTIVE
+        assert result.detail == "RESUME_REVALIDATION_REQUIRED"
+        assert calls == []
+
+        class BrokenLedger:
+            async def scope_epoch(self, scope):
+                raise PortError("CHECK_VIOLATION")
+
+        with pytest.raises(PortError, match="CHECK_VIOLATION"):
+            await restored.resume_revalidated(
+                "op", tracker=ResnapshotTracker(), ledger=BrokenLedger(), cursors=living,
+                connection_ids=["c1"], recorded_epoch=1)
+        assert restored.machine.resume_validation_required is True
+        result = await restored.run_job(UUID(int=1), work)
+        assert result.status is RunStatus.SOURCE_NOT_ACTIVE
+        assert result.detail == "RESUME_REVALIDATION_REQUIRED"
+        assert calls == []
+
+        assert await call(restored, living, ResnapshotTracker(), ["c1"], 1) == ()
+        assert (await restored.run_job(UUID(int=1), work)).status is RunStatus.SUCCEEDED
+        assert len(calls) == 1
     asyncio.run(go())
