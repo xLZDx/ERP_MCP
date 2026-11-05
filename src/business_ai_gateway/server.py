@@ -133,6 +133,7 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "counterparty_duplicate_candidates",
     "onec_find_entities_with_property_types",
     "accounting_balance_and_turnovers_by_account",
+    "accounting_posting_rows_with_provenance",
     "purchase_documents_filtered",
 })
 
@@ -162,6 +163,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "inventory_balance": "inventory.read",
     "inventory_movements": "inventory.read",
     "accounting_posting_rows": "accounting.read",
+    "accounting_posting_rows_with_provenance": "accounting.read",
     "cash_movements": "cash.read",
     "bank_balance": "bank.read",
     "receivable_balance": "ar.read",
@@ -1549,14 +1551,16 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
-    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def accounting_posting_rows(
+    async def read_accounting_posting_rows(
         source_id: str,
         company_id: str,
         start_period: str,
         end_period: str,
-        top: int = 100,
-        skip: int = 0,
+        top: int,
+        skip: int,
+        *,
+        tool_name: str,
+        include_provenance: bool,
     ) -> dict[str, Any]:
         """Read profile-mapped accounting register rows; this is not a reconciliation report."""
         started = time.monotonic()
@@ -1566,7 +1570,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_posting_rows",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -1587,7 +1591,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         source = await resolve_source(
             principal,
             source_id,
-            "accounting_posting_rows",
+            tool_name,
             started,
             query,
             company_id=parsed_company_id,
@@ -1653,9 +1657,15 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             value = normalize_accounting_posting_rows(raw_rows, mapping)
+            warnings = ["Rows are not a native accounting report reconciliation."]
+            provenance = (
+                profile_provenance(profile, warnings)
+                if include_provenance
+                else {"warnings": warnings}
+            )
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_posting_rows",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -1676,14 +1686,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": value,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(
-                    profile, ["Rows are not a native accounting report reconciliation."]
-                ),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_posting_rows",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -1706,6 +1714,36 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_posting_rows(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read profile-mapped accounting register rows; this is not a reconciliation report."""
+        return await read_accounting_posting_rows(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="accounting_posting_rows", include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_posting_rows_with_provenance(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read accounting posting rows with explicit profile and reconciliation provenance."""
+        return await read_accounting_posting_rows(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="accounting_posting_rows_with_provenance", include_provenance=True,
+        )
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def cash_movements(
