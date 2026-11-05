@@ -138,6 +138,8 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "inventory_balance_with_provenance",
     "bank_balance_with_provenance",
     "cash_movements_with_provenance",
+    "payable_balance_with_provenance",
+    "receivable_balance_with_provenance",
     "purchase_documents_filtered",
 })
 
@@ -175,7 +177,9 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "bank_balance": "bank.read",
     "bank_balance_with_provenance": "bank.read",
     "receivable_balance": "ar.read",
+    "receivable_balance_with_provenance": "ar.read",
     "payable_balance": "ap.read",
+    "payable_balance_with_provenance": "ap.read",
     "receivable_aging": "ar.read",
     "payable_aging": "ap.read",
     "counterparty_duplicate_candidates": "accounting.read",
@@ -2119,6 +2123,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         *,
         concept: str,
         tool_name: str,
+        include_provenance: bool,
     ) -> dict[str, Any]:
         started = time.monotonic()
         principal = await ctx()
@@ -2149,6 +2154,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                raise SemanticProfileUnavailable("Use the settlement tool with provenance for this profile.")
+            provenance = profile_provenance(profile) if include_provenance else {"warnings": []}
             mapping = profile["mapping"]
             register_set, method, arguments = build_settlement_balance_arguments(
                 concept, mapping, company_external_ref=company.external_ref, period=period
@@ -2187,7 +2195,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
@@ -2218,18 +2226,25 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def receivable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
-        """Read point-in-time receivable balances; this tool does not compute aging buckets."""
+        """Read point-in-time receivable balances with a validated native profile.
+
+        Use receivable_balance_with_provenance for other supported profiles.
+        This tool does not compute aging buckets.
+        """
         return await read_settlement_balance(
             source_id,
             company_id,
             period,
             concept=RECEIVABLE_BALANCE_CONCEPT,
             tool_name="receivable_balance",
+            include_provenance=False,
         )
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def payable_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
-        """Read payables ONLY with separately validated payable.balance semantics.
+        """Read payables ONLY with separately validated native payable.balance semantics.
+
+        Use payable_balance_with_provenance for other supported profiles.
 
         If no exact mapping is validated, fail closed; do not silently substitute 521.1
         for all supplier liabilities. For an account-521.1-only snapshot, use
@@ -2241,6 +2256,35 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             period,
             concept=PAYABLE_BALANCE_CONCEPT,
             tool_name="payable_balance",
+            include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def receivable_balance_with_provenance(
+        source_id: str, company_id: str, period: str,
+    ) -> dict[str, Any]:
+        """Read company-scoped receivable balances with profile provenance, without aging buckets."""
+        return await read_settlement_balance(
+            source_id, company_id, period,
+            concept=RECEIVABLE_BALANCE_CONCEPT,
+            tool_name="receivable_balance_with_provenance",
+            include_provenance=True,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def payable_balance_with_provenance(
+        source_id: str, company_id: str, period: str,
+    ) -> dict[str, Any]:
+        """Read company-scoped payables with explicit profile provenance.
+
+        Requires a separately validated payable.balance mapping. Use
+        accounting_balance_by_analytics for an account-521.1-only snapshot.
+        """
+        return await read_settlement_balance(
+            source_id, company_id, period,
+            concept=PAYABLE_BALANCE_CONCEPT,
+            tool_name="payable_balance_with_provenance",
+            include_provenance=True,
         )
 
     async def read_open_items_aging(
