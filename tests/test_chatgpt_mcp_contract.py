@@ -79,6 +79,16 @@ async def test_r1_tool_schemas_stay_pinned_and_optional_capabilities_are_r2_addi
             {"source_id", "company_id", "start_period", "end_period"},
             "inventory.read",
         ),
+        "cash_movements_with_provenance": (
+            {"source_id", "company_id", "start_period", "end_period", "top", "skip"},
+            {"source_id", "company_id", "start_period", "end_period"},
+            "cash.read",
+        ),
+        "bank_balance_with_provenance": (
+            {"source_id", "company_id", "period"},
+            {"source_id", "company_id", "period"},
+            "bank.read",
+        ),
         "purchase_documents_filtered": (
             {"source_id", "company_id", "top", "skip", "counterparty_ref", "posted_only"},
             {"source_id", "company_id"}, "purchases.read",

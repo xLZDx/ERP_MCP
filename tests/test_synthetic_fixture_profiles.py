@@ -170,13 +170,13 @@ async def test_sc12_cash_signed_deltas_through_mcp(fake1c, fake_sidecar, tmp_pat
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         body = stack.payload(await stack.call(
-            "cash_movements", source_id=stack.source_id,
+            "cash_movements_with_provenance", source_id=stack.source_id,
             company_id=str(stack.companies[ORG_ONE]), start_period=START, end_period=END,
         ))
         deltas = [Decimal(row["amount_delta"]) for row in body["value"]]
         assert deltas == [Decimal(10), Decimal(-3)] and sum(deltas) == 7
         assert body["profile_kind"] == "SYNTHETIC_FIXTURE" and body["native_reconciliation"] == "NOT_RUN"
-        rows = await stack.audit_rows("cash_movements")
+        rows = await stack.audit_rows("cash_movements_with_provenance")
         assert any(r["detail_code"] == "SYNTHETIC_FIXTURE_PROFILE" for r in rows)
     finally:
         await stack.db.close()

@@ -10,7 +10,8 @@ EXPECTED_TOOLS = {
     "accounting_balance_and_turnovers", "accounting_balance_by_analytics", "inventory_balance", "inventory_movements",
     "inventory_balance_with_provenance", "inventory_movements_with_provenance",
     "accounting_posting_rows", "accounting_posting_rows_with_provenance",
-    "cash_movements", "bank_balance", "receivable_balance",
+    "cash_movements", "bank_balance", "cash_movements_with_provenance",
+    "bank_balance_with_provenance", "receivable_balance",
     "payable_balance", "sales_documents", "purchase_documents", "onec_read",
     "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
 }

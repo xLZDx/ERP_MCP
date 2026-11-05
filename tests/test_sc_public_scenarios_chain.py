@@ -113,20 +113,20 @@ async def test_sc09_cash_and_bank_remain_separate_and_sum_to_combined(
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         cash = (await _call(
-            stack, "cash_movements",
+            stack, "cash_movements_with_provenance",
             start_period="2026-03-01T00:00:00+00:00", end_period="2026-05-01T00:00:00+00:00",
         ))["value"]
         cash_total = sum(Decimal(r["amount_delta"]) for r in cash)
-        bank = (await _call(stack, "bank_balance", period="2026-05-01T00:00:00+00:00"))["value"]
+        bank = (await _call(stack, "bank_balance_with_provenance", period="2026-05-01T00:00:00+00:00"))["value"]
         bank_total = sum(Decimal(str(r["amount"])) for r in bank)
         assert (cash_total, bank_total, cash_total + bank_total) == (100, 250, 350)
         april = (await _call(
-            stack, "cash_movements",
+            stack, "cash_movements_with_provenance",
             start_period="2026-04-01T00:00:00+00:00", end_period="2026-04-30T00:00:00+00:00",
         ))["value"]
         assert sum(Decimal(r["amount_delta"]) for r in april) == 7
         # company two sees none of company one's cash or bank rows
-        assert (await _call(stack, "bank_balance", org=ORG_TWO,
+        assert (await _call(stack, "bank_balance_with_provenance", org=ORG_TWO,
                             period="2026-05-01T00:00:00+00:00"))["value"] == []
     finally:
         await stack.db.close()

@@ -34,6 +34,7 @@ class OperationalMetrics:
         "inventory_balance_with_provenance", "inventory_movements_with_provenance",
         "accounting_posting_rows", "accounting_posting_rows_with_provenance",
         "cash_movements", "bank_balance", "receivable_balance",
+        "cash_movements_with_provenance", "bank_balance_with_provenance",
         "payable_balance", "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
         "sales_documents", "purchase_documents", "onec_read", "audit",
         "external_evidence_manifest", "counterparty_find",

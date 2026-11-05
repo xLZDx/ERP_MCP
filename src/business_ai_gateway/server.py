@@ -136,6 +136,8 @@ R2_ADDITIVE_TOOL_NAMES = frozenset({
     "accounting_posting_rows_with_provenance",
     "inventory_movements_with_provenance",
     "inventory_balance_with_provenance",
+    "bank_balance_with_provenance",
+    "cash_movements_with_provenance",
     "purchase_documents_filtered",
 })
 
@@ -169,7 +171,9 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "accounting_posting_rows": "accounting.read",
     "accounting_posting_rows_with_provenance": "accounting.read",
     "cash_movements": "cash.read",
+    "cash_movements_with_provenance": "cash.read",
     "bank_balance": "bank.read",
+    "bank_balance_with_provenance": "bank.read",
     "receivable_balance": "ar.read",
     "payable_balance": "ap.read",
     "receivable_aging": "ar.read",
@@ -1820,14 +1824,16 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             tool_name="accounting_posting_rows_with_provenance", include_provenance=True,
         )
 
-    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def cash_movements(
+    async def read_cash_movements(
         source_id: str,
         company_id: str,
         start_period: str,
         end_period: str,
-        top: int = 100,
-        skip: int = 0,
+        top: int,
+        skip: int,
+        *,
+        tool_name: str,
+        include_provenance: bool,
     ) -> dict[str, Any]:
         """Read profile-confirmed company cash movements; signs follow mapped record types."""
         started = time.monotonic()
@@ -1836,7 +1842,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             parsed_company_id = uuid.UUID(company_id)
         except ValueError as exc:
             await runtime.audit.write(
-                principal=principal, tool="cash_movements", source_id=source_id,
+                principal=principal, tool=tool_name, source_id=source_id,
                 outcome="denied", started_at=started, detail_code="INVALID_COMPANY_ID",
             )
             raise ValueError("company_id must be a UUID") from exc
@@ -1849,7 +1855,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "top": bounded_top, "skip": skip,
         }
         source = await resolve_source(
-            principal, source_id, "cash_movements", started, query,
+            principal, source_id, tool_name, started, query,
             company_id=parsed_company_id,
         )
         capabilities = None
@@ -1861,6 +1867,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, CASH_MOVEMENTS_CONCEPT
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                raise SemanticProfileUnavailable("Use cash_movements_with_provenance for this profile.")
+            provenance = profile_provenance(profile) if include_provenance else {"warnings": []}
             mapping = profile["mapping"]
             entity_set, select, filter_expr = build_cash_movements_query(
                 mapping, company_external_ref=company.external_ref,
@@ -1905,7 +1914,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raw_rows = result.get("value", []) if isinstance(result, dict) else result
             value = normalize_cash_movement_rows(raw_rows, mapping)
             await runtime.audit.write(
-                principal=principal, tool="cash_movements", source_id=source_id,
+                principal=principal, tool=tool_name, source_id=source_id,
                 outcome="success", started_at=started, query=query, returned_items=len(value),
                 company_id=parsed_company_id, adapter_kind=capabilities.adapter_profile.value,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
@@ -1919,11 +1928,11 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "profile_fingerprint": profile["profile_fingerprint"],
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": value, "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
-                principal=principal, tool="cash_movements", source_id=source_id,
+                principal=principal, tool=tool_name, source_id=source_id,
                 outcome=("denied" if isinstance(exc, (
                     PermissionError, CapabilityUnsupported, MetadataDriftUnacknowledged,
                     SemanticProfileUnavailable,
@@ -1936,7 +1945,43 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def bank_balance(source_id: str, company_id: str, period: str) -> dict[str, Any]:
+    async def cash_movements(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped data with a validated native profile. Use cash_movements_with_provenance for other supported profiles."""
+        return await read_cash_movements(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="cash_movements", include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def cash_movements_with_provenance(
+        source_id: str,
+        company_id: str,
+        start_period: str,
+        end_period: str,
+        top: int = 100,
+        skip: int = 0,
+    ) -> dict[str, Any]:
+        """Read company-scoped data with explicit profile provenance."""
+        return await read_cash_movements(
+            source_id, company_id, start_period, end_period, top, skip,
+            tool_name="cash_movements_with_provenance", include_provenance=True,
+        )
+
+    async def read_bank_balance(
+        source_id: str,
+        company_id: str,
+        period: str,
+        *,
+        tool_name: str,
+        include_provenance: bool,
+    ) -> dict[str, Any]:
         """Read a point-in-time bank balance via an exact, validated source profile."""
         started = time.monotonic()
         principal = await ctx()
@@ -1945,7 +1990,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="bank_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -1958,7 +2003,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "period": period,
         }
         source = await resolve_source(
-            principal, source_id, "bank_balance", started, query, company_id=parsed_company_id
+            principal, source_id, tool_name, started, query, company_id=parsed_company_id
         )
         capabilities = None
         try:
@@ -1971,6 +2016,9 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, BANK_BALANCE_CONCEPT
             )
+            if not include_provenance and profile.get("profile_kind") != "VALIDATED_NATIVE":
+                raise SemanticProfileUnavailable("Use bank_balance_with_provenance for this profile.")
+            provenance = profile_provenance(profile) if include_provenance else {"warnings": []}
             mapping = profile["mapping"]
             register_set, method, arguments = build_bank_balance_arguments(
                 mapping, company_external_ref=company.external_ref, period=period
@@ -1989,7 +2037,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="bank_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -2011,12 +2059,12 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 "metadata_fingerprint": capabilities.metadata_fingerprint,
                 "value": normalized_rows,
                 "page": result.get("page") if isinstance(result, dict) else None,
-                **profile_provenance(profile),
+                **provenance,
             }
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="bank_balance",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -2039,6 +2087,30 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def bank_balance(
+        source_id: str,
+        company_id: str,
+        period: str,
+    ) -> dict[str, Any]:
+        """Read company-scoped data with a validated native profile. Use bank_balance_with_provenance for other supported profiles."""
+        return await read_bank_balance(
+            source_id, company_id, period,
+            tool_name="bank_balance", include_provenance=False,
+        )
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def bank_balance_with_provenance(
+        source_id: str,
+        company_id: str,
+        period: str,
+    ) -> dict[str, Any]:
+        """Read company-scoped data with explicit profile provenance."""
+        return await read_bank_balance(
+            source_id, company_id, period,
+            tool_name="bank_balance_with_provenance", include_provenance=True,
+        )
 
     async def read_settlement_balance(
         source_id: str,

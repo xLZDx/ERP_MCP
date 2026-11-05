@@ -142,8 +142,8 @@ async def eval_sc07():
 
 
 async def eval_sc09():
-    cash = (await ok_call("cash_movements", **CASH_WINDOW)).data["value"]
-    bank = (await ok_call("bank_balance")).data["value"]
+    cash = (await ok_call("cash_movements_with_provenance", **CASH_WINDOW)).data["value"]
+    bank = (await ok_call("bank_balance_with_provenance")).data["value"]
     cash_total = sum(D(r["amount_delta"]) for r in cash)
     bank_total = sum(D(r["amount"]) for r in bank)
     f = FIX["cash-bank"]
@@ -174,7 +174,7 @@ async def eval_sc11():
 
 
 async def eval_sc12():
-    cash = (await ok_call("cash_movements")).data["value"]
+    cash = (await ok_call("cash_movements_with_provenance")).data["value"]
     receipts = sum(D(r["amount_delta"]) for r in cash if r["direction"] == "receipt")
     expense = [D(r["amount_delta"]) for r in cash if r["direction"] == "expense"]
     f = FIX["cash-receipt-expense"]
@@ -279,8 +279,8 @@ async def _isolation(case: str):
         assert (await ok_call("inventory_movements_with_provenance", two)).data["value"] == []
         assert (await ok_call("inventory_balance_with_provenance", two)).data["value"] == []
     elif case in {"SC09", "SC12"}:
-        assert (await ok_call("cash_movements", two, **CASH_WINDOW)).data["value"] == []
-        assert (await ok_call("bank_balance", two)).data["value"] == []
+        assert (await ok_call("cash_movements_with_provenance", two, **CASH_WINDOW)).data["value"] == []
+        assert (await ok_call("bank_balance_with_provenance", two)).data["value"] == []
     elif case == "SC10":
         assert (await ok_call("accounting_balance_and_turnovers", two)).data["value"] == []
     elif case == "SC08":
