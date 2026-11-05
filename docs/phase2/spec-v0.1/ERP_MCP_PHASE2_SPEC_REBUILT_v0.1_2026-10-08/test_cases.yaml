@@ -74,6 +74,52 @@
   kind: boundary_recovery
   expectation: moving HEAD is not reported as deployment evidence
   actual_status: NOT_RUN
+  bounded_acceptance:
+    status: SATISFIED
+    criterion: moving HEAD is not reported as deployment evidence
+    scope: The release-evidence assembler does not infer deployment identity from
+      tested revision, local HEAD, or PR head; absent provider attestation remains
+      unknown and caller-supplied SHAs remain unverified claims.
+    exact_head: b885f03ffd752b9b30a365fb0294c7e53f24a785
+    source_evidence_path: artifacts/phase2/r2-tc003-deployment-identity-evidence.json
+    evidence_path: evidence/r2-tc003-deployment-identity-evidence.json
+    evidence_sha256: 8af815a097f937cbf3b60db2ac536371b6b3231af750fd630f75599de963505a
+    assembler_path: scripts/assemble_release_evidence.py
+    assembler_worktree_sha256: 6ec5084613b3076499e823ff6611b3e8d6ee926da60aa8d43242c357610971de
+    assembler_git_blob_oid: 236edacb5cf16f66671f6fb6da10b0c8766a79e2
+    assembler_candidate_blob_sha256: b5d4fc5123a8e5b510efc6770241a5a89fe3236991d9975d7db1e0ba14527710
+    test_path: tests/test_release_evidence_assembly.py
+    test_worktree_sha256: 17b123fe38b7f3c3752394cdf51cdd1f6f4305bf40fcf9f753a105a76a783568
+    test_git_blob_oid: e91133d306dc6ae0256715490f8ea56541d63e94
+    test_candidate_blob_sha256: 63c339bcf6687519dbfdfcb24e07d8460937b67cc7f652db77a248b952fdfa1f
+    regression_command: .venv/Scripts/python.exe -m pytest -q tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head
+      tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim
+      tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified
+      tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected
+    regression_passed: 4
+    regression_result: PASS
+    prior_gpt_pm_review_request_id: 50c5099b-8d93-41f6-8e04-4a0b8f6e52dd
+    gpt_pm_adjudication_state: APPROVED
+    gpt_pm_adjudication_request_id: 50c5099b-8d93-41f6-8e04-4a0b8f6e52dd
+    gpt_pm_adjudication_job_id: 6eefd345-14a5-42dc-8b2c-481cbb5d86fc
+    gpt_pm_adjudication_reply_id: 8e490bc5-d149-52dc-948a-1047ef786fff
+    gpt_pm_adjudication_payload_sha256: 8c9c80da8b5ff42525a0e78ed1b0a6e21985a23565117cbc80d1734b23b92834
+    gpt_pm_adjudication_receipt_path: artifacts/phase2/r2-tc003-gpt-pm-adjudication.json
+    gpt_pm_adjudication_package_receipt_path: evidence/r2-tc003-gpt-pm-adjudication.json
+    gpt_pm_adjudication_receipt_sha256: 9ebf1f76405813c21786700d65f78eb1fa456057bf97606000e755dc2086ecb3
+    gpt_pm_adjudication_reply_sha256: 89469deb8993ca96af7c79a7eb6b6d4978658142e9dd531b155acf4906eaf7b3
+    transition_rule: A correlated GPT-PM decision may mark only this bounded negative
+      criterion SATISFIED. Canonical product_status remains NOT_RUN and Gherkin remains
+      @not_implemented until an executable product scenario and authoritative provider
+      deployment evidence exist.
+    absence_of_attestation_disposition: ACCEPTABLE for this bounded criterion only.
+      It records that the named repository evidence does not identify a verified deployment;
+      it does not assert that no external deployment exists.
+    limitations:
+    - Does not identify or verify an actual deployed revision.
+    - Does not prove that no deployment exists outside the named repository evidence.
+    - Does not establish product runtime acceptance, release readiness, merge, deployment,
+      or production authorization.
 - id: R2-TC-004
   story: R2-US-002
   requirements: &id002

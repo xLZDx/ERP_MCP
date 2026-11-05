@@ -78,7 +78,7 @@ def test_tc001_bounded_acceptance_is_separate_from_product_status(catalogs):
     assert all(
         "bounded_acceptance" not in case
         for case in cases
-        if case["id"] not in {"R2-TC-001", "R2-TC-002"}
+        if case["id"] not in {"R2-TC-001", "R2-TC-002", "R2-TC-003"}
     )
 
     evidence_path = PKG / bounded["evidence_path"]
@@ -523,3 +523,138 @@ def test_no_bogus_product_pass():
     assert report["product_tests"] == "NOT_RUN"
     assert report["native_1c"] == "NOT_RUN"
     assert report["production"] == "NOT_RUN"
+
+
+def test_tc003_bounded_acceptance_is_separate_from_product_status():
+    cases = load("test_cases.yaml")
+    matches = [case for case in cases if case["id"] == "R2-TC-003"]
+    assert len(matches) == 1
+    case = matches[0]
+    assert case["actual_status"] == "NOT_RUN"
+
+    source_decision = yaml.safe_load(
+        (ROOT / "docs" / "phase2" / "TC003_BOUNDED_ACCEPTANCE.yaml").read_text(encoding="utf-8")
+    )
+    package_decision = load("docs/13_TC003_BOUNDED_ACCEPTANCE.yaml")
+    assert source_decision == package_decision
+    bounded = case["bounded_acceptance"]
+    assert bounded == package_decision["bounded_acceptance"]
+    assert bounded["status"] == "SATISFIED"
+    assert bounded["criterion"] == "moving HEAD is not reported as deployment evidence"
+    assert package_decision["product_status"] == "NOT_RUN"
+    assert bounded["gpt_pm_adjudication_request_id"] == "50c5099b-8d93-41f6-8e04-4a0b8f6e52dd"
+    assert bounded["gpt_pm_adjudication_job_id"] == "6eefd345-14a5-42dc-8b2c-481cbb5d86fc"
+    assert bounded["gpt_pm_adjudication_reply_id"] == "8e490bc5-d149-52dc-948a-1047ef786fff"
+    assert bounded["exact_head"] == "b885f03ffd752b9b30a365fb0294c7e53f24a785"
+
+    evidence_bytes = (PKG / bounded["evidence_path"]).read_bytes()
+    assert hashlib.sha256(evidence_bytes).hexdigest() == bounded["evidence_sha256"]
+    evidence = json.loads(evidence_bytes)
+    assert evidence["product_status"] == "NOT_RUN"
+    assert evidence["gherkin_status"] == "@not_implemented"
+    assert evidence["regression"]["execution_head"] == bounded["exact_head"]
+    assert evidence["regression"]["result"] == "PASS"
+    assert evidence["regression"]["passed"] == 4
+    assert evidence["provider_attestation"]["does_not_prove_external_deployment_absence"] is True
+
+    receipt_bytes = (PKG / bounded["gpt_pm_adjudication_package_receipt_path"]).read_bytes()
+    assert hashlib.sha256(receipt_bytes).hexdigest() == bounded["gpt_pm_adjudication_receipt_sha256"]
+    receipt = json.loads(receipt_bytes)
+    assert receipt["candidate_head"] == bounded["exact_head"]
+    assert receipt["bounded_status"] == "SATISFIED"
+    assert receipt["product_status"] == "NOT_RUN"
+    assert hashlib.sha256(receipt["reply_text"].encode("utf-8")).hexdigest() == bounded["gpt_pm_adjudication_reply_sha256"]
+
+    feature = (PKG / "acceptance" / "phase2.feature").read_text(encoding="utf-8")
+    assert "  @not_implemented @R2TC003\n  Scenario: R2-TC-003" in feature
+    manifest = {}
+    for line in (PKG / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
+        digest, rel_path = line.split("  ", 1)
+        manifest[rel_path] = digest
+    for rel_path in (
+        "docs/13_TC003_BOUNDED_ACCEPTANCE.yaml",
+        bounded["evidence_path"],
+        bounded["gpt_pm_adjudication_package_receipt_path"],
+    ):
+        assert manifest[rel_path] == hashlib.sha256((PKG / rel_path).read_bytes()).hexdigest()
+
+    builder = load_spec_builder()
+    loaded_bounded, loaded_evidence, loaded_receipt = builder.load_tc003_bounded_acceptance()
+    assert loaded_bounded == bounded
+    assert loaded_evidence == evidence_bytes
+    assert loaded_receipt == receipt_bytes
+
+
+def _write_mutated_tc003_decision(builder, decision, tmp_path, monkeypatch):
+    path = tmp_path / "mutated-tc003-decision.yaml"
+    path.write_text(yaml.safe_dump(decision, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(builder, "TC003_BOUNDED_DECISION", path)
+
+
+def test_tc003_loader_rejects_product_status_promotion(tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision = yaml.safe_load(builder.TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    decision["product_status"] = "PASS"
+    _write_mutated_tc003_decision(builder, decision, tmp_path, monkeypatch)
+
+    with pytest.raises(ValueError, match="TC003_BOUNDED_DECISION_MUST_PRESERVE_PRODUCT_NOT_RUN"):
+        builder.load_tc003_bounded_acceptance()
+
+
+def test_tc003_loader_rejects_tampered_pm_receipt(tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision = yaml.safe_load(builder.TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    bounded = decision["bounded_acceptance"]
+    original_path = ROOT / bounded["gpt_pm_adjudication_receipt_path"]
+    mutated_name = f".tc003-receipt-tamper-{tmp_path.name}.json"
+    mutated_path = original_path.with_name(mutated_name)
+    mutated_path.write_bytes(original_path.read_bytes() + b" ")
+    expected = dict(builder.TC003_BOUNDED_EXPECTED)
+    expected["gpt_pm_adjudication_receipt_path"] = str(Path("artifacts/phase2") / mutated_name).replace("\\", "/")
+    monkeypatch.setattr(builder, "TC003_BOUNDED_EXPECTED", expected)
+    bounded["gpt_pm_adjudication_receipt_path"] = expected["gpt_pm_adjudication_receipt_path"]
+    _write_mutated_tc003_decision(builder, decision, tmp_path, monkeypatch)
+    try:
+        with pytest.raises(ValueError, match="TC003_BOUNDED_PM_RECEIPT_SHA256_MISMATCH"):
+            builder.load_tc003_bounded_acceptance()
+    finally:
+        mutated_path.unlink(missing_ok=True)
+
+
+def test_tc003_loader_rejects_duplicate_pm_receipt_json_keys(tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision = yaml.safe_load(builder.TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    bounded = decision["bounded_acceptance"]
+    original_path = ROOT / bounded["gpt_pm_adjudication_receipt_path"]
+    receipt_bytes = original_path.read_bytes()
+    needle = b'"schema_version": 1,'
+    assert receipt_bytes.count(needle) == 1
+    duplicate_receipt = receipt_bytes.replace(needle, b'"schema_version": 1, "schema_version": 1,', 1)
+    mutated_name = f".tc003-receipt-duplicate-{tmp_path.name}.json"
+    mutated_path = original_path.with_name(mutated_name)
+    mutated_path.write_bytes(duplicate_receipt)
+    expected = dict(builder.TC003_BOUNDED_EXPECTED)
+    expected["gpt_pm_adjudication_receipt_path"] = str(Path("artifacts/phase2") / mutated_name).replace("\\", "/")
+    expected["gpt_pm_adjudication_receipt_sha256"] = hashlib.sha256(duplicate_receipt).hexdigest()
+    monkeypatch.setattr(builder, "TC003_BOUNDED_EXPECTED", expected)
+    bounded["gpt_pm_adjudication_receipt_path"] = expected["gpt_pm_adjudication_receipt_path"]
+    bounded["gpt_pm_adjudication_receipt_sha256"] = expected["gpt_pm_adjudication_receipt_sha256"]
+    _write_mutated_tc003_decision(builder, decision, tmp_path, monkeypatch)
+    try:
+        with pytest.raises(ValueError, match="TC003_BOUNDED_PM_RECEIPT_DUPLICATE_JSON_KEY"):
+            builder.load_tc003_bounded_acceptance()
+    finally:
+        mutated_path.unlink(missing_ok=True)
+
+
+def test_tc003_loader_rejects_source_blob_identity_mismatch(tmp_path, monkeypatch):
+    builder = load_spec_builder()
+    decision = yaml.safe_load(builder.TC003_BOUNDED_DECISION.read_text(encoding="utf-8"))
+    expected = dict(builder.TC003_BOUNDED_EXPECTED)
+    expected["assembler_git_blob_oid"] = "0" * 40
+    monkeypatch.setattr(builder, "TC003_BOUNDED_EXPECTED", expected)
+    decision["bounded_acceptance"]["assembler_git_blob_oid"] = expected["assembler_git_blob_oid"]
+    _write_mutated_tc003_decision(builder, decision, tmp_path, monkeypatch)
+
+    with pytest.raises(ValueError, match="TC003_BOUNDED_SOURCE_CONTENT_MISMATCH"):
+        builder.load_tc003_bounded_acceptance()
