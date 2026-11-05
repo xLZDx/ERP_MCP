@@ -30,16 +30,18 @@ async def ledger():
     old = os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS")
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     try:
-        async with disposable_cluster() as (dsn, _name, _token):
-            async with throwaway_db(dsn, seed=False) as db:
-                for version in PREDECESSORS:
-                    await _apply(db.conn, next(p.name for p in MIGRATIONS.glob(version + "_*.sql")))
-                await _setup(db.conn)
-                await db.conn.execute(
-                    "INSERT INTO change_ledger.lifecycle_fences(tenant_id,company_id,state,epoch,reason) "
+        async with (
+            disposable_cluster() as (dsn, _name, _token),
+            throwaway_db(dsn, seed=False) as db,
+        ):
+            for version in PREDECESSORS:
+                await _apply(db.conn, next(p.name for p in MIGRATIONS.glob(version + "_*.sql")))
+            await _setup(db.conn)
+            await db.conn.execute(
+                "INSERT INTO change_ledger.lifecycle_fences(tenant_id,company_id,state,epoch,reason) "
                     "VALUES($1,$2,'LEGACY',0,'TEST_FIXTURE') ON CONFLICT DO NOTHING", T, C)
-                await _apply(db.conn, "028_refusal_codes_parity.sql")
-                yield L(db)
+            await _apply(db.conn, "028_refusal_codes_parity.sql")
+            yield L(db)
     finally:
         if old is None:
             os.environ.pop("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS", None)

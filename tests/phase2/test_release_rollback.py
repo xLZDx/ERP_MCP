@@ -406,7 +406,7 @@ def test_hostile_states_are_input_invalid(env, state):
 
 
 def test_state_and_plan_constructors_reject_bad_values():
-    for bad in (("bad id", T0, 1, 1), ("r", datetime(2026, 1, 1), 1, 1), ("r", T0, True, 1),
+    for bad in (("bad id", T0, 1, 1), ("r", datetime(2026, 1, 1), 1, 1), ("r", T0, True, 1),  # noqa: DTZ001 - exercise the timezone-naive input boundary
                 ("r", T0, -1, 1), ("r", T0, 1, -1), ("r", "2026", 1, 1), ("r", T0, 10**12, 1)):
         with pytest.raises(ValueError):
             ReleaseState(*bad)
@@ -420,7 +420,7 @@ def test_plan_and_state_are_snapshotted_once(env):
     assert d.allowed is True  # the decision was already taken from the entry-time copy
 
 
-@pytest.mark.parametrize("clock", [None, 5, "now", lambda: None, lambda: "2026", lambda: datetime(2026, 1, 1),
+@pytest.mark.parametrize("clock", [None, 5, "now", lambda: None, lambda: "2026", lambda: datetime(2026, 1, 1),  # noqa: DTZ001 - exercise the timezone-naive input boundary
                                    lambda: 5])
 def test_unusable_clock_is_a_dependency_failure(env, clock):
     refused(env.decide(clock=clock), OpsReason.DEPENDENCY_FAILED)
@@ -481,7 +481,7 @@ def test_typed_ids_reject_free_text():
         with pytest.raises(ValueError):
             GrantId(bad)  # type: ignore[arg-type]
     with pytest.raises(ValueError):
-        GrantRecord(GrantId("g-1"), datetime(2030, 1, 1))  # naive
+        GrantRecord(GrantId("g-1"), datetime(2030, 1, 1))  # naive  # noqa: DTZ001 - exercise the timezone-naive input boundary
     with pytest.raises(ValueError):
         GrantRecord("g-1", FAR)  # type: ignore[arg-type]
     with pytest.raises(ValueError):
@@ -523,7 +523,7 @@ def test_registry_view_high_water_never_goes_back(env):
     earlier = env.registry.view(T0)  # the clock jumped back
     assert earlier.effective_now == T0 + timedelta(hours=2)
     assert earlier.entries[0].expired is True  # expiry is sticky
-    assert env.registry.view(datetime(2026, 1, 1)) is None and env.registry.view("now") is None
+    assert env.registry.view(datetime(2026, 1, 1)) is None and env.registry.view("now") is None  # noqa: DTZ001 - exercise the timezone-naive input boundary
 
 
 def test_registry_view_is_an_immutable_snapshot(env):
@@ -783,7 +783,7 @@ def test_registry_failures_are_dependency_failures(env):
     object.__setattr__(duck, "expired", False)
     for reg in (Boom(), None, object(), Lying(None), Lying("view"), Lying(forged_entry), Lying(RegistryView((duck,), T0)),
                 Lying(RegistryView(("entry",), T0)), Lying(RegistryView([], T0)),
-                Lying(RegistryView((), datetime(2026, 1, 1)))):
+                Lying(RegistryView((), datetime(2026, 1, 1)))):  # noqa: DTZ001 - exercise the timezone-naive input boundary
         out = effective_after_rollback(reg, env.store, env.clock, env.ids)
         assert type(out) is OpsRefusal and out.reason is OpsReason.DEPENDENCY_FAILED
         refused(env.decide(grants=reg), OpsReason.DEPENDENCY_FAILED)

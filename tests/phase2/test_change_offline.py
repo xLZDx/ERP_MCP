@@ -426,7 +426,7 @@ def test_canonical_json_is_sorted_compact_ascii_and_normalizes_decimals():
     assert ch.canonical_json({"z": 1, "a": 2}) == ch.canonical_json({"a": 2, "z": 1})
 
 
-@pytest.mark.parametrize("value", [1.5, float("nan"), Decimal("NaN"), Decimal("Infinity"), datetime(2026, 1, 1),
+@pytest.mark.parametrize("value", [1.5, float("nan"), Decimal("NaN"), Decimal("Infinity"), datetime(2026, 1, 1),  # noqa: DTZ001 - exercise the timezone-naive input boundary
                                    object(), {1: 2}, b"x"])
 def test_canonical_json_refuses_floats_naive_datetimes_and_foreign_types(value):
     with pytest.raises(ValueError):
@@ -1893,7 +1893,7 @@ def test_reserve_refuses_non_decimal_negative_or_non_finite_amounts(amount):
 
 
 def test_reserve_refuses_naive_time_and_foreign_grant():
-    assert ch.reserve(grant(), D("1"), "RUB", datetime(2026, 10, 12)) is ErrorCode.SCHEMA_INVALID
+    assert ch.reserve(grant(), D("1"), "RUB", datetime(2026, 10, 12)) is ErrorCode.SCHEMA_INVALID  # noqa: DTZ001 - exercise the timezone-naive input boundary
     assert ch.reserve("grant", D("1"), "RUB", T0) is ErrorCode.SCHEMA_INVALID
 
 
@@ -1918,7 +1918,7 @@ def test_grant_construction_enforces_reserved_plus_consumed_within_limit():
     with pytest.raises(ValueError):
         Grant("g", "RUB", D(1), VALID_TO, VALID_FROM)
     with pytest.raises(ValueError):
-        Grant("g", "RUB", D(1), datetime(2026, 1, 1), VALID_TO)
+        Grant("g", "RUB", D(1), datetime(2026, 1, 1), VALID_TO)  # noqa: DTZ001 - exercise the timezone-naive input boundary
 
 
 def test_post_reserves_only_the_unconsumed_part_of_the_document_amount():

@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import asyncpg
 from _approval_envelope import fixture_digest_for
-from _pg_harness import MIGRATIONS, disposable_cluster, throwaway_db
+from _pg_harness import FILES, MIGRATIONS, disposable_cluster, seed_basic, throwaway_db
 from test_change_ledger_sql import C, L, T, _setup, exp
 
 MIGRATION_CHAIN = [
@@ -289,26 +289,32 @@ async def run_bounded_lock_waits(db, led: L) -> None:
 
 
 async def run() -> None:
-    async with disposable_cluster() as (dsn, container, owner_token):
-        async with throwaway_db(dsn) as db:
-            # throwaway_db applies 001-018 and seeds the isolated base registry.
-            for filename in MIGRATION_CHAIN[:-3]:
-                await apply_migration(db.conn, MIGRATIONS / filename)
-            await _setup(db.conn)
-            for filename in MIGRATION_CHAIN[-3:]:
-                await apply_migration(db.conn, MIGRATIONS / filename)
-            versions = await db.conn.fetch("SELECT version FROM living.schema_migrations ORDER BY version")
-            installed = {row["version"] for row in versions}
-            expected = {f"{version:03d}" for version in range(1, 25)}
-            assert installed == expected, (sorted(installed), sorted(expected))
+    async with (
+        disposable_cluster() as (dsn, container, owner_token),
+        throwaway_db(dsn, migrate=False) as db,
+    ):
+        db.conn = await db.connect()
+        for filename in FILES[:18]:
+            await apply_migration(db.conn, MIGRATIONS / filename)
+        await seed_basic(db.conn)
+        # Match the established 023-024 fixture order after the exact 001-018 baseline.
+        for filename in MIGRATION_CHAIN[:3]:
+            await apply_migration(db.conn, MIGRATIONS / filename)
+        await _setup(db.conn)
+        for filename in MIGRATION_CHAIN[3:]:
+            await apply_migration(db.conn, MIGRATIONS / filename)
+        versions = await db.conn.fetch("SELECT version FROM living.schema_migrations ORDER BY version")
+        installed = {row["version"] for row in versions}
+        expected = {f"{version:03d}" for version in range(1, 25)}
+        assert installed == expected, (sorted(installed), sorted(expected))
 
-            led = L(db)
-            await run_recovery_is_denied_and_fail_closed(db, led)
-            await run_migration_is_idempotent(db)
-            await run_bounded_lock_waits(db, led)
-            await run_success_restores_caller_lock_timeout(db, led)
-            await run_timeout_savepoint_restores_setting_and_outer_transaction(db)
-            print(f"PASS: S13 migration 023-024 focused acceptance on owned PostgreSQL container "
+        led = L(db)
+        await run_recovery_is_denied_and_fail_closed(db, led)
+        await run_migration_is_idempotent(db)
+        await run_bounded_lock_waits(db, led)
+        await run_success_restores_caller_lock_timeout(db, led)
+        await run_timeout_savepoint_restores_setting_and_outer_transaction(db)
+        print(f"PASS: S13 migration 023-024 focused acceptance on owned PostgreSQL container "
                   f"{container}; owner token {owner_token[:8]}")
 
 

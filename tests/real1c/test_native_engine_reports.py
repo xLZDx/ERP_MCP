@@ -332,7 +332,7 @@ def _patch_run(monkeypatch, conn, *, pre=PRE, post=PRE, baseline=None, post_unre
 
 
 def _run(tmp_path, connector, **kwargs):
-    return ner.run(out_root=tmp_path, connector=connector, now=lambda: dt.datetime(2026, 10, 7, 12, 0, 0),
+    return ner.run(out_root=tmp_path, connector=connector, now=lambda: dt.datetime(2026, 10, 7, 12, 0, 0),  # noqa: DTZ001 - match the injected local wall-clock naming contract
                    **kwargs)
 
 

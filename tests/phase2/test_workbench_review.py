@@ -81,7 +81,7 @@ _DEFAULT = object()
 
 
 def _naive():
-    return datetime(2026, 1, 1)
+    return datetime(2026, 1, 1)  # noqa: DTZ001 - exercise the timezone-naive input boundary
 
 
 class World:
