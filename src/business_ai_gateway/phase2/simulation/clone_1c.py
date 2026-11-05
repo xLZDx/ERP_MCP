@@ -29,7 +29,13 @@ from threading import RLock
 from typing import Final
 
 from ..change.proposal import (
-    DraftPayload, DuplicateOverride, Line, canonical_json, derive_allowed_effects, payload_digest, payload_to_dict,
+    DraftPayload,
+    DuplicateOverride,
+    Line,
+    canonical_json,
+    derive_allowed_effects,
+    payload_digest,
+    payload_to_dict,
 )
 from ..change.types import ChangeKind, is_aware_datetime, is_identity_text
 from ..ed25519 import public_key_from_seed, sign, verify

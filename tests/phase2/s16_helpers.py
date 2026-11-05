@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import SWITCH_OFF
 from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from business_ai_gateway.phase2.change.types import CallerClass

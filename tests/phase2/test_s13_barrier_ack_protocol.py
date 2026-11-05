@@ -7,7 +7,6 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
-from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

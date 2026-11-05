@@ -14,9 +14,18 @@ from uuid import UUID
 
 from .. import ed25519
 from .evidence import (
-    CompletionProof, DispatchAttempt, DispatchReceipt, OutcomeEvidence, OutcomeEvidenceV2, OutcomeEvidenceV3,
-    PostCompletionChallenge, PostCompletionReadAttestation, _Envelope,
-    canonical_json_bytes, validate_conditional_conflict_terminal_evidence, verify_record_signature,
+    CompletionProof,
+    DispatchAttempt,
+    DispatchReceipt,
+    OutcomeEvidence,
+    OutcomeEvidenceV2,
+    OutcomeEvidenceV3,
+    PostCompletionChallenge,
+    PostCompletionReadAttestation,
+    _Envelope,
+    canonical_json_bytes,
+    validate_conditional_conflict_terminal_evidence,
+    verify_record_signature,
 )
 
 __all__ = [

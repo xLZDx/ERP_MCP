@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Mapping
 from uuid import UUID, uuid4
@@ -10,17 +9,39 @@ from uuid import UUID, uuid4
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
 from business_ai_gateway.phase2.change.proposal import (
-    ProposalContext, approval_canonical_text, digest_of_canonical_text, parse_proposal,
+    ProposalContext,
+    approval_canonical_text,
+    digest_of_canonical_text,
+    parse_proposal,
 )
-from business_ai_gateway.phase2.change.types import ChangeKind, Scope
 from business_ai_gateway.phase2.change.transitions import (
-    BusinessKeyState, Event, LogicalKeyState, ProposeEvidence, ValidateEvidence, apply_transition,
+    BusinessKeyState,
+    Event,
+    LogicalKeyState,
+    ProposeEvidence,
+    ValidateEvidence,
+    apply_transition,
 )
-from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Verification
+from business_ai_gateway.phase2.change.types import (
+    BudgetCheck,
+    CallerClass,
+    ChangeKind,
+    Scope,
+    Verification,
+)
 
 from .contracts import (
-    ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
-    DomainReceipt, NonceSource, PreviewSnapshot, ProposalPort, Result, TargetRecord,
+    ApprovalDecision,
+    ApproverSession,
+    AuthenticatedPrincipal,
+    DecisionBinding,
+    DecisionPage,
+    DomainReceipt,
+    NonceSource,
+    PreviewSnapshot,
+    ProposalPort,
+    Result,
+    TargetRecord,
     canonical_preview_bytes,
 )
 from .core import S16Core

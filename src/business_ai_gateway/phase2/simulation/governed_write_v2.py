@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 from threading import RLock
-from typing import Callable, Mapping, Protocol
+from typing import Mapping, Protocol
 
 from ..change.evidence import (
     CompletionProof,

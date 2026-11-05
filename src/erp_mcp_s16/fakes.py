@@ -15,8 +15,17 @@ from business_ai_gateway.phase2.change.types import Scope
 from erp_mcp_s15.verifier import VerificationResult, VerificationStatus
 
 from .contracts import (
-    ApprovalDecision, ApplyReceipt, ChangeStore, ClaimRefused, Claimed, ClaimToken,
-    DecisionBinding, DomainReceipt, KillSwitchPort, TargetScope, VerifyPort,
+    ApplyReceipt,
+    ApprovalDecision,
+    ChangeStore,
+    Claimed,
+    ClaimRefused,
+    ClaimToken,
+    DecisionBinding,
+    DomainReceipt,
+    KillSwitchPort,
+    TargetScope,
+    VerifyPort,
 )
 
 

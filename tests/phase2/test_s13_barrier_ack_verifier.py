@@ -10,7 +10,6 @@ import hashlib
 import unittest
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey

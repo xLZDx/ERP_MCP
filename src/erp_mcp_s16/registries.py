@@ -1,14 +1,18 @@
 """Registry contracts and deliberately in-memory fakes; no production identity source is wired."""
 from __future__ import annotations
 
+import secrets
 import threading
 from dataclasses import replace
 from datetime import timedelta
-import secrets
 
 from .contracts import (
-    AuthenticatedPrincipal, PrincipalRecord, PrincipalRegistryPort, TargetRecord,
-    TargetRegistryPort, TargetScope,
+    AuthenticatedPrincipal,
+    PrincipalRecord,
+    PrincipalRegistryPort,
+    TargetRecord,
+    TargetRegistryPort,
+    TargetScope,
 )
 
 

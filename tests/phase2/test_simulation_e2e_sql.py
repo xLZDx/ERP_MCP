@@ -17,7 +17,7 @@ import _approval_envelope
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import C2, DEFAULT_GRANT, ORG, T2, C, T, _setup, exp
+from test_change_ledger_sql import C2, DEFAULT_GRANT, T2, C, T, _setup
 
 from business_ai_gateway.phase2.change import canonical_json
 from business_ai_gateway.phase2.change.proposal import (

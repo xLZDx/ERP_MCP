@@ -16,9 +16,8 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-from _ed25519_fixtures import sign_hex
-from _pg_harness import FILES, disposable_cluster, seed_basic, throwaway_db
-from test_change_ledger_sql import ORG, C, L, T, _setup, exp
+from _pg_harness import disposable_cluster, throwaway_db
+from test_change_ledger_sql import ORG, C, L, T, _setup
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"

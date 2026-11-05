@@ -12,7 +12,6 @@ from business_ai_gateway.phase2.change.proposal import (
     approval_canonical_text,
     digest_of_canonical_text,
 )
-from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from erp_mcp_s16.contracts import ClaimToken, PrincipalRole, TokenClass, canonical_preview_bytes
 from erp_mcp_s16.fakes import FakeBeginApplyEvidencePort, InMemoryChangeStore
 from tests.phase2.s16_helpers import NOW, approve, build_env, positive_begin_apply_evidence, propose

@@ -27,7 +27,6 @@ from test_change_ledger_sql import (
     BASE,
     DEFAULT_GRANT,
     DIGEST,
-    KH,
     ORG,
     SIGN_KEYS,
     C,

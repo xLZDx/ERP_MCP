@@ -18,12 +18,12 @@ from ..change.proposal import canonical_json, payload_digest
 from ..change.types import ChangeKind, is_aware_datetime, is_identity_text
 from ..change_ledger.write_port import ApplyTicket, DispatchPermit
 from .clone_1c import (
+    LANE,
+    SYNTHETIC_MARKER,
     CloneCrash,
     CloneError,
     CloneRejected,
     CloneTimeout,
-    LANE,
-    SYNTHETIC_MARKER,
     SimulatedOneC,
     decode_payload,
 )

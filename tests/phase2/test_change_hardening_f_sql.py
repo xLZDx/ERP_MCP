@@ -21,7 +21,7 @@ import asyncpg
 import pytest
 from _approval_envelope import FIXTURE_PAYLOAD
 from _pg_harness import require_dsn, throwaway_db
-from test_change_ledger_sql import C, L, T, _setup
+from test_change_ledger_sql import L, _setup
 
 from business_ai_gateway.phase2.change import canonical_json
 

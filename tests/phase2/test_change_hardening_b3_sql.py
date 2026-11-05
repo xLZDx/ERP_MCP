@@ -17,7 +17,7 @@ from types import SimpleNamespace
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_hardening_b2_sql import add_base, sweep, wait_blocked
+from test_change_hardening_b2_sql import sweep, wait_blocked
 from test_change_ledger_sql import (
     BASE,
     C2,
