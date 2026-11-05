@@ -299,19 +299,21 @@ async def journey(db) -> None:
 
 async def main() -> int:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    async with disposable_cluster() as (dsn, container_name, token):
-        async with throwaway_db(dsn, seed=False) as db:
-            for filename in POST_BASE_MIGRATIONS[:3]:
-                await apply(db.conn, filename)
-            await _setup(db.conn)
-            await db.conn.execute("SELECT change_ledger.add_role_scope('ledger_owner',$1,$2)", T, C)
-            for filename in POST_BASE_MIGRATIONS[3:]:
-                await apply(db.conn, filename)
-            chain = await db.conn.fetch("SELECT version FROM living.schema_migrations WHERE version >= '019'")
-            versions = {row["version"] for row in chain}
-            assert {"019", "020", "021", "022", "023", "024", "025", "026"} <= versions, versions
-            print(f"PROGRESS: PostgreSQL {await db.conn.fetchval('SHOW server_version')} ready", flush=True)
-            await journey(db)
+    async with (
+        disposable_cluster() as (dsn, container_name, token),
+        throwaway_db(dsn, seed=False) as db,
+    ):
+        for filename in POST_BASE_MIGRATIONS[:3]:
+            await apply(db.conn, filename)
+        await _setup(db.conn)
+        await db.conn.execute("SELECT change_ledger.add_role_scope('ledger_owner',$1,$2)", T, C)
+        for filename in POST_BASE_MIGRATIONS[3:]:
+            await apply(db.conn, filename)
+        chain = await db.conn.fetch("SELECT version FROM living.schema_migrations WHERE version >= '019'")
+        versions = {row["version"] for row in chain}
+        assert {"019", "020", "021", "022", "023", "024", "025", "026"} <= versions, versions
+        print(f"PROGRESS: PostgreSQL {await db.conn.fetchval('SHOW server_version')} ready", flush=True)
+        await journey(db)
     from _pg_harness import docker
     assert docker("inspect", container_name, timeout=30).returncode != 0, "owned container remains after cleanup"
     print(f"Suite: PASS — S13 checkpoint suffix E2E; container={container_name}")

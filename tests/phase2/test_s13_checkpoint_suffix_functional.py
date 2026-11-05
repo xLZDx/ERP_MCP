@@ -18,7 +18,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
-from _pg_harness import MIGRATIONS, disposable_cluster, throwaway_db
+from _pg_harness import FILES, MIGRATIONS, disposable_cluster, seed_basic, throwaway_db
 from test_change_ledger_sql import C, L, T, _setup
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
@@ -376,17 +376,21 @@ async def run_migration_026(db) -> int:
 async def run() -> None:
     count = test_python_classifier()
     print(f"PASS: Python checkpoint suffix classifier ({count} assertions)", flush=True)
-    async with disposable_cluster() as (dsn, container, owner_token):
-        async with throwaway_db(dsn) as db:
-            # throwaway_db applies and seeds 001-018. Match the established 023-024 fixture order.
-            for filename in MIGRATION_CHAIN[:3]:
-                await apply_migration(db.conn, filename)
-            await _setup(db.conn)
-            for filename in MIGRATION_CHAIN[3:]:
-                await apply_migration(db.conn, filename)
-            sql_checks = await run_migration_026(db)
-            print(f"PASS: migration 026 PostgreSQL contract ({sql_checks} grouped checks); "
-                  f"owned container {container}; token {owner_token[:8]}", flush=True)
+    async with disposable_cluster() as (dsn, container, owner_token), \
+            throwaway_db(dsn, migrate=False) as db:
+        db.conn = await db.connect()
+        for filename in FILES[:18]:
+            await apply_migration(db.conn, filename)
+        await seed_basic(db.conn)
+        # Match the established 023-024 fixture order after the exact 001-018 baseline.
+        for filename in MIGRATION_CHAIN[:3]:
+            await apply_migration(db.conn, filename)
+        await _setup(db.conn)
+        for filename in MIGRATION_CHAIN[3:]:
+            await apply_migration(db.conn, filename)
+        sql_checks = await run_migration_026(db)
+        print(f"PASS: migration 026 PostgreSQL contract ({sql_checks} grouped checks); "
+              f"owned container {container}; token {owner_token[:8]}", flush=True)
 
 
 if __name__ == "__main__":

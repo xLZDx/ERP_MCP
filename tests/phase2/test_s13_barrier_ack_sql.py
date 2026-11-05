@@ -7,7 +7,7 @@ import os
 import re
 from collections.abc import AsyncIterator
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 from uuid import UUID
 
 import asyncpg
@@ -48,19 +48,21 @@ async def candidate_db() -> AsyncIterator[CandidateDb]:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     os.environ["ERP_PHASE2_TEST_IMAGE"] = "postgres:16"
     try:
-        async with disposable_cluster() as (dsn, _name, _token):
-            async with throwaway_db(dsn, seed=False) as db:
-                try:
-                    await apply_files(db.conn)
-                    for migration in MIGRATIONS_019_027:
-                        await _apply_migration(db.conn, migration)
-                    await _setup(db.conn)
-                except asyncpg.PostgresError as error:
-                    pytest.fail(
-                        "candidate migration/setup failed on owned PostgreSQL 16: "
-                        f"{error.sqlstate} {str(error).splitlines()[0]}", pytrace=False,
-                    )
-                yield CandidateDb(db.conn, dsn, db.name)
+        async with (
+            disposable_cluster() as (dsn, _name, _token),
+            throwaway_db(dsn, seed=False) as db,
+        ):
+            try:
+                await apply_files(db.conn)
+                for migration in MIGRATIONS_019_027:
+                    await _apply_migration(db.conn, migration)
+                await _setup(db.conn)
+            except asyncpg.PostgresError as error:
+                pytest.fail(
+                    "candidate migration/setup failed on owned PostgreSQL 16: "
+                    f"{error.sqlstate} {str(error).splitlines()[0]}", pytrace=False,
+                )
+            yield CandidateDb(db.conn, dsn, db.name)
     finally:
         if old_opt_in is None:
             os.environ.pop("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS", None)

@@ -931,13 +931,15 @@ async def evidence_lookup_db() -> AsyncIterator[object]:
     old_opt_in = os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS")
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     try:
-        async with disposable_cluster() as (dsn, _name, _token):
-            async with throwaway_db(dsn, seed=False) as db:
-                await apply_files(db.conn)
-                for migration in MIGRATIONS_019_027:
-                    await _apply_migration(db.conn, migration)
-                await _setup(db.conn)
-                yield db
+        async with (
+            disposable_cluster() as (dsn, _name, _token),
+            throwaway_db(dsn, seed=False) as db,
+        ):
+            await apply_files(db.conn)
+            for migration in MIGRATIONS_019_027:
+                await _apply_migration(db.conn, migration)
+            await _setup(db.conn)
+            yield db
     finally:
         if old_opt_in is None:
             os.environ.pop("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS", None)

@@ -344,9 +344,8 @@ class TrustSnapshotDecoderAcceptance(unittest.TestCase):
         self.assert_invalid_snapshot({**_trust_payload(), "extra": 2 ** 31})
         _measure_json_value({"minimum": -(2 ** 31), "maximum": 2 ** 31 - 1})
         for value in (-(2 ** 31) - 1, 2 ** 31):
-            with self.subTest(driver_integer=value):
-                with self.assertRaises(ValueError):
-                    _measure_json_value({"value": value})
+            with self.subTest(driver_integer=value), self.assertRaises(ValueError):
+                _measure_json_value({"value": value})
         self.assert_invalid_snapshot({**_trust_payload(), "extra": {"nested": 1}})
         deepest_valid_dictionary: object = 0
         for _ in range(31):
@@ -391,9 +390,8 @@ class TrustSnapshotDecoderAcceptance(unittest.TestCase):
         self.assertEqual(_bounded_json_integer("-2147483648"), -(2 ** 31))
         self.assertEqual(_bounded_json_integer("2147483647"), 2 ** 31 - 1)
         for token in ("-2147483649", "2147483648", "9" * 21):
-            with self.subTest(token=token):
-                with self.assertRaises(ValueError):
-                    _bounded_json_integer(token)
+            with self.subTest(token=token), self.assertRaises(ValueError):
+                _bounded_json_integer(token)
 
     def test_one_million_json_values_pass_and_next_value_refuses_preparse(self) -> None:
         import erp_mcp_private_writer.postgres_evidence_trust as module
@@ -481,9 +479,11 @@ class EvidenceEnvelopeDecoderAcceptance(unittest.IsolatedAsyncioTestCase):
             parsed_integers.append((token, value))
             return value
 
-        with patch.object(module, "_bounded_evidence_integer", side_effect=record_integer):
-            with self.assertRaises(ProductionEvidenceVerificationError) as caught:
-                ProductionEvidenceVerifier.parse_envelope(min_envelope)
+        with (
+            patch.object(module, "_bounded_evidence_integer", side_effect=record_integer),
+            self.assertRaises(ProductionEvidenceVerificationError) as caught,
+        ):
+            ProductionEvidenceVerifier.parse_envelope(min_envelope)
         self.assertEqual(caught.exception.code, "EVIDENCE_ENVELOPE_INVALID")
         self.assertIn((str(minimum), minimum), parsed_integers)
 
@@ -694,9 +694,11 @@ class EvidenceEnvelopeDecoderAcceptance(unittest.IsolatedAsyncioTestCase):
         original_loads = json.loads
         for payload, expected_load_count, expected_code in malformed_cases:
             with self.subTest(payload_size=len(payload)):
-                with patch.object(module.json, "loads", wraps=original_loads) as loads:
-                    with self.assertRaises(ProductionEvidenceVerificationError) as caught:
-                        await verifier.verify(payload, attempt=_attempt())
+                with (
+                    patch.object(module.json, "loads", wraps=original_loads) as loads,
+                    self.assertRaises(ProductionEvidenceVerificationError) as caught,
+                ):
+                    await verifier.verify(payload, attempt=_attempt())
                 self.assertEqual(caught.exception.code, expected_code)
                 if expected_load_count is not None:
                     self.assertEqual(loads.call_count, expected_load_count)
