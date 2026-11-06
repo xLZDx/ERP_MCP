@@ -18,7 +18,7 @@ No story marked VERIFIED or DONE without exact-head end-to-end acceptance.
 | R2-US-010 | S2 | IMPLEMENTED_UNVERIFIED | US-004 | SQL (`db/phase2/001`-`003`) executed on a disposable PostgreSQL 16, 20 integration tests green (see EVIDENCE_MATRIX.md); GPT-PM REJECT of a8b5b4d open (BLOCKER-01..03), no backup/restore or crash-kill evidence |
 | R2-US-011 | S2 | IMPLEMENTED_UNVERIFIED | US-010 | Isolated module only; no product acceptance |
 | R2-US-012 | S3 | IMPLEMENTED_UNVERIFIED | US-010 | Cursor-loss resnapshot tracker + resume revalidation + capture loop enforcement (S4/S4b); cursor identity checked (issue 33); not wired |
-| R2-US-013 | S4 | IMPLEMENTED_UNVERIFIED | US-007, US-008 | taxonomy.py candidate-only edges, independent approver, versions (S4b); no persistence, no concept accept/reject API |
+| R2-US-013 | S4 | CLOSED_BOUNDED_SPRINT (product readiness remains IMPLEMENTED_UNVERIFIED) | US-007, US-008 | GPT-PM bounded domain acceptance, request 7c07c4e8-9132-4663-95c2-52745dc20dc6, exact reviewed HEAD c1b97bb; historical 72 focused in-memory tests, no rerun. TC037–039 remain frozen-catalog NOT_RUN; no authenticated product boundary or persistence. |
 | R2-US-014 | S4 | IMPLEMENTED_UNVERIFIED | US-013 | aliases.py exact scoped resolution + human queue (S4b); in-memory |
 | R2-US-015 | S4 | IMPLEMENTED_UNVERIFIED | US-013 | Isolated module only; no product acceptance |
 | R2-US-016 | S4 | IMPLEMENTED_UNVERIFIED | US-015, US-028 | SQL `promote_head` executed on disposable PostgreSQL (integration green); GPT-PM MAJOR-01: attestation evidence authenticity not verified; no service layer |
