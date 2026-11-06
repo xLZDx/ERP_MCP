@@ -6,6 +6,13 @@ from business_ai_gateway.phase2.purchase_reconciliation import (
     PurchaseComparison,
     PurchaseResultKind,
 )
+from business_ai_gateway.phase2.posted_receipts import (
+    CompletenessVerdict,
+    DiscrepancyVerdict,
+    ReceiptsAssessment,
+    RetrievalReason,
+    RetrievalResult,
+)
 from business_ai_gateway.phase2.reconciliation import Comparison, ComparisonState
 from business_ai_gateway.phase2.structural_diff import (
     ChangeKind,
@@ -95,3 +102,44 @@ def test_onec_observed_metadata_keeps_default_observation_only():
     )
     result = ObservedMetadata(source_id="onec-a", fingerprint=fingerprint)
     assert result.trust == "OBSERVED_ONLY"
+
+
+@pytest.mark.parametrize("authority", ["VALIDATED", "NATIVE_PASS", ""])
+def test_receipt_retrieval_result_cannot_forge_authority(authority):
+    with pytest.raises(ValueError, match="RECEIPTS_AUTHORITY_FORBIDDEN"):
+        RetrievalResult(False, RetrievalReason.SOURCE_ERROR, None, None, authority=authority)
+
+
+@pytest.mark.parametrize("authority", ["VALIDATED", "NATIVE_PASS", ""])
+def test_receipts_assessment_cannot_forge_authority(authority):
+    with pytest.raises(ValueError, match="RECEIPTS_AUTHORITY_FORBIDDEN"):
+        ReceiptsAssessment(
+            CompletenessVerdict.COMPLETE, "PAGINATION_PROVEN_COMPLETE",
+            PurchaseResultKind.MATCH, "POSTED_DOCUMENTS_EQUAL",
+            DiscrepancyVerdict.NONE, (), "a" * 64, authority=authority,
+        )
+
+
+def test_nonstring_trust_spoof_cannot_promote_receipt_retrieval_result():
+    with pytest.raises(ValueError, match="RECEIPTS_AUTHORITY_FORBIDDEN"):
+        RetrievalResult(False, RetrievalReason.SOURCE_ERROR, None, None, authority=_AlwaysEqual())
+
+
+def test_nonstring_trust_spoof_cannot_promote_receipts_assessment():
+    with pytest.raises(ValueError, match="RECEIPTS_AUTHORITY_FORBIDDEN"):
+        ReceiptsAssessment(
+            CompletenessVerdict.COMPLETE, "PAGINATION_PROVEN_COMPLETE",
+            PurchaseResultKind.MATCH, "POSTED_DOCUMENTS_EQUAL",
+            DiscrepancyVerdict.NONE, (), "a" * 64, authority=_AlwaysEqual(),
+        )
+
+
+def test_receipt_result_authorities_default_to_evaluation_only():
+    retrieval = RetrievalResult(False, RetrievalReason.SOURCE_ERROR, None, None)
+    assessment = ReceiptsAssessment(
+        CompletenessVerdict.COMPLETE, "PAGINATION_PROVEN_COMPLETE",
+        PurchaseResultKind.MATCH, "POSTED_DOCUMENTS_EQUAL",
+        DiscrepancyVerdict.NONE, (), "a" * 64,
+    )
+    assert retrieval.authority == "EVALUATION_ONLY"
+    assert assessment.authority == "EVALUATION_ONLY"

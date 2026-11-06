@@ -229,6 +229,10 @@ class RetrievalResult:
     proof: ReceiptsProof | None
     authority: str = _AUTHORITY
 
+    def __post_init__(self) -> None:
+        if type(self.authority) is not str or self.authority != _AUTHORITY:
+            raise ValueError("RECEIPTS_AUTHORITY_FORBIDDEN")
+
 
 def _refused(reason: RetrievalReason) -> RetrievalResult:
     return RetrievalResult(False, reason, None, None)
@@ -644,6 +648,10 @@ class ReceiptsAssessment:
     discrepancies: tuple[PurchaseDifference, ...]
     digest: str
     authority: str = _AUTHORITY
+
+    def __post_init__(self) -> None:
+        if type(self.authority) is not str or self.authority != _AUTHORITY:
+            raise ValueError("RECEIPTS_AUTHORITY_FORBIDDEN")
 
 
 def _tokens_ok(tokens: object, pages: object) -> bool:
