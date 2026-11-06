@@ -62,7 +62,7 @@ def test_tc043_sensitivity_without_edge_chain_is_broken_operation_not_blocked():
     # while with the edge present the impact is precisely scoped.
     broken = chain_graph(edges=(("A", "B"),))
     r = broken.affected(diff(("C", ChangeKind.MODIFIED)))
-    assert r.reason == "UNMAPPED_MODIFICATION"  # not a silent 'no impact'
+    assert r.reason == "UNKNOWN_IMPACT"  # not a silent 'no impact'
     full = chain_graph().affected(diff(("C", ChangeKind.MODIFIED)))
     assert full.reason == "SCOPED_IMPACT" and full.blocked_operations == {"op_a"}
 
@@ -122,9 +122,16 @@ def test_tc043_two_changes_union_of_blocked_operations():
     assert r.blocked_operations == {"op_a", "op_b"} and r.unaffected_operations == {"op_x"}
 
 
-def test_tc043_added_unknown_alongside_modified_mapped_is_scoped_not_unknown():
+def test_tc043_unmapped_added_alongside_modified_mapped_fails_closed():
     r = chain_graph().affected(diff(("Brand", ChangeKind.ADDED), ("C", ChangeKind.MODIFIED)))
-    assert r.blocked_operations == {"op_a"} and r.unknown_impact is False
+    assert r.reason == "UNKNOWN_IMPACT" and r.unknown_impact is True
+    assert r.blocked_operations == ALL and r.unaffected_operations == frozenset()
+
+
+def test_tc043_mapped_addition_uses_dependency_closure():
+    r = chain_graph().affected(diff(("C", ChangeKind.ADDED)))
+    assert r.reason == "SCOPED_IMPACT" and r.unknown_impact is False
+    assert r.blocked_operations == {"op_a"} and r.unaffected_operations == {"op_x"}
 
 
 def test_tc043_result_partitions_known_operations_and_is_scoped():
@@ -200,13 +207,19 @@ def test_tc044_scope_mismatch_raises_and_gate_treats_it_as_deny():
 @pytest.mark.parametrize("kind", [ChangeKind.MODIFIED, ChangeKind.REMOVED])
 def test_tc044_changed_object_absent_from_graph_denies_everything(kind):
     r = chain_graph().affected(diff(("Ghost", kind)))
-    assert r.unknown_impact is True and r.reason == "UNMAPPED_MODIFICATION"
+    assert r.unknown_impact is True and r.reason == "UNKNOWN_IMPACT"
     assert r.blocked_operations == ALL and r.unaffected_operations == frozenset()
 
 
 def test_tc044_one_unmapped_change_among_mapped_ones_denies_all():
     r = chain_graph().affected(diff(("C", ChangeKind.MODIFIED), ("Ghost", ChangeKind.MODIFIED)))
     assert r.unknown_impact and r.blocked_operations == ALL
+
+
+def test_tc044_unmapped_addition_alone_denies_everything():
+    r = chain_graph().affected(diff(("Brand", ChangeKind.ADDED)))
+    assert r.reason == "UNKNOWN_IMPACT" and r.unknown_impact is True
+    assert r.blocked_operations == ALL and r.unaffected_operations == frozenset()
 
 
 def test_tc044_sensitivity_registering_ghost_turns_deny_into_scoped():
@@ -265,8 +278,9 @@ def purchase_graph():
 def test_tc045_removed_old_identity_blocks_its_dependents_even_if_recreated_under_new_name():
     r = purchase_graph().affected(diff(("Purchase", ChangeKind.REMOVED),
                                        ("PurchaseV2", ChangeKind.ADDED)))
-    assert r.blocked_operations == {"purchase_documents"}
-    assert r.unaffected_operations == {"payable_balance"}
+    assert r.reason == "UNKNOWN_IMPACT" and r.unknown_impact
+    assert r.blocked_operations == {"purchase_documents", "payable_balance"}
+    assert r.unaffected_operations == frozenset()
 
 
 def test_tc045_recreated_object_does_not_inherit_links():
@@ -274,16 +288,20 @@ def test_tc045_recreated_object_does_not_inherit_links():
     # The recreated object, once it exists, is unknown to the graph: modifying it
     # is an unmapped change (deny), never 'no impact' and never purchase_documents only.
     r = g.affected(diff(("PurchaseV2", ChangeKind.MODIFIED)))
-    assert r.reason == "UNMAPPED_MODIFICATION" and r.unknown_impact
+    assert r.reason == "UNKNOWN_IMPACT" and r.unknown_impact
     assert r.blocked_operations == {"purchase_documents", "payable_balance"}
-    # Adding it does not block the old identity's operation.
+    # An unmapped addition is not proven independent, so it fails closed.
     added = g.affected(diff(("PurchaseV2", ChangeKind.ADDED)))
-    assert added.blocked_operations == frozenset() and not added.unknown_impact
+    assert added.reason == "UNKNOWN_IMPACT" and added.unknown_impact
+    assert added.blocked_operations == {"purchase_documents", "payable_balance"}
+    assert added.unaffected_operations == frozenset()
     # Sensitivity: an explicit new mapping is what grants the link.
     g2 = build([dep("purchase_documents", "Purchase"), dep("purchase_documents", "PurchaseV2"),
                 dep("payable_balance", "Accounting")], ["purchase_documents", "payable_balance"])
-    assert g2.affected(diff(("PurchaseV2", ChangeKind.MODIFIED))).blocked_operations == {
-        "purchase_documents"}
+    mapped_added = g2.affected(diff(("PurchaseV2", ChangeKind.ADDED)))
+    assert mapped_added.reason == "SCOPED_IMPACT" and not mapped_added.unknown_impact
+    assert mapped_added.blocked_operations == {"purchase_documents"}
+    assert mapped_added.unaffected_operations == {"payable_balance"}
 
 
 def test_tc045_same_name_remove_and_add_in_one_diff_blocks_dependents():
@@ -302,15 +320,18 @@ def test_tc045_recreated_same_name_added_alone_still_blocks_prior_dependents():
 def test_tc045_removed_upstream_blocks_transitive_dependents_while_recreation_adds_nothing():
     g = chain_graph()
     r = g.affected(diff(("C", ChangeKind.REMOVED), ("C2", ChangeKind.ADDED)))
-    assert r.blocked_operations == {"op_a"}
-    assert r.unaffected_operations == {"op_x"}
+    assert r.reason == "UNKNOWN_IMPACT" and r.unknown_impact
+    assert r.blocked_operations == ALL and r.unaffected_operations == frozenset()
 
 
 def test_tc045_remove_without_recreate_vs_rename_pair_same_blocking():
     g = purchase_graph()
     removed = g.affected(diff(("Purchase", ChangeKind.REMOVED)))
     renamed = g.affected(diff(("Purchase", ChangeKind.REMOVED), ("Purchases", ChangeKind.ADDED)))
-    assert removed.blocked_operations == renamed.blocked_operations == {"purchase_documents"}
+    assert removed.blocked_operations == {"purchase_documents"}
+    assert renamed.reason == "UNKNOWN_IMPACT" and renamed.unknown_impact
+    assert renamed.blocked_operations == {"purchase_documents", "payable_balance"}
+    assert renamed.unaffected_operations == frozenset()
 
 
 # ---------------- scope isolation ----------------
