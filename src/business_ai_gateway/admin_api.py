@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 import time
 from dataclasses import dataclass, replace
@@ -34,13 +35,39 @@ from .admin_session import AdminSessionManager
 from .auth import JWTTokenVerifier
 from .compatibility import CapabilityUnsupported
 from .models import source_from_record
-from .principal import claim_groups
+from .principal import Principal, claim_groups
 from .rate_limit import RateLimitExceeded
 from .settings import Settings
+from .phase2.promotion import Evidence, Outcome, PromotionService
+from .phase2.ports import PortError, Scope
+from .phase2.promotion_sql import PromotionPostgresPort, actor_role_for_subject
 
 ADMIN_ROLES = frozenset(
     {"PLATFORM_ADMIN", "SOURCE_ADMIN", "ACCESS_ADMIN", "PROFILE_ADMIN", "AUDITOR"}
 )
+
+_PROMOTION_FORBIDDEN_CODES = frozenset({
+    "PERMISSION_DENIED", "SCOPE_NOT_GRANTED", "SCOPE_REVOKED", "NOT_A_PROMOTER",
+    "REVIEWER_NOT_TRUSTED", "APPROVER_NOT_INDEPENDENT",
+})
+_PROMOTION_INVALID_CODES = frozenset({"INVALID_ARGUMENT", "INVALID_INPUT"})
+_PROMOTION_CONFLICT_CODES = frozenset({
+    "STALE_ACCEPTED_HEAD", "ACCEPTANCE_ID_REUSED", "ROLLBACK_TARGET_UNKNOWN",
+    "EVIDENCE_NOT_FOUND", "EVIDENCE_NOT_APPROVED", "EVIDENCE_REVOKED", "EVIDENCE_EXPIRED",
+    "EVIDENCE_DIGEST_MISMATCH", "REVISION_NOT_OBSERVED",
+})
+
+
+def _promotion_port_status(code: str) -> int:
+    if code in _PROMOTION_FORBIDDEN_CODES:
+        return 403
+    if code in _PROMOTION_INVALID_CODES:
+        return 400
+    if code in _PROMOTION_CONFLICT_CODES:
+        return 409
+    # Missing role/schema/function, SQLSTATE, or infrastructure errors mean provisioning or
+    # availability is unverified; never misreport them as caller conflicts.
+    return 503
 
 
 def _json_value(value: Any) -> Any:
@@ -1727,6 +1754,203 @@ class AdminAPI:
         except Exception as exc:  # noqa: BLE001 - redact API boundary failures
             return self._mutation_error(exc)
 
+    async def model_head_promote(self, request: Request):
+        return await self._model_head_change(request, rollback=False)
+
+    async def model_head_rollback(self, request: Request):
+        return await self._model_head_change(request, rollback=True)
+
+    async def _model_head_change(self, request: Request, *, rollback: bool):
+        ctx = await self.authenticate(request)
+        if isinstance(ctx, JSONResponse):
+            return ctx
+        if (self.runtime.model_promotion_db is None or self.mutations is None
+                or self.runtime.evidence_provider is None):
+            return self._disabled()
+        subject = ctx.token.subject
+        source_id = request.path_params.get("source_id", "")
+        model_key = request.path_params.get("model_key", "")
+        if (not isinstance(subject, str) or not subject
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", model_key)
+                or not isinstance(source_id, str) or not source_id
+                or not ctx.can_admin_source(source_id, "PROFILE_ADMIN")):
+            return self._denied()
+        if not ctx.has_role("PROFILE_ADMIN"):
+            return self._denied()
+        principal = Principal(
+            subject=subject,
+            client_id=ctx.token.client_id or "",
+            scopes=frozenset(ctx.token.scopes),
+            groups=ctx.groups,
+            claims=ctx.token.claims or {},
+        )
+        try:
+            body = await _json_body(request)
+            required = {"tenant_id", "source_id", "company_id", "expected_version",
+                        "acceptance_id", "evidence_ref"}
+            required.add("to_version" if rollback else "revision_id")
+            if set(body) != required or body.get("source_id") != source_id:
+                raise AdminValidationError("invalid model promotion request")
+            tenant_id = body["tenant_id"]
+            if not isinstance(tenant_id, str) or not re.fullmatch(
+                    r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", tenant_id):
+                raise AdminValidationError("invalid tenant scope")
+            try:
+                company_id = UUID(body["company_id"])
+                acceptance_id = UUID(body["acceptance_id"])
+                expected_version = body["expected_version"]
+                if str(company_id) != body["company_id"] or str(acceptance_id) != body["acceptance_id"]:
+                    raise ValueError
+                if not isinstance(expected_version, int) or isinstance(expected_version, bool) \
+                        or expected_version < 0:
+                    raise ValueError
+                if rollback:
+                    to_version = body["to_version"]
+                    if not isinstance(to_version, int) or isinstance(to_version, bool) or to_version < 1:
+                        raise ValueError
+                    revision_id = None
+                else:
+                    revision_id = UUID(body["revision_id"])
+                    if str(revision_id) != body["revision_id"]:
+                        raise ValueError
+                    to_version = None
+            except (ValueError, TypeError, AttributeError):
+                raise AdminValidationError("invalid model promotion identifier or version") from None
+            evidence_ref = body["evidence_ref"]
+            evidence_match = re.fullmatch(r"private:([a-f0-9]{32})", evidence_ref) \
+                if isinstance(evidence_ref, str) else None
+            if evidence_match is None:
+                raise AdminValidationError("approved private evidence reference required")
+
+            await self.runtime.rate_limit.check(
+                subject=subject, source_id=source_id, tool="model_head_promotion"
+            )
+            await self.runtime.model_promotion_db.assert_promotion_role()
+            db_pool = self.runtime.model_promotion_db.require_pool()
+            actor_role = actor_role_for_subject(principal.subject)
+            port = PromotionPostgresPort(db_pool, actor_role, str(company_id))
+            scope = Scope(tenant_id, source_id)
+            await port.authorize_scope(scope, str(company_id))
+
+            acceptances = await port.list_acceptances(actor_role, scope)
+            if rollback:
+                target = next((item for item in acceptances
+                               if item.model_key == model_key and item.to_version == to_version), None)
+                if target is None:
+                    raise PortError("ROLLBACK_TARGET_UNKNOWN")
+                revision_id = target.accepted_revision
+
+            recorded = next((item for item in acceptances
+                             if item.acceptance_id == acceptance_id), None)
+            if recorded is not None:
+                if (recorded.model_key != model_key or recorded.from_version != expected_version
+                        or recorded.accepted_revision != revision_id
+                        or recorded.approver_subject != actor_role
+                        or recorded.independent_evidence_ref != evidence_ref):
+                    raise PortError("ACCEPTANCE_ID_REUSED")
+                actor = self._actor(ctx)
+                replay_outcome = "ROLLED_BACK" if rollback else "PROMOTED"
+                await self.mutations.record_admin_event(
+                    actor=actor, action="model_head.replay", target_type="accepted_head",
+                    target_id=model_key, source_id=source_id, company_id=company_id,
+                    reason="authorized idempotent model head replay", request_id=_request_id(request),
+                    outcome="success", safe_change={
+                        "revision_id": str(revision_id), "acceptance_id": str(acceptance_id),
+                        "database_actor_role": actor_role, "result": replay_outcome,
+                        "new_version": recorded.to_version,
+                    },
+                )
+                return JSONResponse({"outcome": replay_outcome, "code": None,
+                                     "new_version": recorded.to_version})
+
+            attestation = await port.find_attestation(scope, revision_id, evidence_ref)
+            if attestation is None:
+                raise PortError("EVIDENCE_NOT_FOUND")
+            revision_digest = await port.get_revision_digest(scope, revision_id)
+            if not isinstance(revision_digest, str) or not re.fullmatch(r"[a-f0-9]{64}", revision_digest):
+                raise PortError("REVISION_NOT_OBSERVED")
+
+            # Audit the authorization gate durably before opening approved private evidence.
+            actor = self._actor(ctx)
+            await self.mutations.record_admin_event(
+                actor=actor, action="model_head.evidence_preflight", target_type="accepted_head",
+                target_id=model_key, source_id=source_id, company_id=company_id,
+                reason="authorized model promotion evidence preflight", request_id=_request_id(request),
+                outcome="success", safe_change={"revision_id": str(revision_id),
+                                                "acceptance_id": str(acceptance_id),
+                                                "database_actor_role": actor_role},
+            )
+            manifest = await self.runtime.evidence_provider.read_manifest_after_access_gate(
+                source_id, company_id, evidence_match.group(1)
+            )
+            if not isinstance(manifest, dict) or not re.fullmatch(
+                    r"[a-f0-9]{64}", str(manifest.get("document_sha256", ""))):
+                raise PortError("EVIDENCE_STORAGE_INTEGRITY_INVALID")
+
+            service = PromotionService(
+                port, port, lambda: datetime.now().astimezone(),
+                trust_is_enforced_by_write_port=True,
+            )
+            if rollback:
+                result = await service.rollback(
+                    scope, model_key, to_version, expected_version,
+                    attestation.proposer, actor_role,
+                    Evidence(revision_digest, evidence_ref), acceptance_id,
+                )
+            else:
+                result = await service.promote(
+                    scope, model_key, revision_id, expected_version,
+                    attestation.proposer, actor_role,
+                    Evidence(revision_digest, evidence_ref), acceptance_id,
+                )
+            if result.ok:
+                status_code, audit_outcome = 200, "success"
+            elif result.outcome == Outcome.REJECTED_INPUT:
+                status_code, audit_outcome = 400, "error"
+            elif result.outcome in {Outcome.REJECTED_SELF_APPROVAL, Outcome.REJECTED_UNTRUSTED}:
+                status_code, audit_outcome = 403, "denied"
+            elif result.outcome in {
+                Outcome.REJECTED_CAS, Outcome.REJECTED_ACCEPTANCE_ID, Outcome.REJECTED_TARGET,
+                Outcome.REJECTED_EVIDENCE, Outcome.REJECTED_REVOKED, Outcome.REJECTED_EXPIRED,
+            }:
+                status_code, audit_outcome = 409, "conflict"
+            else:
+                status_code, audit_outcome = 503, "error"
+            await self.mutations.record_admin_event(
+                actor=actor, action="model_head.rollback" if rollback else "model_head.promote",
+                target_type="accepted_head", target_id=model_key, source_id=source_id,
+                company_id=company_id, reason="model head decision", request_id=_request_id(request),
+                outcome=audit_outcome, detail_code=result.code or result.outcome.value,
+                safe_change={"revision_id": str(revision_id),
+                             "acceptance_id": str(acceptance_id),
+                             "database_actor_role": actor_role,
+                             "result": result.outcome.value,
+                             "new_version": result.new_version},
+            )
+            return JSONResponse(
+                {"outcome": result.outcome.value, "code": result.code or None,
+                 "new_version": result.new_version}, status_code=status_code,
+            )
+        except PortError as exc:
+            code = exc.code if re.fullmatch(r"[A-Z][A-Z0-9_]+", exc.code) else "PROMOTION_REFUSED"
+            status = _promotion_port_status(code)
+            try:
+                await self.mutations.record_admin_event(
+                    actor=self._actor(ctx), action="model_head.rollback" if rollback else "model_head.promote",
+                    target_type="accepted_head", target_id=model_key, source_id=source_id,
+                    company_id=company_id if "company_id" in locals() else None,
+                    reason="model head decision refused", request_id=_request_id(request),
+                    outcome="denied" if status == 403 else "conflict" if status == 409 else "error",
+                    detail_code=code,
+                )
+            except Exception:
+                return JSONResponse({"error": "AUDIT_UNAVAILABLE"}, status_code=503)
+            return JSONResponse({"error": code}, status_code=status)
+        except AdminValidationError as exc:
+            return self._mutation_error(exc)
+        except Exception:
+            return JSONResponse({"error": "PROMOTION_DEPENDENCY_UNAVAILABLE"}, status_code=503)
+
 
 def register_admin_routes(mcp, settings: Settings, runtime):
     if not settings.admin_api_enabled:
@@ -1826,6 +2050,16 @@ def register_admin_routes(mcp, settings: Settings, runtime):
             "/admin/v1/sources/{source_id}/drift-acknowledgements",
             ["POST"],
             api.drift_ack,
+        ),
+        (
+            "/admin/v1/sources/{source_id}/models/{model_key}/promote",
+            ["POST"],
+            api.model_head_promote,
+        ),
+        (
+            "/admin/v1/sources/{source_id}/models/{model_key}/rollback",
+            ["POST"],
+            api.model_head_rollback,
         ),
     )
     for path, methods, handler in routes:
