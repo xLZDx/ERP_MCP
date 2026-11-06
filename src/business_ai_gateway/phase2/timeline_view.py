@@ -665,6 +665,13 @@ def owns_key(ownership: object, tenant_id: str, company_id: str, comparison_key:
         return False
 
 
+def _owns_source(ownership: object, tenant_id: str, company_id: str, source_id: str) -> bool:
+    """Require independent source ownership before consuming company-labelled event feeds."""
+    try:
+        return ownership.owns(tenant_id, company_id, "source_id", source_id) is True  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - an ownership-port fault never authorizes disclosure
+        return False
+
 def collect_own_subjects(viewer: ViewerScope, subjects: tuple[TimelineSubject, ...], ownership: object,
                          ) -> tuple[list[TimelineSubject], bool]:
     """The viewer's own, ownership-verified subjects (one per comparison key) plus the sibling flag.
@@ -843,7 +850,8 @@ def build_timeline(
                 hidden = hidden or relation == SIBLING
                 continue
             EventFeed(feed.tenant_id, feed.company_id, feed.ledger)
-            if feed.ledger.tenant_id != feed.tenant_id:
+            if feed.ledger.tenant_id != feed.tenant_id or not _owns_source(
+                    ownership, feed.tenant_id, feed.company_id, feed.ledger.source_id):
                 raise Refuse(ReasonCode.INPUT_INVALID)
             got, new_marks = provider(_event_entries, feed, now)  # type: ignore[misc]
             entries.extend(got)

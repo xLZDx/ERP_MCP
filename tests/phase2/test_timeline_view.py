@@ -544,6 +544,21 @@ def test_tc120_foreign_company_rows_are_dropped_with_only_an_opaque_flag(env):
     assert not hasattr(view, "hidden_count") and not hasattr(view, "foreign")
 
 
+def test_tc120_misbound_event_source_is_refused_without_leaking_event_id(env):
+    env.live_run()
+
+    class _OwnsRunKeyButNotEventSource:
+        def owns(self, tenant_id, company_id, kind, ref):
+            return kind == "comparison_key" and tenant_id == "t1" and company_id == "A" and ref == KEY
+
+    foreign_event_id = "FOREIGN-SOURCE-EVENT-ID"
+    mislabeled_feed = feed_with(event(foreign_event_id, kind=EventKind.GAP), company="A")
+    out = env.build(feeds=(mislabeled_feed,), ownership=_OwnsRunKeyButNotEventSource())
+
+    assert type(out) is SafeError and out.reason_code is ReasonCode.INPUT_INVALID
+    assert not hasattr(out, "entries")
+    assert foreign_event_id not in repr(out)
+
 def test_tc120_no_foreign_rows_means_flag_false(env):
     env.live_run()
     assert env.build().hidden_by_scope is False

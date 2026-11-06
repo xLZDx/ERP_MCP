@@ -89,6 +89,7 @@ class W:
                                    (Link("cl-A", "ev-A"),))
         self.own = FakeOwnership()
         self.own.add("t1", "A", "comparison_key", "KEY-A")
+        self.own.add("t1", "A", "source_id", "s1")
         self.own.add("t1", "B", "comparison_key", "KEY-B")
 
     def clock(self):
