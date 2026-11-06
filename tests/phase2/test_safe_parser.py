@@ -769,12 +769,106 @@ def test_run_isolated_spawn_failure_closes_both_pipe_ends(monkeypatch):
 
 @pytest.mark.skipif(
     sys.platform == "win32",
-    reason="RLIMIT_AS does not exist on Windows: the child memory bound is NOT enforced "
-    "there and is reported NOT_RUN",
+    reason="RLIMIT_AS is POSIX-only; Windows memory enforcement has separate Job Object coverage",
 )
 def test_run_isolated_memory_limit_posix_only():
     result = run_isolated(normal_book(), timeout_s=120.0, memory_bytes=64 << 20)
     assert result.code in (sp.BOUND_MEMORY, sp.CHILD_ABORTED)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Job Objects are required")
+def test_windows_memory_limit_setup_failure_refuses_before_parse(monkeypatch):
+    class _Connection:
+        payload = None
+        closed = False
+
+        def send_bytes(self, payload):
+            self.payload = payload
+
+        def close(self):
+            self.closed = True
+
+    def unavailable(_memory_bytes):
+        raise OSError("job assignment unavailable")
+
+    monkeypatch.setattr(sp, "_set_windows_process_memory_limit", unavailable)
+    monkeypatch.setattr(
+        sp,
+        "parse_workbook",
+        lambda *_args, **_kwargs: pytest.fail("parser ran without a memory limit"),
+    )
+    conn = _Connection()
+
+    sp._child_main(conn, b"untrusted", ParseLimits(), 64 << 20)
+
+    result = sp._decode_result(conn.payload)
+    assert result is not None
+    assert result.status is Status.BOUND_EXCEEDED
+    assert result.code == sp.BOUND_MEMORY
+    assert result.sheets == ()
+    assert conn.closed
+
+
+def _windows_memory_limit_probe_child(conn, _data, _limits, memory_bytes):
+    """Exercise the real process cap without parsing or keeping a large fixture."""
+    refusal = sp._encode_result(sp.ParseResult(Status.BOUND_EXCEEDED, sp.BOUND_MEMORY))
+    setup_unavailable = sp._encode_result(
+        sp.ParseResult(
+            Status.DENIED,
+            sp.INVALID_INPUT,
+            stats=sp.ParseStats(rows=0),
+        )
+    )
+    allowed = sp._encode_result(
+        sp.ParseResult(Status.OK, "OK", sheets=(sp.SheetValues("probe", (("allocated",),)),))
+    )
+    try:
+        kernel32, job = sp._set_windows_process_memory_limit(memory_bytes)
+    except OSError as error:
+        error_code = error.winerror or (error.args[0] if error.args else None)
+        if error_code not in (5, 50):  # access denied / not supported by the host Job policy
+            raise
+        setup_unavailable = sp._encode_result(
+            sp.ParseResult(
+                Status.DENIED,
+                sp.INVALID_INPUT,
+                stats=sp.ParseStats(rows=error_code),
+            )
+        )
+        conn.send_bytes(setup_unavailable)
+        conn.close()
+        return
+    try:
+        try:
+            _allocation = bytearray(memory_bytes * 2)
+        except MemoryError:
+            conn.send_bytes(refusal)
+        else:
+            conn.send_bytes(allowed)
+    finally:
+        conn.close()
+        kernel32.CloseHandle(job)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Job Objects are required")
+def test_run_isolated_windows_process_memory_limit_refuses_and_reaps_child():
+    memory_bytes = 64 << 20
+    result = run_isolated(
+        b"unused probe input",
+        timeout_s=120.0,
+        memory_bytes=memory_bytes,
+        _child_target=_windows_memory_limit_probe_child,
+    )
+
+    if result.status is Status.DENIED and result.code == sp.INVALID_INPUT:
+        pytest.skip(
+            "Windows host denied nested Job Object assignment "
+            f"(WinError {result.stats.rows}); process-memory enforcement NOT_RUN"
+        )
+    assert result.status is Status.BOUND_EXCEEDED
+    assert result.code == sp.BOUND_MEMORY
+    assert result.sheets == ()
+    assert multiprocessing.active_children() == []
 
 
 # --- second batch: canonical attributes, text budget, active parts ----------
