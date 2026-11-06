@@ -143,3 +143,9 @@ NOT_RUN after S9: G6-pre real-infrastructure evidence (actual workload metrics a
 | R2-US-016 (TC046–048) | CLOSED_BOUNDED_SPRINT — existing PR #44 records GPT-PM request `d9af37e2-9db3-4abe-851f-1c4ad7f1882e` APPROVE for code commit `adc5ec7799b87f23abde350e68abc8ae5149f056`. | Existing PR record: assigned e2e-runner reported 13 focused tests passed. | Frozen product cases remain NOT_RUN; production/1C acceptance is not claimed. |
 
 These are bounded sprint-task decisions, not canonical product acceptance. Frozen TC037–TC048 remain 12/12 NOT_RUN / `@not_implemented`; no catalog changes are authorized by this record.
+
+### 2026-11-06 S4 closeout and delivery
+
+GPT-PM request `d9af37e2-9db3-4abe-851f-1c4ad7f1882e` approved bounded acceptance for R2-US-016 / TC046–048 at source commit `adc5ec7799b87f23abde350e68abc8ae5149f056`; the assigned e2e-runner's recorded result is 13 focused tests passed. R2-US-013/014 were already in the S1 integration branch; PR #44 delivered R2-US-015/016. The operator explicitly authorized the merge in this task, superseding the earlier GPT-PM decision that had withheld merge authority. PR #44 merged into `codex/erp-mcp-autonomous-2026-10-21` as merge commit `7143a01f503e65b9a975cac273f90585a343b5a4` on 2026-11-06. PR #41 remains open against `main`; no deployment or production acceptance is claimed. All four S4 tasks are CLOSED_BOUNDED_SPRINT; canonical TC037–048 remain NOT_RUN / Gherkin `@not_implemented`.
+
+CI incident: closing PR #44 started workflow run `42229637781` (`pull_request`). Codex requested cancellation; it ended `cancelled`. Setup/dependency steps and Admin UI verification completed; Ruff failed; the OData client/metadata test step passed; sidecar image build/smoke test failed; Windows privacy verification was cancelled; migration steps and full pytest were skipped. This run is not S4 acceptance evidence. The CI start violated the operator's prohibition.
