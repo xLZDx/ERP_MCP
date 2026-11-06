@@ -31,11 +31,12 @@ def graph(complete=True, edges=()):
     )
 
 
-def test_addition_is_nonimpacting_with_complete_graph():
+def test_unmapped_addition_fails_closed_even_with_complete_graph():
     result = graph().affected(diff(("NewUnrelatedObject", ChangeKind.ADDED)))
-    assert result.affected_operations == frozenset()
-    assert result.unaffected_operations == {"purchase_documents", "payable_balance"}
-    assert result.unknown_impact is False
+    assert result.unknown_impact is True
+    assert result.reason == "UNKNOWN_IMPACT"
+    assert result.blocked_operations == {"purchase_documents", "payable_balance"}
+    assert result.unaffected_operations == frozenset()
 
 
 def test_modified_object_blocks_only_dependent_tool():
@@ -44,10 +45,13 @@ def test_modified_object_blocks_only_dependent_tool():
     assert result.unaffected_operations == {"payable_balance"}
 
 
-def test_renamed_object_is_removed_and_added():
+def test_remove_plus_unmapped_addition_is_not_inferred_as_rename():
     result = graph().affected(diff(("Purchase", ChangeKind.REMOVED),
                                    ("PurchasesNew", ChangeKind.ADDED)))
-    assert result.blocked_operations == {"purchase_documents"}
+    assert result.unknown_impact is True
+    assert result.reason == "UNKNOWN_IMPACT"
+    assert result.blocked_operations == {"purchase_documents", "payable_balance"}
+    assert result.unaffected_operations == frozenset()
 
 
 def test_transitive_dependency_closure():
