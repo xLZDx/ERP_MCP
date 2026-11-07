@@ -498,6 +498,48 @@ def test_refusals_dominate_boundary_uses_the_declared_bound_exactly():
     assert OpsReason.REFUSALS_DOMINATE not in env.build(A1, [s(OK, 1)], policy=strict).flags
 
 
+def test_refusals_just_above_high_precision_bound_are_not_rounded_within():
+    env = Env(cap=10)
+    bound = Decimal("0." + "4" + "9" * 59)
+    policy = ReportPolicy(window_us=10_000_000, refusal_bound=bound)
+    samples = [s(OK, 10)] * 50 + [s(PR, 1)] * 50
+
+    report = env.build(A1, samples, policy=policy)
+
+    assert bound < Decimal("0.5")
+    assert report.total_samples == 100
+    assert OpsReason.REFUSALS_DOMINATE in report.flags
+    assert OpsReason.UNRELIABLE_REFUSALS in report.flags
+
+
+def test_over_256_digit_refusal_bound_is_rejected_by_public_report_build_fail_closed():
+    env = Env()
+    over_limit_bound = Decimal("0." + "1" * 257)
+    forged_policy = object.__new__(ReportPolicy)
+    object.__setattr__(forged_policy, "window_us", 10_000_000)
+    object.__setattr__(forged_policy, "refusal_bound", over_limit_bound)
+
+    result = env.build(A1, GOOD_SAMPLES, policy=forged_policy)
+
+    assert type(result) is OpsRefusal
+    assert result.reason is OpsReason.INPUT_INVALID
+    assert env.log == []
+    assert env.store.count("t1") == 0
+
+
+def test_report_build_accepts_refusal_bound_with_exactly_256_digits():
+    env = Env()
+    bound = Decimal("0." + "1" * 256)
+    policy = ReportPolicy(window_us=10_000_000, refusal_bound=bound)
+
+    report = env.build(A1, GOOD_SAMPLES, policy=policy)
+
+    assert len(bound.as_tuple().digits) == 256
+    assert type(report) is CapacityReport
+    assert report.total_samples == len(GOOD_SAMPLES)
+    assert env.store.count("t1") == 1
+
+
 def test_empty_samples_are_not_a_pass_they_are_insufficient():
     report = Env().build(A1, [])
     assert report.throughput_per_s == Decimal("0.000000") and report.refusal_fraction == Decimal("0.000000")
