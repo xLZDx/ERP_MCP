@@ -1,0 +1,284 @@
+{
+  "tested_head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+  "runs": [
+    {
+      "command": "$env:PYTHONPATH='src'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s12_period_producer.py tests/phase2/test_s12_budget_producer.py tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_tools.py tests/phase2/test_s16_conformance.py tests/phase2/test_s16_replay.py tests/phase2/test_s16_proposal_boundary.py",
+      "total": 75,
+      "passed": 75,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer at exact HEAD 3af73797533e7cb4d8dd6762c42e847416b4cea8; 0.89s",
+      "head": "3af73797533e7cb4d8dd6762c42e847416b4cea8"
+    },
+    {
+      "command": "$env:PYTHONPATH='src'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_s16_approval_page.py tests/phase2/test_s16_private_ingress.py",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "e2e-runner in-process ASGI at exact HEAD 3af73797533e7cb4d8dd6762c42e847416b4cea8; 0.55s; one deprecation warning",
+      "head": "3af73797533e7cb4d8dd6762c42e847416b4cea8"
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_compatibility.py::test_capability_detector_reports_unsupported_without_safe_route tests/test_compatibility.py::test_html_metadata_response_gets_no_fingerprint tests/test_semantic_profiles.py::test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping tests/test_semantic_profiles.py::test_native_evidence_and_operator_cli_require_reconciliation_and_actor tests/test_capability_drift_migration.py::test_capability_observation_boundary_has_no_fake_fingerprint_or_runtime_ack tests/phase2/test_safe_parser.py::test_tc080_active_content_types_denied tests/phase2/test_safe_parser.py::test_tc080_external_content_types_denied tests/phase2/test_safe_parser.py::test_run_isolated_child_does_not_inherit_secrets tests/test_private_evidence_store.py::test_unconfirmed_cross_scope_and_revoked_retention_are_denied_after_reopen",
+      "total": 13,
+      "passed": 13,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer; 1.42s"
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_external_evidence.py::test_malformed_or_cross_scope_facts_are_sanitized tests/test_external_evidence.py::test_missing_duplicate_oversized_or_mismatched_inputs_cannot_prove_pass tests/test_external_evidence.py::test_business_gate_does_not_invent_missing_evidence_or_accept_stale_scope tests/test_invoice_evidence.py::test_invalid_nested_schema_precision_scope_and_injected_policy_never_parse tests/test_invoice_evidence.py::test_invoice_uses_same_scope_approval_retention_and_digest_gate_as_csv tests/test_invoice_evidence.py::test_duplicate_json_key_and_oversized_payload_or_line_count_are_rejected tests/test_invoice_evidence.py::test_invoice_store_wrong_mime_cannot_write_native_pdf_or_unapproved_json tests/test_admin_role_matrix.py::test_every_restricted_admin_endpoint_role_matrix tests/test_admin_role_matrix.py::test_exact_object_cross_source_mutations_are_denied_before_write tests/test_admin_mutation_migration.py::test_admin_mutation_migration_is_additive_append_only_and_least_privilege",
+      "total": 271,
+      "passed": 271,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer; 3.85s"
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_onec_client.py::test_upstream_http_error_does_not_expose_url_or_query_values tests/test_onec_client.py::test_upstream_network_error_is_mapped_without_chaining_request_url tests/test_onec_client.py::test_native_transport_rejects_encoding_before_unbounded_decompression tests/test_onec_client.py::test_url_is_pinned_to_registered_host tests/test_onec_client.py::test_metadata_probe_outage_is_sanitized_and_fails_closed tests/test_com_bridge_client.py::test_non_loopback_url_rejected tests/test_com_bridge_client.py::test_echo_mismatch_is_binding_mismatch tests/test_com_bridge_client.py::test_malformed_response_rejected tests/test_com_bridge_client.py::test_response_size_is_bounded tests/test_com_bridge_client.py::test_redirects_are_not_followed tests/test_rsv_bridge.py::test_rsv_bridge_rejects_unsafe_source_id_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_fails_closed_on_unreviewed_upstream_tool tests/test_rsv_bridge.py::test_rsv_bridge_metadata_response_is_bounded tests/test_rsv_bridge.py::test_digest_mismatch_does_not_resolve_secret_or_create_config tests/test_rsv_bridge.py::test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it tests/test_rsv_bridge.py::test_rsv_bridge_rejects_invalid_secret_config_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_rejects_oversized_secret_config_before_process_launch tests/test_auth.py::test_invalid_or_under_scoped_tokens_are_denied tests/test_auth.py::test_bad_signature_is_denied tests/test_auth.py::test_jwks_validation_error_fails_closed tests/test_auth.py::test_missing_or_malformed_client_identity_fails_closed tests/test_auth.py::test_blank_primary_client_identity_does_not_fall_back tests/test_server_audit.py::test_durable_access_receipt_exists_before_adapter_dispatch tests/test_server_audit.py::test_pre_dispatch_audit_outage_is_sanitized_and_never_calls_adapter tests/test_server_audit.py::test_source_acl_denial_is_audited_and_stops_before_rate_limit",
+      "total": 61,
+      "passed": 61,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer; 7.22s"
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_rsv_secret_privacy.py",
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer; 1.74s"
+    },
+    {
+      "head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py tests/test_release_evidence_assembly.py::test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected",
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "functional-test-reviewer; 1.03s; scoped source/test status clean"
+    }
+  ],
+  "not_run": [
+    {
+      "item": "SQL migration parity, PostgreSQL claim locking and durable release/recovery at current HEAD",
+      "reason": "No SQL source changed in commit 3af7379; exact-HEAD SQL run not performed. Prior 291-test SQL evidence is at 499baa96."
+    },
+    {
+      "item": "Selected S15 suites at current HEAD",
+      "reason": "No S15 source changed in commit 3af7379; exact-HEAD rerun not performed. Prior 947-test evidence is at 514d0ab."
+    },
+    {
+      "item": "Qualified real accounting period/budget readers and live ERP connector/watchdog outcome",
+      "reason": "No qualified authenticated reader or successful correlated connector/restart evidence is available; the prior connector probe returned an internal error."
+    },
+    {
+      "item": "Live IdP, browser, approval UAT, deployment, production writer qualification or real POST/UNPOST",
+      "reason": "Out of the fake-backed S2.1 verification boundary; writer remains UNQUALIFIED and disabled, production bindings remain empty, and no production authorization exists."
+    },
+    {
+      "item": "Official AF phase-8 PM-GPT approval bound to the current reviewed HEAD",
+      "reason": "The single official review completed with a correlated GPT reply saying APPROVE and 0 blocker/major, but af_cli recorded UNRECOGNIZED (verdict_contradiction=true, final_overridden=true) because the body was prefixed with \"ChatGPT said:\". No gate-approval.md or approval.json was written; phase 8 remains open."
+    }
+  ],
+  "findings": {
+    "open_blocker": 0,
+    "open_major": 0
+  },
+  "reviewers": [
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "CLOSED CODE-1/CODE-2 on the committed S2.1 delta"
+    },
+    {
+      "role": "security-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "CLOSED SEC1; fake-backed S12 anchor CAS/readback, restart limitations retained"
+    },
+    {
+      "role": "a11y-architect",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "CLOSED UI1 on approval-page boundary; prior in-process ASGI evidence"
+    },
+    {
+      "role": "GPT-PM via PM Bridge",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "APPROVE exact commit 3af73797533e7cb4d8dd6762c42e847416b4cea8 source delta; 0 blocker, 0 major, 2 non-blocking minor observations; complete repository tree not independently inspected"
+    },
+    {
+      "role": "GPT-PM via Agentic_Framework full-range review",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "MAJOR evidence gap: review packet redacted 11 source expressions at exact HEAD; no code defect established; formal approval withheld"
+    },
+    {
+      "role": "GPT-PM supplementary source verification via PM Bridge",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "APPROVE; confirmed all 11 packet-redacted expressions are safe code/enum/fake/runtime-generation expressions; exact attachment bytes and six Git blob identities verified at HEAD 3af73797533e7cb4d8dd6762c42e847416b4cea8"
+    },
+    {
+      "role": "GPT-PM via Agentic_Framework full-range review",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "Prior MAJOR redaction evidence gap CLOSED by supplementary source verification; official AF approval must be re-recorded against exact HEAD"
+    },
+    {
+      "role": "functional-test-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "S0 focused R1, M5/M8, shared OneC/auth/server and RSV privacy suites passed at stated exact commits; corrected mapping/register guard passed 2 tests at de25660; product TC001–003 remain NOT_RUN."
+    },
+    {
+      "role": "code-reviewer",
+      "model": "gpt-6-luna",
+      "effort": "medium",
+      "verdict": "S0 review identified two P2 test-coverage gaps; after functional-test-reviewer corrections, follow-up found no remaining actionable issues."
+    },
+    {
+      "role": "GPT-PM via PM Bridge",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "APPROVE for scoped S0 source delta; 0 blocker/major/minor; request 8ef0f90a-4770-4fd1-bfb1-13c1072a6f60, reply 466685b6-29b1-5982-9a80-65c039553b17; not an AF approval artifact."
+    },
+    {
+      "role": "GPT-PM via Agentic_Framework phase 8",
+      "model": "not surfaced by bridge",
+      "effort": "not reported",
+      "verdict": "Reply text APPROVE; AF tool disposition UNRECOGNIZED due wrapper prefix, 0 blocker/major and 2 non-blocking minor; no approval artifact. Request 62ce3be7-1c54-4694-98ad-8ae5f17be34a, reply b8137d03-e618-5926-8ca2-a66c030dd822."
+    }
+  ],
+  "sprint_review_source_head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+  "s0_commits": [
+    {
+      "sha": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "scope": "S0 source, spec bundle, task status and RU/EN report"
+    },
+    {
+      "sha": "de2566099f9752ac0fe5ece36ff542c38313dbc6",
+      "scope": "S0 TC002 M5 N/A regression guard correction"
+    },
+    {
+      "sha": "efb180a",
+      "scope": "S0 task ledger and report status refresh"
+    },
+    {
+      "sha": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+      "scope": "S0 report structure correction"
+    }
+  ],
+  "s0_runs": [
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_compatibility.py::test_capability_detector_reports_unsupported_without_safe_route tests/test_compatibility.py::test_html_metadata_response_gets_no_fingerprint tests/test_semantic_profiles.py::test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping tests/test_semantic_profiles.py::test_native_evidence_and_operator_cli_require_reconciliation_and_actor tests/test_capability_drift_migration.py::test_capability_observation_boundary_has_no_fake_fingerprint_or_runtime_ack tests/phase2/test_safe_parser.py::test_tc080_active_content_types_denied tests/phase2/test_safe_parser.py::test_tc080_external_content_types_denied tests/phase2/test_safe_parser.py::test_run_isolated_child_does_not_inherit_secrets tests/test_private_evidence_store.py::test_unconfirmed_cross_scope_and_revoked_retention_are_denied_after_reopen",
+      "result": "13 passed",
+      "seconds": 1.42
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_external_evidence.py::test_malformed_or_cross_scope_facts_are_sanitized tests/test_external_evidence.py::test_missing_duplicate_oversized_or_mismatched_inputs_cannot_prove_pass tests/test_external_evidence.py::test_business_gate_does_not_invent_missing_evidence_or_accept_stale_scope tests/test_invoice_evidence.py::test_invalid_nested_schema_precision_scope_and_injected_policy_never_parse tests/test_invoice_evidence.py::test_invoice_uses_same_scope_approval_retention_and_digest_gate_as_csv tests/test_invoice_evidence.py::test_duplicate_json_key_and_oversized_payload_or_line_count_are_rejected tests/test_invoice_evidence.py::test_invoice_store_wrong_mime_cannot_write_native_pdf_or_unapproved_json tests/test_admin_role_matrix.py::test_every_restricted_admin_endpoint_role_matrix tests/test_admin_role_matrix.py::test_exact_object_cross_source_mutations_are_denied_before_write tests/test_admin_mutation_migration.py::test_admin_mutation_migration_is_additive_append_only_and_least_privilege",
+      "result": "271 passed",
+      "seconds": 3.85
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_onec_client.py::test_upstream_http_error_does_not_expose_url_or_query_values tests/test_onec_client.py::test_upstream_network_error_is_mapped_without_chaining_request_url tests/test_onec_client.py::test_native_transport_rejects_encoding_before_unbounded_decompression tests/test_onec_client.py::test_url_is_pinned_to_registered_host tests/test_onec_client.py::test_metadata_probe_outage_is_sanitized_and_fails_closed tests/test_com_bridge_client.py::test_non_loopback_url_rejected tests/test_com_bridge_client.py::test_echo_mismatch_is_binding_mismatch tests/test_com_bridge_client.py::test_malformed_response_rejected tests/test_com_bridge_client.py::test_response_size_is_bounded tests/test_com_bridge_client.py::test_redirects_are_not_followed tests/test_rsv_bridge.py::test_rsv_bridge_rejects_unsafe_source_id_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_fails_closed_on_unreviewed_upstream_tool tests/test_rsv_bridge.py::test_rsv_bridge_metadata_response_is_bounded tests/test_rsv_bridge.py::test_digest_mismatch_does_not_resolve_secret_or_create_config tests/test_rsv_bridge.py::test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it tests/test_rsv_bridge.py::test_rsv_bridge_rejects_invalid_secret_config_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_rejects_oversized_secret_config_before_process_launch tests/test_auth.py::test_invalid_or_under_scoped_tokens_are_denied tests/test_auth.py::test_bad_signature_is_denied tests/test_auth.py::test_jwks_validation_error_fails_closed tests/test_auth.py::test_missing_or_malformed_client_identity_fails_closed tests/test_auth.py::test_blank_primary_client_identity_does_not_fall_back tests/test_server_audit.py::test_durable_access_receipt_exists_before_adapter_dispatch tests/test_server_audit.py::test_pre_dispatch_audit_outage_is_sanitized_and_never_calls_adapter tests/test_server_audit.py::test_source_acl_denial_is_audited_and_stops_before_rate_limit",
+      "result": "61 passed",
+      "seconds": 7.22
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_rsv_secret_privacy.py",
+      "result": "8 passed",
+      "seconds": 1.74
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py tests/test_release_evidence_assembly.py::test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected",
+      "result": "initial post-commit rerun: 1 failed, 6 passed (M5 N/A regression false-positive); corrected test version subsequently passed 7 on working tree; use de256 exact run below"
+    },
+    {
+      "head": "de2566099f9752ac0fe5ece36ff542c38313dbc6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py",
+      "result": "2 passed",
+      "seconds": 0.62
+    },
+    {
+      "head": "369831ec6815a5f08e41b69c0540ef1a728c45a6",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; from scripts.validate_prometheus import run; print(run(Path.cwd()))\"",
+      "result": "pinned rule_lint, pending_firing_resolution, gateway_text_format passed; alert_delivery=NOT_TESTED; real_1c_called=False",
+      "seconds": 6.2
+    },
+    {
+      "head": "6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9",
+      "role": "functional-test-reviewer",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py tests/test_release_evidence_assembly.py::test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected",
+      "result": "7 passed",
+      "seconds": 1.03,
+      "exit_code": 0,
+      "scope_status": "clean"
+    }
+  ],
+  "s0_not_run": [
+    {
+      "item": "Product TC001–TC003",
+      "reason": "Test catalog and Gherkin explicitly require these product cases to remain NOT_RUN / @not_implemented."
+    },
+    {
+      "item": "M2/M8 effective database-role and function-argument authorization; B2 DB fault injection",
+      "reason": "BAG_PRIVILEGE_TEST_DATABASE_URL is unset; no approved disposable PostgreSQL target is configured. No test, migration, or database changes were run."
+    },
+    {
+      "item": "B3 authentic report provenance; TC003 provider-attested deployed revision; M7 real alert delivery",
+      "reason": "No authoritative provider report/deployment evidence or real alert-delivery evidence is present. Release remains NO-GO and production authorization NONE."
+    },
+    {
+      "item": "Exhaustive R1 behavior preservation / zero-impact proof",
+      "reason": "Completed only a bounded path/evidence comparison and selected regression tests."
+    }
+  ],
+  "af_phase8_attempt": {
+    "head": "4e327147cde0d10e9cee206495cbc384bc3a24d7",
+    "base": "9454d904d60d371920608088cb326b688895f0cf",
+    "command": "python D:/Repo/Agentic_Framework/tools/af_cli.py pm-review --kind code --base 9454d904d60d371920608088cb326b688895f0cf",
+    "review_status": "RAN",
+    "correlated": true,
+    "tool_verdict": "UNRECOGNIZED",
+    "verdict_contradiction": true,
+    "final_overridden": true,
+    "reply_verdict": "APPROVE",
+    "open_blocker": 0,
+    "open_major": 0,
+    "open_minor": 2,
+    "request_id": "62ce3be7-1c54-4694-98ad-8ae5f17be34a",
+    "reply_id": "b8137d03-e618-5926-8ca2-a66c030dd822",
+    "review_input_hash": "11316e9de3cbd03486661e2fe41a01af757712dce409e17548f2ae4c9307649c",
+    "approval_artifact_written": false,
+    "reason": "Returned body started with \"ChatGPT said:\" before the required verdict line; no source blocker or major was identified, but tool did not record approval."
+  }
+}

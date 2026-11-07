@@ -159,10 +159,12 @@ def _is_digest(value: object) -> bool:
 
 class PromotionService:
     def __init__(self, port: HeadAttestationPort, reader: AttestationReader,
-                 clock: Callable[[], datetime]):
+                 clock: Callable[[], datetime], *,
+                 trust_is_enforced_by_write_port: bool = False):
         self._port = port
         self._reader = reader
         self._clock = clock
+        self._trust_is_enforced_by_write_port = trust_is_enforced_by_write_port
 
     # ------------------------------------------------------------------ public API
     async def promote(self, scope: Scope, model_key: str, candidate: UUID, expected_version: int,
@@ -208,13 +210,15 @@ class PromotionService:
         if (not isinstance(evidence, Evidence) or not _is_digest(evidence.revision_digest)
                 or not isinstance(evidence.evidence_ref, str) or not evidence.evidence_ref.strip()):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_REQUIRED")
-        # Idempotent replay (mirrors living.promote_head): decided before any time-dependent guard.
+        # The scoped acceptance read re-checks the current actor, active source, and exact role
+        # scope before replay disclosure. The durable SQL write performs the same authorization
+        # checks atomically for a first commit; old evidence validity is not re-litigated on replay.
         try:
             accepted = await self._port.list_acceptances(approver, scope)
         except PortError as exc:
             if type(exc.code) is not str or exc.code not in _NO_READ_RIGHT:
                 raise  # transient read failure: never mask a possibly committed promotion as a rejection
-            accepted = ()  # no read right: the normal guards below still fail closed / reject
+            accepted = ()  # no read right: the normal guarded write still fails closed
         recorded = next((a for a in accepted if a.acceptance_id == acceptance_id), None)
         if recorded is not None:
             if (recorded.model_key == model_key and recorded.from_version == expected_version
@@ -223,11 +227,6 @@ class PromotionService:
                     and recorded.independent_evidence_ref == evidence.evidence_ref):
                 return PromotionResult(success, new_version=recorded.to_version)
             return PromotionResult(Outcome.REJECTED_ACCEPTANCE_ID, code="ACCEPTANCE_ID_REUSED")
-        if success is Outcome.ROLLED_BACK:
-            head = await self._port.get_head(approver, scope, model_key)
-            if (head is not None and head.version == expected_version
-                    and head.revision_id == candidate):
-                return PromotionResult(Outcome.REJECTED_TARGET, code="ROLLBACK_TARGET_UNKNOWN")
         att = await self._reader.find_attestation(scope, candidate, evidence.evidence_ref)
         if att is not None and (att.revision_id != candidate
                                 or att.evidence_ref != evidence.evidence_ref):
@@ -242,13 +241,19 @@ class PromotionService:
         if not isinstance(att.evidence_digest, str) or not hmac.compare_digest(
                 att.evidence_digest.encode("utf-8"), recomputed.encode("utf-8")):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_DIGEST_MISMATCH")
-        if await self._reader.is_trusted_reviewer(scope, att.observer) is not True:
+        if (not self._trust_is_enforced_by_write_port
+                and await self._reader.is_trusted_reviewer(scope, att.observer) is not True):
             return PromotionResult(Outcome.REJECTED_UNTRUSTED, code="REVIEWER_NOT_TRUSTED")
         observer_id, proposer_id = normalize_identity(att.observer), normalize_identity(att.proposer)
         if not observer_id or not proposer_id:  # an invalid id is never a distinct person
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
         if approver_id in (observer_id, proposer_id):
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
+        if success is Outcome.ROLLED_BACK:
+            head = await self._port.get_head(approver, scope, model_key)
+            if (head is not None and head.version == expected_version
+                    and head.revision_id == candidate):
+                return PromotionResult(Outcome.REJECTED_TARGET, code="ROLLBACK_TARGET_UNKNOWN")
         head = await self._port.get_head(approver, scope, model_key)
         if head is None or head.version != expected_version:
             return PromotionResult(Outcome.REJECTED_CAS, code="STALE_ACCEPTED_HEAD")

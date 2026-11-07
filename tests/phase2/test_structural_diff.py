@@ -79,6 +79,26 @@ def test_type_change_is_modified_and_keeps_both_hashes():
     assert x.previous_sha256 and x.observed_sha256 and x.previous_sha256 != x.observed_sha256
 
 
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (b'<e:Property Name="Amount" Type="Edm.Decimal" Precision="10" Scale="2"/>',
+         b'<e:Property Name="Amount" Type="Edm.Decimal" Precision="12" Scale="2"/>'),
+        (b'<e:Property Name="Amount" Type="Edm.Decimal" Precision="10" Scale="2"/>',
+         b'<e:Property Name="Amount" Type="Edm.Decimal" Precision="10" Scale="4"/>'),
+        (b'<e:Property Name="Amount" Type="Edm.Decimal" Precision="10" Scale="2"/>',
+         b'<e:Property Name="Amount" Type="Edm.Int32"/>'),
+    ],
+)
+def test_decimal_precision_scale_or_type_change_is_modified(before, after):
+    result = diff_observed(snapshot(fields=before), snapshot(fields=after))
+    assert len(result.changes) == 1
+    change = result.changes[0]
+    assert change.qualified_name == "Sample::EntityType::Person"
+    assert change.kind is ChangeKind.MODIFIED
+    assert change.previous_sha256 != change.observed_sha256
+
+
 def test_results_are_deterministically_ordered():
     a = snapshot()
     b = snapshot(extra=b'<e:ComplexType Name="Z"/><e:ComplexType Name="A"/>')

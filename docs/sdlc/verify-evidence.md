@@ -1,0 +1,101 @@
+Sprint: beea27520b33
+
+# Phase 7 verification evidence — S1.1 and S2.1
+
+## S1.1 follow-up — SQL refusal-code parity and exhausted grant
+
+- Accepted criteria: S1.1 AC-1 exact SQL/Python set parity for the 39 public refusal codes, including
+  `PERIOD_CLOSED` and `GRANT_EXHAUSTED`; AC-2 exhausted positive grants return `GRANT_EXHAUSTED`
+  while non-exhaustion budget refusals remain `BUDGET_EXCEEDED`; AC-3 names the limits of SQL
+  parity in `docs/phase2/CHANGE_RECORD_403.md`.
+- Implementation: migration `db/phase2/028_refusal_codes_parity.sql`, committed at
+  `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` (base `d24277d85f53154e18acd082986b6c24e6632704`).
+  The migration commit is in local HEAD history but is not reachable from the fetched sprint branch.
+- Tested code HEAD: `e523b3727e8d86050e48fd3d62f281a3764fe174`. `e2e-runner` executed
+  `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_s12_sql_code_parity.py` using the
+  invocation-owned disposable PostgreSQL harness. Result: **2 passed in 24.72s**. The test applies
+  predecessors 019–027, applies 028, verifies the complete code set and privilege boundaries,
+  reapplies 028, and checks exhausted, over-budget-with-remainder and zero-amount cases. No
+  shared/staging/production database was modified.
+- Test provenance: `tests/phase2/test_s12_sql_code_parity.py` was already untracked before the run;
+  its SHA-256 remained `0373605827DAFEAFCF025F8084C9582309DB4975182ECF137DA651CE2480755B` before and
+  after. The file author is not established here. A system-Python attempt stopped at conftest import
+  because `asyncpg` is absent; the project's `.venv` command above succeeded.
+- Internal review: read-only `database-reviewer` review of the S1.1 SQL delta found no database
+  correctness blocker. It did not rerun tests or apply a migration. Its documentation requests for
+  the AC-3 boundary and post-apply rollback path are recorded in `CHANGE_RECORD_403.md`.
+- State: S1.1 AC-1 and AC-2 have disposable-runtime evidence; AC-3's limitations are documented.
+  GPT-PM returned `APPROVE` with 0 BLOCKER / 0 MAJOR / 0 MINOR for the S1.1 scope of commit
+  `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a` against base
+  `d24277d85f53154e18acd082986b6c24e6632704` (PM Bridge request
+  `d7b9c1f0-6a42-4c83-9f1e-2058de37a4b6`; the reply reproduced this request ID). This is a scoped
+  review, not a formal AF phase-8 approval and not approval of the separate S1.3 changes also
+  included in commit 4779ae9. An AF phase-8 preflight from a clean detached worktree at HEAD
+  `03297eca8fb4939bbc3f3677acdc4be1672af618`, base `9454d904d60d371920608088cb326b688895f0cf`,
+  was refused before PM submission because `verify-evidence.json` still binds `tested_head` to
+  `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9` and lists later changed code; no formal approval
+  artifact was written. The S1.1 source commit is not reachable from the configured upstream.
+  At the review snapshot HEAD `03297eca8fb4939bbc3f3677acdc4be1672af618`, the branch was 19 commits
+  ahead and the range contained mixed prior work, so no push was performed. S1.1 is
+  implementation-complete against AC-1–AC-3 but is **not delivered** until its
+  task commit is safely publishable. Real period observation remains `NOT_RUN` and belongs to
+  S1.2, not S1.1.
+
+## Existing S2.1 evidence
+
+- Tested code HEAD: `3af73797533e7cb4d8dd6762c42e847416b4cea8`.
+- Task: S2.1, core-owned approval validation, apply-time revalidation, single-use claims, and canonical preview provenance.
+- Functional selection: 75 passed in 0.89s, executed by `functional-test-reviewer` at the exact HEAD. Includes pre-T6 release and reconciliation, failed/false/dishonest acknowledgement recovery, and no retry after unknown apply.
+- Page/private-ingress selection: 6 passed in 0.55s, one deprecation warning, executed by `e2e-runner` at the exact HEAD. In-process ASGI only; no browser or live listener.
+- Internal reviews: CODE-1/CODE-2, SEC1 and UI1 closed. GPT-PM via PM Bridge returned APPROVE for the supplied exact S2.1 delta/HEAD, with no blocker or major finding and two non-blocking minor observations.
+- GPT-PM limitations: the supplied patch was reviewed; the complete repository checkout was not independently inspected. The approval does not qualify SQL durability, real readers, ERP/IdP, UAT, writer or production.
+- NOT_RUN at current HEAD: SQL/PostgreSQL durability (prior 291 selected SQL tests at 499baa96), selected S15 suites (prior 947 tests at 514d0ab), qualified real data readers, live ERP connector/watchdog, live IdP/browser/UAT, deployment, production writer, and real POST/UNPOST.
+- GPT-PM minor observations: pending release-reconciliation context is in-memory and is not restart durable; fake-store idempotent release receipt should bind to the original claim identity/generation. Neither was assessed as a blocker or major finding.
+- Safety state: private writer remains UNQUALIFIED and disabled; production bindings remain empty; production authorization NONE.
+
+Test commands and structured counts are recorded in `verify-evidence.json`.
+
+## Official AF phase-8 review outcome
+
+- Request `40f47031-0fef-4d6a-9d4a-357fb32aaea9` reviewed the full sprint range `9454d904...3af7379`. The review tool packet automatically replaced 11 code expressions with `[REDACTED]`, including approval metadata, fake claim storage/token construction, session-secret selection, authorization status, and token-class test fixtures.
+- Verdict: `MAJOR` evidence gap; no source defect was demonstrated. Formal AF approval was not written. The narrower direct GPT-PM approval for the S2.1 delta does not replace full-range AF approval.
+- Required next step: provide safe, byte-exact evidence for the 11 expressions through an AF-supported review path, then obtain a recorded exact-HEAD approval. Push remains gated.
+
+## Supplementary source verification of the 11 redacted expressions
+
+- Request `5a6af972-6802-48a9-9c9e-89d04bc74643` returned `APPROVE` for the supplementary source verification. GPT-PM classified all 11 expressions as ordinary metadata, in-memory fake state, enum references, deterministic fake token construction, or runtime secret-generation logic. No hardcoded credential or actual secret value was found. The earlier evidence-gap MAJOR is closed; the two non-blocking MINOR observations remain.
+- Verified the six attached files' raw SHA-256 values against the attachment records, then verified each worktree file through Git's path clean-filter hash against its blob at HEAD `3af73797533e7cb4d8dd6762c42e847416b4cea8`. All six blob IDs match. Git path clean-filter hashing is required because Windows checkout bytes use CRLF while committed blobs are LF.
+- This supplementary review is not the official AF approval artifact. The official full-range AF code review must be rerun and record its own approval before push.
+
+## S0 evidence added after the phase-7 S2.1 packet
+
+- Current code-review target before this packet update: `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9`. S0 implementation/spec/report commit: `369831ec6815a5f08e41b69c0540ef1a728c45a6`; TC002 register-test correction: `de2566099f9752ac0fe5ece36ff542c38313dbc6`; later status/report-only commits: `efb180a` and `6caf3d6`.
+- The `functional-test-reviewer` bounded freeze/checkpoint/path comparison found both reference commits (`57eb5b0696063237a43f5d1baf0a646278f5d832`, `65883a5a83fbb369cbd32e5e31af3041f9d7c515`) are ancestors of `3af73797533e7cb4d8dd6762c42e847416b4cea8`, with matching scoped base-to-HEAD path lists. This is a selected-path comparison; it does not prove exhaustive behavior preservation or zero impact.
+- S0 shared-path regression selection at committed source HEAD `369831ec6815a5f08e41b69c0540ef1a728c45a6`:
+  - `13 passed in 1.42s`:
+    `.venv\Scripts\python.exe -m pytest -q tests/test_compatibility.py::test_capability_detector_reports_unsupported_without_safe_route tests/test_compatibility.py::test_html_metadata_response_gets_no_fingerprint tests/test_semantic_profiles.py::test_old_or_cross_source_register_evidence_cannot_authorize_semantic_mapping tests/test_semantic_profiles.py::test_native_evidence_and_operator_cli_require_reconciliation_and_actor tests/test_capability_drift_migration.py::test_capability_observation_boundary_has_no_fake_fingerprint_or_runtime_ack tests/phase2/test_safe_parser.py::test_tc080_active_content_types_denied tests/phase2/test_safe_parser.py::test_tc080_external_content_types_denied tests/phase2/test_safe_parser.py::test_run_isolated_child_does_not_inherit_secrets tests/test_private_evidence_store.py::test_unconfirmed_cross_scope_and_revoked_retention_are_denied_after_reopen`.
+  - `271 passed in 3.85s`:
+    `.venv\Scripts\python.exe -m pytest -q tests/test_external_evidence.py::test_malformed_or_cross_scope_facts_are_sanitized tests/test_external_evidence.py::test_missing_duplicate_oversized_or_mismatched_inputs_cannot_prove_pass tests/test_external_evidence.py::test_business_gate_does_not_invent_missing_evidence_or_accept_stale_scope tests/test_invoice_evidence.py::test_invalid_nested_schema_precision_scope_and_injected_policy_never_parse tests/test_invoice_evidence.py::test_invoice_uses_same_scope_approval_retention_and_digest_gate_as_csv tests/test_invoice_evidence.py::test_duplicate_json_key_and_oversized_payload_or_line_count_are_rejected tests/test_invoice_evidence.py::test_invoice_store_wrong_mime_cannot_write_native_pdf_or_unapproved_json tests/test_admin_role_matrix.py::test_every_restricted_admin_endpoint_role_matrix tests/test_admin_role_matrix.py::test_exact_object_cross_source_mutations_are_denied_before_write tests/test_admin_mutation_migration.py::test_admin_mutation_migration_is_additive_append_only_and_least_privilege`.
+  - `61 passed in 7.22s`:
+    `.venv\Scripts\python.exe -m pytest -q tests/test_onec_client.py::test_upstream_http_error_does_not_expose_url_or_query_values tests/test_onec_client.py::test_upstream_network_error_is_mapped_without_chaining_request_url tests/test_onec_client.py::test_native_transport_rejects_encoding_before_unbounded_decompression tests/test_onec_client.py::test_url_is_pinned_to_registered_host tests/test_onec_client.py::test_metadata_probe_outage_is_sanitized_and_fails_closed tests/test_com_bridge_client.py::test_non_loopback_url_rejected tests/test_com_bridge_client.py::test_echo_mismatch_is_binding_mismatch tests/test_com_bridge_client.py::test_malformed_response_rejected tests/test_com_bridge_client.py::test_response_size_is_bounded tests/test_com_bridge_client.py::test_redirects_are_not_followed tests/test_rsv_bridge.py::test_rsv_bridge_rejects_unsafe_source_id_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_fails_closed_on_unreviewed_upstream_tool tests/test_rsv_bridge.py::test_rsv_bridge_metadata_response_is_bounded tests/test_rsv_bridge.py::test_digest_mismatch_does_not_resolve_secret_or_create_config tests/test_rsv_bridge.py::test_rsv_bridge_uses_secret_bound_ephemeral_config_and_removes_it tests/test_rsv_bridge.py::test_rsv_bridge_rejects_invalid_secret_config_before_process_launch tests/test_rsv_bridge.py::test_rsv_bridge_rejects_oversized_secret_config_before_process_launch tests/test_auth.py::test_invalid_or_under_scoped_tokens_are_denied tests/test_auth.py::test_bad_signature_is_denied tests/test_auth.py::test_jwks_validation_error_fails_closed tests/test_auth.py::test_missing_or_malformed_client_identity_fails_closed tests/test_auth.py::test_blank_primary_client_identity_does_not_fall_back tests/test_server_audit.py::test_durable_access_receipt_exists_before_adapter_dispatch tests/test_server_audit.py::test_pre_dispatch_audit_outage_is_sanitized_and_never_calls_adapter tests/test_server_audit.py::test_source_acl_denial_is_audited_and_stops_before_rate_limit`.
+  - `8 passed in 1.74s`: `.venv\Scripts\python.exe -m pytest -q tests/test_rsv_secret_privacy.py`.
+  - Mapping/register regression at exact HEAD `de2566099f9752ac0fe5ece36ff542c38313dbc6`: `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py`; `2 passed in 0.62s`. The immediately preceding exact-HEAD assembly group exposed one false-positive M5 N/A assertion; the test was corrected to require explicit normalized-input scope evidence for M5 while preserving unresolved/visibility guards for other marked R1 items.
+  - Current source HEAD `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9`, exact mapping/assembly/TC003 command:
+    `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_spec_bundle_mapping.py tests/test_release_evidence_assembly.py::test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links tests/test_release_evidence_assembly.py::test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head tests/test_release_evidence_assembly.py::test_deployment_revision_mismatch_is_kept_as_an_unverified_claim tests/test_release_evidence_assembly.py::test_deployment_revision_equal_to_pr_head_is_still_unverified tests/test_release_evidence_assembly.py::test_malformed_deployment_revision_is_rejected`; `7 passed in 1.03s`, exit 0. Scoped source/test status was clean; no DB or production was used.
+  - M7 validator: `.venv\Scripts\python.exe -c "from pathlib import Path; from scripts.validate_prometheus import run; print(run(Path.cwd()))"`; pinned promtool rule lint, pending/firing/recovery fixtures and metric-format validation passed; `alert_delivery=NOT_TESTED`, `real_1c_called=False`.
+- Internal code review found two P2 coverage gaps in the S0 tests; the functional-test-reviewer corrected them, and the follow-up code review found no remaining actionable issues. GPT-PM read-only review of the S0 source delta returned APPROVE with 0 blocker/major/minor; it was not an approval artifact. Product TC001–003 remain `NOT_RUN` per the catalog/Gherkin contract. PostgreSQL effective roles/function-argument authorization, authentic B3 report evidence, actual M7 delivery, provider-attested deployed revision, and exhaustive R1 preservation are `NOT_RUN`.
+- Existing AF full-range review at HEAD `3af73797533e7cb4d8dd6762c42e847416b4cea8` returned MAJOR for 11 redacted expressions; supplementary GPT-PM source verification approved the exact expressions and blobs, but official AF approval is still missing. The present phase-8 review must bind to the new exact HEAD after this packet is committed.
+- Phase-8 preflight at HEAD `713627facae2c9ce9ed11d682eedf81a99b2c575` was refused before PM submission because `tested_head` still pointed to `3af7379` while scoped S0 source/test files had changed. The packet now sets `tested_head` to the last checked source HEAD `6caf3d65e998c4d2e6698e2d6dc22d1ec7e64fc9`; a focused mapping/assembly/TC003 rerun at that exact HEAD passed 7/7. The subsequent packet commits change only `docs/` files, which AF evidence validation excludes from stale-code detection.
+- Official phase-8 review was then sent once from a clean detached review worktree at HEAD `4e327147cde0d10e9cee206495cbc384bc3a24d7`, base `9454d904d60d371920608088cb326b688895f0cf`. Exact command: `python D:/Repo/Agentic_Framework/tools/af_cli.py pm-review --kind code --base 9454d904d60d371920608088cb326b688895f0cf`. The correlated reply said `VERDICT: APPROVE`, 0 BLOCKER, 0 MAJOR and 2 non-blocking MINOR; it accepted the 11-expression supplementary source verification and confirmed no new blocker/major for the full diff. The AF result was nevertheless `UNRECOGNIZED` with `verdict_contradiction=true` and `final_overridden=true` because the returned body began `ChatGPT said:` before the required verdict line. Request `62ce3be7-1c54-4694-98ad-8ae5f17be34a`, reply `b8137d03-e618-5926-8ca2-a66c030dd822`, input hash `11316e9de3cbd03486661e2fe41a01af757712dce409e17548f2ae4c9307649c`. No `gate-approval.md` or approval JSON was written; this does not satisfy phase 8 and push remains gated. Raw result is preserved at `.worktrees/pm-review-4e32714/docs/sdlc/.pm-review/result-code-4e327147cde0.json`.
+
+## 2026-11-07 - S9 R2-US-046 (TC136-138) bounded offline review packet
+
+Candidate source HEAD: `3ab770e1756e0e4795220f3180be15803641e101` (the three production modules were already present at this commit; this turn did not modify production code). Candidate working-tree delta is limited to `tests/phase2/test_restore_verify.py`, `docs/phase2/SPRINT_S9_PLAN.md`, `docs/phase2/SPRINT_S8_PLAN.md`, and `docs/phase2/TASK_LEDGER.md`; At review-packet preparation the candidate file changes are uncommitted; the reviewed code source remains at the stated HEAD.
+
+Acceptance mapping: TC136 manifest restore comparison / FK / digest / accepted-head / sequence / current-attestation / tenant-scope checks; TC137 deny-by-default, tenant/company scoped, masked/formula-safe evaluation export; TC138 decision-only retention/legal hold with two-person approval, no deletion execution. Existing coverage is in `test_restore_verify.py`, `test_export_safety.py`, `test_retention_hold.py`, and the three E4 scenarios in `test_s9_scenarios.py`.
+
+Assigned e2e-runner command (with `PYTHONPATH=src`): `D:\Repo\ERP_MCP\.venv\Scripts\python.exe -m pytest -q tests/phase2/test_restore_verify.py tests/phase2/test_export_safety.py tests/phase2/test_retention_hold.py tests/phase2/test_s9_scenarios.py::test_restore_manifest_of_a_populated_registry_and_each_simulated_defect_has_its_own_code tests/phase2/test_s9_scenarios.py::test_export_masks_hashes_denies_neutralizes_formulas_and_drops_foreign_rows_without_trace tests/phase2/test_s9_scenarios.py::test_hold_blocks_deletion_release_is_audited_and_the_final_decision_is_a_plan_never_executed`. Result: exit 0, `380 passed in 5.63s`; HEAD before/after `3ab770e1756e0e4795220f3180be15803641e101`; worktree changed paths before/after were identical. This includes the test-only regression proving source-native outbox identity gaps are preserved while existing tests reject missing interior source rows.
+
+Internal review at exact source HEAD and scoped candidate: functional-test-reviewer mapped all three criteria to existing tests and added the one gap regression; database-reviewer found no BLOCKER/MAJOR and requested clarification of identity gaps; security-reviewer found no actionable bounded-scope finding; code-reviewer found no BLOCKER/MAJOR and confirmed the clarification/test alignment. The documentation now says accepted-event versions are contiguous per model, while restored outbox IDs preserve the source sequence; a source-native identity gap is not treated as data loss. Review-role model profile: GPT-6 Luna; per-call effort is not surfaced by the collaboration tool.
+
+Limits: no real PostgreSQL restore, live export product callsite, persistent legal-hold enforcement, actual deletion, production behavior, or G6-pre evidence is established. These remain NOT_RUN / NOT_VERIFIED / NOT_PASSED as applicable. No CI was run. Final GPT-PM request 9cd4af00-8c4d-4cf7-a47f-86edc84c584c / reply 57e878c2-d10e-5d54-98a4-5f1b36119f85 returned APPROVE - BOUNDED OFFLINE, 0 BLOCKER/MAJOR. It explicitly withdrew MAJOR-01 from request 6f33a920-7f73-44a5-9e0f-4cbb2e431d85 after verifying db/phase2/001_living_registry.sql UNIQUE(seq); no code correction was needed. The verdict does not establish real restore/runtime/production or G6-pre.

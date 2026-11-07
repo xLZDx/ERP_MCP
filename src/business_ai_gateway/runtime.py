@@ -34,6 +34,11 @@ class Runtime:
             if settings.admin_control_database_url
             else None
         )
+        self.model_promotion_db = (
+            Database(settings.model_promotion_database_url.get_secret_value())
+            if settings.model_promotion_database_url
+            else None
+        )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
         self.synthetic_profiles = (
             SyntheticFixtureProfiles(
@@ -158,14 +163,30 @@ class Runtime:
                     await self.admin_db.assert_control_api_role()
             if self.settings.admin_mutations_enabled and self.admin_db is None:
                 raise RuntimeError("admin mutation database is not configured")
+            if self.model_promotion_db is not None:
+                # The living schema is managed separately from BAG migrations. Do not expose the
+                # route unless this login has only set-only grants to isolated actor roles.
+                await self.model_promotion_db.start()
+                await self.model_promotion_db.assert_promotion_role()
             if not await self.redis.ping():
                 raise RuntimeError("redis unavailable")
             self._started = True
 
     async def ready(self) -> bool:
-        await self.start()
+        try:
+            await self.start()
+        except Exception:
+            return False
         admin_ready = self.admin_db is None or await self.admin_db.ping()
-        return await self.db.ping() and admin_ready and bool(await self.redis.ping())
+        promotion_ready = self.model_promotion_db is None
+        if self.model_promotion_db is not None:
+            try:
+                await self.model_promotion_db.ping()
+                await self.model_promotion_db.assert_promotion_role()
+                promotion_ready = True
+            except Exception:
+                promotion_ready = False
+        return await self.db.ping() and admin_ready and promotion_ready and bool(await self.redis.ping())
 
     async def close(self):
         await self.onec_client.close()
@@ -176,5 +197,7 @@ class Runtime:
         await self.redis.aclose()
         if self.admin_db is not None:
             await self.admin_db.close()
+        if self.model_promotion_db is not None:
+            await self.model_promotion_db.close()
         await self.db.close()
         self._started = False

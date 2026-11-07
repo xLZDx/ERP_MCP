@@ -414,6 +414,81 @@ def test_concurrent_distinct_requests_each_run_once_with_two_audit_records():
     assert len(env.sink1.records) == 32
 
 
+def test_request_capacity_is_serialized_before_writing_audit_intent():
+    env = Env(request_cap=1)
+    intent_started = threading.Event()
+    release_intent = threading.Event()
+    second_lock_blocked = threading.Event()
+    write = env.sink1.write
+
+    def blocked_first_intent(record):
+        if record.phase is AuditPhase.INTENT and record.request_id == "REQ-A":
+            intent_started.set()
+            release_intent.wait(timeout=5)
+        return write(record)
+
+    env.sink1.write = blocked_first_intent
+    first = []
+    second = []
+    thread = threading.Thread(target=lambda: first.append(env.write(request_id="REQ-A")))
+
+    def attempt_second():
+        second.append(env.write(request_id="REQ-B"))
+
+    second_thread = threading.Thread(target=attempt_second)
+    tenant_lock = env.gate._request_locks["t1"]
+
+    class ObservedLock:
+        def __enter__(self):
+            if threading.current_thread() is second_thread:
+                if not tenant_lock.acquire(blocking=False):
+                    second_lock_blocked.set()
+                    tenant_lock.acquire()
+            else:
+                tenant_lock.acquire()
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            tenant_lock.release()
+            return False
+
+    env.gate._request_locks["t1"] = ObservedLock()
+    thread.start()
+    try:
+        assert intent_started.wait(timeout=5)
+        second_thread.start()
+        assert second_lock_blocked.wait(timeout=5)
+    finally:
+        release_intent.set()
+        thread.join(timeout=5)
+        if second_thread.ident is not None:
+            second_thread.join(timeout=5)
+
+    assert not thread.is_alive() and not second_thread.is_alive()
+    assert first[0].status is GateStatus.COMPLETED
+    assert second[0].status is GateStatus.REFUSED and second[0].reason is OpsReason.QUOTA_EXCEEDED
+    assert second[0].effect_invoked is False
+    assert env.calls == ["REQ-A"]
+    assert [(record.request_id, record.phase) for record in env.sink1.records] == [
+        ("REQ-A", AuditPhase.INTENT),
+        ("REQ-A", AuditPhase.COMPLETION),
+    ]
+
+
+def test_failed_intent_write_does_not_consume_request_capacity():
+    env = Env(request_cap=1)
+    env.sink1.set_mode(SinkMode.DOWN)
+
+    refused = env.write(request_id="REQ-FAILED")
+    assert refused.reason is OpsReason.AUDIT_UNAVAILABLE and refused.effect_invoked is False
+    assert env.sink1.records == [] and env.calls == []
+
+    env.sink1.set_mode(SinkMode.HEALTHY)
+    retried_capacity = env.write(request_id="REQ-NEXT")
+    assert retried_capacity.status is GateStatus.COMPLETED
+    assert env.calls == ["REQ-NEXT"]
+
+
 # ---- S9 review fix batch: A1 request id memory ------------------------------------------------------
 
 def test_repeated_request_id_after_completion_pending_is_refused_and_the_obligation_stays():
@@ -679,8 +754,8 @@ def test_unaudited_effects_trip_the_alert_rule():
 _FORBIDDEN_ROOTS = {
     "httpx", "requests", "aiohttp", "urllib", "urllib3", "http", "socket", "ssl", "subprocess", "sqlite3",
     "psycopg", "psycopg2", "asyncpg", "sqlalchemy", "os", "pathlib", "random", "secrets", "time", "shutil",
-    "tempfile", "io", "ctypes", "asyncio", "multiprocessing", "concurrent", "fastapi", "flask", "starlette",
-    "threading", "contextvars",
+    "tempfile", "io", "ctypes", "asyncio", "multiprocessing", "concurrent", "_thread", "importlib",
+    "builtins", "fastapi", "flask", "starlette", "contextvars",
 }
 _FORBIDDEN_CALLS = {"delete", "remove", "unlink", "rmtree", "truncate", "drop", "open", "eval", "exec", "compile"}
 
@@ -695,11 +770,38 @@ def _imports(path):
     return out
 
 
+def _validate_threading_boundary(tree):
+    lock_imports = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] == "threading":
+                    raise AssertionError(("threading module imports are not allowed", alias.name))
+        elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "threading":
+            assert (node.module == "threading" and node.level == 0 and len(node.names) == 1
+                    and node.names[0].name == "Lock" and node.names[0].asname is None), node
+            lock_imports += 1
+        if isinstance(node, ast.Call):
+            function = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
+            assert function not in {"__import__", "import_module"}, (function, node.lineno)
+            if function == "getattr":
+                assert (len(node.args) >= 2 and isinstance(node.args[1], ast.Constant)
+                        and type(node.args[1].value) is str), node.lineno
+                assert node.args[1].value not in {
+                    "threading", "_thread", "Lock", "Thread", "Timer", "start_new_thread",
+                }, node.lineno
+        if isinstance(node, ast.Attribute):
+            assert node.attr not in {"Thread", "Timer", "Lock", "start_new_thread"}, (node.attr, node.lineno)
+    assert lock_imports == 1, "exactly one non-aliased `from threading import Lock` is permitted"
+
+
 def test_module_imports_nothing_forbidden_and_has_no_delete_calls():
     import sys
     path = _SRC / "audit_gate.py"
     records = _imports(path)
     assert records
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    _validate_threading_boundary(tree)
     for module, level in records:
         root = module.split(".")[0]
         assert root not in _FORBIDDEN_ROOTS, module
@@ -710,7 +812,7 @@ def test_module_imports_nothing_forbidden_and_has_no_delete_calls():
             assert module.startswith("business_ai_gateway.phase2")
         else:
             assert root in sys.stdlib_module_names, module
-    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+    for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
             assert name not in _FORBIDDEN_CALLS, (name, node.lineno)
@@ -722,3 +824,20 @@ def test_boundary_scan_is_not_vacuous():
     bad = ast.parse("import socket\nx.remove(1)\n")
     assert any(isinstance(n, ast.Import) and n.names[0].name in _FORBIDDEN_ROOTS for n in ast.walk(bad))
     assert any(isinstance(n, ast.Call) and getattr(n.func, "attr", "") in _FORBIDDEN_CALLS for n in ast.walk(bad))
+    _validate_threading_boundary(ast.parse("from threading import Lock\nlock = Lock()\n"))
+    for source in (
+        "import threading\n",
+        "from threading import Lock as Mutex\n",
+        "from threading import Thread\n",
+        "from threading import *\n",
+        "import threading\nthreading.Thread()\n",
+        "import threading\nthreading.Timer(1, lambda: None)\n",
+        "import importlib\nimportlib.import_module('threading')\n",
+        "__import__('threading')\n",
+        "import sys\ngetattr(sys.modules['threading'], 'Thread')\n",
+        "import sys\ngetattr(sys.modules['threading'], 'Lock')\n",
+        "import sys\nsys.modules['threading'].Lock()\n",
+        "import sys\ngetattr(sys.modules['threading'], dynamic_name)\n",
+    ):
+        with pytest.raises(AssertionError):
+            _validate_threading_boundary(ast.parse("from threading import Lock\n" + source))

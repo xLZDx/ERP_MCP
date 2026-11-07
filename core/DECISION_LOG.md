@@ -1275,3 +1275,41 @@ Decision: record the CT14_NARROW reset as an authorized persistent mutation with
 
 
 Decision: register the principal verifier before the first clone mutation and treat any post-mutation setup failure as a test failure (never a skip), per the GPT-PM verification round. Detail: `docs/phase2/CHANGE_RECORD_399.md`.
+
+## 2026-10-29 - PR #40 merged; local lane gateway restored from Trash copies
+
+
+
+Decision (operator orders): merge PR #40 (done, db30f96); restore the lane by copying from Trash with the saved secrets and the current volume, then sync current code and rebuild the venv because the copy was older than the database; fix the watchdog project root; re-issue the Claude token. Nothing deleted. Detail: `docs/phase2/CHANGE_RECORD_400.md`.
+
+## 2026-10-29 - Sibling ERP_MCP folders merged into D:\Repo\ERP_MCP
+
+Decision (operator order): keep one folder. Evidence showed R2, integration-candidate and chatgpt hold nothing absent from the main history except runtime files, which were copied and git-excluded; the lane now runs from `D:\Repo\ERP_MCP`. Deletion of the siblings waits for the operator's explicit command (shell policy hook). Detail: `docs/phase2/CHANGE_RECORD_401.md`.
+
+## 2026-10-29 - Autonomous finisher GO and scoped handoff
+
+Decision (operator GO 1-4): execute the finisher queue using existing contracts and actual role agents; complete coding before agent-owned tests, keep one final exact-head GPT-PM review before push/PR. Choose 15-minute isolated approver sessions and 5-minute nonces; refuse absent registry thresholds. Do not equate an unqualified period observation port with a working real producer. Detail: `docs/phase2/CHANGE_RECORD_402.md`.
+
+## 2026-10-29 - Additive S12/S13 parity and scoped observations
+
+Decision: append migration 028 without altering historical migrations; mirror the public 39-code vocabulary without claiming all technical SQL errors use that vocabulary, and keep budget snapshots advisory to atomic ledger enforcement. Operator reads are explicitly scoped; the period producer calls only a configured trusted reader and remains unqualified without an evidenced source operation. Coding-phase runtime evidence is NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_403.md`.
+
+## 2026-10-29 - Isolated S16 source integration
+
+Decision: implement S16 as an unwired library over injected fake-backed ports with S12 policy/transition reuse and explicit transport boundaries. Keep raw nonce/CSRF state server-side, use one-use session-bound decision references, and enforce positive authentication independent of network location. Scope period evidence to organization and immutable base identity as well as tenant/company/source. Runtime qualification remains pending the post-code agent-owned tests. Details: `docs/phase2/CHANGE_RECORD_404.md`, `CHANGE_RECORD_405.md`, `CHANGE_RECORD_406.md`.
+
+## 2026-10-29 - Preserve apply-time epoch classification
+
+Decision: let the ordered apply-time epoch guard classify registry/token/proposal epoch divergence as EPOCH_CHANGED after the independent identity, role and expiry checks. Preserve the failing acceptance assertion. Detail: `docs/phase2/CHANGE_RECORD_409.md`.
+
+## 2026-10-29 - Native ASGI client compatibility
+
+Decision: accept tuple/list address-pair representations while retaining all private-network, route and authentication validation; keep the native unwrapped ASGI client regression rather than a test wrapper that masks rejection. Detail: `docs/phase2/CHANGE_RECORD_410.md`.
+
+## 2026-10-29 - Complete specialist remediation batch
+
+Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, independent proposal authority, store-substitution-resistant canonical bindings and core anchors, and complete service-owned approval context. Core restart without an issuance anchor fails closed; no durable/real-source qualification is inferred. Details: `docs/phase2/CHANGE_RECORD_411.md`, `CHANGE_RECORD_412.md`, `CHANGE_RECORD_413.md`.
+
+## 2026-11-01 - Merge remote refusal parity migration, keep local copy
+
+Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (commit f23a7af) for the add/add merge conflict, and keep the operator's uncommitted local version as db/phase2/028_refusal_codes_parity.local.sql for manual comparison. Nothing was deleted.

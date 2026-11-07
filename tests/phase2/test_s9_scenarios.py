@@ -170,6 +170,7 @@ ATT_NOW = datetime(2026, 6, 1, 12, tzinfo=UTC)  # the attestation store keeps it
 HEAD = "abcdef1234567"
 DAY = 86_400
 P1, D2 = "c" * 64, "b" * 64
+MIGRATION_CHECKSUM_001, MIGRATION_CHECKSUM_002, MIGRATION_CHECKSUM_003 = "a" * 64, "b" * 64, "d" * 64
 
 
 def sha(text):
@@ -513,11 +514,13 @@ class Chain:
     # ---- E3: expand rehearsal, shadow compare, rollback with a revoked grant -------------------------------
     def release(self):
         w, t = self.w, self.t
-        unit1 = MigrationUnit("001", (), ADDITIVE_STEPS)
-        unit2 = MigrationUnit("002", ("001",), ADDITIVE_STEPS)
-        unit3 = MigrationUnit("003", ("002",), (ADDITIVE_STEPS[0], DESTRUCTIVE_STEP))
-        self.keep("rehearsal", plan_rehearsal([unit1, unit2], ("001",), w.ids))
-        self.keep("rehearsal_destructive", plan_rehearsal([unit2, unit3], ("001",), w.ids))
+        unit1 = MigrationUnit("001", (), ADDITIVE_STEPS, MIGRATION_CHECKSUM_001)
+        unit2 = MigrationUnit("002", ("001",), ADDITIVE_STEPS, MIGRATION_CHECKSUM_002)
+        unit3 = MigrationUnit("003", ("002",), (ADDITIVE_STEPS[0], DESTRUCTIVE_STEP), MIGRATION_CHECKSUM_003)
+        self.keep("rehearsal", plan_rehearsal(
+            [unit1, unit2], ("001",), w.ids, applied_checksums={"001": MIGRATION_CHECKSUM_001}))
+        self.keep("rehearsal_destructive", plan_rehearsal(
+            [unit2, unit3], ("001",), w.ids, applied_checksums={"001": MIGRATION_CHECKSUM_001}))
         ops = [f"OP-{t.tag}-{i}" for i in (1, 2, 3)]
         observed = [ShadowObservation(op, sha(op), sha(op), sha(op)) for op in ops]
         self.keep("shadow", compare_shadow(ops, observed, w.ids))
@@ -1044,7 +1047,9 @@ def test_the_chain_adds_no_decision_rule_every_result_equals_the_direct_module_c
         [ShadowObservation(f"OP-{t.tag}-{i}", sha(f"OP-{t.tag}-{i}"), sha(f"OP-{t.tag}-{i}"),
                            sha(f"OP-{t.tag}-{i}")) for i in (1, 2, 3)], w.ids)
     assert out["rehearsal"] == plan_rehearsal(
-        [MigrationUnit("001", (), ADDITIVE_STEPS), MigrationUnit("002", ("001",), ADDITIVE_STEPS)], ("001",), w.ids)
+        [MigrationUnit("001", (), ADDITIVE_STEPS, MIGRATION_CHECKSUM_001),
+         MigrationUnit("002", ("001",), ADDITIVE_STEPS, MIGRATION_CHECKSUM_002)], ("001",), w.ids,
+        applied_checksums={"001": MIGRATION_CHECKSUM_001})
     # E5: the readiness result is a pure function of (evidence, head)
     assert out["readiness"] == build_readiness(None, HEAD, w.ids)
     # call logs: every gated call opened with the entitlement check of the acting tenant, and no port was ever
