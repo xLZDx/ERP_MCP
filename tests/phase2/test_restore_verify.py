@@ -303,6 +303,18 @@ def test_outbox_sequence_defects(world, mutate):
     assert _failed(report)[CheckName.SEQUENCE].tables == ("outbox",)
 
 
+def test_matching_outbox_identity_gaps_are_preserved(world):
+    # Identity allocators can leave unused values; restore must preserve the
+    # source rows rather than require their identifiers to be contiguous.
+    for entry, seq in zip(world.rows["outbox"], (1, 3, 4)):
+        entry["seq"] = seq
+
+    report = world.pair()
+
+    assert report.verified is True
+    assert report.codes == ()
+
+
 def test_missing_tail_event_is_a_count_problem_not_a_sequence_gap(world):
     report = world.pair(lambda r: r["outbox"].pop())
     assert OpsReason.RESTORE_COUNT_MISMATCH in report.codes and OpsReason.RESTORE_SEQUENCE_GAP not in report.codes

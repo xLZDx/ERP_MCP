@@ -79,3 +79,18 @@ Operator-owned or external, so NOT_RUN: any real UI (HTML/JS/framework), browser
 ## Review plan
 
 Internal narrow reviewers (Sonnet 5.5 medium, read-only, no mutation experiments) on the exact code head: functional-test-reviewer (TC115..123 coverage and assertion strength, including the "cannot go green" parametrization and S6b lesson rows), python-reviewer, silent-failure-hunter (swallowed composed-component errors in the facade, partial green views, idempotency record created on a refused request, eviction reuse of a key, refusal-log bypass by respelling, `HIDDEN_BY_SCOPE` leaking counts), security-reviewer (CSRF derivation and constant-time compare, idempotency scoping across tenant/actor, scope-epoch recheck before disclosure, foreign-id and secret echo in errors and `repr`, raw COM/DC bypass), plus a domain read of the applicability rule against `RunLedger` CURRENT semantics, `AttestationStore.check_current` and `EventLedger` known/effective semantics. Tests and checks run only at sprint end through subagents (`functional-test-reviewer` + `e2e-runner`), one consensus round, one fix batch, a bounded verification by two reviewers, then GPT-PM on the exact head (head-bound evidence; a new commit invalidates it), then one plain push. Every commit carries its detail file (decision-log entry) per rules v4. Traceability rows go to `S1_S4_TRACEABILITY.md` (Sprint S8 section) and the RU/EN sprint report; the report states IMPLEMENTED_UNVERIFIED and lists the NOT_RUN set above verbatim.
+
+## 2026-11-07 - bounded S8 closure reconciliation
+
+This note supersedes the original G5-as-sprint-exit sequencing only for bounded task and sprint classification under the operator's current workflow. It does not change product, runtime, UI, UAT, persistence, or G5 acceptance.
+
+S8 status: CLOSED_BOUNDED_SPRINT (3/3 task-level bounded acceptances, as recorded in TASK_LEDGER.md).
+- R2-US-039 / TC115-117: the task record cites GPT-PM request c1d12be6-5291-4d11-833f-3576e9f3e630. The earlier ledger count 194 conflicts with traceability 91+129+26; this discrepancy was not rerun or silently resolved.
+- R2-US-040 / TC118-120: the task record cites GPT-PM requests 70e36811-3811-4bcf-9faf-04c93de001b1 and cf1d3956-8b88-4e15-8d34-dd6e8362e3fa; the merged PR #48 body reports 432 focused tests, and the PR merged at 5672c9c51acb77b2d2b9ffee444edc2e58567639. The prior 401 count is historical.
+- R2-US-041 / TC121-123: the task record cites GPT-PM request 8af9760a-1cb2-4d76-9af8-3cf14699f718; its closeout record reports 239 focused tests at HEAD 2236f06087631a4f0b70fcc404b579783123c91f. The prior 187 count is historical.
+
+Commits 080c76dac1fd162cd0d4bd23c489108833f8526e, 5f51d0fcd2472e816525e2fe53eb95529b1b416e, 2236f06087631a4f0b70fcc404b579783123c91f, and bb6ef0800ef96e24bf5eaad0bd25d80cc914be5e are ancestors of the S9 PR base e2ebf0ec6a85c8e71b176d653567798226dccdf9. PR #48 itself covers US040; it is not evidence for all three task acceptances by itself.
+
+G5 user/admin UAT, real UI/browser, live source/accounting linkage, runtime persistence, and product acceptance remain NOT_RUN / NOT_PASSED. No S8 task-level acceptance remains open.
+
+Sequencing correction: S9 R2-US-043 / PR #49 advanced before S8 closeout was recorded. That order was incorrect; the S8 task records were reconciled afterward. No S8 implementation or test work is repeated by this note.
