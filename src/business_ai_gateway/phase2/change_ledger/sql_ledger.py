@@ -270,6 +270,8 @@ _S13_LEGACY_READS = frozenset({
     "read_status",
     "read_evidence",
     "read_approval_text",
+    "operator_status",
+    "list_inflight",
     "amount_consumed",
     "lifecycle_status",
     "lifecycle_writer_epoch",
