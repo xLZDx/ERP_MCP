@@ -1,6 +1,6 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-05
+as_of: 2026-11-07
 active_sprint: FIN
 scope: single_sprint
 approved_sprints: FIN
@@ -8,13 +8,13 @@ operator_approved: true
 ---
 # ERP_MCP - project plan
 
-Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (historical snapshot at local HEAD f22fa64 / origin tip f23a7af), docs/sdlc/backlog.md, governance/GATE_MANIFEST.json, and current phase-2 task/evidence records. S0 R2-US-001–002 and S1 R2-US-003–006 have bounded evidence recorded through 2026-11-05; their canonical product cases remain NOT_RUN, so their plan state is PARTIAL rather than fully accepted. Sprint FIN is the Phase 2 finisher sprint beea27520b33 (10 ordered stories S1.1-S3.3); its task IDs carry the FIN- prefix to avoid clashing with program sprints S0-S19. For other task rows, the displayed status is the last recorded plan/ledger status, not an independently reconfirmed current acceptance at this HEAD. S11 has sprint-level completion evidence but its child task IDs/count are not enumerated in this plan. Release 2 is NO_GO and production authorization is NONE.
+Source: reports/ERP_MCP_FULL_PROGRAM_STATUS_2026-11-07.ru.html (snapshot 2026-11-07, Europe/Chisinau), PR #42 head 873b91512f431a745d5005451d21211bcb9a0fe1, task-specific GPT-PM decisions in docs/phase2/TASK_LEDGER.md and docs/phase2/DECISION_LOG.md, and docs/sdlc/backlog.md. S0 R2-US-001 and R2-US-002 are closed in bounded scope (2/2); canonical product TC001-TC006 remain NOT_RUN. Sprint FIN is the Phase 2 finisher sprint beea27520b33 (10 ordered stories S1.1-S3.3); its task IDs carry the FIN- prefix to avoid clashing with program sprints S0-S19. Other task statuses reflect their latest recorded plan/ledger evidence, not fresh product acceptance at this HEAD. S11 child task IDs/count are not enumerated. Release 2 is NO_GO and production authorization is NONE.
 
 ## Roadmap
 | Sprint | Title | Status | Goal |
 |---|---|---|---|
 | FIN | Phase 2 finisher backlog (sprint beea27520b33) | ACTIVE | Complete authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance. |
-| S0 | Baseline | IN_PROGRESS | Baseline. |
+| S0 | Baseline | CLOSED_BOUNDED_SPRINT (2/2 bounded task acceptances; product TC001-TC006 NOT_RUN; PR #42 open/unmerged) | Both S0 stories meet their separately approved bounded criteria; product/runtime acceptance remains distinct and unrun. |
 | S1 | Connector contracts | APPROVED_PUSHED | Connector contracts. |
 | S2 | Ledger and budget | APPROVED_PUSHED | Ledger and budget. |
 | S3 | Capture and status | APPROVED_PUSHED | Capture and status. |
@@ -57,8 +57,8 @@ Goal: Baseline.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | PARTIAL | GPT-PM request 36f90e3f-3df7-46fe-81a8-753d19208f49 adjudicated all three bounded criteria SATISFIED; canonical product TC001–TC003 remain NOT_RUN and Gherkin @not_implemented. TC003 implementation commit 2f606c2f2c773331c11db58de4121c411a90ad35 is pushed to PR #42. This is not product/runtime acceptance. | Codex |  |  |
-| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | PARTIAL | GPT-PM request 9550946b-a01e-4148-86c0-79db24d9e591 approved the TC004 test-only reuse disposition; TC004–TC006 bounded criteria SATISFIED, with Ferma license recorded as NO_LICENSE_FOUND and reuse limited to private test-only/no redistribution. Canonical product TC004–TC006 remain NOT_RUN and Gherkin @not_implemented. | Codex | R2-US-001 | 427d244 |
+| R2-US-001 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence; TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence | CLOSED_BOUNDED_SPRINT | GPT-PM requests 36f90e3f-3df7-46fe-81a8-753d19208f49 and ef3ea74c-4d6f-42ef-a5d3-7fef5a206cef confirm TC001-TC003 bounded criteria SATISFIED; correction commit 873b91512f431a745d5005451d21211bcb9a0fe1 is pushed to PR #42; canonical product TC001–TC003 remain NOT_RUN and Gherkin @not_implemented. TC003 implementation commit 2f606c2f2c773331c11db58de4121c411a90ad35 is pushed to PR #42. This is not product/runtime acceptance. | Codex |  |  |
+| R2-US-002 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04; TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed | CLOSED_BOUNDED_SPRINT | GPT-PM requests 9550946b-a01e-4148-86c0-79db24d9e591 and 0f93cc1b-e710-44ec-9562-003536db629c confirm TC004–TC006 bounded criteria SATISFIED, with Ferma license NO_LICENSE_FOUND and reuse limited to private testing without redistribution or production. Canonical product TC004–TC006 remain NOT_RUN and Gherkin @not_implemented. | Codex | R2-US-001 | 427d244 |
 
 ## Sprint S1 - Connector contracts
 Goal: Connector contracts.
