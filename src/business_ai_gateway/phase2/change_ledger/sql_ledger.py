@@ -907,9 +907,10 @@ class SqlChangeLedger:
 
         value = await self.invoke("budget_snapshot", scope, grant_id, amount, currency,
                                   as_class=as_class)
-        if type(value) is not dict or value.get("check") not in {item.value for item in BudgetCheck}:
+        check = value.get("check") if type(value) is dict else None
+        if type(check) is not str or check not in {item.value for item in BudgetCheck}:
             raise LedgerError("SQL_RESULT_INVALID")
-        return BudgetCheck(value["check"])
+        return BudgetCheck(check)
 
     async def read_evidence(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> list:
         return await self.invoke("read_evidence", scope, change_id, as_class=as_class)
