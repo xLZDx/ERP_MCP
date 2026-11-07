@@ -275,6 +275,7 @@ _S13_LEGACY_READS = frozenset({
     "lifecycle_writer_epoch",
     "lifecycle_permit_epoch",
     "lifecycle_checkpoint_suffix",
+    "budget_snapshot",
 })
 
 _CAST: Mapping[str, str] = MappingProxyType({"timestamp with time zone": "timestamptz"})
