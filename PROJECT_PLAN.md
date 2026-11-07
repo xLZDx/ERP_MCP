@@ -18,7 +18,7 @@ Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (snapshot 2026-10-31 22
 | S1 | Connector contracts | APPROVED_PUSHED | Connector contracts. |
 | S2 | Ledger and budget | APPROVED_PUSHED | Ledger and budget. |
 | S3 | Capture and status | APPROVED_PUSHED | Capture and status. |
-| S4 | Concept mapping | APPROVED_PUSHED | Concept mapping. |
+| S4 | Concept mapping | CLOSED_BOUNDED_SPRINT (4/4 bounded task acceptances; PR #44 merged) | R2-US-013 through R2-US-016 are accepted in bounded scope; product readiness remains IMPLEMENTED_UNVERIFIED. |
 | S5 | Capture boundary | APPROVED_PUSHED | Capture boundary. |
 | S6 | Accounting workbench | APPROVED_PUSHED | Accounting workbench. |
 | S7 | Drive intake | APPROVED_PUSHED | Drive intake. |
