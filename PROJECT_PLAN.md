@@ -22,7 +22,7 @@ Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (snapshot 2026-10-31 22
 | S5 | Capture boundary | APPROVED_PUSHED | Capture boundary. |
 | S6 | Accounting workbench | APPROVED_PUSHED | Accounting workbench. |
 | S7 | Drive intake | APPROVED_PUSHED | Drive intake. |
-| S8 | Review workbench | APPROVED_PUSHED | Review workbench. |
+| S8 | Review workbench | CLOSED_BOUNDED_SPRINT (3/3 bounded task acceptances; PR #48 merged) | R2-US-039 through R2-US-041 accepted in bounded scope; G5 UAT/runtime acceptance remains separately NOT_RUN/NOT_PASSED. |
 | S9 | Operations and recovery | APPROVED_PUSHED | Operations and recovery. |
 | S10 | Release handoff | HANDOFF_NO_APPROVE | Release handoff. |
 | FOLLOW_ON | Follow-on | UNCONFIRMED | Follow-on. |
