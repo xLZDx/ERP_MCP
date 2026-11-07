@@ -15,7 +15,7 @@ from pathlib import Path
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import C, ORG, T, L, _failed_parent, _repair, _setup
+from test_change_ledger_sql import ORG, C, L, T, _failed_parent, _repair, _setup
 
 pytestmark = pytest.mark.integration
 

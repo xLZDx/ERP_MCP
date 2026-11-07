@@ -16,10 +16,8 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-
-from _pg_harness import FILES, disposable_cluster, seed_basic, throwaway_db
-from _ed25519_fixtures import sign_hex
-from test_change_ledger_sql import C, ORG, T, L, _setup, exp
+from _pg_harness import disposable_cluster, throwaway_db
+from test_change_ledger_sql import ORG, C, L, T, _setup
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"
@@ -148,7 +146,7 @@ async def run_partial_failure_t9_retry_and_repair(led: L) -> None:
     await add_base(led.conn, "s13-poison")
     bad, token = await led.approved(request_id="s13-poison", base="s13-poison"), None
     token = await led.claimed(bad)
-    good, good_token, _ = await led.dispatched(request_id="s13-t9", base="base-1")
+    good, _good_token, _ = await led.dispatched(request_id="s13-t9", base="base-1")
     await led.conn.execute("UPDATE change_ledger.call_deadlines SET hard_deadline_at=now()-interval '1 second' "
                            "WHERE change_id=$1", good)
     await install_record_poison(led.conn, bad, "s13_poison_claim_trigger", "s13_poison_claim",
@@ -331,20 +329,22 @@ async def run_batch_bound_and_concurrent_serialization(led: L) -> None:
 
 async def main() -> int:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    async with disposable_cluster() as (dsn, container_name, _token):
-        async with throwaway_db(dsn) as db:
-            await _setup(db.conn)
-            await apply(db.conn, M019)
-            await apply(db.conn, M020)
-            for version in ("019", "020"):
-                found = await db.conn.fetchval("SELECT count(*) FROM living.schema_migrations WHERE version=$1", version)
-                assert found == 1, (version, found)
-            led = L(db)
-            await run_api_and_clean_off(led)
-            await run_each_active_hold_blocks_off(led)
-            await run_partial_failure_t9_retry_and_repair(led)
-            await run_t9_t12_delays_and_cleanup_stages(led)
-            await run_batch_bound_and_concurrent_serialization(led)
+    async with (
+        disposable_cluster() as (dsn, container_name, _token),
+        throwaway_db(dsn) as db,
+    ):
+        await _setup(db.conn)
+        await apply(db.conn, M019)
+        await apply(db.conn, M020)
+        for version in ("019", "020"):
+            found = await db.conn.fetchval("SELECT count(*) FROM living.schema_migrations WHERE version=$1", version)
+            assert found == 1, (version, found)
+        led = L(db)
+        await run_api_and_clean_off(led)
+        await run_each_active_hold_blocks_off(led)
+        await run_partial_failure_t9_retry_and_repair(led)
+        await run_t9_t12_delays_and_cleanup_stages(led)
+        await run_batch_bound_and_concurrent_serialization(led)
     print(f"PASS: S13 migration 020 focused acceptance on owned PostgreSQL container {container_name}")
     return 0
 

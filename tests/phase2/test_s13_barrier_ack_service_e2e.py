@@ -43,7 +43,6 @@ from erp_mcp_private_writer.service import (
     StartupRecoveryState,
 )
 
-
 BASE = "a" * 64
 SCOPE = Scope("tenant-1", "company-1")
 ORG = "org-1"

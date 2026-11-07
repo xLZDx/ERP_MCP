@@ -193,7 +193,7 @@ class L:
     async def checkpoint(self):
         head = await self.call("clt_chk", "ledger_head")
         signed_at = datetime.now(UTC)
-        kid, kmat, _ = SIGN_KEYS["clt_chk"]
+        kid, _kmat, _ = SIGN_KEYS["clt_chk"]
         payload = await self.conn.fetchval("SELECT change_ledger.checkpoint_payload($1,$2,$3,$4,$5,$6,$7,$8)",
                                            T, C, head["seq"], head["head_hash"], signed_at, kid, "REAL", "sink-1")
         await self.call("clt_chk", "record_checkpoint", head["seq"], head["head_hash"], "REAL", "sink-1", kid,
@@ -207,7 +207,7 @@ class L:
         ch = await self.conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
         b = await self.conn.fetchval("SELECT change_ledger.evidence_binding($1,$2,$3,$4,$5,$6)",
                                      cid, kind, ch, at, gen, call_id)
-        kid, kmat, _ = SIGN_KEYS[role]
+        kid, _kmat, _ = SIGN_KEYS[role]
         return await self.call(role, "record_evidence", cid, kind, ch, at, json.dumps(content), kid, b,
                                sign_hex(kid, b), gen, call_id)
 
@@ -391,8 +391,8 @@ async def probe(conn):
             ("append_event", "SELECT change_ledger.append_event('T1','C1',NULL,'X','{}'::jsonb)"),
             ("budget_reserve", "SELECT change_ledger.budget_reserve('T1','C1',gen_random_uuid(),gen_random_uuid(),1)"),
             ("dispatch_cas", "SELECT change_ledger.dispatch_cas(gen_random_uuid(),1,'PERMITTED','DISPATCHED')"),
-            ("insert_event", "INSERT INTO change_ledger.events(tenant_id,company_id,event_type,hash) "
-                             "VALUES('T1','C1','X',repeat('a',64))"),
+            ("insert_event", ("INSERT INTO change_ledger.events(tenant_id,company_id,event_type,hash) "
+                             "VALUES('T1','C1','X',repeat('a',64))")),
             ("delete_records", "DELETE FROM change_ledger.records"),
             ("update_records", "UPDATE change_ledger.records SET lifecycle='VALIDATED'")):
         got["denied_" + label] = (await err(led.sql("clt_alice", stmt)))[0]

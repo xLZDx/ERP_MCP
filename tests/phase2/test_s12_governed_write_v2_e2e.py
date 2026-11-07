@@ -6,11 +6,11 @@ for bounded local dispatch state transitions, not formal runtime gate evidence.
 """
 from __future__ import annotations
 
+import hashlib
+import unittest
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-import hashlib
 from threading import Event, Lock
-import unittest
 
 from business_ai_gateway.phase2 import ed25519
 from business_ai_gateway.phase2.change.evidence import (
@@ -325,7 +325,7 @@ class GovernedWriteE2ETests(unittest.TestCase):
         for label, guard, may_have_started in variants:
             with self.subTest(label=label):
                 attempt = _attempt()
-                coordinator, ledger = _system()
+                coordinator, _ledger = _system()
                 valid_guard = _no_invocation_guard(attempt)
                 receipt = _receipt(
                     attempt, no_effect=True, no_effect_digest=valid_guard.evidence_digest,

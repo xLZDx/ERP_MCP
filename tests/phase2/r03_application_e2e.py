@@ -12,9 +12,9 @@ import json
 import uuid
 
 import asyncpg
-
 from _ed25519_fixtures import pub_hex, sign_hex
-from test_change_ledger_sql import C, L, T
+from test_change_ledger_sql import C, T
+
 from business_ai_gateway.phase2.change_ledger._common import LedgerError, Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
 

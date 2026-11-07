@@ -8,9 +8,10 @@ from __future__ import annotations
 import inspect
 import re
 import uuid
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render

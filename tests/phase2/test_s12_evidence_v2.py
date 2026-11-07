@@ -27,7 +27,6 @@ from business_ai_gateway.phase2.change.evidence import (
     verify_record_signature,
 )
 
-
 H = "a" * 64
 UUID_CHANGE = "123e4567-e89b-42d3-a456-426614174000"
 UUID_CALL = "123e4567-e89b-42d3-a456-426614174001"
@@ -182,9 +181,11 @@ class S12EvidenceV2Tests(unittest.TestCase):
     def test_operation_preimage_and_writer_session_pair_are_required(self) -> None:
         for operation in ("POST", "UNPOST"):
             for target, version in ((None, "v1"), ("doc-1", None)):
-                with self.subTest(operation=operation, target=target, version=version):
-                    with self.assertRaisesRegex(ValueError, "OPERATION_PREIMAGE_REQUIRED"):
-                        attempt(operation_kind=operation, expected_target_ref=target, expected_pre_version=version)
+                with (
+                    self.subTest(operation=operation, target=target, version=version),
+                    self.assertRaisesRegex(ValueError, "OPERATION_PREIMAGE_REQUIRED"),
+                ):
+                    attempt(operation_kind=operation, expected_target_ref=target, expected_pre_version=version)
         draft = attempt(operation_kind="CREATE_DRAFT", expected_target_ref=None, expected_pre_version=None)
         self.assertEqual(draft.operation_kind, "CREATE_DRAFT")
         with self.assertRaisesRegex(ValueError, "CREATE_DRAFT_PREIMAGE_INVALID"):
@@ -206,9 +207,11 @@ class S12EvidenceV2Tests(unittest.TestCase):
             attempt(permit_id="123e4567-e89b-42d3-a456-426614174099"),
             attempt(permit_digest="b" * 64),
         ):
-            with self.subTest(changed=changed):
-                with self.assertRaisesRegex(ValueError, "RECEIPT_ATTEMPT_BINDING_INVALID"):
-                    r.validate_attempt_binding(changed)
+            with (
+                self.subTest(changed=changed),
+                self.assertRaisesRegex(ValueError, "RECEIPT_ATTEMPT_BINDING_INVALID"),
+            ):
+                r.validate_attempt_binding(changed)
         with self.assertRaisesRegex(ValueError, "RECEIPT_ATTEMPT_BINDING_INVALID"):
             o.validate_attempt_binding(attempt(dispatch_cas_id="123e4567-e89b-42d3-a456-426614174099"), r)
         with self.assertRaisesRegex(ValueError, "OUTCOME_PREIMAGE_BINDING_INVALID"):
@@ -264,9 +267,8 @@ class S12EvidenceV2Tests(unittest.TestCase):
             {"write_invocation_stage": "NOT_INVOKED", "result_class": "POST_START_UNKNOWN"},
             {"operation_kind": "UPDATE_DRAFT"},
         ):
-            with self.subTest(bad=bad):
-                with self.assertRaises(ValueError):
-                    receipt(**bad)
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                receipt(**bad)
         with self.assertRaisesRegex(ValueError, "WRITER_COMPLETION_BINDING_INVALID"):
             completion(signer_role="completion_supervisor")
 

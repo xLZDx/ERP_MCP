@@ -7,21 +7,21 @@ import os
 import re
 from collections.abc import AsyncIterator
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 from uuid import UUID
 
 import asyncpg
 import pytest
 import pytest_asyncio
+from _pg_harness import admin_connect, apply_files, disposable_cluster, throwaway_db
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-from _pg_harness import admin_connect, apply_files, disposable_cluster, throwaway_db
-from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from test_change_ledger_sql import _setup
-from test_s13_current_turn_sql import MIGRATIONS_019_027, _apply_migration
 from test_private_writer_barrier_ack import _acknowledgement
 from test_s13_barrier_ack_verifier import _PROCESS_ATTESTATION_PREFIX
+from test_s13_current_turn_sql import MIGRATIONS_019_027, _apply_migration
+
+from business_ai_gateway.phase2.change.evidence import canonical_json_bytes
 from erp_mcp_private_writer.barrier_ack_protocol import (
     barrier_acknowledgement_ref,
     barrier_acknowledgement_signed_bytes,
@@ -48,19 +48,21 @@ async def candidate_db() -> AsyncIterator[CandidateDb]:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
     os.environ["ERP_PHASE2_TEST_IMAGE"] = "postgres:16"
     try:
-        async with disposable_cluster() as (dsn, _name, _token):
-            async with throwaway_db(dsn, seed=False) as db:
-                try:
-                    await apply_files(db.conn)
-                    for migration in MIGRATIONS_019_027:
-                        await _apply_migration(db.conn, migration)
-                    await _setup(db.conn)
-                except asyncpg.PostgresError as error:
-                    pytest.fail(
-                        "candidate migration/setup failed on owned PostgreSQL 16: "
-                        f"{error.sqlstate} {str(error).splitlines()[0]}", pytrace=False,
-                    )
-                yield CandidateDb(db.conn, dsn, db.name)
+        async with (
+            disposable_cluster() as (dsn, _name, _token),
+            throwaway_db(dsn, seed=False) as db,
+        ):
+            try:
+                await apply_files(db.conn)
+                for migration in MIGRATIONS_019_027:
+                    await _apply_migration(db.conn, migration)
+                await _setup(db.conn)
+            except asyncpg.PostgresError as error:
+                pytest.fail(
+                    "candidate migration/setup failed on owned PostgreSQL 16: "
+                    f"{error.sqlstate} {str(error).splitlines()[0]}", pytrace=False,
+                )
+            yield CandidateDb(db.conn, dsn, db.name)
     finally:
         if old_opt_in is None:
             os.environ.pop("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS", None)
@@ -131,11 +133,12 @@ def _raw_public_key(key: Ed25519PrivateKey) -> bytes:
 
 async def _valid_ack_fixture(conn: asyncpg.Connection):
     """Seed only the rows that the real registration routine and its table guard consume."""
-    unsigned = _acknowledgement()
+    signed_at = await conn.fetchval("SELECT clock_timestamp()")
+    signed_at_text = signed_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    unsigned = replace(_acknowledgement(), signed_at=signed_at_text)
     writer_key = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
     supervisor_key = Ed25519PrivateKey.from_private_bytes(bytes(range(32, 64)))
     ack = replace(unsigned, signature=writer_key.sign(unsigned.signature_preimage()))
-    signed_at = datetime.strptime(ack.signed_at, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     process_created = signed_at - timedelta(minutes=1)
     process_doc = {
         "attestation_version": "1",
@@ -151,8 +154,8 @@ async def _valid_ack_fixture(conn: asyncpg.Connection):
     process_signature = supervisor_key.sign(
         _PROCESS_ATTESTATION_PREFIX + canonical_json_bytes(process_doc),
     )
-    valid_from = datetime(2026, 10, 1, tzinfo=UTC)
-    valid_until = datetime(2026, 11, 1, tzinfo=UTC)
+    valid_from = signed_at - timedelta(days=1)
+    valid_until = signed_at + timedelta(days=1)
     await conn.execute("""
         INSERT INTO change_ledger.private_writer_service_bindings
             ("session_user",base_fingerprint,writer_service_id,writer_host_id)
@@ -213,7 +216,7 @@ async def _wait_for_backend_event(
     deadline = asyncio.get_running_loop().time() + 10
     while asyncio.get_running_loop().time() < deadline:
         if monitor is not None and monitor.done():
-            result, error = monitor.result()
+            _result, error = monitor.result()
             assert error is None, f"backend failed before expected lock window: {error}"
             raise AssertionError("backend completed before entering the expected lock window")
         row = await observer.fetchrow("""

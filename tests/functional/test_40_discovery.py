@@ -8,8 +8,13 @@ EXPECTED_TOOLS = {
     "system_status", "sources_list", "source_health", "external_evidence_manifest", "rsv_metadata",
     "companies_list", "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
     "accounting_balance_and_turnovers", "accounting_balance_by_analytics", "inventory_balance", "inventory_movements",
-    "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
-    "payable_balance", "sales_documents", "purchase_documents", "onec_read",
+    "inventory_balance_with_provenance", "inventory_movements_with_provenance",
+    "accounting_posting_rows", "accounting_posting_rows_with_provenance",
+    "cash_movements", "bank_balance", "cash_movements_with_provenance",
+    "bank_balance_with_provenance", "receivable_balance",
+    "payable_balance", "receivable_balance_with_provenance",
+    "payable_balance_with_provenance", "sales_documents", "purchase_documents",
+    "sales_documents_with_provenance", "purchase_documents_filtered", "onec_read",
     "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
 }
 

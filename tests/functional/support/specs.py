@@ -42,26 +42,26 @@ SPECS = {
     "SC03": dict(slug="overpayment", question="Customer overpayment is separated from receivable",
                  tools=["receivable_aging"], neg_tool="payable_aging"),
     "SC04": dict(slug="unposted-document", question="Unposted document does not create accounting movement",
-                 tools=["sales_documents", "accounting_posting_rows"], neg_tool="purchase_documents"),
+                 tools=["sales_documents_with_provenance", "accounting_posting_rows"], neg_tool="purchase_documents"),
     "SC05": dict(slug="return", question="Return reduces the relevant movement",
-                 tools=["inventory_movements", "inventory_balance"], neg_tool="receivable_balance"),
+                 tools=["inventory_movements_with_provenance", "inventory_balance_with_provenance"], neg_tool="receivable_balance"),
     "SC06": dict(slug="vat-mixed", question="Different VAT treatments remain distinguishable",
-                 tools=["sales_documents"], neg_tool="purchase_documents",
+                 tools=["sales_documents_with_provenance"], neg_tool="purchase_documents",
                  disposition="EXTERNAL-GATE", missing_regex=r"vat|tax",
                  missing="VAT/tax views exist only when a source/company profile is validated (freeze 3.3 "
                          "'VAT/tax views only when validated'); no VAT tool or fixture profile exists"),
     "SC07": dict(slug="backdated-document", question="Backdated document appears in the correct accounting period",
-                 tools=["sales_documents", "accounting_posting_rows"], neg_tool="purchase_documents"),
+                 tools=["sales_documents_with_provenance", "accounting_posting_rows"], neg_tool="purchase_documents"),
     "SC08": dict(slug="duplicate-counterparty", question="Potential duplicate counterparties are identified without merge",
                  tools=["counterparty_duplicate_candidates"], neg_tool="purchase_documents"),
     "SC09": dict(slug="cash-bank", question="Cash and bank balances remain separate and sum to combined",
-                 tools=["cash_movements", "bank_balance"], neg_tool="payable_balance"),
+                 tools=["cash_movements_with_provenance", "bank_balance_with_provenance"], neg_tool="payable_balance"),
     "SC10": dict(slug="account-turnover", question="Opening, turnover and closing values reconcile",
                  tools=["accounting_balance_and_turnovers"], neg_tool="receivable_balance"),
     "SC11": dict(slug="inventory-receipt-expense", question="Inventory movement signs reconcile to net quantity",
-                 tools=["inventory_movements"], neg_tool="receivable_balance"),
+                 tools=["inventory_movements_with_provenance"], neg_tool="receivable_balance"),
     "SC12": dict(slug="cash-receipt-expense", question="Cash movement signs reconcile to net amount",
-                 tools=["cash_movements"], neg_tool="payable_balance"),
+                 tools=["cash_movements_with_provenance"], neg_tool="payable_balance"),
 }
 
 
@@ -71,11 +71,14 @@ def args_for(tool: str, source_id: str, company_id: str, **extra) -> dict:
         return {**base, "as_of": AS_OF, **extra}
     if tool == "counterparty_duplicate_candidates":
         return {**base, **extra}  # input is exactly source_id, company_id, top (default 2000)
-    if tool in {"inventory_balance", "receivable_balance", "payable_balance"}:
+    if tool in {"inventory_balance", "inventory_balance_with_provenance", "receivable_balance", "payable_balance"}:
         return {**base, "period": AS_OF, **extra}
-    if tool == "bank_balance":
+    if tool in {"bank_balance", "bank_balance_with_provenance"}:
         return {**base, "period": BANK_AS_OF, **extra}
-    if tool in {"inventory_movements", "cash_movements", "accounting_posting_rows",
-                "accounting_balance_and_turnovers"}:
+    if tool in {
+        "inventory_movements", "inventory_movements_with_provenance",
+        "cash_movements", "cash_movements_with_provenance",
+        "accounting_posting_rows", "accounting_balance_and_turnovers",
+    }:
         return {**base, **APRIL, **extra}
     return {**base, **extra}

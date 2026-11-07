@@ -13,7 +13,20 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, C2, DEFAULT_GRANT, DIGEST, ORG, T, T2, L, _setup, exp, sha
+from test_change_ledger_sql import (
+    BASE,
+    C2,
+    DEFAULT_GRANT,
+    DIGEST,
+    ORG,
+    T2,
+    C,
+    L,
+    T,
+    _setup,
+    exp,
+    sha,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -52,7 +65,7 @@ async def test_b1_claim_refuses_a_null_grant_a_foreign_grant_and_a_changed_amoun
     cid = await led.approved(amount=40)
     cb = await stored(led, cid)
     assert (cb["grant_id"], cb["amount"]) == (DEFAULT_GRANT[(T, C)], 40)
-    kw = dict(requester="clt_alice")
+    kw = {"requester": "clt_alice"}
     await fails("BUDGET_EXCEEDED", led.call("clt_alice", "claim", cid, None, None, 40, False, False))
     await fails("BUDGET_EXCEEDED", led.call("clt_alice", "claim", cid, None, other, 40, False, False))
     await fails("DIGEST_MISMATCH", led.call("clt_alice", "claim", cid, None, cb["grant_id"], 1, False, False))
@@ -169,7 +182,7 @@ async def test_b1_claim_on_a_finished_or_running_change_is_a_forbidden_transitio
     assert await led.verify(v, True) == "VERIFIED"
     await fails("FORBIDDEN_TRANSITION", led.claimed(v))
     # a change whose dispatch is recorded cannot be claimed again either (authorization arranged back to APPROVED)
-    d, dtok, _ = await led.dispatched(request_id="disp", base="base-4")
+    d, _dtok, _ = await led.dispatched(request_id="disp", base="base-4")
     await led.conn.execute("UPDATE change_ledger.records SET authorization_state='APPROVED', execution_state='NOT_STARTED' "
                            "WHERE change_id=$1", d)
     await fails("FORBIDDEN_TRANSITION", led.claimed(d))

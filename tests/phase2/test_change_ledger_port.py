@@ -23,7 +23,17 @@ import pytest
 from _approval_envelope import FIXTURE_PAYLOAD, envelope_dict
 from _ed25519_fixtures import sign_hex
 from _pg_harness import require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, C, DEFAULT_GRANT, DIGEST, KH, ORG, SIGN_KEYS, T, _setup, exp
+from test_change_ledger_sql import (
+    BASE,
+    DEFAULT_GRANT,
+    DIGEST,
+    ORG,
+    SIGN_KEYS,
+    C,
+    T,
+    _setup,
+    exp,
+)
 
 from business_ai_gateway.phase2 import ed25519
 from business_ai_gateway.phase2.change import canonical_json
@@ -162,7 +172,7 @@ async def evidence(conn, port, cid, kind, content, actor="worker", gen=None, cal
     at = datetime.now(UTC) + timedelta(seconds=1)
     ch = await conn.fetchval("SELECT change_ledger.canonical_content_hash($1::jsonb)", json.dumps(content))
     binding = evidence_binding(str(cid), kind, ch, at, gen, call_id)
-    kid, kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
+    kid, _kmat, _ = SIGN_KEYS["clt_wri" if actor == "writer" else "clt_wrk"]
     return await port.record_evidence(SCOPE, cid, kind, ch, at, content, kid, binding, sign_hex(kid, binding),
                                       gen, call_id, as_class=actor)
 
@@ -380,7 +390,7 @@ async def test_signed_completion_and_verification_through_the_port(env):
 
 
 async def test_approve_compares_the_sql_computed_digest(env):
-    conn, port = env
+    _conn, port = env
     cid = uuid.uuid4()
     await port.propose(SCOPE, cid, "CREATE_DRAFT", BASE, ORG, "clt_alice", uuid.uuid4().hex, DIGEST, "doc1", "v1",
                        None, exp())
@@ -479,7 +489,7 @@ async def test_gate_refuses_when_read_back_does_not_match_and_writes_no_checkpoi
 
 
 async def test_gate_maps_a_sql_refusal_after_the_checkpoint(env):
-    conn, port = env
+    _conn, port = env
     cid, gen, _ = await applying(port)
     await port.kill_switch(SCOPE, "STOP_ADMIT")
     with pytest.raises(PermitRefused) as e:

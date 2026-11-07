@@ -312,6 +312,85 @@ async def test_account_turnovers_unconfirmed_mapping_is_audited_and_not_dispatch
 
 
 @pytest.mark.asyncio
+async def test_empty_account_code_is_rejected_after_authorization_and_audited():
+    company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
+    registry = TestRegistry()
+    registry.require_company = AsyncMock(
+        return_value=SimpleNamespace(external_ref=str(company_id))
+    )
+    registry.save_capabilities = AsyncMock(return_value={"drift_status": "STABLE"})
+    registry.require_account_turnovers_mapping = AsyncMock(
+        return_value={
+            "mapping": {
+                "entity_set": "AccountingRegister_Хозрасчетный",
+                "method": "balanceAndTurnovers",
+                "company_scope": {"field": "Организация_Key", "value_type": "guid"},
+                "output_fields": {
+                    "account": "Account_Key",
+                    "opening_debit": "OpeningDebit",
+                    "opening_credit": "OpeningCredit",
+                    "debit_turnover": "DebitTurnover",
+                    "credit_turnover": "CreditTurnover",
+                    "closing_debit": "ClosingDebit",
+                    "closing_credit": "ClosingCredit",
+                },
+                "account_field": "Account_Key",
+                "accounts": [
+                    {
+                        "code": "521.1",
+                        "account_key": "5659a91f-5098-11ee-aa2f-d85ed30dc416",
+                    }
+                ],
+            },
+            "profile_kind": "VALIDATED_NATIVE",
+            "profile_fingerprint": "sha256:profile",
+        }
+    )
+    audit = RecordingAudit()
+    onec = SimpleNamespace(
+        capabilities=AsyncMock(
+            return_value=SimpleNamespace(
+                adapter_profile=SimpleNamespace(value="ODATA_JSON_V3"),
+                metadata_fingerprint="sha256:metadata",
+            )
+        ),
+        register_read=AsyncMock(),
+    )
+    rate_limit = SimpleNamespace(check=AsyncMock())
+    runtime = SimpleNamespace(
+        audit=audit,
+        registry=registry,
+        rate_limit=rate_limit,
+        onec=onec,
+    )
+    mcp = build_mcp(Settings(), runtime)
+
+    with pytest.raises(UnexpectedToolError):
+        await mcp.call_tool(
+            "accounting_balance_and_turnovers_by_account",
+            {
+                "source_id": "source-1",
+                "company_id": str(company_id),
+                "start_period": "2026-01-01T00:00:00Z",
+                "end_period": "2026-01-31T23:59:59Z",
+                "account_code": "",
+            },
+        )
+
+    rate_limit.check.assert_awaited_once()
+    registry.require_company.assert_awaited_once()
+    registry.require_account_turnovers_mapping.assert_awaited_once()
+    onec.capabilities.assert_awaited_once()
+    assert [event["detail_code"] for event in audit.events] == [
+        "ACCESS_AUTHORIZED",
+        "ValueError",
+    ]
+    assert audit.events[-1]["outcome"] == "error"
+    assert audit.events[-1]["query"]["account_code"] == ""
+    onec.register_read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_sales_documents_uses_only_confirmed_profile_entity_and_company_filter():
     company_id = UUID("f3727523-9689-4b73-973e-9754360fd0a0")
     source = SimpleNamespace(id="source-1")

@@ -191,6 +191,42 @@ Decision: keep production evidence trust separate from evaluation registries. Th
 This is an implementation direction under the operator's delegated technical authority, not an installed schema, effective-grant result, production trust approval or qualification. SQL remains unparsed/uninstalled; no database write, test or specialist review ran. Evidence and current limitations: `docs/phase2/S13_POSTGRES_ADMISSION_SCHEMA_DESIGN_2026-10-22.md`, `docs/phase2/S12_S13_DISPOSABLE_QUALIFICATION_PREREQUISITES_2026-10-23.md`, and `docs/phase2/artifacts/WP0_ACCESS_AND_SOURCE_RECHECK_2026-10-24.md`. Validator build provenance and trust-policy/key-custody human owners remain unknown in project records.
 
 
+## 2026-11-05 — S0 R2-US-002 bounded acceptance on PR #42
+
+GPT-PM approved bounded TC004–TC006 as SATISFIED and R2-US-002 as BOUNDED_SCOPE_COMPLETE, while all canonical product cases remain NOT_RUN. TC004 is limited to private test-only Ferma reuse under recorded operator authorization; no formal license was found, and redistribution/production inclusion are not authorized. Commit `427d2440591fcd8b1ae1f0d9451b3f51d92f1d69` was pushed to the existing S0 PR #42. GPT-PM final code review: request `1eed2c5b-8f3b-4319-a9cb-59df63c10c98` (APPROVE, no actionable findings); bounded adjudication: request `9550946b-a01e-4148-86c0-79db24d9e591`.
+
+Retrospective: the review exposed a catalog assertion that rejected newly bounded cases, a direct builder override path that bypassed receipt validation, and a stale Ferma verification flag. All three were corrected and covered by focused catalog tests and internal re-review. Generated package: 39 manifest-covered files, ZIP SHA-256 `4553a8b7d43ea01e6ce9b20012efa61622ac3d0237a8c7c1edfdd47bea33d6d6`.
+## 2026-11-05 — R2-US-003 bounded offline SDK completion
+
+After independent code-reviewer and python-reviewer consensus, assigned functional-test-reviewer ran `tests/phase2/test_connector_sdk.py` at base HEAD `571115a09019b303ea78775b42935a5e0b470282` with the candidate working-tree files: 189 passed in 0.60s. The SDK now maps recognized CDC/change-feed aliases to `SNAPSHOT_ONLY` only when a typed capability declaration matches the source and says change feeds are unsupported; unknown modes and arbitrary command fields remain rejected. GPT-PM exact-diff review `3a35f7ee-63fd-4c69-9115-3cde28e08040` approved the two exact file hashes for local commit and normal PR #42 update with no actionable findings. Commit `e35497f839673f74e80df93d1918f0eb65756d9d` was pushed normally and PR #42 updated.
+
+Boundaries: TC007–TC009 are satisfied only for the bounded offline SDK contract. The typed capability declaration is not authenticated against a live source registry; no real connector/runtime integration was demonstrated. Canonical product cases remain `NOT_RUN` and Gherkin remains `@not_implemented`. No product status transition, merge, deployment, release or production authority was granted.
+
+## 2026-11-05 — R2-US-004 bounded company-scope SQL completion
+
+At base HEAD `f5f210864ac40101f77ba17d69c4a7cf2e759d1b`, Codex added checksum-guarded migration `db/phase2/029_company_scope_rls.sql`. Company-scoped role grants now require a matching active company and non-NULL row company discriminator; tenant-wide metadata requires an unscoped grant for the active source. Assigned functional-test-reviewer authored focused coverage; assigned e2e-runner executed it through the repository's invocation-owned loopback PostgreSQL container: 10 passed in 9.15s, exit 0. The owned container was verified removed. Candidate files were committed as `72d90a8156fa3055d753395900cc1ee62cd1f76e` and pushed normally to the existing PR #42.
+
+Internal database-reviewer, security-reviewer and code-reviewer found no actionable findings. GPT-PM request `69ec1ee8-e9c1-4e3f-9f44-5a5f8e36dfbe` approved the bounded SQL criteria TC010–TC012 for commit and normal PR update, with 0 BLOCKER, 0 MAJOR and one non-blocking MINOR: add direct negative coverage for a different company row under the same source. This test is recorded as roadmap work and does not invalidate the approved candidate.
+
+Boundaries: canonical product TC010–TC012 remain `NOT_RUN`; Gherkin remains `@not_implemented`. The code is not wired to product runtime and does not establish full product acceptance, merge, deployment, release or production authority.
+
+## 2026-11-05 — R2-US-005 bounded revocation SQL completion
+
+At base HEAD `985d6f4f2eb35544e30f666526d4b7fc7a5a2e37`, the exact test-file SHA-256 `7a0003d401209d481679f75222208e197e9d6214e9935eae344af04852a71140` added focused TC013–TC015 coverage in `tests/phase2/test_ports_contract.py`. The assigned e2e-runner executed the three selected tests: 5 passed in 5.20s, exit 0, using an invocation-owned loopback PostgreSQL 16 container; the container was absent after cleanup. TC013 covers revoke/epoch bump and rejection of a pre-revoke queued job after explicit regrant; TC014 covers denial of a subsequent SQL read after revocation; TC015 covers a fresh SQL connection failing to restore a deleted persistent grant.
+
+Database-reviewer, security-reviewer and code-reviewer found no actionable findings. GPT-PM request `a6d63e49-665f-4c6c-b8e2-4f19fe183b18` approved the exact test hash for local commit and normal update of PR #42, with 0 BLOCKER, 0 MAJOR and 0 MINOR findings. Test-only commit `9cbfbf252a494c675760d31ea92b91ef8313d002` was pushed normally.
+
+Boundaries: this is bounded SQL evidence only. Canonical product cases TC013–TC015 remain `NOT_RUN` and Gherkin remains `@not_implemented`. Scheduler/product reconnect integration, invalidation of application-memory caches or already disclosed data, and full product acceptance were not established. No product status transition, merge, deployment, release or production authority was granted.
+
+## 2026-11-05 — R2-US-006 bounded secret-provider evidence
+
+At base HEAD `6ecd6e9a984ea5eb8adc816bb67bff2591033556`, the exact test-file hash `55695d308245883a0af9155f3ff8a23ec0c3ae71bc809d2c44371a7adc64d9f3` updated A21 to assert gateway liveness after each rejected credential-reference case and updated A22 to include password values in the gateway-log scan. Assigned e2e-runner executed A21/A22 on a fresh isolated bootstrap-only environment: 2 passed in 7.48s, exit 0; the owned stack was stopped and its containers/network and ready marker were absent afterward. The environment used synthetic values only.
+
+The related assigned unit command for `tests/test_secrets.py` and the strict MCP schema contract returned 3 passed in 0.43s. This covers file-provider rotation and public argument schema; source inspection confirms GCP requests the latest version, but no real GCP rotation was performed. No real or production secret was used.
+
+Code-reviewer and security-reviewer found no actionable findings in the final test delta. GPT-PM request `0d7dfd56-c1d3-4cd2-aee8-5748c6f0b19b` closed the previous A22 password-log finding and approved bounded TC016–TC017 plus TC018 for the FILE provider only; it authorized local commit and normal PR #42 update. Test-only commit `0de9a2e4e6f815e8db9bdc3dbe8336a8dc35da54` was pushed normally.
+
+Boundaries: internal R2-US-006 status may be `BOUNDED_SCOPE_COMPLETE`, but canonical product TC016–TC018 remain `NOT_RUN` and Gherkin remains `@not_implemented`. GCP rotation, production credential handling, runtime integration, merge, release and production authority are not established.
 ## 2026-11-06 — S4 bounded acceptance: R2-US-014 supplier aliases
 
 GPT-PM request `4c90c23f-c43e-4d7a-87ae-77eb3f53746f` approved `CLOSED_BOUNDED_SPRINT` for TC040–TC042 at exact HEAD `11304e2e4eb6dfad18bf753cd2e05a22c102cd5e` (0 BLOCKER / 0 MAJOR). The assigned functional-test-reviewer reported the focused `test_aliases.py` command at that HEAD: 63 passed, exit 0. Current hardening delta `03da6aa..3f0d444` received no-actionable-findings code and security reviews.
@@ -213,3 +249,11 @@ GPT-PM request 9cd4af00-8c4d-4cf7-a47f-86edc84c584c (correlated reply 57e878c2-d
 The assigned e2e-runner reported 380 focused tests passed in 5.63s at source HEAD 3ab770e1756e0e4795220f3180be15803641e101 after a test-only regression for preserving source-native identity gaps. Internal database/security/code review found no remaining BLOCKER/MAJOR. The allowed scope is in-memory restore-manifest verification, safe evaluation export, and decision-only retention/hold. Real PostgreSQL restore, live export, persistent hold enforcement, deletion, production acceptance, and G6-pre remain NOT_RUN/NOT_VERIFIED/NOT_PASSED.
 
 S9 is CLOSED_BOUNDED_SPRINT (4/4 task-level bounded acceptances); Release 2 remains NO-GO pending G6-pre. GPT-PM did not grant merge/deployment/production authority in this review. The operator separately directed normal sprint PR merges; preserve branch protections and never run or wait for CI.
+
+## 2026-11-07 — S0 bounded sprint closure
+
+R2-US-001 / TC001-TC003 is CLOSED_BOUNDED_SPRINT. GPT-PM request `ef3ea74c-4d6f-42ef-a5d3-7fef5a206cef` approved the prior bounded acceptance and three narrowly scoped corrections for local commit and normal PR #42 update. The corrections are committed at `873b91512f431a745d5005451d21211bcb9a0fe1` and pushed to `codex/s0-r2-tc001-compat-20261104`. The assigned functional-test-reviewer reported 30 passed in 2.98s, exit 0, against staged tree `bac0f6c87a8dea6b97fc35b61f287942ee8cf661`; code-reviewer and python-reviewer found no actionable findings.
+
+R2-US-002 / TC004-TC006 remains CLOSED_BOUNDED_SPRINT under current GPT-PM request `0f93cc1b-e710-44ec-9562-003536db629c`, preserving initial bounded approval `9550946b-a01e-4148-86c0-79db24d9e591`. The package-builder line-ending change leaves the evidence and correlated receipt hashes intact. Ferma remains NO_LICENSE_FOUND and allowed only for private tests, without redistribution or production use.
+
+S0 has 2/2 bounded task acceptances. Canonical product TC001-TC006 remain NOT_RUN and Gherkin remains @not_implemented. PR #42 is updated to `873b91512f431a745d5005451d21211bcb9a0fe1` but remains open and unmerged; the task-specific approvals do not approve the full PR, merge, deployment, release, or production.

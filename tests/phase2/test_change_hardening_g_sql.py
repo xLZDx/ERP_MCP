@@ -24,7 +24,7 @@ import pytest
 from _ed25519_fixtures import pub_hex, sign_hex
 from _pg_harness import fails, require_dsn, throwaway_db
 from test_change_hardening_c_sql import login, sess
-from test_change_ledger_sql import C, T, L, _setup, sha
+from test_change_ledger_sql import C, L, T, _setup, sha
 
 pytestmark = pytest.mark.integration
 
@@ -188,7 +188,7 @@ async def test_g2_checkpoint_signature_is_refused_with_the_old_code_unless_ed255
 
 
 async def test_g2_permit_signature_is_refused_with_the_old_code_unless_ed25519_valid(led):
-    cid, tok, call_id, permit = await led.permitted()
+    cid, tok, _call_id, permit = await led.permitted()
     payload = "change-ledger-permit|v1|" + permit["permit_digest"]
     gen = tok["generation"]
 

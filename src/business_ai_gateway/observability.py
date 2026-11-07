@@ -29,11 +29,18 @@ class OperationalMetrics:
     TOOLS = frozenset({
         "system_status", "sources_list", "source_health", "rsv_metadata", "companies_list",
         "onec_capabilities", "onec_metadata_summary", "onec_find_entities",
-        "accounting_balance_and_turnovers", "accounting_balance_by_analytics",
+        "onec_find_entities_with_property_types",
+        "accounting_balance_and_turnovers", "accounting_balance_and_turnovers_by_account",
+        "accounting_balance_by_analytics",
         "inventory_balance", "inventory_movements",
-        "accounting_posting_rows", "cash_movements", "bank_balance", "receivable_balance",
+        "inventory_balance_with_provenance", "inventory_movements_with_provenance",
+        "accounting_posting_rows", "accounting_posting_rows_with_provenance",
+        "cash_movements", "bank_balance", "receivable_balance",
+        "cash_movements_with_provenance", "bank_balance_with_provenance",
+        "receivable_balance_with_provenance", "payable_balance_with_provenance",
         "payable_balance", "receivable_aging", "payable_aging", "counterparty_duplicate_candidates",
-        "sales_documents", "purchase_documents", "onec_read", "audit",
+        "sales_documents", "sales_documents_with_provenance", "purchase_documents",
+        "purchase_documents_filtered", "onec_read", "audit",
         "external_evidence_manifest", "counterparty_find",
     })  # fixed registered MCP names plus the reserved internal audit-append operation
     DEPENDENCIES = frozenset(

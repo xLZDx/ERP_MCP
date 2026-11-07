@@ -17,17 +17,21 @@ import _approval_envelope
 import asyncpg
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import C, C2, DEFAULT_GRANT, ORG, T, T2, _setup, exp
+from test_change_ledger_sql import C2, DEFAULT_GRANT, T2, C, T, _setup
 
 from business_ai_gateway.phase2.change import canonical_json
-from business_ai_gateway.phase2.change.proposal import DuplicateOverride, payload_digest, payload_to_dict
+from business_ai_gateway.phase2.change.proposal import (
+    DuplicateOverride,
+    payload_digest,
+    payload_to_dict,
+)
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
 from business_ai_gateway.phase2.simulation.clone_1c import SimulatedOneC, encode_payload
 from business_ai_gateway.phase2.simulation.reference_writer import ReferenceWriter, WriteStatus
-from business_ai_gateway.phase2.simulation.synthetic_dispatch import SyntheticDispatchCoordinator
 from business_ai_gateway.phase2.simulation.synthetic_data import SyntheticGenerator
+from business_ai_gateway.phase2.simulation.synthetic_dispatch import SyntheticDispatchCoordinator
 
 pytestmark = pytest.mark.integration
 
@@ -233,7 +237,7 @@ async def test_noncanonical_wire_encoding_cannot_satisfy_the_canonical_receipt_g
 async def test_all_four_operation_kinds_through_writer_receipt_and_ledger_completion(env):
     e = env
     p = e.gen.draft_payload()
-    cid1, out1, rid1 = await full_success(e, ChangeKind.CREATE_DRAFT, p, None, None, target="doc-new")
+    cid1, out1, _rid1 = await full_success(e, ChangeKind.CREATE_DRAFT, p, None, None, target="doc-new")
     ref = e.clone.target_refs()[0]
     assert out1.new_version == "V1" and e.clone.read_state(ref)["status"] == "DRAFT"
 
@@ -433,7 +437,7 @@ async def test_duplicate_override_path_end_to_end(env):
     e = env
     first_payload = e.gen.draft_payload()
     # the first document exists on the clone through its own change
-    cid_a, _, _ = await full_success(e, ChangeKind.CREATE_DRAFT, first_payload, None, None, target="doc-a")
+    _cid_a, _, _ = await full_success(e, ChangeKind.CREATE_DRAFT, first_payload, None, None, target="doc-a")
     first_ref = e.clone.target_refs()[0]
     twin = replace(e.gen.draft_payload(), counterparty_ref=first_payload.counterparty_ref,
                    supplier_document_number=first_payload.supplier_document_number,

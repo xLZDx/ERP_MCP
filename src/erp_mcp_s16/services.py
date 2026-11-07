@@ -2,25 +2,47 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
-from datetime import datetime, timedelta, timezone
-from typing import Literal, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import UUID, uuid4
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
 from business_ai_gateway.phase2.change.proposal import (
-    ProposalContext, approval_canonical_text, digest_of_canonical_text, parse_proposal,
+    ProposalContext,
+    approval_canonical_text,
+    digest_of_canonical_text,
+    parse_proposal,
 )
-from business_ai_gateway.phase2.change.types import ChangeKind, Scope
 from business_ai_gateway.phase2.change.transitions import (
-    BusinessKeyState, Event, LogicalKeyState, ProposeEvidence, ValidateEvidence, apply_transition,
+    BusinessKeyState,
+    Event,
+    LogicalKeyState,
+    ProposeEvidence,
+    ValidateEvidence,
+    apply_transition,
 )
-from business_ai_gateway.phase2.change.types import BudgetCheck, CallerClass, Verification
+from business_ai_gateway.phase2.change.types import (
+    BudgetCheck,
+    CallerClass,
+    ChangeKind,
+    Scope,
+    Verification,
+)
 
 from .contracts import (
-    ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionBinding, DecisionPage,
-    DomainReceipt, NonceSource, PreviewSnapshot, ProposalPort, Result, TargetRecord,
+    ApprovalDecision,
+    ApproverSession,
+    AuthenticatedPrincipal,
+    DecisionBinding,
+    DecisionPage,
+    DomainReceipt,
+    NonceSource,
+    PreviewSnapshot,
+    ProposalPort,
+    Result,
+    TargetRecord,
     canonical_preview_bytes,
 )
 from .core import S16Core
@@ -38,7 +60,7 @@ def _now(clock, now: datetime | None) -> datetime:
     value = now if now is not None else clock.now()
     if type(value) is not datetime or value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("CLOCK_NOT_UTC_AWARE")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def _proposal_context(requester, principal_record, target, *, now, expires_at, change_id, preview_digest):

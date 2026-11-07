@@ -40,6 +40,10 @@ def make_server(exc_factory):
         raise exc_factory()
 
     @server.tool()
+    async def unconfigured_boom(source_id: str = "src-1") -> dict:
+        raise exc_factory()
+
+    @server.tool()
     async def ok(source_id: str = "src-1") -> dict:
         return {"value": 1}
 
@@ -47,6 +51,7 @@ def make_server(exc_factory):
     async def deliberate(source_id: str = "src-1") -> dict:
         raise ToolError("a deliberate, already safe message")
 
+    server.configure_structured_error_tools({"boom"})
     return server
 
 
@@ -94,6 +99,15 @@ async def test_real_1c_refusal_message_reaches_the_client():
 
     assert "payable.balance" in error["safe_message"]
     assert error["code"] == "SEMANTIC_PROFILE_UNVALIDATED"
+
+
+async def test_unconfigured_tool_failure_keeps_the_generic_sdk_error():
+    server = make_server(lambda: RuntimeError("unconfigured failure"))
+
+    with pytest.raises(UnexpectedToolError) as raised:
+        await server.call_tool("unconfigured_boom", {})
+
+    assert not isinstance(raised.value, StructuredToolError)
 
 
 async def test_as_of_without_timezone_is_reported_as_invalid_argument():

@@ -16,10 +16,8 @@ import time
 from pathlib import Path
 
 import asyncpg
-
 from _pg_harness import disposable_cluster, docker, throwaway_db
 from test_change_ledger_sql import C, L, T, _setup
-
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"
@@ -158,7 +156,7 @@ async def main() -> int:
     import os
 
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    container_name = image_tag = image_id = volume_name = None
+    image_tag = image_id = volume_name = None
     async with disposable_cluster() as (dsn, container_name, token):
         identity = docker(
             "inspect", "--format",

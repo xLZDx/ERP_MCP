@@ -6,29 +6,60 @@ import hmac
 import json
 import threading
 from dataclasses import replace
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timedelta, timezone
-from typing import Literal, Mapping
+from typing import Literal
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import KillDecision, KillSubject, evaluate
-from business_ai_gateway.phase2.change.proposal import digest_of_canonical_text
-from business_ai_gateway.phase2.change.proposal import approval_canonical_text
 from business_ai_gateway.phase2.change.policy import LedgerOperation, authorize_operation
-from business_ai_gateway.phase2.change.transitions import (
-    ApproveEvidence, BeginApplyEvidence, ClaimEvidence, Event, ExpireEvidence, NonceState,
-    RejectEvidence, ReleaseClaimEvidence, ReleaseReason, apply_transition,
+from business_ai_gateway.phase2.change.proposal import (
+    approval_canonical_text,
+    digest_of_canonical_text,
 )
-from business_ai_gateway.phase2.change.types import ApprovalType, Authorization, BudgetCheck, CallerClass, Lifecycle
+from business_ai_gateway.phase2.change.transitions import (
+    ApproveEvidence,
+    BeginApplyEvidence,
+    ClaimEvidence,
+    Event,
+    ExpireEvidence,
+    NonceState,
+    RejectEvidence,
+    ReleaseClaimEvidence,
+    ReleaseReason,
+    apply_transition,
+)
+from business_ai_gateway.phase2.change.types import (
+    ApprovalType,
+    Authorization,
+    BudgetCheck,
+    CallerClass,
+    Lifecycle,
+)
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult
 
 from .contracts import (
-    ApprovalDecision, ApproverSession, ApplyPort, ApplyReceipt, AuthenticatedPrincipal,
-    BeginApplyEvidencePort, ChangeStore, ClaimRefused, Claimed, Clock, DecisionBinding, DomainReceipt,
-    KillSwitchPort, canonical_preview_bytes,
-    PrincipalRecord, PrincipalRegistryPort, Result, TargetRegistryPort, VerifyPort,
+    ApplyPort,
+    ApplyReceipt,
+    ApprovalDecision,
+    ApproverSession,
+    AuthenticatedPrincipal,
+    BeginApplyEvidencePort,
+    ChangeStore,
+    Claimed,
+    ClaimRefused,
+    Clock,
+    DecisionBinding,
+    DomainReceipt,
+    KillSwitchPort,
+    PrincipalRecord,
+    PrincipalRegistryPort,
+    Result,
+    TargetRegistryPort,
+    VerifyPort,
     VerifyRequest,
+    canonical_preview_bytes,
 )
 
 
@@ -200,7 +231,7 @@ class S16Core:
                decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
                origin: str, referer: str, confirmation_text: str, now: datetime) -> Result[ApprovalDecision]:
         """Validate every binding before the atomic store operation; retain local replay defense."""
-        from .contracts import TokenClass, PrincipalRole
+        from .contracts import PrincipalRole, TokenClass
         if (not self._principal(approver, TokenClass.APPROVER_SESSION)
                 or PrincipalRole.APPROVER not in approver.roles or approver.mfa_authenticated is not True
                 or type(session) is not ApproverSession
@@ -415,7 +446,7 @@ class S16Core:
         return Result.refused(error)
 
     def apply(self, requester: AuthenticatedPrincipal, change_id: UUID, *, now: datetime) -> Result[ApplyReceipt]:
-        from .contracts import PrincipalRole, TokenClass
+        from .contracts import PrincipalRole
         if (type(change_id) is not UUID or not _aware(now)
                 or not self._live_requester(requester, now, check_epoch=False)):
             return Result.refused(ErrorCode.NOT_ENTITLED)

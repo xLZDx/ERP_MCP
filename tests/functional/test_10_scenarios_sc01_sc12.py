@@ -103,7 +103,7 @@ async def eval_sc03():
 
 
 async def eval_sc04():
-    sales = by_key((await ok_call("sales_documents")).data["value"], "document_number")
+    sales = by_key((await ok_call("sales_documents_with_provenance")).data["value"], "document_number")
     assert sales["SALE-003"]["posted"] is False and sales["SALE-001"]["posted"] is True
     assert "SALE-002" not in sales, "other company's document leaked"
     rows = (await ok_call("accounting_posting_rows", **WIDE)).data["value"]
@@ -117,20 +117,20 @@ async def eval_sc04():
 
 
 async def eval_sc05():
-    moves = (await ok_call("inventory_movements")).data["value"]
+    moves = (await ok_call("inventory_movements_with_provenance")).data["value"]
     item2 = [D(r["quantity_delta"]) for r in moves if r["item_ref"] == ITEM_2]
     assert item2 == [D(10), D(-3)], "return recorded as a negative movement"
     assert D(10) - D(3) == sum(item2) == D(7)
     net: dict[str, Decimal] = {}
     for r in moves:
         net[r["item_ref"]] = net.get(r["item_ref"], D(0)) + D(r["quantity_delta"])
-    bal = {r["item_ref"]: D(r["quantity"]) for r in (await ok_call("inventory_balance")).data["value"]}
+    bal = {r["item_ref"]: D(r["quantity"]) for r in (await ok_call("inventory_balance_with_provenance")).data["value"]}
     assert bal == net == {ITEM_1: D(5), ITEM_2: D(7)}
     return "item 002: receipt 10 - return 3 = on-hand 7; item 001 net 5 = balance 5"
 
 
 async def eval_sc07():
-    sales = by_key((await ok_call("sales_documents")).data["value"], "document_number")
+    sales = by_key((await ok_call("sales_documents_with_provenance")).data["value"], "document_number")
     ref = sales["SALE-004"]["document_ref"]
     assert sales["SALE-004"]["date"].startswith(FIX["backdated-document"]["document_date"])
     dec = (await ok_call("accounting_posting_rows", **DECEMBER)).data["value"]
@@ -142,8 +142,8 @@ async def eval_sc07():
 
 
 async def eval_sc09():
-    cash = (await ok_call("cash_movements", **CASH_WINDOW)).data["value"]
-    bank = (await ok_call("bank_balance")).data["value"]
+    cash = (await ok_call("cash_movements_with_provenance", **CASH_WINDOW)).data["value"]
+    bank = (await ok_call("bank_balance_with_provenance")).data["value"]
     cash_total = sum(D(r["amount_delta"]) for r in cash)
     bank_total = sum(D(r["amount"]) for r in bank)
     f = FIX["cash-bank"]
@@ -163,7 +163,7 @@ async def eval_sc10():
 
 
 async def eval_sc11():
-    moves = (await ok_call("inventory_movements")).data["value"]
+    moves = (await ok_call("inventory_movements_with_provenance")).data["value"]
     item1 = [r for r in moves if r["item_ref"] == ITEM_1]
     receipts = sum(D(r["quantity_delta"]) for r in item1 if r["direction"] == "receipt")
     expense = [D(r["quantity_delta"]) for r in item1 if r["direction"] == "expense"]
@@ -174,7 +174,7 @@ async def eval_sc11():
 
 
 async def eval_sc12():
-    cash = (await ok_call("cash_movements")).data["value"]
+    cash = (await ok_call("cash_movements_with_provenance")).data["value"]
     receipts = sum(D(r["amount_delta"]) for r in cash if r["direction"] == "receipt")
     expense = [D(r["amount_delta"]) for r in cash if r["direction"] == "expense"]
     f = FIX["cash-receipt-expense"]
@@ -272,15 +272,15 @@ async def _isolation(case: str):
         assert parties == {PARTY_OVERDUE}, parties
         assert by_key(body["summary"], "counterparty_id")[PARTY_OVERDUE]["open_balance"] == "999"
     elif case in {"SC04", "SC07"}:
-        sales = {r["document_number"] for r in (await ok_call("sales_documents", two)).data["value"]}
+        sales = {r["document_number"] for r in (await ok_call("sales_documents_with_provenance", two)).data["value"]}
         assert sales.isdisjoint({"SALE-001", "SALE-003", "SALE-004"}), sales
         assert (await ok_call("accounting_posting_rows", two, **WIDE)).data["value"] == []
     elif case in {"SC05", "SC11"}:
-        assert (await ok_call("inventory_movements", two)).data["value"] == []
-        assert (await ok_call("inventory_balance", two)).data["value"] == []
+        assert (await ok_call("inventory_movements_with_provenance", two)).data["value"] == []
+        assert (await ok_call("inventory_balance_with_provenance", two)).data["value"] == []
     elif case in {"SC09", "SC12"}:
-        assert (await ok_call("cash_movements", two, **CASH_WINDOW)).data["value"] == []
-        assert (await ok_call("bank_balance", two)).data["value"] == []
+        assert (await ok_call("cash_movements_with_provenance", two, **CASH_WINDOW)).data["value"] == []
+        assert (await ok_call("bank_balance_with_provenance", two)).data["value"] == []
     elif case == "SC10":
         assert (await ok_call("accounting_balance_and_turnovers", two)).data["value"] == []
     elif case == "SC08":

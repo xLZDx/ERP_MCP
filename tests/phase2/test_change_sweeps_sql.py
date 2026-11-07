@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from _pg_harness import fails, require_dsn, throwaway_db
-from test_change_ledger_sql import BASE, BASES, C, DIGEST, KH, T, L, _setup  # noqa: F401
+from test_change_ledger_sql import BASE, BASES, DIGEST, KH, C, L, T, _setup  # noqa: F401
 
 pytestmark = pytest.mark.integration
 
@@ -103,8 +103,8 @@ async def test_006_objects_are_hardened_and_not_reachable_directly(led):
     assert not bad
     cid = await led.propose()
     for role in ("clt_alice", "clt_bob", "clt_dave", "clt_wri", "clt_wrk", "clt_aud"):
-        for stmt in ("INSERT INTO change_ledger.sweep_counters(tenant_id,company_id,subject_id,kind) "
-                     "VALUES('T1','C1',gen_random_uuid(),'RESOLVE')",
+        for stmt in (("INSERT INTO change_ledger.sweep_counters(tenant_id,company_id,subject_id,kind) "
+                     "VALUES('T1','C1',gen_random_uuid(),'RESOLVE')"),
                      "UPDATE change_ledger.call_deadlines SET deadline_seconds=1",
                      "DELETE FROM change_ledger.sweep_runs",
                      "UPDATE change_ledger.writer_leases SET lease_expires_at=now()",
@@ -160,7 +160,7 @@ async def test_t3_expires_proposed_validated_and_approved_but_not_live_changes(l
 # ============================================================================ T6r
 async def test_t6r_releases_applying_without_permit_only_after_the_ttl(led):
     cid, tok, _ = await led.applying(request_id="r1", base="base-1")
-    p, ptok, _, _ = await led.permitted(request_id="r2", base="base-2")
+    p, _ptok, _, _ = await led.permitted(request_id="r2", base="base-2")
     assert (await sweep(led))["T6r"] == []                                  # default 60 s TTL not elapsed
     assert (await led.rec(cid))["execution_state"] == "APPLYING"
     got = await sweep(led, permit_ttl_seconds=0)

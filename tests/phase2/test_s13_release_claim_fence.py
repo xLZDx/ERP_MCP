@@ -14,11 +14,12 @@ from collections.abc import AsyncIterator
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import disposable_cluster
 from test_change_ledger_sql import _repair
-from test_s13_current_turn_sql import L, _OwnedClusterDsn, _expect_code, _ledger_snapshot, ledger
+from test_s13_current_turn_sql import L, _expect_code, _ledger_snapshot, _OwnedClusterDsn
+from test_s13_current_turn_sql import ledger as _ledger_fixture
 
+ledger = _ledger_fixture
 pytestmark = pytest.mark.integration
 
 T = "T1"
@@ -346,7 +347,7 @@ async def test_s13_uf54_release_claim_missing_token_refuses_without_delta(ledger
 async def test_s13_uf54_release_claim_wrong_scope_token_refuses_without_delta(ledger: L) -> None:
     """S13-UF54-RELEASE-CLAIM-WRONG-SCOPE-01: foreign-scope record returns CHANGE_NOT_FOUND."""
     print(f"S13_DISPOSABLE_DB={ledger.db.name}")
-    change_id, token = await _claimed(ledger)
+    _change_id, token = await _claimed(ledger)
     # The independent fixture requester has access only to T2/C2. Seed that scope's required
     # lifecycle row, then present a valid T1/C1 token through the T2/C2 entry boundary.
     await ledger.conn.execute(
@@ -533,7 +534,7 @@ async def test_s13_uf54_release_claim_refuses_parent_mutated_after_plan_snapshot
         task = asyncio.create_task(
             _call_release_claim(contender, application_name, token["token_id"])
         )
-        waiter_pid = await _wait_for_global_fence_wait(
+        await _wait_for_global_fence_wait(
             ledger.conn, application_name, task, scenario_id, global_key
         )
         assert await _ledger_snapshot(ledger.conn) == before, (

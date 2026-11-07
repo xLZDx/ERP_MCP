@@ -5,14 +5,59 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from business_ai_gateway.phase2.change import (
-    SWITCH_OFF, ApprovalType, ApproveEvidence, Attribution, Authorization, BeginApplyEvidence, BudgetCheck,
-    CallerClass, CallOwnership, CancelPermitEvidence, ChangeKind, ChangeRecord, ClaimEvidence, CompletionEvidence,
-    Dispatch, DispatchEvidence, EffectKnown, Event, EvidenceKind, ExpireEvidence, ErrorCode, Execution,
-    FailureStage, Hold, HoldCause, KillMode, Lifecycle, LogicalKeyState, NonceState, OperatorResolveEvidence,
-    PermitEvidence, PermitNotIssuedEvidence, ProofClass, ProposalContext, ProposeEvidence, RejectEvidence,
-    ReleaseClaimEvidence, ReleaseReason, RepairAuth, RepairContext, Reservation, ResolveEvidence, ResolveOutcome,
-    RevokeCause, RevokeEvidence, Scope, SwitchReading, TokenState, ValidateEvidence, BusinessKeyState,
-    Verification, VerifyEvidence, parse_proposal,
+    SWITCH_OFF,
+    ApprovalType,
+    ApproveEvidence,
+    Attribution,
+    Authorization,
+    BeginApplyEvidence,
+    BudgetCheck,
+    BusinessKeyState,
+    CallerClass,
+    CallOwnership,
+    CancelPermitEvidence,
+    ChangeKind,
+    ChangeRecord,
+    ClaimEvidence,
+    CompletionEvidence,
+    Dispatch,
+    DispatchEvidence,
+    EffectKnown,
+    ErrorCode,
+    Event,
+    EvidenceKind,
+    Execution,
+    ExpireEvidence,
+    FailureStage,
+    Hold,
+    HoldCause,
+    KillMode,
+    Lifecycle,
+    LogicalKeyState,
+    NonceState,
+    OperatorResolveEvidence,
+    PermitEvidence,
+    PermitNotIssuedEvidence,
+    ProofClass,
+    ProposalContext,
+    ProposeEvidence,
+    RejectEvidence,
+    ReleaseClaimEvidence,
+    ReleaseReason,
+    RepairAuth,
+    RepairContext,
+    Reservation,
+    ResolveEvidence,
+    ResolveOutcome,
+    RevokeCause,
+    RevokeEvidence,
+    Scope,
+    SwitchReading,
+    TokenState,
+    ValidateEvidence,
+    Verification,
+    VerifyEvidence,
+    parse_proposal,
 )
 
 T0 = datetime(2026, 10, 12, 12, 0, 0, tzinfo=UTC)
@@ -53,10 +98,10 @@ def raw_create(**over) -> dict:
 
 
 def ctx(**over) -> ProposalContext:
-    base = dict(change_id="c1", requester_principal="sub-req", requester_person_id=REQUESTER, scope=SCOPE,
-                created_at=T0, expires_at=APPROVAL_EXPIRES, auth_epoch_at_proposal=3,
-                epoch_dependencies=(("approver", 2), ("requester", 1)), preview_digest="a" * 64,
-                business_state_digest="b" * 64, qualified_currencies=frozenset({"RUB"}))
+    base = {"change_id": "c1", "requester_principal": "sub-req", "requester_person_id": REQUESTER, "scope": SCOPE,
+                "created_at": T0, "expires_at": APPROVAL_EXPIRES, "auth_epoch_at_proposal": 3,
+                "epoch_dependencies": (("approver", 2), ("requester", 1)), "preview_digest": "a" * 64,
+                "business_state_digest": "b" * 64, "qualified_currencies": frozenset({"RUB"})}
     base.update(over)
     return ProposalContext(**base)
 
@@ -75,8 +120,8 @@ def proposal(raw: dict | None = None, **ctx_over):
 
 
 def rec(**over) -> ChangeRecord:
-    base = dict(change_id="c1", kind=ChangeKind.CREATE_DRAFT, scope=SCOPE, requester_person_id=REQUESTER,
-                expires_at=APPROVAL_EXPIRES)
+    base = {"change_id": "c1", "kind": ChangeKind.CREATE_DRAFT, "scope": SCOPE, "requester_person_id": REQUESTER,
+                "expires_at": APPROVAL_EXPIRES}
     base.update(over)
     return ChangeRecord(**base)
 
@@ -90,22 +135,22 @@ def validated(**o) -> ChangeRecord:
 
 
 def approved(**o) -> ChangeRecord:
-    base = dict(authorization=Authorization.APPROVED, approver_person_id=APPROVER, approval_id="ap1")
+    base = {"authorization": Authorization.APPROVED, "approver_person_id": APPROVER, "approval_id": "ap1"}
     base.update(o)
     return validated(**base)
 
 
 def claimed(**o) -> ChangeRecord:
-    base = dict(authorization=Authorization.CLAIMED, token=TokenState.ISSUED, claim_generation=1,
-                claim_expires_at=T0 + timedelta(seconds=120), reservation=Reservation.RESERVED, target_lock=True,
-                key_lock=True, lease=True)
+    base = {"authorization": Authorization.CLAIMED, "token": TokenState.ISSUED, "claim_generation": 1,
+                "claim_expires_at": T0 + timedelta(seconds=120), "reservation": Reservation.RESERVED, "target_lock": True,
+                "key_lock": True, "lease": True}
     base.update(o)
     return approved(**base)
 
 
 def applying(dispatch: Dispatch = Dispatch.NOT_PERMITTED, **o) -> ChangeRecord:
-    base = dict(execution=Execution.APPLYING, token=TokenState.CONSUMED, dispatch=dispatch,
-                permit_expires_at=T0 + timedelta(seconds=60))
+    base = {"execution": Execution.APPLYING, "token": TokenState.CONSUMED, "dispatch": dispatch,
+                "permit_expires_at": T0 + timedelta(seconds=60)}
     base.update(o)
     return claimed(**base)
 
@@ -115,7 +160,7 @@ def dispatched(**o) -> ChangeRecord:
 
 
 def unknown(**o) -> ChangeRecord:
-    base = dict(execution=Execution.APPLY_UNKNOWN, call_ownership=CallOwnership.POSSIBLY_EXECUTING)
+    base = {"execution": Execution.APPLY_UNKNOWN, "call_ownership": CallOwnership.POSSIBLY_EXECUTING}
     base.update(o)
     return dispatched(**base)
 
@@ -125,14 +170,14 @@ def triage(**o) -> ChangeRecord:
 
 
 def applied(**o) -> ChangeRecord:
-    base = dict(execution=Execution.APPLIED, call_ownership=CallOwnership.PROVEN_FINISHED,
-                attribution=Attribution.PROVEN, reservation=Reservation.CONSUMED, key_lock=False, lease=False)
+    base = {"execution": Execution.APPLIED, "call_ownership": CallOwnership.PROVEN_FINISHED,
+                "attribution": Attribution.PROVEN, "reservation": Reservation.CONSUMED, "key_lock": False, "lease": False}
     base.update(o)
     return dispatched(**base)
 
 
 def failed_verify(**o) -> ChangeRecord:
-    base = dict(verification=Verification.FAILED_VERIFY, effect_known=EffectKnown.YES)
+    base = {"verification": Verification.FAILED_VERIFY, "effect_known": EffectKnown.YES}
     base.update(o)
     return applied(**base)
 
@@ -141,24 +186,24 @@ def failed_verify(**o) -> ChangeRecord:
 
 def repair_rec(builder=approved, **o) -> ChangeRecord:
     """An UNPOST repair for parent1; ``builder`` picks the state (approved, claimed, applying, ...)."""
-    base = dict(change_id=REPAIR_ID, kind=ChangeKind.UNPOST, parent_change_id="parent1", target_ref="doc1",
-                approver_person_id=REPAIR_APPROVER, approval_id="ap2")
+    base = {"change_id": REPAIR_ID, "kind": ChangeKind.UNPOST, "parent_change_id": "parent1", "target_ref": "doc1",
+                "approver_person_id": REPAIR_APPROVER, "approval_id": "ap2"}
     base.update(o)
     return builder(**base)
 
 
 def repair_live(builder=claimed, **o) -> ChangeRecord:
     """A repair that already passed T5 (carries R and ``repair_for``)."""
-    base = dict(repair_for="parent1", repair=REPAIR_AUTH)
+    base = {"repair_for": "parent1", "repair": REPAIR_AUTH}
     base.update(o)
     return repair_rec(builder, **base)
 
 
 def repair_ctx(owner: str | None = "parent1", **over) -> RepairContext:
-    base = dict(parent_change_id="parent1", parent_verification=Verification.FAILED_VERIFY,
-                parent_effect_known=EffectKnown.YES, parent_requester_person_id=PARENT_REQUESTER, halt=HALT,
-                current_target_ref="doc1", current_version="v7", approval_fresh=True, approval_revoked=False,
-                other_repair_exists=False, target_lock_owner=owner)
+    base = {"parent_change_id": "parent1", "parent_verification": Verification.FAILED_VERIFY,
+                "parent_effect_known": EffectKnown.YES, "parent_requester_person_id": PARENT_REQUESTER, "halt": HALT,
+                "current_target_ref": "doc1", "current_version": "v7", "approval_fresh": True, "approval_revoked": False,
+                "other_repair_exists": False, "target_lock_owner": owner}
     base.update(over)
     return RepairContext(**base)
 
@@ -169,7 +214,7 @@ def good(event: Event, record: ChangeRecord | None = None, now: datetime = T0, *
     """Evidence that passes every guard of ``event`` for ``record`` (state-dependent fields come from it)."""
     gen = record.claim_generation if record is not None else 0
     is_repair = record is not None and record.parent_change_id == "parent1" and record.kind is ChangeKind.UNPOST
-    common = dict(now=now, kill=SWITCH_OFF)
+    common = {"now": now, "kill": SWITCH_OFF}
     holds = (HALT,) if is_repair else ()
     builders = {
         Event.PROPOSE: lambda: ProposeEvidence(

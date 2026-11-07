@@ -14,10 +14,32 @@ from enum import StrEnum
 from typing import Final
 
 __all__ = [
-    "ApprovalType", "Attribution", "BudgetCheck", "CallOwnership", "CallerClass", "ChangeKind",
-    "ChangeRecord", "Dispatch", "EffectKnown", "EvidenceKind", "Execution", "FailureStage", "Hold", "HoldCause",
-    "KillMode", "Lifecycle", "NonceState", "ProofClass", "RepairAuth", "Reservation", "Scope", "TokenState",
-    "Verification", "Authorization", "is_aware_datetime", "is_identity_text",
+    "ApprovalType",
+    "Attribution",
+    "Authorization",
+    "BudgetCheck",
+    "CallOwnership",
+    "CallerClass",
+    "ChangeKind",
+    "ChangeRecord",
+    "Dispatch",
+    "EffectKnown",
+    "EvidenceKind",
+    "Execution",
+    "FailureStage",
+    "Hold",
+    "HoldCause",
+    "KillMode",
+    "Lifecycle",
+    "NonceState",
+    "ProofClass",
+    "RepairAuth",
+    "Reservation",
+    "Scope",
+    "TokenState",
+    "Verification",
+    "is_aware_datetime",
+    "is_identity_text",
 ]
 
 MAX_IDENTITY_CHARS: Final = 200

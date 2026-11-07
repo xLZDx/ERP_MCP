@@ -4,9 +4,10 @@ from __future__ import annotations
 import inspect
 import ipaddress
 import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Mapping, Protocol
+from datetime import UTC, datetime
+from typing import Any, Protocol
 from urllib.parse import urlsplit
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
@@ -134,7 +135,7 @@ def _same_origin(headers: Mapping[str, str], expected: str, *, required: bool) -
 
 
 def _positive_identity(identity: object, *, approval: bool) -> bool:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if approval:
         return (type(identity) is ApproverSession
                 and type(identity.principal) is AuthenticatedPrincipal

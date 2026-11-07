@@ -136,7 +136,7 @@ async def test_sc11_inventory_signed_deltas_through_mcp_fixture_profile_and_audi
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         result = await stack.call(
-            "inventory_movements", source_id=stack.source_id,
+            "inventory_movements_with_provenance", source_id=stack.source_id,
             company_id=str(stack.companies[ORG_ONE]), start_period=START, end_period=END,
         )
         assert not result.is_error
@@ -150,13 +150,13 @@ async def test_sc11_inventory_signed_deltas_through_mcp_fixture_profile_and_audi
         assert body["native_reconciliation"] == "NOT_RUN"
         assert "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE" in body["warnings"]
         assert body["profile_fingerprint"].startswith("synthetic-fixture:")
-        rows = await stack.audit_rows("inventory_movements")
+        rows = await stack.audit_rows("inventory_movements_with_provenance")
         success = [r for r in rows if r["detail_code"] == "SYNTHETIC_FIXTURE_PROFILE"]
         assert len(success) == 1 and success[0]["outcome"] == "success"
         assert success[0]["profile_fingerprint"] == body["profile_fingerprint"]
         # company two shares the profile but the company dimension filter yields no company-one rows
         other = stack.payload(await stack.call(
-            "inventory_movements", source_id=stack.source_id,
+            "inventory_movements_with_provenance", source_id=stack.source_id,
             company_id=str(stack.companies[ORG_TWO]), start_period=START, end_period=END,
         ))
         assert other["value"] == []
@@ -170,13 +170,13 @@ async def test_sc12_cash_signed_deltas_through_mcp(fake1c, fake_sidecar, tmp_pat
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         body = stack.payload(await stack.call(
-            "cash_movements", source_id=stack.source_id,
+            "cash_movements_with_provenance", source_id=stack.source_id,
             company_id=str(stack.companies[ORG_ONE]), start_period=START, end_period=END,
         ))
         deltas = [Decimal(row["amount_delta"]) for row in body["value"]]
         assert deltas == [Decimal(10), Decimal(-3)] and sum(deltas) == 7
         assert body["profile_kind"] == "SYNTHETIC_FIXTURE" and body["native_reconciliation"] == "NOT_RUN"
-        rows = await stack.audit_rows("cash_movements")
+        rows = await stack.audit_rows("cash_movements_with_provenance")
         assert any(r["detail_code"] == "SYNTHETIC_FIXTURE_PROFILE" for r in rows)
     finally:
         await stack.db.close()
@@ -264,7 +264,7 @@ async def test_validated_db_profile_always_wins_over_fixture_and_fixture_never_a
         "end_period": END,
     }
     try:
-        await stack.call("inventory_movements", **args)  # fixture path records capabilities
+        await stack.call("inventory_movements_with_provenance", **args)  # fixture path records capabilities
         assert await pool.fetchval(
             "SELECT count(*) FROM bag.semantic_profiles WHERE source_id=$1", stack.source_id
         ) == 0
@@ -295,7 +295,7 @@ async def test_validated_db_profile_always_wins_over_fixture_and_fixture_never_a
             "UPDATE bag.semantic_profiles SET status='VALIDATED', validated_by='t', "
             "validated_at=now(), validation_evidence_json=$2::jsonb WHERE profile_id=$1",
             profile_id, json.dumps(evidence))
-        body = stack.payload(await stack.call("inventory_movements", **args))
+        body = stack.payload(await stack.call("inventory_movements_with_provenance", **args))
         assert body["profile_kind"] == "VALIDATED_NATIVE"
         assert "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE" not in body["warnings"]
         assert not body["profile_fingerprint"].startswith("synthetic-fixture:")

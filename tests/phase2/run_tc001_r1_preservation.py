@@ -20,13 +20,12 @@ import posixpath
 import re
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
-import tarfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
-
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = "57eb5b0696063237a43f5d1baf0a646278f5d832"
@@ -235,21 +234,56 @@ def selected_pytest_support_paths() -> list[str]:
     return sorted(selected | support)
 
 
+def git_clean_blob_oid(relative_path: str, content: bytes) -> str | None:
+    """Return the blob OID Git would store after path-specific clean filters."""
+    result = subprocess.run(
+        ["git", "hash-object", f"--path={relative_path}", "--stdin"], check=False,
+        cwd=ROOT,
+        input=content,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.decode("ascii", errors="replace").strip() or None
+
+
+def candidate_blob_oid(ref: str, relative_path: str) -> str | None:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{ref}:{relative_path}"], check=False,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def candidate_path_blob_identity(
+    ref: str, relative_path: str, content: bytes,
+) -> dict[str, str | None]:
+    """Identify working-tree bytes by the Git blob they clean to for this path."""
+    return {
+        "working_file_git_clean_blob_oid": git_clean_blob_oid(relative_path, content),
+        "candidate_head_blob_oid": candidate_blob_oid(ref, relative_path),
+    }
+
+
 def candidate_blob_inventory_matches(artifact_hashes: dict[str, dict[str, Any]]) -> bool:
     return bool(artifact_hashes) and all(
-        row.get("candidate_head_blob_sha256") is not None
-        and row.get("working_file_sha256") == row.get("candidate_head_blob_sha256")
+        row.get("candidate_head_blob_oid") is not None
+        and row.get("working_file_git_clean_blob_oid") == row.get("candidate_head_blob_oid")
         for row in artifact_hashes.values()
     )
 
 
 def tool_version(argv: list[str]) -> str:
     try:
-        result = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(argv, check=False, cwd=ROOT, capture_output=True, text=True)
     except FileNotFoundError:
         if argv and argv[0] == "corepack":
             result = subprocess.run(
-                [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "corepack pnpm --version"],
+                [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "corepack pnpm --version"], check=False,
                 cwd=ROOT, capture_output=True, text=True,
             )
         else:
@@ -265,9 +299,9 @@ def classify_path(path: str) -> dict[str, str]:
         "src/business_ai_gateway/invoice_rules.py",
     }:
         return {"class": "R1_internal_normalized_projection", "predicate": "P04", "rationale": "Candidate module docstrings identify internal normalized-fact/profile projections without source protocol/query integration; conditional exclusion from active R1 routes requires AST importer/entrypoint reconciliation recorded under P01."}
-    if path.startswith("src/business_ai_gateway/phase2/") or path.startswith("src/erp_mcp_private_writer/") or path.startswith("src/erp_mcp_s15/") or path.startswith("src/erp_mcp_s16/") or path.startswith("db/phase2/"):
+    if path.startswith(("src/business_ai_gateway/phase2/", "src/erp_mcp_private_writer/", "src/erp_mcp_s15/", "src/erp_mcp_s16/", "db/phase2/")):
         return {"class": "R2_isolated", "predicate": "P11", "rationale": "Separate Phase 2 package/path boundary; P01 records and requires no static import reachability from named R1 roots."}
-    if path.startswith("src/business_ai_gateway/testbed/") or path.startswith(("testbed/", "testlane/")):
+    if path.startswith(("src/business_ai_gateway/testbed/", "testbed/", "testlane/")):
         return {"class": "test_fixture", "predicate": "P05/P06/P07", "rationale": "Synthetic fixture support only; not a production binding."}
     if path.startswith("onec_com_bridge/"):
         return {"class": "R1_shared_adapter", "predicate": "P06/P11", "rationale": "Standalone OneC COM bridge service reached by the R1 COM adapter; loopback/identity and no-write boundaries are covered under P06/P11."}
@@ -275,7 +309,7 @@ def classify_path(path: str) -> dict[str, str]:
         return {"class": "R1_shared_adapter", "predicate": "P06/P11", "rationale": "COM loopback/response contract and read-only surface."}
     if path.startswith("src/business_ai_gateway/adapters/onec/rsv"):
         return {"class": "R1_shared_adapter", "predicate": "P07", "rationale": "Pinned read-only RSV process/secret boundary."}
-    if path.startswith("src/business_ai_gateway/adapters/onec/") or path.startswith("adapters/odata-sidecar/"):
+    if path.startswith(("src/business_ai_gateway/adapters/onec/", "adapters/odata-sidecar/")):
         return {"class": "R1_shared_adapter", "predicate": "P05/P02", "rationale": "OneC source pinning, metadata and sidecar egress behavior."}
     if path.startswith("src/business_ai_gateway/admin_") or "/static/admin." in path:
         return {"class": "R1_admin_boundary", "predicate": "P10/P11", "rationale": "Restricted admin roles, mutation scope and privilege boundary."}
@@ -299,7 +333,7 @@ def classify_path(path: str) -> dict[str, str]:
             why = "R1 shared/domain module inventoried; acceptance evidence is through scoped offline behavior checks and remains subject to independent review."
         return {"class": "R1_shared_runtime", "predicate": pred, "rationale": why}
     if path.startswith("scripts/"):
-        if path.endswith("assemble_release_evidence.py") or path.endswith("release_evidence_bundle.py"):
+        if path.endswith(("assemble_release_evidence.py", "release_evidence_bundle.py")):
             return {"class": "release_evidence_tooling", "predicate": "P12", "rationale": "Exact revision evidence assembly; no live deployment is inferred."}
         return {"class": "offline_or_operational_tooling", "predicate": "P01/P11", "rationale": "Inventoried tooling; not treated as runtime product acceptance."}
     if path.startswith(("tests/", "features/")):
@@ -333,7 +367,7 @@ def classify_path(path: str) -> dict[str, str]:
 
 def git_blob(ref: str, path: str) -> bytes | None:
     result = subprocess.run(
-        ["git", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True,
+        ["git", "show", f"{ref}:{path}"], check=False, cwd=ROOT, capture_output=True,
     )
     return result.stdout if result.returncode == 0 else None
 
@@ -355,9 +389,7 @@ def python_module_surface(content: bytes | None, path: str) -> dict[str, Any]:
                 names.add(node.name)
             for decorator in node.decorator_list:
                 func = decorator.func if isinstance(decorator, ast.Call) else decorator
-                if isinstance(func, ast.Attribute) and func.attr in registration_methods:
-                    entrypoints.add(f"decorator:{node.name}:{ast.unparse(decorator)}")
-                elif isinstance(func, ast.Name) and func.id in registration_methods:
+                if isinstance(func, ast.Attribute) and func.attr in registration_methods or isinstance(func, ast.Name) and func.id in registration_methods:
                     entrypoints.add(f"decorator:{node.name}:{ast.unparse(decorator)}")
         elif isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -737,7 +769,7 @@ def admin_route_inventory() -> dict[str, Any]:
         "literal_ui_routes_get_only": ui_direct_guarded,
     }
     baseline_present = subprocess.run(
-        ["git", "cat-file", "-e", f"{BASELINE}:src/business_ai_gateway/admin_api.py"],
+        ["git", "cat-file", "-e", f"{BASELINE}:src/business_ai_gateway/admin_api.py"], check=False,
         cwd=ROOT, capture_output=True,
     ).returncode == 0
     return {
@@ -757,7 +789,7 @@ def static_predicates(rows: list[dict[str, str]], candidate: str) -> dict[str, d
     ancestry = {}
     for label, ref in (("baseline", BASELINE), ("checkpoint", CHECKPOINT)):
         result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", ref, candidate], cwd=ROOT,
+            ["git", "merge-base", "--is-ancestor", ref, candidate], check=False, cwd=ROOT,
             capture_output=True, text=True,
         )
         ancestry[label] = {"ref": ref, "is_ancestor": result.returncode == 0, "exit_code": result.returncode}
@@ -773,7 +805,7 @@ def static_predicates(rows: list[dict[str, str]], candidate: str) -> dict[str, d
         and path_surface_complete
     )
     baseline_admin_api = subprocess.run(
-        ["git", "cat-file", "-e", f"{BASELINE}:src/business_ai_gateway/admin_api.py"],
+        ["git", "cat-file", "-e", f"{BASELINE}:src/business_ai_gateway/admin_api.py"], check=False,
         cwd=ROOT, capture_output=True,
     ).returncode == 0
     results["P01"] = {
@@ -1110,7 +1142,7 @@ def run_pytest() -> dict[str, Any]:
             *all_requested,
         ]
         started = time.perf_counter()
-        result = subprocess.run(argv, cwd=ROOT, env=env, capture_output=True, text=True)
+        result = subprocess.run(argv, check=False, cwd=ROOT, env=env, capture_output=True, text=True)
         duration = round(time.perf_counter() - started, 3)
         cases = test_case_rows(xml_path) if xml_path.is_file() else []
     by_predicate: dict[str, dict[str, Any]] = {}
@@ -1147,18 +1179,20 @@ def run_pytest() -> dict[str, Any]:
 
 
 def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
-    manifest_path = ROOT / "adapters/odata-sidecar/package.json"
-    lock_path = ROOT / "adapters/odata-sidecar/package-lock.json"
+    manifest_relative_path = "adapters/odata-sidecar/package.json"
+    lock_relative_path = "adapters/odata-sidecar/package-lock.json"
+    manifest_path = ROOT / manifest_relative_path
+    lock_path = ROOT / lock_relative_path
     manifest_bytes = manifest_path.read_bytes()
     lock_bytes = lock_path.read_bytes()
     manifest = json.loads(manifest_bytes)
     lock = json.loads(lock_bytes)
     candidate_manifest_result = subprocess.run(
-        ["git", "show", f"{candidate}:adapters/odata-sidecar/package.json"],
+        ["git", "show", f"{candidate}:adapters/odata-sidecar/package.json"], check=False,
         cwd=ROOT, capture_output=True,
     )
     candidate_lock_result = subprocess.run(
-        ["git", "show", f"{candidate}:adapters/odata-sidecar/package-lock.json"],
+        ["git", "show", f"{candidate}:adapters/odata-sidecar/package-lock.json"], check=False,
         cwd=ROOT, capture_output=True,
     )
     candidate_manifest = (
@@ -1168,6 +1202,12 @@ def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
     candidate_lock = (
         json.loads(candidate_lock_result.stdout)
         if candidate_lock_result.returncode == 0 else None
+    )
+    manifest_blob_identity = candidate_path_blob_identity(
+        candidate, manifest_relative_path, manifest_bytes,
+    )
+    lock_blob_identity = candidate_path_blob_identity(
+        candidate, lock_relative_path, lock_bytes,
     )
     return {
         "manifest_path": "adapters/odata-sidecar/package.json",
@@ -1179,13 +1219,19 @@ def sidecar_dependency_provenance(candidate: str) -> dict[str, Any]:
         "working_tree_lock_resolved_undici": lock.get("packages", {}).get("node_modules/undici", {}).get("version"),
         "candidate_head_manifest_sha256": hashlib.sha256(candidate_manifest_result.stdout).hexdigest() if candidate_manifest is not None else None,
         "candidate_head_lockfile_sha256": hashlib.sha256(candidate_lock_result.stdout).hexdigest() if candidate_lock is not None else None,
+        "working_tree_manifest_git_clean_blob_oid": manifest_blob_identity["working_file_git_clean_blob_oid"],
+        "candidate_head_manifest_blob_oid": manifest_blob_identity["candidate_head_blob_oid"],
+        "working_tree_lockfile_git_clean_blob_oid": lock_blob_identity["working_file_git_clean_blob_oid"],
+        "candidate_head_lockfile_blob_oid": lock_blob_identity["candidate_head_blob_oid"],
         "candidate_head_manifest_undici": candidate_manifest.get("dependencies", {}).get("undici") if candidate_manifest is not None else None,
         "candidate_head_lock_root_undici": candidate_lock.get("packages", {}).get("", {}).get("dependencies", {}).get("undici") if candidate_lock is not None else None,
         "candidate_head_lock_resolved_undici": candidate_lock.get("packages", {}).get("node_modules/undici", {}).get("version") if candidate_lock is not None else None,
         "working_tree_matches_candidate_head": (
             candidate_manifest is not None and candidate_lock is not None
-            and hashlib.sha256(manifest_bytes).digest() == hashlib.sha256(candidate_manifest_result.stdout).digest()
-            and hashlib.sha256(lock_bytes).digest() == hashlib.sha256(candidate_lock_result.stdout).digest()
+            and candidate_blob_inventory_matches({
+                manifest_relative_path: manifest_blob_identity,
+                lock_relative_path: lock_blob_identity,
+            })
         ),
         "candidate_head_commit": candidate,
     }
@@ -1274,15 +1320,21 @@ def p12_run_provenance(
     test_artifact_hashes = {}
     for relative_path in test_artifact_paths:
         source_path = ROOT / relative_path
-        current_hash = hashlib.sha256(source_path.read_bytes()).hexdigest() if source_path.is_file() else None
+        working_content = source_path.read_bytes() if source_path.is_file() else None
+        current_hash = hashlib.sha256(working_content).hexdigest() if working_content is not None else None
         candidate_hash = sha256_at(candidate, relative_path)
+        working_blob_oid = (
+            git_clean_blob_oid(relative_path, working_content)
+            if working_content is not None else None
+        )
+        candidate_oid = candidate_blob_oid(candidate, relative_path)
         test_artifact_hashes[relative_path] = {
             "path": relative_path,
             "working_file_sha256": current_hash,
             "candidate_head_blob_sha256": candidate_hash,
-            "working_file_matches_candidate_blob": (
-                candidate_hash is not None and current_hash == candidate_hash
-            ),
+            "working_file_git_clean_blob_oid": working_blob_oid,
+            "candidate_head_blob_oid": candidate_oid,
+            "working_file_matches_candidate_blob": candidate_oid is not None and working_blob_oid == candidate_oid,
         }
     test_artifacts_match = candidate_blob_inventory_matches(test_artifact_hashes)
     head_unchanged = head_after_run == candidate
@@ -1341,21 +1393,21 @@ def p12_run_provenance(
 def build_candidate_image(candidate: str) -> dict[str, Any]:
     root_context_paths = [".dockerignore", "adapters/odata-sidecar"]
     root_archive_argv = ["git", "archive", "--format=tar", candidate, *root_context_paths]
-    root_archive = subprocess.run(root_archive_argv, cwd=ROOT, capture_output=True)
+    root_archive = subprocess.run(root_archive_argv, check=False, cwd=ROOT, capture_output=True)
     submodule_path = "vendor/reference/1c-odata-v3"
     gitlink_result = subprocess.run(
-        ["git", "ls-tree", candidate, submodule_path], cwd=ROOT,
+        ["git", "ls-tree", candidate, submodule_path], check=False, cwd=ROOT,
         capture_output=True, text=True,
     )
     gitlink_fields = gitlink_result.stdout.strip().split()
     gitlink_sha = gitlink_fields[2] if len(gitlink_fields) >= 3 and gitlink_fields[0] == "160000" else None
     submodule_head_result = subprocess.run(
-        ["git", "-C", submodule_path, "rev-parse", "HEAD"], cwd=ROOT,
+        ["git", "-C", submodule_path, "rev-parse", "HEAD"], check=False, cwd=ROOT,
         capture_output=True, text=True,
     )
     submodule_head = submodule_head_result.stdout.strip() if submodule_head_result.returncode == 0 else None
     submodule_status_result = subprocess.run(
-        ["git", "-C", submodule_path, "status", "--porcelain", "--untracked-files=all"],
+        ["git", "-C", submodule_path, "status", "--porcelain", "--untracked-files=all"], check=False,
         cwd=ROOT, capture_output=True, text=True,
     )
     submodule_status = submodule_status_result.stdout.splitlines() if submodule_status_result.returncode == 0 else [submodule_status_result.stderr.strip()]
@@ -1368,7 +1420,7 @@ def build_candidate_image(candidate: str) -> dict[str, Any]:
         if gitlink_sha is not None else None
     )
     submodule_archive = (
-        subprocess.run(submodule_archive_argv, cwd=ROOT, capture_output=True)
+        subprocess.run(submodule_archive_argv, check=False, cwd=ROOT, capture_output=True)
         if submodule_archive_argv is not None and submodule_clean_at_gitlink else None
     )
     image_tag = f"erp-mcp-tc001-sidecar:{candidate[:12]}-{time.time_ns()}"
@@ -1394,7 +1446,7 @@ def build_candidate_image(candidate: str) -> dict[str, Any]:
                 "--label", f"com.erp-mcp.tc001.candidate_sha={candidate}",
                 "--file", str(Path(context_dir) / "adapters/odata-sidecar/Dockerfile"), context_dir,
             ]
-            build = subprocess.run(build_argv, cwd=ROOT, capture_output=True)
+            build = subprocess.run(build_argv, check=False, cwd=ROOT, capture_output=True)
     root_archive_ok = root_archive.returncode == 0
     submodule_archive_ok = submodule_archive is not None and submodule_archive.returncode == 0
     return {
@@ -1465,7 +1517,7 @@ def run_node_sidecar(candidate: str, expected_undici_version: str | None) -> dic
                 "network": "none",
             }
         inspect_result = subprocess.run(
-            ["docker", "image", "inspect", image_tag], cwd=ROOT,
+            ["docker", "image", "inspect", image_tag], check=False, cwd=ROOT,
             capture_output=True, text=True,
         )
         if inspect_result.returncode != 0:
@@ -1515,7 +1567,7 @@ def run_node_sidecar(candidate: str, expected_undici_version: str | None) -> dic
             "process.stdout.write(JSON.stringify(require('/app/node_modules/undici/package.json').version))",
         ]
         dependency_probe = subprocess.run(
-            dependency_probe_argv, cwd=ROOT, capture_output=True, text=True,
+            dependency_probe_argv, check=False, cwd=ROOT, capture_output=True, text=True,
         )
         installed_undici_version = None
         if dependency_probe.returncode == 0:
@@ -1528,7 +1580,7 @@ def run_node_sidecar(candidate: str, expected_undici_version: str | None) -> dic
             and expected_undici_version is not None
             and installed_undici_version == expected_undici_version
         )
-        result = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(argv, check=False, cwd=ROOT, capture_output=True, text=True)
         test_exit_ok = result.returncode == 0
         return {
             "argv": argv,
@@ -1588,7 +1640,7 @@ def run_node_sidecar(candidate: str, expected_undici_version: str | None) -> dic
 
 
 def sha256_at(ref: str, path: str) -> str | None:
-    result = subprocess.run(["git", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True)
+    result = subprocess.run(["git", "show", f"{ref}:{path}"], check=False, cwd=ROOT, capture_output=True)
     if result.returncode:
         return None
     return hashlib.sha256(result.stdout).hexdigest()

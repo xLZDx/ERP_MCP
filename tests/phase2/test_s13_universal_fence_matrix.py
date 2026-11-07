@@ -15,23 +15,25 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-import uuid
 
 import asyncpg
 import pytest
 import pytest_asyncio
-
 from _pg_harness import disposable_cluster
 from test_s13_current_turn_sql import (
     L,
-    _OwnedClusterDsn,
     _ledger_snapshot,
-    ledger,
+    _OwnedClusterDsn,
+)
+from test_s13_current_turn_sql import (
+    ledger as _ledger_fixture,
 )
 
+ledger = _ledger_fixture
 pytestmark = pytest.mark.integration
 
 T = "T1"

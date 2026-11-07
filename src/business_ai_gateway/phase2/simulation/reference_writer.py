@@ -26,7 +26,13 @@ from typing import Final
 
 from ..change.types import ChangeKind
 from .clone_1c import (
-    ApplyResult, CloneCrash, CloneRejected, CloneTimeout, SimulatedOneC, verify_clone_receipt)
+    ApplyResult,
+    CloneCrash,
+    CloneRejected,
+    CloneTimeout,
+    SimulatedOneC,
+    verify_clone_receipt,
+)
 
 __all__ = ["ApprovedDigestMismatch", "ReferenceWriter", "WriteOutcome", "WriteStatus"]
 

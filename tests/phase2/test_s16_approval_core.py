@@ -8,8 +8,10 @@ import pytest
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
 from business_ai_gateway.phase2.change.killswitch import KillMode, SwitchReading
-from business_ai_gateway.phase2.change.proposal import approval_canonical_text, digest_of_canonical_text
-from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
+from business_ai_gateway.phase2.change.proposal import (
+    approval_canonical_text,
+    digest_of_canonical_text,
+)
 from erp_mcp_s16.contracts import ClaimToken, PrincipalRole, TokenClass, canonical_preview_bytes
 from erp_mcp_s16.fakes import FakeBeginApplyEvidencePort, InMemoryChangeStore
 from tests.phase2.s16_helpers import NOW, approve, build_env, positive_begin_apply_evidence, propose
@@ -220,7 +222,12 @@ def test_begin_apply_source_evidence_guards_refuse_before_apply_port(evidence, e
 
 
 def _assert_claim_released(env, change_id):
-    from business_ai_gateway.phase2.change.types import Authorization, Execution, Reservation, TokenState
+    from business_ai_gateway.phase2.change.types import (
+        Authorization,
+        Execution,
+        Reservation,
+        TokenState,
+    )
 
     record = env.store.get(change_id).s12_record
     assert env.store.claim_count == 0

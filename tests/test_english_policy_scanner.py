@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCANNER = REPO_ROOT / "scripts" / "check_english_policy.py"
 
@@ -92,7 +91,7 @@ def test_allowlist_exception_is_bound_to_line_number_and_hash(tmp_path: Path) ->
     digest = hashlib.sha256(line.encode("utf-8")).hexdigest()
     result = _run_scanner(
         tmp_path,
-        f"{line}\n{line}\n".encode("utf-8"),
+        f"{line}\n{line}\n".encode(),
         {"fixture.txt": {"reason": "synthetic duplicate fixture", "allowed_lines": [{"line": 1, "sha256": digest}]}},
     )
 

@@ -16,8 +16,8 @@ from business_ai_gateway.audit import Audit, query_fingerprint
 from business_ai_gateway.compatibility import (
     AdapterProfile,
     CompatibilityStatus,
-    OneCCapabilityDetector,
     OneCCapabilities,
+    OneCCapabilityDetector,
 )
 from business_ai_gateway.models import Source
 from business_ai_gateway.principal import Principal

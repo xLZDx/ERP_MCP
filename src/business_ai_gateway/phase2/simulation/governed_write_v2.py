@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from threading import RLock
-from typing import Callable, Mapping, Protocol
+from typing import Protocol
 
 from ..change.evidence import (
     CompletionProof,
@@ -22,9 +23,15 @@ from ..change.evidence import (
 )
 
 __all__ = [
-    "GovernedWriteCoordinator", "InMemoryGovernedLedger", "SyntheticWriterPort",
-    "SyntheticWriterResult", "SyntheticNoInvocationGuard", "SyntheticAuthorizationCheck",
-    "SyntheticAuthorizationDecision", "GovernedWriteState", "GovernedWriteSnapshot",
+    "GovernedWriteCoordinator",
+    "GovernedWriteSnapshot",
+    "GovernedWriteState",
+    "InMemoryGovernedLedger",
+    "SyntheticAuthorizationCheck",
+    "SyntheticAuthorizationDecision",
+    "SyntheticNoInvocationGuard",
+    "SyntheticWriterPort",
+    "SyntheticWriterResult",
 ]
 
 

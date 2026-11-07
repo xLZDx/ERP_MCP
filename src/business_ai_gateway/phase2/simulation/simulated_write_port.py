@@ -11,29 +11,29 @@ import hashlib
 import hmac
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Final
 
 from ..change.proposal import canonical_json, payload_digest
 from ..change.types import ChangeKind, is_aware_datetime, is_identity_text
 from ..change_ledger.write_port import ApplyTicket, DispatchPermit
 from .clone_1c import (
+    LANE,
+    SYNTHETIC_MARKER,
     CloneCrash,
     CloneError,
     CloneRejected,
     CloneTimeout,
-    LANE,
-    SYNTHETIC_MARKER,
     SimulatedOneC,
     decode_payload,
 )
 
 __all__ = [
     "SimulatedOneCWritePort",
-    "SyntheticPermitAuthority",
-    "SyntheticPortResult",
-    "SyntheticPortRefusal",
     "SyntheticOutcomeUnknown",
+    "SyntheticPermitAuthority",
+    "SyntheticPortRefusal",
+    "SyntheticPortResult",
 ]
 
 _HEX64: Final = re.compile(r"[0-9a-f]{64}")
@@ -181,7 +181,7 @@ class SimulatedOneCWritePort:
 
     async def verify_permit(self, ticket: ApplyTicket, permit: DispatchPermit) -> None:
         await self.verify_ticket(ticket)
-        if not self._permit_authority.verify(ticket, permit, datetime.now(timezone.utc)):
+        if not self._permit_authority.verify(ticket, permit, datetime.now(UTC)):
             raise SyntheticPortRefusal("SYNTHETIC_PERMIT_INVALID_OR_EXPIRED")
 
     async def authenticate_base(self, ticket: ApplyTicket) -> str:

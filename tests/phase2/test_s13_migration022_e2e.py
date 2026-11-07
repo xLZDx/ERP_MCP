@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import asyncpg
 from _pg_harness import disposable_cluster, throwaway_db
-from test_change_ledger_sql import C, T, L, _setup
+from test_change_ledger_sql import C, L, T, _setup
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"

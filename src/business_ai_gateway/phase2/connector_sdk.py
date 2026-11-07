@@ -41,6 +41,9 @@ class CaptureMode(StrEnum):
     SNAPSHOT_ONLY = "SNAPSHOT_ONLY"
 
 
+_UNSUPPORTED_CHANGE_FEED_MODES = frozenset({"CDC", "CHANGE_FEED", "INCREMENTAL", "STREAMING"})
+
+
 class Completeness(StrEnum):
     COMPLETE = "COMPLETE"
     PARTIAL = "PARTIAL"
@@ -161,6 +164,22 @@ class Provenance:
 
 
 @dataclass(frozen=True, slots=True)
+class ConnectorCapabilities:
+    """Source-specific capability declaration used before selecting a capture mode."""
+
+    source_id: str
+    change_feed_supported: bool
+
+    def __post_init__(self) -> None:
+        reasons: list[str] = []
+        _check_text("source_id", self.source_id, _ID, reasons)
+        if type(self.change_feed_supported) is not bool:
+            reasons.append("change_feed_supported:NOT_A_BOOLEAN")
+        if reasons:
+            raise ValidationError(reasons)
+
+
+@dataclass(frozen=True, slots=True)
 class CaptureResponse:
     source_id: str
     tenant_id: str
@@ -253,7 +272,7 @@ def _require_mapping(data: object, reasons_name: str) -> Mapping[str, Any]:
     return data
 
 
-def parse_request(data: object) -> CaptureRequest:
+def parse_request(data: object, *, capabilities: ConnectorCapabilities | None = None) -> CaptureRequest:
     mapping = _require_mapping(data, "request")
     reasons: list[str] = []
     _scan_keys(mapping, _REQUEST_FIELDS, "", reasons)
@@ -262,7 +281,24 @@ def parse_request(data: object) -> CaptureRequest:
             reasons.append(f"{required}:MISSING")
     if reasons:
         raise ValidationError(reasons)
-    mode = _enum(CaptureMode, mapping["capture_mode"], "capture_mode", reasons)
+    raw_mode = mapping["capture_mode"]
+    if isinstance(raw_mode, str) and raw_mode.upper() in _UNSUPPORTED_CHANGE_FEED_MODES:
+        if capabilities is None:
+            reasons.append("capture_mode:SOURCE_CAPABILITIES_REQUIRED")
+            mode = None
+        elif not isinstance(capabilities, ConnectorCapabilities):
+            reasons.append("capture_mode:CAPABILITIES_NOT_TYPED")
+            mode = None
+        elif capabilities.source_id != mapping["source_id"]:
+            reasons.append("capture_mode:CAPABILITY_SOURCE_MISMATCH")
+            mode = None
+        elif capabilities.change_feed_supported:
+            reasons.append("capture_mode:CHANGE_FEED_NOT_SUPPORTED_BY_SDK")
+            mode = None
+        else:
+            mode = CaptureMode.SNAPSHOT_ONLY
+    else:
+        mode = _enum(CaptureMode, raw_mode, "capture_mode", reasons)
     if reasons:
         raise ValidationError(reasons)
     return CaptureRequest(

@@ -153,7 +153,18 @@ def to_tool_error(tool: str, arguments: dict[str, Any] | None, exc: BaseExceptio
 
 
 class StructuredErrorMCPServer(MCPServer):
-    """MCPServer whose tool failures reach the client as safe structured payloads."""
+    """MCPServer that exposes structured failures only for configured tools."""
+
+    def configure_structured_error_tools(self, tool_names: set[str] | frozenset[str]) -> None:
+        """Bind structured error handling to registered tools and reject a stale allowlist."""
+        configured = frozenset(tool_names)
+        registered = {tool.name for tool in self._tool_manager.list_tools()}
+        missing = configured - registered
+        if missing:
+            raise RuntimeError(
+                f"Structured error tools are not registered: {sorted(missing)}"
+            )
+        self._structured_error_tool_names = configured
 
     async def call_tool(self, name, arguments, context=None):  # type: ignore[override]
         try:
@@ -163,6 +174,9 @@ class StructuredErrorMCPServer(MCPServer):
         except UnexpectedToolError as exc:
             # Only crashes are re-mapped. SDK refusals (unknown tool, schema validation) and a
             # deliberately raised ToolError already carry a safe message and pass through untouched.
+            # Existing R1 tools retain the base SDK's generic client-visible error contract.
+            if name not in getattr(self, "_structured_error_tool_names", frozenset()):
+                raise
             if not isinstance(exc.__cause__, Exception):
                 raise
             raise to_tool_error(name, arguments, exc) from exc.__cause__

@@ -5,8 +5,8 @@ does not exercise a real 1C channel, CT14, production evidence, or gate approval
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import unittest
+from datetime import UTC, datetime, timedelta
 
 from business_ai_gateway.phase2.change.proposal import (
     DraftPayload,
@@ -14,8 +14,8 @@ from business_ai_gateway.phase2.change.proposal import (
     payload_digest,
     payload_to_dict,
 )
-from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change.transitions import Event, classify_completion
+from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change_ledger.write_port import (
     ApplyTicket,
     DispatchPermit,
@@ -30,7 +30,6 @@ from business_ai_gateway.phase2.simulation.simulated_write_port import (
     SyntheticPortRefusal,
     SyntheticPortResult,
 )
-
 
 _KEY = b"s14-test-only-key-material-at-least-32-bytes"
 _TENANT = "TENANT-SIM-1"
@@ -96,7 +95,7 @@ class SimulatedWritePortProtocolE2ETests(unittest.IsolatedAsyncioTestCase):
     def _permit(self, ticket: ApplyTicket) -> DispatchPermit:
         return self.authority.issue(
             ticket,
-            datetime.now(timezone.utc) + timedelta(minutes=5),
+            datetime.now(UTC) + timedelta(minutes=5),
             checkpoint_seq=1,
         )
 

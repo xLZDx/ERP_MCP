@@ -9,13 +9,13 @@ import pytest
 from erp_mcp_private_writer import runtime_composition as composition
 from erp_mcp_private_writer import validator_build_attestation as build_attestation
 from erp_mcp_private_writer.barrier_ack_verifier import ProductionBarrierAcknowledgementVerifier
+from erp_mcp_private_writer.postgres_attempt_source import PostgresEvidenceAttemptSource
 from erp_mcp_private_writer.postgres_barrier_ack_registrar import (
     PostgresBarrierAcknowledgementRegistrar,
 )
 from erp_mcp_private_writer.postgres_barrier_ack_trust import (
     PostgresBarrierAcknowledgementTrustSource,
 )
-from erp_mcp_private_writer.postgres_attempt_source import PostgresEvidenceAttemptSource
 from erp_mcp_private_writer.postgres_evidence_registrar import (
     EvidenceRegistrationError,
     PostgresWriterReceiptRegistrar,

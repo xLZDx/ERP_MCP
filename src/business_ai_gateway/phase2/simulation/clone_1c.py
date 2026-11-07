@@ -24,20 +24,38 @@ import json
 import re
 from collections import deque
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import RLock
 from typing import Final
 
 from ..change.proposal import (
-    DraftPayload, DuplicateOverride, Line, canonical_json, derive_allowed_effects, payload_digest, payload_to_dict,
+    DraftPayload,
+    DuplicateOverride,
+    Line,
+    canonical_json,
+    derive_allowed_effects,
+    payload_digest,
+    payload_to_dict,
 )
 from ..change.types import ChangeKind, is_aware_datetime, is_identity_text
 from ..ed25519 import public_key_from_seed, sign, verify
 
 __all__ = [
-    "CloneCrash", "CloneError", "CloneRejected", "CloneTimeout", "ApplyResult", "FAILURE_MODES", "LANE",
-    "PreviewResult", "RECEIPT_TEXT_PREFIX", "SYNTHETIC_MARKER", "SimulatedOneC", "decode_payload", "encode_payload",
-    "receipt_signing_text", "verify_clone_receipt",
+    "FAILURE_MODES",
+    "LANE",
+    "RECEIPT_TEXT_PREFIX",
+    "SYNTHETIC_MARKER",
+    "ApplyResult",
+    "CloneCrash",
+    "CloneError",
+    "CloneRejected",
+    "CloneTimeout",
+    "PreviewResult",
+    "SimulatedOneC",
+    "decode_payload",
+    "encode_payload",
+    "receipt_signing_text",
+    "verify_clone_receipt",
 ]
 
 LANE: Final = "TEST"
@@ -324,7 +342,7 @@ class SimulatedOneC:
         with self._write_lock:
             if not is_aware_datetime(permit_expires_at):
                 raise CloneRejected("PERMIT_EXPIRY_INVALID")
-            if datetime.now(timezone.utc) >= permit_expires_at:
+            if datetime.now(UTC) >= permit_expires_at:
                 raise CloneRejected("PERMIT_EXPIRED")
             if type(kind) is not ChangeKind or kind not in (ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST):
                 raise CloneRejected("OPERATION_NOT_ALLOWED")

@@ -344,7 +344,7 @@ def test_aging_refusals_have_fixed_codes(rows, reason):
 
 
 def test_timezone_naive_and_aware_datetimes_are_refused_not_coerced():
-    naive = datetime(2026, 1, 1, 0, 0)
+    naive = datetime(2026, 1, 1, 0, 0)  # noqa: DTZ001 - exercise the timezone-naive input boundary
     aware = datetime(2026, 1, 1, 23, 30, tzinfo=UTC)
     for bad in (naive, aware):
         assert age((OpenItem("D", bad, DUE, Decimal(1), "MDL", "MOLDRETAIL"),), ASOF).reason \

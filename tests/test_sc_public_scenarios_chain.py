@@ -35,7 +35,7 @@ async def _call(stack, tool, org=ORG_ONE, **arguments):
 async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar, tmp_path, monkeypatch):
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
-        sales = (await _call(stack, "sales_documents"))["value"]
+        sales = (await _call(stack, "sales_documents_with_provenance"))["value"]
         posted = {r["document_number"]: r["posted"] for r in sales}
         assert posted["SALE-001"] is True and posted["SALE-003"] is False
         assert "SALE-002" not in posted  # belongs to organization two
@@ -52,7 +52,7 @@ async def test_sc04_unposted_sale_has_no_accounting_posting(fake1c, fake_sidecar
             ("success", "ACCESS_AUTHORIZED"), ("success", "SYNTHETIC_FIXTURE_PROFILE"),
         ]
         assert {r["company_id"] for r in posting} == {stack.companies[ORG_ONE]}
-        sales_audit = await stack.audit_rows("sales_documents")
+        sales_audit = await stack.audit_rows("sales_documents_with_provenance")
         assert [r["detail_code"] for r in sales_audit] == [
             "ACCESS_AUTHORIZED", "SYNTHETIC_FIXTURE_PROFILE",
         ]
@@ -66,7 +66,7 @@ async def test_sc07_backdated_sale_posts_to_its_accounting_period(
 ):
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
-        sales = {r["document_number"]: r for r in (await _call(stack, "sales_documents"))["value"]}
+        sales = {r["document_number"]: r for r in (await _call(stack, "sales_documents_with_provenance"))["value"]}
         backdated = sales["SALE-004"]
         assert backdated["date"].startswith("2025-12-31")
         december = (await _call(
@@ -91,7 +91,7 @@ async def test_sc05_return_reduces_movement_and_reconciles_to_balance_per_item(
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         moves = (await _call(
-            stack, "inventory_movements",
+            stack, "inventory_movements_with_provenance",
             start_period="2026-04-01T00:00:00+00:00", end_period="2026-04-30T00:00:00+00:00",
         ))["value"]
         net: dict[str, Decimal] = defaultdict(Decimal)
@@ -99,7 +99,7 @@ async def test_sc05_return_reduces_movement_and_reconciles_to_balance_per_item(
             net[row["item_ref"]] += Decimal(row["quantity_delta"])
         item2 = [r for r in moves if r["item_ref"] == ITEM_2]
         assert [Decimal(r["quantity_delta"]) for r in item2] == [Decimal(10), Decimal(-3)]
-        balance = (await _call(stack, "inventory_balance", period="2026-04-30T00:00:00+00:00"))
+        balance = (await _call(stack, "inventory_balance_with_provenance", period="2026-04-30T00:00:00+00:00"))
         by_item = {r["item_ref"]: Decimal(str(r["quantity"])) for r in balance["value"]}
         assert by_item == dict(net) == {ITEM_1: Decimal(5), ITEM_2: Decimal(7)}
     finally:
@@ -113,20 +113,20 @@ async def test_sc09_cash_and_bank_remain_separate_and_sum_to_combined(
     stack = await _stack(fake1c, fake_sidecar, tmp_path, monkeypatch)
     try:
         cash = (await _call(
-            stack, "cash_movements",
+            stack, "cash_movements_with_provenance",
             start_period="2026-03-01T00:00:00+00:00", end_period="2026-05-01T00:00:00+00:00",
         ))["value"]
         cash_total = sum(Decimal(r["amount_delta"]) for r in cash)
-        bank = (await _call(stack, "bank_balance", period="2026-05-01T00:00:00+00:00"))["value"]
+        bank = (await _call(stack, "bank_balance_with_provenance", period="2026-05-01T00:00:00+00:00"))["value"]
         bank_total = sum(Decimal(str(r["amount"])) for r in bank)
         assert (cash_total, bank_total, cash_total + bank_total) == (100, 250, 350)
         april = (await _call(
-            stack, "cash_movements",
+            stack, "cash_movements_with_provenance",
             start_period="2026-04-01T00:00:00+00:00", end_period="2026-04-30T00:00:00+00:00",
         ))["value"]
         assert sum(Decimal(r["amount_delta"]) for r in april) == 7
         # company two sees none of company one's cash or bank rows
-        assert (await _call(stack, "bank_balance", org=ORG_TWO,
+        assert (await _call(stack, "bank_balance_with_provenance", org=ORG_TWO,
                             period="2026-05-01T00:00:00+00:00"))["value"] == []
     finally:
         await stack.db.close()

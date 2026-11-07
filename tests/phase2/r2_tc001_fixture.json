@@ -1,0 +1,1 @@
+{"health_response":{"adapter":"synthetic-r1","business_value":"health-ok","read_only":true,"status":"ok"},"read_response":{"value":[{"id":"synthetic-1","status":"open"}]}}

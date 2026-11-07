@@ -57,7 +57,7 @@ async def test_company_scoped_grant_isolates_company_two_from_company_one():
         one = await h.call("sales_documents", SALES)
         assert one.is_error and h.final_audit(one)["detail_code"] == "AccessDenied"
         assert str(h.final_audit(one)["company_id"]) == h.COMPANY_ONE and one.upstream == []
-        two = await h.call("sales_documents", {**SALES, "company_id": h.COMPANY_TWO})
+        two = await h.call("sales_documents_with_provenance", {**SALES, "company_id": h.COMPANY_TWO})
         # ACL passes for company two and returns ONLY company two's documents.
         assert two.ok
         codes = [r["detail_code"] for r in two.audit]

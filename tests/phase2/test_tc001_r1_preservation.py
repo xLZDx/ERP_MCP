@@ -18,7 +18,6 @@ import pytest
 from business_ai_gateway.adapters.onec.client import OneCReadClient, OneCTransportError
 from business_ai_gateway.models import Source
 
-
 ROOT = Path(__file__).resolve().parents[2]
 _RUNNER_SPEC = importlib.util.spec_from_file_location(
     "tc001_preservation_runner", ROOT / "tests/phase2/run_tc001_r1_preservation.py"
@@ -65,17 +64,109 @@ def test_p12_rejects_modified_selected_test_outside_tc001_module():
     assert unrelated_selected_test != "tests/phase2/test_tc001_r1_preservation.py"
     identities = {
         path: {
-            "working_file_sha256": "same-sha",
-            "candidate_head_blob_sha256": "same-sha",
+            "working_file_git_clean_blob_oid": "same-oid",
+            "candidate_head_blob_oid": "same-oid",
         }
         for path in selected
     }
-    identities[unrelated_selected_test]["working_file_sha256"] = "modified-sha"
+    identities[unrelated_selected_test]["working_file_git_clean_blob_oid"] = "modified-oid"
     matches = TC001_RUNNER.candidate_blob_inventory_matches(identities)
     assert not matches
     checks = _p12_case(selected_test_hashes_match_candidate=matches)
     assert not checks["selected_test_and_support_hashes_match_candidate"]
     assert not all(checks.values())
+
+
+def test_p12_git_clean_blob_identity_normalizes_crlf_but_rejects_content_changes():
+    path = "testbed/fake1c/fixtures/synthetic_profiles.json"
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    candidate_content = TC001_RUNNER.git_blob(candidate, path)
+    assert candidate_content is not None
+    lf_checkout = candidate_content.replace(b"\r\n", b"\n")
+    crlf_checkout = lf_checkout.replace(b"\n", b"\r\n")
+    edited_content = crlf_checkout + b"changed"
+
+    candidate_oid = TC001_RUNNER.candidate_blob_oid(candidate, path)
+    lf_oid = TC001_RUNNER.git_clean_blob_oid(path, lf_checkout)
+    crlf_oid = TC001_RUNNER.git_clean_blob_oid(path, crlf_checkout)
+    edited_oid = TC001_RUNNER.git_clean_blob_oid(path, edited_content)
+
+    assert candidate_oid is not None
+    assert lf_oid == candidate_oid
+    assert crlf_oid == candidate_oid
+    assert edited_oid is not None and edited_oid != candidate_oid
+    assert TC001_RUNNER.candidate_blob_inventory_matches({
+        path: {
+            "working_file_git_clean_blob_oid": crlf_oid,
+            "candidate_head_blob_oid": candidate_oid,
+        },
+    })
+    assert not TC001_RUNNER.candidate_blob_inventory_matches({
+        path: {
+            "working_file_git_clean_blob_oid": edited_oid,
+            "candidate_head_blob_oid": candidate_oid,
+        },
+    })
+
+
+def test_p12_sidecar_manifest_and_lock_identity_normalizes_crlf_and_rejects_content_changes():
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    paths = (
+        "adapters/odata-sidecar/package.json",
+        "adapters/odata-sidecar/package-lock.json",
+    )
+
+    actual_provenance = TC001_RUNNER.sidecar_dependency_provenance(candidate)
+    assert actual_provenance["working_tree_matches_candidate_head"]
+    assert actual_provenance["working_tree_manifest_git_clean_blob_oid"] == actual_provenance[
+        "candidate_head_manifest_blob_oid"
+    ]
+    assert actual_provenance["working_tree_lockfile_git_clean_blob_oid"] == actual_provenance[
+        "candidate_head_lockfile_blob_oid"
+    ]
+
+    for path in paths:
+        candidate_content = TC001_RUNNER.git_blob(candidate, path)
+        assert candidate_content is not None
+        assert b"8.12.3" in candidate_content
+        lf_checkout = candidate_content.replace(b"\r\n", b"\n")
+        crlf_checkout = lf_checkout.replace(b"\n", b"\r\n")
+        changed_content = crlf_checkout.replace(b"8.12.3", b"8.12.4", 1)
+
+        unchanged_identity = TC001_RUNNER.candidate_path_blob_identity(
+            candidate, path, crlf_checkout,
+        )
+        changed_identity = TC001_RUNNER.candidate_path_blob_identity(
+            candidate, path, changed_content,
+        )
+
+        assert TC001_RUNNER.candidate_blob_inventory_matches({path: unchanged_identity})
+        assert not TC001_RUNNER.candidate_blob_inventory_matches({path: changed_identity})
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        "adapters/odata-sidecar/package.json",
+        "adapters/odata-sidecar/package-lock.json",
+    ),
+)
+def test_p12_sidecar_provenance_rejects_changed_dependency_file(monkeypatch, relative_path):
+    candidate = TC001_RUNNER.git("rev-parse", "HEAD").strip()
+    target_path = TC001_RUNNER.ROOT / relative_path
+    original_read_bytes = TC001_RUNNER.Path.read_bytes
+
+    def read_bytes(path):
+        content = original_read_bytes(path)
+        if path == target_path:
+            assert b"8.12.3" in content
+            return content.replace(b"8.12.3", b"8.12.4", 1)
+        return content
+
+    monkeypatch.setattr(TC001_RUNNER.Path, "read_bytes", read_bytes)
+    provenance = TC001_RUNNER.sidecar_dependency_provenance(candidate)
+
+    assert not provenance["working_tree_matches_candidate_head"]
 
 
 def test_p12_rejects_matching_image_version_without_candidate_build_provenance():

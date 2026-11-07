@@ -11,13 +11,25 @@ import pytest
 
 from business_ai_gateway.phase2.change.errors import Refusal
 from business_ai_gateway.phase2.change.proposal import (
-    ChangeProposal, DuplicateOverride, canonical_json, parse_proposal, sha256_hex,
+    ChangeProposal,
+    DuplicateOverride,
+    canonical_json,
+    parse_proposal,
+    sha256_hex,
 )
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.simulation.attestation import SimulatedAttestor, verify_attestation
 from business_ai_gateway.phase2.simulation.clone_1c import (
-    LANE, SYNTHETIC_MARKER, CloneCrash, CloneRejected, CloneTimeout, SimulatedOneC, decode_payload, encode_payload,
-    receipt_signing_text, verify_clone_receipt,
+    LANE,
+    SYNTHETIC_MARKER,
+    CloneCrash,
+    CloneRejected,
+    CloneTimeout,
+    SimulatedOneC,
+    decode_payload,
+    encode_payload,
+    receipt_signing_text,
+    verify_clone_receipt,
 )
 from business_ai_gateway.phase2.simulation.synthetic_data import SyntheticGenerator, populate
 

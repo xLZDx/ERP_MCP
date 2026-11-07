@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, Refusal
@@ -15,14 +15,23 @@ from business_ai_gateway.phase2.change.types import Scope
 from erp_mcp_s15.verifier import VerificationResult, VerificationStatus
 
 from .contracts import (
-    ApprovalDecision, ApplyReceipt, ChangeStore, ClaimRefused, Claimed, ClaimToken,
-    DecisionBinding, DomainReceipt, KillSwitchPort, TargetScope, VerifyPort,
+    ApplyReceipt,
+    ApprovalDecision,
+    ChangeStore,
+    Claimed,
+    ClaimRefused,
+    ClaimToken,
+    DecisionBinding,
+    DomainReceipt,
+    KillSwitchPort,
+    TargetScope,
+    VerifyPort,
 )
 
 
 class FakeClock:
     def __init__(self, now: datetime | None = None) -> None:
-        self._now = now or datetime.now(timezone.utc)
+        self._now = now or datetime.now(UTC)
         self._lock = threading.Lock()
 
     def now(self) -> datetime:

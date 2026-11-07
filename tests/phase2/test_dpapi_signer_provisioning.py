@@ -16,7 +16,6 @@ from unittest.mock import Mock, patch
 
 import erp_mcp_private_writer.signer_provisioning as provisioning
 
-
 _SEED = b"test-private-seed-material-00000"
 _PUBLIC = b"P" * 32
 _CIPHERTEXT = b"mocked-dpapi-ciphertext"
@@ -132,9 +131,11 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="signer-provisioning-") as directory:
             root = Path(directory)
             destination = root / "signer.dpapi"
-            with patch.object(provisioning.sys, "platform", "linux"):
-                with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+            with (
+                patch.object(provisioning.sys, "platform", "linux"),
+                self.assertRaises(provisioning.SignerProvisioningError) as caught,
+            ):
+                provisioning.provision_windows_dpapi_ed25519_key(destination)
             self.assertEqual(caught.exception.code, "SIGNER_PROVISIONING_PLATFORM_UNSUPPORTED")
             self.assertEqual(tuple(root.iterdir()), ())
 
@@ -194,12 +195,14 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
                     unprotect_side_effect=side_effect,
                 )
                 diagnostics = _SafeProvisioningDiagnostics(doubles)
-                with patch.object(provisioning.sys, "platform", "win32"), \
-                        patch.object(builtins, "__import__", side_effect=doubles.importer), \
-                        patch.object(provisioning.tempfile, "mkstemp") as create_temp, \
-                        diagnostics:
-                    with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                        provisioning.provision_windows_dpapi_ed25519_key(destination)
+                with (
+                    patch.object(provisioning.sys, "platform", "win32"),
+                    patch.object(builtins, "__import__", side_effect=doubles.importer),
+                    patch.object(provisioning.tempfile, "mkstemp") as create_temp,
+                    diagnostics,
+                    self.assertRaises(provisioning.SignerProvisioningError) as caught,
+                ):
+                    provisioning.provision_windows_dpapi_ed25519_key(destination)
 
                 self.assertEqual(
                     caught.exception.code, "SIGNER_PROVISIONING_ROUNDTRIP_FAILED",
@@ -223,9 +226,8 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
             diagnostics = _SafeProvisioningDiagnostics(doubles)
             with patch.object(provisioning.sys, "platform", "win32"), \
                     patch.object(builtins, "__import__", side_effect=doubles.importer), \
-                    diagnostics:
-                with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+                    diagnostics, self.assertRaises(provisioning.SignerProvisioningError) as caught:
+                provisioning.provision_windows_dpapi_ed25519_key(destination)
 
             self.assertEqual(
                 caught.exception.code, "SIGNER_PROVISIONING_DESTINATION_EXISTS",
@@ -237,23 +239,27 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
     def test_invalid_dpapi_results_refuse_without_publishing_or_leaking_temp_files(self) -> None:
         invalid_results = (None, b"", b"C" * (64 * 1024 + 1))
         for protected_result in invalid_results:
-            with self.subTest(result_type=type(protected_result).__name__):
-                with tempfile.TemporaryDirectory(prefix="signer-provisioning-") as directory:
-                    root = Path(directory)
-                    destination = root / "signer.dpapi"
-                    doubles = _mock_windows_crypto(protected_result)
-                    diagnostics = _SafeProvisioningDiagnostics(doubles)
-                    with patch.object(provisioning.sys, "platform", "win32"), \
-                            patch.object(builtins, "__import__", side_effect=doubles.importer), \
-                            diagnostics:
-                        with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                            provisioning.provision_windows_dpapi_ed25519_key(destination)
-                    self.assertEqual(
-                        caught.exception.code, "SIGNER_PROVISIONING_OUTPUT_INVALID",
-                        msg=diagnostics.safe_summary(),
-                    )
-                    self.assertFalse(destination.exists())
-                    self.assertEqual(tuple(root.iterdir()), ())
+            with (
+                self.subTest(result_type=type(protected_result).__name__),
+                tempfile.TemporaryDirectory(prefix="signer-provisioning-") as directory,
+            ):
+                root = Path(directory)
+                destination = root / "signer.dpapi"
+                doubles = _mock_windows_crypto(protected_result)
+                diagnostics = _SafeProvisioningDiagnostics(doubles)
+                with (
+                    patch.object(provisioning.sys, "platform", "win32"),
+                    patch.object(builtins, "__import__", side_effect=doubles.importer),
+                    diagnostics,
+                    self.assertRaises(provisioning.SignerProvisioningError) as caught,
+                ):
+                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+                self.assertEqual(
+                    caught.exception.code, "SIGNER_PROVISIONING_OUTPUT_INVALID",
+                    msg=diagnostics.safe_summary(),
+                )
+                self.assertFalse(destination.exists())
+                self.assertEqual(tuple(root.iterdir()), ())
 
     def test_write_failure_cleans_invocation_temp_and_preserves_sibling_file(self) -> None:
         with tempfile.TemporaryDirectory(prefix="signer-provisioning-") as directory:
@@ -263,12 +269,14 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
             sibling.write_bytes(b"preserve")
             doubles = _mock_windows_crypto(_CIPHERTEXT)
             diagnostics = _SafeProvisioningDiagnostics(doubles)
-            with patch.object(provisioning.sys, "platform", "win32"), \
-                    patch.object(builtins, "__import__", side_effect=doubles.importer), \
-                    patch.object(provisioning.os, "fsync", side_effect=OSError("injected write failure")) as fsync_spy, \
-                    diagnostics:
-                with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+            with (
+                patch.object(provisioning.sys, "platform", "win32"),
+                patch.object(builtins, "__import__", side_effect=doubles.importer),
+                patch.object(provisioning.os, "fsync", side_effect=OSError("injected write failure")) as fsync_spy,
+                diagnostics,
+                self.assertRaises(provisioning.SignerProvisioningError) as caught,
+            ):
+                provisioning.provision_windows_dpapi_ed25519_key(destination)
 
             self.assertEqual(
                 caught.exception.code, "SIGNER_PROVISIONING_FAILED",
@@ -292,9 +300,8 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
                     patch.object(builtins, "__import__", side_effect=doubles.importer), \
                     patch.object(
                         provisioning, "ProvisionedEd25519PublicKey", result_constructor,
-                    ):
-                with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+                    ), self.assertRaises(provisioning.SignerProvisioningError) as caught:
+                provisioning.provision_windows_dpapi_ed25519_key(destination)
 
             self.assertEqual(caught.exception.code, "SIGNER_PROVISIONING_FAILED")
             result_constructor.assert_called_once()
@@ -323,9 +330,8 @@ class WindowsDpapiSignerProvisioningAcceptance(unittest.TestCase):
             with patch.object(provisioning.sys, "platform", "win32"), \
                     patch.object(builtins, "__import__", side_effect=doubles.importer), \
                     patch.object(provisioning.os, "rename", side_effect=publish_then_replace), \
-                    diagnostics:
-                with self.assertRaises(provisioning.SignerProvisioningError) as caught:
-                    provisioning.provision_windows_dpapi_ed25519_key(destination)
+                    diagnostics, self.assertRaises(provisioning.SignerProvisioningError) as caught:
+                provisioning.provision_windows_dpapi_ed25519_key(destination)
 
             self.assertEqual(
                 caught.exception.code, "SIGNER_PROVISIONING_PUBLICATION_CONFLICT",

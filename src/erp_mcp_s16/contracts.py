@@ -1,14 +1,19 @@
 """Typed, fake-backed contracts for the isolated S16 approval and tool slice."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Generic, Literal, Mapping, Protocol, TypeVar
+from typing import Generic, Literal, Protocol, TypeVar
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode
-from business_ai_gateway.phase2.change.proposal import ChangeProposal, canonical_json, payload_to_dict
+from business_ai_gateway.phase2.change.proposal import (
+    ChangeProposal,
+    canonical_json,
+    payload_to_dict,
+)
 from business_ai_gateway.phase2.change.transitions import BeginApplyEvidence
 from business_ai_gateway.phase2.change.types import ChangeRecord
 from erp_mcp_s15.verifier import ExpectedReceipt, OperationShape, VerificationResult

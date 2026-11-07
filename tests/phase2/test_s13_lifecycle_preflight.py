@@ -26,7 +26,6 @@ from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleStatus,
 )
 
-
 SCOPE = Scope("tenant-a", "company-a")
 NOW = datetime(2026, 10, 17, tzinfo=UTC)
 
@@ -230,10 +229,9 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
     def test_dependency_timeout_must_be_finite_positive_number_not_bool(self):
         for timeout in (0, -0.1, float("inf"), float("nan"), True, "1"):
-            with self.subTest(timeout=timeout):
-                with self.assertRaises(ValueError):
-                    LifecycleCoordinator(Ledger(), Sink([]), FakeVerifier(),
-                                         dependency_timeout_seconds=timeout)
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                LifecycleCoordinator(Ledger(), Sink([]), FakeVerifier(),
+                                     dependency_timeout_seconds=timeout)
 
     def test_wrong_scope_record_is_rejected_before_signature_check(self):
         calls = []

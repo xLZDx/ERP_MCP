@@ -4,7 +4,12 @@ from __future__ import annotations
 import pytest
 
 from business_ai_gateway.phase2.simulation.identity import (
-    MfaAttestationError, SimulatedIdP, TwoPersonError, build_two_person_approval, verify_mfa_attestation)
+    MfaAttestationError,
+    SimulatedIdP,
+    TwoPersonError,
+    build_two_person_approval,
+    verify_mfa_attestation,
+)
 
 NOW = 1_000_000
 
@@ -105,7 +110,7 @@ def test_two_person_approval_ok():
 
 
 def test_two_person_refusals():
-    idp, sa, sb = _setup()
+    idp, sa, _sb = _setup()
     sa2 = idp.open_session("ALICE")
     for args, code in [(("ALICE", sa, "ALICE", sa2), "SAME_PERSON"),
                        (("ALICE", sa, "BOB", sa), "SAME_SESSION"),

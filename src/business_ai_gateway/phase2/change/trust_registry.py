@@ -6,17 +6,26 @@ primitive is the repository's test-lane Ed25519 implementation and is not produc
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
-from typing import Mapping
 from uuid import UUID
 
 from .. import ed25519
 from .evidence import (
-    CompletionProof, DispatchAttempt, DispatchReceipt, OutcomeEvidence, OutcomeEvidenceV2, OutcomeEvidenceV3,
-    PostCompletionChallenge, PostCompletionReadAttestation, _Envelope,
-    canonical_json_bytes, validate_conditional_conflict_terminal_evidence, verify_record_signature,
+    CompletionProof,
+    DispatchAttempt,
+    DispatchReceipt,
+    OutcomeEvidence,
+    OutcomeEvidenceV2,
+    OutcomeEvidenceV3,
+    PostCompletionChallenge,
+    PostCompletionReadAttestation,
+    _Envelope,
+    canonical_json_bytes,
+    validate_conditional_conflict_terminal_evidence,
+    verify_record_signature,
 )
 
 __all__ = [
@@ -40,7 +49,7 @@ def _aware_utc(value: object, field: str) -> datetime:
 
 def _record_time(text: str) -> datetime:
     try:
-        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     except (TypeError, ValueError):
         raise ValueError("RECORD_TIME_INVALID") from None
 
@@ -150,7 +159,7 @@ class ProcessInstanceAttestation:
     signature: str
 
     def unsigned_dict(self) -> dict[str, object]:
-        created = _aware_utc(self.process_created_at, "PROCESS_CREATED_AT").astimezone(timezone.utc)
+        created = _aware_utc(self.process_created_at, "PROCESS_CREATED_AT").astimezone(UTC)
         return {
             "attestation_version": "1", "process_instance_id": self.process_instance_id,
             "host_boot_id": self.host_boot_id, "service_id": self.service_id, "host_id": self.host_id,
@@ -181,7 +190,7 @@ class ProcessInstanceAttestation:
 class TrustedIdentityRegistry:
     """Immutable evaluation registry snapshot; provider authenticity is an external prerequisite."""
 
-    __slots__ = ("_keys", "_processes", "_oracles", "_frozen")
+    __slots__ = ("_frozen", "_keys", "_oracles", "_processes")
 
     def __init__(self, identities: tuple[SignerIdentity, ...],
                  process_instances: tuple[ProcessInstanceAttestation, ...] = (), *,
@@ -329,7 +338,7 @@ def verify_authorized_record(record: _Envelope, registry: TrustedIdentityRegistr
     Raises only fixed refusal codes. A trusted registry snapshot and audited production Ed25519
     provider are required before this evaluation-only reference may be used for real actions.
     """
-    current = _aware_utc(now or datetime.now(timezone.utc), "NOW")
+    current = _aware_utc(now or datetime.now(UTC), "NOW")
     if type(record) not in (DispatchReceipt, OutcomeEvidence, OutcomeEvidenceV2, OutcomeEvidenceV3,
                             CompletionProof, PostCompletionChallenge, PostCompletionReadAttestation):
         raise ValueError("EVIDENCE_TYPE_UNSUPPORTED")
@@ -414,7 +423,7 @@ def validate_conditional_conflict_terminal_record_set(
     The database still has to recheck immutable evidence IDs/digests and atomically
     enforce T16 signatures, permanent call-ID consumption, and hold release.
     """
-    current = _aware_utc(now or datetime.now(timezone.utc), "NOW")
+    current = _aware_utc(now or datetime.now(UTC), "NOW")
     verify_authorized_record(
         receipt, registry, expected_scope=expected_scope, attempt=attempt, now=current,
     )

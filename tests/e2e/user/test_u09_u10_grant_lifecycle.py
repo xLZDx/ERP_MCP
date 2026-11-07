@@ -33,8 +33,8 @@ async def test_u09_revoked_grant_denies_next_call_without_restart(
     since = await db_clock(db)
     before = await call(tokens["uc1"], "companies_list", {"source_id": ids["source"]})
     assert [c["company_id"] for c in before.payload] == [ids["one"]]
-    await call(tokens["uc1"], "sales_documents", _args(ids))
-    rows_before = await audit_since(db, since, subject=ids["uc1"], tool="sales_documents")
+    await call(tokens["uc1"], "sales_documents_with_provenance", _args(ids))
+    rows_before = await audit_since(db, since, subject=ids["uc1"], tool="sales_documents_with_provenance")
     assert [str(r["company_id"]) for r in receipts(rows_before)] == [ids["one"]]
 
     uc1_company_grant.revoke(grant, f"E2E U09 revoke {uuid.uuid4().hex[:8]}")
@@ -44,10 +44,10 @@ async def test_u09_revoked_grant_denies_next_call_without_restart(
 
     mark, after_since = fake1c_log.mark(), await db_clock(db)
     after_list = await call(tokens["uc1"], "companies_list", {"source_id": ids["source"]})
-    after_read = await call(tokens["uc1"], "sales_documents", _args(ids))  # same token, no wait
+    after_read = await call(tokens["uc1"], "sales_documents_with_provenance", _args(ids))  # same token, no wait
     assert after_list.payload in ([], None) or after_list.is_error
     assert after_read.is_error and after_read.payload is None
-    rows_after = await audit_since(db, after_since, subject=ids["uc1"], tool="sales_documents")
+    rows_after = await audit_since(db, after_since, subject=ids["uc1"], tool="sales_documents_with_provenance")
     assert [r["outcome"] for r in rows_after] == ["denied"] and receipts(rows_after) == []
     assert fake1c_log.since(mark, gateway_only=False) == []
 
@@ -57,7 +57,7 @@ async def test_u10_regrant_restores_access_without_restart(
     grant = uc1_company_grant.active("subject", ids["uc1"], ids["one"])
     assert grant is not None
     uc1_company_grant.revoke(grant, "E2E U10 precondition revoke")
-    denied = await call(tokens["uc1"], "sales_documents", _args(ids))
+    denied = await call(tokens["uc1"], "sales_documents_with_provenance", _args(ids))
     assert denied.is_error
 
     reason = f"E2E U10 re-grant {uuid.uuid4().hex[:8]}"
@@ -69,9 +69,9 @@ async def test_u10_regrant_restores_access_without_restart(
     since = await db_clock(db)
     again = await call(tokens["uc1"], "companies_list", {"source_id": ids["source"]})
     assert [c["company_id"] for c in again.payload] == [ids["one"]]
-    again_read = await call(tokens["uc1"], "sales_documents", _args(ids))
+    again_read = await call(tokens["uc1"], "sales_documents_with_provenance", _args(ids))
     assert again_read.ok, again_read.text  # data really comes back after the re-grant
     numbers = {row["document_number"] for row in again_read.payload["value"]}
     assert numbers == {r["Number"] for r in seed()["sales"] if r["Организация_Key"] == ids["one"]}
-    rows = await audit_since(db, since, subject=ids["uc1"], tool="sales_documents")
+    rows = await audit_since(db, since, subject=ids["uc1"], tool="sales_documents_with_provenance")
     assert [str(r["company_id"]) for r in receipts(rows)] == [ids["one"]]

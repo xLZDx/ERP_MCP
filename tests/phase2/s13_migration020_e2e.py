@@ -16,12 +16,11 @@ import os
 from pathlib import Path
 
 import pytest
-
 from _pg_harness import disposable_cluster, docker, throwaway_db
-from test_change_ledger_sql import C, L, ORG, T, _setup
+from test_change_ledger_sql import ORG, C, L, T, _setup
+
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
-
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "db" / "phase2"
@@ -142,7 +141,7 @@ async def _journey(conn) -> dict[str, str]:
 
 async def main() -> int:
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
-    container_name = image_id = volume_name = None
+    image_id = volume_name = None
     async with disposable_cluster() as (dsn, container_name, _token):
         identity = docker("inspect", "--format", "{{.Config.Image}}|{{.Image}}|{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}}{{end}}{{end}}",
                           container_name, timeout=30)

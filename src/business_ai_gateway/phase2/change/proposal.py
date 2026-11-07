@@ -15,7 +15,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Context, Decimal
 from enum import Enum
 from types import MappingProxyType
@@ -25,10 +25,25 @@ from .errors import ErrorCode, Refusal
 from .types import ChangeKind, Scope, is_aware_datetime, is_identity_text
 
 __all__ = [
-    "ChangeProposal", "DraftPayload", "DuplicateOverride", "Line", "MEASURED_SHAPE_MAX_LINES", "OPERATION_RULES",
-    "ProposalContext", "RULE_TABLE_VERSION", "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "approval_digest",
-    "canonical_json", "derive_allowed_effects", "digest_of_canonical_text",
-    "payload_digest", "payload_to_dict", "parse_proposal", "parse_writer_payload", "sha256_hex",
+    "APPROVAL_DIGEST_VERSION",
+    "MEASURED_SHAPE_MAX_LINES",
+    "OPERATION_RULES",
+    "RULE_TABLE_VERSION",
+    "ChangeProposal",
+    "DraftPayload",
+    "DuplicateOverride",
+    "Line",
+    "ProposalContext",
+    "approval_canonical_text",
+    "approval_digest",
+    "canonical_json",
+    "derive_allowed_effects",
+    "digest_of_canonical_text",
+    "parse_proposal",
+    "parse_writer_payload",
+    "payload_digest",
+    "payload_to_dict",
+    "sha256_hex",
     "vat_rate_percent_table",
 ]
 
@@ -81,7 +96,7 @@ def _encode(value: object) -> object:
     if type(value) is datetime:
         if not is_aware_datetime(value):
             raise ValueError("NON_CANONICAL_VALUE")
-        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     if type(value) in (tuple, list):
         return [_encode(v) for v in value]  # type: ignore[attr-defined]
     if type(value) in (frozenset, set):

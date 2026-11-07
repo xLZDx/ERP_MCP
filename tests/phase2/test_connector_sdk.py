@@ -11,6 +11,7 @@ from business_ai_gateway.phase2.connector_sdk import (
     CaptureRequest,
     CaptureResponse,
     Completeness,
+    ConnectorCapabilities,
     ConnectorContract,
     HealthState,
     Provenance,
@@ -92,6 +93,8 @@ def test_envelopes_are_frozen():
 
 def test_capture_mode_only_snapshot_exists():
     assert [m.value for m in CaptureMode] == ["SNAPSHOT_ONLY"]
+    # The SDK's only default/constructible mode is a current-state snapshot.
+    assert make_request().capture_mode is CaptureMode.SNAPSHOT_ONLY
 
 
 # ---- identity / scope guards ---------------------------------------------------
@@ -124,9 +127,53 @@ def test_zero_scope_epoch_allowed():
     assert parse_request(req_map(scope_epoch=0)).scope_epoch == 0
 
 
-@pytest.mark.parametrize("mode", ["STREAMING", "snapshot_only", "CDC", "", None, 3])
+@pytest.mark.parametrize("mode", ["snapshot_only", "POLLING", "", None, 3])
 def test_unknown_capture_mode_rejected(mode):
     assert "capture_mode:UNKNOWN_VALUE" in reasons_of(parse_request, req_map(capture_mode=mode))
+
+
+@pytest.mark.parametrize("mode", ["CDC", "CHANGE_FEED", "INCREMENTAL", "STREAMING"])
+def test_unsupported_change_feed_modes_map_to_snapshot_only(mode):
+    # Downgrade is allowed only when the matching source declares that it lacks
+    # change-feed support.
+    capabilities = ConnectorCapabilities(source_id="src-1", change_feed_supported=False)
+    request = parse_request(req_map(capture_mode=mode), capabilities=capabilities)
+    assert request.capture_mode is CaptureMode.SNAPSHOT_ONLY
+
+
+def test_unsupported_change_feed_aliases_are_case_insensitive():
+    capabilities = ConnectorCapabilities(source_id="src-1", change_feed_supported=False)
+    for mode in ("cdc", "Change_Feed", "incremental", "streaming"):
+        assert parse_request(req_map(capture_mode=mode), capabilities=capabilities).capture_mode \
+            is CaptureMode.SNAPSHOT_ONLY
+
+
+def test_change_feed_mapping_requires_a_typed_source_capability():
+    data = req_map(capture_mode="CDC")
+    assert "capture_mode:SOURCE_CAPABILITIES_REQUIRED" in reasons_of(parse_request, data)
+    assert "capture_mode:CAPABILITIES_NOT_TYPED" in reasons_of(
+        lambda: parse_request(data, capabilities={"source_id": "src-1",
+                                                  "change_feed_supported": False}))
+
+
+def test_change_feed_mapping_rejects_mismatched_or_supported_source():
+    data = req_map(capture_mode="CDC")
+    mismatched = ConnectorCapabilities(source_id="src-2", change_feed_supported=False)
+    supported = ConnectorCapabilities(source_id="src-1", change_feed_supported=True)
+    assert "capture_mode:CAPABILITY_SOURCE_MISMATCH" in reasons_of(
+        lambda: parse_request(data, capabilities=mismatched))
+    assert "capture_mode:CHANGE_FEED_NOT_SUPPORTED_BY_SDK" in reasons_of(
+        lambda: parse_request(data, capabilities=supported))
+
+
+def test_malformed_connector_capabilities_are_rejected():
+    assert "change_feed_supported:NOT_A_BOOLEAN" in reasons_of(
+        lambda: ConnectorCapabilities(source_id="src-1", change_feed_supported=1))
+
+
+def test_unknown_change_feed_mode_still_fails_closed():
+    assert "capture_mode:UNKNOWN_VALUE" in reasons_of(
+        parse_request, req_map(capture_mode="FUTURE_DELTA_MODE"))
 
 
 def test_dataclass_rejects_non_enum_capture_mode_directly():
@@ -141,7 +188,8 @@ def test_multiple_reasons_are_all_reported():
 # ---- timestamps ----------------------------------------------------------------
 
 def test_naive_timestamp_rejected():
-    r = reasons_of(parse_response, resp_map(prov_map(observed_at=datetime(2026, 10, 9, 12, 0))))
+    observed_at = datetime(2026, 10, 9, 12, 0)  # noqa: DTZ001 - exercise rejection of naive input
+    r = reasons_of(parse_response, resp_map(prov_map(observed_at=observed_at)))
     assert "provenance.observed_at:NAIVE_TIMESTAMP" in r
 
 
@@ -230,6 +278,14 @@ def test_unknown_non_secret_fields_rejected_everywhere():
     assert "extra:UNKNOWN_FIELD" in reasons_of(parse_response, resp_map(extra=1))
     assert "provenance.extra:UNKNOWN_FIELD" in reasons_of(
         parse_response, resp_map(prov_map(extra=1)))
+
+
+def test_arbitrary_command_fields_are_rejected_everywhere():
+    command = "powershell -Command Invoke-WebRequest https://example.invalid"
+    assert "command:UNKNOWN_FIELD" in reasons_of(parse_request, req_map(command=command))
+    assert "command:UNKNOWN_FIELD" in reasons_of(parse_response, resp_map(command=command))
+    assert "provenance.command:UNKNOWN_FIELD" in reasons_of(
+        parse_response, resp_map(prov_map(command=command)))
 
 
 @pytest.mark.parametrize("value,code", [

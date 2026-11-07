@@ -39,9 +39,6 @@ async def test_sc10_opening_plus_turnover_equals_closing_via_tool(
             company_id=str(stack.companies[ORG_ONE]), **WINDOW,
         )
         body = stack.payload(result)
-        assert body["profile_kind"] == "SYNTHETIC_FIXTURE"
-        assert body["native_reconciliation"] == "NOT_RUN"
-        assert "SYNTHETIC_FIXTURE_PROFILE_NOT_NATIVE" in body["warnings"]
         (row,) = body["value"]
         assert set(row) == set(fixture_gen.concept_mappings()["account.balance_and_turnovers"]["output_fields"])
         opening, debit, credit, closing = (

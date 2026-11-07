@@ -1122,7 +1122,7 @@ BAD_STATES = [
     SchedulerState(poisoned=frozenset({"not-a-uuid"}), scope=SCOPE),
     SchedulerState(poisoned=frozenset({1}), scope=SCOPE),
     SchedulerState(poisoned=5, scope=SCOPE),
-    SchedulerState(not_before=((job_uuid(1), datetime(2030, 1, 1)),), scope=SCOPE),
+    SchedulerState(not_before=((job_uuid(1), datetime(2030, 1, 1)),), scope=SCOPE),  # noqa: DTZ001 - exercise the timezone-naive input boundary
     SchedulerState(not_before=(("job", AWARE),), scope=SCOPE),
     SchedulerState(not_before=((job_uuid(1), "2030-01-01"),), scope=SCOPE),
     SchedulerState(not_before=(job_uuid(1),), scope=SCOPE),
