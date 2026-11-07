@@ -15,6 +15,7 @@ from business_ai_gateway.phase2.backend_budget import BackendId, PhysicalBackend
 from business_ai_gateway.phase2.drift import CaptureOutcomeKind, FailureCounter
 from business_ai_gateway.phase2.fakes import WORKER, InMemoryLiving
 from business_ai_gateway.phase2.ports import PortError, Scope
+from business_ai_gateway.phase2.resnapshot import ResnapshotTracker
 from business_ai_gateway.phase2.scheduler import (
     IllegalTransition,
     RunStatus,
@@ -42,11 +43,18 @@ async def enqueue(living: InMemoryLiving, n: int, scope: Scope = SCOPE) -> UUID:
 
 def make(living=None, *, per_backend=1, backend="db-1", jitter=0.0, scope=SCOPE, **kw):
     living = living or InMemoryLiving()
+    # Most tests exercise job scheduling after the source's scope/cursor handshake. Tests of a
+    # cold or restored scheduler use the default/legacy state explicitly in test_scheduler_resume.
+    state_supplied = "state" in kw
     budget = kw.pop("budget", None) or PhysicalBackendBudget(
         per_backend_limit=per_backend, total_limit=max(per_backend, 4))
     sched = SourceScheduler(
         living, actor=WORKER, scope=scope, worker="w1", backend_id=BackendId.normalize(backend),
         budget=budget, clock=living.clock.now, jitter_source=lambda: jitter, **kw)
+    if not state_supplied:
+        # Tests using this fixture model ordinary in-scope work after initial validation. Restore
+        # cases pass an explicit snapshot and retain the production revalidation fence.
+        sched.machine.resume_validation_required = False
     return living, budget, sched
 
 
@@ -55,6 +63,15 @@ async def settle(living, sched):
     living.clock.advance(100)
     await sched.reap()
     living.clock.advance(1000)
+
+
+async def resume_revalidated(sched, living):
+    """Complete the required scope/cursor handshake after an explicit resume request."""
+    await living.create_cursor(WORKER, sched._scope, "test-connection", "c0")
+    epoch = await living.scope_epoch(sched._scope)
+    return await sched.resume_revalidated(
+        "operator", tracker=ResnapshotTracker(), ledger=living, cursors=living,
+        connection_ids=["test-connection"], recorded_epoch=epoch)
 
 
 async def succeed(handle):
@@ -321,6 +338,8 @@ async def test_consecutive_failures_pause_source_via_failure_counter():
     sched.resume("operator")
     assert sched.machine.state is SourceState.ACTIVE
     assert sched.counter.consecutive_failures == 0
+    assert (await sched.run_job(job, forbidden)).detail == "RESUME_REVALIDATION_REQUIRED"
+    await resume_revalidated(sched, living)
     assert (await sched.run_job(job, succeed)).status is RunStatus.SUCCEEDED
 
 
@@ -346,11 +365,13 @@ async def test_repeated_pauses_without_progress_quarantine_until_explicit_resume
     await sched.run_job(job, timeout)
     assert sched.machine.state is SourceState.PAUSED
     sched.resume("operator")
+    await resume_revalidated(sched, living)
     await settle(living, sched)
     await sched.run_job(job, timeout)
     assert sched.machine.state is SourceState.QUARANTINED
     assert (await sched.run_job(job, forbidden)).status is RunStatus.SOURCE_NOT_ACTIVE
     sched.resume("operator")
+    await resume_revalidated(sched, living)
     await settle(living, sched)
     assert (await sched.run_job(job, succeed)).status is RunStatus.SUCCEEDED
 
@@ -680,7 +701,8 @@ async def test_guard_exhausted_job_has_its_own_status_and_cleans_state():
     view = await living.get_job(WORKER, SCOPE, job)
     assert view.state == "FAILED" and view.last_error == "LEASE_EXPIRED"
     past = living.clock.now() - timedelta(seconds=5)
-    sched.import_state(SchedulerState(not_before=((job, past),)))
+    sched.import_state(SchedulerState(not_before=((job, past),), scope=SCOPE))
+    await resume_revalidated(sched, living)
     result = await sched.run_job(job, forbidden)
     assert result.status is RunStatus.EXHAUSTED and result.detail == "LEASE_EXPIRED"
     assert not sched.is_poisoned(job) and sched.not_before(job) is None
@@ -723,6 +745,26 @@ async def test_guard_budget_deferral_state_is_cleaned_when_job_is_terminal():
     assert sched.not_before(job) is None
     with budget.reserve(trusted_backend_id=BackendId.normalize("db-1")):
         assert (await sched.run_job(job, forbidden)).deferrals == 1  # counter restarted
+
+
+async def test_forget_terminal_job_frees_its_budget_waiter_ticket():
+    living = InMemoryLiving()
+    budget = PhysicalBackendBudget(
+        per_backend_limit=1, total_limit=1,
+        max_waiters_per_backend=2, max_waiters_total=1,
+    )
+    _, _, sched = make(living, budget=budget)
+    stale, next_job = await enqueue(living, 1), await enqueue(living, 2)
+    with budget.reserve(trusted_backend_id=BackendId.normalize("db-1")):
+        deferred = await sched.run_job(stale, forbidden)
+        assert deferred.status is RunStatus.DEFERRED_BUDGET
+        assert deferred.detail == "BACKEND_CAPACITY_EXCEEDED"
+
+        # _forget is the cleanup used on scheduler-known terminal outcomes.
+        sched._forget(stale)
+        next_deferred = await sched.run_job(next_job, forbidden)
+        assert next_deferred.status is RunStatus.DEFERRED_BUDGET
+        assert next_deferred.detail == "BACKEND_CAPACITY_EXCEEDED"
 
 
 # --------------------------------------------------------------------------- budget starvation
@@ -782,9 +824,9 @@ def test_guard_state_arguments_are_exclusive_and_validated():
     with pytest.raises(TypeError):
         make(living, state="QUARANTINED")
     with pytest.raises(ValueError):
-        make(living, state=SchedulerState(pause_count=-1))
+        make(living, state=SchedulerState(pause_count=-1, scope=SCOPE))
     with pytest.raises(ValueError):
-        make(living, state=SchedulerState(consecutive_failures=-1))
+        make(living, state=SchedulerState(consecutive_failures=-1, scope=SCOPE))
 
 
 async def test_guard_poisoning_source_a_leaves_source_b_unchanged():
@@ -1043,29 +1085,55 @@ async def test_guard_import_state_merges_poison_and_never_unpoisons():
     living, _, sched = make(config=SchedulerConfig(poison_after=1), counter=FailureCounter(0, 100))
     job = await enqueue(living, 1)
     assert (await sched.run_job(job, timeout)).status is RunStatus.POISONED
-    sched.import_state(SchedulerState())  # stale snapshot taken before the poisoning
+    sched.import_state(SchedulerState(scope=SCOPE))  # stale snapshot taken before the poisoning
     assert sched.is_poisoned(job)
     other = job_uuid(2)
-    sched.import_state(SchedulerState(poisoned=frozenset({other})))
+    sched.import_state(SchedulerState(poisoned=frozenset({other}), scope=SCOPE))
     assert sched.is_poisoned(job) and sched.is_poisoned(other)
     assert (await sched.run_job(job, forbidden)).status is RunStatus.POISONED
 
 
+@pytest.mark.parametrize("snapshot_scope", [None, SCOPE], ids=["missing", "foreign"])
+async def test_guard_import_rejects_missing_or_foreign_scope_atomically(snapshot_scope):
+    living = InMemoryLiving()
+    scope_b = Scope("A", "s2")
+    living.seed_basic(scope_b)
+    _, _, source_a = make(
+        living, config=SchedulerConfig(poison_after=1), counter=FailureCounter(0, 100))
+    _, _, source_b = make(living, scope=scope_b, counter=FailureCounter(0, 100))
+    job_a = await enqueue(living, 1, SCOPE)
+
+    assert (await source_a.run_job(job_a, timeout)).status is RunStatus.POISONED
+    snapshot = source_a.export_state()
+    assert snapshot.source_state is SourceState.PAUSED and job_a in snapshot.poisoned
+    before_b = source_b.export_state()
+    invalid_identity = dataclasses.replace(snapshot, scope=snapshot_scope)
+
+    with pytest.raises(ValueError, match="^SCHEDULER_STATE_SCOPE_MISMATCH$"):
+        source_b.import_state(invalid_identity)
+
+    assert source_b.export_state() == before_b
+    assert source_b.machine.state is SourceState.ACTIVE
+    assert not source_b.is_poisoned(job_a)
+
+
 AWARE = datetime(2030, 1, 1, tzinfo=UTC)
 BAD_STATES = [
-    SchedulerState(poisoned=frozenset({"not-a-uuid"})),
-    SchedulerState(poisoned=frozenset({1})),
-    SchedulerState(poisoned=5),
-    SchedulerState(not_before=((job_uuid(1), datetime(2030, 1, 1)),)),  # noqa: DTZ001 - exercise the timezone-naive input boundary
-    SchedulerState(not_before=(("job", AWARE),)),
-    SchedulerState(not_before=((job_uuid(1), "2030-01-01"),)),
-    SchedulerState(not_before=(job_uuid(1),)),
-    SchedulerState(not_before=5),
-    SchedulerState(pause_count=-1), SchedulerState(pause_count=True),
-    SchedulerState(pause_count=1.0),
-    SchedulerState(consecutive_failures=-1), SchedulerState(consecutive_failures=True),
-    SchedulerState(failure_threshold=-1), SchedulerState(failure_threshold=0),
-    SchedulerState(failure_threshold=True),
+    SchedulerState(poisoned=frozenset({"not-a-uuid"}), scope=SCOPE),
+    SchedulerState(poisoned=frozenset({1}), scope=SCOPE),
+    SchedulerState(poisoned=5, scope=SCOPE),
+    SchedulerState(not_before=((job_uuid(1), datetime(2030, 1, 1)),), scope=SCOPE),  # noqa: DTZ001 - exercise the timezone-naive input boundary
+    SchedulerState(not_before=(("job", AWARE),), scope=SCOPE),
+    SchedulerState(not_before=((job_uuid(1), "2030-01-01"),), scope=SCOPE),
+    SchedulerState(not_before=(job_uuid(1),), scope=SCOPE),
+    SchedulerState(not_before=5, scope=SCOPE),
+    SchedulerState(pause_count=-1, scope=SCOPE), SchedulerState(pause_count=True, scope=SCOPE),
+    SchedulerState(pause_count=1.0, scope=SCOPE),
+    SchedulerState(consecutive_failures=-1, scope=SCOPE),
+    SchedulerState(consecutive_failures=True, scope=SCOPE),
+    SchedulerState(failure_threshold=-1, scope=SCOPE),
+    SchedulerState(failure_threshold=0, scope=SCOPE),
+    SchedulerState(failure_threshold=True, scope=SCOPE),
 ]
 
 
@@ -1074,7 +1142,7 @@ async def test_guard_import_state_rejects_invalid_snapshot_atomically(bad):
     living, _, sched = make()
     job = await enqueue(living, 1)
     sched.import_state(SchedulerState(pause_count=1, poisoned=frozenset({job}),
-                                      not_before=((job, AWARE),)))
+                                      not_before=((job, AWARE),), scope=SCOPE))
     before = sched.export_state()
     with pytest.raises(ValueError, match="^SCHEDULER_STATE_INVALID$"):
         sched.import_state(bad)
@@ -1086,6 +1154,6 @@ async def test_guard_import_state_rejects_invalid_snapshot_atomically(bad):
 def test_import_state_accepts_valid_snapshot():
     _, _, sched = make(state=SchedulerState(
         source_state=SourceState.PAUSED, pause_count=2, consecutive_failures=1,
-        poisoned=frozenset({job_uuid(3)}), not_before=((job_uuid(4), AWARE),)))
+        poisoned=frozenset({job_uuid(3)}), not_before=((job_uuid(4), AWARE),), scope=SCOPE))
     assert sched.machine.state is SourceState.PAUSED and sched.machine.pause_count == 2
     assert sched.is_poisoned(job_uuid(3)) and sched.not_before(job_uuid(4)) == AWARE

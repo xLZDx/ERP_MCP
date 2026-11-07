@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     admin_session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
     admin_step_up_acr_values: str = ""
     admin_control_database_url: str | None = None
+    model_promotion_database_url: SecretStr | None = Field(default=None, repr=False)
     admin_source_allowed_hosts: str = ""
     admin_source_allowed_cidrs: str = ""
     business_capability_enforcement_enabled: bool = False
@@ -265,6 +266,24 @@ class Settings(BaseSettings):
                 raise ValueError("admin mutations require BAG_ADMIN_CONTROL_DATABASE_URL")
             if self.environment == "production" and not self.admin_source_allowed_hosts.strip():
                 raise ValueError("production admin mutations require BAG_ADMIN_SOURCE_ALLOWED_HOSTS")
+        if self.model_promotion_database_url is not None:
+            if not (self.admin_api_enabled and self.admin_mutations_enabled
+                    and self.admin_control_database_url and self.evidence_store_root
+                    and self.evidence_approval_index and self.evidence_approval_sha256):
+                raise ValueError(
+                    "model promotion requires the authenticated Admin API, audit store, "
+                    "and pinned evidence store/index"
+                )
+            promotion_url = self.model_promotion_database_url.get_secret_value()
+            if not promotion_url.startswith(("postgresql://", "postgres://")):
+                raise ValueError("BAG_MODEL_PROMOTION_DATABASE_URL must use PostgreSQL")
+            promotion_user = urlparse(promotion_url).username
+            runtime_user = urlparse(self.database_url).username
+            admin_user = urlparse(self.admin_control_database_url).username
+            if not promotion_user or promotion_user in {runtime_user, admin_user}:
+                raise ValueError(
+                    "model promotion requires a distinct, least-privilege database login"
+                )
         if self.admin_ui_enabled:
             if not self.admin_api_enabled:
                 raise ValueError("admin UI requires BAG_ADMIN_API_ENABLED=true")

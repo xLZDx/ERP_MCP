@@ -66,6 +66,23 @@ def test_reject_duplicate_identity():
         fingerprint_edmx(model(middle=b'<e:EntityType Name="Person"/>'))
 
 
+def test_same_kind_and_name_in_distinct_namespaces_have_distinct_identities():
+    xml = (b'<edmx:Edmx xmlns:edmx="urn:edmx" xmlns:e="urn:edm"><edmx:DataServices>'
+           b'<e:Schema Namespace="North"><e:EntityType Name="Record">'
+           b'<e:Property Name="Code" Type="Edm.String" MaxLength="20"/></e:EntityType></e:Schema>'
+           b'<e:Schema Namespace="South"><e:EntityType Name="Record">'
+           b'<e:Property Name="Code" Type="Edm.String" MaxLength="20"/></e:EntityType></e:Schema>'
+           b'<e:Schema Namespace="Container"><e:EntityContainer Name="Default">'
+           b'<e:EntitySet Name="NorthRecords" EntityType="North.Record"/>'
+           b'<e:EntitySet Name="SouthRecords" EntityType="South.Record"/>'
+           b'</e:EntityContainer></e:Schema></edmx:DataServices></edmx:Edmx>')
+    result = fingerprint_edmx(xml)
+    identities = dict(result.objects)
+    assert "North::EntityType::Record" in identities
+    assert "South::EntityType::Record" in identities
+    assert identities["North::EntityType::Record"] == identities["South::EntityType::Record"]
+
+
 def _swap(xml, old, new):
     assert old in xml
     return xml.replace(old, new, 1)

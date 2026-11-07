@@ -3,8 +3,9 @@
 The MCP SDK hides the text of any exception that is not a ``ToolError``: the client only sees
 ``Error executing tool <name>``. That made every anticipated refusal (no validated semantic
 profile, invalid ``as_of``, source outage, ...) indistinguishable from a crash. This module maps
-an exception to a small, safe JSON payload that the model can act on, while the full detail stays
-in the server log and the audit trail under the same ``correlation_id``.
+an exception to a small, safe JSON payload that the model can act on. Server logs retain only safe
+failure metadata and the same ``correlation_id``; exception messages and tracebacks are omitted
+because they may contain credentials.
 
 Only exception classes whose message is authored by this code base may contribute text, and even
 that text is redacted and bounded. Transport, audit and unknown errors never leak their message.
@@ -101,19 +102,21 @@ def classify(exc: BaseException) -> ToolFailure:
         return ToolFailure("SOURCE_UNAVAILABLE", "dependency", True,
                            "The 1C source could not be reached or returned an error.")
     if isinstance(exc, ValueError):
-        return ToolFailure("INVALID_ARGUMENT", "validation", False, redact(exc) or "Invalid argument.")
+        # ValueError text may include caller-controlled values that are not recognized by
+        # the redaction patterns. Keep the public message fixed and non-sensitive.
+        return ToolFailure("INVALID_ARGUMENT", "validation", False, "Invalid argument.")
     return ToolFailure("INTERNAL_ERROR", "internal", False,
                        "The operation failed unexpectedly. Quote the correlation_id to the operator.")
 
 
 def build_payload(tool: str, arguments: dict[str, Any] | None, failure: ToolFailure) -> dict[str, Any]:
-    source_id = (arguments or {}).get("source_id")
     correlation = current_request_correlation_id()
     return {
         "error": {
             **asdict(failure),
             "tool": tool,
-            "source_id": source_id if isinstance(source_id, str) and len(source_id) <= 128 else None,
+            # Request identifiers are caller-controlled and may themselves contain secrets.
+            "source_id": None,
             "operation": tool,
             "correlation_id": str(correlation) if correlation else None,
         }
@@ -130,16 +133,22 @@ class StructuredToolError(UnexpectedToolError):
 
 
 def to_tool_error(tool: str, arguments: dict[str, Any] | None, exc: BaseException) -> ToolError:
-    """Build the client-visible error and log the detail server-side."""
+    """Build a safe client-visible error and keep credential-bearing details out of logs."""
     original = exc.__cause__ if isinstance(exc.__cause__, Exception) else exc
     failure = classify(original)
     payload = build_payload(tool, arguments, failure)
     log = logger.error if failure.category == "internal" else logger.info
-    log(
-        "tool %s failed code=%s category=%s correlation_id=%s",
-        tool, failure.code, failure.category, payload["error"]["correlation_id"],
-        exc_info=(type(original), original, original.__traceback__) if failure.category == "internal" else None,
-    )
+    if failure.category == "internal":
+        # Tracebacks include exception messages, which can contain a credential returned by an
+        # upstream provider. Keep only the exception class and correlation ID in the server log.
+        logger.error(
+            "tool %s failed code=%s category=%s correlation_id=%s exception_type=%s",
+            tool, failure.code, failure.category, payload["error"]["correlation_id"],
+            type(original).__name__,
+        )
+    else:
+        log("tool %s failed code=%s category=%s correlation_id=%s",
+            tool, failure.code, failure.category, payload["error"]["correlation_id"])
     return StructuredToolError(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
 
 

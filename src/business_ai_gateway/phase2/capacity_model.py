@@ -111,6 +111,7 @@ MAX_SAMPLES: Final = 100_000
 MAX_WINDOW_US: Final = 7 * 24 * 3600 * 1_000_000
 PERCENTILE_MIN_SAMPLES: Final = MappingProxyType({50: 1, 95: 20, 99: 100})
 _RATE_CTX: Final = Context(prec=40, rounding=ROUND_HALF_EVEN)
+_MAX_THRESHOLD_DIGITS: Final = 256
 _SIX_PLACES: Final = Decimal("0.000001")
 _ZERO_RATE: Final = Decimal("0.000000")
 OPERATOR_REFERENCE_ACTION: Final = "capacity.operator_reference"  # platform action checked for OPERATOR_REFERENCE
@@ -487,6 +488,7 @@ class ReportPolicy:
 
     def __post_init__(self) -> None:
         if not (is_exact_int(self.window_us, 1, MAX_WINDOW_US) and is_exact_decimal(self.refusal_bound)
+                and len(self.refusal_bound.as_tuple().digits) <= _MAX_THRESHOLD_DIGITS
                 and Decimal(0) <= self.refusal_bound <= Decimal(1)):
             raise ValueError("REPORT_POLICY_INVALID")
 
@@ -578,7 +580,10 @@ class CapacityStore:
 # the report
 
 def _dominates(count: int, summary: Summary, bound: Decimal) -> bool:
-    return bool(summary.total) and Decimal(count) > _RATE_CTX.multiply(bound, Decimal(summary.total))
+    if not summary.total:
+        return False
+    bound_numerator, bound_denominator = bound.as_integer_ratio()
+    return count * bound_denominator > summary.total * bound_numerator
 
 
 def _failure_flags(summary: Summary, bound: Decimal) -> tuple[str, ...]:

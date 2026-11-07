@@ -227,3 +227,25 @@ The related assigned unit command for `tests/test_secrets.py` and the strict MCP
 Code-reviewer and security-reviewer found no actionable findings in the final test delta. GPT-PM request `0d7dfd56-c1d3-4cd2-aee8-5748c6f0b19b` closed the previous A22 password-log finding and approved bounded TC016–TC017 plus TC018 for the FILE provider only; it authorized local commit and normal PR #42 update. Test-only commit `0de9a2e4e6f815e8db9bdc3dbe8336a8dc35da54` was pushed normally.
 
 Boundaries: internal R2-US-006 status may be `BOUNDED_SCOPE_COMPLETE`, but canonical product TC016–TC018 remain `NOT_RUN` and Gherkin remains `@not_implemented`. GCP rotation, production credential handling, runtime integration, merge, release and production authority are not established.
+## 2026-11-06 — S4 bounded acceptance: R2-US-014 supplier aliases
+
+GPT-PM request `4c90c23f-c43e-4d7a-87ae-77eb3f53746f` approved `CLOSED_BOUNDED_SPRINT` for TC040–TC042 at exact HEAD `11304e2e4eb6dfad18bf753cd2e05a22c102cd5e` (0 BLOCKER / 0 MAJOR). The assigned functional-test-reviewer reported the focused `test_aliases.py` command at that HEAD: 63 passed, exit 0. Current hardening delta `03da6aa..3f0d444` received no-actionable-findings code and security reviews.
+
+The accepted scope is the pure in-memory alias-resolution contract: exact namespaced reference within tenant/company scope; no cross-company merge; one reusable queue item for ambiguity; no automatic resolution/merge; a HUMAN-classified caller decision with candidate and reason. This does not authenticate the caller. Alias storage remains in-memory and unwired; authenticated principal binding, durable persistence, concurrency and production authorization are NOT_ESTABLISHED / NOT_GRANTED. Frozen canonical TC040–042 remain NOT_RUN and Gherkin remains `@not_implemented`; no specification/catalog edit or duplicate test execution was authorized or performed.
+
+
+## 2026-11-06 — S4 US015 P2 follow-up
+
+The GitHub code-review P2 on commit `ff3c532` reported that two older test expectations contradicted fail-closed unmapped-addition behavior. The existing correction in `a20c5685624371165617174fab16b1a4c8f83dd0` updates both tests. At exact PR HEAD `ed795e22fdbed1632e764955a39302240da38b4e`, the assigned functional-test-reviewer ran only the two affected test nodes: 2 passed, exit 0. The narrow code review confirmed the finding is resolved. GPT-PM request `bc8e17ae-11f4-4d1b-b4f7-0375a990dcde` approved `P2 FINDING CLOSED` and confirmed R2-US-015 remains `CLOSED_BOUNDED_SPRINT`. Frozen product TC043–045 remain NOT_RUN; no product/runtime or production acceptance is implied.
+
+2026-11-06 S4 delivery closeout — The operator explicitly authorized merging PR #44 for the objective “fully close and merge Sprint 4.” PR #44 merged into `codex/erp-mcp-autonomous-2026-10-21` as `7143a01f503e65b9a975cac273f90585a343b5a4`. This operator authorization superseded the earlier GPT-PM decision `c3989b9d-20cf-48e9-9efa-2079d5bdab79`, which had not authorized merge. The merge closes delivery of the four bounded S4 tasks into the S1 integration branch; it does not merge PR #41 into main, deploy, or grant product/production acceptance. Canonical TC037–048 remain NOT_RUN.
+
+CI incident: the PR-close event started GitHub Actions run `42229637781`; Codex requested cancellation and it ended `cancelled`. Completed before cancellation: setup/dependency steps, Admin UI verification, and the OData client/metadata test step; Ruff and sidecar image build/smoke-test steps failed; Windows privacy test was cancelled; migration/legal and full pytest steps were skipped. This was not acceptance evidence and the CI start violated the operator's prohibition.
+
+## 2026-11-07 - S9 R2-US-046 bounded closeout
+
+GPT-PM request 9cd4af00-8c4d-4cf7-a47f-86edc84c584c (correlated reply 57e878c2-d10e-5d54-98a4-5f1b36119f85) approved bounded TC136-138 with 0 BLOCKER/MAJOR. The earlier request 6f33a920-7f73-44a5-9e0f-4cbb2e431d85 raised MAJOR-01 on duplicate outbox sequence values across connections; after checking db/phase2/001_living_registry.sql (seq identity, global UNIQUE(seq)) GPT-PM explicitly withdrew that finding as an invalid database-state assumption. No production correction was required.
+
+The assigned e2e-runner reported 380 focused tests passed in 5.63s at source HEAD 3ab770e1756e0e4795220f3180be15803641e101 after a test-only regression for preserving source-native identity gaps. Internal database/security/code review found no remaining BLOCKER/MAJOR. The allowed scope is in-memory restore-manifest verification, safe evaluation export, and decision-only retention/hold. Real PostgreSQL restore, live export, persistent hold enforcement, deletion, production acceptance, and G6-pre remain NOT_RUN/NOT_VERIFIED/NOT_PASSED.
+
+S9 is CLOSED_BOUNDED_SPRINT (4/4 task-level bounded acceptances); Release 2 remains NO-GO pending G6-pre. GPT-PM did not grant merge/deployment/production authority in this review. The operator separately directed normal sprint PR merges; preserve branch protections and never run or wait for CI.

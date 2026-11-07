@@ -64,13 +64,13 @@ def test_complete_capture_with_same_hash_is_quiet():
     assert decision.baseline_established is False
 
 
-def test_first_complete_capture_establishes_baseline_without_drift():
+def test_first_complete_capture_is_only_a_candidate_until_explicit_approval():
     decision = classify(CaptureOutcome(K.OK_COMPLETE, H1), None)
-    assert decision.events == ()
-    assert decision.accepted_hash == H1
-    assert decision.candidate_hash is None
-    assert decision.baseline_established is True
-    assert decision.removal_permitted is True
+    assert decision.events == (E.RESNAPSHOT_REQUIRED,)
+    assert decision.accepted_hash is None
+    assert decision.candidate_hash == H1
+    assert decision.baseline_established is False
+    assert decision.removal_permitted is False
 
 
 def test_schema_changed_with_hash_is_compared_not_assumed_drift():

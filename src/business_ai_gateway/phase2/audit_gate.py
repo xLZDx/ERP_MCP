@@ -51,6 +51,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from types import MappingProxyType
+from threading import Lock
 from typing import Final, Protocol
 
 from .ops_types import (
@@ -310,6 +311,7 @@ class AuditGate:
         self._timeout = timedelta(seconds=timeout_seconds)  # type: ignore[arg-type]
         self._obligations = TenantBoundedMap(unaudited_cap, ids)
         self._requests = TenantBoundedMap(request_cap, ids)  # request ids with a durable intent, per tenant
+        self._request_locks = {tenant: Lock() for tenant in bindings}
         self._overflow = TenantSlotCounter(MAX_TENANT_CAP)
 
     def __repr__(self) -> str:
@@ -376,19 +378,23 @@ class AuditGate:
         sink = self._sinks.get(tenant)
         if sink is None:
             return self._refused(OpsReason.AUDIT_UNAVAILABLE)
-        if self._requests.get(tenant, request_id) is not None:
-            return self._refused(OpsReason.DUPLICATE_SUPPRESSED)  # known request: no record, no effect
-        if not self._obligations.has_room(tenant) or not self._requests.has_room(tenant):
-            return self._refused(OpsReason.QUOTA_EXCEEDED)
-        intent = AuditRecord(tenant, company, actor, request_id, name, AuditPhase.INTENT,  # type: ignore[arg-type]
-                             _RecordOutcome.PENDING)
-        intent_seq = self._write(sink, intent)
-        if intent_seq is None:
-            return self._refused(OpsReason.AUDIT_UNAVAILABLE)
-        remembered = self._requests.insert(tenant, request_id, True)  # atomic: one of two racers wins
-        if remembered is not None:
-            return self._refused(OpsReason.DUPLICATE_SUPPRESSED if remembered.reason is OpsReason.DUPLICATE_SUPPRESSED
-                                 else OpsReason.QUOTA_EXCEEDED)
+        # Serialize the per-tenant capacity check, durable intent, and request-id insert. If only one
+        # request slot remains, a concurrent loser is refused before it can write an orphan intent.
+        with self._request_locks[tenant]:
+            if self._requests.get(tenant, request_id) is not None:
+                return self._refused(OpsReason.DUPLICATE_SUPPRESSED)  # known request: no record, no effect
+            if not self._obligations.has_room(tenant) or not self._requests.has_room(tenant):
+                return self._refused(OpsReason.QUOTA_EXCEEDED)
+            intent = AuditRecord(tenant, company, actor, request_id, name, AuditPhase.INTENT,  # type: ignore[arg-type]
+                                 _RecordOutcome.PENDING)
+            intent_seq = self._write(sink, intent)
+            if intent_seq is None:
+                return self._refused(OpsReason.AUDIT_UNAVAILABLE)
+            remembered = self._requests.insert(tenant, request_id, True)
+            if remembered is not None:
+                return self._refused(OpsReason.DUPLICATE_SUPPRESSED
+                                     if remembered.reason is OpsReason.DUPLICATE_SUPPRESSED
+                                     else OpsReason.QUOTA_EXCEEDED)
         failed = False
         interrupt: BaseException | None = None
         try:
