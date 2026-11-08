@@ -38,14 +38,27 @@ def record_s10_candidate_head(record_property, pytestconfig):
         pytest.fail("S10_CANDIDATE_HEAD does not match the current Git HEAD", pytrace=False)
     try:
         status = subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=pytestconfig.rootpath, text=True
+            ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+            cwd=pytestconfig.rootpath,
         )
     except (OSError, subprocess.CalledProcessError):
         pytest.fail("cannot verify the committed S10 test tree", pytrace=False)
+    status_records = status.split(b"\0")
     changed_paths = []
-    for line in status.splitlines():
-        path = line[3:].strip().strip('"').replace("\\", "/")
-        changed_paths.extend(part.strip().strip('"') for part in path.split(" -> "))
+    index = 0
+    while index < len(status_records):
+        record = status_records[index]
+        index += 1
+        if not record:
+            continue
+        if len(record) < 4 or record[2:3] != b" ":
+            pytest.fail("cannot parse Git status while verifying the committed S10 test tree", pytrace=False)
+        changed_paths.append(os.fsdecode(record[3:]))
+        if b"R" in record[:2] or b"C" in record[:2]:
+            if index >= len(status_records):
+                pytest.fail("cannot parse renamed Git path while verifying the committed S10 test tree", pytrace=False)
+            changed_paths.append(os.fsdecode(status_records[index]))
+            index += 1
     allowed_dirty_paths = {
         "PROJECT_PLAN.md",
         "docs/phase2/S10_RELEASE_HANDOFF.md",
@@ -55,9 +68,15 @@ def record_s10_candidate_head(record_property, pytestconfig):
     }
     unexpected = []
     for path in changed_paths:
-        normalized = path.replace("\\", "/").lstrip("./")
-        if (normalized not in allowed_dirty_paths
-                and not normalized.startswith("reports/evidence/s10/test-runs/")):
+        normalized = path.replace("\\", "/")
+        if normalized.startswith("./"):
+            normalized = normalized[2:]
+        test_runs_prefix = "reports/evidence/s10/test-runs/"
+        is_test_run_output = (
+            normalized.startswith(test_runs_prefix)
+            and not any(part in {".", ".."} for part in normalized.split("/"))
+        )
+        if normalized not in allowed_dirty_paths and not is_test_run_output:
             unexpected.append(path)
     if unexpected:
         pytest.fail(
