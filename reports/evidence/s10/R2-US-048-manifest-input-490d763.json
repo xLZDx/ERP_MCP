@@ -1,0 +1,23 @@
+{
+  "source_head": "490d7638ea6ec84ccf856312237161fbfa94f584",
+  "pr_number": 53,
+  "cases": [
+    {"id": "R2-TC-124", "status": "PASS", "evidence_run_ids": ["R2-US-048-functional-capture-490d763", "R2-US-048-functional-manifest-490d763"], "note": "Exact scope binding is exercised by the committed-head functional suites."},
+    {"id": "R2-TC-125", "status": "PASS", "evidence_run_ids": ["R2-US-048-functional-capture-490d763"], "note": "Dev/test remains separate from production approval."},
+    {"id": "R2-TC-126", "status": "PASS", "evidence_run_ids": ["R2-US-048-e2e-capture-490d763"], "note": "Synthetic E2E exercises scope-owned cancellation and drain."},
+    {"id": "R2-TC-142", "status": "PASS", "evidence_run_ids": ["R2-US-048-functional-manifest-490d763"], "note": "All six S10 IDs and observed outcomes are represented with source/test identity checks."},
+    {"id": "R2-TC-143", "status": "PASS", "evidence_run_ids": ["R2-US-048-functional-manifest-490d763"], "note": "NOT_RUN/NOT_VERIFIED remain explicit; bounded manifest cannot grant release PASS."},
+    {"id": "R2-TC-144", "status": "PASS", "evidence_run_ids": ["R2-US-048-functional-manifest-490d763", "R2-US-048-e2e-manifest-cli-490d763"], "note": "User/admin/production UAT lanes are structurally separate; their actual results remain NOT_RUN."}
+  ],
+  "test_runs": [
+    {"run_id": "R2-US-048-functional-capture-490d763", "owner": "functional-test-reviewer", "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_capture_runtime.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-functional-capture.xml", "junit_path": "reports/evidence/s10/test-runs/R2-US-048-functional-capture.xml", "junit_sha256": "3AFE903513BBF5C38D556527A9A346BC1931341B375B30751405358CA6CCB1A0", "test_files": {"tests/phase2/test_capture_runtime.py": "2C0AAD37AA0BC6EABD100450F65CF0DCF907765B9D19C549C2B0F7D9935B6E08"}},
+    {"run_id": "R2-US-048-functional-manifest-490d763", "owner": "functional-test-reviewer", "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_s10_release_manifest.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-functional-manifest.xml", "junit_path": "reports/evidence/s10/test-runs/R2-US-048-functional-manifest.xml", "junit_sha256": "2CA166BCF6D6762B2548BB86E996E87B2DF09091181A0AA3E00FE8DD5D6BB2D0", "test_files": {"tests/phase2/test_s10_release_manifest.py": "ED9059C2249DBE330649776114AAD2741FE5E81C5FED5FE03A753F9D8FEDAF96"}},
+    {"run_id": "R2-US-048-e2e-capture-490d763", "owner": "e2e-runner", "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_capture_runtime_e2e.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-e2e-capture.xml", "junit_path": "reports/evidence/s10/test-runs/R2-US-048-e2e-capture.xml", "junit_sha256": "0C6D79B563EAFB538560CDE0A46743F8E85C931306FF75A426DAFAF571F09459", "test_files": {"tests/phase2/test_capture_runtime_e2e.py": "9F10CC7A221539C6FAA039D84A24F46E3B271A7BE5BBA382FE48961C2AE341FE"}},
+    {"run_id": "R2-US-048-e2e-manifest-cli-490d763", "owner": "e2e-runner", "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_s10_release_manifest_cli_e2e.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-e2e-manifest-cli.xml", "junit_path": "reports/evidence/s10/test-runs/R2-US-048-e2e-manifest-cli.xml", "junit_sha256": "B8E4730578A10FC545E6495DF2FB51958CD397079D583F690FA0F0491F81B044", "test_files": {"tests/phase2/test_s10_release_manifest_cli_e2e.py": "61AA89AA969B28F66FEBC5E62119672B85529920AA243E5E314598526DA33543"}}
+  ],
+  "uat": {
+    "user": {"status": "NOT_RUN", "evidence_path": null, "evidence_sha256": null},
+    "admin": {"status": "NOT_RUN", "evidence_path": null, "evidence_sha256": null},
+    "production": {"status": "NOT_RUN", "evidence_path": null, "evidence_sha256": null}
+  }
+}
