@@ -2,18 +2,18 @@
 
 ## Current operator rebaseline — 2026-11-08
 
-The 2026-10-10 document-only handoff below is historical baseline. The operator has since
-authorized the bounded dev/test prerequisite `ERP-S10-DEV-PREREQUISITE`, traced to R2-US-042 and
-TC124–126. Candidate source and exact task-mapped test evidence are now present in isolated branch
-`codex/s10-r2-canary-dev-20261108`, based on HEAD `727b2dac91b8da0fdaac237d1b8b7cd94a0654b8`;
-the candidate remains uncommitted. Functional tests report 11 passed and synthetic E2E tests report
-4 passed; exact commands and hashes are in `docs/sdlc/verify-evidence.md`. GPT-PM request
+The 2026-10-10 document-only handoff below is historical baseline. The operator later authorized the
+bounded dev/test prerequisite `ERP-S10-DEV-PREREQUISITE`, traced to R2-US-042 and TC124–126. That
+candidate is now commit `b22a446b9d5b8e34fe24cee9c432323a44046d69` on isolated branch
+`codex/s10-r2-canary-dev-20261108`, pushed and available in [PR #53](https://github.com/xLZDx/ERP_MCP/pull/53).
+At that exact HEAD, `functional-test-reviewer` reported 11 passed and `e2e-runner` reported 4 passed
+(synthetic dev/test only); commands and hashes are in `docs/sdlc/verify-evidence.md`. GPT-PM request
 `c94d7b51-90b1-47ab-84fa-27b64c610ea4` returned `APPROVE — BOUNDED DEV/TEST SCOPE` with 0
-BLOCKER/MAJOR for the attached candidate. Delivery is still pending. Production canary/data, 1C
-writes, migration, deployment, G6/G7
-approval and Release 2 GO remain out of scope and NOT_RUN/NOT_PASSED. R2-US-048 is next only after
-technical R2-US-042 closure; S11 remains held until S10 closes. See the current scope and design in
-`SPRINT_S10_PLAN.md`.
+BLOCKER/MAJOR for the attached source/test hashes. R2-US-042 is bounded-closed for engineering delivery;
+PR #53 is open, not merged. R2-US-048 is the current ordered task, assembling exact-head evidence and
+separate user/admin/production UAT status. Production canary/data, 1C writes, migration, deployment,
+G6/G7 approval and Release 2 GO remain out of scope and NOT_RUN/NOT_PASSED. S11 remains held until S10
+closes. See `SPRINT_S10_PLAN.md` for the current scope and sequence.
 
 Date: 2026-10-10. Branch: `phase2/living-model-connectors-reconciliation`. Offline base head when this document was written: `414d232` (S9 APPROVED by GPT-PM at `6ee27f1` and pushed; `414d232` adds the S9 report pair and the registry refresh).
 
