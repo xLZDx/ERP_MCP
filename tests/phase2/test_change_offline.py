@@ -1448,7 +1448,11 @@ def test_t16_same_person_twice_and_requester_as_operator_are_refused_and_the_app
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=REQUESTER), "APPROVER_NOT_INDEPENDENT", "T16")
     # the operator who approved the change may co-sign only with an independent witness (S12-M05)
     ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER))
-    ok(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER))
+    ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id="p-wit"))
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=REQUESTER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id=APPROVER),
             "APPROVER_NOT_INDEPENDENT", "T16")
 
