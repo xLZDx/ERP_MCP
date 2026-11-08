@@ -169,6 +169,28 @@ def test_tc142_manifest_output_is_restricted_to_the_fixed_evidence_path(tmp_path
         module.validate_manifest(result, root=tmp_path, allowed_output=alternate)
 
 
+def test_tc142_api_rejects_symlinked_output_parent_before_replacing_target(tmp_path):
+    cases, runs, uat = _inputs(tmp_path)
+    reports = tmp_path / "reports"
+    real_reports = tmp_path / "reports-real"
+    target = reports / module.MANIFEST_RELATIVE_PATH.name
+    sentinel = b"preserve prior evidence manifest\n"
+    target.write_bytes(sentinel)
+    reports.rename(real_reports)
+    try:
+        reports.symlink_to(real_reports, target_is_directory=True)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"directory symlinks unavailable on this platform: {exc}")
+
+    with pytest.raises(ValueError, match="manifest output path cannot traverse symlinks"):
+        module.assemble_manifest(
+            tmp_path, source_head=SOURCE_HEAD, cases=cases, test_runs=runs, uat=uat,
+            pr_number=PR_NUMBER, output_path=tmp_path / module.MANIFEST_RELATIVE_PATH,
+        )
+
+    assert target.read_bytes() == sentinel
+
+
 def test_tc142_rejects_forged_outcome_and_tampered_or_uncommitted_junit(tmp_path, monkeypatch):
     cases, runs, uat = _inputs(tmp_path)
     runs[0] = _run(

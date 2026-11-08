@@ -299,6 +299,28 @@ def test_cli_rejects_output_outside_fixed_manifest_path_without_touching_source(
     assert not (repo / "reports/S10_RELEASE_EVIDENCE_MANIFEST.json").exists()
 
 
+def test_cli_rejects_symlinked_output_parent_before_replacing_target(tmp_path: Path) -> None:
+    fixture = _prepare_repo(tmp_path)
+    repo = Path(str(fixture["repo"]))
+    reports = repo / "reports"
+    real_reports = repo / "reports-real"
+    target = reports / "S10_RELEASE_EVIDENCE_MANIFEST.json"
+    sentinel = b"preserve prior evidence manifest\n"
+    target.write_bytes(sentinel)
+    reports.rename(real_reports)
+    try:
+        reports.symlink_to(real_reports, target_is_directory=True)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"directory symlinks unavailable on this platform: {exc}")
+
+    result = _run_cli(fixture, _input(fixture))
+
+    assert result.returncode != 0
+    assert "manifest output path cannot traverse symlinks" in result.stderr
+    assert target.read_bytes() == sentinel
+    assert not list(target.parent.glob(f".{target.name}.*.tmp"))
+
+
 def test_cli_rejects_input_output_collision_without_overwriting_input(tmp_path: Path) -> None:
     fixture = _prepare_repo(tmp_path)
     repo = Path(str(fixture["repo"]))

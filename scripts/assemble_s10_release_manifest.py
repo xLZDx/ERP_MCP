@@ -24,10 +24,13 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    manifest_output = (REPO_ROOT / MANIFEST_RELATIVE_PATH).resolve()
-    if args.output.resolve() != manifest_output:
+    manifest_output = REPO_ROOT / MANIFEST_RELATIVE_PATH
+    if any(path.is_symlink() for path in (manifest_output.parent, manifest_output)):
+        raise ValueError("manifest output path cannot traverse symlinks")
+    resolved_manifest_output = manifest_output.resolve()
+    if args.output.resolve() != resolved_manifest_output:
         raise ValueError("output path must be reports/S10_RELEASE_EVIDENCE_MANIFEST.json")
-    if args.input.resolve() == manifest_output:
+    if args.input.resolve() == resolved_manifest_output:
         raise ValueError("input and output paths must differ")
     source = json.loads(args.input.read_text(encoding="utf-8"))
     if not isinstance(source, dict) or set(source) != {"source_head", "cases", "test_runs", "uat", "pr_number"}:

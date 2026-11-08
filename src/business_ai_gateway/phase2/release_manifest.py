@@ -185,18 +185,33 @@ def _assert_task_code_unchanged(root: Path, *, source_head: str, current_head: s
             raise ValueError("task implementation changed after the tested source HEAD")
 
 
+def _fixed_manifest_output(root: Path, output_path: Path) -> Path:
+    """Validate the lexical destination and reject symlinks before resolving it."""
+    root = root.resolve()
+    candidate = output_path if output_path.is_absolute() else root / output_path
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("manifest output must be inside the repository") from exc
+    if relative != MANIFEST_RELATIVE_PATH:
+        raise ValueError("manifest output must use the fixed S10 evidence destination")
+
+    current = root
+    for component in MANIFEST_RELATIVE_PATH.parts:
+        current /= component
+        if current.is_symlink():
+            raise ValueError("manifest output path cannot traverse symlinks")
+    return root / MANIFEST_RELATIVE_PATH
+
+
 def _assert_clean_candidate(root: Path, *, allowed_output: Path | None) -> None:
     changes = _git(root, "status", "--porcelain").splitlines()
     if allowed_output is None:
         if changes:
             raise ValueError("candidate worktree must be clean before manifest assembly")
         return
-    try:
-        allowed = allowed_output.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError as exc:
-        raise ValueError("manifest output must be inside the repository") from exc
-    if allowed_output.is_symlink():
-        raise ValueError("manifest output cannot be a symlink")
+    _fixed_manifest_output(root, allowed_output)
+    allowed = MANIFEST_RELATIVE_PATH.as_posix()
     changed_paths = {line[3:].strip('"') for line in changes}
     if changed_paths - {allowed}:
         raise ValueError("candidate worktree has changes beyond the manifest output")
@@ -214,9 +229,8 @@ def _validate_uat(*, record: Any) -> None:
 def validate_manifest(manifest: Any, *, root: Path, allowed_output: Path | None = None) -> dict[str, Any]:
     """Validate case IDs, JUnit provenance, separate UAT lanes and fail-closed release state."""
     root = root.resolve()
-    if (allowed_output is not None
-            and allowed_output.resolve() != (root / MANIFEST_RELATIVE_PATH).resolve()):
-        raise ValueError("manifest output must use the fixed S10 evidence destination")
+    if allowed_output is not None:
+        allowed_output = _fixed_manifest_output(root, allowed_output)
     if (not isinstance(manifest, dict)
             or set(manifest) != {"schema_version", "package_status", "candidate", "case_ids", "cases",
                                  "test_runs", "uat", "release_decision", "native_evidence_level_inferred"}
@@ -323,9 +337,8 @@ def assemble_manifest(root: Path, *, source_head: str, cases: list[dict[str, Any
                       output_path: Path | None = None) -> dict[str, Any]:
     """Bind test results to an exact source HEAD and allow later evidence-only PR commits."""
     root = root.resolve()
-    if (output_path is not None
-            and output_path.resolve() != (root / MANIFEST_RELATIVE_PATH).resolve()):
-        raise ValueError("manifest output must use the fixed S10 evidence destination")
+    if output_path is not None:
+        output_path = _fixed_manifest_output(root, output_path)
     head = _git(root, "rev-parse", "HEAD")
     branch = _git(root, "branch", "--show-current")
     remote = _git(root, "ls-remote", "origin", f"refs/heads/{branch}").split()
