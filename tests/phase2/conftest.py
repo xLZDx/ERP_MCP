@@ -46,16 +46,22 @@ def record_s10_candidate_head(record_property, pytestconfig):
     for line in status.splitlines():
         path = line[3:].strip().strip('"').replace("\\", "/")
         changed_paths.extend(part.strip().strip('"') for part in path.split(" -> "))
-    protected_roots = ("src", "tests", "scripts")
+    allowed_dirty_paths = {
+        "PROJECT_PLAN.md",
+        "docs/phase2/S10_RELEASE_HANDOFF.md",
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md",
+    }
     unexpected = []
     for path in changed_paths:
         normalized = path.replace("\\", "/").lstrip("./")
-        first_part = normalized.split("/", 1)[0]
-        if first_part in protected_roots:
+        if (normalized not in allowed_dirty_paths
+                and not normalized.startswith("reports/evidence/s10/test-runs/")):
             unexpected.append(path)
     if unexpected:
         pytest.fail(
-            "S10 test tree has uncommitted source, test or script changes: "
+            "S10 test tree has unapproved uncommitted paths: "
             + ", ".join(sorted(unexpected)),
             pytrace=False,
         )
