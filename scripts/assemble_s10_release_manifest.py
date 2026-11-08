@@ -12,8 +12,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
-assemble_manifest = import_module("business_ai_gateway.phase2.release_manifest").assemble_manifest
-MANIFEST_RELATIVE_PATH = import_module("business_ai_gateway.phase2.release_manifest").MANIFEST_RELATIVE_PATH
+release_manifest = import_module("business_ai_gateway.phase2.release_manifest")
+assemble_manifest = release_manifest.assemble_manifest
+MANIFEST_RELATIVE_PATH = release_manifest.MANIFEST_RELATIVE_PATH
+fixed_manifest_output_path = release_manifest.fixed_manifest_output_path
 
 
 def main() -> None:
@@ -24,9 +26,7 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    manifest_output = REPO_ROOT / MANIFEST_RELATIVE_PATH
-    if any(path.is_symlink() for path in (manifest_output.parent, manifest_output)):
-        raise ValueError("manifest output path cannot traverse symlinks")
+    manifest_output = fixed_manifest_output_path(REPO_ROOT, MANIFEST_RELATIVE_PATH)
     resolved_manifest_output = manifest_output.resolve()
     if args.output.resolve() != resolved_manifest_output:
         raise ValueError("output path must be reports/S10_RELEASE_EVIDENCE_MANIFEST.json")

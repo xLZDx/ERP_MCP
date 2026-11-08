@@ -185,8 +185,8 @@ def _assert_task_code_unchanged(root: Path, *, source_head: str, current_head: s
             raise ValueError("task implementation changed after the tested source HEAD")
 
 
-def _fixed_manifest_output(root: Path, output_path: Path) -> Path:
-    """Validate the lexical destination and reject symlinks before resolving it."""
+def fixed_manifest_output_path(root: Path, output_path: Path) -> Path:
+    """Validate the lexical destination and reject symlinks/junctions before resolving it."""
     root = root.resolve()
     candidate = output_path if output_path.is_absolute() else root / output_path
     try:
@@ -199,8 +199,8 @@ def _fixed_manifest_output(root: Path, output_path: Path) -> Path:
     current = root
     for component in MANIFEST_RELATIVE_PATH.parts:
         current /= component
-        if current.is_symlink():
-            raise ValueError("manifest output path cannot traverse symlinks")
+        if current.is_symlink() or current.is_junction():
+            raise ValueError("manifest output path cannot traverse symlinks or junctions")
     return root / MANIFEST_RELATIVE_PATH
 
 
@@ -210,7 +210,7 @@ def _assert_clean_candidate(root: Path, *, allowed_output: Path | None) -> None:
         if changes:
             raise ValueError("candidate worktree must be clean before manifest assembly")
         return
-    _fixed_manifest_output(root, allowed_output)
+    fixed_manifest_output_path(root, allowed_output)
     allowed = MANIFEST_RELATIVE_PATH.as_posix()
     changed_paths = {line[3:].strip('"') for line in changes}
     if changed_paths - {allowed}:
@@ -230,7 +230,7 @@ def validate_manifest(manifest: Any, *, root: Path, allowed_output: Path | None 
     """Validate case IDs, JUnit provenance, separate UAT lanes and fail-closed release state."""
     root = root.resolve()
     if allowed_output is not None:
-        allowed_output = _fixed_manifest_output(root, allowed_output)
+        allowed_output = fixed_manifest_output_path(root, allowed_output)
     if (not isinstance(manifest, dict)
             or set(manifest) != {"schema_version", "package_status", "candidate", "case_ids", "cases",
                                  "test_runs", "uat", "release_decision", "native_evidence_level_inferred"}
@@ -338,7 +338,7 @@ def assemble_manifest(root: Path, *, source_head: str, cases: list[dict[str, Any
     """Bind test results to an exact source HEAD and allow later evidence-only PR commits."""
     root = root.resolve()
     if output_path is not None:
-        output_path = _fixed_manifest_output(root, output_path)
+        output_path = fixed_manifest_output_path(root, output_path)
     head = _git(root, "rev-parse", "HEAD")
     branch = _git(root, "branch", "--show-current")
     remote = _git(root, "ls-remote", "origin", f"refs/heads/{branch}").split()

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,6 +39,29 @@ def _write_bytes(root: Path, relative_path: str, data: bytes) -> None:
     target = root / relative_path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
+
+
+def _create_directory_junction_or_symlink(link: Path, target: Path) -> None:
+    junction_error = None
+    if sys.platform == "win32":
+        try:
+            result = subprocess.run(
+                ["cmd.exe", "/d", "/c", "mklink", "/J", link.name, target.name],
+                cwd=link.parent,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0 and link.is_dir():
+                return
+            junction_error = result.stderr or result.stdout or f"mklink exited {result.returncode}"
+        except OSError as exc:
+            junction_error = str(exc)
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (NotImplementedError, OSError) as exc:
+        details = f"; junction attempt: {junction_error}" if junction_error else ""
+        pytest.skip(f"directory junction/symlink unavailable on this platform: {exc}{details}")
 
 
 def _run(root, run_id, case_ids, test_path, *, failing_case=None, skipped_case=None,
@@ -169,7 +194,7 @@ def test_tc142_manifest_output_is_restricted_to_the_fixed_evidence_path(tmp_path
         module.validate_manifest(result, root=tmp_path, allowed_output=alternate)
 
 
-def test_tc142_api_rejects_symlinked_output_parent_before_replacing_target(tmp_path):
+def test_tc142_api_rejects_symlink_or_junction_output_parent_before_replacing_target(tmp_path):
     cases, runs, uat = _inputs(tmp_path)
     reports = tmp_path / "reports"
     real_reports = tmp_path / "reports-real"
@@ -177,10 +202,7 @@ def test_tc142_api_rejects_symlinked_output_parent_before_replacing_target(tmp_p
     sentinel = b"preserve prior evidence manifest\n"
     target.write_bytes(sentinel)
     reports.rename(real_reports)
-    try:
-        reports.symlink_to(real_reports, target_is_directory=True)
-    except (NotImplementedError, OSError) as exc:
-        pytest.skip(f"directory symlinks unavailable on this platform: {exc}")
+    _create_directory_junction_or_symlink(reports, real_reports)
 
     with pytest.raises(ValueError, match="manifest output path cannot traverse symlinks"):
         module.assemble_manifest(

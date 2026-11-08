@@ -59,6 +59,29 @@ def _write_gh_shim(shim_dir: Path) -> None:
     )
 
 
+def _create_directory_junction_or_symlink(link: Path, target: Path) -> None:
+    junction_error = None
+    if sys.platform == "win32":
+        try:
+            result = subprocess.run(
+                ["cmd.exe", "/d", "/c", "mklink", "/J", link.name, target.name],
+                cwd=link.parent,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0 and link.is_dir():
+                return
+            junction_error = result.stderr or result.stdout or f"mklink exited {result.returncode}"
+        except OSError as exc:
+            junction_error = str(exc)
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (NotImplementedError, OSError) as exc:
+        details = f"; junction attempt: {junction_error}" if junction_error else ""
+        pytest.skip(f"directory junction/symlink unavailable on this platform: {exc}{details}")
+
+
 def _junit(source_head: str, cases: list[tuple[str, str, str]]) -> str:
     suite = ET.Element("testsuite", tests=str(len(cases)), failures="0", errors="0", skipped="0")
     for module_stem, case_id, outcome in cases:
@@ -299,7 +322,7 @@ def test_cli_rejects_output_outside_fixed_manifest_path_without_touching_source(
     assert not (repo / "reports/S10_RELEASE_EVIDENCE_MANIFEST.json").exists()
 
 
-def test_cli_rejects_symlinked_output_parent_before_replacing_target(tmp_path: Path) -> None:
+def test_cli_rejects_symlink_or_junction_output_parent_before_replacing_target(tmp_path: Path) -> None:
     fixture = _prepare_repo(tmp_path)
     repo = Path(str(fixture["repo"]))
     reports = repo / "reports"
@@ -308,10 +331,7 @@ def test_cli_rejects_symlinked_output_parent_before_replacing_target(tmp_path: P
     sentinel = b"preserve prior evidence manifest\n"
     target.write_bytes(sentinel)
     reports.rename(real_reports)
-    try:
-        reports.symlink_to(real_reports, target_is_directory=True)
-    except (NotImplementedError, OSError) as exc:
-        pytest.skip(f"directory symlinks unavailable on this platform: {exc}")
+    _create_directory_junction_or_symlink(reports, real_reports)
 
     result = _run_cli(fixture, _input(fixture))
 
