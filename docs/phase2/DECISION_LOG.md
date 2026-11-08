@@ -240,3 +240,10 @@ Platform handoff recheck (2026-11-08): the existing OpenAI Platform tunnels tab 
 - The project runner contract reads `env\tunnel.json` and decrypts `env\tunnel_api_key.dpapi` under CurrentUser DPAPI (`scripts/remote/run-tunnel.ps1:15-18`); the in-scope search found no `ERP_MCP1_TUNNEL_RUNTIME` integration. A Credential Manager entry alone would not currently configure this runner.
 - Over strict-host-key SSH, a read-only `CredReadW` query for only `ERP_MCP1_TUNNEL_RUNTIME` returned `present=false, win32_error=1312`. No credential blob was read or emitted. Because the query did not establish an accessible logon session, this result does not prove the named target is absent.
 - The unblock remains an interactive, authorized target-key provision followed by the repository helper, or an operator-supplied interactive check of that exact Credential Manager target. Do not place the secret in chat or source control.
+
+## 2026-11-08 — tunnel process and target ID recheck
+
+- Via strict-host-key SSH, read-only inspection found `ERP_MCP_Ivan_Stack` enabled with state `Ready` and `LastTaskResult=0`; a `tunnel-client` process was present. This proves the client process exists, but not that it registered against the ERP_MCP1 target.
+- The non-secret `env\tunnel.json` field is still `tunnel_6acb5cec58848191b6a9c4dd51167930`, while ERP_MCP1 is configured for `tunnel_6ac64553de90819188eaf83bc540eb7a`. A repeated ERP_MCP1 status call returned `tunnel_client_not_seen` for the target. The active process plus mismatched configured ID makes tunnel-ID reconciliation the concrete next action; do not classify this as a confirmed 1C license failure.
+- A fresh read-only scan of the 21 top-level `D:\1c\mcp\logs\*.log` files counted zero matches for `license|licence|лиценз|expired|истек|истёк`. No log lines, key material, 1C licensing state, or Windows event logs were read. License validity remains `NOT_VERIFIED`.
+- Remaining dependency: a runtime key usable for the target tunnel ID. Operator owns providing it through the hidden project helper; Codex owns running the helper and verifying target registration. No reboot or target registration is claimed.
