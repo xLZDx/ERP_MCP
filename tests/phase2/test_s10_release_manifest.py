@@ -104,8 +104,10 @@ def _inputs(root):
 
 
 def _fake_git(monkeypatch, root, *, dirty="", remote_head=PR_HEAD, head=PR_HEAD,
-              pr_head=PR_HEAD, blob_overrides=None):
+              pr_head=PR_HEAD, blob_overrides=None, status_z=None):
     blob_overrides = blob_overrides or {}
+    if status_z is None:
+        status_z = b"".join(line.encode("utf-8") + b"\0" for line in dirty.splitlines() if line)
     project_root = Path(__file__).resolve().parents[2]
 
     def git(_root, *args):
@@ -117,6 +119,8 @@ def _fake_git(monkeypatch, root, *, dirty="", remote_head=PR_HEAD, head=PR_HEAD,
             return f"{remote_head}\trefs/heads/{BRANCH}"
         if args == ("status", "--porcelain"):
             return dirty
+        if args == ("status", "--porcelain", "-z", "--untracked-files=all"):
+            return status_z
         if len(args) == 4 and args[:2] == ("merge-base", "--is-ancestor"):
             ancestor, descendant = args[2], args[3]
             if not ((ancestor == SOURCE_HEAD and descendant in {PR_HEAD, head})
@@ -126,6 +130,8 @@ def _fake_git(monkeypatch, root, *, dirty="", remote_head=PR_HEAD, head=PR_HEAD,
         raise AssertionError(args)
 
     def git_bytes(_root, *args):
+        if args == ("status", "--porcelain", "-z", "--untracked-files=all"):
+            return status_z
         if len(args) == 2 and args[0] == "show":
             commit, relative_path = args[1].split(":", 1)
             if commit not in {SOURCE_HEAD, PR_HEAD, head}:
@@ -178,7 +184,7 @@ def test_tc142_manifest_records_complete_ids_results_and_distinct_not_run_uat(tm
 
 def test_tc142_manifest_output_is_restricted_to_the_fixed_evidence_path(tmp_path, monkeypatch):
     cases, runs, uat = _inputs(tmp_path)
-    _fake_git(monkeypatch, tmp_path)
+    _fake_git(monkeypatch, tmp_path, dirty=" M reports/S10_RELEASE_EVIDENCE_MANIFEST.json")
     result = module.assemble_manifest(
         tmp_path, source_head=SOURCE_HEAD, cases=cases, test_runs=runs, uat=uat, pr_number=PR_NUMBER,
         output_path=tmp_path / module.MANIFEST_RELATIVE_PATH,
@@ -211,6 +217,21 @@ def test_tc142_api_rejects_symlink_or_junction_output_parent_before_replacing_ta
         )
 
     assert target.read_bytes() == sentinel
+
+
+@pytest.mark.parametrize("status_z", [
+    b"R  reports/S10_RELEASE_EVIDENCE_MANIFEST.json\0src/original.py\0",
+    b"C  reports/S10_RELEASE_EVIDENCE_MANIFEST.json\0pyproject.toml\0",
+])
+def test_tc142_rejects_rename_or_copy_with_any_disallowed_path(tmp_path, monkeypatch, status_z):
+    cases, runs, uat = _inputs(tmp_path)
+    _fake_git(monkeypatch, tmp_path, status_z=status_z)
+
+    with pytest.raises(ValueError, match="candidate worktree has changes beyond the manifest output"):
+        module.assemble_manifest(
+            tmp_path, source_head=SOURCE_HEAD, cases=cases, test_runs=runs, uat=uat,
+            pr_number=PR_NUMBER, output_path=tmp_path / module.MANIFEST_RELATIVE_PATH,
+        )
 
 
 def test_tc142_rejects_forged_outcome_and_tampered_or_uncommitted_junit(tmp_path, monkeypatch):

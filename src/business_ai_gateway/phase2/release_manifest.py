@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
@@ -205,15 +206,32 @@ def fixed_manifest_output_path(root: Path, output_path: Path) -> Path:
 
 
 def _assert_clean_candidate(root: Path, *, allowed_output: Path | None) -> None:
-    changes = _git(root, "status", "--porcelain").splitlines()
+    status = _git_bytes(root, "status", "--porcelain", "-z", "--untracked-files=all")
+    if status and not status.endswith(b"\0"):
+        raise ValueError("cannot parse Git status while verifying the candidate worktree")
+    records = status[:-1].split(b"\0") if status else []
+    changed_paths = []
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if not record:
+            raise ValueError("cannot parse Git status while verifying the candidate worktree")
+        if len(record) < 4 or record[2:3] != b" " or not record[3:]:
+            raise ValueError("cannot parse Git status while verifying the candidate worktree")
+        changed_paths.append(os.fsdecode(record[3:]))
+        if b"R" in record[:2] or b"C" in record[:2]:
+            if index >= len(records) or not records[index]:
+                raise ValueError("cannot parse renamed Git path while verifying the candidate worktree")
+            changed_paths.append(os.fsdecode(records[index]))
+            index += 1
     if allowed_output is None:
-        if changes:
+        if changed_paths:
             raise ValueError("candidate worktree must be clean before manifest assembly")
         return
     fixed_manifest_output_path(root, allowed_output)
     allowed = MANIFEST_RELATIVE_PATH.as_posix()
-    changed_paths = {line[3:].strip('"') for line in changes}
-    if changed_paths - {allowed}:
+    if set(changed_paths) - {allowed}:
         raise ValueError("candidate worktree has changes beyond the manifest output")
 
 
