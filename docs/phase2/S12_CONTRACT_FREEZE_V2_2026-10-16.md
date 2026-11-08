@@ -189,14 +189,15 @@ GPT project-owner ruling `d289d167-b1f2-43d7-a17a-e01891748eb3` (reply `0d9e7e0e
 
 An entered conditional-version conflict remains held until the exact signed completion proof and independent no-effect observation are linked causally. The candidate chain is `CompletionProof → PostCompletionChallenge → PostCompletionReadAttestation + OutcomeEvidenceV3`: after authenticating completion, a distinct supervisor signs a random nonce and query-plan digest. A separately process-attested read-attestor signs the nonce-bound live request, exact source-response and outcome-claim digests, and durable sequence above the challenge floor; V3 binds that attestation. The validator checks the proof, challenge, attestor process/signature, query/request/response/outcome digest bindings and sequence. Same-host timestamps are additional consistency checks; cross-host timestamps are not an ordering source. Timestamp-only order, self-asserted sequence, or relabeled cached evidence is insufficient. V1/V2 cannot authorize this terminal path. The database transition rechecks the receipt, completion, challenge, read attestation, V3 reference, current serving instance/epoch and T16 approvals atomically. Attestor implementation, SQL and qualification remain unimplemented until independently proven.
 
-### Appendix C — CT10 source reconciliation (proposed; review required)
+### Appendix C — CT10 source reconciliation (approved for bounded offline acceptance)
 
-This appendix is the bounded V2-S12-02 reconciliation package authorized by GPT-PM request
-`409d42a6-a596-48ad-aed3-d60de21545e0` for repository revision
-`53fa0515c0ea0d8b3275d03bf82502a81d6c1e02`. It is a proposed source crosswalk, not an approved
-change to the contract and not evidence of runtime or production capability. The independent
-literal oracle and implementation comparison must retain this distinction until GPT-PM reviews
-this exact reconciliation and any resulting semantic delta.
+This appendix records the bounded V2-S12-02 source reconciliation authorized by GPT-PM request
+`409d42a6-a596-48ad-aed3-d60de21545e0` and approved with the exact remediation in request
+`9488400a-ccec-4a88-96d2-77ae5391e98f`, against baseline
+`53fa0515c0ea0d8b3275d03bf82502a81d6c1e02` (delivered as commit
+`f79d34eacc80439d150d52cd2ad45a4a2b3ed934`). Approval covers the offline source crosswalk,
+literal CT10 comparison and pure transition model only. It neither amends the frozen contract nor
+proves runtime, authenticated adapter/ledger evidence or production capability.
 
 #### Source precedence and interpretation
 
@@ -263,9 +264,9 @@ implementation projection.
 - `T6_REPLAY`, `T6p_DISPATCH`, and the three T16 outcomes are comparison variants, not new write
   authority.
 
-This reconciliation is **REVIEW REQUIRED**. Complete CT10 parity and E45 full acceptance remain
-`NOT_VERIFIED` until the independent literal oracle is compared with `TRANSITION_TABLE` and
-`apply_transition()`, differences are resolved or expressly dispositioned, and GPT-PM reviews the
-exact crosswalk/oracle/code revision. Evidence remains offline/synthetic. G3's operator-facing
-status projection remains a separate `PARTIAL` item. Nothing here authorizes production/live 1C
-writes, changes Release 2 `NO-GO`, or closes a G0–G8 gate.
+GPT-PM approved the exact bounded offline V2-S12-02 delta: the literal T1–T17 table/variant
+comparison and pure `apply_transition()` model are accepted for this scope. Evidence remains
+offline/synthetic. Authenticated upstream T16 adapter/ledger evidence and durable hold enforcement
+remain `NOT_VERIFIED`; G3's operator-facing status projection remains `PARTIAL`; full E45/runtime
+qualification remains `NOT_VERIFIED`. Nothing here authorizes production/live 1C writes, changes
+Release 2 `NO-GO`, or closes a G0–G8 gate.
