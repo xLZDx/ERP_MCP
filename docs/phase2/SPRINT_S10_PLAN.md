@@ -1,7 +1,7 @@
 # Sprint S10 plan — bounded dev/test capture prerequisite; production canary NOT_RUN
 
 Date: 2026-11-08. Operator-approved rebaseline: `ERP-S10-DEV-PREREQUISITE` (dev/test only).
-Current task: **R2-US-048** (R2-US-042 bounded dev/test implementation has been pushed in PR #53). Scope: `R2-REQ01`, `R2-REQ28`, `R2-TC142`–`R2-TC144`.
+Current task: **R2-US-048** (bounded engineering evidence acceptance is closed on PR #53). Scope: `R2-REQ01`, `R2-REQ28`, `R2-TC142`–`R2-TC144`.
 
 ## Goal and acceptance
 
@@ -59,13 +59,14 @@ and executors remain `functional-test-reviewer` and `e2e-runner` after coding is
 ## Ordered S10 work
 
 1. R2-US-042 dev/test implementation and exact TC124–126 evidence (bounded technical closure delivered by PR #53).
-2. R2-US-048 release-evidence package and TC142–144 (current); production UAT/canary/release approval remain separately gated and may remain NOT_RUN.
-3. Close S10 only when its bounded criteria and exact-head evidence are reconciled; do not start S11
-   before then.
+2. R2-US-048 release-evidence package and TC142–144 (bounded engineering acceptance closed by PR #53); production UAT/canary/release approval remain separately gated and may remain NOT_RUN.
+3. S10 bounded engineering scope closed on 2026-11-08 after exact-head manifest review and push;
+   S11 is next in order. Production UAT/canary/release acceptance remain separately gated.
 
-## R2-US-048 current evidence checkpoint — 2026-11-08
+## R2-US-048 closure checkpoint — 2026-11-08
 
 - Exact source candidate: `490d7638ea6ec84ccf856312237161fbfa94f584`, pushed on PR #53. The four task-mapped runs total 45/45 passing (11 + 22 functional; 4 + 8 CLI/capture E2E), with every JUnit testcase carrying that candidate head and no failures, errors or skips.
-- Internal code/security/silent-failure reviews and GPT-PM code review are complete for the source candidate; GPT-PM's minor parser finding was fixed and re-reviewed. This does not review or approve the assembled manifest artifact.
+- Internal code/security/silent-failure reviews and GPT-PM code review are complete for the source candidate; GPT-PM's minor parser finding was fixed and re-reviewed. The source approval is distinct from the separately recorded approval of the exact manifest artifact below.
 - The committed input record maps TC124–126 and TC142–144 to the synthetic runs. User/admin/production UAT slots are all `NOT_RUN`; Release 2 remains `NO-GO`.
-- Remaining before S10 closure: generate the fixed-path manifest from the current clean pushed PR head, inspect its six case mappings/UAT lanes/NO-GO, obtain GPT-PM review of the exact manifest, and push the artifact. Do not start S11 until this current task is closed.
+- Manifest `reports/S10_RELEASE_EVIDENCE_MANIFEST.json` was generated from the clean pushed evidence snapshot and exact source candidate, independently reviewed, approved by GPT-PM, and pushed as commit `4445dd2c5d84011bdc6327bc314f599b75843dab` on PR #53. SHA-256: `C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE`. GPT-PM artifact request: `a8136ea2-24bb-4c53-bcd5-14d6e93dd6c5` — `APPROVE — BOUNDED ENGINEERING EVIDENCE`, 0 BLOCKER/MAJOR/MINOR.
+- R2-US-048 and S10 bounded engineering acceptance are closed in sequence. PR #53 remains open and unmerged; S11 is the next sprint to inspect. Actual user/admin/production UAT, live 1C, production canary, deployment, migrations, G6/G7 and Release 2 GO remain `NOT_RUN`/`NO-GO` or out of scope.
