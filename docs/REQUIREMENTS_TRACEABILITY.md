@@ -35,6 +35,7 @@ This matrix connects requirements to architecture, implementation areas and rele
 | NFR-P2 | Measured performance before GO | Test Strategy §8 | D13 |
 | COR-1 | Accounting reconciliation with native 1C | TDD §3 G-05 | D9 |
 | COR-2 | Drift invalidates affected semantics | Test Strategy §6 | D7/D9 |
+| S10-CAPTURE-1 | Operator rebaseline 2026-11-08: R2-US-042 dev/test prerequisite proves exact tenant/company/source/scope-epoch capture, environment separation and scope-local kill-switch ownership; no production canary or 1C write | TDD FR-L; Scope Freeze §2.2; S10 plan | R2-TC124–126 on exact head; production G6/G7 remain NOT_RUN/NOT_PASSED |
 | OPS-1 | Source onboarding handshake | Integration §9 | D10/D17 |
 | OPS-2 | Source offboarding safe | Integration §10 | D17 |
 | OPS-3 | Deterministic release preflight and non-destructive rollback manifest | Release Operations / Rollback runbook | D15–D18 |

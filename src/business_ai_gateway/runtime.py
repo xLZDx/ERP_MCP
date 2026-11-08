@@ -18,6 +18,9 @@ from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
 from .fixture_profiles import ProvisionalProfiles, SyntheticFixtureProfiles
 from .observability import OperationalMetrics
+from .phase2.capture_loop import CaptureLoop
+from .phase2.capture_runtime import CaptureRuntime
+from .phase2.workbench_types import ViewerScope
 from .rate_limit import RateLimiter
 from .registry import Registry
 from .secrets import build_secret_provider
@@ -117,6 +120,26 @@ class Runtime:
         self._lock = asyncio.Lock()
         self._com_client = None
         self._com_lock = asyncio.Lock()
+        self._phase2_capture_runtime: CaptureRuntime | None = None
+
+    def bind_dev_test_capture(self, *, scope: ViewerScope, source_id: str,
+                              capture_loop: CaptureLoop) -> CaptureRuntime:
+        """Bind the S10 capture supervisor explicitly in development/test only.
+
+        Production construction is rejected by CaptureRuntime; no public MCP tool is registered
+        here. The caller must supply a loop already composed from the validated scope and ports.
+        """
+        if self.settings.environment not in {"development", "test"}:
+            raise ValueError("CAPTURE_RUNTIME_ENVIRONMENT_REFUSED")
+        if self._phase2_capture_runtime is not None:
+            raise RuntimeError("CAPTURE_RUNTIME_ALREADY_BOUND")
+        self._phase2_capture_runtime = CaptureRuntime(
+            environment=self.settings.environment,
+            scope=scope,
+            source_id=source_id,
+            capture_loop=capture_loop,
+        )
+        return self._phase2_capture_runtime
 
     def com_bindings(self) -> tuple[ComBinding, ...]:
         """Operator-pinned COM bindings; absent settings mean no COM route (never an import error)."""
@@ -189,6 +212,9 @@ class Runtime:
         return await self.db.ping() and admin_ready and promotion_ready and bool(await self.redis.ping())
 
     async def close(self):
+        if self._phase2_capture_runtime is not None:
+            await self._phase2_capture_runtime.close()
+            self._phase2_capture_runtime = None
         await self.onec_client.close()
         if self._com_client is not None and hasattr(self._com_client, "close"):
             await self._com_client.close()

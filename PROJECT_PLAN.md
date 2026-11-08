@@ -1,19 +1,19 @@
 ---
 project: ERP_MCP
-as_of: 2026-11-01
-active_sprint: FIN
+as_of: 2026-11-08
+active_sprint: S10
 scope: single_sprint
-approved_sprints: FIN
+approved_sprints: S10
 operator_approved: true
 ---
 # ERP_MCP - project plan
 
-Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (snapshot 2026-10-31 22:12 Europe/Chisinau, local HEAD f22fa64, origin tip f23a7af) and docs/sdlc/backlog.md. Sprint FIN is the Phase 2 finisher sprint beea27520b33 (10 ordered stories S1.1-S3.3); its task IDs carry the FIN- prefix to avoid clashing with the program sprints S1-S19. Statuses for other sprints are the last recorded ones; the report does not confirm current per-task status, so no task there is marked ACCEPTED. Release 2 is NO_GO and production authorization is NONE.
+Source: operator's explicit S9→S10→S11 order, the 2026-11-08 S10 dev/test rebaseline, `docs/phase2/TASK_LEDGER.md`, and linked task evidence. FIN is parked by operator order with its recorded task states preserved; it is not deleted or accepted by this plan. S10 is the sole active sprint. Release 2 remains NO_GO and no production canary or authorization is claimed.
 
 ## Roadmap
 | Sprint | Title | Status | Goal |
 |---|---|---|---|
-| FIN | Phase 2 finisher backlog (sprint beea27520b33) | ACTIVE | Complete authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance. |
+| FIN | Phase 2 finisher backlog (sprint beea27520b33) | PARKED_BY_OPERATOR_ORDER | Preserve the recorded FIN task states; resume only after the operator-ordered S10→S11 sequence. |
 | S0 | Baseline | IN_PROGRESS | Baseline. |
 | S1 | Connector contracts | APPROVED_PUSHED | Connector contracts. |
 | S2 | Ledger and budget | APPROVED_PUSHED | Ledger and budget. |
@@ -24,9 +24,9 @@ Source: reports/ERP_MCP_PHASE2_STATUS_2026-10-31.ru.html (snapshot 2026-10-31 22
 | S7 | Drive intake | APPROVED_PUSHED | Drive intake. |
 | S8 | Review workbench | CLOSED_BOUNDED_SPRINT (3/3 bounded task acceptances; PR #48 merged) | R2-US-039 through R2-US-041 accepted in bounded scope; G5 UAT/runtime acceptance remains separately NOT_RUN/NOT_PASSED. |
 | S9 | Operations and recovery | CLOSED_BOUNDED_SPRINT (4/4 task acceptances; PR #49 merged) | R2-US-043 through R2-US-046 accepted in bounded offline scope; G6-pre and live product/runtime acceptance remain separately NOT_RUN/NOT_PASSED. |
-| S10 | Release handoff | HANDOFF_NO_APPROVE | Release handoff. |
+| S10 | Release handoff | ACTIVE_REBASELINED | R2-US-042 dev/test capture prerequisite is current; production canary and G6/G7 remain separate gates. |
 | FOLLOW_ON | Follow-on | UNCONFIRMED | Follow-on. |
-| S11 | Foundations, contracts and feasibility | DONE_SPRINT_LEVEL | Foundations, contracts and feasibility. |
+| S11 | Foundations, contracts and feasibility | HOLD_UNTIL_S10_CLOSED | Start only after S10 ordered task acceptance and evidence are reconciled. |
 | S12 | Change model and policy | IN_PROGRESS | Change model and policy. |
 | S13 | Ledger and audit anchor | GIT_ACTIVITY_NOT_CLOSED | Ledger and audit anchor. |
 | S14 | 1C write port | GIT_ACTIVITY_NOT_CLOSED | 1C write port. |
@@ -157,13 +157,13 @@ Goal: Operations and recovery.
 | R2-US-045 | Release engineer deploys R2 without damaging R1 | REQ25; TC133 additive shadow regression; TC134 destructive rollback denied; TC135 switchover rollback never resurrects revoked grants | PARTIAL | Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: release_migration.py, release_rollback.py, 304 offline tests (134+126+44 SQL guard); typed step classification, shadow compare by digest, decision-only rollback (executed=False), effective ... | Codex | R2-US-016, R2-US-041 |  |
 | R2-US-046 | Privacy/operations owner handles retention and restore | REQ17,24,27; TC136 restored foreign keys/digests/heads; TC137 export masking/tenant/formula safety; TC138 legal hold and no unauthorized deletion | PARTIAL | Historical ledger IMPLEMENTED_UNVERIFIED, current status unconfirmed; S9 code: restore_verify.py, export_safety.py, retention_hold.py, 318 offline tests (118+143+57); restore manifest/FK catalogue/digest/head verification over in-memory rows, export masking/tenant ... | Codex | R2-US-026, R2-US-037, R2-US-045 |  |
 
-## Sprint S10 - Release handoff
-Goal: Release handoff.
+## Sprint S10 - Release handoff / bounded dev-test capture
+Goal: Complete R2-US-042 dev/test TC124–126, then R2-US-048 in order. This rebaseline does not authorize production canary, production data, 1C writes or G6/G7 closure.
 
 | Task | Title | Acceptance | Status | Evidence | Owner | Depends | Commit |
 |---|---|---|---|---|---|---|---|
-| R2-US-042 | Production owner approves qualified canary | REQ15,28; TC124 exact-scope capture/comparison; TC125 dev PASS does not grant production approval; TC126 kill switch owns running jobs | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; S10 offline closure is ENGINEERING_HANDOFF only (`S10_RELEASE_HANDOFF.md`), canary NOT_RUN pending operator permission and real data | Codex | R2-US-023, R2-US-034, R2-US-043, R2-US-044, R2-US-045 |  |
-| R2-US-048 | Release owner accepts exact candidate | REQ01,28; TC142 complete manifest, IDs and actual results; TC143 NOT_RUN cannot become release PASS; TC144 separate user/admin/production UAT | NOT_STARTED | Historical ledger NOT_STARTED, current status unconfirmed; No exact-head acceptance proof; no exact-head release bundle approved (see `S10_RELEASE_HANDOFF.md`), Release 2 NO-GO | Codex | R2-US-042, R2-US-043, R2-US-044, R2-US-045, R2-US-046 |  |
+| R2-US-042 | Production owner approves qualified canary | REQ15,28; TC124 exact-scope capture/comparison; TC125 dev PASS does not grant production approval; TC126 kill switch owns running jobs | IN_PROGRESS (DEV/TEST ONLY) | Operator-authorized S10 dev/test rebaseline 2026-11-08; implementation and exact-head tests/reviews still pending; production canary NOT_RUN and G6/G7 not passed | Codex | R2-US-023, R2-US-034, R2-US-043, R2-US-044, R2-US-045 |  |
+| R2-US-048 | Release owner accepts exact candidate | REQ01,28; TC142 complete manifest, IDs and actual results; TC143 NOT_RUN cannot become release PASS; TC144 separate user/admin/production UAT | NOT_STARTED | Waits for technical R2-US-042 closure; exact-head release bundle and separate user/admin/production UAT not evidenced; Release 2 NO-GO | Codex | R2-US-042, R2-US-043, R2-US-044, R2-US-045, R2-US-046 |  |
 
 ## Sprint FOLLOW_ON - Follow-on
 Goal: Follow-on.

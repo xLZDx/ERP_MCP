@@ -266,6 +266,15 @@ Allowed intermediate labels:
 Do not call a release “production-ready” if it has not reached at least `PILOT READY` with all
 pre-pilot mandatory gates satisfied.
 
+## S10 dev/test prerequisite (operator rebaseline 2026-11-08; not a production gate)
+
+The R2-US-042 TC124–126 development slice may be marked complete only for the exact tested head
+after synthetic-only tests and required reviews prove exact-scope capture/comparison, dev/test versus
+production evidence separation, and scope-local kill-switch stop/cancel/join behavior. This label
+does not satisfy D16/D18, G6/G7, production canary, production UAT, or production approval. No 1C
+mutation, production data, migration, or public MCP capture route is included. The release terminal
+condition above is unchanged.
+
 ## Admin Control Center extension gate
 
 Admin Control Center may be enabled for an environment only when:

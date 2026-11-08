@@ -70,6 +70,13 @@ MUST NOT start until operator rebaseline.
   §4.3's deferred production write plane. The approved CT14 lifecycle is create-draft/read-back/post/unpost; hard
   delete, administrator identity, production/real-company writes and arbitrary COM execution remain forbidden.
   Record: Scope Freeze §8.2, [ADR-0009](adr/ADR-0009-private-test-writer.md), and requirement `S13-PRIVATE-WRITER-1`.
+- **2026-11-08 — S10 dev/test capture prerequisite.** Authority: explicit operator authorization
+  for bounded steps 1–4 and decision `ERP-S10-DEV-PREREQUISITE`. Scope is limited to the existing
+  `R2-REQ15`/`R2-REQ28` and `R2-US-042` TC124–126 dev/test prerequisite: exact scoped capture,
+  environment-separated evidence, and scope-local kill-switch ownership of running jobs. It adds
+  no public MCP endpoint, 1C write, migration, production data/canary, production approval or G6/G7
+  closure. The production read-only invariant and Release 2 NO-GO remain. Record:
+  Scope Freeze §2.2 and `docs/phase2/SPRINT_S10_PLAN.md`.
 
 ## 3. Change classes
 

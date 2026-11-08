@@ -1,5 +1,20 @@
 # Phase 2 S10 offline closure: engineering handoff and release bundle description
 
+## Current operator rebaseline — 2026-11-08
+
+The 2026-10-10 document-only handoff below is historical baseline. The operator has since
+authorized the bounded dev/test prerequisite `ERP-S10-DEV-PREREQUISITE`, traced to R2-US-042 and
+TC124–126. Candidate source and exact task-mapped test evidence are now present in isolated branch
+`codex/s10-r2-canary-dev-20261108`, based on HEAD `727b2dac91b8da0fdaac237d1b8b7cd94a0654b8`;
+the candidate remains uncommitted. Functional tests report 11 passed and synthetic E2E tests report
+4 passed; exact commands and hashes are in `docs/sdlc/verify-evidence.md`. GPT-PM request
+`c94d7b51-90b1-47ab-84fa-27b64c610ea4` returned `APPROVE — BOUNDED DEV/TEST SCOPE` with 0
+BLOCKER/MAJOR for the attached candidate. Delivery is still pending. Production canary/data, 1C
+writes, migration, deployment, G6/G7
+approval and Release 2 GO remain out of scope and NOT_RUN/NOT_PASSED. R2-US-048 is next only after
+technical R2-US-042 closure; S11 remains held until S10 closes. See the current scope and design in
+`SPRINT_S10_PLAN.md`.
+
 Date: 2026-10-10. Branch: `phase2/living-model-connectors-reconciliation`. Offline base head when this document was written: `414d232` (S9 APPROVED by GPT-PM at `6ee27f1` and pushed; `414d232` adds the S9 report pair and the registry refresh).
 
 This document is documentation only. It adds no code, runs no production action and invents no evidence. Every fact below is quoted or derived from `EVIDENCE_MATRIX.md`, `OPERATOR_BACKLOG.md`, `G1_OPERATOR_BACKLOG.md`, `IMPLEMENTATION_STATUS.md`, `TASK_LEDGER.md`, `PLAN_PHASE2_RU.md` and `core/DECISION_LOG.md`. Where those documents are older than the code (the first four were last refreshed around S5/S9 rows), the DECISION_LOG entries and the per-sprint reports win, and the gap is stated.

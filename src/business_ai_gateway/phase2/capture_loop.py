@@ -30,15 +30,17 @@ Rules
   the snapshot requirement remains until a later complete snapshot proves the accepted baseline.
 - ``snapshot=True`` requires a request without ``page_cursor`` (first page); the request must carry
   the loop's own tenant/source. The connector call runs on a dedicated bounded executor under
-  ``connector_timeout``; a call that outlives it is a TIMEOUT and its late result is discarded (the
-  worker thread cannot be cancelled and is a known gap).
+  ``connector_timeout``; a call that outlives it is a TIMEOUT and its late result is discarded.
+  The worker thread cannot be cancelled; its job ID stays visible to the scope kill switch until
+  the call drains.
 """
 from __future__ import annotations
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import StrEnum
+from threading import Lock
 from typing import Any, Final
 from uuid import UUID
 
@@ -59,6 +61,7 @@ from .drift import (
 from .ports import LedgerPort, PortError, Scope
 from .resnapshot import ResnapshotReason, ResnapshotTracker
 from .scheduler import LeaseHandle, RunResult, RunStatus, SourceScheduler
+from .workbench_types import ViewerScope
 
 __all__ = ["CaptureLoop", "CaptureResult", "CaptureStatus", "ConnectorFailure"]
 
@@ -85,6 +88,7 @@ class CaptureStatus(StrEnum):
     INVALID_RESPONSE = "INVALID_RESPONSE"        # SDK-invalid response: failure, not drift
     FAILED = "FAILED"                            # connector failure; scheduler decided retry/poison
     NOT_RUN = "NOT_RUN"                          # scheduler did not run/finish the work (see run)
+    CANCELLED = "CANCELLED"                      # scoped kill switch finalized the leased job
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,19 +111,61 @@ class _Refused(Exception):
 class CaptureLoop:
     def __init__(self, scheduler: SourceScheduler, tracker: ResnapshotTracker,
                  connector: ConnectorContract, ledger: LedgerPort, scope: Scope, *,
-                 connector_timeout: float = 30.0, max_threads: int = 4) -> None:
+                 connector_timeout: float = 30.0, max_threads: int = 4,
+                 viewer_scope: ViewerScope | None = None) -> None:
         if not (isinstance(connector_timeout, (int, float)) and connector_timeout > 0):
             raise ValueError("CONNECTOR_TIMEOUT_INVALID")
         self._timeout = float(connector_timeout)
         self._executor = ThreadPoolExecutor(max_workers=max_threads,
                                             thread_name_prefix="capture-connector")
+        self._inflight_lock = Lock()
+        self._inflight: dict[Future, UUID] = {}
         self._sched, self._tracker, self._connector = scheduler, tracker, connector
         self._ledger, self._scope = ledger, scope
+        if viewer_scope is not None and (
+                type(viewer_scope) is not ViewerScope
+                or viewer_scope.tenant_id != scope.tenant_id):
+            raise ValueError("CAPTURE_VIEWER_SCOPE_INVALID")
+        self._viewer_scope = viewer_scope
         self._accepted: dict[str, str] = {}
         self._pending_baselines: dict[str, tuple[str, int]] = {}
 
     def accepted_hash(self, connection_id: str) -> str | None:
         return self._accepted.get(connection_id)
+
+    @property
+    def scope(self) -> Scope:
+        """The immutable tenant/source scope enforced by this loop's scheduler and ledger."""
+        return self._scope
+
+    @property
+    def viewer_scope(self) -> ViewerScope | None:
+        """The accepted tenant/company/epoch binding, when supplied by the runtime composer."""
+        return self._viewer_scope
+
+    @property
+    def inflight_job_ids(self) -> frozenset[UUID]:
+        """Job IDs with synchronous connector calls that have not returned yet."""
+        with self._inflight_lock:
+            return frozenset(self._inflight.values())
+
+    async def cancel_job(self, job_id: UUID) -> str | None:
+        return await self._sched.cancel_owned_job(job_id)
+
+    async def enqueue_job(self, job_id: UUID, request_digest: str, *, company_id: str,
+                          connection_id: str) -> UUID:
+        """Create the scoped queue row consumed by this loop's scheduler."""
+        if type(company_id) is not str or not company_id.strip():
+            raise ValueError("COMPANY_ID_INVALID")
+        if type(connection_id) is not str or not connection_id.strip():
+            raise ValueError("CONNECTION_ID_INVALID")
+        return await self._sched.enqueue_capture_job(
+            job_id, request_digest,
+            {"company_id": company_id, "connection_id": connection_id},
+        )
+
+    async def job_state(self, job_id: UUID) -> str | None:
+        return await self._sched.job_state(job_id)
 
     async def approve_baseline(self, connection_id: str, structural_hash: str) -> bool:
         """Accept only the exact complete-snapshot candidate awaiting explicit approval.
@@ -180,7 +226,7 @@ class CaptureLoop:
                 raise _Refused
             token = self._tracker.begin_snapshot() if snapshot else None
             state["token"] = token
-            kind, digest = await self._call(request, state)
+            kind, digest = await self._call(request, state, job_id)
             if kind is None:  # SDK-invalid response
                 state["invalid"] = True
                 return None  # type: ignore[return-value]  # scheduler: WORK_RETURNED_INVALID
@@ -190,7 +236,10 @@ class CaptureLoop:
             self._tracker.observe_decision(connection_id, decision, request.scope_epoch)
             return kind
 
-        run = await self._sched.run_job(job_id, work)
+        try:
+            run = await self._sched.run_job(job_id, work)
+        except asyncio.CancelledError:
+            return self._result(CaptureStatus.CANCELLED, connection_id)
         kind = state.get("kind")
         decision = state.get("decision")
         if state["refused"]:
@@ -229,14 +278,21 @@ class CaptureLoop:
         return self._result(CaptureStatus.CAPTURED, connection_id, kind=kind, decision=decision,
                             cleared=cleared, run=run)
 
-    async def _call(self, request: CaptureRequest,
-                    state: dict[str, Any]) -> tuple[CaptureOutcomeKind | None, str | None]:
+    async def _call(self, request: CaptureRequest, state: dict[str, Any], job_id: UUID
+                    ) -> tuple[CaptureOutcomeKind | None, str | None]:
         """(kind, digest); kind None = SDK-invalid. Typed failures are returned as kinds."""
         try:
+            future = self._executor.submit(checked_capture_page, self._connector, request)
+            with self._inflight_lock:
+                self._inflight[future] = job_id
+
+            def finished(done: Future) -> None:
+                with self._inflight_lock:
+                    self._inflight.pop(done, None)
+
+            future.add_done_callback(finished)
             response = await asyncio.wait_for(
-                asyncio.get_running_loop().run_in_executor(
-                    self._executor, checked_capture_page, self._connector, request),
-                self._timeout)
+                asyncio.shield(asyncio.wrap_future(future)), self._timeout)
             kind = response_to_outcome(response)
             digest = (response.provenance.content_digest
                       if kind is CaptureOutcomeKind.OK_COMPLETE else None)
@@ -254,3 +310,29 @@ class CaptureLoop:
             state["decision"] = classify(
                 CaptureOutcome(CaptureOutcomeKind.OUTAGE), None)
             raise
+
+    async def wait_for_jobs(self, job_ids: set[UUID], timeout_seconds: float) -> tuple[UUID, ...]:
+        """Wait for connector threads belonging to these jobs; running sync calls are not killable."""
+        if not isinstance(job_ids, set) or any(type(job_id) is not UUID for job_id in job_ids):
+            raise ValueError("JOB_IDS_INVALID")
+        if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
+                or timeout_seconds <= 0):
+            raise ValueError("DRAIN_TIMEOUT_INVALID")
+        with self._inflight_lock:
+            pending = tuple((job_id, future) for future, job_id in self._inflight.items()
+                            if job_id in job_ids)
+        if not pending:
+            return ()
+        wrapped = tuple((job_id, asyncio.wrap_future(future)) for job_id, future in pending)
+        _, not_done = await asyncio.wait(
+            tuple(item for _, item in wrapped), timeout=float(timeout_seconds))
+        return tuple(sorted({job_id for job_id, item in wrapped if item in not_done}))
+
+    async def close(self, timeout_seconds: float = 5.0) -> None:
+        """Close the connector executor only after all known connector calls have drained."""
+        with self._inflight_lock:
+            job_ids = {job_id for job_id in self._inflight.values()}
+        pending = await self.wait_for_jobs(job_ids, timeout_seconds)
+        if pending:
+            raise RuntimeError("CAPTURE_CONNECTOR_DRAIN_INCOMPLETE")
+        self._executor.shutdown(wait=True, cancel_futures=True)
