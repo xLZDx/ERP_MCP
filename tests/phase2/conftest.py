@@ -7,6 +7,7 @@ With ERP_PHASE2_REQUIRE_PG=1 the run FAILS when
 """
 import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,48 @@ CONTRACT_FILE = "test_ports_contract.py"
 
 def _required() -> bool:
     return os.environ.get("ERP_PHASE2_REQUIRE_PG") == "1"
+
+
+@pytest.fixture(autouse=True)
+def record_s10_candidate_head(record_property, pytestconfig):
+    """Attach exact source identity to JUnit cases only for opted-in S10 runs."""
+    candidate_head = os.environ.get("S10_CANDIDATE_HEAD")
+    if candidate_head is None:
+        return
+    if re.fullmatch(r"[0-9a-f]{40}", candidate_head) is None:
+        pytest.fail("S10_CANDIDATE_HEAD must be 40 lowercase hexadecimal characters", pytrace=False)
+    try:
+        actual_head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=pytestconfig.rootpath, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        pytest.fail("cannot determine the current Git HEAD for S10_CANDIDATE_HEAD", pytrace=False)
+    if candidate_head != actual_head:
+        pytest.fail("S10_CANDIDATE_HEAD does not match the current Git HEAD", pytrace=False)
+    try:
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=pytestconfig.rootpath, text=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        pytest.fail("cannot verify the committed S10 test tree", pytrace=False)
+    changed_paths = []
+    for line in status.splitlines():
+        path = line[3:].strip().strip('"').replace("\\", "/")
+        changed_paths.extend(part.strip().strip('"') for part in path.split(" -> "))
+    protected_roots = ("src", "tests", "scripts")
+    unexpected = []
+    for path in changed_paths:
+        normalized = path.replace("\\", "/").lstrip("./")
+        first_part = normalized.split("/", 1)[0]
+        if first_part in protected_roots:
+            unexpected.append(path)
+    if unexpected:
+        pytest.fail(
+            "S10 test tree has uncommitted source, test or script changes: "
+            + ", ".join(sorted(unexpected)),
+            pytrace=False,
+        )
+    record_property("candidate_head", candidate_head)
 
 
 def _variant(item) -> str | None:
