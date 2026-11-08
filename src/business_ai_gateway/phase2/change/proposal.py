@@ -1,4 +1,4 @@
-"""Phase 2 sprint S12: the typed ``ChangeProposal`` of section 3 (purchase receipt only), canonical JSON and digests.
+"""Phase 2 sprint S12: the frozen v2.0 typed proposal contract, canonical JSON and digests.
 
 Offline and pure (stdlib only). ``parse_proposal`` is the only way caller input becomes a proposal: unknown keys
 are refused (I2), numeric fields are exact decimal strings (never floats), identity fields are never accepted from
@@ -547,7 +547,11 @@ def _parse(raw: object, ctx: object) -> ChangeProposal | Refusal:
     if type(kind_text) is not str or kind_text not in ChangeKind.__members__:
         return _BAD
     kind = ChangeKind(kind_text)
-    draft = kind in (ChangeKind.CREATE_DRAFT, ChangeKind.UPDATE_DRAFT)
+    # UPDATE_DRAFT remains in the shared enum for historical/internal records, but the
+    # frozen v2.0 proposal surface admits only create, post, and unpost.
+    if kind not in (ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST):
+        return _BAD
+    draft = kind is ChangeKind.CREATE_DRAFT
     target_version = raw.get("target_version")  # type: ignore[attr-defined]
     payload_raw = raw.get("payload")  # type: ignore[attr-defined]
     payload: DraftPayload | None = None
