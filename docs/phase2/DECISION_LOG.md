@@ -234,3 +234,9 @@ Platform handoff recheck (2026-11-08): the existing OpenAI Platform tunnels tab 
 
 - The runbook names `D:\1c\mcp\logs` as the component-log directory (`docs/phase2/artifacts/REMOTE_1C_HOST_STACK_2026-10-11.md`). Via strict-host-key SSH to Ivan, a read-only PowerShell scan searched only those top-level `*.log` files for `license|licence|лиценз|expired`, emitting filenames and match counts but no matching log lines. All 21 listed log files returned 0 matches. No 1C platform licensing state, Windows licensing service, or host-level event log was inspected; this is not proof the development license is valid or expired.
 - The independent ERP_MCP1 connector response is from the tunnel service and reports `tunnel_client_not_seen` for the target tunnel. That error does not establish a 1C developer-license condition. License status remains `NOT_VERIFIED` pending a documented, authorized 1C licensing diagnostic after tunnel connectivity is restored.
+
+## 2026-11-08 — Credential Manager target remains unverified
+
+- The project runner contract reads `env\tunnel.json` and decrypts `env\tunnel_api_key.dpapi` under CurrentUser DPAPI (`scripts/remote/run-tunnel.ps1:15-18`); the in-scope search found no `ERP_MCP1_TUNNEL_RUNTIME` integration. A Credential Manager entry alone would not currently configure this runner.
+- Over strict-host-key SSH, a read-only `CredReadW` query for only `ERP_MCP1_TUNNEL_RUNTIME` returned `present=false, win32_error=1312`. No credential blob was read or emitted. Because the query did not establish an accessible logon session, this result does not prove the named target is absent.
+- The unblock remains an interactive, authorized target-key provision followed by the repository helper, or an operator-supplied interactive check of that exact Credential Manager target. Do not place the secret in chat or source control.
