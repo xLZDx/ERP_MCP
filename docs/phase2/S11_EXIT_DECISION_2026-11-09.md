@@ -53,7 +53,7 @@ GPT-PM adjudication request `d6e75a3d-4c72-46fd-8a57-27e1a8433a11` confirmed tha
 ### Ordered next actions
 
 1. CLOSED: operator authorized the exact S11 evidence-SHA edit; no broader manifest permission was inferred.
-2. CLOSED locally: Codex changed only the approved SHA pointer and ran the documented validator; S11 is no longer reported stale, while the validator still reports the G0 digest. The edit remains uncommitted and unpushed.
+2. CLOSED AND PUSHED: Codex changed only the approved SHA pointer and ran the documented validator; S11 is no longer reported stale, while the validator still reports the G0 digest. Commit `e833fd0c2bb6dceb8ae85bcf23d17df4842ccc6a` was pushed to `codex/s11-exit-reconcile-20261109`; PR #55 is open and unmerged.
 3. NEXT: Codex verifies the real D10 evidence or prepares a bounded rebaseline for the operator, then reconciles the other applicable S12 entry prerequisites.
 4. LATER: GPT-PM adjudicates formal S12 entry after the evidence package is ready; obtain a distinct task-specific GPT-PM GO for V2-S12-06 before that task starts.
 
@@ -74,4 +74,4 @@ This audit leaves real D10 evidence and contract-revision status for Codex to re
 
 ## Post-receipt reconciliation (2026-11-09)
 
-After this receipt was authored, the operator explicitly authorized the exact S11 evidence-SHA pointer correction described in the ordered sequence above. Codex updated only the S11 `sha256` in `governance/GATE_MANIFEST.json` to `2d53c4c3a2852abd4cfc2e1dd9bd89c557b5f3e1727d128ef1182792bb3c0e47`, matching the approved S11 package bytes. The documented validator now reports only the pre-existing stale G0 digest; it no longer flags S11. This manifest change is present in the target worktree but remains uncommitted and unpushed. The S11 documentation/planning exit is approved; this record does not claim runtime/deployment or Release 2 acceptance, and it does not grant formal S12 entry. S12 remains HOLD pending its separately listed entry dependencies and decision.
+After this receipt was authored, the operator explicitly authorized the exact S11 evidence-SHA pointer correction described in the ordered sequence above. Codex updated only the S11 `sha256` in `governance/GATE_MANIFEST.json` to `2d53c4c3a2852abd4cfc2e1dd9bd89c557b5f3e1727d128ef1182792bb3c0e47`, matching the approved S11 package bytes. The documented validator now reports only the pre-existing stale G0 digest; it no longer flags S11. The correction was committed as `e833fd0c2bb6dceb8ae85bcf23d17df4842ccc6a` and pushed to `codex/s11-exit-reconcile-20261109`; PR #55 is open and unmerged. The S11 documentation/planning exit is approved; this record does not claim runtime/deployment or Release 2 acceptance, and it does not grant formal S12 entry. S12 remains HOLD pending its separately listed entry dependencies and decision.
