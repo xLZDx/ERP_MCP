@@ -86,6 +86,8 @@ Formal S12 entry remains `HOLD`; the manifest's S12 `IN_PROGRESS` value is not a
 
 ## 9. Current pointer publication and S12 contract status (2026-11-09)
 
+This dated addendum supersedes the current-disposition statements in §§7–8 that predate the decisions below; those statements are retained as historical record.
+
 After the operator authorized only `nodes[S11].evidence.sha256`, Codex published that one-field correction in [PR #57](https://github.com/xLZDx/ERP_MCP/pull/57): `2d53c4c3a2852abd4cfc2e1dd9bd89c557b5f3e1727d128ef1182792bb3c0e47` → `8d6b4a7fb5094a88f34b2358e329b1912d4d30ced863615f4aff7a6598c3bb4c`. The PR is open and unmerged; `main` still has the previous digest. The PR changes no other manifest field.
 
 GPT-PM request `6eb0f2c8-cfed-477d-89b2-5f9fe7d4410e` approved the attached manifest bytes (SHA-256 `b49e604dea10006970033f78984a61e5a7513d5b9e57dae649c66165c95c984d`) for this bounded correction. Validation against the canonical committed LF package reports no S11 mismatch; the validator still exits 1 for the independent stale G0 digest. G0 was not changed.
