@@ -230,6 +230,10 @@ class JobQueuePort(Protocol):
 
     async def get_job(self, actor: str, scope: Scope, job_id: UUID) -> JobView | None: ...
 
+    async def cancel_job(self, actor: str, scope: Scope, job_id: UUID, worker: str | None,
+                         fence: int | None) -> str | None:
+        """Cancel PENDING work or this exact worker/fence; return current state atomically."""
+
 
 @runtime_checkable
 class CursorOutboxPort(Protocol):

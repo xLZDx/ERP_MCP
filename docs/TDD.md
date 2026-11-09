@@ -295,6 +295,17 @@ and physical COM contracts require separate disposable qualification. Admission 
 readiness stays `NOT_READY` until both qualify. This requirement does not change production NFR-S3
 or authorize a public write route. See ADR-0009 and the S12/S13/S14 phase-two contracts.
 
+### FR-L S10 dev/test capture prerequisite (operator rebaseline 2026-11-08)
+
+For `R2-US-042` only, the test/dev runtime may compose the existing capture loop and job boundary
+to demonstrate `R2-TC124`–`R2-TC126`: exact tenant/company/source/scope-epoch capture and comparison,
+an environment label that cannot imply production approval, and a scope-local kill switch that
+stops admission and cancels/awaits the jobs it owns. The composition must refuse production
+environment, unknown scope/state and cross-scope work before connector execution. It uses synthetic
+test fixtures only. It does not add an MCP endpoint, change the production read-only guarantee, add
+1C write capability, introduce a migration, or satisfy G6/G7. Production canary and approval remain
+independent gates. See Scope Freeze §2.2 and `docs/phase2/SPRINT_S10_PLAN.md`.
+
 ## 7. Non-functional requirements
 
 ### Security

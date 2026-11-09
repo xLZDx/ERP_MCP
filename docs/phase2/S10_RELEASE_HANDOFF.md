@@ -1,5 +1,23 @@
 # Phase 2 S10 offline closure: engineering handoff and release bundle description
 
+## Current operator rebaseline — 2026-11-08
+
+The 2026-10-10 document-only handoff below is historical baseline. The operator later authorized the
+bounded dev/test prerequisite `ERP-S10-DEV-PREREQUISITE`, traced to R2-US-042 and TC124–126. That
+candidate is now commit `b22a446b9d5b8e34fe24cee9c432323a44046d69` on isolated branch
+`codex/s10-r2-canary-dev-20261108`, pushed and available in [PR #53](https://github.com/xLZDx/ERP_MCP/pull/53).
+At that exact HEAD, `functional-test-reviewer` reported 11 passed and `e2e-runner` reported 4 passed
+(synthetic dev/test only); commands and hashes are in `docs/sdlc/verify-evidence.md`. GPT-PM request
+`c94d7b51-90b1-47ab-84fa-27b64c610ea4` returned `APPROVE — BOUNDED DEV/TEST SCOPE` with 0
+BLOCKER/MAJOR for the attached source/test hashes. R2-US-042 and R2-US-048 are now bounded-closed for
+engineering delivery; PR #53 is open, not merged. R2-US-048 binds 45/45 agent-owned tests to source
+candidate `490d7638ea6ec84ccf856312237161fbfa94f584`; its manifest SHA-256 is
+`C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE`, approved by GPT-PM and pushed
+on PR #53. The manifest keeps user/admin/production UAT separate as NOT_RUN and Release 2 NO-GO. S10
+bounded engineering scope is closed; S11 is next in order. Production canary/data, 1C writes,
+migration, deployment, G6/G7 approval and Release 2 GO remain out of scope and NOT_RUN/NOT_PASSED.
+See `SPRINT_S10_PLAN.md` for the accepted boundary and sequence.
+
 Date: 2026-10-10. Branch: `phase2/living-model-connectors-reconciliation`. Offline base head when this document was written: `414d232` (S9 APPROVED by GPT-PM at `6ee27f1` and pushed; `414d232` adds the S9 report pair and the registry refresh).
 
 This document is documentation only. It adds no code, runs no production action and invents no evidence. Every fact below is quoted or derived from `EVIDENCE_MATRIX.md`, `OPERATOR_BACKLOG.md`, `G1_OPERATOR_BACKLOG.md`, `IMPLEMENTATION_STATUS.md`, `TASK_LEDGER.md`, `PLAN_PHASE2_RU.md` and `core/DECISION_LOG.md`. Where those documents are older than the code (the first four were last refreshed around S5/S9 rows), the DECISION_LOG entries and the per-sprint reports win, and the gap is stated.

@@ -32,6 +32,8 @@ from business_ai_gateway.phase2.release_migration import (
 
 IDS = FakeCorrelationSource()
 D1, D2, D3 = "a" * 64, "b" * 64, "c" * 64
+MIGRATION_CHECKSUMS = {"001": D1, "002": D2, "003": D3}
+_AUTO_CHECKSUM = object()
 
 
 class EvilStr(str):
@@ -45,9 +47,21 @@ def step(kind, phase=Phase.EXPAND, schema=SchemaName.LIVING, oc=ObjectClass.TABL
     return MigrationStep(phase, kind, schema, oc)
 
 
-def add(version, requires=(), kinds=1):
-    return MigrationUnit(version, tuple(requires),
-                         tuple(step(StepKind.CREATE_TABLE) for _ in range(kinds)))
+def migration_unit(version, requires, steps, checksum=_AUTO_CHECKSUM):
+    if checksum is _AUTO_CHECKSUM:
+        checksum = MIGRATION_CHECKSUMS.get(version, D1)
+    requires = tuple(requires) if type(requires) in (tuple, list) else requires
+    steps = tuple(steps) if type(steps) in (tuple, list) else steps
+    return MigrationUnit(version, requires, steps, checksum)
+
+
+def stored_checksums(*versions):
+    return {version: MIGRATION_CHECKSUMS[version] for version in versions}
+
+
+def add(version, requires=(), kinds=1, checksum=_AUTO_CHECKSUM):
+    return migration_unit(version, requires,
+                          tuple(step(StepKind.CREATE_TABLE) for _ in range(kinds)), checksum)
 
 
 def refused(result, reason):
@@ -199,12 +213,62 @@ def test_rehearsal_orders_the_real_set_and_applies_everything_on_a_fresh_databas
 
 
 def test_rehearsal_reapply_of_applied_versions_is_an_idempotent_noop():
-    plan = plan_rehearsal(real_units(), ["001", "002", "003"], IDS)
+    plan = plan_rehearsal(real_units(), ["001", "002", "003"], IDS,
+                          applied_checksums=stored_checksums("001", "002", "003"))
     assert [a.apply for a in plan.actions] == [False, False, False]
-    plan2 = plan_rehearsal(real_units(), ("001",), IDS)
+    plan2 = plan_rehearsal(real_units(), ("001",), IDS, applied_checksums=stored_checksums("001"))
     assert [a.apply for a in plan2.actions] == [False, True, True]
     twice = plan_rehearsal([add("001"), add("001")], [], IDS)  # same version twice in one plan
     assert [a.apply for a in twice.actions] == [True, False]
+
+
+def test_matching_stored_checksum_makes_an_applied_version_a_noop():
+    plan = plan_rehearsal([add("001")], ["001"], IDS, applied_checksums=stored_checksums("001"))
+    assert type(plan) is RehearsalPlan
+    assert [(action.version, action.apply) for action in plan.actions] == [("001", False)]
+
+
+def test_identical_duplicate_of_an_applied_version_is_two_noop_actions():
+    plan = plan_rehearsal([add("001"), add("001")], ["001"], IDS,
+                          applied_checksums=stored_checksums("001"))
+    assert type(plan) is RehearsalPlan
+    assert [(action.version, action.apply) for action in plan.actions] == [("001", False), ("001", False)]
+
+
+def test_applied_version_duplicate_with_same_checksum_but_different_steps_is_refused():
+    refused(plan_rehearsal([add("001"), add("001", kinds=2)], ["001"], IDS,
+                           applied_checksums=stored_checksums("001")),
+            OpsReason.INPUT_INVALID)
+
+
+@pytest.mark.parametrize("candidate_checksum", [None, "", "g" * 64, "A" * 64, 7])
+def test_missing_or_malformed_candidate_checksum_fails_closed(candidate_checksum):
+    refused(plan_rehearsal([add("001", checksum=candidate_checksum)], [], IDS), OpsReason.INPUT_INVALID)
+
+
+@pytest.mark.parametrize("stored", [None, {}, {"002": D2}, {"001": "bad"}, {"001": D1, "002": D2}])
+def test_missing_malformed_or_inexact_applied_checksum_coverage_fails_closed(stored):
+    refused(plan_rehearsal([add("001")], ["001"], IDS, applied_checksums=stored), OpsReason.INPUT_INVALID)
+
+
+def test_oversized_applied_checksum_map_is_rejected():
+    oversized = {f"{version:03d}": D1 for version in range(1, 66)}
+    refused(plan_rehearsal([add("001")], ["001"], IDS, applied_checksums=oversized), OpsReason.INPUT_INVALID)
+
+
+def test_existing_version_with_different_migration_checksum_is_refused():
+    refused(plan_rehearsal([add("001", checksum=D2)], ["001"], IDS,
+                           applied_checksums=stored_checksums("001")),
+            OpsReason.MIGRATION_CHECKSUM_MISMATCH)
+
+
+def test_same_version_plan_duplicate_with_same_checksum_but_different_content_is_invalid():
+    refused(plan_rehearsal([add("001"), add("001", kinds=2)], [], IDS), OpsReason.INPUT_INVALID)
+
+
+def test_same_version_plan_duplicate_with_different_checksum_is_rejected():
+    refused(plan_rehearsal([add("001"), add("001", checksum=D2)], [], IDS),
+            OpsReason.MIGRATION_CHECKSUM_MISMATCH)
 
 
 def test_rehearsal_missing_requires_is_refused():
@@ -215,7 +279,8 @@ def test_rehearsal_missing_requires_is_refused():
 
 def test_rehearsal_gap_is_refused_even_when_requires_is_empty():
     refused(plan_rehearsal([add("001"), add("003", [])], [], IDS), OpsReason.REHEARSAL_REQUIRES_UNMET)
-    refused(plan_rehearsal([add("003", ["001"])], ["001"], IDS), OpsReason.REHEARSAL_REQUIRES_UNMET)
+    refused(plan_rehearsal([add("003", ["001"])], ["001"], IDS,
+                           applied_checksums=stored_checksums("001")), OpsReason.REHEARSAL_REQUIRES_UNMET)
 
 
 def test_rehearsal_order_matters_like_record_migration():
@@ -224,60 +289,65 @@ def test_rehearsal_order_matters_like_record_migration():
 
 
 def test_rehearsal_refuses_a_non_additive_unit_with_the_class_code():
-    bad = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.DROP_TABLE)))
+    bad = migration_unit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.DROP_TABLE)))
     refused(plan_rehearsal([bad], [], IDS), OpsReason.DESTRUCTIVE)
-    r1 = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
+    r1 = migration_unit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
     refused(plan_rehearsal([r1], [], IDS), OpsReason.UNCLASSIFIED)
-    sw = MigrationUnit("001", (), (step(StepKind.FEATURE_FLAG, Phase.SWITCH,
-                                        oc=ObjectClass.FEATURE_FLAG),))
+    sw = migration_unit("001", (), (step(StepKind.FEATURE_FLAG, Phase.SWITCH,
+                                          oc=ObjectClass.FEATURE_FLAG),))
     refused(plan_rehearsal([sw], [], IDS), OpsReason.SWITCH_ONLY)
-    ct = MigrationUnit("001", (), (step(StepKind.RETIRE_ROUTE, Phase.CONTRACT, oc=ObjectClass.ROUTE),))
+    ct = migration_unit("001", (), (step(StepKind.RETIRE_ROUTE, Phase.CONTRACT, oc=ObjectClass.ROUTE),))
     refused(plan_rehearsal([ct], [], IDS), OpsReason.CONTRACT)
-    both = MigrationUnit("001", (), (step(StepKind.RETIRE_ROUTE, Phase.CONTRACT, oc=ObjectClass.ROUTE),
-                                     step(StepKind.TRUNCATE)))
+    both = migration_unit("001", (), (step(StepKind.RETIRE_ROUTE, Phase.CONTRACT, oc=ObjectClass.ROUTE),
+                                       step(StepKind.TRUNCATE)))
     refused(plan_rehearsal([both], [], IDS), OpsReason.DESTRUCTIVE)  # the worst class wins
 
 
 def test_rehearsal_classifies_the_steps_of_an_already_applied_version_too():
     """G1: a destructive step behind an applied version still refuses (it would run when the version is re-played)."""
-    unit = MigrationUnit("001", (), (step(StepKind.DROP_TABLE),))
-    refused(plan_rehearsal([unit], ["001"], IDS), OpsReason.DESTRUCTIVE)
-    r1 = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
-    refused(plan_rehearsal([r1], ["001"], IDS), OpsReason.UNCLASSIFIED)
+    unit = migration_unit("001", (), (step(StepKind.DROP_TABLE),))
+    refused(plan_rehearsal([unit], ["001"], IDS, applied_checksums=stored_checksums("001")), OpsReason.DESTRUCTIVE)
+    r1 = migration_unit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
+    refused(plan_rehearsal([r1], ["001"], IDS, applied_checksums=stored_checksums("001")), OpsReason.UNCLASSIFIED)
     refused(plan_rehearsal([add("001"), unit], [], IDS), OpsReason.DESTRUCTIVE)  # the planned-earlier no-op case
 
 
 def test_plan_digest_binds_the_content_of_every_unit_applied_or_not():
-    a = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE),))
-    b = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX)))
-    c = MigrationUnit("001", (), (step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX),))  # same step count as `a`, different content
+    a = migration_unit("001", (), (step(StepKind.CREATE_TABLE),))
+    b = migration_unit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX)))
+    c = migration_unit("001", (), (step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX),))  # same count, different content
     for applied in ([], ["001"]):
-        digests = {plan_rehearsal([u], applied, IDS).digest for u in (a, b, c)}
+        checksums = stored_checksums(*applied)
+        digests = {plan_rehearsal([u], applied, IDS, applied_checksums=checksums).digest for u in (a, b, c)}
         assert len(digests) == 3
-    assert plan_rehearsal([a], ["001"], IDS).digest != plan_rehearsal([a], [], IDS).digest
+    checksum_changed = migration_unit("001", (), (step(StepKind.CREATE_TABLE),), checksum=D2)
+    assert plan_rehearsal([checksum_changed], [], IDS).digest != plan_rehearsal([a], [], IDS).digest
+    assert plan_rehearsal([a], ["001"], IDS, applied_checksums=stored_checksums("001")).digest \
+        != plan_rehearsal([a], [], IDS).digest
     assert plan_rehearsal([a], [], IDS).digest == plan_rehearsal([a], [], IDS).digest
     with pytest.raises(ValueError, match="REHEARSAL_ACTION_INVALID"):
         RehearsalAction("001", True, 1, "not-a-digest")
 
 
 def test_rehearsal_a_hostile_unit_cannot_ride_behind_an_applied_version():
-    refused(plan_rehearsal([add("001"), "not a unit"], ["001"], IDS), OpsReason.INPUT_INVALID)
+    refused(plan_rehearsal([add("001"), "not a unit"], ["001"], IDS,
+                           applied_checksums=stored_checksums("001")), OpsReason.INPUT_INVALID)
 
 
 @pytest.mark.parametrize("units", [
     None, 5, "001", b"001", [], (), {}, object(), [None], ["001"], [{"version": "001"}],
-    [object.__new__(MigrationUnit)], [MigrationUnit("1", (), (step(StepKind.GRANT),))],
-    [MigrationUnit("0001", (), (step(StepKind.GRANT),))],
-    [MigrationUnit(EvilStr("001"), (), (step(StepKind.GRANT),))],
-    [MigrationUnit(None, (), (step(StepKind.GRANT),))],
-    [MigrationUnit("001", "001", (step(StepKind.GRANT),))],
-    [MigrationUnit("001", [None], (step(StepKind.GRANT),))],
-    [MigrationUnit("001", (EvilStr("x"),), (step(StepKind.GRANT),))],
-    [MigrationUnit("001", (), ())],
-    [MigrationUnit("001", (), None)],
-    [MigrationUnit("001", (), "steps")],
-    [MigrationUnit("001", ("001",) * 17, (step(StepKind.GRANT),))],
-    [MigrationUnit("001", (), (step(StepKind.GRANT),) * 513)],
+    [object.__new__(MigrationUnit)], [migration_unit("1", (), (step(StepKind.GRANT),))],
+    [migration_unit("0001", (), (step(StepKind.GRANT),))],
+    [migration_unit(EvilStr("001"), (), (step(StepKind.GRANT),))],
+    [migration_unit(None, (), (step(StepKind.GRANT),))],
+    [migration_unit("001", "001", (step(StepKind.GRANT),))],
+    [migration_unit("001", [None], (step(StepKind.GRANT),))],
+    [migration_unit("001", (EvilStr("x"),), (step(StepKind.GRANT),))],
+    [migration_unit("001", (), ())],
+    [migration_unit("001", (), None)],
+    [migration_unit("001", (), "steps")],
+    [migration_unit("001", ("001",) * 17, (step(StepKind.GRANT),))],
+    [migration_unit("001", (), (step(StepKind.GRANT),) * 513)],
     [add("001")] * 65,
 ])
 def test_rehearsal_hostile_units_are_input_invalid(units):
@@ -322,7 +392,7 @@ def test_rehearsal_digest_is_derived_and_not_a_constructor_argument():
         RehearsalPlan(plan.actions, authority="PROVEN")  # type: ignore[call-arg]
     with pytest.raises(dataclasses.FrozenInstanceError):
         plan.digest = "x"  # type: ignore[misc]
-    other = plan_rehearsal(real_units(), ["001"], IDS)
+    other = plan_rehearsal(real_units(), ["001"], IDS, applied_checksums=stored_checksums("001"))
     assert other.digest != plan.digest
     assert plan_rehearsal(real_units(), [], IDS).digest == plan.digest
 
@@ -339,7 +409,7 @@ def test_rehearsal_constructors_reject_bad_content():
 
 def test_rehearsal_refusal_never_echoes_input_and_uses_the_injected_id():
     secret = "SECRET-VERSION-TEXT"
-    out = plan_rehearsal([MigrationUnit(secret, (), (step(StepKind.GRANT),))], [], IDS)
+    out = plan_rehearsal([migration_unit(secret, (), (step(StepKind.GRANT),))], [], IDS)
     assert type(out) is OpsRefusal and secret not in repr(out) and out.correlation_id.startswith("CORR-")
 
 

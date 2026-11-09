@@ -1,120 +1,183 @@
-# Phase 2 — Native 1C Report Capture & Reconciliation: Dev / Prod
+# Phase 2 — Native 1C Report Capture and Reconciliation: Development / Production
 
-Версия0.1 · 08.10.2026 · DRAFT. Требования R2-REQ-13…21. Не изменяет действующий R1 runbook и не разрешает сейчас доступ/выполнение в production.
+**Version 0.1 · October 8, 2026 · DRAFT.** Covers requirements R2-REQ-13–21. This proposal does not change the current Release 1 runbook or authorize live production access or execution.
 
-## 1. Что считается источником проверки
+## 1. What Qualifies as Independent Evidence
 
-Пользователь может открыть штатную 1С, сформировать стандартный отчёт, сохранить оригинал и сравнить с MCP. Автоматизация может сделать то же через квалифицированный UI recipe или вызвать тот же стандартный report object. Это не становится синтетикой лишь из-за участия программы.
+A user can open the standard 1C application, generate a native report, save the original and compare it with MCP results. Qualified automation may perform those same steps through the standard UI or the same standard report object. The involvement of software **does not itself make the report synthetic**.
 
-| Способ | R2 eligibility |
-|---|---|
-| Standard UI report, человек | Native evidence candidate после проверки оригинала/параметров/полноты |
-| Standard UI report, qualified automation | Тот же возможный уровень authority плюс recipe/runner/session provenance |
-| Standard report object через qualified engine/COM/batch | Candidate после сравнения с UI на той же конфигурации и approved recipe |
-| Собственный COM/OData query | Диагностика, не автоматически native standard report |
-| Synthetic/Ferma generator | Test oracle synthetic lane, не real/prod native proof |
-| XLSX из ответа MCP или того же собственного калькулятора | Не независимый oracle проверки MCP |
+| Capture method | Potential Release 2 evidence eligibility |
+| --- | --- |
+| Standard UI report, manual | Native evidence candidate after verifying original bytes, parameters and completeness |
+| Standard UI report, qualified automation | Potentially the same evidence authority, with additional recipe, runner and session provenance |
+| Standard report object through qualified reporting engine/COM/batch | Candidate after comparison to UI output on the same configuration and approval of the procedure |
+| Custom COM/OData query | Diagnostics; **not automatically** a standard native report |
+| Synthetic/Ferma generator | Synthetic test oracle only; not real/production native evidence |
+| XLSX derived from an MCP response or the same custom calculator | Not an independent oracle for validating the MCP result |
 
-R1 сейчас допускает для валидации NATIVE_UI_REPORT; NATIVE_ENGINE_REPORT не засчитывается. Новая R2 policy требует governance amendment/recipe qualification и не меняет старые artifacts задним числом. Numeric MATCH, origin verification, accounting attestation и model acceptance — отдельные состояния.
+The current R1 policy accepts `NATIVE_UI_REPORT` for validation but does **not** accept `NATIVE_ENGINE_REPORT`. A new R2 policy requires a governed normative amendment and procedure qualification. Historical artifacts must not be relabeled retroactively.
 
-## 2. Среды
+**Numerical MATCH, provenance verification, accountant attestation and model acceptance are separate states.**
 
-Synthetic CI: только fixtures/mocks, no real/native claim.
-DEV_REFERENCE: разрешённая disposable copy, отдельные credentials/output namespace и dev authority.
-STAGING: утверждённая reference copy, pinned identity/config и consistency.
-PROD: capability предусмотрена, default OFF. Только source/company/recipe-specific permission с window/expiry/budget и qualification на копии. Prod identity не admin по умолчанию.
+## 2. Environments
 
-В production запрещены write-probes, reset.ps1, произвольный EPF/BSL, отключение safe mode или admin fallback. В dev write-probes/Ferma seeding допустимы лишь в отдельном явно разрешённом test harness, не в capture recipe. MFA выполняет уполномоченный человек; отсутствие сессии даёт OPERATOR_ACTION_REQUIRED.
+- **Synthetic CI:** Fixtures and mocks only; no claims of real/native accounting evidence.
+- **DEV_REFERENCE:** Approved disposable copy, independent credentials/output namespace and development authorization.
+- **STAGING:** Authorized reference copy, pinned identity/configuration and consistency verification.
+- **PROD:** Capture capability may exist but must be **OFF by default**. Source/company/recipe-specific permission, execution window, expiry, resource budget and qualification on a safe copy are mandatory. Production identity is **not an administrator by default**.
 
-## 3. Report recipe
+In production, prohibit write probes, `reset.ps1`, arbitrary EPF/BSL, disabling safe mode and administrator fallback. In development, write probes or Ferma seeding are permitted only through a separately authorized disposable test harness, never through the capture recipe.
 
-Recipe содержит: source/config/platform fingerprints; report object и variant hash; environment/mode; executor/selector/processing digest; schema разрешённых параметров; output format/private destination; required permission set; timeout/resources; allowed technical effects; qualification_ref и version.
+MFA requires an authorized human. An unavailable session produces `OPERATOR_ACTION_REQUIRED`.
 
-Вход job: source_id/company_id, recipe_id/version/hash, authorization_id, scope_epoch, idempotency_key, typed parameters. Запрещены command/executable/sql/bsl/arbitrary_url/connection_string/password/token/epf_bytes/force_validate. Секреты только через серверный provider.
+## 3. Native Report Recipe
 
-Parameters: account, start_local/end_local_exclusive, verified timezone, grouping, expanded_balance, currency_basis, posted/deletion filter, source snapshot/cutoff. Эквивалентность wire Period/native UI проверяется конкретным adapter; нельзя заменять любую границу на 23:59:59Z.
+A recipe must bind:
+- Source, configuration and platform fingerprints.
+- Exact standard report object and variant hash.
+- Environment and execution mode.
+- Executor, selectors and processing digest.
+- Schema of permitted typed parameters.
+- Output format and private destination.
+- Required permission set.
+- Timeouts, resources and approved technical side effects.
+- Qualification reference and version.
 
-## 4. Ручной baseline ОСВ521.1
+Job input includes `source_id`, `company_id`, `recipe_id`/version/hash, `authorization_id`, `scope_epoch`, `idempotency_key`, and typed parameters.
 
-1. Открыть утверждённую базу/копию через штатный клиент. Проверить infobase identity, организацию и актуальность данных.
-2. Выбрать стандартную ОСВ по счёту; альтернативный отчёт допустим только как согласованный equivalent recipe.
-3. Организация 818 HA SRL; счёт521.1; 01.08.2026–31.08.2026 включительно по локальному времени базы. Canonical interval [01.08 00:00,01.09 00:00). Timezone подтверждается отдельно, не по местоположению пользователя.
-4. Контрагент→договор, развернутое сальдо. Колонки: opening debit/credit; turnover debit/credit; closing debit/credit. Зафиксировать валюту/units и все фильтры.
-5. Дождаться формирования; проверить отсутствие скрытого лимита строк. Сохранить оригинальный XLSX/MXL и, при необходимости, PDF/скрин шапки/настроек. Не править суммы в Excel. Скрин части таблицы не полное доказательство.
-6. Ingest в private evidence store: original bytes/hash/manifest, status UNATTESTED. Drive location не доказывает native origin.
-7. Сравнить MCP на том же snapshot/cutoff/параметрах, все шесть показателей и каждую строку. Scope/currency/completeness mismatch не получает PASS.
-8. Отдельный бухгалтер принимает/отклоняет attestation; model approver связывает usable mappings с evidence coverage. Один совпавший кейс — не валидация всей системы.
+**Forbidden:** `command`, `executable`, `sql`, `bsl`, `arbitrary_url`, `connection_string`, `password`, `token`, `epf_bytes`, `force_validate`. Resolve secrets only through the server-side provider.
 
-Денежные значения переписки остаются USER_SUPPLIED_NOT_ATTESTED. Два набора opening/turnover могут давать одинаковый closing net; сравнение только последней суммы недопустимо. Частная записка с арифметикой прилагается к пользовательским файлам, но не включена в Git fixtures.
+Parameters include account, `start_local`, `end_local_exclusive`, verified time zone, grouping, `expanded_balance`, currency basis, posted/deleted filters, and source snapshot/cutoff. The adapter must prove how wire-level periods map to native UI parameters. Never replace arbitrary boundaries with `23:59:59Z`.
 
-## 5. Автоматизация UI
+## 4. Manual Baseline for Account 521.1 Trial Balance
 
-Порядок: verify process/app identity → verify infobase/company → open standard report → set/read back parameters → generate/wait → verify header/columns/completeness → export original → hash/ingest → безопасно закрыть только owned report/session.
+1. Open the approved 1C source/copy through the standard client. Verify infobase identity, company, and currency/data freshness.
+2. Select the standard trial balance for the account. An alternative report is acceptable only as an explicitly approved equivalent procedure.
+3. Set company **818 HA SRL**, account **521.1**, and the period **August 1–31, 2026**, inclusive in the database's local time. Canonical interval: `[2026-08-01 00:00, 2026-09-01 00:00)`. Confirm the database time zone independently; do not infer it from the user's location.
+4. Use counterparty → contract grouping and expanded balances. Required columns: opening debit/credit, turnover debit/credit, and closing debit/credit. Record currency, units and every active filter.
+5. Wait until generation completes and verify no hidden row limit. Save the original XLSX/MXL and, if needed, PDF or screenshots of headers/settings. Do not edit values in Excel. A screenshot of only part of the table is **not** complete evidence.
+6. Ingest the original bytes, hash and manifest into the private evidence store as `UNATTESTED`. A Drive location does **not** establish native origin.
+7. Compare with MCP using the **same snapshot, cutoff and parameters**, checking all six values and **every row**. Scope, currency or coverage mismatches must never receive PASS.
+8. An independent accountant approves or rejects the attestation. A separate model approver binds usable mappings to the verified evidence coverage. One matching case does not validate the whole system.
 
-Unknown dialog/selector/wrongbase/config mismatch — отказ. Никакого угадывания кликов по похожей форме в prod. Наличие файловых операций DC_MCP не доказывает наличие UI executor. Implementation spike должен обнаружить и зарегистрировать реальный способ управления и его полномочия; при отсутствии использовать manual baseline.
+Financial values supplied in conversation remain `USER_SUPPLIED_NOT_ATTESTED`. Different opening balances and turnovers can produce an equal closing net amount; comparing only the final number is prohibited. A private arithmetic note may accompany the user's personal files but must not be inserted into Git fixtures.
 
-Qualification: manual UI и automated UI report на одной стабильной copy/config, одинаковый object/variant/parameters/columns/totals/rows; no-business-write rights и effects proof. После изменения configuration/UI/recipe повторить affected qualification.
+## 5. Standard UI Automation
 
-## 6. COM/engine/batch
+Required sequence:
 
-Engine recipe запускает штатный report object, не собственный запрос, переписанный из его логики. Existing runbook указывает UI-dependent ОСВ/карточки: empty external connection output означает CAPTURE_UNSUPPORTED/INCOMPLETE. Возможен только явно разрешённый переход к UI recipe с новой provenance, а не маскировка query под native report.
+1. Verify application process and identity.
+2. Verify exact infobase and company.
+3. Open the standard report.
+4. Set and read back every required parameter.
+5. Generate and wait for completion.
+6. Verify headers, six columns and completeness.
+7. Export the original report.
+8. Hash and ingest the original bytes.
+9. Safely close **only the owned report or session**.
 
-/Execute — optional способ запуска заранее reviewed и pinned processing artifact. Требует source-specific authorization, fixed hash/signature, allowlisted path/parameters и side-effect assessment. Нет произвольного EPF из запроса модели, нет отключения защиты или elevated identity.
+Unknown dialogs/selectors, wrong database, or configuration mismatch cause denial. Never guess clicks on a similar-looking production form.
 
-Wrapper управляет параметрами/экспортом, но не вычисляет expected totals тем же собственным кодом, который проверяется. Один source допустим; один и тот же собственный result/calculator по обе стороны — не независимость.
+The existence of DC_MCP file operations is **not evidence of an available UI executor**. A separate feasibility spike must identify a real supported UI automation interface and its permissions; otherwise fall back to manual baseline capture.
 
-## 7. Preflight и полномочия
+Qualification requires manual and automated UI reports on the same stable database copy/configuration, identical report object, variant, parameters, columns, totals and rows, plus evidence of read-only rights and approved technical effects. Requalify affected procedures after configuration, UI or recipe changes.
 
-Permit: actor/source/company/environment/recipe/hash/modes/window/expiry/max_runs/budget/output_class/approver. Проверить до dispatch: текущий grant/epoch/revoke; matching config/recipe; owner runtime; secrets available без echo; source readiness; maintenance window; backend lease/budget; audit START.
+## 6. COM, Standard Engine and Batch Execution
 
-Нельзя останавливать работающий gateway, если job/replacement невозможен. Report job не перезапускает gateway/IdP/1С. Cancel относится только к owned job; PID/start-time/foreign-process guards обязательны. Child process не наследует посторонние Gmail/API/SSH secrets. Нельзя читать секрет через обходной pytest probe.
+An engine recipe must invoke the **standard report object**, not a custom query recreated from its business logic. Existing runbooks identify UI-dependent trial balances and account cards: empty output through an external connection means `CAPTURE_UNSUPPORTED` or `INCOMPLETE`, **not zero**. A transition to the UI procedure is permitted only if separately approved and with new provenance, never by disguising a custom query as native evidence.
 
-## 8. Side effects и source consistency
+`/Execute` is an optional mechanism for launching a **previously reviewed, pinned processing artifact**. It requires source-specific authorization, fixed digest/signature, allowlisted path/parameters and side-effect evaluation. No arbitrary EPF supplied through an AI request; no disabling protections or elevated identity.
 
-Штатный отчёт выполняет код конфигурации: слово reader не гарантирует, что не пишутся настройки/логи. Business write rights на документы/проводки запрещены. Технические записи классифицируются, qualification фиксирует coverage. Не заявлять byte-identical production DB после запуска, поскольку сервисные данные могут меняться.
+A wrapper may control parameters and export. It must not compute expected totals using the same proprietary algorithm being validated. Reading from the same underlying source may be appropriate; using the same internally computed result on both sides is **not independent verification**.
 
-Dev предпочтительно проверяется на стабильной disposable copy. Prod требует доказанный snapshot/cutoff/version либо согласованное окно и before/after source markers. Одинаковая отчётная дата не доказывает отсутствие backdated posting между native и MCP read. При недоказанной consistency — INCONCLUSIVE SOURCE_CHANGED_OR_UNPROVEN.
+## 7. Preflight and Authorization
 
-No-business-write proof: rights/contract/qualified recipe + наблюдение relevant objects с explicit coverage. Production write-probe недопустим. При непроверенных effects automated prod denied; возможен manual export уполномоченным пользователем или согласованная copy.
+A permit binds actor, source, company, environment, procedure, hash, execution modes, time window, expiry, maximum runs, budget, output classification and approver.
 
-## 9. Trust и результаты
+Before dispatch, validate:
+- Current grant, epoch and revocation.
+- Matching source configuration and qualified recipe.
+- Ownership of the worker/runtime.
+- Availability of secret references **without echoing values**.
+- Source readiness and maintenance window.
+- Physical-backend lease and capacity budget.
+- Mandatory `audit START` event.
 
-Artifact trust: UNATTESTED / ORIGIN_VERIFIED / ATTESTED / REVOKED.
-Comparison: MATCH / MISMATCH / INCONCLUSIVE / ERROR / NOT_RUN.
-Applicability: CURRENT / SUPERSEDED / EXPIRED / SCOPE_MISMATCH / POLICY_STALE.
-Authority: SYNTHETIC / DEV_REFERENCE / STAGING / PROD_QUALIFIED.
+Do not stop a running gateway because a requested job or replacement worker is unavailable. Report jobs must not restart the gateway, IdP or 1C. Cancel affects **only the owned job**, with PID, process-start-time and foreign-process guards.
 
-Hash только проверяет bytes; signature без надёжного key/actor management не доказывает правду. Actual artifact и attestation связываются по FK к immutable revision, exact scope/model/policy. Uploader/connector не может ставить VALIDATED. Новая revision снимает latest applicability, но historical PASS старых bytes не удаляется. Поддельное доказательство/отзыв подписи порождает отдельное revocation event.
+Child processes must not inherit unrelated Gmail, API or SSH credentials. Never probe for secrets through unrelated pytest helpers.
 
-## 10. Bootstrap candidate mapping
+## 8. Side Effects and Source Consistency
 
-Public business tools остаются закрыты, пока mapping не validated. Для разрыва круговой зависимости отдельный закрытый validation runner может на разрешённой копии выполнить pinned candidate mapping через существующий read-only adapter. Результат EVALUATION_ONLY, не native oracle и не public bypass. Native export получен независимым standard report route. После comparison+approval -> accepted binding -> canonical MCP replay.
+Standard reports execute code from the specific 1C configuration. Calling an account a reader does **not** prove that no settings or service logs are written. Business-write permissions for documents and accounting postings must be denied. Technical writes require explicit classification and evidence coverage.
 
-## 11. Двенадцать qualification cases
+Do not claim that the production database is byte-identical before and after report generation: service metadata may legitimately change.
 
-Это дополнительные R2 cases, не замена existing R1 NR-01…NR-10 и не доказательство, что любые10файлов достаточны.
+Development qualification should use a stable disposable copy. Production requires a proven snapshot, cutoff, and source version, or an approved read window and before/after source markers.
 
-R2-NR-01: ОСВ521.1 август, все шесть totals.
-R2-NR-02: ОСВ по контрагентам, completeness и aggregates.
-R2-NR-03: ОСВ контрагент/договор, expanded sides/no hidden netting.
-R2-NR-04: карточка521.1, каждая проводка/документ/дата/корреспонденция.
-R2-NR-05: июль и граница31.07–01.08, opening continuity.
-R2-NR-06: native журнал posted MOLDRETAIL purchases.
-R2-NR-07: unposted/deleted negative corpus на dev copy, не создание prod документов.
-R2-NR-08: debit и credit по разным договорам одного поставщика.
-R2-NR-09: несовпадающая currency/units -> scope refusal.
-R2-NR-10: backdated correction в отдельном test corpus -> новый current run/history.
-R2-NR-11: manual UI против qualified UI automation.
-R2-NR-12: manual UI против qualified engine где поддержано; иначе UNSUPPORTED.
+The **same reporting date** does not prove that no backdated posting occurred between the native report and MCP reads. If source consistency is unproven, return `INCONCLUSIVE SOURCE_CHANGED_OR_UNPROVEN`.
 
-## 12. Финансовое сравнение
+No-business-write qualification combines rights, a fixed contract, a reviewed recipe and observation of relevant data objects with explicit coverage. A production write probe is never acceptable. When technical effects are unverified, automated production capture must be denied; an authorized person may instead use manual export or an approved safe copy.
 
-Net liability=credit-debit. Контроль closing_net=opening_net+credit_turnover-debit_turnover дополнительный. Развернутые Дт/Кт сравниваются напрямую с native, не заменяются общей формулой.
+## 9. Trust, Comparison and Applicability States
 
-Match key: tenant/company/account/counterparty_ref/contract/currency_basis/report_grain. Implied name aliases требуют доказательства. Scope/precision/cutoff/completeness проверяются до сумм. Decimal, approved tolerance policy/rounding и signed deltas обязательны; float/подгонка к итоговой сумме запрещены.
+**Artifact trust:** `UNATTESTED`, `ORIGIN_VERIFIED`, `ATTESTED`, `REVOKED`.
 
-Account-based balance не доказывает aging/due dates. В818HA отсутствие settlement register решается отдельной явно qualified ledger strategy, не ручным заполнением имён. Posted purchases требуют своего native journal contract.
+**Comparison result:** `MATCH`, `MISMATCH`, `INCONCLUSIVE`, `ERROR`, `NOT_RUN`.
 
-## 13. Что входит в prod-поставку
+**Applicability:** `CURRENT`, `SUPERSEDED`, `EXPIRED`, `SCOPE_MISMATCH`, `POLICY_STALE`.
 
-API/queue/executor contracts и manual intake сохраняются в продукте. Automatic prod capture выключен до source-specific qualification/permit. Нет debug bypass, headless password grant или временного отключения semantic checks. Истёкшее право/recipe даёт безопасную причину отказа, history сохраняется по policy.
+**Evidence authority:** `SYNTHETIC`, `DEV_REFERENCE`, `STAGING`, `PROD_QUALIFIED`.
+
+A hash only proves byte equality with a reference. A signature without trustworthy signer, key and actor management does not establish truth.
+
+Actual artifact bytes and attestation must be linked by foreign keys to an immutable revision, exact scope, model and policy. An uploader or connector cannot set `VALIDATED`.
+
+A new revision ends applicability to the latest data, but historical PASS on the original bytes is preserved. Forged evidence or revoked signer authority generates a distinct revocation event.
+
+## 10. Bootstrap Candidate Mapping
+
+Public business tools remain disabled until their mapping is validated.
+
+To break a circular dependency, a **separate private evaluation runner** may execute a pinned candidate mapping on an approved copy through an existing read-only adapter. Its output is `EVALUATION_ONLY`, **not** a native oracle or public semantic-gate bypass.
+
+The native export comes independently from the standard reporting route. Only after comparison and approval may the resulting mapping become an accepted binding, followed by a canonical MCP replay.
+
+## 11. Twelve Additional Qualification Cases
+
+These Release 2 cases supplement, but do not replace, existing Release 1 `NR-01` through `NR-10`. The presence of any ten files is not proof of sufficient independent accounting coverage.
+
+| Case | Required qualification |
+| --- | --- |
+| R2-NR-01 | Account 521.1 August trial balance, all six totals |
+| R2-NR-02 | Counterparty trial balance, completeness and aggregates |
+| R2-NR-03 | Counterparty/contract trial balance with expanded debit and credit, no hidden netting |
+| R2-NR-04 | Account 521.1 card with each posting, document, date and corresponding account |
+| R2-NR-05 | July and July 31/August 1 boundary, opening continuity |
+| R2-NR-06 | Native posted-purchases journal for MOLDRETAIL |
+| R2-NR-07 | Unposted/deleted negative corpus on a development copy, without creating production documents |
+| R2-NR-08 | Debit and credit on distinct contracts of the same supplier |
+| R2-NR-09 | Currency/units mismatch yields scope refusal |
+| R2-NR-10 | Backdated correction in a separate test corpus creates a new current run and historical record |
+| R2-NR-11 | Manual UI compared with qualified UI automation |
+| R2-NR-12 | Manual UI compared with a qualified standard engine where supported; otherwise `UNSUPPORTED` |
+
+## 12. Financial Comparison Rules
+
+`net_liability = credit - debit`.
+
+`closing_net = opening_net + credit_turnover - debit_turnover` is an **additional consistency check**, not a replacement for direct comparison of expanded native debit and credit balances.
+
+Comparison key: `tenant / company / account / counterparty_ref / contract / currency_basis / report_grain`. Inferred name aliases require evidence.
+
+Verify scope, precision, cutoff and completeness **before** arithmetic. Use Decimal, an approved tolerance/rounding policy, and signed differences. Binary float comparison or adjusting values merely to match final totals is prohibited.
+
+Accounting-based balances do **not** establish aging or due dates. For 818HA, an absent settlement register must be handled through a separate explicitly qualified ledger strategy, not by filling in plausible register names. Posted purchases require their own original native journal contract.
+
+## 13. Production Delivery Boundary
+
+The product may include safe API, queue and executor contracts and a manual intake flow. **Automatic production capture remains OFF** until a source-specific recipe is qualified and permitted.
+
+There is no debug bypass, headless password grant, or temporary disabling of semantic checks. An expired grant or recipe returns a safe reason for denial, while preserving authorized history according to policy.
+
+**This is a design protocol. It is not evidence that native production capture has been authorized or executed.**

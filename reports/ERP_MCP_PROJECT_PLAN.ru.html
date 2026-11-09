@@ -1,0 +1,175 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ERP_MCP — project plan</title><style>
+:root{--bg:#10151f;--panel:#1a2230;--line:#303b4d;--text:#eef3fb;--muted:#b4c0d1;--green:#33b27a;--blue:#5d91e8;--amber:#e4ad37;--red:#df6464;--gray:#3b4659}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1500px;margin:auto;padding:24px}h1{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;margin:6px 0 10px}h2{font-size:1.45rem;margin:24px 0 12px}h3{font-size:1.08rem;margin:3px 0 8px}h4{margin:8px 0 4px;color:#dce7f7}p{margin:8px 0}a{color:#a9caff}code{color:#c4d6f4;overflow-wrap:anywhere}.muted{color:var(--muted);font-size:.92rem}.hero,.panel,.sprint,.gate{background:var(--panel);border:1px solid var(--line);border-radius:14px}.hero{padding:24px;background:linear-gradient(125deg,#1b2638,#18202d)}.panel{padding:18px;margin:14px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}.metric{background:#263246;border-radius:10px;padding:12px 15px;display:flex;flex-direction:column}.metric b{font-size:1.5rem}.metric span{font-size:.9rem;color:var(--muted)}.bar{height:22px;border-radius:10px;overflow:hidden;background:#384457;display:flex;margin:12px 0 8px}.bar span{height:100%}.closed,.swatch.closed{background:var(--green)}.approved,.swatch.approved{background:#287956}.inprogress,.swatch.inprogress{background:var(--blue)}.blocked,.swatch.blocked{background:var(--amber)}.notstarted,.swatch.notstarted{background:var(--gray)}.legend,.counts{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:.9rem}.legend span{display:inline-flex;align-items:center;gap:5px}.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}.sprint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.sprint{padding:14px}.program-progress{height:26px}.sprint-bar{height:18px;margin:7px 0}.progress-caption{margin:5px 0}.sprint-progress-line{display:flex;justify-content:space-between;gap:10px;margin:2px 0}.sprint-state-counts{font-size:.84rem;color:var(--muted);margin:3px 0 0}.current-note,.note{border-left:3px solid var(--amber);padding:8px 12px;background:#252a2c;border-radius:4px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}input,select,button{font:inherit;background:#202b3b;color:var(--text);border:1px solid #52627a;border-radius:8px;padding:9px 12px}input{flex:1;min-width:min(100%,300px)}button{cursor:pointer}.gate{margin:8px 0;overflow:hidden}summary{cursor:pointer;padding:12px 14px;display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center}summary:hover{background:#202b3b}.id{font:700 1rem ui-monospace,monospace;color:#b9d3ff}.gate-title{font-weight:650}.pill{font-size:.75rem;padding:4px 9px;border-radius:999px;white-space:nowrap;background:#374256}.pill.closed{background:#17563b}.pill.implementation_approved{background:#155d55}.pill.in_progress{background:#264d83}.pill.blocked{background:#72551c}.grid{padding:4px 16px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}.grid section{border-top:1px solid var(--line);padding-top:7px;min-width:0}.grid .wide{grid-column:1/-1}ul{padding-left:22px;margin:5px 0}li{margin:4px 0}.tbl{width:100%;border-collapse:collapse}.tbl td,.tbl th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}.hide{display:none!important}@media(max-width:720px){main{padding:12px}summary{grid-template-columns:85px 1fr}summary .pill{grid-column:2}.grid{grid-template-columns:1fr}.grid .wide{grid-column:auto}}
+.program-visual{margin-top:14px}.program-total{display:flex;align-items:baseline;gap:8px;font-size:1.15rem;margin:4px 0}.bar{height:18px}.overall-progress{height:26px}.overall-progress .remaining{background:#3b4659}.sprint-chart-list{display:grid;gap:5px;margin:8px 0 20px;overflow-x:auto}.sprint-chart-row,.sprint-chart-columns{display:grid;grid-template-columns:minmax(165px,25%) minmax(72px,.5fr) minmax(160px,1fr) minmax(145px,.9fr) minmax(145px,.9fr);gap:7px;align-items:center;min-width:760px}.sprint-chart-columns{font-size:.68rem;color:var(--muted);font-weight:700;padding:3px 4px}.sprint-chart-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sprint-chart-bar{height:12px;margin:0}.sprint-chart-bar.task-status-unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#46536a 6px,#46536a 8px);border:1px dashed #71809a}.sprint-duration,.sprint-ratio{font-size:.68rem;line-height:1.25;overflow-wrap:anywhere}.sprint-ratio{font-variant-numeric:tabular-nums}.task-coverage{height:14px;margin:.3rem 0 .8rem}.task-coverage .open,.swatch.open{background:var(--amber)}.sprint-chart-bar .notstarted,.task-bar .notstarted,.task-coverage .notstarted{background:var(--amber)}.task-coverage .unknown,.swatch.unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#46536a 6px,#46536a 8px)}.gate-chart-list{display:grid;gap:4px;margin:8px 0}.gate-chart-row{display:grid;grid-template-columns:minmax(280px,1fr) 82px minmax(120px,38%) 170px;gap:10px;align-items:center;padding:3px 5px;border-bottom:1px solid var(--line)}.gate-chart-name{display:flex;gap:10px;min-width:0}.gate-chart-name code{flex:none}.gate-chart-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sprint-tag{font-size:.8rem;color:var(--muted);text-align:center}.gate-status-bar{height:12px;margin:0}.gate-chart-row .pill{justify-self:start;white-space:nowrap}.swatch.remaining{background:#3b4659}@media(max-width:900px){.gate-chart-row{grid-template-columns:minmax(180px,1fr) 68px minmax(70px,32%) 140px}.sprint-chart-row{grid-template-columns:minmax(150px,40%) minmax(90px,1fr) 48px}}@media(max-width:640px){.gate-chart-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 8px}.gate-chart-name{grid-column:1}.sprint-tag{grid-column:2}.gate-status-bar{grid-column:1}.gate-chart-row .pill{grid-column:2;grid-row:2}}
+.chart-jump{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.chart-jump a{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:#263246;text-decoration:none}.chart-jump a:hover{background:#32425a}.chart-note{color:var(--muted);margin:6px 0 12px}.gate-chart-list{scroll-margin-top:12px}.sprint-chart-bar.source-closed,.swatch.source-closed{background:#277b65}.sprint-chart-bar.active-unmapped{background:repeating-linear-gradient(135deg,#4d79c7,#4d79c7 7px,#5c8fe6 7px,#5c8fe6 14px)}.sprint-chart-bar.observed-work{background:#6687c9}.sprint-chart-bar.notstarted{background:var(--amber)}.sprint-chart-bar .source-closed-fill,.swatch.source-closed{background:#277b65}.sprint-chart-bar .active-unmapped-fill{background:transparent}.sprint-chart-bar .observed-work-fill,.swatch.observed-work{background:#6687c9}.task-coverage .source-closed-fill{background:#277b65}.task-coverage .observed-work-fill{background:#6687c9}.pill.not_started{background:var(--amber);color:#241900}.sprint-chart-bar.partial-map{display:flex;overflow:hidden}.sprint-chart-bar .observed-work-fill{background:#5b8ee6;min-width:3px}.sprint-chart-bar .unmapped-fill,.task-coverage .unmapped-fill{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#65738a 6px,#65738a 8px)}.sprint-chart-bar .unmapped-fill{min-width:0}.swatch.unknown{background:repeating-linear-gradient(135deg,#374256,#374256 6px,#65738a 6px,#65738a 8px)}.sprint-chart-row>strong{font-size:.68rem;line-height:1.2;overflow-wrap:anywhere}.sprint-status-legend{font-size:.7rem;line-height:1.2}
+.current-sprint-panel{scroll-margin-top:12px}.current-sprint-panel .task-bar{height:22px}.current-sprint-panel .task-summary{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted)}.current-sprint-panel .task-summary span{display:inline-flex;align-items:center;gap:6px}.current-sprint-panel .task-table-wrap{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:10px}.current-sprint-panel .task-table{width:100%;min-width:1450px;border-collapse:collapse}.current-sprint-panel .task-table th:nth-last-child(2),.current-sprint-panel .task-table td:nth-last-child(3){min-width:235px}.current-sprint-panel .task-table td:last-child{min-width:220px}.current-sprint-panel .task-table th:last-child,.current-sprint-panel .task-table td:last-child{min-width:130px}.current-sprint-panel .task-table td,.current-sprint-panel .task-table th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}.current-sprint-panel .task-table th{position:sticky;top:0;background:#263246;z-index:1}.current-sprint-panel .task-table td:nth-child(1){min-width:120px}.current-sprint-panel .task-table td:nth-child(2){min-width:280px;max-width:420px}.current-sprint-panel .task-table td:nth-child(4),.current-sprint-panel .task-table td:nth-child(5),.current-sprint-panel .task-table td:nth-child(6){min-width:230px}.current-sprint-panel .task-criterion summary{display:block;padding:0;cursor:pointer;font-weight:600}.current-sprint-panel .task-criterion p{color:var(--muted);white-space:normal}.task-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.82rem;font-weight:700;white-space:nowrap}.task-pill.done{background:#17563b}.task-pill.active{background:#264d83}.task-pill.open{background:#374256}.task-pill.notstarted{background:#8a6321;color:#fff}
+
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style></head><body><main>
+<header class="hero"><p class="muted">Срез: 2026-11-01 · Режим: single_sprint · Одобренные спринты: FIN · План подтверждён оператором: true</p><h1>ERP_MCP — Название</h1><section class="hero-program-progress" aria-labelledby="whole-program-title"><h2 id="whole-program-title">Вся программа — общий процент закрытия и статусы</h2><p><strong>Принято задач (accepted): 0 / 104 (0.0%).</strong> из них проверено на remote: 0. Формула: принятые задачи / все задачи плана, без учёта заменённых (SUPERSEDED). Частичное, в работе и заблокированное в числитель не входит.</p><div id="program-progress"><div class="bar overall-progress" role="img" aria-label="0/104"><span class="inprogress" style="width:44.2308%"></span><span class="notstarted" style="width:55.7692%"></span></div></div><div class="legend"><span><i class="swatch closed"></i>Принято: 0 (0.0%)</span><span><i class="swatch inprogress"></i>В работе / на ревью / частично: 46 (44.2%)</span><span><i class="swatch blocked"></i>Заблокировано: 0 (0.0%)</span><span><i class="swatch notstarted"></i>Не начато / отложено: 58 (55.8%)</span></div></section></header>
+
+<!-- report-conform:begin -->
+<style id="rc-style">
+.rc-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:1.4rem 0 0;padding:0.9rem 1.05rem;background:#fff;color:#0f172a;
+  border:1px solid #cbd5e1;border-left:3px solid #2563eb;border-radius:3px}
+.rc-bar dl{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;margin:0;min-width:0;
+  color:#0f172a;font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:0.74rem;line-height:1.5}
+.rc-bar dt{color:#475569;text-transform:uppercase;letter-spacing:0.08em;
+  font-size:0.66rem;white-space:nowrap;padding-top:0.15em}
+.rc-bar dd{margin:0;color:#0f172a;word-break:break-word;min-width:0}
+.rc-copy{flex:none;cursor:pointer;white-space:nowrap;
+  font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;
+  color:#1e293b;background:#f8fafc;
+  border:1px solid #94a3b8;border-radius:2px;padding:0.45em 0.85em}
+.rc-copy:hover{border-color:#2563eb}
+.rc-copy:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
+.rc-copy.is-done{color:#166534;border-color:currentColor}
+.rc-copy.is-fail{color:#991b1b;border-color:currentColor}
+</style>
+<div class="rc-bar">
+  <dl>
+    <dt>Проект</dt><dd>ERP_MCP</dd>
+    <dt>Папка</dt><dd>D:\Repo\ERP_MCP</dd>
+    <dt>Git</dt><dd>https://github.com/xLZDx/ERP_MCP.git &mdash; codex/erp-mcp-autonomous-2026-10-21 @ c67de52</dd>
+  </dl>
+  <button id="rc-copy" class="rc-copy" type="button"
+          data-idle="Копировать страницу" data-done="Скопировано"
+          data-fail="Выделите вручную">Копировать страницу</button>
+</div>
+<!-- report-conform:end -->
+<section class="panel"><h3 id="sprint-charts">Прогресс по спринтам (22)</h3><div class="sprint-chart-list"><div class="sprint-chart-columns"><span>Спринт</span><span>Полоса задач</span><span>Принято / всего</span></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>FIN</b> <span class="pill">активный</span> Phase 2 finisher backlog (sprint beea27520b33)</span><div class="bar sprint-chart-bar" role="img" aria-label="0/10"><span class="inprogress" style="width:80.0000%"></span><span class="notstarted" style="width:20.0000%"></span></div><strong>0/10</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S0</b> Baseline</span><div class="bar sprint-chart-bar" role="img" aria-label="0/2"><span class="inprogress" style="width:50.0000%"></span><span class="notstarted" style="width:50.0000%"></span></div><strong>0/2</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S1</b> Connector contracts</span><div class="bar sprint-chart-bar" role="img" aria-label="0/4"><span class="inprogress" style="width:50.0000%"></span><span class="notstarted" style="width:50.0000%"></span></div><strong>0/4</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S2</b> Ledger and budget</span><div class="bar sprint-chart-bar" role="img" aria-label="0/4"><span class="inprogress" style="width:100.0000%"></span></div><strong>0/4</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S3</b> Capture and status</span><div class="bar sprint-chart-bar" role="img" aria-label="0/6"><span class="inprogress" style="width:83.3333%"></span><span class="notstarted" style="width:16.6667%"></span></div><strong>0/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S4</b> Concept mapping</span><div class="bar sprint-chart-bar" role="img" aria-label="0/4"><span class="inprogress" style="width:100.0000%"></span></div><strong>0/4</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S5</b> Capture boundary</span><div class="bar sprint-chart-bar" role="img" aria-label="0/6"><span class="inprogress" style="width:66.6667%"></span><span class="notstarted" style="width:33.3333%"></span></div><strong>0/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S6</b> Accounting workbench</span><div class="bar sprint-chart-bar" role="img" aria-label="0/8"><span class="inprogress" style="width:87.5000%"></span><span class="notstarted" style="width:12.5000%"></span></div><strong>0/8</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S7</b> Drive intake</span><div class="bar sprint-chart-bar" role="img" aria-label="0/4"><span class="inprogress" style="width:100.0000%"></span></div><strong>0/4</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S8</b> Review workbench</span><div class="bar sprint-chart-bar" role="img" aria-label="0/3"><span class="inprogress" style="width:100.0000%"></span></div><strong>0/3</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S9</b> Operations and recovery</span><div class="bar sprint-chart-bar" role="img" aria-label="0/4"><span class="inprogress" style="width:100.0000%"></span></div><strong>0/4</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S10</b> Release handoff</span><div class="bar sprint-chart-bar" role="img" aria-label="0/2"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/2</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>FOLLOW_ON</b> Follow-on</span><div class="bar sprint-chart-bar" role="img" aria-label="0/1"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/1</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S11</b> Foundations, contracts and feasibility</span><div class="bar sprint-chart-bar" role="img" aria-label="0/0"></div><strong>0/0</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S12</b> Change model and policy</span><div class="bar sprint-chart-bar" role="img" aria-label="0/7"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/7</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S13</b> Ledger and audit anchor</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S14</b> 1C write port</span><div class="bar sprint-chart-bar" role="img" aria-label="0/7"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/7</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S15</b> Verification and reconciliation</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S16</b> Independent approval and MCP</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S17</b> Document intake and workbench</span><div class="bar sprint-chart-bar" role="img" aria-label="0/6"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S18</b> Reliability and security</span><div class="bar sprint-chart-bar" role="img" aria-label="0/6"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/6</strong></div>
+<div class="sprint-chart-row"><span class="sprint-chart-name"><b>S19</b> Release candidate and acceptance</span><div class="bar sprint-chart-bar" role="img" aria-label="0/5"><span class="notstarted" style="width:100.0000%"></span></div><strong>0/5</strong></div>
+</div></section>
+<section class="panel current-sprint-panel" id="current-sprint-tasks"><h2>Активный спринт FIN — Phase 2 finisher backlog (sprint beea27520b33)</h2><p><strong>0/10 принято.</strong> Цель: Complete the authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance without any real 1C write or production action. · Открытых задач в активном спринте: <b>10</b>. Заблокировано оператором или внешней зависимостью — остановка допустима</p><div class="bar task-bar" role="img" aria-label="0/10"><span class="inprogress" style="width:80.0000%"></span><span class="notstarted" style="width:20.0000%"></span></div><div class="legend"><span><i class="swatch closed"></i>Принято: 0 (0.0%)</span><span><i class="swatch inprogress"></i>В работе / на ревью / частично: 8 (80.0%)</span><span><i class="swatch blocked"></i>Заблокировано: 0 (0.0%)</span><span><i class="swatch notstarted"></i>Не начато / отложено: 2 (20.0%)</span></div><div class="task-table-wrap"><table class="task-table"><thead><tr><th>Задача</th><th>Название</th><th>Критерий приёмки</th><th>Статус</th><th>Доказательства</th><th>Владелец / следующий шаг</th><th>Зависимость</th><th>Коммит</th></tr></thead><tbody>
+<tr class="task-active"><td><code>FIN-S1.1</code></td><td>Align SQL refusal codes and exhausted-grant outcome</td><td>AC-1 Python/SQL refusal-code parity incl. PERIOD_CLOSED and GRANT_EXHAUSTED; AC-2 exhausted grant returns GRANT_EXHAUSTED; AC-3 SQL limits named.</td><td><span class="task-pill">IN_REVIEW</span></td><td>Pushed to sprint branch, PR #41 open and not merged; AC-1..AC-3 confirmed; 2 tests, DB review without findings; PR text records GPT-PM APPROVE for the exact HEAD, no GitHub review record.</td><td>Codex</td><td></td><td><code>f23a7af</code></td></tr>
+<tr class="task-active"><td><code>FIN-S1.2</code></td><td>Produce period and exhausted-budget evidence from real data</td><td>AC-1 authenticated period observation, closed gives PERIOD_CLOSED; AC-2 fail closed on missing/contradictory/stale/unproven evidence; AC-3 exhausted grant feeds BudgetCheck.EXHAUSTED.</td><td><span class="task-pill">PARTIAL</span></td><td>AC-1 NOT_RUN; AC-2 PASS only on unavailable helper; AC-3 PASS. Period tests 9/9, SQL tests 3/3 on disposable PostgreSQL; GPT-PM PARTIAL ACCEPT, MAJOR-02 open (no trusted integration or real source); sources_list internal error. Candidate uncommitted in isolated worktree on base f23a7af.</td><td>Codex; operator restores 1C connector for live check</td><td>FIN-S1.1</td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S1.3</code></td><td>Expose in-flight changes and current status</td><td>AC-1 in-flight list derived from ledger/service state; AC-2 status of a listed ID reports recorded status, no test fixture substitution.</td><td><span class="task-pill">PARTIAL</span></td><td>Code implemented; acceptance not confirmed; no task-ID commits. Needs independent SQL catalog/grants check, tenant-isolation runtime evidence and safe delivery of a separate scope.</td><td>Codex; GPT-PM adjudication if needed</td><td></td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S2.1</code></td><td>Put approval decisions in the S16 core</td><td>AC-1 core refuses self-approval, replay, digest/version/expiry/token mismatch; AC-2 revalidation before apply port; AC-3 claim once; AC-4 service owns preview digest and nonce.</td><td><span class="task-pill">PARTIAL</span></td><td>verify-evidence.md: 75 functional tests on 3af7379; CODE-1/CODE-2 and SEC1 closed; GPT-PM narrowly approved S2.1 delta. Official AF phase-8 result UNRECOGNIZED, no approval artifact; SQL durability claims unproven.</td><td>Codex; GPT-PM formal decision</td><td>FIN-S1.1</td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S2.2</code></td><td>Implement the protected approval page and session boundary</td><td>AC-1 decision recorded only for bound change/digest/version/scope; AC-2 fails closed with session, CSRF, CSP, encoding, framing, caching protections; AC-3 preview and digest from service canonical bytes.</td><td><span class="task-pill">PARTIAL</span></td><td>6 page/ingress tests passed in-process at 3af7379; UI1 closed. Real browser/IdP/UAT NOT_RUN; no formal sprint approval.</td><td>Codex; GPT-PM formal adjudication</td><td>FIN-S2.1</td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S2.3</code></td><td>Expose exactly the approved five model-facing tools</td><td>AC-1 tools/list is exactly propose/status/apply/verify/rollback_propose; AC-2 direct approval refused; AC-3 verify passes S15 outcome unchanged; AC-4 rollback creates separate UNPOST proposal; AC-5 safe errors.</td><td><span class="task-pill">PARTIAL</span></td><td>Selected fake-backed tool tests passed at 3af7379 (five-tool registry, safe errors, rollback boundaries). Real chat clients NOT_RUN; final coverage/review and formal approval not recorded.</td><td>Codex; GPT-PM formal adjudication</td><td>FIN-S2.1, FIN-S2.2</td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S2.4</code></td><td>Require positive authentication and private-only ingress</td><td>AC-1 authenticated principal required; AC-2 foreign origin/proxy/redirect/rebinding fail closed before apply port; AC-3 production binding set stays empty.</td><td><span class="task-pill">PARTIAL</span></td><td>Ingress selection 6/6 in-process at 3af7379. Live listener, test IdP/browser and deployed binding evidence absent; production bindings empty.</td><td>Codex; test agents for live/integration evidence</td><td>FIN-S2.3</td><td><code></code></td></tr>
+<tr class="task-notstarted"><td><code>FIN-S3.1</code></td><td>Run required SQL/E2E and S15 suites at the final implementation head</td><td>AC-1 each result records head, command, outcome, skips, limits; AC-2 unavailable scenario recorded NOT_RUN; AC-3 results mapped to stories and gates.</td><td><span class="task-pill">NOT_STARTED</span></td><td>NOT_RUN at final HEAD. Only earlier runs exist: 947 S15 tests on 514d0ab, SQL evidence on 499baa96; not final-head proof.</td><td>Codex coordinates; functional-test-reviewer and e2e-runner run tests</td><td>FIN-S1.1, FIN-S1.2, FIN-S1.3, FIN-S2.4</td><td><code></code></td></tr>
+<tr class="task-notstarted"><td><code>FIN-S3.2</code></td><td>Check ERP_MCP_REAL1 connector reachability and one watchdog restart</td><td>AC-1 read-only connector probe evidence without credentials; AC-2 one component stopped once with before/after evidence.</td><td><span class="task-pill">NOT_STARTED</span></td><td>NOT_RUN. Last connector probe ended with internal error; no controlled watchdog stop/restart confirmed.</td><td>Codex (read-only lane)</td><td></td><td><code></code></td></tr>
+<tr class="task-active"><td><code>FIN-S3.3</code></td><td>Reconcile acceptance and later-sprint scope</td><td>AC-1 S12/S13/S15 gates promoted only with evidence; AC-2 S16 fake evidence kept distinct; AC-3 only explicitly covered S17-S19 items enter later sprints; AC-4 writer UNQUALIFIED, bindings empty, no real POST/UNPOST.</td><td><span class="task-pill">IN_PROGRESS</span></td><td>OPEN: reconciliation not finished. Manifest: Release 2 NO_GO, production authorization NONE, G8 IN_PROGRESS. No full task-ID crosswalk between 48 V1, 46 V2 and 10 finisher tasks.</td><td>Codex; GPT-PM adjudicates scope</td><td>FIN-S3.1</td><td><code></code></td></tr>
+</tbody></table></div></section>
+<section class="panel"><h2>Дорожная карта</h2><div class="task-table-wrap"><table class="task-table"><thead><tr><th>Спринт</th><th>Название</th><th>Статус</th><th>Цель</th></tr></thead><tbody>
+<tr><td>FIN</td><td>Phase 2 finisher backlog (sprint beea27520b33)</td><td>ACTIVE</td><td>Complete authorized S12/S13 follow-ups and the S16 rev. 2 fake-backed approval/tool slice, then collect exact-final-head evidence and reconcile acceptance.</td></tr>
+<tr><td>S0</td><td>Baseline</td><td>IN_PROGRESS</td><td>Baseline.</td></tr>
+<tr><td>S1</td><td>Connector contracts</td><td>APPROVED_PUSHED</td><td>Connector contracts.</td></tr>
+<tr><td>S2</td><td>Ledger and budget</td><td>APPROVED_PUSHED</td><td>Ledger and budget.</td></tr>
+<tr><td>S3</td><td>Capture and status</td><td>APPROVED_PUSHED</td><td>Capture and status.</td></tr>
+<tr><td>S4</td><td>Concept mapping</td><td>APPROVED_PUSHED</td><td>Concept mapping.</td></tr>
+<tr><td>S5</td><td>Capture boundary</td><td>APPROVED_PUSHED</td><td>Capture boundary.</td></tr>
+<tr><td>S6</td><td>Accounting workbench</td><td>APPROVED_PUSHED</td><td>Accounting workbench.</td></tr>
+<tr><td>S7</td><td>Drive intake</td><td>APPROVED_PUSHED</td><td>Drive intake.</td></tr>
+<tr><td>S8</td><td>Review workbench</td><td>APPROVED_PUSHED</td><td>Review workbench.</td></tr>
+<tr><td>S9</td><td>Operations and recovery</td><td>APPROVED_PUSHED</td><td>Operations and recovery.</td></tr>
+<tr><td>S10</td><td>Release handoff</td><td>HANDOFF_NO_APPROVE</td><td>Release handoff.</td></tr>
+<tr><td>FOLLOW_ON</td><td>Follow-on</td><td>UNCONFIRMED</td><td>Follow-on.</td></tr>
+<tr><td>S11</td><td>Foundations, contracts and feasibility</td><td>DONE_SPRINT_LEVEL</td><td>Foundations, contracts and feasibility.</td></tr>
+<tr><td>S12</td><td>Change model and policy</td><td>IN_PROGRESS</td><td>Change model and policy.</td></tr>
+<tr><td>S13</td><td>Ledger and audit anchor</td><td>GIT_ACTIVITY_NOT_CLOSED</td><td>Ledger and audit anchor.</td></tr>
+<tr><td>S14</td><td>1C write port</td><td>GIT_ACTIVITY_NOT_CLOSED</td><td>1C write port.</td></tr>
+<tr><td>S15</td><td>Verification and reconciliation</td><td>GIT_ACTIVITY_NOT_CLOSED</td><td>Verification and reconciliation.</td></tr>
+<tr><td>S16</td><td>Independent approval and MCP</td><td>GIT_ACTIVITY_NOT_CLOSED</td><td>Independent approval and MCP.</td></tr>
+<tr><td>S17</td><td>Document intake and workbench</td><td>QUEUED</td><td>Document intake and workbench.</td></tr>
+<tr><td>S18</td><td>Reliability and security</td><td>QUEUED</td><td>Reliability and security.</td></tr>
+<tr><td>S19</td><td>Release candidate and acceptance</td><td>GIT_ACTIVITY_NOT_CLOSED</td><td>Release candidate and acceptance.</td></tr>
+</tbody></table></div></section>
+</main>
+<!-- report-conform:script:begin -->
+<script>
+(function () {
+  var btn = document.getElementById('rc-copy');
+  if (!btn) { return; }
+
+  function pageText() {
+    // Hide the button so its own label never lands in the copied text.
+    var previous = btn.style.display;
+    btn.style.display = 'none';
+    var root = document.querySelector('.wrap') || document.body;
+    var text = (root.innerText || root.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+    btn.style.display = previous;
+    return text;
+  }
+
+  function legacyCopy(text) {
+    var field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+    document.body.removeChild(field);
+    return copied;
+  }
+
+  function report(state) {
+    btn.textContent = btn.getAttribute('data-' + state);
+    btn.classList.toggle('is-done', state === 'done');
+    btn.classList.toggle('is-fail', state === 'fail');
+    window.setTimeout(function () {
+      btn.textContent = btn.getAttribute('data-idle');
+      btn.classList.remove('is-done', 'is-fail');
+    }, 2400);
+  }
+
+  btn.addEventListener('click', function () {
+    var text = pageText();
+    // Some hosts block the async clipboard API inside the artifact iframe, so the
+    // execCommand path stays as a real fallback rather than an assumed success.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { report('done'); },
+        function () { report(legacyCopy(text) ? 'done' : 'fail'); }
+      );
+    } else {
+      report(legacyCopy(text) ? 'done' : 'fail');
+    }
+  });
+})();
+</script>
+<!-- report-conform:script:end -->
+</body></html>

@@ -17,11 +17,11 @@ Contract:
   JSON document and the parent rebuilds the result with strict type checks.
 
 Known limits (documented, not hidden):
-* ``run_isolated`` enforces the wall-clock timeout everywhere. The address
-  space bound is applied in the child only where ``resource.RLIMIT_AS``
-  exists (POSIX). On Windows the memory bound is NOT enforced across the
-  process boundary (NOT_RUN there); input / member / node / row / cell limits
-  are the protection on that platform.
+* ``run_isolated`` enforces the wall-clock timeout everywhere. The child uses
+  ``resource.RLIMIT_AS`` on POSIX and a Windows Job Object process-memory limit
+  on Windows. If the platform cannot establish its limit, parsing fails closed
+  with ``BOUND_MEMORY``. The Windows Job Object limits this child process; it
+  does not sandbox the process or remove its OS privileges.
 * The XML node budget is ``min(max_cells * 8 + 10000, member_bytes // 3 +
   100)`` because an element needs at least 4 bytes; nodes use ``__slots__``
   and lazily created containers. It bounds allocation, it is not a memory cap.
@@ -850,21 +850,114 @@ def _decode_result(payload: bytes) -> ParseResult | None:
         return None
 
 
-def _child_main(conn: object, data: bytes, limits: ParseLimits, memory_bytes: int) -> None:
-    try:
-        try:
-            import resource  # POSIX only
+def _set_windows_process_memory_limit(memory_bytes: int) -> tuple[object, object]:
+    """Assign this child to a Job Object with a per-process commit cap."""
+    import ctypes
+    from ctypes import wintypes
 
-            resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
-        except (ImportError, ValueError, OSError, OverflowError):
-            pass  # not enforced on this platform / for this value
-        payload = _encode_result(parse_workbook(data, limits=limits))
-        if len(payload) > _MAX_PAYLOAD:
-            payload = _encode_result(ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY))
-    except MemoryError:
-        payload = _encode_result(ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY))
-    conn.send_bytes(payload)  # type: ignore[attr-defined]
-    conn.close()  # type: ignore[attr-defined]
+    class _BasicLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class _IoCounters(ctypes.Structure):
+        _fields_ = [
+            ("ReadOperationCount", ctypes.c_ulonglong),
+            ("WriteOperationCount", ctypes.c_ulonglong),
+            ("OtherOperationCount", ctypes.c_ulonglong),
+            ("ReadTransferCount", ctypes.c_ulonglong),
+            ("WriteTransferCount", ctypes.c_ulonglong),
+            ("OtherTransferCount", ctypes.c_ulonglong),
+        ]
+
+    class _ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", _BasicLimitInformation),
+            ("IoInfo", _IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = (
+        wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+    )
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.GetCurrentProcess.argtypes = ()
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        raise OSError(ctypes.get_last_error(), "CreateJobObjectW failed")
+    try:
+        info = _ExtendedLimitInformation()
+        info.BasicLimitInformation.LimitFlags = 0x00000100  # JOB_OBJECT_LIMIT_PROCESS_MEMORY
+        info.ProcessMemoryLimit = memory_bytes
+        if not kernel32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            raise OSError(ctypes.get_last_error(), "SetInformationJobObject failed")
+        if not kernel32.AssignProcessToJobObject(job, kernel32.GetCurrentProcess()):
+            raise OSError(ctypes.get_last_error(), "AssignProcessToJobObject failed")
+    except Exception:
+        kernel32.CloseHandle(job)
+        raise
+    return kernel32, job
+
+
+def _child_main(conn: object, data: bytes, limits: ParseLimits, memory_bytes: int) -> None:
+    # Pre-encode the fixed refusal before applying the limit, so MemoryError can
+    # still be reported without allocating a new JSON envelope.
+    memory_failure = _encode_result(ParseResult(Status.BOUND_EXCEEDED, BOUND_MEMORY))
+    memory_job: tuple[object, object] | None = None
+    try:
+        payload = memory_failure
+        try:
+            if os.name == "nt":
+                try:
+                    memory_job = _set_windows_process_memory_limit(memory_bytes)
+                except Exception:
+                    payload = memory_failure
+                else:
+                    payload = _encode_result(parse_workbook(data, limits=limits))
+            else:
+                try:
+                    import resource  # POSIX only
+
+                    resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+                except (ImportError, ValueError, OSError, OverflowError, AttributeError):
+                    payload = memory_failure
+                else:
+                    payload = _encode_result(parse_workbook(data, limits=limits))
+            if len(payload) > _MAX_PAYLOAD:
+                payload = memory_failure
+        except MemoryError:
+            payload = memory_failure
+        conn.send_bytes(payload)  # type: ignore[attr-defined]
+    finally:
+        try:
+            conn.close()  # type: ignore[attr-defined]
+        finally:
+            if memory_job is not None:
+                kernel32, job = memory_job
+                try:
+                    kernel32.CloseHandle(job)  # type: ignore[attr-defined]
+                except OSError:
+                    pass
 
 
 _ENV_KEEP = frozenset({
@@ -919,7 +1012,8 @@ def run_isolated(
     includes interpreter start-up and the parent never waits past it. The
     child sends bounded JSON (never pickle); anything that does not rebuild
     strictly yields CHILD_ABORTED. Memory bound: RLIMIT_AS in the child on
-    POSIX only; NOT enforced on Windows.
+    POSIX and a per-process Windows Job Object limit. If the platform cannot
+    establish its limit, the child returns BOUND_MEMORY without parsing.
 
     Windows uses ``spawn``: the calling program's ``__main__`` module must be
     import-safe (``if __name__ == "__main__":`` guard) or the child re-runs it.

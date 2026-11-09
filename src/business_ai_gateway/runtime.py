@@ -18,6 +18,9 @@ from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
 from .fixture_profiles import ProvisionalProfiles, SyntheticFixtureProfiles
 from .observability import OperationalMetrics
+from .phase2.capture_loop import CaptureLoop
+from .phase2.capture_runtime import CaptureRuntime
+from .phase2.workbench_types import ViewerScope
 from .rate_limit import RateLimiter
 from .registry import Registry
 from .secrets import build_secret_provider
@@ -32,6 +35,11 @@ class Runtime:
         self.admin_db = (
             Database(settings.admin_control_database_url)
             if settings.admin_control_database_url
+            else None
+        )
+        self.model_promotion_db = (
+            Database(settings.model_promotion_database_url.get_secret_value())
+            if settings.model_promotion_database_url
             else None
         )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
@@ -112,6 +120,26 @@ class Runtime:
         self._lock = asyncio.Lock()
         self._com_client = None
         self._com_lock = asyncio.Lock()
+        self._phase2_capture_runtime: CaptureRuntime | None = None
+
+    def bind_dev_test_capture(self, *, scope: ViewerScope, source_id: str,
+                              capture_loop: CaptureLoop) -> CaptureRuntime:
+        """Bind the S10 capture supervisor explicitly in development/test only.
+
+        Production construction is rejected by CaptureRuntime; no public MCP tool is registered
+        here. The caller must supply a loop already composed from the validated scope and ports.
+        """
+        if self.settings.environment not in {"development", "test"}:
+            raise ValueError("CAPTURE_RUNTIME_ENVIRONMENT_REFUSED")
+        if self._phase2_capture_runtime is not None:
+            raise RuntimeError("CAPTURE_RUNTIME_ALREADY_BOUND")
+        self._phase2_capture_runtime = CaptureRuntime(
+            environment=self.settings.environment,
+            scope=scope,
+            source_id=source_id,
+            capture_loop=capture_loop,
+        )
+        return self._phase2_capture_runtime
 
     def com_bindings(self) -> tuple[ComBinding, ...]:
         """Operator-pinned COM bindings; absent settings mean no COM route (never an import error)."""
@@ -158,16 +186,35 @@ class Runtime:
                     await self.admin_db.assert_control_api_role()
             if self.settings.admin_mutations_enabled and self.admin_db is None:
                 raise RuntimeError("admin mutation database is not configured")
+            if self.model_promotion_db is not None:
+                # The living schema is managed separately from BAG migrations. Do not expose the
+                # route unless this login has only set-only grants to isolated actor roles.
+                await self.model_promotion_db.start()
+                await self.model_promotion_db.assert_promotion_role()
             if not await self.redis.ping():
                 raise RuntimeError("redis unavailable")
             self._started = True
 
     async def ready(self) -> bool:
-        await self.start()
+        try:
+            await self.start()
+        except Exception:
+            return False
         admin_ready = self.admin_db is None or await self.admin_db.ping()
-        return await self.db.ping() and admin_ready and bool(await self.redis.ping())
+        promotion_ready = self.model_promotion_db is None
+        if self.model_promotion_db is not None:
+            try:
+                await self.model_promotion_db.ping()
+                await self.model_promotion_db.assert_promotion_role()
+                promotion_ready = True
+            except Exception:
+                promotion_ready = False
+        return await self.db.ping() and admin_ready and promotion_ready and bool(await self.redis.ping())
 
     async def close(self):
+        if self._phase2_capture_runtime is not None:
+            await self._phase2_capture_runtime.close()
+            self._phase2_capture_runtime = None
         await self.onec_client.close()
         if self._com_client is not None and hasattr(self._com_client, "close"):
             await self._com_client.close()
@@ -176,5 +223,7 @@ class Runtime:
         await self.redis.aclose()
         if self.admin_db is not None:
             await self.admin_db.close()
+        if self.model_promotion_db is not None:
+            await self.model_promotion_db.close()
         await self.db.close()
         self._started = False

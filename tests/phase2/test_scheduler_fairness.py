@@ -7,10 +7,8 @@ What the implementation guarantees about fairness (and what this file pins):
 - a budget denial defers the job (``DEFERRED_BUDGET``) without consuming an attempt, failing or
   poisoning it; the deferral delay is ``backoff(deferrals)`` clamped by ``deferral_cap_seconds``;
   ``starved`` turns True at ``deferral_alert_threshold`` consecutive deferrals of that job.
-- NOT guaranteed: any ordering between a long-deferred source and a fresh one. The budget is a plain
-  counter with no queue, reservation or aging, and a release does not wake a deferred source (it
-  has to wait out its own gate). A fresh source (no gate) can take the slot first, again and again.
-  ``test_no_fairness_*`` document that real behaviour; they are not guarantees.
+- Interactive/background admission fairness is covered directly at the budget boundary in
+  ``test_backend_budget.py``. Scheduler-level deferral still waits for its retry gate.
 
 Each ``test_sensitivity_*`` flips one guard (config value, capacity, shared state) and asserts the
 OPPOSITE outcome, proving the corresponding assertion elsewhere in this file can fail.
@@ -28,6 +26,7 @@ from business_ai_gateway.phase2.backend_budget import (
 from business_ai_gateway.phase2.drift import CaptureOutcomeKind, FailureCounter
 from business_ai_gateway.phase2.fakes import WORKER, InMemoryLiving
 from business_ai_gateway.phase2.ports import Scope
+from business_ai_gateway.phase2.resnapshot import ResnapshotTracker
 from business_ai_gateway.phase2.scheduler import (
     RunStatus,
     SchedulerConfig,
@@ -68,10 +67,25 @@ def world(per_backend=1, total=4):
 
 
 def source(living, budget, scope, alias, *, config=None, jitter=0.0, **kw):
-    return SourceScheduler(
+    state_supplied = "state" in kw
+    sched = SourceScheduler(
         living, actor=WORKER, scope=scope, worker=f"w-{scope.source_id}",
         backend_id=BackendId.normalize(alias), budget=budget, clock=living.clock.now,
         jitter_source=lambda: jitter, config=config or SchedulerConfig(), **kw)
+    if not state_supplied:
+        # Ordinary budget/source-isolation cases model a prevalidated source. Restore cases pass
+        # explicit snapshots and retain the production revalidation fence.
+        sched.machine.resume_validation_required = False
+    return sched
+
+
+async def resume_revalidated(sched, living):
+    """Supply a valid cursor handshake after ordinary resume tests exercise the fail-closed fence."""
+    await living.create_cursor(WORKER, sched._scope, "test-connection", "c0")
+    epoch = await living.scope_epoch(sched._scope)
+    return await sched.resume_revalidated(
+        "operator", tracker=ResnapshotTracker(), ledger=living, cursors=living,
+        connection_ids=["test-connection"], recorded_epoch=epoch)
 
 
 @contextmanager
@@ -173,14 +187,14 @@ async def test_quarantine_of_a_leaves_b_gates_and_jobs_runnable():
     assert a.machine.state is SourceState.QUARANTINED
     assert (await a.run_job(job_a, forbidden)).status is RunStatus.SOURCE_NOT_ACTIVE
 
-    # B has its own retry gate on job_b1 (budget deferral); A's quarantine neither adds nor removes it.
+    # B's first job queues for the slot; A's quarantine must not disturb B's own gate or queue.
     with hold(budget):
         assert (await b.run_job(job_b1, forbidden)).status is RunStatus.DEFERRED_BUDGET
     assert b.machine.state is SourceState.ACTIVE and b.not_before(job_b1) is not None
-    assert (await b.run_job(job_b1, forbidden)).status is RunStatus.NOT_YET
-    assert (await b.run_job(job_b2, succeed)).status is RunStatus.SUCCEEDED     # other job: no gate
+    assert a.machine.state is SourceState.QUARANTINED
     living.clock.advance(CAP + 1)
     assert (await b.run_job(job_b1, succeed)).status is RunStatus.SUCCEEDED
+    assert (await b.run_job(job_b2, succeed)).status is RunStatus.SUCCEEDED
     assert a.machine.state is SourceState.QUARANTINED          # still quarantined, untouched by B
     assert budget.active_total == 0
 
@@ -220,10 +234,8 @@ async def test_job_of_a_cannot_be_run_by_b_scheduler():
     assert (await a.run_job(job_a, succeed)).status is RunStatus.SUCCEEDED
 
 
-async def test_snapshot_of_a_can_be_imported_into_b_documented_behaviour():
-    """OBSERVED, not a guarantee: ``SchedulerState`` carries no scope/source identity, so the type
-    does not stop importing A's snapshot into B's scheduler; B then becomes PAUSED and also treats
-    A's poisoned ids as poisoned. Keeping snapshots per source is the caller's documented duty."""
+async def test_snapshot_from_a_is_rejected_by_b_without_leaking_source_state():
+    """A's pause and poison state cannot be imported into B's separately scoped scheduler."""
     living, budget = world()
     a = source(living, budget, SCOPE_A, ALIAS_A, config=SchedulerConfig(poison_after=1),
                counter=FailureCounter(0, 100))
@@ -232,13 +244,15 @@ async def test_snapshot_of_a_can_be_imported_into_b_documented_behaviour():
     await a.run_job(job_a, timeout)
     snap_a = a.export_state()
     assert snap_a.source_state is SourceState.PAUSED
-    assert not hasattr(snap_a, "scope") and not hasattr(snap_a, "source")
-    b.import_state(snap_a)                                     # accepted without error
-    assert b.machine.state is SourceState.PAUSED and b.is_poisoned(job_a)
-    assert (await b.run_job(job_b, forbidden)).status is RunStatus.SOURCE_NOT_ACTIVE
-    # A fresh B built from no snapshot is unaffected (cold start), so the leak needs the caller.
-    cold = source(living, budget, SCOPE_B, ALIAS_B)
-    assert (await cold.run_job(job_b, succeed)).status is RunStatus.SUCCEEDED
+    assert snap_a.scope == SCOPE_A
+    assert job_a in snap_a.poisoned
+    before_b = b.export_state()
+    with pytest.raises(ValueError, match="^SCHEDULER_STATE_SCOPE_MISMATCH$"):
+        b.import_state(snap_a)
+    assert b.export_state() == before_b
+    assert b.machine.state is SourceState.ACTIVE and not b.is_poisoned(job_a)
+    assert (await b.run_job(job_b, succeed)).status is RunStatus.SUCCEEDED
+    assert a.machine.state is SourceState.PAUSED and a.is_poisoned(job_a)
 
 
 async def test_sensitivity_shared_state_machine_would_couple_a_and_b():
@@ -350,53 +364,6 @@ async def test_real_scheduler_holder_blocks_another_source_until_its_work_ends()
     assert (await b.run_job(job_b, succeed)).status is RunStatus.SUCCEEDED
 
 
-async def test_no_fairness_fresh_source_takes_slot_before_long_deferred_source():
-    """OBSERVED, not a guarantee: after release a fresh source (no gate) runs immediately, while the
-    long-deferred, starved source is still NOT_YET for up to the cap."""
-    living, budget = world()
-    b = source(living, budget, SCOPE_B, ALIAS_B, config=FAIR_CFG)
-    c = source(living, budget, SCOPE_C, ALIAS_C, config=FAIR_CFG)
-    job_b, job_c = await enqueue(living, 1, SCOPE_B), await enqueue(living, 2, SCOPE_C)
-    with hold(budget):
-        for _ in range(THRESHOLD + 2):
-            result = await b.run_job(job_b, forbidden)
-            living.clock.advance(seconds_until(living, result.not_before))
-        result = await b.run_job(job_b, forbidden)
-        assert result.starved is True and result.deferrals == THRESHOLD + 3
-    seen = {}
-    assert (await c.run_job(job_c, contender(seen, b, job_b))).status is RunStatus.SUCCEEDED
-    assert seen["b"].status is RunStatus.NOT_YET              # C ran at once; B was still gated
-    # Next C job takes the slot again exactly when B's gate opens: B loses a second time.
-    job_c2 = await enqueue(living, 3, SCOPE_C)
-    living.clock.advance(seconds_until(living, b.not_before(job_b)))
-    seen2 = {}
-    assert (await c.run_job(job_c2, contender(seen2, b, job_b))).status is RunStatus.SUCCEEDED
-    assert seen2["b"].status is RunStatus.DEFERRED_BUDGET
-    assert seen2["b"].deferrals == THRESHOLD + 4 and seen2["b"].starved is True    # no aging/reset
-    assert (await living.get_job(WORKER, SCOPE_B, job_b)).attempt == 0
-
-
-async def test_no_fairness_continuous_fresh_arrivals_can_defer_one_job_indefinitely():
-    """OBSERVED, not a guarantee: no queue/aging, so every retry of B can lose to a different holder.
-    B stays PENDING at attempt 0 with a growing deferral count; only ``starved`` reports it."""
-    living, budget = world()
-    b = source(living, budget, SCOPE_B, ALIAS_B, config=FAIR_CFG)
-    c = source(living, budget, SCOPE_C, ALIAS_C, config=FAIR_CFG)
-    job_b = await enqueue(living, 99, SCOPE_B)
-    rounds = 8
-    for n in range(rounds):
-        job_c = await enqueue(living, n + 1, SCOPE_C)
-        seen = {}
-        contend = contender(seen, b, job_b)
-        assert (await c.run_job(job_c, contend)).status is RunStatus.SUCCEEDED
-        assert seen["b"].status is RunStatus.DEFERRED_BUDGET and seen["b"].deferrals == n + 1
-        assert seen["b"].starved is (n + 1 >= THRESHOLD)
-        living.clock.advance(seconds_until(living, seen["b"].not_before))   # B retries at its gate
-    assert (await living.get_job(WORKER, SCOPE_B, job_b)).attempt == 0
-    # Only once nobody holds the slot does B get through, within the cap window.
-    assert (await b.run_job(job_b, succeed)).status is RunStatus.SUCCEEDED
-
-
 # =========================================================================== guard sensitivity
 async def deferral_series(config, rounds=9):
     living, budget = world()
@@ -441,7 +408,7 @@ async def test_sensitivity_only_capacity_errors_are_deferrals(monkeypatch):
     b = source(living, budget, SCOPE_B, ALIAS_B, config=FAIR_CFG)
     job = await enqueue(living, 1, SCOPE_B)
 
-    def broken(*, trusted_backend_id):
+    def broken(*, trusted_backend_id, work_class=None, waiter_id=None):
         raise BackendCapacityError("UNVERIFIED_BACKEND_IDENTITY")
     monkeypatch.setattr(budget, "reserve", broken)
     with pytest.raises(BackendCapacityError, match="UNVERIFIED_BACKEND_IDENTITY"):
@@ -464,6 +431,7 @@ async def test_sensitivity_gate_import_roundtrip_resets_deferral_count():
         restarted = source(living, budget, SCOPE_B, ALIAS_B, config=FAIR_CFG, state=snap)
         assert restarted.not_before(job) == b.not_before(job)
         assert isinstance(snap, SchedulerState)
+        await resume_revalidated(restarted, living)
         living.clock.advance(seconds_until(living, b.not_before(job)))
         again = await restarted.run_job(job, forbidden)
     assert again.status is RunStatus.DEFERRED_BUDGET

@@ -7,7 +7,8 @@ snapshot taken under the CURRENT scope epoch has been accepted.
 Rules
 - ``require`` is idempotent and the first reason wins: a later reason never replaces it.
 - ``observe_decision``: a ``DriftDecision`` carrying ``RESNAPSHOT_REQUIRED`` requires the connection
-  with reason ``CURSOR_LOST``.
+  with reason ``BASELINE_MISSING`` when it carries a candidate but no accepted hash; otherwise the
+  reason is ``CURSOR_LOST``.
 - ``complete`` clears ONLY for ``OK_COMPLETE`` taken at ``epoch == current_epoch``. ``OK_PARTIAL``,
   failures and ``SCHEMA_CHANGED`` (no hash semantics are verified here) never clear; a complete
   snapshot taken under an older epoch never clears.
@@ -44,9 +45,11 @@ _INVALID: Final = "RESNAPSHOT_STATE_INVALID"
 
 
 class ResnapshotReason(StrEnum):
+    BASELINE_MISSING = "BASELINE_MISSING"
     CURSOR_LOST = "CURSOR_LOST"
     CURSOR_MISSING = "CURSOR_MISSING"
     SCOPE_EPOCH_CHANGED = "SCOPE_EPOCH_CHANGED"
+    SCOPE_EPOCH_UNVERIFIED = "SCOPE_EPOCH_UNVERIFIED"
     OPERATOR = "OPERATOR"
 
 
@@ -126,7 +129,10 @@ class ResnapshotTracker:
         if not isinstance(decision, DriftDecision):
             raise TypeError("DECISION_REQUIRED")
         if DriftEventKind.RESNAPSHOT_REQUIRED in decision.events:
-            self.require(connection_id, ResnapshotReason.CURSOR_LOST, epoch)
+            reason = (ResnapshotReason.BASELINE_MISSING
+                      if decision.accepted_hash is None and decision.candidate_hash is not None
+                      else ResnapshotReason.CURSOR_LOST)
+            self.require(connection_id, reason, epoch)
             return True
         return False
 
@@ -144,8 +150,8 @@ class ResnapshotTracker:
         return marker & 0xFFFFFFFF
 
     def begin_snapshot(self) -> int:
-        """Ordering marker: take it BEFORE a snapshot capture starts and pass it to ``complete``."""
-        return self._seq
+        """Generation-bound ordering marker taken before a snapshot capture starts."""
+        return self.persistent_marker(self._seq)
 
     def complete(self, connection_id: str, outcome_kind: CaptureOutcomeKind, epoch: int,
                  current_epoch: int, *, snapshot_token: int) -> bool:
@@ -164,12 +170,15 @@ class ResnapshotTracker:
         _check_epoch(current_epoch)
         if type(snapshot_token) is not int or snapshot_token < 0:
             raise ValueError("SNAPSHOT_TOKEN_INVALID")
+        token = self.token_from_marker(snapshot_token)
+        if token is None:
+            return False
         entry = self._required.get(connection_id)
         if entry is None:
             return False
         _reason, stored_epoch, stored_seq = entry
         if (outcome_kind is not CaptureOutcomeKind.OK_COMPLETE or epoch != current_epoch
-                or epoch < stored_epoch or snapshot_token < stored_seq):
+                or epoch < stored_epoch or token < stored_seq):
             return False
         del self._required[connection_id]
         return True

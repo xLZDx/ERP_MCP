@@ -4,6 +4,7 @@
 Deterministic: fake store clock, fake connector, no sleeps. Each ``test_guard_*`` pins one guard so
 that removing the guard turns it red.
 """
+import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -66,7 +67,7 @@ def req(epoch=0):
     return CaptureRequest("s1", "A", epoch)
 
 
-async def build(connector, *, epoch=0, jobs=1):
+async def build(connector, *, epoch=0, jobs=1, accepted_hash=H1):
     living = InMemoryLiving()
     for _ in range(epoch):  # bump first: jobs are bound to the epoch they were enqueued under
         await living.bump_scope_epoch(SCOPE)
@@ -76,8 +77,15 @@ async def build(connector, *, epoch=0, jobs=1):
         living, actor=WORKER, scope=SCOPE, worker="w1", backend_id=BackendId.normalize("db-1"),
         budget=PhysicalBackendBudget(per_backend_limit=1, total_limit=4),
         clock=living.clock.now, jitter_source=lambda: 0.0)
+    # Capture-loop cases below start after the source's initial scope/cursor validation.
+    sched.machine.resume_validation_required = False
     tracker = ResnapshotTracker()
-    return living, sched, tracker, CaptureLoop(sched, tracker, connector, living, SCOPE)
+    loop = CaptureLoop(sched, tracker, connector, living, SCOPE)
+    # Most capture-loop tests exercise behavior after an accepted baseline exists. Baseline
+    # bootstrap is tested separately and opts out explicitly.
+    if accepted_hash is not None:
+        loop._accepted[CONN] = accepted_hash
+    return living, sched, tracker, loop
 
 
 def job(n=1):
@@ -155,9 +163,32 @@ async def test_guard_snapshot_at_older_epoch_keeps_requirement():
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn, epoch=2)
     tracker.require(CONN, ResnapshotReason.SCOPE_EPOCH_CHANGED, 1)
-    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # ran under epoch 1, live 2
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared
+    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED and res.run is None
+    assert conn.calls == 0
     assert tracker.is_required(CONN)
+
+
+async def test_guard_rechecks_live_epoch_after_lease_before_connector_call():
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn)
+    epoch_reads = 0
+
+    async def epoch_changes_after_precheck(_scope):
+        nonlocal epoch_reads
+        epoch_reads += 1
+        return 0 if epoch_reads == 1 else 1
+
+    living.scope_epoch = epoch_changes_after_precheck
+    result = await loop.capture_step(job(), CONN, req(), snapshot=True)
+
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert result.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_CHANGED
+    assert result.run is not None
+    assert result.run.status is RunStatus.RETRY_SCHEDULED
+    assert epoch_reads == 2
+    assert conn.calls == 0
+    assert tracker.reason(CONN) is ResnapshotReason.SCOPE_EPOCH_CHANGED
 
 
 async def test_guard_late_snapshot_started_before_requirement_does_not_clear():
@@ -211,6 +242,83 @@ async def test_guard_drift_on_complete_does_not_advance_accepted_hash():
     assert loop.accepted_hash(CONN) == H1
 
 
+async def test_timeout_recovery_keeps_first_complete_digest_pending_explicit_approval():
+    conn = FakeConnector(TimeoutError(SECRET), (Completeness.COMPLETE, H1),
+                         (Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn, jobs=3, accepted_hash=None)
+
+    timed_out = await loop.capture_step(job(1), CONN, req(), snapshot=True)
+    assert timed_out.status is CaptureStatus.FAILED
+    assert timed_out.outcome_kind is CaptureOutcomeKind.TIMEOUT
+    assert timed_out.accepted_hash is None and timed_out.candidate_hash is None
+    assert loop.accepted_hash(CONN) is None
+
+    # Timed-out jobs retain their lease until expiry; the source cannot acquire the next job
+    # until the scheduler reaps that lease. Advance the fake clock to model that lifecycle.
+    living.clock.advance(sched.config.lease_seconds + 1)
+    candidate = await loop.capture_step(job(2), CONN, req(), snapshot=True)
+    assert candidate.status is CaptureStatus.BASELINE_APPROVAL_REQUIRED
+    assert candidate.candidate_hash == H1 and candidate.accepted_hash is None
+    assert loop.accepted_hash(CONN) is None
+    assert await loop.approve_baseline(CONN, H2) is False
+    assert await loop.approve_baseline(CONN, H1) is True
+    assert loop.accepted_hash(CONN) == H1
+
+    recovered = await loop.capture_step(job(3), CONN, req(), snapshot=True)
+    assert recovered.status is CaptureStatus.CAPTURED
+    assert recovered.accepted_hash == H1 and recovered.candidate_hash is None
+
+
+async def test_concurrent_duplicate_baseline_approval_consumes_candidate_once():
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn, accepted_hash=None)
+    candidate = await loop.capture_step(job(), CONN, req(), snapshot=True)
+    assert candidate.status is CaptureStatus.BASELINE_APPROVAL_REQUIRED
+
+    original_scope_epoch = living.scope_epoch
+    both_waiting = asyncio.Event()
+    callers = 0
+
+    async def scope_epoch_after_both_approvals(scope):
+        nonlocal callers
+        callers += 1
+        if callers == 2:
+            both_waiting.set()
+        await both_waiting.wait()
+        return await original_scope_epoch(scope)
+
+    living.scope_epoch = scope_epoch_after_both_approvals
+    results = await asyncio.gather(
+        loop.approve_baseline(CONN, H1),
+        loop.approve_baseline(CONN, H1),
+    )
+
+    assert sorted(results) == [False, True]
+    assert loop.accepted_hash(CONN) == H1
+    assert CONN not in loop._pending_baselines
+
+
+async def test_snapshot_scope_epoch_failure_requires_resnapshot_with_reason():
+    from business_ai_gateway.phase2.ports import PortError
+
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn)
+    assert not tracker.is_required(CONN)
+
+    async def unavailable_scope_epoch(_scope):
+        raise PortError("SQL_08006")
+
+    living.scope_epoch = unavailable_scope_epoch
+    result = await loop.capture_step(job(), CONN, req(), snapshot=True)
+
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert result.run is None
+    assert conn.calls == 0
+    assert result.resnapshot_required
+    assert result.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
+    assert tracker.reason(CONN) is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
+
+
 @pytest.mark.parametrize("step,kind", [
     (ConnectorFailure(CaptureOutcomeKind.OUTAGE), CaptureOutcomeKind.OUTAGE),
     (TimeoutError(SECRET), CaptureOutcomeKind.TIMEOUT),
@@ -231,7 +339,7 @@ async def test_guard_failures_and_partial_never_yield_drift_or_move_baseline(ste
 
 async def test_guard_lost_lease_at_finish_applies_no_clear_and_no_hash():
     conn = FakeConnector((Completeness.COMPLETE, H1))
-    living, sched, tracker, loop = await build(conn)
+    living, sched, tracker, loop = await build(conn, accepted_hash=None)
     tracker.require(CONN, ResnapshotReason.CURSOR_LOST, 0)
 
     async def expire():
@@ -303,4 +411,5 @@ async def test_ledger_error_after_success_keeps_requirement_and_returns_typed_re
         raise PortError("SQL_08006")
     living.scope_epoch = boom
     res = await loop.capture_step(job(), CONN, req(), snapshot=True)
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared and res.resnapshot_required
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert res.run is None and conn.calls == 0 and res.resnapshot_required

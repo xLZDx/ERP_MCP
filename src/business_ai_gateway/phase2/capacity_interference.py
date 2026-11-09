@@ -42,7 +42,13 @@ from enum import StrEnum
 from typing import Final
 
 from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget
-from .capacity_model import MAX_LATENCY_US, ConfiguredLimit, MeasurementRef, PercentileValue
+from .capacity_model import (
+    MAX_LATENCY_US,
+    PERCENTILE_MIN_SAMPLES,
+    ConfiguredLimit,
+    MeasurementRef,
+    PercentileValue,
+)
 from .comparison_snapshot import canonical_digest
 from .ops_types import (
     AUTHORITY,
@@ -69,6 +75,7 @@ DEFAULT_INTERFERENCE_TARGET: Final = Decimal("0.20")
 MAX_DEMAND_ITEMS: Final = 1024
 _MAX_SLOTS: Final = 10_000
 _CTX: Final = Context(prec=60, rounding=ROUND_HALF_EVEN)
+_MAX_THRESHOLD_DIGITS: Final = 256
 _SIX_PLACES: Final = Decimal("0.000001")
 
 
@@ -112,8 +119,10 @@ def _digest(parts: dict[str, object]) -> str:
 
 def _result(reason: OpsReason, ratio: Decimal | None, baseline: int | None, loaded: int | None,
             target: Decimal | None, basis: Basis, ref_digest: str | None) -> InterferenceResult:
+    target_identity = None if target is None else target.as_integer_ratio()
     digest = _digest({"reason": reason.value, "ratio": ratio, "baseline": baseline, "loaded": loaded,
-                      "target": target, "basis": basis.value, "ref": ref_digest, "authority": AUTHORITY})
+                      "target": target_identity, "basis": basis.value, "ref": ref_digest,
+                      "authority": AUTHORITY})
     return InterferenceResult(reason, ratio, baseline, loaded, target, TARGET_LABEL, basis, ref_digest,
                               digest)
 
@@ -124,13 +133,20 @@ def _p95_us(value: object) -> int | OpsReason:
         return OpsReason.CONFIG_LIMIT_NOT_CAPACITY
     if type(value) is PercentileValue:
         try:
-            number, reason, p = value.value, value.reason, value.p
-        except AttributeError:
+            number, reason, p, n = value.value, value.reason, value.p, value.n
+            PercentileValue(p, n, number, reason)
+        except (AttributeError, ValueError):
             return OpsReason.INPUT_INVALID
         if type(p) is not int or p != 95:  # a p50/p99 value must never be read as a p95 verdict input
             return OpsReason.INPUT_INVALID
         if number is None:
-            return reason if type(reason) is OpsReason else OpsReason.INPUT_INVALID
+            if reason is OpsReason.INSUFFICIENT_SAMPLES and n < PERCENTILE_MIN_SAMPLES[95]:
+                return reason
+            if reason is OpsReason.INPUT_INVALID and n == 0:
+                return reason
+            return OpsReason.INPUT_INVALID
+        if n < PERCENTILE_MIN_SAMPLES[95]:
+            return OpsReason.INPUT_INVALID
         value = number
     if not is_exact_int(value, 0, MAX_LATENCY_US):
         return OpsReason.INPUT_INVALID
@@ -147,7 +163,9 @@ def interference(baseline_p95_us: object, loaded_p95_us: object,
             if type(measurement_ref) is not MeasurementRef or not is_digest(measurement_ref.digest):
                 return _result(OpsReason.BASIS_NOT_REAL_MEASUREMENT, None, None, None, None, basis, None)
             basis, ref_digest = Basis.OPERATOR_REFERENCE, measurement_ref.digest
-        if not is_exact_decimal(target) or not Decimal(0) <= target <= Decimal(100):  # type: ignore[operator]
+        if (not is_exact_decimal(target)
+                or len(target.as_tuple().digits) > _MAX_THRESHOLD_DIGITS
+                or not Decimal(0) <= target <= Decimal(100)):  # type: ignore[operator]
             return _result(OpsReason.INPUT_INVALID, None, None, None, None, basis, ref_digest)
         base, loaded = _p95_us(baseline_p95_us), _p95_us(loaded_p95_us)
         if base is OpsReason.CONFIG_LIMIT_NOT_CAPACITY or loaded is OpsReason.CONFIG_LIMIT_NOT_CAPACITY:
@@ -157,7 +175,8 @@ def interference(baseline_p95_us: object, loaded_p95_us: object,
         if type(loaded) is OpsReason:
             return _result(loaded, None, base, None, target, basis, ref_digest)  # type: ignore[arg-type]
         diff = Decimal(loaded - base)  # type: ignore[operator]
-        within = diff <= _CTX.multiply(target, Decimal(base))  # type: ignore[arg-type]
+        target_numerator, target_denominator = target.as_integer_ratio()  # type: ignore[union-attr]
+        within = (loaded - base) * target_denominator <= base * target_numerator  # type: ignore[operator]
         ratio = _CTX.quantize(_CTX.divide(diff, Decimal(base)), _SIX_PLACES)  # type: ignore[arg-type]
         return _result(OpsReason.WITHIN_TARGET if within else OpsReason.EXCEEDS_TARGET, ratio, base,
                        loaded, target, basis, ref_digest)  # type: ignore[arg-type]

@@ -70,7 +70,7 @@ Scripts live in `scripts/remote/` of this repository. Run them on the host with 
 | Python venv | `setup-mcp-venv.ps1` |
 | Start or check the whole stack | `run-mcp-stack.ps1 -Action Start|Status` (also what the scheduled task runs) |
 | Register the scheduled task and lock the ACL | `register-stack-task.ps1` |
-| Store the tunnel id and key | `set-tunnel-secret.ps1` (interactive hidden prompt, or `-TunnelId <id> -FromStdin` when a caller pipes the key over SSH) |
+| Store the tunnel id and key | `set-tunnel-secret.ps1` (interactive hidden prompt, or `-TunnelId <id> -FromStdin` when a caller pipes the key over SSH); after saving, it starts `ERP_MCP_Ivan_Stack` only if the enabled task has exactly one matching stack-script action |
 | Run or check the OpenAI tunnel client | `run-tunnel.ps1 -Action Doctor|Run` |
 | Mint a long-lived test token | `mint-token.ps1` (writes only the token to stdout; the caller must not echo it) |
 | Prove the 1C reader and OData | `store-and-test-reader.ps1 -SkipStore -Url <odata $metadata url>` |
@@ -81,7 +81,7 @@ Typical operations:
 - Restart one component: stop its process (it is found by its listening port), then `schtasks /run /tn ERP_MCP_Ivan_Stack`; the stack script starts only what is down.
 - Redeploy gateway code: extract the new commit into `mcp\app\gateway` (note below), restart the gateway, run the tool probe.
 - Re-issue the Claude token (after any issuer or audience change): run `mint-token.ps1` on the host, register the output with `claude mcp add-json erp-mcp-ivan ... --scope user`.
-- Rotate the tunnel key: create a new runtime key in the OpenAI console, revoke the old one, run `set-tunnel-secret.ps1` again, restart tunnel-client.
+- Rotate the tunnel key: create a new runtime key in the OpenAI console, revoke the old one, and run `set-tunnel-secret.ps1`; it requests a stack pass to reconcile the saved key and tunnel ID. If the task is already running, it warns that no overlapping pass was requested and tells you to retry after the current pass returns to Ready. A task start or local listener check does not prove tunnel registration; verify the connector separately.
 
 ## 7. Connector setup (ChatGPT)
 

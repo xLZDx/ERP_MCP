@@ -237,6 +237,21 @@ frozen in [SC08 contract](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
 | Tampering: partial result presented as complete | Truncated read yields a misleading FINDING | Truncation fails closed: INCONCLUSIVE, never a partial FINDING |
 | Spoofing of evidence: fixture profile | Synthetic profile mistaken for real mapping | Fixture profile is test-only (`BAG_ENVIRONMENT=test`, hash-pinned); production fails closed with zero upstream reads; evidence is L1, never native reconciliation |
 
+## S10 dev/test capture prerequisite (operator rebaseline 2026-11-08)
+
+The bounded R2-US-042 dev/test composition uses synthetic fixtures only and is not a production
+canary or write boundary. It must bind each capture task to one exact tenant/company/source and
+scope epoch; stop admission before cancelling and awaiting jobs for that same scope; and label
+results so they cannot be promoted to production approval. A production environment, unknown scope,
+stale epoch or cross-scope cancellation must fail closed before connector execution. No new public
+MCP endpoint or 1C mutation is admitted. See Scope Freeze §2.2 and R-37.
+
+| Threat (STRIDE) | Risk | Controls |
+|---|---|---|
+| Spoofing / elevation: caller crosses capture scope | Job or result is rebound to another tenant/company/source/epoch | Exact server-owned scope comparison before dispatch and again before capture; mismatch has zero connector calls |
+| Denial of service / stale effect: kill switch races a running job | New work enters after stop or an owned connector task survives stop | Atomic admission fence, task registry keyed by exact scope, cancellation followed by bounded await; unknown jobs fail closed |
+| Tampering: test evidence promoted to release approval | Dev/test PASS is represented as production GO | Environment-bound evidence; production-release assembly rejects dev/test labels; G6/G7 remain separate |
+
 ## Scope-freeze control
 
 Scope expansion is itself a governance risk because it can delay closure and bypass threat/evidence

@@ -38,6 +38,7 @@ from business_ai_gateway.phase2.ops_types import (
     FakeCorrelationSource,
     OpsReason,
     OpsRefusal,
+    is_digest,
 )
 
 
@@ -77,6 +78,57 @@ def test_verdict_uses_the_exact_comparison_not_the_rounded_ratio():
     result = interference(5_000_000, 6_000_001)
     assert result.ratio == Decimal("0.200000") and result.reason is OpsReason.EXCEEDS_TARGET
     assert interference(5_000_000, 6_000_000).reason is OpsReason.WITHIN_TARGET
+
+
+def test_threshold_just_below_exact_ratio_is_not_rounded_within():
+    target = Decimal("0.1" + "9" * 59)
+
+    result = interference(5, 6, target)
+
+    assert target < Decimal("0.2")
+    assert result.ratio == Decimal("0.200000")
+    assert result.reason is OpsReason.EXCEEDS_TARGET
+
+
+def test_interference_rejects_target_over_256_digits_before_calculation():
+    over_limit_target = Decimal("0." + "1" * 257)
+
+    result = interference(100, 150, over_limit_target)
+
+    assert result.reason is OpsReason.INPUT_INVALID
+    assert result.ratio is None
+    assert result.baseline_p95_us is None
+    assert result.loaded_p95_us is None
+    assert result.target is None
+
+
+def test_interference_accepts_target_with_exactly_256_digits():
+    target = Decimal("1." + "0" * 255)
+
+    result = interference(100, 150, target)
+
+    assert len(target.as_tuple().digits) == 256
+    assert result.target == target
+    assert result.reason is OpsReason.WITHIN_TARGET
+    assert result.ratio == Decimal("0.500000")
+
+
+def test_interference_accepts_256_digit_fractional_target_and_binds_digest():
+    target = Decimal("0." + "1" * 256)
+
+    result = interference(100, 112, target)
+
+    assert len(target.as_tuple().digits) == 256
+    assert result.reason is OpsReason.EXCEEDS_TARGET
+    assert result.target == target
+    assert is_digest(result.digest)
+
+    scaled_a = interference(100, 120, Decimal("0.2"))
+    scaled_b = interference(100, 120, Decimal("0.20"))
+    different = interference(100, 120, Decimal("0.21"))
+    assert scaled_a.reason is scaled_b.reason is OpsReason.WITHIN_TARGET
+    assert scaled_a.digest == scaled_b.digest
+    assert different.digest != scaled_a.digest
 
 
 def test_faster_under_load_is_within_target_with_negative_ratio():
@@ -127,6 +179,47 @@ def test_percentile_values_are_accepted_and_insufficient_ones_are_not_numbers():
     forged = object.__new__(PercentileValue)
     assert interference(forged, 100).reason is OpsReason.BASELINE_INVALID
     assert interference(100, forged).reason is OpsReason.INPUT_INVALID
+
+
+def _forged_percentile(*, p, n, value, reason):
+    forged = object.__new__(PercentileValue)
+    for name, field_value in (("p", p), ("n", n), ("value", value), ("reason", reason)):
+        object.__setattr__(forged, name, field_value)
+    return forged
+
+
+@pytest.mark.parametrize("sample_count", [0, 19])
+def test_interference_rejects_value_bearing_p95_with_too_few_samples(sample_count):
+    p95 = _forged_percentile(p=95, n=sample_count, value=100, reason=None)
+
+    result = interference(100, p95)
+
+    assert result.reason is OpsReason.INPUT_INVALID
+    assert result.ratio is None
+
+
+def test_interference_accepts_value_bearing_p95_with_minimum_twenty_samples():
+    p95 = percentile(list(range(100, 120)), 95)
+
+    result = interference(100, p95)
+
+    assert p95.n == 20 and p95.value is not None and p95.reason is None
+    assert result.reason is OpsReason.WITHIN_TARGET
+    assert result.loaded_p95_us == p95.value
+
+
+@pytest.mark.parametrize(("sample_count", "reason"), [
+    (20, OpsReason.INSUFFICIENT_SAMPLES),
+    (1, OpsReason.INPUT_INVALID),
+    (1, None),
+])
+def test_interference_rejects_inconsistent_no_value_p95(sample_count, reason):
+    p95 = _forged_percentile(p=95, n=sample_count, value=None, reason=reason)
+
+    result = interference(100, p95)
+
+    assert result.reason is OpsReason.INPUT_INVALID
+    assert result.ratio is None
 
 
 def test_result_is_scripted_by_default_digest_bound_and_has_no_proven_field():

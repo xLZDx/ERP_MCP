@@ -204,6 +204,15 @@ Use Ferma as the deterministic scenario/oracle owner:
 - controlled multi-company, edge-case and scale scenarios;
 - three-plane reconciliation.
 
+### P5-D — S10 bounded dev/test capture prerequisite (operator rebaseline 2026-11-08)
+
+Under the existing `R2-REQ15`/`R2-REQ28` capture and evidence gates, qualify only the test/dev
+runtime composition for exact tenant/company/source/scope-epoch capture, environment-labelled
+results, and scope-local cancellation of owned jobs (R2-US-042, TC124–126). This prerequisite adds
+no public MCP endpoint, production data/canary, 1C mutation, schema migration, G6/G7 pass, or
+production approval. A dev/test PASS is never promoted into production evidence. R2-US-048 follows
+only after the technical 042 work; S11 remains sequentially held until S10 closure.
+
 ### P5-C — Private disposable-writer qualification (operator rebaseline 2026-10-22)
 
 This is an isolated test/assurance boundary authorized by [ADR-0009](adr/ADR-0009-private-test-writer.md),
