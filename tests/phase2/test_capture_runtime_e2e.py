@@ -63,7 +63,8 @@ class BlockingConnector:
 
 
 def _runtime(source_id: str, company_id: str, connector: BlockingConnector,
-             *, connector_timeout: float = 30.0):
+             *, connector_timeout: float = 30.0, max_threads: int = 4,
+             backend_limit: int = 1):
     source_scope = Scope(TENANT, source_id)
     living = InMemoryLiving()
     living.seed_basic(source_scope)
@@ -73,7 +74,7 @@ def _runtime(source_id: str, company_id: str, connector: BlockingConnector,
         scope=source_scope,
         worker=f"worker-{source_id}",
         backend_id=BackendId.normalize(f"backend-{source_id}"),
-        budget=PhysicalBackendBudget(per_backend_limit=1, total_limit=2),
+        budget=PhysicalBackendBudget(per_backend_limit=backend_limit, total_limit=2),
         clock=living.clock.now,
         jitter_source=lambda: 0.0,
     )
@@ -87,6 +88,7 @@ def _runtime(source_id: str, company_id: str, connector: BlockingConnector,
         living,
         source_scope,
         connector_timeout=connector_timeout,
+        max_threads=max_threads,
         viewer_scope=viewer_scope,
     )
     runtime = Runtime(Settings(_env_file=None, environment="test"))
@@ -332,6 +334,265 @@ async def test_tc126_stop_finalizes_lease_when_acquire_response_is_delayed():
             capture.cancel()
         await asyncio.gather(capture, return_exceptions=True)
         living.acquire_job = original_acquire
+        if runtime._phase2_capture_runtime is not None:
+            await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_owns_queue_row_after_capture_task_returns_without_a_lease():
+    connector = BlockingConnector()
+    runtime, service, living, source_scope = _runtime(SOURCE_ONE, COMPANY_ONE, connector)
+    job_id = uuid4()
+    request = CaptureRequest(SOURCE_ONE, TENANT, 0)
+
+    try:
+        result = await service.capture(
+            _ticket(job_id, COMPANY_ONE), "connection-needs-snapshot", request)
+        assert result.status == "RESNAPSHOT_REQUIRED"
+        assert result.capture.run is None
+        assert (await living.get_job(WORKER, source_scope, job_id)).state == "PENDING"
+
+        stopped = await service.stop(service.scope, drain_timeout_seconds=0.2)
+        assert stopped.terminated_job_ids == (str(job_id),)
+        assert stopped.queue_pending_job_ids == ()
+        assert stopped.runtime_pending_job_ids == ()
+        assert (await living.get_job(WORKER, source_scope, job_id)).state == "CANCELLED"
+        assert connector.calls == 0
+    finally:
+        if runtime._phase2_capture_runtime is not None:
+            await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_deadline_surfaces_a_stalled_acquire_without_waiting_for_it():
+    connector = BlockingConnector()
+    runtime, service, living, source_scope = _runtime(SOURCE_ONE, COMPANY_ONE, connector)
+    original_acquire = living.acquire_job
+    acquire_committed = asyncio.Event()
+    release_acquire_response = asyncio.Event()
+    job_id = uuid4()
+    request = CaptureRequest(SOURCE_ONE, TENANT, 0)
+
+    async def stalled_acquire(actor, scope, acquired_job_id, worker, lease_seconds):
+        fence = await original_acquire(actor, scope, acquired_job_id, worker, lease_seconds)
+        if acquired_job_id == job_id:
+            acquire_committed.set()
+            await release_acquire_response.wait()
+        return fence
+
+    living.acquire_job = stalled_acquire
+    capture = asyncio.create_task(service.capture(
+        _ticket(job_id, COMPANY_ONE), "connection-stalled-acquire", request, snapshot=True))
+
+    try:
+        await asyncio.wait_for(acquire_committed.wait(), timeout=2)
+        started = asyncio.get_running_loop().time()
+        stopped = await service.stop(service.scope, drain_timeout_seconds=0.05)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert elapsed < 0.3
+        assert stopped.admission_closed
+        assert str(job_id) in stopped.runtime_pending_job_ids
+        assert str(job_id) in stopped.queue_pending_job_ids
+        assert connector.calls == 0
+
+        release_acquire_response.set()
+        result = await asyncio.wait_for(capture, timeout=2)
+        assert result.status == "CANCELLED"
+        cancelled = await living.get_job(WORKER, source_scope, job_id)
+        assert cancelled.state == "CANCELLED"
+        drained = await service.stop(service.scope, drain_timeout_seconds=0.2)
+        assert drained.queue_pending_job_ids == ()
+        assert drained.runtime_pending_job_ids == ()
+    finally:
+        release_acquire_response.set()
+        living.acquire_job = original_acquire
+        if not capture.done():
+            capture.cancel()
+        await asyncio.gather(capture, return_exceptions=True)
+        if runtime._phase2_capture_runtime is not None:
+            await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_cancels_executor_work_that_has_not_started():
+    connector = BlockingConnector()
+    runtime, service, living, source_scope = _runtime(
+        SOURCE_ONE, COMPANY_ONE, connector, max_threads=1, backend_limit=2)
+    scheduler = service._loop._sched
+    original_run_job = scheduler.run_job
+
+    class FreshLease:
+        async def ensure_fresh(self):
+            return None
+
+    async def concurrently_run(job_id, work, *args, **kwargs):
+        # The production scheduler intentionally serializes one source. This deterministic test
+        # seam drives two already-admitted work callbacks concurrently so the single-thread
+        # connector executor has one running call and one not-yet-started future to cancel.
+        await work(FreshLease())
+        return RunResult(RunStatus.SUCCEEDED)
+
+    scheduler.run_job = concurrently_run
+    first_id, queued_id = uuid4(), uuid4()
+    request = CaptureRequest(SOURCE_ONE, TENANT, 0)
+    first_capture = asyncio.create_task(service.capture(
+        _ticket(first_id, COMPANY_ONE), "connection-first", request, snapshot=True))
+    queued_capture = None
+
+    async def wait_for_queued_future():
+        deadline = asyncio.get_running_loop().time() + 2
+        while asyncio.get_running_loop().time() < deadline:
+            with service._loop._inflight_lock:
+                futures = dict(service._loop._inflight)
+            if len(futures) == 2 and any(not future.running() for future in futures):
+                return futures
+            await asyncio.sleep(0)
+        first_row = await living.get_job(WORKER, source_scope, first_id)
+        queued_row = await living.get_job(WORKER, source_scope, queued_id)
+        raise AssertionError(
+            "second connector future was not queued behind the running call; "
+            f"futures={len(futures)}, first_row={first_row}, queued_row={queued_row}, "
+            f"first_done={first_capture.done()}, queued_done={queued_capture.done()}, "
+            f"connector_calls={connector.calls}, active_budget={service._loop._sched._budget.active_total}"
+        )
+
+    try:
+        await _wait_for_connector(connector)
+        queued_capture = asyncio.create_task(service.capture(
+            _ticket(queued_id, COMPANY_ONE), "connection-queued-executor", request,
+            snapshot=True))
+        futures = await wait_for_queued_future()
+        queued_futures = [future for future in futures if not future.running()]
+        assert len(queued_futures) == 1
+
+        stopped = await service.stop(service.scope, drain_timeout_seconds=0.05)
+        assert stopped.admission_closed
+        assert connector.calls == 1
+        assert (await living.get_job(WORKER, source_scope, queued_id)).state == "CANCELLED"
+        assert (await queued_capture).status == "CANCELLED"
+
+        connector.release.set()
+        await asyncio.wait_for(first_capture, timeout=2)
+        drained = await service.stop(service.scope, drain_timeout_seconds=2)
+        assert drained.queue_pending_job_ids == ()
+        assert drained.connector_pending_job_ids == ()
+        assert connector.calls == 1
+    finally:
+        connector.release.set()
+        scheduler.run_job = original_run_job
+        if queued_capture is not None and not queued_capture.done():
+            queued_capture.cancel()
+        if not first_capture.done():
+            first_capture.cancel()
+        await asyncio.gather(first_capture, *( [queued_capture] if queued_capture else [] ),
+                             return_exceptions=True)
+        if runtime._phase2_capture_runtime is not None:
+            await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_stalled_queue_cancel_does_not_starve_later_owned_rows():
+    connector = BlockingConnector()
+    runtime, service, living, source_scope = _runtime(SOURCE_ONE, COMPANY_ONE, connector)
+    original_cancel = service._loop.cancel_job
+    job_ids = [uuid4() for _ in range(4)]
+    stalled_id = job_ids[0]
+    attempted: list[UUID] = []
+    stalled_started = asyncio.Event()
+    release_stalled = asyncio.Event()
+
+    async def cancel_with_one_stalled_row(job_id):
+        attempted.append(job_id)
+        if job_id == stalled_id:
+            stalled_started.set()
+            await release_stalled.wait()
+        return await original_cancel(job_id)
+
+    service._loop.cancel_job = cancel_with_one_stalled_row
+
+    try:
+        for index, job_id in enumerate(job_ids):
+            result = await service.capture(
+                _ticket(job_id, COMPANY_ONE), f"connection-needs-snapshot-{index}",
+                CaptureRequest(SOURCE_ONE, TENANT, 0), snapshot=False)
+            assert result.status == "RESNAPSHOT_REQUIRED"
+            assert (await living.get_job(WORKER, source_scope, job_id)).state == "PENDING"
+
+        started = asyncio.get_running_loop().time()
+        stopped = await service.stop(service.scope, drain_timeout_seconds=0.1)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert await asyncio.wait_for(stalled_started.wait(), timeout=0.2)
+        assert elapsed < 0.5
+        assert set(attempted) == set(job_ids)
+        assert len(service._queue_cleanup_tasks) <= 8
+        assert stopped.queue_pending_job_ids == (str(stalled_id),)
+        assert set(stopped.terminated_job_ids) == {str(job_id) for job_id in job_ids[1:]}
+        for job_id in job_ids[1:]:
+            assert (await living.get_job(WORKER, source_scope, job_id)).state == "CANCELLED"
+        assert (await living.get_job(WORKER, source_scope, stalled_id)).state == "PENDING"
+        assert connector.calls == 0
+
+        release_stalled.set()
+        drained = await service.stop(service.scope, drain_timeout_seconds=0.2)
+        assert drained.queue_pending_job_ids == ()
+        assert (await living.get_job(WORKER, source_scope, stalled_id)).state == "CANCELLED"
+    finally:
+        release_stalled.set()
+        service._loop.cancel_job = original_cancel
+        if runtime._phase2_capture_runtime is not None:
+            await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_queue_cleanup_cap_surfaces_unscheduled_rows_for_later_stop():
+    connector = BlockingConnector()
+    runtime, service, living, source_scope = _runtime(SOURCE_ONE, COMPANY_ONE, connector)
+    original_cancel = service._loop.cancel_job
+    job_ids = [uuid4() for _ in range(10)]
+    attempted: list[UUID] = []
+    release_cancellations = asyncio.Event()
+
+    async def hold_cancellation_until_released(job_id):
+        attempted.append(job_id)
+        await release_cancellations.wait()
+        return await original_cancel(job_id)
+
+    service._loop.cancel_job = hold_cancellation_until_released
+
+    try:
+        for index, job_id in enumerate(job_ids):
+            result = await service.capture(
+                _ticket(job_id, COMPANY_ONE), f"connection-pending-{index}",
+                CaptureRequest(SOURCE_ONE, TENANT, 0), snapshot=False)
+            assert result.status == "RESNAPSHOT_REQUIRED"
+            assert (await living.get_job(WORKER, source_scope, job_id)).state == "PENDING"
+
+        started = asyncio.get_running_loop().time()
+        stopped = await service.stop(service.scope, drain_timeout_seconds=0.1)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert elapsed < 0.5
+        assert len(attempted) == 8
+        assert len(service._queue_cleanup_tasks) == 8
+        assert set(stopped.queue_pending_job_ids) == {str(job_id) for job_id in job_ids}
+        for job_id in job_ids:
+            assert (await living.get_job(WORKER, source_scope, job_id)).state == "PENDING"
+        assert connector.calls == 0
+
+        release_cancellations.set()
+        active_cleanup = tuple(service._queue_cleanup_tasks.values())
+        _, still_active = await asyncio.wait(active_cleanup, timeout=1)
+        assert not still_active
+        drained = await service.stop(service.scope, drain_timeout_seconds=0.3)
+        assert drained.queue_pending_job_ids == ()
+        assert len(attempted) == 10
+        for job_id in job_ids:
+            assert (await living.get_job(WORKER, source_scope, job_id)).state == "CANCELLED"
+    finally:
+        release_cancellations.set()
+        service._loop.cancel_job = original_cancel
         if runtime._phase2_capture_runtime is not None:
             await runtime.close()
 

@@ -210,6 +210,15 @@ class CaptureLoop:
         if connection_id in self._pending_baselines:
             return self._result(CaptureStatus.BASELINE_APPROVAL_REQUIRED, connection_id,
                                 candidate_hash=self._pending_baselines[connection_id][0])
+        try:
+            live_epoch = await self._ledger.scope_epoch(self._scope)
+        except PortError:
+            live_epoch = None
+        if type(live_epoch) is not int or live_epoch != request.scope_epoch:
+            reason = (ResnapshotReason.SCOPE_EPOCH_UNVERIFIED if type(live_epoch) is not int
+                      else ResnapshotReason.SCOPE_EPOCH_CHANGED)
+            self._tracker.require(connection_id, reason, request.scope_epoch)
+            return self._result(CaptureStatus.RESNAPSHOT_REQUIRED, connection_id)
         if connection_id not in self._accepted and not snapshot:
             self._tracker.require(connection_id, ResnapshotReason.BASELINE_MISSING,
                                   request.scope_epoch)
@@ -220,7 +229,17 @@ class CaptureLoop:
 
         async def work(handle: LeaseHandle) -> CaptureOutcomeKind:
             await handle.ensure_fresh()
-            # re-check with no await between here and the connector call
+            try:
+                live_epoch = await self._ledger.scope_epoch(self._scope)
+            except PortError:
+                live_epoch = None
+            if type(live_epoch) is not int or live_epoch != request.scope_epoch:
+                reason = (ResnapshotReason.SCOPE_EPOCH_UNVERIFIED if type(live_epoch) is not int
+                          else ResnapshotReason.SCOPE_EPOCH_CHANGED)
+                self._tracker.require(connection_id, reason, request.scope_epoch)
+                state["refused"] = True
+                raise _Refused
+            # No await between the final scope/epoch checks and submitting connector work.
             if self._tracker.is_required(connection_id) and not snapshot:
                 state["refused"] = True
                 raise _Refused
@@ -297,11 +316,19 @@ class CaptureLoop:
             digest = (response.provenance.content_digest
                       if kind is CaptureOutcomeKind.OK_COMPLETE else None)
             return kind, digest
+        except asyncio.CancelledError:
+            # The executor may still have this call queued. Cancel it before it can start after
+            # its queue row has been cancelled; a running synchronous call remains in _inflight.
+            future.cancel()
+            raise
         except ValidationError:
             return None, None
         except ConnectorFailure as exc:
             return exc.kind, None
         except TimeoutError:
+            # shield() keeps the concurrent future alive by design; explicitly cancel only if
+            # it has not started. Running calls remain tracked until their done callback fires.
+            future.cancel()
             return CaptureOutcomeKind.TIMEOUT, None
         except Exception:
             # record the failure for the result, then let the scheduler account it by class name

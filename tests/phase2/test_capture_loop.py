@@ -163,9 +163,32 @@ async def test_guard_snapshot_at_older_epoch_keeps_requirement():
     conn = FakeConnector((Completeness.COMPLETE, H1))
     living, sched, tracker, loop = await build(conn, epoch=2)
     tracker.require(CONN, ResnapshotReason.SCOPE_EPOCH_CHANGED, 1)
-    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)  # ran under epoch 1, live 2
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared
+    res = await loop.capture_step(job(), CONN, req(1), snapshot=True)
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED and res.run is None
+    assert conn.calls == 0
     assert tracker.is_required(CONN)
+
+
+async def test_guard_rechecks_live_epoch_after_lease_before_connector_call():
+    conn = FakeConnector((Completeness.COMPLETE, H1))
+    living, sched, tracker, loop = await build(conn)
+    epoch_reads = 0
+
+    async def epoch_changes_after_precheck(_scope):
+        nonlocal epoch_reads
+        epoch_reads += 1
+        return 0 if epoch_reads == 1 else 1
+
+    living.scope_epoch = epoch_changes_after_precheck
+    result = await loop.capture_step(job(), CONN, req(), snapshot=True)
+
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert result.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_CHANGED
+    assert result.run is not None
+    assert result.run.status is RunStatus.RETRY_SCHEDULED
+    assert epoch_reads == 2
+    assert conn.calls == 0
+    assert tracker.reason(CONN) is ResnapshotReason.SCOPE_EPOCH_CHANGED
 
 
 async def test_guard_late_snapshot_started_before_requirement_does_not_clear():
@@ -288,8 +311,9 @@ async def test_snapshot_scope_epoch_failure_requires_resnapshot_with_reason():
     living.scope_epoch = unavailable_scope_epoch
     result = await loop.capture_step(job(), CONN, req(), snapshot=True)
 
-    assert result.status is CaptureStatus.CAPTURED
-    assert not result.cleared
+    assert result.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert result.run is None
+    assert conn.calls == 0
     assert result.resnapshot_required
     assert result.resnapshot_reason is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
     assert tracker.reason(CONN) is ResnapshotReason.SCOPE_EPOCH_UNVERIFIED
@@ -387,4 +411,5 @@ async def test_ledger_error_after_success_keeps_requirement_and_returns_typed_re
         raise PortError("SQL_08006")
     living.scope_epoch = boom
     res = await loop.capture_step(job(), CONN, req(), snapshot=True)
-    assert res.status is CaptureStatus.CAPTURED and not res.cleared and res.resnapshot_required
+    assert res.status is CaptureStatus.RESNAPSHOT_REQUIRED
+    assert res.run is None and conn.calls == 0 and res.resnapshot_required

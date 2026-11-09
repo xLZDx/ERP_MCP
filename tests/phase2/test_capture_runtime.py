@@ -1,6 +1,7 @@
 """R2-US-042 TC124–125 dev/test capture runtime contract."""
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import UUID
@@ -20,7 +21,7 @@ from business_ai_gateway.phase2.connector_sdk import (
 from business_ai_gateway.phase2.fakes import WORKER, InMemoryLiving
 from business_ai_gateway.phase2.jobs_api import JobKind, JobTicket
 from business_ai_gateway.phase2.ports import Scope
-from business_ai_gateway.phase2.resnapshot import ResnapshotTracker
+from business_ai_gateway.phase2.resnapshot import ResnapshotReason, ResnapshotTracker
 from business_ai_gateway.phase2.scheduler import SourceScheduler
 from business_ai_gateway.phase2.workbench_types import ViewerScope
 from business_ai_gateway.runtime import Runtime
@@ -192,3 +193,165 @@ async def test_tc125_runtime_refuses_production_binding_before_capture():
             capture_loop=capture_loop,
         )
     assert connector.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_cancels_queue_row_after_capture_returns_without_running_it():
+    runtime, capture_loop, connector = await build_runtime()
+    capture_loop._tracker.require(CONNECTION, ResnapshotReason.OPERATOR, 0)
+    try:
+        result = await runtime.capture(ticket(), CONNECTION, request())
+
+        assert result.status == "RESNAPSHOT_REQUIRED"
+        assert connector.calls == 0
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "PENDING"
+
+        stopped = await runtime.stop(runtime.scope, drain_timeout_seconds=0.5)
+
+        assert stopped.terminated_job_ids == (JOB_ID,)
+        assert stopped.queue_pending_job_ids == ()
+        assert stopped.connector_pending_job_ids == ()
+        assert stopped.runtime_pending_job_ids == ()
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "CANCELLED"
+    finally:
+        await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_confirmed_missing_enqueue_failure_allows_same_job_retry():
+    runtime, capture_loop, connector = await build_runtime()
+    original_enqueue = capture_loop.enqueue_job
+    calls = 0
+
+    async def fail_before_enqueue(job_id, request_digest, *, company_id, connection_id):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TimeoutError("enqueue did not create a row")
+        return await original_enqueue(
+            job_id, request_digest, company_id=company_id, connection_id=connection_id)
+
+    capture_loop.enqueue_job = fail_before_enqueue
+    try:
+        with pytest.raises(TimeoutError, match="enqueue did not create a row"):
+            await runtime.capture(ticket(), CONNECTION, request())
+        assert await capture_loop.job_state(UUID(JOB_ID)) is None
+        assert connector.calls == 0
+
+        result = await runtime.capture(ticket(), CONNECTION, request())
+
+        assert result.status == "CAPTURED"
+        assert connector.calls == 1
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "SUCCEEDED"
+    finally:
+        capture_loop.enqueue_job = original_enqueue
+        await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_ambiguous_enqueue_failure_keeps_job_for_stop_reconciliation():
+    runtime, capture_loop, connector = await build_runtime()
+    original_enqueue = capture_loop.enqueue_job
+
+    async def commit_then_lose_response(job_id, request_digest, *, company_id, connection_id):
+        await original_enqueue(
+            job_id, request_digest, company_id=company_id, connection_id=connection_id)
+        raise TimeoutError("enqueue response was lost after commit")
+
+    capture_loop.enqueue_job = commit_then_lose_response
+    try:
+        with pytest.raises(TimeoutError, match="response was lost after commit"):
+            await runtime.capture(ticket(), CONNECTION, request())
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "PENDING"
+        assert connector.calls == 0
+
+        with pytest.raises(ValueError, match="CAPTURE_JOB_ALREADY_OWNED"):
+            await runtime.capture(ticket(), CONNECTION, request())
+
+        stopped = await runtime.stop(runtime.scope, drain_timeout_seconds=0.5)
+
+        assert stopped.terminated_job_ids == (JOB_ID,)
+        assert stopped.queue_pending_job_ids == ()
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "CANCELLED"
+        assert connector.calls == 0
+    finally:
+        capture_loop.enqueue_job = original_enqueue
+        await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_bounds_wait_for_capture_task_that_is_stuck_acquiring():
+    runtime, capture_loop, connector = await build_runtime()
+    scheduler = capture_loop._sched
+    original_acquire = scheduler._port.acquire_job
+    acquire_started = asyncio.Event()
+    release_acquire = asyncio.Event()
+
+    async def blocked_acquire(*args, **kwargs):
+        acquire_started.set()
+        await release_acquire.wait()
+        return await original_acquire(*args, **kwargs)
+
+    scheduler._port.acquire_job = blocked_acquire
+    capture = asyncio.create_task(runtime.capture(ticket(), CONNECTION, request()))
+    try:
+        await asyncio.wait_for(acquire_started.wait(), timeout=1)
+        started = asyncio.get_running_loop().time()
+        stopped = await runtime.stop(runtime.scope, drain_timeout_seconds=0.05)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert elapsed < 1
+        assert stopped.admission_closed
+        assert stopped.runtime_pending_job_ids == (JOB_ID,)
+        assert stopped.queue_pending_job_ids == (JOB_ID,)
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "PENDING"
+        assert connector.calls == 0
+        release_acquire.set()
+        await asyncio.wait_for(capture, timeout=2)
+        retried = await runtime.stop(runtime.scope, drain_timeout_seconds=1)
+        assert retried.queue_pending_job_ids == ()
+        assert retried.connector_pending_job_ids == ()
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "CANCELLED"
+    finally:
+        release_acquire.set()
+        await asyncio.wait_for(asyncio.gather(capture, return_exceptions=True), timeout=2)
+        scheduler._port.acquire_job = original_acquire
+        await runtime.close(drain_timeout_seconds=1)
+
+
+@pytest.mark.asyncio
+async def test_tc126_stop_bounds_queue_cancel_and_keeps_job_for_retry():
+    runtime, capture_loop, connector = await build_runtime()
+    capture_loop._tracker.require(CONNECTION, ResnapshotReason.OPERATOR, 0)
+    assert (await runtime.capture(ticket(), CONNECTION, request())).status == "RESNAPSHOT_REQUIRED"
+    original_cancel = capture_loop.cancel_job
+    cancel_started = asyncio.Event()
+    release_cancel = asyncio.Event()
+
+    async def blocked_cancel(job_id):
+        cancel_started.set()
+        await release_cancel.wait()
+        return await original_cancel(job_id)
+
+    capture_loop.cancel_job = blocked_cancel
+    try:
+        started = asyncio.get_running_loop().time()
+        stopped = await runtime.stop(runtime.scope, drain_timeout_seconds=0.05)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        assert cancel_started.is_set()
+        assert elapsed < 1
+        assert stopped.queue_pending_job_ids == (JOB_ID,)
+        assert connector.calls == 0
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "PENDING"
+
+        release_cancel.set()
+        retried = await runtime.stop(runtime.scope, drain_timeout_seconds=1)
+
+        assert retried.queue_pending_job_ids == ()
+        assert retried.terminated_job_ids == (JOB_ID,)
+        assert await capture_loop.job_state(UUID(JOB_ID)) == "CANCELLED"
+    finally:
+        release_cancel.set()
+        capture_loop.cancel_job = original_cancel
+        await runtime.close(drain_timeout_seconds=1)
