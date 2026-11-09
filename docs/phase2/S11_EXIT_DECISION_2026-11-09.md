@@ -83,3 +83,15 @@ GPT-PM request `bfde6a5d-9f43-4d71-a1f2-99504c8610ad` approved the committed LF 
 The attached main manifest still points to the historical CRLF digest while the committed package file is LF. Therefore, the evidence pointer is not reconciled to the literal committed bytes. This supersedes only the pointer disposition recorded above; it does not revoke the approved S11 documentation/planning exit. The GPT-PM decision approves byte identity only and records manifest edit authorization as `NOT_GRANTED`. No manifest edit is made by this addendum. The exact S11 `evidence.sha256` correction requires explicit operator authorization; after that authorization, Codex must make the one-field change, verify it against the committed bytes, run the documented validator and publish through the normal branch/PR process.
 
 Formal S12 entry remains `HOLD`; the manifest's S12 `IN_PROGRESS` value is not an entry decision. This addendum grants no S12 entry, V2-S12-06 GO, runtime, database, migration, deployment or production authority.
+
+## 9. Current pointer publication and S12 contract status (2026-11-09)
+
+This dated addendum supersedes the current-disposition statements in §§7–8 that predate the decisions below; those statements are retained as historical record.
+
+After the operator authorized only `nodes[S11].evidence.sha256`, Codex published that one-field correction in [PR #57](https://github.com/xLZDx/ERP_MCP/pull/57): `2d53c4c3a2852abd4cfc2e1dd9bd89c557b5f3e1727d128ef1182792bb3c0e47` → `8d6b4a7fb5094a88f34b2358e329b1912d4d30ced863615f4aff7a6598c3bb4c`. The PR is open and unmerged; `main` still has the previous digest. The PR changes no other manifest field.
+
+GPT-PM request `6eb0f2c8-cfed-477d-89b2-5f9fe7d4410e` approved the attached manifest bytes (SHA-256 `b49e604dea10006970033f78984a61e5a7513d5b9e57dae649c66165c95c984d`) for this bounded correction. Fresh validation at PR head `d5d5bd8e366be7d0c6d77a2de57dd7cfbb7ef694`, using the exact GitHub blobs for the manifest, validator script, S11 package and G0 package, returned exit 0: `gate manifest ok: 10 gates, 10 nodes`. This supersedes the earlier temporary-root G0-stale finding; PR #57 did not change G0.
+
+The current S12 contract revision, SHA-256 `d9565ddfe115c405725cb372c08152419579bd4171a3627c1bc72b27e7a5e09f`, was approved under request `3b045c35-96b4-4bb4-a50e-2698b60ed701` as a bounded design-document baseline only. Formal S12 entry remains HOLD; V2-S12-06 has no task-specific GO. This approval grants no runtime, database, migration, live-1C, deployment, or production authority.
+
+Next in order: after the pointer PR is merged, Codex verifies D10 evidence or prepares a bounded rebaseline; the operator provides/attests the real mapping or requests that rebaseline. Codex then reconciles remaining S12-entry dependencies, after which GPT-PM makes a separate formal S12-entry decision. V2-S12-06 starts only after that decision and its distinct task-specific GO.
