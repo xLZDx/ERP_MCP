@@ -1,0 +1,99 @@
+diff --git a/docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md b/docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md
+index b0f64c9..d3fb692 100644
+--- a/docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md
++++ b/docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md
+@@ -87,3 +87,9 @@ Consequences for the plan: (1) the purchase-receipt create/post/unpost slice now
+ Left on the clone: the deactivated first extension `CT14Ext`, several unposted draft receipts (one with a deliberately tampered marker that the administrator restored), the infobase user `CT14_NARROW` and its user-catalog item. Nothing was deleted.
+ 
+ Rights reconciliation (GPT-PM finding S11-R02, resolved 2026-10-12): three representations were compared. (1) Adopted objects: 53 (the receipt document that carries the two attributes plus 52 empty adoptions; the earlier figure of 52 counted only the empty ones). (2) The committed `Rights.xml` first had 55 entries: the 53 objects plus two attribute entries granting View and Edit true. Those two entries were stored but not effective, because child-object rights follow the parent when independent rights of child objects are off. They were removed, the extension version string was set to `1.0.0-ct14-spike`, the extension was reloaded and updated, and the live role dump now equals the committed file (53 entries). (3) Effective rights read from 1C for `CT14_NARROW` holding only `CT14Писатель` plus the external-connection role equal the committed file: delete and every interactive right are false, and View and Edit on both marker attributes are false for this role. The standard accounting roles inherit View and Edit true on the attributes from the document update right and any API writer can change the marker, so the marker remains an untrusted label. SHA-256 of the final `Rights.xml`: `e9296a472dc320c18fccf3a2831d2f549737cb124438bc2c32116ee8b1b8f785`. A static comparison `testlane/onec_extension/scripts/ct14_compare_rights.py` checks the committed rights against `scripts/ct14_rights_allowlist.json` (53 objects) without COM or credentials. The full chain (draft with marker, post, read movements, unpost) was re-run after the redeploy and returned ok.
++
++## 7. Current v2.0 scope disposition (2026-10-16)
++
++GPT owner ruling `b4e09308-7ae8-4170-92df-81ae67177bc1` authorizes autonomous local engineering and sets S12 Contract Freeze v2.0 as the next sprint. GPT approved Option A: keep signed `DispatchReceipt` distinct from independent signed `OutcomeEvidence`, and limit v2.0 writes to `CREATE_DRAFT`, `POST`, and `UNPOST`. This report is partial, disposable file-clone evidence only. The following capabilities are explicitly outside the v2.0 write scope: OData writes, contract update, forced session termination, and unrelated work during an unresolved call. This is a scope boundary, not a claim that these capabilities were tested or passed.
++
++The rows and measurements above retain their original 2026-10-12 context. CT14 does not qualify a real 1C deployment, staging, production, server/client database behavior, or any formal gate. The GPT ruling does not change `GATE_MANIFEST.json` or grant production authorization. No applicable scope/waiver authority is recorded here to change the G4 manifest disposition.
+diff --git a/docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md b/docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md
+index d1c53ac..3260360 100644
+--- a/docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md
++++ b/docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md
+@@ -7,7 +7,7 @@ Status: DRAFT for GPT-PM review. Baseline: plan revision 5. Companion records: `
+ - Decision (operator, 2026-10-11): "read-only was Phase 1"; version 2 must change 1C data from a ChatGPT or Claude prompt and reconcile the result.
+ - Superseded text: `R2-REQ-15` in `TDD_PHASE2_RU.md` line 55: "separate dev/prod permissions, default OFF prod, no business writes". The old requirement stays valid for the legacy Phase 2 read path and its gates G0-G7; it is not edited.
+ - Replacement for v2 (`R2-REQ-15v2`): separate target classes by authenticated base fingerprint (disposable clone under the test-lane policy; staging always DENY; production default DENY and only under a signed single-purpose operator permission); business writes exist only through the governed write path (separate authorization, approval by a person other than the requester, durable audit before the effect, read-back verification); the legacy read path keeps denying every non-READ class; deletion, marking for deletion and real-money actions remain operator-only and outside the v2.0 catalogue.
+-- OB-01 (scope rebaseline or explicit permission for an isolated prototype): the operator's 2026-10-11 decision and the GO of 2026-10-12 cover the prototype on the disposable clone only; whether they count as the OB-01 record is for the operator and GPT-PM at G0. OB-15 (donor and license inventory): not started; see section 6.
++- OB-01 (scope rebaseline or explicit permission for an isolated prototype): the operator's 2026-10-11 decision and the GO of 2026-10-12 cover the prototype on the disposable clone only; whether they count as the OB-01 record is for the operator and GPT-PM at G0. OB-15 (donor and license inventory): not started; see section 6. Current status (2026-10-13), superseding the two statements above: the operator accepted OB-01 ("accept", without naming an option or limits; the prototype-only restriction on the clone `818HA_p2diff` is applied by the agent and GPT-PM review, not decided by the operator) and answered "accept" for the OB-15 draft inventory (DRAFT_ACKNOWLEDGED only; OB-15 stays OPEN until the missing inventory evidence is completed and explicitly accepted or validly deferred; license boundary NOT approved). Details: `OPERATOR_BACKLOG.md`. The OB-15 inventory is section 9 of `S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md`, not of this record. The sentences above stay as historical provenance.
+ 
+ ## 2. Glossary
+ 
+diff --git a/docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md b/docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md
+index e8ff8ec..668a9df 100644
+--- a/docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md
++++ b/docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md
+@@ -105,3 +105,67 @@ Donors: three PDCC connector paths are named as previously inspected donors (Gma
+ Host binaries named by the install scripts (versions, sources and licenses mostly NOT_VERIFIED; downloads are unpinned and carry no checksums): Apache httpd with the 1C web extension, PostgreSQL 16 (EDB zip), Redis for Windows 5.0.14.1 (tporadowski build), Node.js 24.x, the OpenAI tunnel client, the 1C platform (proprietary, licensed by the operator). No LICENSE or NOTICE file exists in R2 and `pyproject.toml` has no license field.
+ 
+ Missing for the operator's approval of OB-15: a resolved license table from an R2 environment (a lock file or SBOM), transitive and build-tool licenses, a code-similarity statement for the donor claim, license and pin facts for the host binaries with checksums, a LICENSE or NOTICE for R2 and a license field, and the recorded operator approval entry. This pass produced no approval; OB-15 stays open and operator-owned.
++
++Current status (2026-10-13): OB-15 is still OPEN. The operator answered "accept" in chat without qualification; that is recorded as DRAFT_ACKNOWLEDGED only, not as acceptance of a complete inventory, because the items listed as missing above are still missing. INVENTORY_ACCEPTED and LICENSE_BOUNDARY_APPROVED are NOT granted. The statements "OB-15 stays open" in sections 7 and 9 remain accurate. See `OPERATOR_BACKLOG.md`.
++
++### 9a. Resolved license table (added 2026-10-14)
++
++Method: the license field of each installed distribution's metadata (License-Expression, else License classifiers, else the License field), read with `importlib.metadata` in the sibling R1 environment `D:\Repo\ERP_MCP\.venv`, following Requires-Dist transitively from the declared roots (asyncpg, defusedxml, httpx, PyYAML, mcp, uvicorn, pytest, pytest-asyncio, ruff, jsonschema). Limits: this is the R1 environment, not an R2 lock file or SBOM (R2 still has none); versions are the installed ones; metadata fields are what packages declare, the `License-File` texts were not read; Windows-only and extra-conditional dependencies are included only if installed.
++
++| package | version | declared license |
++| --- | --- | --- |
++| annotated-types | 0.8.0 | MIT |
++| anyio | 4.15.1 | MIT |
++| asyncpg | 0.31.0 | Apache-2.0 |
++| attrs | 26.1.0 | MIT |
++| certifi | 2026.7.22 | Mozilla Public License 2.0 (MPL 2.0) |
++| click | 8.5.0 | BSD-3-Clause |
++| colorama | 0.4.6 | BSD License |
++| defusedxml | 0.7.1 | Python Software Foundation License |
++| h11 | 0.16.0 | MIT License |
++| httpcore | 1.0.9 | BSD-3-Clause |
++| httpcore2 | 2.13.1 | BSD-3-Clause |
++| httpx | 0.28.1 | BSD License |
++| httpx2 | 2.13.1 | BSD-3-Clause |
++| idna | 3.20 | BSD-3-Clause |
++| iniconfig | 2.3.0 | MIT |
++| jsonschema | 4.26.0 | MIT |
++| jsonschema-specifications | 2025.9.1 | MIT |
++| mcp | 2.3.0 | MIT License |
++| mcp-types | 2.3.0 | MIT License |
++| opentelemetry-api | 1.45.0 | Apache-2.0 |
++| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
++| pluggy | 1.6.0 | MIT License |
++| pydantic | 2.13.5 | MIT |
++| pydantic_core | 2.46.5 | MIT |
++| Pygments | 2.21.0 | BSD-2-Clause |
++| PyJWT | 2.15.1 | MIT |
++| pytest | 9.1.1 | MIT |
++| pytest-asyncio | 1.4.0 | Apache-2.0 |
++| python-multipart | 0.0.32 | Apache-2.0 |
++| pywin32 | 312 | Python Software Foundation License |
++| PyYAML | 6.0.3 | MIT License |
++| referencing | 0.37.0 | MIT |
++| rpds-py | 2026.9.1 | MIT |
++| ruff | 0.16.10 | MIT |
++| sse-starlette | 3.5.0 | BSD-3-Clause |
++| starlette | 1.7.0 | BSD-3-Clause |
++| tomli | 2.4.1 | MIT |
++| truststore | 0.10.4 | MIT |
++| typing_extensions | 4.16.0 | PSF-2.0 |
++| typing-inspection | 0.4.4 | MIT |
++| uvicorn | 0.54.0 | BSD-3-Clause |
++
++Result: 41 distributions, no GPL or AGPL. One weak-copyleft entry: `certifi` (MPL-2.0, file-level copyleft; used unmodified as a dependency, no file of it is copied into R2). Not installed in that environment, so their licenses are NOT_VERIFIED: async-timeout, backports-asyncio-runner, exceptiongroup, httpx2-jsfetch.
++
++This table closes the item "resolved license table" and the "transitive licenses" part of the missing list above, for the R1 environment only.
++
++### 9b. Donor code-similarity statement (added 2026-10-14)
++
++FACT (checked by the main session, read-only): the pinned donor commit `ebf10414aaa8ef858a3df82652fb2050141adc98` exists in `D:\Repo\Personal_Decision_Command_Center`, and the blob `scripts/tools/build-document-registry.mjs` at that commit has the id `b581feac23e4caea5c056a71dd0587cc7c58eef0`, exactly as the provenance header of `scripts/build_document_registry.mjs` states. A comparison of trimmed, de-duplicated, non-empty lines: the donor has 134, the R2 file has 174, and 33 are identical (about 25% of the donor lines, about 19% of the R2 lines). This is a line-overlap measure, not a semantic or legal analysis. It is consistent with the header's list of substantial changes.
++
++FACT: a search of `src` and `scripts` of R2 for the donor paths `gmail-connector`, `slack-connector`, `telegram-connector`, `Personal_Decision_Command_Center` and `PDCC` finds only the provenance header above and comments in `phase2/drive_oauth.py` and `phase2/drive_port.py` that state no PDCC code or token is used. No connector code from the three named donor paths was found. This was a text search, not a code-similarity tool run.
++
++INFERENCE: the only donor-derived code in R2 is the one adapted registry script, and the donor repository is the operator's own code without a third-party license (section 9, read-only check of 2026-10-12).
++
++Still missing for OB-15: an R2 lock file or SBOM, license and pin facts with checksums for the host binaries, a LICENSE or NOTICE for R2 with a license field, and the operator's explicit acceptance or named deferral.
