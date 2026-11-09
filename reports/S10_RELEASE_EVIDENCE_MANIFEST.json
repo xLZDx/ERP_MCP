@@ -2,12 +2,12 @@
   "candidate": {
     "branch": "codex/s10-r2-canary-dev-20261108",
     "pull_request": {
-      "head_sha": "c0fa07748894eb83b5d56e7a07988baf3cffe184",
+      "head_sha": "37157e41b0d9d21abb1b0d77fda640dabd0aa34c",
       "number": 53,
       "url": "https://github.com/xLZDx/ERP_MCP/pull/53"
     },
-    "remote_branch_head": "c0fa07748894eb83b5d56e7a07988baf3cffe184",
-    "source_head": "490d7638ea6ec84ccf856312237161fbfa94f584"
+    "remote_branch_head": "37157e41b0d9d21abb1b0d77fda640dabd0aa34c",
+    "source_head": "37157e41b0d9d21abb1b0d77fda640dabd0aa34c"
   },
   "case_ids": [
     "R2-TC-124",
@@ -20,8 +20,8 @@
   "cases": [
     {
       "evidence_run_ids": [
-        "R2-US-048-functional-capture-490d763",
-        "R2-US-048-functional-manifest-490d763"
+        "R2-US-048-functional-clean-37157e4",
+        "R2-US-048-e2e-cleanrun-37157e4"
       ],
       "id": "R2-TC-124",
       "note": "Exact scope binding is exercised by the committed-head functional suites.",
@@ -29,7 +29,7 @@
     },
     {
       "evidence_run_ids": [
-        "R2-US-048-functional-capture-490d763"
+        "R2-US-048-functional-clean-37157e4"
       ],
       "id": "R2-TC-125",
       "note": "Dev/test remains separate from production approval.",
@@ -37,7 +37,8 @@
     },
     {
       "evidence_run_ids": [
-        "R2-US-048-e2e-capture-490d763"
+        "R2-US-048-functional-clean-37157e4",
+        "R2-US-048-e2e-cleanrun-37157e4"
       ],
       "id": "R2-TC-126",
       "note": "Synthetic E2E exercises scope-owned cancellation and drain.",
@@ -45,7 +46,8 @@
     },
     {
       "evidence_run_ids": [
-        "R2-US-048-functional-manifest-490d763"
+        "R2-US-048-functional-clean-37157e4",
+        "R2-US-048-e2e-cleanrun-37157e4"
       ],
       "id": "R2-TC-142",
       "note": "All six S10 IDs and observed outcomes are represented with source/test identity checks.",
@@ -53,7 +55,8 @@
     },
     {
       "evidence_run_ids": [
-        "R2-US-048-functional-manifest-490d763"
+        "R2-US-048-functional-clean-37157e4",
+        "R2-US-048-e2e-cleanrun-37157e4"
       ],
       "id": "R2-TC-143",
       "note": "NOT_RUN/NOT_VERIFIED remain explicit; bounded manifest cannot grant release PASS.",
@@ -61,8 +64,7 @@
     },
     {
       "evidence_run_ids": [
-        "R2-US-048-functional-manifest-490d763",
-        "R2-US-048-e2e-manifest-cli-490d763"
+        "R2-US-048-e2e-cleanrun-37157e4"
       ],
       "id": "R2-TC-144",
       "note": "User/admin/production UAT lanes are structurally separate; their actual results remain NOT_RUN.",
@@ -75,42 +77,25 @@
   "schema_version": 1,
   "test_runs": [
     {
-      "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_capture_runtime.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-functional-capture.xml",
-      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-functional-capture.xml",
-      "junit_sha256": "3afe903513bbf5c38d556527a9a346bc1931341b375b30751405358ca6ccb1a0",
-      "owner": "functional-test-reviewer",
-      "run_id": "R2-US-048-functional-capture-490d763",
+      "run_id": "R2-US-048-functional-clean-37157e4",
+      "owner": "e2e-runner",
+      "command": "$env:S10_CANDIDATE_HEAD='37157e41b0d9d21abb1b0d77fda640dabd0aa34c'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_capture_loop.py tests/phase2/test_capture_runtime.py tests/phase2/test_s10_release_manifest.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-functional-clean-37157e4.xml",
+      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-functional-clean-37157e4.xml",
+      "junit_sha256": "83a79c30d6b34727678df99c38ef03507b202e6d4b2b23387d1c5af9d06f9665",
       "test_files": {
-        "tests/phase2/test_capture_runtime.py": "2c0aad37aa0bc6eabd100450f65cf0dcf907765b9d19c549c2b0f7d9935b6e08"
-      }
-    },
-    {
-      "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_s10_release_manifest.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-functional-manifest.xml",
-      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-functional-manifest.xml",
-      "junit_sha256": "2ca166bcf6d6762b2548bb86e996e87b2df09091181a0aa3e00fe8dd5d6bb2d0",
-      "owner": "functional-test-reviewer",
-      "run_id": "R2-US-048-functional-manifest-490d763",
-      "test_files": {
+        "tests/phase2/test_capture_loop.py": "5b3fa49340c13e1b498c674cd9cf52053a5048ea74fa369aa0c5b946e26cc779",
+        "tests/phase2/test_capture_runtime.py": "bc4f89e5d59ffdce4a3ccad094a14b2eceb6dd436744828cd52ae034b643d48f",
         "tests/phase2/test_s10_release_manifest.py": "ed9059c2249dbe330649776114aad2741fe5e81c5fed5fe03a753f9d8fedaf96"
       }
     },
     {
-      "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_capture_runtime_e2e.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-e2e-capture.xml",
-      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-e2e-capture.xml",
-      "junit_sha256": "0c6d79b563eafb538560cde0a46743f8e85c931306ff75a426dafaf571f09459",
+      "run_id": "R2-US-048-e2e-cleanrun-37157e4",
       "owner": "e2e-runner",
-      "run_id": "R2-US-048-e2e-capture-490d763",
+      "command": "$env:S10_CANDIDATE_HEAD='37157e41b0d9d21abb1b0d77fda640dabd0aa34c'; .\\.venv\\Scripts\\python.exe -m pytest -q tests/phase2/test_capture_runtime_e2e.py tests/phase2/test_s10_release_manifest_cli_e2e.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-e2e-cleanrun-37157e4.xml",
+      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-e2e-cleanrun-37157e4.xml",
+      "junit_sha256": "d358a5185d65fc730e885f13a42b87c89cbc0ad34a0f1df05cac721cfd48261e",
       "test_files": {
-        "tests/phase2/test_capture_runtime_e2e.py": "9f10cc7a221539c6faa039d84a24f46e3b271a7be5bba382fe48961c2ae341fe"
-      }
-    },
-    {
-      "command": "$env:S10_CANDIDATE_HEAD=(git rev-parse HEAD).Trim(); uv run --locked --offline --extra dev python -m pytest -q tests/phase2/test_s10_release_manifest_cli_e2e.py --junitxml=reports/evidence/s10/test-runs/R2-US-048-e2e-manifest-cli.xml",
-      "junit_path": "reports/evidence/s10/test-runs/R2-US-048-e2e-manifest-cli.xml",
-      "junit_sha256": "b8e4730578a10fc545e6495df2fb51958cd397079d583f690fa0f0491f81b044",
-      "owner": "e2e-runner",
-      "run_id": "R2-US-048-e2e-manifest-cli-490d763",
-      "test_files": {
+        "tests/phase2/test_capture_runtime_e2e.py": "e6a6c5193b6a0501d74c83c7fc4ac02cc06a87a993d5211d75e38a9d7697a626",
         "tests/phase2/test_s10_release_manifest_cli_e2e.py": "61aa89aa969b28f66febc5e62119672b85529920aa243e5e314598526da33543"
       }
     }
