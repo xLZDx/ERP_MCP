@@ -1,6 +1,6 @@
 # S11 exit package (2026-10-12)
 
-Status: DRAFT submitted for the GPT-PM S11 exit decision. Evidence head: `8dc9bbba4ccc482113cfeee737497e42f43ea2bc` (local `main`, nothing pushed); this file is committed after that head and is not part of the listed evidence. Plan baseline: revision 5. This package approves nothing by itself: S11 exit, the S12 interface freeze, G0-G8, any push and any production action stay with their own decisions.
+Status: REVISED DRAFT for GPT-PM's formal S11 documentation/planning exit decision; no S11 exit approval is recorded here. The original package evidence head is `8dc9bbba4ccc482113cfeee737497e42f43ea2bc` (local `main`); this revision is reconciled against candidate checkout HEAD `3eb7691fa2373606836711429651cd73f19c6c13` and is currently a working-tree change. The original evidence head remains historical evidence and is not silently promoted to the candidate HEAD. Plan baseline: revision 5. This package approves nothing by itself: S11 exit, the S12 interface freeze, G0-G8, any push and any production action stay with their own decisions.
 
 ## 1. Deliverables against the plan's S11 list
 
@@ -34,7 +34,7 @@ GPT-PM rounds on S11 (PM Bridge project `erp_mcp_r2`): the plan baseline revisio
 
 ## 4. Honest limits
 
-Everything measured on 1C was measured on the disposable clone, file base, COM, one document type and one posted shape; nothing is authorized for staging, production, another base or a client-server installation. Fixture and 1C results are reported by agents and by the main session; GPT-PM verified file hashes and static consistency, not the live runs. Forced termination stays disabled, unresolved calls use the base-wide hold, the marker is an untrusted label verified by hash, OData writes and contract updates are outside the first freeze. G0-G8 stay NOT_PASSED and Release 2 stays NO-GO.
+Everything measured on 1C was measured on the disposable clone, file base, COM, one document type and one posted shape; nothing is authorized for staging, production, another base or a client-server installation. Fixture and 1C results are reported by agents and by the main session; GPT-PM verified file hashes and static consistency, not the live runs. Forced termination stays disabled, unresolved calls use the base-wide hold, the marker is an untrusted label verified by hash, OData writes and contract updates are outside the first freeze. The current `governance/GATE_MANIFEST.json` records G0 PASSED only for its narrow approved scope, G1-G8 NOT_PASSED, and Release 2 NO_GO. No production authorization is granted.
 
 ## 5. What the S12 freeze package must contain (from the GPT-PM verdict)
 
@@ -50,3 +50,53 @@ The dependency table above is a snapshot from 2026-10-12. The later operator dec
 | OB-15 — donor/license inventory | ACCEPTED_WITH_NAMED_DEFERRAL 2026-10-14: inventory sections 9, 9a and 9b accepted; R2 lock file/SBOM and host-binary license, pin and checksum facts deferred to deployment qualification. | Preserve the deferral in the G0 evidence package; do not claim the deferred deployment evidence or broad license-boundary clearance is complete. |
 
 The scope decision record, threat model, R1 boundary and source inventory remain the recorded G0 inputs. This reconciliation does not itself approve G0 or alter `governance/GATE_MANIFEST.json`: G0 remains NOT_PASSED until the exact evidence package is reviewed and the gate manifest carries valid evidence. No production authorization is implied.
+
+## 7. Current exact-head and ordered-exit reconciliation (2026-11-09)
+
+This section supersedes earlier status snapshots only where it names a newer fact. It does not convert a recorded claim into an approval or runtime result.
+
+### Candidate revision and current artifact identities
+
+The review candidate is checkout `codex/v2-s12-01-20261108` at HEAD `3eb7691fa2373606836711429651cd73f19c6c13`. The following S11 artifacts are present at that exact HEAD; blob IDs are recorded so a reviewer can bind the decision to the actual inputs:
+
+| Artifact | Blob at candidate HEAD | Reconciliation |
+| --- | --- | --- |
+| `docs/phase2/S11_SCOPE_DECISIONS_AND_GATE_MANIFEST_2026-10-12.md` | `326036040a370edc6d470b08b85261508816fd78` | differs from the abbreviated historical blob in section 1; acceptance of the current blob is not established here |
+| `docs/phase2/S11_DECISION_RECORDS_AND_THREAT_MODEL_2026-10-12.md` | `eff8ee75c07cee964f15d6bc26afa2ec061048f9` | matches the recorded S11 artifact identity |
+| `docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md` | `d3fb692b01dc1954b9fe6b25e256bb9c738f0c2a` | differs from the abbreviated historical blob in section 1; acceptance of the current blob is not established here |
+| `docs/phase2/S11_SOURCE_EVIDENCE_INVENTORY_2026-10-12.md` | `668a9df2bb141602d8724eb5c4403fd8d2898e94` | differs from the abbreviated historical blob in section 1; acceptance of the current blob is not established here |
+| `docs/phase2/S11_OPERATION_RULES_AND_STORY_REGISTER_2026-10-12.md` | `db980bfbab964b0112aa307544f5d40d14992dbf` | matches the recorded S11 artifact identity |
+| `docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md` | `bf031f0cd493d146c5f8f98ba0add677b7c46129` | matches the recorded S11 artifact identity |
+| `governance/GATE_MANIFEST.json` | `a8c9765cfbb7d7cd35a44586c1315c4cde650013` | current manifest remains authoritative; this package does not change or approve it |
+
+The package file itself is being revised after candidate HEAD and is therefore not yet part of that commit. The candidate HEAD also has unrelated uncommitted S12 source changes; those changes are not S11 acceptance evidence and are not included in this exit request. No production or live-1C action was performed for this reconciliation.
+
+### S10 boundary and S11 dependency
+
+S10 bounded dev/test code and exact-head evidence have recorded GPT-PM approvals: R2-US-042 request `c94d7b51-90b1-47ab-84fa-27b64c610ea4`; R2-US-048 artifact request `a8136ea2-24bb-4c53-bcd5-14d6e93dd6c5`. The S10 manifest SHA-256 is `C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE`.
+
+PR #53 (`https://github.com/xLZDx/ERP_MCP/pull/53`) is OPEN and unmerged at head `43c0271278f25efef0db7e05d2481f8754607aa2`. Its bounded engineering scope does not claim production acceptance. Production UAT/canary and live 1C remain NOT_RUN; the manifest records G0 PASSED only for its narrow scope and G1-G8 NOT_PASSED, while Release 2 remains NO_GO. The open PR does not erase the bounded approvals, but the formal S10 completion/PR disposition is still to be confirmed before automatic progression to S12.
+
+The previous S10 HOLD applies to dependent execution, not to reviewing and reconciling this S11 documentation package. S11 documentation-exit adjudication may proceed without production activity. This does not satisfy S10-dependent S11 execution, authorize production, or authorize automatic S12 entry.
+
+### Remaining S11 exit evidence and dependencies
+
+| Item | Current candidate status | Exit treatment |
+| --- | --- | --- |
+| S11 documentation deliverables | three current artifact deltas accepted within the described boundaries by GPT-PM request `a96cd7d6-b9d3-4966-bec3-00fe4bc98fb2`; exact diff retained in `docs/phase2/S11_ACCEPTANCE_CORRELATION_DIFF_2026-11-09.patch` (SHA-256 `49748ED0862EE3D65355B68E523E1D2110A84B3E446F9214388325D384C82A40`) | historical S11 finding closures remain preserved; acceptance applies to the three described deltas only |
+| OB-01 | DECIDED, isolated prototype until G0 on disposable clone `818HA_p2diff` | preserve narrow boundary; no G0 approval implied |
+| OB-15 | ACCEPTED_WITH_NAMED_DEFERRAL | preserve deployment qualification deferral; do not claim broad license clearance |
+| D4, D6-D8 | historical scope rows were PROPOSED; GPT-PM accepted the exact clauses in the 2026-11-09 correlation decision (request `a96cd7d6-b9d3-4966-bec3-00fe4bc98fb2`) | record bounded acceptance; it does not attest an earlier approval or authorize production |
+| D12 | GPT-PM accepted the correlated contract chain and its until-condition under request `c6c34bf0-0220-4ccd-b752-d11b6a2a5e5b` | contract update remains excluded until durable provenance and least-privilege rights are measured; those measurements would require a separate scope/acceptance decision before enabling it |
+| D10 operator `person_id` | not evidenced by the `Admin_1C` login | not an S11 documentation-exit blocker; remains an S12 entry dependency and must be resolved before S12 starts or explicitly rebaselined by the appropriate decision owner |
+| S11 formal exit | prior candidate was rejected under request `f82395cb-2192-4d3a-8502-3e519c585381`; the exact deltas and D4/D6-D8/D12 are now correlated in subsequent decisions `a96cd7d6-b9d3-4966-bec3-00fe4bc98fb2` and `c6c34bf0-0220-4ccd-b752-d11b6a2a5e5b` | pending a separate formal exit decision on this updated exact package; prior rejection is not silently overwritten |
+| S10 formal bounded completion and PR #53 disposition | bounded approvals are recorded; PR remains open/unmerged | confirm before automatic progression to S12 |
+| Manifest sprint-node status | current manifest says S11 `DONE` and S12 `IN_PROGRESS`; S11's SHA `146da7154e5225fca487bfd3b282b2e1a871d1589f54d9ad70de5cf4c075c05a` resolves to the package's committed Git blob `63eec32eb1507ee48fda2848c75c5f3bf2988ae3` at commit `63c347441d84ad646a43519efa8d21399ac8949c` | artifact identity reconciled; status conflict remains: the cited package is DRAFT and does not establish the later formal exit decision. GPT-PM request `c6c34bf0-0220-4ccd-b752-d11b6a2a5e5b` confirms S11/S12 node statuses are unreconciled. Do not infer exit or start S12 from these node statuses. The manifest has not been edited. |
+
+### Next acceptance action
+
+GPT-PM's 2026-11-09 rejection required current-artifact diffs and D4/D6-D8/D12 dispositions to be correlated before requesting the formal S11 exit again. Those items are now dispositioned by requests `a96cd7d6-b9d3-4966-bec3-00fe4bc98fb2` and `c6c34bf0-0220-4ccd-b752-d11b6a2a5e5b`; exact diffs are retained in the linked patch. The next action is a separate formal S11 documentation/planning exit decision on this updated package. Preserve the S10-dependent-execution HOLD, D10 as an S12 entry dependency, G0 PASSED only for its manifest scope, G1-G8 NOT_PASSED, Release 2 NO-GO, and production/live-1C NOT_RUN. S11 documentation exit does not itself authorize S12 execution.
+
+Adjudication update (2026-11-09): GPT-PM returned `REJECT` for the revised candidate package submitted under request `f82395cb-2192-4d3a-8502-3e519c585381`. The rejection is limited to evidence correlation, not the underlying engineering work. It requires exact historical-to-current content reconciliation for the three changed artifacts; correlated acceptance or explicit pending disposition for D4/D6-D8/D12; and a later formal S11 exit decision. The bounded correlation is recorded in `docs/phase2/S11_ACCEPTANCE_CORRELATION_ADDENDUM_2026-11-09.md`. Historical S11 findings remain closed for their exact reviewed evidence; S10 HOLD, D10, G0 PASSED within its narrow manifest scope, G1-G8 NOT_PASSED, Release 2 NO-GO and production boundaries remain unchanged. The prior GPT-PM reply described G0-G8 collectively as NOT_PASSED; the repository manifest is the formal status source and records G0 PASSED narrowly, so this candidate preserves the manifest's more precise state. The manifest's S11 `DONE`/S12 `IN_PROGRESS` node entries also conflict with the rejected exit; the addendum resolves the evidence SHA to the exact committed package blob but leaves the node-status conflict open. The manifest is unchanged.
+
+Follow-up adjudications: GPT-PM approved the addendum with qualifications under request `a96cd7d6-b9d3-4966-bec3-00fe4bc98fb2`, accepting the three described artifact changes and D4/D6/D7/D8; GPT-PM accepted D12 and correlated the manifest evidence identity under request `c6c34bf0-0220-4ccd-b752-d11b6a2a5e5b`. S11 formal exit remains a separate pending decision. The node-status discrepancy remains unresolved, and project policy prohibits editing `governance/GATE_MANIFEST.json` without explicit operator permission.
