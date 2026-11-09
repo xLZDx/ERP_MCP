@@ -29,14 +29,14 @@ def requester(*, scope=SCOPE, principal_id="requester", person_id="person-reques
               token_class=TokenClass.CHAT_WRITE, roles=frozenset({PrincipalRole.REQUESTER}),
               epoch=1, expires_at=NOW + timedelta(hours=1)):
     return AuthenticatedPrincipal(principal_id, person_id, roles, token_class, epoch,
-                                  scope, None, expires_at)
+                                  scope, None, expires_at, lane="TEST")
 
 
 def approver(*, scope=SCOPE, principal_id="approver", person_id="person-approver",
              token_class=TokenClass.APPROVER_SESSION, epoch=1,
              expires_at=NOW + timedelta(minutes=15)):
     return AuthenticatedPrincipal(principal_id, person_id, frozenset({PrincipalRole.APPROVER}),
-                                  token_class, epoch, scope, None, expires_at, True)
+                                  token_class, epoch, scope, None, expires_at, True, lane="TEST")
 
 
 @dataclass
@@ -77,9 +77,9 @@ def build_env(*, permissive=False, switch=None, positive_begin_apply=True,
     app = approver()
     records = (
         PrincipalRecord(req.principal_id, req.person_id, req.roles, req.epoch,
-                        display_label="Requester One"),
+                        display_label="Requester One", lane="TEST"),
         PrincipalRecord(app.principal_id, app.person_id, app.roles, app.epoch,
-                        display_label="Approver One"),
+                        display_label="Approver One", lane="TEST"),
     )
     principals = InMemoryPrincipalRegistry(records)
     target = TargetRecord(

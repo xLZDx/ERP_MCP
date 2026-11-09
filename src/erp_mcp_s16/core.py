@@ -28,7 +28,7 @@ from .contracts import (
     BeginApplyEvidencePort, ChangeStore, ClaimRefused, Claimed, Clock, DecisionBinding, DomainReceipt,
     KillSwitchPort, canonical_preview_bytes,
     PrincipalRecord, PrincipalRegistryPort, Result, TargetRegistryPort, VerifyPort,
-    VerifyRequest,
+    TargetScope, VerifyRequest,
 )
 
 
@@ -160,6 +160,9 @@ class S16Core:
     @staticmethod
     def _principal(principal: object, token_class: object) -> bool:
         return (type(principal) is AuthenticatedPrincipal and principal.token_class is token_class
+                and type(principal.lane) is str and principal.lane == "TEST"
+                and type(principal.scope) is TargetScope and type(principal.scope.target_class) is str
+                and principal.scope.target_class == "TEST"
                 and type(principal.principal_id) is str and bool(principal.principal_id)
                 and type(principal.person_id) is str and bool(principal.person_id)
                 and _aware(principal.expires_at))
@@ -175,6 +178,7 @@ class S16Core:
         except Exception:
             return False
         return (type(current) is PrincipalRecord and not current.revoked
+                and type(current.lane) is str and current.lane == principal.lane == "TEST"
                 and current.principal_id == principal.principal_id
                 and current.person_id == principal.person_id
                 and (not check_epoch or current.epoch == principal.epoch)
@@ -370,6 +374,9 @@ class S16Core:
     def _live_approver(record: PrincipalRecord | None, principal: AuthenticatedPrincipal,
                        now: datetime) -> bool:
         return (type(record) is PrincipalRecord and record.revoked is False
+                and type(record.lane) is str and record.lane == principal.lane == "TEST"
+                and type(principal.scope) is TargetScope and type(principal.scope.target_class) is str
+                and principal.scope.target_class == "TEST"
                 and record.principal_id == principal.principal_id and record.person_id == principal.person_id
                 and record.epoch == principal.epoch and record.epoch >= 0
                 and "APPROVER" in {r.value for r in record.roles}
@@ -669,6 +676,9 @@ class S16Core:
     @staticmethod
     def _live_approver_record(record: PrincipalRecord | None, approval: ApprovalDecision) -> bool:
         return (type(record) is PrincipalRecord and not record.revoked
+                and type(record.lane) is str and record.lane == "TEST"
+                and type(approval.scope) is TargetScope and type(approval.scope.target_class) is str
+                and approval.scope.target_class == "TEST"
                 and record.principal_id == approval.approver_principal_id
                 and record.person_id == approval.approver_person_id
                 and record.epoch == approval.approver_epoch

@@ -77,6 +77,7 @@ class AuthenticatedPrincipal:
     session_id: str | None
     expires_at: datetime
     mfa_authenticated: bool = False
+    lane: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +199,7 @@ class PrincipalRecord:
     revoked: bool = False
     epoch_dependencies: tuple[tuple[str, int], ...] = ()
     display_label: str | None = None
+    lane: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

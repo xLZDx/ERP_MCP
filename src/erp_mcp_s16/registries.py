@@ -24,6 +24,7 @@ class InMemoryPrincipalRegistry(PrincipalRegistryPort):
     def epochs_current(self, dependencies: tuple[tuple[str, int], ...]) -> bool:
         with self._lock:
             return all((record := self._records.get(principal)) is not None
+                       and type(record.lane) is str and record.lane == "TEST"
                        and not record.revoked and record.epoch == epoch
                        for principal, epoch in dependencies)
 
@@ -91,6 +92,9 @@ class TestIdP:
         from .contracts import ApproverSession, PrincipalRole, TokenClass
         if (type(principal) is not AuthenticatedPrincipal or principal.token_class is not TokenClass.APPROVER_SESSION
                 or PrincipalRole.APPROVER not in principal.roles or principal.mfa_authenticated is not True
+                or type(principal.lane) is not str or principal.lane != "TEST"
+                or type(principal.scope) is not TargetScope or type(principal.scope.target_class) is not str
+                or principal.scope.target_class != "TEST"
                 or not self.authenticate(principal)):
             return None
         secret = self.nonce_source.issue() if self.nonce_source else secrets.token_urlsafe(32)
@@ -124,8 +128,12 @@ class TestIdP:
     def authenticate(self, principal: AuthenticatedPrincipal) -> bool:
         from .contracts import PrincipalRole, TokenClass
         if (type(principal) is not AuthenticatedPrincipal or principal.token_class is not TokenClass.APPROVER_SESSION
-                or PrincipalRole.APPROVER not in principal.roles):
+                or PrincipalRole.APPROVER not in principal.roles
+                or type(principal.lane) is not str or principal.lane != "TEST"
+                or type(principal.scope) is not TargetScope or type(principal.scope.target_class) is not str
+                or principal.scope.target_class != "TEST"):
             return False
         record = self.principals.current(principal.principal_id)
-        return (record is not None and not record.revoked and record.epoch == principal.epoch
+        return (record is not None and type(record.lane) is str and record.lane == "TEST"
+                and not record.revoked and record.epoch == principal.epoch
                 and record.person_id == principal.person_id and PrincipalRole.APPROVER in record.roles)
