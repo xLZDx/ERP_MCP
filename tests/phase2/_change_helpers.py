@@ -55,7 +55,7 @@ def raw_create(**over) -> dict:
 def ctx(**over) -> ProposalContext:
     base = dict(change_id="c1", requester_principal="sub-req", requester_person_id=REQUESTER, scope=SCOPE,
                 created_at=T0, expires_at=APPROVAL_EXPIRES, auth_epoch_at_proposal=3,
-                epoch_dependencies=(("approver", 2), ("requester", 1)), preview_digest="a" * 64,
+                epoch_dependencies=(("approver", 2), ("requester", 1)), preview_digest="a" * 64, lane="TEST",
                 business_state_digest="b" * 64, qualified_currencies=frozenset({"RUB"}))
     base.update(over)
     return ProposalContext(**base)

@@ -393,6 +393,7 @@ class ProposalContext:
     auth_epoch_at_proposal: int
     epoch_dependencies: tuple[tuple[str, int], ...]
     preview_digest: str
+    lane: str
     business_state_digest: str | None = None  # POST and UNPOST: from the authenticated target read at propose
     qualified_currencies: frozenset[str] = frozenset()  # measured-shape qualification; empty refuses every draft
     in_scope_refs: frozenset[str] | None = None  # None: ref resolution is not part of this offline check
@@ -541,7 +542,11 @@ def parse_proposal(raw: object, ctx: object) -> ChangeProposal | Refusal:
 
 
 def _parse(raw: object, ctx: object) -> ChangeProposal | Refusal:
-    if type(ctx) is not ProposalContext or not _exact_keys(raw, _ENVELOPE_KEYS, frozenset({"kind", "request_id"})):
+    if type(ctx) is not ProposalContext:
+        return _BAD
+    lane = getattr(ctx, "lane", None)
+    if (type(lane) is not str or lane != "TEST"
+            or not _exact_keys(raw, _ENVELOPE_KEYS, frozenset({"kind", "request_id"}))):
         return _BAD
     kind_text = raw["kind"]  # type: ignore[index]
     if type(kind_text) is not str or kind_text not in ChangeKind.__members__:
