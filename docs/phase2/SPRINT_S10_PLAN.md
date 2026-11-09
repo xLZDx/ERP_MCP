@@ -30,7 +30,8 @@ bounded package is engineering evidence only and always records Release 2 as `NO
 
 Production canary, production data, 1C mutation, migrations, deployment and G6/G7 closure are
 explicitly out of scope. R2-US-048 began only after the technical R2-US-042 implementation,
-task-mapped tests and required reviews were complete. S11 remains held until S10 closes.
+task-mapped tests and required reviews were complete. The dated reconciliation below records the
+later exact-head acceptance and formal S11 documentation/planning exit decision.
 
 ## Design decision
 
@@ -65,8 +66,17 @@ and executors remain `functional-test-reviewer` and `e2e-runner` after coding is
 
 ## R2-US-048 closure checkpoint — 2026-11-08
 
+Historical checkpoint. It was superseded by the exact-head evidence refresh below.
+
 - Exact source candidate: `490d7638ea6ec84ccf856312237161fbfa94f584`, pushed on PR #53. The four task-mapped runs total 45/45 passing (11 + 22 functional; 4 + 8 CLI/capture E2E), with every JUnit testcase carrying that candidate head and no failures, errors or skips.
 - Internal code/security/silent-failure reviews and GPT-PM code review are complete for the source candidate; GPT-PM's minor parser finding was fixed and re-reviewed. The source approval is distinct from the separately recorded approval of the exact manifest artifact below.
 - The committed input record maps TC124–126 and TC142–144 to the synthetic runs. User/admin/production UAT slots are all `NOT_RUN`; Release 2 remains `NO-GO`.
 - Manifest `reports/S10_RELEASE_EVIDENCE_MANIFEST.json` was generated from the clean pushed evidence snapshot and exact source candidate, independently reviewed, approved by GPT-PM, and pushed as commit `4445dd2c5d84011bdc6327bc314f599b75843dab` on PR #53. SHA-256: `C201346943C928DC005C3F8AC236BEFFD49F467B5AE4CC588FEB2223280B37CE`. GPT-PM artifact request: `a8136ea2-24bb-4c53-bcd5-14d6e93dd6c5` — `APPROVE — BOUNDED ENGINEERING EVIDENCE`, 0 BLOCKER/MAJOR/MINOR.
 - R2-US-048 and S10 bounded engineering acceptance are closed in sequence. PR #53 remains open and unmerged; S11 is the next sprint to inspect. Actual user/admin/production UAT, live 1C, production canary, deployment, migrations, G6/G7 and Release 2 GO remain `NOT_RUN`/`NO-GO` or out of scope.
+
+## Exact-head evidence and ordered-exit reconciliation — 2026-11-09
+
+- Source candidate remains `37157e41b0d9d21abb1b0d77fda640dabd0aa34c`; the exact-head evidence package is commit `2755defb6180f0f7fc9c6c2323a2baf336d58532` on PR #53, pushed to `codex/s10-r2-canary-dev-20261108`. The branch head and PR snapshot were checked after push.
+- The updated `reports/S10_RELEASE_EVIDENCE_MANIFEST.json` is bound to the candidate and records SHA-256 `FB8976D1B3F7953990ABE6DEFD9218D0696FB1F5F3CAC94397FE0A78A04446E4`. The two referenced exact-candidate JUnit files contain 66 functional and 17 synthetic E2E passes (83 total, no failures/errors/skips); GPT-PM approved those exact artifacts under request `98c4a690-51f5-4ec5-ae15-5ff045e24d5b`.
+- R2-US-048 and S10 bounded engineering acceptance are `CLOSED_BOUNDED`. PR #53 is open and unmerged. User/admin/production UAT, live 1C, production database operations, migrations, deployment, G6/G7 and Release 2 remain separately `NOT_RUN`/`NO-GO`.
+- S11 documentation/planning exit was formally approved under GPT-PM request `4b573c76-8de5-4a8c-b929-7ad9aa6da35c`. That decision does not authorize formal S12 entry. S12 entry remains `HOLD` pending its own entry dependencies; S12 task-specific offline approvals must not be reported as formal sprint entry.
