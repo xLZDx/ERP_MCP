@@ -7,6 +7,7 @@ With ERP_PHASE2_REQUIRE_PG=1 the run FAILS when
 """
 import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,73 @@ CONTRACT_FILE = "test_ports_contract.py"
 
 def _required() -> bool:
     return os.environ.get("ERP_PHASE2_REQUIRE_PG") == "1"
+
+
+@pytest.fixture(autouse=True)
+def record_s10_candidate_head(record_property, pytestconfig):
+    """Attach exact source identity to JUnit cases only for opted-in S10 runs."""
+    candidate_head = os.environ.get("S10_CANDIDATE_HEAD")
+    if candidate_head is None:
+        return
+    if re.fullmatch(r"[0-9a-f]{40}", candidate_head) is None:
+        pytest.fail("S10_CANDIDATE_HEAD must be 40 lowercase hexadecimal characters", pytrace=False)
+    try:
+        actual_head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=pytestconfig.rootpath, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        pytest.fail("cannot determine the current Git HEAD for S10_CANDIDATE_HEAD", pytrace=False)
+    if candidate_head != actual_head:
+        pytest.fail("S10_CANDIDATE_HEAD does not match the current Git HEAD", pytrace=False)
+    try:
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+            cwd=pytestconfig.rootpath,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        pytest.fail("cannot verify the committed S10 test tree", pytrace=False)
+    status_records = status.split(b"\0")
+    changed_paths = []
+    index = 0
+    while index < len(status_records):
+        record = status_records[index]
+        index += 1
+        if not record:
+            continue
+        if len(record) < 4 or record[2:3] != b" ":
+            pytest.fail("cannot parse Git status while verifying the committed S10 test tree", pytrace=False)
+        changed_paths.append(os.fsdecode(record[3:]))
+        if b"R" in record[:2] or b"C" in record[:2]:
+            if index >= len(status_records):
+                pytest.fail("cannot parse renamed Git path while verifying the committed S10 test tree", pytrace=False)
+            changed_paths.append(os.fsdecode(status_records[index]))
+            index += 1
+    allowed_dirty_paths = {
+        "PROJECT_PLAN.md",
+        "docs/phase2/S10_RELEASE_HANDOFF.md",
+        "docs/phase2/SPRINT_S10_PLAN.md",
+        "docs/phase2/TASK_LEDGER.md",
+        "docs/sdlc/verify-evidence.md",
+    }
+    unexpected = []
+    for path in changed_paths:
+        normalized = path.replace("\\", "/")
+        if normalized.startswith("./"):
+            normalized = normalized[2:]
+        test_runs_prefix = "reports/evidence/s10/test-runs/"
+        is_test_run_output = (
+            normalized.startswith(test_runs_prefix)
+            and not any(part in {".", ".."} for part in normalized.split("/"))
+        )
+        if normalized not in allowed_dirty_paths and not is_test_run_output:
+            unexpected.append(path)
+    if unexpected:
+        pytest.fail(
+            "S10 test tree has unapproved uncommitted paths: "
+            + ", ".join(sorted(unexpected)),
+            pytrace=False,
+        )
+    record_property("candidate_head", candidate_head)
 
 
 def _variant(item) -> str | None:

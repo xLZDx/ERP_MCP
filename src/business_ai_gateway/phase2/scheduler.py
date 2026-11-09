@@ -45,7 +45,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
 from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget, WorkClass
@@ -282,6 +282,7 @@ class SourceScheduler:
         self.counter = counter or FailureCounter()
         self._not_before: dict[UUID, datetime] = {}
         self._deferrals: dict[UUID, int] = {}
+        self._owned_fences: dict[UUID, int] = {}
         self._poisoned: set[UUID] = set()
         if state is not None:
             if machine is not None or counter is not None:
@@ -348,6 +349,45 @@ class SourceScheduler:
         """Requeue (or fail) jobs whose lease expired, through the port."""
         return await self._port.reap_expired_jobs(self._actor, self._scope)
 
+    async def job_state(self, job_id: UUID) -> str | None:
+        """Read the exact source-scoped queue state for a job."""
+        view = await self._port.get_job(self._actor, self._scope, job_id)
+        return None if view is None else view.state
+
+    async def cancel_owned_job(self, job_id: UUID) -> str | None:
+        """Atomically cancel queued work or the exact lease previously acquired by this scheduler."""
+        fence = self._owned_fences.get(job_id)
+        state = await self._port.cancel_job(
+            self._actor, self._scope, job_id,
+            self._worker if fence is not None else None, fence,
+        )
+        if state in {"SUCCEEDED", "FAILED", "CANCELLED"} or state is None:
+            self._forget(job_id)
+        return state
+
+    async def enqueue_capture_job(self, job_id: UUID, request_digest: str,
+                                  payload: dict[str, Any]) -> UUID:
+        """Enqueue one capture under this scheduler's server-owned actor and exact source scope."""
+        if type(job_id) is not UUID:
+            raise ValueError("JOB_ID_INVALID")
+        if (type(request_digest) is not str or len(request_digest) != 64
+                or any(char not in "0123456789abcdef" for char in request_digest)):
+            raise ValueError("REQUEST_DIGEST_INVALID")
+        if type(payload) is not dict:
+            raise ValueError("JOB_PAYLOAD_INVALID")
+        return await self._port.enqueue_job(
+            self._actor, self._scope, job_id, "CAPTURE", request_digest,
+            f"capture:{job_id.hex}", payload)
+
+    async def _finish_cancelled(self, job_id: UUID, fence: int) -> None:
+        try:
+            await asyncio.shield(self._port.finish_job(
+                self._actor, self._scope, job_id, self._worker, fence,
+                "CANCELLED", "KILL_SWITCH_CANCELLED",
+            ))
+        except PortError as exc:
+            raise RuntimeError("JOB_CANCELLATION_NOT_CONFIRMED") from exc
+
     def resume(self, by: str) -> None:
         """Request resume; jobs remain fenced until ``resume_revalidated`` succeeds."""
         self.machine.resume(by)
@@ -380,6 +420,7 @@ class SourceScheduler:
     def _forget(self, job_id: UUID) -> None:
         self._not_before.pop(job_id, None)
         self._deferrals.pop(job_id, None)
+        self._owned_fences.pop(job_id, None)
         self._budget.cancel_waiter(trusted_backend_id=self._backend, waiter_id=job_id)
 
     def _gate_for_abandoned(self, job_id: UUID, handle: LeaseHandle, own_at: datetime) -> datetime:
@@ -416,17 +457,35 @@ class SourceScheduler:
             # roll back a reap done inside it and leave an abandoned lease RUNNING forever.
             try:
                 await self.reap()
-                fence = await self._port.acquire_job(
-                    self._actor, self._scope, job_id, self._worker, self.config.lease_seconds)
+                acquire_task = asyncio.create_task(self._port.acquire_job(
+                    self._actor, self._scope, job_id, self._worker, self.config.lease_seconds))
+                try:
+                    fence = await asyncio.shield(acquire_task)
+                except asyncio.CancelledError:
+                    # The queue transaction may commit just before cancellation reaches this task.
+                    # Keep its result alive long enough to record and cancel this exact lease.
+                    try:
+                        fence = await acquire_task
+                    except PortError:
+                        raise asyncio.CancelledError from None
+                    self._owned_fences[job_id] = fence
+                    await self._finish_cancelled(job_id, fence)
+                    self._forget(job_id)
+                    raise
             except PortError as exc:
                 if exc.code in _SCOPE_CODES:
                     return RunResult(RunStatus.SOURCE_NOT_ACTIVE, detail=exc.code)
                 if exc.code == "JOB_UNAVAILABLE":
                     return await self._unavailable(job_id)
                 raise
+            self._owned_fences[job_id] = fence
             self._deferrals.pop(job_id, None)
             try:
                 view = await self._port.get_job(self._actor, self._scope, job_id)
+            except asyncio.CancelledError:
+                await self._finish_cancelled(job_id, fence)
+                self._forget(job_id)
+                raise
             except PortError as exc:
                 return RunResult(RunStatus.LEASE_LOST, detail=_code(exc.code))
             if (view is None or view.lease_until is None or view.fence != fence
@@ -440,7 +499,8 @@ class SourceScheduler:
                 code = str(exc) if str(exc) in _LEASE_LOST_CODES else "LEASE_LOST"
                 return self._lease_lost(job_id, handle, code)
             except asyncio.CancelledError:
-                self._gate_for_abandoned(job_id, handle, self._clock())
+                await self._finish_cancelled(job_id, fence)
+                self._forget(job_id)
                 raise
             except Exception as exc:  # noqa: BLE001 - work failure is data for the failure policy
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
@@ -504,6 +564,7 @@ class SourceScheduler:
                                         handle.fence, state, error)
         except PortError as exc:
             return _code(exc.code)
+        self._owned_fences.pop(job_id, None)
         return None
 
     def _lease_lost(self, job_id: UUID, handle: LeaseHandle, code: str) -> RunResult:

@@ -510,6 +510,21 @@ class InMemoryLiving:
         j = src.jobs.get(job_id)
         return None if j is None else self._view(j)
 
+    @_op(WORKER)
+    def cancel_job(self, actor, scope, src, job_id, worker, fence):
+        j = src.jobs.get(job_id)
+        if j is None:
+            return None
+        if j.state == "PENDING":
+            j.state = "CANCELLED"
+            j.last_error = "KILL_SWITCH_CANCELLED"
+        elif (j.state == "RUNNING" and worker is not None and fence is not None
+              and j.lease_owner == worker and j.fence == fence):
+            j.state, j.lease_owner, j.lease_until = "CANCELLED", None, None
+            j.fence += 1
+            j.last_error = "KILL_SWITCH_CANCELLED"
+        return j.state
+
     # ------------------------------------------------------------------ cursor + outbox
     @_op(WORKER)
     def create_cursor(self, actor, scope, src, connection_id, initial_cursor):

@@ -2,7 +2,8 @@
 
 # ERP_MCP Scope Freeze Baseline — 2026-10-06
 
-**Status:** FROZEN
+**Status:** FROZEN — bounded S10 dev/test rebaseline recorded 2026-11-08; production scope unchanged
+**Version:** v1.2 (rebaseline amendment 2026-11-08)
 **Operator decision:** no new product scope is added until the currently committed scope is implemented and its mandatory evidence is closed.
 **Code checkpoint at freeze:** PR #11 branch `integration/1c-mvp-production-candidate`, remote HEAD `65883a5a83fbb369cbd32e5e31af3041f9d7c515`.
 **Documentation baseline:** this freeze includes the current normative package plus `DAD_1C_MCP_REQUIREMENTS_COVERAGE.md` and `FERMA_1C_SYNTHETIC_TESTBED_IMPLEMENTATION.md`.
@@ -55,6 +56,24 @@ A rebaseline must update:
 - DEFINITION_OF_DONE.md when gates change;
 - risk/threat model when applicable;
 - Engineering Command Center.
+
+### 2.2 Rebaseline record — 2026-11-08, bounded S10 dev/test prerequisite
+
+- **Authority:** explicit operator authorization to continue steps 1–4 in the operator-ordered
+  S9→S10→S11 sequence; recorded as `ERP-S10-DEV-PREREQUISITE`.
+- **Trace:** existing `R2-REQ15`, `R2-REQ28`, `R2-US-042`, `R2-TC124`–`R2-TC126`.
+- **Scope:** a dev/test-only runtime composition for exact tenant/company/source/scope-epoch
+  capture and comparison, environment-labelled results that cannot imply production approval, and
+  a scope-local kill switch that stops admission and owns/cancels its running jobs.
+- **Explicit exclusions:** production canary/data, production deployment or approval, any 1C
+  create/update/delete/post action, schema migration, public MCP capture endpoint, or release/G6/G7
+  status change. The production 1C surface remains read-only and Release 2 remains NO-GO.
+- **Exit evidence:** exact-head tests for TC124–TC126, internal review and GPT-PM code review. These
+  establish only bounded dev/test behavior; the existing production DoD and canary authorization
+  remain unchanged.
+- **Sequencing:** R2-US-042 is the only current task. R2-US-048 follows after 042 technical closure.
+  S11 stays held until S10 closes. FIN retains its recorded task state but is parked by operator
+  order until S10→S11 completes.
 
 ### 2.1 Rebaseline record
 
