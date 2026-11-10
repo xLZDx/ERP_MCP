@@ -11,10 +11,14 @@ import inspect
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
+    CheckpointKeyAuthorization,
+    CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence,
     CheckpointRecord,
     FakeSigner,
     FakeVerifier,
     InMemoryCheckpointSink,
+    checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator,
@@ -53,6 +57,61 @@ class ValidSuffixLedgerPortDouble(LedgerPortDouble):
             "has_more": False,
             "events": [],
         }
+
+
+class ActiveKeyAuthorityPortDouble:
+    """A local synthetic authority response; not evidence of a real registry."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord,
+                                   challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
+        return CheckpointKeyAuthorization(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            key_id=record.key_id,
+            public_key_digest=FakeVerifier().public_key_digest(record.key_id),
+            checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
+            authority_id="synthetic-test-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-test-1",
+            policy_version="test-policy-v1",
+            basis=CheckpointKeyAuthorizationBasis.ACTIVE,
+            receipt_id=None,
+            accepted_at=None,
+        )
+
+
+class LatestnessAuthorityPortDouble:
+    """Synthetic contract double; this is not proof of a real provider's latest history."""
+
+    is_test_double = True
+
+    def __init__(self, response=None):
+        self.response = response
+        self.calls = []
+
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                            challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
+        if self.response is not None:
+            return self.response
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
+            provider_id=record.sink_id,
+            provider_revision=7,
+            authority_id="synthetic-provider-authority",
+            authority_revision=2,
+            authority_event_id="evt-s13-provider-latest-1",
+            policy_version="test-provider-latest-v1",
+            proof_digest="b" * 64,
+        )
 
 
 class HangingLedgerPortDouble(LedgerPortDouble):
@@ -151,7 +210,11 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         await sink.write(_record(OTHER_SCOPE, 99, signer))
         sink.write_calls = 0
         ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
-        coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier())
+        key_authority = ActiveKeyAuthorityPortDouble()
+        latestness_authority = LatestnessAuthorityPortDouble()
+        coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier(),
+                                            key_authority=key_authority,
+                                            latestness_authority=latestness_authority)
 
         result = await coordinator.preflight(SCOPE)
 
@@ -161,13 +224,49 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 12)
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == [SCOPE]
+        assert len(key_authority.calls) == 1
+        assert key_authority.calls[0][0] == SCOPE
+        assert key_authority.calls[0][1].seq == 12
+        assert len(key_authority.calls[0][2]) == 64
+        assert all(char in "0123456789abcdef" for char in key_authority.calls[0][2])
+        assert len(latestness_authority.calls) == 1
+        assert latestness_authority.calls[0][0] == SCOPE
+        assert latestness_authority.calls[0][1].seq == 12
+        assert len(latestness_authority.calls[0][2]) == 64
+        assert all(char in "0123456789abcdef" for char in latestness_authority.calls[0][2])
         assert sink.write_calls == 0
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.
         assert list(inspect.signature(LifecycleCoordinator).parameters) == [
-            "ledger", "sink", "verifier", "dependency_timeout_seconds"]
+            "ledger", "sink", "verifier", "key_authority", "latestness_authority",
+            "dependency_timeout_seconds"]
         assert not hasattr(coordinator, "recover")
         assert not hasattr(coordinator, "write")
+
+    _run(scenario())
+
+
+def test_s13_preflight_missing_latestness_authority_stays_not_ready_before_key_authority():
+    async def scenario():
+        signer = FakeSigner("s13-test-key")
+        sink = RecordingCheckpointSink()
+        await sink.write(_record(SCOPE, 12, signer))
+        sink.write_calls = 0
+        ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
+        key_authority = ActiveKeyAuthorityPortDouble()
+
+        result = await LifecycleCoordinator(
+            ledger, sink, FakeVerifier(), key_authority=key_authority,
+        ).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE
+        assert result.checkpoint_seq == 12
+        assert sink.latest_calls == [SCOPE]
+        assert key_authority.calls == []
+        assert sink.write_calls == 0
+        assert sink.read_back_calls == 0
+        assert ledger.calls == [SCOPE]
 
     _run(scenario())
 

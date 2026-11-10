@@ -19,7 +19,9 @@ from _pg_harness import disposable_cluster, throwaway_db
 from test_change_ledger_sql import C, T, L, _setup
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
-    CheckpointRecord, FakeSigner, FakeVerifier, InMemoryCheckpointSink,
+    CheckpointKeyAuthorization, CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence, CheckpointRecord, FakeSigner, FakeVerifier,
+    InMemoryCheckpointSink, checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator, LifecycleReason, LifecycleStatus,
@@ -46,7 +48,25 @@ async def apply(conn, filename: str) -> None:
 
 
 class LatestSink(InMemoryCheckpointSink):
-    """In-memory test sink with an authenticated latest record for this test scope."""
+    """TEST sink for exact-scope latest selection; it cannot authenticate anti-rollback freshness."""
+
+    def __init__(self, sink_id: str):
+        super().__init__(sink_id)
+        self.write_calls = 0
+        self.read_back_calls = 0
+        self.latest_calls = 0
+
+    async def write(self, record):
+        self.write_calls += 1
+        await super().write(record)
+
+    async def read_back(self, scope, seq):
+        self.read_back_calls += 1
+        return await super().read_back(scope, seq)
+
+    async def latest(self, scope):
+        self.latest_calls += 1
+        return await super().latest(scope)
 
 
 class SuffixOverride:
@@ -60,8 +80,58 @@ class SuffixOverride:
         return self.suffix
 
 
+class SyntheticKeyAuthorizationAuthority:
+    """TEST ONLY: binds synthetic key authorization to one checkpoint record."""
+
+    is_test_double = True
+
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
+        return CheckpointKeyAuthorization(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            key_id=record.key_id,
+            public_key_digest=FakeVerifier().public_key_digest(record.key_id),
+            checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
+            authority_id="synthetic-suffix-key-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-suffix-key-1",
+            policy_version="test-suffix-key-v1",
+            basis=CheckpointKeyAuthorizationBasis.ACTIVE,
+        )
+
+
+class SyntheticLatestnessAuthority:
+    """TEST ONLY: synthetic response; does not prove a real provider's latest history."""
+
+    is_test_double = True
+
+    async def attest_latest(self, scope, record, challenge_nonce):
+        identity = checkpoint_identity(record)
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=identity,
+            challenge_nonce=challenge_nonce,
+            provider_id=record.sink_id,
+            provider_revision=1,
+            authority_id="synthetic-suffix-provider-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-suffix-latest-1",
+            policy_version="test-suffix-latest-v1",
+            proof_digest=hashlib.sha256(
+                b"S13 TEST ONLY suffix latestness|" + identity.encode("ascii"),
+            ).hexdigest(),
+        )
+
+
 def coordinator(ledger, sink, verifier):
-    return LifecycleCoordinator(ledger, sink, verifier, dependency_timeout_seconds=10)
+    return LifecycleCoordinator(
+        ledger, sink, verifier,
+        key_authority=SyntheticKeyAuthorizationAuthority(),
+        latestness_authority=SyntheticLatestnessAuthority(),
+        dependency_timeout_seconds=10,
+    )
 
 
 async def signed_record(ledger, scope, sink, signer):
@@ -165,6 +235,57 @@ async def journey(db) -> None:
         "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C
     ) == count_before, "T13 suffix read mutated the event log"
     print("PASS: real terminal VERIFY_VERIFIED/T13 suffix remains NOT_READY/SHARED_FENCE_UNAVAILABLE")
+
+    # A cryptographically valid TEST checkpoint that is ahead of the disposable PostgreSQL
+    # database's current ledger head is not an ancestor. The real SQL suffix reader must reject it; preflight remains
+    # read-only and cannot recover, authorize a writer, or dispatch.
+    restored_head = await ledger.ledger_head(scope)
+    future_seq = int(restored_head["seq"]) + 1
+    ahead_sink = LatestSink("s13-ahead-anchor-disposable")
+    future_unsigned = CheckpointRecord(
+        scope.tenant_id, scope.company_id, future_seq, "f" * 64, datetime.now(UTC),
+        signer.key_id, "", ahead_sink.sink_id, ahead_sink.kind,
+    )
+    future_record = CheckpointRecord(**{
+        **future_unsigned.__dict__,
+        "signature": signer.sign(future_unsigned.signing_payload()),
+    })
+    await ahead_sink.write(future_record)
+    event_count_before = await db.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2",
+        T, C,
+    )
+    write_calls_before = ahead_sink.write_calls
+    read_back_calls_before = ahead_sink.read_back_calls
+    latest_calls_before = ahead_sink.latest_calls
+    class RecordingLedger:
+        def __init__(self, delegate):
+            self.delegate = delegate
+            self.calls = []
+
+        async def verify_chain(self, requested_scope):
+            self.calls.append("verify_chain")
+            return await self.delegate.verify_chain(requested_scope)
+
+        async def lifecycle_checkpoint_suffix(self, requested_scope, checkpoint_seq,
+                                              checkpoint_hash, limit=128):
+            self.calls.append("lifecycle_checkpoint_suffix")
+            return await self.delegate.lifecycle_checkpoint_suffix(
+                requested_scope, checkpoint_seq, checkpoint_hash, limit,
+            )
+
+    recording_ledger = RecordingLedger(ledger)
+    future_result = await coordinator(recording_ledger, ahead_sink, verifier).preflight(scope)
+    assert_not_ready(future_result, LifecycleReason.CHECKPOINT_NOT_ANCESTOR)
+    assert recording_ledger.calls == ["verify_chain", "lifecycle_checkpoint_suffix"]
+    assert ahead_sink.latest_calls == latest_calls_before + 1
+    assert ahead_sink.write_calls == write_calls_before, "preflight must not write checkpoints"
+    assert ahead_sink.read_back_calls == read_back_calls_before, "preflight must not read back/write checkpoints"
+    assert await db.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2",
+        T, C,
+    ) == event_count_before, "ahead-of-chain anchor check mutated the ledger"
+    print("PASS: valid TEST signature on ahead-of-chain anchor is rejected by real PostgreSQL ancestry check; no recovery/writer/dispatch effect")
 
     # Build one real bounded response, then inject malformed/unsupported tails at the adapter
     # boundary to exercise the classifier without fabricating database rows.
