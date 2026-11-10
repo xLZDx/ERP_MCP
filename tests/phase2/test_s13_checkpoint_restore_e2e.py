@@ -24,7 +24,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from _pg_harness import disposable_cluster, owned_cluster_exec, throwaway_db
-from test_change_ledger_sql import C, T, L, _setup
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.anchor_client import DevAnchorClient
 from business_ai_gateway.phase2.change_ledger.checkpoint import CheckpointRecord, Ed25519SignatureVerifier
@@ -32,6 +31,7 @@ from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator, LifecycleReason, LifecycleStatus,
 )
 from business_ai_gateway.phase2.change_ledger.sql_ledger import SqlChangeLedger
+from test_change_ledger_sql import C, T, L, _setup
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -179,9 +179,11 @@ async def _restore_skew(tmp_path: Path) -> tuple[str, str]:
     scope = Scope(T, C)
 
     async with disposable_cluster() as (dsn, container_name, owner_token):
-        volume_result = subprocess.run(
-            [_docker_exe(), "inspect", "--format", '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{end}}{{end}}',
-             container_name], capture_output=True, text=True, timeout=30, check=False,
+        volume_result = await asyncio.to_thread(
+            subprocess.run,
+            [_docker_exe(), "inspect", "--format",
+             '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{end}}{{end}}', container_name],
+            capture_output=True, text=True, timeout=30, check=False,
         )
         assert volume_result.returncode == 0, volume_result.stderr
         volume_names = volume_result.stdout.split()
@@ -202,8 +204,8 @@ async def _restore_skew(tmp_path: Path) -> tuple[str, str]:
             "KEY_AUTH_SEED": _raw_seed(key_authority_key).hex(),
         })
         process_env = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
-        service_process = subprocess.Popen(
-            [sys.executable, "-c", _SERVICE_RUNNER], cwd=ROOT, env=environment,
+        service_process = await asyncio.to_thread(
+            subprocess.Popen, [sys.executable, "-c", _SERVICE_RUNNER], cwd=ROOT, env=environment,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
             creationflags=process_env,
         )
