@@ -14,6 +14,7 @@ import hashlib
 import unittest
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -204,8 +205,9 @@ class SyntheticLatestnessAuthority:
         self.error = error
         self.calls = []
 
-    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
-        self.calls.append((scope, record))
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                            challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
         if self.error is not None:
             raise self.error
         if self.response is not _DEFAULT_LATESTNESS_RESPONSE:
@@ -217,6 +219,7 @@ class SyntheticLatestnessAuthority:
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
             provider_id=record.sink_id,
             provider_revision=7,
             authority_id="synthetic-latestness-authority",
@@ -228,8 +231,9 @@ class SyntheticLatestnessAuthority:
 
 
 class SlowLatestnessAuthority(SyntheticLatestnessAuthority):
-    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
-        self.calls.append((scope, record))
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                            challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
@@ -535,14 +539,38 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 if expected_cancelled:
                     self.assertTrue(authority.cancelled)
 
+    def test_latestness_challenge_generation_failure_fails_closed_before_authority_and_key_auth(self):
+        record = signed_record(seq=7)
+        calls = []
+        key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+        latestness_authority = SyntheticLatestnessAuthority()
+
+        with patch(
+                "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                side_effect=RuntimeError("nonce source unavailable")):
+            result = asyncio.run(_BaseLifecycleCoordinator(
+                Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+                key_authority=key_authority,
+                latestness_authority=latestness_authority,
+            ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual(latestness_authority.calls, [])
+        self.assertEqual(key_authority.calls, [])
+
     def test_latestness_evidence_must_bind_scope_record_provider_and_revisions(self):
         record = signed_record(seq=7)
-        valid = asyncio.run(SyntheticLatestnessAuthority().attest_latest(SCOPE, record))
+        challenge_nonce = "c" * 64
+        valid = asyncio.run(SyntheticLatestnessAuthority().attest_latest(
+            SCOPE, record, challenge_nonce))
         malformed = (
             replace(valid, tenant_id="other-tenant"),
             replace(valid, company_id="other-company"),
             replace(valid, checkpoint_digest="not-a-digest"),
             replace(valid, checkpoint_digest="0" * 64),
+            replace(valid, challenge_nonce="d" * 64),
             replace(valid, provider_id="other-provider"),
             replace(valid, provider_revision=0),
             replace(valid, provider_revision=True),
@@ -557,18 +585,90 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             with self.subTest(evidence_type=type(evidence).__name__,
                               provider_revision=getattr(evidence, "provider_revision", None)):
                 calls = []
+                sink = EffectCountingSink(calls, record)
                 authority = SyntheticLatestnessAuthority(response=evidence)
                 key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
-                result = asyncio.run(_BaseLifecycleCoordinator(
-                    Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
-                    key_authority=key_authority,
-                    latestness_authority=authority,
-                ).preflight(SCOPE))
+                with patch(
+                        "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                        return_value=challenge_nonce):
+                    result = asyncio.run(_BaseLifecycleCoordinator(
+                        Ledger(calls=calls), sink, FakeVerifier(),
+                        key_authority=key_authority,
+                        latestness_authority=authority,
+                    ).preflight(SCOPE))
 
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
                 self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_INVALID)
                 self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual(authority.calls[0][2], challenge_nonce)
                 self.assertEqual(key_authority.calls, [])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+        # Positive control: the exact same receipt passes latestness validation, reaches key
+        # authorization and suffix diagnosis, and still cannot make the preflight READY.
+        calls = []
+        sink = EffectCountingSink(calls, record)
+        authority = SyntheticLatestnessAuthority(response=valid)
+        key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+        with patch(
+                "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                return_value=challenge_nonce):
+            result = asyncio.run(_BaseLifecycleCoordinator(
+                TraceLedger(calls=calls), sink, FakeVerifier(),
+                key_authority=key_authority,
+                latestness_authority=authority,
+            ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest", "suffix"])
+        self.assertEqual(authority.calls[0][2], challenge_nonce)
+        self.assertEqual(len(key_authority.calls), 1)
+        self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_latestness_replayed_receipt_challenge_fails_closed(self):
+        record = signed_record(seq=7)
+        prior_receipt = asyncio.run(SyntheticLatestnessAuthority().attest_latest(
+            SCOPE, record, "previous-request-challenge"))
+        calls = []
+        key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+        authority = SyntheticLatestnessAuthority(response=prior_receipt)
+
+        result = asyncio.run(_BaseLifecycleCoordinator(
+            Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+            key_authority=key_authority,
+            latestness_authority=authority,
+        ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_INVALID)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual(key_authority.calls, [])
+        self.assertEqual(len(authority.calls), 1)
+        self.assertNotEqual(authority.calls[0][2], prior_receipt.challenge_nonce)
+
+    def test_latestness_challenge_is_fresh_for_each_preflight(self):
+        record = signed_record(seq=7)
+        calls = []
+        authority = SyntheticLatestnessAuthority()
+        coordinator = _BaseLifecycleCoordinator(
+            Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+            latestness_authority=authority,
+        )
+
+        with patch(
+                "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                side_effect=["1" * 64, "2" * 64]):
+            for _ in range(2):
+                result = asyncio.run(coordinator.preflight(SCOPE))
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE)
+
+        self.assertEqual(len(authority.calls), 2)
+        first_nonce, second_nonce = authority.calls[0][2], authority.calls[1][2]
+        self.assertEqual(first_nonce, "1" * 64)
+        self.assertEqual(second_nonce, "2" * 64)
+        self.assertNotEqual(first_nonce, second_nonce)
 
     def test_latestness_authority_without_receipt_is_unavailable(self):
         record = signed_record(seq=7)

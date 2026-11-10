@@ -173,6 +173,7 @@ class CheckpointLatestnessEvidence:
     tenant_id: str
     company_id: str
     checkpoint_digest: str
+    challenge_nonce: str
     provider_id: str
     provider_revision: int
     authority_id: str
@@ -186,15 +187,17 @@ class CheckpointLatestnessAuthority(Protocol):
     """Trusted authority that authenticates provider freshness, separately from signatures.
 
     Implementations must query or validate the provider's current authenticated latest history,
-    reject stale/replayed/rolled-back responses, and bind the receipt to this exact checkpoint.
-    They must fail closed when provider history or its anti-rollback consistency is unavailable.
+    reject stale/replayed/rolled-back responses, and bind the receipt to this exact checkpoint and
+    one-use challenge nonce. They must fail closed when provider history or its anti-rollback
+    consistency is unavailable. The coordinator checks the returned nonce to prevent reuse of a
+    previously valid receipt; this does not replace provider-history or durable anti-rollback checks.
     This authority does not establish key authorization or startup admission readiness.
     """
 
     is_test_double: bool
 
     async def attest_latest(
-            self, scope: Scope, record: CheckpointRecord
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str
     ) -> CheckpointLatestnessEvidence | None: ...
 
 

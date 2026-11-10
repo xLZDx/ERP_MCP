@@ -105,12 +105,13 @@ class SyntheticLatestnessAuthority:
 
     is_test_double = True
 
-    async def attest_latest(self, scope, record):
+    async def attest_latest(self, scope, record, challenge_nonce):
         identity = checkpoint_identity(record)
         return CheckpointLatestnessEvidence(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             checkpoint_digest=identity,
+            challenge_nonce=challenge_nonce,
             provider_id=record.sink_id,
             provider_revision=1,
             authority_id="synthetic-suffix-provider-authority",

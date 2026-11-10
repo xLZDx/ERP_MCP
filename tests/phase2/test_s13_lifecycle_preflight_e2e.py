@@ -92,14 +92,16 @@ class LatestnessAuthorityPortDouble:
         self.response = response
         self.calls = []
 
-    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
-        self.calls.append((scope, record))
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                            challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
         if self.response is not None:
             return self.response
         return CheckpointLatestnessEvidence(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
             provider_id=record.sink_id,
             provider_revision=7,
             authority_id="synthetic-provider-authority",
@@ -226,6 +228,8 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert len(latestness_authority.calls) == 1
         assert latestness_authority.calls[0][0] == SCOPE
         assert latestness_authority.calls[0][1].seq == 12
+        assert len(latestness_authority.calls[0][2]) == 64
+        assert all(char in "0123456789abcdef" for char in latestness_authority.calls[0][2])
         assert sink.write_calls == 0
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.

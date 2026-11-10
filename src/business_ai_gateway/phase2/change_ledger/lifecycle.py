@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import secrets
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -123,13 +124,15 @@ def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
 
 
 def _valid_latestness_evidence(scope: Scope, record: CheckpointRecord,
-                               evidence: Any) -> bool:
-    """Check strict receipt shape and exact record binding after authority verification."""
+                               evidence: Any, *, challenge_nonce: str) -> bool:
+    """Check strict receipt shape and exact record/challenge binding after authority verification."""
     if type(evidence) is not CheckpointLatestnessEvidence:
         return False
     if (type(evidence.tenant_id) is not str or evidence.tenant_id != scope.tenant_id
             or type(evidence.company_id) is not str or evidence.company_id != scope.company_id
             or not _is_hash(evidence.checkpoint_digest)
+            or type(evidence.challenge_nonce) is not str
+            or evidence.challenge_nonce != challenge_nonce
             or type(evidence.provider_id) is not str or not evidence.provider_id
             or len(evidence.provider_id) > 128
             or type(record.sink_id) is not str or evidence.provider_id != record.sink_id
@@ -351,8 +354,9 @@ class LifecycleCoordinator:
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
                                    chain_count=chain_count)
         try:
+            challenge_nonce = secrets.token_hex(32)
             latestness = await asyncio.wait_for(
-                self._latestness_authority.attest_latest(scope, record),
+                self._latestness_authority.attest_latest(scope, record, challenge_nonce),
                 timeout=self._dependency_timeout_seconds,
             )
         except Exception:
@@ -365,7 +369,8 @@ class LifecycleCoordinator:
                                    LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
                                    chain_count=chain_count)
-        if not _valid_latestness_evidence(scope, record, latestness):
+        if not _valid_latestness_evidence(
+                scope, record, latestness, challenge_nonce=challenge_nonce):
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_LATESTNESS_INVALID,
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
