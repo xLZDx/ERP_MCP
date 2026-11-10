@@ -10,12 +10,17 @@ Run directly with the repository Python environment; intentionally does not requ
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import unittest
 from datetime import UTC, datetime
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointRecord,
+    Ed25519SignatureVerifier,
     FakeSigner,
     FakeVerifier,
     InMemoryCheckpointSink,
@@ -41,6 +46,31 @@ def signed_record(scope: Scope = SCOPE, seq: int = 3) -> CheckpointRecord:
         **unsigned.__dict__,
         "signature": signer.sign(unsigned.signing_payload()),
     })
+
+
+def _synthetic_test_key(label: str) -> Ed25519PrivateKey:
+    """Return a deterministic, synthetic TEST-only Ed25519 key."""
+    seed = hashlib.sha256(f"ERP_MCP S13 TEST KEY ONLY:{label}".encode()).digest()
+    return Ed25519PrivateKey.from_private_bytes(seed)
+
+
+def ed25519_record(scope: Scope, seq: int, key_id: str,
+                   private_key: Ed25519PrivateKey) -> CheckpointRecord:
+    unsigned = CheckpointRecord(
+        scope.tenant_id, scope.company_id, seq, f"{seq:064x}", NOW,
+        key_id, "", "test-sink", "TEST",
+    )
+    return CheckpointRecord(**{
+        **unsigned.__dict__,
+        "signature": private_key.sign(unsigned.signing_payload()).hex(),
+    })
+
+
+def public_key_bytes(private_key: Ed25519PrivateKey) -> bytes:
+    return private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
 
 
 class Ledger:
@@ -109,6 +139,34 @@ class Sink(InMemoryCheckpointSink):
         if self.error:
             raise self.error
         return self.record
+
+
+class EffectCountingSink(Sink):
+    def __init__(self, calls, record=None, error=None):
+        super().__init__(calls, record=record, error=error)
+        self.write_calls = 0
+        self.read_back_calls = 0
+
+    async def write(self, record):
+        self.write_calls += 1
+        await super().write(record)
+
+    async def read_back(self, scope, seq):
+        self.read_back_calls += 1
+        return await super().read_back(scope, seq)
+
+
+class AnchorResultLedger(Ledger):
+    def __init__(self, *, anchor_matches=True, response=None, error=None, calls=None):
+        super().__init__(response=response, error=error, calls=calls)
+        self.anchor_matches = anchor_matches
+
+    async def lifecycle_checkpoint_suffix(self, scope, checkpoint_seq, checkpoint_hash):
+        result = await super().lifecycle_checkpoint_suffix(
+            scope, checkpoint_seq, checkpoint_hash,
+        )
+        result["anchor_matches"] = self.anchor_matches
+        return result
 
 
 class SlowSink(Sink):
@@ -258,6 +316,99 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
                 self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
                 self.assertIsNone(result.checkpoint_seq)
+
+    def test_ed25519_test_key_rotation_checks_signature_and_key_id_separately(self):
+        previous_key = _synthetic_test_key("previous")
+        current_key = _synthetic_test_key("current")
+        previous_record = ed25519_record(SCOPE, 7, "s13-test-previous", previous_key)
+        current_record = ed25519_record(SCOPE, 8, "s13-test-current", current_key)
+        verifier = Ed25519SignatureVerifier({
+            "s13-test-previous": public_key_bytes(previous_key),
+            "s13-test-current": public_key_bytes(current_key),
+        })
+
+        # This proves only cryptographic validity against the explicit synthetic key snapshot.
+        # It does not establish historical authorization, a grace period, rotation timing, or
+        # revocation semantics; those policies are intentionally unspecified.
+        for candidate in (previous_record, current_record):
+            with self.subTest(valid_test_key=candidate.key_id):
+                self.assertTrue(verifier.verify(
+                    candidate.key_id, candidate.signing_payload(), candidate.signature,
+                ))
+
+        unknown_key_record = CheckpointRecord(**{
+            **previous_record.__dict__, "key_id": "s13-test-unregistered",
+        })
+        mismatched_key_record = CheckpointRecord(**{
+            **previous_record.__dict__, "key_id": "s13-test-current",
+        })
+        malformed_key_record = CheckpointRecord(**{
+            **previous_record.__dict__, "key_id": object(),
+        })
+        bad_signature_record = CheckpointRecord(**{
+            **previous_record.__dict__, "signature": "0" * 128,
+        })
+
+        for candidate in (unknown_key_record, mismatched_key_record,
+                          malformed_key_record, bad_signature_record):
+            with self.subTest(key_id=repr(candidate.key_id)):
+                calls = []
+                sink = EffectCountingSink(calls, candidate)
+                result = asyncio.run(LifecycleCoordinator(
+                    Ledger(calls=calls), sink, verifier,
+                ).preflight(SCOPE))
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_INVALID)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual(sink.write_calls, 0)
+                self.assertEqual(sink.read_back_calls, 0)
+
+        # The protocol has no authoritative TEST revocation or verification-time policy.
+        # Do not label an absent key ID "revoked" or claim that a historical signature is
+        # authorized merely because its public key is in this verifier's input snapshot.
+
+    def test_locally_valid_ancestor_checkpoint_still_cannot_make_preflight_ready(self):
+        previous_key = _synthetic_test_key("previous")
+        current_key = _synthetic_test_key("current")
+        record = ed25519_record(SCOPE, 7, "s13-test-previous", previous_key)
+        verifier = Ed25519SignatureVerifier({
+            "s13-test-previous": public_key_bytes(previous_key),
+            "s13-test-current": public_key_bytes(current_key),
+        })
+        calls = []
+        sink = EffectCountingSink(calls, record)
+        result = asyncio.run(LifecycleCoordinator(
+            Ledger(calls=calls), sink, verifier,
+        ).preflight(SCOPE))
+
+        # The TEST sink and a valid local ancestor do not authenticate provider latestness.
+        # Readiness must remain disabled even when signature, scope, and suffix checks pass.
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
+        self.assertEqual((result.checkpoint_seq, result.chain_count), (7, 9))
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual(sink.write_calls, 0)
+        self.assertEqual(sink.read_back_calls, 0)
+
+    def test_restore_anchor_nonancestor_and_ahead_of_chain_both_fail_closed(self):
+        for record, ledger, expected_reason in (
+            (signed_record(seq=7), AnchorResultLedger(anchor_matches=False),
+             LifecycleReason.CHECKPOINT_NOT_ANCESTOR),
+            (signed_record(seq=10), Ledger(response={"ok": True, "count": 9}),
+             LifecycleReason.CHECKPOINT_SUFFIX_INVALID),
+        ):
+            with self.subTest(seq=record.seq, expected=expected_reason):
+                calls = []
+                ledger.calls = calls
+                sink = EffectCountingSink(calls, record)
+                result = asyncio.run(LifecycleCoordinator(
+                    ledger, sink, FakeVerifier(),
+                ).preflight(SCOPE))
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, expected_reason)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual(sink.write_calls, 0)
+                self.assertEqual(sink.read_back_calls, 0)
 
     def test_malformed_latest_values_map_to_checkpoint_invalid(self):
         valid = signed_record()
