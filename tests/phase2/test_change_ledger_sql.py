@@ -453,6 +453,28 @@ async def test_sql_change_ledger_adapter_uses_scoped_postgres_v2_ledger(led):
     assert await led.conn.fetchval("SELECT current_user=session_user") is True
 
 
+async def test_sql_change_ledger_adapter_claim_commits_claim_and_reservation_together(led):
+    scope = Scope(T, C)
+    ledger = SqlChangeLedger(led.conn, actors={"requester": "clt_alice"})
+    change_id = await led.approved(request_id="adapter-claim-s13-02")
+    budget = await led.conn.fetchrow(
+        "SELECT grant_id,amount,counts_create_update,counts_post "
+        "FROM change_ledger.change_budget WHERE change_id=$1", change_id)
+
+    claim = await ledger.claim(
+        scope, change_id, grant_id=budget["grant_id"], amount=budget["amount"],
+        counts_create_update=budget["counts_create_update"], counts_post=budget["counts_post"])
+
+    assert claim is not None and claim["state"] == "ISSUED" and claim["generation"] == 1
+    row = await led.rec(change_id)
+    assert (row["authorization_state"], row["claim_generation"], row["reservation_state"]) == \
+        ("CLAIMED", 1, "RESERVED")
+    assert await led.locks(change_id) == (1, 1, 1)
+    assert await led.res_state(change_id) == "RESERVED"
+    assert not led.conn.is_in_transaction()
+    assert await led.conn.fetchval("SELECT current_user=session_user") is True
+
+
 async def test_no_direct_dml_for_any_runtime_role(led):
     cid = await led.propose()
     stmts = [
@@ -764,6 +786,143 @@ async def test_claim_takes_locks_lease_and_reservation_atomically_and_second_cla
     assert await led.locks(c5) == (0, 0, 0) and await led.res_state(c5) is None
     await led.claimed(c5, key="e" * 64, grant=gid, amount=40)
     assert await led.res_state(c5) == "RESERVED"
+
+
+async def test_concurrent_claims_for_one_base_have_exactly_one_winner(led):
+    base = "race-0"
+    changes = [
+        await led.approved(request_id=f"claim-race-{i}", base=base, target=f"claim-race-doc-{i}")
+        for i in range(2)
+    ]
+    conns = [await led.db.connect() for _ in changes]
+    try:
+        drivers = [L(led.db) for _ in conns]
+        for driver, conn in zip(drivers, conns, strict=True):
+            driver.conn = conn
+        gate = asyncio.Event()
+
+        async def race(driver, change_id):
+            await gate.wait()
+            return await driver.claimed(change_id, observe=False)
+
+        tasks = [asyncio.create_task(race(driver, change_id))
+                 for driver, change_id in zip(drivers, changes, strict=True)]
+        gate.set()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    finally:
+        for conn in conns:
+            await conn.close()
+
+    winners = [i for i, result in enumerate(results) if not isinstance(result, BaseException)]
+    losers = [result for result in results if isinstance(result, BaseException)]
+    assert len(winners) == 1, results
+    assert len(losers) == 1 and isinstance(losers[0], asyncpg.PostgresError), results
+    assert "LOCK_BUSY" in str(losers[0]), str(losers[0])
+    for i, change_id in enumerate(changes):
+        row = await led.rec(change_id)
+        if i == winners[0]:
+            assert row["authorization_state"] == "CLAIMED"
+            assert row["claim_generation"] == 1
+            assert await led.locks(change_id) == (1, 1, 1)
+            assert await led.res_state(change_id) == "RESERVED"
+        else:
+            assert (row["authorization_state"], row["claim_generation"]) == ("APPROVED", 0)
+            assert await led.locks(change_id) == (0, 0, 0)
+            assert await led.res_state(change_id) is None
+
+
+async def test_concurrent_same_target_claim_waits_for_commit_then_refuses_second_claim(led):
+    base, target = "race-1", "claim-race-same-target"
+    first = await led.approved(request_id="claim-same-target-first", base=base, target=target)
+    second = await led.approved(request_id="claim-same-target-second", base=base, target=target)
+    first_budget = await led.conn.fetchrow(
+        "SELECT grant_id,amount,counts_create_update,counts_post "
+        "FROM change_ledger.change_budget WHERE change_id=$1", first)
+    second_budget = await led.conn.fetchrow(
+        "SELECT grant_id,amount,counts_create_update,counts_post "
+        "FROM change_ledger.change_budget WHERE change_id=$1", second)
+    first_conn, second_conn = [await led.db.connect() for _ in range(2)]
+    tx = first_conn.transaction()
+    tx_open = False
+    contender = None
+    try:
+        await second_conn.fetchval(
+            "SELECT pg_catalog.set_config('application_name',$1,false)", "s13_02_same_target_claim_contender")
+        await tx.start()
+        tx_open = True
+        await first_conn.execute('SET LOCAL ROLE "clt_alice"')
+        await first_conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+        first_claim = await first_conn.fetchrow(
+            "SELECT * FROM change_ledger.claim($1,$2,$3,$4,$5,$6,$7,$8)",
+            T, C, first, None, first_budget["grant_id"], first_budget["amount"],
+            first_budget["counts_create_update"], first_budget["counts_post"])
+        assert first_claim is not None
+
+        contender = asyncio.create_task(led.call(
+            "clt_alice", "claim", second, None, second_budget["grant_id"], second_budget["amount"],
+            second_budget["counts_create_update"], second_budget["counts_post"], conn=second_conn))
+        waiting = 0
+        for _ in range(100):
+            waiting = await led.conn.fetchval(
+                "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE datname=current_database() "
+                "AND application_name=$1 AND wait_event_type='Lock'", "s13_02_same_target_claim_contender")
+            if waiting:
+                break
+            await asyncio.sleep(0.1)
+        assert waiting == 1, "same-target contender never blocked on the uncommitted target lock"
+        await tx.commit()
+        tx_open = False
+        with pytest.raises(asyncpg.PostgresError, match="LOCK_BUSY"):
+            await contender
+    finally:
+        if tx_open:
+            await tx.rollback()
+        if contender is not None and not contender.done():
+            await asyncio.gather(contender, return_exceptions=True)
+        await first_conn.close()
+        await second_conn.close()
+
+    assert await led.tl_owner(base, target) == first
+    first_row, second_row = await led.rec(first), await led.rec(second)
+    assert (first_row["authorization_state"], first_row["claim_generation"]) == ("CLAIMED", 1)
+    assert await led.locks(first) == (1, 1, 1) and await led.res_state(first) == "RESERVED"
+    assert (second_row["authorization_state"], second_row["claim_generation"]) == ("APPROVED", 0)
+    assert await led.locks(second) == (0, 0, 0) and await led.res_state(second) is None
+
+
+async def test_claim_rolls_back_state_reservation_and_all_locks_on_transaction_failure(led):
+    c = led.conn
+    change_id = await led.approved(request_id="claim-rollback")
+    budget = await c.fetchrow(
+        "SELECT grant_id,amount,counts_create_update,counts_post "
+        "FROM change_ledger.change_budget WHERE change_id=$1", change_id)
+    event_count = await c.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C)
+    change_event_count = await c.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE change_id=$1", change_id)
+
+    with pytest.raises(asyncpg.PostgresError, match="division by zero"):
+        async with c.transaction():
+            await c.execute('SET LOCAL ROLE "clt_alice"')
+            await c.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
+            claim = await c.fetchrow(
+                "SELECT * FROM change_ledger.claim($1,$2,$3,$4,$5,$6,$7,$8)",
+                T, C, change_id, None, budget["grant_id"], budget["amount"],
+                budget["counts_create_update"], budget["counts_post"])
+            assert claim is not None
+            await c.fetchval("SELECT 1 / 0")
+
+    row = await led.rec(change_id)
+    assert (row["authorization_state"], row["claim_generation"], row["reservation_state"]) == \
+        ("APPROVED", 0, "NONE")
+    assert await led.locks(change_id) == (0, 0, 0)
+    assert await led.res_state(change_id) is None
+    assert await c.fetchval("SELECT count(*) FROM change_ledger.claim_tokens WHERE change_id=$1", change_id) == 0
+    assert await c.fetchval("SELECT count(*) FROM change_ledger.events WHERE change_id=$1", change_id) == \
+        change_event_count
+    assert await c.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C) == event_count
+    assert await led.call("clt_aud", "verify_chain") == {"ok": True, "count": event_count, "bad_seq": None}
 
 
 async def test_claim_guards_owner_approval_hold_parent_and_release_then_reclaim(led):
