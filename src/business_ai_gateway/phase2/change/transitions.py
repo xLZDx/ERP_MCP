@@ -401,7 +401,11 @@ class CancelPermitEvidence(Evidence):
 
 @dataclass(frozen=True, slots=True)
 class CompletionEvidence(Evidence):
-    """The writer's (or, for a hard-deadline expiry, the worker's) record; the transition is chosen by its class."""
+    """Offline summary of validated writer evidence; the transition is chosen by its class.
+
+    The adapter must validate the signed receipt/proof envelopes and their immutable bindings before
+    setting the evidence-summary flags. These booleans are synthetic model inputs, not signatures.
+    """
 
     caller: CallerClass | None = None
     generation: int = -1
@@ -410,6 +414,10 @@ class CompletionEvidence(Evidence):
     result_returned: bool = False
     stage: FailureStage | None = None
     no_effect_proof: bool = False
+    receipt_bound: bool = False
+    result_evidence_bound: bool = False
+    evidence_persisted: bool = False
+    post_cas_not_invoked_proof: bool = False
     refusal_code: ErrorCode | None = None
     checkpoint_ok: bool = False
     attempts: int = 0
@@ -429,6 +437,10 @@ class ResolveEvidence(Evidence):
     effect_present: bool = False
     effect_identity_match: bool = False
     exclusivity_proven: bool = False
+    entered_conditional_conflict: bool | None = None
+    dispatch_attempt_bound: bool = False
+    completion_proof_bound: bool = False
+    observation_evidence_bound: bool = False
     checkpoint_ok: bool = False
     attempts: int = 0
     first_attempt_at: datetime | None = None
@@ -440,6 +452,7 @@ class VerifyEvidence(Evidence):
     signed_kinds: frozenset[EvidenceKind] = frozenset()
     bound: bool = False
     matches: bool = False
+    oracle_and_operation_match: bool = False
     effect_known: EffectKnown | None = None
 
 
@@ -465,17 +478,29 @@ class OperatorResolveEvidence(Evidence):
     outcome: ResolveOutcome | None = None
     effect_identity_match: bool = False
     exclusivity_proven: bool = False
+    entered_conditional_conflict: bool | None = None
+    call_ownership_hold_open: bool = False
+    dispatch_attempt_bound: bool = False
+    completion_proof_bound: bool = False
+    observation_evidence_bound: bool = False
+    conditional_conflict_receipt_bound: bool = False
+    conditional_conflict_completion_bound: bool = False
+    conditional_conflict_no_effect_bound: bool = False
+    conditional_conflict_v3_causal_chain_bound: bool = False
     checkpoint_ok: bool = False
 
 
 def classify_completion(evidence: object) -> Event:
-    """T7, T8 or T9 chosen by the evidence class, never by a caller flag; anything unsigned or unclear is T9."""
+    """Choose T7/T8/T9 from the validated evidence class; unclear or weak evidence is always T9."""
     if type(evidence) is not CompletionEvidence or evidence.signed is not True or evidence.call_id_matches is not True:
         return Event.CALL_UNKNOWN
-    if evidence.result_returned is True and evidence.stage is None:
+    if (evidence.result_returned is True and evidence.stage is None and evidence.receipt_bound is True
+            and evidence.result_evidence_bound is True and evidence.evidence_persisted is True):
         return Event.CALL_SUCCESS
     if (evidence.result_returned is not True and evidence.stage is FailureStage.PRE_WRITE
-            and evidence.no_effect_proof is True and evidence.refusal_code in _WRITER_REFUSAL_CODES):
+            and evidence.no_effect_proof is True and evidence.receipt_bound is True
+            and evidence.post_cas_not_invoked_proof is True and evidence.evidence_persisted is True
+            and evidence.refusal_code in _WRITER_REFUSAL_CODES):
         return Event.REFUSED_BEFORE_WRITE
     return Event.CALL_UNKNOWN  # an error after the write call started is T9, never T8
 
@@ -898,6 +923,21 @@ def g_completion_signed(record: ChangeRecord | None, ev: CompletionEvidence) -> 
     return _ok(ev.signed is True and ev.call_id_matches is True, ErrorCode.EVIDENCE_UNSIGNED)
 
 
+@_guard
+def g_completion_artifacts_bound(record: ChangeRecord | None,
+                                 ev: CompletionEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(ev.receipt_bound is True and ev.result_evidence_bound is True
+               and ev.evidence_persisted is True, ErrorCode.EVIDENCE_UNSIGNED)
+
+
+@_guard
+def g_refusal_artifacts_bound(record: ChangeRecord | None,
+                              ev: CompletionEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(ev.receipt_bound is True and ev.no_effect_proof is True
+               and ev.post_cas_not_invoked_proof is True and ev.evidence_persisted is True,
+               ErrorCode.ROLLBACK_REFUSED)
+
+
 def _class_guard(expected: Event) -> _Guard:
     def guard(record: ChangeRecord | None, ev: Evidence) -> ErrorCode | None:
         return _ok(classify_completion(ev) is expected, ErrorCode.SCHEMA_INVALID)
@@ -934,6 +974,18 @@ def g_observation_complete(record: ChangeRecord | None, ev: Evidence) -> ErrorCo
     healthy = (getattr(ev, "reader_healthy", False) is True and getattr(ev, "settle_elapsed", False) is True
                and getattr(ev, "observation_complete", False) is True)
     return _ok(healthy, ErrorCode.COMPLETION_PROOF_MISSING)
+
+
+@_guard
+def g_resolve_evidence_bound(record: ChangeRecord | None, ev: ResolveEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(ev.dispatch_attempt_bound is True and ev.completion_proof_bound is True
+               and ev.observation_evidence_bound is True, ErrorCode.EVIDENCE_UNSIGNED)
+
+
+@_guard
+def g_not_entered_conditional_conflict(record: ChangeRecord | None,
+                                       ev: ResolveEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(ev.entered_conditional_conflict is False, ErrorCode.COMPLETION_PROOF_MISSING)
 
 
 @_guard
@@ -975,7 +1027,7 @@ def g_evidence_bound(record: ChangeRecord | None, ev: VerifyEvidence) -> ErrorCo
 
 @_guard
 def g_verify_matches(record: ChangeRecord | None, ev: VerifyEvidence) -> ErrorCode | None:  # type: ignore[override]
-    return _ok(ev.matches, ErrorCode.VERIFY_FAILED)
+    return _ok(ev.matches is True and ev.oracle_and_operation_match is True, ErrorCode.VERIFY_FAILED)
 
 
 @_guard
@@ -1001,9 +1053,37 @@ def g_two_person(record: ChangeRecord | None, ev: OperatorResolveEvidence) -> Er
         return ErrorCode.NOT_ENTITLED  # without a registered witness T16 stays unavailable (D10b)
     approver = record.approver_person_id  # type: ignore[union-attr]
     if (op == wit or record.requester_person_id in (op, wit)  # type: ignore[union-attr]
-            or (approver is not None and op == approver and wit == approver)):
+            or (approver is not None and wit == approver)):
         return ErrorCode.APPROVER_NOT_INDEPENDENT
     return None
+
+
+@_guard
+def g_operator_resolution_evidence_bound(record: ChangeRecord | None,
+                                          ev: OperatorResolveEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(ev.dispatch_attempt_bound is True and ev.completion_proof_bound is True
+               and ev.observation_evidence_bound is True, ErrorCode.COMPLETION_PROOF_MISSING)
+
+
+@_guard
+def g_call_ownership_hold_open(record: ChangeRecord | None,
+                                ev: OperatorResolveEvidence) -> ErrorCode | None:  # type: ignore[override]
+    return _ok(record.call_ownership is CallOwnership.POSSIBLY_EXECUTING
+               and ev.call_ownership_hold_open is True, ErrorCode.BASE_HOLD)  # type: ignore[union-attr]
+
+
+@_guard
+def g_operator_conditional_conflict_chain_bound(record: ChangeRecord | None,
+                                                 ev: OperatorResolveEvidence) -> ErrorCode | None:  # type: ignore[override]
+    if type(ev.entered_conditional_conflict) is not bool:
+        return ErrorCode.COMPLETION_PROOF_MISSING
+    if ev.entered_conditional_conflict is False:
+        return None
+    return _ok(ev.conditional_conflict_receipt_bound is True
+               and ev.conditional_conflict_completion_bound is True
+               and ev.conditional_conflict_no_effect_bound is True
+               and ev.conditional_conflict_v3_causal_chain_bound is True,
+               ErrorCode.COMPLETION_PROOF_MISSING)
 
 
 @_guard
@@ -1192,12 +1272,12 @@ TRANSITION_TABLE: Final = (
                   _req(authorization=(_AU.CLAIMED,), execution=(_EX.APPLYING,), dispatch=(_DI.DISPATCHED,)),
                   "execution=APPLIED, call_ownership=PROVEN_FINISHED, attribution=PROVEN",
                   ("caller_is_writer", "generation_current", "completion_signed", "completion_is_success",
-                   "checkpoint_ok"), ErrorCode.PERMIT_MISSING),
+                    "completion_artifacts_bound", "checkpoint_ok"), ErrorCode.PERMIT_MISSING),
     TransitionRow("T8", "T8", Event.REFUSED_BEFORE_WRITE,
                   _req(authorization=(_AU.CLAIMED,), execution=(_EX.APPLYING,), dispatch=(_DI.DISPATCHED,)),
                   "execution=FAILED_APPLY or ROLLBACK_REFUSED, or APPROVED again for a transient LOCK_BUSY",
                   ("caller_is_writer", "generation_current", "completion_signed", "completion_is_refusal",
-                   "checkpoint_ok"), ErrorCode.PERMIT_MISSING),
+                    "refusal_artifacts_bound", "checkpoint_ok"), ErrorCode.PERMIT_MISSING),
     TransitionRow("T9", "T9", Event.CALL_UNKNOWN,
                   _req(authorization=(_AU.CLAIMED,), execution=(_EX.APPLYING,), dispatch=(_DI.DISPATCHED,)),
                   "execution=APPLY_UNKNOWN, call_ownership=POSSIBLY_EXECUTING",
@@ -1206,10 +1286,12 @@ TRANSITION_TABLE: Final = (
     TransitionRow("T10", "T10", Event.RESOLVE_FOUND, _req(execution=(_EX.APPLY_UNKNOWN,)),
                   "execution=APPLIED, call_ownership=PROVEN_FINISHED, attribution=PROVEN",
                   ("caller_is_worker", "resolve_signed", "independent_proof", "observation_complete",
+                   "resolve_evidence_bound", "not_entered_conditional_conflict",
                    "effect_present", "attribution_proven")),
     TransitionRow("T11", "T11", Event.RESOLVE_ABSENT, _req(execution=(_EX.APPLY_UNKNOWN,)),
                   "execution=FAILED_APPLY, call_ownership=PROVEN_FINISHED",
                   ("caller_is_worker", "resolve_signed", "independent_proof", "observation_complete",
+                   "resolve_evidence_bound", "not_entered_conditional_conflict",
                    "effect_absent", "checkpoint_ok")),
     TransitionRow("T12", "T12", Event.AGE_LIMIT, _req(execution=(_EX.APPLY_UNKNOWN,)), "execution=TRIAGE_REQUIRED",
                   ("caller_is_worker", "triage_cause")),
@@ -1224,7 +1306,9 @@ TRANSITION_TABLE: Final = (
     TransitionRow("T16", "T16", Event.OPERATOR_RESOLVE, _req(execution=(_EX.TRIAGE_REQUIRED,)),
                   "APPLIED (attributed or UNPROVEN_OPERATOR_ATTESTED) or FAILED_APPLY",
                   ("two_person", "outcome_consistent", "independent_proof", "operator_signed", "observation_complete",
-                   "operator_attribution", "checkpoint_ok")),
+                    "call_ownership_hold_open", "operator_resolution_evidence_bound",
+                    "operator_conditional_conflict_chain_bound",
+                    "operator_attribution", "checkpoint_ok")),
     TransitionRow("T17_RETRY", "T17", Event.RETRY_VERIFY,
                   _req(verification=(_VE.FAILED_VERIFY,), closed=(False,)),
                   "verification=VERIFIED, or still FAILED_VERIFY with verify_attempts+1",

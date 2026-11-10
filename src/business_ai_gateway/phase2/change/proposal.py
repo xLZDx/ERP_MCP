@@ -1,4 +1,4 @@
-"""Phase 2 sprint S12: the typed ``ChangeProposal`` of section 3 (purchase receipt only), canonical JSON and digests.
+"""Phase 2 sprint S12: the frozen v2.0 typed proposal contract, canonical JSON and digests.
 
 Offline and pure (stdlib only). ``parse_proposal`` is the only way caller input becomes a proposal: unknown keys
 are refused (I2), numeric fields are exact decimal strings (never floats), identity fields are never accepted from
@@ -393,6 +393,7 @@ class ProposalContext:
     auth_epoch_at_proposal: int
     epoch_dependencies: tuple[tuple[str, int], ...]
     preview_digest: str
+    lane: str
     business_state_digest: str | None = None  # POST and UNPOST: from the authenticated target read at propose
     qualified_currencies: frozenset[str] = frozenset()  # measured-shape qualification; empty refuses every draft
     in_scope_refs: frozenset[str] | None = None  # None: ref resolution is not part of this offline check
@@ -541,13 +542,21 @@ def parse_proposal(raw: object, ctx: object) -> ChangeProposal | Refusal:
 
 
 def _parse(raw: object, ctx: object) -> ChangeProposal | Refusal:
-    if type(ctx) is not ProposalContext or not _exact_keys(raw, _ENVELOPE_KEYS, frozenset({"kind", "request_id"})):
+    if type(ctx) is not ProposalContext:
+        return _BAD
+    lane = getattr(ctx, "lane", None)
+    if (type(lane) is not str or lane != "TEST"
+            or not _exact_keys(raw, _ENVELOPE_KEYS, frozenset({"kind", "request_id"}))):
         return _BAD
     kind_text = raw["kind"]  # type: ignore[index]
     if type(kind_text) is not str or kind_text not in ChangeKind.__members__:
         return _BAD
     kind = ChangeKind(kind_text)
-    draft = kind in (ChangeKind.CREATE_DRAFT, ChangeKind.UPDATE_DRAFT)
+    # UPDATE_DRAFT remains in the shared enum for historical/internal records, but the
+    # frozen v2.0 proposal surface admits only create, post, and unpost.
+    if kind not in (ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST):
+        return _BAD
+    draft = kind is ChangeKind.CREATE_DRAFT
     target_version = raw.get("target_version")  # type: ignore[attr-defined]
     payload_raw = raw.get("payload")  # type: ignore[attr-defined]
     payload: DraftPayload | None = None

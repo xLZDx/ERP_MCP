@@ -338,16 +338,11 @@ def test_only_the_measured_shape_is_admitted():
     refused(ch.parse_proposal(raw_create(), h.ctx(qualified_currencies=frozenset())), "SHAPE_NOT_QUALIFIED")
 
 
-def test_update_draft_is_a_full_replacement_with_matching_expected_version():
-    payload_over = {"expected_target_version": "v1"}
-    raw = raw_create(kind="UPDATE_DRAFT", target_ref="doc1", target_version="v1", payload_over=payload_over)
-    p = h.proposal(raw)
-    assert p.kind is ChangeKind.UPDATE_DRAFT and p.payload.expected_target_version == "v1"
-    bad = raw_create(kind="UPDATE_DRAFT", target_ref="doc1", target_version="v2", payload_over=payload_over)
-    refused(ch.parse_proposal(bad, h.ctx()), "SCHEMA_INVALID")
-    no_ver = raw_create(kind="UPDATE_DRAFT", target_ref="doc1", target_version="v1")
-    refused(ch.parse_proposal(no_ver, h.ctx()), "SCHEMA_INVALID")
-    refused(ch.parse_proposal(raw_create(payload_over=payload_over), h.ctx()), "SCHEMA_INVALID")  # CREATE has none
+def test_frozen_writer_scope_refuses_update_draft_at_both_boundaries():
+    raw = raw_create(kind="UPDATE_DRAFT", target_ref="doc1", target_version="v1",
+                     payload_over={"expected_target_version": "v1"})
+    refused(ch.parse_proposal(raw, h.ctx()), "SCHEMA_INVALID")
+    refused(proposal_mod.parse_writer_payload(raw["payload"], ChangeKind.UPDATE_DRAFT, SCOPE), "SCHEMA_INVALID")
 
 
 def test_create_cannot_carry_a_target_and_post_needs_one():
@@ -1453,7 +1448,11 @@ def test_t16_same_person_twice_and_requester_as_operator_are_refused_and_the_app
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=REQUESTER), "APPROVER_NOT_INDEPENDENT", "T16")
     # the operator who approved the change may co-sign only with an independent witness (S12-M05)
     ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER))
-    ok(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER))
+    ok(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id="p-wit"))
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=APPROVER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
+    refused(step(triage(), Event.OPERATOR_RESOLVE, witness_person_id=REQUESTER),
+            "APPROVER_NOT_INDEPENDENT", "T16")
     refused(step(triage(), Event.OPERATOR_RESOLVE, operator_person_id=APPROVER, witness_person_id=APPROVER),
             "APPROVER_NOT_INDEPENDENT", "T16")
 

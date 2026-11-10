@@ -113,7 +113,7 @@ class SyntheticGenerator:
         return ProposalContext(
             change_id=change_id, requester_principal="SIM-REQUESTER", requester_person_id="SIM-PERSON-001", scope=scope,
             created_at=_EPOCH_START, expires_at=_EPOCH_START + timedelta(hours=1), auth_epoch_at_proposal=0,
-            epoch_dependencies=(), preview_digest=preview_digest, business_state_digest=business_state_digest,
+            epoch_dependencies=(), preview_digest=preview_digest, lane="TEST", business_state_digest=business_state_digest,
             qualified_currencies=frozenset(self.universe.currencies), in_scope_refs=self.universe.all_refs() | frozenset(target_refs))
 
     def envelope(self, kind: ChangeKind, payload: DraftPayload | None = None, *, target_ref: str | None = None,

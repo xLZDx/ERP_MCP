@@ -55,7 +55,7 @@ def raw_create(**over) -> dict:
 def ctx(**over) -> ProposalContext:
     base = dict(change_id="c1", requester_principal="sub-req", requester_person_id=REQUESTER, scope=SCOPE,
                 created_at=T0, expires_at=APPROVAL_EXPIRES, auth_epoch_at_proposal=3,
-                epoch_dependencies=(("approver", 2), ("requester", 1)), preview_digest="a" * 64,
+                epoch_dependencies=(("approver", 2), ("requester", 1)), preview_digest="a" * 64, lane="TEST",
                 business_state_digest="b" * 64, qualified_currencies=frozenset({"RUB"}))
     base.update(over)
     return ProposalContext(**base)
@@ -210,25 +210,31 @@ def good(event: Event, record: ChangeRecord | None = None, now: datetime = T0, *
             generation=gen, cancel_cas_won=True, permit_invalidated=True, **{**common, "kill": kill(KillMode.STOP_ADMIT)}),
         Event.CALL_SUCCESS: lambda: CompletionEvidence(
             caller=CallerClass.WRITER, generation=gen, signed=True, call_id_matches=True, result_returned=True,
+            receipt_bound=True, result_evidence_bound=True, evidence_persisted=True,
             checkpoint_ok=True, **common),
         Event.REFUSED_BEFORE_WRITE: lambda: CompletionEvidence(
             caller=CallerClass.WRITER, generation=gen, signed=True, call_id_matches=True, result_returned=False,
             stage=FailureStage.PRE_WRITE, no_effect_proof=True, refusal_code=ErrorCode.STALE_VERSION,
+            receipt_bound=True, evidence_persisted=True, post_cas_not_invoked_proof=True,
             checkpoint_ok=True, **common),
         Event.CALL_UNKNOWN: lambda: CompletionEvidence(
             caller=CallerClass.WRITER, generation=gen, signed=False, **common),
         Event.RESOLVE_FOUND: lambda: ResolveEvidence(
             caller=CallerClass.RECOVERY_WORKER, signed=True, proof_class=ProofClass.WRITER_COMPLETION,
             reader_healthy=True, settle_elapsed=True, observation_complete=True, effect_present=True,
-            effect_identity_match=True, exclusivity_proven=True, checkpoint_ok=True, **common),
+            effect_identity_match=True, exclusivity_proven=True, dispatch_attempt_bound=True,
+            completion_proof_bound=True, observation_evidence_bound=True, entered_conditional_conflict=False,
+            checkpoint_ok=True, **common),
         Event.RESOLVE_ABSENT: lambda: ResolveEvidence(
             caller=CallerClass.RECOVERY_WORKER, signed=True, proof_class=ProofClass.SESSION_END_OBSERVED,
             reader_healthy=True, settle_elapsed=True, observation_complete=True, effect_present=False,
-            checkpoint_ok=True, **common),
+            dispatch_attempt_bound=True, completion_proof_bound=True, observation_evidence_bound=True,
+            entered_conditional_conflict=False, checkpoint_ok=True, **common),
         Event.AGE_LIMIT: lambda: ResolveEvidence(
             caller=CallerClass.RECOVERY_WORKER, attempts=5, first_attempt_at=now - timedelta(minutes=16), **common),
         Event.VERIFY_OK: lambda: VerifyEvidence(
-            caller=CallerClass.RECOVERY_WORKER, signed_kinds=VERIFY_KINDS, bound=True, matches=True, **common),
+            caller=CallerClass.RECOVERY_WORKER, signed_kinds=VERIFY_KINDS, bound=True, matches=True,
+            oracle_and_operation_match=True, **common),
         Event.VERIFY_FAILED: lambda: VerifyEvidence(
             caller=CallerClass.RECOVERY_WORKER, signed_kinds=VERIFY_KINDS, bound=True, matches=False,
             effect_known=EffectKnown.YES, **common),
@@ -237,9 +243,14 @@ def good(event: Event, record: ChangeRecord | None = None, now: datetime = T0, *
             operator_person_id=OPERATOR, operator_class=CallerClass.OPERATOR, witness_person_id=WITNESS,
             witness_class=CallerClass.RECOVERY_WITNESS, signed=True, proof_class=ProofClass.WRITER_COMPLETION,
             reader_healthy=True, settle_elapsed=True, observation_complete=True, outcome=ResolveOutcome.ABSENT,
+            call_ownership_hold_open=True, dispatch_attempt_bound=True, completion_proof_bound=True,
+            observation_evidence_bound=True, entered_conditional_conflict=False,
+            conditional_conflict_receipt_bound=True, conditional_conflict_completion_bound=True,
+            conditional_conflict_no_effect_bound=True, conditional_conflict_v3_causal_chain_bound=True,
             checkpoint_ok=True, **common),
         Event.RETRY_VERIFY: lambda: VerifyEvidence(
-            caller=CallerClass.RECOVERY_WORKER, signed_kinds=VERIFY_KINDS, bound=True, matches=True, **common),
+            caller=CallerClass.RECOVERY_WORKER, signed_kinds=VERIFY_KINDS, bound=True, matches=True,
+            oracle_and_operation_match=True, **common),
         Event.CLOSE_FAILED_VERIFY: lambda: OperatorResolveEvidence(
             operator_person_id=OPERATOR, operator_class=CallerClass.OPERATOR, witness_person_id=WITNESS,
             witness_class=CallerClass.RECOVERY_WITNESS, signed=True, reader_healthy=True, settle_elapsed=True,
