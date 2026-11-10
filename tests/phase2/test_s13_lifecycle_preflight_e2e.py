@@ -13,6 +13,7 @@ from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointKeyAuthorization,
     CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence,
     CheckpointRecord,
     FakeSigner,
     FakeVerifier,
@@ -79,6 +80,33 @@ class ActiveKeyAuthorityPortDouble:
             basis=CheckpointKeyAuthorizationBasis.ACTIVE,
             receipt_id=None,
             accepted_at=None,
+        )
+
+
+class LatestnessAuthorityPortDouble:
+    """Synthetic contract double; this is not proof of a real provider's latest history."""
+
+    is_test_double = True
+
+    def __init__(self, response=None):
+        self.response = response
+        self.calls = []
+
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
+        self.calls.append((scope, record))
+        if self.response is not None:
+            return self.response
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=checkpoint_identity(record),
+            provider_id=record.sink_id,
+            provider_revision=7,
+            authority_id="synthetic-provider-authority",
+            authority_revision=2,
+            authority_event_id="evt-s13-provider-latest-1",
+            policy_version="test-provider-latest-v1",
+            proof_digest="b" * 64,
         )
 
 
@@ -179,8 +207,10 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         sink.write_calls = 0
         ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
         key_authority = ActiveKeyAuthorityPortDouble()
+        latestness_authority = LatestnessAuthorityPortDouble()
         coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier(),
-                                            key_authority=key_authority)
+                                            key_authority=key_authority,
+                                            latestness_authority=latestness_authority)
 
         result = await coordinator.preflight(SCOPE)
 
@@ -193,14 +223,42 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert len(key_authority.calls) == 1
         assert key_authority.calls[0][0] == SCOPE
         assert key_authority.calls[0][1].seq == 12
+        assert len(latestness_authority.calls) == 1
+        assert latestness_authority.calls[0][0] == SCOPE
+        assert latestness_authority.calls[0][1].seq == 12
         assert sink.write_calls == 0
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.
         assert list(inspect.signature(LifecycleCoordinator).parameters) == [
-            "ledger", "sink", "verifier", "key_authority",
+            "ledger", "sink", "verifier", "key_authority", "latestness_authority",
             "dependency_timeout_seconds"]
         assert not hasattr(coordinator, "recover")
         assert not hasattr(coordinator, "write")
+
+    _run(scenario())
+
+
+def test_s13_preflight_missing_latestness_authority_stays_not_ready_before_key_authority():
+    async def scenario():
+        signer = FakeSigner("s13-test-key")
+        sink = RecordingCheckpointSink()
+        await sink.write(_record(SCOPE, 12, signer))
+        sink.write_calls = 0
+        ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
+        key_authority = ActiveKeyAuthorityPortDouble()
+
+        result = await LifecycleCoordinator(
+            ledger, sink, FakeVerifier(), key_authority=key_authority,
+        ).preflight(SCOPE)
+
+        assert result.status is LifecycleStatus.NOT_READY
+        assert result.reason is LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE
+        assert result.checkpoint_seq == 12
+        assert sink.latest_calls == [SCOPE]
+        assert key_authority.calls == []
+        assert sink.write_calls == 0
+        assert sink.read_back_calls == 0
+        assert ledger.calls == [SCOPE]
 
     _run(scenario())
 

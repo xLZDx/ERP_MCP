@@ -22,6 +22,7 @@ from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointKeyAuthorization,
     CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence,
     CheckpointRecord,
     Ed25519SignatureVerifier,
     FakeSigner,
@@ -34,6 +35,7 @@ from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleReason,
     LifecycleStatus,
 )
+from business_ai_gateway.phase2.change_ledger.lifecycle import LifecycleCoordinator as _BaseLifecycleCoordinator
 
 
 SCOPE = Scope("tenant-a", "company-a")
@@ -187,6 +189,61 @@ class SyntheticKeyAuthorizationAuthority:
         if self.error is not None:
             raise self.error
         return self.response
+
+
+_DEFAULT_LATESTNESS_RESPONSE = object()
+
+
+class SyntheticLatestnessAuthority:
+    """TEST ONLY: synthetic provider receipt bound to the exact returned record."""
+
+    is_test_double = True
+
+    def __init__(self, response=_DEFAULT_LATESTNESS_RESPONSE, error=None):
+        self.response = response
+        self.error = error
+        self.calls = []
+
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
+        self.calls.append((scope, record))
+        if self.error is not None:
+            raise self.error
+        if self.response is not _DEFAULT_LATESTNESS_RESPONSE:
+            return self.response
+        proof = hashlib.sha256(
+            b"S13 TEST ONLY latestness receipt|" + checkpoint_identity(record).encode(),
+        ).hexdigest()
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=checkpoint_identity(record),
+            provider_id=record.sink_id,
+            provider_revision=7,
+            authority_id="synthetic-latestness-authority",
+            authority_revision=3,
+            authority_event_id="evt-s13-latestness-1",
+            policy_version="test-latestness-v1",
+            proof_digest=proof,
+        )
+
+
+class SlowLatestnessAuthority(SyntheticLatestnessAuthority):
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord):
+        self.calls.append((scope, record))
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
+
+    cancelled = False
+
+
+def make_coordinator(*args, latestness_authority=_DEFAULT_LATESTNESS_RESPONSE, **kwargs):
+    """Supply an explicit test authority to legacy contract scenarios by default."""
+    if latestness_authority is _DEFAULT_LATESTNESS_RESPONSE:
+        latestness_authority = SyntheticLatestnessAuthority()
+    return LifecycleCoordinator(*args, latestness_authority=latestness_authority, **kwargs)
 
 
 class Ledger:
@@ -349,7 +406,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             with self.subTest(chain_response=chain_response):
                 calls = []
                 sink = Sink(calls, signed_record())
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     Ledger(response=chain_response, calls=calls), sink, FakeVerifier()
                 ).preflight(SCOPE))
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
@@ -358,7 +415,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
     def test_dict_subclass_with_raising_get_maps_to_chain_invalid(self):
         calls = []
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(response=ExplodingGetDict(ok=True, count=9), calls=calls),
             Sink(calls, signed_record()), FakeVerifier(),
         ).preflight(SCOPE))
@@ -368,7 +425,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
     def test_chain_exception_maps_to_fixed_reason_without_sink_call(self):
         calls = []
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(error=RuntimeError("secret chain detail"), calls=calls),
             Sink(calls, signed_record()), FakeVerifier(),
         ).preflight(SCOPE))
@@ -378,7 +435,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
     def test_chain_timeout_maps_to_chain_unavailable_without_provider_call(self):
         calls = []
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             SlowLedger(calls=calls), Sink(calls, signed_record()), FakeVerifier(),
             dependency_timeout_seconds=0.001,
         ).preflight(SCOPE))
@@ -393,7 +450,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         ):
             with self.subTest(expected=expected):
                 calls = []
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     Ledger(calls=calls), Sink(calls, record=record, error=error), FakeVerifier(),
                 ).preflight(SCOPE))
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
@@ -403,7 +460,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
     def test_checkpoint_latest_timeout_maps_to_checkpoint_unavailable(self):
         calls = []
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(calls=calls), SlowSink(calls), FakeVerifier(),
             dependency_timeout_seconds=0.001,
         ).preflight(SCOPE))
@@ -416,12 +473,12 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         for timeout in (0, -0.1, float("inf"), float("nan"), True, "1"):
             with self.subTest(timeout=timeout):
                 with self.assertRaises(ValueError):
-                    LifecycleCoordinator(Ledger(), Sink([]), FakeVerifier(),
+                    make_coordinator(Ledger(), Sink([]), FakeVerifier(),
                                          dependency_timeout_seconds=timeout)
 
     def test_wrong_scope_record_is_rejected_before_signature_check(self):
         calls = []
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(calls=calls), Sink(calls, signed_record(Scope("tenant-x", "company-a"))),
             ExplodingVerifier(),
         ).preflight(SCOPE))
@@ -436,12 +493,94 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             (record, ExplodingVerifier()),
         ):
             with self.subTest(verifier=type(verifier).__name__):
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     Ledger(), Sink([], candidate), verifier,
                 ).preflight(SCOPE))
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
                 self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_INVALID)
                 self.assertIsNone(result.checkpoint_seq)
+
+    def test_missing_latestness_authority_fails_closed_before_key_authorization(self):
+        record = signed_record(seq=7)
+        calls = []
+        key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+        result = asyncio.run(_BaseLifecycleCoordinator(
+            Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+            key_authority=key_authority,
+        ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual(key_authority.calls, [])
+
+    def test_latestness_authority_exception_and_timeout_fail_closed(self):
+        record = signed_record(seq=7)
+        for authority, timeout, expected_cancelled in (
+            (SyntheticLatestnessAuthority(error=RuntimeError("private provider detail")), 0.1, None),
+            (SlowLatestnessAuthority(), 0.001, True),
+        ):
+            with self.subTest(authority=type(authority).__name__):
+                calls = []
+                result = asyncio.run(_BaseLifecycleCoordinator(
+                    Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+                    key_authority=SyntheticKeyAuthorizationAuthority(SCOPE, record),
+                    latestness_authority=authority,
+                    dependency_timeout_seconds=timeout,
+                ).preflight(SCOPE))
+
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                if expected_cancelled:
+                    self.assertTrue(authority.cancelled)
+
+    def test_latestness_evidence_must_bind_scope_record_provider_and_revisions(self):
+        record = signed_record(seq=7)
+        valid = asyncio.run(SyntheticLatestnessAuthority().attest_latest(SCOPE, record))
+        malformed = (
+            replace(valid, tenant_id="other-tenant"),
+            replace(valid, company_id="other-company"),
+            replace(valid, checkpoint_digest="not-a-digest"),
+            replace(valid, checkpoint_digest="0" * 64),
+            replace(valid, provider_id="other-provider"),
+            replace(valid, provider_revision=0),
+            replace(valid, provider_revision=True),
+            replace(valid, authority_id=""),
+            replace(valid, authority_revision=0),
+            replace(valid, authority_event_id=""),
+            replace(valid, policy_version=""),
+            replace(valid, proof_digest="not-a-digest"),
+            object(),
+        )
+        for evidence in malformed:
+            with self.subTest(evidence_type=type(evidence).__name__,
+                              provider_revision=getattr(evidence, "provider_revision", None)):
+                calls = []
+                authority = SyntheticLatestnessAuthority(response=evidence)
+                key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+                result = asyncio.run(_BaseLifecycleCoordinator(
+                    Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+                    key_authority=key_authority,
+                    latestness_authority=authority,
+                ).preflight(SCOPE))
+
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_INVALID)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual(key_authority.calls, [])
+
+    def test_latestness_authority_without_receipt_is_unavailable(self):
+        record = signed_record(seq=7)
+        calls = []
+        result = asyncio.run(_BaseLifecycleCoordinator(
+            Ledger(calls=calls), EffectCountingSink(calls, record), FakeVerifier(),
+            latestness_authority=SyntheticLatestnessAuthority(response=None),
+        ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
 
     def test_ed25519_test_key_rotation_checks_signature_and_key_id_separately(self):
         previous_key = _synthetic_test_key("previous")
@@ -480,7 +619,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             with self.subTest(key_id=repr(candidate.key_id)):
                 calls = []
                 sink = EffectCountingSink(calls, candidate)
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     Ledger(calls=calls), sink, verifier,
                 ).preflight(SCOPE))
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
@@ -503,7 +642,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         })
         calls = []
         sink = EffectCountingSink(calls, record)
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(calls=calls), sink, verifier,
             key_authority=SyntheticKeyAuthorizationAuthority(
                 SCOPE, record, verifier=verifier,
@@ -526,7 +665,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         sink = EffectCountingSink(calls, record)
         authority = SyntheticKeyAuthorizationAuthority(SCOPE, record, response=None)
 
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             ledger, sink, FakeVerifier(), key_authority=authority,
         ).preflight(SCOPE))
 
@@ -545,7 +684,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 ledger = TraceLedger(calls=calls)
                 sink = EffectCountingSink(calls, record)
                 authority = SyntheticKeyAuthorizationAuthority(SCOPE, record, error=error)
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     ledger, sink, FakeVerifier(), key_authority=authority,
                 ).preflight(SCOPE))
 
@@ -576,7 +715,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 authority = SyntheticKeyAuthorizationAuthority(
                     SCOPE, record, response=evidence,
                 )
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     ledger, sink, FakeVerifier(), key_authority=authority,
                 ).preflight(SCOPE))
 
@@ -601,7 +740,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             with self.subTest(evidence=evidence):
                 ledger = TraceLedger()
                 sink = EffectCountingSink([], record)
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     ledger, sink, FakeVerifier(),
                     key_authority=SyntheticKeyAuthorizationAuthority(
                         SCOPE, record, response=evidence,
@@ -615,7 +754,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
         ledger = TraceLedger()
         sink = EffectCountingSink([], record)
-        accepted = asyncio.run(LifecycleCoordinator(
+        accepted = asyncio.run(make_coordinator(
             ledger, sink, FakeVerifier(),
             key_authority=SyntheticKeyAuthorizationAuthority(
                 SCOPE, record, response=valid_receipt,
@@ -635,7 +774,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 calls = []
                 ledger.calls = calls
                 sink = EffectCountingSink(calls, record)
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     ledger, sink, FakeVerifier(),
                     key_authority=SyntheticKeyAuthorizationAuthority(SCOPE, record),
                 ).preflight(SCOPE))
@@ -760,7 +899,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         calls = []
         ledger = TraceLedger(calls=calls)
         sink = EffectCountingSink(calls, record)
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             ledger, sink, verifier,
             key_authority=SyntheticKeyAuthorizationAuthority(
                 SCOPE, record, verifier=verifier,
@@ -810,7 +949,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 ledger = TraceLedger(calls=calls)
                 sink = EffectCountingSink(calls, record)
                 result = asyncio.run(
-                    LifecycleCoordinator(ledger, sink, verifier).preflight(SCOPE),
+                    make_coordinator(ledger, sink, verifier).preflight(SCOPE),
                 )
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
                 self.assertIs(result.reason, LifecycleReason.CHECKPOINT_INVALID)
@@ -823,7 +962,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         for candidate in (object(), bool_sequence):
             with self.subTest(candidate_type=type(candidate).__name__,
                               seq=getattr(candidate, "seq", None)):
-                result = asyncio.run(LifecycleCoordinator(
+                result = asyncio.run(make_coordinator(
                     Ledger(), Sink([], candidate), FakeVerifier(),
                 ).preflight(SCOPE))
                 self.assertEqual(result.status, LifecycleStatus.NOT_READY)
@@ -835,7 +974,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         valid = signed_record()
         malformed = ExplodingCheckpointRecord(**valid.__dict__)
         object.__setattr__(malformed, "_explode_field_access", True)
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(), Sink([], malformed), FakeVerifier(),
         ).preflight(SCOPE))
         self.assertEqual(result.status, LifecycleStatus.NOT_READY)
@@ -845,7 +984,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
     def test_exact_record_with_malformed_scope_equality_is_invalid(self):
         malformed = signed_record()
         object.__setattr__(malformed, "tenant_id", MalformedScopeField())
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(), Sink([], malformed), FakeVerifier(),
         ).preflight(SCOPE))
         self.assertEqual(result.status, LifecycleStatus.NOT_READY)
@@ -853,7 +992,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         self.assertIsNone(result.checkpoint_seq)
 
     def test_valid_preflight_returns_checkpoint_evidence_but_never_ready(self):
-        result = asyncio.run(LifecycleCoordinator(
+        result = asyncio.run(make_coordinator(
             Ledger(), Sink([], signed_record(seq=7)), FakeVerifier(),
             key_authority=SyntheticKeyAuthorizationAuthority(
                 SCOPE, signed_record(seq=7),

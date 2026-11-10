@@ -19,6 +19,8 @@ from .checkpoint import (
     CheckpointKeyAuthorization,
     CheckpointKeyAuthorizationAuthority,
     CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessAuthority,
+    CheckpointLatestnessEvidence,
     CheckpointRecord,
     CheckpointSink,
     SignatureVerifier,
@@ -38,6 +40,8 @@ class LifecycleReason(StrEnum):
     CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE = "CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE"
     CHECKPOINT_KEY_AUTHORIZATION_DENIED = "CHECKPOINT_KEY_AUTHORIZATION_DENIED"
     CHECKPOINT_KEY_AUTHORIZATION_INVALID = "CHECKPOINT_KEY_AUTHORIZATION_INVALID"
+    CHECKPOINT_LATESTNESS_UNAVAILABLE = "CHECKPOINT_LATESTNESS_UNAVAILABLE"
+    CHECKPOINT_LATESTNESS_INVALID = "CHECKPOINT_LATESTNESS_INVALID"
     CHECKPOINT_NOT_ANCESTOR = "CHECKPOINT_NOT_ANCESTOR"
     CHECKPOINT_SUFFIX_UNAVAILABLE = "CHECKPOINT_SUFFIX_UNAVAILABLE"
     CHECKPOINT_SUFFIX_INVALID = "CHECKPOINT_SUFFIX_INVALID"
@@ -116,6 +120,33 @@ def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
     if evidence.basis is CheckpointKeyAuthorizationBasis.ACTIVE:
         return evidence.receipt_id is None and evidence.accepted_at is None
     return False
+
+
+def _valid_latestness_evidence(scope: Scope, record: CheckpointRecord,
+                               evidence: Any) -> bool:
+    """Check strict receipt shape and exact record binding after authority verification."""
+    if type(evidence) is not CheckpointLatestnessEvidence:
+        return False
+    if (type(evidence.tenant_id) is not str or evidence.tenant_id != scope.tenant_id
+            or type(evidence.company_id) is not str or evidence.company_id != scope.company_id
+            or not _is_hash(evidence.checkpoint_digest)
+            or type(evidence.provider_id) is not str or not evidence.provider_id
+            or len(evidence.provider_id) > 128
+            or type(record.sink_id) is not str or evidence.provider_id != record.sink_id
+            or type(evidence.provider_revision) is not int or evidence.provider_revision < 1
+            or type(evidence.authority_id) is not str or not evidence.authority_id
+            or len(evidence.authority_id) > 128
+            or type(evidence.authority_revision) is not int or evidence.authority_revision < 1
+            or type(evidence.authority_event_id) is not str or not evidence.authority_event_id
+            or len(evidence.authority_event_id) > 128
+            or type(evidence.policy_version) is not str or not evidence.policy_version
+            or len(evidence.policy_version) > 128
+            or not _is_hash(evidence.proof_digest)):
+        return False
+    try:
+        return evidence.checkpoint_digest == checkpoint_identity(record)
+    except Exception:
+        return False
 
 
 def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
@@ -218,6 +249,7 @@ class LifecycleCoordinator:
     def __init__(self, ledger: LifecycleLedger, sink: CheckpointSink,
                  verifier: SignatureVerifier, *,
                  key_authority: CheckpointKeyAuthorizationAuthority | None = None,
+                 latestness_authority: CheckpointLatestnessAuthority | None = None,
                  dependency_timeout_seconds: float = 5.0):
         if (isinstance(dependency_timeout_seconds, bool)
                 or not isinstance(dependency_timeout_seconds, (int, float))
@@ -228,6 +260,7 @@ class LifecycleCoordinator:
         self._sink = sink
         self._verifier = verifier
         self._key_authority = key_authority
+        self._latestness_authority = latestness_authority
         self._dependency_timeout_seconds = float(dependency_timeout_seconds)
 
     async def preflight(self, scope: Scope) -> LifecycleResult:
@@ -309,6 +342,32 @@ class LifecycleCoordinator:
         if not _is_hash(verified_public_key_digest):
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_INVALID,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+
+        if self._latestness_authority is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        try:
+            latestness = await asyncio.wait_for(
+                self._latestness_authority.attest_latest(scope, record),
+                timeout=self._dependency_timeout_seconds,
+            )
+        except Exception:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if latestness is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if not _valid_latestness_evidence(scope, record, latestness):
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_INVALID,
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
                                    chain_count=chain_count)
 

@@ -19,7 +19,9 @@ from _pg_harness import disposable_cluster, throwaway_db
 from test_change_ledger_sql import C, T, L, _setup
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
-    CheckpointRecord, FakeSigner, FakeVerifier, InMemoryCheckpointSink,
+    CheckpointKeyAuthorization, CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence, CheckpointRecord, FakeSigner, FakeVerifier,
+    InMemoryCheckpointSink, checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator, LifecycleReason, LifecycleStatus,
@@ -78,8 +80,56 @@ class SuffixOverride:
         return self.suffix
 
 
+class SyntheticKeyAuthorizationAuthority:
+    """TEST ONLY: binds synthetic key authorization to one checkpoint record."""
+
+    is_test_double = True
+
+    async def authorize_checkpoint(self, scope, record):
+        return CheckpointKeyAuthorization(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            key_id=record.key_id,
+            public_key_digest=FakeVerifier().public_key_digest(record.key_id),
+            checkpoint_digest=checkpoint_identity(record),
+            authority_id="synthetic-suffix-key-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-suffix-key-1",
+            policy_version="test-suffix-key-v1",
+            basis=CheckpointKeyAuthorizationBasis.ACTIVE,
+        )
+
+
+class SyntheticLatestnessAuthority:
+    """TEST ONLY: synthetic response; does not prove a real provider's latest history."""
+
+    is_test_double = True
+
+    async def attest_latest(self, scope, record):
+        identity = checkpoint_identity(record)
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=identity,
+            provider_id=record.sink_id,
+            provider_revision=1,
+            authority_id="synthetic-suffix-provider-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-suffix-latest-1",
+            policy_version="test-suffix-latest-v1",
+            proof_digest=hashlib.sha256(
+                b"S13 TEST ONLY suffix latestness|" + identity.encode("ascii"),
+            ).hexdigest(),
+        )
+
+
 def coordinator(ledger, sink, verifier):
-    return LifecycleCoordinator(ledger, sink, verifier, dependency_timeout_seconds=10)
+    return LifecycleCoordinator(
+        ledger, sink, verifier,
+        key_authority=SyntheticKeyAuthorizationAuthority(),
+        latestness_authority=SyntheticLatestnessAuthority(),
+        dependency_timeout_seconds=10,
+    )
 
 
 async def signed_record(ledger, scope, sink, signer):

@@ -160,6 +160,44 @@ class CheckpointKeyAuthorizationAuthority(Protocol):
     ) -> CheckpointKeyAuthorization | None: ...
 
 
+@dataclass(frozen=True)
+class CheckpointLatestnessEvidence:
+    """Authenticated provider receipt for one exact latest checkpoint response.
+
+    This value is only a contract envelope. The configured authority must obtain and validate
+    current provider evidence, enforce its anti-rollback/consistency policy, and bind the result
+    to the exact scope and checkpoint identity before returning it. A digest or revision in this
+    envelope is not a proof by itself; no production latestness authority is composed.
+    """
+
+    tenant_id: str
+    company_id: str
+    checkpoint_digest: str
+    provider_id: str
+    provider_revision: int
+    authority_id: str
+    authority_revision: int
+    authority_event_id: str
+    policy_version: str
+    proof_digest: str
+
+
+class CheckpointLatestnessAuthority(Protocol):
+    """Trusted authority that authenticates provider freshness, separately from signatures.
+
+    Implementations must query or validate the provider's current authenticated latest history,
+    reject stale/replayed/rolled-back responses, and bind the receipt to this exact checkpoint.
+    They must fail closed when provider history or its anti-rollback consistency is unavailable.
+    This authority does not establish key authorization or startup admission readiness.
+    """
+
+    is_test_double: bool
+
+    async def attest_latest(
+            self, scope: Scope, record: CheckpointRecord
+    ) -> CheckpointLatestnessEvidence | None: ...
+
+
 class CheckpointSigner(Protocol):
     key_id: str
     key_version: str
@@ -179,9 +217,9 @@ class SignatureVerifier(Protocol):
 class CheckpointSink(Protocol):
     """External append-only store outside the DB administrator's trust boundary (D9).
 
-    ``latest`` must return the authenticated, anti-rollback latest record for exactly the
-    requested scope. Signature verification alone does not establish that it is the newest
-    retained record; implementations must preserve that provider guarantee independently.
+    ``latest`` reads a candidate record for exactly the requested scope. The caller must also
+    require separate ``CheckpointLatestnessAuthority`` evidence: neither this return value nor
+    signature verification alone establishes that it is the newest retained record.
     """
 
     kind: str  # 'REAL' or 'TEST'
