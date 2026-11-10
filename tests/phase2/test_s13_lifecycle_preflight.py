@@ -230,6 +230,56 @@ class SyntheticLatestnessAuthority:
         )
 
 
+class StatefulSyntheticLatestnessAuthority:
+    """TEST ONLY: in-memory monotonicity/replay model, not durable provider proof."""
+
+    is_test_double = True
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self._state = {}
+        self.calls = []
+
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                            challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
+        provider_revision, authority_revision, event_id = self._responses.pop(0)
+        state_key = (scope.tenant_id, scope.company_id, record.sink_id)
+        previous = self._state.get(state_key)
+        if previous is not None:
+            prior_provider_revision, prior_authority_revision, seen_event_ids = previous
+            if (provider_revision < prior_provider_revision
+                    or authority_revision < prior_authority_revision
+                    or event_id in seen_event_ids):
+                return None
+
+        seen_event_ids = (set() if previous is None else set(previous[2]))
+        seen_event_ids.add(event_id)
+        self._state[state_key] = (
+            provider_revision, authority_revision, frozenset(seen_event_ids),
+        )
+        checkpoint_digest = checkpoint_identity(record)
+        proof_material = (
+            f"S13 TEST ONLY stateful latestness|{scope.tenant_id}|{scope.company_id}|"
+            f"{record.sink_id}|{provider_revision}|{authority_revision}|{event_id}|"
+            f"{challenge_nonce}|{checkpoint_digest}"
+        ).encode("utf-8")
+        proof_digest = hashlib.sha256(proof_material).hexdigest()
+        return CheckpointLatestnessEvidence(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            checkpoint_digest=checkpoint_digest,
+            challenge_nonce=challenge_nonce,
+            provider_id=record.sink_id,
+            provider_revision=provider_revision,
+            authority_id="synthetic-stateful-latestness-authority",
+            authority_revision=authority_revision,
+            authority_event_id=event_id,
+            policy_version="test-stateful-latestness-v1",
+            proof_digest=proof_digest,
+        )
+
+
 class SlowLatestnessAuthority(SyntheticLatestnessAuthority):
     async def attest_latest(self, scope: Scope, record: CheckpointRecord,
                             challenge_nonce: str):
@@ -669,6 +719,79 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         self.assertEqual(first_nonce, "1" * 64)
         self.assertEqual(second_nonce, "2" * 64)
         self.assertNotEqual(first_nonce, second_nonce)
+
+    def test_stateful_synthetic_latestness_accepts_forward_new_event(self):
+        record = signed_record(seq=7)
+        calls = []
+        authority = StatefulSyntheticLatestnessAuthority([
+            (5, 2, "evt-s13-stateful-1"),
+            (6, 3, "evt-s13-stateful-2"),
+        ])
+        sink = EffectCountingSink(calls, record)
+        key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+        coordinator = _BaseLifecycleCoordinator(
+            TraceLedger(calls=calls), sink, FakeVerifier(),
+            key_authority=key_authority,
+            latestness_authority=authority,
+        )
+
+        with patch(
+                "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                side_effect=["1" * 64, "2" * 64]):
+            results = [asyncio.run(coordinator.preflight(SCOPE)) for _ in range(2)]
+
+        self.assertEqual(
+            [result.reason for result in results],
+            [LifecycleReason.SHARED_FENCE_UNAVAILABLE] * 2,
+        )
+        self.assertEqual([name for name, _ in calls], [
+            "chain", "latest", "suffix", "chain", "latest", "suffix",
+        ])
+        self.assertEqual([call[2] for call in authority.calls], ["1" * 64, "2" * 64])
+        self.assertEqual(len(key_authority.calls), 2)
+        self.assertEqual(
+            authority._state[(SCOPE.tenant_id, SCOPE.company_id, record.sink_id)][:2],
+            (6, 3),
+        )
+        self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_stateful_synthetic_latestness_refuses_provider_and_authority_rollback_or_event_replay(self):
+        record = signed_record(seq=7)
+        rejected_responses = (
+            ("provider rollback", (4, 3, "evt-s13-stateful-2")),
+            ("authority rollback", (6, 1, "evt-s13-stateful-2")),
+            ("authority event replay", (6, 3, "evt-s13-stateful-1")),
+        )
+        for label, rejected_response in rejected_responses:
+            with self.subTest(refusal=label):
+                calls = []
+                authority = StatefulSyntheticLatestnessAuthority([
+                    (5, 2, "evt-s13-stateful-1"), rejected_response,
+                ])
+                sink = EffectCountingSink(calls, record)
+                key_authority = SyntheticKeyAuthorizationAuthority(SCOPE, record)
+                coordinator = _BaseLifecycleCoordinator(
+                    TraceLedger(calls=calls), sink, FakeVerifier(),
+                    key_authority=key_authority,
+                    latestness_authority=authority,
+                )
+
+                with patch(
+                        "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                        side_effect=["1" * 64, "2" * 64]):
+                    first = asyncio.run(coordinator.preflight(SCOPE))
+                    self.assertIs(first.status, LifecycleStatus.NOT_READY)
+                    self.assertIs(first.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
+                    calls.clear()
+                    key_authority.calls.clear()
+                    second = asyncio.run(coordinator.preflight(SCOPE))
+
+                self.assertIs(second.status, LifecycleStatus.NOT_READY)
+                self.assertIs(second.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual(authority.calls[1][2], "2" * 64)
+                self.assertEqual(key_authority.calls, [])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
 
     def test_latestness_authority_without_receipt_is_unavailable(self):
         record = signed_record(seq=7)
