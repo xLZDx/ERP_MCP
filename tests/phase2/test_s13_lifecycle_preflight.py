@@ -168,13 +168,15 @@ class SyntheticKeyAuthorizationAuthority:
         self.accepted_at = accepted_at
         self.error = error
         self.calls = []
-        verifier = verifier or FakeVerifier()
-        default_response = CheckpointKeyAuthorization(
+        self.verifier = verifier or FakeVerifier()
+        self.default_response = response is _DEFAULT_AUTH_RESPONSE
+        self.response = (CheckpointKeyAuthorization(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             key_id=record.key_id,
-            public_key_digest=verifier.public_key_digest(record.key_id),
+            public_key_digest=self.verifier.public_key_digest(record.key_id),
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce="",
             authority_id="synthetic-test-authority",
             authority_revision=1,
             authority_event_id="evt-s13-test-1",
@@ -182,14 +184,16 @@ class SyntheticKeyAuthorizationAuthority:
             basis=basis,
             receipt_id=receipt_id,
             accepted_at=accepted_at,
-        )
-        self.response = default_response if response is _DEFAULT_AUTH_RESPONSE else response
+        ) if self.default_response else response)
 
-    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
-        self.calls.append((scope, record))
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord,
+                                   challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
         if self.error is not None:
             raise self.error
-        return self.response
+        if not self.default_response:
+            return self.response
+        return replace(self.response, challenge_nonce=challenge_nonce)
 
 
 _DEFAULT_LATESTNESS_RESPONSE = object()
@@ -737,7 +741,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
         with patch(
                 "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
-                side_effect=["1" * 64, "2" * 64]):
+                side_effect=["1" * 64, "a" * 64, "2" * 64, "b" * 64]):
             results = [asyncio.run(coordinator.preflight(SCOPE)) for _ in range(2)]
 
         self.assertEqual(
@@ -749,6 +753,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         ])
         self.assertEqual([call[2] for call in authority.calls], ["1" * 64, "2" * 64])
         self.assertEqual(len(key_authority.calls), 2)
+        self.assertEqual([call[2] for call in key_authority.calls], ["a" * 64, "b" * 64])
         self.assertEqual(
             authority._state[(SCOPE.tenant_id, SCOPE.company_id, record.sink_id)][:2],
             (6, 3),
@@ -778,7 +783,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
                 with patch(
                         "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
-                        side_effect=["1" * 64, "2" * 64]):
+                        side_effect=["1" * 64, "a" * 64, "2" * 64, "b" * 64]):
                     first = asyncio.run(coordinator.preflight(SCOPE))
                     self.assertIs(first.status, LifecycleStatus.NOT_READY)
                     self.assertIs(first.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
@@ -953,6 +958,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         valid_receipt = SyntheticKeyAuthorizationAuthority(
             SCOPE, record, basis=routine, receipt_id="receipt-1", accepted_at=NOW,
         ).response
+        valid_receipt = replace(valid_receipt, challenge_nonce="2" * 64)
         invalid_responses = (
             replace(valid_receipt, receipt_id=None),
             replace(valid_receipt, receipt_id=""),
@@ -977,12 +983,15 @@ class S13LifecyclePreflightTests(unittest.TestCase):
 
         ledger = TraceLedger()
         sink = EffectCountingSink([], record)
-        accepted = asyncio.run(make_coordinator(
-            ledger, sink, FakeVerifier(),
-            key_authority=SyntheticKeyAuthorizationAuthority(
-                SCOPE, record, response=valid_receipt,
-            ),
-        ).preflight(SCOPE))
+        with patch(
+                "business_ai_gateway.phase2.change_ledger.lifecycle.secrets.token_hex",
+                side_effect=["1" * 64, "2" * 64]):
+            accepted = asyncio.run(make_coordinator(
+                ledger, sink, FakeVerifier(),
+                key_authority=SyntheticKeyAuthorizationAuthority(
+                    SCOPE, record, response=valid_receipt,
+                ),
+            ).preflight(SCOPE))
         self.assertIs(accepted.status, LifecycleStatus.NOT_READY)
         self.assertIs(accepted.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
 

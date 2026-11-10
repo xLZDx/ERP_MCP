@@ -85,13 +85,14 @@ class SyntheticKeyAuthorizationAuthority:
 
     is_test_double = True
 
-    async def authorize_checkpoint(self, scope, record):
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
         return CheckpointKeyAuthorization(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             key_id=record.key_id,
             public_key_digest=FakeVerifier().public_key_digest(record.key_id),
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
             authority_id="synthetic-suffix-key-authority",
             authority_revision=1,
             authority_event_id="evt-s13-suffix-key-1",

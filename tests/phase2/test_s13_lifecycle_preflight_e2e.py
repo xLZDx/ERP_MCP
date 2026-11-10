@@ -65,14 +65,16 @@ class ActiveKeyAuthorityPortDouble:
     def __init__(self):
         self.calls = []
 
-    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
-        self.calls.append((scope, record))
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord,
+                                   challenge_nonce: str):
+        self.calls.append((scope, record, challenge_nonce))
         return CheckpointKeyAuthorization(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             key_id=record.key_id,
             public_key_digest=FakeVerifier().public_key_digest(record.key_id),
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
             authority_id="synthetic-test-authority",
             authority_revision=1,
             authority_event_id="evt-s13-test-1",
@@ -225,6 +227,8 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert len(key_authority.calls) == 1
         assert key_authority.calls[0][0] == SCOPE
         assert key_authority.calls[0][1].seq == 12
+        assert len(key_authority.calls[0][2]) == 64
+        assert all(char in "0123456789abcdef" for char in key_authority.calls[0][2])
         assert len(latestness_authority.calls) == 1
         assert latestness_authority.calls[0][0] == SCOPE
         assert latestness_authority.calls[0][1].seq == 12

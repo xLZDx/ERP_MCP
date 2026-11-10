@@ -122,8 +122,9 @@ class CheckpointKeyAuthorization:
     """Authenticated trust-authority decision for one exact checkpoint.
 
     The configured authority port must authenticate its append-only key history, scope, role,
-    policy, and any acceptance receipt before returning this value. A routine-retirement result
-    requires a separately trusted receipt and accepted-at time; ``CheckpointRecord.signed_at``
+    policy, one-use challenge, and any acceptance receipt before returning this value. A
+    routine-retirement result requires a separately trusted receipt and accepted-at time;
+    ``CheckpointRecord.signed_at``
     is self-declared and is never proof of authorization time. This value is not itself a
     cryptographic proof and no production authority is currently composed.
     """
@@ -133,6 +134,7 @@ class CheckpointKeyAuthorization:
     key_id: str
     public_key_digest: str
     checkpoint_digest: str
+    challenge_nonce: str
     authority_id: str
     authority_revision: int
     authority_event_id: str
@@ -146,8 +148,8 @@ class CheckpointKeyAuthorizationAuthority(Protocol):
     """Trusted, external authority for current and historical checkpoint-key authorization.
 
     Implementations must verify an authenticated, immutable or tamper-evident authority history
-    bound to the exact scope, key/public-key identity, and checkpoint digest. The history must distinguish routine
-    retirement from compromise revocation and use a trusted receipt/time, never the checkpoint's
+    bound to the exact scope, key/public-key identity, and checkpoint digest. The history must
+    distinguish routine retirement from compromise revocation and use a trusted receipt/time, never the checkpoint's
     self-declared ``signed_at``, for historical authorization. Missing, stale, inconsistent,
     ambiguous, wrong-scope, or unavailable authority evidence must refuse authorization. This
     source is separate from checkpoint signature verification and provider latestness.
@@ -156,7 +158,7 @@ class CheckpointKeyAuthorizationAuthority(Protocol):
     is_test_double: bool
 
     async def authorize_checkpoint(
-            self, scope: Scope, record: CheckpointRecord
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str
     ) -> CheckpointKeyAuthorization | None: ...
 
 

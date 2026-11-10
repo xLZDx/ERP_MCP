@@ -86,7 +86,8 @@ def _is_hash(value: Any) -> bool:
 
 
 def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
-                             evidence: Any, *, verified_public_key_digest: str) -> bool:
+                             evidence: Any, *, verified_public_key_digest: str,
+                             challenge_nonce: str) -> bool:
     """Check strict response shape and binding after the trusted port verifies its history."""
     if type(evidence) is not CheckpointKeyAuthorization:
         return False
@@ -96,6 +97,8 @@ def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
             or not _is_hash(evidence.public_key_digest)
             or evidence.public_key_digest != verified_public_key_digest
             or not _is_hash(evidence.checkpoint_digest)
+            or not _is_hash(evidence.challenge_nonce)
+            or evidence.challenge_nonce != challenge_nonce
             or type(evidence.authority_id) is not str or not evidence.authority_id
             or len(evidence.authority_id) > 128
             or type(evidence.authority_revision) is not int
@@ -382,8 +385,9 @@ class LifecycleCoordinator:
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
                                    chain_count=chain_count)
         try:
+            key_authorization_nonce = secrets.token_hex(32)
             key_authorization = await asyncio.wait_for(
-                self._key_authority.authorize_checkpoint(scope, record),
+                self._key_authority.authorize_checkpoint(scope, record, key_authorization_nonce),
                 timeout=self._dependency_timeout_seconds,
             )
         except Exception:
@@ -398,7 +402,8 @@ class LifecycleCoordinator:
                                    chain_count=chain_count)
         if not _valid_key_authorization(
                 scope, record, key_authorization,
-                verified_public_key_digest=verified_public_key_digest):
+                verified_public_key_digest=verified_public_key_digest,
+                challenge_nonce=key_authorization_nonce):
             return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                    LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_INVALID,
                                    checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
