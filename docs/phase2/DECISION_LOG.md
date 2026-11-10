@@ -196,3 +196,7 @@ At branch HEAD `5ed9c52f3879932f1877521d5b787966cd0f534a`, GPT-PM-approved lates
 ## 2026-11-10 — S13-03 documentation-head reconciliation
 
 The approved code snapshot remains `5ed9c52f3879932f1877521d5b787966cd0f534a`. Current branch HEAD is `fb520659952c9ec25b648ec0bbb55a4dff20240d`, the docs-only reconciliation commit; no code changed after the approved snapshot, and no broad suite was run at the docs HEAD. PR #58 remains open/unmerged. This bookkeeping correction does not expand the bounded approval or close V2-S13-03.
+
+## 2026-11-10 — S13-03 key-registry boundary check
+
+Read-only source reconciliation found `change_ledger.verifier_keys` in migration 005, scoped by tenant/company/key and carrying role, key material, `ACTIVE`/`REVOKED` status, plus `VERIFIER_KEY_REGISTERED` / `VERIFIER_KEY_REVOKED` events. This is not yet a `CheckpointKeyAuthorizationAuthority`: that contract requires a tamper-evident external authority decision bound to the exact checkpoint and public-key digest; routine retirement additionally requires an independently trusted receipt and accepted-at time, while compromise revocation must remain distinct. The current registry shape does not provide those checkpoint-specific semantics. Do not adapt the table as if it proved historical authorization. Next code step remains designing/composing the trusted key-history source after its trust boundary and receipt contract are established; provider latestness/anti-rollback remains a separate requirement.
