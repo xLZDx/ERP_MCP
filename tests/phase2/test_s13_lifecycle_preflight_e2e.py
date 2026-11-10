@@ -11,10 +11,13 @@ import inspect
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
+    CheckpointKeyAuthorization,
+    CheckpointKeyAuthorizationBasis,
     CheckpointRecord,
     FakeSigner,
     FakeVerifier,
     InMemoryCheckpointSink,
+    checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator,
@@ -53,6 +56,30 @@ class ValidSuffixLedgerPortDouble(LedgerPortDouble):
             "has_more": False,
             "events": [],
         }
+
+
+class ActiveKeyAuthorityPortDouble:
+    """A local synthetic authority response; not evidence of a real registry."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
+        self.calls.append((scope, record))
+        return CheckpointKeyAuthorization(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            key_id=record.key_id,
+            public_key_digest=FakeVerifier().public_key_digest(record.key_id),
+            checkpoint_digest=checkpoint_identity(record),
+            authority_id="synthetic-test-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-test-1",
+            policy_version="test-policy-v1",
+            basis=CheckpointKeyAuthorizationBasis.ACTIVE,
+            receipt_id=None,
+            accepted_at=None,
+        )
 
 
 class HangingLedgerPortDouble(LedgerPortDouble):
@@ -151,7 +178,9 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         await sink.write(_record(OTHER_SCOPE, 99, signer))
         sink.write_calls = 0
         ledger = ValidSuffixLedgerPortDouble(result={"ok": True, "count": 12})
-        coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier())
+        key_authority = ActiveKeyAuthorityPortDouble()
+        coordinator = LifecycleCoordinator(ledger, sink, FakeVerifier(),
+                                            key_authority=key_authority)
 
         result = await coordinator.preflight(SCOPE)
 
@@ -161,11 +190,15 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert (result.checkpoint_seq, result.checkpoint_hash, result.chain_count) == (12, HEAD_HASH, 12)
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == [SCOPE]
+        assert len(key_authority.calls) == 1
+        assert key_authority.calls[0][0] == SCOPE
+        assert key_authority.calls[0][1].seq == 12
         assert sink.write_calls == 0
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.
         assert list(inspect.signature(LifecycleCoordinator).parameters) == [
-            "ledger", "sink", "verifier", "dependency_timeout_seconds"]
+            "ledger", "sink", "verifier", "key_authority",
+            "dependency_timeout_seconds"]
         assert not hasattr(coordinator, "recover")
         assert not hasattr(coordinator, "write")
 

@@ -2,8 +2,9 @@
 
 The required ``PyJWT[crypto]`` project dependency supplies the ``cryptography`` Ed25519 backend.
 ``Ed25519SignatureVerifier`` performs cryptographic verification against an injected immutable key
-set; key provenance, scope and role authorization remain the responsibility of its trusted caller
-and the database. ``UnwiredVerifier`` still fails closed until that trust source is composed.
+set; a separate authenticated authority must establish current or historical key authorization.
+The SQL write path independently enforces the ``checkpoint_role`` identity for new checkpoints.
+``UnwiredVerifier`` still fails closed until a signature-verification source is composed.
 ``InMemoryCheckpointSink``, ``FakeSigner`` and
 ``FakeVerifier`` are TEST ONLY: ``DispatchGate`` stays DISABLED while any of them is wired, whatever
 the ``real_checkpoint_sink`` flag says. It also stays disabled until a trusted runtime authority is
@@ -30,6 +31,7 @@ import hashlib
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from types import MappingProxyType
 from typing import Any, Protocol
 from uuid import UUID, uuid4
@@ -102,6 +104,62 @@ class CheckpointRecord:
                 f"{_ts(self.signed_at)}|{self.key_id}|{self.sink_kind}|{self.sink_id}").encode()
 
 
+def checkpoint_identity(record: CheckpointRecord) -> str:
+    """Bind a trust-authority decision to one exact signed checkpoint record."""
+    payload = record.signing_payload()
+    signature = record.signature.encode("ascii")
+    return hashlib.sha256(b"change-ledger-checkpoint-identity|v1\0" + payload
+                          + b"\0" + signature).hexdigest()
+
+
+class CheckpointKeyAuthorizationBasis(StrEnum):
+    ACTIVE = "ACTIVE"
+    ROUTINE_RETIREMENT_RECEIPT = "ROUTINE_RETIREMENT_RECEIPT"
+
+
+@dataclass(frozen=True)
+class CheckpointKeyAuthorization:
+    """Authenticated trust-authority decision for one exact checkpoint.
+
+    The configured authority port must authenticate its append-only key history, scope, role,
+    policy, and any acceptance receipt before returning this value. A routine-retirement result
+    requires a separately trusted receipt and accepted-at time; ``CheckpointRecord.signed_at``
+    is self-declared and is never proof of authorization time. This value is not itself a
+    cryptographic proof and no production authority is currently composed.
+    """
+
+    tenant_id: str
+    company_id: str
+    key_id: str
+    public_key_digest: str
+    checkpoint_digest: str
+    authority_id: str
+    authority_revision: int
+    authority_event_id: str
+    policy_version: str
+    basis: CheckpointKeyAuthorizationBasis
+    receipt_id: str | None = None
+    accepted_at: datetime | None = None
+
+
+class CheckpointKeyAuthorizationAuthority(Protocol):
+    """Trusted, external authority for current and historical checkpoint-key authorization.
+
+    Implementations must verify an authenticated, immutable or tamper-evident authority history
+    bound to the exact scope, key/public-key identity, and checkpoint digest. The history must distinguish routine
+    retirement from compromise revocation and use a trusted receipt/time, never the checkpoint's
+    self-declared ``signed_at``, for historical authorization. Missing, stale, inconsistent,
+    ambiguous, wrong-scope, or unavailable authority evidence must refuse authorization. This
+    source is separate from checkpoint signature verification and provider latestness.
+    """
+
+    is_test_double: bool
+
+    async def authorize_checkpoint(
+            self, scope: Scope, record: CheckpointRecord
+    ) -> CheckpointKeyAuthorization | None: ...
+
+
 class CheckpointSigner(Protocol):
     key_id: str
     key_version: str
@@ -114,6 +172,8 @@ class SignatureVerifier(Protocol):
     is_test_double: bool
 
     def verify(self, key_id: str, payload: bytes, signature: str) -> bool: ...
+
+    def public_key_digest(self, key_id: str) -> str | None: ...
 
 
 class CheckpointSink(Protocol):
@@ -161,14 +221,18 @@ class UnwiredVerifier:
     def verify(self, key_id: str, payload: bytes, signature: str) -> bool:
         return False
 
+    def public_key_digest(self, key_id: str) -> str | None:
+        return None
+
 
 class Ed25519SignatureVerifier:
-    """Verify checkpoint signatures against an immutable set of registered public keys.
+    """Verify signatures against immutable public-key material, including retired keys.
 
-    The caller must build this object from an authenticated, scope-appropriate snapshot of active
-    ``checkpoint_role`` keys. This class proves only the signature; it does not establish key
-    provenance, scope, role, validity, revocation, or anti-rollback freshness. Database routines
-    remain authoritative for those checks.
+    Keeping historical public material available permits cryptographic inspection after routine
+    rotation; it does not authorize that history for startup. The separate
+    ``CheckpointKeyAuthorizationAuthority`` must establish key provenance, scope, role, validity,
+    retirement/revocation policy, and exact-checkpoint authorization. This class does not establish
+    authorization or provider anti-rollback freshness.
     """
 
     __slots__ = ("_public_keys",)
@@ -213,6 +277,13 @@ class Ed25519SignatureVerifier:
         except Exception:
             return False
 
+    def public_key_digest(self, key_id: str) -> str | None:
+        """Return the identity digest of the exact immutable key used by ``verify``."""
+        if type(key_id) is not str or self._KEY_ID.fullmatch(key_id) is None:
+            return None
+        public_key = self._public_keys.get(key_id)
+        return hashlib.sha256(public_key).hexdigest() if public_key is not None else None
+
 
 class FakeSigner:
     """TEST ONLY. Not a signature scheme."""
@@ -234,6 +305,12 @@ class FakeVerifier:
 
     def verify(self, key_id: str, payload: bytes, signature: str) -> bool:
         return signature == hashlib.sha256(b"FAKE|" + key_id.encode() + b"|" + payload).hexdigest()
+
+    def public_key_digest(self, key_id: str) -> str | None:
+        """TEST ONLY: deterministic identity binding for the synthetic key id."""
+        if type(key_id) is not str or not key_id:
+            return None
+        return hashlib.sha256(b"FAKE-PUBLIC-KEY|" + key_id.encode()).hexdigest()
 
 
 class InMemoryCheckpointSink:

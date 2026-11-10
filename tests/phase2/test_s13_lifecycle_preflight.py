@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from cryptography.hazmat.primitives import serialization
@@ -19,11 +20,14 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
+    CheckpointKeyAuthorization,
+    CheckpointKeyAuthorizationBasis,
     CheckpointRecord,
     Ed25519SignatureVerifier,
     FakeSigner,
     FakeVerifier,
     InMemoryCheckpointSink,
+    checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator,
@@ -84,6 +88,9 @@ class SyntheticTestKeyAuthorizationRegistry:
     def signature_is_valid(self, key_id: str, payload: bytes, signature: str) -> bool:
         return self._crypto.verify(key_id, payload, signature)
 
+    def public_key_digest(self, key_id: str) -> str:
+        return self._crypto.public_key_digest(key_id)
+
     @staticmethod
     def _valid_window(window: object, reference_time: datetime) -> bool:
         if (type(window) is not dict or set(window) != {"valid_from", "valid_until"}
@@ -136,6 +143,50 @@ class SyntheticTestAuthorizationVerifier:
     def verify(self, key_id: str, payload: bytes, signature: str) -> bool:
         return (self._registry.signature_is_valid(key_id, payload, signature)
                 and self._registry.authorized_at(key_id, self._reference_time))
+
+    def public_key_digest(self, key_id: str) -> str:
+        return self._registry.public_key_digest(key_id)
+
+
+_DEFAULT_AUTH_RESPONSE = object()
+
+
+class SyntheticKeyAuthorizationAuthority:
+    """TEST ONLY: explicit authenticated-authority response for one checkpoint."""
+
+    def __init__(self, scope: Scope, record: CheckpointRecord,
+                 basis=CheckpointKeyAuthorizationBasis.ACTIVE,
+                 receipt_id=None, accepted_at=None,
+                 response=_DEFAULT_AUTH_RESPONSE, error=None, verifier=None):
+        self.scope = scope
+        self.record = record
+        self.basis = basis
+        self.receipt_id = receipt_id
+        self.accepted_at = accepted_at
+        self.error = error
+        self.calls = []
+        verifier = verifier or FakeVerifier()
+        default_response = CheckpointKeyAuthorization(
+            tenant_id=scope.tenant_id,
+            company_id=scope.company_id,
+            key_id=record.key_id,
+            public_key_digest=verifier.public_key_digest(record.key_id),
+            checkpoint_digest=checkpoint_identity(record),
+            authority_id="synthetic-test-authority",
+            authority_revision=1,
+            authority_event_id="evt-s13-test-1",
+            policy_version="test-policy-v1",
+            basis=basis,
+            receipt_id=receipt_id,
+            accepted_at=accepted_at,
+        )
+        self.response = default_response if response is _DEFAULT_AUTH_RESPONSE else response
+
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
+        self.calls.append((scope, record))
+        if self.error is not None:
+            raise self.error
+        return self.response
 
 
 class Ledger:
@@ -454,6 +505,9 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         sink = EffectCountingSink(calls, record)
         result = asyncio.run(LifecycleCoordinator(
             Ledger(calls=calls), sink, verifier,
+            key_authority=SyntheticKeyAuthorizationAuthority(
+                SCOPE, record, verifier=verifier,
+            ),
         ).preflight(SCOPE))
 
         # The TEST sink and a valid local ancestor do not authenticate provider latestness.
@@ -464,6 +518,111 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         self.assertEqual([name for name, _ in calls], ["chain", "latest"])
         self.assertEqual(sink.write_calls, 0)
         self.assertEqual(sink.read_back_calls, 0)
+
+    def test_signed_at_without_authenticated_authority_does_not_authorize(self):
+        record = signed_record(seq=7)
+        calls = []
+        ledger = TraceLedger(calls=calls)
+        sink = EffectCountingSink(calls, record)
+        authority = SyntheticKeyAuthorizationAuthority(SCOPE, record, response=None)
+
+        result = asyncio.run(LifecycleCoordinator(
+            ledger, sink, FakeVerifier(), key_authority=authority,
+        ).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_DENIED)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual(len(authority.calls), 1)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+        self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_authority_timeout_and_error_fail_closed_without_suffix_or_effects(self):
+        record = signed_record(seq=7)
+        for error in (RuntimeError("private authority failure"), TimeoutError()):
+            with self.subTest(error=type(error).__name__):
+                calls = []
+                ledger = TraceLedger(calls=calls)
+                sink = EffectCountingSink(calls, record)
+                authority = SyntheticKeyAuthorizationAuthority(SCOPE, record, error=error)
+                result = asyncio.run(LifecycleCoordinator(
+                    ledger, sink, FakeVerifier(), key_authority=authority,
+                ).preflight(SCOPE))
+
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_authority_evidence_must_bind_scope_key_checkpoint_and_history_fields(self):
+        record = signed_record(seq=7)
+        valid = SyntheticKeyAuthorizationAuthority(SCOPE, record).response
+        bad_evidence = (
+            replace(valid, tenant_id="other-tenant"),
+            replace(valid, company_id="other-company"),
+            replace(valid, key_id="other-key"),
+            replace(valid, public_key_digest="not-a-digest"),
+            replace(valid, public_key_digest="0" * 64),
+            replace(valid, checkpoint_digest="0" * 64),
+            replace(valid, authority_revision=0),
+            replace(valid, authority_event_id=""),
+            replace(valid, policy_version=""),
+        )
+        for evidence in bad_evidence:
+            with self.subTest(evidence=evidence):
+                calls = []
+                ledger = TraceLedger(calls=calls)
+                sink = EffectCountingSink(calls, record)
+                authority = SyntheticKeyAuthorizationAuthority(
+                    SCOPE, record, response=evidence,
+                )
+                result = asyncio.run(LifecycleCoordinator(
+                    ledger, sink, FakeVerifier(), key_authority=authority,
+                ).preflight(SCOPE))
+
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_INVALID)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_routine_retirement_requires_distinct_receipt_and_aware_acceptance_time(self):
+        record = signed_record(seq=7)
+        routine = CheckpointKeyAuthorizationBasis.ROUTINE_RETIREMENT_RECEIPT
+        valid_receipt = SyntheticKeyAuthorizationAuthority(
+            SCOPE, record, basis=routine, receipt_id="receipt-1", accepted_at=NOW,
+        ).response
+        invalid_responses = (
+            replace(valid_receipt, receipt_id=None),
+            replace(valid_receipt, receipt_id=""),
+            replace(valid_receipt, accepted_at=None),
+            replace(valid_receipt, accepted_at=NOW.replace(tzinfo=None)),
+        )
+        for evidence in invalid_responses:
+            with self.subTest(evidence=evidence):
+                ledger = TraceLedger()
+                sink = EffectCountingSink([], record)
+                result = asyncio.run(LifecycleCoordinator(
+                    ledger, sink, FakeVerifier(),
+                    key_authority=SyntheticKeyAuthorizationAuthority(
+                        SCOPE, record, response=evidence,
+                    ),
+                ).preflight(SCOPE))
+
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_INVALID)
+                self.assertEqual(ledger.calls, [("chain", SCOPE)])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+        ledger = TraceLedger()
+        sink = EffectCountingSink([], record)
+        accepted = asyncio.run(LifecycleCoordinator(
+            ledger, sink, FakeVerifier(),
+            key_authority=SyntheticKeyAuthorizationAuthority(
+                SCOPE, record, response=valid_receipt,
+            ),
+        ).preflight(SCOPE))
+        self.assertIs(accepted.status, LifecycleStatus.NOT_READY)
+        self.assertIs(accepted.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
 
     def test_restore_anchor_nonancestor_and_ahead_of_chain_both_fail_closed(self):
         for record, ledger, expected_reason in (
@@ -478,6 +637,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 sink = EffectCountingSink(calls, record)
                 result = asyncio.run(LifecycleCoordinator(
                     ledger, sink, FakeVerifier(),
+                    key_authority=SyntheticKeyAuthorizationAuthority(SCOPE, record),
                 ).preflight(SCOPE))
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
                 self.assertIs(result.reason, expected_reason)
@@ -600,7 +760,12 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         calls = []
         ledger = TraceLedger(calls=calls)
         sink = EffectCountingSink(calls, record)
-        result = asyncio.run(LifecycleCoordinator(ledger, sink, verifier).preflight(SCOPE))
+        result = asyncio.run(LifecycleCoordinator(
+            ledger, sink, verifier,
+            key_authority=SyntheticKeyAuthorizationAuthority(
+                SCOPE, record, verifier=verifier,
+            ),
+        ).preflight(SCOPE))
 
         self.assertIs(result.status, LifecycleStatus.NOT_READY)
         self.assertIs(result.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
@@ -690,6 +855,9 @@ class S13LifecyclePreflightTests(unittest.TestCase):
     def test_valid_preflight_returns_checkpoint_evidence_but_never_ready(self):
         result = asyncio.run(LifecycleCoordinator(
             Ledger(), Sink([], signed_record(seq=7)), FakeVerifier(),
+            key_authority=SyntheticKeyAuthorizationAuthority(
+                SCOPE, signed_record(seq=7),
+            ),
         ).preflight(SCOPE))
         self.assertEqual(result.status, LifecycleStatus.NOT_READY)
         self.assertEqual(result.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
