@@ -195,7 +195,7 @@ At branch HEAD `5ed9c52f3879932f1877521d5b787966cd0f534a`, GPT-PM-approved lates
 
 ## 2026-11-10 — S13-03 documentation-head reconciliation
 
-The approved code snapshot remains `5ed9c52f3879932f1877521d5b787966cd0f534a`. Current branch HEAD is `fb520659952c9ec25b648ec0bbb55a4dff20240d`, the docs-only reconciliation commit; no code changed after the approved snapshot, and no broad suite was run at the docs HEAD. PR #58 remains open/unmerged. This bookkeeping correction does not expand the bounded approval or close V2-S13-03.
+The approved code snapshot remains `5ed9c52f3879932f1877521d5b787966cd0f534a`. At the time of that reconciliation, branch HEAD was `fb520659952c9ec25b648ec0bbb55a4dff20240d`, a docs-only commit; no code changed after the approved snapshot, and no broad suite was run at the docs HEAD. PR #58 remains open/unmerged. This bookkeeping correction does not expand the bounded approval or close V2-S13-03.
 
 ## 2026-11-10 — S13-03 key-registry boundary check
 
