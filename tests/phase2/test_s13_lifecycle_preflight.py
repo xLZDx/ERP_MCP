@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -55,9 +55,10 @@ def _synthetic_test_key(label: str) -> Ed25519PrivateKey:
 
 
 def ed25519_record(scope: Scope, seq: int, key_id: str,
-                   private_key: Ed25519PrivateKey) -> CheckpointRecord:
+                   private_key: Ed25519PrivateKey,
+                   signed_at: datetime = NOW) -> CheckpointRecord:
     unsigned = CheckpointRecord(
-        scope.tenant_id, scope.company_id, seq, f"{seq:064x}", NOW,
+        scope.tenant_id, scope.company_id, seq, f"{seq:064x}", signed_at,
         key_id, "", "test-sink", "TEST",
     )
     return CheckpointRecord(**{
@@ -71,6 +72,70 @@ def public_key_bytes(private_key: Ed25519PrivateKey) -> bytes:
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
     )
+
+
+class SyntheticTestKeyAuthorizationRegistry:
+    """Test-only separation of Ed25519 validity from time-of-check authorization."""
+
+    def __init__(self, public_keys: dict[str, bytes], states: dict[str, object]):
+        self._crypto = Ed25519SignatureVerifier(public_keys)
+        self._states = states
+
+    def signature_is_valid(self, key_id: str, payload: bytes, signature: str) -> bool:
+        return self._crypto.verify(key_id, payload, signature)
+
+    @staticmethod
+    def _valid_window(window: object, reference_time: datetime) -> bool:
+        if (type(window) is not dict or set(window) != {"valid_from", "valid_until"}
+                or type(reference_time) is not datetime
+                or reference_time.tzinfo is None or reference_time.utcoffset() is None):
+            return False
+        valid_from = window["valid_from"]
+        valid_until = window["valid_until"]
+        if (type(valid_from) is not datetime or valid_from.tzinfo is None
+                or valid_from.utcoffset() is None or type(valid_until) is not datetime
+                or valid_until.tzinfo is None or valid_until.utcoffset() is None
+                or valid_from >= valid_until):
+            return False
+        return valid_from <= reference_time < valid_until
+
+    def authorized_at(self, key_id: str, reference_time: datetime) -> bool:
+        if (type(key_id) is not str or type(reference_time) is not datetime
+                or type(self._states) is not dict):
+            return False
+        state = self._states.get(key_id)
+        if type(state) is not dict:
+            return False
+        if state.get("state") == "AUTHORIZED":
+            if set(state) != {"state", "valid_from", "valid_until"}:
+                return False
+            return self._valid_window(
+                {"valid_from": state["valid_from"],
+                 "valid_until": state["valid_until"]},
+                reference_time,
+            )
+        if state.get("state") == "RETIRED":
+            if set(state) != {"state", "historical_rule"}:
+                return False
+            # A retired TEST key is not implicitly accepted. This explicit synthetic rule
+            # is the only way the fixture allows historical authorization.
+            return self._valid_window(state.get("historical_rule"), reference_time)
+        return False
+
+
+class SyntheticTestAuthorizationVerifier:
+    """TEST ONLY: require crypto validity and registry authorization at injected time."""
+
+    is_test_double = True
+
+    def __init__(self, registry: SyntheticTestKeyAuthorizationRegistry,
+                 reference_time: datetime):
+        self._registry = registry
+        self._reference_time = reference_time
+
+    def verify(self, key_id: str, payload: bytes, signature: str) -> bool:
+        return (self._registry.signature_is_valid(key_id, payload, signature)
+                and self._registry.authorized_at(key_id, self._reference_time))
 
 
 class Ledger:
@@ -167,6 +232,16 @@ class AnchorResultLedger(Ledger):
         )
         result["anchor_matches"] = self.anchor_matches
         return result
+
+
+class TraceLedger(Ledger):
+    """Records every read-only lifecycle dependency call for effect-boundary assertions."""
+
+    async def lifecycle_checkpoint_suffix(self, scope, checkpoint_seq, checkpoint_hash):
+        self.calls.append(("suffix", scope))
+        return await super().lifecycle_checkpoint_suffix(
+            scope, checkpoint_seq, checkpoint_hash,
+        )
 
 
 class SlowSink(Sink):
@@ -409,6 +484,173 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual([name for name, _ in calls], ["chain", "latest"])
                 self.assertEqual(sink.write_calls, 0)
                 self.assertEqual(sink.read_back_calls, 0)
+
+    def test_synthetic_key_authorization_uses_explicit_reference_time_and_fails_closed(self):
+        valid_from = datetime(2026, 11, 1, tzinfo=UTC)
+        valid_until = datetime(2026, 12, 1, tzinfo=UTC)
+        inside_window = datetime(2026, 11, 15, tzinfo=UTC)
+        private_key = _synthetic_test_key("authorization-window")
+        key_id = "s13-test-window-key"
+        # signed_at intentionally predates authorization; it is signed payload data, not
+        # the authorization clock. Authorization uses only the injected reference time.
+        record = ed25519_record(
+            SCOPE, 7, key_id, private_key, signed_at=valid_from - timedelta(days=30),
+        )
+        public_keys = {key_id: public_key_bytes(private_key)}
+        window = {"valid_from": valid_from, "valid_until": valid_until}
+        cases = (
+            ("authorized at inclusive start", {"state": "AUTHORIZED", **window},
+             valid_from, True),
+            ("authorized inside window", {"state": "AUTHORIZED", **window},
+             inside_window, True),
+            ("exclusive end", {"state": "AUTHORIZED", **window}, valid_until, False),
+            ("before window", {"state": "AUTHORIZED", **window},
+             valid_from - timedelta(microseconds=1), False),
+            ("missing start", {"state": "AUTHORIZED", "valid_until": valid_until},
+             inside_window, False),
+            ("invalid start", {"state": "AUTHORIZED", "valid_from": "bad",
+                                "valid_until": valid_until}, inside_window, False),
+            ("reversed window", {"state": "AUTHORIZED", "valid_from": valid_until,
+                                  "valid_until": valid_from}, inside_window, False),
+            ("revoked", {"state": "REVOKED", **window}, inside_window, False),
+            ("unknown", {"state": "UNKNOWN", **window}, inside_window, False),
+            ("missing state", window, inside_window, False),
+            ("malformed state", "AUTHORIZED", inside_window, False),
+            ("retired without history rule", {"state": "RETIRED"}, inside_window, False),
+            ("retired with explicit synthetic rule",
+             {"state": "RETIRED", "historical_rule": window}, inside_window, True),
+            ("retired rule exclusive end",
+             {"state": "RETIRED", "historical_rule": window}, valid_until, False),
+        )
+
+        for label, state, reference_time, expected in cases:
+            with self.subTest(case=label):
+                states = {key_id: state} if state is not None else {}
+                registry = SyntheticTestKeyAuthorizationRegistry(public_keys, states)
+                # Crypto validity is independent of authorization state and time.
+                self.assertTrue(registry.signature_is_valid(
+                    key_id, record.signing_payload(), record.signature,
+                ))
+                self.assertEqual(
+                    registry.authorized_at(key_id, reference_time), expected,
+                )
+                verifier = SyntheticTestAuthorizationVerifier(registry, reference_time)
+                self.assertEqual(
+                    verifier.verify(key_id, record.signing_payload(), record.signature),
+                    expected,
+                )
+
+        # Conversely, signed_at is inside the key window here but the injected verification
+        # time is at the exclusive end, so the signature remains valid while auth is denied.
+        record_signed_inside_window = ed25519_record(
+            SCOPE, 8, key_id, private_key,
+            signed_at=valid_from + timedelta(days=1),
+        )
+        authorized_registry = SyntheticTestKeyAuthorizationRegistry(
+            public_keys, {key_id: {"state": "AUTHORIZED", **window}},
+        )
+        self.assertTrue(authorized_registry.signature_is_valid(
+            key_id, record_signed_inside_window.signing_payload(),
+            record_signed_inside_window.signature,
+        ))
+        self.assertFalse(SyntheticTestAuthorizationVerifier(
+            authorized_registry, valid_until,
+        ).verify(key_id, record_signed_inside_window.signing_payload(),
+                 record_signed_inside_window.signature))
+
+        # An authorized current key does not authorize a prior key implicitly. The prior
+        # key needs its own explicit state/rule; no fallback, grace period, or auto-previous
+        # behavior is part of this TEST contract.
+        current_key_id = "s13-test-current-window-key"
+        registry = SyntheticTestKeyAuthorizationRegistry(
+            {**public_keys, current_key_id: public_key_bytes(_synthetic_test_key("current"))},
+            {key_id: {"state": "RETIRED"},
+             current_key_id: {"state": "AUTHORIZED", **window}},
+        )
+        self.assertFalse(registry.authorized_at(key_id, inside_window))
+        self.assertTrue(registry.authorized_at(current_key_id, inside_window))
+        previous_verifier = SyntheticTestAuthorizationVerifier(registry, inside_window)
+        self.assertTrue(registry.signature_is_valid(
+            key_id, record.signing_payload(), record.signature,
+        ))
+        self.assertFalse(previous_verifier.verify(
+            key_id, record.signing_payload(), record.signature,
+        ))
+
+    def test_synthetic_authorization_preflight_is_read_only_and_never_ready(self):
+        valid_from = datetime(2026, 11, 1, tzinfo=UTC)
+        valid_until = datetime(2026, 12, 1, tzinfo=UTC)
+        reference_time = datetime(2026, 11, 15, tzinfo=UTC)
+        key_id = "s13-test-authorized-key"
+        private_key = _synthetic_test_key("authorized-preflight")
+        record = ed25519_record(
+            SCOPE, 7, key_id, private_key, signed_at=valid_from - timedelta(days=30),
+        )
+        states = {key_id: {"state": "AUTHORIZED", "valid_from": valid_from,
+                           "valid_until": valid_until}}
+        registry = SyntheticTestKeyAuthorizationRegistry(
+            {key_id: public_key_bytes(private_key)}, states,
+        )
+        verifier = SyntheticTestAuthorizationVerifier(registry, reference_time)
+        self.assertTrue(registry.signature_is_valid(
+            key_id, record.signing_payload(), record.signature,
+        ))
+        self.assertTrue(registry.authorized_at(key_id, reference_time))
+
+        calls = []
+        ledger = TraceLedger(calls=calls)
+        sink = EffectCountingSink(calls, record)
+        result = asyncio.run(LifecycleCoordinator(ledger, sink, verifier).preflight(SCOPE))
+
+        self.assertIs(result.status, LifecycleStatus.NOT_READY)
+        self.assertIs(result.reason, LifecycleReason.SHARED_FENCE_UNAVAILABLE)
+        self.assertEqual([name for name, _ in calls], ["chain", "latest", "suffix"])
+        self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
+
+    def test_unauthorized_synthetic_keys_fail_preflight_before_suffix_or_effects(self):
+        valid_from = datetime(2026, 11, 1, tzinfo=UTC)
+        valid_until = datetime(2026, 12, 1, tzinfo=UTC)
+        reference_time = datetime(2026, 11, 15, tzinfo=UTC)
+        key_id = "s13-test-unauthorized-key"
+        private_key = _synthetic_test_key("unauthorized-preflight")
+        record = ed25519_record(SCOPE, 7, key_id, private_key)
+        public_keys = {key_id: public_key_bytes(private_key)}
+        denied_states = (
+            ("revoked", {"state": "REVOKED", "valid_from": valid_from,
+                          "valid_until": valid_until}),
+            ("unknown", {"state": "UNKNOWN", "valid_from": valid_from,
+                          "valid_until": valid_until}),
+            ("missing window", {"state": "AUTHORIZED", "valid_from": valid_from}),
+            ("unexpected authorization metadata", {"state": "AUTHORIZED",
+             "valid_from": valid_from, "valid_until": valid_until, "fallback": True}),
+            ("reversed window", {"state": "AUTHORIZED", "valid_from": valid_until,
+                                  "valid_until": valid_from}),
+            ("retired without historical rule", {"state": "RETIRED"}),
+            ("absent state", None),
+        )
+        for label, state in denied_states:
+            with self.subTest(case=label):
+                registry = SyntheticTestKeyAuthorizationRegistry(
+                    public_keys, {} if state is None else {key_id: state},
+                )
+                self.assertTrue(registry.signature_is_valid(
+                    key_id, record.signing_payload(), record.signature,
+                ))
+                verifier = SyntheticTestAuthorizationVerifier(registry, reference_time)
+                self.assertFalse(verifier.verify(
+                    key_id, record.signing_payload(), record.signature,
+                ))
+
+                calls = []
+                ledger = TraceLedger(calls=calls)
+                sink = EffectCountingSink(calls, record)
+                result = asyncio.run(
+                    LifecycleCoordinator(ledger, sink, verifier).preflight(SCOPE),
+                )
+                self.assertIs(result.status, LifecycleStatus.NOT_READY)
+                self.assertIs(result.reason, LifecycleReason.CHECKPOINT_INVALID)
+                self.assertEqual([name for name, _ in calls], ["chain", "latest"])
+                self.assertEqual((sink.write_calls, sink.read_back_calls), (0, 0))
 
     def test_malformed_latest_values_map_to_checkpoint_invalid(self):
         valid = signed_record()
