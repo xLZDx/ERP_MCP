@@ -1,9 +1,12 @@
 name: ci
 
 on:
-  push:
-    branches: [main, bootstrap/1c-day1-production]
-  pull_request:
+  workflow_dispatch:
+# was (disabled by harness ci_triggers_off 2026-11-12, operator rule 4):
+# on:
+#   push:
+#     branches: [main, bootstrap/1c-day1-production]
+#   pull_request:
 
 permissions:
   contents: read

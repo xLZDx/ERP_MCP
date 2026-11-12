@@ -1313,3 +1313,7 @@ Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, ind
 ## 2026-11-01 - Merge remote refusal parity migration, keep local copy
 
 Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (commit f23a7af) for the add/add merge conflict, and keep the operator's uncommitted local version as db/phase2/028_refusal_codes_parity.local.sql for manual comparison. Nothing was deleted.
+
+## 2026-11-12 CI-OFF: workflows switched to manual dispatch
+
+Operator rule 4 (no CI on push, pull request or schedule). Changed `on:` to `workflow_dispatch` in .github/workflows/ci.yml. Original triggers: ci.yml (was: pull_request, push). The original trigger blocks are kept as comments in each file.
