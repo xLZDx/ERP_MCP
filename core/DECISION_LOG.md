@@ -1344,3 +1344,7 @@ Decision: reject non-string ASGI scope type, method, or path before authenticati
 ## 2026-11-15 — Fail closed on malformed private-ingress scope type
 
 Decision: validate the exact ASGI scope-type primitive before comparison so attacker-defined equality cannot escape the private-ingress refusal boundary. Return fixed `SCHEMA_INVALID` HTTP 400 for malformed values, preserve valid non-HTTP no-op behavior, and do not authenticate, probe a route, or dispatch downstream. This remains a synthetic private-ingress contract; no listener or production binding was enabled. The named regression is `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S24_20261114.md`.
+
+## 2026-11-15 — Record current FIN-S3.2 connector probe failure
+
+Decision: retain FIN-S3.2 as unaccepted and record the exact read-only `ERP_MCP_Razer` MCP failures without inferring the underlying component. Both `system_status` and `sources_list` returned MCP `-32603: Internal error` in this session. No credentials or business data were accessed. Resume with a read-only probe only after the local Razer gateway/upstream is restored; the watchdog restart still needs separate evidence. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
