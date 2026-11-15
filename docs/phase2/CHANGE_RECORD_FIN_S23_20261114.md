@@ -47,3 +47,9 @@ This is source and contract evidence only. Tests/checks/build/CI remain `NOT_RUN
 ## 2026-11-15 — Add focused S16 tool-contract regressions
 
 The functional-test-reviewer added named cases for the FastMCP `tools/list` names and schemas matching the immutable manifest with transport context excluded, preserving the full S15 `VerificationResult` including findings/unverified paths, and rejecting an argument whose encoded input fits a raw-value estimate but whose actual serialized representation exceeds the adapter budget before service dispatch. Earlier S2.3 regressions cover the separate rollback proposal and refusal/error boundaries. These tests were authored but not executed under operator rule 4; FIN-S2.3 remains unaccepted.
+
+## 2026-11-15 follow-up — fail closed when an adapter cannot publish the manifest
+
+The focused S2.3 run exposed a stale test dependency: the locked MCP 2.x package replaces `mcp.server.fastmcp` with `mcp.server.mcpserver.MCPServer`. The high-level MCPServer decorator has no explicit input-schema parameter; it derives a Pydantic schema that adds fields and does not preserve the manifest's closed-object rule. Removed that misleading signature-derived fallback. Registration now requires a callable `register_tool(name, handler, schema, annotations)` adapter, preflighted before any tool is registered, and publishes each immutable manifest schema verbatim. Existing exact-key dispatch validation is retained. MCPServer-only objects fail closed with `UNSUPPORTED_TOOL_SERVER`; connecting S16 to that gateway requires a separate low-level integration design with authenticated context.
+
+The functional-test-reviewer ran `uv run --locked --extra dev python -m pytest tests/phase2/test_s16_tools.py -q` after the fix: exit 0, 15 passed in 0.83s. The regression asserts exact manifest schemas through the explicit adapter and refusal of tool-only servers. FIN-S2.3 is verified; gateway integration and later FIN gates remain open.

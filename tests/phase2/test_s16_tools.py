@@ -27,6 +27,34 @@ def test_tool_list_is_exactly_five_and_annotations_are_not_read_only():
     assert tuple(server.handlers) == ("propose", "status", "apply", "verify", "rollback_propose")
     assert "approve" not in server.handlers
     assert all(entry[2].get("readOnlyHint") is False for entry in server.handlers.values())
+    assert {name: entry[1] for name, entry in server.handlers.items()} == {
+        spec.name: _plain(spec.input_schema) for spec in S16_TOOL_MANIFEST
+    }
+    assert all("context" not in schema.get("properties", {})
+               for _, schema, _ in server.handlers.values())
+
+
+def _plain(value):
+    if isinstance(value, Mapping):
+        return {key: _plain(child) for key, child in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_plain(child) for child in value]
+    return value
+
+
+def test_tool_only_server_is_refused_without_partial_registration():
+    class ToolOnlyServer:
+        def __init__(self):
+            self.calls = 0
+
+        def tool(self, **kwargs):
+            self.calls += 1
+            return lambda handler: handler
+
+    env, server = build_env(), ToolOnlyServer()
+    with pytest.raises(TypeError, match="UNSUPPORTED_TOOL_SERVER"):
+        register_s16_tools(server, env.change_service, lambda context: context)
+    assert server.calls == 0
 
 
 def test_real_parser_and_service_issue_proposal_and_unknown_approve_is_refused():
@@ -167,26 +195,6 @@ def test_manifest_has_no_hidden_approve_alias_or_caller_claim_fields():
     assert names == ["propose", "status", "apply", "verify", "rollback_propose"]
     assert all("approve" not in spec.name for spec in S16_TOOL_MANIFEST)
     assert set(S16_TOOL_MANIFEST[0].input_schema["properties"]) == {"request"}
-
-
-def test_fastmcp_lists_exact_manifest_schemas_without_exposing_transport_context():
-    from mcp.server.fastmcp import FastMCP
-
-    def plain(value):
-        if isinstance(value, Mapping):
-            return {key: plain(child) for key, child in value.items()}
-        if isinstance(value, (tuple, list)):
-            return [plain(child) for child in value]
-        return value
-
-    env, server = build_env(), FastMCP("s16-contract")
-    register_s16_tools(server, env.change_service, lambda context: context)
-    listed = asyncio.run(server.list_tools())
-
-    assert [tool.name for tool in listed] == [spec.name for spec in S16_TOOL_MANIFEST]
-    assert [tool.inputSchema for tool in listed] == [plain(spec.input_schema)
-                                                     for spec in S16_TOOL_MANIFEST]
-    assert all("context" not in tool.inputSchema.get("properties", {}) for tool in listed)
 
 
 def test_escape_expansion_argument_budget_refuses_before_calling_the_service():

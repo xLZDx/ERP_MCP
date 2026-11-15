@@ -1384,3 +1384,7 @@ Decision: require the service-returned approval digest to equal the SHA-256 dige
 
 Decision: preserve the core requirement for the exact CSRF token issued with the preview page. Update only the synthetic shared helper and approval-core tests to pass that exact value; do not add a permissive default to the approval service. Focused FIN-S2.1 approval-core evidence passed (48 cases, exit 0, 1.00s). The failure-injection replay case confirms that a durable approval followed by mismatched read-back fails closed and cannot execute apply. No product source changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
 
+
+## 2026-11-15 — Reject S16 adapters that cannot publish the exact schema
+
+Decision: register the five immutable S16 tools only through an explicit-schema `register_tool` adapter. The locked MCP 2.x `MCPServer.tool()` API derives Pydantic schemas and silently ignores undeclared arguments; it cannot publish the exact manifest or preserve closed-object validation through its public decorator. Reject tool-only adapters before partial registration. A future gateway binding must use an explicit low-level server integration and preserve authenticated request context. Focused S2.3 verification: 15 passed. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.

@@ -124,46 +124,6 @@ def _thaw(value: object) -> object:
     return value
 
 
-def _fastmcp_handler(spec: ToolSpec, dispatch: Callable[..., Any]) -> Callable[..., Any]:
-    """Build a FastMCP callable whose published argument schema matches the manifest.
-
-    FastMCP derives ``inputSchema`` from the callable signature rather than accepting a
-    separate JSON Schema. Preserve the manifest's nested constraints through Pydantic's
-    ``WithJsonSchema`` metadata, and mark transport context so it is injected, not exposed
-    as a model argument.
-    """
-    from inspect import Parameter, Signature
-
-    from mcp.server.fastmcp import Context
-    from pydantic import WithJsonSchema
-
-    properties = spec.input_schema["properties"]
-    if not isinstance(properties, Mapping):
-        raise TypeError("INVALID_TOOL_MANIFEST")
-
-    parameters = []
-    annotations: dict[str, object] = {}
-    for name, schema in properties.items():
-        if type(name) is not str or not isinstance(schema, Mapping):
-            raise TypeError("INVALID_TOOL_MANIFEST")
-        annotation = Annotated[Any, WithJsonSchema(_thaw(schema))]
-        annotations[name] = annotation
-        parameters.append(Parameter(name, kind=Parameter.KEYWORD_ONLY, annotation=annotation))
-
-    annotations["context"] = Context
-    parameters.append(Parameter("context", kind=Parameter.KEYWORD_ONLY, default=None,
-                                annotation=Context))
-
-    async def handler(**kwargs: Any) -> dict[str, object]:
-        context = kwargs.pop("context", None)
-        return await dispatch(spec.name, kwargs, context)
-
-    handler.__name__ = f"s16_{spec.name}"
-    handler.__annotations__ = {**annotations, "return": dict[str, object]}
-    handler.__signature__ = Signature(parameters, return_annotation=dict[str, object])
-    return handler
-
-
 S16_TOOL_MANIFEST = tuple(
     ToolSpec(spec.name, spec.description, _freeze(spec.input_schema), _freeze(spec.annotations))
     for spec in S16_TOOL_MANIFEST
@@ -414,9 +374,10 @@ def register_s16_tools(server: object, service: ChangeServicePort,
                        error_renderer: Callable[[ErrorCode], object] | None = None) -> None:
     """Register the immutable five-tool surface on an explicitly supplied server.
 
-    The resolver receives server transport context, never model arguments. Supported server
-    adapters are ``register_tool(name, handler, schema, annotations)`` and FastMCP's
-    ``tool(...)`` decorator; no gateway is imported or modified here.
+    The resolver receives server transport context, never model arguments. The server must
+    provide ``register_tool(name, handler, schema, annotations)`` so the
+    manifest schema is published verbatim. Signature-derived adapters are rejected because
+    they cannot preserve the exact schema or guarantee rejection of undeclared arguments.
     """
     async def dispatch(name: str, arguments: object, context: object = None) -> dict[str, object]:
         correlation_id = str(uuid.uuid4())
@@ -481,17 +442,14 @@ def register_s16_tools(server: object, service: ChangeServicePort,
         except Exception:
             return _safe_error(ErrorCode.AUDIT_UNAVAILABLE, correlation_id)
 
+    register_tool = getattr(server, "register_tool", None)
+    if not callable(register_tool):
+        raise TypeError("UNSUPPORTED_TOOL_SERVER")
+
     for spec in S16_TOOL_MANIFEST:
-        if hasattr(server, "register_tool"):
-            async def handler(arguments: object, context: object = None,
-                              *, _name: str = spec.name) -> dict[str, object]:
-                return await dispatch(_name, arguments, context)
-            handler.__name__ = f"s16_{spec.name}"
-            server.register_tool(spec.name, handler, _thaw(spec.input_schema), _thaw(spec.annotations))
-        elif callable(getattr(server, "tool", None)):
-            decorator = server.tool(name=spec.name, description=spec.description,
-                                    annotations=_thaw(spec.annotations))
-            decorator(_fastmcp_handler(spec, dispatch))
-        else:
-            raise TypeError("UNSUPPORTED_TOOL_SERVER")
+        async def handler(arguments: object, context: object = None,
+                          *, _name: str = spec.name) -> dict[str, object]:
+            return await dispatch(_name, arguments, context)
+        handler.__name__ = f"s16_{spec.name}"
+        register_tool(spec.name, handler, _thaw(spec.input_schema), _thaw(spec.annotations))
 
