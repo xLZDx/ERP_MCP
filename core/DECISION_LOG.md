@@ -1328,3 +1328,7 @@ Decision: before forwarding an approval request, the private S16 ingress validat
 ## 2026-11-15 — Preserve S15 verification result through the S16 tool adapter
 
 Decision: keep the `verify` adapter contract typed as the S15 `VerificationResult` and serialize its fields without substituting a caller-supplied authorization outcome. The manifest remains exactly the five approved names; rollback proposes a separate UNPOST and never approves or applies it. Tests remain NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Synchronize FIN blocker labels with the project-plan contract
+
+Decision: use the accepted `BLOCKED_OPERATOR` state in `PROJECT_PLAN.md` for FIN-S2.1 through FIN-S2.4 and FIN-S3.1, because their required test evidence is prohibited by the operator rule 4. Keep the specific verified prohibition and next action in each task row and ledger record. FIN-S1.2 remains externally blocked, and the authoritative FIN sprint remains open; do not infer sprint closure or start a later sprint. The current request changed only plan status labels; the tracked project-plan HTML snapshots were unchanged. No tests or checks were run.
