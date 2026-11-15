@@ -435,3 +435,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-15 SHORTCOMING: `UUID()` accepted integer/byte `change_id` inputs despite the model-facing string schema. Rule: enforce wire types in the adapter itself instead of relying only on a transport schema. Regression remains NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S23_CHANGE_ID_TYPE_20261115.md.
 
 - 2026-11-15 SHORTCOMING: private ASGI ingress compared `scheme` and `method` before requiring primitive string fields. Rule: validate untrusted routing field types before comparison, authentication, or dispatch. Regression remains NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S24_ROUTING_TYPES_20261115.md.
+
+- 2026-11-15 SUCCESS: advanced four FIN source contracts with narrow fail-closed fixes while keeping each task's implementation status separate from its prohibited, unrun acceptance evidence. Rule: record exact commit IDs and keep runtime, test, approval, and release gates distinct. Detail: docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md.

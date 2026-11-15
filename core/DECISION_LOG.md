@@ -1372,3 +1372,7 @@ Decision: require an exact string for every model-facing `change_id` before cons
 ## 2026-11-15 — Validate private ingress routing field types
 
 Decision: require exact string values for ASGI `scheme` and `method` on recognized private routes before comparisons, host/origin validation, authentication, or dispatch. Use the validated values throughout routing and POST-body handling; malformed values fail closed. Focused regression remains NOT_RUN under operator rule 4. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_ROUTING_TYPES_20261115.md`.
+
+## 2026-11-15 — Reconcile FIN evidence without promoting acceptance
+
+Decision: update FIN plan evidence with the four local S16 source-fix commits and the current verified Docker/elevation failure, while preserving every affected task as unaccepted (`NOT_RUN`) and FIN as open. Keep S16 fake-backed evidence separate from provider-backed 1C acceptance; do not promote S12/G8 or later gates. Tests/checks remain prohibited and were not run. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
