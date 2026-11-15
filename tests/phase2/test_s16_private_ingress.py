@@ -29,12 +29,14 @@ class _Authenticator:
         if headers.get("authorization") == "Bearer synthetic-approver":
             principal = replace(self.env.session.principal, expires_at=now + timedelta(minutes=10))
             return replace(self.env.session, principal=principal,
+                           created_at=now, last_seen_at=now,
                            idle_expires_at=now + timedelta(minutes=5),
                            expires_at=now + timedelta(minutes=10))
         if headers.get("authorization") == "Bearer synthetic-malformed-approver":
             principal = replace(self.env.session.principal, principal_id="",
                                 expires_at=now + timedelta(minutes=10))
             return replace(self.env.session, principal=principal,
+                           created_at=now, last_seen_at=now,
                            idle_expires_at=now + timedelta(minutes=5),
                            expires_at=now + timedelta(minutes=10))
         return None

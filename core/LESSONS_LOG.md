@@ -428,6 +428,8 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 - 2026-11-15 SUCCESS: keep the model-facing tool contract derived from one immutable manifest across adapters; test published schemas and full verifier-result preservation, and enforce budgets on the actual serialized representation. Focused regressions remain NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md.
 
+- 2026-11-15 SHORTCOMING: the S16 positive-ingress test refreshed session expiry but retained historical `created_at`/`last_seen_at`, so it tested an expired synthetic session and failed before the intended route. Rule: synthetic auth fixtures must keep all age-bound timestamps on one clock. The fixture-only correction passed 9 focused cases; the runtime-binding gate remains separate. Detail: docs/phase2/CHANGE_RECORD_FIN_S24_FIXTURE_20261115.md.
+
 - 2026-11-15 SHORTCOMING: a source-level CSRF validation call referenced `re.fullmatch` without importing `re`, which would crash the S16 decision path. Rule: inspect imports and every newly added dependency name in the edited module, and record tests as NOT_RUN when the operator prohibition applies. Detail: docs/phase2/CHANGE_RECORD_FIN_S21_CSRF_IMPORT_20261115.md.
 
 - 2026-11-15 SHORTCOMING: a service-provided approver label could contain an invalid Unicode surrogate and crash HTML response encoding. Rule: validate strict UTF-8 at every text boundary before rendering, even when escaping and length checks already exist. Regression remains NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S22_LABEL_ENCODING_20261115.md.
