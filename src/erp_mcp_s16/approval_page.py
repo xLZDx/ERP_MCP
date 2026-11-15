@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import hmac
 import inspect
 import json
 import re
@@ -90,7 +91,7 @@ def _valid_scope(scope: object) -> bool:
             and _valid_boundary_text(scope.target_class, limit=32))
 
 
-def _valid_decision_result(value: object, *, ticket: UUID, decision: str,
+def _valid_decision_result(value: object, *, ticket: UUID, decision_ref: str, decision: str,
                            session: ApproverSession, now: datetime) -> bool:
     if type(value) is not ApprovalDecision or type(session) is not ApproverSession:
         return False
@@ -110,11 +111,15 @@ def _valid_decision_result(value: object, *, ticket: UUID, decision: str,
             or value.approver_epoch != principal.epoch
             or not _valid_boundary_text(value.session_id, limit=128)
             or value.session_id != session.session_id
+            or type(decision_ref) is not str
+            or not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", decision_ref)
             or type(value.decision) is not str or value.decision != decision
             or decision not in {"APPROVE", "REJECT"}
             or any(type(digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", digest)
                    for digest in (value.nonce_digest, value.decision_ref_digest,
                                   value.preview_digest, value.approval_digest))
+            or not hmac.compare_digest(value.decision_ref_digest,
+                                       hashlib.sha256(decision_ref.encode("ascii")).hexdigest())
             or type(value.expires_at) is not datetime or type(now) is not datetime):
         return False
     try:
@@ -496,7 +501,8 @@ def create_approval_app(service: ApprovalServicePort,
                                         result = None
                                     if (type(result) is not Result or result.error is not None
                                             or not _valid_decision_result(
-                                                result.value, ticket=parsed_ticket, decision=data["decision"],
+                                                result.value, ticket=parsed_ticket,
+                                                decision_ref=data["decision_ref"], decision=data["decision"],
                                                 session=session, now=now)):
                                         response = _error(result.error if type(result) is Result and result.error else
                                                           ErrorCode.AUDIT_UNAVAILABLE)

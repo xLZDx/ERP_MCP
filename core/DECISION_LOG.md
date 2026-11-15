@@ -1376,3 +1376,8 @@ Decision: require exact string values for ASGI `scheme` and `method` on recogniz
 ## 2026-11-15 — Reconcile FIN evidence without promoting acceptance
 
 Decision: update FIN plan evidence with the four local S16 source-fix commits and the current verified Docker/elevation failure, while preserving every affected task as unaccepted (`NOT_RUN`) and FIN as open. Keep S16 fake-backed evidence separate from provider-backed 1C acceptance; do not promote S12/G8 or later gates. Tests/checks remain prohibited and were not run. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-15 — Bind S16 approval result to the submitted decision reference
+
+Decision: require the service-returned approval digest to equal the SHA-256 digest of the exact submitted decision reference before rendering success. A valid-looking receipt for a different reference now fails closed as AUDIT_UNAVAILABLE; do not infer that a downstream decision was rolled back after dispatch. Narrow page regression passed (5 cases in 1.37s). No listener, production binding, or real 1C path was enabled. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_DECISION_REF_BINDING_20261115.md`.
+

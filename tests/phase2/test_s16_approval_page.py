@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import html
 import re
+from datetime import timedelta
 
 from starlette.testclient import TestClient
 
 from erp_mcp_s16.approval_page import create_approval_app
+from erp_mcp_s16.contracts import ApprovalDecision, Result
 from s16_helpers import ORIGIN, build_env, propose
 
 
@@ -212,3 +215,43 @@ def test_malformed_http_scope_fields_return_schema_error_before_auth_or_service(
 
     assert authenticator.calls == 0
     assert service_calls == []
+
+
+def test_approval_post_rejects_success_receipt_bound_to_another_decision_ref():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-result-ref-mismatch")
+    client = _client(env)
+    page = client.get(f"/approval/{snapshot.change_id}", headers=_headers())
+    assert page.status_code == 200
+    decision_ref = re.search(r'name="decision_ref" value="([^"]+)"', page.text).group(1)
+    csrf_token = re.search(r'name="csrf_token" value="([^"]+)"', page.text).group(1)
+
+    principal = env.session.principal
+    malformed_success = ApprovalDecision(
+        change_id=snapshot.change_id,
+        version=snapshot.version,
+        scope=snapshot.scope,
+        requester_person_id=snapshot.proposal.requester_person_id,
+        approver_person_id=principal.person_id,
+        approver_principal_id=principal.principal_id,
+        approver_epoch=principal.epoch,
+        session_id=env.session.session_id,
+        nonce_digest=snapshot.nonce_digest,
+        decision_ref_digest=hashlib.sha256(b"different-decision-ref").hexdigest(),
+        preview_digest=snapshot.preview_digest,
+        approval_digest=snapshot.approval_digest,
+        decision="APPROVE",
+        expires_at=env.clock.now() + timedelta(minutes=5),
+    )
+    env.approval_service.submit_decision = lambda *args, **kwargs: Result.success(malformed_success)
+
+    response = client.post(
+        f"/approval/{snapshot.change_id}/decision",
+        data={"decision_ref": decision_ref, "csrf_token": csrf_token, "decision": "APPROVE"},
+        headers=_headers(origin=ORIGIN, referer=ORIGIN + "/approval/review"),
+    )
+
+    assert response.status_code == 403
+    assert "Decision recorded." not in response.text
+    assert env.store.get(snapshot.change_id).approval is None
+    assert env.apply_port.calls == 0
