@@ -436,6 +436,71 @@ def test_proposal_tampered_after_approval_is_refused_before_claim_and_apply():
     assert env.apply_port.calls == 0
 
 
+@pytest.mark.parametrize("write_mode", ["noop", "mismatch"])
+def test_apply_persistence_readback_mismatch_is_unknown_and_never_retries(write_mode):
+    class UnreliableApplyReceiptStore(InMemoryChangeStore):
+        def save_apply_receipt(self, change_id, receipt):
+            if write_mode == "noop":
+                return
+            super().save_apply_receipt(change_id, replace(receipt, document_ref="different-document"))
+
+    store = UnreliableApplyReceiptStore()
+    env = build_env(store=store)
+    snap, _ = approve(env)
+
+    first = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    retry = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
+
+    assert first.error is ErrorCode.APPLY_UNKNOWN
+    assert retry.error is not None
+    assert env.apply_port.calls == 1
+    assert store.claim_count == 1
+
+
+@pytest.mark.parametrize("field", ["status", "correlation_id", "document_ref"])
+def test_malformed_apply_receipt_refuses_without_persisting_any_result(field):
+    from erp_mcp_s16.contracts import ApplyReceipt
+
+    env = build_env()
+    snap, _ = approve(env)
+    valid = ApplyReceipt(snap.change_id, "APPLIED", "fake-correlation", "fake-document")
+    malformed = replace(valid, **{field: "invalid\x00value"})
+    env.apply_port.result = malformed
+
+    result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+
+    stored = env.store.get(snap.change_id)
+    assert result.error is ErrorCode.APPLY_UNKNOWN
+    assert stored.document_ref is None
+    assert env.apply_port.calls == 1
+    assert env.store.claim_count == 1
+
+
+@pytest.mark.parametrize("failure", ["raises", "malformed"])
+def test_invalid_store_read_before_claim_fails_closed_without_claim_or_apply(failure):
+    class InvalidReadStore(InMemoryChangeStore):
+        armed = False
+
+        def get(self, change_id):
+            if self.armed:
+                self.armed = False
+                if failure == "raises":
+                    raise OSError("store unavailable")
+                return object()
+            return super().get(change_id)
+
+    store = InvalidReadStore()
+    env = build_env(store=store)
+    snap, _ = approve(env)
+    store.armed = True
+
+    result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+
+    assert result.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert store.claim_count == 0
+    assert env.apply_port.calls == 0
+
+
 def test_expiry_during_begin_apply_observation_is_rechecked_before_apply():
     class AdvancingReader(FakeBeginApplyEvidencePort):
         def __init__(self, evidence, clock):
@@ -454,3 +519,95 @@ def test_expiry_during_begin_apply_observation_is_rechecked_before_apply():
     result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
     assert result.error is ErrorCode.APPROVAL_EXPIRED
     assert env.apply_port.calls == 0
+
+
+def test_approval_nonce_consumption_readback_mismatch_fails_closed_and_cannot_replay():
+    class SkewedDecisionReadStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.skew_next_read = False
+
+        def consume_decision_ref_and_nonce(self, *args, **kwargs):
+            consumed = super().consume_decision_ref_and_nonce(*args, **kwargs)
+            self.skew_next_read = consumed is True
+            return consumed
+
+        def get(self, change_id):
+            receipt = super().get(change_id)
+            if self.skew_next_read and receipt is not None:
+                self.skew_next_read = False
+                return replace(receipt, proposal=replace(receipt.proposal,
+                                                         reason="changed after approval decision"))
+            return receipt
+
+    store = SkewedDecisionReadStore()
+    env = build_env(store=store)
+    snap = propose(env)
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+
+    decision = env.approval_service.submit_decision(
+        env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        now=NOW + timedelta(seconds=1),
+    )
+    persisted = store.get(snap.change_id)
+    replay = env.approval_service.submit_decision(
+        env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        now=NOW + timedelta(seconds=2),
+    )
+
+    assert decision.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert persisted.approval is not None and persisted.approval.decision == "APPROVE"
+    assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
+    assert env.apply_port.calls == 0
+
+
+def test_apply_readback_exception_after_save_is_unknown_and_never_retries():
+    class RaisesOnApplyReadbackStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.raise_next_read = False
+
+        def save_apply_receipt(self, change_id, receipt):
+            super().save_apply_receipt(change_id, receipt)
+            self.raise_next_read = True
+
+        def get(self, change_id):
+            if self.raise_next_read:
+                self.raise_next_read = False
+                raise OSError("post-save receipt read unavailable")
+            return super().get(change_id)
+
+    store = RaisesOnApplyReadbackStore()
+    env = build_env(store=store)
+    snap, _ = approve(env)
+
+    first = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    retry = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
+
+    assert first.error is ErrorCode.APPLY_UNKNOWN
+    assert retry.error is not None
+    assert env.apply_port.calls == 1
+    assert store.claim_count == 1
+    assert store.get(snap.change_id).document_ref == "fake-document"
+
+
+def test_apply_receipt_store_save_exception_is_unknown_and_never_retries():
+    class RaisesOnApplyReceiptSaveStore(InMemoryChangeStore):
+        def save_apply_receipt(self, _change_id, _receipt):
+            raise OSError("apply receipt save unavailable")
+
+    store = RaisesOnApplyReceiptSaveStore()
+    env = build_env(store=store)
+    snap, _ = approve(env)
+
+    first = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    retry = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
+
+    assert first.error is ErrorCode.APPLY_UNKNOWN
+    assert retry.error is not None
+    assert env.apply_port.calls == 1
+    assert store.claim_count == 1
+    assert store.get(snap.change_id).document_ref is None

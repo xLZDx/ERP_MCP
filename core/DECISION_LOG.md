@@ -1348,3 +1348,7 @@ Decision: validate the exact ASGI scope-type primitive before comparison so atta
 ## 2026-11-15 — Record current FIN-S3.2 connector probe failure
 
 Decision: retain FIN-S3.2 as unaccepted and record the exact read-only `ERP_MCP_Razer` MCP failures without inferring the underlying component. Both `system_status` and `sources_list` returned MCP `-32603: Internal error` in this session. No credentials or business data were accessed. Resume with a read-only probe only after the local Razer gateway/upstream is restored; the watchdog restart still needs separate evidence. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-15 — Complete synthetic S16 persistence fail-closed coverage for FIN-S2.1
+
+Decision: treat malformed approval/read-back receipts, store failures, and a no-op or mismatched apply-result persistence read-back as uncertainty, not success. After `BEGIN_APPLY` or crossing the apply port, retain the durable claim and never retry; before execution, refuse without collecting execution evidence or calling the writer port. This remains a fake-backed contract and does not establish production write qualification. Focused regressions are authored but `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.

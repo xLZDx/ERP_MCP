@@ -71,6 +71,29 @@ def _valid_sha256_hex(value: object) -> bool:
             and all(character in "0123456789abcdef" for character in value))
 
 
+def _valid_wire_text(value: object, *, limit: int) -> bool:
+    if type(value) is not str or not value or len(value) > limit:
+        return False
+    try:
+        value.encode("utf-8", errors="strict")
+    except UnicodeError:
+        return False
+    return not any(ord(char) < 32 or ord(char) == 127 for char in value)
+
+
+def _valid_apply_receipt(receipt: object, change_id: UUID) -> bool:
+    if type(receipt) is not ApplyReceipt or type(change_id) is not UUID:
+        return False
+    try:
+        return (type(receipt.change_id) is UUID and receipt.change_id == change_id
+                and _valid_wire_text(receipt.status, limit=64)
+                and _valid_wire_text(receipt.correlation_id, limit=128)
+                and (receipt.document_ref is None
+                     or _valid_wire_text(receipt.document_ref, limit=512)))
+    except Exception:
+        return False
+
+
 def _allowed_target_record(target: object, scope: object) -> bool:
     """Require a well-typed positive registry decision before trusting target metadata."""
     return (type(target) is TargetRecord and type(target.allowed) is bool and target.allowed is True
@@ -342,8 +365,13 @@ class S16Core:
                 return Result.refused(ErrorCode.STALE_VERSION)
             if receipt.requester_person_id != binding.requester_person_id:
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
-            issued_error = self.validate_issued_receipt(receipt)
+            try:
+                issued_error = self.validate_issued_receipt(receipt)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if issued_error is not None:
+                if type(issued_error) is not ErrorCode:
+                    return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
                 return Result.refused(issued_error)
             snapshot_expires_at = _as_utc(receipt.snapshot.expires_at)
             proposal_expires_at = _as_utc(receipt.proposal.expires_at)
@@ -464,7 +492,16 @@ class S16Core:
                 stored_decision = self.store.get(binding.change_id)
             except Exception:
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
-            if (stored_decision is None or stored_decision.approval != result
+            if (type(stored_decision) is not DomainReceipt
+                    or stored_decision.change_id != receipt.change_id
+                    or stored_decision.version != receipt.version
+                    or stored_decision.scope != receipt.scope
+                    or stored_decision.proposal != receipt.proposal
+                    or stored_decision.snapshot != receipt.snapshot
+                    or stored_decision.requester_person_id != receipt.requester_person_id
+                    or stored_decision.target_version != receipt.target_version
+                    or stored_decision.document_ref != receipt.document_ref
+                    or stored_decision.approval != result
                     or stored_decision.s12_record != transitioned.record):
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             self._consumed_nonce_digests.add(binding.nonce_digest)
@@ -481,11 +518,21 @@ class S16Core:
             return Result.refused(ErrorCode.SCHEMA_INVALID)
         now = now_utc
         with self._lock:
-            receipt = self.store.get(change_id)
+            try:
+                receipt = self.store.get(change_id)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if receipt is None:
                 return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
-            issued_error = self.validate_issued_receipt(receipt)
+            if type(receipt) is not DomainReceipt:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            try:
+                issued_error = self.validate_issued_receipt(receipt)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if issued_error is not None:
+                if type(issued_error) is not ErrorCode:
+                    return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
                 return Result.refused(issued_error)
             proposal_expires_at = _as_utc(receipt.proposal.expires_at)
             if proposal_expires_at is None:
@@ -506,8 +553,18 @@ class S16Core:
                 self.store.save_s12_record(change_id, transitioned.record)
             except Exception:
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
-            updated = self.store.get(change_id)
-            if updated is None or updated.s12_record != transitioned.record:
+            try:
+                updated = self.store.get(change_id)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            if (type(updated) is not DomainReceipt or updated.change_id != receipt.change_id
+                    or updated.version != receipt.version or updated.scope != receipt.scope
+                    or updated.proposal != receipt.proposal or updated.snapshot != receipt.snapshot
+                    or updated.requester_person_id != receipt.requester_person_id
+                    or updated.approval != receipt.approval
+                    or updated.target_version != receipt.target_version
+                    or updated.document_ref != receipt.document_ref
+                    or updated.s12_record != transitioned.record):
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             self._s12_anchors[change_id] = transitioned.record
             return Result.success(updated)
@@ -563,11 +620,17 @@ class S16Core:
                                         released_record=released_record) is not True:
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             updated = self.store.get(change_id)
-            if updated is None or updated.s12_record != released_record:
+            if (type(updated) is not DomainReceipt or updated.change_id != original.change_id
+                    or updated.version != original.version or updated.scope != original.scope
+                    or updated.proposal != original.proposal or updated.snapshot != original.snapshot
+                    or updated.requester_person_id != original.requester_person_id
+                    or updated.target_version != original.target_version
+                    or updated.document_ref != original.document_ref
+                    or updated.approval != original.approval or updated.s12_record != released_record):
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             previous_anchor = self._s12_anchors.get(change_id)
             self._s12_anchors[change_id] = released_record
-            if self.validate_issued_receipt(updated) is not None or updated.approval != original.approval:
+            if self.validate_issued_receipt(updated) is not None:
                 self._s12_anchors[change_id] = previous_anchor
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         except Exception:
@@ -596,17 +659,33 @@ class S16Core:
                 if change_id in self._pending_releases:
                     return recovered
             if change_id in self._apply_started:
-                prior = self.store.get(change_id)
-                if prior is not None and prior.s12_record is not None:
+                try:
+                    prior = self.store.get(change_id)
+                except Exception:
+                    return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+                if type(prior) is not DomainReceipt:
+                    if prior is not None:
+                        return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+                elif prior.s12_record is not None:
                     repeated = apply_transition(prior.s12_record, Event.CLAIM, ClaimEvidence(now=now))
                     if type(repeated).__name__ == "Refusal":
                         return Result.refused(repeated.code)
                 return Result.refused(ErrorCode.TICKET_SUPERSEDED)
-            receipt = self.store.get(change_id)
+            try:
+                receipt = self.store.get(change_id)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if receipt is None:
                 return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
-            issued_error = self.validate_issued_receipt(receipt)
+            if type(receipt) is not DomainReceipt:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            try:
+                issued_error = self.validate_issued_receipt(receipt)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if issued_error is not None:
+                if type(issued_error) is not ErrorCode:
+                    return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
                 return Result.refused(issued_error)
             if receipt.proposal.requester_principal != requester.principal_id:
                 return Result.refused(ErrorCode.NOT_ENTITLED)
@@ -817,14 +896,37 @@ class S16Core:
             except Exception:
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             self._s12_anchors[change_id] = began.record
-            applying_receipt = self.store.get(change_id)
-            if applying_receipt is None or applying_receipt.s12_record != began.record:
+            try:
+                applying_receipt = self.store.get(change_id)
+            except Exception:
+                # BEGIN_APPLY is already persisted. Keep the claim terminal for this process,
+                # return a fixed refusal, and leave recovery to reconcile the durable state.
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
-            issued_error = self.validate_issued_receipt(applying_receipt)
+            if (type(applying_receipt) is not DomainReceipt
+                    or applying_receipt.change_id != receipt.change_id
+                    or applying_receipt.version != receipt.version
+                    or applying_receipt.scope != receipt.scope
+                    or applying_receipt.proposal != receipt.proposal
+                    or applying_receipt.snapshot != receipt.snapshot
+                    or applying_receipt.approval != approval
+                    or applying_receipt.target_version != receipt.target_version
+                    or applying_receipt.s12_record != began.record):
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+            try:
+                issued_error = self.validate_issued_receipt(applying_receipt)
+            except Exception:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if issued_error is not None:
+                if type(issued_error) is not ErrorCode:
+                    return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
                 return Result.refused(issued_error)
-            target_error = self.validate_current_target(applying_receipt)
+            try:
+                target_error = self.validate_current_target(applying_receipt)
+            except Exception:
+                return Result.refused(ErrorCode.TARGET_REJECTED)
             if target_error is not None:
+                if type(target_error) is not ErrorCode:
+                    return Result.refused(ErrorCode.TARGET_REJECTED)
                 return Result.refused(target_error)
             try:
                 final_now = self.clock.now() if self.clock is not None else current_now
@@ -871,11 +973,20 @@ class S16Core:
             except Exception:
                 # The call may have crossed the port boundary; never retry an unknown outcome.
                 return Result.refused(ErrorCode.APPLY_UNKNOWN)
-            if type(applied) is not ApplyReceipt or applied.change_id != change_id:
+            if not _valid_apply_receipt(applied, change_id):
                 return Result.refused(ErrorCode.APPLY_UNKNOWN)
             try:
                 self.store.save_apply_receipt(change_id, applied)
             except Exception:
+                return Result.refused(ErrorCode.APPLY_UNKNOWN)
+            try:
+                persisted_apply = self.store.get(change_id)
+            except Exception:
+                # The apply boundary may already have been crossed. Never retry or claim persistence.
+                return Result.refused(ErrorCode.APPLY_UNKNOWN)
+            expected_persisted = replace(applying_receipt, status=applied.status,
+                                         document_ref=applied.document_ref)
+            if type(persisted_apply) is not DomainReceipt or persisted_apply != expected_persisted:
                 return Result.refused(ErrorCode.APPLY_UNKNOWN)
             self._apply_receipt_anchors[change_id] = applied
             return Result.success(applied)
@@ -904,11 +1015,21 @@ class S16Core:
             return Result.refused(policy_refusal.code)
         if type(change_id) is not UUID or not _aware(now) or not self._live_requester(requester, now):
             return Result.refused(ErrorCode.NOT_ENTITLED)
-        receipt = self.store.get(change_id)
+        try:
+            receipt = self.store.get(change_id)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if receipt is None:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
-        issued_error = self.validate_issued_receipt(receipt)
+        if type(receipt) is not DomainReceipt:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        try:
+            issued_error = self.validate_issued_receipt(receipt)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if issued_error is not None:
+            if type(issued_error) is not ErrorCode:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(issued_error)
         if receipt.scope != requester.scope or receipt.proposal.requester_principal != requester.principal_id:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)
@@ -920,11 +1041,26 @@ class S16Core:
             return Result.refused(policy_refusal.code)
         if type(request) is not VerifyRequest or not _aware(now) or not self._live_requester(requester, now):
             return Result.refused(ErrorCode.NOT_ENTITLED)
-        receipt = self.store.get(request.change_id)
-        if receipt is None or receipt.scope != requester.scope:
+        if type(request.change_id) is not UUID or (request.document_ref is not None
+                                                   and type(request.document_ref) is not str):
+            return Result.refused(ErrorCode.SCHEMA_INVALID)
+        try:
+            receipt = self.store.get(request.change_id)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        if receipt is None:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
-        issued_error = self.validate_issued_receipt(receipt)
+        if type(receipt) is not DomainReceipt:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
+        if receipt.scope != requester.scope:
+            return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
+        try:
+            issued_error = self.validate_issued_receipt(receipt)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if issued_error is not None:
+            if type(issued_error) is not ErrorCode:
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             return Result.refused(issued_error)
         if receipt.proposal.requester_principal != requester.principal_id:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)

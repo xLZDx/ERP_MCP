@@ -30,6 +30,66 @@ The approval decision path previously checked that the current requester registr
 
 This is source and contract evidence only. The focused regression is `NOT_RUN` because operator rule 4 prohibits tests/checks in this sprint. FIN-S2.1 remains unaccepted until the authorized verification stage.
 
+## Follow-up implementation — store read failures around apply claim
+
+Source review found that `S16Core.apply` read the persisted receipt outside an exception boundary before claim, during repeated-claim handling, and immediately after `claim_once`. A store exception or malformed post-claim object could escape the core or leave a claim reserved before `BEGIN_APPLY`. The core now maps pre-claim read exceptions and malformed stored objects to fixed refusals. If the post-claim read fails or does not match the claimed transition and approval, it invokes the existing pre-begin release path; no apply-port call is made from that branch.
+
+This is source-only evidence. The focused failure-injection regressions remain `NOT_RUN` under operator rule 4; FIN-S2.1 remains `PARTIAL` and no database-backed claim, listener, production binding, or real 1C write is established.
+
+## Follow-up implementation — store read failure after `BEGIN_APPLY`
+
+Source review found that the post-claim receipt read was guarded, but the same read occurs after `BEGIN_APPLY` has already been durably saved. The existing failure branch was shared with the pre-begin path and could release a claim after the durable transition, allowing another caller to race recovery. The post-begin read now returns the fixed `AUDIT_UNAVAILABLE` refusal without releasing the claim or calling the apply port; the persisted in-progress anchor remains for recovery. The S16 coverage map now distinguishes pre- and post-`BEGIN_APPLY` behavior.
+
+This is source and contract evidence only. The failure-injection regression is `NOT_RUN` under operator rule 4; FIN-S2.1 remains `PARTIAL`, and no database-backed claim, listener, production binding, or real 1C write is established.
+
 ## Local commit gate attempt
 
-The local commit was not created. The pre-tool commit gate required a fresh GPT review receipt. The bounded FIN-S2.1 review invocation reached the review tool but returned `ERROR` because its request body exceeded 8,388,608 bytes; it produced no GPT verdict and is not an approval. The review input included the selected FIN-S2.1 paths, but the repository review builder also includes unrelated untracked files. No hook was bypassed and no files were discarded. Next: make the review input bounded without hiding or deleting the other worktree files, then obtain an actual review result before retrying the local commit.
+The local commit was not created. The pre-tool commit gate required a fresh GPT review receipt. The bounded FIN-S2.1 review invocation reached the review tool but returned `ERROR` because its request body exceeded 8,388,608 bytes; it produced no GPT verdict and is not an approval. The review input included the selected FIN-S2.1 paths, but the repository review builder also includes unrelated untracked files. A clean scratch-worktree retry did not reach GPT because PM Bridge has no project-to-conversation binding for that temporary path; the copy was returned to a clean state and removed, with the patch preserved outside the repository. No hook was bypassed and no source files were discarded. Next: obtain a bounded review receipt through the existing ERP_MCP project binding, then retry the local commit.
+
+## Follow-up implementation — fail-closed status store read
+
+Source review found `S16Core.status` read the change store and validated the issued receipt without an exception boundary or exact receipt/error-type checks. A store exception, malformed result, or validator exception could escape the core rather than return its fixed refusal contract. Status now maps these cases to `AUDIT_UNAVAILABLE` and serializes no malformed value; an absent receipt still returns `REF_OUT_OF_SCOPE`. The S16 coverage map records the failure-injection scenario.
+
+This is source and contract evidence only. The focused status-store regression remains `NOT_RUN` under operator rule 4; FIN-S2.1 remains `PARTIAL`.
+
+## Follow-up implementation — guard expiration and verification reads
+
+A complete `ChangeStore.get` scan found unguarded reads in `S16Core.expire()` and `S16Core.verify()`, plus an unguarded expiration read-back after the transition had been saved. These paths now return fixed `AUDIT_UNAVAILABLE` on store exceptions, malformed receipts, validator exceptions, or malformed refusal values. An absent record remains `REF_OUT_OF_SCOPE`; after expiration is saved, a failed read-back leaves the durable transition for recovery rather than attempting a rollback. `verify()` also rejects a malformed change ID/document reference before the store call.
+
+These are source and contract changes only. Failure-injection regressions remain `NOT_RUN` under operator rule 4; FIN-S2.1 remains `PARTIAL`.
+
+## Follow-up implementation — preserve receipt identity on read-back
+
+The expiration and pre-`BEGIN_APPLY` claim-release paths previously accepted a post-save receipt when only its S12 lifecycle record matched. They now also require the original change ID, version, scope, proposal, snapshot, requester, target version, document reference, and approval to remain identical. A mismatched read-back returns `AUDIT_UNAVAILABLE` and is not reported as a successful transition.
+
+This is source-only hardening; the mismatched-read-back regression is `NOT_RUN` under operator rule 4.
+
+## Follow-up implementation — validator exception and error-code boundaries in apply
+
+Source review found that approval-time and apply-time calls to `validate_issued_receipt` could let validator exceptions or non-registry error values escape. The post-`BEGIN_APPLY` path also trusted `validate_current_target` to return a registered `ErrorCode`. These boundaries now fail closed: validator exceptions or malformed refusal values become `AUDIT_UNAVAILABLE`; target-validator exceptions or malformed refusal values become `TARGET_REJECTED`. The post-`BEGIN_APPLY` branch retains the claim and durable in-progress anchor and does not call the apply port after these failures.
+
+This is source-only evidence. No regression tests or checks were run under operator rule 4; FIN-S2.1 remains `IN_PROGRESS` and unaccepted.
+
+## Follow-up implementation — bind approval decision read-back to its receipt
+
+Source review found that after `consume_decision_ref_and_nonce` durably stored an approval, `approve()` read the receipt back and accessed its fields without checking the returned type or immutable identity. A malformed adapter result could raise after nonce consumption, and a different receipt carrying the same approval/lifecycle values could be reported as success. The core now requires the exact `DomainReceipt`, the original change/version/scope/proposal/snapshot/requester/target/document identity, and the exact decision and S12 transition before recording in-memory anchors or returning success. If the read-back is unavailable or mismatched, the durable decision remains for reconciliation and the caller receives `AUDIT_UNAVAILABLE`.
+
+This is source-only evidence. No regression tests/checks were run under operator rule 4; FIN-S2.1 remains `IN_PROGRESS` and unaccepted.
+
+## Follow-up implementation — validate apply-port receipt before persistence
+
+Source review found that `S16Core.apply()` checked only the exact `ApplyReceipt` class and matching `change_id` before persisting a port result. Invalid status, correlation ID, or document-reference text could therefore be stored and rejected only later by the MCP serializer. The core now validates the same UTF-8, control-character, and length bounds as the serializer before persistence. A malformed or mismatched result returns fixed `APPLY_UNKNOWN` and is not saved because the port call may already have crossed the execution boundary. The S16 acceptance map records malformed status, correlation, and document-reference results.
+
+This is source and contract evidence only. The focused failure-injection regression is `NOT_RUN` under operator rule 4; FIN-S2.1 remains unaccepted. No database-backed claim, listener, production binding, or real 1C write is established.
+
+## Follow-up implementation — verify apply-result persistence before success
+
+Source review found that `apply()` returned success immediately after `save_apply_receipt()` returned without an exception. A store that silently failed to persist or returned inconsistent state on read-back could therefore produce false success. The core now reads the receipt after saving and requires exact equality with the expected receipt containing the accepted apply status and document reference before setting the in-memory verification anchor. A failed, missing, malformed, or mismatched read-back returns `APPLY_UNKNOWN`; the apply port is never retried because it may already have executed. The acceptance map now includes no-op, exception, and mismatched-read-back cases.
+
+This is source and contract evidence only. The focused failure-injection regression is `NOT_RUN` under operator rule 4; FIN-S2.1 remains unaccepted. No database-backed claim, listener, production binding, or real 1C write is established.
+
+## 2026-11-15 — validate approver session and decision response at the page boundary
+
+Source review found that the approval app accepted a role container by membership alone and showed a success page after checking only part of the returned `ApprovalDecision`. The app now requires exact approver identity, role-container, epoch, and scope shapes before service dispatch. After a decision call, it validates the ticket/action/session/approver/scope binding, version, digest formats, and future-aware expiry before showing success; malformed results map to a fixed refusal. The S16 acceptance map records both cases.
+
+This is source and contract evidence only. The focused ASGI/session/service regressions are `NOT_RUN` under operator rule 4; FIN-S2.2 remains unaccepted. No listener or production binding was enabled.
