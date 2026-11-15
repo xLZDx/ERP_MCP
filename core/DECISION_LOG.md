@@ -1368,3 +1368,7 @@ Decision: validate the service-provided approver label with the approval page's 
 ## 2026-11-15 — Require string UUIDs at the S16 tool adapter
 
 Decision: require an exact string for every model-facing `change_id` before constructing a UUID in status, apply, rollback-proposal, and verify. Preserve UUID string parsing and reject wrong wire types through the existing fixed schema-refusal path before service dispatch. Focused regression remains NOT_RUN under operator rule 4; FIN-S2.3 remains unaccepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_CHANGE_ID_TYPE_20261115.md`.
+
+## 2026-11-15 — Validate private ingress routing field types
+
+Decision: require exact string values for ASGI `scheme` and `method` on recognized private routes before comparisons, host/origin validation, authentication, or dispatch. Use the validated values throughout routing and POST-body handling; malformed values fail closed. Focused regression remains NOT_RUN under operator rule 4. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_ROUTING_TYPES_20261115.md`.

@@ -252,6 +252,8 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
         if scope_type != "http":
             return
         path = scope.get("path")
+        method = scope.get("method")
+        scheme = scope.get("scheme")
         is_approval = type(path) is str and path.startswith(config.approval_prefix)
         is_tool = type(path) is str and (path == config.tool_prefix or path.startswith(config.tool_prefix + "/"))
         html_response = bool(is_approval)
@@ -269,6 +271,8 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
             if not (is_approval or is_tool):
                 response = _safe_response(404, ErrorCode.REF_OUT_OF_SCOPE)
             else:
+                if type(method) is not str or type(scheme) is not str:
+                    raise ValueError("REQUEST_ROUTING_FIELDS_INVALID")
                 client = scope.get("client")
                 server = scope.get("server")
                 if (type(client) not in (tuple, list) or len(client) != 2
@@ -278,18 +282,18 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                     raise ValueError("ENDPOINT_INVALID")
                 peer_ip = ipaddress.ip_address(client[0])
                 server_ip = ipaddress.ip_address(server[0])
-                if (scope.get("scheme") != "https" or not _allowed(peer_ip, networks)
+                if (scheme != "https" or not _allowed(peer_ip, networks)
                         or not _allowed(server_ip, networks) or server_ip != origin_ip
                         or server[1] != origin_port):
                     raise ValueError("PUBLIC_ENDPOINT")
                 hosts = headers_seen.get("host", [])
                 if len(hosts) != 1 or not _host_matches(hosts[0], server[0], server[1],
-                                                        str(scope.get("scheme", ""))):
+                                                        scheme):
                     raise ValueError("HOST_MISMATCH")
                 if not _same_origin(headers, config.origin,
-                                    required=is_approval and scope.get("method") == "POST"):
+                                    required=is_approval and method == "POST"):
                     raise PermissionError("ORIGIN_INVALID")
-                if scope.get("method") == "POST":
+                if method == "POST":
                     lengths = headers_seen.get("content-length", [])
                     if len(lengths) > 1:
                         raise _BodyLimitExceeded("BODY_LIMIT")
@@ -332,7 +336,7 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                         await send(message)
 
                 downstream_receive = receive
-                if scope.get("method") == "POST":
+                if method == "POST":
                     # Content-Length is only an early rejection hint: chunked requests may omit it.
                     # Buffer the bounded body before entering either downstream app so no oversized
                     # request can be partially processed before the limit is noticed.
@@ -383,7 +387,7 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                     else:
                         await _invoke(downstream, scope, downstream_receive, protected_send)
                         return
-                if scope.get("method") != "POST":
+                if method != "POST":
                     await _invoke(downstream, scope, receive, protected_send)
                     return
         except _BodyLimitExceeded:
