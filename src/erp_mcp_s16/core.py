@@ -723,9 +723,28 @@ class S16Core:
                     or claim.token.approval_digest != approval.approval_digest):
                 return Result.refused(ErrorCode.CLAIM_EXPIRED)
             self._s12_anchors[change_id] = transitioned.record
-            claimed_receipt = self.store.get(change_id)
-            if claimed_receipt is None or claimed_receipt.s12_record != transitioned.record:
-                return Result.refused(ErrorCode.CLAIM_EXPIRED)
+            try:
+                claimed_receipt = self.store.get(change_id)
+            except Exception:
+                return self._release_before_begin(receipt, claim.token, transitioned.record,
+                                                  ErrorCode.AUDIT_UNAVAILABLE, now=now)
+            try:
+                claimed_receipt_matches = (type(claimed_receipt) is DomainReceipt
+                    and claimed_receipt.s12_record == transitioned.record
+                    and claimed_receipt.approval == approval
+                    and claimed_receipt.change_id == receipt.change_id
+                    and claimed_receipt.version == receipt.version
+                    and claimed_receipt.scope == receipt.scope
+                    and claimed_receipt.proposal == receipt.proposal
+                    and claimed_receipt.requester_person_id == receipt.requester_person_id
+                    and claimed_receipt.target_version == receipt.target_version
+                    and claimed_receipt.snapshot == receipt.snapshot
+                    and claimed_receipt.document_ref == receipt.document_ref)
+            except Exception:
+                claimed_receipt_matches = False
+            if not claimed_receipt_matches:
+                return self._release_before_begin(receipt, claim.token, transitioned.record,
+                                                  ErrorCode.CLAIM_EXPIRED, now=now)
 
             def refuse_before_begin(code, stamp=now):
                 return self._release_before_begin(claimed_receipt, claim.token, transitioned.record,

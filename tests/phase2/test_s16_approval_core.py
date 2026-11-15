@@ -345,6 +345,57 @@ def test_stale_claim_token_from_store_never_reaches_evidence_or_apply_port():
     assert env.apply_port.calls == 0
 
 
+@pytest.mark.parametrize("field", [
+    "version", "scope", "proposal", "requester_person_id", "target_version", "snapshot", "document_ref",
+])
+def test_claimed_receipt_identity_mismatch_refuses_before_evidence_and_releases_claim(field):
+    from erp_mcp_s16.contracts import Claimed
+
+    class SkewedClaimReadStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.skew_next_read = False
+
+        def claim_once(self, *args, **kwargs):
+            result = super().claim_once(*args, **kwargs)
+            self.skew_next_read = type(result) is Claimed
+            return result
+
+        def get(self, change_id):
+            receipt = super().get(change_id)
+            if self.skew_next_read and receipt is not None:
+                self.skew_next_read = False
+                if field == "version":
+                    return replace(receipt, version=receipt.version + 1)
+                if field == "scope":
+                    return replace(receipt, scope=replace(receipt.scope, company="other-company"))
+                if field == "proposal":
+                    return replace(receipt, proposal=replace(receipt.proposal,
+                                                             reason="changed after approval"))
+                if field == "requester_person_id":
+                    return replace(receipt, requester_person_id="other-person")
+                if field == "target_version":
+                    return replace(receipt, target_version=replace(receipt.target_version, value="v2"))
+                if field == "snapshot":
+                    return replace(receipt, snapshot=replace(
+                        receipt.snapshot,
+                        canonical_preview_bytes=receipt.snapshot.canonical_preview_bytes + b" "))
+                return replace(receipt, document_ref="different-document")
+            return receipt
+
+    store = SkewedClaimReadStore()
+    evidence_port = FakeBeginApplyEvidencePort(positive_begin_apply_evidence())
+    env = build_env(store=store, positive_begin_apply=False, begin_apply_evidence=evidence_port)
+    snap, _ = approve(env)
+
+    result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+
+    assert result.error is ErrorCode.CLAIM_EXPIRED
+    assert evidence_port.calls == 0
+    assert env.apply_port.calls == 0
+    _assert_claim_released(env, snap.change_id)
+
+
 def _self_consistent_replacement(receipt):
     """Forge a coherent replacement envelope to test the core's issuance anchor, not hash syntax."""
     import hashlib
