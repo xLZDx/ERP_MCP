@@ -1340,3 +1340,7 @@ Decision: after atomic claim, compare the store read-back with the exact pre-cla
 ## 2026-11-15 — Validate S16 approval ASGI routing field types
 
 Decision: reject non-string ASGI scope type, method, or path before authentication and routing comparisons. Preserve the inert app's existing behavior for a well-formed non-HTTP scope. This prevents malformed equality behavior from escaping the fixed error path and ensures malformed requests trigger neither authentication nor service calls. The named regression was added but not run under operator rule 4. No listener or real 1C path was enabled. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_ASGI_SHAPE_20261115.md`.
+
+## 2026-11-15 — Fail closed on malformed private-ingress scope type
+
+Decision: validate the exact ASGI scope-type primitive before comparison so attacker-defined equality cannot escape the private-ingress refusal boundary. Return fixed `SCHEMA_INVALID` HTTP 400 for malformed values, preserve valid non-HTTP no-op behavior, and do not authenticate, probe a route, or dispatch downstream. This remains a synthetic private-ingress contract; no listener or production binding was enabled. The named regression is `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S24_20261114.md`.

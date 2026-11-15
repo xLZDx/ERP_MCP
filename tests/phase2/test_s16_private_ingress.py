@@ -1,9 +1,11 @@
 """Private S16 ingress request-boundary tests using ASGI only; no listener is started."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from starlette.testclient import TestClient
 
 from erp_mcp_s16.contracts import ApproverSession
@@ -48,7 +50,7 @@ class _RouteProbe:
         return self.assessment or RouteAssessment((address,))
 
 
-def _app(env, probe, calls):
+def _asgi_app(env, probe, calls, *, config=None):
     async def tool_app(scope, receive, send):
         calls.append(("tool", scope["path"]))
         await send({"type": "http.response.start", "status": 200, "headers": []})
@@ -61,14 +63,41 @@ def _app(env, probe, calls):
 
     app = create_private_s16_app(
         tool_app, approval_app, _Authenticator(env), probe,
-        PrivateNetworkConfig(origin=ORIGIN),
+        config or PrivateNetworkConfig(origin=ORIGIN),
     )
+    return app
 
-    return TestClient(app, base_url=ORIGIN, client=("127.0.0.1", 49000))
+
+def _app(env, probe, calls):
+    return TestClient(_asgi_app(env, probe, calls), base_url=ORIGIN, client=("127.0.0.1", 49000))
 
 
 def _host():
     return {"host": "127.0.0.1:8443"}
+
+
+def _post_scope(headers):
+    return {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+        "method": "POST", "scheme": "https", "path": "/mcp", "raw_path": b"/mcp",
+        "query_string": b"", "headers": [(k.encode("latin-1"), v.encode("latin-1"))
+                                             for k, v in headers.items()],
+        "client": ("127.0.0.1", 49000), "server": ("127.0.0.1", 8443),
+    }
+
+
+def _run_asgi(app, scope, messages):
+    pending = iter(messages)
+    sent = []
+
+    async def receive():
+        return next(pending)
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(app(scope, receive, send))
+    return sent
 
 
 def test_private_ingress_allows_positive_authenticated_private_request():
@@ -81,6 +110,38 @@ def test_private_ingress_allows_positive_authenticated_private_request():
     assert response.status_code == 200
     assert calls == [("tool", "/mcp")]
     assert probe.calls == [("127.0.0.1", 8443)]
+
+
+def test_private_ingress_fails_closed_for_malicious_scope_type_before_auth_or_dispatch():
+    class MaliciousScopeType:
+        def __eq__(self, _other):
+            raise RuntimeError("scope type comparison must not escape the boundary")
+
+    class Authenticator:
+        def __init__(self):
+            self.calls = 0
+
+        def authenticate(self, _scope, _headers):
+            self.calls += 1
+            return None
+
+    downstream_calls = []
+    auth = Authenticator()
+    probe = _RouteProbe()
+
+    async def downstream(_scope, _receive, _send):
+        downstream_calls.append("called")
+
+    app = create_private_s16_app(
+        downstream, downstream, auth, probe, PrivateNetworkConfig(origin=ORIGIN),
+    )
+    sent = _run_asgi(app, {"type": MaliciousScopeType()}, [])
+
+    assert sent[0]["type"] == "http.response.start"
+    assert sent[0]["status"] == 400
+    assert auth.calls == 0
+    assert probe.calls == []
+    assert downstream_calls == []
 
 
 def test_private_ingress_allows_positive_approver_session_on_approval_route():
@@ -142,3 +203,54 @@ def test_private_ingress_refuses_proxy_redirect_and_unresolved_route_assessments
             "/mcp", headers={**_host(), "authorization": "Bearer synthetic-write"}, json={})
         assert response.status_code == 400
         assert calls == []
+
+
+def test_private_ingress_rejects_huge_decimal_content_length_before_route_or_downstream():
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+    app = _asgi_app(env, probe, calls)
+    scope = _post_scope({**_host(), "authorization": "Bearer synthetic-write",
+                         "content-length": "9" * 1024})
+    sent = _run_asgi(app, scope, [{"type": "http.request", "body": b"", "more_body": False}])
+
+    assert sent[0]["status"] == 413
+    assert probe.calls == []
+    assert calls == []
+
+
+def test_private_ingress_rejects_explicit_zero_origin_port():
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+
+    with pytest.raises(ValueError, match="PRIVATE_ORIGIN_INVALID"):
+        _asgi_app(env, probe, calls, config=PrivateNetworkConfig(origin="https://127.0.0.1:0"))
+
+    assert probe.calls == []
+    assert calls == []
+
+
+def test_private_ingress_bounds_chunked_post_and_rejects_malformed_more_body_before_dispatch():
+    env = build_env()
+    calls = []
+    probe = _RouteProbe()
+    app = _asgi_app(env, probe, calls, config=PrivateNetworkConfig(origin=ORIGIN, max_body_bytes=4))
+    headers = {**_host(), "authorization": "Bearer synthetic-write"}
+    oversized = _run_asgi(app, _post_scope(headers), [
+        {"type": "http.request", "body": b"123", "more_body": True},
+        {"type": "http.request", "body": b"45", "more_body": False},
+    ])
+    malformed = _run_asgi(app, _post_scope(headers), [
+        {"type": "http.request", "body": b"", "more_body": 1},
+    ])
+    empty_flood = _run_asgi(app, _post_scope(headers), [
+        *({"type": "http.request", "body": b"", "more_body": True} for _ in range(8192)),
+        {"type": "http.request", "body": b"", "more_body": False},
+    ])
+
+    assert oversized[0]["status"] == 413
+    assert malformed[0]["status"] == 400
+    assert empty_flood[0]["status"] == 413
+    assert len(probe.calls) == 3
+    assert calls == []

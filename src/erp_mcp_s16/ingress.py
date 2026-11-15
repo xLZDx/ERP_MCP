@@ -234,7 +234,14 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                         "headers": response_headers})
             await send({"type": "http.response.body", "body": body})
             return
-        if scope.get("type") == "lifespan":
+        scope_type = scope.get("type")
+        if type(scope_type) is not str:
+            status, response_headers, body = _safe_response(400, ErrorCode.SCHEMA_INVALID)
+            await send({"type": "http.response.start", "status": status,
+                        "headers": response_headers})
+            await send({"type": "http.response.body", "body": body})
+            return
+        if scope_type == "lifespan":
             while True:
                 event = await receive()
                 if event.get("type") == "lifespan.startup":
@@ -242,7 +249,7 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                 elif event.get("type") == "lifespan.shutdown":
                     await send({"type": "lifespan.shutdown.complete"})
                     return
-        if scope.get("type") != "http":
+        if scope_type != "http":
             return
         path = scope.get("path")
         is_approval = type(path) is str and path.startswith(config.approval_prefix)
