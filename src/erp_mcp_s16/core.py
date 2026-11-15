@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import threading
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation

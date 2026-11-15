@@ -1356,3 +1356,7 @@ Decision: treat malformed approval/read-back receipts, store failures, and a no-
 ## 2026-11-15 — Preserve the S16 manifest contract at both adapters
 
 Decision: retain one immutable five-tool manifest and require the FastMCP published schema, including nested S15 verify shape and hidden transport context, to match it. Preserve the complete S15 verification result as typed data and reject over-budget arguments before service dispatch. The focused regressions are authored but `NOT_RUN` under operator rule 4; no gateway registration or production writer is implied. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Import the regex dependency for CSRF validation
+
+Decision: import Python's standard `re` module in the S16 core because `S16Core.decide()` uses `re.fullmatch()` to enforce the exact CSRF token format. Preserve the existing lowercase 64-character hexadecimal requirement; do not add a permissive fallback. Source inspection establishes the missing import; the focused regression remains NOT_RUN under operator rule 4. FIN-S2.1 remains unaccepted pending its verification gate. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_CSRF_IMPORT_20261115.md`.
