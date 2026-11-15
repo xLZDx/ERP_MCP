@@ -406,3 +406,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 
 - 2026-11-15 SUCCESS: preserved requested historical plan-render snapshots in a scoped documentation commit, separately from the live status report. Rule: retain dated snapshots unchanged and label their historical scope; do not overwrite them with a different renderer or present them as current status. Detail: `docs/phase2/CHANGE_RECORD_PROJECT_PLAN_SNAPSHOT_SYNC_20261115.md`.
+
+- 2026-11-15 SHORTCOMING: S16 approval core trusted truthy registry/claim results and independently supplied decision identity. Rule: validate exact record and boolean shapes, bind requester identity to the persisted receipt, and revalidate before atomic claim/apply; uncertainty before execution fails closed, and an uncertain apply is never retried. Regression remains NOT_RUN under operator rule 4.

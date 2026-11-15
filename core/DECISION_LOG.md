@@ -1317,3 +1317,6 @@ Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (c
 ## 2026-11-12 CI-OFF: workflows switched to manual dispatch
 
 Operator rule 4 (no CI on push, pull request or schedule). Changed `on:` to `workflow_dispatch` in .github/workflows/ci.yml. Original triggers: ci.yml (was: pull_request, push). The original trigger blocks are kept as comments in each file.
+## 2026-11-14 - Bind S16 approval identity to its persisted receipt
+
+Decision: before using decision-binding requester identity to establish requester/approver independence, require the stored binding requester person to match the canonical persisted receipt requester. Require the loaded receipt to be the exact `DomainReceipt` type; malformed receipt values fail closed as `AUDIT_UNAVAILABLE`. A mismatch returns `APPROVAL_NONCE_INVALID` before nonce consumption or apply. This closes a trust gap where independently stored binding metadata could disagree with the persisted request. No writer or READY path is added; regression remains NOT_RUN under the current sprint test restriction. Rejected alternative: trust the binding's requester value alone, which does not prove it belongs to the stored proposal. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
