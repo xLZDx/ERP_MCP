@@ -403,3 +403,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 
 
 - 2026-11-15 SHORTCOMING: the legacy project-plan HTML files are not owned by the current report generator, which refuses to overwrite hand-made artifacts. Rule: preserve those files as snapshots, publish the supported live report separately, and check the ledger before claiming sprint closure. Detail: `docs/phase2/CHANGE_RECORD_PROJECT_PLAN_SYNC_20261115.md`.
+
+
+- 2026-11-15 SUCCESS: preserved requested historical plan-render snapshots in a scoped documentation commit, separately from the live status report. Rule: retain dated snapshots unchanged and label their historical scope; do not overwrite them with a different renderer or present them as current status. Detail: `docs/phase2/CHANGE_RECORD_PROJECT_PLAN_SNAPSHOT_SYNC_20261115.md`.
