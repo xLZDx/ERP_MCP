@@ -1391,3 +1391,16 @@ Decision: preserve the core requirement for the exact CSRF token issued with the
 ## 2026-11-15 — Reject S16 adapters that cannot publish the exact schema
 
 Decision: register the five immutable S16 tools only through an explicit-schema `register_tool` adapter. The locked MCP 2.x `MCPServer.tool()` API derives Pydantic schemas and silently ignores undeclared arguments; it cannot publish the exact manifest or preserve closed-object validation through its public decorator. Reject tool-only adapters before partial registration. A future gateway binding must use an explicit low-level server integration and preserve authenticated request context. Focused S2.3 verification: 15 passed. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+
+## 2026-11-15 — Install S1.2/S1.3 scoped reads in a separate migration
+
+Decision: preserve migration 028 as the S1.1 refusal-registry/budget-precheck delta and add numbered migration 029 for the scoped budget snapshot, inflight list, and operator status routines. The disposable-chain failure showed those described functions were absent from tracked migrations; removing their assertions would hide a clean-install gap. Apply/role/isolation evidence remains pending on disposable PostgreSQL only; no shared or production migration and no real 1C source is authorized or claimed. Details: docs/phase2/CHANGE_RECORD_414.md.
+
+## 2026-11-15 — Keep S13 checkpoint diagnostics out of writer paths
+
+Decision: resolve the development anchor database path from the service module location, bind the synthetic key-authority fixture to the verifier's actual public-key digest, and exercise an approved-only suffix for the diagnostic SQL journey. Do not call begin_apply, record_call, dispatch, or any READY/recovery path from this S13-03 acceptance slice; migration 027 intentionally removes legacy writer permissions. This remains disposable/test-only and does not qualify real provider freshness or key custody. Details: docs/phase2/CHANGE_RECORD_415.md.
+
+## 2026-11-16 — Validate separate TEST authority key pairs
+
+Decision: use independent Ed25519 key pairs for synthetic checkpoint latestness and historical-key authorization, verify each configured private/public pair matches, and reject pair reuse against the other authority role or registered checkpoint keys. Update only the restore-skew TEST fixture to provide distinct generated pairs; keep the service loopback-only and unwired from the gateway. The working-copy restore-skew E2E passed on disposable PostgreSQL; exact-head rerun remains pending. No external provider freshness or production custody is claimed. Details: docs/phase2/CHANGE_RECORD_415.md.
