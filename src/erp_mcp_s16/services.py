@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Mapping
 from uuid import UUID, uuid4
@@ -23,11 +24,10 @@ from .contracts import (
     DomainReceipt, NonceSource, PreviewSnapshot, ProposalPort, Result, TargetRecord,
     canonical_preview_bytes,
 )
-from .core import S16Core
+from .core import S16Core, _as_utc, _valid_approver_session
 
 APPROVAL_NONCE_LIFETIME = timedelta(minutes=5)
 PROPOSAL_LIFETIME = timedelta(minutes=5)
-APPROVER_SESSION_LIFETIME = timedelta(minutes=15)
 
 
 def _digest(raw: bytes | str) -> str:
@@ -295,18 +295,27 @@ class ApprovalService:
     def open_preview(self, approver: AuthenticatedPrincipal, session: ApproverSession, ticket: UUID,
                      *, now: datetime | None = None) -> Result[DecisionPage]:
         from .contracts import PrincipalRole, TokenClass
-        timestamp = _now(self.clock, now)
-        if (approver.token_class is not TokenClass.APPROVER_SESSION
-                or PrincipalRole.APPROVER not in approver.roles
-                or session.principal != approver or session.session_id != approver.session_id
-                or timestamp - session.last_seen_at > timedelta(minutes=15)
-                or timestamp >= session.idle_expires_at or timestamp >= session.expires_at
-                or session.expires_at - session.created_at > APPROVER_SESSION_LIFETIME):
+        try:
+            timestamp = _as_utc(_now(self.clock, now))
+        except Exception:
             return Result.refused(ErrorCode.NOT_ENTITLED)
-        current_principal = self.core.principals.current(approver.principal_id)
+        if (type(approver) is not AuthenticatedPrincipal
+                or timestamp is None
+                or approver.token_class is not TokenClass.APPROVER_SESSION
+                or not self.core._principal(approver, TokenClass.APPROVER_SESSION)
+                or PrincipalRole.APPROVER not in approver.roles
+                or not _valid_approver_session(session, approver, timestamp)):
+            return Result.refused(ErrorCode.NOT_ENTITLED)
+        try:
+            current_principal = self.core.principals.current(approver.principal_id)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if not self.core._live_approver(current_principal, approver, timestamp):
             return Result.refused(ErrorCode.APPROVAL_VOIDED)
-        receipt = self.store.get(ticket)
+        try:
+            receipt = self.store.get(ticket)
+        except Exception:
+            return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
         if receipt is None:
             return Result.refused(ErrorCode.REF_OUT_OF_SCOPE)
         issued_error = self.core.validate_issued_receipt(receipt)
@@ -319,24 +328,43 @@ class ApprovalService:
             return Result.refused(ErrorCode.SCOPE_MISMATCH)
         if receipt.requester_person_id == approver.person_id:
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
-        if not self.core.principals.are_independent(receipt.requester_person_id, approver.person_id):
+        try:
+            independent = self.core.principals.are_independent(
+                receipt.requester_person_id, approver.person_id)
+        except Exception:
+            return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
+        if not independent:
             return Result.refused(ErrorCode.APPROVER_NOT_INDEPENDENT)
         from business_ai_gateway.phase2.change.types import Authorization, Lifecycle
         if (receipt.s12_record is None or receipt.s12_record.lifecycle is not Lifecycle.VALIDATED
                 or receipt.s12_record.authorization is not Authorization.NONE
                 or receipt.approval is not None):
             return Result.refused(ErrorCode.TICKET_SUPERSEDED)
-        if not current_principal.display_label or not current_principal.display_label.strip():
+        label = current_principal.display_label
+        if (type(label) is not str or not label.strip() or len(label) > 256
+                or any(ord(char) < 32 for char in label)):
             return Result.refused(ErrorCode.NOT_ENTITLED)
         snap = receipt.snapshot
-        if snap.expires_at <= timestamp:
-            if receipt.proposal.expires_at <= timestamp:
+        snapshot_expires_at = _as_utc(snap.expires_at)
+        proposal_expires_at = _as_utc(receipt.proposal.expires_at)
+        session_expires_at = _as_utc(session.expires_at)
+        session_idle_expires_at = _as_utc(session.idle_expires_at)
+        approver_expires_at = _as_utc(approver.expires_at)
+        if (snapshot_expires_at is None or proposal_expires_at is None
+                or session_expires_at is None or session_idle_expires_at is None
+                or approver_expires_at is None
+                or snapshot_expires_at > proposal_expires_at):
+            return Result.refused(ErrorCode.SCHEMA_INVALID)
+        if snapshot_expires_at <= timestamp:
+            if proposal_expires_at <= timestamp:
                 self.core.expire(ticket, now=timestamp)
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
         if _digest(snap.canonical_preview_bytes) != snap.preview_digest:
             return Result.refused(ErrorCode.APPROVAL_EXPIRED)
         try:
             ref = self.nonce_source.issue()
+            if type(ref) is not str or not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", ref):
+                return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
             ref_digest = _digest(ref)
             target = self.core.targets.current(receipt.scope)
             if target is None:
@@ -350,7 +378,8 @@ class ApprovalService:
                               for line in receipt.proposal.payload.lines), Decimal(0))
                 requires = requires or amount > Decimal(target.amount_confirmation_threshold)
             phrase = "CONFIRM CHANGE" if requires else None
-            decision_expires = min(snap.expires_at, session.expires_at, session.idle_expires_at)
+            decision_expires = min(snapshot_expires_at, session_expires_at,
+                                   session_idle_expires_at, approver_expires_at)
             binding = DecisionBinding(snap.change_id, snap.version, snap.scope, approver.principal_id,
                                       approver.person_id, session.session_id, receipt.requester_person_id,
                                       snap.nonce_digest, ref_digest,
@@ -362,13 +391,14 @@ class ApprovalService:
                 canonical_preview_bytes=snap.canonical_preview_bytes,
                 preview_digest=snap.preview_digest,
                 expires_at=decision_expires,
+                csrf_token=binding.csrf_binding_digest,
                 confirmation_required=requires,
                 confirmation_phrase=phrase,
                 lifecycle_status=receipt.s12_record.lifecycle.value,
                 authorization_status=receipt.s12_record.authorization.value,
                 snapshot_version=receipt.version,
                 created_at=receipt.proposal.created_at,
-                approver_person_label=current_principal.display_label,
+                approver_person_label=label,
                 decision_allowed=True,
             ))
         except Exception:
@@ -376,12 +406,17 @@ class ApprovalService:
 
     def submit_decision(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                         decision_ref: str, decision: Literal["APPROVE", "REJECT"], *,
-                        confirmation_text: str, origin: str, referer: str,
+                        csrf_token: str = "", confirmation_text: str,
+                        origin: str, referer: str,
                         now: datetime | None = None) -> Result[ApprovalDecision]:
-        timestamp = _now(self.clock, now)
+        try:
+            timestamp = _now(self.clock, now)
+        except Exception:
+            return Result.refused(ErrorCode.NOT_ENTITLED)
         if origin != self.origin or not referer.startswith(self.origin + "/"):
             return Result.refused(ErrorCode.NOT_ENTITLED)
         return self.core.decide(approver, session, decision_ref, decision,
+                                csrf_token=csrf_token,
                                 confirmation_text=confirmation_text, origin=origin,
                                 referer=referer, now=timestamp)
 

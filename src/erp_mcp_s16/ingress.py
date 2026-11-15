@@ -11,7 +11,8 @@ from urllib.parse import urlsplit
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
 
-from .contracts import ApproverSession, AuthenticatedPrincipal, PrincipalRole, TokenClass
+from .contracts import ApproverSession, AuthenticatedPrincipal, PrincipalRole, TargetScope, TokenClass
+from .core import _as_utc, _valid_approver_session
 
 __all__ = ["PrivateNetworkConfig", "RouteAssessment", "create_private_s16_app"]
 
@@ -42,12 +43,17 @@ class RequestAuthenticator(Protocol):
 
 
 _FORWARDED_NAMES = frozenset({"forwarded", "x-real-ip"})
+_MAX_POST_REQUEST_MESSAGES = 8192
 _SECURITY_HEADERS = [
     (b"cache-control", b"no-store"),
     (b"referrer-policy", b"no-referrer"),
     (b"x-content-type-options", b"nosniff"),
     (b"x-frame-options", b"DENY"),
 ]
+
+
+class _BodyLimitExceeded(ValueError):
+    """Internal sentinel for the fixed HTTP 413 request-size response."""
 
 
 def _safe_response(status: int, code: ErrorCode, *, html_response: bool = False
@@ -87,6 +93,18 @@ def _configured_networks(config: PrivateNetworkConfig) -> tuple[Any, ...]:
            for network in networks):
         raise ValueError("PUBLIC_NETWORK_FORBIDDEN")
     return networks
+
+
+def _valid_route_prefix(value: object, *, trailing_slash: bool) -> bool:
+    if (type(value) is not str or not value.startswith("/")
+            or value.endswith("/") != trailing_slash
+            or "//" in value or "\\" in value or any(char in value for char in "?#%")
+            or any(ord(char) < 33 or ord(char) == 127 for char in value)):
+        return False
+    segments = value[1:].split("/")
+    if trailing_slash:
+        segments.pop()
+    return bool(segments) and all(segment not in ("", ".", "..") for segment in segments)
 
 
 def _allowed(address: ipaddress.IPv4Address | ipaddress.IPv6Address,
@@ -136,20 +154,46 @@ def _same_origin(headers: Mapping[str, str], expected: str, *, required: bool) -
 def _positive_identity(identity: object, *, approval: bool) -> bool:
     now = datetime.now(timezone.utc)
     if approval:
-        return (type(identity) is ApproverSession
-                and type(identity.principal) is AuthenticatedPrincipal
-                and identity.principal.token_class is TokenClass.APPROVER_SESSION
-                and PrincipalRole.APPROVER in identity.principal.roles
-                and identity.principal.session_id == identity.session_id
-                and identity.idle_expires_at.tzinfo is not None
-                and identity.expires_at.tzinfo is not None
-                and now < identity.idle_expires_at and now < identity.expires_at
-                and identity.principal.expires_at.tzinfo is not None
-                and now < identity.principal.expires_at)
-    return (type(identity) is AuthenticatedPrincipal
-            and identity.token_class is TokenClass.CHAT_WRITE
-            and PrincipalRole.REQUESTER in identity.roles
-            and identity.expires_at.tzinfo is not None and now < identity.expires_at)
+        if type(identity) is not ApproverSession or type(identity.principal) is not AuthenticatedPrincipal:
+            return False
+        principal = identity.principal
+        scope = principal.scope
+        if (principal.token_class is not TokenClass.APPROVER_SESSION
+                or type(principal.principal_id) is not str or not principal.principal_id
+                or type(principal.person_id) is not str or not principal.person_id
+                or type(principal.epoch) is not int or principal.epoch < 0
+                or type(principal.lane) is not str or principal.lane != "TEST"
+                or type(scope) is not TargetScope
+                or any(type(value) is not str or not value for value in (
+                    scope.tenant, scope.company, scope.organization,
+                    scope.base_fingerprint, scope.target_class))
+                or scope.target_class != "TEST"
+                or type(principal.roles) is not frozenset
+                or any(type(role) is not PrincipalRole for role in principal.roles)
+                or PrincipalRole.APPROVER not in principal.roles
+                or principal.mfa_authenticated is not True
+                or not _valid_approver_session(identity, principal, now)):
+            return False
+        principal_expires_at = _as_utc(principal.expires_at)
+        return principal_expires_at is not None and principal_expires_at > now
+    if (type(identity) is not AuthenticatedPrincipal
+            or identity.token_class is not TokenClass.CHAT_WRITE
+            or type(identity.roles) is not frozenset
+            or any(type(role) is not PrincipalRole for role in identity.roles)
+            or PrincipalRole.REQUESTER not in identity.roles
+            or type(identity.principal_id) is not str or not identity.principal_id
+            or type(identity.person_id) is not str or not identity.person_id
+            or type(identity.epoch) is not int or identity.epoch < 0
+            or type(identity.mfa_authenticated) is not bool
+            or type(identity.lane) is not str or identity.lane != "TEST"
+            or type(identity.scope) is not TargetScope
+            or any(type(value) is not str or not value for value in (
+                identity.scope.tenant, identity.scope.company, identity.scope.organization,
+                identity.scope.base_fingerprint, identity.scope.target_class))
+            or identity.scope.target_class != "TEST"):
+        return False
+    expires_at = _as_utc(identity.expires_at)
+    return expires_at is not None and expires_at > now
 
 
 def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[..., Any],
@@ -158,13 +202,23 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
     """Compose the two isolated applications behind fail-closed per-request checks only."""
     if (type(config) is not PrivateNetworkConfig or type(config.origin) is not str):
         raise ValueError("PRIVATE_NETWORK_CONFIG_INVALID")
+    approval_prefix = config.approval_prefix
+    tool_prefix = config.tool_prefix
+    approval_root = approval_prefix[:-1] if type(approval_prefix) is str else ""
+    if (not _valid_route_prefix(approval_prefix, trailing_slash=True)
+            or not _valid_route_prefix(tool_prefix, trailing_slash=False)
+            or approval_root == tool_prefix
+            or approval_root.startswith(tool_prefix + "/")
+            or tool_prefix.startswith(approval_root + "/")):
+        raise ValueError("PRIVATE_ROUTE_CONFIG_INVALID")
     origin = urlsplit(config.origin)
     if (origin.scheme != "https" or not origin.netloc or origin.path or origin.query or origin.fragment
             or origin.username or origin.password):
         raise ValueError("PRIVATE_ORIGIN_INVALID")
     try:
         origin_ip = ipaddress.ip_address(origin.hostname or "")
-        origin_port = origin.port or 443
+        configured_port = origin.port
+        origin_port = 443 if configured_port is None else configured_port
     except ValueError as exc:
         raise ValueError("PRIVATE_ORIGIN_INVALID") from exc
     if not _is_private(origin_ip) or not 1 <= origin_port <= 65535:
@@ -174,6 +228,12 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
         raise ValueError("REQUEST_LIMIT_INVALID")
 
     async def app(scope: Mapping[str, Any], receive: Callable[..., Any], send: Callable[..., Any]) -> None:
+        if type(scope) is not dict:
+            status, response_headers, body = _safe_response(400, ErrorCode.SCHEMA_INVALID)
+            await send({"type": "http.response.start", "status": status,
+                        "headers": response_headers})
+            await send({"type": "http.response.body", "body": body})
+            return
         if scope.get("type") == "lifespan":
             while True:
                 event = await receive()
@@ -224,10 +284,18 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                     raise PermissionError("ORIGIN_INVALID")
                 if scope.get("method") == "POST":
                     lengths = headers_seen.get("content-length", [])
-                    if len(lengths) > 1 or (lengths and
-                            (not lengths[0].isascii() or not lengths[0].isdecimal() or
-                             int(lengths[0]) > config.max_body_bytes)):
-                        raise ValueError("BODY_LIMIT")
+                    if len(lengths) > 1:
+                        raise _BodyLimitExceeded("BODY_LIMIT")
+                    if lengths:
+                        raw_length = lengths[0]
+                        if not raw_length.isascii() or not raw_length.isdecimal():
+                            raise ValueError("INVALID_CONTENT_LENGTH")
+                        normalized_length = raw_length.lstrip("0") or "0"
+                        max_length = str(config.max_body_bytes)
+                        if (len(normalized_length) > len(max_length)
+                                or (len(normalized_length) == len(max_length)
+                                    and normalized_length > max_length)):
+                            raise _BodyLimitExceeded("BODY_LIMIT")
                 assessment = await _invoke(route_probe.assess, str(server_ip), port=server[1])
                 if (type(getattr(assessment, "resolved_addresses", None)) is not tuple
                         or type(getattr(assessment, "unresolved", None)) is not bool
@@ -256,8 +324,63 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                     if not redirect_started:
                         await send(message)
 
-                await _invoke(downstream, scope, receive, protected_send)
-                return
+                downstream_receive = receive
+                if scope.get("method") == "POST":
+                    # Content-Length is only an early rejection hint: chunked requests may omit it.
+                    # Buffer the bounded body before entering either downstream app so no oversized
+                    # request can be partially processed before the limit is noticed.
+                    request_messages: list[Mapping[str, Any]] = []
+                    body_size = 0
+                    message_count = 0
+                    while True:
+                        request_message = await receive()
+                        if request_message.get("type") == "http.disconnect":
+                            raise ValueError("REQUEST_DISCONNECTED")
+                        if request_message.get("type") != "http.request":
+                            raise ValueError("REQUEST_MESSAGE_INVALID")
+                        message_count += 1
+                        if message_count > _MAX_POST_REQUEST_MESSAGES:
+                            response = _safe_response(413, ErrorCode.SCHEMA_INVALID,
+                                                      html_response=html_response)
+                            break
+                        chunk = request_message.get("body", b"")
+                        if type(chunk) is not bytes:
+                            raise ValueError("REQUEST_BODY_INVALID")
+                        more_body = request_message.get("more_body", False)
+                        if type(more_body) is not bool:
+                            raise ValueError("REQUEST_MESSAGE_INVALID")
+                        if len(chunk) > config.max_body_bytes - body_size:
+                            response = _safe_response(413, ErrorCode.SCHEMA_INVALID,
+                                                      html_response=html_response)
+                            break
+                        body_size += len(chunk)
+                        # Empty intermediate chunks carry no payload and need not be replayed.
+                        # Omitting them keeps memory bounded by body bytes, even if the server
+                        # delivers an unusually large number of zero-length ASGI messages.
+                        if chunk or not more_body:
+                            request_messages.append(request_message)
+                        if not more_body:
+                            messages_remaining = iter(request_messages)
+
+                            async def replay_receive() -> Mapping[str, Any]:
+                                try:
+                                    return next(messages_remaining)
+                                except StopIteration:
+                                    return await receive()
+
+                            downstream_receive = replay_receive
+                            break
+                    if response is not None:
+                        # The downstream application must not see any part of an oversized body.
+                        pass
+                    else:
+                        await _invoke(downstream, scope, downstream_receive, protected_send)
+                        return
+                if scope.get("method") != "POST":
+                    await _invoke(downstream, scope, receive, protected_send)
+                    return
+        except _BodyLimitExceeded:
+            response = _safe_response(413, ErrorCode.SCHEMA_INVALID, html_response=html_response)
         except PermissionError:
             response = _safe_response(403, ErrorCode.NOT_ENTITLED, html_response=html_response)
         except Exception:

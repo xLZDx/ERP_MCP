@@ -138,6 +138,7 @@ class DecisionPage:
     created_at: datetime | None = None
     approver_person_label: str | None = None
     decision_allowed: bool = False
+    csrf_token: str = ""
 
 
 @dataclass(frozen=True, slots=True)

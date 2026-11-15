@@ -1320,3 +1320,7 @@ Operator rule 4 (no CI on push, pull request or schedule). Changed `on:` to `wor
 ## 2026-11-14 - Bind S16 approval identity to its persisted receipt
 
 Decision: before using decision-binding requester identity to establish requester/approver independence, require the stored binding requester person to match the canonical persisted receipt requester. Require the loaded receipt to be the exact `DomainReceipt` type; malformed receipt values fail closed as `AUDIT_UNAVAILABLE`. A mismatch returns `APPROVAL_NONCE_INVALID` before nonce consumption or apply. This closes a trust gap where independently stored binding metadata could disagree with the persisted request. No writer or READY path is added; regression remains NOT_RUN under the current sprint test restriction. Rejected alternative: trust the binding's requester value alone, which does not prove it belongs to the stored proposal. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-15 — Require strict approver identity at private ingress
+
+Decision: before forwarding an approval request, the private S16 ingress validates the exact approver session, nonempty principal/person identifiers, nonnegative epoch, TEST lane and scope, approver role, MFA, and current expiry. Malformed identity fails closed before downstream dispatch. This aligns the ingress boundary with the shared session contract; it does not create a listener or authorize production writes. The focused regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.

@@ -6,20 +6,25 @@ import html
 import inspect
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Protocol
 from urllib.parse import parse_qsl, urlsplit
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
 
-from .contracts import ApproverSession, AuthenticatedPrincipal, DecisionPage, PrincipalRole, Result
+from .contracts import (
+    ApprovalDecision, ApproverSession, AuthenticatedPrincipal, DecisionPage, PrincipalRole, Result, TargetScope,
+    TokenClass,
+)
+from .core import _valid_approver_session
 
 __all__ = ["create_approval_app", "SESSION_COOKIE_NAME"]
 
 SESSION_COOKIE_NAME = "__Secure-s16_approval"
 SESSION_COOKIE_ATTRIBUTES = "Path=/approval; Secure; HttpOnly; SameSite=Strict"
 _MAX_FORM_BYTES = 8192
+_MAX_FORM_MESSAGES = 8192
 _TICKET_RE = re.compile(r"[A-Za-z0-9_-]{16,512}\Z")
 _CSP = ("default-src 'none'; script-src 'none'; style-src 'self'; img-src 'none'; "
         "base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
@@ -30,9 +35,9 @@ class ApprovalServicePort(Protocol):
     def open_preview(self, approver: AuthenticatedPrincipal, session: ApproverSession,
                      ticket: str, *, now: datetime | None = None) -> Result[DecisionPage, ErrorCode]: ...
     def submit_decision(self, approver: AuthenticatedPrincipal, session: ApproverSession,
-                        decision_ref: str, decision: str, *, confirmation_text: str,
+                        decision_ref: str, decision: str, *, csrf_token: str = "", confirmation_text: str,
                         origin: str, referer: str,
-                        now: datetime | None = None) -> Result[Any, ErrorCode]: ...
+                        now: datetime | None = None) -> Result[ApprovalDecision, ErrorCode]: ...
 
 
 class ApproverSessionAuthenticator(Protocol):
@@ -44,9 +49,81 @@ class Clock(Protocol):
 
 
 def _safe_text(value: object, *, limit: int = 4096) -> str:
-    if type(value) not in (str, int, float, bool) or len(str(value)) > limit:
+    if type(value) not in (str, int, float, bool):
         return "Unavailable"
-    return html.escape(str(value), quote=True)
+    text = str(value)
+    if len(text) > limit:
+        return "Unavailable"
+    try:
+        text.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        return "Unavailable"
+    return html.escape(text, quote=True)
+
+
+def _valid_confirmation_phrase(value: object) -> bool:
+    if type(value) is not str or not value or len(value) > 256:
+        return False
+    try:
+        value.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        return False
+    return not any(ord(char) < 32 or ord(char) == 127 for char in value)
+
+
+def _valid_boundary_text(value: object, *, limit: int) -> bool:
+    if type(value) is not str or not value or len(value) > limit:
+        return False
+    try:
+        value.encode("utf-8", errors="strict")
+    except UnicodeError:
+        return False
+    return not any(ord(char) < 32 or ord(char) == 127 for char in value)
+
+
+def _valid_scope(scope: object) -> bool:
+    return (type(scope) is TargetScope
+            and _valid_boundary_text(scope.tenant, limit=128)
+            and _valid_boundary_text(scope.company, limit=128)
+            and _valid_boundary_text(scope.organization, limit=128)
+            and _valid_boundary_text(scope.base_fingerprint, limit=128)
+            and _valid_boundary_text(scope.target_class, limit=32))
+
+
+def _valid_decision_result(value: object, *, ticket: UUID, decision: str,
+                           session: ApproverSession, now: datetime) -> bool:
+    if type(value) is not ApprovalDecision or type(session) is not ApproverSession:
+        return False
+    principal = session.principal
+    if (type(principal) is not AuthenticatedPrincipal
+            or type(value.change_id) is not UUID or value.change_id != ticket
+            or type(value.version) is not int or value.version < 1
+            or not _valid_scope(value.scope) or not _valid_scope(principal.scope)
+            or value.scope != principal.scope
+            or not _valid_boundary_text(value.requester_person_id, limit=128)
+            or not _valid_boundary_text(value.approver_person_id, limit=128)
+            or value.requester_person_id == value.approver_person_id
+            or not _valid_boundary_text(value.approver_principal_id, limit=128)
+            or value.approver_principal_id != principal.principal_id
+            or value.approver_person_id != principal.person_id
+            or type(value.approver_epoch) is not int or value.approver_epoch < 0
+            or value.approver_epoch != principal.epoch
+            or not _valid_boundary_text(value.session_id, limit=128)
+            or value.session_id != session.session_id
+            or type(value.decision) is not str or value.decision != decision
+            or decision not in {"APPROVE", "REJECT"}
+            or any(type(digest) is not str or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                   for digest in (value.nonce_digest, value.decision_ref_digest,
+                                  value.preview_digest, value.approval_digest))
+            or type(value.expires_at) is not datetime or type(now) is not datetime):
+        return False
+    try:
+        expires_at = value.expires_at
+        return (expires_at.tzinfo is not None and expires_at.utcoffset() is not None
+                and now.tzinfo is not None and now.utcoffset() is not None
+                and expires_at.astimezone(timezone.utc) > now.astimezone(timezone.utc))
+    except Exception:
+        return False
 
 
 def _canonical_object(raw: bytes, digest: str) -> tuple[str, dict[str, Any]] | None:
@@ -113,16 +190,20 @@ async def _invoke(function: Callable[..., Any], *args: Any, **kwargs: Any) -> An
 
 def _live_session(session: object, now: datetime) -> bool:
     try:
-        return (type(session) is ApproverSession
-                and type(session.principal) is AuthenticatedPrincipal
-                and session.principal.token_class.value == "APPROVER_SESSION"
-                and PrincipalRole.APPROVER in session.principal.roles
-                and session.principal.session_id == session.session_id
-                and now.tzinfo is not None and now.utcoffset() is not None
-                and session.idle_expires_at.tzinfo is not None
-                and session.expires_at.tzinfo is not None
-                and now < session.idle_expires_at and now < session.expires_at)
-    except (AttributeError, TypeError, ValueError):
+        if type(session) is not ApproverSession or type(session.principal) is not AuthenticatedPrincipal:
+            return False
+        principal = session.principal
+        return (principal.token_class is TokenClass.APPROVER_SESSION
+                and type(principal.principal_id) is str and _valid_boundary_text(principal.principal_id, limit=128)
+                and type(principal.person_id) is str and _valid_boundary_text(principal.person_id, limit=128)
+                and type(principal.roles) is frozenset
+                and all(type(role) is PrincipalRole for role in principal.roles)
+                and PrincipalRole.APPROVER in principal.roles
+                and type(principal.epoch) is int and principal.epoch >= 0
+                and type(principal.mfa_authenticated) is bool and principal.mfa_authenticated is True
+                and _valid_scope(principal.scope)
+                and _valid_approver_session(session, principal, now))
+    except Exception:
         return False
 
 
@@ -208,6 +289,11 @@ def create_approval_app(service: ApprovalServicePort,
         raise ValueError("APPROVAL_ORIGIN_INVALID")
 
     async def app(scope: Mapping[str, Any], receive: Callable[..., Any], send: Callable[..., Any]) -> None:
+        if type(scope) is not dict:
+            status, response_headers, content = _error(ErrorCode.SCHEMA_INVALID, 400)
+            await send({"type": "http.response.start", "status": status, "headers": response_headers})
+            await send({"type": "http.response.body", "body": content})
+            return
         if scope.get("type") != "http":
             return
         method = scope.get("method")
@@ -218,7 +304,7 @@ def create_approval_app(service: ApprovalServicePort,
             for key, value in raw_headers:
                 name = key.decode("latin-1").casefold()
                 header_lists.setdefault(name, []).append(value.decode("latin-1"))
-        except (AttributeError, UnicodeError, ValueError):
+        except (AttributeError, TypeError, UnicodeError, ValueError):
             response = _error(ErrorCode.SCHEMA_INVALID, 400)
         else:
             headers = {key: values[0] for key, values in header_lists.items() if len(values) == 1}
@@ -250,131 +336,165 @@ def create_approval_app(service: ApprovalServicePort,
                     response = _error(ErrorCode.REF_OUT_OF_SCOPE, 404)
                 else:
                     try:
-                        session = await _invoke(authenticator.authenticate, scope, headers)
-                    except Exception:
-                        session = None
-                    try:
-                        now = clock.now()
-                    except Exception:
-                        now = datetime.min
-                    if not _live_session(session, now):
-                        response = _error(ErrorCode.NOT_ENTITLED, 401)
-                    elif method == "GET" and path == f"/approval/{ticket}":
+                        parsed_ticket = UUID(ticket)
+                    except ValueError:
+                        parsed_ticket = None
+                    if parsed_ticket is None or str(parsed_ticket) != ticket:
+                        response = _error(ErrorCode.REF_OUT_OF_SCOPE, 404)
+                    else:
                         try:
-                            parsed_ticket = UUID(ticket)
-                        except ValueError:
-                            parsed_ticket = None
-                        if parsed_ticket is None or str(parsed_ticket) != ticket:
-                            response = _error(ErrorCode.REF_OUT_OF_SCOPE, 404)
-                        else:
+                            session = await _invoke(authenticator.authenticate, scope, headers)
+                        except Exception:
+                            session = None
+                        try:
+                            now = clock.now()
+                        except Exception:
+                            now = datetime.min
+                        if not _live_session(session, now):
+                            response = _error(ErrorCode.NOT_ENTITLED, 401)
+                        elif method == "GET" and path == f"/approval/{ticket}":
                             try:
                                 result = await _invoke(service.open_preview, session.principal, session, parsed_ticket,
                                                        now=now)
                             except Exception:
                                 result = None
-                        if parsed_ticket is not None and str(parsed_ticket) == ticket and (
-                                type(result) is not Result or result.error is not None
-                                or type(result.value) is not DecisionPage):
-                            response = _error(result.error if type(result) is Result and result.error else
-                                              ErrorCode.AUDIT_UNAVAILABLE)
-                        elif parsed_ticket is not None and str(parsed_ticket) == ticket:
-                            current_context = _current_context(result.value, session)
-                            rendered = _render_preview(result.value)
-                            if current_context is None:
-                                response = _error(ErrorCode.NOT_ENTITLED)
-                            elif rendered is None:
-                                response = _error(ErrorCode.DIGEST_MISMATCH)
-                            else:
-                                preview_content, _payload = rendered
-                                content = current_context + preview_content
-                                confirmation_required = result.value.confirmation_required
-                                confirmation_phrase = result.value.confirmation_phrase
-                                if (type(confirmation_required) is not bool
-                                        or type(result.value.decision_allowed) is not bool
-                                        or (confirmation_required and
-                                            (type(confirmation_phrase) is not str or not confirmation_phrase))
-                                        or (not confirmation_required and confirmation_phrase is not None)):
-                                    response = _error(ErrorCode.TARGET_REJECTED)
-                                elif not result.value.decision_allowed:
-                                    content += ("<p role=\"status\">This change no longer requires a decision. "
-                                                "The current record status is shown above.</p>")
-                                    response = _page("Review change", content)
-                                else:
-                                    confirmation = ""
-                                    if confirmation_required:
-                                        confirmation = (
-                                            "<p>Policy requires an additional confirmation. Type <strong>“" +
-                                            html.escape(confirmation_phrase, quote=True) + "”</strong>.</p>"
-                                            "<label for=\"confirmation_text\">Type the exact confirmation phrase</label>"
-                                            "<input id=\"confirmation_text\" name=\"confirmation_text\" "
-                                            "type=\"text\" autocomplete=\"off\" required maxlength=\"256\" "
-                                            "aria-describedby=\"confirmation-help\">"
-                                            "<p id=\"confirmation-help\">Enter the phrase shown by the approval policy.</p>")
-                                    action = "/approval/" + html.escape(ticket, quote=True) + "/decision"
-                                    ref_input = ("<input type=\"hidden\" name=\"decision_ref\" value=\"" +
-                                                 html.escape(result.value.decision_ref, quote=True) + "\">")
-                                    content += ("<form method=\"post\" action=\"" + action + "\">" +
-                                                ref_input + confirmation +
-                                                "<button type=\"submit\" name=\"decision\" value=\"APPROVE\">Approve</button>"
-                                                "</form><form method=\"post\" action=\"" + action + "\">" +
-                                                ref_input +
-                                                "<button type=\"submit\" name=\"decision\" value=\"REJECT\">Reject</button>"
-                                                "</form>")
-                                    response = _page("Review change", content)
-                    elif method == "POST" and path == f"/approval/{ticket}/decision":
-                        content_types = header_lists.get("content-type", [])
-                        if content_types != ["application/x-www-form-urlencoded"]:
-                            response = _error(ErrorCode.SCHEMA_INVALID, 415)
-                        elif not _origin_matches(headers.get("origin", ""), headers.get("referer", ""), origin):
-                            response = _error(ErrorCode.NOT_ENTITLED, 403)
-                        else:
-                            body = bytearray()
-                            try:
-                                while True:
-                                    message = await receive()
-                                    if message.get("type") != "http.request":
-                                        continue
-                                    body.extend(message.get("body", b""))
-                                    if len(body) > _MAX_FORM_BYTES:
-                                        raise OverflowError
-                                    if not message.get("more_body", False):
-                                        break
-                                form = parse_qsl(bytes(body).decode("ascii"), keep_blank_values=True,
-                                                 strict_parsing=True, max_num_fields=3,
-                                                 encoding="utf-8", errors="strict")
-                                data: dict[str, str] = {}
-                                for key, value in form:
-                                    if key in data or key not in {"decision_ref", "decision", "confirmation_text"}:
-                                        raise ValueError("FORM_FIELDS_INVALID")
-                                    data[key] = value
-                                if (set(data) - {"decision_ref", "decision", "confirmation_text"}
-                                        or not {"decision_ref", "decision"}.issubset(data)):
-                                    raise ValueError("FORM_FIELDS_INVALID")
-                                if len(data["decision_ref"]) > 512 or data["decision"] not in {"APPROVE", "REJECT"}:
-                                    raise ValueError("FORM_VALUE_INVALID")
-                            except (UnicodeError, ValueError, OverflowError, TypeError):
-                                data = {}
-                            if not data:
-                                response = _error(ErrorCode.SCHEMA_INVALID, 400)
-                            else:
+                            if parsed_ticket is not None and str(parsed_ticket) == ticket and (
+                                    type(result) is not Result or result.error is not None
+                                    or type(result.value) is not DecisionPage):
+                                response = _error(result.error if type(result) is Result and result.error else
+                                                  ErrorCode.AUDIT_UNAVAILABLE)
+                            elif parsed_ticket is not None and str(parsed_ticket) == ticket:
                                 try:
-                                    result = await _invoke(
-                                        service.submit_decision, session.principal, session,
-                                        data["decision_ref"], data["decision"],
-                                        confirmation_text=data.get("confirmation_text", ""),
-                                        origin=headers.get("origin", ""), referer=headers.get("referer", ""), now=now)
+                                    current_context = _current_context(result.value, session)
+                                    rendered = _render_preview(result.value)
                                 except Exception:
-                                    result = None
-                                if type(result) is not Result or result.error is not None:
-                                    response = _error(result.error if type(result) is Result and result.error else
-                                                      ErrorCode.AUDIT_UNAVAILABLE)
+                                    current_context = None
+                                    rendered = None
+                                if current_context is None:
+                                    response = _error(ErrorCode.NOT_ENTITLED)
+                                elif rendered is None:
+                                    response = _error(ErrorCode.DIGEST_MISMATCH)
                                 else:
-                                    message = ("Rejection recorded." if data["decision"] == "REJECT"
-                                               else "Decision recorded.")
-                                    response = _page("Decision recorded", "<p role=\"status\">" + message +
-                                                     "</p><p>Return to pending changes.</p>")
-                    else:
-                        response = _error(ErrorCode.SCHEMA_INVALID, 405)
+                                    preview_content, _payload = rendered
+                                    content = current_context + preview_content
+                                    decision_ref = result.value.decision_ref
+                                    confirmation_required = result.value.confirmation_required
+                                    confirmation_phrase = result.value.confirmation_phrase
+                                    if (type(decision_ref) is not str
+                                            or not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", decision_ref)):
+                                        response = _error(ErrorCode.APPROVAL_NONCE_INVALID)
+                                    elif (type(result.value.csrf_token) is not str
+                                            or not re.fullmatch(r"[0-9a-f]{64}", result.value.csrf_token)):
+                                        response = _error(ErrorCode.APPROVAL_NONCE_INVALID)
+                                    elif (type(confirmation_required) is not bool
+                                            or type(result.value.decision_allowed) is not bool
+                                            or (confirmation_required and
+                                                 not _valid_confirmation_phrase(confirmation_phrase))
+                                            or (not confirmation_required and confirmation_phrase is not None)):
+                                        response = _error(ErrorCode.TARGET_REJECTED)
+                                    elif not result.value.decision_allowed:
+                                        content += ("<p role=\"status\">This change no longer requires a decision. "
+                                                    "The current record status is shown above.</p>")
+                                        response = _page("Review change", content)
+                                    else:
+                                        confirmation = ""
+                                        if confirmation_required:
+                                            confirmation = (
+                                                "<p>Policy requires an additional confirmation. Type <strong>“" +
+                                                html.escape(confirmation_phrase, quote=True) + "”</strong>.</p>"
+                                                "<label for=\"confirmation_text\">Type the exact confirmation phrase</label>"
+                                                "<input id=\"confirmation_text\" name=\"confirmation_text\" "
+                                                "type=\"text\" autocomplete=\"off\" required maxlength=\"256\" "
+                                                "aria-describedby=\"confirmation-help\">"
+                                                "<p id=\"confirmation-help\">Enter the phrase shown by the approval policy.</p>")
+                                        action = "/approval/" + html.escape(ticket, quote=True) + "/decision"
+                                        ref_input = ("<input type=\"hidden\" name=\"decision_ref\" value=\"" +
+                                                     html.escape(result.value.decision_ref, quote=True) + "\">")
+                                        csrf_input = ("<input type=\"hidden\" name=\"csrf_token\" value=\"" +
+                                                      html.escape(result.value.csrf_token, quote=True) + "\">")
+                                        content += ("<form method=\"post\" action=\"" + action + "\">" +
+                                                    ref_input + csrf_input + confirmation +
+                                                    "<button type=\"submit\" name=\"decision\" value=\"APPROVE\">Approve</button>"
+                                                    "</form><form method=\"post\" action=\"" + action + "\">" +
+                                                    ref_input + csrf_input +
+                                                    "<button type=\"submit\" name=\"decision\" value=\"REJECT\">Reject</button>"
+                                                    "</form>")
+                                        response = _page("Review change", content)
+                        elif method == "POST" and path == f"/approval/{ticket}/decision":
+                            content_types = header_lists.get("content-type", [])
+                            if content_types != ["application/x-www-form-urlencoded"]:
+                                response = _error(ErrorCode.SCHEMA_INVALID, 415)
+                            elif not _origin_matches(headers.get("origin", ""), headers.get("referer", ""), origin):
+                                response = _error(ErrorCode.NOT_ENTITLED, 403)
+                            else:
+                                body = bytearray()
+                                message_count = 0
+                                try:
+                                    while True:
+                                        message = await receive()
+                                        message_count += 1
+                                        if message_count > _MAX_FORM_MESSAGES:
+                                            raise OverflowError
+                                        if type(message) is not dict:
+                                            raise ValueError("REQUEST_MESSAGE_INVALID")
+                                        if message.get("type") == "http.disconnect":
+                                            raise ValueError("REQUEST_DISCONNECTED")
+                                        if message.get("type") != "http.request":
+                                            raise ValueError("REQUEST_MESSAGE_INVALID")
+                                        chunk = message.get("body", b"")
+                                        if type(chunk) is not bytes:
+                                            raise ValueError("REQUEST_BODY_INVALID")
+                                        more_body = message.get("more_body", False)
+                                        if type(more_body) is not bool:
+                                            raise ValueError("REQUEST_MESSAGE_INVALID")
+                                        if len(chunk) > _MAX_FORM_BYTES - len(body):
+                                            raise OverflowError
+                                        body.extend(chunk)
+                                        if not more_body:
+                                            break
+                                    form = parse_qsl(bytes(body).decode("ascii"), keep_blank_values=True,
+                                                     strict_parsing=True, max_num_fields=4,
+                                                     encoding="utf-8", errors="strict")
+                                    data: dict[str, str] = {}
+                                    for key, value in form:
+                                        if key in data or key not in {
+                                                "decision_ref", "csrf_token", "decision", "confirmation_text"}:
+                                            raise ValueError("FORM_FIELDS_INVALID")
+                                        data[key] = value
+                                    if (set(data) - {"decision_ref", "csrf_token", "decision", "confirmation_text"}
+                                            or not {"decision_ref", "csrf_token", "decision"}.issubset(data)):
+                                        raise ValueError("FORM_FIELDS_INVALID")
+                                    if (not re.fullmatch(r"[A-Za-z0-9_-]{32,512}", data["decision_ref"])
+                                            or not re.fullmatch(r"[0-9a-f]{64}", data["csrf_token"])
+                                            or data["decision"] not in {"APPROVE", "REJECT"}):
+                                        raise ValueError("FORM_VALUE_INVALID")
+                                except (UnicodeError, ValueError, OverflowError, TypeError):
+                                    data = {}
+                                if not data:
+                                    response = _error(ErrorCode.SCHEMA_INVALID, 400)
+                                else:
+                                    try:
+                                        result = await _invoke(
+                                            service.submit_decision, session.principal, session,
+                                            data["decision_ref"], data["decision"],
+                                            csrf_token=data["csrf_token"],
+                                            confirmation_text=data.get("confirmation_text", ""),
+                                            origin=headers.get("origin", ""), referer=headers.get("referer", ""), now=now)
+                                    except Exception:
+                                        result = None
+                                    if (type(result) is not Result or result.error is not None
+                                            or not _valid_decision_result(
+                                                result.value, ticket=parsed_ticket, decision=data["decision"],
+                                                session=session, now=now)):
+                                        response = _error(result.error if type(result) is Result and result.error else
+                                                          ErrorCode.AUDIT_UNAVAILABLE)
+                                    else:
+                                        message = ("Rejection recorded." if data["decision"] == "REJECT"
+                                                   else "Decision recorded.")
+                                        response = _page("Decision recorded", "<p role=\"status\">" + message +
+                                                         "</p><p>Return to pending changes.</p>")
+                        else:
+                            response = _error(ErrorCode.SCHEMA_INVALID, 405)
         status, response_headers, content = response
         await send({"type": "http.response.start", "status": status, "headers": response_headers})
         await send({"type": "http.response.body", "body": content})
