@@ -262,6 +262,7 @@ def _current_context(page: DecisionPage, session: ApproverSession) -> str | None
     if (type(lifecycle) is not str or not lifecycle or len(lifecycle) > 64
             or type(authorization) is not str or not authorization or len(authorization) > 64
             or type(label) is not str or not label.strip() or len(label) > 256
+            or not _valid_boundary_text(label, limit=256)
             or any(ord(char) < 32 for char in label)
             or label in {session.session_id, session.principal.principal_id, session.principal.person_id}
             or type(created) is not datetime or created.tzinfo is None or created.utcoffset() is None

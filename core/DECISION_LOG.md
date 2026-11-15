@@ -1360,3 +1360,7 @@ Decision: retain one immutable five-tool manifest and require the FastMCP publis
 ## 2026-11-15 — Import the regex dependency for CSRF validation
 
 Decision: import Python's standard `re` module in the S16 core because `S16Core.decide()` uses `re.fullmatch()` to enforce the exact CSRF token format. Preserve the existing lowercase 64-character hexadecimal requirement; do not add a permissive fallback. Source inspection establishes the missing import; the focused regression remains NOT_RUN under operator rule 4. FIN-S2.1 remains unaccepted pending its verification gate. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_CSRF_IMPORT_20261115.md`.
+
+## 2026-11-15 — Validate S16 approver-label encoding before rendering
+
+Decision: validate the service-provided approver label with the approval page's strict UTF-8 boundary-text predicate before HTML escaping and response encoding. Keep the existing 256-character limit and reject malformed Unicode rather than allowing a rendering exception. The focused regression remains NOT_RUN under operator rule 4; FIN-S2.2 is not accepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_LABEL_ENCODING_20261115.md`.
