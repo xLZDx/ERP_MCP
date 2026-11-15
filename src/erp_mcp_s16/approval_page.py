@@ -294,10 +294,21 @@ def create_approval_app(service: ApprovalServicePort,
             await send({"type": "http.response.start", "status": status, "headers": response_headers})
             await send({"type": "http.response.body", "body": content})
             return
-        if scope.get("type") != "http":
+        scope_type = scope.get("type")
+        if type(scope_type) is not str:
+            status, response_headers, content = _error(ErrorCode.SCHEMA_INVALID, 400)
+            await send({"type": "http.response.start", "status": status, "headers": response_headers})
+            await send({"type": "http.response.body", "body": content})
+            return
+        if scope_type != "http":
             return
         method = scope.get("method")
         path = scope.get("path")
+        if type(method) is not str or type(path) is not str:
+            status, response_headers, content = _error(ErrorCode.SCHEMA_INVALID, 400)
+            await send({"type": "http.response.start", "status": status, "headers": response_headers})
+            await send({"type": "http.response.body", "body": content})
+            return
         raw_headers = scope.get("headers", ())
         header_lists: dict[str, list[str]] = {}
         try:

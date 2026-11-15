@@ -1,6 +1,7 @@
 """HTTP-boundary approval page tests over the S16 in-memory services; no listener is started."""
 from __future__ import annotations
 
+import asyncio
 import html
 import re
 
@@ -114,3 +115,100 @@ def test_approval_post_rejects_missing_or_foreign_origin_and_keeps_authorization
     assert missing.status_code == foreign.status_code == csrf_rejected.status_code == 403
     assert env.store.get(pending.change_id) == before
     assert env.apply_port.calls == 0
+
+
+def test_approval_post_bounds_body_bytes_and_asgi_message_count_before_service_call():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-form-bounds")
+    app = create_approval_app(env.approval_service, _SessionAuth(env.session),
+                              origin=ORIGIN, clock=env.clock)
+    submit_calls = []
+    env.approval_service.submit_decision = lambda *args, **kwargs: submit_calls.append(args)
+    scope = {
+        "type": "http", "method": "POST",
+        "path": f"/approval/{snapshot.change_id}/decision",
+        "scheme": "https",
+        "headers": [
+            (b"content-type", b"application/x-www-form-urlencoded"),
+            (b"origin", ORIGIN.encode("ascii")),
+            (b"referer", (ORIGIN + "/approval/review").encode("ascii")),
+            (b"x-test-session", b"approver-session"),
+        ],
+    }
+
+    async def run_request(messages):
+        pending = iter(messages)
+        sent = []
+
+        async def receive():
+            return next(pending)
+
+        async def send(message):
+            sent.append(message)
+
+        await app(scope, receive, send)
+        return sent
+
+    over_byte_limit = asyncio.run(run_request(({
+        "type": "http.request", "body": b"x" * 8193, "more_body": False,
+    },)))
+    over_message_limit = asyncio.run(run_request(tuple(
+        {"type": "http.request", "body": b"", "more_body": True}
+        for _ in range(8193)
+    )))
+
+    assert [message["status"] for message in (over_byte_limit[0], over_message_limit[0])] == [400, 400]
+    assert submit_calls == []
+
+
+def test_malformed_http_scope_fields_return_schema_error_before_auth_or_service():
+    env = build_env()
+    snapshot = propose(env, request_id="approval-malformed-scope")
+
+    class ExplodingMethod:
+        def __eq__(self, _other):
+            raise RuntimeError("untrusted method comparison")
+
+    class CountingAuth:
+        calls = 0
+
+        def authenticate(self, _scope, _headers):
+            self.calls += 1
+            return env.session
+
+    authenticator = CountingAuth()
+    service_calls = []
+    env.approval_service.open_preview = lambda *args, **kwargs: service_calls.append("preview")
+    env.approval_service.submit_decision = lambda *args, **kwargs: service_calls.append("decision")
+    app = create_approval_app(env.approval_service, authenticator, origin=ORIGIN, clock=env.clock)
+    base_scope = {
+        "type": "http", "method": "POST",
+        "path": f"/approval/{snapshot.change_id}/decision",
+        "scheme": "https",
+        "headers": [(b"x-test-session", b"approver-session")],
+    }
+
+    async def run_request(scope):
+        sent = []
+
+        async def receive():
+            raise AssertionError("malformed scope must be rejected before reading the body")
+
+        async def send(message):
+            sent.append(message)
+
+        await app(scope, receive, send)
+        return sent
+
+    malformed_scopes = [
+        {**base_scope, "type": []},
+        {**base_scope, "method": ExplodingMethod()},
+    ]
+    for scope in malformed_scopes:
+        sent = asyncio.run(run_request(scope))
+        assert sent[0]["status"] == 400
+        body = sent[1]["body"]
+        assert b"The request is not valid." in body
+
+    assert authenticator.calls == 0
+    assert service_calls == []

@@ -1336,3 +1336,7 @@ Decision: use the accepted `BLOCKED_OPERATOR` state in `PROJECT_PLAN.md` for FIN
 ## 2026-11-15 — Bind S16 post-claim read-back to approved identity
 
 Decision: after atomic claim, compare the store read-back with the exact pre-claim receipt identity before collecting begin-apply evidence. Include scope, version, proposal, requester, target, snapshot, document reference, and approval; permit only the status and lifecycle record to reflect the claim transition. A mismatch or comparison exception releases only the known pre-`BEGIN_APPLY` claim and refuses before evidence/apply dispatch. This is a synthetic S16 core contract, not a production writer qualification. The named regression was added but not run under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_CLAIM_READBACK_20261115.md`.
+
+## 2026-11-15 — Validate S16 approval ASGI routing field types
+
+Decision: reject non-string ASGI scope type, method, or path before authentication and routing comparisons. Preserve the inert app's existing behavior for a well-formed non-HTTP scope. This prevents malformed equality behavior from escaping the fixed error path and ensures malformed requests trigger neither authentication nor service calls. The named regression was added but not run under operator rule 4. No listener or real 1C path was enabled. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_ASGI_SHAPE_20261115.md`.
