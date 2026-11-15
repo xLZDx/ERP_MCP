@@ -1364,3 +1364,7 @@ Decision: import Python's standard `re` module in the S16 core because `S16Core.
 ## 2026-11-15 — Validate S16 approver-label encoding before rendering
 
 Decision: validate the service-provided approver label with the approval page's strict UTF-8 boundary-text predicate before HTML escaping and response encoding. Keep the existing 256-character limit and reject malformed Unicode rather than allowing a rendering exception. The focused regression remains NOT_RUN under operator rule 4; FIN-S2.2 is not accepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_LABEL_ENCODING_20261115.md`.
+
+## 2026-11-15 — Require string UUIDs at the S16 tool adapter
+
+Decision: require an exact string for every model-facing `change_id` before constructing a UUID in status, apply, rollback-proposal, and verify. Preserve UUID string parsing and reject wrong wire types through the existing fixed schema-refusal path before service dispatch. Focused regression remains NOT_RUN under operator rule 4; FIN-S2.3 remains unaccepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_CHANGE_ID_TYPE_20261115.md`.

@@ -279,6 +279,12 @@ def _safe_error(code: object, correlation_id: str) -> dict[str, object]:
     }
 
 
+def _change_uuid(value: object) -> UUID:
+    if type(value) is not str:
+        raise ValueError("CHANGE_ID_INVALID")
+    return UUID(value)
+
+
 def _wire_text(value: object, *, limit: int) -> str:
     if type(value) is not str or not value or len(value) > limit:
         raise RuntimeError("S16_RESPONSE_INVALID")
@@ -429,17 +435,17 @@ def register_s16_tools(server: object, service: ChangeServicePort,
             elif name == "status":
                 if set(arguments) != {"change_id"}:
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
-                result = await _call(service.status, principal, UUID(arguments["change_id"]))
+                result = await _call(service.status, principal, _change_uuid(arguments["change_id"]))
                 serializer = _receipt
             elif name == "apply":
                 if set(arguments) != {"change_id"}:
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
-                result = await _call(service.apply, principal, UUID(arguments["change_id"]))
+                result = await _call(service.apply, principal, _change_uuid(arguments["change_id"]))
                 serializer = _apply_receipt
             elif name == "rollback_propose":
                 if set(arguments) != {"change_id"}:
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
-                result = await _call(service.rollback_propose, principal, UUID(arguments["change_id"]))
+                result = await _call(service.rollback_propose, principal, _change_uuid(arguments["change_id"]))
                 serializer = _preview
             else:
                 if set(arguments) != {"change_id", "document_ref", "expected", "shape"}:
@@ -451,7 +457,7 @@ def register_s16_tools(server: object, service: ChangeServicePort,
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
                 expected_value = ExpectedReceipt(**expected)
                 shape_value = OperationShape(**shape)
-                request = VerifyRequest(UUID(arguments["change_id"]), arguments["document_ref"],
+                request = VerifyRequest(_change_uuid(arguments["change_id"]), arguments["document_ref"],
                                         expected_value, shape_value)
                 result = await _call(service.verify, principal, request)
                 serializer = _verification
