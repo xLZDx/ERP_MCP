@@ -93,3 +93,9 @@ This is source and contract evidence only. The focused failure-injection regress
 Source review found that the approval app accepted a role container by membership alone and showed a success page after checking only part of the returned `ApprovalDecision`. The app now requires exact approver identity, role-container, epoch, and scope shapes before service dispatch. After a decision call, it validates the ticket/action/session/approver/scope binding, version, digest formats, and future-aware expiry before showing success; malformed results map to a fixed refusal. The S16 acceptance map records both cases.
 
 This is source and contract evidence only. The focused ASGI/session/service regressions are `NOT_RUN` under operator rule 4; FIN-S2.2 remains unaccepted. No listener or production binding was enabled.
+
+## Focused verification follow-up — align synthetic callers with page-issued CSRF
+
+The first focused run exposed a fixture defect, not a product authorization gap: `approve()` and direct core-service callers omitted the CSRF token returned by `open_preview()`, which the core correctly requires. Updated only `tests/phase2/s16_helpers.py` and `tests/phase2/test_s16_approval_core.py` to pass that exact token. The failure-injection replay assertion remains fail-closed after a durable decision/read-back mismatch.
+
+Verification: `uv run --locked --extra dev python -m pytest tests/phase2/test_s16_approval_core.py -q` — `48 passed in 1.00s`, run by `functional-test-reviewer` at HEAD `147743e173b1f675f7726ff26aa8ca0995e40f82`. No product code changed in this follow-up. No listener, production binding, database-backed approval, or real 1C write is established.

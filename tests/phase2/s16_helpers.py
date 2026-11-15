@@ -136,7 +136,8 @@ def approve(env: S16Environment, snapshot=None, *, confirmation_text=""):
     assert page.error is None, page.error
     result = env.approval_service.submit_decision(
         env.approver, env.session, page.value.decision_ref, "APPROVE",
-        confirmation_text=confirmation_text, origin=ORIGIN, referer=ORIGIN + "/approval/",
+        confirmation_text=confirmation_text, csrf_token=page.value.csrf_token,
+        origin=ORIGIN, referer=ORIGIN + "/approval/",
         now=NOW + timedelta(seconds=1))
     assert result.error is None, result.error
     return snapshot, page.value

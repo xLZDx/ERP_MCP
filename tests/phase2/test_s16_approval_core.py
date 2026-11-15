@@ -30,7 +30,8 @@ def test_server_issued_preview_bytes_match_digest_and_valid_human_approval_is_on
     assert page.approver_person_label == "Approver One"
     assert page.decision_allowed is True
     replay = env.approval_service.submit_decision(env.approver, env.session, page.decision_ref, "APPROVE",
-        confirmation_text="", origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.csrf_token,
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
         now=NOW + timedelta(seconds=2))
     assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
     assert env.store.get(snap.change_id).approval == saved.approval
@@ -44,7 +45,7 @@ def test_approver_alias_for_requester_person_is_refused_before_any_apply_call():
     env.principals.alias_person(env.approver.principal_id, env.requester.person_id)
     result = env.core.decide(env.approver, env.session, opened.value.decision_ref, "APPROVE",
         origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
-        confirmation_text="", now=NOW + timedelta(seconds=1))
+        confirmation_text="", csrf_token=opened.value.csrf_token, now=NOW + timedelta(seconds=1))
     assert result.error is ErrorCode.APPROVER_NOT_INDEPENDENT
     assert env.store.get(snap.change_id).approval is None
     assert env.apply_port.calls == 0
@@ -123,11 +124,13 @@ def test_cross_session_decision_reference_and_exact_nonce_expiry_are_refused():
     second_session = env.idp.issue(env.approver, NOW + timedelta(seconds=1))
     assert second_session is not None
     cross_session = env.approval_service.submit_decision(second_session.principal, second_session,
-        page.value.decision_ref, "APPROVE", confirmation_text="", origin="https://127.0.0.1:8443",
+        page.value.decision_ref, "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
+        origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=NOW + timedelta(seconds=2))
     assert cross_session.error is ErrorCode.APPROVAL_NONCE_INVALID
     exact_expiry = env.approval_service.submit_decision(env.approver, env.session, page.value.decision_ref,
-        "APPROVE", confirmation_text="", origin="https://127.0.0.1:8443",
+        "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
+        origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=page.value.expires_at)
     assert exact_expiry.error is ErrorCode.APPROVAL_EXPIRED
     assert env.store.get(snap.change_id).approval is None
@@ -142,7 +145,8 @@ def test_core_rejects_stored_canonical_preview_tampering_even_with_permissive_de
     env.store._receipts[snap.change_id] = replace(
         stored, snapshot=replace(stored.snapshot, canonical_preview_bytes=stored.snapshot.canonical_preview_bytes + b" "))
     result = env.approval_service.submit_decision(env.approver, env.session, page.value.decision_ref,
-        "APPROVE", confirmation_text="", origin="https://127.0.0.1:8443",
+        "APPROVE", confirmation_text="", csrf_token=page.value.csrf_token,
+        origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=NOW + timedelta(seconds=1))
     assert result.error is ErrorCode.DIGEST_MISMATCH
     assert env.store.get(snap.change_id).approval is None
@@ -548,19 +552,21 @@ def test_approval_nonce_consumption_readback_mismatch_fails_closed_and_cannot_re
 
     decision = env.approval_service.submit_decision(
         env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
-        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        csrf_token=page.value.csrf_token, origin="https://127.0.0.1:8443",
+        referer="https://127.0.0.1:8443/approval/",
         now=NOW + timedelta(seconds=1),
     )
     persisted = store.get(snap.change_id)
     replay = env.approval_service.submit_decision(
         env.approver, env.session, page.value.decision_ref, "APPROVE", confirmation_text="",
-        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        csrf_token=page.value.csrf_token, origin="https://127.0.0.1:8443",
+        referer="https://127.0.0.1:8443/approval/",
         now=NOW + timedelta(seconds=2),
     )
 
     assert decision.error is ErrorCode.AUDIT_UNAVAILABLE
     assert persisted.approval is not None and persisted.approval.decision == "APPROVE"
-    assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
+    assert replay.error is ErrorCode.APPROVAL_VOIDED
     assert env.apply_port.calls == 0
 
 

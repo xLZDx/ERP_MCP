@@ -1380,4 +1380,7 @@ Decision: update FIN plan evidence with the four local S16 source-fix commits an
 ## 2026-11-15 — Bind S16 approval result to the submitted decision reference
 
 Decision: require the service-returned approval digest to equal the SHA-256 digest of the exact submitted decision reference before rendering success. A valid-looking receipt for a different reference now fails closed as AUDIT_UNAVAILABLE; do not infer that a downstream decision was rolled back after dispatch. Narrow page regression passed (5 cases in 1.37s). No listener, production binding, or real 1C path was enabled. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_DECISION_REF_BINDING_20261115.md`.
+## 2026-11-15 — Carry page-issued CSRF through S16 synthetic approval callers
+
+Decision: preserve the core requirement for the exact CSRF token issued with the preview page. Update only the synthetic shared helper and approval-core tests to pass that exact value; do not add a permissive default to the approval service. Focused FIN-S2.1 approval-core evidence passed (48 cases, exit 0, 1.00s). The failure-injection replay case confirms that a durable approval followed by mismatched read-back fails closed and cannot execute apply. No product source changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
 
