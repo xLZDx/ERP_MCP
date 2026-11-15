@@ -6,14 +6,17 @@ add routes to the existing gateway and exposes no approval operation.
 from __future__ import annotations
 
 import inspect
+import math
 import re
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from types import MappingProxyType
-from typing import Any, Callable, Mapping, Protocol
+from typing import Annotated, Any, Callable, Mapping, Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change.errors import ErrorCode, render
+from erp_mcp_s15.verifier import VerificationResult
 
 from .contracts import (
     ApplyReceipt,
@@ -21,6 +24,8 @@ from .contracts import (
     DomainReceipt,
     PreviewSnapshot,
     Result,
+    TargetScope,
+    TargetVersion,
     VerifyRequest,
 )
 
@@ -34,7 +39,7 @@ class ChangeServicePort(Protocol):
     def apply(self, requester: AuthenticatedPrincipal, change_id: UUID, *,
               now: Any = None) -> Result[ApplyReceipt, ErrorCode]: ...
     def verify(self, requester: AuthenticatedPrincipal,
-               request: VerifyRequest) -> Result[Any, ErrorCode]: ...
+               request: VerifyRequest) -> Result[VerificationResult, ErrorCode]: ...
     def rollback_propose(self, requester: AuthenticatedPrincipal, change_id: UUID, *,
                          now: Any = None) -> Result[PreviewSnapshot, ErrorCode]: ...
 
@@ -119,6 +124,46 @@ def _thaw(value: object) -> object:
     return value
 
 
+def _fastmcp_handler(spec: ToolSpec, dispatch: Callable[..., Any]) -> Callable[..., Any]:
+    """Build a FastMCP callable whose published argument schema matches the manifest.
+
+    FastMCP derives ``inputSchema`` from the callable signature rather than accepting a
+    separate JSON Schema. Preserve the manifest's nested constraints through Pydantic's
+    ``WithJsonSchema`` metadata, and mark transport context so it is injected, not exposed
+    as a model argument.
+    """
+    from inspect import Parameter, Signature
+
+    from mcp.server.fastmcp import Context
+    from pydantic import WithJsonSchema
+
+    properties = spec.input_schema["properties"]
+    if not isinstance(properties, Mapping):
+        raise TypeError("INVALID_TOOL_MANIFEST")
+
+    parameters = []
+    annotations: dict[str, object] = {}
+    for name, schema in properties.items():
+        if type(name) is not str or not isinstance(schema, Mapping):
+            raise TypeError("INVALID_TOOL_MANIFEST")
+        annotation = Annotated[Any, WithJsonSchema(_thaw(schema))]
+        annotations[name] = annotation
+        parameters.append(Parameter(name, kind=Parameter.KEYWORD_ONLY, annotation=annotation))
+
+    annotations["context"] = Context
+    parameters.append(Parameter("context", kind=Parameter.KEYWORD_ONLY, default=None,
+                                annotation=Context))
+
+    async def handler(**kwargs: Any) -> dict[str, object]:
+        context = kwargs.pop("context", None)
+        return await dispatch(spec.name, kwargs, context)
+
+    handler.__name__ = f"s16_{spec.name}"
+    handler.__annotations__ = {**annotations, "return": dict[str, object]}
+    handler.__signature__ = Signature(parameters, return_annotation=dict[str, object])
+    return handler
+
+
 S16_TOOL_MANIFEST = tuple(
     ToolSpec(spec.name, spec.description, _freeze(spec.input_schema), _freeze(spec.annotations))
     for spec in S16_TOOL_MANIFEST
@@ -144,27 +189,73 @@ _FORBIDDEN_NORMALIZED_KEYS = frozenset({
 _MAX_ARGUMENT_BYTES = 64 * 1024
 _MAX_DEPTH = 12
 _MAX_NODES = 4096
+_READ_ERROR_DETAIL = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}\Z")
+_VERIFICATION_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\Z")
+_VERIFICATION_CODES = frozenset({
+    "MISMATCH", "EMPTY", "NOT_RESOLVING", "DELETION_MARKED", "INCOMPLETE",
+    "EXPECTED_MISSING", "READ_ERROR", "TYPING_DIVERGENCE",
+})
+_VERIFICATION_FIELD_CLASSES = frozenset({
+    "number", "identity_text", "date", "enumeration", "reference", "flag",
+    "rows", "marker", "read", "unknown",
+})
 
 
 def _validate_tree(value: object) -> bool:
     nodes = 0
+    input_bytes = 0
+
+    def reserve(size: int) -> bool:
+        nonlocal input_bytes
+        input_bytes += size
+        return input_bytes <= _MAX_ARGUMENT_BYTES
 
     def walk(item: object, depth: int) -> bool:
         nonlocal nodes
         nodes += 1
         if depth > _MAX_DEPTH or nodes > _MAX_NODES:
             return False
-        if item is None or type(item) in (str, int, float, bool):
-            return not (type(item) is str and len(item) > 8192)
-        if type(item) is list:
-            return len(item) <= 2048 and all(walk(child, depth + 1) for child in item)
-        if type(item) is dict:
-            if len(item) > 512:
+        if item is None or type(item) is bool:
+            return reserve(len(repr(item)))
+        if type(item) is str:
+            if len(item) > 8192:
                 return False
-            for key, child in item.items():
+            try:
+                item.encode("utf-8", errors="strict")
+                return reserve(len(repr(item).encode("utf-8", errors="strict")))
+            except UnicodeError:
+                return False
+        if type(item) is int:
+            digit_bound = max(1, (item.bit_length() * 30103) // 100000 + 1) + (1 if item < 0 else 0)
+            if input_bytes + digit_bound > _MAX_ARGUMENT_BYTES:
+                return False
+            try:
+                return reserve(len(repr(item)))
+            except (ValueError, OverflowError):
+                return False
+        if type(item) is float:
+            return math.isfinite(item) and reserve(len(repr(item)))
+        if type(item) is list:
+            if len(item) > 2048 or not reserve(2):
+                return False
+            for index, child in enumerate(item):
+                if (index and not reserve(2)) or not walk(child, depth + 1):
+                    return False
+            return True
+        if type(item) is dict:
+            if len(item) > 512 or not reserve(2):
+                return False
+            for index, (key, child) in enumerate(item.items()):
                 normalized_key = re.sub(r"[^a-z0-9]", "", key.casefold()) if type(key) is str else ""
                 if (type(key) is not str or len(key) > 128 or key.casefold() in _FORBIDDEN_KEYS
                         or normalized_key in _FORBIDDEN_NORMALIZED_KEYS):
+                    return False
+                try:
+                    key.encode("utf-8", errors="strict")
+                    if ((index and not reserve(2))
+                            or not reserve(len(repr(key).encode("utf-8", errors="strict")) + 2)):
+                        return False
+                except UnicodeError:
                     return False
                 if not walk(child, depth + 1):
                     return False
@@ -188,38 +279,113 @@ def _safe_error(code: object, correlation_id: str) -> dict[str, object]:
     }
 
 
+def _wire_text(value: object, *, limit: int) -> str:
+    if type(value) is not str or not value or len(value) > limit:
+        raise RuntimeError("S16_RESPONSE_INVALID")
+    try:
+        value.encode("utf-8", errors="strict")
+    except UnicodeError as exc:
+        raise RuntimeError("S16_RESPONSE_INVALID") from exc
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise RuntimeError("S16_RESPONSE_INVALID")
+    return value
+
+
 def _scope(scope: Any) -> dict[str, object]:
+    if type(scope) is not TargetScope:
+        raise RuntimeError("S16_RESPONSE_INVALID")
     return {
-        "tenant": scope.tenant,
-        "company": scope.company,
-        "organization": scope.organization,
-        "target_class": scope.target_class,
+        "tenant": _wire_text(scope.tenant, limit=128),
+        "company": _wire_text(scope.company, limit=128),
+        "organization": _wire_text(scope.organization, limit=128),
+        "target_class": _wire_text(scope.target_class, limit=32),
     }
 
 
+def _target_version(version: Any) -> str:
+    if type(version) is not TargetVersion:
+        raise RuntimeError("S16_RESPONSE_INVALID")
+    return _wire_text(version.value, limit=128)
+
+
 def _preview(snapshot: PreviewSnapshot) -> dict[str, object]:
+    if (type(snapshot) is not PreviewSnapshot or type(snapshot.change_id) is not UUID
+            or type(snapshot.version) is not int or snapshot.version < 1
+            or type(snapshot.preview_digest) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", snapshot.preview_digest)
+            or type(snapshot.expires_at) is not datetime
+            or snapshot.expires_at.utcoffset() is None):
+        raise RuntimeError("S16_RESPONSE_INVALID")
     return {
         "change_id": str(snapshot.change_id), "version": snapshot.version,
-        "scope": _scope(snapshot.scope), "target_version": snapshot.target_version.value,
+        "scope": _scope(snapshot.scope), "target_version": _target_version(snapshot.target_version),
         "preview_digest": snapshot.preview_digest, "expires_at": snapshot.expires_at.isoformat(),
     }
 
 
 def _receipt(receipt: DomainReceipt) -> dict[str, object]:
+    if (type(receipt) is not DomainReceipt or type(receipt.change_id) is not UUID
+            or type(receipt.version) is not int or receipt.version < 1):
+        raise RuntimeError("S16_RESPONSE_INVALID")
     return {
-        "change_id": str(receipt.change_id), "status": receipt.status,
+        "change_id": str(receipt.change_id), "status": _wire_text(receipt.status, limit=64),
         "version": receipt.version, "scope": _scope(receipt.scope),
-        "target_version": receipt.target_version.value,
+        "target_version": _target_version(receipt.target_version),
+    }
+
+
+def _apply_receipt(receipt: ApplyReceipt) -> dict[str, object]:
+    if type(receipt) is not ApplyReceipt or type(receipt.change_id) is not UUID:
+        raise RuntimeError("S16_RESPONSE_INVALID")
+    document_ref = receipt.document_ref
+    if document_ref is not None:
+        document_ref = _wire_text(document_ref, limit=512)
+    return {
+        "change_id": str(receipt.change_id),
+        "status": _wire_text(receipt.status, limit=64),
+        "correlation_id": _wire_text(receipt.correlation_id, limit=128),
+        "document_ref": document_ref,
     }
 
 
 def _verification(value: Any) -> dict[str, object]:
+    from erp_mcp_s15.verifier import Finding, VerificationResult, VerificationStatus
+
+    if (type(value) is not VerificationResult or type(value.status) is not VerificationStatus
+            or type(value.oracle_version) is not str or not 1 <= len(value.oracle_version) <= 128
+            or not value.oracle_version.isascii() or any(ord(char) < 32 for char in value.oracle_version)
+            or type(value.label) is not str or not 1 <= len(value.label) <= 128
+            or not value.label.isascii() or any(ord(char) < 32 for char in value.label)
+            or type(value.findings) is not tuple or len(value.findings) > 512
+            or type(value.unverified_paths) is not tuple or len(value.unverified_paths) > 512
+            or type(value.typing_checked) is not bool):
+        raise RuntimeError("S15_VERIFY_RESULT_INVALID")
+    findings = []
+    for item in value.findings:
+        if (type(item) is not Finding
+                or type(item.path) is not str or not 1 <= len(item.path) <= 256
+                or not _VERIFICATION_PATH.fullmatch(item.path)
+                or type(item.field_class) is not str
+                or item.field_class not in _VERIFICATION_FIELD_CLASSES
+                or type(item.code) is not str or item.code not in _VERIFICATION_CODES):
+            raise RuntimeError("S15_VERIFY_RESULT_INVALID")
+        detail = item.detail
+        if (type(detail) is not str or
+                (item.code == "READ_ERROR" and not _READ_ERROR_DETAIL.fullmatch(detail)) or
+                (item.code != "READ_ERROR" and detail != "")):
+            # S15 detail is an exception class name only for READ_ERROR; never serialize
+            # arbitrary verifier or adapter text into the model-facing response.
+            raise RuntimeError("S15_VERIFY_RESULT_INVALID")
+        findings.append({"path": item.path, "field_class": item.field_class,
+                         "code": item.code, "detail": detail})
+    if any(type(path) is not str or not 1 <= len(path) <= 256
+           or not _VERIFICATION_PATH.fullmatch(path) for path in value.unverified_paths):
+        raise RuntimeError("S15_VERIFY_RESULT_INVALID")
     return {
         "status": value.status.value,
         "oracle_version": value.oracle_version,
         "label": value.label,
-        "findings": [{"path": item.path, "field_class": item.field_class, "code": item.code}
-                     for item in value.findings],
+        "findings": findings,
         "unverified_paths": list(value.unverified_paths),
         "typing_checked": value.typing_checked,
     }
@@ -269,9 +435,7 @@ def register_s16_tools(server: object, service: ChangeServicePort,
                 if set(arguments) != {"change_id"}:
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
                 result = await _call(service.apply, principal, UUID(arguments["change_id"]))
-                serializer = lambda receipt: {"change_id": str(receipt.change_id),
-                                              "status": receipt.status,
-                                              "correlation_id": receipt.correlation_id}
+                serializer = _apply_receipt
             elif name == "rollback_propose":
                 if set(arguments) != {"change_id"}:
                     return _safe_error(ErrorCode.SCHEMA_INVALID, correlation_id)
@@ -294,14 +458,15 @@ def register_s16_tools(server: object, service: ChangeServicePort,
             if type(result) is not Result:
                 return _safe_error(ErrorCode.AUDIT_UNAVAILABLE, correlation_id)
             if result.error is not None:
+                safe_error = result.error if type(result.error) is ErrorCode else ErrorCode.AUDIT_UNAVAILABLE
                 # The shared registry is authoritative. A supplied renderer can format only the
-                # same safe ErrorCode; it cannot add details from the failed operation.
+                # normalized safe ErrorCode; it never receives an arbitrary service value.
                 if error_renderer is not None:
                     try:
-                        error_renderer(result.error)
+                        error_renderer(safe_error)
                     except Exception:
                         pass
-                return _safe_error(result.error, correlation_id)
+                return _safe_error(safe_error, correlation_id)
             if result.value is None:
                 return _safe_error(ErrorCode.AUDIT_UNAVAILABLE, correlation_id)
             return {"isError": False, "result": serializer(result.value)}
@@ -311,15 +476,16 @@ def register_s16_tools(server: object, service: ChangeServicePort,
             return _safe_error(ErrorCode.AUDIT_UNAVAILABLE, correlation_id)
 
     for spec in S16_TOOL_MANIFEST:
-        async def handler(arguments: object, context: object = None, *, _name: str = spec.name) -> dict[str, object]:
-            return await dispatch(_name, arguments, context)
-        handler.__name__ = f"s16_{spec.name}"
         if hasattr(server, "register_tool"):
+            async def handler(arguments: object, context: object = None,
+                              *, _name: str = spec.name) -> dict[str, object]:
+                return await dispatch(_name, arguments, context)
+            handler.__name__ = f"s16_{spec.name}"
             server.register_tool(spec.name, handler, _thaw(spec.input_schema), _thaw(spec.annotations))
         elif callable(getattr(server, "tool", None)):
             decorator = server.tool(name=spec.name, description=spec.description,
                                     annotations=_thaw(spec.annotations))
-            decorator(handler)
+            decorator(_fastmcp_handler(spec, dispatch))
         else:
             raise TypeError("UNSUPPORTED_TOOL_SERVER")
 

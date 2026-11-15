@@ -1324,3 +1324,7 @@ Decision: before using decision-binding requester identity to establish requeste
 ## 2026-11-15 — Require strict approver identity at private ingress
 
 Decision: before forwarding an approval request, the private S16 ingress validates the exact approver session, nonempty principal/person identifiers, nonnegative epoch, TEST lane and scope, approver role, MFA, and current expiry. Malformed identity fails closed before downstream dispatch. This aligns the ingress boundary with the shared session contract; it does not create a listener or authorize production writes. The focused regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+## 2026-11-15 — Preserve S15 verification result through the S16 tool adapter
+
+Decision: keep the `verify` adapter contract typed as the S15 `VerificationResult` and serialize its fields without substituting a caller-supplied authorization outcome. The manifest remains exactly the five approved names; rollback proposes a separate UNPOST and never approves or applies it. Tests remain NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
