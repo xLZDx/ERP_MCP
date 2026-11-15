@@ -425,3 +425,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-15 SHORTCOMING: an MCP connector internal error does not identify which local component failed. Rule: record the exact probe and result, avoid guessing Docker/tunnel/gateway cause, and keep reachability/watchdog acceptance NOT_RUN until fresh evidence exists. Detail: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
 
 - 2026-11-15 SHORTCOMING: several S16 persistence adapters can fail silently, return malformed identities, or throw after a one-use approval/apply step. Rule: bind every read-back to the immutable receipt, fail closed on store or validator uncertainty, and never retry after an execution boundary. Focused regressions remain NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md.
+
+- 2026-11-15 SUCCESS: keep the model-facing tool contract derived from one immutable manifest across adapters; test published schemas and full verifier-result preservation, and enforce budgets on the actual serialized representation. Focused regressions remain NOT_RUN under operator rule 4. Detail: docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md.

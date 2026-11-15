@@ -1,5 +1,6 @@
 """REQ-010..013: serialized MCP tools expose only the approved safe contract."""
 import asyncio
+from collections.abc import Mapping
 from datetime import timedelta
 from uuid import UUID
 
@@ -8,7 +9,7 @@ from erp_mcp_s16.tools import S16_TOOL_MANIFEST, register_s16_tools
 from erp_mcp_s16.fakes import InMemoryChangeStore
 from business_ai_gateway.phase2.change.types import Verification
 from tests.phase2.s16_helpers import NOW, approve, build_env, raw_create
-from erp_mcp_s15.verifier import VerificationResult, VerificationStatus
+from erp_mcp_s15.verifier import Finding, VerificationResult, VerificationStatus
 import pytest
 
 
@@ -72,6 +73,34 @@ def test_verify_tool_passes_s15_result_through_without_changing_authorization_st
     assert response["isError"] is False
     assert response["result"]["status"] == status.value
     assert env.store.get(UUID(str(snap.change_id))).s12_record == before
+
+
+def test_verify_tool_preserves_s15_findings_and_unverified_paths():
+    env, server = build_env(), Server()
+    env.verify_port.result = VerificationResult(
+        VerificationStatus.INCONCLUSIVE, "oracle-fixture", "MACHINE_VERIFIED",
+        findings=(Finding("receipt.amount", "number", "READ_ERROR", "TimeoutError"),),
+        unverified_paths=("receipt.vat_amount",), typing_checked=True,
+    )
+    register_s16_tools(server, env.change_service, lambda context: context)
+    snap, _ = approve(env)
+    applied = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    assert applied.value is not None
+
+    response = asyncio.run(server.handlers["verify"][0]({
+        "change_id": str(snap.change_id), "document_ref": "fake-document",
+        "expected": {"values": {}, "document_day": "", "change_id": "caller-forged",
+                     "manifest_hash": "caller-forged", "includes_vat": False},
+        "shape": {"operation": "POST", "document_kind": "OTHER", "line_count": 99},
+    }, env.requester))
+
+    assert response["isError"] is False
+    assert response["result"] == {
+        "status": "INCONCLUSIVE", "oracle_version": "oracle-fixture", "label": "MACHINE_VERIFIED",
+        "findings": [{"path": "receipt.amount", "field_class": "number",
+                      "code": "READ_ERROR", "detail": "TimeoutError"}],
+        "unverified_paths": ["receipt.vat_amount"], "typing_checked": True,
+    }
 
 
 def test_rollback_propose_requires_verified_post_and_creates_distinct_unpost_preview():
@@ -138,4 +167,41 @@ def test_manifest_has_no_hidden_approve_alias_or_caller_claim_fields():
     assert names == ["propose", "status", "apply", "verify", "rollback_propose"]
     assert all("approve" not in spec.name for spec in S16_TOOL_MANIFEST)
     assert set(S16_TOOL_MANIFEST[0].input_schema["properties"]) == {"request"}
+
+
+def test_fastmcp_lists_exact_manifest_schemas_without_exposing_transport_context():
+    from mcp.server.fastmcp import FastMCP
+
+    def plain(value):
+        if isinstance(value, Mapping):
+            return {key: plain(child) for key, child in value.items()}
+        if isinstance(value, (tuple, list)):
+            return [plain(child) for child in value]
+        return value
+
+    env, server = build_env(), FastMCP("s16-contract")
+    register_s16_tools(server, env.change_service, lambda context: context)
+    listed = asyncio.run(server.list_tools())
+
+    assert [tool.name for tool in listed] == [spec.name for spec in S16_TOOL_MANIFEST]
+    assert [tool.inputSchema for tool in listed] == [plain(spec.input_schema)
+                                                     for spec in S16_TOOL_MANIFEST]
+    assert all("context" not in tool.inputSchema.get("properties", {}) for tool in listed)
+
+
+def test_escape_expansion_argument_budget_refuses_before_calling_the_service():
+    env, server = build_env(), Server()
+    service_calls = []
+    env.change_service.propose = lambda *args, **kwargs: service_calls.append(args)
+    register_s16_tools(server, env.change_service, lambda context: context)
+    request = {f"reason_{index}": "\n" * 8192 for index in range(4)}
+    arguments = {"request": request}
+    assert sum(len(value.encode("utf-8")) for value in request.values()) < 64 * 1024
+    assert len(repr(arguments).encode("utf-8")) > 64 * 1024
+
+    response = asyncio.run(server.handlers["propose"][0](arguments, env.requester))
+
+    assert response["isError"] is True
+    assert response["error"]["code"] == ErrorCode.SCHEMA_INVALID.value
+    assert service_calls == []
 

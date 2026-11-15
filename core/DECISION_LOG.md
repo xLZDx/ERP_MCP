@@ -1352,3 +1352,7 @@ Decision: retain FIN-S3.2 as unaccepted and record the exact read-only `ERP_MCP_
 ## 2026-11-15 — Complete synthetic S16 persistence fail-closed coverage for FIN-S2.1
 
 Decision: treat malformed approval/read-back receipts, store failures, and a no-op or mismatched apply-result persistence read-back as uncertainty, not success. After `BEGIN_APPLY` or crossing the apply port, retain the durable claim and never retry; before execution, refuse without collecting execution evidence or calling the writer port. This remains a fake-backed contract and does not establish production write qualification. Focused regressions are authored but `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-15 — Preserve the S16 manifest contract at both adapters
+
+Decision: retain one immutable five-tool manifest and require the FastMCP published schema, including nested S15 verify shape and hidden transport context, to match it. Preserve the complete S15 verification result as typed data and reject over-budget arguments before service dispatch. The focused regressions are authored but `NOT_RUN` under operator rule 4; no gateway registration or production writer is implied. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.

@@ -43,3 +43,7 @@ This is source-only evidence. No tests/checks were run under operator rule 4; FI
 Source review found that the S16 `ChangeServicePort.verify` protocol declared `Result[Any, ErrorCode]`, although the S16 contract's `VerifyPort` and the S15 verifier return the concrete `VerificationResult`. The adapter protocol now carries that concrete result type, aligning static implementer contracts without changing runtime behavior or the five-tool surface. The S16 plan already requires `verify` to pass through the S15 outcome unchanged.
 
 This is source and contract evidence only. Tests/checks/build/CI remain `NOT_RUN` under operator rule 4; FIN-S2.3 remains unaccepted.
+
+## 2026-11-15 — Add focused S16 tool-contract regressions
+
+The functional-test-reviewer added named cases for the FastMCP `tools/list` names and schemas matching the immutable manifest with transport context excluded, preserving the full S15 `VerificationResult` including findings/unverified paths, and rejecting an argument whose encoded input fits a raw-value estimate but whose actual serialized representation exceeds the adapter budget before service dispatch. Earlier S2.3 regressions cover the separate rollback proposal and refusal/error boundaries. These tests were authored but not executed under operator rule 4; FIN-S2.3 remains unaccepted.
