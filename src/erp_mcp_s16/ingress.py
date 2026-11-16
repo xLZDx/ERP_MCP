@@ -258,6 +258,7 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
         is_tool = type(path) is str and (path == config.tool_prefix or path.startswith(config.tool_prefix + "/"))
         html_response = bool(is_approval)
         response: tuple[int, list[tuple[bytes, bytes]], bytes] | None = None
+        downstream_invoked = False
         try:
             headers_seen: dict[str, list[str]] = {}
             for key, value in scope.get("headers", ()):
@@ -385,16 +386,24 @@ def create_private_s16_app(tool_app: Callable[..., Any], approval_app: Callable[
                         # The downstream application must not see any part of an oversized body.
                         pass
                     else:
+                        downstream_invoked = True
                         await _invoke(downstream, scope, downstream_receive, protected_send)
                         return
                 if method != "POST":
+                    downstream_invoked = True
                     await _invoke(downstream, scope, receive, protected_send)
                     return
         except _BodyLimitExceeded:
+            if downstream_invoked:
+                raise
             response = _safe_response(413, ErrorCode.SCHEMA_INVALID, html_response=html_response)
         except PermissionError:
+            if downstream_invoked:
+                raise
             response = _safe_response(403, ErrorCode.NOT_ENTITLED, html_response=html_response)
         except Exception:
+            if downstream_invoked:
+                raise
             response = _safe_response(400, ErrorCode.SCHEMA_INVALID, html_response=html_response)
         status, out_headers, body = response or _safe_response(400, ErrorCode.SCHEMA_INVALID,
                                                                html_response=html_response)

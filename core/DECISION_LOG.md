@@ -1626,3 +1626,7 @@ Decision: classify unrun current-candidate S2.2–S2.4 regressions as PROHIBITED
 ## 2026-11-16 — Recover ambiguous S16 approval consumption
 
 Decision: after atomic decision consumption, install local replay anchors before a follow-up read so an unavailable read cannot orphan a consumed nonce in this process. If consume itself raises, treat its result as ambiguous and accept it only after an authoritative read confirms the exact receipt identity, approval, and S12 transition; otherwise return `AUDIT_UNAVAILABLE`. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.
+
+## 2026-11-16 — Preserve S16 downstream failure semantics
+
+Decision: do not translate exceptions after private-ingress dispatch into a client validation or authorization response, and do not emit another response start after downstream response output. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.

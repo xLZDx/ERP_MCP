@@ -114,6 +114,38 @@ def test_private_ingress_allows_positive_authenticated_private_request():
     assert probe.calls == [("127.0.0.1", 8443)]
 
 
+@pytest.mark.parametrize("emit_start,expected_statuses", [(False, []), (True, [200])])
+def test_private_ingress_propagates_downstream_failure_without_synthesizing_second_response(
+        emit_start, expected_statuses):
+    env = build_env()
+    sent = []
+
+    async def failing_downstream(_scope, _receive, send):
+        if emit_start:
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+        raise RuntimeError("downstream failed")
+
+    app = create_private_s16_app(
+        failing_downstream, failing_downstream, _Authenticator(env), _RouteProbe(),
+        PrivateNetworkConfig(origin=ORIGIN),
+    )
+    scope = _post_scope({**_host(), "authorization": "Bearer synthetic-write"})
+    scope["method"] = "GET"
+
+    async def receive():
+        raise AssertionError("GET downstream does not need a request body")
+
+    async def capture(message):
+        sent.append(message)
+
+    with pytest.raises(RuntimeError, match="downstream failed"):
+        asyncio.run(app(scope, receive, capture))
+
+    starts = [message for message in sent if message["type"] == "http.response.start"]
+    assert [message["status"] for message in starts] == expected_statuses
+    assert all(message["status"] != 400 for message in starts)
+
+
 def test_private_ingress_fails_closed_for_malicious_scope_type_before_auth_or_dispatch():
     class MaliciousScopeType:
         def __eq__(self, _other):
