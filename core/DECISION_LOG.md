@@ -1731,3 +1731,5 @@ Decision: regenerate the Russian live report after commit `791a6c0` so its prove
 ## 2026-11-16 — Reconcile after refreshing all configured remotes
 
 Decision: run `git fetch --all` without pruning, then `python .harness-tools/ledger.py reconcile-project`. The fetch exited 0; reconciliation scanned 103 refs and reconciled 21 sprints / 104 tasks from the project plan, project documents, and Git, while preserving native harness verification/review fields. Regenerated the Russian live report at HEAD `8d6ccf9`; it shows overall project-document bounded acceptance 44/104 and FIN 2/10 accepted, 6 in review, 2 blocked. No test or CI run, push, or PR occurred.
+
+After reconciliation commit `fec559a`, regenerated the report once more so its embedded source revision points to the committed ledger rather than the pre-commit parent. The report snapshot is 2026-11-16 21:59 UTC+02:00 at HEAD `fec559a` and retains the same evidenced status counts.
