@@ -1715,3 +1715,5 @@ The report snapshot at HEAD `8836c2e` renders FIN as 2/10 bounded accepted, 6/10
 ## 2026-11-16 — Repair FIN S3 plan table dependency and commit columns
 
 Decision: normalize FIN-S3.1/S3.2/S3.3 rows to the declared eight-column schema. S3.2 had an extra ninth cell that made `Complete FIN-S1.2, then final FIN review` parse as its commit and the unused `FIN-S1.2` as a blocker; S3.1 and S3.3 also placed next-action/limitation text in `Depends` and dependencies in `Commit`. The corrected rows use task commit IDs from the native ledger, make S3.1 independent of the externally blocked real-period task, and retain S1.2 as a separate residual. `plan_ledger.parse` now returns the intended statuses and commit arrays; `ledger.py reconcile-project` scanned 103 refs and preserved native verify/review fields. No sprint switch or runtime action occurred.
+
+After that correction, regenerated the report at HEAD `f1d9baa`. It shows FIN 2/10 bounded accepted, 6/10 in review, and 2/10 blocked (S1.2 external, S3.1 operator gate), plus 44/104 bounded-accepted task IDs across the project. This is a project-document/Git status snapshot; native harness completion remains 9/104.
