@@ -1409,6 +1409,10 @@ Decision: use independent Ed25519 key pairs for synthetic checkpoint latestness 
 
 Decision: the real1c test-lane starter derives its PostgreSQL and Redis listener checks from the lane's `env.json` rather than hardcoding the default port offset. Windows had reserved the configured PostgreSQL port 18432, leaving the running local container without a host binding; the disposable lane was moved to loopback port 20432 while preserving its existing persistent volume. Production and 1C data paths were not changed. Runtime health and the read-only connector were rechecked; watchdog recovery remains unproven. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
 
+
+## 2026-11-16 — Preserve S16 recovery state on post-BEGIN expiry
+
+Decision: treat observed approval, snapshot, or requester expiry after durable `BEGIN_APPLY` as a registered refusal and retain the `APPLYING`/`CLAIMED`/`CONSUMED` state for recovery. S12 permits `EXPIRE` only before execution starts, so the coordinator must not attempt that transition after `BEGIN_APPLY` or call the apply port. Normalize `claim_once()` storage exceptions and approval-page clock exceptions as `AUDIT_UNAVAILABLE`; use HTTP 503 for clock failure while preserving HTTP 401 for missing authentication. Scope is synthetic S16 only; no writer binding, live 1C mutation, or production authorization is added. Focused regressions passed on the working tree; exact-commit rerun is pending. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
 ## 2026-11-16 — Separate logon startup from periodic lane recovery
 
 Decision: retain a one-minute interactive logon starter and add a daily time trigger with a five-minute repetition interval and explicit one-day duration for the local watchdog. The previously installed task showed only a logon trigger with an interval, no duration, and no next run time. The registration source now checks both triggers and the elevated principal. Runtime re-registration was canceled at the UAC prompt; no watchdog success is claimed. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.

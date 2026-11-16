@@ -330,20 +330,23 @@ def create_approval_app(service: ApprovalServicePort,
             elif type(path) is str and path == "/approval/s16.css" and method == "GET":
                 try:
                     style_session = await _invoke(authenticator.authenticate, scope, headers)
-                    style_now = clock.now()
                 except Exception:
                     style_session = None
-                    style_now = datetime.min
-                if not _live_session(style_session, style_now):
-                    response = _error(ErrorCode.NOT_ENTITLED, 401)
+                try:
+                    style_now = clock.now()
+                except Exception:
+                    response = _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
                 else:
-                    response = (200, [(b"content-type", b"text/css; charset=utf-8"),
-                                      (b"content-length", str(len(_STYLESHEET)).encode("ascii")),
-                                      (b"cache-control", b"no-store"),
-                                      (b"referrer-policy", b"no-referrer"),
-                                      (b"content-security-policy", _CSP.encode("ascii")),
-                                      (b"x-content-type-options", b"nosniff"),
-                                      (b"x-frame-options", b"DENY")], _STYLESHEET)
+                    if not _live_session(style_session, style_now):
+                        response = _error(ErrorCode.NOT_ENTITLED, 401)
+                    else:
+                        response = (200, [(b"content-type", b"text/css; charset=utf-8"),
+                                          (b"content-length", str(len(_STYLESHEET)).encode("ascii")),
+                                          (b"cache-control", b"no-store"),
+                                          (b"referrer-policy", b"no-referrer"),
+                                          (b"content-security-policy", _CSP.encode("ascii")),
+                                          (b"x-content-type-options", b"nosniff"),
+                                          (b"x-frame-options", b"DENY")], _STYLESHEET)
             elif type(path) is not str or not path.startswith("/approval/"):
                 response = _error(ErrorCode.REF_OUT_OF_SCOPE, 404)
             else:
@@ -366,8 +369,10 @@ def create_approval_app(service: ApprovalServicePort,
                         try:
                             now = clock.now()
                         except Exception:
-                            now = datetime.min
-                        if not _live_session(session, now):
+                            now = None
+                        if now is None:
+                            response = _error(ErrorCode.AUDIT_UNAVAILABLE, 503)
+                        elif not _live_session(session, now):
                             response = _error(ErrorCode.NOT_ENTITLED, 401)
                         elif method == "GET" and path == f"/approval/{ticket}":
                             try:

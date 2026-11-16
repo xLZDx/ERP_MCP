@@ -790,7 +790,7 @@ class S16Core:
                                               claimant_id=requester.principal_id,
                                               s12_record=transitioned.record)
             except Exception:
-                return Result.refused(ErrorCode.CLAIM_EXPIRED)
+                return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
             if type(claim) is ClaimRefused:
                 return Result.refused(claim.error if type(claim.error) is ErrorCode else ErrorCode.CLAIM_EXPIRED)
             if (type(claim) is not Claimed or type(claim.token) is not ClaimToken
@@ -943,10 +943,9 @@ class S16Core:
             if (not _expires_after(approval.expires_at, final_now)
                     or not _expires_after(applying_receipt.snapshot.expires_at, final_now)
                     or not _expires_after(requester.expires_at, final_now)):
-                try:
-                    self.expire(change_id, now=final_now)
-                except Exception:
-                    pass
+                # BEGIN_APPLY is already durable. S12 only permits EXPIRE before
+                # execution starts, so keep the consumed claim/anchor for recovery
+                # and refuse dispatch without attempting an invalid transition.
                 return Result.refused(ErrorCode.APPROVAL_EXPIRED)
             if not self._live_requester_record(final_requester, requester, check_epoch=False):
                 return Result.refused(ErrorCode.NOT_ENTITLED)

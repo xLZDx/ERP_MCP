@@ -7,8 +7,10 @@ import html
 import re
 from datetime import timedelta
 
+import pytest
 from starlette.testclient import TestClient
 
+from business_ai_gateway.phase2.change.errors import ErrorCode, render
 from erp_mcp_s16.approval_page import create_approval_app
 from erp_mcp_s16.contracts import ApprovalDecision, Result
 from s16_helpers import ORIGIN, build_env, propose
@@ -255,3 +257,24 @@ def test_approval_post_rejects_success_receipt_bound_to_another_decision_ref():
     assert "Decision recorded." not in response.text
     assert env.store.get(snapshot.change_id).approval is None
     assert env.apply_port.calls == 0
+
+
+@pytest.mark.parametrize("path_kind", ["approval", "css"])
+def test_approval_and_css_clock_exceptions_return_safe_503_without_masking_auth_failure(path_kind):
+    env = build_env()
+    snapshot = propose(env, request_id=f"approval-clock-{path_kind}")
+    path = (f"/approval/{snapshot.change_id}" if path_kind == "approval" else "/approval/s16.css")
+    client = _client(env)
+
+    unauthenticated = client.get(path)
+    assert unauthenticated.status_code == 401
+
+    def unavailable_clock():
+        raise OSError("private clock failure detail")
+
+    env.clock.now = unavailable_clock
+    response = client.get(path, headers=_headers())
+
+    assert response.status_code == 503
+    assert render(ErrorCode.AUDIT_UNAVAILABLE).message in response.text
+    assert "private clock failure detail" not in response.text

@@ -525,6 +525,77 @@ def test_expiry_during_begin_apply_observation_is_rechecked_before_apply():
     assert env.apply_port.calls == 0
 
 
+def test_claim_once_storage_exception_is_audit_unavailable_not_expired():
+    class RaisesOnClaimStore(InMemoryChangeStore):
+        armed = False
+
+        def claim_once(self, *args, **kwargs):
+            if self.armed:
+                raise OSError("claim storage unavailable")
+            return super().claim_once(*args, **kwargs)
+
+    store = RaisesOnClaimStore()
+    env = build_env(store=store)
+    snap, _ = approve(env)
+    store.armed = True
+
+    result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+
+    assert result.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert store.claim_count == 0
+    assert store.get(snap.change_id).approval is not None
+    assert env.apply_port.calls == 0
+
+
+@pytest.mark.parametrize("deadline_name", ["approval", "snapshot", "requester"])
+def test_post_begin_apply_expiry_keeps_claim_for_recovery_without_expire_transition(deadline_name):
+    from business_ai_gateway.phase2.change.types import Authorization, Execution, TokenState
+
+    class AdvancesPastApprovalExpiryOnBeginStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.clock = None
+            self.armed = False
+            self.deadline = None
+
+        def save_s12_record(self, change_id, s12_record):
+            super().save_s12_record(change_id, s12_record)
+            if self.armed and s12_record.execution is Execution.APPLYING:
+                self.armed = False
+                self.clock.advance(self.deadline - self.clock.now() + timedelta(seconds=1))
+
+    store = AdvancesPastApprovalExpiryOnBeginStore()
+    env = build_env(store=store)
+    store.clock = env.clock
+    if deadline_name == "requester":
+        env.requester = replace(env.requester, expires_at=NOW + timedelta(minutes=2))
+    snap, _ = approve(env)
+    receipt = store.get(snap.change_id)
+    if deadline_name == "requester":
+        assert env.requester.expires_at > NOW + timedelta(seconds=2)
+        assert receipt.approval.expires_at > env.requester.expires_at
+        assert receipt.snapshot.expires_at > env.requester.expires_at
+    store.deadline = {
+        "approval": receipt.approval.expires_at,
+        "snapshot": receipt.snapshot.expires_at,
+        "requester": env.requester.expires_at,
+    }[deadline_name]
+    store.armed = True
+    expire_calls = []
+    env.core.expire = lambda *args, **kwargs: expire_calls.append((args, kwargs))
+
+    result = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+
+    persisted = store.get(snap.change_id)
+    assert result.error is ErrorCode.APPROVAL_EXPIRED
+    assert expire_calls == []
+    assert persisted.s12_record.execution is Execution.APPLYING
+    assert persisted.s12_record.authorization is Authorization.CLAIMED
+    assert persisted.s12_record.token is TokenState.CONSUMED
+    assert store.claim_count == 1
+    assert env.apply_port.calls == 0
+
+
 def test_approval_nonce_consumption_readback_mismatch_fails_closed_and_cannot_replay():
     class SkewedDecisionReadStore(InMemoryChangeStore):
         def __init__(self):
