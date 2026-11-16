@@ -1423,3 +1423,7 @@ Decision: record the 59-case focused S16 result and three independent no-finding
 ## 2026-11-16 — Keep date-ban evidence separate from period close
 
 Decision: do not derive `PERIOD_CLOSED` from `ДатаЗапретаИзменения` until the target configuration general month-close semantics are verified. Record the protected clone observation as candidate-only, and keep it bound to the observed configuration fingerprint; use an authoritative close-month status source for the reader contract. Details: docs/phase2/CHANGE_RECORD_403.md.
+
+## 2026-11-16 — Inventory month-close records without promoting them
+
+Decision: extend the protected, fixed-clone diagnostic to summarize `РегламентнаяОперация` records by month, displayed state, and posted flag, capped at 1,000 records. Keep the result candidate-only: `Выполнено`/`Пропущено` have not been qualified against the exact 3.0.67.1 close-month implementation, so they do not produce `AuthenticatedPeriodSnapshot.closed` or FIN-S1.2 acceptance. The diagnostic uses SELECT-only COM access, emits no document references, organization names, amounts, or credentials, and does not change the gateway or 1C data. Details: docs/phase2/CHANGE_RECORD_403.md.

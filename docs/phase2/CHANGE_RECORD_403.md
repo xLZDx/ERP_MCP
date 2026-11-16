@@ -149,3 +149,22 @@ code, which was outside the scoped S1.1 review. Later evidence reconciliation wa
   exact configuration version or identify an authoritative general close-month status source, then bind the read to
   the registered source/company/base identity. No credential value, document rows, or write operation was used. No
   tests or checks were run.
+
+### 2026-11-16: bounded close-operation inventory
+
+- Extended the same protected COM diagnostic to query only `Документ.РегламентнаяОперация` date, displayed state,
+  and posted flag, capped at 1,000 rows. It emits counts by calendar month/state/posted flag; it emits no document
+  references, organization names, amounts, or credentials.
+- The rerun returned 233 records spanning `2022-12` through `2026-06`. States include `Выполнено` and
+  `Пропущено`; every returned record had `Проведен=false`. Several 2023 months include a skipped operation.
+- This is new candidate evidence about the clone's close-operation history, not proof that the target month is
+  accounting-closed. In particular, the diagnostic does not know which operations are required for a month, why
+  an operation was skipped, whether later changes invalidated the close, or how the configuration derives its
+  final month-close status. It therefore remains `CANDIDATE_NOT_GATE_ACCEPTANCE` and does not feed
+  `AuthenticatedPeriodSnapshot.closed`.
+- The installed client exposes `CommonModules.ЗакрытиеМесяца`, `CommonModules.ЗакрытиеМесяцаВызовСервера`,
+  and `DataProcessors.ЗакрытиеМесяца` metadata, but no versioned source/export was found in the repository.
+  The next qualification step is to inspect the exact 3.0.67.1 close-month implementation or identify a published,
+  authenticated status source, then verify what `Выполнено` and `Пропущено` mean across all required operations.
+- No writes, postings, or tests were performed. The query was run only against the fixed disposable clone
+  `818HA_test_ready`; this does not validate the registered gateway source/company binding.
