@@ -1727,3 +1727,7 @@ Decision: track `.harness/ledger.json`, which was present as an untracked local 
 ## 2026-11-16 — Refresh the live report after tracking the ledger
 
 Decision: regenerate the Russian live report after commit `791a6c0` so its provenance and update log include the tracked cross-branch status ledger. The report still shows FIN 2/10 bounded accepted, 6/10 in review, 2/10 blocked and overall project-document acceptance 44/104; this remains distinct from native harness completion 9/104. The report is a local status artifact; no test, push, or PR was performed.
+
+## 2026-11-16 — Reconcile after refreshing all configured remotes
+
+Decision: run `git fetch --all` without pruning, then `python .harness-tools/ledger.py reconcile-project`. The fetch exited 0; reconciliation scanned 103 refs and reconciled 21 sprints / 104 tasks from the project plan, project documents, and Git, while preserving native harness verification/review fields. Regenerated the Russian live report at HEAD `8d6ccf9`; it shows overall project-document bounded acceptance 44/104 and FIN 2/10 accepted, 6 in review, 2 blocked. No test or CI run, push, or PR occurred.
