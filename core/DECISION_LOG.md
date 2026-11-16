@@ -1695,3 +1695,7 @@ Decision: update the synthetic REJECT-transition caller to pass the exact page-i
 ## 2026-11-16 — Rerun FIN-S2.4 private ingress regression with scoped conftest
 
 Decision: retain FIN-S2.4 in project-plan `IN_REVIEW` and record only the named synthetic ingress evidence. The default test collection failed before executing tests because root `tests/conftest.py` could not import `MCPServer` from the installed MCP SDK; rerunning only `tests/phase2/test_s16_private_ingress.py` with `--confcutdir=tests/phase2` completed with 11 passed, one deprecation warning, exit 0. This establishes the current synthetic ingress regressions only, not live IdP/browser integration, deployment binding, or production acceptance. Evidence and coverage limits: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+
+## 2026-11-16 — Keep FIN-S3.1 at IN_REVIEW after later implementation commits
+
+Decision: replace the stale 985-test summary with the latest broad run (1,038 passed, 2 warnings, 56 subtests) at ancestor HEAD `20b2833`, while explicitly noting that later S16 core and ingress commits are descendants and only have focused regression evidence. The broad run used a dirty tree, and no full named S3.1 selection has been rerun at current HEAD `9449060`; therefore leave project-plan status `IN_REVIEW`. Keep S13/G8, FIN-S1.2, live S16, and production acceptance separate. Evidence: `docs/sdlc/verify-evidence.md` sections “FIN-S3.1 targeted current-tree rerun” and “FIN final-candidate review-fix rerun,” plus the FIN-S2.1 and FIN-S2.4 change records.
