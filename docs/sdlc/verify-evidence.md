@@ -723,3 +723,27 @@ uv run --locked --extra dev python -m pytest -q tests/phase2/test_s15_verifier.p
 ```
 
 Result: `985 passed, 1 warning in 35.35s`; no failures or skips were reported. The warning is `PytestReturnNotNoneWarning` for `tests/phase2/test_s13_checkpoint_suffix_functional.py::test_python_classifier`, which returned an `int`. This is a targeted run on a dirty working tree, not CI or a clean committed-head result. The named S13 checkpoint suffix and restore E2E cases passed here; older e30 import failures are historical and superseded for this run. The evidence does not accept S13/G8, prove a live provider or writer, or close FIN-S1.2/FIN-S3.2.
+
+## 2026-11-16 — FIN-S3.1 final-head rerun not executed
+
+The assigned functional-test-reviewer attempted to start the named FIN-S3.1 selection. PreToolUse denied execution before branch/HEAD/dirty-state metadata was captured: no standalone GO/ГО was present in the last six hours, and the GPT-PM receipt for `D:/Repo/ERP_MCP` was 25.9 hours old. The denial explicitly said not to rephrase the command to bypass the gate. No test command ran and there is no new result; existing dirty-tree and focused regressions remain separate. Keep the project-plan overlay `BLOCKED_OPERATOR` until the gate accepts a fresh standalone GO, then rerun the exact named selection. Native ledger evidence was not changed.
+
+## 2026-11-16 — FIN final-candidate review-fix rerun
+
+Assigned `functional-test-reviewer` reran the S12/S13/S15/S16 named selection plus the capability-client and period-diagnostic regressions at source HEAD `20b2833f78316f51f1096402a3ff35ba3ae9a26b` on a dirty working tree (329 changed paths). Exact command:
+
+```powershell
+uv run --locked --extra dev python -m pytest -q tests/phase2/test_s15_verifier.py tests/phase2/test_s15_oracle.py tests/phase2/test_s15_import_graph.py tests/phase2/test_s15_ab_compare.py tests/phase2/test_s15_reconcile.py tests/phase2/test_s15_negative_controls.py tests/phase2/test_s12_period_producer.py tests/phase2/test_s12_budget_producer.py tests/phase2/test_s13_inflight_status.py tests/phase2/test_s13_checkpoint_suffix_functional.py tests/phase2/test_s13_checkpoint_suffix_e2e.py tests/phase2/test_s13_checkpoint_restore_e2e.py tests/phase2/test_s13_lifecycle_preflight.py tests/phase2/test_s16_conformance.py tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_approval_page.py tests/phase2/test_s16_tools.py tests/phase2/test_s16_private_ingress.py tests/phase2/test_capability_client.py tests/phase2/test_period_lock_evidence_readonly.py
+```
+
+Result: `1038 passed, 2 warnings, 56 subtests passed in 33.99s`; no failures or skips. The existing warnings were `PytestReturnNotNoneWarning` for `test_s13_checkpoint_suffix_functional.py::test_python_classifier` returning an `int`, and the `httpx2` raw-content deprecation in the private-ingress test. The separate Pester command `Invoke-Pester -Script tests/phase2/remote_stack_readiness.Tests.ps1` returned `Passed: 4 Failed: 0 Skipped: 0 Pending: 0 Inconclusive: 0` in 531 ms. A final test-only addition then asserted the address-timeout branch as well as the port-timeout branch; that rerun returned `Passed: 5 Failed: 0 Skipped: 0 Pending: 0 Inconclusive: 0` in 453 ms. Following review, the remote starter was changed to poll `/readyz` for an existing or newly-started gateway (bounded to 12 probes; each HTTP probe times out after 3 seconds, with 2-second pauses between probes). The final named Pester rerun returned `Passed: 12 Failed: 0 Skipped: 0 Pending: 0 Inconclusive: 0` in 1.25 seconds; it covers transient recovery, bounded exhaustion, ready/not-ready/HTTP/transport responses, and both listener branches. These are targeted dirty-tree results, not CI or committed-head evidence. No live provider freshness, production deployment, COM writer, UAC registration, watchdog restart, or S1.2 period-closed proof is established.
+
+## 2026-11-16 — FIN-S2.1/S2.4 review-fix regressions
+
+Assigned `functional-test-reviewer` ran only the named S16 modules at source HEAD `20b2833f78316f51f1096402a3ff35ba3ae9a26b` with phase2 conftest isolation:
+
+```powershell
+$env:PYTHONPATH='src'; python -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_private_ingress.py
+```
+
+Result: `65 passed, 2 warnings in 0.96s`. Regressions cover read-back failure after committed decision, commit-then-raise ambiguous consumption with exact-state recovery, replay refusal and one apply call, plus downstream errors before and after response start without a synthesized 4xx or duplicate response start. The normal root conftest path could not collect in this environment because the installed MCP SDK lacks `MCPServer` (`ImportError: cannot import name 'MCPServer' from mcp.server`); only the two named modules were rerun with `--confcutdir=tests/phase2`. Evidence is synthetic/current-tree only; no listener, live IdP, database-backed store, 1C mutation, production binding, or sprint acceptance is established.
