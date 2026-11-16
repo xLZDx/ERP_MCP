@@ -1416,3 +1416,7 @@ Decision: treat observed approval, snapshot, or requester expiry after durable `
 ## 2026-11-16 — Separate logon startup from periodic lane recovery
 
 Decision: retain a one-minute interactive logon starter and add a daily time trigger with a five-minute repetition interval and explicit one-day duration for the local watchdog. The previously installed task showed only a logon trigger with an interval, no duration, and no next run time. The registration source now checks both triggers and the elevated principal. Runtime re-registration was canceled at the UAC prompt; no watchdog success is claimed. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
+
+## 2026-11-16 — Record exact-head S16 verification and review
+
+Decision: record the 59-case focused S16 result and three independent no-finding reviews against committed candidate `7bbbe153259e480d8836234bf298278e2c0fdf57`; keep FIN-S2.1 and FIN-S2.2 in review, preserve the distinction between fake-backed tests and live browser/IdP/writer acceptance, and do not promote any release gate or production authorization. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
