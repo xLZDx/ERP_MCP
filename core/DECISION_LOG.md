@@ -1485,7 +1485,7 @@ Decision: unblock local configuration without reading or repairing the protected
 
 ## 2026-11-15 — Keep FIN-S3.3 reconciliation evidence-bound
 
-Re-read the gate manifest after configuring the isolated synthetic test-IdP user. Release 2 remains NO_GO; S11 is DONE with evidence; S12 remains IN_PROGRESS without evidence; S13-S19 remain NOT_STARTED without evidence. Keep all later gates unpromoted, production authorization NONE, writer UNQUALIFIED, and S16 fake evidence separate. FIN-S3.1/3.2 acceptance evidence remains NOT_RUN under the project verification restrictions. Detail: `docs/sdlc/verify-evidence.md`.
+Historical snapshot from 2026-11-15, superseded by the FIN-S3.1/3.2 evidence recorded later on 2026-11-16: at that point the targeted acceptance evidence was `NOT_RUN`. The later targeted S3.1 run and bounded S3.2 Redis watchdog recovery are recorded in the task evidence; current project status remains `IN_REVIEW` pending sprint-wide review. Release 2 remains NO_GO, S12/S13 gate states are unchanged, production authorization is NONE, writer UNQUALIFIED, and S16 evidence remains synthetic. Detail: `docs/sdlc/verify-evidence.md`.
 
 ## 2026-11-15 — Require strict approver identity at private ingress
 
@@ -1497,7 +1497,7 @@ Decision: keep the `verify` adapter contract typed as the S15 `VerificationResul
 
 ## 2026-11-15 — Synchronize FIN blocker labels with the project-plan contract
 
-Decision: use the accepted `BLOCKED_OPERATOR` state in `PROJECT_PLAN.md` for FIN-S2.1 through FIN-S2.4 and FIN-S3.1, because their required test evidence is prohibited by the operator's rule 4. Keep the specific verified prohibition and next action in each task row and ledger record. FIN-S1.2 remains externally blocked, and the authoritative FIN sprint remains open; do not infer sprint closure or start a later sprint. The current request changed only plan status labels; the tracked project-plan HTML snapshots were unchanged. No tests or checks were run.
+Historical decision (superseded 2026-11-16): this entry incorrectly promoted the prohibition on running tests into `BLOCKED_OPERATOR` for FIN-S2.1 through FIN-S2.4 and FIN-S3.1. A test restriction blocks that verification action only; it does not block implementation or the task itself. Current project-record statuses are `IN_REVIEW` for those tasks, with FIN-S1.2 separately `BLOCKED_EXTERNAL`. The authoritative FIN sprint remains open; do not infer sprint closure from bounded test evidence.
 
 ## 2026-11-15 — Bind S16 post-claim read-back to approved identity
 
@@ -1600,10 +1600,26 @@ Decision: record the S16 approval-page retry as `NOT_RUN` because PreToolUse rej
 
 ## 2026-11-16 — Keep FIN-S3.2 elevation operator-driven
 
-Decision: keep FIN-S3.2 AC-2 blocked because the current Windows identity is not an administrator and the registered task lacks its daily watchdog trigger. The required installer declares `#Requires -RunAsAdministrator`; Computer Use prohibits acting on Windows security permission prompts. Do not claim a task registration or recovery run. The operator must run the approved installer in elevated PowerShell, after which Codex can verify the scheduler configuration and perform the disposable restart. Details: `PROJECT_PLAN.md` FIN-S3.2 and `.harness/ledger.json`.
+Historical snapshot, superseded later on 2026-11-16: FIN-S3.2 AC-2 was temporarily blocked because the registered task lacked its watchdog trigger and installing it required interactive elevation. The approved task was subsequently registered, the bounded disposable Redis recovery completed, and the recurring trigger was removed after success at the operator's request. Current project status is `IN_REVIEW` pending the FIN sprint-wide final review; this historical entry does not describe the current blocker. Details: `PROJECT_PLAN.md` FIN-S3.2, `.harness/ledger.json`, and `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
 ## 2026-11-16 — Match FIN-S1.2 export metadata without claiming source-code identity
 
 Decision: cross-check the fixed-clone COM configuration version and metadata object-name fingerprint against the local versioned 3.0.67.1 export, and fail closed when either differs. Keep results candidate-only because matching version and metadata names do not prove BSL source equality or per-period required/stale status. The read-only probe found the close-status algorithm depends on dynamically derived `Требуется` and `Устарела` values; do not map raw `Выполнено`/`Пропущено` rows to `PERIOD_CLOSED`. Details: `docs/phase2/CHANGE_RECORD_403.md`.
+
+## 2026-11-16 — Fail closed on malformed observer and diagnostic evidence
+
+Decision: after routed FIN review, make timezone-authority validation convert exceptions to invalid evidence; stream and cap capability-observer response bytes before JSON parsing; reject non-Boolean COM `Проведен` values; and fail the remote stack starter if the required gateway bind address or gateway port is unavailable. Focused regressions and the named current-tree FIN suite passed. These changes do not establish a qualified real period source or a successful watchdog restart. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-16 — Require and poll gateway readiness, not just a listener
+
+Decision: treat an already-open TCP port as insufficient proof that the expected gateway is ready. Require the gateway's `/readyz` body to report `status=ready` in both existing-listener and new-process paths. Poll at most 12 times with a 3-second HTTP timeout and 2-second inter-attempt delay; on exhaustion or any probe error, fail closed before the success summary. This avoids false success from a stale listener and transient startup 503s without introducing an unbounded wait. Details and the focused Pester evidence: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-16 — Recover ambiguous S16 approval consumption
+
+Decision: after atomic decision consumption, install local replay anchors before a follow-up read so an unavailable read cannot orphan a consumed nonce in this process. If consume itself raises, treat its result as ambiguous and accept it only after an authoritative read confirms the exact receipt identity, approval, and S12 transition; otherwise return `AUDIT_UNAVAILABLE`. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.
+
+## 2026-11-16 — Preserve S16 downstream failure semantics
+
+Decision: do not translate exceptions after private-ingress dispatch into a client validation or authorization response, and do not emit another response start after downstream response output. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
 # 2026-11-16 — Keep native close-flow readiness distinct from PERIOD_CLOSED
 
 - Evidence: the fixed `818HA_test_ready` COM diagnostic returned 18 native status rows and zero blocking required operations for 2025-12. Its result is `close_flow_ready`, not accounting-period closure. The registered read-only source's company GUID matched the COM organization reference, but the physical information-base binding remains unproven; OData entity search found no close-status EntitySet.
@@ -1617,20 +1633,57 @@ Decision: accept the named functional-test-reviewer rerun as FIN-S3.1 verificati
 
 ## 2026-11-16 — FIN-S3.2 UAC handoff confirmed
 
-Decision: do not automate the Windows security/UAC prompt. Current session evidence shows a medium-integrity token, Administrators deny-only, and the watchdog still has only its logon trigger; a RunAs attempt did not produce an installer log or trigger change. Keep AC-2 blocked until the operator runs the scoped installer in visible elevated PowerShell; then verify both triggers and perform the disposable restart. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+Historical snapshot before the later successful FIN-S3.2 recovery on 2026-11-16: the interactive installer attempt did not run and the task was temporarily blocked pending the approved elevated registration. That state was superseded when the registered task performed one bounded Redis restart; the recurring five-minute trigger was removed afterward at the operator's request. Current project status is `IN_REVIEW`, not `BLOCKED_OPERATOR`. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
 
 ## 2026-11-16 — Correct S2 test-gate classification
 
 Decision: classify unrun current-candidate S2.2–S2.4 regressions as PROHIBITED, not OPERATOR-only. The project test rule limits when pytest and checks may run; it is not an operator decision or access requirement. Preserve the earlier verified synthetic evidence and keep live/deployed acceptance separate. Details: `PROJECT_PLAN.md` and `.harness/ledger.json`.
 
-## 2026-11-16 — Recover ambiguous S16 approval consumption
+## 2026-11-16 — Keep S3.3 reconciliation independent of S3.2 success
 
-Decision: after atomic decision consumption, install local replay anchors before a follow-up read so an unavailable read cannot orphan a consumed nonce in this process. If consume itself raises, treat its result as ambiguous and accept it only after an authoritative read confirms the exact receipt identity, approval, and S12 transition; otherwise return `AUDIT_UNAVAILABLE`. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.
+Historical reconciliation snapshot before the successful FIN-S3.2 run later on 2026-11-16: AC-2 was `NOT_RUN` at that time and was recorded as a residual independent of S3.3. The later task-run evidence supersedes only that AC-2 result; the final sprint review remains pending and FIN-S1.2 remains externally blocked. No gate or production status was promoted. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
 
-## 2026-11-16 — Preserve S16 downstream failure semantics
+## 2026-11-16 — Correct Phase 2 status denominator and sprint attribution
 
-Decision: do not translate exceptions after private-ingress dispatch into a client validation or authorization response, and do not emit another response start after downstream response output. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+Decision: do not use the unrelated Harness snapshot 8/104 as an ERP_MCP Phase 2 completion metric. The 2026-11-10 Phase 2 report states that the full non-overlapping task denominator is not calculable. Report the current sprint as FIN from `PROJECT_PLAN.md` and the task ledger, and separate ledger task states from product/runtime gates. Preserve the historical report's 12 sprint-level outcomes as historically reported, while explicitly recording the conflict between its S10 `CLOSED_BOUNDED` label and the current plan's `HANDOFF_NO_APPROVE`. No source code, runtime, task state, remote ref, or historical report was changed. New snapshot: `reports/ERP_MCP_PHASE2_STATUS_2026-11-16.ru.html` and `.html`.
 
-## 2026-11-16 — FIN S16 bounded acceptance closeout
+## 2026-11-16 — Distinguish S10 bounded acceptance from release handoff
 
-Decision: accept FIN-S2.1 through FIN-S2.4 as complete bounded synthetic implementation for this sprint after the named S16 modules passed and one routed review pass found no actionable findings at HEAD 71cd251de8c1081ea5f964fd701bc6cead0b7bb0. Keep the evidence limits explicit: this does not establish persistent-store durability, cross-process replay protection, live ingress authentication, deployment binding, or a writable 1C surface. FIN-S1.2 and FIN-S3.2 retain their separately recorded external and interactive blockers. Details: docs/phase2/CHANGE_RECORD_FIN_S16_ACCEPTANCE_20261116.md.
+Follow-up to the Phase 2 status reconciliation: read-only `gh pr view 53` reports PR #53 MERGED, title `[S10] Bounded dev/test capture and exact-head evidence`, merge commit `900a3d060c648b9a809a6b7094adb430fb60f0bd`; `gh pr view 57` reports PR #57 MERGED, title `[S11] Correct evidence pointer and reconcile exit record`, merge commit `7c1f69cf51b16d3849772fdb1e32015b17cb1aa7`. Keep the bounded S10 engineering result separate from the S10 release-handoff state `HANDOFF_NO_APPROVE` in `PROJECT_PLAN.md`; these refer to different acceptance scopes. The 2026-11-16 report was revised accordingly.
+
+## 2026-11-16 — Reconcile live program status from project records and all refs
+
+The operator requested that the live program report and harness ledger reflect project documents and Git across branches, rather than treating the harness task state as the project source of truth. Fetched all refs, then audited 103 local, remote, and archive branch refs and 119 distinct `PROJECT_PLAN.md` / `docs/phase2/TASK_LEDGER.md` blobs; the ledger event retains the exact ref names/object IDs and source hashes. The historical `reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1618.ru.html` count of 12 sprint-level outcomes is preserved as a separate historical program milestone. It is not restated as 12 current bounded sprint closures or as a total task denominator. Branch/PR conflicts were adjudicated against current documents and integration evidence: S0's `2/2` closeout is present on two refs, but PR #42 remains OPEN and the current plan is still IN_PROGRESS; S9 PR #49 is MERGED while its current plan is PARTIAL (2/4 bounded tasks); S10 PR #53 is MERGED for bounded dev/test capture but the release handoff remains `HANDOFF_NO_APPROVE`; S11 PR #57 is MERGED and the exit remains `DONE_SPRINT_LEVEL`; S12 PR #54 and S13 PR #58 remain OPEN. PR #50–52 are plan/closeout reconciliation merges and do not add task acceptance by themselves. The current harness registry's 104 task slots are not asserted to be the full Phase 2 denominator. `R2-US-044` is corrected to `CLOSED_BOUNDED_SPRINT` from its detailed task-ledger and exact GPT-PM/test/review/commit evidence. The ledger now stores a hash-bound project-status overlay derived from `PROJECT_PLAN.md` and the scanned ref set, while leaving native harness `state`, `verify`, and `review` evidence unchanged. The live report displays both status layers and labels bounded acceptance separately from live/product/production acceptance.
+
+The current 104 task-ID rows reconcile to 44 bounded acceptances (14 `ACCEPTED_BOUNDED` plus 30 task rows documented under `CLOSED_BOUNDED_SPRINT`), 7 in review, 8 partial, 43 not started, 1 externally blocked, and 1 in progress. These counts describe only the current plan/ledger task-ID registry. Separately, the roadmap has five `CLOSED_BOUNDED_SPRINT` rows and S11 `DONE_SPRINT_LEVEL`; S0 is in progress, S4/S5/S6/S9 partial, S10 handoff without approval, and S12/S13 in progress. No code test, CI, or verification suite was run for this documentation/status reconciliation.
+
+The operator also requested removal of the installed five-minute periodic check. On `\\ERP_MCP_Lane_Autostart`, removed only the daily five-minute trigger; preserved the enabled logon trigger (one-minute delay). A fresh Task Scheduler read showed one enabled `MSFT_TaskLogonTrigger` and no repetition interval. The bounded FIN-S3.2 watchdog run remains historical test evidence; no recurring five-minute task is currently configured.
+
+## 2026-11-16 — Reconcile FIN-S3.2 blocker and S3.3 review state
+
+Historical decision (superseded by the following same-day recovery record): FIN-S3.2 AC-2 was temporarily blocked while the task required interactive elevation to install its scheduled recovery trigger. The approved installer later registered it and the bounded Redis restart completed through the task; the daily trigger was subsequently removed only after the successful run at the operator's request. Current project status is `IN_REVIEW` pending the sprint-wide final review, not `BLOCKED_OPERATOR`. FIN-S1.2 remains externally blocked because the registered-source authenticated close-status operation is absent. Evidence details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md` and `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+
+## 2026-11-16 — FIN-S3.2 scheduler recovery boundary
+
+Historical failure snapshot from before the approved installer was registered: a manual run did not create a recurring `NextRunTime`, Task Scheduler refused an action swap, and no component had yet been stopped. This was superseded by the later bounded run in the next FIN-S3.2 record: the scheduled task restarted the same disposable Redis instance, which was observed healthy afterward. The daily trigger was subsequently removed at the operator's request; the enabled logon trigger remains. Do not use this earlier failure snapshot as the current AC-2 state.
+
+## 2026-11-16 — FIN-S3.2 registration and disposable Redis recovery
+
+Decision: use the scoped registration installer via the approved `RunAs` path, then validate the actual scheduler record before any fault injection. The installer returned exit code 0; Task Scheduler now has the expected logon and daily five-minute triggers. AC-1 is supported by a fresh read-only Razer status/source-health probe. For AC-2, the E2E role stopped only the nonpersistent, loopback-only Redis service in the disposable real1c lane; the scheduled task, not a manual command, restored the same container after the next five-minute pass. No other component was stopped, no production surface was touched, and no 1C business rows or credentials were read. Keep the overall testbed status separate: schema version 15 and absent capability services still make the full current-tree preflight red. The port resolver mismatch found during preflight is fixed in the worktree and covered by focused regression cases; full sprint review remains pending.
+
+## 2026-11-16 — Align FIN-S3.2 change-record status with verified evidence
+
+Decision: describe FIN-S3.2 AC-1 and AC-2 as verified within their bounded acceptance scope while keeping the separate full-lane preflight red and final sprint review pending. A code-reviewer found the change-record header still said acceptance was partial even though the appended evidence recorded both criteria as passed. No runtime or code behavior changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-16 — Defer FIN-S1.2 behind authenticated period-status source
+
+Decision: after inspecting the five existing FIN-S1.2-related commits and repeating authenticated read-only source discovery, do not derive `PERIOD_CLOSED` from date-edit locks, close-flow readiness on a separate COM file clone, or synthetic fixtures. Both ERP_MCP clients list the same three registered sources as read-only; each reports 920 OData EntitySets; targeted close/period searches on `onec-818ha-reference` return no matching status EntitySet. The accounting-register result exposes `Period` but not a close-status fact. The remaining source operation and closed/open mapping are therefore an external interface dependency, not missing operator data. Keep FIN-S1.2 `BLOCKED_EXTERNAL`, record the engineering prerequisite in `docs/phase2/OPERATOR_BACKLOG.md`, and continue the ordered FIN queue. Evidence detail: `docs/phase2/CHANGE_RECORD_403.md`, “FIN-S1.2 registered-source catalog retry.”
+
+## 2026-11-16 — Make ledger next skip externally blocked tasks
+
+Decision: update `.harness-tools/ledger.py` so `ledger next` selects the first not-done, unblocked task in the active sprint and reports remaining blockers when none are available. Before the fix, the command repeated FIN-S1.2 even after the ledger contained an EXTERNAL blocker; after the fix, it reports that FIN has no unblocked task and names FIN-S1.2. This preserves task order and avoids falsely closing or completing the blocked task. Verification was a direct invocation of `python .harness-tools/ledger.py next`; no test/check suite was run.
+
+## 2026-11-16 — Remove stale prohibited-action blocks from FIN tasks
+
+Decision: remove the stale `PROHIBITED` block records from FIN-S2.2 and FIN-S2.3 because they treated a temporary prohibition on running tests as a task-level block. Current project records classify both tasks `IN_REVIEW` and preserve their bounded synthetic evidence. Added `ledger.py unblock <ID> --reason ...` to remove an invalidated block with an auditable event while leaving native task state, verification, and review evidence unchanged. The command reported both IDs unblocked; FIN-S1.2's verified `EXTERNAL` block was retained. No tests or checks were run.

@@ -3,6 +3,23 @@
 Date: 2026-10-08. Branch: `phase2/living-model-connectors-reconciliation`. Release 2 status: **NO-GO**.
 Only items that engineering cannot close without the operator. G1-specific blockers stay in `G1_OPERATOR_BACKLOG.md`.
 
+## Deferred engineering dependency — FIN-S1.2 registered-source period status (2026-11-16)
+
+- Status: `BLOCKED_EXTERNAL`; this is not an operator-data request, and no user credential or accounting export is required.
+- Finding: authenticated source lists on `ERP_MCP_Razer` and `ERP_MCP_Ivan` show the same three read-only sources. The registered reference source reports 920 OData EntitySets. Current catalog searches for `Закрытие`, `Регламентная`, `Период`, `closing`, `period`, and `month` return no matching EntitySet. The `accounting` search exposes accounting-register data with a `Period` field, not an authoritative month-close state.
+- Decision: do not infer `PERIOD_CLOSED` from a date-edit lock, posted documents, or `close_flow_ready` from the separate disposable COM clone. None proves the registered source's authenticated accounting-period state.
+- Owner: no implementation/provider owner is assigned. Codex owns resuming the adapter work once a supported operation is available; the source/configuration boundary remains external.
+- Next: expose an authenticated read-only period-status operation on the registered source, bind it to source/company/base/configuration-version/freshness, qualify the closed/open mapping against the fixed clone, then implement the typed `PeriodSnapshotReader` adapter. Preserve this task as externally blocked and continue with the next FIN task meanwhile.
+- Evidence details: `docs/phase2/CHANGE_RECORD_403.md`, sections “FIN-S1.2 native close-flow status follow-up” and “FIN-S1.2 fresh source and period probe.”
+
+## Deferred — move ERP_MCP ingress from Tailscale to Cloudflare (2026-11-07)
+
+- Status: BACKLOG ONLY; do not execute during the current FIN-S1.2 task.
+- Scope: migrate the ERP_MCP IdP/gateway public ingress from the current Tailscale Funnel arrangement to Cloudflare-managed ingress. Preserve the OIDC issuer and redirect flow and the read-only ERP source boundary; do not broaden access to source data.
+- Acceptance: the Cloudflare ingress and DNS/issuer path work; authenticated `sources_list` and `system_status` calls succeed after cutover; a rollback path to the previous ingress is retained until the authorized runtime review is complete.
+- Owner: Codex for implementation and coordination; operator for Cloudflare account, zone/hostname, and external authorization.
+- Next: pick up only after FIN-S1.2 is closed or explicitly resequenced. At pickup, confirm the Cloudflare zone/hostname and review current OIDC redirect requirements before configuration changes.
+
 ## Current reconciliation (2026-10-22)
 
 This section supersedes the 2026-10-17 snapshot below where dates or observations differ;
