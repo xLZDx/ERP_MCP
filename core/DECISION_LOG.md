@@ -1699,3 +1699,7 @@ Decision: retain FIN-S2.4 in project-plan `IN_REVIEW` and record only the named 
 ## 2026-11-16 — Keep FIN-S3.1 at IN_REVIEW after later implementation commits
 
 Decision: replace the stale 985-test summary with the latest broad run (1,038 passed, 2 warnings, 56 subtests) at ancestor HEAD `20b2833`, while explicitly noting that later S16 core and ingress commits are descendants and only have focused regression evidence. The broad run used a dirty tree, and no full named S3.1 selection has been rerun at current HEAD `9449060`; therefore leave project-plan status `IN_REVIEW`. Keep S13/G8, FIN-S1.2, live S16, and production acceptance separate. Evidence: `docs/sdlc/verify-evidence.md` sections “FIN-S3.1 targeted current-tree rerun” and “FIN final-candidate review-fix rerun,” plus the FIN-S2.1 and FIN-S2.4 change records.
+
+## 2026-11-16 — Reconcile project status overlay after plan evidence updates
+
+Decision: rerun `python .harness-tools/ledger.py reconcile-project` after the FIN task evidence edits. It scanned 103 local/remote/archive refs and reconciled 21 sprints and 104 task IDs without changing native verify/review fields. The updated overlay now records 44 documented bounded-accepted task IDs overall and FIN 2/10, with FIN-S1.2 `BLOCKED_EXTERNAL` and seven tasks `IN_REVIEW`. Regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` from the report tool; this keeps historical 12 sprint outcomes separate from current documented outcomes and task-ID counts. No gates, production authorization, or 1C data were changed.
