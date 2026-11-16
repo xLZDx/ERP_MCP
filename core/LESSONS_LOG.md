@@ -480,3 +480,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-16 SHORTCOMING: atomic approval consume can commit and then raise, while a later read-back can fail independently. Rule: distinguish definite refusal from an ambiguous commit and recover only from an exact authoritative receipt. Details and synthetic regression evidence: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.
 
 - 2026-11-16 SHORTCOMING: private ingress translated downstream exceptions into a client 4xx and could send a second response start. Rule: after dispatch, preserve server/unknown failure semantics and never synthesize a second response. Details and synthetic regression evidence: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+
+- 2026-11-16 SUCCESS: close an implementation slice only against named focused tests and one shared routed review at an exact HEAD, while recording persistent-store, cross-process, live-authentication, and deployment claims as unproven when they were not exercised. Details: docs/phase2/CHANGE_RECORD_FIN_S16_ACCEPTANCE_20261116.md.

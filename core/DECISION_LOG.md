@@ -1630,3 +1630,7 @@ Decision: after atomic decision consumption, install local replay anchors before
 ## 2026-11-16 — Preserve S16 downstream failure semantics
 
 Decision: do not translate exceptions after private-ingress dispatch into a client validation or authorization response, and do not emit another response start after downstream response output. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+
+## 2026-11-16 — FIN S16 bounded acceptance closeout
+
+Decision: accept FIN-S2.1 through FIN-S2.4 as complete bounded synthetic implementation for this sprint after the named S16 modules passed and one routed review pass found no actionable findings at HEAD 71cd251de8c1081ea5f964fd701bc6cead0b7bb0. Keep the evidence limits explicit: this does not establish persistent-store durability, cross-process replay protection, live ingress authentication, deployment binding, or a writable 1C surface. FIN-S1.2 and FIN-S3.2 retain their separately recorded external and interactive blockers. Details: docs/phase2/CHANGE_RECORD_FIN_S16_ACCEPTANCE_20261116.md.
