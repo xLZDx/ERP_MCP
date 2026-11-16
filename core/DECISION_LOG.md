@@ -1691,3 +1691,7 @@ Decision: remove the stale `PROHIBITED` block records from FIN-S2.2 and FIN-S2.3
 ## 2026-11-16 — Verify FIN-S2.1 S16 lifecycle conformance after CSRF fixture correction
 
 Decision: update the synthetic REJECT-transition caller to pass the exact page-issued CSRF token from `open_preview()`; do not weaken the service's CSRF requirement. The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_conformance.py`: `3 passed in 0.34s`. The test asserts the returned REJECT decision and persisted `Authorization.NONE` / `Lifecycle.REJECTED`; omitting the page-issued token makes the expected transition fail. No product code, listener, database, production authorization, or real 1C write changed. FIN-S2.1 remains within bounded task scope; the overall FIN sprint review remains pending.
+
+## 2026-11-16 — Rerun FIN-S2.4 private ingress regression with scoped conftest
+
+Decision: retain FIN-S2.4 in project-plan `IN_REVIEW` and record only the named synthetic ingress evidence. The default test collection failed before executing tests because root `tests/conftest.py` could not import `MCPServer` from the installed MCP SDK; rerunning only `tests/phase2/test_s16_private_ingress.py` with `--confcutdir=tests/phase2` completed with 11 passed, one deprecation warning, exit 0. This establishes the current synthetic ingress regressions only, not live IdP/browser integration, deployment binding, or production acceptance. Evidence and coverage limits: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
