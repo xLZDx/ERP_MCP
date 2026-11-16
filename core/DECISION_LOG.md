@@ -1719,3 +1719,7 @@ Decision: normalize FIN-S3.1/S3.2/S3.3 rows to the declared eight-column schema.
 After that correction, regenerated the report at HEAD `f1d9baa`. It shows FIN 2/10 bounded accepted, 6/10 in review, and 2/10 blocked (S1.2 external, S3.1 operator gate), plus 44/104 bounded-accepted task IDs across the project. This is a project-document/Git status snapshot; native harness completion remains 9/104.
 
 The post-`f588244` refresh was generated at that HEAD after reconciling the 103-ref overlay. It retains the same FIN split and is being committed locally as the requested report artifact; no remote push or intermediate PM review is part of this step.
+
+## 2026-11-16 — Preserve the reconciled project-status ledger
+
+Decision: track `.harness/ledger.json`, which was present as an untracked local file after `ledger.py reconcile-project` scanned 103 Git refs and recorded the project-document status overlay. The ledger reports 44/104 bounded-accepted task IDs overall and FIN 2/10, with six tasks in review and two task-specific blockers; native harness verification and review fields remain separate. The file has no credential/secret-named fields. This records the user's requested cross-reference reconciliation in project history; commit locally only, with no remote update.
