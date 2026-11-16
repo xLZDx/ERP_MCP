@@ -1687,3 +1687,7 @@ Decision: update `.harness-tools/ledger.py` so `ledger next` selects the first n
 ## 2026-11-16 — Remove stale prohibited-action blocks from FIN tasks
 
 Decision: remove the stale `PROHIBITED` block records from FIN-S2.2 and FIN-S2.3 because they treated a temporary prohibition on running tests as a task-level block. Current project records classify both tasks `IN_REVIEW` and preserve their bounded synthetic evidence. Added `ledger.py unblock <ID> --reason ...` to remove an invalidated block with an auditable event while leaving native task state, verification, and review evidence unchanged. The command reported both IDs unblocked; FIN-S1.2's verified `EXTERNAL` block was retained. No tests or checks were run.
+
+## 2026-11-16 — Verify FIN-S2.1 S16 lifecycle conformance after CSRF fixture correction
+
+Decision: update the synthetic REJECT-transition caller to pass the exact page-issued CSRF token from `open_preview()`; do not weaken the service's CSRF requirement. The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_conformance.py`: `3 passed in 0.34s`. The test asserts the returned REJECT decision and persisted `Authorization.NONE` / `Lifecycle.REJECTED`; omitting the page-issued token makes the expected transition fail. No product code, listener, database, production authorization, or real 1C write changed. FIN-S2.1 remains within bounded task scope; the overall FIN sprint review remains pending.

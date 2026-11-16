@@ -99,3 +99,9 @@ This is source and contract evidence only. The focused ASGI/session/service regr
 The first focused run exposed a fixture defect, not a product authorization gap: `approve()` and direct core-service callers omitted the CSRF token returned by `open_preview()`, which the core correctly requires. Updated only `tests/phase2/s16_helpers.py` and `tests/phase2/test_s16_approval_core.py` to pass that exact token. The failure-injection replay assertion remains fail-closed after a durable decision/read-back mismatch.
 
 Verification: `uv run --locked --extra dev python -m pytest tests/phase2/test_s16_approval_core.py -q` — `48 passed in 1.00s`, run by `functional-test-reviewer` at HEAD `147743e173b1f675f7726ff26aa8ca0995e40f82`. No product code changed in this follow-up. No listener, production binding, database-backed approval, or real 1C write is established.
+
+## 2026-11-16 — Keep the lifecycle conformance test on the page-issued CSRF contract
+
+The `REJECT` case in `tests/phase2/test_s16_conformance.py` now passes the exact CSRF token returned by `open_preview()` into `submit_decision()`. This keeps the test on the current service contract while preserving its assertions that the returned decision is `REJECT`, stored authorization remains `NONE`, and lifecycle becomes `REJECTED`.
+
+Assigned `functional-test-reviewer` ran only `.venv\Scripts\python.exe -m pytest -q tests/phase2/test_s16_conformance.py`: `3 passed in 0.34s`, exit 0. Removing the page-issued token causes the service to refuse the decision and makes the positive transition assertions fail. This is synthetic conformance evidence only; final FIN sprint review remains pending.

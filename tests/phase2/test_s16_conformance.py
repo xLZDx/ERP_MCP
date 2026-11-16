@@ -31,7 +31,8 @@ def test_reject_and_expire_are_distinct_terminal_lifecycle_transitions():
         rejected_snapshot.change_id, now=NOW)
     assert page.error is None
     rejected = rejected_env.approval_service.submit_decision(rejected_env.approver, rejected_env.session,
-        page.value.decision_ref, "REJECT", confirmation_text="", origin="https://127.0.0.1:8443",
+        page.value.decision_ref, "REJECT", csrf_token=page.value.csrf_token, confirmation_text="",
+        origin="https://127.0.0.1:8443",
         referer="https://127.0.0.1:8443/approval/", now=NOW + timedelta(seconds=1))
     assert rejected.value is not None and rejected.value.decision == "REJECT"
     assert rejected_env.store.get(rejected_snapshot.change_id).s12_record.authorization is Authorization.NONE
