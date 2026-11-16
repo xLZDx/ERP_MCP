@@ -129,3 +129,23 @@ content. `SqlChangeLedger` exposes matching `SPEC` entries and typed async wrapp
 The source commit is `4779ae9d8e3abe3c4b4beff2cadb74a85fda7b5a`; it also contains S1.3 observation
 code, which was outside the scoped S1.1 review. Later evidence reconciliation was committed as
 `03297eca8fb4939bbc3f3677acdc4be1672af618`. No unrelated dirty files were changed.
+
+## FIN-S1.2 real-source discovery follow-up — 2026-11-16
+
+- Read-only command: `.venv\Scripts\python.exe -m scripts.real1c.period_lock_evidence_readonly`.
+- The protected COM reader connected to the fixed disposable clone `818HA_test_ready` and returned one row from
+  `РегистрСведений.ДатыЗапретаИзменения`: all-users scope, no section/object scope, restriction date `2025-12-31`.
+  The observed configuration was `БухгалтерияДляМолдовы` version `3.0.67.1`; the metadata fingerprint was
+  `91409995b2a67a79fda459fe12eb33587589f8679ed318d71a6a6e544f0632ee`.
+- The script classifies this as `CANDIDATE_NOT_GATE_ACCEPTANCE`. It proves that a protected, read-only COM query
+  can retrieve a bounded raw date-lock fact from this clone. It does not prove the business meaning of that date,
+  map a requested accounting month to closed/open, or provide a gateway-wired `PeriodSnapshotReader`.
+- The same read-only metadata inspection found a distinct `ВыполнениеРегламентныхОперацийНДС` register with 30
+  current rows, but that register is VAT-specific and does not establish general accounting-month closure. The
+  `ОчередьРегламентныхОпераций` register returned zero rows. 1C's official configuration documentation describes
+  date-ban settings as protection "starting from the specified date"; that is an edit cutoff, not by itself proof
+  that a whole accounting month was closed: <https://its.1c.ru/db/content/erp25ltsdoc/src/%D0%B2%D0%B2%D0%B5%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5.htm>.
+- FIN-S1.2 AC-1 remains open. Before deriving `PERIOD_CLOSED`, qualify the register's period semantics against this
+  exact configuration version or identify an authoritative general close-month status source, then bind the read to
+  the registered source/company/base identity. No credential value, document rows, or write operation was used. No
+  tests or checks were run.

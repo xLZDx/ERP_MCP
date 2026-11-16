@@ -1420,3 +1420,6 @@ Decision: retain a one-minute interactive logon starter and add a daily time tri
 ## 2026-11-16 — Record exact-head S16 verification and review
 
 Decision: record the 59-case focused S16 result and three independent no-finding reviews against committed candidate `7bbbe153259e480d8836234bf298278e2c0fdf57`; keep FIN-S2.1 and FIN-S2.2 in review, preserve the distinction between fake-backed tests and live browser/IdP/writer acceptance, and do not promote any release gate or production authorization. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
+## 2026-11-16 — Keep date-ban evidence separate from period close
+
+Decision: do not derive `PERIOD_CLOSED` from `ДатаЗапретаИзменения` until the target configuration general month-close semantics are verified. Record the protected clone observation as candidate-only, and keep it bound to the observed configuration fingerprint; use an authoritative close-month status source for the reader contract. Details: docs/phase2/CHANGE_RECORD_403.md.
