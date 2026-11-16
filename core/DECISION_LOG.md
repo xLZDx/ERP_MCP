@@ -1703,3 +1703,5 @@ Decision: replace the stale 985-test summary with the latest broad run (1,038 pa
 ## 2026-11-16 — Reconcile project status overlay after plan evidence updates
 
 Decision: rerun `python .harness-tools/ledger.py reconcile-project` after the FIN task evidence edits. It scanned 103 local/remote/archive refs and reconciled 21 sprints and 104 task IDs without changing native verify/review fields. The updated overlay now records 44 documented bounded-accepted task IDs overall and FIN 2/10, with FIN-S1.2 `BLOCKED_EXTERNAL` and seven tasks `IN_REVIEW`. Regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` from the report tool; this keeps historical 12 sprint outcomes separate from current documented outcomes and task-ID counts. No gates, production authorization, or 1C data were changed.
+
+The report was regenerated once more at HEAD `5088204` so its provenance bar reflects the status-reconciliation commit; it renders 44/104 documented bounded acceptance. The report's native harness metrics remain separate from project-plan/Git status.
