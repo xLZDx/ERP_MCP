@@ -51,6 +51,109 @@ def test_approver_alias_for_requester_person_is_refused_before_any_apply_call():
     assert env.apply_port.calls == 0
 
 
+def test_decision_readback_failure_is_refused_then_persisted_approval_recovers_without_replay():
+    class FailOnceAfterDecisionStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.consume_calls = 0
+            self.fail_next_get = False
+
+        def consume_decision_ref_and_nonce(self, *args, **kwargs):
+            self.consume_calls += 1
+            consumed = super().consume_decision_ref_and_nonce(*args, **kwargs)
+            if consumed:
+                self.fail_next_get = True
+            return consumed
+
+        def get(self, change_id):
+            if self.fail_next_get:
+                self.fail_next_get = False
+                raise OSError("decision readback unavailable")
+            return super().get(change_id)
+
+    store = FailOnceAfterDecisionStore()
+    env = build_env(permissive=True, store=store)
+    snap = propose(env)
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+    decision_args = dict(
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.value.csrf_token, now=NOW + timedelta(seconds=1),
+    )
+
+    refused = env.core.decide(env.approver, env.session, page.value.decision_ref,
+                              "APPROVE", **decision_args)
+
+    assert refused.error is ErrorCode.AUDIT_UNAVAILABLE
+    assert refused.value is None
+    assert store.consume_calls == 1
+    persisted = store.get(snap.change_id)
+    assert persisted.approval is not None
+    assert persisted.approval.decision == "APPROVE"
+
+    replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
+                             "APPROVE", **decision_args)
+    applied = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    status = env.core.status(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
+
+    assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
+    assert applied.value is not None
+    assert status.value is not None and status.value.approval == persisted.approval
+    assert store.consume_calls == 1
+    assert store.claim_count == 1
+    assert env.apply_port.calls == 1
+
+
+def test_ambiguous_decision_consume_recovers_from_exact_persisted_readback():
+    class RaiseAfterCommittedConsumeStore(InMemoryChangeStore):
+        def __init__(self):
+            super().__init__()
+            self.consume_calls = 0
+            self.raise_after_commit = False
+            self.ambiguous_readbacks = []
+
+        def consume_decision_ref_and_nonce(self, *args, **kwargs):
+            self.consume_calls += 1
+            consumed = super().consume_decision_ref_and_nonce(*args, **kwargs)
+            if consumed:
+                self.raise_after_commit = True
+                raise OSError("consume acknowledgement lost after commit")
+            return consumed
+
+        def get(self, change_id):
+            receipt = super().get(change_id)
+            if self.raise_after_commit:
+                self.raise_after_commit = False
+                self.ambiguous_readbacks.append(receipt)
+            return receipt
+
+    store = RaiseAfterCommittedConsumeStore()
+    env = build_env(permissive=True, store=store)
+    snap = propose(env)
+    page = env.approval_service.open_preview(env.approver, env.session, snap.change_id, now=NOW)
+    assert page.error is None
+    decision_args = dict(
+        origin="https://127.0.0.1:8443", referer="https://127.0.0.1:8443/approval/",
+        confirmation_text="", csrf_token=page.value.csrf_token, now=NOW + timedelta(seconds=1),
+    )
+
+    decision = env.core.decide(env.approver, env.session, page.value.decision_ref,
+                               "APPROVE", **decision_args)
+    persisted = store.get(snap.change_id)
+    replay = env.core.decide(env.approver, env.session, page.value.decision_ref,
+                             "APPROVE", **decision_args)
+    status = env.core.status(env.requester, snap.change_id, now=NOW + timedelta(seconds=2))
+    applied = env.change_service.apply(env.requester, snap.change_id, now=NOW + timedelta(seconds=3))
+
+    assert decision.value is not None and decision.value == persisted.approval
+    assert store.ambiguous_readbacks == [persisted]
+    assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
+    assert store.consume_calls == 1
+    assert status.value is not None and status.value.approval == decision.value
+    assert applied.value is not None
+    assert env.apply_port.calls == 1
+
+
 @pytest.mark.parametrize("mutation,expected", [
     ("kill", ErrorCode.KILL_SWITCH_ACTIVE),
     ("version", ErrorCode.STALE_VERSION),
@@ -637,7 +740,7 @@ def test_approval_nonce_consumption_readback_mismatch_fails_closed_and_cannot_re
 
     assert decision.error is ErrorCode.AUDIT_UNAVAILABLE
     assert persisted.approval is not None and persisted.approval.decision == "APPROVE"
-    assert replay.error is ErrorCode.APPROVAL_VOIDED
+    assert replay.error is ErrorCode.APPROVAL_NONCE_INVALID
     assert env.apply_port.calls == 0
 
 

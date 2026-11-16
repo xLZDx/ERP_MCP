@@ -476,3 +476,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-16 SUCCESS: record targeted test runs with the exact source HEAD, dirty/clean state, command, skips, and warnings. A later named-module rerun can supersede an earlier collection failure for that run without erasing the historical failure or expanding the acceptance claim. Details: `docs/sdlc/verify-evidence.md`.
 
 - 2026-11-16 SUCCESS: classify a project test ban as PROHIBITED, not OPERATOR. Keep previously verified test evidence while stating which current regressions await the allowed sprint test phase. Detail: `PROJECT_PLAN.md`.
+
+- 2026-11-16 SHORTCOMING: atomic approval consume can commit and then raise, while a later read-back can fail independently. Rule: distinguish definite refusal from an ambiguous commit and recover only from an exact authoritative receipt. Details and synthetic regression evidence: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.

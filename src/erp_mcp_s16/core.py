@@ -482,13 +482,24 @@ class S16Core:
                                       approver.epoch, session.session_id, binding.nonce_digest,
                                       binding.decision_ref_digest, binding.preview_digest,
                                       binding.approval_digest, decision, binding.expires_at)
+            consume_raised = False
             try:
                 consumed = self.store.consume_decision_ref_and_nonce(
                     decision_ref, expected=binding, decision=result, s12_record=transitioned.record)
             except Exception:
+                # The store may have committed atomically before the call failed.
+                # Resolve that ambiguous outcome with an authoritative read below.
+                consume_raised = True
+            if not consume_raised and consumed is not True:
                 return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
-            if consumed is not True:
-                return Result.refused(ErrorCode.APPROVAL_NONCE_INVALID)
+            if not consume_raised and consumed is True:
+                # The atomic store operation has consumed the ref/nonce and persisted
+                # the decision. Install local replay anchors before the follow-up read,
+                # which may fail independently; success still requires read-back.
+                self._consumed_nonce_digests.add(binding.nonce_digest)
+                self._consumed_ref_digests.add(binding.decision_ref_digest)
+                self._approval_anchors[binding.change_id] = result
+                self._s12_anchors[binding.change_id] = transitioned.record
             try:
                 stored_decision = self.store.get(binding.change_id)
             except Exception:
@@ -505,10 +516,13 @@ class S16Core:
                     or stored_decision.approval != result
                     or stored_decision.s12_record != transitioned.record):
                 return Result.refused(ErrorCode.AUDIT_UNAVAILABLE)
-            self._consumed_nonce_digests.add(binding.nonce_digest)
-            self._consumed_ref_digests.add(binding.decision_ref_digest)
-            self._approval_anchors[binding.change_id] = result
-            self._s12_anchors[binding.change_id] = transitioned.record
+            if consume_raised:
+                # A raised consume call is accepted only when the authoritative row
+                # proves that the exact requested transition committed.
+                self._consumed_nonce_digests.add(binding.nonce_digest)
+                self._consumed_ref_digests.add(binding.decision_ref_digest)
+                self._approval_anchors[binding.change_id] = result
+                self._s12_anchors[binding.change_id] = transitioned.record
             return Result.success(result)
 
     def expire(self, change_id: UUID, *, now: datetime) -> Result[DomainReceipt]:
