@@ -1618,3 +1618,7 @@ Decision: accept the named functional-test-reviewer rerun as FIN-S3.1 verificati
 ## 2026-11-16 — FIN-S3.2 UAC handoff confirmed
 
 Decision: do not automate the Windows security/UAC prompt. Current session evidence shows a medium-integrity token, Administrators deny-only, and the watchdog still has only its logon trigger; a RunAs attempt did not produce an installer log or trigger change. Keep AC-2 blocked until the operator runs the scoped installer in visible elevated PowerShell; then verify both triggers and perform the disposable restart. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-16 — Correct S2 test-gate classification
+
+Decision: classify unrun current-candidate S2.2–S2.4 regressions as PROHIBITED, not OPERATOR-only. The project test rule limits when pytest and checks may run; it is not an operator decision or access requirement. Preserve the earlier verified synthetic evidence and keep live/deployed acceptance separate. Details: `PROJECT_PLAN.md` and `.harness/ledger.json`.

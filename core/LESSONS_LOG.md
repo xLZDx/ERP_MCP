@@ -474,3 +474,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-16 SHORTCOMING: a zero-blocker result from the 1C month-close UI rule is not proof that accounting period closure is formally complete; a matching organization GUID also does not prove the local COM clone is the registered gateway base. Rule: keep close-flow readiness separate from `PERIOD_CLOSED`, and require authenticated source/company/base/version/freshness binding before changing acceptance state. Detail: `docs/phase2/CHANGE_RECORD_403.md`.
 
 - 2026-11-16 SUCCESS: record targeted test runs with the exact source HEAD, dirty/clean state, command, skips, and warnings. A later named-module rerun can supersede an earlier collection failure for that run without erasing the historical failure or expanding the acceptance claim. Details: `docs/sdlc/verify-evidence.md`.
+
+- 2026-11-16 SUCCESS: classify a project test ban as PROHIBITED, not OPERATOR. Keep previously verified test evidence while stating which current regressions await the allowed sprint test phase. Detail: `PROJECT_PLAN.md`.
