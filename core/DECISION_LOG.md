@@ -1723,3 +1723,7 @@ The post-`f588244` refresh was generated at that HEAD after reconciling the 103-
 ## 2026-11-16 — Preserve the reconciled project-status ledger
 
 Decision: track `.harness/ledger.json`, which was present as an untracked local file after `ledger.py reconcile-project` scanned 103 Git refs and recorded the project-document status overlay. The ledger reports 44/104 bounded-accepted task IDs overall and FIN 2/10, with six tasks in review and two task-specific blockers; native harness verification and review fields remain separate. The file has no credential/secret-named fields. This records the user's requested cross-reference reconciliation in project history; commit locally only, with no remote update.
+
+## 2026-11-16 — Refresh the live report after tracking the ledger
+
+Decision: regenerate the Russian live report after commit `791a6c0` so its provenance and update log include the tracked cross-branch status ledger. The report still shows FIN 2/10 bounded accepted, 6/10 in review, 2/10 blocked and overall project-document acceptance 44/104; this remains distinct from native harness completion 9/104. The report is a local status artifact; no test, push, or PR was performed.
