@@ -35,3 +35,15 @@ later sprint, push, or merge. S16 evidence remains synthetic and separate from p
 acceptance. The project-plan task statuses remain blocked or unaccepted as listed; only their
 evidence descriptions were refreshed. No tests, checks, builds, CI, migrations, or 1C writes
 were run.
+
+## 2026-11-16 partial reconciliation refresh
+
+- Read `governance/GATE_MANIFEST.json`: Release 2 remains `NO_GO`; G0 is passed; G8 is not passed and has no evidence; S12 remains in progress without evidence; S13-S19 remain not started without evidence; all production authorization values remain `NONE`.
+- Read-only `ERP_MCP_Razer.system_status` returned `read_only=true`, `subject=auditor`, and three accessible sources. No POST or UNPOST call was made.
+- FIN-S1.2 remains open: the fixed COM clone produced candidate close-flow readiness, not accounting-period closure; the registered OData source exposes no discovered close-status EntitySet and physical base binding is unproven.
+- FIN-S3.1's prior e30 test inventory is historical only because S16 source changed later in 7bbbe15; the required exact-current-tree rerun is `NOT_RUN` under the pytest prohibition. FIN-S3.2 AC-2 remains `NOT_RUN` because the scheduled watchdog task still needs elevated registration and a disposable restart.
+- This is a partial reconciliation refresh only. FIN-S3.3 remains open until the FIN-S3.2 AC-2 outcome is observed and the final scope/gate reconciliation is repeated. No later sprint was started and no production authorization was granted.
+
+## 2026-11-16: FIN-S3.1 targeted rerun recorded
+
+The assigned functional-test-reviewer ran the required named S12/S13/S15/S16 modules at current source HEAD `0768c3f8d1f71f314f0ae82da81a09e0080fcbcc` on the existing dirty working tree: `985 passed, 1 warning in 35.35s`, with no failures or skips. The warning is `PytestReturnNotNoneWarning` from `test_s13_checkpoint_suffix_functional.py::test_python_classifier` returning an int. The command and scope are recorded in `docs/sdlc/verify-evidence.md`. This updates FIN-S3.1 evidence only; it is not CI, a clean committed-head claim, S13/G8 acceptance, live provider/writer proof, or FIN-S1.2/FIN-S3.2 acceptance. Earlier e30 import failures are historical and superseded for this targeted current-tree run.

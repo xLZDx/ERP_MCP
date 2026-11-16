@@ -890,9 +890,6 @@ Decision: by operator decision the 2026-10-20 integration does not fix inherited
 
 Evidence basis: `docs/phase2/AUTONOMOUS_EXECUTION_PLAN_2026-10-21.md` records the operator statements and the agent's repository/host verification. This entry preserves the limits from that verification; a recorded operator statement is not upgraded into runtime evidence.
 
-## 2026-11-15 — Align synthetic private-ingress session timestamps
-Decision: fix only the synthetic test authenticator so `created_at`, `last_seen_at`, idle expiry, and absolute expiry share the same current clock. Keep the malformed principal negative control and the product's idle-age check unchanged. Focused FIN-S2.4 test: 9 passed, 1 deprecation warning. This does not establish deployment bindings or live runtime behavior. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_FIXTURE_20261115.md`.
-
 - A1 — Source availability: operator statement, “A 1C database exists on this computer and on the remote computer, so real-source access is not a blocker.” WP0 observed the local listeners, anonymous-access denial, gateway `/readyz` and `/healthz` responses, and IdP JWKS reachability (`docs/phase2/artifacts/WP0_SOURCE_LIVENESS_2026-10-21.md`). The local business read remains NOT_RUN. Ivan remote checks also remain NOT_RUN because strict SSH host-key verification rejected the untrusted host key. Local liveness does not establish a successful business read or remote source health.
 - A2 — G3 accountant report: operator statement, “The independent accountant report (gate G3) is not a blocker; the report does not exist, but everything is fine.” Decision: record `WAIVED_BY_OPERATOR` as an unsigned G3 note only. Engineering reconciliation is not accountant attestation. G3 remains `NOT_PASSED`; the note cannot satisfy predecessors, authorize production, or be reported as PASS. No accountant report was found in the cited plan evidence.
 - A3 — Key registry: operator statement, “Key and signature registry (risks R-01, R-03): permitted.” This authorizes the planned implementation only; it is not evidence that keys, signers, or witnesses exist. Before the first real write, the plan still requires the actual licensed-host signer and separate witness, with private keys protected and public keys registered.
@@ -1317,12 +1314,178 @@ Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, ind
 
 Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (commit f23a7af) for the add/add merge conflict, and keep the operator's uncommitted local version as db/phase2/028_refusal_codes_parity.local.sql for manual comparison. Nothing was deleted.
 
+## 2026-11-11 - Distinguish local CT14 COM license failures from Ivan host
+
+Decision: attribute a COM `LICENSE` diagnostic only to the machine and clone path where that COM attempt ran. The workstation helper targets `D:\ERP_MCP_Testbed\1c\reference\working\818HA_p2diff`; the separate Ivan-host helper targets `D:\1c\env\bases\818HA_p2diff`. The saved Ivan inventory is dated 2026-10-27 and must not be treated as proof of today's license or clone state. If a fresh inventory is needed, run the existing metadata-only script on Ivan under the DPAPI-owning user; it reads metadata names only and does not write to 1C.
+
+Evidence: `ct14_common.py` pins the workstation helper to the workstation path; `scripts/remote/ct14_metadata_inventory_ivan.ps1` pins its approved base path to Ivan's host clone; `CHANGE_RECORD_360.md` records that Ivan's host COM connection succeeded on 2026-10-27; `CHANGE_RECORD_361.md` records a successful host inventory on that date.
 ## 2026-11-12 CI-OFF: workflows switched to manual dispatch
 
 Operator rule 4 (no CI on push, pull request or schedule). Changed `on:` to `workflow_dispatch` in .github/workflows/ci.yml. Original triggers: ci.yml (was: pull_request, push). The original trigger blocks are kept as comments in each file.
-## 2026-11-14 - Bind S16 approval identity to its persisted receipt
 
-Decision: before using decision-binding requester identity to establish requester/approver independence, require the stored binding requester person to match the canonical persisted receipt requester. Require the loaded receipt to be the exact `DomainReceipt` type; malformed receipt values fail closed as `AUDIT_UNAVAILABLE`. A mismatch returns `APPROVAL_NONCE_INVALID` before nonce consumption or apply. This closes a trust gap where independently stored binding metadata could disagree with the persisted request. No writer or READY path is added; regression remains NOT_RUN under the current sprint test restriction. Rejected alternative: trust the binding's requester value alone, which does not prove it belongs to the stored proposal. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+## 2026-11-14 - FIN-S3 runtime boundary
+
+Decision: keep FIN-S3.2 blocked until the local Windows session can start the Docker service and the Razer tunnel is seen again. Use only the already configured read-only lane; do not relax task or service security from a limited session. Keep S12/G8 and S13-S19 unpromoted, and preserve S16 as fake-backed evidence. Details: `docs/sdlc/verify-evidence.md`.
+## 2026-11-14 - Fail closed on malformed approver-session time
+
+Decision: validate `now` and every approver-session timestamp for timezone awareness and chronological consistency before comparing or subtracting them in both `S16Core.decide` and `ApprovalService.open_preview`, using one shared validator. Malformed/future/inconsistent session time, a last-seen age above 15 minutes, or an overlong absolute lifetime returns `NOT_ENTITLED` before store access. Approval service entry points also convert invalid clock values/exceptions to a safe refusal. Binding lookup/read failures fail closed; stored binding and snapshot expiry/digest metadata are validated before nonce consumption. Preserve the TEST-only boundary and defer regression execution until the sprint verification stage. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Enforce the S16 POST body limit on received chunks
+
+Decision: keep the early `Content-Length` rejection, and also count actual ASGI request-body chunks before invoking either downstream application. A POST without a length header must still be bounded; an oversized body receives a fixed 413 response and is never passed to the MCP or approval app. The bounded buffer is capped by `PrivateNetworkConfig.max_body_bytes` (maximum 1 MiB). No auth, route, or production-binding policy changes. Regression scenario is recorded as NOT_RUN under the current sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on malformed S16 approval expiry records
+
+Decision: before approval compares stored decision-binding expiry, validate its datetime awareness, UTC conversion, fixed-width digest fields, scope, identifiers, version, and confirmation metadata. Also require the preview snapshot expiry to be aware and no later than the proposal expiry. Malformed binding/snapshot state returns a fixed refusal before consuming the nonce or recording the decision. The valid approval window remains bounded by binding, snapshot, and proposal expiry. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Share the strict S16 session check with the approval page
+
+Decision: use the core's common approver-session validator at the HTML approval-page boundary, and require the exact approver token class, approver role and MFA flag there. This keeps CSS, preview and decision routes aligned on principal expiry, session chronology and timezone failure behavior. Malformed sessions fail closed. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Require a session-bound CSRF token for S16 decisions
+
+Decision: require a CSRF token on every approval-page decision POST in addition to `Origin`/`Referer` validation. Bind the token to the decision reference and current approver-session secret; reject absent, malformed, replayed, or cross-session values before any decision side effect. Keep the token out of logs and audit records. Browser/ASGI regressions remain NOT_RUN under the operator test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Preserve the complete S15 verification finding
+
+Decision: serialize the S15 `Finding.detail` alongside its path, field class and code so the S16 `verify` tool preserves the S15 result contract. S15 defines detail as an exception class name only for `READ_ERROR`, never a business value. Keep all other verification fields unchanged. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+
+## 2026-11-14 - Bound FIN S2 expiry, verifier-detail, and ASGI message handling
+
+Decision: normalize requester, approver, snapshot, proposal, and refreshed clock expiries to UTC at the core/service boundary before comparisons; the `apply` and `expire` entry points must fail closed independently of their callers. Bound an approval nonce by the earliest UTC expiry among the preview snapshot, approver principal, session, and idle session. For the model-facing S15 result, preserve `Finding.detail` only when it is a bounded ASCII exception-class identifier on `READ_ERROR`; require empty detail for other finding codes and turn malformed verifier output into a fixed safe failure. For POST ingress, omit empty intermediate ASGI messages from the replay buffer and reject after 8192 request messages with 413 before downstream dispatch. Rejected alternatives: relying on caller normalization (direct core callers bypass it), forwarding arbitrary detail text (could expose verifier/adapter internals), and allowing unlimited empty ASGI messages (unbounded request processing). Regression tests are NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on malformed S16 authenticated-principal fields
+
+Decision: validate the authenticated principal's role container and every role member, epoch shape/range, and MFA boolean before any role membership check. This keeps malformed resolver-boundary values on a controlled refusal path rather than allowing a `TypeError` or malformed identity field to escape. Rejected alternative: duplicating partial guards at requester/approver call sites, which would leave future paths inconsistent. Regression coverage remains NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+Follow-up: apply-time requester registry reads are also untrusted. Reuse one strict requester-record validator before requester role membership at initial, post-evidence and pre-apply-port revalidation; require the TEST lane, exact identity, boolean revocation field, non-negative integer epoch, and typed role set. This prevents malformed registry records from raising during a state-changing path. Regression coverage remains NOT_RUN.
+
+## 2026-11-14 - Bound S15 verification serialization at the S16 tool boundary
+
+Decision: preserve valid S15 verification results unchanged, but validate the result/status/finding types, allowlisted codes and field classes, and bounded identifier-shaped finding and unverified paths before model-facing serialization. Keep `READ_ERROR` detail limited to an exception class identifier and route malformed results through the fixed safe error response. Rejected alternative: forwarding arbitrary values from the configured verification port, which could expose unbounded or business-bearing metadata. Regression coverage remains NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on S16 apply-store reads around a reserved claim
+
+Decision: treat every `ChangeStore.get` used by `S16Core.apply` as an untrusted port boundary. Convert read exceptions and malformed receipts to fixed refusals; after `claim_once`, release the reservation through the existing pre-`BEGIN_APPLY` path if the persisted receipt cannot be read or does not match the claimed transition/approval. Do not call the apply port from these failure branches. Rejected alternative: allowing a raw store exception to escape or leaving a claim reserved after a failed post-claim read. Failure-injection regressions remain NOT_RUN under the sprint test restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-14 - Validate the S16 approval ticket before choosing GET or POST
+
+Decision: parse and canonicalize the approval change UUID once before dispatching either preview GET or decision POST. The POST response must compare the stored decision against that same validated ticket; it must not depend on a variable initialized only by the GET branch. Rejected alternative: reparsing separately in each branch, which can drift and allowed a successful POST to persist then fail while building its response. The focused ASGI success-path regression is NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+## 2026-11-14 - Bound private-ingress Content-Length parsing
+
+Decision: validate `Content-Length` as ASCII decimal, strip leading zeroes, and compare decimal text with the configured request cap before any integer conversion. Keep malformed lengths as a fixed invalid-request refusal and oversized valid lengths as HTTP 413 before downstream dispatch. Rejected alternative: converting arbitrary client-controlled digit strings to integers before enforcing the cap. Regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S24_20261114.md`.
+## 2026-11-14 — Make the S16 approval-service result contract exact
+
+Decision: type `ApprovalServicePort.submit_decision` as returning `Result[ApprovalDecision, ErrorCode]`, matching the ASGI handler's existing runtime guard for bound decision identity and scope. Rejected alternative: retain `Any`, which hides invalid service implementations from static review and weakens the port contract. This annotation-only correction does not change runtime authorization or production bindings. Behavioral regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+
+## 2026-11-14 — Derive FastMCP input schemas from the S16 tool manifest
+
+Decision: build each FastMCP adapter signature from the immutable S16 manifest and preserve nested property schemas with Pydantic `WithJsonSchema`; annotate transport `Context` for injection so it is not exposed as a model argument. Keep the explicit-schema `register_tool` adapter unchanged. Rejected alternative: retaining a generic `arguments/context/_name` signature, which FastMCP translates into a different public input schema. MCP SDK source inspection supports this adapter shape; regression is NOT_RUN under the sprint test restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-14 — FIN-S3.2 PowerShell-safe Docker probe and runtime follow-up
+
+The read-only connector tunnel was started using its existing DPAPI-protected runtime-key blob; the MCP plugin then changed from `tunnel_client_not_seen` to an upstream internal error because `127.0.0.1:21000` refused the connection. Running the configured lane starter exposed an unhandled PowerShell 7.6.9 runspace exception in the Docker probe's .NET event callbacks. The tracked and deployed starter copies now drain redirected output through .NET asynchronous readers instead of invoking PowerShell script blocks on callback threads, while retaining timeout and child-termination checks. The next starter run passed that exception and launched the loopback read-only publication/proxy/sidecar, then stopped because the test IdP reported `JSONDecodeError: Extra data` for `D:\ERP_MCP_Testbed\real1c_e2e\credentials.json`; PostgreSQL 18432 was also not listening. No credential file was edited. The task credential file has trailing non-JSON user data and needs its owner to preserve a backup and make the intended test-user entries valid JSON. AC-1 remains unavailable until the IdP and gateway start; AC-2 watchdog restart remains NOT_RUN. No tests, checks, CI, migrations, or 1C business operations were run. See `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+# 2026-11-14 — FIN-S2.1 preserve claim after durable BEGIN_APPLY
+
+Decision: if the receipt cannot be read or validated after `BEGIN_APPLY` is durably persisted, return `AUDIT_UNAVAILABLE` without releasing the claim or invoking the apply port. The in-progress anchor is now owned by recovery; releasing the claim at this point could admit a concurrent apply while recovery reconciles the durable transition. Before `BEGIN_APPLY`, the existing release-on-refusal behavior remains correct. This is a synthetic core contract only and does not authorize a real 1C write. Regression tests are `NOT_RUN` under operator rule 4; FIN-S2.1 remains partial.
+
+# 2026-11-14 — FIN-S2.2 bound service-supplied confirmation text
+
+Decision: treat service-supplied confirmation phrases as bounded UI content. Refuse a phrase that is empty, longer than 256 characters, contains control characters, or cannot be encoded as strict UTF-8; validate other displayed service text before HTML response encoding and use a fixed placeholder for invalid scalar values. The browser's `maxlength` is usability only and is not a server-side bound. This protects the synthetic approval page; it does not create a listener or authorize production writes. The regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 fail closed on status-store corruption
+
+Decision: `S16Core.status` must convert store read failures, non-`DomainReceipt` values, validator exceptions, and malformed validator error values to `AUDIT_UNAVAILABLE`; only a validated absent receipt is `REF_OUT_OF_SCOPE`. Do not return or serialize store-provided malformed values. This keeps the core's refusal contract stable under persistence failure and is separate from live SQL durability acceptance. The failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 guard expiration and verification reads
+
+Decision: the same fail-closed read contract applies to `expire()` and `verify()`, including expiration read-back after a durable transition. Map backend/validator failures or malformed receipt/error shapes to `AUDIT_UNAVAILABLE`; keep a genuinely absent record as `REF_OUT_OF_SCOPE`. Never roll back a durable expiration transition based on a failed read-back. Reject malformed verify identifiers before any store read. The corresponding failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 bind lifecycle read-back to original receipt
+
+Decision: a matching S12 lifecycle record alone does not prove a post-save read-back is the same change receipt. Expiration and pre-begin claim release must preserve ID, version, scope, proposal, snapshot, requester, target, document reference, and approval before the transition can be reported as successful. Otherwise return `AUDIT_UNAVAILABLE` without claiming success. The failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.3 normalize errors before renderer callback
+
+Decision: no service-supplied refusal value crosses into the optional tool error renderer. Preserve only exact members of the shared `ErrorCode`; map all other values to `AUDIT_UNAVAILABLE`, then render through the shared registry. This keeps raw or malformed service values out of callback code and model responses.
+
+# 2026-11-14 — FIN-S2.4 reject explicit zero origin port
+
+Decision: default the private ingress origin port to 443 only when the URL omits a port. Preserve an explicitly configured `:0` so existing port-range validation rejects it rather than silently changing the operator's endpoint. This is configuration validation only; no listener or network binding was changed. Regression remains NOT_RUN under operator rule 4.
+
+
+## 2026-11-14 — FIN-S2.1 validator failure boundaries
+
+Keep exception and return-shape handling at the S16 core boundary for receipt and target validators. A validator is an injected port and may fail or return malformed values; only registered `ErrorCode` refusals may leave the core. After durable `BEGIN_APPLY`, fail closed without releasing the claim or calling the apply port so recovery can reconcile the durable anchor. The implementation is source-only; regression evidence remains NOT_RUN under operator rule 4.
+
+## 2026-11-14 — FIN-S2.1 bind approval read-back identity
+
+After nonce/decision consumption is durable, the core must treat store read-back as untrusted: require the original receipt identity and exact decision/transition before returning success or updating process-local anchors. On missing, malformed, or mismatched read-back, return a fixed audit refusal and leave the durable state for reconciliation; do not claim the decision failed atomically or try to restore the consumed nonce. Regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-14 — FIN-S2.2 malformed ASGI headers
+
+Treat the ASGI scope as a protocol boundary: a malformed headers container must return a fixed schema refusal rather than propagate a type error. Keep malformed-scope and non-byte-header cases in the acceptance map; they must not reach the approval service. Regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — FIN-S2.3 validate model-facing results
+
+Treat service results as untrusted at the MCP boundary even when their static return annotation is typed. Validate the exact response records and every field exposed to the model for type, encoding and size before serialization; map malformed results to a fixed registered refusal. Keep failure-injection coverage NOT_RUN until the sprint verification window.
+
+## 2026-11-15 — FIN-S2.4 positive tool identity shape
+
+A token class and requester role are insufficient proof of a usable authenticated principal. Before routing to the MCP app, require exact nonempty identity fields, a nonnegative integer epoch, a boolean MFA field, the TEST lane, and a typed TEST scope. Keep malformed-principal and zero-downstream-call cases in the acceptance map; regression remains NOT_RUN.
+
+## 2026-11-15 — FIN-S2.2 reject malformed ASGI scope containers
+
+Validate the ASGI scope container before reading `type`, `method`, `path`, or headers. Non-dict input must receive a fixed schema refusal before authentication or service dispatch. This is a source-only correction; regression evidence remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — Reject malformed private-ingress ASGI scope
+
+The private ingress validates that the ASGI scope is a dictionary before reading fields. Invalid scope input receives a fixed schema response before authentication or downstream dispatch. Acceptance map updated; regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — Validate apply-port receipt before persistence
+
+Treat the `ApplyPort` response as untrusted after the call may have crossed its execution boundary. Before persistence, require an exact `ApplyReceipt`, matching UUID, and the same bounded UTF-8/control-character constraints that the public serializer enforces for status, correlation ID, and optional document reference. A malformed result is `APPLY_UNKNOWN`, is not persisted, and is never retried. This remains source-only until the named regression can run under the sprint verification rules.
+
+## 2026-11-15 — Validate approval page session and decision response
+
+Treat authenticator and approval-service values as untrusted at the ASGI page boundary. Require exact principal role/identity/epoch/scope shapes before service dispatch, and validate the returned `ApprovalDecision` fields, digest shapes, and live expiry before rendering a success page. A malformed response gets a fixed refusal; it does not undo a durable decision or claim that the decision was not stored. Regressions remain NOT_RUN under operator rule 4.
+
+## 2026-11-15 — FIN-S2.3 type the S15 verification port result
+
+Keep the S16 public service protocol aligned with its internal `VerifyPort`: verification returns the concrete S15 `VerificationResult`, not `Any`. This is an annotation-only contract correction; it does not alter tool behavior or runtime exposure. Regression evidence remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Render ledger blockers distinctly in the program report
+
+The report generator must honor the ledger's separate `blocked` record when presenting task status. Show blocked class and cause in evidence, count it as a separate blocked category, and preserve the underlying task `state` so implementation progress remains distinct from acceptance. Detail: `tools/report.py` and `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
+
+## 2026-11-15 — Preflight disposable-lane credentials before component startup
+
+The tracked S3.2 lane starter must validate the test-IdP credential document before starting Docker, Apache, proxies, sidecar, or tunnel-facing services. Use a value-free parser that reports only schema/parse status; never repair, log, or copy a real 1C password into test-IdP credentials. This is source-only until the operator-owned testbed file is repaired and the updated starter is installed and run. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-15 — Install S3.2 preflight in the scheduled disposable testbed starter
+
+The scheduled task invokes `D:\ERP_MCP_Testbed\real1c_e2e\autostart\start_lane.ps1`, a testbed-specific copy with an explicit repository root. Installed only the value-free credential preflight and its repository-helper path in that copy, preserving the prior script as `start_lane.ps1.pre-credential-preflight-20261115-013539.bak`. This does not read or modify the operator-owned credential file and does not start the lane. Runtime behavior and S3.2 acceptance remain `NOT_RUN`; the operator-owned test-IdP JSON still needs repair before the starter can proceed.
+
+## 2026-11-15 — Bound the S3.2 credential validator's actual input read
+
+The credential-file size limit must apply to bytes actually read, not a separate metadata query that can race with a file replacement. The value-free validator now reads at most 1 MiB plus one byte before decode/parse. This is a source-only hardening; no protected credential file was inspected or executed, and validation remains `NOT_RUN` under operator rule 4.
+
+## 2026-11-15 — Confirm S16 apply-result persistence before reporting success
+
+After the fake apply port may have executed, a normal return from `save_apply_receipt()` alone is not sufficient evidence that the result is durable. The core now reads back and compares the complete expected `DomainReceipt` before setting its verification anchor or returning success; any persistence/read-back uncertainty becomes `APPLY_UNKNOWN`, and the apply port is never retried. Acceptance coverage records no-op, exception, and mismatch cases. Regression remains `NOT_RUN` under operator rule 4; no real 1C write path is enabled.
+
+
+## 2026-11-15 — Keep disposable IdP credentials separate from 1C credentials
+
+Decision: unblock local configuration without reading or repairing the protected operator credential file. Generated a random-password synthetic `auditor` account outside Git, changed only the disposable IdP's `credentials_path`, and preserved the prior config. Do not copy the `Admin_1C` or any other 1C password into the test IdP. The scheduled starter validates the configured file before changing runtime state. Rejected alternatives: editing the malformed operator file or using a real 1C password as an IdP password. The lane was not started; connector and watchdog acceptance remain `NOT_RUN` under the current automatic-check restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+
+## 2026-11-15 — Keep FIN-S3.3 reconciliation evidence-bound
+
+Re-read the gate manifest after configuring the isolated synthetic test-IdP user. Release 2 remains NO_GO; S11 is DONE with evidence; S12 remains IN_PROGRESS without evidence; S13-S19 remain NOT_STARTED without evidence. Keep all later gates unpromoted, production authorization NONE, writer UNQUALIFIED, and S16 fake evidence separate. FIN-S3.1/3.2 acceptance evidence remains NOT_RUN under the project verification restrictions. Detail: `docs/sdlc/verify-evidence.md`.
 
 ## 2026-11-15 — Require strict approver identity at private ingress
 
@@ -1382,16 +1545,18 @@ Decision: update FIN plan evidence with the four local S16 source-fix commits an
 
 ## 2026-11-15 — Bind S16 approval result to the submitted decision reference
 
-Decision: require the service-returned approval digest to equal the SHA-256 digest of the exact submitted decision reference before rendering success. A valid-looking receipt for a different reference now fails closed as AUDIT_UNAVAILABLE; do not infer that a downstream decision was rolled back after dispatch. Narrow page regression passed (5 cases in 1.37s). No listener, production binding, or real 1C path was enabled. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_DECISION_REF_BINDING_20261115.md`.
-## 2026-11-15 — Carry page-issued CSRF through S16 synthetic approval callers
+Decision: require the service-returned approval digest to equal the SHA-256 digest of the exact submitted decision reference before rendering success. A valid-looking receipt for a different reference now fails closed as AUDIT_UNAVAILABLE; do not infer that a downstream decision was rolled back after dispatch. Focused regression: `uv run --locked --extra dev python -m pytest tests/phase2/test_s16_approval_page.py -q` — 5 passed in 1.37s. No listener, production binding, or real 1C path was enabled. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_DECISION_REF_BINDING_20261115.md`.
 
-Decision: preserve the core requirement for the exact CSRF token issued with the preview page. Update only the synthetic shared helper and approval-core tests to pass that exact value; do not add a permissive default to the approval service. Focused FIN-S2.1 approval-core evidence passed (48 cases, exit 0, 1.00s). The failure-injection replay case confirms that a durable approval followed by mismatched read-back fails closed and cannot execute apply. No product source changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+## 2026-11-15 — Align synthetic private-ingress session timestamps
 
+Decision: fix only the synthetic test authenticator so `created_at`, `last_seen_at`, idle expiry, and absolute expiry share the same current clock. Keep the malformed principal negative control and the product's idle-age check unchanged. Focused FIN-S2.4 test: 9 passed, 1 deprecation warning. This does not establish deployment bindings or live runtime behavior. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_FIXTURE_20261115.md`.
 
 ## 2026-11-15 — Reject S16 adapters that cannot publish the exact schema
 
 Decision: register the five immutable S16 tools only through an explicit-schema `register_tool` adapter. The locked MCP 2.x `MCPServer.tool()` API derives Pydantic schemas and silently ignores undeclared arguments; it cannot publish the exact manifest or preserve closed-object validation through its public decorator. Reject tool-only adapters before partial registration. A future gateway binding must use an explicit low-level server integration and preserve authenticated request context. Focused S2.3 verification: 15 passed. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+## 2026-11-15 — Carry page-issued CSRF through S16 synthetic approval callers
 
+Decision: preserve the core requirement for the exact CSRF token issued with the preview page. Update only the synthetic shared helper and approval-core tests to pass that exact value; do not add a permissive default to the approval service. Focused FIN-S2.1 approval-core evidence passed (48 cases, exit 0, 1.00s). The failure-injection replay case confirms that a durable approval followed by mismatched read-back fails closed and cannot execute apply. No product source changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
 
 ## 2026-11-15 — Install S1.2/S1.3 scoped reads in a separate migration
 
@@ -1403,23 +1568,24 @@ Decision: resolve the development anchor database path from the service module l
 
 ## 2026-11-16 — Validate separate TEST authority key pairs
 
-Decision: use independent Ed25519 key pairs for synthetic checkpoint latestness and historical-key authorization, verify each configured private/public pair matches, and reject pair reuse against the other authority role or registered checkpoint keys. Update only the restore-skew TEST fixture to provide distinct generated pairs; keep the service loopback-only and unwired from the gateway. The working-copy restore-skew E2E passed on disposable PostgreSQL; exact-head rerun remains pending. No external provider freshness or production custody is claimed. Details: docs/phase2/CHANGE_RECORD_415.md.
+Decision: use independent Ed25519 key pairs for synthetic checkpoint latestness and historical-key authorization, verify each configured private/public pair matches, and reject pair reuse against the other authority role or registered checkpoint keys. Update only the restore-skew TEST fixture to provide distinct generated pairs; keep the service loopback-only and unwired from the gateway. The working-copy restore-skew E2E passed on disposable PostgreSQL; exact-head rerun remains pending. No external provider freshness or production custody is claimed. Details: `docs/phase2/CHANGE_RECORD_415.md`.
 
 ## 2026-11-16 — Use lane metadata for local service ports
 
 Decision: the real1c test-lane starter derives its PostgreSQL and Redis listener checks from the lane's `env.json` rather than hardcoding the default port offset. Windows had reserved the configured PostgreSQL port 18432, leaving the running local container without a host binding; the disposable lane was moved to loopback port 20432 while preserving its existing persistent volume. Production and 1C data paths were not changed. Runtime health and the read-only connector were rechecked; watchdog recovery remains unproven. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
 
+## 2026-11-16 — Separate logon startup from periodic lane recovery
+
+Decision: retain a one-minute interactive logon starter and add a daily time trigger with a five-minute repetition interval and explicit one-day duration for the local watchdog. The previously installed task showed only a logon trigger with an interval, no duration, and no next run time. The registration source now checks both triggers and the elevated principal. Runtime re-registration and observed recovery remain pending; no watchdog success is claimed. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
 
 ## 2026-11-16 — Preserve S16 recovery state on post-BEGIN expiry
 
-Decision: treat observed approval, snapshot, or requester expiry after durable `BEGIN_APPLY` as a registered refusal and retain the `APPLYING`/`CLAIMED`/`CONSUMED` state for recovery. S12 permits `EXPIRE` only before execution starts, so the coordinator must not attempt that transition after `BEGIN_APPLY` or call the apply port. Normalize `claim_once()` storage exceptions and approval-page clock exceptions as `AUDIT_UNAVAILABLE`; use HTTP 503 for clock failure while preserving HTTP 401 for missing authentication. Scope is synthetic S16 only; no writer binding, live 1C mutation, or production authorization is added. Focused regressions passed on the working tree; exact-commit rerun is pending. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
-## 2026-11-16 — Separate logon startup from periodic lane recovery
-
-Decision: retain a one-minute interactive logon starter and add a daily time trigger with a five-minute repetition interval and explicit one-day duration for the local watchdog. The previously installed task showed only a logon trigger with an interval, no duration, and no next run time. The registration source now checks both triggers and the elevated principal. Runtime re-registration was canceled at the UAC prompt; no watchdog success is claimed. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
+Decision: treat an observed approval, snapshot, or requester expiry after durable `BEGIN_APPLY` as a registered refusal and retain the `APPLYING`/`CLAIMED`/`CONSUMED` state for recovery. The S12 `EXPIRE` event is valid only before execution starts, so the apply coordinator must not attempt that transition after `BEGIN_APPLY` or call the apply port. Normalize `claim_once()` storage exceptions and approval-page clock exceptions as `AUDIT_UNAVAILABLE`; use HTTP 503 for clock failure while preserving HTTP 401 for missing authentication. Scope is synthetic S16 only; no writer binding, live 1C mutation, or production authorization is added. Focused regressions passed on the working tree; exact-commit rerun is pending. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
 
 ## 2026-11-16 — Record exact-head S16 verification and review
 
 Decision: record the 59-case focused S16 result and three independent no-finding reviews against committed candidate `7bbbe153259e480d8836234bf298278e2c0fdf57`; keep FIN-S2.1 and FIN-S2.2 in review, preserve the distinction between fake-backed tests and live browser/IdP/writer acceptance, and do not promote any release gate or production authorization. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
+
 ## 2026-11-16 — Keep date-ban evidence separate from period close
 
 Decision: do not derive `PERIOD_CLOSED` from `ДатаЗапретаИзменения` until the target configuration general month-close semantics are verified. Record the protected clone observation as candidate-only, and keep it bound to the observed configuration fingerprint; use an authoritative close-month status source for the reader contract. Details: docs/phase2/CHANGE_RECORD_403.md.
@@ -1427,3 +1593,28 @@ Decision: do not derive `PERIOD_CLOSED` from `ДатаЗапретаИзмене
 ## 2026-11-16 — Inventory month-close records without promoting them
 
 Decision: extend the protected, fixed-clone diagnostic to summarize `РегламентнаяОперация` records by month, displayed state, and posted flag, capped at 1,000 records. Keep the result candidate-only: `Выполнено`/`Пропущено` have not been qualified against the exact 3.0.67.1 close-month implementation, so they do not produce `AuthenticatedPeriodSnapshot.closed` or FIN-S1.2 acceptance. The diagnostic uses SELECT-only COM access, emits no document references, organization names, amounts, or credentials, and does not change the gateway or 1C data. Details: docs/phase2/CHANGE_RECORD_403.md.
+
+## 2026-11-16 — Preserve blocked S16 exact-rerun evidence
+
+Decision: record the S16 approval-page retry as `NOT_RUN` because PreToolUse rejected it before execution; do not infer an outcome from the first invocation whose output was truncated, and do not bypass the gate. Existing 59-case S16 evidence remains separately scoped and is not an exact retry result. Details: docs/sdlc/verify-evidence.md.
+
+## 2026-11-16 — Keep FIN-S3.2 elevation operator-driven
+
+Decision: keep FIN-S3.2 AC-2 blocked because the current Windows identity is not an administrator and the registered task lacks its daily watchdog trigger. The required installer declares `#Requires -RunAsAdministrator`; Computer Use prohibits acting on Windows security permission prompts. Do not claim a task registration or recovery run. The operator must run the approved installer in elevated PowerShell, after which Codex can verify the scheduler configuration and perform the disposable restart. Details: `PROJECT_PLAN.md` FIN-S3.2 and `.harness/ledger.json`.
+## 2026-11-16 — Match FIN-S1.2 export metadata without claiming source-code identity
+
+Decision: cross-check the fixed-clone COM configuration version and metadata object-name fingerprint against the local versioned 3.0.67.1 export, and fail closed when either differs. Keep results candidate-only because matching version and metadata names do not prove BSL source equality or per-period required/stale status. The read-only probe found the close-status algorithm depends on dynamically derived `Требуется` and `Устарела` values; do not map raw `Выполнено`/`Пропущено` rows to `PERIOD_CLOSED`. Details: `docs/phase2/CHANGE_RECORD_403.md`.
+# 2026-11-16 — Keep native close-flow readiness distinct from PERIOD_CLOSED
+
+- Evidence: the fixed `818HA_test_ready` COM diagnostic returned 18 native status rows and zero blocking required operations for 2025-12. Its result is `close_flow_ready`, not accounting-period closure. The registered read-only source's company GUID matched the COM organization reference, but the physical information-base binding remains unproven; OData entity search found no close-status EntitySet.
+- Decision: do not derive `AuthenticatedPeriodSnapshot.closed` or `PERIOD_CLOSED` from zero blocking operations, a global date lock, or matching organization GUID alone. Keep the source read fail-closed until a supported status operation is authenticated and bound to registered source, company, base, version, and freshness.
+- Rejected alternative: treating “nothing left to run” in the close workflow as formal accounting closure; the status is only the UI's blocking-operation rule and skipped required operations are explicitly non-blocking there.
+
+
+## 2026-11-16 — FIN-S3.1 test evidence boundary
+
+Decision: accept the named functional-test-reviewer rerun as FIN-S3.1 verification evidence while preserving its actual boundary: current HEAD on a dirty tree, targeted modules only, one return-value warning, and no CI/clean-commit claim. The later S13 checkpoint E2E results supersede the earlier e30 missing-import evidence for this run only; do not promote S13/G8 or infer live 1C/provider acceptance. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-16 — FIN-S3.2 UAC handoff confirmed
+
+Decision: do not automate the Windows security/UAC prompt. Current session evidence shows a medium-integrity token, Administrators deny-only, and the watchdog still has only its logon trigger; a RunAs attempt did not produce an installer log or trigger change. Keep AC-2 blocked until the operator runs the scoped installer in visible elevated PowerShell; then verify both triggers and perform the disposable restart. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
