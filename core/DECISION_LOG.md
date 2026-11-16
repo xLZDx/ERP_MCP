@@ -1709,3 +1709,5 @@ The report was regenerated once more at HEAD `5088204` so its provenance bar ref
 ## 2026-11-16 — Record FIN-S3.1 operator gate as a project-plan blocker
 
 Decision: mark only the project-plan overlay for FIN-S3.1 `BLOCKED_OPERATOR`, because the task's remaining acceptance is a full named test selection and the PreToolUse gate denied that action before it ran. The verified cause was no standalone GO/ГО within six hours and a stale GPT-PM receipt (25.9 hours); no test result was inferred and native ledger verify/review evidence remains unchanged. Reconciled the project overlay across 103 refs and regenerated the live report. Keep FIN-S1.2 separately `BLOCKED_EXTERNAL`; do not start another sprint. Detailed denial: `docs/sdlc/verify-evidence.md`, “FIN-S3.1 final-head rerun not executed.”
+
+The report snapshot at HEAD `8836c2e` renders FIN as 2/10 bounded accepted, 6/10 in review, and 2/10 blocked; the two blockers are FIN-S1.2 and FIN-S3.1. The overall project-plan/Git layer remains 44/104 bounded accepted. This is distinct from native harness done 9/104.
