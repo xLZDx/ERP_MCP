@@ -682,4 +682,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 FAILURE: a resource lease protected concurrent capture but did not retain completion identity after release, allowing a new executor instance to redispatch. Layer: routed source review. Rule: resource exclusion and one-time request ownership are separate invariants; verify replay after releasing the resource.
 
 - 2026-11-18 SHORTCOMING: S5&#x27;s first push attempt was rejected because four historical approvals were visible in the plan but still recorded as implemented in the native ledger. Rule: preview the standard plan sync and confirm historical verified states before the final sprint push; preserve review and test receipts.
+
+- 2026-11-18 SHORTCOMING: The S5 historical plan sync preserved approval and task receipts but reopened previously closed sprint flags. Rule: compare sprint flags with the sync backup and restore documented prior closures before using the next-task selection.
 </pre></main></body></html>
