@@ -332,28 +332,29 @@ BEGIN
  SELECT status INTO st FROM living.sources WHERE tenant_id=t AND source_id=s FOR UPDATE;
  IF NOT FOUND OR st IS DISTINCT FROM 'ACTIVE' THEN RAISE EXCEPTION 'SOURCE_NOT_ACTIVE'; END IF;
  PERFORM living.recheck_scope_locked(t,s);
- -- Existing event classification comes first: historical rows remain historical, and an exact
- -- committed replay stays resolvable even after its eligibility record is later revoked.
+ -- A legacy event has no durable company proof and cannot be classified for callers.
+ -- An exact v1 replay remains resolvable after its eligibility record is revoked.
  SELECT * INTO ev FROM living.acceptance_events WHERE tenant_id=t AND source_id=s
   AND acceptance_id=p_acceptance;
  IF FOUND THEN
   SELECT * INTO fp FROM living.s4_acceptance_fingerprints WHERE tenant_id=t AND source_id=s
    AND acceptance_id=p_acceptance;
-  IF NOT FOUND THEN RETURN QUERY SELECT 'HISTORICAL_EVENT',NULL::bigint,NULL::text; RETURN; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND'; END IF;
   SELECT * INTO req FROM living.s4_promotion_requests WHERE tenant_id=t AND source_id=s
    AND acceptance_id=p_acceptance;
   IF NOT FOUND THEN RAISE EXCEPTION 'S4_REQUEST_MISSING_FOR_FINGERPRINT'; END IF;
-  SELECT * INTO el FROM living.s4_eligibility WHERE tenant_id=t AND source_id=s
-   AND eligibility_id=req.eligibility_id FOR UPDATE;
-  IF NOT FOUND OR el.company_id<>req.company_id OR el.revision_id<>req.target_revision THEN
-   RAISE EXCEPTION 'S4_ELIGIBILITY_MISSING_FOR_FINGERPRINT';
-  END IF;
   IF nullif(current_setting('living.company_id',true),'') IS DISTINCT FROM req.company_id THEN
-   RAISE EXCEPTION 'COMPANY_SCOPE_MISMATCH';
+   RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM living.role_scope rs WHERE rs.tenant_id=t AND rs.source_id=s
     AND rs.company_id=req.company_id AND pg_has_role(who::name,rs.role_name::name,'USAGE')) THEN
-   RAISE EXCEPTION 'COMPANY_SCOPE_MISMATCH';
+   RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND';
+  END IF;
+  SELECT * INTO el FROM living.s4_eligibility WHERE tenant_id=t AND source_id=s
+   AND eligibility_id=req.eligibility_id FOR UPDATE;
+  IF NOT FOUND OR el.eligibility_id<>fp.eligibility_id OR el.company_id<>req.company_id
+     OR el.revision_id<>req.target_revision THEN
+   RAISE EXCEPTION 'S4_ELIGIBILITY_MISSING_FOR_FINGERPRINT';
   END IF;
   digest_value:=living.s4_request_digest(req,approver,el);
   SELECT evidence_ref INTO STRICT event_evidence FROM living.attestations
@@ -372,7 +373,7 @@ BEGIN
  IF nullif(current_setting('living.company_id',true),'') IS DISTINCT FROM req.company_id
     OR NOT EXISTS(SELECT 1 FROM living.role_scope rs WHERE rs.tenant_id=t AND rs.source_id=s
       AND rs.company_id=req.company_id AND pg_has_role(who::name,rs.role_name::name,'USAGE')) THEN
-  RAISE EXCEPTION 'COMPANY_SCOPE_MISMATCH';
+  RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND';
  END IF;
  SELECT mode INTO mode_now FROM living.s4_model_modes
   WHERE tenant_id=t AND source_id=s AND model_key=req.model_key;
@@ -448,21 +449,30 @@ BEGIN
  -- Separate SELECT after the lock is essential at READ COMMITTED; never infer NO_COMMIT on timeout.
  SELECT * INTO ev FROM living.acceptance_events WHERE tenant_id=t AND source_id=s
   AND acceptance_id=p_acceptance;
- IF NOT FOUND THEN RETURN QUERY SELECT 'NO_COMMIT',NULL::bigint,NULL::text; RETURN; END IF;
+ IF NOT FOUND THEN
+  SELECT * INTO req FROM living.s4_promotion_requests WHERE tenant_id=t AND source_id=s
+   AND acceptance_id=p_acceptance AND company_id=nullif(current_setting('living.company_id',true),'');
+  IF NOT FOUND OR NOT EXISTS(SELECT 1 FROM living.role_scope rs WHERE rs.tenant_id=t AND rs.source_id=s
+       AND rs.company_id=req.company_id AND pg_has_role(who::name,rs.role_name::name,'USAGE')) THEN
+   RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND';
+  END IF;
+  RETURN QUERY SELECT 'NO_COMMIT',NULL::bigint,NULL::text; RETURN;
+ END IF;
  SELECT * INTO fp FROM living.s4_acceptance_fingerprints WHERE tenant_id=t AND source_id=s
   AND acceptance_id=p_acceptance;
- IF NOT FOUND THEN RETURN QUERY SELECT 'HISTORICAL_EVENT',NULL::bigint,NULL::text; RETURN; END IF;
+ IF NOT FOUND THEN RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND'; END IF;
  SELECT * INTO req FROM living.s4_promotion_requests WHERE tenant_id=t AND source_id=s
   AND acceptance_id=p_acceptance;
  IF NOT FOUND THEN RAISE EXCEPTION 'S4_REQUEST_MISSING_FOR_FINGERPRINT'; END IF;
  IF nullif(current_setting('living.company_id',true),'') IS DISTINCT FROM req.company_id
     OR NOT EXISTS(SELECT 1 FROM living.role_scope rs WHERE rs.tenant_id=t AND rs.source_id=s
       AND rs.company_id=req.company_id AND pg_has_role(who::name,rs.role_name::name,'USAGE')) THEN
-  RAISE EXCEPTION 'COMPANY_SCOPE_MISMATCH';
+  RAISE EXCEPTION 'S4_REQUEST_NOT_FOUND';
  END IF;
  SELECT * INTO el FROM living.s4_eligibility WHERE tenant_id=t AND source_id=s
   AND eligibility_id=req.eligibility_id;
- IF NOT FOUND OR el.company_id<>req.company_id OR el.revision_id<>req.target_revision THEN
+ IF NOT FOUND OR el.eligibility_id<>fp.eligibility_id OR el.company_id<>req.company_id
+    OR el.revision_id<>req.target_revision THEN
   RAISE EXCEPTION 'S4_ELIGIBILITY_MISSING_FOR_FINGERPRINT';
  END IF;
  SELECT * INTO att FROM living.attestations WHERE tenant_id=t AND source_id=s

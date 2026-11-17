@@ -886,3 +886,13 @@ The assigned e2e-runner ran the named PostgreSQL module at HEAD `40d4547f602cdbc
 ```
 
 Result: 7 passed in 62.17s (0:01:02). All seven scenarios executed. The owned-cluster context exited without a cleanup exception; the harness checks ownership labels before removing the exact invocation-owned containers. Coverage: concurrent CAS, legacy fencing and historical isolation, atomic rollback between event and fingerprint insertion, read-back after a discarded response, revoke-before-write, wrong company and role refusal, and rollback to the accepted target. This is synthetic transactional evidence only. The discarded response represents a client-side loss after commit, not a live network partition. Real provider, production and 1C are NOT_RUN.
+
+## 2026-11-18 - S4 configured evidence-content verification
+
+The assigned functional-test-reviewer ran the named service-content module on HEAD `03f31ad81e3b69a3966437b2212f8c16ecd5ba98` with scratch root and source imports:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_content.py
+```
+
+Result: 14 passed in 0.64s. Valid scoped bytes reach one write; malformed, inaccessible, missing, or mismatched content, incomplete configuration, and replay without a durable fingerprint prevent a new write. The test double is synthetic and does not qualify a provider. Git reported no change to the fingerprint module/test after 54a5c83 or to the disposable SQL, shared database harness and E2E test after 40d4547 through 03f31ad. These results remain separate commands and do not imply one combined run or production readiness.

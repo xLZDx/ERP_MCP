@@ -2169,3 +2169,7 @@ The disposable PostgreSQL run reached all seven scenario bodies. Six passed; rol
 ## 2026-11-18 - Preserve S4 disposable acceptance and content test inputs
 
 All seven disposable PostgreSQL scenarios passed at 40d4547; the invocation-owned cleanup completed without exception. Add the focused service-level content test so the byte-verification path is exercised directly, independently of SQL fixture registration. Run the named content module as the next verification step.
+
+## 2026-11-18 - Keep unbound promotion history private
+
+Two routed reviewers confirmed that the synthetic SQL classified old acceptance events before proving their company. Legacy events lack durable company provenance; the current source company does not establish historical ownership. Both new SQL entry points now give the same generic refusal as an unknown unregistered request. NO_COMMIT requires a registered, currently authorized company request. The modern receipt path checks request authorization before recovery details and binds the fingerprint to the referenced eligibility record. The correction is fixture-only.

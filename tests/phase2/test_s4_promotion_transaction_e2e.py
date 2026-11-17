@@ -90,10 +90,11 @@ class S4Database:
         return await pg.admin_connect(self.dsn, database=self.name)
 
     @asynccontextmanager
-    async def scoped(self, conn, role="living_s4_fixture_promoter", company=COMPANY):
+    async def scoped(self, conn, role="living_s4_fixture_promoter", company=COMPANY,
+                     source=SOURCE):
         async with conn.transaction():
             await conn.execute(f"SET LOCAL ROLE {role}")
-            await conn.fetchval("SELECT living.set_scope($1,$2,$3)", TENANT, SOURCE, company)
+            await conn.fetchval("SELECT living.set_scope($1,$2,$3)", TENANT, source, company)
             yield
 
     async def seed_eligible(self, *, model=MODEL, object_id=None):
@@ -129,15 +130,17 @@ class S4Database:
         assert result == acceptance
         return acceptance
 
-    async def promote(self, conn, acceptance, *, role="living_s4_fixture_promoter", company=COMPANY):
-        async with self.scoped(conn, role, company):
+    async def promote(self, conn, acceptance, *, role="living_s4_fixture_promoter", company=COMPANY,
+                      source=SOURCE):
+        async with self.scoped(conn, role, company, source):
             return await conn.fetchrow(
-                "SELECT * FROM living.s4_promote_v1($1,$2,$3)", TENANT, SOURCE, acceptance)
+                "SELECT * FROM living.s4_promote_v1($1,$2,$3)", TENANT, source, acceptance)
 
-    async def readback(self, conn, acceptance, *, role="living_s4_fixture_promoter", company=COMPANY):
-        async with self.scoped(conn, role, company):
+    async def readback(self, conn, acceptance, *, role="living_s4_fixture_promoter", company=COMPANY,
+                       source=SOURCE):
+        async with self.scoped(conn, role, company, source):
             return await conn.fetchrow(
-                "SELECT * FROM living.s4_readback_v1($1,$2,$3)", TENANT, SOURCE, acceptance)
+                "SELECT * FROM living.s4_readback_v1($1,$2,$3)", TENANT, source, acceptance)
 
 
 class Eligible:
@@ -191,7 +194,24 @@ async def test_concurrent_requests_share_one_expected_head_version(s4db):
     assert first_counts[2] == second_counts[2] == 1
 
 
-async def test_legacy_path_rejects_enrolled_model_and_old_event_is_unverified(s4db):
+async def _capture_api_error(call):
+    try:
+        await call
+    except asyncpg.PostgresError as exc:
+        return exc.sqlstate, str(exc).splitlines()[0]
+    raise AssertionError("expected S4 API to reject an unqualified historical/unknown receipt")
+
+
+async def _assert_generic_historical_denial(s4db, acceptance, *, source=SOURCE):
+    unknown = uuid.uuid4()
+    for api in (s4db.promote, s4db.readback):
+        historical_error = await _capture_api_error(api(s4db.conn, acceptance, source=source))
+        unknown_error = await _capture_api_error(api(s4db.conn, unknown, source=source))
+        assert historical_error == unknown_error
+        assert historical_error[1] == "S4_REQUEST_NOT_FOUND"
+
+
+async def test_legacy_path_rejects_enrolled_model_and_old_event_is_hidden(s4db):
     eligible = await s4db.seed_eligible()
     old_acceptance = uuid.uuid4()
     await s4db.conn.execute("""
@@ -205,13 +225,49 @@ async def test_legacy_path_rejects_enrolled_model_and_old_event_is_unverified(s4
                 "SELECT living.promote_head($1,$2,$3,0,$4,$5,'historical-evidence')",
                 TENANT, SOURCE, MODEL, eligible.revision, old_acceptance)
 
-    async with s4db.scoped(s4db.conn):
-        old = await s4db.conn.fetchrow(
-            "SELECT * FROM living.s4_readback_v1($1,$2,$3)", TENANT, SOURCE, old_acceptance)
-    assert tuple(old) == ("HISTORICAL_EVENT", None, None)
+    await _assert_generic_historical_denial(s4db, old_acceptance)
     assert await s4db.conn.fetchval(
         "SELECT count(*) FROM living.s4_acceptance_fingerprints WHERE acceptance_id=$1",
         old_acceptance) == 0
+
+
+async def test_shared_source_historical_receipt_is_hidden_like_unknown_id(s4db):
+    shared_source = "s4-shared"
+    shared_model = "s4-shared-contract-model"
+    revision = uuid.uuid4()
+    observation = uuid.uuid4()
+    old_acceptance = uuid.uuid4()
+    await s4db.conn.execute(
+        "INSERT INTO living.sources(tenant_id,source_id,company_id) VALUES($1,$2,NULL)",
+        TENANT, shared_source)
+    await s4db.conn.execute(
+        "INSERT INTO living.role_scope(role_name,tenant_id,source_id,company_id) "
+        "VALUES ('living_s4_fixture_promoter',$1,$2,$3)",
+        TENANT, shared_source, COMPANY)
+    await s4db.conn.execute(
+        "INSERT INTO living.observations(tenant_id,source_id,observation_id,object_id,"
+        "revision_id,kind,digest,observed_at) VALUES($1,$2,$3,$4,$5,'OBSERVED',$6,$7)",
+        TENANT, shared_source, observation, "shared-synthetic-object", revision, DIGEST,
+        datetime(2024, 1, 2, tzinfo=UTC))
+    await s4db.conn.execute(
+        "INSERT INTO living.accepted_heads(tenant_id,source_id,model_key) VALUES($1,$2,$3)",
+        TENANT, shared_source, shared_model)
+    await s4db.conn.execute("""
+      INSERT INTO living.acceptance_events(tenant_id,source_id,acceptance_id,model_key,
+        from_version,to_version,accepted_revision,approver_subject,independent_evidence_ref)
+      VALUES($1,$2,$3,$4,0,1,$5,'synthetic-approver','historical-evidence')
+    """, TENANT, shared_source, old_acceptance, shared_model, revision)
+    async with s4db.conn.transaction():
+        await s4db.conn.execute("SET LOCAL ROLE living_owner")
+        await s4db.conn.fetchval(
+            "SELECT living.s4_bind_actor($1,$2,$3,$4,'APPROVER')",
+            TENANT, shared_source, "living_s4_fixture_promoter", "synthetic-approver")
+
+    await _assert_generic_historical_denial(s4db, old_acceptance, source=shared_source)
+    assert await s4db.conn.fetchval(
+        "SELECT count(*) FROM living.s4_acceptance_fingerprints "
+        "WHERE tenant_id=$1 AND source_id=$2 AND acceptance_id=$3",
+        TENANT, shared_source, old_acceptance) == 0
 
 
 async def test_failure_between_event_and_fingerprint_rolls_back_head_and_event(s4db):
