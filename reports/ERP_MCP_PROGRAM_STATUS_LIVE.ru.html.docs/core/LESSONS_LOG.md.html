@@ -666,4 +666,6 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: the initial S5 design treated the vault media allow-list, tenant/source ACL, and caller completion flag as stronger than their implementation. Layer: architecture review. Rule: inspect accepted primitives for actual representations and authorization dimensions, and keep claimed completeness separate from evidence.
 
 - 2026-11-18 SHORTCOMING: S5 initially required exact retry and valid capture permits without assigning a stable request key or an independent issuing authority. Layer: GPT-PM design review. Rule: specify exact publication identity and who can issue, attest and revoke admission before implementing capture.
+
+- 2026-11-18 SUCCESS: the S5 comparator compares exact scoped representations and caps result detail and aggregate text. Layer: offline source implementation. Rule: do not promote equality of supplied representations into completeness or native equivalence.
 </pre></main></body></html>
