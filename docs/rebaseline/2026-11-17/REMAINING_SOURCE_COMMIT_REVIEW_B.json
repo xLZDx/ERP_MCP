@@ -1,0 +1,100 @@
+{
+  "candidate_worktree": "D:/tmp/scratch_worktrees/erp-main-consolidation-20261117",
+  "candidate_head_at_review": "49e45030a2bffa2f1bdef2a20f2da1128ed54d95",
+  "source_state_at_review": "HEAD 49e4503 plus staged source edits in adapters/odata-sidecar/Dockerfile and scripts/e2e/envctl.py; these changes were visible but are not part of the recorded HEAD.",
+  "scope": "Semantic review of 13 historical source-review commits. Exact source_paths are keyed by commit in UNIQUE_COMMIT_DISPOSITIONS.json. Each disposition describes represented behavior, not test acceptance.",
+  "reviews": [
+    {
+      "commit": "588ddd1f1bd0",
+      "disposition": "PORTED",
+      "evidence": "Both capacity_interference.py and capacity_model.py are present. Current model preserves distinct capacity axes, rejects configured limits as capacity, labels offline samples SCRIPTED_OFFLINE_FIXTURE, requires measurement-reference basis consistency and operator authorization, and reports timeout/business-error dominance separately. Current interference code contains bounded per-tenant shares and backend accounting.",
+      "evidence_refs": ["src/business_ai_gateway/phase2/capacity_model.py:180,265,336,631,713", "src/business_ai_gateway/phase2/capacity_interference.py:124,148,153"],
+      "remaining": "Named S9 tests have not been run on the assembled candidate; this is not bounded acceptance evidence."
+    },
+    {
+      "commit": "5aaa5ae16957",
+      "disposition": "PORTED",
+      "evidence": "The candidate contains the real1c lane runner, probes, manifest, oracle, per-test documentation, report, sanitizer and offline test package. The later f28b8d source revision is reflected in current code: typed refusal checks, fault-injection effectiveness checks, strict zip and source-ready/metadata fingerprint gates are present in run_lane.py, stories.py and native_checks.py.",
+      "evidence_refs": ["scripts/real1c/run_lane.py:153,496,503,509,548,558,579,589", "scripts/real1c/stories.py:202-205,252", "scripts/real1c/native_checks.py:44"],
+      "remaining": "Do not infer a live lane run or native acceptance from files or historical tests; named offline tests and any live lane run are separate."
+    },
+    {
+      "commit": "7d9bbc00006b",
+      "disposition": "PORTED",
+      "evidence": "scripts/remote/run-mcp-stack.ps1 now reconciles the exact tunnel executable and full expected arguments, configured tunnel ID, current key-file timestamp and current listener owner before replacing only a stale matching managed process. Unmatched port owners are left untouched.",
+      "evidence_refs": ["scripts/remote/run-mcp-stack.ps1:151-181,184-193,227-247"],
+      "remaining": "PowerShell script and named task tests are NOT_RUN; no task, tunnel or process was started."
+    },
+    {
+      "commit": "80dd8a271e87",
+      "disposition": "SUPERSEDED",
+      "evidence": "The server import-order adjustment from this lint-only commit is subsumed by the larger current server source. Its separate scripts/render_full_program_status.py path is not the current report entry point; the current harness mandates tools/report.py and .harness-tools/report.py for the Russian live report.",
+      "evidence_refs": ["global html-report skill: report.py entry point", "tools/report.py", ".harness-tools/report.py"],
+      "remaining": "No behavior-bearing server change unique to this commit was identified. No lint was run."
+    },
+    {
+      "commit": "9e3ed8e55991",
+      "disposition": "PORTED_WITH_ADAPTATION",
+      "evidence": "The gateway consumes Settings.oauth_audience_list. envctl now obtains the tunnel resource from E2E_CHATGPT_TUNNEL_RESOURCE, validates its host/path/tunnel-ID shape, adds that same exact value to the ChatGPT IdP client's audiences, and sets BAG_OAUTH_ADDITIONAL_AUDIENCES to that value. Empty configuration omits the additional IdP audience and leaves the gateway setting empty. This avoids the old commit's baked-in tunnel ID.",
+      "evidence_refs": ["src/business_ai_gateway/auth.py:24", "src/business_ai_gateway/settings.py:35,125,129", "scripts/e2e/envctl.py:92-97,218,284"],
+      "remaining": "envctl/auth named tests are NOT_RUN; setting a resource and performing an OAuth exchange are NOT_RUN."
+    },
+    {
+      "commit": "ac97a979f814",
+      "disposition": "PORTED_WITH_ADAPTATION",
+      "evidence": "The staged candidate Dockerfile runtime image digest is sha256:4ad7301975908b87d321af8b9ed41630dc69015976269965ee459c27541df252, matching the reviewed source commit.",
+      "evidence_refs": ["adapters/odata-sidecar/Dockerfile:16", "git show ac97a979f814:adapters/odata-sidecar/Dockerfile"],
+      "remaining": "No newer digest was found in the reviewed candidate path history. Image build/pull and vulnerability-status verification are NOT_RUN."
+    },
+    {
+      "commit": "aca610e22acd",
+      "disposition": "PORTED",
+      "evidence": "This is an earlier snapshot of the same real1c lane implementation. Candidate scripts/real1c contains the runner/probe/report/tooling; later source refinements from f28b8d and debf62f are also represented in typed checks, secret-canary self-test and public-value sanitization.",
+      "evidence_refs": ["scripts/real1c/run_lane.py:496-509,517,522,579", "scripts/real1c/sanitize.py:40,45,50-57"],
+      "remaining": "Source presence does not establish that the 818HA runtime or clone is currently available; offline named tests remain NOT_RUN."
+    },
+    {
+      "commit": "aed0948fb1da",
+      "disposition": "PORTED",
+      "evidence": "Current scheduler.py catches LeaseLost without returning its exception text and records work failures as WORK_EXCEPTION:<exception-class>, bounded to 64 characters. It never stores raw adapter exception strings in the job result.",
+      "evidence_refs": ["src/business_ai_gateway/phase2/scheduler.py:497-501"],
+      "remaining": "Named error-redaction/retry tests remain for candidate verification."
+    },
+    {
+      "commit": "b885f03ffd75",
+      "disposition": "PORTED",
+      "evidence": "Current scripts/phase2/build_spec_bundle.py has bounded TC002 decision schema/field validation and emits its decision and receipt artifacts; this is visible in validate_tc002_bounded_fields and the bundle main flow. The worker's candidate file now includes the broader TC001/002/003/004–006 bundle reconciliation.",
+      "evidence_refs": ["scripts/phase2/build_spec_bundle.py:304-343,463-473,1102-1113"],
+      "remaining": "The generator has not been executed and acceptance artifacts were not regenerated or validated in this review."
+    },
+    {
+      "commit": "d5b3dcd3cdc9",
+      "disposition": "PRESENT",
+      "evidence": "The listed S12/S16 package modules are present in the candidate. The S12 port retains current exports in change/__init__.py and the S16 service caller passes its trusted principal record lane into ProposalContext; no import-only historical deletion was replayed over these files.",
+      "evidence_refs": ["src/business_ai_gateway/phase2/change/__init__.py", "src/business_ai_gateway/phase2/change/proposal.py:384-399", "src/erp_mcp_s16/services.py:44-54"],
+      "remaining": "Presence is not an API compatibility test; named imports/contracts remain unrun."
+    },
+    {
+      "commit": "debf62f5decc",
+      "disposition": "PORTED",
+      "evidence": "sanitize.py currently separates secret redaction from public business-value redaction; run_lane.py deep-copies public NR/RL2/INV results, collects original private numeric literals, and sweeps generated public artifacts before writing. Native reports and private owner evidence remain separately classified.",
+      "evidence_refs": ["scripts/real1c/sanitize.py:40,45,50-57", "scripts/real1c/run_lane.py:554-555,579,589"],
+      "remaining": "Named sanitizer and end-to-end artifact scans are not run for this candidate."
+    },
+    {
+      "commit": "f28b8d378452",
+      "disposition": "PORTED",
+      "evidence": "Current real1c sources retain the reviewed guards: input schema/refusal checks, verified injected-delay threshold, health/re-read after recovery, exact strict row/case pairing, fail-closed capability inference, secret-canary self-test, and final public-artifact secret/value sweeps.",
+      "evidence_refs": ["scripts/real1c/native_checks.py:44", "scripts/real1c/run_lane.py:153,509,522,548-558,579,589", "scripts/real1c/stories.py:202-205,252"],
+      "remaining": "The associated offline tests have not been run in the assembled candidate; no 1C runtime operation occurred."
+    },
+    {
+      "commit": "f5fc733f0a1c",
+      "disposition": "PORTED",
+      "evidence": "All six behavior modules named by the commit are present and retain their main contracts: physical-backend identity/budget admission, tenant/source-bound metadata discovery and composition, drift acceptance separate from observation, source resnapshot fencing and scheduler lease/error handling. The candidate adds later safeguards in those areas rather than restoring the old files wholesale.",
+      "evidence_refs": ["src/business_ai_gateway/phase2/backend_budget.py", "src/business_ai_gateway/phase2/onec_composition.py:104-242", "src/business_ai_gateway/phase2/onec_discovery.py:204-212", "src/business_ai_gateway/phase2/drift.py:83-96", "src/business_ai_gateway/phase2/resnapshot.py", "src/business_ai_gateway/phase2/scheduler.py:452-501"],
+      "remaining": "No concrete lost guard was found in the inspected current predicates. This was not a line-by-line adjudication of every sub-predicate in the six diffs; named tests and concurrency/crash/retry verification remain NOT_RUN."
+    }
+  ],
+  "test_state": "NOT_RUN during this semantic source audit; historical test receipts remain bound to their original revisions."
+}

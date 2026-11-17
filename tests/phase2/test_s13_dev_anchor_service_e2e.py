@@ -160,10 +160,14 @@ def test_dev_anchor_http_persistence_auth_and_fail_closed(tmp_path: Path) -> Non
 async def _exercise_dev_anchor(tmp_path: Path) -> None:
     database = tmp_path / "dev-anchor.sqlite3"
     service_private = Ed25519PrivateKey.generate()
+    latest_private = Ed25519PrivateKey.generate()
+    key_auth_private = Ed25519PrivateKey.generate()
     checkpoint_private = Ed25519PrivateKey.generate()
     rotated_checkpoint_private = Ed25519PrivateKey.generate()
     unknown_private = Ed25519PrivateKey.generate()
     service_public = _raw_public(service_private)
+    latest_public = _raw_public(latest_private)
+    key_auth_public = _raw_public(key_auth_private)
     checkpoint_public = _raw_public(checkpoint_private)
     rotated_checkpoint_public = _raw_public(rotated_checkpoint_private)
     unknown_public = _raw_public(unknown_private)
@@ -186,6 +190,18 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
             serialization.NoEncryption(),
         )),
         "ERP_MCP_DEV_ANCHOR_PUBLIC_KEY_B64": _b64(service_public),
+        "ERP_MCP_DEV_ANCHOR_LATEST_KEY_ID": "synthetic-latestness-v1",
+        "ERP_MCP_DEV_ANCHOR_LATEST_PRIVATE_KEY_B64": _b64(latest_private.private_bytes(
+            serialization.Encoding.Raw, serialization.PrivateFormat.Raw,
+            serialization.NoEncryption(),
+        )),
+        "ERP_MCP_DEV_ANCHOR_LATEST_PUBLIC_KEY_B64": _b64(latest_public),
+        "ERP_MCP_DEV_ANCHOR_KEY_AUTH_KEY_ID": "synthetic-key-auth-v1",
+        "ERP_MCP_DEV_ANCHOR_KEY_AUTH_PRIVATE_KEY_B64": _b64(key_auth_private.private_bytes(
+            serialization.Encoding.Raw, serialization.PrivateFormat.Raw,
+            serialization.NoEncryption(),
+        )),
+        "ERP_MCP_DEV_ANCHOR_KEY_AUTH_PUBLIC_KEY_B64": _b64(key_auth_public),
         "ERP_MCP_DEV_ANCHOR_CHECKPOINT_KEYS_JSON": json.dumps([
             {
                 "tenant_id": scope.tenant_id,
@@ -211,8 +227,10 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
         sink = DevHttpCheckpointSink(
             base_url,
             bearer_token=token,
-            expected_key_id=SERVICE_KEY_ID,
-            authority_public_key_b64=_b64(service_public),
+            expected_key_id="synthetic-latestness-v1",
+            authority_public_key_b64=_b64(latest_public),
+            expected_key_authorization_id="synthetic-key-auth-v1",
+            key_authorization_public_key_b64=_b64(key_auth_public),
             checkpoint_verifier=verifier,
         )
         first = _record(checkpoint_private, seq=1, head_char="a")
@@ -301,8 +319,10 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
         restarted_sink = DevHttpCheckpointSink(
             base_url,
             bearer_token=token,
-            expected_key_id=SERVICE_KEY_ID,
-            authority_public_key_b64=_b64(service_public),
+            expected_key_id="synthetic-latestness-v1",
+            authority_public_key_b64=_b64(latest_public),
+            expected_key_authorization_id="synthetic-key-auth-v1",
+            key_authorization_public_key_b64=_b64(key_auth_public),
             checkpoint_verifier=verifier,
         )
         assert await restarted_sink.read_back(SCOPE, 1) == first
@@ -345,7 +365,7 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
         inconsistent_proof["checkpoint_digest"] = "0" * 64
         signed_fields = {key: value for key, value in inconsistent_proof.items()
                          if key != "signature"}
-        inconsistent_proof["signature"] = service_private.sign(
+        inconsistent_proof["signature"] = latest_private.sign(
             b"erp-mcp-dev-anchor-latest|v1\0" + json.dumps(
                 signed_fields, sort_keys=True, separators=(",", ":"),
                 ensure_ascii=True, allow_nan=False,
@@ -377,7 +397,7 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
             SCOPE.tenant_id, SCOPE.company_id,
         )
         assert latestness.checkpoint_digest
-        assert latestness.authority_id == "erp-mcp-dev-anchor-v1"
+        assert latestness.authority_id == "synthetic-latestness-v1"
         assert latestness.authority_revision == 2
         assert latestness.authority_event_id and latestness.authority_event_digest
 
@@ -409,19 +429,23 @@ async def _exercise_dev_anchor(tmp_path: Path) -> None:
         class RecordingLatestness:
             is_test_double = True
 
-            async def latest_checkpoint(self, scope: Scope):
+            async def attest_latest(self, scope: Scope, record: CheckpointRecord,
+                                    challenge_nonce: str):
                 order.append("latestness")
-                return await restarted_sink.latest_checkpoint(scope)
+                return await restarted_sink.attest_latest(scope, record, challenge_nonce)
 
         class RecordingKeyAuthority:
             is_test_double = True
 
-            async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
+            async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord,
+                                           challenge_nonce: str):
                 order.append("key_authorization")
-                return await restarted_sink.authorize_checkpoint(scope, record)
+                return await restarted_sink.authorize_checkpoint(
+                    scope, record, challenge_nonce,
+                )
 
         result = await LifecycleCoordinator(
-            RecordingLedger(), verifier,
+                RecordingLedger(), restarted_sink, verifier,
             key_authority=RecordingKeyAuthority(),
             latestness_authority=RecordingLatestness(),
         ).preflight(SCOPE)

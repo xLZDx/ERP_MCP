@@ -314,6 +314,7 @@ async def _restore_skew(tmp_path: Path) -> tuple[str, str, list[str]]:
 
                     coordinator = LifecycleCoordinator(
                         ledger_restored,
+                        restored_sink,
                         verifier,
                         key_authority=restored_sink,
                         latestness_authority=restored_sink,

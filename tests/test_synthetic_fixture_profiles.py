@@ -5,12 +5,20 @@ import os
 import uuid
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from mcp.server.mcpserver.exceptions import UnexpectedToolError
 
-from business_ai_gateway.fixture_profiles import SyntheticFixtureProfiles
+from business_ai_gateway.fixture_profiles import (
+    PROVISIONAL_PROFILE_KIND,
+    TEST_LANE_PROFILE_KIND,
+    ProvisionalProfiles,
+    SyntheticFixtureProfiles,
+    UnreconciledTestLaneProfiles,
+    profile_provenance,
+)
 from business_ai_gateway.registry import Registry
 from business_ai_gateway.runtime import Runtime
 from business_ai_gateway.semantic import SemanticProfileUnavailable, capability_evidence_fingerprint
@@ -123,6 +131,119 @@ def test_layer4_hash_mismatch_fails_runtime_startup(tmp_path):
                         synthetic_fixture_profiles_sha256="0" * 64)
     with pytest.raises(RuntimeError, match="HASH_MISMATCH"):
         Runtime(settings)
+
+
+def test_test_lane_profile_is_pinned_test_only_and_distinct_from_provisional(tmp_path):
+    import hashlib
+
+    source_id = "onec-818ha-reference"
+    company_id = uuid.UUID("3e31afc5-351f-4f36-8074-99129fa3d911")
+    path = Path("testbed/real1c/fixtures/test_lane_profiles.json").resolve()
+    raw = path.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    lane = UnreconciledTestLaneProfiles(path, digest, environment="test")
+
+    posting = lane.lookup(source_id, company_id, "accounting.posting_rows")
+    assert posting["entity_set"] == "AccountingRegister_Хозрасчетный_RecordType"
+    assert lane.profile_fingerprint(source_id, company_id, "accounting.posting_rows", posting).startswith(
+        "test-lane-unreconciled:"
+    )
+    lane_evidence = profile_provenance({"profile_kind": TEST_LANE_PROFILE_KIND})
+    assert lane_evidence["evidence_level"] == "L1"
+    assert lane_evidence["native_reconciliation"] == "NOT_RUN"
+
+    provisional_path = Path("testbed/real1c/provisional_profiles_818ha.json").resolve()
+    provisional = ProvisionalProfiles(
+        provisional_path, hashlib.sha256(provisional_path.read_bytes()).hexdigest(),
+        environment="test",
+    )
+    provisional_mapping = provisional.lookup(source_id, company_id, "purchases")
+    provisional_evidence = profile_provenance({
+        "profile_kind": PROVISIONAL_PROFILE_KIND,
+        "reconciliation_basis": provisional.reconciliation["basis"],
+    })
+    assert provisional.profile_fingerprint(
+        source_id, company_id, "purchases", provisional_mapping
+    ).startswith("provisional:")
+    assert provisional_evidence["evidence_level"] == "L2_PROVISIONAL"
+    assert provisional_evidence["evidence_level"] != lane_evidence["evidence_level"]
+
+    with pytest.raises(RuntimeError, match="HASH_MISMATCH"):
+        UnreconciledTestLaneProfiles(path, "0" * 64, environment="test")
+    with pytest.raises(RuntimeError, match="FORBIDDEN_ENVIRONMENT"):
+        UnreconciledTestLaneProfiles(path, digest, environment="production")
+
+
+def test_test_lane_settings_require_test_environment_hash_file_and_explicit_source(tmp_path):
+    path = str((tmp_path / "profiles.json").resolve())
+    digest = "a" * 64
+    with pytest.raises(ValueError, match="FORBIDDEN_IN_PRODUCTION"):
+        Settings(
+            _env_file=None, environment="production", test_lane_profiles_file=path,
+            test_lane_profiles_sha256=digest, test_lane_unreconciled_sources="onec-reference",
+        )
+    with pytest.raises(ValueError, match="REQUIRE_TEST_ENVIRONMENT"):
+        Settings(
+            _env_file=None, environment="development", test_lane_profiles_file=path,
+            test_lane_profiles_sha256=digest, test_lane_unreconciled_sources="onec-reference",
+        )
+    with pytest.raises(ValueError, match="SETTINGS_INCOMPLETE"):
+        Settings(
+            _env_file=None, environment="test", test_lane_profiles_file=path,
+            test_lane_profiles_sha256=digest,
+        )
+    with pytest.raises(ValueError, match="SETTINGS_INVALID"):
+        Settings(
+            _env_file=None, environment="test", test_lane_profiles_file="relative.json",
+            test_lane_profiles_sha256=digest, test_lane_unreconciled_sources="../not-allowlisted",
+        )
+    settings = Settings(
+        _env_file=None, environment="test", test_lane_profiles_file=path,
+        test_lane_profiles_sha256=digest, test_lane_unreconciled_sources="onec-reference",
+    )
+    assert settings.test_lane_unreconciled_source_items == ("onec-reference",)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("live_status", ["DRAFT", "STALE", "REJECTED", "VALIDATED"])
+async def test_any_nonretired_database_profile_shadows_test_lane_fixture(live_status, tmp_path):
+    import hashlib
+
+    source_id = "onec-818ha-reference"
+    company_id = uuid.UUID("3e31afc5-351f-4f36-8074-99129fa3d911")
+    fixture_path = Path("testbed/real1c/fixtures/test_lane_profiles.json").resolve()
+    fixture_sha = hashlib.sha256(fixture_path.read_bytes()).hexdigest()
+    provider = UnreconciledTestLaneProfiles(fixture_path, fixture_sha, environment="test")
+    provider_spy = MagicMock(wraps=provider)
+
+    class Pool:
+        async def fetchrow(self, query, requested_source):
+            assert "FROM bag.sources" in query
+            assert requested_source == source_id
+            return {
+                "tags": ["real-reference"], "enabled": True,
+                "current_metadata_fingerprint": provider.pinned_metadata_fingerprint(source_id),
+                "register_capabilities_json": {"source_id": source_id, "registers": []},
+                "drift_status": "STABLE",
+            }
+
+        async def fetchval(self, query, requested_source, requested_company, concept):
+            assert "p.status <> 'RETIRED'" in query
+            assert (requested_source, requested_company, concept) == (
+                source_id, company_id, "accounting.posting_rows"
+            )
+            # Model each possible live DB status; none may fall through to a file fixture.
+            assert live_status in {"DRAFT", "STALE", "REJECTED", "VALIDATED"}
+            return True
+
+    db = SimpleNamespace(require_pool=lambda: Pool())
+    registry = Registry(
+        db, production=False, test_lane_profiles=provider_spy,
+        test_lane_sources=(source_id,),
+    )
+    with pytest.raises(SemanticProfileUnavailable, match="no validated"):
+        await registry._test_lane_mapping(source_id, company_id, "accounting.posting_rows")
+    assert provider_spy.lookup.call_count == 0
 
 
 # ---------------------------------------------------------------- SC11 / SC12 chains

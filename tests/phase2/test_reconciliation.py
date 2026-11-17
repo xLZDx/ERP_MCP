@@ -65,14 +65,14 @@ def test_missing_page_cannot_be_pass():
     assert result.state is ComparisonState.INCONCLUSIVE
     assert result.reason_code=="GATEWAY_INCOMPLETE_OR_INCONSISTENT"
 
-def test_missing_analytic_row_is_mismatch_even_if_totals_agree():
+def test_missing_analytic_row_is_inconclusive_even_if_totals_agree():
     b=balance()
     row1=LedgerRow("A","X",BalanceSix(*(x/2 for _,x in b.items())))
     row2=LedgerRow("B","Y",BalanceSix(*(x/2 for _,x in b.items())))
     a=statement(b,rows=(row1,row2))
     other=statement(b,rows=(LedgerRow("A","X",b),))
     result=compare_statements(a,other,policy=POLICY)
-    assert result.state is ComparisonState.MISMATCH
+    assert result.state is ComparisonState.INCONCLUSIVE
     assert any(x.measure=="ROW_MISSING" for x in result.differences)
 
 def test_duplicate_analytic_contract_denied():

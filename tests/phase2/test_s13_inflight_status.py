@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -24,7 +25,37 @@ async def _apply(conn: asyncpg.Connection, name: str) -> None:
     await conn.execute(raw.decode("utf-8"))
 
 
-@pytest_asyncio.fixture(scope="module", loop_scope="module")
+@asynccontextmanager
+async def _legacy_patch_fixture(*, skip: str):
+    """Build the published 027 baseline, omitting exactly one unregistered SQL patch."""
+    old = os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS")
+    os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
+    try:
+        async with disposable_cluster() as (dsn, _name, _token):
+            async with throwaway_db(dsn, seed=False) as db:
+                for version in range(19, 28):
+                    await _apply(
+                        db.conn,
+                        next(path.name for path in MIGRATIONS.glob(f"{version:03d}_*.sql")),
+                    )
+                await _setup(db.conn)
+                await db.conn.execute(
+                    "INSERT INTO change_ledger.lifecycle_fences(tenant_id,company_id,state,epoch,reason) "
+                    "VALUES($1,$2,'LEGACY',0,'TEST_FIXTURE'),('T2','C2','LEGACY',0,'TEST_FIXTURE') "
+                    "ON CONFLICT DO NOTHING", T, C)
+                if skip != "028":
+                    await _apply(db.conn, "028_refusal_codes_parity.sql")
+                if skip != "029":
+                    await _apply(db.conn, "029_scoped_operator_reads.sql")
+                yield db.conn
+    finally:
+        if old is None:
+            os.environ.pop("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS", None)
+        else:
+            os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = old
+
+
+@pytest_asyncio.fixture(scope="function", loop_scope="module")
 async def ledger():
     old = os.environ.get("ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS")
     os.environ["ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS"] = "1"
@@ -40,6 +71,11 @@ async def ledger():
                     "ON CONFLICT DO NOTHING", T, C)
                 await _apply(db.conn, "028_refusal_codes_parity.sql")
                 await _apply(db.conn, "029_scoped_operator_reads.sql")
+                for version in range(30, 40):
+                    await _apply(
+                        db.conn,
+                        next(path.name for path in MIGRATIONS.glob(f"{version:03d}_*.sql")),
+                    )
                 yield L(db)
     finally:
         if old is None:
@@ -93,3 +129,42 @@ async def test_operator_status_and_list_do_not_reveal_another_company_record(led
 
     listed = _decode_json(await ledger.call("clt_dave", "list_inflight", 50, 0, t=T, c=C))
     assert all(item["change_id"] != str(foreign) for item in listed)
+
+
+async def test_list_inflight_includes_applied_changes_waiting_for_verification(ledger: L):
+    change_id = await ledger.approved(request_id=f"s13-inflight-applied-not-verified-{uuid4().hex}")
+    with pytest.raises(asyncpg.InsufficientPrivilegeError):
+        await ledger.call("clt_alice", "begin_apply", uuid4(), uuid4(), "host-test", "session-test")
+
+    # Migration 027 intentionally exposes no runtime write/READY path. Arrange the represented
+    # post-apply/pre-verification row as disposable fixture state to test the read projection only.
+    await ledger.conn.execute(
+        "UPDATE change_ledger.records SET execution_state='APPLIED', verification_state='NOT_VERIFIED' "
+        "WHERE change_id=$1", change_id,
+    )
+
+    listed = _decode_json(await ledger.call("clt_dave", "list_inflight", 50, 0))
+    row = next(item for item in listed if item["change_id"] == str(change_id))
+    assert row["execution_state"] == "APPLIED"
+    assert row["verification_state"] == "NOT_VERIFIED"
+
+
+@pytest.mark.parametrize("skip", ["028", "029"])
+async def test_migration_030_refuses_missing_legacy_patch_atomically(skip: str):
+    async with _legacy_patch_fixture(skip=skip) as conn:
+        migration = next(MIGRATIONS.glob("030_*.sql"))
+        await conn.execute(
+            "SELECT set_config('living.migration_checksum',$1,false)",
+            hashlib.sha256(migration.read_bytes()).hexdigest(),
+        )
+        with pytest.raises(asyncpg.PostgresError, match="MIGRATION_PRECONDITION_FAILED"):
+            await conn.execute(migration.read_text(encoding="utf-8"))
+        await conn.execute("ROLLBACK")
+
+        assert await conn.fetchval(
+            "SELECT count(*) FROM living.schema_migrations WHERE version='030'"
+        ) == 0
+        assert await conn.fetchval(
+            "SELECT to_regprocedure('change_ledger.private_writer_assert_base_scope_limit_v1(text,text,text)') "
+            "IS NULL"
+        ) is True

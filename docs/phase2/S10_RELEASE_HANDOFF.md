@@ -174,3 +174,29 @@ Release 2 lives in its own repository; the source registry stays `living.sources
 - The bare-date `accounting_balance_and_turnovers` call and `payable_balance` returned `INVALID_ARGUMENT`; using ISO-8601 timezone-offset dates, `accounting_balance_and_turnovers` returned `TEST_LANE_UNRECONCILED` / L1. No write operation or data creation was performed.
 - This is a reference-source preflight, not a production canary. S10 / R2-US-042 remains NOT_RUN; do not advance to R2-US-048 before this ordered item is accepted.
 - Scope boundary: the 12-call recipe in `artifacts/G6_CANARY_AND_WORKLOAD_PASS_2026-10-10.md` exercised the read-only Release 1 lane and explicitly says no R2 code ran. The current S10 plan is documentation-only; the inspected runtime entrypoints do not wire the R2 capture/jobs/kill-switch modules, and the connected ERP_MCP_Ivan tool catalog has no canary or kill-switch operation. Thus this connector preflight cannot satisfy TC124 exact-scope capture/comparison or TC126 live kill-switch ownership. TC125 remains explicit: a development PASS does not grant production approval. R2-US-042 remains NOT_RUN. Next: Codex identifies an accepted-scope R2 canary entrypoint/recipe; GPT-PM adjudicates any scope change, and the operator owns the required source/user/window/budget permission before a live run.
+
+### 6.6 Consolidation-candidate capture-runtime evidence (2026-11-17)
+
+This dated addendum records a later source-level qualification result; it does not replace the
+2026-11-08 read-only preflight record above or claim that a production canary, UAT, or release was
+approved. The candidate `Runtime.bind_dev_test_capture(...)` is an explicit composition step for
+development/test only. It refuses production before importing the optional capture module, permits
+only one binding per runtime, and exposes no public MCP tool. The capture runtime also refuses a
+production environment when directly constructed.
+
+The focused capture-runtime run recorded **25 passed in 7.39 seconds** in the raw local log
+`D:/ERP_MCP_Testbed/rebaseline/2026-11-17/test-evidence/phase2-capture-runtime-final.log`.
+The run covers the named acceptance cases in `tests/phase2/test_capture_runtime.py` and
+`tests/phase2/test_capture_runtime_e2e.py`, including exact scope and production refusal; closing
+admission before drain; bounded cleanup of queued rows and stalled lease acquisition; retaining
+ambiguous enqueue ownership for stop reconciliation; cancelling executor work that has not started;
+and reporting synchronous connector work that cannot be force-killed. This result is bounded
+development/test evidence only; the external log does not identify a published release head.
+
+The stop path closes admission before awaiting cleanup and applies one drain deadline across runtime
+tasks, queue cancellation/reconciliation, and connector drain. It reports unresolved queue, runtime,
+and connector job IDs. Cancelling a queued executor future prevents work that has not started from
+running, but a synchronous connector call already running in a worker thread is not claimed to be
+force-cancelled. These safeguards do not establish cross-process/COM production behavior, a live
+kill switch, product acceptance of S10 stories, production canary success, UAT, or release-owner
+approval. Those remain separate acceptance gates.

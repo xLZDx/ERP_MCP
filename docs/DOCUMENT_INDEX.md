@@ -3,11 +3,23 @@
 ## Current program rebaseline — 2026-11-17
 
 The operator authorized a full program evidence rebaseline on 2026-11-17.
-Current execution order is in `../PROJECT_PLAN.md`; source/document/ref audit
-coverage, findings and main-integration preparation are in
-`rebaseline/2026-11-17/REBASELINE_CONTROL.md`. The active ledger preserves prior
-test/review receipts and separate project-acceptance dispositions; its snapshot
-is `rebaseline/2026-11-17/ledger.rebaseline.json`. The global live report is
+Current execution order is in `../PROJECT_PLAN.md`. The candidate source
+reconciliation and its limits are summarized in
+`rebaseline/2026-11-17/SOURCE_RECONCILIATION.md`; the final row-by-row residual
+source-commit review is `rebaseline/2026-11-17/REMAINING_SOURCE_COMMIT_REVIEW_FINAL.json`.
+`CANDIDATE_REF_RECONCILIATION.json`, `BRANCH_INVENTORY.json`,
+`WORKTREE_STATES.json`, and the other audit inventories are dated snapshots of
+their stated observation window, not live inventories. The full findings,
+scope, and remaining main-integration work are in
+`rebaseline/2026-11-17/REBASELINE_CONTROL.md` and the linked audit documents.
+
+The live task ledger is local shared state resolved through the Git common
+directory; `rebaseline/LEDGER_LIFECYCLE.md` documents its bootstrap and backup
+rules. `rebaseline/LEDGER_BASELINE.json` is a dated recovery seed, not a live
+ledger or current approval. The original 104 product-task positions and the
+48 historical bounded-acceptance records remain preserved; rebaseline audit
+and consolidation tasks are separate work. This candidate is not yet merged to
+main, and full-candidate GPT-PM approval is pending. The global live report is
 `../reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
 
 This evidence reconciliation supersedes stale implementation-progress summaries,

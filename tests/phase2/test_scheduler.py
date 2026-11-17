@@ -385,8 +385,26 @@ async def test_work_exception_is_a_failure_not_a_crash():
 
     result = await sched.run_job(job, boom)
     assert result.status is RunStatus.RETRY_SCHEDULED
-    assert result.detail == "WORK_EXCEPTION:RuntimeError"
+    assert result.detail == "WORK_EXCEPTION"
     assert sched.counter.consecutive_failures == 1
+
+
+async def test_dynamic_exception_class_name_is_not_persisted_or_returned():
+    living, _, sched = make()
+    job = await enqueue(living, 1)
+    secret_class_name = "RuntimeFailure_postgresql_hunter2_token_abc123"
+    secret_exception = type(secret_class_name, (Exception,), {})
+
+    async def boom(handle):
+        raise secret_exception("failure")
+
+    result = await sched.run_job(job, boom)
+    view = await living.get_job(WORKER, SCOPE, job)
+    observed = f"{result!r} {view!r}"
+    assert result.status is RunStatus.RETRY_SCHEDULED
+    assert result.detail == "WORK_EXCEPTION"
+    assert view.state == "RUNNING" and view.last_error is None
+    assert secret_class_name not in observed and "hunter2" not in observed and "abc123" not in observed
 
 
 # --------------------------------------------------------------------------- budget
@@ -555,9 +573,9 @@ async def test_guard_secret_exception_text_is_never_persisted_or_returned(poison
     view = await living.get_job(WORKER, SCOPE, job)
     blob = f"{result!r} {view!r}"
     assert "hunter2" not in blob and "abc123" not in blob and "postgresql" not in blob
-    assert result.detail == "WORK_EXCEPTION:ConnectionError"
+    assert result.detail == "WORK_EXCEPTION"
     if poison_after == 1:
-        assert view.last_error == "POISONED: WORK_EXCEPTION:ConnectionError"
+        assert view.last_error == "POISONED: WORK_EXCEPTION"
 
 
 # --------------------------------------------------------------------------- poison threshold
@@ -794,6 +812,7 @@ async def test_guard_quarantine_survives_export_import():
     await sched.run_job(job, timeout)
     sched.resume("operator")
     await settle(living, sched)
+    await resume_revalidated(sched, living)
     await sched.run_job(job, timeout)
     assert sched.machine.state is SourceState.QUARANTINED
     snapshot = sched.export_state()
@@ -961,8 +980,8 @@ async def test_guard_cancelled_work_abandons_lease_gates_and_reraises():
     with pytest.raises(asyncio.CancelledError):
         await task
     view = await living.get_job(WORKER, SCOPE, job)
-    assert view.state == "RUNNING"
-    assert sched.not_before(job) >= view.lease_until
+    assert view.state == "CANCELLED" and view.last_error == "KILL_SWITCH_CANCELLED"
+    assert sched.not_before(job) is None
     assert sched.counter.consecutive_failures == 0
     assert budget.active_total == 0
 

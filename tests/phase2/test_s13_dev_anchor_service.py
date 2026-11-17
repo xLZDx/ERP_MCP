@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import asyncio
+import hashlib
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -24,6 +25,7 @@ from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
     CheckpointRecord,
     Ed25519SignatureVerifier,
+    checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger import dev_anchor_service as anchor
 
@@ -31,6 +33,14 @@ from business_ai_gateway.phase2.change_ledger import dev_anchor_service as ancho
 TOKEN = "dev-anchor-test-token-" + "x" * 40
 SCOPE = Scope("tenant-s13-test", "company-s13-test")
 OTHER_SCOPE = Scope("tenant-other", "company-other")
+LATEST_AUTHORITY_PRIVATE = Ed25519PrivateKey.from_private_bytes(
+    hashlib.sha256(b"ERP_MCP S13 synthetic latestness test authority").digest(),
+)
+KEY_AUTHORITY_PRIVATE = Ed25519PrivateKey.from_private_bytes(
+    hashlib.sha256(b"ERP_MCP S13 synthetic key authorization test authority").digest(),
+)
+LATEST_AUTHORITY_ID = "latest-test-v1"
+KEY_AUTHORITY_ID = "key-auth-test-v1"
 
 
 def _raw_public(private_key: Ed25519PrivateKey) -> bytes:
@@ -77,6 +87,23 @@ def configure(monkeypatch, tmp_path, keys):
         )
         monkeypatch.setenv("ERP_MCP_DEV_ANCHOR_PRIVATE_KEY_B64", _b64(authority_private))
         monkeypatch.setenv("ERP_MCP_DEV_ANCHOR_PUBLIC_KEY_B64", _b64(_raw_public(authority)))
+        # The service now requires separate TEST keys for provider-latestness and
+        # historical-key authorization. Keep both roles distinct from each other and
+        # from the checkpoint signer configured below.
+        monkeypatch.setenv("ERP_MCP_DEV_ANCHOR_LATEST_KEY_ID", LATEST_AUTHORITY_ID)
+        monkeypatch.setenv("ERP_MCP_DEV_ANCHOR_KEY_AUTH_KEY_ID", KEY_AUTHORITY_ID)
+        for role, private_key in (
+            ("LATEST", LATEST_AUTHORITY_PRIVATE),
+            ("KEY_AUTH", KEY_AUTHORITY_PRIVATE),
+        ):
+            private_raw = private_key.private_bytes(
+                serialization.Encoding.Raw, serialization.PrivateFormat.Raw,
+                serialization.NoEncryption(),
+            )
+            monkeypatch.setenv(f"ERP_MCP_DEV_ANCHOR_{role}_PRIVATE_KEY_B64", _b64(private_raw))
+            monkeypatch.setenv(
+                f"ERP_MCP_DEV_ANCHOR_{role}_PUBLIC_KEY_B64", _b64(_raw_public(private_key)),
+            )
         monkeypatch.setenv("ERP_MCP_DEV_ANCHOR_CHECKPOINT_KEYS_JSON",
                            json.dumps(registry if registry is not None else [checkpoint_entry]))
         return database_path
@@ -114,6 +141,16 @@ def _retired_key_entry(private_key: Ed25519PrivateKey, *, accepted_through_seq=2
 
 def _headers(token=TOKEN):
     return {"Authorization": f"Bearer {token}"}
+
+
+def _client(verifier, base_url="http://127.0.0.1:21831"):
+    return anchor.DevHttpCheckpointSink(
+        base_url, bearer_token=TOKEN, expected_key_id=LATEST_AUTHORITY_ID,
+        authority_public_key_b64=_b64(_raw_public(LATEST_AUTHORITY_PRIVATE)),
+        expected_key_authorization_id=KEY_AUTHORITY_ID,
+        key_authorization_public_key_b64=_b64(_raw_public(KEY_AUTHORITY_PRIVATE)),
+        checkpoint_verifier=verifier,
+    )
 
 
 def _put(client, record):
@@ -157,7 +194,8 @@ def test_s13_03_dev_service_requires_explicit_enable_loopback_and_bearer_auth(co
     with pytest.raises(anchor.DevAnchorError, match="CLIENT_CONFIGURATION_INVALID"):
         anchor.DevHttpCheckpointSink(
             "http://example.com", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-            authority_public_key_b64="", checkpoint_verifier=object(),
+            authority_public_key_b64="", expected_key_authorization_id=KEY_AUTHORITY_ID,
+            key_authorization_public_key_b64="", checkpoint_verifier=object(),
         )
 
 
@@ -256,10 +294,7 @@ async def test_s13_03_latest_proof_is_nonce_bound_and_client_rejects_replayed_pr
     record = _signed_record(checkpoint)
     with TestClient(anchor.app, client=("127.0.0.1", 1234)) as server:
         assert _put(server, record).status_code == 200
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)), checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         captured = []
         def bridge(method, url, **kwargs):
             response = server.request(method, url.removeprefix("http://127.0.0.1:21831"),
@@ -274,7 +309,7 @@ async def test_s13_03_latest_proof_is_nonce_bound_and_client_rejects_replayed_pr
             SCOPE.tenant_id, SCOPE.company_id,
         )
         assert latestness.checkpoint_digest
-        assert latestness.authority_id == "erp-mcp-dev-anchor-v1"
+        assert latestness.authority_id == LATEST_AUTHORITY_ID
         assert latestness.authority_revision == 1
         assert latestness.authority_event_id and latestness.authority_event_digest
         replay = captured[-1]
@@ -290,10 +325,7 @@ async def test_s13_03_latest_proof_recomputes_signed_event_digest(configure, key
     record = _signed_record(checkpoint)
     with TestClient(anchor.app, client=("127.0.0.1", 1234)) as server:
         assert _put(server, record).status_code == 200
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)), checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
 
         def signed_inconsistent_proof(method, url, **kwargs):
             response = server.request(
@@ -301,7 +333,9 @@ async def test_s13_03_latest_proof_recomputes_signed_event_digest(configure, key
                 json=kwargs.get("json"), headers=kwargs.get("headers"),
             )
             if url.endswith("/v1/checkpoints/latest"):
-                return _resign_latest_response(authority, response, event_digest="f" * 64)
+                return _resign_latest_response(
+                    LATEST_AUTHORITY_PRIVATE, response, event_digest="f" * 64,
+                )
             return response
 
         monkeypatch.setattr(anchor.httpx, "request", signed_inconsistent_proof)
@@ -315,15 +349,44 @@ async def test_s13_03_latest_proof_recomputes_signed_event_digest(configure, key
 
 
 @pytest.mark.asyncio
+async def test_s13_03_current_authority_adapter_binds_nonce_and_refuses_mismatches(
+        configure, keys, monkeypatch):
+    """The compatibility adapter emits current evidence only for the exact retained record."""
+    _authority, checkpoint, _denied, verifier = keys
+    record = _signed_record(checkpoint)
+    mismatched_record = _signed_record(checkpoint, seq=2, head_byte="b")
+    with TestClient(anchor.app, client=("127.0.0.1", 1234)) as server:
+        assert _put(server, record).status_code == 200
+        client = _client(verifier)
+        _bridge_to_test_server(monkeypatch, server)
+
+        latest_nonce = hashlib.sha256(b"latestness challenge A").hexdigest()
+        latestness = await client.attest_latest(SCOPE, record, latest_nonce)
+        assert latestness is not None
+        assert latestness.challenge_nonce == latest_nonce
+        assert latestness.provider_id == client.sink_id
+        assert latestness.checkpoint_digest == checkpoint_identity(record)
+        assert await client.attest_latest(SCOPE, mismatched_record, latest_nonce) is None
+
+        key_nonce = hashlib.sha256(b"key authorization challenge B").hexdigest()
+        authorization = await client.authorize_checkpoint(SCOPE, record, key_nonce)
+        assert authorization is not None
+        assert authorization.challenge_nonce == key_nonce
+        assert authorization.checkpoint_digest == checkpoint_identity(record)
+        assert await client.authorize_checkpoint(SCOPE, mismatched_record, key_nonce) is None
+
+        foreign_scope = Scope("tenant-foreign", SCOPE.company_id)
+        with pytest.raises(anchor.DevAnchorError):
+            await client.attest_latest(foreign_scope, record, latest_nonce)
+
+
+@pytest.mark.asyncio
 async def test_s13_03_empty_latest_proof_binds_zero_head_and_no_predecessor(
         configure, keys, monkeypatch):
     """The authenticated empty-head form is exact and rejects signed non-empty metadata."""
     authority, _checkpoint, _denied, verifier = keys
     with TestClient(anchor.app, client=("127.0.0.1", 1234)) as server:
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)), checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         _bridge_to_test_server(monkeypatch, server)
         record, evidence = await client.latest_checkpoint(SCOPE)
         assert record is None
@@ -337,7 +400,7 @@ async def test_s13_03_empty_latest_proof_binds_zero_head_and_no_predecessor(
                 json=kwargs.get("json"), headers=kwargs.get("headers"),
             )
             if url.endswith("/v1/checkpoints/latest"):
-                return _resign_latest_response(authority, response, seq=1,
+                return _resign_latest_response(LATEST_AUTHORITY_PRIVATE, response, seq=1,
                                               previous_digest="a" * 64)
             return response
 
@@ -353,10 +416,7 @@ async def test_s13_03_static_active_key_authorization_is_scoped_and_unregistered
     never_stored = _signed_record(checkpoint, seq=2, head_byte="b")
     unregistered = _signed_record(denied, key_id="denied-v1")
     with TestClient(anchor.app, client=("127.0.0.1", 1234)) as server:
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)), checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         _bridge_to_test_server(monkeypatch, server)
         assert _put(server, registered).status_code == 200
         authorization = await client.authorize_checkpoint(SCOPE, registered)
@@ -385,12 +445,7 @@ async def test_s13_03_retired_checkpoint_requires_receipt_cutoff_and_cannot_writ
 
         retired_entry = _retired_key_entry(checkpoint, accepted_through_seq=2)
         configure(registry=[retired_entry])
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN,
-            expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)),
-            checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         _bridge_to_test_server(monkeypatch, server)
 
         accepted = await client.authorize_checkpoint(SCOPE, cutoff)
@@ -426,12 +481,7 @@ def test_s13_03_malformed_retirement_registry_fails_closed(configure, keys, muta
 @pytest.mark.asyncio
 async def test_s13_03_malformed_retirement_authority_proof_fails_closed(configure, keys, monkeypatch):
     authority, _checkpoint, _denied, verifier = keys
-    client = anchor.DevHttpCheckpointSink(
-        "http://127.0.0.1:21831", bearer_token=TOKEN,
-        expected_key_id="authority-test-v1",
-        authority_public_key_b64=_b64(_raw_public(authority)),
-        checkpoint_verifier=verifier,
-    )
+    client = _client(verifier)
 
     class MalformedResponse:
         is_error = False
@@ -460,12 +510,7 @@ async def test_s13_03_corrupt_exact_checkpoint_json_is_classified_as_store_integ
                 "UPDATE anchor_events SET checkpoint_json=? WHERE seq=?",
                 ("{malformed-json", record.seq),
             )
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN,
-            expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)),
-            checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         _bridge_to_test_server(monkeypatch, server)
         with pytest.raises(anchor.DevAnchorError, match="STORE_INTEGRITY_FAILURE"):
             await client.read_back(SCOPE, record.seq)
@@ -485,12 +530,7 @@ async def test_s13_03_corrupt_bounded_history_is_classified_as_store_integrity_f
                 "UPDATE anchor_events SET event_digest=? WHERE seq=?",
                 ("not-a-valid-event-digest", record.seq),
             )
-        client = anchor.DevHttpCheckpointSink(
-            "http://127.0.0.1:21831", bearer_token=TOKEN,
-            expected_key_id="authority-test-v1",
-            authority_public_key_b64=_b64(_raw_public(authority)),
-            checkpoint_verifier=verifier,
-        )
+        client = _client(verifier)
         _bridge_to_test_server(monkeypatch, server)
         with pytest.raises(anchor.DevAnchorError, match="STORE_INTEGRITY_FAILURE"):
             await client.latest_checkpoint(SCOPE)
@@ -499,10 +539,7 @@ async def test_s13_03_corrupt_bounded_history_is_classified_as_store_integrity_f
 @pytest.mark.asyncio
 async def test_s13_03_client_rejects_malformed_success_response(configure, keys, monkeypatch):
     authority, _checkpoint, _denied, verifier = keys
-    client = anchor.DevHttpCheckpointSink(
-        "http://127.0.0.1:21831", bearer_token=TOKEN, expected_key_id="authority-test-v1",
-        authority_public_key_b64=_b64(_raw_public(authority)), checkpoint_verifier=verifier,
-    )
+    client = _client(verifier)
 
     class MalformedResponse:
         is_error = False

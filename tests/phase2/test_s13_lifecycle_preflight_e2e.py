@@ -148,12 +148,10 @@ class SyntheticLatestnessAuthority:
     def __init__(self, sink):
         self.sink = sink
 
-    async def latest_checkpoint(self, scope: Scope):
-        record = await self.sink.latest(scope)
+    async def attest_latest(self, scope: Scope, record: CheckpointRecord, challenge_nonce: str):
         digest = None
         revision = 0
         event_id = None
-        event_digest = None
         if record is not None:
             try:
                 digest = checkpoint_identity(record)
@@ -161,15 +159,18 @@ class SyntheticLatestnessAuthority:
                 digest = "e" * 64
             revision = max(1, getattr(record, "seq", 1))
             event_id = str(uuid4())
-            event_digest = "f" * 64
-        return record, CheckpointLatestnessEvidence(
+        return CheckpointLatestnessEvidence(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
             checkpoint_digest=digest,
+            challenge_nonce=challenge_nonce,
+            provider_id="s13-local-orchestration-e2e",
+            provider_revision=max(1, revision),
             authority_id="synthetic-test-authority",
             authority_revision=revision,
             authority_event_id=event_id,
-            authority_event_digest=event_digest,
+            policy_version="synthetic-test-only-v1",
+            proof_digest="f" * 64,
         )
 
 
@@ -182,7 +183,8 @@ class SyntheticKeyAuthority:
         self.verifier = verifier
         self.public_key_digest_override = public_key_digest
 
-    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord):
+    async def authorize_checkpoint(self, scope: Scope, record: CheckpointRecord,
+                                   challenge_nonce: str):
         return CheckpointKeyAuthorization(
             tenant_id=scope.tenant_id,
             company_id=scope.company_id,
@@ -191,6 +193,7 @@ class SyntheticKeyAuthority:
                                if self.public_key_digest_override is not None
                                else self.verifier.public_key_digest(record.key_id)),
             checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce=challenge_nonce,
             authority_id="synthetic-test-key-authority",
             authority_revision=1,
             authority_event_id="synthetic-test-key-event",
@@ -201,7 +204,7 @@ class SyntheticKeyAuthority:
 
 def coordinator(ledger, sink, verifier, *, timeout=5.0, key_authority=None):
     return LifecycleCoordinator(
-        ledger, verifier,
+        ledger, sink, verifier,
         latestness_authority=SyntheticLatestnessAuthority(sink),
         key_authority=(key_authority if key_authority is not None
                        else SyntheticKeyAuthority(verifier)),
@@ -244,8 +247,8 @@ def test_s13_preflight_successful_chain_and_exact_scope_latest_stays_not_ready()
         assert sink.read_back_calls == 0
         # The current module boundary has no recovery or writer port to invoke.
         assert list(inspect.signature(LifecycleCoordinator).parameters) == [
-            "ledger", "verifier", "key_authority", "latestness_authority",
-            "dependency_timeout_seconds"]
+            "ledger", "sink", "verifier", "key_authority", "latestness_authority",
+            "dependency_timeout_seconds", "base_preflight_timeout_seconds"]
         assert not hasattr(lifecycle, "recover")
         assert not hasattr(lifecycle, "write")
 
@@ -319,7 +322,7 @@ def test_s13_preflight_checkpoint_timeout_is_bounded_and_fail_closed():
         result = await coordinator(ledger, sink, FakeVerifier(), timeout=0.01).preflight(SCOPE)
 
         assert result.status is LifecycleStatus.NOT_READY
-        assert result.reason is LifecycleReason.CHECKPOINT_LATESTNESS_AUTHORITY_UNAVAILABLE
+        assert result.reason is LifecycleReason.CHECKPOINT_UNAVAILABLE
         assert result.chain_count == 7
         assert ledger.calls == [SCOPE]
         assert sink.latest_calls == [SCOPE]

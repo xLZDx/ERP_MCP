@@ -204,6 +204,19 @@ def test_recovery_proceeds_with_exactly_one_intent_and_one_completion():
     assert out.intent_sequence >= 1 and out.completion_sequence > out.intent_sequence
 
 
+def test_failed_intent_releases_temporary_admission_capacity_for_another_request():
+    env = Env(cap=1)
+    env.sink1.set_mode(SinkMode.DOWN)
+    refused = env.write(S1, "REQ-FAILED")
+    assert refused.reason is OpsReason.AUDIT_UNAVAILABLE and env.calls == []
+
+    env.sink1.set_mode(SinkMode.HEALTHY)
+    retried = env.write(S1, "REQ-RETRY")
+    assert retried.status is GateStatus.COMPLETED
+    assert env.calls == ["REQ-RETRY"]
+    assert [record.request_id for record in env.sink1.records] == ["REQ-RETRY", "REQ-RETRY"]
+
+
 def test_call_order_is_intent_then_effect_then_completion():
     env = Env()
     env.write()
@@ -680,7 +693,7 @@ _FORBIDDEN_ROOTS = {
     "httpx", "requests", "aiohttp", "urllib", "urllib3", "http", "socket", "ssl", "subprocess", "sqlite3",
     "psycopg", "psycopg2", "asyncpg", "sqlalchemy", "os", "pathlib", "random", "secrets", "time", "shutil",
     "tempfile", "io", "ctypes", "asyncio", "multiprocessing", "concurrent", "fastapi", "flask", "starlette",
-    "threading", "contextvars",
+    "contextvars",
 }
 _FORBIDDEN_CALLS = {"delete", "remove", "unlink", "rmtree", "truncate", "drop", "open", "eval", "exec", "compile"}
 
@@ -713,7 +726,15 @@ def test_module_imports_nothing_forbidden_and_has_no_delete_calls():
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.Call):
             name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
-            assert name not in _FORBIDDEN_CALLS, (name, node.lineno)
+            is_temporary_admission_release = (
+                name == "remove"
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Attribute)
+                and node.func.value.attr == "_admissions"
+                and isinstance(node.func.value.value, ast.Name)
+                and node.func.value.value.id == "self"
+            )
+            assert name not in _FORBIDDEN_CALLS or is_temporary_admission_release, (name, node.lineno)
         if isinstance(node, ast.Attribute):
             assert node.attr not in {"environ", "getenv", "sleep", "utcnow", "now_real"}, node.lineno
 

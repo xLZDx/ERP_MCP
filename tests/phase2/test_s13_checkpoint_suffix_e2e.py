@@ -91,18 +91,13 @@ class SyntheticLatestnessAuthority:
     def __init__(self, sink):
         self.sink = sink
 
-    async def latest_checkpoint(self, scope):
-        record = await self.sink.latest(scope)
-        if record is None:
-            return None, CheckpointLatestnessEvidence(
-                scope.tenant_id, scope.company_id, None, "synthetic-test-authority",
-                0, None, None,
-            )
+    async def attest_latest(self, scope, record, challenge_nonce):
         digest = checkpoint_identity(record)
-        return record, CheckpointLatestnessEvidence(
-            scope.tenant_id, scope.company_id, digest, "synthetic-test-authority",
-            max(1, record.seq), str(uuid4()),
-            hashlib.sha256(digest.encode("ascii")).hexdigest(),
+        return CheckpointLatestnessEvidence(
+            scope.tenant_id, scope.company_id, digest, challenge_nonce,
+            record.sink_id, max(1, record.seq), "synthetic-test-authority",
+            max(1, record.seq), str(uuid4()), "synthetic-test-policy-v2",
+            hashlib.sha256((digest + challenge_nonce).encode("ascii")).hexdigest(),
         )
 
 
@@ -114,19 +109,19 @@ class SyntheticKeyAuthority:
     def __init__(self, verifier):
         self.verifier = verifier
 
-    async def authorize_checkpoint(self, scope, record):
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
         digest = checkpoint_identity(record)
         return CheckpointKeyAuthorization(
             scope.tenant_id, scope.company_id, record.key_id,
-            self.verifier.public_key_digest(record.key_id), digest,
-            "synthetic-test-key-authority", 1, "test-key-event", "test-only-v1",
+            self.verifier.public_key_digest(record.key_id), digest, challenge_nonce,
+            "synthetic-test-key-authority", 1, "test-key-event", "test-only-v2",
             CheckpointKeyAuthorizationBasis.ACTIVE,
         )
 
 
 def coordinator(ledger, sink, verifier):
     return LifecycleCoordinator(
-        ledger, verifier,
+        ledger, sink, verifier,
         key_authority=SyntheticKeyAuthority(verifier),
         latestness_authority=SyntheticLatestnessAuthority(sink),
         dependency_timeout_seconds=10,

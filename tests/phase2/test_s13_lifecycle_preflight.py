@@ -93,6 +93,7 @@ def key_authorization(record: CheckpointRecord, *, basis=CheckpointKeyAuthorizat
                            if public_key_digest is None else public_key_digest),
         checkpoint_digest=(checkpoint_identity(record) if checkpoint_digest is None
                            else checkpoint_digest),
+        challenge_nonce="0" * 64,
         authority_id="synthetic-authority",
         authority_revision=authority_revision,
         authority_event_id=authority_event_id,
@@ -108,20 +109,24 @@ class KeyAuthority:
 
     is_test_double = True
 
-    def __init__(self, result=None, error: Exception | None = None, calls=None):
+    def __init__(self, result=None, error: Exception | None = None, calls=None,
+                 *, bind_challenge_nonce: bool = True):
         self.result = result
         self.error = error
         self.calls = calls if calls is not None else []
+        self.bind_challenge_nonce = bind_challenge_nonce
 
-    async def authorize_checkpoint(self, scope, record):
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
         self.calls.append((scope, record))
         if self.error:
             raise self.error
+        if self.result is not None and self.bind_challenge_nonce:
+            return replace(self.result, challenge_nonce=challenge_nonce)
         return self.result
 
 
 class SlowKeyAuthority(KeyAuthority):
-    async def authorize_checkpoint(self, scope, record):
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
         self.calls.append((scope, record))
         await asyncio.sleep(60)
 
@@ -131,18 +136,18 @@ class LatestnessAuthority:
 
     is_test_double = True
 
-    def __init__(self, sink, *, result=..., evidence=None, error=None, calls=None):
+    def __init__(self, sink, *, evidence=None, error=None, calls=None,
+                 bind_challenge_nonce: bool = True):
         self.sink = sink
-        self.result = result
         self.evidence = evidence
         self.error = error
         self.calls = calls if calls is not None else []
+        self.bind_challenge_nonce = bind_challenge_nonce
 
-    async def latest_checkpoint(self, scope):
+    async def attest_latest(self, scope, record, challenge_nonce):
         self.calls.append("latestness")
         if self.error:
             raise self.error
-        record = await self.sink.latest(scope) if self.result is ... else self.result
         evidence = self.evidence
         if evidence is None:
             try:
@@ -153,19 +158,30 @@ class LatestnessAuthority:
                 tenant_id=scope.tenant_id,
                 company_id=scope.company_id,
                 checkpoint_digest=digest,
+                challenge_nonce=challenge_nonce,
+                provider_id="test-sink" if record is None else record.sink_id,
+                provider_revision=1 if record is None else record.seq,
                 authority_id="synthetic-latestness-authority",
                 authority_revision=0 if record is None else 1,
                 authority_event_id=(None if record is None
                                     else "00000000-0000-4000-8000-000000000001"),
-                authority_event_digest=None if record is None else "1" * 64,
+                policy_version="synthetic-test-policy-v1",
+                proof_digest=None if record is None else "1" * 64,
             )
-        return record, evidence
+        elif self.bind_challenge_nonce:
+            evidence = replace(evidence, challenge_nonce=challenge_nonce)
+        return evidence
+
+
+class SlowLatestnessAuthority(LatestnessAuthority):
+    async def attest_latest(self, scope, record, challenge_nonce):
+        await asyncio.sleep(60)
 
 
 def _test_coordinator(ledger, sink, verifier, **kwargs):
     """Build the coordinator with synthetic ports; sink is only used by the fake authority."""
     kwargs.setdefault("latestness_authority", LatestnessAuthority(sink))
-    return LifecycleCoordinator(ledger, verifier, **kwargs)
+    return LifecycleCoordinator(ledger, sink, verifier, **kwargs)
 
 
 class Ledger:
@@ -370,11 +386,12 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         ledger = SuffixCountingLedger(calls=calls)
         sink = EffectCountingSink(calls, signed_record())
         result = asyncio.run(LifecycleCoordinator(
-            ledger, FakeVerifier(), key_authority=KeyAuthority(key_authorization(signed_record())),
+            ledger, sink, FakeVerifier(),
+            key_authority=KeyAuthority(key_authorization(signed_record())),
         ).preflight(SCOPE))
         self.assertIs(result.status, LifecycleStatus.NOT_READY)
-        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_AUTHORITY_UNAVAILABLE)
-        self.assertEqual([name for name, _ in calls], ["chain"])
+        self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
+        self.assertEqual(calls, [("chain", SCOPE), ("latest", SCOPE)])
         self.assertEqual(ledger.suffix_calls, 0)
         self.assertEqual(sink.write_calls, sink.read_back_calls, 0)
 
@@ -382,24 +399,35 @@ class S13LifecyclePreflightTests(unittest.TestCase):
         record = signed_record()
         for authority, timeout in (
             (LatestnessAuthority(Sink([], record), error=RuntimeError("private provider detail")), 1.0),
-            (LatestnessAuthority(SlowSink([])), 0.001),
+            (SlowLatestnessAuthority(Sink([], record)), 0.001),
         ):
             with self.subTest(authority=type(authority).__name__):
                 ledger = SuffixCountingLedger()
                 result = asyncio.run(_test_coordinator(
                     ledger, Sink([], record), FakeVerifier(), latestness_authority=authority,
+                    key_authority=KeyAuthority(key_authorization(record)),
                     dependency_timeout_seconds=timeout,
                 ).preflight(SCOPE))
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
                 self.assertIs(result.reason,
-                              LifecycleReason.CHECKPOINT_LATESTNESS_AUTHORITY_UNAVAILABLE)
+                              LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE)
                 self.assertEqual(ledger.suffix_calls, 0)
                 self.assertNotIn("private provider detail", repr(result))
 
     def test_latestness_evidence_must_bind_exact_scope_checkpoint_and_provider_history(self):
         record = signed_record()
-        _record, valid = asyncio.run(
-            LatestnessAuthority(Sink([], record)).latest_checkpoint(SCOPE)
+        valid = CheckpointLatestnessEvidence(
+            tenant_id=SCOPE.tenant_id,
+            company_id=SCOPE.company_id,
+            checkpoint_digest=checkpoint_identity(record),
+            challenge_nonce="0" * 64,
+            provider_id=record.sink_id,
+            provider_revision=record.seq,
+            authority_id="synthetic-latestness-authority",
+            authority_revision=1,
+            authority_event_id="00000000-0000-4000-8000-000000000001",
+            policy_version="synthetic-test-policy-v1",
+            proof_digest="1" * 64,
         )
         invalid_evidence = (
             replace(valid, tenant_id="tenant-other"),
@@ -408,7 +436,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
             replace(valid, authority_id=""),
             replace(valid, authority_revision=0),
             replace(valid, authority_event_id=""),
-            replace(valid, authority_event_digest="not-a-digest"),
+            replace(valid, proof_digest="not-a-digest"),
         )
         for evidence in invalid_evidence:
             with self.subTest(evidence=evidence):
@@ -424,7 +452,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertIs(result.status, LifecycleStatus.NOT_READY)
                 self.assertIs(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_INVALID)
                 self.assertEqual(ledger.suffix_calls, 0)
-                self.assertEqual(calls, [("chain", SCOPE), "latestness", ("latest", SCOPE)])
+                self.assertEqual(calls, [("chain", SCOPE), ("latest", SCOPE), "latestness"])
 
     def test_latestness_precedes_historical_key_authorization_and_suffix(self):
         record = signed_record()
@@ -440,9 +468,9 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 return await super().lifecycle_checkpoint_suffix(scope, checkpoint_seq, checkpoint_hash)
 
         class OrderedKeyAuthority(KeyAuthority):
-            async def authorize_checkpoint(self, scope, record):
+            async def authorize_checkpoint(self, scope, record, challenge_nonce):
                 order.append("key_authorization")
-                return await super().authorize_checkpoint(scope, record)
+                return await super().authorize_checkpoint(scope, record, challenge_nonce)
 
         sink = Sink([], record)
         latestness = LatestnessAuthority(sink, calls=order)
@@ -458,7 +486,7 @@ class S13LifecyclePreflightTests(unittest.TestCase):
     def test_provider_exception_and_missing_record_have_fixed_reasons(self):
         for record, error, expected in (
             (None, RuntimeError("provider private detail"),
-             LifecycleReason.CHECKPOINT_LATESTNESS_AUTHORITY_UNAVAILABLE),
+             LifecycleReason.CHECKPOINT_UNAVAILABLE),
             (None, None, LifecycleReason.CHECKPOINT_MISSING),
         ):
             with self.subTest(expected=expected):
@@ -471,14 +499,14 @@ class S13LifecyclePreflightTests(unittest.TestCase):
                 self.assertEqual([name for name, _ in calls], ["chain", "latest"])
                 self.assertNotIn("private detail", repr(result))
 
-    def test_checkpoint_latest_timeout_maps_to_latestness_authority_unavailable(self):
+    def test_checkpoint_sink_timeout_maps_to_checkpoint_unavailable(self):
         calls = []
         result = asyncio.run(_test_coordinator(
             Ledger(calls=calls), SlowSink(calls), FakeVerifier(),
             dependency_timeout_seconds=0.001,
         ).preflight(SCOPE))
         self.assertEqual(result.status, LifecycleStatus.NOT_READY)
-        self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_LATESTNESS_AUTHORITY_UNAVAILABLE)
+        self.assertEqual(result.reason, LifecycleReason.CHECKPOINT_UNAVAILABLE)
         self.assertEqual(result.chain_count, 9)
         self.assertEqual(calls, [("chain", SCOPE), ("latest", SCOPE)])
 
