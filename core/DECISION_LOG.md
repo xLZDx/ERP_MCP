@@ -1978,3 +1978,7 @@ Created codex/main-consolidation-20261117 from origin/main7c1f69c and merged pre
 ## 2026-11-17 — Preserve dirty source inputs before boundary fixes
 
 Imported 110 explicit current source/config/test/document paths from the original checkout into the main-based candidate; SHA256 provenance is in CANDIDATE_INPUTS.json. Original checkout was not modified by copying. Retained 28 generated-evidence/local-SQL paths outside automatic promotion, with original/external backups intact. Copying is preservation, not fresh qualification. Architect accepted the revised pre-probe reservation design with no BLOCKER/MAJOR; clarified source locking/version validation before allocation and stale-token checks at record/accept. No migrations, services, tests or builds were run.
+
+## 2026-11-17 — Implement explicit gateway package/image roots
+
+MC-03 implementation changes only pyproject.toml and Dockerfile: exact gateway/S15 package discovery and two explicit runtime source copies. Private writer and S16 source remain for separate qualification. Worker ran git diff --check despite its NO CHECKS assignment; preserve that fact and do not present it as behavioral or artifact acceptance. Wheel/image builds and named package acceptance are NOT_RUN at this stage. No physical 1C operation or deployment occurred.

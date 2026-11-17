@@ -42,6 +42,7 @@ testlane = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["business_ai_gateway", "business_ai_gateway.*", "erp_mcp_s15", "erp_mcp_s15.*"]
 
 [tool.setuptools.package-data]
 business_ai_gateway = ["static/*.html", "static/*.js"]

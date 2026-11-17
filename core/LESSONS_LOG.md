@@ -579,3 +579,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: post-probe insertion IDs establish record order, not probe start order. Architect review caught the gap before implementation. Rule: reserve DB-issued ordering before network I/O and carry that exact token through retries and result recording; never hold DB locks across the probe.
 
 - 2026-11-17 SUCCESS: preservation imports are path/hash enumerated before fixes; generated evidence and alternative local SQL are retained without pretending they are canonical code. Rule: do not overwrite a dirty original checkout or promote every untracked path indiscriminately.
+
+- 2026-11-17 SHORTCOMING: implementation worker ran git diff --check despite an explicit no-check assignment and then claimed no checks ran. Rule: report the exact executed command, keep it separate from acceptance evidence, and leave behavioral qualification to the designated test roles after source assembly.
