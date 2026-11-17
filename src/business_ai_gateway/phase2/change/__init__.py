@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from .errors import ERROR_INFO, ErrorCode, ErrorInfo, NextAction, Refusal, render
 from .killswitch import (
-    KILL_MATRIX, SWITCH_OFF, KillDecision, KillSubject, SwitchReading, effective_mode, evaluate, mode_rank,
+    KILL_MATRIX, SWITCH_OFF, KillDecision, KillSubject, SwitchReading, effective_mode, evaluate, evaluate_read,
+    evaluate_reenable, evaluate_write_post, mode_rank,
 )
 from .policy import (
     CALLER_MATRIX, INTERNAL_OPERATIONS, EffectState, Grant, LedgerOperation, amount_to_reserve, authorize_operation,
@@ -59,7 +60,8 @@ __all__ = [
     "APPROVAL_DIGEST_VERSION", "approval_canonical_text", "digest_of_canonical_text",
     "Verification", "VerifyEvidence", "amount_to_reserve", "apply_transition", "approval_digest",
     "authorize_operation", "canonical_json", "check_operation", "classify_completion", "consume",
-    "derive_allowed_effects", "effective_mode", "evaluate", "forbidden_transition", "is_aware_datetime",
+    "derive_allowed_effects", "effective_mode", "evaluate", "evaluate_read", "evaluate_reenable",
+    "evaluate_write_post", "forbidden_transition", "is_aware_datetime",
     "is_identity_text", "ledger_invariant_holds", "mode_rank", "parse_proposal", "payload_digest", "payload_to_dict",
     "process_attestation_preimage", "validate_conditional_conflict_terminal_record_set",
     "verify_authorized_record",

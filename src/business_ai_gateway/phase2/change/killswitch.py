@@ -11,11 +11,11 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Final
 
-from .types import KillMode
+from .types import ChangeKind, KillMode
 
 __all__ = [
     "KILL_MATRIX", "SWITCH_OFF", "KillDecision", "KillSubject", "SwitchReading", "effective_mode", "evaluate",
-    "mode_rank",
+    "evaluate_read", "evaluate_write_post", "evaluate_reenable", "mode_rank",
 ]
 
 
@@ -108,3 +108,38 @@ def evaluate(subject: object, reading: object) -> KillDecision:
     if mode is None:
         return KillDecision.PROCEED
     return KILL_MATRIX[(subject, mode)]
+
+
+def evaluate_write_post(change_kind: object, reading: object) -> KillDecision:
+    """Evaluate only frozen v2.0 physical-write kinds at new pre-dispatch eligibility.
+
+    ``PROCEED`` means only that the switch did not refuse this model-level eligibility check; it is not an
+    authorization, dispatch permit, or physical effect. ``UPDATE_DRAFT`` is deliberately excluded by the frozen
+    v2.0 allowlist even though the historical revision-6 vocabulary contains it. In-flight operations use their
+    dedicated ``KillSubject`` rows, including the dispatched-call rule that follows an existing call without retry.
+    """
+    if type(change_kind) is not ChangeKind or change_kind not in (
+        ChangeKind.CREATE_DRAFT, ChangeKind.POST, ChangeKind.UNPOST,
+    ):
+        return KillDecision.REFUSED
+    return evaluate(KillSubject.BEGIN_APPLY_ISSUE_PERMIT, reading)
+
+
+def evaluate_read(reading: object) -> KillDecision:
+    """Apply the frozen observation row to a read-only observation; this never grants mutation authority."""
+    return evaluate(KillSubject.OBSERVATION, reading)
+
+
+def evaluate_reenable(reading: object, recovery_sweep_complete: object) -> KillDecision:
+    """Model the required recovery-before-re-enable ordering without changing switch state.
+
+    A malformed or unreadable switch remains fail-closed. The switch may be cleared only after an explicit successful
+    recovery-sweep result. ``ALLOWED`` is a model decision only and does not mutate a real switch.
+    """
+    if type(reading) is not SwitchReading or reading.available is not True:
+        return KillDecision.REFUSED
+    if reading.mode is None:
+        return KillDecision.ALLOWED
+    if type(reading.mode) is not KillMode or recovery_sweep_complete is not True:
+        return KillDecision.REFUSED
+    return KillDecision.ALLOWED

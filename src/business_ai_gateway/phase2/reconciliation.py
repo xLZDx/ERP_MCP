@@ -185,6 +185,7 @@ def _compare(native: LedgerStatement, gateway: LedgerStatement, policy: Toleranc
         return Comparison(ComparisonState.INCONCLUSIVE, "GATEWAY_INCOMPLETE_OR_INCONSISTENT", policy.policy_id, ())
 
     diff: list[Difference] = []
+    row_missing = False
     for name, expected in native.totals.items():
         actual = getattr(gateway.totals, name)
         if abs(expected - actual) > policy.allowed_abs_diff:
@@ -196,11 +197,14 @@ def _compare(native: LedgerStatement, gateway: LedgerStatement, policy: Toleranc
         actual = gateway_rows.get(key)
         if expected is None or actual is None:
             diff.append(Difference(key, "ROW_MISSING", None, None))
+            row_missing = True
             continue
         for name, value in expected.items():
             observed = getattr(actual, name)
             if abs(value - observed) > policy.allowed_abs_diff:
                 diff.append(Difference(key, name, value, observed))
+    if row_missing:
+        return Comparison(ComparisonState.INCONCLUSIVE, "ROW_MISSING", policy.policy_id, tuple(diff))
     if diff:
         return Comparison(ComparisonState.MISMATCH, "VALUES_DIFFER", policy.policy_id, tuple(diff))
     return Comparison(ComparisonState.MATCH, "ALL_SIX_AND_ROWS_EQUAL", policy.policy_id, ())

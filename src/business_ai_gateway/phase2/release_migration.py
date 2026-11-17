@@ -262,11 +262,12 @@ def classify_step(step: object) -> StepClass:
 
 @dataclass(frozen=True, slots=True)
 class MigrationUnit:
-    """One migration file as ``living.record_migration(version, requires)`` sees it."""
+    """One typed migration description and optional SHA-256 of its exact file bytes."""
 
     version: str
     requires: tuple[str, ...]
     steps: tuple[MigrationStep, ...]
+    checksum: str | None = None  # SHA-256 over exact migration-file bytes; no file I/O here
 
     def __repr__(self) -> str:
         return "MigrationUnit(<typed>)"
@@ -277,7 +278,7 @@ class RehearsalAction:
     version: str
     apply: bool  # False = already recorded: an idempotent no-op, like record_migration returning false
     step_count: int
-    content_digest: str = "0" * 64  # digest of the unit's version, requires and typed steps (applied or not)
+    content_digest: str = "0" * 64  # digest also binds the candidate file checksum when supplied
 
     def __post_init__(self) -> None:
         if (type(self.version) is not str or _VERSION.fullmatch(self.version) is None
@@ -324,26 +325,49 @@ def _version_ok(value: object) -> bool:
     return type(value) is str and _VERSION.fullmatch(value) is not None
 
 
-def _snapshot_unit(unit: object) -> tuple[str, tuple[str, ...], tuple[object, ...]] | None:
+def _snapshot_unit(unit: object) -> tuple[str, tuple[str, ...], tuple[object, ...], str | None] | None:
     if type(unit) is not MigrationUnit:
         return None
     try:
-        version, requires_raw, steps_raw = unit.version, unit.requires, unit.steps  # one read each
+        version, requires_raw, steps_raw, checksum = unit.version, unit.requires, unit.steps, unit.checksum
     except Exception:  # noqa: BLE001 - forged instance
         return None
     requires = _tuple_of(requires_raw, _MAX_REQUIRES, (tuple, list))
     steps = _tuple_of(steps_raw, MAX_STEPS_PER_UNIT, (tuple, list))
     if (not _version_ok(version) or requires is None or steps is None or not steps
+            or (checksum is not None and not is_digest(checksum))
             or not all(_version_ok(r) for r in requires)):
         return None
-    return version, requires, steps  # type: ignore[return-value]
+    return version, requires, steps, checksum  # type: ignore[return-value]
 
 
-def plan_rehearsal(units: object, applied_versions: object, ids: object) -> RehearsalPlan | OpsRefusal:
+def _snapshot_checksums(value: object) -> dict[str, str] | None:
+    """Copy a bounded map of applied migration version to its recorded file SHA-256."""
+    if type(value) not in (dict, MappingProxyType):
+        return None
+    copied: dict[str, str] = {}
+    try:
+        if len(value) > _MAX_APPLIED:
+            return None
+        for key, checksum in value.items():  # type: ignore[union-attr]
+            if not _version_ok(key) or not is_digest(checksum) or key in copied:
+                return None
+            copied[key] = checksum
+    except Exception:  # noqa: BLE001 - hostile mapping
+        return None
+    return copied
+
+
+def plan_rehearsal(units: object, applied_versions: object, ids: object,
+                   applied_checksums: object = None) -> RehearsalPlan | OpsRefusal:
     """Order and validate a migration rehearsal; ``RehearsalPlan`` or an ``OpsRefusal``. Never raises.
 
     ``record_migration`` semantics: each unit is judged in the given order against ``applied_versions``
-    plus the units planned before it. Refusals: ``INPUT_INVALID`` (structure, bounds, empty unit),
+    plus the units planned before it. The supplied applied checksum map must cover every applied version; a
+    candidate for an applied version needs its exact file checksum and must match the recorded checksum.
+    A mismatch refuses with ``MIGRATION_CHECKSUM_MISMATCH``. New units may omit the checksum, but when supplied
+    it is bound into the plan digest. Refusals: ``INPUT_INVALID`` (structure, bounds, empty unit or missing
+    checksum evidence for an already-applied version),
     ``REHEARSAL_REQUIRES_UNMET`` (a ``requires`` entry or the numeric predecessor of a version above 001
     is neither applied nor planned earlier), and the class code ``DESTRUCTIVE`` / ``UNCLASSIFIED`` /
     ``SWITCH_ONLY`` / ``CONTRACT`` when ANY unit (also one whose version is already applied) holds a step that is
@@ -351,7 +375,11 @@ def plan_rehearsal(units: object, applied_versions: object, ids: object) -> Rehe
     """
     snap_units = _tuple_of(units, MAX_UNITS, (tuple, list))
     applied_raw = _tuple_of(applied_versions, _MAX_APPLIED, (tuple, list, frozenset, set))
-    if not snap_units or applied_raw is None or not all(_version_ok(v) for v in applied_raw):
+    if (not snap_units or applied_raw is None or not all(_version_ok(v) for v in applied_raw)
+            or len(set(applied_raw)) != len(applied_raw)):
+        return ops_refusal(OpsReason.INPUT_INVALID, ids)
+    checksums = {} if applied_checksums is None and not applied_raw else _snapshot_checksums(applied_checksums)
+    if checksums is None or set(checksums) != set(applied_raw):
         return ops_refusal(OpsReason.INPUT_INVALID, ids)
     parsed = [_snapshot_unit(u) for u in snap_units]
     if any(p is None for p in parsed):
@@ -359,8 +387,9 @@ def plan_rehearsal(units: object, applied_versions: object, ids: object) -> Rehe
     applied = frozenset(applied_raw)  # type: ignore[arg-type]
     satisfied = set(applied)
     actions: list[RehearsalAction] = []
+    planned_content: dict[str, tuple[str | None, str]] = {}
     for entry in parsed:
-        version, requires, steps = entry  # type: ignore[misc]
+        version, requires, steps, migration_checksum = entry  # type: ignore[misc]
         if any(req not in satisfied for req in requires):
             return ops_refusal(OpsReason.REHEARSAL_REQUIRES_UNMET, ids)
         if version != "001" and f"{int(version) - 1:03d}" not in satisfied:
@@ -374,8 +403,21 @@ def plan_rehearsal(units: object, applied_versions: object, ids: object) -> Rehe
                 return ops_refusal(worst.as_reason(), ids)
         content = canonical_digest({"kind": "unit", "version": version, "requires": list(requires), "steps": [
             [s.phase.value, s.kind.value, s.schema.value, s.object_class.value]  # type: ignore[attr-defined]
-            for s in steps]})
-        if version in satisfied:  # idempotent re-apply: a no-op, so its steps never run
+            for s in steps], "migration_checksum": migration_checksum})
+        if version in applied:
+            stored_checksum = checksums.get(version)
+            if migration_checksum is None or stored_checksum is None:
+                return ops_refusal(OpsReason.INPUT_INVALID, ids)
+            if migration_checksum != stored_checksum:
+                return ops_refusal(OpsReason.MIGRATION_CHECKSUM_MISMATCH, ids)
+        prior = planned_content.get(version)
+        if prior is not None:
+            if prior[0] != migration_checksum:
+                return ops_refusal(OpsReason.MIGRATION_CHECKSUM_MISMATCH, ids)
+            if prior[1] != content:
+                return ops_refusal(OpsReason.INPUT_INVALID, ids)
+        planned_content[version] = (migration_checksum, content)
+        if version in satisfied:  # idempotent only after applied checksum binding above
             actions.append(RehearsalAction(version, False, len(steps), content))
             continue
         satisfied.add(version)

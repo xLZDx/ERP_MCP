@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
@@ -310,6 +311,9 @@ class AuditGate:
         self._timeout = timedelta(seconds=timeout_seconds)  # type: ignore[arg-type]
         self._obligations = TenantBoundedMap(unaudited_cap, ids)
         self._requests = TenantBoundedMap(request_cap, ids)  # request ids with a durable intent, per tenant
+        self._admissions = TenantBoundedMap(request_cap, ids)  # temporary reservations; entries are removed on exit
+        self._admission_lock = threading.Lock()  # short state reservation only; never held during sink I/O
+        self._request_cap = request_cap
         self._overflow = TenantSlotCounter(MAX_TENANT_CAP)
 
     def __repr__(self) -> str:
@@ -376,16 +380,36 @@ class AuditGate:
         sink = self._sinks.get(tenant)
         if sink is None:
             return self._refused(OpsReason.AUDIT_UNAVAILABLE)
-        if self._requests.get(tenant, request_id) is not None:
-            return self._refused(OpsReason.DUPLICATE_SUPPRESSED)  # known request: no record, no effect
-        if not self._obligations.has_room(tenant) or not self._requests.has_room(tenant):
-            return self._refused(OpsReason.QUOTA_EXCEEDED)
+        # Reserve tenant capacity and request identity atomically, then leave this lock before
+        # invoking the sink. Active reservations count against capacity, preventing an orphan
+        # durable intent when only one request slot remains without holding a lock over I/O.
+        admission_refusal: OpsReason | None = None
+        with self._admission_lock:
+            if (self._requests.get(tenant, request_id) is not None
+                    or self._admissions.get(tenant, request_id) is not None):
+                admission_refusal = OpsReason.DUPLICATE_SUPPRESSED
+            elif (not self._obligations.has_room(tenant)
+                    or self._requests.count(tenant) + self._admissions.count(tenant) >= self._request_cap):
+                admission_refusal = OpsReason.QUOTA_EXCEEDED
+            else:
+                reserved = self._admissions.insert(tenant, request_id, True)
+                if reserved is not None:
+                    admission_refusal = reserved.reason
+        if admission_refusal is not None:
+            return self._refused(admission_refusal)
         intent = AuditRecord(tenant, company, actor, request_id, name, AuditPhase.INTENT,  # type: ignore[arg-type]
                              _RecordOutcome.PENDING)
-        intent_seq = self._write(sink, intent)
+        try:
+            intent_seq = self._write(sink, intent)
+        except BaseException:
+            self._admissions.remove(tenant, request_id)
+            raise
         if intent_seq is None:
+            self._admissions.remove(tenant, request_id)
             return self._refused(OpsReason.AUDIT_UNAVAILABLE)
-        remembered = self._requests.insert(tenant, request_id, True)  # atomic: one of two racers wins
+        with self._admission_lock:
+            remembered = self._requests.insert(tenant, request_id, True)
+            self._admissions.remove(tenant, request_id)
         if remembered is not None:
             return self._refused(OpsReason.DUPLICATE_SUPPRESSED if remembered.reason is OpsReason.DUPLICATE_SUPPRESSED
                                  else OpsReason.QUOTA_EXCEEDED)

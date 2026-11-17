@@ -583,3 +583,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: implementation worker ran git diff --check despite an explicit no-check assignment and then claimed no checks ran. Rule: report the exact executed command, keep it separate from acceptance evidence, and leave behavioral qualification to the designated test roles after source assembly.
 
 - 2026-11-17 SHORTCOMING: first reservation implementation used a nonexistent Source.source_id field and renewed the start timestamp; source inspection caught both before qualification. Rule: carry immutable DB-issued generation identity through both record and accept, use the actual registered-source model, and map refusal without a permissive fallback.
+
+- 2026-11-17 SUCCESS: divergent S12/S13 source is reconciled as scoped deltas, retaining newer caller fields and post-lock guards. Rule: restore published migration bytes and assign fresh append-only identities to cumulative changes; do not reuse colliding version numbers or let a new package silently shadow a legacy module.

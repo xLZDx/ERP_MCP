@@ -22,6 +22,7 @@ from every runtime role: this port has no method for them, only the typed-eviden
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import Mapping
@@ -34,6 +35,9 @@ from uuid import UUID, uuid4
 import asyncpg
 
 from ._common import LedgerError, Scope, code_from_message
+from .checkpoint import DatabaseTargetIdentity
+
+_DATABASE_TARGET_IDENTITY_TIMEOUT_SECONDS = 5.0
 
 _IDENT = re.compile(r"[a-z][a-z0-9_]*")
 CLASSES = ("requester", "approver", "operator", "writer", "worker", "auditor", "checkpoint")
@@ -173,13 +177,13 @@ _PRIVATE_WRITER_SPEC: Mapping[str, Fn] = MappingProxyType({
                                 "bigint,text,text,text,text,text,timestamptz,boolean", "bigint"),
     # The adapter preserves the legacy default, but an explicitly enabled S13 schema must
     # route this writer entry to the versioned fence/replay contract and fail closed if absent.
-    "observe_target_s13": _f("observe_target_v1", "writer", "uuid,text,text", "boolean"),
-    # Approval-envelope persistence joins the S13 scope/lifecycle/global-record fence.
-    # Keep the legacy route as the default until the complete nonce/approval writer cutover is qualified.
-    "store_approval_text_s13": _f("store_approval_text_v1", "requester", "uuid,text,text,uuid", "text"),
-    "issue_approval_nonce_s13": _f("issue_approval_nonce_v1", "approver", "uuid,text", "text"),
-    "approve_s13": _f("approve_v1", "approver", "uuid,text,text,uuid", "uuid"),
-    "reject_s13": _f("reject_v1", "approver", "uuid,text,uuid", "text"),
+    "observe_target_s13": _f("observe_target", "writer", "uuid,text,text", "boolean"),
+    # Migration 027 preserves the legacy approval-family signatures as SECURITY DEFINER
+    # bridges; direct v1 execution remains revoked, so candidate mode uses those bridges too.
+    "store_approval_text_s13": _f("store_approval_text", "requester", "uuid,text,text", "text"),
+    "issue_approval_nonce_s13": _f("issue_approval_nonce", "approver", "uuid", "text"),
+    "approve_s13": _f("approve", "approver", "uuid,text,text", "uuid"),
+    "reject_s13": _f("reject", "approver", "uuid,text", "text"),
     # Epoch dependency v1 is source-only and intentionally has no candidate-schema EXECUTE grant
     # yet: its namespace-7 snapshot is unsafe until every same-scope epoch writer is fenced.
     # Keep the legacy default and fail closed if an enabled candidate schema lacks the grant.
@@ -201,11 +205,11 @@ _PRIVATE_WRITER_SPEC: Mapping[str, Fn] = MappingProxyType({
     "revoke_verifier_key_s13": _f("revoke_verifier_key_v1", "operator", "text", "void"),
     "propose_registry_change_s13": _f("propose_registry_change_v1", "operator",
                                         "uuid,text,jsonb", "uuid"),
-    "require_dispatch_receipt_s13": _f("require_dispatch_receipt_v1", "writer requester",
+    "require_dispatch_receipt_s13": _f("require_dispatch_receipt", "writer requester",
                                          "uuid,bigint", "void"),
-    "record_dispatch_receipt_s13": _f("record_dispatch_receipt_v1", "writer requester",
+    "record_dispatch_receipt_s13": _f("record_dispatch_receipt", "writer requester",
                                         "uuid,bigint,text,text,text,text,uuid", "uuid"),
-    "verify_dispatch_payload_s13": _f("verify_dispatch_payload_v1", "writer requester",
+    "verify_dispatch_payload_s13": _f("verify_dispatch_payload", "writer requester",
                                         "uuid,bigint,text,uuid", "boolean"),
     "record_evidence_s13": _f("record_evidence_v1", "worker writer",
                                 "uuid,text,text,timestamptz,jsonb,text,text,text,bigint,uuid,uuid", "uuid"),
@@ -226,32 +230,38 @@ _PRIVATE_WRITER_SPEC: Mapping[str, Fn] = MappingProxyType({
     # the preserved legacy SQL signature itself bridges to v1 and is qualified as a separate route.
     "attach_permit_signature_s13": _f("attach_permit_signature_v1", "checkpoint",
                                         "uuid,bigint,text,text", "void"),
-    "set_sweep_policy_s13": _f("set_sweep_policy_v1", "operator", "jsonb", "jsonb"),
-    "bind_duplicate_override_s13": _f("bind_duplicate_override_v1", "approver", "uuid,text", "boolean"),
-    "declare_business_key_s13": _f("declare_business_key_v1", "requester",
+    "set_sweep_policy_s13": _f("set_sweep_policy", "operator", "jsonb", "jsonb"),
+    # Migration 027 keeps the granted legacy signature as a SECURITY DEFINER bridge;
+    # direct v1 execution is revoked, so candidate mode must use the bridge too.
+    "bind_duplicate_override_s13": _f("bind_duplicate_override", "approver", "uuid,text", "boolean"),
+    "declare_business_key_s13": _f("declare_business_key", "requester",
                                      "uuid,text,text,text", "text"),
-    "budget_admin_s13": _f("budget_admin_v1", "operator",
+    # Migration 027 preserves the legacy signatures as SECURITY DEFINER bridges and revokes
+    # direct runtime execution of the v1 candidates; keep the adapter on those bridges.
+    "budget_admin_s13": _f("budget_admin", "operator",
                               "uuid,text,numeric,integer,integer,timestamptz,timestamptz", "uuid"),
-    "budget_revoke_s13": _f("budget_revoke_v1", "operator", "uuid", "text"),
-    "declare_budget_s13": _f("declare_budget_v1", "requester",
+    "budget_revoke_s13": _f("budget_revoke", "operator", "uuid", "text"),
+    "declare_budget_s13": _f("declare_budget", "requester",
                                 "uuid,uuid,text,numeric,boolean,boolean", "text"),
     "claim_s13": _f("claim_with_id_v1", "requester",
                      "uuid,text,uuid,numeric,boolean,boolean,uuid", _TOKEN_ROW),
     # Candidate migration keeps direct release_claim_v1 revoked and preserves its legacy
     # SECURITY DEFINER bridge as the caller boundary.
     "release_claim_s13": _f("release_claim", "requester worker", "uuid", "text"),
-    "renew_writer_lease_s13": _f("renew_writer_lease_v1", "writer", "uuid,bigint,integer", "timestamptz"),
-    "declare_anchor_gap_s13": _f("declare_anchor_gap_v1", "worker operator writer", "text,jsonb", "integer"),
-    "declare_unclean_restart_s13": _f("declare_unclean_restart_v1", "worker operator", "text,jsonb", "integer"),
-    "check_anchor_s13": _f("check_anchor_v1", "worker", "bigint,text", "jsonb"),
-    "cancel_permit_s13": _f("cancel_permit_v1", "worker operator", "uuid,bigint", "boolean"),
-    "release_hold_s13": _f("release_hold_v1", "operator", "uuid,jsonb", "timestamptz"),
-    "revoke_change_s13": _f("revoke_change_v1", "operator", "uuid,text", "text"),
+    # Migration 027 preserves caller grants on these legacy signatures as bridges;
+    # direct v1 EXECUTE is revoked from runtime roles.
+    "renew_writer_lease_s13": _f("renew_writer_lease", "writer", "uuid,bigint,integer", "timestamptz"),
+    "declare_anchor_gap_s13": _f("declare_anchor_gap", "worker operator writer", "text,jsonb", "integer"),
+    "declare_unclean_restart_s13": _f("declare_unclean_restart", "worker operator", "text,jsonb", "integer"),
+    "check_anchor_s13": _f("check_anchor", "worker", "bigint,text", "jsonb"),
+    "cancel_permit_s13": _f("cancel_permit", "worker operator", "uuid,bigint", "boolean"),
+    "release_hold_s13": _f("release_hold", "operator", "uuid,jsonb", "timestamptz"),
+    "revoke_change_s13": _f("revoke_change", "operator", "uuid,text", "text"),
     "revoke_stale_s13": _f("revoke_stale_v1", "worker", "", "integer"),
     "recover_sweep_s13": _f("recover_sweep_v1", "worker", "jsonb,uuid", "jsonb"),
-    "kill_switch_s13": _f("kill_switch_v1", "operator", "text", "text"),
+    "kill_switch_s13": _f("kill_switch", "operator", "text", "text"),
     "retry_verify_s13": _f("retry_verify_v1", "worker", "uuid,uuid,uuid,uuid", "text"),
-    "declare_target_class_s13": _f("declare_target_class_v1", "requester", "uuid,text", "text"),
+    "declare_target_class_s13": _f("declare_target_class", "requester", "uuid,text", "text"),
     # Verification remains a ledger-worker API; an enabled S13 schema must resolve the
     # versioned global-evidence-ID contract without falling back to the legacy function.
     "verify_inconclusive_s13": _f("verify_inconclusive_v1", "worker", "uuid,uuid", "jsonb"),
@@ -329,6 +339,49 @@ class SqlChangeLedger:
     @property
     def private_writer_schema_enabled(self) -> bool:
         return self._private_writer_schema_enabled
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity:
+        """Read the authenticated PostgreSQL cluster/database identity for T16 binding."""
+        if not self._private_writer_schema_enabled:
+            raise LedgerError("S13_SCHEMA_DISABLED")
+        if self.conn.is_in_transaction():
+            raise LedgerError("TRANSACTION_ACTIVE")
+        role = self._actors.get("operator")
+        if role != "operator_role":
+            raise LedgerError("S13_DATABASE_IDENTITY_ROLE_INVALID")
+        try:
+            async with asyncio.timeout(_DATABASE_TARGET_IDENTITY_TIMEOUT_SECONDS):
+                async with self.conn.transaction():
+                    await self.conn.execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+                    if await self.conn.fetchval("SHOW transaction_isolation") != "read committed":
+                        raise LedgerError("TRANSACTION_ISOLATION_INVALID")
+                    await self.conn.execute("SET LOCAL statement_timeout = '5000ms'")
+                    schema_is_s13 = await self.conn.fetchval(
+                        "SELECT pg_catalog.to_regtype("
+                        "'change_ledger.private_writer_identity_v1') IS NOT NULL"
+                    )
+                    if type(schema_is_s13) is not bool or not schema_is_s13:
+                        raise LedgerError("S13_SCHEMA_MODE_MISMATCH")
+                    await self.conn.execute('SET LOCAL ROLE "operator_role"')
+                    effective_role = await self.conn.fetchval("SELECT CURRENT_USER::text")
+                    if effective_role != "operator_role":
+                        raise LedgerError("S13_DATABASE_IDENTITY_ROLE_INVALID")
+                    row = await self.conn.fetchrow(
+                        "SELECT system_identifier, database_oid "
+                        "FROM change_ledger.t16_database_identity_v1()"
+                    )
+                    if row is None:
+                        raise ValueError
+                    return DatabaseTargetIdentity(
+                        system_identifier=row["system_identifier"],
+                        database_oid=row["database_oid"],
+                    )
+        except asyncio.CancelledError:
+            raise
+        except LedgerError:
+            raise
+        except Exception:
+            raise LedgerError("S13_DATABASE_IDENTITY_UNAVAILABLE") from None
 
     async def invoke(self, key: str, scope: Scope, *args: Any, as_class: str | None = None) -> Any:
         if key in _PRIVATE_WRITER_SPEC:
@@ -457,18 +510,17 @@ class SqlChangeLedger:
     # ---- approver
     async def issue_approval_nonce(self, scope: Scope, change_id: UUID) -> str:
         if self._private_writer_schema_enabled:
-            nonce = uuid4().hex + uuid4().hex
-            return await self.invoke("issue_approval_nonce_s13", scope, change_id, nonce)
+            return await self.invoke("issue_approval_nonce_s13", scope, change_id)
         return await self.invoke("issue_approval_nonce", scope, change_id)
 
     async def approve(self, scope: Scope, change_id: UUID, nonce: str, digest: str) -> UUID:
         if self._private_writer_schema_enabled:
-            return await self.invoke("approve_s13", scope, change_id, nonce, digest, uuid4())
+            return await self.invoke("approve_s13", scope, change_id, nonce, digest)
         return await self.invoke("approve", scope, change_id, nonce, digest)
 
     async def reject(self, scope: Scope, change_id: UUID, nonce: str) -> str:
         if self._private_writer_schema_enabled:
-            return await self.invoke("reject_s13", scope, change_id, nonce, uuid4())
+            return await self.invoke("reject_s13", scope, change_id, nonce)
         return await self.invoke("reject", scope, change_id, nonce)
 
     async def bind_duplicate_override(self, scope: Scope, change_id: UUID, override_digest: str) -> bool:
@@ -846,7 +898,7 @@ class SqlChangeLedger:
         """Store the canonical approval text (change.proposal.approval_canonical_text) for one issued nonce; returns
         its digest (sha256 of the stored UTF-8 bytes). The ledger refuses a text that differs from its own state."""
         if self._private_writer_schema_enabled:
-            return await self.invoke("store_approval_text_s13", scope, change_id, nonce, text, uuid4())
+            return await self.invoke("store_approval_text_s13", scope, change_id, nonce, text)
         return await self.invoke("store_approval_text", scope, change_id, nonce, text)
 
     async def read_approval_text(self, scope: Scope, change_id: UUID, as_class: str | None = None) -> str | None:

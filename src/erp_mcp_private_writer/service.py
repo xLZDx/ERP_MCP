@@ -39,6 +39,7 @@ from business_ai_gateway.phase2.change.proposal import (
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change.types import Scope as ProposalScope
 from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.checkpoint import DatabaseTargetIdentity
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
     is_canonical_process_instance_uuid,
@@ -464,6 +465,8 @@ class AdmissionStore(Protocol):
     updates that row exclusively and takes no advisory or scope lock, so epoch takeover serializes
     with both transitions without a lock-order cycle.
     """
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity: ...
 
     async def admit(self, identity: CallIdentity, process_instance_id: str,
                     service_epoch: int) -> AdmissionDecision: ...
@@ -1064,6 +1067,18 @@ class PrivateWriterService:
             host_id=self._host_id,
             repair_authorization_id=repair_authorization_id,
         )
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity:
+        """Read the private writer store's authenticated target identity without mutation."""
+        try:
+            identity = await self._store.database_target_identity()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            raise ServiceError("T16_DATABASE_BINDING_UNAVAILABLE") from None
+        if type(identity) is not DatabaseTargetIdentity:
+            raise ServiceError("T16_DATABASE_BINDING_UNAVAILABLE")
+        return identity
 
     async def lookup(self, ticket: ApplyTicket, permit: DispatchPermit) -> CallSnapshot:
         """Return the durable status for the exact ticket/permit identity; never invoke the writer."""

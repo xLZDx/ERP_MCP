@@ -104,39 +104,25 @@ class CheckpointRecord:
                 f"{_ts(self.signed_at)}|{self.key_id}|{self.sink_kind}|{self.sink_id}").encode()
 
 
+@dataclass(frozen=True, slots=True)
+class DatabaseTargetIdentity:
+    """Server-derived PostgreSQL cluster and database identity for private T16 binding."""
+
+    system_identifier: int
+    database_oid: int
+
+    def __post_init__(self) -> None:
+        if (type(self.system_identifier) is not int or self.system_identifier < 1
+                or type(self.database_oid) is not int or not 1 <= self.database_oid <= 0xFFFFFFFF):
+            raise ValueError("DATABASE_TARGET_IDENTITY_INVALID")
+
+
 def checkpoint_identity(record: CheckpointRecord) -> str:
     """Bind a trust-authority decision to one exact signed checkpoint record."""
     payload = record.signing_payload()
     signature = record.signature.encode("ascii")
     return hashlib.sha256(b"change-ledger-checkpoint-identity|v1\0" + payload
                           + b"\0" + signature).hexdigest()
-
-
-@dataclass(frozen=True)
-class CheckpointLatestnessEvidence:
-    """Authenticated provider-history decision bound to the exact latest checkpoint.
-
-    The authority port verifies the signed proof and anti-rollback history before returning this
-    value. This metadata alone is not a proof and must never be accepted from the checkpoint sink.
-    """
-
-    tenant_id: str
-    company_id: str
-    checkpoint_digest: str | None
-    authority_id: str
-    authority_revision: int
-    authority_event_id: str | None
-    authority_event_digest: str | None
-
-
-class CheckpointLatestnessAuthority(Protocol):
-    """Independent provider latestness/anti-rollback authority, separate from sink and signer."""
-
-    is_test_double: bool
-
-    async def latest_checkpoint(
-            self, scope: Scope
-    ) -> tuple[CheckpointRecord | None, CheckpointLatestnessEvidence | None]: ...
 
 
 class CheckpointKeyAuthorizationBasis(StrEnum):
@@ -149,8 +135,9 @@ class CheckpointKeyAuthorization:
     """Authenticated trust-authority decision for one exact checkpoint.
 
     The configured authority port must authenticate its append-only key history, scope, role,
-    policy, and any acceptance receipt before returning this value. A routine-retirement result
-    requires a separately trusted receipt and accepted-at time; ``CheckpointRecord.signed_at``
+    policy, one-use challenge, and any acceptance receipt before returning this value. A
+    routine-retirement result requires a separately trusted receipt and accepted-at time;
+    ``CheckpointRecord.signed_at``
     is self-declared and is never proof of authorization time. This value is not itself a
     cryptographic proof and no production authority is currently composed.
     """
@@ -160,6 +147,7 @@ class CheckpointKeyAuthorization:
     key_id: str
     public_key_digest: str
     checkpoint_digest: str
+    challenge_nonce: str
     authority_id: str
     authority_revision: int
     authority_event_id: str
@@ -173,8 +161,8 @@ class CheckpointKeyAuthorizationAuthority(Protocol):
     """Trusted, external authority for current and historical checkpoint-key authorization.
 
     Implementations must verify an authenticated, immutable or tamper-evident authority history
-    bound to the exact scope, key/public-key identity, and checkpoint digest. The history must distinguish routine
-    retirement from compromise revocation and use a trusted receipt/time, never the checkpoint's
+    bound to the exact scope, key/public-key identity, and checkpoint digest. The history must
+    distinguish routine retirement from compromise revocation and use a trusted receipt/time, never the checkpoint's
     self-declared ``signed_at``, for historical authorization. Missing, stale, inconsistent,
     ambiguous, wrong-scope, or unavailable authority evidence must refuse authorization. This
     source is separate from checkpoint signature verification and provider latestness.
@@ -183,8 +171,49 @@ class CheckpointKeyAuthorizationAuthority(Protocol):
     is_test_double: bool
 
     async def authorize_checkpoint(
-            self, scope: Scope, record: CheckpointRecord
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str
     ) -> CheckpointKeyAuthorization | None: ...
+
+
+@dataclass(frozen=True)
+class CheckpointLatestnessEvidence:
+    """Authenticated provider receipt for one exact latest checkpoint response.
+
+    This value is only a contract envelope. The configured authority must obtain and validate
+    current provider evidence, enforce its anti-rollback/consistency policy, and bind the result
+    to the exact scope and checkpoint identity before returning it. A digest or revision in this
+    envelope is not a proof by itself; no production latestness authority is composed.
+    """
+
+    tenant_id: str
+    company_id: str
+    checkpoint_digest: str
+    challenge_nonce: str
+    provider_id: str
+    provider_revision: int
+    authority_id: str
+    authority_revision: int
+    authority_event_id: str
+    policy_version: str
+    proof_digest: str
+
+
+class CheckpointLatestnessAuthority(Protocol):
+    """Trusted authority that authenticates provider freshness, separately from signatures.
+
+    Implementations must query or validate the provider's current authenticated latest history,
+    reject stale/replayed/rolled-back responses, and bind the receipt to this exact checkpoint and
+    one-use challenge nonce. They must fail closed when provider history or its anti-rollback
+    consistency is unavailable. The coordinator checks the returned nonce to prevent reuse of a
+    previously valid receipt; this does not replace provider-history or durable anti-rollback checks.
+    This authority does not establish key authorization or startup admission readiness.
+    """
+
+    is_test_double: bool
+
+    async def attest_latest(
+            self, scope: Scope, record: CheckpointRecord, challenge_nonce: str
+    ) -> CheckpointLatestnessEvidence | None: ...
 
 
 class CheckpointSigner(Protocol):
@@ -206,9 +235,9 @@ class SignatureVerifier(Protocol):
 class CheckpointSink(Protocol):
     """External append-only store outside the DB administrator's trust boundary (D9).
 
-    ``latest`` must return the authenticated, anti-rollback latest record for exactly the
-    requested scope. Signature verification alone does not establish that it is the newest
-    retained record; implementations must preserve that provider guarantee independently.
+    ``latest`` reads a candidate record for exactly the requested scope. The caller must also
+    require separate ``CheckpointLatestnessAuthority`` evidence: neither this return value nor
+    signature verification alone establishes that it is the newest retained record.
     """
 
     kind: str  # 'REAL' or 'TEST'
@@ -334,7 +363,7 @@ class FakeVerifier:
         return signature == hashlib.sha256(b"FAKE|" + key_id.encode() + b"|" + payload).hexdigest()
 
     def public_key_digest(self, key_id: str) -> str | None:
-        """TEST ONLY: deterministic identity for this synthetic key identifier."""
+        """TEST ONLY: deterministic identity binding for the synthetic key id."""
         if type(key_id) is not str or not key_id:
             return None
         return hashlib.sha256(b"FAKE-PUBLIC-KEY|" + key_id.encode()).hexdigest()
@@ -370,6 +399,8 @@ class LedgerPort(Protocol):
     """
 
     async def ledger_head(self, scope: Scope) -> dict[str, Any]: ...
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity: ...
 
     async def record_checkpoint(self, scope: Scope, seq: int, head_hash: str, sink_kind: str,
                                 sink_id: str, key_id: str, signature: str, signed_at: datetime,
@@ -810,3 +841,20 @@ class DispatchGate:
             # details through the writer-facing boundary or be mistaken for a usable permit.
             raise CheckpointUnavailable("CHECKPOINT_UNAVAILABLE") from None
         return {**permit, "signature": sig, "signer_key_id": self._signer.key_id}
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity:
+        """Read the current database identity through the same ledger connection as T16."""
+        if not self._private_writer_schema_enabled:
+            raise CheckpointUnavailable("T16_DATABASE_BINDING_UNAVAILABLE")
+        if not callable(getattr(type(self._ledger), "database_target_identity", None)):
+            raise CheckpointUnavailable("T16_DATABASE_BINDING_UNAVAILABLE")
+        try:
+            identity = await self._ledger.database_target_identity()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            raise CheckpointUnavailable("T16_DATABASE_BINDING_UNAVAILABLE") from None
+        if type(identity) is not DatabaseTargetIdentity:
+            raise CheckpointUnavailable("T16_DATABASE_BINDING_UNAVAILABLE")
+        return identity
+

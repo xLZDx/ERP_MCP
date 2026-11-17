@@ -50,6 +50,7 @@ def _proposal_context(requester, principal_record, target, *, now, expires_at, c
         business_state_digest=target.business_state_digest,
         qualified_currencies=target.qualified_currencies,
         in_scope_refs=target.in_scope_refs,
+        lane=principal_record.lane,
     )
 
 

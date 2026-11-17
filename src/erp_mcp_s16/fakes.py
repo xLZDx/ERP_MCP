@@ -277,6 +277,7 @@ class FakeProposalPort:
                                         requester.scope.organization, requester.scope.base_fingerprint),
                                   now, expires_at, requester.epoch,
                                   principal.epoch_dependencies, preview_digest,
+                                  lane="TEST",
                                   business_state_digest=target.business_state_digest,
                                   qualified_currencies=target.qualified_currencies,
                                   in_scope_refs=target.in_scope_refs)
@@ -299,6 +300,7 @@ class FakeProposalPort:
                                         receipt.scope.organization, receipt.scope.base_fingerprint),
                                   now, expires_at, requester.epoch,
                                   principal.epoch_dependencies, preview_digest,
+                                  lane="TEST",
                                   business_state_digest=target.business_state_digest,
                                   qualified_currencies=target.qualified_currencies,
                                   in_scope_refs=target.in_scope_refs)
