@@ -3,8 +3,25 @@
 BEGIN;
 DO $mig$
 BEGIN
- IF living.record_migration('030', ARRAY['001','002','003','004','005','006','007','008','009','010','011','012','013','014','015','016','017','018','019','020','021','022','023','024','025','026','027','028','029']) THEN
+ IF living.record_migration('030', ARRAY['001','002','003','004','005','006','007','008','009','010','011','012','013','014','015','016','017','018','019','020','021','022','023','024','025','026','027']) THEN
  EXECUTE $forward$
+-- Published 028/029 are transactional patches without schema_migrations rows.
+-- Require their concrete schema before this registered chain starts; do not
+-- invent legacy registration receipts or rewrite the published patch files.
+DO $legacy_patches$
+BEGIN
+ IF pg_catalog.to_regclass('change_ledger.refusal_code_registry') IS NULL
+    OR pg_catalog.to_regprocedure('change_ledger.list_inflight(text,text,integer,integer)') IS NULL
+    OR pg_catalog.to_regprocedure('change_ledger.operator_status(text,text,uuid)') IS NULL
+    OR pg_catalog.to_regprocedure('change_ledger.budget_snapshot(text,text,uuid,numeric,text)') IS NULL THEN
+  RAISE EXCEPTION 'MIGRATION_PRECONDITION_FAILED: 030 requires legacy 028/029 patch objects';
+ END IF;
+ IF (SELECT count(*) FROM change_ledger.refusal_code_registry) <> 39 THEN
+  RAISE EXCEPTION 'MIGRATION_PRECONDITION_FAILED: 030 requires canonical refusal codes';
+ END IF;
+END
+$legacy_patches$;
+
 CREATE FUNCTION change_ledger.private_writer_assert_base_scope_limit_v1(
  p_base text,p_tenant text,p_company text
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $fn$
