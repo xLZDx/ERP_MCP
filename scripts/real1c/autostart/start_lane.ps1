@@ -3,7 +3,7 @@
 .SYNOPSIS
   Idempotently brings up the whole local real-1C ERP_MCP lane (ChatGPT connector ERP_MCP_REAL1) on this machine.
   Safe to run repeatedly: every component is started only when it is not already listening, so the same
-  script is the logon starter and the 5-minute watchdog of the scheduled task "ERP_MCP_Lane_Autostart".
+  script is the logon starter for the scheduled task "ERP_MCP_Lane_Autostart". It has no periodic watchdog trigger.
 
   Order: Docker Desktop + lane PostgreSQL/Redis -> Apache (1C OData publication) -> lane proxies 8191-8193
          -> real sidecar 21768 -> Tailscale Funnel host for the test IdP -> IdP 21080 -> gateway 21000

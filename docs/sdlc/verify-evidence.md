@@ -747,3 +747,25 @@ $env:PYTHONPATH='src'; python -m pytest -q --confcutdir=tests/phase2 tests/phase
 ```
 
 Result: `65 passed, 2 warnings in 0.96s`. Regressions cover read-back failure after committed decision, commit-then-raise ambiguous consumption with exact-state recovery, replay refusal and one apply call, plus downstream errors before and after response start without a synthesized 4xx or duplicate response start. The normal root conftest path could not collect in this environment because the installed MCP SDK lacks `MCPServer` (`ImportError: cannot import name 'MCPServer' from mcp.server`); only the two named modules were rerun with `--confcutdir=tests/phase2`. Evidence is synthetic/current-tree only; no listener, live IdP, database-backed store, 1C mutation, production binding, or sprint acceptance is established.
+
+## 2026-11-17 — FIN-S3.1 final named selection
+
+After the operator sent a standalone `го`, the assigned `functional-test-reviewer` ran the documented 21-module FIN-S3.1 selection once at HEAD `82648ccde4a2fd16cc976ad37e0920bbfe9bb716`.
+
+Exact command:
+
+```powershell
+uv run --locked --extra dev python -m pytest -q tests/phase2/test_s15_verifier.py tests/phase2/test_s15_oracle.py tests/phase2/test_s15_import_graph.py tests/phase2/test_s15_ab_compare.py tests/phase2/test_s15_reconcile.py tests/phase2/test_s15_negative_controls.py tests/phase2/test_s12_period_producer.py tests/phase2/test_s12_budget_producer.py tests/phase2/test_s12_sql_code_parity.py tests/phase2/test_s13_inflight_status.py tests/phase2/test_s13_checkpoint_suffix_functional.py tests/phase2/test_s13_checkpoint_suffix_e2e.py tests/phase2/test_s13_checkpoint_restore_e2e.py tests/phase2/test_s13_lifecycle_preflight.py tests/phase2/test_s16_conformance.py tests/phase2/test_s16_approval_core.py tests/phase2/test_s16_approval_page.py tests/phase2/test_s16_tools.py tests/phase2/test_s16_private_ingress.py tests/phase2/test_capability_client.py tests/phase2/test_period_lock_evidence_readonly.py
+```
+
+Result: exit 0; 1,048 passed, 2 warnings, 56 subtests passed in 37.28s; no failures or skips. Warnings: `PytestReturnNotNoneWarning` in `test_s13_checkpoint_suffix_functional.py::test_python_classifier` returned an integer, and the private-ingress test emitted an `httpx2` raw-content deprecation warning.
+
+This is dirty-working-tree evidence, not a clean commit-only result. Selected inputs included modified `test_s13_lifecycle_preflight.py` (SHA-256 `0016DA9B2908325B0392BD479EA5F96769C6AD2ABD2DC7B307BEC012FC23D113`) and untracked `test_capability_client.py` (`F92BA1B2D45D370C2CF020A98307C12B58D1242999FEBB87776CE6ADF7ECF0D3`), `test_period_lock_evidence_readonly.py` (`697A255A8F31931E8845D8107990A4E0AA30D7B74314BCC6A203A3492752713D`), `test_s12_budget_producer.py` (`F0A1B7F33DD7238F3101014BF80CD5882F7F003439AE0D55EADBEAFAAD4623E5`), and `test_s12_period_producer.py` (`252681A28981A696868637C4B37AF5A0E4C3FEF5956CD563E2F7D6BA50631945`). Ten files under `src/business_ai_gateway/phase2` were modified; `src/erp_mcp_s16` was clean. The prior `BLOCKED_OPERATOR` state for running S3.1 is superseded; task status is `IN_REVIEW` pending the routed final FIN review. This result does not accept FIN or promote S12/S13/G8, runtime, or production status.
+
+## 2026-11-17 — Disable recurring five-minute local checks
+
+Read-only Task Scheduler inspection of `ERP_MCP_Lane_Autostart` returned exactly one trigger: `MSFT_TaskLogonTrigger`, enabled, with delay `PT1M`; its repetition interval and duration were empty. The separate `CodexCompletionWatchdog-AllSessions` task was disabled; scheduler state returned `Disabled`. No ERP lane task was re-registered, and no component was started or stopped in this change.
+
+Updated `scripts/real1c/autostart/register_lane_task.ps1` to create and verify exactly one enabled interactive logon trigger at `RunLevel=Highest` with a one-minute delay and no recurrence. The two changed PowerShell files passed `git diff --check`. The installer was not executed, and no dedicated installer test was run; current installed task state was verified independently. A routed code review found one initial MINOR omission (enabled state and interactive logon-type read-back); those assertions were added and the reviewer confirmed the finding resolved. The change does not alter the previously evidenced one-time disposable Redis restart.
+
+Follow-up after the first review pass: the installer now best-effort disables and verifies the task if registration/read-back fails while an unexpected periodic trigger remains or task state cannot be inspected. If disable/read-back cannot be confirmed, it throws an explicit unconfirmed-state error. The successful read-back path also disables/verifies then throws if any periodic or non-logon trigger remains. PowerShell parser output was `PowerShell parser: no syntax errors`; code and reliability reviewers found no remaining actionable finding. Tests: `NOT_RUN` for this installer edit; the installer itself was not invoked.

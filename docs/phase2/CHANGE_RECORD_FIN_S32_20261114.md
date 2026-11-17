@@ -2,7 +2,7 @@
 
 Date: 2026-11-14  
 Task: FIN-S3.2 — Check ERP_MCP_REAL1 connector reachability and one watchdog restart  
-Status: runtime recovery in progress; acceptance remains partial.
+Status: bounded FIN-S3.2 AC-1/AC-2 acceptance is verified; full-lane preflight remains red and sprint review is pending.
 
 ## Context
 
@@ -96,3 +96,28 @@ A fresh ERP_MCP_Razer source-health call first failed at the MCP HTTP transport;
 ## 2026-11-16 — FIN-S3.2 elevation retry outcome
 
 A fresh local read-only scheduler inspection returned `RunLevel=Highest` but exactly one trigger: `MSFT_TaskLogonTrigger`; the expected daily trigger with five-minute repetition is absent. `whoami /groups` reported `Medium Mandatory Level` and listed the Administrators SID as `Group used for deny only`. An authorized `Start-Process -Verb RunAs` launch returned no process details; the expected installer result log was absent and a second scheduler inspection showed no trigger change. The Computer Use policy requires handing Windows security/UAC prompts to the user, so no UAC prompt was operated and no disposable component was stopped. FIN-S3.2 AC-2 remains blocked; the operator must run the already-scoped registration script in visible elevated Windows PowerShell. After that, Codex can verify the task and continue the controlled disposable restart.
+
+
+## 2026-11-16 — Existing scheduled-task recovery attempt
+
+The existing `ERP_MCP_Lane_Autostart` task was inspected before action: state `Ready`, principal `koros`, `RunLevel=Highest`, and the expected `start_lane.ps1` action. `Start-ScheduledTask` ran that action; `Get-ScheduledTaskInfo` then reported `LastTaskResult=0`, but `NextRunTime` remained empty, so a manual launch did not restore the missing recurring trigger.
+
+A copy of the task XML was saved outside the repository before attempting a reversible action swap to the existing `register_lane_task.ps1` installer. Task Scheduler refused the change with the exact error `Set-ScheduledTask: Access is denied.` The task definition therefore remained unchanged. No UAC prompt was automated, no lane component was stopped, and no 1C business operation was made. FIN-S3.2 AC-2 remains `NOT_RUN`; the required step is to run the existing registration script in an interactive elevated Windows PowerShell session, after which the task and one disposable restart can be observed.
+
+## 2026-11-16 — FIN-S3.2 registered watchdog and recovery evidence
+
+The scoped `register_lane_task.ps1` invocation returned exit code 0. Task Scheduler now reports two triggers: the one-minute logon trigger and a daily trigger repeating every five minutes for one day; `RunLevel=Highest`, `LastTaskResult=0`, and `NextRunTime` is populated. No credential value was read or changed.
+
+AC-1 was rechecked read-only: `ERP_MCP_Razer` reports `read_only=true`, subject `auditor`, and three sources; the registered `onec-818ha-reference` source is read-only and returned HTTP 200/ok=true. No 1C rows were accessed.
+
+For AC-2, the e2e-runner first verified the disposable real1c lane and stopped only its volatile Redis service once using `fault.ps1 -Component redis -Action stop` at 17:30:26. The container became exited; PostgreSQL remained healthy. No manual Redis start was issued. The scheduled `ERP_MCP_Lane_Autostart` pass began at 17:32:15 and completed with result 0. By 17:33:06 the same Redis container was running/healthy and listening only on 127.0.0.1:19379; IdP and gateway returned HTTP 200. No other component was stopped.
+
+The read-only full-lane preflight still reports PostgreSQL schema version 15 while the dirty checkout expects 16, and the current capability observer/acceptor processes are absent. These are separate lane-version/service gaps; no migration was run. The Redis-specific recovery acceptance passed.
+
+Preflight exposed a harness defect: Python and PowerShell E2E helpers derived ports only from `port_offset`, ignoring explicit per-service ports in the ready `env.json`; the lane's healthy PostgreSQL listener at 20432 was therefore queried at 18432. Both resolvers now honor validated recorded per-service ports when no environment overrides are set, fall back to `port_offset` for missing entries, and retain explicit `E2E_PORT_OFFSET` precedence. The focused topology regression cases passed: 5 passed, 10 deselected. One full named-file run in the already-dirty checkout had six unrelated failures; they were not checked against a clean baseline. The resolver changes and their tests remain uncommitted at HEAD 8e42a1b pending sprint closeout/review.
+
+## 2026-11-17 — Keep lane autostart without periodic polling
+
+The operator requested removal of five-minute checks. Task Scheduler inspection found the ERP lane task already had only its enabled one-minute logon trigger and no recurrence; the separate completion watchdog task was disabled. Updated the installer to preserve exactly that logon behavior rather than restoring a daily five-minute repetition. Read-back checks now require one enabled logon trigger, `Interactive` logon, `Highest` run level, and the expected one-minute delay. The installer was not executed and no lane component was restarted during this edit. The already-recorded bounded Redis restart remains the FIN-S3.2 AC-2 evidence; the project status remains `IN_REVIEW` pending final FIN review.
+
+Follow-up after failure-path review: unexpected periodic triggers and unreadable task state now lead to best-effort task disable with state verification before a failure is raised; inability to confirm disable remains an explicit error. The post-registration mismatch path uses the same fail-safe. PowerShell parser reported no syntax errors, and the code/reliability reviewers found no remaining actionable finding. No installer test or scheduled-task registration was run for this source edit.

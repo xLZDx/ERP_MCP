@@ -1733,3 +1733,17 @@ Decision: regenerate the Russian live report after commit `791a6c0` so its prove
 Decision: run `git fetch --all` without pruning, then `python .harness-tools/ledger.py reconcile-project`. The fetch exited 0; reconciliation scanned 103 refs and reconciled 21 sprints / 104 tasks from the project plan, project documents, and Git, while preserving native harness verification/review fields. Regenerated the Russian live report at HEAD `8d6ccf9`; it shows overall project-document bounded acceptance 44/104 and FIN 2/10 accepted, 6 in review, 2 blocked. No test or CI run, push, or PR occurred.
 
 After reconciliation commit `fec559a`, regenerated the report once more so its embedded source revision points to the committed ledger rather than the pre-commit parent. The report snapshot is 2026-11-16 21:59 UTC+02:00 at HEAD `fec559a` and retains the same evidenced status counts.
+
+## 2026-11-17 — Record FIN-S3.1 named verification
+
+The operator supplied a standalone `го`, which the local gate accepted. The assigned functional-test-reviewer ran the 21 named S12/S13/S15/S16 and period/capability modules once at HEAD `82648ccde4a2fd16cc976ad37e0920bbfe9bb716` in the dirty working tree. Result: exit 0; 1,048 passed, 2 warnings, 56 subtests passed in 37.28 seconds; no skips or failures. The exact command, input hashes, modified-source scope, warning details, and limitations are recorded in `docs/sdlc/verify-evidence.md`, “2026-11-17 — FIN-S3.1 final named selection.” Decision: replace only the stale project-plan `BLOCKED_OPERATOR` label with `IN_REVIEW`; the verification is current for this dirty snapshot, while final routed FIN review and sprint acceptance remain pending. No S1.2 source evidence or production claim changes.
+
+## 2026-11-17 — Disable the five-minute completion watchdog
+
+The operator requested that the recurring local check be stopped. Verified that the Windows scheduled task `CodexCompletionWatchdog-AllSessions` launches `completion_watchdog.py --once` and has a repetition interval of `PT5M`; disabled that task without deleting its definition or configuration. The scheduler reports the task state as `Disabled`. The ERP lane autostart task was not changed.
+
+## 2026-11-17 — Keep the ERP lane logon task non-periodic
+
+The operator also wanted the ERP lane's recurring five-minute check removed. Current Task Scheduler state already contains exactly one enabled `MSFT_TaskLogonTrigger` with a one-minute delay and no repetition; the separate completion watchdog remains disabled. Updated `register_lane_task.ps1` so future registrations create and verify only that logon trigger, preserving interactive/highest-privilege startup and adding no periodic check. The lane task itself was not re-registered or otherwise changed in this step.
+
+Follow-up review confirmed the registration and post-registration failure paths disable and verify the task when recurrence remains or the schedule cannot be inspected; an unconfirmed disable is reported as an error, not success. No additional scheduler state was changed.
