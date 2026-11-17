@@ -1751,3 +1751,7 @@ Follow-up review confirmed the registration and post-registration failure paths 
 ## 2026-11-17 — Bind the live report to the status commit
 
 After commit `13cbd2d` recorded the project-plan/Git reconciliation and the periodic-check change, regenerated the live report so its provenance bar names `13cbd2d` and checked its rendered FIN count and historical sprint note. This refresh changes no task state, test evidence, or release gate.
+
+## 2026-11-17 — Record FIN-S1.2's verified external block in the native ledger
+
+`python .harness-tools/ledger.py block FIN-S1.2 --class EXTERNAL ...` records that the registered read-only source has no qualified authenticated period-status interface or closed/open mapping. The task's earlier `verified` diagnostic evidence remains intact; the block reflects the unmet real-data acceptance, not a failed test. `reconcile-project` again scanned 103 refs/21 sprints/104 tasks, and the regenerated report shows FIN harness done 8/10 separately from project-plan bounded acceptance 2/10, with 7 in review and 1 external block. Source: `docs/phase2/CHANGE_RECORD_403.md` and `docs/phase2/OPERATOR_BACKLOG.md`.
