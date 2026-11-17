@@ -1759,3 +1759,7 @@ After commit `13cbd2d` recorded the project-plan/Git reconciliation and the peri
 ## 2026-11-17 — Refresh report at the FIN-S1.2 block commit
 
 After commit `69899f9` recorded FIN-S1.2's external source dependency in the native ledger, regenerated the live report and verified its snapshot HEAD matches that commit. The rendered FIN row separates native harness progress (8/10 done) from project-plan status (2/10 accepted, 7 in review, 1 external block), while retaining the historical twelve sprint-level outcome note.
+
+## 2026-11-17 — Fail closed on FIN-S3.2 task registration mismatch
+
+Decision: if scheduled-task registration or read-back fails, disable any remaining task and confirm `Disabled`; do not leave an unverified task runnable. Success requires exactly one expected action and a principal bound to the current interactive identity, as well as the one-minute non-periodic logon trigger. Two independent reviewers confirmed the original failure modes and the fixes. The parser and scoped whitespace check passed; the focused installer test is `NOT_RUN` because the test role's PreToolUse gate rejected test authoring. No scheduler state was changed. FIN-S3.2 remains in review until the test evidence is obtained.

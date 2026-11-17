@@ -78,21 +78,21 @@ try {
     }
 
     if ($null -eq $failedTask) {
-        Disable-TaskAndConfirm "Task registration failed: $registrationError; task-state read-back failed: $inspectionError"
-        throw "Task registration failed: $registrationError. The task is disabled because its trigger state could not be inspected; interactive logon startup is unavailable until registration succeeds."
+        try {
+            Disable-TaskAndConfirm "Task registration failed: $registrationError; task-state read-back failed: $inspectionError"
+        } catch {
+            throw "Task registration failed: $registrationError. Task-state read-back failed: $inspectionError. Fail-closed disable could not be confirmed: $($_.Exception.Message)"
+        }
+        throw "Task registration failed: $registrationError. The task was disabled because its state could not be inspected; interactive logon startup is unavailable until registration succeeds."
     }
 
-    $failedTriggers = @($failedTask.Triggers)
-    $unexpectedTriggers = @($failedTriggers | Where-Object {
-        $_.CimClass.CimClassName -ne 'MSFT_TaskLogonTrigger' -or $_.Repetition.Interval
-    })
-    if ($unexpectedTriggers.Count -gt 0) {
-        Disable-TaskAndConfirm "Task registration failed: $registrationError; unexpected prior triggers remained"
-        throw "Task registration failed: $registrationError. The prior periodic schedule was left disabled to stop recurring checks; interactive logon startup is unavailable until registration succeeds."
+    try {
+        Disable-TaskAndConfirm "Task registration failed: $registrationError; an existing task remained"
+    } catch {
+        throw "Task registration failed: $registrationError. The existing task could not be confirmed disabled: $($_.Exception.Message)"
     }
 
-    $triggerTypes = ($failedTriggers | ForEach-Object { $_.CimClass.CimClassName }) -join ', '
-    throw "Task registration failed: $registrationError. Post-failure state=$($failedTask.State); trigger count=$($failedTriggers.Count); trigger types=$triggerTypes. No recurring trigger was found."
+    throw "Task registration failed: $registrationError. The existing task is disabled; interactive logon startup is unavailable until registration succeeds."
 }
 
 try {
@@ -113,16 +113,31 @@ if ($remainingPeriodicTriggers.Count -gt 0) {
     Disable-TaskAndConfirm "Task $TaskName retained unexpected periodic triggers after registration"
     throw "Task $TaskName retained unexpected periodic triggers after registration and is now disabled; interactive logon startup is unavailable until registration succeeds."
 }
+$registeredActions = @($registered.Actions)
+$registeredAction = $registeredActions | Select-Object -First 1
+$validLogonTrigger = $false
+if ($registeredLogonTriggers.Count -eq 1) {
+    $validLogonTrigger = $registeredLogonTrigger.Enabled -eq $true -and
+        $registeredLogonTrigger.Delay -eq 'PT1M'
+}
+$validPrincipal = $false
+if ($null -ne $registered.Principal) {
+    $validPrincipal = $registered.Principal.UserId -eq $identity.Name -and
+        $registered.Principal.RunLevel -eq 'Highest' -and
+        $registered.Principal.LogonType -eq 'Interactive'
+}
+$validAction = $false
+if ($registeredActions.Count -eq 1 -and $null -ne $registeredAction) {
+    $validAction = $registeredAction.Execute -eq $powerShell51 -and
+        $registeredAction.Arguments -like ('*' + $scriptPath + '*')
+}
 if ($registeredTriggers.Count -ne 1 -or
-        $registeredLogonTriggers.Count -ne 1 -or
-        $registeredLogonTrigger.Enabled -ne $true -or
+        -not $validLogonTrigger -or
         $registered.State -eq 'Disabled' -or
-        $registered.Principal.RunLevel -ne 'Highest' -or
-        $registered.Principal.LogonType -ne 'Interactive' -or
-        $registeredLogonTrigger.Delay -ne 'PT1M' -or
-        $registered.Actions[0].Execute -ne $powerShell51 -or
-        $registered.Actions[0].Arguments -notlike ('*' + $scriptPath + '*')) {
-    throw "Task $TaskName did not retain the expected elevated one-minute logon startup settings."
+        -not $validPrincipal -or
+        -not $validAction) {
+    Disable-TaskAndConfirm "Task $TaskName did not retain the expected elevated one-minute logon startup settings"
+    throw "Task $TaskName did not retain the expected settings and is now disabled; interactive logon startup is unavailable until registration succeeds."
 }
 
 [pscustomobject]@{
