@@ -2149,3 +2149,7 @@ Keep both SQL fixtures outside the normal migration directory and restrict them 
 ## 2026-11-18 - Pin the S4 fingerprint acceptance cases
 
 The named offline test module fixes two independently derived v1 digests and their byte-level frames, checks that each field changes the digest, and rejects noncanonical identifiers, NUL, invalid UTF-8, oversized fields, invalid operations and BIGINT boundaries. Execution is deferred to the designated test owner on the committed test source.
+
+## 2026-11-18 - Pin the S4 disposable acceptance inputs
+
+The first named fingerprint run at 676302d reported 35 passed and one false negative: a lowercase canonical UUID had been labelled invalid. Use the uppercase form for that negative case. Add the focused disposable PostgreSQL scenarios for concurrency, commit recovery, scope, revocation, legacy fencing and rollback. The fixture never reads the configured PostgreSQL DSN and uses invocation-owned loopback resources.

@@ -146,7 +146,7 @@ def test_expected_version_is_bound() -> None:
         {"requested_rollback_version": 1},  # promote cannot carry rollback state
         {"target_revision": "00000000-0000-0000-0000-00000000000A"},
         {"target_revision": "00000000000000000000000000000001"},
-        {"attestation": "00000000-0000-0000-0000-00000000000a"},
+        {"attestation": "00000000-0000-0000-0000-00000000000A"},
         {"content_digest": "A" * 64},
         {"content_digest": "a" * 63},
         {"tenant": ""},

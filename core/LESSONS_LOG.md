@@ -646,3 +646,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-18 SHORTCOMING: an early S4 recovery draft used current eligibility state before considering an already committed result. Layer: transaction source review. Rule: authorize recovery separately, identify the immutable committed request, and retain commit evidence across later revocation without allowing a new write.
 
 - 2026-11-18 SUCCESS: the fingerprint tests take expected bytes and digests from independent contract examples. Layer: acceptance test authoring. Rule: do not derive expected canonical bytes from the implementation being tested.
+
+- 2026-11-18 FAILURE: the fingerprint negative test used a valid lowercase UUID and failed despite correct encoder behavior. Layer: acceptance test authoring. Rule: verify every negative example independently against the framing specification before assigning its expected code.
