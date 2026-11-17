@@ -587,3 +587,5 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: divergent S12/S13 source is reconciled as scoped deltas, retaining newer caller fields and post-lock guards. Rule: restore published migration bytes and assign fresh append-only identities to cumulative changes; do not reuse colliding version numbers or let a new package silently shadow a legacy module.
 
 - 2026-11-17 SHORTCOMING: an explorer attributed historical patch text to current normative documentation and initially missed an existing budget SQL function. Direct working-tree reads corrected both before acceptance. Rule: keep historical git-show output distinct from current-file evidence; compare actual concept coverage before declaring an alternative superseded or missing.
+
+- 2026-11-17 SHORTCOMING: a tool-specific allowlist ran after the shared authorization-success audit receipt. Architect review caught the misleading receipt. Rule: complete every grant required by that operation before recording ACCESS_AUTHORIZED; refusal must not look like successful authorization to downstream audit consumers.

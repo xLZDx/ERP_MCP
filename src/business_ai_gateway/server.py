@@ -702,15 +702,17 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                                       source_id=source_id, outcome="denied", started_at=started,
                                       query=query, detail_code=type(exc).__name__)
             raise
-        source = await resolve_source(principal, source_id, "onec_metadata_schema_detail", started,
-                                      query, company_id=parsed_company,
-                                      require_business_capability=True)
-        if source.id not in settings.metadata_detail_source_items:
+        # Complete the tool-specific grant before the shared resolver records
+        # ACCESS_AUTHORIZED. The fixed rate-limit bucket above precedes this refusal.
+        if source_id not in settings.metadata_detail_source_items:
             await runtime.audit.write(principal=principal, tool="onec_metadata_schema_detail",
                                       source_id=source_id, company_id=parsed_company, outcome="denied",
                                       started_at=started, query=query,
                                       detail_code="METADATA_DETAIL_SOURCE_NOT_ALLOWLISTED")
             raise PermissionError("METADATA_DETAIL_SOURCE_NOT_ALLOWLISTED")
+        source = await resolve_source(principal, source_id, "onec_metadata_schema_detail", started,
+                                      query, company_id=parsed_company,
+                                      require_business_capability=True)
         try:
             if refresh:
                 await runtime.onec.metadata(source, refresh=True)
