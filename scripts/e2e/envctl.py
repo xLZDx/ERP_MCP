@@ -87,6 +87,14 @@ DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
 CLAUDE_CLIENT = "erp-mcp-claude-desktop"
 CHATGPT_CLIENT = "erp-mcp-chatgpt"
+# A test topology opts into its exact tunnel resource; do not trust a developer's
+# historical tunnel automatically in every newly created disposable environment.
+CHATGPT_TUNNEL_RESOURCE = os.environ.get("E2E_CHATGPT_TUNNEL_RESOURCE", "").strip()
+if CHATGPT_TUNNEL_RESOURCE and not re.fullmatch(
+    r"https://tunnel-service\.gateway\.unified-0\.internal\.api\.openai\.org/v1/mcp/tunnel_[A-Za-z0-9_-]+",
+    CHATGPT_TUNNEL_RESOURCE,
+):
+    raise ValueError("E2E_CHATGPT_TUNNEL_RESOURCE_INVALID")
 CHATGPT_REDIRECT_URIS = [
     "https://chatgpt.com/connector_platform_oauth_redirect",
     "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
@@ -207,7 +215,7 @@ def init_secrets() -> None:
             {"client_id": CHATGPT_CLIENT, "secret": None,
              "redirect_uris": CHATGPT_REDIRECT_URIS,
              "post_logout_redirect_uris": [],
-             "audiences": [MCP_AUDIENCE],
+             "audiences": [MCP_AUDIENCE, *([CHATGPT_TUNNEL_RESOURCE] if CHATGPT_TUNNEL_RESOURCE else [])],
              "scopes": ["openid", "profile", "onec:read"],
              "grant_types": ["authorization_code", "refresh_token"]},
         ],
@@ -273,6 +281,7 @@ def env_vars() -> dict[str, str]:
         "BAG_OAUTH_ENABLED": "true",
         "BAG_OAUTH_ISSUER": ISSUER,
         "BAG_OAUTH_AUDIENCE": MCP_AUDIENCE,
+        "BAG_OAUTH_ADDITIONAL_AUDIENCES": CHATGPT_TUNNEL_RESOURCE,
         "BAG_OAUTH_JWKS_URL": f"{ISSUER}/protocol/openid-connect/certs",
         "BAG_ADMIN_API_ENABLED": "true",
         "BAG_ADMIN_UI_ENABLED": "true",

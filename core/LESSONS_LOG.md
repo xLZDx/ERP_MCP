@@ -589,3 +589,7 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SHORTCOMING: an explorer attributed historical patch text to current normative documentation and initially missed an existing budget SQL function. Direct working-tree reads corrected both before acceptance. Rule: keep historical git-show output distinct from current-file evidence; compare actual concept coverage before declaring an alternative superseded or missing.
 
 - 2026-11-17 SHORTCOMING: a tool-specific allowlist ran after the shared authorization-success audit receipt. Architect review caught the misleading receipt. Rule: complete every grant required by that operation before recording ACCESS_AUTHORIZED; refusal must not look like successful authorization to downstream audit consumers.
+
+- 2026-11-17 SHORTCOMING: an imported runtime depended on signer roles outside the initial source ownership list. Cross-module source reading caught the missing role prefixes before test acceptance. Rule: audit imported constructors and configuration enums against their actual providers, not only the copied module's local imports.
+
+- 2026-11-17 SHORTCOMING: filename presence hid lost redaction and mismatched dependency pins. Rule: compare historical predicates, pinned values and caller/provider configuration together; neither an existing file nor a commit ancestor establishes preserved behavior.

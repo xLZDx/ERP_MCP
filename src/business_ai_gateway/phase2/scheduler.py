@@ -18,7 +18,7 @@ Responsibilities
 
 Failure accounting: every outcome of ``work`` is accounted. A value that is not a
 ``CaptureOutcomeKind`` is the failure ``WORK_RETURNED_INVALID``; a raised exception is recorded only
-as ``WORK_EXCEPTION:<ClassName>`` (raw exception text can carry URLs, DSNs or credentials and is
+as ``WORK_EXCEPTION`` (exception text and dynamically supplied class names can carry secrets and are
 never persisted or returned). An own-lease expiry is counted as a TIMEOUT failure, gated and
 poison-eligible; a stale fence caused by someone else is a lost lease that is not counted.
 
@@ -496,9 +496,9 @@ class SourceScheduler:
                 await self._finish_cancelled(job_id, fence)
                 self._forget(job_id)
                 raise
-            except Exception as exc:  # noqa: BLE001 - work failure is data for the failure policy
+            except Exception:  # noqa: BLE001 - work failure is data for the failure policy
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
-                                          f"WORK_EXCEPTION:{type(exc).__name__[:64]}")
+                                          "WORK_EXCEPTION")
             if not isinstance(outcome, CaptureOutcomeKind):
                 return await self._failed(job_id, handle, CaptureOutcomeKind.OUTAGE,
                                           "WORK_RETURNED_INVALID")

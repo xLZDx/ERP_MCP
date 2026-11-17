@@ -35,6 +35,14 @@ _ROLE_MESSAGE_PREFIXES = MappingProxyType({
         b"change-ledger-checkpoint|v2|",
         b"change-ledger-permit|v1|",
     ),
+    "checkpoint_latestness_authority": (
+        b"ERP_MCP:S13:ANCHOR-LATESTNESS:v1\n",
+        b"ERP_MCP:S13:ANCHOR-HISTORY:PROVIDER:v1\n",
+    ),
+    "checkpoint_key_authority": (
+        b"ERP_MCP:S13:ANCHOR-KEY-AUTH:v1\n",
+        b"ERP_MCP:S13:ANCHOR-HISTORY:KEY-AUTH:v1\n",
+    ),
 })
 
 

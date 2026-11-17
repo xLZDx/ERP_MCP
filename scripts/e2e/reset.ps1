@@ -17,6 +17,7 @@ if (-not (Test-Path (Join-Path $script:E2eDir 'secrets.json'))) { throw 'not ini
 if (-not $Seed) { $Seed = Get-SeedMode }
 if (-not $Seed) { $Seed = 'baseline' }
 
+if (Test-E2eGatewayNeedsReader 'gateway') { Assert-E2eReaderAvailable }   # before anything is stopped or dropped
 Invoke-Envctl @('mark-not-ready') | Out-Null   # not ready until the re-seed succeeded
 Invoke-Envctl @('init-secrets') | Out-Null
 Invoke-Envctl @('write-env', '--seed', $Seed) | Out-Null
