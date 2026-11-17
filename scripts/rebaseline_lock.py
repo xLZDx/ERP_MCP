@@ -17,11 +17,6 @@ def exclusive_guard(directory: Path):
     acquired = False
     try:
         stream.seek(0)
-        if stream.read(1) == b"":
-            stream.seek(0)
-            stream.write(b"\0")
-            stream.flush()
-        stream.seek(0)
         try:
             if __import__("os").name == "nt":
                 import msvcrt

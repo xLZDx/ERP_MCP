@@ -1950,3 +1950,7 @@ The functional-test-reviewer ran the named eight-case isolated contract suite on
 ## 2026-11-17 — Reject unsafe stale-lock deletion recovery
 
 A fresh reliability review identified a check-then-unlink race between two recovery processes and a newly started collector. The earlier zero-major statement is superseded for this recovery protocol. Replace PID-file exclusivity with a stable kernel-backed nonblocking guard shared by both collectors; never unlink the guard file. A stale PID marker becomes informational and is overwritten only by a process holding the kernel lock. This is local audit tooling only. Requalify the named tests after this change.
+
+## 2026-11-17 — Preserve Windows guard contention failure and fix forward
+
+The designated functional reviewer ran the 11-case named audit file on b357eea: exit1, one ERROR in live process contention. Windows refuses a pre-lock read of byte0 while another process holds its range lock. Remove all guard-content initialization: operating-system range locking does not require reading or writing the guarded byte. Retain the real concurrent-process and hard-kill cases, and rerun after the source commit. No failure is relabeled as a pass.
