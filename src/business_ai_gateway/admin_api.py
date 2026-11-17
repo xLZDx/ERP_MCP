@@ -5,7 +5,7 @@ import json
 import logging
 import secrets
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -1232,18 +1232,18 @@ class AdminAPI:
                 return JSONResponse({"error": "SOURCE_NOT_FOUND"}, status_code=404)
 
             async def refresh():
-                async with self.probe.approved_adapter(source.base_url) as (adapter, _egress):
-                    capabilities = await adapter.capabilities(source, refresh=True)
-                    if not capabilities.metadata_supported:
-                        raise SourceEgressDenied("source metadata unavailable")
-                capabilities = safe_capability_summary(capabilities)
-                previous = await self.repository.db.require_pool().fetchval("""
-                    SELECT register_capabilities_json FROM bag.source_capabilities
-                    WHERE source_id=$1 AND metadata_fingerprint=$2 AND drift_status='STABLE'
-                """, source_id, capabilities.metadata_fingerprint)
-                if previous:
-                    capabilities = replace(capabilities, register_capabilities=json.loads(previous) if isinstance(previous, str) else previous)
-                drift = await self.runtime.registry.save_capabilities(capabilities)
+                outcome = await self.runtime.capability_observer.refresh(
+                    source_id=source_id,
+                    access_token=ctx.token.token,
+                    request_id=_request_id(request),
+                )
+                capabilities, drift = await self.runtime.registry.get_capabilities(
+                    source_id,
+                    request_id=outcome["request_id"],
+                    observation_id=outcome["observation_id"],
+                )
+                if drift["drift_status"] != outcome["status"]:
+                    raise RuntimeError("CAPABILITY_OBSERVATION_STATE_MISMATCH")
                 return {**capabilities.as_dict(), **drift}
 
             result = await self.mutations.refresh_capabilities(

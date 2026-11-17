@@ -15,6 +15,12 @@ class Principal:
     claims: dict[str, Any]
 
 
+def current_access_token() -> str | None:
+    """Return the verified bearer token only for forwarding to a trusted internal service."""
+    token = get_access_token()
+    return token.token if token is not None else None
+
+
 def claim_groups(claims: dict[str, Any]) -> frozenset[str]:
     distributed = claims.get("_claim_names")
     if (isinstance(distributed, dict) and "groups" in distributed) or claims.get("hasgroups"):

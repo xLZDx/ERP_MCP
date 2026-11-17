@@ -1,0 +1,86 @@
+# Task evidence audit — 2026-11-17
+
+Reporting-analyst read-only audit of source, project plans, historical reports,
+decision logs and all fetched refs. Existing ledger state is input evidence,
+not a proof of acceptance. No tests/builds or runtime calls were run.
+
+## Reconciled findings
+
+Detailed historical reconciliation found a genuine acceptance correction in S5:
+TASK_LEDGER.md:32-35 records US024-US027 CLOSED_BOUNDED_SPRINT at approved HEAD
+af9f287 (source/test blob identity and GPT-PM decisions; US027 also exact Windows
+memory-test evidence). The stale 0/6 summary becomes 4/6 bounded accepted;
+US021/022 remain NOT_STARTED. No runtime/product acceptance is inferred.
+
+S0 retains current in-progress records and alternative unmerged PR42 closeout.
+S4 US016 remains implemented-unverified per TASK_LEDGER.md:24. S6 retains seven
+bounded acceptances plus open US0231 (do not silently alias legacy US023).
+S9 US043/044 are accepted while US045/046 remain implemented-unverified per
+TASK_LEDGER.md:51-54. S10 US042/048 remain NOT_STARTED; PR53 only covers a bounded
+dev/test handoff. Historical 2026-11-10-1618 report:179 confirms PR47/48/49
+merge states at its dated snapshot, not current acceptance of every child task.
+
+- The original program has 104 task positions. REBASELINE adds three explicit
+  audit/integration-preparation tasks; these must not change the historical
+  denominator silently. S11 has sprint-level exit evidence but no stories in
+  the old harness ledger. Preserve this as a separate sprint milestone.
+- FIN's native task evidence says 9 done and one verified/deferred, while its
+  project plan has two accepted, seven in review and one deferred external item.
+  These are different measures. Current FIN-S3.2 installer regression passed
+  seven mocked cases and routed review accepted; this is not whole-FIN approval.
+- Historical S0-S11 represents twelve outcome records, not proof that twelve
+  current canonical sprints are all formally accepted. Detailed task records
+  disagree with several old summary rows; keep both scope and chronology.
+- S11 exit is documented complete, PR57 merged at 7c1f69c (remote main).
+- S14-S16 NOT_STARTED labels were false as implementation-activity labels.
+  Replace with PARTIAL and retain the missing formal qualification explicitly.
+
+## Concrete S14-S16 evidence
+
+| Sprint | Implementation evidence | Remaining acceptance |
+|---|---|---|
+| S14 | Simulated dispatch port e9d93ff54e08eb9cc4c16090378aee82723398fb, ancestor of remote main; private-writer candidates exist | Operational COM writer, real marker, least-privilege identity and actual CT14 qualification not established |
+| S15 | src/erp_mcp_s15 modules; 8d991bca3daebc9ff30e5495d10d7ea84883575b, 89f8cf9,15f9b70,ba01714 on remote main | Real-ledger scenarios and full sprint qualification; synthetic dependencies do not prove them |
+| S16 | src/erp_mcp_s16 exists locally; bbf2d9f,2089953,c092deb,9de8b1e,9b15e00,aa3e389,7bbbe15,d7630f0,71cd251; services.py dirty | Missing main integration and full live identity/browser/storage qualification; per-story acceptance not inferred |
+
+Normative citations: S14-S19_SPRINT_PLANS_AND_ACCEPTANCE_MAP_2026-10-17.md:12-13,20-22;
+S14_COM_DRAFT_EXECUTOR_DESIGN_2026-10-27.md:3,8-12;
+S15_SPRINT_PLAN_2026-10-27.md:3-4,40-41,237;
+S16_SPRINT_PLAN_2026-10-28.md:5-6. These historical drafts must be compared
+against current source; a claim in a draft that COM code is missing does not
+override newer candidate files. Neither source presence nor a draft proves live acceptance.
+
+## Git integration caveats
+
+Correction from deeper source inspection: historical S14 draft language saying
+all COM code is absent is not current. com_draft_executor.py, windows_com_lane.py
+and com_sta_lane.py implement low-level COM/STA and unposted-draft behavior.
+S12_S13_COM_CLONE_REPORT_2026-10-28.md records bounded real clone draft evidence.
+The missing operational OneCWritePort composition and full qualification must
+be recorded precisely; do not discard or repeat the implemented executor work.
+Likewise the dev anchor service and diagnostic lifecycle are implemented while
+production trust and READY/admission remain unavailable by design. See the
+architecture audit's deeper implementation section.
+
+Origin main is 7c1f69c, local main 4dfceed. PR53 merge 900a3d0, S6 merge e2ebf0e,
+PR48 merge 5672c9c, PR46 merge 98b7405 and e30e2ec were not ancestors of origin
+main in this audit. Their existence on other branches still counts as local/
+branch implementation and bounded historical evidence; it does not mean the
+work is integrated on main. Task evidence must retain exact commit and refs.
+
+## Machine-readable register
+
+TASK_EVIDENCE.json preserves every task's native evidence and reconciled
+project disposition, plus exact task-ID commit mentions across all refs.
+S11 is retained in its separate sprint-milestone section. No synthetic approval
+receipt, fresh test result or runtime proof is generated by this register.
+
+## Coverage limits and remaining audit
+
+This is a reconciliation pass, not a claim of line-by-line review of every task
+implementation and every historical document version. DOCUMENT_VERSIONS.json
+is the complete enumerated document/blob inventory; each version still needs
+a reviewed disposition where it conflicts with current authority. S14-S16
+per-story source-to-criterion mapping needs deeper qualification before any
+PARTIAL task can become accepted. The full branch patch-equivalence sweep and
+worktree dirty-state sweep remain in the integration queue.

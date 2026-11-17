@@ -57,7 +57,9 @@ def test_gherkin_cases_not_claimed_executable(catalogs):
     _, _, cases = catalogs
     content = (PKG / "acceptance" / "phase2.feature").read_text(encoding="utf-8")
     assert len(re.findall(r"^  Scenario: R2-TC-\d{3} ", content, re.MULTILINE)) == len(cases)
-    assert content.count("@not_implemented") == len(cases)
+    executable = re.findall(r"^  @executable @R2TC(\d{3})$", content, re.MULTILINE)
+    assert executable == ["001"]
+    assert content.count("@not_implemented") == len(cases) - len(executable)
 
 
 @pytest.mark.parametrize("name", ["capture_request", "model_event", "native_manifest", "reconciliation_result"])

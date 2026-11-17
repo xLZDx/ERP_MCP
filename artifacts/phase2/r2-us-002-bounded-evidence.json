@@ -1,0 +1,227 @@
+{
+  "scenario": "R2-US-002",
+  "candidate": {
+    "commit": "c624b701e8f42076441f9b8c6a3cf4dbe60414e7"
+  },
+  "product_status": "NOT_RUN",
+  "gherkin_status": "@not_implemented",
+  "bounded_story_status": "BOUNDED_SCOPE_COMPLETE",
+  "criteria": [
+    {
+      "case_id": "R2-TC-004",
+      "bounded_status": "SATISFIED",
+      "criterion": "pin file path/SHA/license",
+      "sources": {
+        "pdcc": {
+          "repository": "Personal_Decision_Command_Center",
+          "path": "scripts/tools/build-document-registry.mjs",
+          "commit": "ebf10414aaa8ef858a3df82652fb2050141adc98",
+          "git_blob_oid": "b581feac23e4caea5c056a71dd0587cc7c58eef0",
+          "sha256": "234c52e3acc3a3f1cfc9dc45da93bb2df937c0144d673a992f770757fa2e1feb",
+          "bytes": 6044,
+          "target_path": "scripts/build_document_registry.mjs",
+          "target_git_blob_oid": "44a9c60758ad6eae58c0310a8b16bf010b3ec5bf",
+          "target_git_blob_sha256": "b4c2ca175f8a35e599e7f3306d84b1c7ddba94454b5306ee640904ce8f28194e",
+          "target_worktree_sha256": "217b372f8b9323977864e4c5d095be818e6463a29ba8a97cbf4f80f5370b5da2",
+          "license_disposition": "NO_LICENSE_FILE_AT_PIN; target header records operator reuse permission; not an SPDX license",
+          "pinned_tree_license_paths": []
+        },
+        "ferma": {
+          "source_repository": "xLZDx/ERP-Virtual-Economy-Digital-Business-Universe",
+          "commit": "d361fab0c3b251ff3c55f681bd2e192bb36c0019",
+          "source_paths": [
+            "src/ferma",
+            "architecture/independence_policy.toml",
+            "tests/archcheck.py"
+          ],
+          "file_count": 132,
+          "tree_sha256": "b96e4cde74427e3bbf54ac6f6dd453b8c120ff0e23285c05f9cfc050ceeef4be",
+          "independent_source_verification": true,
+          "license": "NO_LICENSE_FOUND",
+          "reuse_disposition": {
+            "status": "OPERATOR_AUTHORIZED_TEST_ONLY_REUSE",
+            "authorization_basis_path": "scripts/build_document_registry.mjs",
+            "authorization_basis_line": 9,
+            "authorization_basis": "operator 2026-10-08 allows reusing code from any project",
+            "use_boundary": "test-only private Ferma scenario exporter; source is not copied into ERP_MCP production package or redistributed",
+            "this_is_not_a_formal_license": true,
+            "gpt_pm_adjudication_pending": false,
+            "gpt_pm_adjudication": "APPROVED_FOR_PRIVATE_TEST_ONLY_NO_REDISTRIBUTION"
+          },
+          "repository_commit_verification": "GITHUB_API_COMMIT_FOUND_AT_EXACT_SHA",
+          "verified_source_file": {
+            "path": "src/ferma/__about__.py",
+            "git_blob_sha": "3dc1f76bc69e3f559bee6253b24fc93acee9e1f9",
+            "sha256": "91447944015cec709e8aa7655f7e9d64e1e4508e7023a57fe3746911c0fc6fed",
+            "content": "__version__ = \"0.1.0\"\\n"
+          },
+          "tree_sha256_independently_reproduced": true,
+          "license_files_checked_at_pin": [
+            "LICENSE",
+            "LICENSE.md",
+            "LICENSE.txt",
+            "COPYING",
+            "NOTICE"
+          ],
+          "license_file_responses": "404 for each exact path at pinned commit",
+          "pyproject_license_metadata": "No license field in exact-commit pyproject.toml",
+          "tree_file_count_verified": 132,
+          "tree_verification_method": "Fetched exact commit d361fab0c3b251ff3c55f681bd2e192bb36c0019, selected files under src/ferma plus architecture/independence_policy.toml and tests/archcheck.py, then applied exporter.py path-NUL plus raw-file-SHA256 digest algorithm.",
+          "license_files_at_exact_commit": [],
+          "license_metadata": null,
+          "license_probe": {
+            "paths": [
+              "LICENSE",
+              "LICENSE.md",
+              "LICENSE.txt",
+              "COPYING",
+              "NOTICE"
+            ],
+            "result": "404 at exact commit",
+            "pyproject_toml": "project.license absent"
+          },
+          "repo_owner_namespace": "xLZDx",
+          "authenticated_github_nickname": "xLZDx",
+          "account_namespace_match": true
+        }
+      },
+      "scope": "Exact Ferma repository, pinned commit, source paths, and independently reproduced 132-file digest are verified. No formal license was found. GPT-PM accepted the recorded operator authorization only for private test-only reuse without source redistribution or production source inclusion.",
+      "remaining": "Canonical product R2-TC-004 remains NOT_RUN; any redistribution, production inclusion, or broader reuse requires separate authorization."
+    },
+    {
+      "case_id": "R2-TC-005",
+      "bounded_status": "SATISFIED",
+      "criterion": "an empty placeholder is not ready",
+      "evidence": {
+        "erp_adapter": {
+          "path": "src/business_ai_gateway/adapters/erp/adapter.py",
+          "line": 1,
+          "content": "reserved class with enabled=False",
+          "git_blob_oid": "981c536a93a484c2a8700231ff49e0be40fe63a0",
+          "git_blob_sha256": "121a41ce71a331e9f40f878ad25d5ff28931cc942197ace647b684bdea51aaaa"
+        },
+        "ferma_adapter": {
+          "path": "src/business_ai_gateway/adapters/ferma/adapter.py",
+          "line": 1,
+          "content": "reserved class with enabled=False",
+          "git_blob_oid": "26f076595756cc8e61ce0eb6ff3aa5ad1a5cbf8f",
+          "git_blob_sha256": "7c6030c14f1eb2426ac408d6c748ddd2dcdc3ecf0d551bac3fcdef303e9d78df"
+        },
+        "system_status": {
+          "path": "src/business_ai_gateway/server.py",
+          "line": 349,
+          "content": "future_adapters erp/ferma reserved",
+          "git_blob_oid": "08d65657854055dcf6c4391ae953767b81820190",
+          "git_blob_sha256": "53f404c76e17cff1ed8f919fd47b01fcf16e91020209ba020ba896fccad7b7d8"
+        },
+        "runtime": {
+          "path": "src/business_ai_gateway/runtime.py",
+          "lines": "8-11,108-110",
+          "content": "constructs OneCAdapter only",
+          "git_blob_oid": "1f941d05326756d97be570c3a00036b7ee8fe628",
+          "git_blob_sha256": "ac0503f7909eec1296eff2f89cb7a0bc5511453bcfa53722f43988d0322b5066"
+        }
+      }
+    },
+    {
+      "case_id": "R2-TC-006",
+      "bounded_status": "SATISFIED",
+      "criterion": "donor write APIs are not exposed",
+      "evidence": {
+        "server": {
+          "path": "src/business_ai_gateway/server.py",
+          "lines": "99-103,330-2626",
+          "content": "read-only tool annotations; registered names must equal allowlisted baseline R1 plus additive R2 tools",
+          "git_blob_oid": "08d65657854055dcf6c4391ae953767b81820190",
+          "git_blob_sha256": "53f404c76e17cff1ed8f919fd47b01fcf16e91020209ba020ba896fccad7b7d8"
+        },
+        "runtime": {
+          "path": "src/business_ai_gateway/runtime.py",
+          "lines": "8-11,108-110",
+          "content": "OneCAdapter only; ERP/Ferma reserved adapters not imported or instantiated",
+          "git_blob_oid": "1f941d05326756d97be570c3a00036b7ee8fe628",
+          "git_blob_sha256": "ac0503f7909eec1296eff2f89cb7a0bc5511453bcfa53722f43988d0322b5066"
+        },
+        "internal_reviewers": [
+          "security-reviewer",
+          "architect",
+          "code-explorer"
+        ],
+        "review_boundary": "Static ERP_MCP source audit; does not prove absence of unmarked copied code or exact shipped artifact contents"
+      }
+    }
+  ],
+  "limitations": [
+    "Canonical product R2-TC-004, R2-TC-005, and R2-TC-006 remain NOT_RUN.",
+    "Ferma exact repository, commit, 132-file tree digest, and absence of license metadata/files are verified; GPT-PM accepted the recorded operator authorization only for private test-only reuse. This is not a formal license and does not authorize redistribution or production inclusion.",
+    "Static source reachability does not prove absence of unmarked code similarity or exact built deployment artifact contents.",
+    "No runtime product acceptance, merge, deployment, release, or production authorization is established."
+  ],
+  "local_sources": [
+    {
+      "path": "scripts/build_document_registry.mjs",
+      "git_blob_oid": "44a9c60758ad6eae58c0310a8b16bf010b3ec5bf",
+      "git_blob_sha256": "b4c2ca175f8a35e599e7f3306d84b1c7ddba94454b5306ee640904ce8f28194e"
+    },
+    {
+      "path": "src/business_ai_gateway/server.py",
+      "git_blob_oid": "08d65657854055dcf6c4391ae953767b81820190",
+      "git_blob_sha256": "53f404c76e17cff1ed8f919fd47b01fcf16e91020209ba020ba896fccad7b7d8"
+    },
+    {
+      "path": "src/business_ai_gateway/runtime.py",
+      "git_blob_oid": "1f941d05326756d97be570c3a00036b7ee8fe628",
+      "git_blob_sha256": "ac0503f7909eec1296eff2f89cb7a0bc5511453bcfa53722f43988d0322b5066"
+    },
+    {
+      "path": "src/business_ai_gateway/adapters/erp/adapter.py",
+      "git_blob_oid": "981c536a93a484c2a8700231ff49e0be40fe63a0",
+      "git_blob_sha256": "121a41ce71a331e9f40f878ad25d5ff28931cc942197ace647b684bdea51aaaa"
+    },
+    {
+      "path": "src/business_ai_gateway/adapters/ferma/adapter.py",
+      "git_blob_oid": "26f076595756cc8e61ce0eb6ff3aa5ad1a5cbf8f",
+      "git_blob_sha256": "7c6030c14f1eb2426ac408d6c748ddd2dcdc3ecf0d551bac3fcdef303e9d78df"
+    },
+    {
+      "path": "testbed/ferma_onec/README.md",
+      "git_blob_oid": "0146558dac6f869e3c7a07697536f11e33cd9829",
+      "git_blob_sha256": "a7b8eb933e38336872571293ba46a36b2989012b37a665364896a39bcce9342c"
+    },
+    {
+      "path": "testbed/ferma_onec/exporter.py",
+      "git_blob_oid": "131a9bcf49b1d2bd97623aa00b1705fd546ef93e",
+      "git_blob_sha256": "2a3b7d5c501d43b76c32364fc0a70c044cb8224085255fac5c670e68d6639d20"
+    }
+  ],
+  "pm_adjudication": {
+    "project_id": "erp_mcp",
+    "conversation_id": "6aeb9f0a-e3ec-83ed-8782-296b5106fbd5",
+    "request_id": "9550946b-a01e-4148-86c0-79db24d9e591",
+    "job_id": "30ecc691-6f42-4eba-8f3c-3756923bcf10",
+    "reply_id": "cdc59815-9533-5d4b-b85c-6d3b3a1d0e9b",
+    "payload_sha256": "11806e704255a993f3f27fcb61b631692590501c9520b63616349d604b468fb6",
+    "reply_sha256": "cd6af9cc33eaf1f23622eea96f3e07d47481c289b6c0e82b9a72f1a303d4b93e",
+    "correlated": true,
+    "verdict": "APPROVE",
+    "story_status": "BOUNDED_SCOPE_COMPLETE",
+    "bounded_statuses": {
+      "R2-TC-004": "SATISFIED",
+      "R2-TC-005": "SATISFIED",
+      "R2-TC-006": "SATISFIED"
+    },
+    "product_status": "NOT_RUN",
+    "receipt_path": "artifacts/phase2/r2-us-002-gpt-pm-adjudication.json",
+    "receipt_sha256": "28695ca2247bb5c3b2d3d73548a93c85b33ce1673eef152531bfc7a2732ed09e",
+    "source_evidence_sha256_submitted": "4b66e779ac6373106451aeee2dac8cfe48c2fc09e32e438201b9f63a6d9a6101",
+    "post_adjudication_reconciliation": "Bounded statuses were finalized and the Ferma source-verification flag aligned to the already-reproduced 132-file digest; repository, commit, source paths, and digest are unchanged."
+  },
+  "prior_pm_adjudication": {
+    "request_id": "6da144da-0cc2-4fcf-8bf5-18b72cf20385",
+    "job_id": "5dec4390-5863-4146-a00a-ac0bc7d4b8d1",
+    "reply_id": "a3e854ce-ce4b-546a-a322-2e5cc91972c7",
+    "receipt_path": "artifacts/phase2/r2-us-002-gpt-pm-adjudication-initial.json",
+    "receipt_sha256": "ac37e238ee57ae62e0f899a761c7179a783d0fd36b736a2f74f3852be7aa8be1",
+    "disposition": "TC004 open; TC005 and TC006 bounded satisfied"
+  }
+}

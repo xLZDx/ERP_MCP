@@ -103,9 +103,18 @@ def test_evidence(directory: Path, *, expected_commit: str) -> dict:
     return summaries
 
 
-def assemble(root: Path, artifacts: Path, *, expected_commit: str, pr_head_commit: str, run_id: str) -> dict:
+def assemble(
+    root: Path,
+    artifacts: Path,
+    *,
+    expected_commit: str,
+    pr_head_commit: str,
+    run_id: str,
+    deployed_revision: str | None = None,
+) -> dict:
     if (not COMMIT.fullmatch(expected_commit) or not COMMIT.fullmatch(pr_head_commit)
-            or not re.fullmatch(r"[0-9]{8,20}", run_id)):
+            or not re.fullmatch(r"[0-9]{8,20}", run_id)
+            or (deployed_revision is not None and not COMMIT.fullmatch(deployed_revision))):
         raise ValueError("invalid release revision/run identity")
     checkpoint = check_checkpoint(root)
     images = {name: image_evidence(artifacts / name, name=name, expected_commit=expected_commit, root=root) for name in IMAGES}
@@ -117,6 +126,12 @@ def assemble(root: Path, artifacts: Path, *, expected_commit: str, pr_head_commi
                         "url": f"https://github.com/xLZDx/ERP_MCP/blob/{expected_commit}/{name}"} for name in public_files}
     return {"schema_version": 1, "package_status": "ASSEMBLED_ENGINEERING_EVIDENCE_ONLY",
             "tested_revision": expected_commit, "pr_head_commit": pr_head_commit,
+            # A caller-supplied deployment SHA is a claim only; this assembler has no
+            # provider-attested deployment record with which to verify it.
+            "deployment_identity": {
+                "status": "UNKNOWN" if deployed_revision is None else "CLAIM_UNVERIFIED",
+                "deployed_revision": deployed_revision,
+            },
             "ci_run_id": run_id, "implementation_sha256": checkpoint["implementation_sha256"],
             "production_decision": "NO-GO", "dod_status": "PARTIAL", "images": images,
             "tests": tests, "references": references, "native_evidence_level_inferred": False,
@@ -131,11 +146,16 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--pr-head-commit", required=True)
+    parser.add_argument(
+        "--deployed-revision",
+        help="Optional reported deployment SHA; recorded as an unverified claim, never inferred from HEAD.",
+    )
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result = assemble(Path(__file__).resolve().parents[1], args.artifacts, expected_commit=args.commit,
-                      pr_head_commit=args.pr_head_commit, run_id=args.run_id)
+                      pr_head_commit=args.pr_head_commit, run_id=args.run_id,
+                      deployed_revision=args.deployed_revision)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 

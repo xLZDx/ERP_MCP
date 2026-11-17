@@ -10,7 +10,8 @@ FROM cgr.dev/chainguard/python:latest@sha256:b6248c85ba9b97e1e61b30197f309cc4d21
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src:/usr/lib/python3.14/site-packages
 WORKDIR /app
 COPY --from=dependencies /runtime-deps/ /usr/lib/python3.14/site-packages/
-COPY src ./src
+COPY src/business_ai_gateway ./src/business_ai_gateway
+COPY src/erp_mcp_s15 ./src/erp_mcp_s15
 
 COPY db ./db
 COPY scripts ./scripts

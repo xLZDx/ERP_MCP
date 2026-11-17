@@ -24,3 +24,12 @@ tests/phase2/_red_tmp/
 *.pfx
 *client_secret*.json
 *token*.json
+
+# Mutable local harness/environment state; reviewed seeds and evidence live in docs.
+.harness/
+.harness-tools/
+.worktrees/
+.e2e*/
+node_modules/
+/work/
+/PROJECT_PLAN.pre-*.md

@@ -39,6 +39,7 @@ from business_ai_gateway.phase2.change.proposal import (
 from business_ai_gateway.phase2.change.types import ChangeKind
 from business_ai_gateway.phase2.change.types import Scope as ProposalScope
 from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.checkpoint import DatabaseTargetIdentity
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
     is_canonical_process_instance_uuid,
@@ -465,6 +466,8 @@ class AdmissionStore(Protocol):
     with both transitions without a lock-order cycle.
     """
 
+    async def database_target_identity(self) -> DatabaseTargetIdentity: ...
+
     async def admit(self, identity: CallIdentity, process_instance_id: str,
                     service_epoch: int) -> AdmissionDecision: ...
 
@@ -824,19 +827,14 @@ class PrivateWriterService:
 
             active_quiesce = self._active_quiesce
             if active_quiesce is not None:
-                try:
-                    remaining = deadline - asyncio.get_running_loop().time()
-                    if remaining <= 0:
-                        raise TimeoutError
-                    async with asyncio.timeout(remaining):
-                        await asyncio.shield(active_quiesce[1])
-                except asyncio.CancelledError:
-                    if active_quiesce[1].cancelled():
-                        await self._latch_restart_required()
-                    else:
-                        raise
-                except Exception:
-                    pass
+                _, quiesce_task = active_quiesce
+                remaining = max(0, deadline - asyncio.get_running_loop().time())
+                done, _ = await asyncio.wait({quiesce_task}, timeout=remaining)
+                if not done:
+                    await self._latch_restart_required()
+                    raise ServiceError("WRITER_SHUTDOWN_DRAIN_TIMEOUT", outcome_unknown=True)
+                if quiesce_task.cancelled():
+                    await self._latch_restart_required()
                 if self._active_quiesce == active_quiesce:
                     self._authority_task_done(*active_quiesce)
                 continue
@@ -881,7 +879,10 @@ class PrivateWriterService:
             raise ServiceError("SERVING_AUTHORITY_MUTEX_UNAVAILABLE")
         try:
             lease = await mutex.try_acquire()
-        except BaseException:
+        except asyncio.CancelledError:
+            await self._latch_restart_required()
+            raise
+        except Exception:  # noqa: BLE001 - authority adapters fail closed on unexpected errors
             await self._latch_restart_required()
             raise ServiceError("STARTUP_RECOVERY_UNAVAILABLE") from None
         if lease is None:
@@ -1064,6 +1065,18 @@ class PrivateWriterService:
             host_id=self._host_id,
             repair_authorization_id=repair_authorization_id,
         )
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity:
+        """Read the private writer store's authenticated target identity without mutation."""
+        try:
+            identity = await self._store.database_target_identity()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            raise ServiceError("T16_DATABASE_BINDING_UNAVAILABLE") from None
+        if type(identity) is not DatabaseTargetIdentity:
+            raise ServiceError("T16_DATABASE_BINDING_UNAVAILABLE")
+        return identity
 
     async def lookup(self, ticket: ApplyTicket, permit: DispatchPermit) -> CallSnapshot:
         """Return the durable status for the exact ticket/permit identity; never invoke the writer."""

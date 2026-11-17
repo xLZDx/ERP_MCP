@@ -29,7 +29,9 @@ sys.path.insert(0, str(REPO))
 ROLES = (
     "CREATE ROLE business_ai_app NOLOGIN; "
     "CREATE ROLE business_ai_admin NOLOGIN; "
-    "CREATE ROLE business_ai_control_api NOLOGIN;"
+    "CREATE ROLE business_ai_control_api NOLOGIN; "
+    "CREATE ROLE business_ai_capability_writer NOLOGIN; "
+    "CREATE ROLE business_ai_capability_acceptor NOLOGIN;"
 )
 
 

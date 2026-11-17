@@ -20,6 +20,7 @@ from uuid import UUID
 import asyncpg
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.checkpoint import DatabaseTargetIdentity
 from business_ai_gateway.phase2.change_ledger.uuid_contract import (
     is_canonical_nonzero_uuid,
     is_canonical_process_instance_uuid,
@@ -27,8 +28,10 @@ from business_ai_gateway.phase2.change_ledger.uuid_contract import (
 from business_ai_gateway.phase2.change_ledger.write_port import ServingAuthorityLease
 
 from .postgres_identity import (
+    DatabaseIdentityUnavailable,
     PRIVATE_WRITER_SESSION_USER,
     has_expected_database_identity,
+    read_database_target_identity,
 )
 from .service import (
     AdmissionDecision,
@@ -89,6 +92,11 @@ class _DeadlineConnection:
         if await self._set_statement_timeout() <= 0:
             raise TimeoutError
         return await self._conn.fetchval(sql, *args)
+
+    async def fetchrow(self, sql: str, *args: Any) -> asyncpg.Record | None:
+        if await self._set_statement_timeout() <= 0:
+            raise TimeoutError
+        return await self._conn.fetchrow(sql, *args)
 
 
 class PostgresAdmissionStore:
@@ -496,6 +504,19 @@ class PostgresAdmissionStore:
             service_instance_id,
         )
         return self._decode_startup_state(value)
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity:
+        """Read the current target identity under the authenticated private-writer session."""
+        try:
+            async with self._transaction() as conn:
+                return await read_database_target_identity(conn)
+        except asyncio.CancelledError:
+            raise
+        except DatabaseIdentityUnavailable:
+            raise
+        except Exception:
+            # This path is read-only; expose no driver details or connection configuration.
+            raise DatabaseIdentityUnavailable() from None
 
     async def admit(self, identity: CallIdentity, process_instance_id: str,
                     service_epoch: int) -> AdmissionDecision:

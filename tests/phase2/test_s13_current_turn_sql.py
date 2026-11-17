@@ -187,6 +187,336 @@ async def _expect_code(code: str, awaitable) -> asyncpg.PostgresError:
     raise AssertionError(f"expected SQL refusal {code}; call succeeded")
 
 
+def _candidate_function_body(source: str, function_name: str) -> str:
+    pattern = re.compile(
+        rf"CREATE FUNCTION\s+change_ledger\.{re.escape(function_name)}\s*\("
+        rf".*?\bAS\s+\$fn\$(.*?)\$fn\$;",
+        re.IGNORECASE | re.DOTALL,
+    )
+    matches = list(pattern.finditer(source))
+    assert len(matches) == 1, f"expected one candidate definition for {function_name}"
+    return matches[0].group(1)
+
+
+def test_s13_private_writer_turn_routines_lock_then_reread_scoped_lifecycle_state() -> None:
+    """The lifecycle state decision must use a fresh scoped read while retaining its row lock."""
+    source = (MIGRATIONS / "027_private_writer_admission_schema.sql").read_text(
+        encoding="utf-8",
+    )
+    routines = {
+        "private_writer_register_barrier_ack_v1": (
+            "hint.tenant_id", "hint.company_id", r"lf\.state\s*<>\s*'RECOVERING'",
+            r"lf\.epoch\s*<>\s*hint\.epoch",
+        ),
+        "private_writer_admit_v1": (
+            "p_identity.tenant_id", "p_identity.company_id", r"lf\.state\s*<>\s*'READY'",
+            r"lf\.epoch\s*<>\s*p_identity\.epoch",
+        ),
+        "private_writer_mark_invoking_v1": (
+            "p_identity.tenant_id", "p_identity.company_id", r"lf\.state\s*<>\s*'READY'",
+            r"lf\.epoch\s*<>\s*p_identity\.epoch",
+        ),
+        "private_writer_begin_com_entry_v1": (
+            "p_identity.tenant_id", "p_identity.company_id", r"lf\.state\s*<>\s*'READY'",
+            r"lf\.epoch\s*<>\s*p_identity\.epoch",
+        ),
+        "private_writer_issue_permit_v1": (
+            "p_tenant", "p_company", r"lf\.state\s*<>\s*'READY'",
+            r"lf\.epoch\s*<>\s*intent\.auth_epoch",
+        ),
+        "change_ledger_begin_apply_v1": (
+            "p_tenant", "p_company", r"lf\.state\s*<>\s*'READY'", None,
+        ),
+        "private_writer_record_verified_success_v1": (
+            "hint.tenant_id", "hint.company_id", r"lf\.state\s+NOT\s+IN\s*\('READY','RECOVERING'\)",
+            None,
+        ),
+        "private_writer_record_recovered_not_invoked_v1": (
+            "hint.tenant_id", "hint.company_id", r"lf\.state\s+NOT\s+IN\s*\('READY','RECOVERING'\)",
+            None,
+        ),
+        "private_writer_record_recovered_terminal_v1": (
+            "hint.tenant_id", "hint.company_id", r"lf\.state\s+NOT\s+IN\s*\('READY','RECOVERING'\)",
+            None,
+        ),
+        "private_writer_finish_barrier_v1": (
+            "hint.tenant_id", "hint.company_id", r"lf\.state\s*<>\s*'RECOVERING'",
+            r"lf\.epoch\s*<>\s*hint\.epoch",
+        ),
+        "private_writer_close_and_advance_v1": (
+            "p_scope.tenant_id", "p_scope.company_id", r"lf\.state\s*<>\s*'READY'",
+            r"lf\.epoch\s*<>\s*p_expected_epoch",
+        ),
+    }
+    for function_name, (tenant_expr, company_expr, state_check, epoch_check) in routines.items():
+        body = _candidate_function_body(source, function_name)
+        reads = list(re.finditer(
+            r"\bSELECT\s+\*\s+INTO\s+lf\b[^;]*?"
+            r"\bFROM\s+change_ledger\.lifecycle_fences\b[^;]*;",
+            body,
+            flags=re.IGNORECASE | re.DOTALL,
+        ))
+        assert len(reads) == 2, (
+            function_name,
+            "expected one lifecycle row lock and one distinct fresh-snapshot read",
+        )
+        read_froms = re.findall(
+            r"\bFROM\s+change_ledger\.lifecycle_fences\b", body, flags=re.IGNORECASE,
+        )
+        assert len(read_froms) == 2, (
+            function_name,
+            "a lifecycle-fence read exists outside the two checked statements",
+        )
+
+        for read in reads:
+            statement = read.group(0)
+            assert re.search(rf"\bx\.tenant_id\s*=\s*{re.escape(tenant_expr)}\b", statement)
+            assert re.search(rf"\bx\.company_id\s*=\s*{re.escape(company_expr)}\b", statement)
+
+        locked_read, fresh_read = reads
+        assert locked_read.start() < fresh_read.start()
+        assert re.search(r"\bFOR\s+UPDATE\b", locked_read.group(0), re.IGNORECASE)
+        assert not re.search(r"\bFOR\s+UPDATE\b", fresh_read.group(0), re.IGNORECASE)
+        locked_row_guard = body[locked_read.end():fresh_read.start()]
+        assert re.search(r"\bIF\s+NOT\s+FOUND\b", locked_row_guard, re.IGNORECASE), (
+            function_name,
+            "missing lifecycle row is not refused before the fresh read",
+        )
+        assert not re.search(r"\blf\.(?:state|epoch)\b", body[:fresh_read.start()], re.IGNORECASE), (
+            function_name,
+            "state/epoch was evaluated before the distinct scoped read",
+        )
+        decision = body[fresh_read.end():]
+        assert re.search(state_check, decision, re.IGNORECASE | re.DOTALL), (
+            function_name,
+            "the state predicate no longer follows the fresh read",
+        )
+        if epoch_check is not None:
+            assert re.search(epoch_check, decision, re.IGNORECASE | re.DOTALL), (
+                function_name,
+                "the epoch predicate no longer follows the fresh read",
+            )
+        if function_name == "private_writer_register_barrier_ack_v1":
+            base_fence = re.search(
+                r"PERFORM\s+change_ledger\.private_writer_take_base_fence_v1\s*\(\s*hint\.base_fingerprint\s*\)",
+                body,
+                re.IGNORECASE,
+            )
+            scope_fence = re.search(
+                r"PERFORM\s+change_ledger\.private_writer_take_scope_fence_v1\s*\(\s*hint\.tenant_id\s*,\s*hint\.company_id\s*\)",
+                body,
+                re.IGNORECASE,
+            )
+            trust_revision = re.search(
+                r"SELECT\s+revision\s+INTO\s+current_trust_revision\s+"
+                r"FROM\s+change_ledger\.private_writer_trust_registry_revision\s+"
+                r"WHERE\s+revision_id\s*=\s*1\s+FOR\s+SHARE\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            binding_reread = re.search(
+                r"SELECT\s+\*\s+INTO\s+service_binding\s+"
+                r"FROM\s+change_ledger\.private_writer_service_bindings\b[^;]*?FOR\s+SHARE\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            receipt_key_reread = re.search(
+                r"SELECT\s+\*\s+INTO\s+k\s+"
+                r"FROM\s+change_ledger\.private_writer_signer_key_versions\b"
+                r"[^;]*?x\.key_id\s*=\s*p_ack\.key_id[^;]*?FOR\s+SHARE\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            supervisor_key_reread = re.search(
+                r"SELECT\s+\*\s+INTO\s+sk\s+"
+                r"FROM\s+change_ledger\.private_writer_signer_key_versions\b"
+                r"[^;]*?x\.key_id\s*=\s*p\.supervisor_key_id[^;]*?FOR\s+SHARE\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            assert base_fence and scope_fence and trust_revision and binding_reread, function_name
+            assert receipt_key_reread and supervisor_key_reread, function_name
+            state_decision = re.search(state_check, decision, re.IGNORECASE | re.DOTALL)
+            assert state_decision is not None, function_name
+            key_plan = re.search(
+                r"key_material_lock_ids\s*:=\s*ARRAY\s*\[(.*?)\]\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            sorted_lock_loop = re.search(
+                r"FOR\s+key_material_lock_id\s+IN\s+"
+                r"SELECT\s+DISTINCT\s+lock_id\s+FROM\s+pg_catalog\.unnest\s*\(\s*"
+                r"key_material_lock_ids\s*\)\s+AS\s+planned\s*\(\s*lock_id\s*\)\s+"
+                r"ORDER\s+BY\s+lock_id\s+LOOP\s+"
+                r"PERFORM\s+pg_catalog\.pg_advisory_xact_lock\s*\(\s*key_material_lock_id\s*\)\s*;\s*END\s+LOOP\s*;",
+                body,
+                re.IGNORECASE | re.DOTALL,
+            )
+            namespace_six = re.search(
+                r"PERFORM\s+change_ledger\.private_writer_take_global_fences_v1\s*\(",
+                body,
+                re.IGNORECASE,
+            )
+            assert key_plan and sorted_lock_loop and namespace_six, function_name
+            for identity in ("supervisor_public_key", "initial_public_key"):
+                assert re.search(
+                    rf"hashtextextended\s*\(\s*encode\s*\(\s*{identity}\s*,\s*'hex'\s*\)\s*,\s*17017\s*\)",
+                    key_plan.group(1),
+                    re.IGNORECASE,
+                ), f"{function_name} omits {identity} from the planned key identities"
+            assert (
+                key_plan.start()
+                < base_fence.start()
+                < scope_fence.start()
+                < locked_read.start()
+                < fresh_read.start()
+                < fresh_read.end() + state_decision.start()
+                < sorted_lock_loop.start()
+                < namespace_six.start()
+                < trust_revision.start()
+                < binding_reread.start()
+                < receipt_key_reread.start()
+                < supervisor_key_reread.start()
+            ), f"{function_name} does not follow plan/fence/lifecycle/key/namespace-6/trust/binding order"
+            assert not re.search(
+                r"FROM\s+change_ledger\.(?:private_writer_service_bindings|"
+                r"private_writer_trust_registry_revision)\b[^;]*?FOR\s+(?:SHARE|UPDATE)\b",
+                body[:base_fence.start()],
+                re.IGNORECASE | re.DOTALL,
+            ), f"{function_name} locks binding or trust revision before ranked fences"
+            assert re.search(
+                r"IF\s+NOT\s+FOUND\s+OR\s+service_binding\s+IS\s+DISTINCT\s+FROM\s+service_binding_hint\s+THEN",
+                body[binding_reread.end():],
+                re.IGNORECASE | re.DOTALL,
+            ), f"{function_name} does not compare the locked binding with its pre-fence hint"
+            assert re.search(
+                r"IF\s+NOT\s+FOUND\s+OR\s+k\.public_key\s+IS\s+DISTINCT\s+FROM\s+initial_public_key",
+                body[receipt_key_reread.end():],
+                re.IGNORECASE | re.DOTALL,
+            ), f"{function_name} does not revalidate the receipt key material"
+            assert re.search(
+                r"IF\s+NOT\s+FOUND\s+OR\s+sk\.public_key\s+IS\s+DISTINCT\s+FROM\s+supervisor_public_key",
+                body[supervisor_key_reread.end():],
+                re.IGNORECASE | re.DOTALL,
+            ), f"{function_name} does not revalidate supervisor key material"
+            lock_calls = re.findall(
+                r"\bpg_advisory_xact_lock\s*\(", body, re.IGNORECASE,
+            )
+            assert len(lock_calls) == 1, (
+                function_name,
+                "per-key advisory locks must only occur inside the sorted/deduplicated loop",
+            )
+
+    body = _candidate_function_body(source, "attach_permit_signature_v1")
+    reads = list(re.finditer(
+        r"\bSELECT\s+\*\s+INTO\s+lf\b[^;]*?"
+        r"\bFROM\s+change_ledger\.lifecycle_fences\b[^;]*;",
+        body,
+        flags=re.IGNORECASE | re.DOTALL,
+    ))
+    assert len(reads) == 2
+    locked_read, fresh_read = reads
+    scope_fence = re.search(
+        r"PERFORM\s+change_ledger\.private_writer_take_scope_fence_v1\s*\(\s*t\s*,\s*c\s*\)",
+        body,
+        re.IGNORECASE,
+    )
+    assert scope_fence is not None
+    assert re.search(
+        r"\bf\.tenant_id\s*=\s*t\b.*?\bf\.company_id\s*=\s*c\b.*?FOR\s+SHARE\b",
+        locked_read.group(0),
+        re.IGNORECASE | re.DOTALL,
+    )
+    assert re.search(
+        r"\bf\.tenant_id\s*=\s*t\b.*?\bf\.company_id\s*=\s*c\b",
+        fresh_read.group(0),
+        re.IGNORECASE | re.DOTALL,
+    )
+    assert not re.search(r"\bFOR\s+(?:SHARE|UPDATE)\b", fresh_read.group(0), re.IGNORECASE)
+    locked_row_guard = body[locked_read.end():fresh_read.start()]
+    assert re.search(r"IF\s+NOT\s+FOUND\s+THEN\s+RAISE\s+EXCEPTION\s+'LIFECYCLE_NOT_READY'", locked_row_guard, re.IGNORECASE | re.DOTALL)
+    assert not re.search(r"\blf\.state\b", body[:fresh_read.start()], re.IGNORECASE)
+    assert re.search(
+        r"IF\s+NOT\s+FOUND\s+OR\s+lf\.state\s*<>\s*'READY'\s+THEN\s+"
+        r"RAISE\s+EXCEPTION\s+'LIFECYCLE_NOT_READY'",
+        body[fresh_read.end():],
+        re.IGNORECASE | re.DOTALL,
+    ), "attach_permit_signature_v1 changed its READY refusal after the fresh read"
+    assert scope_fence.start() < locked_read.start() < fresh_read.start()
+
+    for function_name in (
+        "approve_registry_change_v1",
+        "register_verifier_key_v1",
+        "revoke_verifier_key_v1",
+    ):
+        body = _candidate_function_body(source, function_name)
+        reads = list(re.finditer(
+            r"\bSELECT\s+\*\s+INTO\s+lf\b[^;]*?"
+            r"\bFROM\s+change_ledger\.lifecycle_fences\b[^;]*;",
+            body,
+            flags=re.IGNORECASE | re.DOTALL,
+        ))
+        assert len(reads) == 2, function_name
+        locked_read, fresh_read = reads
+        assert re.search(
+            r"\bf\.tenant_id\s*=\s*t\b.*?\bf\.company_id\s*=\s*c\b.*?FOR\s+SHARE\b",
+            locked_read.group(0),
+            re.IGNORECASE | re.DOTALL,
+        ), function_name
+        assert re.search(
+            r"\bf\.tenant_id\s*=\s*t\b.*?\bf\.company_id\s*=\s*c\b",
+            fresh_read.group(0),
+            re.IGNORECASE | re.DOTALL,
+        ), function_name
+        assert not re.search(r"\bFOR\s+(?:SHARE|UPDATE)\b", fresh_read.group(0), re.IGNORECASE)
+        assert re.search(
+            r"IF\s+NOT\s+FOUND\s+THEN\s+RAISE\s+EXCEPTION\s+'LIFECYCLE_NOT_READY'",
+            body[locked_read.end():fresh_read.start()],
+            re.IGNORECASE | re.DOTALL,
+        ), function_name
+        assert not re.search(r"\blf\.state\b", body[:fresh_read.start()], re.IGNORECASE), function_name
+        decision = re.search(
+            r"IF\s+NOT\s+FOUND\s+OR\s+lf\.state\s+IN\s*\('NOT_READY','RECOVERING'\)\s+THEN\s+"
+            r"RAISE\s+EXCEPTION\s+'LIFECYCLE_NOT_READY'",
+            body[fresh_read.end():],
+            re.IGNORECASE | re.DOTALL,
+        )
+        assert decision is not None, f"{function_name} changed its lifecycle refusal"
+        switch_fence = re.search(
+            r"PERFORM\s+change_ledger\.private_writer_take_switch_fence_v1\s*\(\s*t\s*,\s*c\s*\)",
+            body,
+            re.IGNORECASE,
+        )
+        scope_fence = re.search(
+            r"PERFORM\s+change_ledger\.private_writer_take_scope_fence_v1\s*\(\s*t\s*,\s*c\s*\)",
+            body,
+            re.IGNORECASE,
+        )
+        recheck = re.search(
+            r"PERFORM\s+change_ledger\.recheck_scope_locked\s*\(\s*t\s*,\s*c\s*\)",
+            body,
+            re.IGNORECASE,
+        )
+        key_lock = re.search(r"pg_catalog\.pg_advisory_xact_lock\s*\(", body, re.IGNORECASE)
+        namespace_six = re.search(
+            r"PERFORM\s+change_ledger\.private_writer_take_global_fences_v1\s*\(",
+            body,
+            re.IGNORECASE,
+        )
+        assert switch_fence and scope_fence and recheck and namespace_six, function_name
+        assert key_lock is not None, function_name
+        assert (
+            switch_fence.start()
+            < scope_fence.start()
+            < locked_read.start()
+            < fresh_read.start()
+            < fresh_read.end() + decision.start()
+            < recheck.start()
+            < key_lock.start()
+            < namespace_six.start()
+        ), f"{function_name} changed switch/scope/lifecycle/key/namespace ordering"
+
+
 async def test_s13_kill_switch_legacy_off_is_no_write_and_no_event(ledger: L) -> None:
     """S13-KILL-SWITCH-LEGACY-BRIDGE-01: the granted legacy OFF call is a true no-op."""
     conn = ledger.conn

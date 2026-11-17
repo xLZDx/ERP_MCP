@@ -827,17 +827,8 @@ def test_native_evidence_and_operator_cli_require_reconciliation_and_actor():
         {"case_id": f"case-{i}", "status": "PASS", "native_report_ref": f"reports/{i}"}
         for i in range(10)
     ]
-    assert (
-        len(validate_native_reconciliation_evidence({"native_reconciliation_cases": cases})) == 10
-    )
-    with pytest.raises(ValueError, match="status PASS"):
-        validate_native_reconciliation_evidence(
-            {"native_reconciliation_cases": [*cases[:-1], {**cases[-1], "status": "FAIL"}]}
-        )
-    with pytest.raises(ValueError, match="unique"):
-        validate_native_reconciliation_evidence(
-            {"native_reconciliation_cases": [*cases[:-1], {**cases[-1], "case_id": "case-0"}]}
-        )
+    with pytest.raises(ValueError, match="not independently verifiable"):
+        validate_native_reconciliation_evidence({"native_reconciliation_cases": cases})
     parsed = semantic_admin_parser().parse_args(
         [
             "create",
@@ -875,6 +866,11 @@ def test_semantic_profile_migration_persists_versioned_pinned_preset_and_require
     assert "SECURITY DEFINER" in sql
     assert "source_capabilities_invalidate_semantic_profiles" in sql
     assert "VALUES (6)" in sql
+
+    fail_closed = (root / "db/migrations/017_semantic_profile_machine_evidence_only.sql").read_text(encoding="utf-8")
+    assert "semantic_profiles_validation_machine_evidence_only" in fail_closed
+    assert "evidence_basis' IS NOT DISTINCT FROM 'MACHINE'" in fail_closed
+    assert ") NOT VALID" in fail_closed
 
     events = (root / "db/migrations/007_semantic_profile_events.sql").read_text(encoding="utf-8")
     assert "CREATE TABLE IF NOT EXISTS bag.semantic_profile_events" in events

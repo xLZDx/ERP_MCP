@@ -11,7 +11,7 @@ Full Given/When/Then steps are provided in the companion `03_STORIES_RU.md`, `te
 
 | Story | Sprint / Priority | Actor and desired outcome | Requirements | Acceptance cases: positive / negative / boundary and recovery |
 | --- | --- | --- | --- | --- |
-| R2-US-001 | S0/P0 | Owner establishes the R1/R2 boundary and baseline | REQ01,28 | TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence |
+| R2-US-001 | S0/P0 | Owner establishes the R1/R2 boundary and baseline | REQ01 (formal); REQ28 related to TC003 evidence | TC001 R1 unchanged; TC002 R1 defects cannot be hidden in the future backlog; TC003 moving HEAD is not reported as deployment evidence |
 | R2-US-002 | S0/P0 | Architect verifies actual PDCC/ERP/Ferma reuse | REQ04 | TC004 pin file path/SHA/license; TC005 an empty placeholder is not ready; TC006 donor write APIs are not exposed |
 | R2-US-003 | S1/P0 | Connector engineer uses a bounded read-only SDK | REQ03,26 | TC007 typed scope and provenance; TC008 arbitrary URL/SQL/command denied; TC009 unsupported change feed maps to SNAPSHOT_ONLY |
 | R2-US-004 | S1/P0 | Administrator defines tenant/company membership | REQ02,27 | TC010 permitted company read; TC011 cross-tenant FK/API denied; TC012 company-only grant does not authorize global metadata |

@@ -1,0 +1,161 @@
+{
+  "schema": "ERP_MCP_CT14_QUALIFICATION",
+  "schema_version": 1,
+  "record_id": "CT14-818HA-P2DIFF-2026-10-27-V1",
+  "record_class": "HISTORICAL_DISPOSABLE_CLONE_EVIDENCE",
+  "scope": {
+    "clone": "818HA_p2diff",
+    "database_type": "file",
+    "platform_version": "8.3.27.2342",
+    "configuration": "БухгалтерияДляМолдовы 3.0.67.1",
+    "document_shape": "ПоступлениеТоваровУслуг",
+    "measured_channel": "COM",
+    "out_of_scope_channel": "OData",
+    "evidence_is_current_runtime": false,
+    "evidence_authorizes_operation": false
+  },
+  "sources": [
+    {
+      "role": "acceptance_design",
+      "path": "docs/phase2/S11_TEST_DESIGN_PACKAGE_2026-10-12.md",
+      "artifact_date": "2026-10-12",
+      "date_basis": "filename",
+      "canonical_sha256": "eb12d608a6c7afb03e5a0d57f96bdf186721f88057a750cfbadf8079e7bd5c38",
+      "reviewed_sha256": "a13c332a58cf3cb89cd526ad5a8011f16fa272311d7596995c0fdba038f35b1b"
+    },
+    {
+      "role": "feasibility_spike",
+      "path": "docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md",
+      "artifact_date": "2026-10-12",
+      "date_basis": "document title and filename",
+      "canonical_sha256": "204d1848793798baa0b2fa06f0b187e782069eeec29f179283b730a42aee0813",
+      "reviewed_sha256": "628d527a78cb699e8dc8e88050b92f414bb8e7ce29862edc546fb22e8f8124a6"
+    },
+    {
+      "role": "metadata_inventory",
+      "path": "docs/phase2/artifacts/CT14_METADATA_INVENTORY_IVAN_2026-10-27.json",
+      "artifact_date": "2026-10-27",
+      "date_basis": "filename; capture timestamp not present in JSON",
+      "canonical_sha256": "13c4f98f30b6387e8b07df0719e1d20616e4ec4c237b07faa84699101c2f9283",
+      "reviewed_sha256": "13c4f98f30b6387e8b07df0719e1d20616e4ec4c237b07faa84699101c2f9283"
+    },
+    {
+      "role": "draft_destination_types",
+      "path": "docs/phase2/artifacts/CT14_DRAFT_DESTINATION_TYPES_2026-10-27.json",
+      "artifact_date": "2026-10-27",
+      "date_basis": "filename; capture timestamp not present in JSON",
+      "canonical_sha256": "214896b219d37e23c67a2417c299aa12d5955e09eb3608b3ed4c6c94711c2425",
+      "reviewed_sha256": "214896b219d37e23c67a2417c299aa12d5955e09eb3608b3ed4c6c94711c2425"
+    },
+    {
+      "role": "vat_enumeration_semantics",
+      "path": "docs/phase2/artifacts/CT14_VAT_ENUMERATION_SEMANTICS_2026-10-27.json",
+      "artifact_date": "2026-10-27",
+      "date_basis": "filename; capture timestamp not present in JSON",
+      "canonical_sha256": "a86d9dc9a01040263529f088c58e3423329067633c782ed59776b549f4e6b55b",
+      "reviewed_sha256": "a86d9dc9a01040263529f088c58e3423329067633c782ed59776b549f4e6b55b"
+    },
+    {
+      "role": "executor_clone_facts",
+      "path": "docs/phase2/artifacts/CT14_EXECUTOR_CLONE_FACTS_2026-10-27.json",
+      "artifact_date": "2026-10-27",
+      "date_basis": "filename; capture timestamp not present in JSON",
+      "canonical_sha256": "7d34ba423197851f0e2fd16d65a47eed2bfd6b43090d0367dd5566ee97fdf310",
+      "reviewed_sha256": "7d34ba423197851f0e2fd16d65a47eed2bfd6b43090d0367dd5566ee97fdf310"
+    },
+    {
+      "role": "effective_rights",
+      "path": "docs/phase2/artifacts/CT14_EFFECTIVE_RIGHTS_2026-10-27.json",
+      "artifact_date": "2026-10-27",
+      "date_basis": "filename; capture timestamp not present in JSON",
+      "canonical_sha256": "4547abaeb7a9963a4ebbf24ed77493b6ed2916d3abcfcffba36debf324676ab6",
+      "reviewed_sha256": "2f44531a67360b7e7388ca819ab4f796dedc54f214bbd21554509bd9e399f2a4"
+    }
+  ],
+  "rights_revisions": [
+    {
+      "revision_id": "CT14_SPIKE_2026-10-12",
+      "evidence_source": "docs/phase2/CT14_FEASIBILITY_SPIKE_2026-10-12.md §6, Rights reconciliation",
+      "scope": "custom extension role on disposable clone; baseline rights dump",
+      "reported_right_entries": 53,
+      "interpretation": "historical baseline; includes receipt document and 52 empty adopted objects"
+    },
+    {
+      "revision_id": "CT14_EFFECTIVE_RIGHTS_2026-10-27",
+      "evidence_source": "docs/phase2/artifacts/CT14_EFFECTIVE_RIGHTS_2026-10-27.json",
+      "scope": "later rights artifact; exact identity to the 2026-10-12 snapshot is not asserted",
+      "reported_committed_objects": 53,
+      "reported_effective_mapping_entries": 55,
+      "reported_mismatch_count": 0,
+      "reported_extra_effective_count": 0
+    },
+    {
+      "revision_id": "CT14_EXECUTOR_CLONE_FACTS_2026-10-27",
+      "evidence_source": "docs/phase2/artifacts/CT14_EXECUTOR_CLONE_FACTS_2026-10-27.json",
+      "scope": "later executor-run snapshot after added read requirements",
+      "added_read_rights": ["Organizations", "Counterparties", "Currencies", "Nomenclature"],
+      "reported_effective_object_count": 57,
+      "reported_mismatch_count": 0,
+      "reported_extra_count": 0,
+      "reported_forbidden_count": 0
+    }
+  ],
+  "parsed_source_summary": {
+    "metadata_inventory": {
+      "clone": "818HA_p2diff",
+      "platform_version": "8.3.27.2342",
+      "configuration": "БухгалтерияДляМолдовы 3.0.67.1",
+      "document": "ПоступлениеТоваровУслуг"
+    },
+    "draft_destination_types": {
+      "sections": ["goods", "header", "vat_enum_values"],
+      "header_fields": 7,
+      "goods_fields": 6,
+      "vat_enum_values": 20
+    },
+    "vat_enumeration_semantics": {
+      "clone": "818HA_p2diff",
+      "enumeration": "СтавкиНДС",
+      "value_count": 20
+    },
+    "effective_rights": {
+      "committed_objects": 53,
+      "effective_mapping_entries": 55,
+      "mismatch_count": 0,
+      "extra_effective_count": 0
+    },
+    "executor_clone_facts": {
+      "clone": "818HA_p2diff",
+      "added_read_rights": ["Organizations", "Counterparties", "Currencies", "Nomenclature"],
+      "effective_summary": "57 objects, 0 mismatches, 0 extra, 0 forbidden"
+    }
+  },
+  "capability_observations": [
+    {"item_id": "1", "observation_id": "spike-2026-10-12-item-1", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "2", "observation_id": "spike-2026-10-12-item-2", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "3", "observation_id": "spike-2026-10-12-item-3", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "4", "observation_id": "spike-2026-10-12-item-4", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "5", "observation_id": "spike-2026-10-12-item-5", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "6", "observation_id": "spike-2026-10-12-item-6", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "7", "observation_id": "spike-2026-10-12-item-7", "scope_id": "clone-818HA_p2diff-COM-file", "status": "SUPPORTED"},
+    {"item_id": "8", "observation_id": "spike-2026-10-12-item-8", "scope_id": "clone-818HA_p2diff-COM", "status": "SUPPORTED"},
+    {"item_id": "9", "observation_id": "spike-2026-10-12-item-9", "scope_id": "clone-818HA_p2diff-all-channels", "status": "INCONCLUSIVE", "measurement_state": "NOT_MEASURED", "disposition": "forced termination remains DENIED"},
+    {"item_id": "10a", "observation_id": "spike-2026-10-12-item-10a", "scope_id": "clone-818HA_p2diff-COM-file", "status": "OBSERVED_WEAK"},
+    {"item_id": "10b", "observation_id": "spike-2026-10-12-item-10b", "scope_id": "clone-818HA_p2diff-COM", "status": "INCONCLUSIVE", "measurement_state": "NOT_MEASURED", "disposition": "base-wide hold remains required"},
+    {"item_id": "11", "observation_id": "spike-2026-10-12-item-11", "scope_id": "clone-818HA-purchase-receipt", "status": "SUPPORTED"},
+    {"item_id": "12-standard", "observation_id": "spike-2026-10-12-item-12-standard", "scope_id": "standard-accounting-roles", "status": "UNSUPPORTED"},
+    {"item_id": "12-custom", "observation_id": "spike-2026-10-12-item-12-custom", "scope_id": "clone-818HA_p2diff-custom-extension-role", "status": "SUPPORTED"},
+    {"item_id": "13", "observation_id": "spike-2026-10-12-item-13", "scope_id": "ivan-odata-write", "status": "INCONCLUSIVE", "measurement_state": "NOT_MEASURED", "disposition": "no OData write eligibility"},
+    {"item_id": "14", "observation_id": "spike-2026-10-12-item-14", "scope_id": "clone-818HA_p2diff-marker", "status": "SUPPORTED", "limitation": "mutable marker is not independent proof of non-application"}
+  ],
+  "operations": {
+    "CREATE_DRAFT": {
+      "capability_observed": "SUPPORTED",
+      "capability_qualified": false,
+      "scope_qualified": false,
+      "operation_authorized": false,
+      "decision": "BLOCKED",
+      "reason_codes": ["CT14_CAPABILITY_QUALIFIED_NOT_SATISFIED", "CT14_SCOPE_QUALIFIED_NOT_SATISFIED", "CT14_OPERATION_AUTHORIZED_NOT_SATISFIED"]
+    }
+  }
+}

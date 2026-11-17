@@ -1,6 +1,7 @@
 """Continue verified S12 conditional-conflict recovery through T16 and S13 terminalization."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from business_ai_gateway.phase2.change_ledger._common import Scope
+from business_ai_gateway.phase2.change_ledger.checkpoint import DatabaseTargetIdentity
 from business_ai_gateway.phase2.change_ledger.uuid_contract import is_canonical_nonzero_uuid
 from business_ai_gateway.phase2.change_ledger.write_port import ApplyTicket, DispatchPermit
 
@@ -22,10 +24,13 @@ from .service import (
 
 _LOG = logging.getLogger(__name__)
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
+_DATABASE_BINDING_TIMEOUT_SECONDS = 5.0
 
 
 class T16ResolutionGate(Protocol):
     """S12 ledger/checkpoint gate; the implementation owns cosign validation and read-back."""
+
+    async def database_target_identity(self) -> DatabaseTargetIdentity: ...
 
     async def resolve_t16_s13(
             self, scope: Scope, change_id: UUID, dispatch_cas_id: UUID, cosign_id: UUID,
@@ -74,10 +79,38 @@ class T16RecoveryCoordinator:
                  resolution_gate: T16ResolutionGate) -> None:
         if not isinstance(writer_service, PrivateWriterService):
             raise ValueError("T16_WRITER_SERVICE_INVALID")
+        if not has_static_callable_method(writer_service, "database_target_identity"):
+            raise ValueError("T16_DATABASE_BINDING_UNAVAILABLE")
         if not has_static_callable_method(resolution_gate, "resolve_t16_s13"):
             raise ValueError("T16_RESOLUTION_GATE_INVALID")
+        if not has_static_callable_method(resolution_gate, "database_target_identity"):
+            raise ValueError("T16_DATABASE_BINDING_UNAVAILABLE")
         self._writer = writer_service
         self._resolution_gate = resolution_gate
+
+    async def _require_same_database_target(self, *, outcome_unknown: bool) -> None:
+        """Compare live server-derived identities; never use DSN/name labels as proof."""
+        try:
+            # The adapters have their own query deadlines, but the coordinator must also bound
+            # the combined dependency contract so a stalled replacement cannot pin recovery.
+            async with asyncio.timeout(_DATABASE_BINDING_TIMEOUT_SECONDS):
+                writer_identity = await self._writer.database_target_identity()
+                ledger_identity = await self._resolution_gate.database_target_identity()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            raise T16RecoveryError(
+                "T16_DATABASE_BINDING_UNAVAILABLE", outcome_unknown=outcome_unknown,
+            ) from None
+        if (type(writer_identity) is not DatabaseTargetIdentity
+                or type(ledger_identity) is not DatabaseTargetIdentity):
+            raise T16RecoveryError(
+                "T16_DATABASE_BINDING_INVALID", outcome_unknown=outcome_unknown,
+            )
+        if writer_identity != ledger_identity:
+            raise T16RecoveryError(
+                "T16_DATABASE_BINDING_MISMATCH", outcome_unknown=outcome_unknown,
+            )
 
     async def resolve_conditional_conflict(
             self, ticket: ApplyTicket, permit: DispatchPermit, cosign_id: UUID,
@@ -93,6 +126,7 @@ class T16RecoveryCoordinator:
         if (type(cosign_id) is not UUID
                 or not is_canonical_nonzero_uuid(str(cosign_id))):
             raise T16RecoveryError("T16_COSIGN_ID_INVALID")
+        await self._require_same_database_target(outcome_unknown=False)
         try:
             existing = await self._writer.lookup(ticket, permit)
         except ServiceError as exc:
@@ -124,6 +158,7 @@ class T16RecoveryCoordinator:
         except (TypeError, ValueError, AttributeError):
             # Nothing has been sent to the gate yet, so this is a definitive local rejection.
             raise T16RecoveryError("T16_CHANGE_ID_INVALID") from None
+        await self._require_same_database_target(outcome_unknown=False)
         try:
             result = await self._resolution_gate.resolve_t16_s13(
                 identity.scope,
@@ -137,9 +172,16 @@ class T16RecoveryCoordinator:
                 refs.read_attestation_ref,
             )
         except ServiceError as exc:
+            if exc.outcome_unknown:
+                # The ledger transaction may have committed before its acknowledgement failed.
+                # Revalidate the adapter binding before returning an uncertain result.
+                await self._require_same_database_target(outcome_unknown=True)
             raise T16RecoveryError(exc.code, outcome_unknown=exc.outcome_unknown) from None
         except Exception as exc:
             _LOG.error("T16 resolution gate raised unexpected %s", type(exc).__name__)
+            # A timeout/transport exception can follow a committed resolution and checkpoint.
+            # Preserve that uncertainty while distinguishing a lost or mismatched DB binding.
+            await self._require_same_database_target(outcome_unknown=True)
             raise T16RecoveryError("T16_RESOLUTION_OUTCOME_UNKNOWN",
                                    outcome_unknown=True) from None
 
@@ -186,6 +228,9 @@ class T16RecoveryCoordinator:
                 or type(checkpoint_ids) is not list or checkpoint_ids != expected_released):
             raise T16RecoveryError("T16_CHECKPOINT_RESULT_INVALID", outcome_unknown=True)
 
+        # The gate may already have committed T16 and released checkpoint holds. If the target
+        # changed or cannot be re-read, leave the private physical call unresolved for exact replay.
+        await self._require_same_database_target(outcome_unknown=True)
         try:
             call = await self._writer.record_recovered_terminal(
                 ticket,

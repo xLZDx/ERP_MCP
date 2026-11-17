@@ -84,16 +84,26 @@ class OneCCapabilityDetector:
         self.secrets = secrets
 
     async def _credentials(self, source: Source) -> tuple[str | None, str | None]:
+        username_ref = source.username_secret_ref
+        password_ref = source.password_secret_ref
+        has_username_ref = bool(username_ref and username_ref.strip())
+        has_password_ref = bool(password_ref and password_ref.strip())
+        if has_username_ref != has_password_ref:
+            raise RuntimeError("1C username/password secret refs must be paired")
+        if not has_username_ref:
+            return None, None
         username = (
-            await self.secrets.get(source.username_secret_ref)
-            if source.username_secret_ref
+            await self.secrets.get(username_ref)
+            if username_ref
             else None
         )
         password = (
-            await self.secrets.get(source.password_secret_ref)
-            if source.password_secret_ref
+            await self.secrets.get(password_ref)
+            if password_ref
             else None
         )
+        if not username or not username.strip() or not password or not password.strip():
+            raise RuntimeError("1C username/password secret refs must be paired")
         return username, password
 
     @staticmethod

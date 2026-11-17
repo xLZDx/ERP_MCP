@@ -28,6 +28,7 @@ EXPECTED = {
         "bag.companies": p(select=True),
         "bag.audit_events": p(select=True, insert=True),
         "bag.source_capabilities": p(select=True),
+        "bag.capability_observations": p(),
         "bag.semantic_profiles": p(select=True),
         "bag.semantic_mappings": p(select=True),
         "bag.semantic_profile_events": p(select=True),
@@ -43,6 +44,7 @@ EXPECTED = {
         "bag.companies": p(select=True, insert=True, update=True),
         "bag.audit_events": p(select=True),
         "bag.source_capabilities": p(select=True),
+        "bag.capability_observations": p(),
         "bag.semantic_profiles": p(select=True, insert=True, update=True),
         "bag.semantic_mappings": p(select=True, insert=True, update=True),
         "bag.semantic_profile_events": p(select=True, insert=True),
@@ -61,6 +63,7 @@ EXPECTED = {
         "bag.companies": p(select=True, insert=True, update=True),
         "bag.audit_events": p(select=True),
         "bag.source_capabilities": p(select=True),
+        "bag.capability_observations": p(),
         "bag.semantic_profiles": p(select=True, insert=True, update=True),
         "bag.semantic_mappings": p(select=True, insert=True, update=True),
         "bag.semantic_profile_events": p(select=True, insert=True),
@@ -72,6 +75,14 @@ EXPECTED = {
         "bag.business_role_capabilities": p(select=True),
         "bag.business_role_assignments": p(select=True, insert=True, update=True),
         "bag.capability_overrides": p(select=True, insert=True, update=True),
+    },
+    "business_ai_capability_writer": {
+        "bag.source_capabilities": p(),
+        "bag.capability_observations": p(),
+    },
+    "business_ai_capability_acceptor": {
+        "bag.source_capabilities": p(),
+        "bag.capability_observations": p(),
     },
 }
 
@@ -145,6 +156,39 @@ async def main() -> None:
                 failures.append(
                     f"{role} TRUNCATE {table}: expected {expected}, got {actual}"
                 )
+        record_signature = (
+            "bag.record_capability_observation(text,uuid,bigint,text,text,text,text,boolean,boolean,boolean,boolean,integer,jsonb,jsonb)"
+        )
+        accept_signature = "bag.accept_capability_observation(text,uuid,bigint)"
+        read_accepted_signature = "bag.read_accepted_capability_observation(text,uuid,bigint)"
+        function_expectations = {
+            "business_ai_app": (False, False, True),
+            "business_ai_admin": (False, False, False),
+            "business_ai_control_api": (False, False, False),
+            "business_ai_capability_writer": (True, False, False),
+            "business_ai_capability_acceptor": (False, True, False),
+        }
+        for role, expected in function_expectations.items():
+            actual = (
+                await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')", role, record_signature),
+                await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')", role, accept_signature),
+                await conn.fetchval("SELECT has_function_privilege($1,$2,'EXECUTE')", role, read_accepted_signature),
+            )
+            if actual != expected:
+                failures.append(f"{role} capability function privileges: expected {expected}, got {actual}")
+        for role in ("business_ai_app", "business_ai_admin", "business_ai_control_api"):
+            member = await conn.fetchval(
+                "SELECT pg_has_role($1,$2,'MEMBER') OR pg_has_role($1,$3,'MEMBER')",
+                role, "business_ai_capability_writer", "business_ai_capability_acceptor",
+            )
+            if member:
+                failures.append(f"{role} must not inherit capability writer/acceptor roles")
+        role_overlap = await conn.fetchval(
+            "SELECT pg_has_role($1,$2,'MEMBER') OR pg_has_role($2,$1,'MEMBER')",
+            "business_ai_capability_writer", "business_ai_capability_acceptor",
+        )
+        if role_overlap:
+            failures.append("capability writer and acceptor roles must remain separate")
         if failures:
             raise RuntimeError("\n".join(failures))
         print("database role privilege policy: PASS")
@@ -154,3 +198,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+

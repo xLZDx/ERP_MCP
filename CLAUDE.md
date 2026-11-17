@@ -26,8 +26,8 @@ package names are kept for now so that imports stay stable; renaming them is a s
   `docs/phase2/S10_RELEASE_HANDOFF.md`; gate state is in `governance/GATE_MANIFEST.json`.
 - Durable decisions go to `core/DECISION_LOG.md` (and `docs/phase2/DECISION_LOG.md` for design decisions);
   lessons go to `core/LESSONS_LOG.md`.
-- Focused tests: `python -m pytest tests/phase2 -q --ignore=tests/phase2/_red_tmp`; lint:
-  `python -m ruff check src tests`.
+- Verification follows the current operator restrictions in `AGENTS.md`; historical suite/lint
+  commands are not current instructions. Designated roles run only named acceptance cases.
 - All text committed to git is English.
 
 For implementation status and known gaps, inspect the current code and the normative documents rather

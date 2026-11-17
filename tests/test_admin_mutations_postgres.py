@@ -439,6 +439,7 @@ async def test_real_http_cross_source_exact_target_mutations_have_no_write_side_
         "iss": settings.oauth_issuer, "sub": subject, "iat": int(time.time()),
         "exp": int(time.time()) + 300, "aud": settings.admin_oauth_audience,
         "scope": settings.admin_oauth_required_scope,
+        "azp": "admin-client",
     }
     access = jwt.encode(claims, key, algorithm="RS256")
     app = mcp.streamable_http_app(streamable_http_path="/mcp", json_response=True)

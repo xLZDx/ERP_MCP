@@ -45,9 +45,9 @@ def step(kind, phase=Phase.EXPAND, schema=SchemaName.LIVING, oc=ObjectClass.TABL
     return MigrationStep(phase, kind, schema, oc)
 
 
-def add(version, requires=(), kinds=1):
+def add(version, requires=(), kinds=1, checksum=None):
     return MigrationUnit(version, tuple(requires),
-                         tuple(step(StepKind.CREATE_TABLE) for _ in range(kinds)))
+                         tuple(step(StepKind.CREATE_TABLE) for _ in range(kinds)), checksum)
 
 
 def refused(result, reason):
@@ -199,9 +199,13 @@ def test_rehearsal_orders_the_real_set_and_applies_everything_on_a_fresh_databas
 
 
 def test_rehearsal_reapply_of_applied_versions_is_an_idempotent_noop():
-    plan = plan_rehearsal(real_units(), ["001", "002", "003"], IDS)
+    checksums = {version: f"{ord(version[-1]) + 1:064x}" for version in ("001", "002", "003")}
+    units = [add("001", checksum=checksums["001"]),
+             add("002", ["001"], checksum=checksums["002"]),
+             add("003", ["001", "002"], checksum=checksums["003"])]
+    plan = plan_rehearsal(units, ["001", "002", "003"], IDS, checksums)
     assert [a.apply for a in plan.actions] == [False, False, False]
-    plan2 = plan_rehearsal(real_units(), ("001",), IDS)
+    plan2 = plan_rehearsal(units, ("001",), IDS, {"001": checksums["001"]})
     assert [a.apply for a in plan2.actions] == [False, True, True]
     twice = plan_rehearsal([add("001"), add("001")], [], IDS)  # same version twice in one plan
     assert [a.apply for a in twice.actions] == [True, False]
@@ -215,7 +219,9 @@ def test_rehearsal_missing_requires_is_refused():
 
 def test_rehearsal_gap_is_refused_even_when_requires_is_empty():
     refused(plan_rehearsal([add("001"), add("003", [])], [], IDS), OpsReason.REHEARSAL_REQUIRES_UNMET)
-    refused(plan_rehearsal([add("003", ["001"])], ["001"], IDS), OpsReason.REHEARSAL_REQUIRES_UNMET)
+    checksum = "a" * 64
+    refused(plan_rehearsal([add("003", ["001"], checksum=checksum)], ["001"], IDS,
+                           {"001": checksum}), OpsReason.REHEARSAL_REQUIRES_UNMET)
 
 
 def test_rehearsal_order_matters_like_record_migration():
@@ -240,21 +246,23 @@ def test_rehearsal_refuses_a_non_additive_unit_with_the_class_code():
 
 def test_rehearsal_classifies_the_steps_of_an_already_applied_version_too():
     """G1: a destructive step behind an applied version still refuses (it would run when the version is re-played)."""
-    unit = MigrationUnit("001", (), (step(StepKind.DROP_TABLE),))
-    refused(plan_rehearsal([unit], ["001"], IDS), OpsReason.DESTRUCTIVE)
-    r1 = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),))
-    refused(plan_rehearsal([r1], ["001"], IDS), OpsReason.UNCLASSIFIED)
+    checksum = "a" * 64
+    unit = MigrationUnit("001", (), (step(StepKind.DROP_TABLE),), checksum)
+    refused(plan_rehearsal([unit], ["001"], IDS, {"001": checksum}), OpsReason.DESTRUCTIVE)
+    r1 = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE, schema=SchemaName.R1),), checksum)
+    refused(plan_rehearsal([r1], ["001"], IDS, {"001": checksum}), OpsReason.UNCLASSIFIED)
     refused(plan_rehearsal([add("001"), unit], [], IDS), OpsReason.DESTRUCTIVE)  # the planned-earlier no-op case
 
 
 def test_plan_digest_binds_the_content_of_every_unit_applied_or_not():
-    a = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE),))
-    b = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX)))
-    c = MigrationUnit("001", (), (step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX),))  # same step count as `a`, different content
+    a = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE),), "a" * 64)
+    b = MigrationUnit("001", (), (step(StepKind.CREATE_TABLE), step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX)), "b" * 64)
+    c = MigrationUnit("001", (), (step(StepKind.CREATE_INDEX, oc=ObjectClass.INDEX),), "c" * 64)  # same step count as `a`, different content
     for applied in ([], ["001"]):
-        digests = {plan_rehearsal([u], applied, IDS).digest for u in (a, b, c)}
+        digests = {plan_rehearsal([u], applied, IDS, {"001": u.checksum} if applied else None).digest
+                   for u in (a, b, c)}
         assert len(digests) == 3
-    assert plan_rehearsal([a], ["001"], IDS).digest != plan_rehearsal([a], [], IDS).digest
+    assert plan_rehearsal([a], ["001"], IDS, {"001": a.checksum}).digest != plan_rehearsal([a], [], IDS).digest
     assert plan_rehearsal([a], [], IDS).digest == plan_rehearsal([a], [], IDS).digest
     with pytest.raises(ValueError, match="REHEARSAL_ACTION_INVALID"):
         RehearsalAction("001", True, 1, "not-a-digest")
@@ -322,7 +330,10 @@ def test_rehearsal_digest_is_derived_and_not_a_constructor_argument():
         RehearsalPlan(plan.actions, authority="PROVEN")  # type: ignore[call-arg]
     with pytest.raises(dataclasses.FrozenInstanceError):
         plan.digest = "x"  # type: ignore[misc]
-    other = plan_rehearsal(real_units(), ["001"], IDS)
+    checksums = {"001": "a" * 64}
+    other_units = [add("001", checksum=checksums["001"]), add("002", ["001"]),
+                   add("003", ["001", "002"])]
+    other = plan_rehearsal(other_units, ["001"], IDS, checksums)
     assert other.digest != plan.digest
     assert plan_rehearsal(real_units(), [], IDS).digest == plan.digest
 

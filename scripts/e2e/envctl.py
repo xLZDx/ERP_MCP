@@ -21,6 +21,8 @@ from pathlib import Path
 
 import asyncpg
 
+from business_ai_gateway.db import SCHEMA_VERSION
+
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = Path(os.environ.get("E2E_DIR") or ROOT / ".e2e")
 
@@ -29,32 +31,51 @@ HOST = "127.0.0.1"
 # run next to the default one (never sharing ports, compose project, volume or network):
 #   E2E_PORT_OFFSET     integer added to every default port (default 0)
 #   E2E_PROJECT_SUFFIX  appended to the compose project name, e.g. "-rem" (default "")
-# When neither variable is set the values recorded in E2E_DIR/env.json (if any) are used.
+# When neither variable is set, recorded E2E_DIR/env.json (or env.pending.json) supplies the topology. Its explicit
+# per-service ports win over offset-derived defaults; explicit E2E_PORT_OFFSET relocates all ports.
 BASE_PORTS = {"postgres": 15432, "redis": 16379, "fake1c": 18766, "sidecar": 18767,
-              "idp": 18080, "gateway": 18000}
+              "idp": 18080, "gateway": 18000,
+              "capability_observer": 18001, "capability_acceptor": 18002}
 
 
-def _topology() -> tuple[int, str]:
+def _topology() -> tuple[int, str, dict[str, int]]:
     offset_raw = os.environ.get("E2E_PORT_OFFSET")
     suffix_raw = os.environ.get("E2E_PROJECT_SUFFIX")
     recorded: dict = {}
     if offset_raw is None and suffix_raw is None:
-        try:
-            recorded = json.loads((E2E_DIR / "env.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            recorded = {}
+        for name in ("env.json", "env.pending.json"):
+            try:
+                candidate = json.loads((E2E_DIR / name).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(candidate, dict):
+                recorded = candidate
+                break
     offset = int(offset_raw if offset_raw is not None else recorded.get("port_offset", 0))
     suffix = suffix_raw if suffix_raw is not None else recorded.get("project_suffix", "")
     if not 0 <= offset <= 65535 - max(BASE_PORTS.values()):
         raise SystemExit("E2E_PORT_OFFSET out of range")
     if not re.fullmatch(r"(-[a-z0-9]+)*", suffix):
         raise SystemExit("E2E_PROJECT_SUFFIX must look like -name (lowercase letters/digits)")
-    return offset, suffix
+    recorded_ports = recorded.get("ports", {}) if offset_raw is None else {}
+    if not isinstance(recorded_ports, dict):
+        raise SystemExit("env.json ports must be an object")
+    ports: dict[str, int] = {}
+    for name, base_port in BASE_PORTS.items():
+        if name in recorded_ports:
+            port = recorded_ports[name]
+            if type(port) is not int or not 1024 <= port <= 65535:
+                raise SystemExit(f"env.json port for {name} must be an integer from 1024 to 65535")
+            ports[name] = port
+        else:
+            ports[name] = base_port + offset
+    if len(set(ports.values())) != len(ports):
+        raise SystemExit("E2E ports must be unique")
+    return offset, suffix, ports
 
 
-PORT_OFFSET, PROJECT_SUFFIX = _topology()
+PORT_OFFSET, PROJECT_SUFFIX, PORTS = _topology()
 PROJECT = "erpmcp-e2e" + PROJECT_SUFFIX
-PORTS = {name: port + PORT_OFFSET for name, port in BASE_PORTS.items()}
 REALM = "erp-mcp-test"
 ISSUER = f"http://{HOST}:{PORTS['idp']}/realms/{REALM}"
 MCP_AUDIENCE = f"http://{HOST}:{PORTS['gateway']}/mcp"
@@ -66,6 +87,14 @@ DATA_CLIENT = "erp-mcp-data-e2e"
 HEADLESS_CLIENT = "erp-mcp-headless-e2e"
 CLAUDE_CLIENT = "erp-mcp-claude-desktop"
 CHATGPT_CLIENT = "erp-mcp-chatgpt"
+# A test topology opts into its exact tunnel resource; do not trust a developer's
+# historical tunnel automatically in every newly created disposable environment.
+CHATGPT_TUNNEL_RESOURCE = os.environ.get("E2E_CHATGPT_TUNNEL_RESOURCE", "").strip()
+if CHATGPT_TUNNEL_RESOURCE and not re.fullmatch(
+    r"https://tunnel-service\.gateway\.unified-0\.internal\.api\.openai\.org/v1/mcp/tunnel_[A-Za-z0-9_-]+",
+    CHATGPT_TUNNEL_RESOURCE,
+):
+    raise ValueError("E2E_CHATGPT_TUNNEL_RESOURCE_INVALID")
 CHATGPT_REDIRECT_URIS = [
     "https://chatgpt.com/connector_platform_oauth_redirect",
     "https://chatgpt.com/connector/oauth/QTOb4VcHdCsW",
@@ -130,6 +159,10 @@ def init_secrets() -> None:
     wanted = {
         "pg_owner_password": _token, "pg_app_password": _token,
         "pg_admin_password": _token, "pg_control_password": _token,
+        "pg_capability_writer_password": _token,
+        "pg_capability_acceptor_password": _token,
+        "capability_worker_api_token": _token,
+        "capability_acceptor_api_token": _token,
         "redis_password": _token, "fake1c_username": lambda: "e2e-" + secrets.token_hex(4),
         "fake1c_password": _token, "admin_client_secret": _token,
         "headless_client_secret": _token, "idp_cookie_secret": _token,
@@ -182,7 +215,7 @@ def init_secrets() -> None:
             {"client_id": CHATGPT_CLIENT, "secret": None,
              "redirect_uris": CHATGPT_REDIRECT_URIS,
              "post_logout_redirect_uris": [],
-             "audiences": [MCP_AUDIENCE],
+             "audiences": [MCP_AUDIENCE, *([CHATGPT_TUNNEL_RESOURCE] if CHATGPT_TUNNEL_RESOURCE else [])],
              "scopes": ["openid", "profile", "onec:read"],
              "grant_types": ["authorization_code", "refresh_token"]},
         ],
@@ -201,6 +234,8 @@ def dsn(role: str) -> str:
         "app": ("business_ai_app", "pg_app_password"),
         "admin": ("business_ai_admin", "pg_admin_password"),
         "control": ("business_ai_control_api", "pg_control_password"),
+        "capability_writer": ("business_ai_capability_writer_login", "pg_capability_writer_password"),
+        "capability_acceptor": ("business_ai_capability_acceptor_login", "pg_capability_acceptor_password"),
     }[role]
     return f"postgresql://{user}:{sec[key]}@{HOST}:{PORTS['postgres']}/business_ai"
 
@@ -233,12 +268,20 @@ def env_vars() -> dict[str, str]:
         "BAG_ENVIRONMENT": "test",
         "BAG_PUBLIC_MCP_URL": MCP_AUDIENCE,
         "BAG_DATABASE_URL": dsn("app"),
+        "BAG_CAPABILITY_OBSERVER_URL": f"http://{HOST}:{PORTS['capability_observer']}",
+        "BAG_CAPABILITY_OBSERVER_TOKEN": sec["capability_worker_api_token"],
+        "BAG_CAPABILITY_WORKER_API_TOKEN": sec["capability_worker_api_token"],
+        "BAG_CAPABILITY_ACCEPTOR_URL": f"http://{HOST}:{PORTS['capability_acceptor']}",
+        "BAG_CAPABILITY_ACCEPTOR_API_TOKEN": sec["capability_acceptor_api_token"],
+        "BAG_CAPABILITY_OBSERVATION_DATABASE_URL": dsn("capability_writer"),
+        "BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL": dsn("capability_acceptor"),
         "BAG_ADMIN_DATABASE_URL": dsn("admin"),
         "BAG_ADMIN_CONTROL_DATABASE_URL": dsn("control"),
         "BAG_REDIS_URL": redis_url(),
         "BAG_OAUTH_ENABLED": "true",
         "BAG_OAUTH_ISSUER": ISSUER,
         "BAG_OAUTH_AUDIENCE": MCP_AUDIENCE,
+        "BAG_OAUTH_ADDITIONAL_AUDIENCES": CHATGPT_TUNNEL_RESOURCE,
         "BAG_OAUTH_JWKS_URL": f"{ISSUER}/protocol/openid-connect/certs",
         "BAG_ADMIN_API_ENABLED": "true",
         "BAG_ADMIN_UI_ENABLED": "true",
@@ -306,7 +349,7 @@ def write_env(seed: str) -> None:
                  "idp": f"http://{HOST}:{PORTS['idp']}"},
         "identities": {n: {"sub": n, "groups": g} for n, g in IDENTITIES.items()},
         "source_id": SOURCE_ID, "companies": {"one": COMPANY_ONE, "two": COMPANY_TWO},
-        "schema_version": 14,
+        "schema_version": SCHEMA_VERSION,
     }, indent=2))
 
 
@@ -331,16 +374,26 @@ async def ensure_roles() -> None:
     sec = _load("secrets.json")
     conn = await _owner()
     try:
+        for role in ("business_ai_capability_writer", "business_ai_capability_acceptor"):
+            exists = await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname=$1", role)
+            if not exists:
+                await conn.execute(f"CREATE ROLE {role} NOLOGIN")
         for role, key in (("business_ai_app", "pg_app_password"),
                           ("business_ai_admin", "pg_admin_password"),
-                          ("business_ai_control_api", "pg_control_password")):
+                          ("business_ai_control_api", "pg_control_password"),
+                          ("business_ai_capability_writer_login", "pg_capability_writer_password"),
+                          ("business_ai_capability_acceptor_login", "pg_capability_acceptor_password")):
             password = sec[key]
             if not password.isalnum():
                 raise SystemExit("generated password must be alphanumeric")
             exists = await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname=$1", role)
             verb = "ALTER" if exists else "CREATE"
             await conn.execute(f"{verb} ROLE {role} LOGIN PASSWORD '{password}'")
-        print("roles ready: business_ai_app business_ai_admin business_ai_control_api")
+        await conn.execute(
+            "GRANT business_ai_capability_writer TO business_ai_capability_writer_login; "
+            "GRANT business_ai_capability_acceptor TO business_ai_capability_acceptor_login"
+        )
+        print("roles ready: app/admin/control plus isolated capability writer/acceptor logins")
     finally:
         await conn.close()
 

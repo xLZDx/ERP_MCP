@@ -1,4 +1,4 @@
-"""S13 migration-025/026 checkpoint suffix E2E over a disposable PostgreSQL cluster.
+"""S13 migration-025–029 checkpoint suffix E2E over a disposable PostgreSQL cluster.
 
 Run directly after coding is complete:
     .venv/Scripts/python.exe tests/phase2/test_s13_checkpoint_suffix_e2e.py
@@ -14,12 +14,15 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from _pg_harness import disposable_cluster, throwaway_db
 from test_change_ledger_sql import C, T, L, _setup
 from business_ai_gateway.phase2.change_ledger._common import Scope
 from business_ai_gateway.phase2.change_ledger.checkpoint import (
-    CheckpointRecord, FakeSigner, FakeVerifier, InMemoryCheckpointSink,
+    CheckpointKeyAuthorization, CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessEvidence, CheckpointRecord, FakeSigner, FakeVerifier,
+    InMemoryCheckpointSink, checkpoint_identity,
 )
 from business_ai_gateway.phase2.change_ledger.lifecycle import (
     LifecycleCoordinator, LifecycleReason, LifecycleStatus,
@@ -34,6 +37,8 @@ POST_BASE_MIGRATIONS = (
     "021_ed25519_consumer_cutover.sql", "022_lifecycle_epoch_fence.sql",
     "023_lifecycle_activation_cap.sql", "024_restore_caller_lock_timeout.sql",
     "025_lifecycle_checkpoint_suffix.sql", "026_lifecycle_checkpoint_payload_minimization.sql",
+    "027_private_writer_admission_schema.sql", "028_refusal_codes_parity.sql",
+    "029_scoped_operator_reads.sql",
 )
 
 
@@ -46,7 +51,25 @@ async def apply(conn, filename: str) -> None:
 
 
 class LatestSink(InMemoryCheckpointSink):
-    """In-memory test sink with an authenticated latest record for this test scope."""
+    """TEST sink for exact-scope latest selection; it cannot authenticate anti-rollback freshness."""
+
+    def __init__(self, sink_id: str):
+        super().__init__(sink_id)
+        self.write_calls = 0
+        self.read_back_calls = 0
+        self.latest_calls = 0
+
+    async def write(self, record):
+        self.write_calls += 1
+        await super().write(record)
+
+    async def read_back(self, scope, seq):
+        self.read_back_calls += 1
+        return await super().read_back(scope, seq)
+
+    async def latest(self, scope):
+        self.latest_calls += 1
+        return await super().latest(scope)
 
 
 class SuffixOverride:
@@ -60,8 +83,49 @@ class SuffixOverride:
         return self.suffix
 
 
+class SyntheticLatestnessAuthority:
+    """Test-only claim for the in-memory sink; never evidence of external freshness."""
+
+    is_test_double = True
+
+    def __init__(self, sink):
+        self.sink = sink
+
+    async def attest_latest(self, scope, record, challenge_nonce):
+        digest = checkpoint_identity(record)
+        return CheckpointLatestnessEvidence(
+            scope.tenant_id, scope.company_id, digest, challenge_nonce,
+            record.sink_id, max(1, record.seq), "synthetic-test-authority",
+            max(1, record.seq), str(uuid4()), "synthetic-test-policy-v2",
+            hashlib.sha256((digest + challenge_nonce).encode("ascii")).hexdigest(),
+        )
+
+
+class SyntheticKeyAuthority:
+    """Test-only active-key assertion for exercising the suffix reader boundary."""
+
+    is_test_double = True
+
+    def __init__(self, verifier):
+        self.verifier = verifier
+
+    async def authorize_checkpoint(self, scope, record, challenge_nonce):
+        digest = checkpoint_identity(record)
+        return CheckpointKeyAuthorization(
+            scope.tenant_id, scope.company_id, record.key_id,
+            self.verifier.public_key_digest(record.key_id), digest, challenge_nonce,
+            "synthetic-test-key-authority", 1, "test-key-event", "test-only-v2",
+            CheckpointKeyAuthorizationBasis.ACTIVE,
+        )
+
+
 def coordinator(ledger, sink, verifier):
-    return LifecycleCoordinator(ledger, sink, verifier, dependency_timeout_seconds=10)
+    return LifecycleCoordinator(
+        ledger, sink, verifier,
+        key_authority=SyntheticKeyAuthority(verifier),
+        latestness_authority=SyntheticLatestnessAuthority(sink),
+        dependency_timeout_seconds=10,
+    )
 
 
 async def signed_record(ledger, scope, sink, signer):
@@ -111,7 +175,9 @@ def assert_not_ready(result, reason, suffix_count=None):
 async def journey(db) -> None:
     scope = Scope(T, C)
     actor_map = {"worker": "clt_wrk", "auditor": "clt_aud"}
-    ledger = SqlChangeLedger(db.conn, actor_map)
+    # Migration 027 has moved this disposable schema onto the S13 service contract. This
+    # scenario still stops at diagnostic preflight and never exercises a writer/READY path.
+    ledger = SqlChangeLedger(db.conn, actor_map, private_writer_schema_enabled=True)
     signer, verifier = FakeSigner("s13-e2e"), FakeVerifier()
     sink = LatestSink("s13-e2e-disposable")
     fixture = L(db)
@@ -135,44 +201,103 @@ async def journey(db) -> None:
     ) == event_count_before, "empty suffix read mutated the event log"
     print("PASS: authenticated empty suffix is read-only and remains NOT_READY/SHARED_FENCE_UNAVAILABLE")
 
-    # Produce a genuine terminal T13 event via existing SQL-backed test fixture flows.
-    change_id, token, call_id = await fixture.dispatched(request_id="s13-t13-suffix", base="base-2")
-    assert await fixture.complete(change_id, token["generation"], "SUCCESS") == "APPLIED"
-    # T13 emits three evidence events followed by VERIFY_VERIFIED. Anchor after evidence so the
-    # only event in the suffix is the actual terminal T13 event.
-    verification_ids = [
-        await fixture.evidence(change_id, kind, {"matches": True}, role="clt_wrk",
-                               gen=token["generation"], call_id=call_id)
-        for kind in ("FIELD", "MOVEMENT", "VERSION")
-    ]
-    t13_anchor = await signed_record(ledger, scope, sink, signer)
-    assert await fixture.call("clt_wrk", "verify_signed", change_id, *verification_ids) == "VERIFIED"
+    # Append an approval after a TEST checkpoint. This exercises a real SQL suffix that must
+    # remain NOT_READY without beginning an apply, dispatching a physical write, or entering READY.
+    change_id = await fixture.validated(request_id="s13-approved-suffix", base="base-2")
+    nonce = await fixture.call("clt_bob", "issue_approval_nonce", change_id)
+    approval_digest = await fixture.approval_digest(change_id)
+    suffix_anchor = await signed_record(ledger, scope, sink, signer)
+    await fixture.call("clt_bob", "approve", change_id, nonce, approval_digest)
     count_before = await db.conn.fetchval(
         "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C)
-    t13_result = await coordinator(ledger, sink, verifier).preflight(scope)
-    assert_not_ready(t13_result, LifecycleReason.SHARED_FENCE_UNAVAILABLE, 1)
-    assert t13_result.suffix_head_seq == t13_anchor.seq + 1
-    actual_suffix = await ledger.lifecycle_checkpoint_suffix(scope, t13_anchor.seq,
-                                                             t13_anchor.head_hash)
+    suffix_result = await coordinator(ledger, sink, verifier).preflight(scope)
+    assert_not_ready(suffix_result, LifecycleReason.CHECKPOINT_SUFFIX_REQUIRES_CHECKPOINT, 1)
+    assert suffix_result.suffix_head_seq == suffix_anchor.seq + 1
+    actual_suffix = await ledger.lifecycle_checkpoint_suffix(scope, suffix_anchor.seq,
+                                                              suffix_anchor.head_hash)
     assert "head_hash" not in actual_suffix
-    assert [event["event_type"] for event in actual_suffix["events"]] == ["VERIFY_VERIFIED"]
-    t13_event = actual_suffix["events"][0]
-    assert "hash" not in t13_event
-    assert "payload" not in t13_event
-    assert t13_event["payload_found"] is None
-    assert t13_event["payload_nonempty"] is True
+    assert [event["event_type"] for event in actual_suffix["events"]] == ["APPROVED"]
+    suffix_event = actual_suffix["events"][0]
+    assert "hash" not in suffix_event
+    assert "payload" not in suffix_event
+    assert suffix_event["payload_found"] is None
+    assert suffix_event["payload_nonempty"] is False
     assert await db.conn.fetchval(
         "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2", T, C
-    ) == count_before, "T13 suffix read mutated the event log"
-    print("PASS: real terminal VERIFY_VERIFIED/T13 suffix remains NOT_READY/SHARED_FENCE_UNAVAILABLE")
+    ) == count_before, "checkpoint suffix read mutated the event log"
+    print("PASS: real APPROVED suffix requires a checkpoint; diagnostic path performs no apply or dispatch")
+
+    # A cryptographically valid TEST checkpoint that is ahead of the disposable PostgreSQL
+    # database's current ledger head is not an ancestor. The real SQL suffix reader must reject it; preflight remains
+    # read-only and cannot recover, authorize a writer, or dispatch.
+    restored_head = await ledger.ledger_head(scope)
+    future_seq = int(restored_head["seq"]) + 1
+    ahead_sink = LatestSink("s13-ahead-anchor-disposable")
+    future_unsigned = CheckpointRecord(
+        scope.tenant_id, scope.company_id, future_seq, "f" * 64, datetime.now(UTC),
+        signer.key_id, "", ahead_sink.sink_id, ahead_sink.kind,
+    )
+    future_record = CheckpointRecord(**{
+        **future_unsigned.__dict__,
+        "signature": signer.sign(future_unsigned.signing_payload()),
+    })
+    await ahead_sink.write(future_record)
+    event_count_before = await db.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2",
+        T, C,
+    )
+    write_calls_before = ahead_sink.write_calls
+    read_back_calls_before = ahead_sink.read_back_calls
+    latest_calls_before = ahead_sink.latest_calls
+    class RecordingLedger:
+        def __init__(self, delegate):
+            self.delegate = delegate
+            self.calls = []
+
+        async def verify_chain(self, requested_scope):
+            self.calls.append("verify_chain")
+            return await self.delegate.verify_chain(requested_scope)
+
+        async def lifecycle_checkpoint_suffix(self, requested_scope, checkpoint_seq,
+                                              checkpoint_hash, limit=128):
+            self.calls.append("lifecycle_checkpoint_suffix")
+            return await self.delegate.lifecycle_checkpoint_suffix(
+                requested_scope, checkpoint_seq, checkpoint_hash, limit,
+            )
+
+    recording_ledger = RecordingLedger(ledger)
+    future_result = await coordinator(recording_ledger, ahead_sink, verifier).preflight(scope)
+    assert_not_ready(future_result, LifecycleReason.CHECKPOINT_NOT_ANCESTOR)
+    assert recording_ledger.calls == ["verify_chain", "lifecycle_checkpoint_suffix"]
+    assert ahead_sink.latest_calls == latest_calls_before + 1
+    assert ahead_sink.write_calls == write_calls_before, "preflight must not write checkpoints"
+    assert ahead_sink.read_back_calls == read_back_calls_before, "preflight must not read back/write checkpoints"
+    assert await db.conn.fetchval(
+        "SELECT count(*) FROM change_ledger.events WHERE tenant_id=$1 AND company_id=$2",
+        T, C,
+    ) == event_count_before, "ahead-of-chain anchor check mutated the ledger"
+    print("PASS: valid TEST signature on ahead-of-chain anchor is rejected by real PostgreSQL ancestry check; no recovery/writer/dispatch effect")
 
     # Build one real bounded response, then inject malformed/unsupported tails at the adapter
     # boundary to exercise the classifier without fabricating database rows.
     base = actual_suffix
     tail_event = base["events"][0]
+    verify_event = {
+        **tail_event,
+        "event_type": "VERIFY_VERIFIED",
+        "payload_found": None,
+        "payload_nonempty": True,
+        "record": {
+            "execution_state": "APPLIED",
+            "verification_state": "VERIFIED",
+            "call_ownership": "PROVEN_FINISHED",
+            "reservation_state": "CONSUMED",
+            "dispatch_state": "DISPATCHED",
+        },
+    }
 
     def changed(**updates):
-        value = {**base, "events": [dict(tail_event)]}
+        value = {**base, "events": [dict(verify_event)]}
         value.update(updates)
         return value
 
@@ -191,11 +316,11 @@ async def journey(db) -> None:
         ("raw payload contract regression", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
          changed(events=[{**tail_event, "payload": {"sensitive": "must-not-cross"}}])),
         ("head hash response regression", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
-         changed(head_hash=t13_anchor.head_hash)),
+         changed(head_hash=suffix_anchor.head_hash)),
         ("per-event hash response regression", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
          changed(events=[{**tail_event, "hash": "a" * 64}])),
-        ("empty T13 payload summary", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
-         changed(events=[{**tail_event, "payload_nonempty": False}])),
+        ("empty VERIFY payload summary", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
+         changed(events=[{**verify_event, "payload_nonempty": False}])),
         ("foreign/non-ancestor anchor", LifecycleReason.CHECKPOINT_NOT_ANCESTOR,
          changed(anchor_matches=False)),
         ("foreign scope response", LifecycleReason.CHECKPOINT_SUFFIX_INVALID,
@@ -216,29 +341,31 @@ async def journey(db) -> None:
         ("array", ["S13_SECRET_VERIFY_ARRAY"]),
     ):
         sanitized = await suffix_with_temporary_payload(
-            db, ledger, scope, tail_event, t13_anchor, malformed_payload)
+            db, ledger, scope, tail_event, suffix_anchor, malformed_payload)
         event = sanitized["events"][0]
         assert event["payload_nonempty"] is False, event
         assert "payload" not in event and "payload_found" in event, event
         assert "S13_SECRET_VERIFY_" not in repr(sanitized), sanitized
-        rejected_suffix = changed(events=[{**tail_event, "payload_nonempty": False}])
+        rejected_suffix = changed(events=[{**verify_event, "payload_nonempty": False}])
         result = await coordinator(SuffixOverride(ledger, rejected_suffix), sink, verifier).preflight(scope)
         assert_not_ready(result, LifecycleReason.CHECKPOINT_SUFFIX_INVALID)
         print(f"PASS: {label} VERIFY payload is summarized as empty, undisclosed, and NOT_READY")
 
-    # A signed RESOLVE_UNKNOWN event normally carries a boolean. Probe malformed found values in
-    # the disposable row and verify SQL returns NULL only, while the classifier rejects it.
-    unknown_change, unknown_token, unknown_call = await fixture.unknown(
-        request_id="s13-malformed-found", base="base-3")
-    observation_id = await fixture.observation(unknown_change, True)
+    # Arrange a hash-chained synthetic RESOLVE_UNKNOWN row directly in the owned disposable DB.
+    # This isolates suffix sanitization without opening the writer/dispatch path, which migration
+    # 027 intentionally disables for this diagnostic-only scenario.
     unknown_anchor = await signed_record(ledger, scope, sink, signer)
-    assert await fixture.call("clt_wrk", "resolve_unknown_signed", unknown_change, observation_id,
-                              None, True, True) == "TRIAGE_REQUIRED"
+    await db.conn.fetchval(
+        "SELECT change_ledger.append_event($1,$2,$3,'RESOLVE_UNKNOWN',$4::jsonb)",
+        T, C, change_id, json.dumps({"found": True}),
+    )
     unknown_suffix = await ledger.lifecycle_checkpoint_suffix(
         scope, unknown_anchor.seq, unknown_anchor.head_hash)
     assert len(unknown_suffix["events"]) == 1
     unknown_event = unknown_suffix["events"][0]
     assert unknown_event["event_type"] == "RESOLVE_UNKNOWN"
+    assert unknown_event["payload_found"] is True
+    assert unknown_event["payload_nonempty"] is False
     for label, found_value in (
         ("object", {"secret": "S13_SECRET_FOUND_OBJECT"}),
         ("string", "S13_SECRET_FOUND_STRING"),
@@ -265,7 +392,7 @@ async def journey(db) -> None:
             await db.conn.fetchval("SELECT change_ledger.set_scope($1,$2)", T, C)
             value = await db.conn.fetchval(
                 "SELECT change_ledger.lifecycle_checkpoint_suffix($1,$2,$3,$4,128)",
-                T, C, t13_anchor.seq, t13_anchor.head_hash)
+                T, C, suffix_anchor.seq, suffix_anchor.head_hash)
             if isinstance(value, str):
                 value = json.loads(value)
             assert value["anchor_matches"] is True
@@ -280,7 +407,7 @@ async def journey(db) -> None:
         try:
             await db.conn.fetchval(
                 "SELECT change_ledger.lifecycle_checkpoint_suffix($1,$2,$3,$4,128)",
-                T, C, t13_anchor.seq, t13_anchor.head_hash)
+                T, C, suffix_anchor.seq, suffix_anchor.head_hash)
         except Exception as error:
             assert "permission denied" in str(error).lower(), error
         else:
@@ -288,8 +415,7 @@ async def journey(db) -> None:
     print("PASS: worker/auditor execute; requester denied by PostgreSQL privileges")
 
     assert await db.conn.fetchval("SELECT count(*) FROM living.schema_migrations WHERE version='026'") == 1
-    assert (empty_change is not None and call_id is not None and unknown_token is not None
-            and unknown_call is not None)
+    assert empty_change is not None and change_id is not None
 
 
 async def main() -> int:
@@ -304,7 +430,13 @@ async def main() -> int:
                 await apply(db.conn, filename)
             chain = await db.conn.fetch("SELECT version FROM living.schema_migrations WHERE version >= '019'")
             versions = {row["version"] for row in chain}
-            assert {"019", "020", "021", "022", "023", "024", "025", "026"} <= versions, versions
+            assert {"019", "020", "021", "022", "023", "024", "025", "026", "027"} <= versions, versions
+            assert await db.conn.fetchval(
+                "SELECT to_regclass('change_ledger.refusal_code_registry') IS NOT NULL")
+            assert await db.conn.fetchval(
+                "SELECT to_regprocedure('change_ledger.list_inflight(text,text,integer,integer)') IS NOT NULL "
+                "AND to_regprocedure('change_ledger.operator_status(text,text,uuid)') IS NOT NULL "
+                "AND to_regprocedure('change_ledger.budget_snapshot(text,text,uuid,numeric,text)') IS NOT NULL")
             print(f"PROGRESS: PostgreSQL {await db.conn.fetchval('SHOW server_version')} ready", flush=True)
             await journey(db)
     from _pg_harness import docker

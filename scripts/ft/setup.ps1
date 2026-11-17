@@ -5,7 +5,8 @@
 Set-Location $script:Root
 New-Item -ItemType Directory -Force -Path $script:StateDir | Out-Null
 
-$owner = New-Secret; $app = New-Secret; $adm = New-Secret; $ctl = New-Secret; $redisPw = New-Secret
+$owner = New-Secret; $app = New-Secret; $adm = New-Secret; $ctl = New-Secret
+$capWriter = New-Secret; $capAcceptor = New-Secret; $redisPw = New-Secret
 $ph = '127.0.0.1'
 $fixture = (Resolve-Path (Join-Path $script:Root 'testbed/fake1c/fixtures/synthetic_profiles.json')).Path
 $fixtureSha = (Get-FileHash -Algorithm SHA256 -Path $fixture).Hash.ToLower()
@@ -13,6 +14,8 @@ $sidecarToken = (New-Secret) + (New-Secret)
 $lines = @(
     'BAG_ENVIRONMENT=test',
     "BAG_DATABASE_URL=postgresql://business_ai_app:$app@${ph}:$script:PgPort/business_ai",
+    "BAG_CAPABILITY_OBSERVATION_DATABASE_URL=postgresql://business_ai_capability_writer_login:$capWriter@${ph}:$script:PgPort/business_ai",
+    "BAG_CAPABILITY_ACCEPTANCE_DATABASE_URL=postgresql://business_ai_capability_acceptor_login:$capAcceptor@${ph}:$script:PgPort/business_ai",
     "BAG_MIGRATION_DATABASE_URL=postgresql://business_ai:$owner@${ph}:$script:PgPort/business_ai",
     "BAG_ADMIN_DATABASE_URL=postgresql://business_ai_admin:$adm@${ph}:$script:PgPort/business_ai",
     "BAG_ADMIN_CONTROL_DATABASE_URL=postgresql://business_ai_control_api:$ctl@${ph}:$script:PgPort/business_ai",
@@ -57,7 +60,7 @@ while ($true) {
 }
 Start-Sleep -Seconds 2   # initdb restarts the server once before the final start
 
-$sql = "CREATE ROLE business_ai_app LOGIN PASSWORD '$app'; CREATE ROLE business_ai_admin LOGIN PASSWORD '$adm'; CREATE ROLE business_ai_control_api LOGIN PASSWORD '$ctl';"
+$sql = "CREATE ROLE business_ai_app LOGIN PASSWORD '$app'; CREATE ROLE business_ai_admin LOGIN PASSWORD '$adm'; CREATE ROLE business_ai_control_api LOGIN PASSWORD '$ctl'; CREATE ROLE business_ai_capability_writer NOLOGIN; CREATE ROLE business_ai_capability_acceptor NOLOGIN; CREATE ROLE business_ai_capability_writer_login LOGIN PASSWORD '$capWriter'; CREATE ROLE business_ai_capability_acceptor_login LOGIN PASSWORD '$capAcceptor'; GRANT business_ai_capability_writer TO business_ai_capability_writer_login; GRANT business_ai_capability_acceptor TO business_ai_capability_acceptor_login;"
 docker exec $script:PgName psql -U business_ai -d business_ai -c $sql | Out-Null
 
 & $script:Py scripts/migrate.py

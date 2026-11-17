@@ -1275,3 +1275,814 @@ Decision: record the CT14_NARROW reset as an authorized persistent mutation with
 
 
 Decision: register the principal verifier before the first clone mutation and treat any post-mutation setup failure as a test failure (never a skip), per the GPT-PM verification round. Detail: `docs/phase2/CHANGE_RECORD_399.md`.
+
+## 2026-10-29 - PR #40 merged; local lane gateway restored from Trash copies
+
+
+
+Decision (operator orders): merge PR #40 (done, db30f96); restore the lane by copying from Trash with the saved secrets and the current volume, then sync current code and rebuild the venv because the copy was older than the database; fix the watchdog project root; re-issue the Claude token. Nothing deleted. Detail: `docs/phase2/CHANGE_RECORD_400.md`.
+
+## 2026-10-29 - Sibling ERP_MCP folders merged into D:\Repo\ERP_MCP
+
+Decision (operator order): keep one folder. Evidence showed R2, integration-candidate and chatgpt hold nothing absent from the main history except runtime files, which were copied and git-excluded; the lane now runs from `D:\Repo\ERP_MCP`. Deletion of the siblings waits for the operator's explicit command (shell policy hook). Detail: `docs/phase2/CHANGE_RECORD_401.md`.
+
+## 2026-10-29 - Autonomous finisher GO and scoped handoff
+
+Decision (operator GO 1-4): execute the finisher queue using existing contracts and actual role agents; complete coding before agent-owned tests, keep one final exact-head GPT-PM review before push/PR. Choose 15-minute isolated approver sessions and 5-minute nonces; refuse absent registry thresholds. Do not equate an unqualified period observation port with a working real producer. Detail: `docs/phase2/CHANGE_RECORD_402.md`.
+
+## 2026-10-29 - Additive S12/S13 parity and scoped observations
+
+Decision: append migration 028 without altering historical migrations; mirror the public 39-code vocabulary without claiming all technical SQL errors use that vocabulary, and keep budget snapshots advisory to atomic ledger enforcement. Operator reads are explicitly scoped; the period producer calls only a configured trusted reader and remains unqualified without an evidenced source operation. Coding-phase runtime evidence is NOT_RUN. Detail: `docs/phase2/CHANGE_RECORD_403.md`.
+
+## 2026-10-29 - Isolated S16 source integration
+
+Decision: implement S16 as an unwired library over injected fake-backed ports with S12 policy/transition reuse and explicit transport boundaries. Keep raw nonce/CSRF state server-side, use one-use session-bound decision references, and enforce positive authentication independent of network location. Scope period evidence to organization and immutable base identity as well as tenant/company/source. Runtime qualification remains pending the post-code agent-owned tests. Details: `docs/phase2/CHANGE_RECORD_404.md`, `CHANGE_RECORD_405.md`, `CHANGE_RECORD_406.md`.
+
+## 2026-10-29 - Preserve apply-time epoch classification
+
+Decision: let the ordered apply-time epoch guard classify registry/token/proposal epoch divergence as EPOCH_CHANGED after the independent identity, role and expiry checks. Preserve the failing acceptance assertion. Detail: `docs/phase2/CHANGE_RECORD_409.md`.
+
+## 2026-10-29 - Native ASGI client compatibility
+
+Decision: accept tuple/list address-pair representations while retaining all private-network, route and authentication validation; keep the native unwrapped ASGI client regression rather than a test wrapper that masks rejection. Detail: `docs/phase2/CHANGE_RECORD_410.md`.
+
+## 2026-10-29 - Complete specialist remediation batch
+
+Decision: fix CODE-1/CODE-2/SEC-1/UI-1 together: actual S12 T6 before apply, independent proposal authority, store-substitution-resistant canonical bindings and core anchors, and complete service-owned approval context. Core restart without an issuance anchor fails closed; no durable/real-source qualification is inferred. Details: `docs/phase2/CHANGE_RECORD_411.md`, `CHANGE_RECORD_412.md`, `CHANGE_RECORD_413.md`.
+
+## 2026-11-01 - Merge remote refusal parity migration, keep local copy
+
+Decision: accept the remote version of db/phase2/028_refusal_codes_parity.sql (commit f23a7af) for the add/add merge conflict, and keep the operator's uncommitted local version as db/phase2/028_refusal_codes_parity.local.sql for manual comparison. Nothing was deleted.
+
+## 2026-11-11 - Distinguish local CT14 COM license failures from Ivan host
+
+Decision: attribute a COM `LICENSE` diagnostic only to the machine and clone path where that COM attempt ran. The workstation helper targets `D:\ERP_MCP_Testbed\1c\reference\working\818HA_p2diff`; the separate Ivan-host helper targets `D:\1c\env\bases\818HA_p2diff`. The saved Ivan inventory is dated 2026-10-27 and must not be treated as proof of today's license or clone state. If a fresh inventory is needed, run the existing metadata-only script on Ivan under the DPAPI-owning user; it reads metadata names only and does not write to 1C.
+
+Evidence: `ct14_common.py` pins the workstation helper to the workstation path; `scripts/remote/ct14_metadata_inventory_ivan.ps1` pins its approved base path to Ivan's host clone; `CHANGE_RECORD_360.md` records that Ivan's host COM connection succeeded on 2026-10-27; `CHANGE_RECORD_361.md` records a successful host inventory on that date.
+## 2026-11-12 CI-OFF: workflows switched to manual dispatch
+
+Operator rule 4 (no CI on push, pull request or schedule). Changed `on:` to `workflow_dispatch` in .github/workflows/ci.yml. Original triggers: ci.yml (was: pull_request, push). The original trigger blocks are kept as comments in each file.
+
+## 2026-11-14 - FIN-S3 runtime boundary
+
+Decision: keep FIN-S3.2 blocked until the local Windows session can start the Docker service and the Razer tunnel is seen again. Use only the already configured read-only lane; do not relax task or service security from a limited session. Keep S12/G8 and S13-S19 unpromoted, and preserve S16 as fake-backed evidence. Details: `docs/sdlc/verify-evidence.md`.
+## 2026-11-14 - Fail closed on malformed approver-session time
+
+Decision: validate `now` and every approver-session timestamp for timezone awareness and chronological consistency before comparing or subtracting them in both `S16Core.decide` and `ApprovalService.open_preview`, using one shared validator. Malformed/future/inconsistent session time, a last-seen age above 15 minutes, or an overlong absolute lifetime returns `NOT_ENTITLED` before store access. Approval service entry points also convert invalid clock values/exceptions to a safe refusal. Binding lookup/read failures fail closed; stored binding and snapshot expiry/digest metadata are validated before nonce consumption. Preserve the TEST-only boundary and defer regression execution until the sprint verification stage. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Enforce the S16 POST body limit on received chunks
+
+Decision: keep the early `Content-Length` rejection, and also count actual ASGI request-body chunks before invoking either downstream application. A POST without a length header must still be bounded; an oversized body receives a fixed 413 response and is never passed to the MCP or approval app. The bounded buffer is capped by `PrivateNetworkConfig.max_body_bytes` (maximum 1 MiB). No auth, route, or production-binding policy changes. Regression scenario is recorded as NOT_RUN under the current sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on malformed S16 approval expiry records
+
+Decision: before approval compares stored decision-binding expiry, validate its datetime awareness, UTC conversion, fixed-width digest fields, scope, identifiers, version, and confirmation metadata. Also require the preview snapshot expiry to be aware and no later than the proposal expiry. Malformed binding/snapshot state returns a fixed refusal before consuming the nonce or recording the decision. The valid approval window remains bounded by binding, snapshot, and proposal expiry. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Share the strict S16 session check with the approval page
+
+Decision: use the core's common approver-session validator at the HTML approval-page boundary, and require the exact approver token class, approver role and MFA flag there. This keeps CSS, preview and decision routes aligned on principal expiry, session chronology and timezone failure behavior. Malformed sessions fail closed. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Require a session-bound CSRF token for S16 decisions
+
+Decision: require a CSRF token on every approval-page decision POST in addition to `Origin`/`Referer` validation. Bind the token to the decision reference and current approver-session secret; reject absent, malformed, replayed, or cross-session values before any decision side effect. Keep the token out of logs and audit records. Browser/ASGI regressions remain NOT_RUN under the operator test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Preserve the complete S15 verification finding
+
+Decision: serialize the S15 `Finding.detail` alongside its path, field class and code so the S16 `verify` tool preserves the S15 result contract. S15 defines detail as an exception class name only for `READ_ERROR`, never a business value. Keep all other verification fields unchanged. Regression tests remain NOT_RUN under the sprint test restriction. Detail: `docs/sdlc/verify-evidence.md`.
+
+
+## 2026-11-14 - Bound FIN S2 expiry, verifier-detail, and ASGI message handling
+
+Decision: normalize requester, approver, snapshot, proposal, and refreshed clock expiries to UTC at the core/service boundary before comparisons; the `apply` and `expire` entry points must fail closed independently of their callers. Bound an approval nonce by the earliest UTC expiry among the preview snapshot, approver principal, session, and idle session. For the model-facing S15 result, preserve `Finding.detail` only when it is a bounded ASCII exception-class identifier on `READ_ERROR`; require empty detail for other finding codes and turn malformed verifier output into a fixed safe failure. For POST ingress, omit empty intermediate ASGI messages from the replay buffer and reject after 8192 request messages with 413 before downstream dispatch. Rejected alternatives: relying on caller normalization (direct core callers bypass it), forwarding arbitrary detail text (could expose verifier/adapter internals), and allowing unlimited empty ASGI messages (unbounded request processing). Regression tests are NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on malformed S16 authenticated-principal fields
+
+Decision: validate the authenticated principal's role container and every role member, epoch shape/range, and MFA boolean before any role membership check. This keeps malformed resolver-boundary values on a controlled refusal path rather than allowing a `TypeError` or malformed identity field to escape. Rejected alternative: duplicating partial guards at requester/approver call sites, which would leave future paths inconsistent. Regression coverage remains NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+Follow-up: apply-time requester registry reads are also untrusted. Reuse one strict requester-record validator before requester role membership at initial, post-evidence and pre-apply-port revalidation; require the TEST lane, exact identity, boolean revocation field, non-negative integer epoch, and typed role set. This prevents malformed registry records from raising during a state-changing path. Regression coverage remains NOT_RUN.
+
+## 2026-11-14 - Bound S15 verification serialization at the S16 tool boundary
+
+Decision: preserve valid S15 verification results unchanged, but validate the result/status/finding types, allowlisted codes and field classes, and bounded identifier-shaped finding and unverified paths before model-facing serialization. Keep `READ_ERROR` detail limited to an exception class identifier and route malformed results through the fixed safe error response. Rejected alternative: forwarding arbitrary values from the configured verification port, which could expose unbounded or business-bearing metadata. Regression coverage remains NOT_RUN under the sprint test restriction. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-14 - Fail closed on S16 apply-store reads around a reserved claim
+
+Decision: treat every `ChangeStore.get` used by `S16Core.apply` as an untrusted port boundary. Convert read exceptions and malformed receipts to fixed refusals; after `claim_once`, release the reservation through the existing pre-`BEGIN_APPLY` path if the persisted receipt cannot be read or does not match the claimed transition/approval. Do not call the apply port from these failure branches. Rejected alternative: allowing a raw store exception to escape or leaving a claim reserved after a failed post-claim read. Failure-injection regressions remain NOT_RUN under the sprint test restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-14 - Validate the S16 approval ticket before choosing GET or POST
+
+Decision: parse and canonicalize the approval change UUID once before dispatching either preview GET or decision POST. The POST response must compare the stored decision against that same validated ticket; it must not depend on a variable initialized only by the GET branch. Rejected alternative: reparsing separately in each branch, which can drift and allowed a successful POST to persist then fail while building its response. The focused ASGI success-path regression is NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+## 2026-11-14 - Bound private-ingress Content-Length parsing
+
+Decision: validate `Content-Length` as ASCII decimal, strip leading zeroes, and compare decimal text with the configured request cap before any integer conversion. Keep malformed lengths as a fixed invalid-request refusal and oversized valid lengths as HTTP 413 before downstream dispatch. Rejected alternative: converting arbitrary client-controlled digit strings to integers before enforcing the cap. Regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S24_20261114.md`.
+## 2026-11-14 — Make the S16 approval-service result contract exact
+
+Decision: type `ApprovalServicePort.submit_decision` as returning `Result[ApprovalDecision, ErrorCode]`, matching the ASGI handler's existing runtime guard for bound decision identity and scope. Rejected alternative: retain `Any`, which hides invalid service implementations from static review and weakens the port contract. This annotation-only correction does not change runtime authorization or production bindings. Behavioral regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+
+## 2026-11-14 — Derive FastMCP input schemas from the S16 tool manifest
+
+Decision: build each FastMCP adapter signature from the immutable S16 manifest and preserve nested property schemas with Pydantic `WithJsonSchema`; annotate transport `Context` for injection so it is not exposed as a model argument. Keep the explicit-schema `register_tool` adapter unchanged. Rejected alternative: retaining a generic `arguments/context/_name` signature, which FastMCP translates into a different public input schema. MCP SDK source inspection supports this adapter shape; regression is NOT_RUN under the sprint test restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-14 — FIN-S3.2 PowerShell-safe Docker probe and runtime follow-up
+
+The read-only connector tunnel was started using its existing DPAPI-protected runtime-key blob; the MCP plugin then changed from `tunnel_client_not_seen` to an upstream internal error because `127.0.0.1:21000` refused the connection. Running the configured lane starter exposed an unhandled PowerShell 7.6.9 runspace exception in the Docker probe's .NET event callbacks. The tracked and deployed starter copies now drain redirected output through .NET asynchronous readers instead of invoking PowerShell script blocks on callback threads, while retaining timeout and child-termination checks. The next starter run passed that exception and launched the loopback read-only publication/proxy/sidecar, then stopped because the test IdP reported `JSONDecodeError: Extra data` for `D:\ERP_MCP_Testbed\real1c_e2e\credentials.json`; PostgreSQL 18432 was also not listening. No credential file was edited. The task credential file has trailing non-JSON user data and needs its owner to preserve a backup and make the intended test-user entries valid JSON. AC-1 remains unavailable until the IdP and gateway start; AC-2 watchdog restart remains NOT_RUN. No tests, checks, CI, migrations, or 1C business operations were run. See `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+# 2026-11-14 — FIN-S2.1 preserve claim after durable BEGIN_APPLY
+
+Decision: if the receipt cannot be read or validated after `BEGIN_APPLY` is durably persisted, return `AUDIT_UNAVAILABLE` without releasing the claim or invoking the apply port. The in-progress anchor is now owned by recovery; releasing the claim at this point could admit a concurrent apply while recovery reconciles the durable transition. Before `BEGIN_APPLY`, the existing release-on-refusal behavior remains correct. This is a synthetic core contract only and does not authorize a real 1C write. Regression tests are `NOT_RUN` under operator rule 4; FIN-S2.1 remains partial.
+
+# 2026-11-14 — FIN-S2.2 bound service-supplied confirmation text
+
+Decision: treat service-supplied confirmation phrases as bounded UI content. Refuse a phrase that is empty, longer than 256 characters, contains control characters, or cannot be encoded as strict UTF-8; validate other displayed service text before HTML response encoding and use a fixed placeholder for invalid scalar values. The browser's `maxlength` is usability only and is not a server-side bound. This protects the synthetic approval page; it does not create a listener or authorize production writes. The regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 fail closed on status-store corruption
+
+Decision: `S16Core.status` must convert store read failures, non-`DomainReceipt` values, validator exceptions, and malformed validator error values to `AUDIT_UNAVAILABLE`; only a validated absent receipt is `REF_OUT_OF_SCOPE`. Do not return or serialize store-provided malformed values. This keeps the core's refusal contract stable under persistence failure and is separate from live SQL durability acceptance. The failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 guard expiration and verification reads
+
+Decision: the same fail-closed read contract applies to `expire()` and `verify()`, including expiration read-back after a durable transition. Map backend/validator failures or malformed receipt/error shapes to `AUDIT_UNAVAILABLE`; keep a genuinely absent record as `REF_OUT_OF_SCOPE`. Never roll back a durable expiration transition based on a failed read-back. Reject malformed verify identifiers before any store read. The corresponding failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.1 bind lifecycle read-back to original receipt
+
+Decision: a matching S12 lifecycle record alone does not prove a post-save read-back is the same change receipt. Expiration and pre-begin claim release must preserve ID, version, scope, proposal, snapshot, requester, target, document reference, and approval before the transition can be reported as successful. Otherwise return `AUDIT_UNAVAILABLE` without claiming success. The failure-injection regression remains NOT_RUN under operator rule 4.
+
+# 2026-11-14 — FIN-S2.3 normalize errors before renderer callback
+
+Decision: no service-supplied refusal value crosses into the optional tool error renderer. Preserve only exact members of the shared `ErrorCode`; map all other values to `AUDIT_UNAVAILABLE`, then render through the shared registry. This keeps raw or malformed service values out of callback code and model responses.
+
+# 2026-11-14 — FIN-S2.4 reject explicit zero origin port
+
+Decision: default the private ingress origin port to 443 only when the URL omits a port. Preserve an explicitly configured `:0` so existing port-range validation rejects it rather than silently changing the operator's endpoint. This is configuration validation only; no listener or network binding was changed. Regression remains NOT_RUN under operator rule 4.
+
+
+## 2026-11-14 — FIN-S2.1 validator failure boundaries
+
+Keep exception and return-shape handling at the S16 core boundary for receipt and target validators. A validator is an injected port and may fail or return malformed values; only registered `ErrorCode` refusals may leave the core. After durable `BEGIN_APPLY`, fail closed without releasing the claim or calling the apply port so recovery can reconcile the durable anchor. The implementation is source-only; regression evidence remains NOT_RUN under operator rule 4.
+
+## 2026-11-14 — FIN-S2.1 bind approval read-back identity
+
+After nonce/decision consumption is durable, the core must treat store read-back as untrusted: require the original receipt identity and exact decision/transition before returning success or updating process-local anchors. On missing, malformed, or mismatched read-back, return a fixed audit refusal and leave the durable state for reconciliation; do not claim the decision failed atomically or try to restore the consumed nonce. Regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-14 — FIN-S2.2 malformed ASGI headers
+
+Treat the ASGI scope as a protocol boundary: a malformed headers container must return a fixed schema refusal rather than propagate a type error. Keep malformed-scope and non-byte-header cases in the acceptance map; they must not reach the approval service. Regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — FIN-S2.3 validate model-facing results
+
+Treat service results as untrusted at the MCP boundary even when their static return annotation is typed. Validate the exact response records and every field exposed to the model for type, encoding and size before serialization; map malformed results to a fixed registered refusal. Keep failure-injection coverage NOT_RUN until the sprint verification window.
+
+## 2026-11-15 — FIN-S2.4 positive tool identity shape
+
+A token class and requester role are insufficient proof of a usable authenticated principal. Before routing to the MCP app, require exact nonempty identity fields, a nonnegative integer epoch, a boolean MFA field, the TEST lane, and a typed TEST scope. Keep malformed-principal and zero-downstream-call cases in the acceptance map; regression remains NOT_RUN.
+
+## 2026-11-15 — FIN-S2.2 reject malformed ASGI scope containers
+
+Validate the ASGI scope container before reading `type`, `method`, `path`, or headers. Non-dict input must receive a fixed schema refusal before authentication or service dispatch. This is a source-only correction; regression evidence remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — Reject malformed private-ingress ASGI scope
+
+The private ingress validates that the ASGI scope is a dictionary before reading fields. Invalid scope input receives a fixed schema response before authentication or downstream dispatch. Acceptance map updated; regression remains NOT_RUN under operator rule 4.
+
+## 2026-11-15 — Validate apply-port receipt before persistence
+
+Treat the `ApplyPort` response as untrusted after the call may have crossed its execution boundary. Before persistence, require an exact `ApplyReceipt`, matching UUID, and the same bounded UTF-8/control-character constraints that the public serializer enforces for status, correlation ID, and optional document reference. A malformed result is `APPLY_UNKNOWN`, is not persisted, and is never retried. This remains source-only until the named regression can run under the sprint verification rules.
+
+## 2026-11-15 — Validate approval page session and decision response
+
+Treat authenticator and approval-service values as untrusted at the ASGI page boundary. Require exact principal role/identity/epoch/scope shapes before service dispatch, and validate the returned `ApprovalDecision` fields, digest shapes, and live expiry before rendering a success page. A malformed response gets a fixed refusal; it does not undo a durable decision or claim that the decision was not stored. Regressions remain NOT_RUN under operator rule 4.
+
+## 2026-11-15 — FIN-S2.3 type the S15 verification port result
+
+Keep the S16 public service protocol aligned with its internal `VerifyPort`: verification returns the concrete S15 `VerificationResult`, not `Any`. This is an annotation-only contract correction; it does not alter tool behavior or runtime exposure. Regression evidence remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Render ledger blockers distinctly in the program report
+
+The report generator must honor the ledger's separate `blocked` record when presenting task status. Show blocked class and cause in evidence, count it as a separate blocked category, and preserve the underlying task `state` so implementation progress remains distinct from acceptance. Detail: `tools/report.py` and `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html`.
+
+## 2026-11-15 — Preflight disposable-lane credentials before component startup
+
+The tracked S3.2 lane starter must validate the test-IdP credential document before starting Docker, Apache, proxies, sidecar, or tunnel-facing services. Use a value-free parser that reports only schema/parse status; never repair, log, or copy a real 1C password into test-IdP credentials. This is source-only until the operator-owned testbed file is repaired and the updated starter is installed and run. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-15 — Install S3.2 preflight in the scheduled disposable testbed starter
+
+The scheduled task invokes `D:\ERP_MCP_Testbed\real1c_e2e\autostart\start_lane.ps1`, a testbed-specific copy with an explicit repository root. Installed only the value-free credential preflight and its repository-helper path in that copy, preserving the prior script as `start_lane.ps1.pre-credential-preflight-20261115-013539.bak`. This does not read or modify the operator-owned credential file and does not start the lane. Runtime behavior and S3.2 acceptance remain `NOT_RUN`; the operator-owned test-IdP JSON still needs repair before the starter can proceed.
+
+## 2026-11-15 — Bound the S3.2 credential validator's actual input read
+
+The credential-file size limit must apply to bytes actually read, not a separate metadata query that can race with a file replacement. The value-free validator now reads at most 1 MiB plus one byte before decode/parse. This is a source-only hardening; no protected credential file was inspected or executed, and validation remains `NOT_RUN` under operator rule 4.
+
+## 2026-11-15 — Confirm S16 apply-result persistence before reporting success
+
+After the fake apply port may have executed, a normal return from `save_apply_receipt()` alone is not sufficient evidence that the result is durable. The core now reads back and compares the complete expected `DomainReceipt` before setting its verification anchor or returning success; any persistence/read-back uncertainty becomes `APPLY_UNKNOWN`, and the apply port is never retried. Acceptance coverage records no-op, exception, and mismatch cases. Regression remains `NOT_RUN` under operator rule 4; no real 1C write path is enabled.
+
+
+## 2026-11-15 — Keep disposable IdP credentials separate from 1C credentials
+
+Decision: unblock local configuration without reading or repairing the protected operator credential file. Generated a random-password synthetic `auditor` account outside Git, changed only the disposable IdP's `credentials_path`, and preserved the prior config. Do not copy the `Admin_1C` or any other 1C password into the test IdP. The scheduled starter validates the configured file before changing runtime state. Rejected alternatives: editing the malformed operator file or using a real 1C password as an IdP password. The lane was not started; connector and watchdog acceptance remain `NOT_RUN` under the current automatic-check restriction. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+
+## 2026-11-15 — Keep FIN-S3.3 reconciliation evidence-bound
+
+Historical snapshot from 2026-11-15, superseded by the FIN-S3.1/3.2 evidence recorded later on 2026-11-16: at that point the targeted acceptance evidence was `NOT_RUN`. The later targeted S3.1 run and bounded S3.2 Redis watchdog recovery are recorded in the task evidence; current project status remains `IN_REVIEW` pending sprint-wide review. Release 2 remains NO_GO, S12/S13 gate states are unchanged, production authorization is NONE, writer UNQUALIFIED, and S16 evidence remains synthetic. Detail: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-15 — Require strict approver identity at private ingress
+
+Decision: before forwarding an approval request, the private S16 ingress validates the exact approver session, nonempty principal/person identifiers, nonnegative epoch, TEST lane and scope, approver role, MFA, and current expiry. Malformed identity fails closed before downstream dispatch. This aligns the ingress boundary with the shared session contract; it does not create a listener or authorize production writes. The focused regression remains NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_20261114.md`.
+
+## 2026-11-15 — Preserve S15 verification result through the S16 tool adapter
+
+Decision: keep the `verify` adapter contract typed as the S15 `VerificationResult` and serialize its fields without substituting a caller-supplied authorization outcome. The manifest remains exactly the five approved names; rollback proposes a separate UNPOST and never approves or applies it. Tests remain NOT_RUN under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Synchronize FIN blocker labels with the project-plan contract
+
+Historical decision (superseded 2026-11-16): this entry incorrectly promoted the prohibition on running tests into `BLOCKED_OPERATOR` for FIN-S2.1 through FIN-S2.4 and FIN-S3.1. A test restriction blocks that verification action only; it does not block implementation or the task itself. Current project-record statuses are `IN_REVIEW` for those tasks, with FIN-S1.2 separately `BLOCKED_EXTERNAL`. The authoritative FIN sprint remains open; do not infer sprint closure from bounded test evidence.
+
+## 2026-11-15 — Bind S16 post-claim read-back to approved identity
+
+Decision: after atomic claim, compare the store read-back with the exact pre-claim receipt identity before collecting begin-apply evidence. Include scope, version, proposal, requester, target, snapshot, document reference, and approval; permit only the status and lifecycle record to reflect the claim transition. A mismatch or comparison exception releases only the known pre-`BEGIN_APPLY` claim and refuses before evidence/apply dispatch. This is a synthetic S16 core contract, not a production writer qualification. The named regression was added but not run under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_CLAIM_READBACK_20261115.md`.
+
+## 2026-11-15 — Validate S16 approval ASGI routing field types
+
+Decision: reject non-string ASGI scope type, method, or path before authentication and routing comparisons. Preserve the inert app's existing behavior for a well-formed non-HTTP scope. This prevents malformed equality behavior from escaping the fixed error path and ensures malformed requests trigger neither authentication nor service calls. The named regression was added but not run under operator rule 4. No listener or real 1C path was enabled. Detail: `docs/phase2/CHANGE_RECORD_FIN_S22_ASGI_SHAPE_20261115.md`.
+
+## 2026-11-15 — Fail closed on malformed private-ingress scope type
+
+Decision: validate the exact ASGI scope-type primitive before comparison so attacker-defined equality cannot escape the private-ingress refusal boundary. Return fixed `SCHEMA_INVALID` HTTP 400 for malformed values, preserve valid non-HTTP no-op behavior, and do not authenticate, probe a route, or dispatch downstream. This remains a synthetic private-ingress contract; no listener or production binding was enabled. The named regression is `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S24_20261114.md`.
+
+## 2026-11-15 — Record current FIN-S3.2 connector probe failure
+
+Decision: retain FIN-S3.2 as unaccepted and record the exact read-only `ERP_MCP_Razer` MCP failures without inferring the underlying component. Both `system_status` and `sources_list` returned MCP `-32603: Internal error` in this session. No credentials or business data were accessed. Resume with a read-only probe only after the local Razer gateway/upstream is restored; the watchdog restart still needs separate evidence. Detail: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-15 — Complete synthetic S16 persistence fail-closed coverage for FIN-S2.1
+
+Decision: treat malformed approval/read-back receipts, store failures, and a no-op or mismatched apply-result persistence read-back as uncertainty, not success. After `BEGIN_APPLY` or crossing the apply port, retain the durable claim and never retry; before execution, refuse without collecting execution evidence or calling the writer port. This remains a fake-backed contract and does not establish production write qualification. Focused regressions are authored but `NOT_RUN` under operator rule 4. Detail: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-15 — Preserve the S16 manifest contract at both adapters
+
+Decision: retain one immutable five-tool manifest and require the FastMCP published schema, including nested S15 verify shape and hidden transport context, to match it. Preserve the complete S15 verification result as typed data and reject over-budget arguments before service dispatch. The focused regressions are authored but `NOT_RUN` under operator rule 4; no gateway registration or production writer is implied. Detail: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+
+## 2026-11-15 — Import the regex dependency for CSRF validation
+
+Decision: import Python's standard `re` module in the S16 core because `S16Core.decide()` uses `re.fullmatch()` to enforce the exact CSRF token format. Preserve the existing lowercase 64-character hexadecimal requirement; do not add a permissive fallback. Source inspection establishes the missing import; the focused regression remains NOT_RUN under operator rule 4. FIN-S2.1 remains unaccepted pending its verification gate. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_CSRF_IMPORT_20261115.md`.
+
+## 2026-11-15 — Validate S16 approver-label encoding before rendering
+
+Decision: validate the service-provided approver label with the approval page's strict UTF-8 boundary-text predicate before HTML escaping and response encoding. Keep the existing 256-character limit and reject malformed Unicode rather than allowing a rendering exception. The focused regression remains NOT_RUN under operator rule 4; FIN-S2.2 is not accepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_LABEL_ENCODING_20261115.md`.
+
+## 2026-11-15 — Require string UUIDs at the S16 tool adapter
+
+Decision: require an exact string for every model-facing `change_id` before constructing a UUID in status, apply, rollback-proposal, and verify. Preserve UUID string parsing and reject wrong wire types through the existing fixed schema-refusal path before service dispatch. Focused regression remains NOT_RUN under operator rule 4; FIN-S2.3 remains unaccepted. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_CHANGE_ID_TYPE_20261115.md`.
+
+## 2026-11-15 — Validate private ingress routing field types
+
+Decision: require exact string values for ASGI `scheme` and `method` on recognized private routes before comparisons, host/origin validation, authentication, or dispatch. Use the validated values throughout routing and POST-body handling; malformed values fail closed. Focused regression remains NOT_RUN under operator rule 4. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_ROUTING_TYPES_20261115.md`.
+
+## 2026-11-15 — Reconcile FIN evidence without promoting acceptance
+
+Decision: update FIN plan evidence with the four local S16 source-fix commits and the current verified Docker/elevation failure, while preserving every affected task as unaccepted (`NOT_RUN`) and FIN as open. Keep S16 fake-backed evidence separate from provider-backed 1C acceptance; do not promote S12/G8 or later gates. Tests/checks remain prohibited and were not run. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-15 — Bind S16 approval result to the submitted decision reference
+
+Decision: require the service-returned approval digest to equal the SHA-256 digest of the exact submitted decision reference before rendering success. A valid-looking receipt for a different reference now fails closed as AUDIT_UNAVAILABLE; do not infer that a downstream decision was rolled back after dispatch. Focused regression: `uv run --locked --extra dev python -m pytest tests/phase2/test_s16_approval_page.py -q` — 5 passed in 1.37s. No listener, production binding, or real 1C path was enabled. Details: `docs/phase2/CHANGE_RECORD_FIN_S22_DECISION_REF_BINDING_20261115.md`.
+
+## 2026-11-15 — Align synthetic private-ingress session timestamps
+
+Decision: fix only the synthetic test authenticator so `created_at`, `last_seen_at`, idle expiry, and absolute expiry share the same current clock. Keep the malformed principal negative control and the product's idle-age check unchanged. Focused FIN-S2.4 test: 9 passed, 1 deprecation warning. This does not establish deployment bindings or live runtime behavior. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_FIXTURE_20261115.md`.
+
+## 2026-11-15 — Reject S16 adapters that cannot publish the exact schema
+
+Decision: register the five immutable S16 tools only through an explicit-schema `register_tool` adapter. The locked MCP 2.x `MCPServer.tool()` API derives Pydantic schemas and silently ignores undeclared arguments; it cannot publish the exact manifest or preserve closed-object validation through its public decorator. Reject tool-only adapters before partial registration. A future gateway binding must use an explicit low-level server integration and preserve authenticated request context. Focused S2.3 verification: 15 passed. Details: `docs/phase2/CHANGE_RECORD_FIN_S23_20261114.md`.
+## 2026-11-15 — Carry page-issued CSRF through S16 synthetic approval callers
+
+Decision: preserve the core requirement for the exact CSRF token issued with the preview page. Update only the synthetic shared helper and approval-core tests to pass that exact value; do not add a permissive default to the approval service. Focused FIN-S2.1 approval-core evidence passed (48 cases, exit 0, 1.00s). The failure-injection replay case confirms that a durable approval followed by mismatched read-back fails closed and cannot execute apply. No product source changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_20261114.md`.
+
+## 2026-11-15 — Install S1.2/S1.3 scoped reads in a separate migration
+
+Decision: preserve migration 028 as the S1.1 refusal-registry/budget-precheck delta and add numbered migration 029 for the scoped budget snapshot, inflight list, and operator status routines. The disposable-chain failure showed those described functions were absent from tracked migrations; removing their assertions would hide a clean-install gap. Apply/role/isolation evidence remains pending on disposable PostgreSQL only; no shared or production migration and no real 1C source is authorized or claimed. Details: docs/phase2/CHANGE_RECORD_414.md.
+
+## 2026-11-15 — Keep S13 checkpoint diagnostics out of writer paths
+
+Decision: resolve the development anchor database path from the service module location, bind the synthetic key-authority fixture to the verifier's actual public-key digest, and exercise an approved-only suffix for the diagnostic SQL journey. Do not call begin_apply, record_call, dispatch, or any READY/recovery path from this S13-03 acceptance slice; migration 027 intentionally removes legacy writer permissions. This remains disposable/test-only and does not qualify real provider freshness or key custody. Details: docs/phase2/CHANGE_RECORD_415.md.
+
+## 2026-11-16 — Validate separate TEST authority key pairs
+
+Decision: use independent Ed25519 key pairs for synthetic checkpoint latestness and historical-key authorization, verify each configured private/public pair matches, and reject pair reuse against the other authority role or registered checkpoint keys. Update only the restore-skew TEST fixture to provide distinct generated pairs; keep the service loopback-only and unwired from the gateway. The working-copy restore-skew E2E passed on disposable PostgreSQL; exact-head rerun remains pending. No external provider freshness or production custody is claimed. Details: `docs/phase2/CHANGE_RECORD_415.md`.
+
+## 2026-11-16 — Use lane metadata for local service ports
+
+Decision: the real1c test-lane starter derives its PostgreSQL and Redis listener checks from the lane's `env.json` rather than hardcoding the default port offset. Windows had reserved the configured PostgreSQL port 18432, leaving the running local container without a host binding; the disposable lane was moved to loopback port 20432 while preserving its existing persistent volume. Production and 1C data paths were not changed. Runtime health and the read-only connector were rechecked; watchdog recovery remains unproven. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
+
+## 2026-11-16 — Separate logon startup from periodic lane recovery
+
+Decision: retain a one-minute interactive logon starter and add a daily time trigger with a five-minute repetition interval and explicit one-day duration for the local watchdog. The previously installed task showed only a logon trigger with an interval, no duration, and no next run time. The registration source now checks both triggers and the elevated principal. Runtime re-registration and observed recovery remain pending; no watchdog success is claimed. Details: docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md.
+
+## 2026-11-16 — Preserve S16 recovery state on post-BEGIN expiry
+
+Decision: treat an observed approval, snapshot, or requester expiry after durable `BEGIN_APPLY` as a registered refusal and retain the `APPLYING`/`CLAIMED`/`CONSUMED` state for recovery. The S12 `EXPIRE` event is valid only before execution starts, so the apply coordinator must not attempt that transition after `BEGIN_APPLY` or call the apply port. Normalize `claim_once()` storage exceptions and approval-page clock exceptions as `AUDIT_UNAVAILABLE`; use HTTP 503 for clock failure while preserving HTTP 401 for missing authentication. Scope is synthetic S16 only; no writer binding, live 1C mutation, or production authorization is added. Focused regressions passed on the working tree; exact-commit rerun is pending. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
+
+## 2026-11-16 — Record exact-head S16 verification and review
+
+Decision: record the 59-case focused S16 result and three independent no-finding reviews against committed candidate `7bbbe153259e480d8836234bf298278e2c0fdf57`; keep FIN-S2.1 and FIN-S2.2 in review, preserve the distinction between fake-backed tests and live browser/IdP/writer acceptance, and do not promote any release gate or production authorization. Details: docs/phase2/CHANGE_RECORD_FIN_S16_HARDENING_20261114.md.
+
+## 2026-11-16 — Keep date-ban evidence separate from period close
+
+Decision: do not derive `PERIOD_CLOSED` from `ДатаЗапретаИзменения` until the target configuration general month-close semantics are verified. Record the protected clone observation as candidate-only, and keep it bound to the observed configuration fingerprint; use an authoritative close-month status source for the reader contract. Details: docs/phase2/CHANGE_RECORD_403.md.
+
+## 2026-11-16 — Inventory month-close records without promoting them
+
+Decision: extend the protected, fixed-clone diagnostic to summarize `РегламентнаяОперация` records by month, displayed state, and posted flag, capped at 1,000 records. Keep the result candidate-only: `Выполнено`/`Пропущено` have not been qualified against the exact 3.0.67.1 close-month implementation, so they do not produce `AuthenticatedPeriodSnapshot.closed` or FIN-S1.2 acceptance. The diagnostic uses SELECT-only COM access, emits no document references, organization names, amounts, or credentials, and does not change the gateway or 1C data. Details: docs/phase2/CHANGE_RECORD_403.md.
+
+## 2026-11-16 — Preserve blocked S16 exact-rerun evidence
+
+Decision: record the S16 approval-page retry as `NOT_RUN` because PreToolUse rejected it before execution; do not infer an outcome from the first invocation whose output was truncated, and do not bypass the gate. Existing 59-case S16 evidence remains separately scoped and is not an exact retry result. Details: docs/sdlc/verify-evidence.md.
+
+## 2026-11-16 — Keep FIN-S3.2 elevation operator-driven
+
+Historical snapshot, superseded later on 2026-11-16: FIN-S3.2 AC-2 was temporarily blocked because the registered task lacked its watchdog trigger and installing it required interactive elevation. The approved task was subsequently registered, the bounded disposable Redis recovery completed, and the recurring trigger was removed after success at the operator's request. Current project status is `IN_REVIEW` pending the FIN sprint-wide final review; this historical entry does not describe the current blocker. Details: `PROJECT_PLAN.md` FIN-S3.2, `.harness/ledger.json`, and `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+## 2026-11-16 — Match FIN-S1.2 export metadata without claiming source-code identity
+
+Decision: cross-check the fixed-clone COM configuration version and metadata object-name fingerprint against the local versioned 3.0.67.1 export, and fail closed when either differs. Keep results candidate-only because matching version and metadata names do not prove BSL source equality or per-period required/stale status. The read-only probe found the close-status algorithm depends on dynamically derived `Требуется` and `Устарела` values; do not map raw `Выполнено`/`Пропущено` rows to `PERIOD_CLOSED`. Details: `docs/phase2/CHANGE_RECORD_403.md`.
+
+## 2026-11-16 — Fail closed on malformed observer and diagnostic evidence
+
+Decision: after routed FIN review, make timezone-authority validation convert exceptions to invalid evidence; stream and cap capability-observer response bytes before JSON parsing; reject non-Boolean COM `Проведен` values; and fail the remote stack starter if the required gateway bind address or gateway port is unavailable. Focused regressions and the named current-tree FIN suite passed. These changes do not establish a qualified real period source or a successful watchdog restart. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-16 — Require and poll gateway readiness, not just a listener
+
+Decision: treat an already-open TCP port as insufficient proof that the expected gateway is ready. Require the gateway's `/readyz` body to report `status=ready` in both existing-listener and new-process paths. Poll at most 12 times with a 3-second HTTP timeout and 2-second inter-attempt delay; on exhaustion or any probe error, fail closed before the success summary. This avoids false success from a stale listener and transient startup 503s without introducing an unbounded wait. Details and the focused Pester evidence: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-16 — Recover ambiguous S16 approval consumption
+
+Decision: after atomic decision consumption, install local replay anchors before a follow-up read so an unavailable read cannot orphan a consumed nonce in this process. If consume itself raises, treat its result as ambiguous and accept it only after an authoritative read confirms the exact receipt identity, approval, and S12 transition; otherwise return `AUDIT_UNAVAILABLE`. Details: `docs/phase2/CHANGE_RECORD_FIN_S21_AMBIGUOUS_APPROVAL_20261116.md`.
+
+## 2026-11-16 — Preserve S16 downstream failure semantics
+
+Decision: do not translate exceptions after private-ingress dispatch into a client validation or authorization response, and do not emit another response start after downstream response output. Details: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+# 2026-11-16 — Keep native close-flow readiness distinct from PERIOD_CLOSED
+
+- Evidence: the fixed `818HA_test_ready` COM diagnostic returned 18 native status rows and zero blocking required operations for 2025-12. Its result is `close_flow_ready`, not accounting-period closure. The registered read-only source's company GUID matched the COM organization reference, but the physical information-base binding remains unproven; OData entity search found no close-status EntitySet.
+- Decision: do not derive `AuthenticatedPeriodSnapshot.closed` or `PERIOD_CLOSED` from zero blocking operations, a global date lock, or matching organization GUID alone. Keep the source read fail-closed until a supported status operation is authenticated and bound to registered source, company, base, version, and freshness.
+- Rejected alternative: treating “nothing left to run” in the close workflow as formal accounting closure; the status is only the UI's blocking-operation rule and skipped required operations are explicitly non-blocking there.
+
+
+## 2026-11-16 — FIN-S3.1 test evidence boundary
+
+Decision: accept the named functional-test-reviewer rerun as FIN-S3.1 verification evidence while preserving its actual boundary: current HEAD on a dirty tree, targeted modules only, one return-value warning, and no CI/clean-commit claim. The later S13 checkpoint E2E results supersede the earlier e30 missing-import evidence for this run only; do not promote S13/G8 or infer live 1C/provider acceptance. Details: `docs/sdlc/verify-evidence.md`.
+
+## 2026-11-16 — FIN-S3.2 UAC handoff confirmed
+
+Historical snapshot before the later successful FIN-S3.2 recovery on 2026-11-16: the interactive installer attempt did not run and the task was temporarily blocked pending the approved elevated registration. That state was superseded when the registered task performed one bounded Redis restart; the recurring five-minute trigger was removed afterward at the operator's request. Current project status is `IN_REVIEW`, not `BLOCKED_OPERATOR`. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-16 — Correct S2 test-gate classification
+
+Decision: classify unrun current-candidate S2.2–S2.4 regressions as PROHIBITED, not OPERATOR-only. The project test rule limits when pytest and checks may run; it is not an operator decision or access requirement. Preserve the earlier verified synthetic evidence and keep live/deployed acceptance separate. Details: `PROJECT_PLAN.md` and `.harness/ledger.json`.
+
+## 2026-11-16 — Keep S3.3 reconciliation independent of S3.2 success
+
+Historical reconciliation snapshot before the successful FIN-S3.2 run later on 2026-11-16: AC-2 was `NOT_RUN` at that time and was recorded as a residual independent of S3.3. The later task-run evidence supersedes only that AC-2 result; the final sprint review remains pending and FIN-S1.2 remains externally blocked. No gate or production status was promoted. Details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md`.
+
+## 2026-11-16 — Correct Phase 2 status denominator and sprint attribution
+
+Decision: do not use the unrelated Harness snapshot 8/104 as an ERP_MCP Phase 2 completion metric. The 2026-11-10 Phase 2 report states that the full non-overlapping task denominator is not calculable. Report the current sprint as FIN from `PROJECT_PLAN.md` and the task ledger, and separate ledger task states from product/runtime gates. Preserve the historical report's 12 sprint-level outcomes as historically reported, while explicitly recording the conflict between its S10 `CLOSED_BOUNDED` label and the current plan's `HANDOFF_NO_APPROVE`. No source code, runtime, task state, remote ref, or historical report was changed. New snapshot: `reports/ERP_MCP_PHASE2_STATUS_2026-11-16.ru.html` and `.html`.
+
+## 2026-11-16 — Distinguish S10 bounded acceptance from release handoff
+
+Follow-up to the Phase 2 status reconciliation: read-only `gh pr view 53` reports PR #53 MERGED, title `[S10] Bounded dev/test capture and exact-head evidence`, merge commit `900a3d060c648b9a809a6b7094adb430fb60f0bd`; `gh pr view 57` reports PR #57 MERGED, title `[S11] Correct evidence pointer and reconcile exit record`, merge commit `7c1f69cf51b16d3849772fdb1e32015b17cb1aa7`. Keep the bounded S10 engineering result separate from the S10 release-handoff state `HANDOFF_NO_APPROVE` in `PROJECT_PLAN.md`; these refer to different acceptance scopes. The 2026-11-16 report was revised accordingly.
+
+## 2026-11-16 — Reconcile live program status from project records and all refs
+
+The operator requested that the live program report and harness ledger reflect project documents and Git across branches, rather than treating the harness task state as the project source of truth. Fetched all refs, then audited 103 local, remote, and archive branch refs and 119 distinct `PROJECT_PLAN.md` / `docs/phase2/TASK_LEDGER.md` blobs; the ledger event retains the exact ref names/object IDs and source hashes. The historical `reports/ERP_MCP_PHASE2_STATUS_2026-11-10-1618.ru.html` count of 12 sprint-level outcomes is preserved as a separate historical program milestone. It is not restated as 12 current bounded sprint closures or as a total task denominator. Branch/PR conflicts were adjudicated against current documents and integration evidence: S0's `2/2` closeout is present on two refs, but PR #42 remains OPEN and the current plan is still IN_PROGRESS; S9 PR #49 is MERGED while its current plan is PARTIAL (2/4 bounded tasks); S10 PR #53 is MERGED for bounded dev/test capture but the release handoff remains `HANDOFF_NO_APPROVE`; S11 PR #57 is MERGED and the exit remains `DONE_SPRINT_LEVEL`; S12 PR #54 and S13 PR #58 remain OPEN. PR #50–52 are plan/closeout reconciliation merges and do not add task acceptance by themselves. The current harness registry's 104 task slots are not asserted to be the full Phase 2 denominator. `R2-US-044` is corrected to `CLOSED_BOUNDED_SPRINT` from its detailed task-ledger and exact GPT-PM/test/review/commit evidence. The ledger now stores a hash-bound project-status overlay derived from `PROJECT_PLAN.md` and the scanned ref set, while leaving native harness `state`, `verify`, and `review` evidence unchanged. The live report displays both status layers and labels bounded acceptance separately from live/product/production acceptance.
+
+The current 104 task-ID rows reconcile to 44 bounded acceptances (14 `ACCEPTED_BOUNDED` plus 30 task rows documented under `CLOSED_BOUNDED_SPRINT`), 7 in review, 8 partial, 43 not started, 1 externally blocked, and 1 in progress. These counts describe only the current plan/ledger task-ID registry. Separately, the roadmap has five `CLOSED_BOUNDED_SPRINT` rows and S11 `DONE_SPRINT_LEVEL`; S0 is in progress, S4/S5/S6/S9 partial, S10 handoff without approval, and S12/S13 in progress. No code test, CI, or verification suite was run for this documentation/status reconciliation.
+
+The operator also requested removal of the installed five-minute periodic check. On `\\ERP_MCP_Lane_Autostart`, removed only the daily five-minute trigger; preserved the enabled logon trigger (one-minute delay). A fresh Task Scheduler read showed one enabled `MSFT_TaskLogonTrigger` and no repetition interval. The bounded FIN-S3.2 watchdog run remains historical test evidence; no recurring five-minute task is currently configured.
+
+## 2026-11-16 — Reconcile FIN-S3.2 blocker and S3.3 review state
+
+Historical decision (superseded by the following same-day recovery record): FIN-S3.2 AC-2 was temporarily blocked while the task required interactive elevation to install its scheduled recovery trigger. The approved installer later registered it and the bounded Redis restart completed through the task; the daily trigger was subsequently removed only after the successful run at the operator's request. Current project status is `IN_REVIEW` pending the sprint-wide final review, not `BLOCKED_OPERATOR`. FIN-S1.2 remains externally blocked because the registered-source authenticated close-status operation is absent. Evidence details: `docs/phase2/CHANGE_RECORD_FIN_RECONCILIATION_20261115.md` and `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+
+## 2026-11-16 — FIN-S3.2 scheduler recovery boundary
+
+Historical failure snapshot from before the approved installer was registered: a manual run did not create a recurring `NextRunTime`, Task Scheduler refused an action swap, and no component had yet been stopped. This was superseded by the later bounded run in the next FIN-S3.2 record: the scheduled task restarted the same disposable Redis instance, which was observed healthy afterward. The daily trigger was subsequently removed at the operator's request; the enabled logon trigger remains. Do not use this earlier failure snapshot as the current AC-2 state.
+
+## 2026-11-16 — FIN-S3.2 registration and disposable Redis recovery
+
+Decision: use the scoped registration installer via the approved `RunAs` path, then validate the actual scheduler record before any fault injection. The installer returned exit code 0; Task Scheduler now has the expected logon and daily five-minute triggers. AC-1 is supported by a fresh read-only Razer status/source-health probe. For AC-2, the E2E role stopped only the nonpersistent, loopback-only Redis service in the disposable real1c lane; the scheduled task, not a manual command, restored the same container after the next five-minute pass. No other component was stopped, no production surface was touched, and no 1C business rows or credentials were read. Keep the overall testbed status separate: schema version 15 and absent capability services still make the full current-tree preflight red. The port resolver mismatch found during preflight is fixed in the worktree and covered by focused regression cases; full sprint review remains pending.
+
+## 2026-11-16 — Align FIN-S3.2 change-record status with verified evidence
+
+Decision: describe FIN-S3.2 AC-1 and AC-2 as verified within their bounded acceptance scope while keeping the separate full-lane preflight red and final sprint review pending. A code-reviewer found the change-record header still said acceptance was partial even though the appended evidence recorded both criteria as passed. No runtime or code behavior changed. Details: `docs/phase2/CHANGE_RECORD_FIN_S32_20261114.md`.
+
+## 2026-11-16 — Defer FIN-S1.2 behind authenticated period-status source
+
+Decision: after inspecting the five existing FIN-S1.2-related commits and repeating authenticated read-only source discovery, do not derive `PERIOD_CLOSED` from date-edit locks, close-flow readiness on a separate COM file clone, or synthetic fixtures. Both ERP_MCP clients list the same three registered sources as read-only; each reports 920 OData EntitySets; targeted close/period searches on `onec-818ha-reference` return no matching status EntitySet. The accounting-register result exposes `Period` but not a close-status fact. The remaining source operation and closed/open mapping are therefore an external interface dependency, not missing operator data. Keep FIN-S1.2 `BLOCKED_EXTERNAL`, record the engineering prerequisite in `docs/phase2/OPERATOR_BACKLOG.md`, and continue the ordered FIN queue. Evidence detail: `docs/phase2/CHANGE_RECORD_403.md`, “FIN-S1.2 registered-source catalog retry.”
+
+## 2026-11-16 — Make ledger next skip externally blocked tasks
+
+Decision: update `.harness-tools/ledger.py` so `ledger next` selects the first not-done, unblocked task in the active sprint and reports remaining blockers when none are available. Before the fix, the command repeated FIN-S1.2 even after the ledger contained an EXTERNAL blocker; after the fix, it reports that FIN has no unblocked task and names FIN-S1.2. This preserves task order and avoids falsely closing or completing the blocked task. Verification was a direct invocation of `python .harness-tools/ledger.py next`; no test/check suite was run.
+
+## 2026-11-16 — Remove stale prohibited-action blocks from FIN tasks
+
+Decision: remove the stale `PROHIBITED` block records from FIN-S2.2 and FIN-S2.3 because they treated a temporary prohibition on running tests as a task-level block. Current project records classify both tasks `IN_REVIEW` and preserve their bounded synthetic evidence. Added `ledger.py unblock <ID> --reason ...` to remove an invalidated block with an auditable event while leaving native task state, verification, and review evidence unchanged. The command reported both IDs unblocked; FIN-S1.2's verified `EXTERNAL` block was retained. No tests or checks were run.
+
+## 2026-11-16 — Verify FIN-S2.1 S16 lifecycle conformance after CSRF fixture correction
+
+Decision: update the synthetic REJECT-transition caller to pass the exact page-issued CSRF token from `open_preview()`; do not weaken the service's CSRF requirement. The assigned `functional-test-reviewer` ran only `tests/phase2/test_s16_conformance.py`: `3 passed in 0.34s`. The test asserts the returned REJECT decision and persisted `Authorization.NONE` / `Lifecycle.REJECTED`; omitting the page-issued token makes the expected transition fail. No product code, listener, database, production authorization, or real 1C write changed. FIN-S2.1 remains within bounded task scope; the overall FIN sprint review remains pending.
+
+## 2026-11-16 — Rerun FIN-S2.4 private ingress regression with scoped conftest
+
+Decision: retain FIN-S2.4 in project-plan `IN_REVIEW` and record only the named synthetic ingress evidence. The default test collection failed before executing tests because root `tests/conftest.py` could not import `MCPServer` from the installed MCP SDK; rerunning only `tests/phase2/test_s16_private_ingress.py` with `--confcutdir=tests/phase2` completed with 11 passed, one deprecation warning, exit 0. This establishes the current synthetic ingress regressions only, not live IdP/browser integration, deployment binding, or production acceptance. Evidence and coverage limits: `docs/phase2/CHANGE_RECORD_FIN_S24_DOWNSTREAM_FAILURE_20261116.md`.
+
+## 2026-11-16 — Keep FIN-S3.1 at IN_REVIEW after later implementation commits
+
+Decision: replace the stale 985-test summary with the latest broad run (1,038 passed, 2 warnings, 56 subtests) at ancestor HEAD `20b2833`, while explicitly noting that later S16 core and ingress commits are descendants and only have focused regression evidence. The broad run used a dirty tree, and no full named S3.1 selection has been rerun at current HEAD `9449060`; therefore leave project-plan status `IN_REVIEW`. Keep S13/G8, FIN-S1.2, live S16, and production acceptance separate. Evidence: `docs/sdlc/verify-evidence.md` sections “FIN-S3.1 targeted current-tree rerun” and “FIN final-candidate review-fix rerun,” plus the FIN-S2.1 and FIN-S2.4 change records.
+
+## 2026-11-16 — Reconcile project status overlay after plan evidence updates
+
+Decision: rerun `python .harness-tools/ledger.py reconcile-project` after the FIN task evidence edits. It scanned 103 local/remote/archive refs and reconciled 21 sprints and 104 task IDs without changing native verify/review fields. The updated overlay now records 44 documented bounded-accepted task IDs overall and FIN 2/10, with FIN-S1.2 `BLOCKED_EXTERNAL` and seven tasks `IN_REVIEW`. Regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` from the report tool; this keeps historical 12 sprint outcomes separate from current documented outcomes and task-ID counts. No gates, production authorization, or 1C data were changed.
+
+The report was regenerated once more at HEAD `5088204` so its provenance bar reflects the status-reconciliation commit; it renders 44/104 documented bounded acceptance. The report's native harness metrics remain separate from project-plan/Git status.
+
+## 2026-11-16 — Record FIN-S3.1 operator gate as a project-plan blocker
+
+Decision: mark only the project-plan overlay for FIN-S3.1 `BLOCKED_OPERATOR`, because the task's remaining acceptance is a full named test selection and the PreToolUse gate denied that action before it ran. The verified cause was no standalone GO/ГО within six hours and a stale GPT-PM receipt (25.9 hours); no test result was inferred and native ledger verify/review evidence remains unchanged. Reconciled the project overlay across 103 refs and regenerated the live report. Keep FIN-S1.2 separately `BLOCKED_EXTERNAL`; do not start another sprint. Detailed denial: `docs/sdlc/verify-evidence.md`, “FIN-S3.1 final-head rerun not executed.”
+
+The report snapshot at HEAD `8836c2e` renders FIN as 2/10 bounded accepted, 6/10 in review, and 2/10 blocked; the two blockers are FIN-S1.2 and FIN-S3.1. The overall project-plan/Git layer remains 44/104 bounded accepted. This is distinct from native harness done 9/104.
+
+## 2026-11-16 — Repair FIN S3 plan table dependency and commit columns
+
+Decision: normalize FIN-S3.1/S3.2/S3.3 rows to the declared eight-column schema. S3.2 had an extra ninth cell that made `Complete FIN-S1.2, then final FIN review` parse as its commit and the unused `FIN-S1.2` as a blocker; S3.1 and S3.3 also placed next-action/limitation text in `Depends` and dependencies in `Commit`. The corrected rows use task commit IDs from the native ledger, make S3.1 independent of the externally blocked real-period task, and retain S1.2 as a separate residual. `plan_ledger.parse` now returns the intended statuses and commit arrays; `ledger.py reconcile-project` scanned 103 refs and preserved native verify/review fields. No sprint switch or runtime action occurred.
+
+After that correction, regenerated the report at HEAD `f1d9baa`. It shows FIN 2/10 bounded accepted, 6/10 in review, and 2/10 blocked (S1.2 external, S3.1 operator gate), plus 44/104 bounded-accepted task IDs across the project. This is a project-document/Git status snapshot; native harness completion remains 9/104.
+
+The post-`f588244` refresh was generated at that HEAD after reconciling the 103-ref overlay. It retains the same FIN split and is being committed locally as the requested report artifact; no remote push or intermediate PM review is part of this step.
+
+## 2026-11-16 — Preserve the reconciled project-status ledger
+
+Decision: track `.harness/ledger.json`, which was present as an untracked local file after `ledger.py reconcile-project` scanned 103 Git refs and recorded the project-document status overlay. The ledger reports 44/104 bounded-accepted task IDs overall and FIN 2/10, with six tasks in review and two task-specific blockers; native harness verification and review fields remain separate. The file has no credential/secret-named fields. This records the user's requested cross-reference reconciliation in project history; commit locally only, with no remote update.
+
+## 2026-11-16 — Refresh the live report after tracking the ledger
+
+Decision: regenerate the Russian live report after commit `791a6c0` so its provenance and update log include the tracked cross-branch status ledger. The report still shows FIN 2/10 bounded accepted, 6/10 in review, 2/10 blocked and overall project-document acceptance 44/104; this remains distinct from native harness completion 9/104. The report is a local status artifact; no test, push, or PR was performed.
+
+## 2026-11-16 — Reconcile after refreshing all configured remotes
+
+Decision: run `git fetch --all` without pruning, then `python .harness-tools/ledger.py reconcile-project`. The fetch exited 0; reconciliation scanned 103 refs and reconciled 21 sprints / 104 tasks from the project plan, project documents, and Git, while preserving native harness verification/review fields. Regenerated the Russian live report at HEAD `8d6ccf9`; it shows overall project-document bounded acceptance 44/104 and FIN 2/10 accepted, 6 in review, 2 blocked. No test or CI run, push, or PR occurred.
+
+After reconciliation commit `fec559a`, regenerated the report once more so its embedded source revision points to the committed ledger rather than the pre-commit parent. The report snapshot is 2026-11-16 21:59 UTC+02:00 at HEAD `fec559a` and retains the same evidenced status counts.
+
+## 2026-11-17 — Record FIN-S3.1 named verification
+
+The operator supplied a standalone `го`, which the local gate accepted. The assigned functional-test-reviewer ran the 21 named S12/S13/S15/S16 and period/capability modules once at HEAD `82648ccde4a2fd16cc976ad37e0920bbfe9bb716` in the dirty working tree. Result: exit 0; 1,048 passed, 2 warnings, 56 subtests passed in 37.28 seconds; no skips or failures. The exact command, input hashes, modified-source scope, warning details, and limitations are recorded in `docs/sdlc/verify-evidence.md`, “2026-11-17 — FIN-S3.1 final named selection.” Decision: replace only the stale project-plan `BLOCKED_OPERATOR` label with `IN_REVIEW`; the verification is current for this dirty snapshot, while final routed FIN review and sprint acceptance remain pending. No S1.2 source evidence or production claim changes.
+
+## 2026-11-17 — Disable the five-minute completion watchdog
+
+The operator requested that the recurring local check be stopped. Verified that the Windows scheduled task `CodexCompletionWatchdog-AllSessions` launches `completion_watchdog.py --once` and has a repetition interval of `PT5M`; disabled that task without deleting its definition or configuration. The scheduler reports the task state as `Disabled`. The ERP lane autostart task was not changed.
+
+## 2026-11-17 — Keep the ERP lane logon task non-periodic
+
+The operator also wanted the ERP lane's recurring five-minute check removed. Current Task Scheduler state already contains exactly one enabled `MSFT_TaskLogonTrigger` with a one-minute delay and no repetition; the separate completion watchdog remains disabled. Updated `register_lane_task.ps1` so future registrations create and verify only that logon trigger, preserving interactive/highest-privilege startup and adding no periodic check. The lane task itself was not re-registered or otherwise changed in this step.
+
+Follow-up review confirmed the registration and post-registration failure paths disable and verify the task when recurrence remains or the schedule cannot be inspected; an unconfirmed disable is reported as an error, not success. No additional scheduler state was changed.
+
+## 2026-11-17 — Bind the live report to the status commit
+
+After commit `13cbd2d` recorded the project-plan/Git reconciliation and the periodic-check change, regenerated the live report so its provenance bar names `13cbd2d` and checked its rendered FIN count and historical sprint note. This refresh changes no task state, test evidence, or release gate.
+
+## 2026-11-17 — Record FIN-S1.2's verified external block in the native ledger
+
+`python .harness-tools/ledger.py block FIN-S1.2 --class EXTERNAL ...` records that the registered read-only source has no qualified authenticated period-status interface or closed/open mapping. The task's earlier `verified` diagnostic evidence remains intact; the block reflects the unmet real-data acceptance, not a failed test. `reconcile-project` again scanned 103 refs/21 sprints/104 tasks, and the regenerated report shows FIN harness done 8/10 separately from project-plan bounded acceptance 2/10, with 7 in review and 1 external block. Source: `docs/phase2/CHANGE_RECORD_403.md` and `docs/phase2/OPERATOR_BACKLOG.md`.
+
+## 2026-11-17 — Refresh report at the FIN-S1.2 block commit
+
+After commit `69899f9` recorded FIN-S1.2's external source dependency in the native ledger, regenerated the live report and verified its snapshot HEAD matches that commit. The rendered FIN row separates native harness progress (8/10 done) from project-plan status (2/10 accepted, 7 in review, 1 external block), while retaining the historical twelve sprint-level outcome note.
+
+## 2026-11-17 — Fail closed on FIN-S3.2 task registration mismatch
+
+Decision: if scheduled-task registration or read-back fails, disable any remaining task and confirm `Disabled`; do not leave an unverified task runnable. Success requires exactly one expected action and a principal bound to the current interactive identity, as well as the one-minute non-periodic logon trigger. Two independent reviewers confirmed the original failure modes and the fixes. The parser and scoped whitespace check passed; the focused installer test is `NOT_RUN` because the test role's PreToolUse gate rejected test authoring. No scheduler state was changed. FIN-S3.2 remains in review until the test evidence is obtained.
+
+## 2026-11-17 — Keep FIN-S3.2 acceptance open
+
+Decision: retain the source hardening commit, but do not accept FIN-S3.2. The focused installer test was denied by PreToolUse, and `ledger.py review` rejected recording the completed review because no finished post-commit reviewer run was present in its agent-visibility state. Record the task as `BLOCKED_PROHIBITED`, preserve the prior read-only connector and Redis-restart evidence as separate evidence, and do not fabricate a test or review receipt. The project-plan status remains `IN_REVIEW` until the test and ledger-recorded review are available.
+
+## 2026-11-17 — Refresh report at reconciled FIN status
+
+Decision: regenerate the Russian live report from the reconciled project plan, native ledger, and local Git at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Preserve project-document counts (FIN 2/10 accepted, 7/10 in review, 1/10 external block) separately from the native ledger's FIN-S3.2 `BLOCKED_PROHIBITED` acceptance gate. The report must not convert the historical Redis restart or current read-only health probe into new installer-test evidence.
+
+## 2026-11-17 — Rerun FIN-S2.1 approval core tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_approval_core.py` and `test_s16_conformance.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (57 passed, no skips or warnings). Keep the evidence synthetic and the project-plan status `IN_REVIEW`; do not infer live IdP, durable SQL, real 1C apply, or sprint acceptance from this focused run.
+
+## 2026-11-17 — Rerun FIN-S2.2 approval page tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_approval_page.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (7 passed, no skips or warnings, with phase2 conftest isolation). Keep the result synthetic and the project-plan status `IN_REVIEW`; it does not prove live browser, IdP, SQL, listener, or 1C behavior.
+
+## 2026-11-17 — Rerun FIN-S2.3 model-facing tools tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_tools.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (15 passed, no skips or warnings, with phase2 conftest isolation). Keep the evidence synthetic; deployed MCP/chat-client behavior and final FIN approval remain unverified.
+
+## 2026-11-17 — Rerun FIN-S2.4 private ingress tests
+
+Decision: record the assigned functional-test-reviewer result for only `test_s16_private_ingress.py` at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (11 passed, one httpx2 deprecation warning, no skips; phase2 conftest isolation). Preserve synthetic-only scope and keep FIN-S2.4 `IN_REVIEW`; no live listener/IdP, SQL persistence, deployed binding, or 1C apply was established.
+
+## 2026-11-17 — Rerun FIN-S3.1 named selection at current status head
+
+Decision: record the assigned functional-test-reviewer run of the exact 21-module selection at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03` (1,048 passed, 2 warnings, 56 subtests; no failures or skips). The selection used dirty-tree inputs; keep FIN-S3.1 `IN_REVIEW` and do not promote downstream runtime, S12/S13/G8, writer, or production gates.
+
+## 2026-11-17 — Reconcile FIN-S3.3 after named verification runs
+
+Decision: preserve the separate project-plan and native-ledger counts after recording FIN-S2.1 through FIN-S3.1 current-head test runs. Project-plan status remains 2/10 accepted, 7/10 in review, 1/10 external block; FIN-S3.2's native PROHIBITED gate remains separate from project-plan `IN_REVIEW`. Do not claim final sprint review, Release 2 readiness, G8, writer qualification, production authorization, or any 1C mutation.
+
+## 2026-11-17 — Resolve FIN-S3.3 reconciliation review findings
+
+Decision: update the FIN-S3.1 plan and report details from stale 21-module evidence at HEAD `82648cc` to the newer exact-head run at `240070b` (1,048 passed, two warnings, 56 subtests in 34.05s; selected test inputs were dirty). Reject the second reliability MINOR: current source lines 80-95 unconditionally attempt `Disable-TaskAndConfirm` after registration failure whether task-state inspection fails or finds an existing task; the review statement was contradicted by the inspected source. No code change was needed. Keep S3.3 `IN_REVIEW`; the ledger's formal review receipt could not be recorded because post-commit agent visibility is absent.
+
+## 2026-11-17 — FIN-S2.2 exact-boolean independence guard
+
+Decision: make `ApprovalService.open_preview` reject any `are_independent` result other than the exact boolean `True`, matching the core and apply paths. Reason: accepting a truthy malformed registry result would render an approval preview despite an invalid dependency response. The focused regression was denied by the repository GO gate, so this source change is unverified, no acceptance state is promoted, and FIN-S2.2 remains `IN_REVIEW`.
+
+## 2026-11-17 — Record limited FIN-S2.2 page-test rerun
+
+Decision: record the assigned functional-test-reviewer run of the existing `test_s16_approval_page.py` selection at dirty working tree HEAD `240070b` (7 passed, one pytest-asyncio deprecation warning). The strict-boolean source guard was present, but the existing tests do not exercise a truthy non-boolean registry response. Keep its focused regression `NOT_RUN` and FIN-S2.2 `IN_REVIEW`.
+
+## 2026-11-17 — FIN-S1.2 current provider discovery
+
+Decision: retain FIN-S1.2 as `BLOCKED_EXTERNAL`. Current read-only discovery through both ERP_MCP_Ivan and ERP_MCP_Razer found the same three registered sources; refreshed `onec-818ha-reference` metadata returned 920 EntitySets, and searches for `Закрытие` and `Регламентная` returned no matches. No authenticated period-status contract or closed/open mapping is available in these profiles. Provider owner remains unassigned. Existing synthetic producer evidence cannot stand in for native 1C period closure.
+
+## 2026-11-17 — Defer FIN-S1.2 live-source acceptance to project close
+
+Decision: honor the operator's existing choice: retain FIN-S1.2 as `BLOCKED_EXTERNAL` until final project verification, and do not repeat source discovery or synthetic producer work during implementation. The recorded 18-pass run at source HEAD `e30e2ec` is synthetic contract evidence only; it does not establish native 1C period closure. At the final project pass, qualify the registered read-only source once; if still absent, keep the task as an explicit final project-acceptance blocker. Human provider owner remains unassigned.
+
+## 2026-11-17 — Align the primary FIN-S1.2 plan row with the deferral
+
+The deferral was first added to the backlog and a supplemental project-plan note while the primary FIN-S1.2 table row still said to qualify the source immediately. That stale summary could send the operator back into the same search. Updated the primary row, reconciled its hash-bound ledger overlay across 103 refs/21 sprints/104 tasks, and regenerated the live report. The decision remains `BLOCKED_EXTERNAL` through final project verification; no source, project acceptance, or DoD gate was promoted.
+
+## 2026-11-17 — Distinguish historical reviews in the live report
+
+Decision: in `.harness-tools/report.py`, label an accepted review as historical when its `task_commit` no longer covers the latest task commit, and count only fresh accepted reviews in the `REVIEWED` evidence total. This fixes FIN-S3.2's report row, where an earlier accepted review at `e30e2ec` appeared beside later task code at `240070b` without showing that the later code was not reviewed. Task/project status remains `IN_REVIEW`; no review or acceptance evidence was changed. Regenerated `reports/ERP_MCP_PROGRAM_STATUS_LIVE.ru.html` and confirmed the row binds the old review and latest task commit explicitly.
+
+
+## 2026-11-17 — FIN-S3.2 installer regression and routed review
+
+The assigned functional-test-reviewer ran only `tests/phase2/register_lane_task.Tests.ps1` using Windows PowerShell 5.1.26100.9818 and Pester 3.4.0 at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Exit code 0: 7 passed, 0 failed, 0 skipped, 0 pending, 0 inconclusive in 4.22 seconds. The test invokes an in-memory isolated copy of the installer body after removing only `#Requires -RunAsAdministrator` and the in-script admin guard; a separate assertion verifies both guard requirements. Every ScheduledTasks cmdlet is mocked. No real task, service, Docker lane, credential, or 1C data was touched. Current test SHA-256: `58C3508F2F0C9BCC49CCBB8D51182CD6EBD0961963C2F12258C819319399903C`.
+
+The routed code-reviewer and silent-failure-hunter reviews are both accepted with zero remaining findings. The initial review's recurrence concern was resolved by the operator-authored instruction to remove five-minute periodic checks after the already evidenced bounded Redis restart; the current installer correctly preserves only the one-minute logon trigger. The native ledger now records FIN-S3.2 verification and review against task head `240070b`; its task state is `done`. The project-plan overlay intentionally remains `IN_REVIEW` pending the final FIN sprint review. This does not establish a live scheduler run on the current installer or change release/production status.
+
+
+## 2026-11-17 — Correct FIN-S1.2 deferral wording in FIN-S3.2 response
+
+Decision: preserve FIN-S1.2 as `BLOCKED_EXTERNAL` in the ledger for final project acceptance, as already deferred by commit `8d627de`. The prior FIN-S3.2 completion response incorrectly repeated that item as an active blocker for the just-completed S3.2 test/review. The deferral remains through final project verification; it does not block unrelated FIN-S3.2 work. No ledger status, acceptance evidence, report count, source search, or project scope changed in this correction.
+
+
+## 2026-11-17 — Operator-authorized full program rebaseline
+
+The operator replaced the FIN-only pass with a full code/design/document/all-ref rebaseline and main-integration/cleanup preparation. Preserved all refs in an external Git bundle, both dirty patches, untracked project files and file inventory under D:/ERP_MCP_Testbed/rebaseline/2026-11-17. Audit artifacts live in docs/rebaseline/2026-11-17. Project plan recognizes S14-S16 implementation as PARTIAL rather than NOT_STARTED; source presence does not establish full acceptance. Restored omitted S11 sprint milestone in native ledger without inventing child stories. Original 104 program positions are distinct from three new audit tasks. All verify/review receipts retained; FIN-S1.2 remains deferred through final project verification. Enabled GitHub deleteBranchOnMerge and read back true. No branch deletion, merge, test, build, CI, migration or runtime mutation performed during this inventory. Architecture A-01 packaging separation, A-02 historical handoff drift and A-03 mode metadata enter the integration backlog. Full patch-equivalence and per-worktree audit are running; the work is not represented as finished.
+
+
+## 2026-11-17 — Rebaseline S5 correction and integration preparation
+
+Detailed TASK_LEDGER rows US024-US027 document bounded S5 approval at af9f287; the reporting analyst independently confirmed that head is an ancestor of origin/main. Corrected S5 from stale 0/6 to 4/6 bounded accepted; US021/022 remain unstarted. Current program reconciliation therefore has 48 bounded accepted task positions out of the original 104, plus three separate rebaseline tasks. All 63 local branches received patch-equivalence comparison; twelve have zero unique non-merge patches. All 47 original worktrees received tracked/untracked status inspection; 19 dirty. Prepared a new clean integration worktree from origin/main at 7c1f69c, without touching main or root dirty files. Merge-tree preview for committed 240070b versus origin/main exited 0, excluding uncommitted work. No branch deletion or integration merge occurred.
+
+
+## 2026-11-17 — Fast-forward local main after preservation
+
+Verified local main had no unique commits and was 113 behind remote main, then
+used git fetch origin main:main to fast-forward it from 4dfceed to 7c1f69c.
+Read-back confirms main equals origin/main. The prepared integration worktree
+at that head is clean; no root branch switch, dirty-file reset, force-push,
+code integration merge or deletion occurred. Historical PR46/47/48 merge commits
+remain on the remote integration branch but are absent from main; record both
+facts rather than erase their bounded acceptance history.
+
+
+2026-11-17 cleanup follow-up: removed the empty prepared scratch worktree
+D:/tmp/scratch_worktrees/erp-rebaseline-main-20261117 and deleted its temporary
+codex/rebaseline-main-20261117 branch with git branch -d. Its tip was exactly
+origin/main; ancestry verified, tracked/untracked status empty, no reparse points,
+and no observable process cwd in the target. Process cwd could not be read for
+198 protected/inaccessible processes; no such process was identified as using
+the target. Git removal completed successfully. Main/master were retained.
+The integration plan remains prepared; no code integration candidate was merged.
+
+
+## 2026-11-17 — Preserve audit snapshot semantics and continue subsystem review
+
+Commit 4318857 preserves the first rebaseline package. Independent artifact
+acceptance confirmed task preservation, S5/S11 corrections, partial implementation
+labels and ref coverage; two minor prose issues (old inventory counts and removed
+scratch-worktree wording) were corrected. The source-ledger hash refers to the
+captured ledger snapshot, not all future audit task-commit bookkeeping. Continued
+static reviews cover phase2 logic, S15/S16 and adapters/testbed; no exhaustive
+source-line acceptance or main-integration completion is claimed.
+
+
+## 2026-11-17 — Correct narrative sides of Git divergence
+
+Direct commands established origin/main...240070b = 9 left/main-only and
+87 right/working-only; origin/main..240070b count=87 and inverse count=9.
+BRANCH_INVENTORY main_only=9/branch_only=87 was correct, but earlier narrative
+inverted ahead/behind. Corrected prose and I-02 batch size; preserve earlier log
+entry as an explicitly superseded mistake. Fresh gh pr list confirms PR41 base
+is main (head900a3d0), not the autonomous branch. No source or ancestry changed.
+
+
+## 2026-11-17 — Complete remaining subsystem static slices
+
+Recorded S15/S16, adapter/testbed and phase2 scheduler/capture/ledger review
+results. S15/S16 pure logic exists but operational reader/store qualification
+remains separate. Sidecar semantic-refusal circuit counting and exporter partial
+output/retry behavior are concrete minor findings. Rejected a proposed new
+S1_S4_TRACEABILITY drift finding: its existing 2026-11-05 addendum already
+supersedes old rows. Exact Git blob comparison against bounded b8cb958 matches
+structural_hash only; six current dirty scheduler/capture-related files differ,
+so historical acceptance is preserved without extending it to new bytes.
+Prepared integration review manifest covers 393 local paths; no product fix or
+new test/runtime qualification occurred in the audit.
+
+
+## 2026-11-17 — Prepare per-branch cleanup manifest
+
+CLEANUP_MANIFEST.json assigns every original local branch a protected,
+unmerged-preserve, dirty-worktree-preserve or merged-candidate disposition.
+Each candidate requires fresh tip/main ancestry and worktree/process/junction
+safety checks before deletion. Remote automatic deletion after merge is enabled;
+no periodic cleanup task was created. Main's CI YAML still contains historical
+push/PR triggers, while the actual GitHub workflow is already disabled_manually;
+the disable retry returned403 for inactive state and read-back remained disabled.
+Preserve manual-only workflow source in the future integration candidate.
+This completes cleanup preparation, not integration or old-branch deletion.
+
+
+## 2026-11-17 — Repair final audit-tool coverage and provenance findings
+
+Final routed review found omitted YAML/CSV/Gherkin spec versions, mutable
+origin/main comparison in the details tool, and mixed-run/unknown-ancestry risks.
+The collector now inventories all blobs under document/report/core roots plus
+spec formats, includes relevant current root/config files, freezes refs and
+baseline SHA, caches immutable trees, distinguishes ancestry exit0/1/other,
+and writes an exclusive-lock-protected run manifest with status and artifact
+hashes. Details collection requires that completed source manifest, checks its
+branch-file hash/run ID, uses saved SHA for every cherry call, and writes its
+own completion manifest; unknown/error counts remain null. These are audit
+infrastructure fixes only. A named isolated functional test is being authored
+by the designated role; no whole suite, CI, production operation or branch
+cleanup was run.
+
+
+## 2026-11-17 — Align audit CLI exit status with partial evidence
+
+Source inspection of a review claim showed PARTIAL manifests were explicit but
+main() still returned ordinary success. Both CLI entrypoints now return exit2
+for partial results and exit0 only for complete results, preserving the partial
+manifest and null counts. Failures still publish FAILED and raise. Added the
+agent-owned stale-lock recovery procedure; no operator action or data deletion
+is required. The five-case isolated qualification passed at prior source0c74e47;
+its initial failures were fixture defects, not rewritten as source passes.
+The role will verify the new partial-exit behavior after this source commit.
+
+## 2026-11-17 — Final audit-tool qualification and preserved integration boundary
+
+The functional-test-reviewer ran the named eight-case isolated contract suite on source284f2dd: Ran 8 tests in 7.936s, OK, exit0. Four routed reviewers have no remaining audit-tool BLOCKER/MAJOR; capture timing limits are explicit. Completed run manifests now accompany the 2150-file/104-ref inventory, 3461 document and 2770 code/support versions. This commit includes only audit outputs/tool tests and plan bookkeeping; pre-existing application changes remain outside this commit. Actual integration, product fixes and qualification remain the next implementation phase, not an inferred audit acceptance.
+
+## 2026-11-17 — Reject unsafe stale-lock deletion recovery
+
+A fresh reliability review identified a check-then-unlink race between two recovery processes and a newly started collector. The earlier zero-major statement is superseded for this recovery protocol. Replace PID-file exclusivity with a stable kernel-backed nonblocking guard shared by both collectors; never unlink the guard file. A stale PID marker becomes informational and is overwritten only by a process holding the kernel lock. This is local audit tooling only. Requalify the named tests after this change.
+
+## 2026-11-17 — Preserve Windows guard contention failure and fix forward
+
+The designated functional reviewer ran the 11-case named audit file on b357eea: exit1, one ERROR in live process contention. Windows refuses a pre-lock read of byte0 while another process holds its range lock. Remove all guard-content initialization: operating-system range locking does not require reading or writing the guarded byte. Retain the real concurrent-process and hard-kill cases, and rerun after the source commit. No failure is relabeled as a pass.
+
+## 2026-11-17 — Publish start status before informational marker
+
+Final reliability review requested IN_PROGRESS publication before marker creation and inclusion of marker errors in FAILED handling. Both collector entrypoints now perform that order under the OS guard. This closes the marker-before-invalidation interruption window. The previous 11-test pass remains tied to source19bc599; rerun the named file after this two-line ordering delta.
+
+## 2026-11-17 — Audit acceptance and next integration boundary
+
+RB-01..03 now have real named functional qualification and four routed independent review receipts through ledger.py. Eleven tests passed at ae48e290 in9.907s. One diagnostic minor is backlogged; no remaining audit-tool BLOCKER/MAJOR. Original program acceptance remains48/104; three bounded audit tasks are additional, not a reset. Actual product integration into main is not done, and dirty/unmerged source is preserved. The next execution batch must first address G-01/A-01, reconcile source dependency order, then qualify the candidate and obtain exact-head approval before remote promotion. FIN-S1.2 remains deferred until final project verification.
+
+## 2026-11-17 — Complete remote cleanup preparation coverage
+
+Added explicit disposition for all40 captured remote-tracking refs alongside63 local branches; retain default/HEAD aliases, unmerged work and archive/helper history. This extends the cleanup preparation manifest and executes no deletion. Final source bytes still equal ae48e290; generated evidence is non-runtime metadata.
+
+## 2026-11-17 — Correlated bounded PM approval and clean review-copy removal
+
+GPT-PM request5690d981-f15c-4d39-a3d4-51eb7f47bd7d/reply3313217b-dd70-57ff-a0dc-b8aac542e69a approved only four audit-tool files at3c496f9. ZeroBLOCKER/MAJOR, one diagnosticMINOR. Do not convert that scope into a generic push receipt for the old branch or its87 earlier commits. Clean detached review copy removed with exit0; no branch removed. Root main-preview was conflict-free for committed history only. Preserved all refs in external42282636-byte bundle. Actual application consolidation is prepared, not executed.
+
+## 2026-11-17 — Assemble preserved main-based consolidation history
+
+Created codex/main-consolidation-20261117 from origin/main7c1f69c and merged preserved rootc8f986b with a normal no-ff merge, without rewriting history or changing main. Original dirty work remains untouched for separately recorded import. Added the consolidation plan and pre-implementation design; architect review caught probe completion/order ambiguity, so MC-02 now requires a DB-issued pre-probe reservation. Source implementation waits for fix-only design acceptance. Preserved the existing mandatory manual-only CI trigger configuration; no workflow was run. Audit-only PM approval is not a promotion receipt for this candidate.
+
+## 2026-11-17 — Preserve dirty source inputs before boundary fixes
+
+Imported 110 explicit current source/config/test/document paths from the original checkout into the main-based candidate; SHA256 provenance is in CANDIDATE_INPUTS.json. Original checkout was not modified by copying. Retained 28 generated-evidence/local-SQL paths outside automatic promotion, with original/external backups intact. Copying is preservation, not fresh qualification. Architect accepted the revised pre-probe reservation design with no BLOCKER/MAJOR; clarified source locking/version validation before allocation and stale-token checks at record/accept. No migrations, services, tests or builds were run.
+
+## 2026-11-17 — Implement explicit gateway package/image roots
+
+MC-03 implementation changes only pyproject.toml and Dockerfile: exact gateway/S15 package discovery and two explicit runtime source copies. Private writer and S16 source remain for separate qualification. Worker ran git diff --check despite its NO CHECKS assignment; preserve that fact and do not present it as behavioral or artifact acceptance. Wheel/image builds and named package acceptance are NOT_RUN at this stage. No physical 1C operation or deployment occurred.
+
+## 2026-11-17 — Implement request-bound pre-probe capability reservations
+
+MC-02 adds forward migration018 without modifying016/017. The observer reserves database-issued immutable ordering before 1C I/O, carries the exact token into record, and maps invalid/unavailable/superseded outcomes to generic503. The protected source/request/version reservation backfill preserves legacy observation payload and accepted pointer; independent live requests coexist. Source locking/version checks, generation expiry, stale-token rejection at record/accept and strict latest-only reads prevent older results from replacing a newer accepted reservation. Current accepted provenance and live pending rows survive opportunistic expiry cleanup. Runtime schema18 and environment metadata move together; old record signature is removed and writer-only reserve/record grants remain separate from accept/read. Manual source inspection caught Source.id misuse, mutable retry timestamp and missing record ordering check before commit; all were fixed. No tests, builds, migration execution, deployment or physical 1C write ran. Candidate qualification is still pending source assembly.
+
+## 2026-11-17 — Reconcile preserved S12/S13 and runtime source contracts
+
+MC-01 restores missing historical implementation deltas into the main-based candidate rather than treating divergent branch tips as fresh projects. The S12 port restores simulation principal/grant registries, CT14 qualification artifacts, TEST-only proposal context, CT10 result/receipt evidence and kill-switch read/write/reenable checks. The S16 caller derives the lane from its trusted principal record, without a TEST default. Historical records retain their original qualification scope.
+
+The S13 port restores published migration027 to pinned main bytes and puts cumulative function/ACL changes in030; former S13 versions028..033 become031..036, including their internal migration identifiers/dependencies. Root post-lock rereads, scoped operator/inflight/budget Python interfaces, target database identity and uncertain-recovery guards are retained. The new development anchor package is named dev_anchor_service_s13 so it cannot shadow the existing dev_anchor_service module. Its new explicit module launch and read-only preflight are diagnostic-only, with no READY or physical-writer execution path. Remaining independent historical SQL collisions are being reconciled in later versions before qualification.
+
+General source ports restore Windows parser memory enforcement, tenant-atomic audit admission, explicit connector capability modes, checksum-bound migration rehearsal, source-owned timeline evidence, missing-row INCONCLUSIVE classification, capture runtime and release-manifest assembly. Current redaction, budgets and promotion fences are preserved. Source assembly is not acceptance: named functional/integration tests, reviewer consensus and a full-candidate exact-head GPT-PM review remain pending. No tests, builds, migrations, service activation or physical 1C operations were run for this source batch.
+
+## 2026-11-17 — Reconcile wire compatibility, metadata and remaining historical alternatives
+
+The candidate restores separate R1 and additive MCP tools from5336867 using current authenticated handlers instead of copying the old server. Default metadata summary remains unchanged; the new explicit schema-detail tool requires company/source ACL, metadata.read even when the general rollout flag is off, a default-empty source allowlist, preauthorization rate limiting and durable audit. Its bounded metadata output supplies no accounting period-state evidence. Parser reconciliation preserves row-version and credential guards, qualified namespace/type identity and rejects ambiguous aliases. R1 generic errors retain sanitized logs/causes; additive tools keep structured errors.
+
+Source review corrected a mistaken historical-document attribution: current SEMANTIC_PROFILES describes L2 provisional profiles, not the unmerged ea4defa L1 mode. Actual fixture concept comparison found unique L1 posting_rows/sales/duplicate mappings. The rebaseline therefore preserves that separate opt-in test-only mode, retaining L2, DB-shadow precedence, hash pins and explicit provenance; no live activation or native qualification. Typed attestation-reader proof checks from5a63da88 are restored while preserving constant-time digest/CAS logic. New037/038/039 migrations reconcile company-only RLS, applied-but-unverified listing and approval epoch checks; budget_snapshot already exists in029 and is not duplicated. Existing029 operator_status fields are retained instead of being narrowed by the older variant. Managed tunnel/key-save scripts restore exact process/task identity reconciliation without touching unrelated listeners. Tests, scripts and migrations remain NOT_RUN during source assembly.
+
+## 2026-11-17 — Complete metadata authorization before its success receipt
+
+Architect review of the actual candidate identified that the shared resolver wrote ACCESS_AUTHORIZED before the metadata-detail source allowlist was checked. Move the tool-specific allowlist gate after authentication/fixed-bucket limiting/company UUID parsing but before the shared source/company/capability resolver. A refusal now writes only its denial receipt and cannot emit premature authorization success or reach provider I/O. Source/company ACL and unconditional metadata.read checks remain in the resolver. This corrects audit sequencing, not just response status; named regression tests remain pending the completed source assembly.
+
+## 2026-11-17 — Preserve bounded bundle validation and anchor signing domains
+
+Actual source inspection found that the current short build_spec_bundle.py lacked the historical TC001–TC006 bounded acceptance validators, not just a newline fix. Restore the identical source blob422c88ed from2082ce4/31afbc5 and its single preserved dirty19-line scope annotation. Existing decision, SHA, receipt and source bindings are validated, never manufactured; no builder/archive regeneration is run as acceptance evidence.
+
+Cross-module inspection found the new S13 anchor runtime requests two DPAPI signer roles absent from the imported private signer. Port only their role-specific message-prefix allowlists from the preserved key-auth worktree, retaining all existing signer validation/DPAPI handling. Latestness and key-history authority keys stay separate from writer/checkpoint signing. No keys are generated or read and no service starts; named tests must cover role separation and runtime configuration refusals.
+
+## 2026-11-17 — Restore source-coupled launch and redaction guards
+
+The remaining semantic branch audit found guards absent despite their files being present: scheduler work errors persisted dynamic class names; the Node audit expected undici8.10.2 while the lockfile pins8.12.3; the sidecar runtime used the older4dcf digest rather than ac97a97's4ad73019; test envctl accepted the additional-audience setting in runtime code but never configured its matching IdP client audience. Restore those precise historical behaviors, preserving current schema18 and environment topology. Tunnel audience becomes an explicit optional test configuration, validated and shared by IdP/gateway, not a hardcoded personal tunnel default. The reset helper's reader preflight is restored before readiness/dependency/stop changes. No reset, login, package audit, image build, test environment start or external service operation is performed by these edits. Qualification remains pending named tests and full-candidate review.
+
+## 2026-11-17 — Correct the migration-chain failure found by disposable tests
+
+The designated SQL test role ran only test_s13_inflight_status.py at source1fbbb7c in an isolated disposable PostgreSQL fixture. All three cases errored while applying030: MIGRATION_PRECONDITION_FAILED: 030 requires 028. Published028/029 are transactional patches without living.record_migration calls. Preserve their bytes; new030..039 depend only on registered001..027 and030+ versions. Migration030 instead requires the legacy refusal-code table/canonical count and scoped operator/inflight/budget signatures before its forward changes. Missing patches roll back030; no historical registration receipts are manufactured. The test role owns negative missing-patch cases and fresh disposable reruns; the failed run remains a product defect.
+
+The dirty S0 integration service also contained two missing guards: bounded waiting for an active quiesce task on shutdown with a restart latch on timeout, and propagation of cancellation during startup mutex acquisition. Port these exact hunks while preserving newer identity/recovery source. Named private-writer cancellation/barrier tests remain required; no service starts from this edit.
+
+## 2026-11-17 — Correct replacement DDL exposed by the fresh migration run
+
+The next disposable SQL run passed both new missing-legacy-patch refusal cases, then exposed DuplicateFunctionError for approve_registry_change_v1. It and register_target_v1 already exist in027 with identical argument and return signatures;030 must replace their cumulative bodies rather than CREATE them again. Change those two declarations to CREATE OR REPLACE without changing owner/grants or published027. The subsequent named run installed030..039 and reached the new inflight journey; its remaining LOCK_BUSY was attributed by the test owner to shared synthetic base state, requiring an isolated test target, not a production-source bypass. Full named rerun remains pending that fixture correction.
+
+## 2026-11-17 — Complete the S10 ownership and bounded shutdown port
+
+Named capture-runtime tests exposed that only the original b22a446 runtime was copied, while the later37157e4 shutdown/ownership fixes had been represented incompletely. Keep the existing tests and restore the complete later runtime: own IDs before enqueue, retain ambiguous enqueue ownership for reconciliation, close admission before awaits, bound runtime/queue cleanup under one deadline and report unresolved runtime/connector/queue IDs. Restore the b22 explicit Runtime.bind_dev_test_capture/close integration using lazy imports after the production refusal, preserving current gateway observer, schema and profile wiring. No public MCP tool or production binding is added. The interrupted test run is INCOMPLETE, not a pass; designated reruns must exercise production refusal, queue-only jobs, lost enqueue responses and stuck task shutdown.
+
+The named inflight SQL group subsequently passed all five cases on fresh disposable databases, including missing legacy patch rollback and runtime begin_apply refusal. The receipt is test-owner evidence at29c1545 plus the030 replacement hunk now committed ascd3dffd; it does not qualify all SQL/observation or real 1C scenarios. The MCP/metadata group passed25 cases with eight PostgreSQL-dependent cases skipped. Raw failures and final outputs are retained outside Git under the rebaseline test-evidence directory.
+
+## 2026-11-17 — Restore complete cancellation ports and valid-suffix diagnostics
+
+The next S10 named run passed12 cases but failed four stop/reconciliation cases. The loop delegated cancellation to a method absent from both JobQueuePort and its in-memory implementation. Restore the exact b22 fenced cancel contract in both: pending jobs may cancel, running jobs require exact owner/fence, and stale callers cannot cancel another lease. The bounded supervisor must not hide this missing implementation by treating every queue as permanently pending. The test role reruns the same scenarios without weakening termination/drain assertions.
+
+S13 functional tests also caught a misplaced return: the valid-suffix NOT_READY/SHARED_FENCE_UNAVAILABLE result was left as unreachable code after preflight_base_recovery, so preflight returned None. Move that diagnostic result back to preflight's valid suffix path and remove the unreachable duplicate. This adds no READY or writer authorization. Preserve the failed NoneType trace and test both ordinary scope and bounded base preflight paths.
+
+The next valid-path case exposed provider-controlled datetime.tzinfo raising during retirement-receipt validation. Treat that malformed timestamp as invalid evidence rather than leaking an exception; the focused lifecycle file then passed27 cases and53 subtests. S10 cancellation/ownership cases subsequently passed16 cases. Both remain bounded test-owner results, not product readiness.
+
+## 2026-11-17 — Preserve legacy anchor transport beside current authority contracts
+
+The retained v1 dev anchor client still constructed obsolete shared dataclasses after the current checkpoint contract gained mandatory challenge/provider/proof fields. Preserve its wire/CLI and empty-store/history API with a separate LegacyLatestnessReceipt. A new explicit attest_latest bridge maps only a matching retained checkpoint after nonce-bound signature/history verification to the current evidence envelope. Caller-supplied challenges also bind historical-key authorization; old callers may omit a challenge and get a fresh client nonce. The v1 protocol domain names its test policy; the client remains is_test_double=True and cannot establish production authority. No unverified or empty-store reply becomes current latestness evidence, and no fallback into the distinct S13 package is introduced. Named legacy and current-authority tests remain required.
+
+## 2026-11-17 — Restore original bounded acceptance inputs, not new approvals
+
+Restore the four original TC001/TC002/TC003/R2-US-002 YAML decisions and eight associated evidence/PM receipt JSON blobs from490cfb7, b885f03,2f606c2,427d244. The decision documents were committed after their reviewed code heads; absence at the code head is not proof that the decisions never existed. The four evidence SHA256 values exactly match the historical builder bindings. Keep JSON byte identity through explicit -text attributes; do not regenerate or translate the signed/bound records. TDD/STORIES were already present. The S0 M2 row now distinguishes the immutable014 source at22647667 from the later016/018 implementation and current focused SQL/ASGI evidence; it preserves historical advisory scope and leaves product acceptance open. The original pinned TC002 regression source is retained unchanged rather than changing historical receipt hashes to fit current code.
+
+## 2026-11-17 — Cancel queued connector work and bound repeated Git inspection
+
+The capture HTTP E2E found that a queued executor call still started after stop: cancelling a shielded asyncio waiter left the underlying concurrent future queued. Restore the remaining37157e4 cancellation hunk in CaptureLoop: cancel the concurrent future on cancellation/timeout, re-raise cancellation and retain already-running calls in the inflight drain registry. No running synchronous call is represented as force-killed. The regression keeps the connector call count at one after the blocked first call is released.
+
+S10 manifest CLI tests timed out under concurrent qualification. An isolated instrumented TC144 run passed in37.16seconds and recorded140 Git trace lines, with each completed Git call below0.734seconds; no external gh call or proved inherited-pipe leak was found. Avoid diagnosing a process leak from TimeoutExpired alone. Add a bounded cache only for git show full40hex-commit:path reads, with --no-replace-objects,64entries and256KiB per entry (at most16MiB payload). Never cache HEAD, refs, working-tree status, remote or PR state. Locks cover cache bookkeeping only, not subprocess I/O. Git/gh calls have30second individual timeouts. Named tests must falsify immutable versus mutable lookup behavior and rerun the CLI with its original45second bound before a performance claim.
+
+The B3 ledger row now names its actual006/semantic.py/profile-CLI source paths and distinguishes historical advisory/migration017 evidence from this candidate's qualification. The immutable TC002 regression source remains unchanged; historical acceptance records are not rewritten as current product proof.
+
+## 2026-11-17 — Separate historical source-register proof and current qualification
+
+The pinned TC002 regression deliberately validates one historical source-map contract. Mixing current016/018 paths and newer observation narratives into that frozen table caused source-reference/disposition failures despite preserving the original receipt and test hash. Restore the authentic TC002 section from exact22647667 and label it historical. Retain all current B2/B3/M2/M5/M7/M8 observations under a separate dated heading, with unresolved product tails. The test source and receipt hashes are unchanged. Named spec mapping then passed34 cases with one skip; the final logical S12/S16/spec/manifest/package group passed151 cases,60 subtests and one skip. These are test-owner results; skipped cases are not verified.
+
+## 2026-11-17 — Keep live ledger mutable without making main permanently dirty
+
+The old .harness/ledger.json was tracked while the official tool updated task/commit/approval events on every operation. Untrack it in this candidate with git rm --cached only; the physical candidate file SHA256 remained E7FF34FFC731F69C9899F20CC6F52BBC61C99081E2814DB4D46C75DBA893E340, and the shared main-checkout live file was not edited by this operation. Add an explicit committed recovery seed derived with Python JSON (preserving timestamp strings), clearing only the seed active approval. Preserve live data and all original task identities/history; task edits remain through the ledger CLI. New checkouts restore a missing ledger from this seed, never restart the program at zero. Snapshot refresh at final closure remains required.
+
+Ignore local harness installation/state, nested worktrees, test environments, installed node dependencies and report-QA output; do not delete them. Historical local plan backups remain preserved in the external input archive. Update project instructions with the seed/lifecycle pointer and remove obsolete full-suite/lint and old report-pair commands that contradict the operator. AGENTS characters changed2548 to2766 (estimated637 to692tokens at four characters/token); combined AGENTS/CLAUDE estimate1274tokens. agentctl --strict is NOT_RUN because automatic checks are prohibited; this does not block independent source/test/review work. Main checkout cleanup must back up/restore exact live ledger bytes around the tracked-file removal before switching branches.
+
+## 2026-11-17 — Retain qualification tests and current source reconciliation
+
+Commit the designated functional/SQL test owners' non-S13-lifecycle files after their named runs, including restored S10/S12/spec and S0 baseline cases, gateway metadata/profile negatives, and concurrent capability reservation tests. Historical test alternatives were compared with current contracts rather than copied wholesale; exact frozen TC002 regression bytes remain d7d5063bf1c2fa58bb4200500e358f17cf0339e0861368651b199dcbb9efeb1f. Fresh raw receipts at3abd060 record1086 passed/1 skipped in the nine-module core selection and151 passed/1 skipped/60 subtests in the nine-module S12/S16/spec/manifest/package selection. Capture25, CLI7, capability SQL4 and observer-order5 results retain their separate source snapshots and limits. Overlapping groups are not summed. Preserve earlier failed/incomplete logs; no real provider, COM or production gate is inferred.
+
+The source reconciliation includes all49 residual source-commit dispositions with their original snapshot and explicitly limits feature-level porting claims: tests exposed missing predicates later repaired through0d02626. Update semantic tool/profile documentation, the dated S10 dev/test handoff and document index while preserving original historical measurements. The documentation worker ran an unrequested diff whitespace check; exclude it from acceptance evidence and repeat no automatic checks. Current full-sprint router selects code-reviewer, silent-failure-hunter, python-reviewer and database-reviewer; the preliminary requested-security route exceeded the four-role cap and was superseded by this recorded automatic roster. Actual trust-boundary behavior is included in the selected code/DB review scope. Independent review and full-candidate GPT-PM remain pending before any push.
+
+The S13 owner completed all13 assigned test files, including legacy child-process service E2E, separate latestness/history keys, CurrentUser DPAPI domain refusal, signed checkpoint CLI over an owned disposable PostgreSQL instance, restore-skew, suffix classification and diagnostic no-effect assertions. Commit its ten modified/new test files with the other acceptance tests. The cumulative raw log spans749bbfa through metadata-only3abd060; do not silently assign the latest HEAD to earlier commands. Fixture repairs bind tenant/company and independent authority keys to the actual contract, without granting READY/writer paths or inventing real provider freshness. CurrentUser DPAPI success does not establish a separate service account's custody. Full candidate review/merge still pending.
+
+## 2026-11-17 — Verify reused operator-resolution checkpoints before releasing holds
+
+Independent Python review found a concrete MAJOR: checkpoint_operator_resolution skipped cryptographic verification when read_back already returned an exactly shaped record, then recorded signature_valid=True and released ANCHOR_GAP holds. Matching metadata and a128-hex signature are not proof of an earlier verified attempt. Always verify against immutable trusted public material before either persistence or hold release, for both new and reused records. Historical keys remain verifiable independently of permission to sign new checkpoints; this fix does not consult or elevate the current signer. A designated test owner adds forged-readback refusal with zero checkpoint/hold effects and positive historical-key replay. The finding is accepted from direct source evidence, not a vote; fix-only independent review follows the named regression.
+
+## 2026-11-17 — Defer live ERP MCP and changed credentials
+
+The operator explicitly requested no more ERP MCP starts because credentials may have changed, with investigation deferred. Do not start/restart the live ERP connectors, issue live reachability/credential probes or investigate those credentials in this consolidation pass. Source audit, local Git work and isolated in-memory tests continue independently. Preserve earlier live evidence as dated history only. This steering does not turn FIN-S1.2 back into an active dependency or authorize a new real-source test.
+
+## 2026-11-17 — Freeze the qualified candidate before full-candidate PM review
+
+Commit the readback regression after its actual post-commit source qualification: a fresh e2e-runner role ran only the two named in-memory files at a9f03cf,21 passed in1.70s. A fresh independent Python role confirmed the committed fix and test assertions, with no remaining confirmed B/M. Full-sprint code/silent-failure/DB reviews reported no other confirmed B/M within their explicit inspected scopes;030's3292lines were not exhaustively reviewed, and static SQL review does not establish complete recovery or live races. CONSOLIDATION_REVIEW.md records those limitations and the one accepted/fixed MAJOR. No real ERP MCP or credentials were exercised.
+
+The official ledger records MC-01..04 engineering verification/review complete, while the project plan keeps MC-01..03 IN_REVIEW and MC-04 IN_PROGRESS until exact-head PM approval, actual merge and cleanup. This is not formal product or deployment acceptance. Reconcile project status from the updated project plan and104 current Git refs, preserving111 task identities and48 original bounded acceptances; refresh the recovery seed without active approval. Preserve the prior root plan externally before updating its working copy (old SHA2561fad351b540009db451a64289f6a1eeccf65b56ed6b8c72e03b0c426ee3ad96a; candidate SHA256401c1eb27a286377753ac06ebd2abda35e67c2efe3d587f7ecc968bb99a27f9d). GitHub deleteBranchOnMerge remains true; remote main remains7c1f69c. No old unmerged branch or dirty checkout is deleted by this checkpoint.

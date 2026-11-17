@@ -96,11 +96,10 @@ class DependencyGraph:
         known_objects = set(self._by_object) | set(self._upstream_by_dependent)
         for dependents in self._upstream_by_dependent.values():
             known_objects.update(dependents)
-        # A removed/modified object with no existing graph coverage is not proven harmless.
-        if any(item.kind != "ADDED" and item.qualified_name not in known_objects
-               for item in change.changes):
+        # Any changed object without graph coverage has unknown impact, including additions.
+        if any(item.qualified_name not in known_objects for item in change.changes):
             return ImpactResult(self.tenant_id, self.source_id, self.known_operations,
-                                frozenset(), True, "UNMAPPED_MODIFICATION")
+                                frozenset(), True, "UNKNOWN_IMPACT")
         affected = frozenset(
             operation for obj in seen for operation in self._by_object.get(obj, ())
         )

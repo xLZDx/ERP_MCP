@@ -4,6 +4,41 @@ Semantic profiles are source/company-scoped configuration. The Aprovodka BP 3.0,
 and ERP 2 entries identify upstream preset candidates only; neither a preset ID nor Aprovodka's
 upstream `verified` label proves that an object or accounting meaning exists in a customer base.
 
+## Current gateway inventory and metadata boundary (2026-11-17)
+
+The preserved Release 1 signatures remain distinct from additive tools that accept explicit
+filters or richer output. The current MCP contract exposes `onec_find_entities(source_id,
+contains="", limit=50)` without property types and the separate
+`onec_find_entities_with_property_types(source_id, contains="", limit=50)` when declared property
+types are needed. `accounting_balance_and_turnovers(source_id, company_id, start_period, end_period)`
+does not accept an account code; use
+`accounting_balance_and_turnovers_by_account(source_id, company_id, start_period, end_period,
+account_code)` for a single profile-authorized account. The frozen
+`purchase_documents(source_id, company_id, top=50, skip=0)` signature provides paging only;
+`purchase_documents_filtered(source_id, company_id, top=50, skip=0, counterparty_ref=None,
+posted_only=False)` is the separate additive filtered counterpart. Tool schemas reject undeclared
+arguments.
+
+`onec_metadata_schema_detail(source_id, company_id, refresh=False,
+include_information_register_schemas=False, include_period_schema_candidates=True)` is a
+source/company-scoped metadata inspection tool requiring `metadata.read` and an explicit source ID
+in the metadata-detail allowlist, plus the authenticated caller's exact source/company access and
+business-capability checks. The allowlist defaults to empty (deny by default). Its response is
+labelled `evidence_kind=METADATA_ONLY`, bounded by the configured response-byte limit, at most six
+information-register schemas, 250 period-schema candidates, 100 properties per schema, 20
+annotations, and 240 characters per projected identifier/type/annotation text. Candidate names and
+schemas are discovery hints only: this tool returns no business rows and proves no accounting-period
+open/closed state, authorization, or native report result.
+
+File-backed test lanes are separate from validated database profiles. `TEST_LANE_UNRECONCILED`
+(L1) requires all three settings: a pinned absolute profile file, its SHA-256, and an explicit list
+of registered source IDs. It is available only with `BAG_ENVIRONMENT=test` and is refused in
+production. `L2_PROVISIONAL` uses the separate provisional file and SHA-256 settings in the test
+environment and remains `UNVALIDATED_INDEPENDENT_RECONCILIATION` / `native_reconciliation=NOT_RUN`;
+it is not native acceptance. Both remain distinct from synthetic-fixture L1 evidence. For either
+file fallback, any non-retired database profile for the same source, company, and concept is
+authoritative: even an invalid or unvalidated database row prevents fallback to the file profile.
+
 ## Operator workflow
 
 Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
@@ -158,6 +193,17 @@ Use the operator-only CLI with `BAG_ADMIN_DATABASE_URL` in production:
 - The tool is read-only and never merges (`merge_count` is always 0). The fixture profile exists only under `BAG_ENVIRONMENT=test`, is never validated and is never native evidence; responses carry `profile_kind=SYNTHETIC_FIXTURE`, `evidence_level=L1`, `native_reconciliation=NOT_RUN`. In production the tool fails closed with `SEMANTIC_PROFILE_UNVALIDATED` until an operator validates a DB profile (the existing rule of at least ten native PASS cases applies).
 - Detection semantics (normalisation, grouping, company scoping, truncation, result schema) are frozen in [SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md](SC08_DUPLICATE_COUNTERPARTY_CONTRACT.md).
 
+## Unreconciled real-reference test lane (L1)
+
+`UnreconciledTestLaneProfiles` is a separate test-only file lane for explicitly opted-in source IDs.
+All three settings are required together: `BAG_TEST_LANE_PROFILES_FILE`,
+`BAG_TEST_LANE_PROFILES_SHA256`, and `BAG_TEST_LANE_UNRECONCILED_SOURCES`. The file path must be
+absolute, source IDs must match registered-source ID syntax, and `BAG_ENVIRONMENT` must be `test`;
+production construction is refused. Responses identify `profile_kind=TEST_LANE_UNRECONCILED` and
+carry `native_reconciliation=NOT_RUN`; this lane is not a synthetic-fixture profile, a validated
+database profile, or native evidence. The separate L2 provisional file remains as described in the
+2026-10-07 real-source section below.
+
 ## Machine two-source reconciled profiles (test lane only)
 
 A profile may be validated from ten labelled **machine two-source reconciliation** cases instead of ten human native
@@ -198,14 +244,21 @@ was probed, not what it supports, and including it made every profile stale afte
 
 **Label.** A real source that has no natively validated profile yet can serve semantic tools from a reviewed, sha256-pinned provisional file (`BAG_PROVISIONAL_PROFILES_FILE` + `_SHA256`, test environment only, source tag `real-reference`). Every response is labelled `validation_status=UNVALIDATED_INDEPENDENT_RECONCILIATION`, `evidence_level=L2_PROVISIONAL`, `native_reconciliation=NOT_RUN` with warning `UNVALIDATED_INDEPENDENT_RECONCILIATION_NOT_NATIVE_VALIDATED`. It is never a `bag.semantic_profiles` row and never counts towards the native-report rule. The 818 HA file is `testbed/real1c/provisional_profiles_818ha.json`; launch with `scripts/real1c/start_branch_gateway.ps1 -ReaderFromDpapi -ProfilesFile <absolute path>`.
 
+The L2 provisional lane is separate from `TEST_LANE_UNRECONCILED` (L1) and from the synthetic-fixture L1 lane. A non-retired database profile for the same source, company, and concept is authoritative over either file fallback; an invalid, stale, or unvalidated database row prevents fallback rather than being silently bypassed.
+
 **Tools and concepts (all read-only, `accounting.read` / `purchases.read`).**
 
 | Tool | Concept | What the profile owns | Caller supplies |
 |---|---|---|---|
 | `accounting_balance_by_analytics` | `account.balance_by_analytics` (+ `counterparty.lookup` for names) | account keys, subconto slots, amount columns, catalog and fields for names | `source_id`, `company_id`, `as_of` (with timezone) |
 | `counterparty_find` | `counterparty.lookup` | catalog, ref/code/name/deleted/folder properties, `max_results` | `name` (2..64 chars) |
-| `accounting_balance_and_turnovers` | `account.balance_and_turnovers` | register, method, company field, optional `account_field` + `accounts` | period, optional `account_code` that must be declared by the profile |
-| `purchase_documents` | `purchases` | document entity and field names | optional `counterparty_ref` (GUID), `posted_only` |
+| `accounting_balance_and_turnovers` | `account.balance_and_turnovers` | register, method, company field | `company_id`, `start_period`, `end_period` (timezone-aware) |
+| `accounting_balance_and_turnovers_by_account` | `account.balance_and_turnovers` | register, method, company field, account field and allowed accounts | `company_id`, `start_period`, `end_period`, `account_code` |
+| `purchase_documents` | `purchases` | document entity and field names | `company_id`, `top`, `skip` |
+| `purchase_documents_filtered` | `purchases` | document entity and field names | `company_id`, `top`, `skip`, optional `counterparty_ref` (GUID) and `posted_only` |
+| `onec_find_entities` | source metadata search | allowed EntitySets | `source_id`, optional `contains`, `limit`; no property types |
+| `onec_find_entities_with_property_types` | source metadata search | allowed EntitySets and declared property types | `source_id`, optional `contains`, `limit` |
+| `onec_metadata_schema_detail` | metadata schema discovery only | bounded schema/property/annotation projection | `source_id`, `company_id`, optional refresh and schema-candidate flags; requires `metadata.read` and explicit source allowlist |
 
 - Balance rows carry `name`, `code`, `deleted` on the counterparty slot when the lookup profile is present (one batched catalog read per 30 references); otherwise the balance is still returned with `COUNTERPARTY_NAMES_UNAVAILABLE:<code>` in `warnings`. `account_totals`, `totals` and `amount_totals` are exact Decimal sums computed on the server; `totals_complete` / `amount_totals_complete` are false whenever the page reports more rows. `net_credit` is credit minus debit (positive on 521.1 means the company owes).
 - `counterparty_find` statuses: `EXACT`, `PARTIAL` (one partial hit), `AMBIGUOUS`, `NOT_FOUND`; folders are never matches; 1C `substringof` is case-insensitive on this publication and the match is re-checked locally. The searched text is never written to the audit trail (only its length).
@@ -220,7 +273,10 @@ was probed, not what it supports, and including it made every profile stale afte
 - The mission's expected August debit turnover 173,436.43 and opening 533,036.05 differ from the native figures by exactly 264.60 (net balance and credit turnover agree; two 'Зачет аванса поставщику' debits of 264.60 exist, 14.07 and 05.08). Native is reported as primary; confirmation by the owner's native 1C report is open.
 - No profile is natively validated; production use needs the usual validation path.
 
-**Retest prompts for Claude in VS Code (server `erp-mcp-818ha`).**
+**Historical prompt text for Claude in VS Code (server `erp-mcp-818ha`, preserved from the
+2026-08-31 evidence run).** These prompts are retained as part of the dated record, not as current
+tool-signature examples. In particular, prompts B and C use older arguments and tool names; use the
+current inventory at the start of this document when constructing new requests.
 - A: "Use erp-mcp-818ha, source onec-818ha-reference, company 3e31afc5-351f-4f36-8074-99129fa3d911. Call accounting_balance_by_analytics as_of 2026-08-31T23:59:59+03:00 and report account_totals.net_credit, the per-counterparty positions by name, the validation_status label and any warnings. Do not add rows yourself."
 - B: "Call accounting_balance_and_turnovers for 2026-08-01T00:00:00+03:00 .. 2026-08-31T23:59:59+03:00 with account_code 521.1 and report totals and totals_complete."
 - C: "Find the counterparty 'MOLDRETAIL GROUP SRL' with counterparty_find, then call purchase_documents with its ref and posted_only=true, and list the posted receipts with amount_totals."

@@ -1,5 +1,7 @@
 import hashlib
 import json
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +11,18 @@ from scripts.summarize_test_results import summarize
 from tests.test_engineering_checkpoint import prepare
 
 COMMIT = "a" * 40
+
+
+def current_head():
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parents[1],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def assert_deployment_claim_does_not_authorize_production(result):
+    assert result["production_decision"] == "NO-GO"
+    assert result["mandatory_native_and_operator_gates_closed"] is False
 
 
 def image_fixture(path, name):
@@ -144,7 +158,7 @@ def test_stale_or_fabricated_test_summaries_fail_validation(tmp_path, mutation):
         verify_tests(directory, expected_commit=COMMIT)
 
 
-def test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links(tmp_path):
+def prepare_assembly_inputs(tmp_path):
     from scripts.engineering_checkpoint import REPORTS, implementation_fingerprint
 
     root, artifacts = tmp_path / "source", tmp_path / "artifacts"
@@ -177,9 +191,60 @@ def test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_re
     for name in REPORTS:
         path = root / name
         path.write_text(path.read_text().replace(old, checkpoint["implementation_sha256"]))
+    return root, artifacts
+
+
+def test_complete_assembly_binds_two_images_all_test_suites_and_same_revision_report_links(tmp_path):
+    root, artifacts = prepare_assembly_inputs(tmp_path)
     result = assemble(root, artifacts, expected_commit=COMMIT, pr_head_commit="b" * 40, run_id="12345678901")
     assert result["production_decision"] == "NO-GO" and result["dod_status"] == "PARTIAL"
     assert result["mandatory_native_and_operator_gates_closed"] is False
     assert result["tested_revision"] != result["pr_head_commit"]
     assert set(result["images"]) == set(IMAGES) and set(result["tests"]) == SUITES
     assert all(f"/blob/{COMMIT}/" in reference["url"] for reference in result["references"].values())
+
+
+def test_deployment_revision_defaults_to_unknown_instead_of_following_moving_head(tmp_path):
+    root, artifacts = prepare_assembly_inputs(tmp_path)
+    moving_head = current_head()
+    assert COMMIT != moving_head
+
+    result = assemble(root, artifacts, expected_commit=COMMIT, pr_head_commit=moving_head,
+                      run_id="12345678901")
+
+    assert result["tested_revision"] == COMMIT
+    assert result["pr_head_commit"] == moving_head
+    assert result["deployment_identity"] == {"status": "UNKNOWN", "deployed_revision": None}
+    assert_deployment_claim_does_not_authorize_production(result)
+
+
+def test_deployment_revision_mismatch_is_kept_as_an_unverified_claim(tmp_path):
+    root, artifacts = prepare_assembly_inputs(tmp_path)
+    deployed_revision = "c" * 40
+    current_pr_head = current_head()
+
+    result = assemble(root, artifacts, expected_commit=COMMIT, pr_head_commit=current_pr_head,
+                      run_id="12345678901", deployed_revision=deployed_revision)
+
+    assert deployed_revision not in {COMMIT, current_pr_head}
+    assert result["deployment_identity"] == {
+        "status": "CLAIM_UNVERIFIED", "deployed_revision": deployed_revision,
+    }
+    assert_deployment_claim_does_not_authorize_production(result)
+
+
+def test_deployment_revision_equal_to_pr_head_is_still_unverified(tmp_path):
+    root, artifacts = prepare_assembly_inputs(tmp_path)
+    pr_head = current_head()
+
+    result = assemble(root, artifacts, expected_commit=COMMIT, pr_head_commit=pr_head,
+                      run_id="12345678901", deployed_revision=pr_head)
+
+    assert result["deployment_identity"] == {"status": "CLAIM_UNVERIFIED", "deployed_revision": pr_head}
+    assert_deployment_claim_does_not_authorize_production(result)
+
+
+def test_malformed_deployment_revision_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="invalid release revision/run identity"):
+        assemble(tmp_path, tmp_path, expected_commit=COMMIT, pr_head_commit="b" * 40,
+                 run_id="12345678901", deployed_revision="not-a-sha")

@@ -21,10 +21,14 @@ SIDECAR = "http://127.0.0.1:21768"
 
 @pytest.fixture
 def load(monkeypatch, tmp_path):
-    def _load(*, real: bool, hosts: str | None = HOSTS, sidecar: str | None = SIDECAR):
+    def _load(*, real: bool, hosts: str | None = HOSTS, sidecar: str | None = SIDECAR,
+              port_offset: str | None = "3000", project_suffix: str | None = "-real1c"):
         monkeypatch.setenv("E2E_DIR", str(tmp_path))
-        monkeypatch.setenv("E2E_PORT_OFFSET", "3000")
-        monkeypatch.setenv("E2E_PROJECT_SUFFIX", "-real1c")
+        for name, value in (("E2E_PORT_OFFSET", port_offset), ("E2E_PROJECT_SUFFIX", project_suffix)):
+            if value is None:
+                monkeypatch.delenv(name, raising=False)
+            else:
+                monkeypatch.setenv(name, value)
         for name, value in (("E2E_REAL1C", "1" if real else None), ("E2E_SOURCE_ALLOWED_HOSTS", hosts),
                             ("E2E_SIDECAR_URL", sidecar)):
             if value is None:
@@ -36,6 +40,78 @@ def load(monkeypatch, tmp_path):
     yield _load
     monkeypatch.undo()
     importlib.reload(envctl)
+
+
+def test_recorded_explicit_ports_override_offset_and_missing_ports_use_offset(load, tmp_path):
+    (tmp_path / "env.json").write_text(json.dumps({
+        "port_offset": 3000,
+        "project_suffix": "-real1c",
+        "ports": {"postgres": 20432, "redis": 19379},
+    }), encoding="utf-8")
+
+    mod = load(real=False, hosts=None, sidecar=None, port_offset=None, project_suffix=None)
+
+    assert mod.PORTS["postgres"] == 20432
+    assert mod.PORTS["redis"] == 19379
+    assert mod.PORTS["gateway"] == 21000  # BASE_PORTS gateway + recorded offset
+    assert mod.PROJECT == "erpmcp-e2e-real1c"
+
+
+def test_explicit_port_offset_overrides_recorded_per_service_ports(load, tmp_path):
+    (tmp_path / "env.json").write_text(json.dumps({
+        "port_offset": 3000,
+        "project_suffix": "-real1c",
+        "ports": {"postgres": 20432, "redis": 19379},
+    }), encoding="utf-8")
+
+    mod = load(real=False, hosts=None, sidecar=None, port_offset="4000", project_suffix=None)
+
+    assert mod.PORTS["postgres"] == 19432
+    assert mod.PORTS["redis"] == 20379
+    assert mod.PORTS["gateway"] == 22000
+
+
+def test_recorded_duplicate_ports_fail_closed(load, tmp_path):
+    (tmp_path / "env.json").write_text(json.dumps({
+        "port_offset": 3000,
+        "project_suffix": "-real1c",
+        "ports": {"postgres": 20432, "redis": 20432},
+    }), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="E2E ports must be unique"):
+        load(real=False, hosts=None, sidecar=None, port_offset=None, project_suffix=None)
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None and shutil.which("powershell") is None,
+                    reason="PowerShell is not installed")
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [(None, "20432,19379,21000"), ("4000", "19432,20379,22000")],
+)
+def test_powershell_topology_matches_recorded_ports_and_offset_override(tmp_path, offset, expected):
+    (tmp_path / "env.json").write_text(json.dumps({
+        "port_offset": 3000,
+        "project_suffix": "-real1c",
+        "ports": {"postgres": 20432, "redis": 19379},
+    }), encoding="utf-8")
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    common = (ROOT / "scripts" / "e2e" / "_common.ps1").as_posix().replace("'", "''")
+    env = dict(os.environ)
+    env["E2E_DIR"] = str(tmp_path)
+    env.pop("E2E_PROJECT_SUFFIX", None)
+    env.pop("E2E_REAL1C", None)
+    if offset is None:
+        env.pop("E2E_PORT_OFFSET", None)
+    else:
+        env["E2E_PORT_OFFSET"] = offset
+    command = (f". '{common}'; Write-Output ('PORTS=' + [string]::Join(',', "
+                "[string[]]@($script:Ports.postgres,$script:Ports.redis,$script:Ports.gateway)))")
+
+    result = subprocess.run([shell, "-NoProfile", "-NonInteractive", "-Command", command],
+                            capture_output=True, text=True, env=env, timeout=30, check=False)
+
+    assert result.returncode == 0, result.stderr
+    assert f"PORTS={expected}" in result.stdout
 
 
 def test_real_profile_has_no_fake_secrets_env_or_urls(load, tmp_path):

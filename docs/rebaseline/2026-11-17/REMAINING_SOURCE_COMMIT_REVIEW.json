@@ -1,0 +1,353 @@
+{
+  "candidate_head": "1fbbb7cf7279df37392effb591d7d144c57a5e1e",
+  "candidate_worktree": "D:/tmp/scratch_worktrees/erp-main-consolidation-20261117",
+  "source_paths_lookup": "For each commit, source_paths is the exact array at docs/rebaseline/2026-11-17/UNIQUE_COMMIT_DISPOSITIONS.json -> commits[commit].source_paths. Counts below were checked with Test-Path against this candidate worktree.",
+  "scope": "49 source-review commits enumerated by the active rebaseline audit. Presence/port disposition is not behavioral acceptance; tests remain governed separately.",
+  "reviews": [
+    {
+      "commit": "015e9fc0967d",
+      "disposition": "PORTED",
+      "paths_present": "1/2",
+      "evidence": "sql_ledger.py contains list_inflight/operator_status; the old colliding 030 SQL was renumbered and candidate db/phase2/038_s13_inflight_status_reads.sql defines both functions and operator/auditor grants.",
+      "remaining": "Verify cumulative migration dependencies and targeted DB acceptance."
+    },
+    {
+      "commit": "01ae922caf12",
+      "disposition": "SUPERSEDED",
+      "paths_present": "1/1",
+      "evidence": "Historical source diff removes only one whitespace-only line in scripts/check_english_policy.py; no scanner predicate or runtime behavior changes.",
+      "remaining": "No behavioral delta to restore; lint execution remains NOT_RUN by audit scope."
+    },
+    {
+      "commit": "07edc1945c7c",
+      "disposition": "PORTED",
+      "paths_present": "4/8",
+      "evidence": "S13 anchor client/checkpoint/lifecycle code is present; the newer server is intentionally isolated under dev_anchor_service_s13 so legacy dev_anchor_service remains importable. DPAPI signer is present at src/erp_mcp_private_writer/dpapi_signer.py, and its two authority-role prefix additions are committed in 1fbbb7c. Historical package-path absence is a rename disposition, not missing signer code.",
+      "remaining": "Review exact signer/storage contract and named service tests; do not claim runtime qualification."
+    },
+    {
+      "commit": "1294b42a280f",
+      "disposition": "PORTED",
+      "paths_present": "7/7",
+      "evidence": "Current scripts/e2e/_common.ps1:175-197,396-399 validates the approved reader, scopes credentials to gateway launch, and removes ambient secret-like environment variables; fault.ps1:24-26 preflights before start/restart; reset.ps1:20 preflights before anything is stopped or dropped. The reset safeguard was restored in candidate commit 1fbbb7c.",
+      "remaining": "Reader launch/preflight implementation is present; named launcher tests remain NOT_RUN."
+    },
+    {
+      "commit": "2082ce420f9b",
+      "disposition": "PORTED",
+      "paths_present": "1/2",
+      "evidence": "Current scripts/phase2/build_spec_bundle.py:228,260,306,408-411,542,595-598 retains malformed bounded-decision validation with explicit TRY004 rationale and UTF-8 text serialization at 1102-1110 instead of bytes. Historical scripts/render_full_program_status.py is absent and is a separately superseded renderer path, not an evidence-bundle behavior.",
+      "remaining": "Only the old report-renderer path is superseded; no checks were run."
+    },
+    {
+      "commit": "2236f0608763",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "timeline_view.py has _owns_source requiring ownership.owns(..., 'source_id', source_id) is True, and build_timeline refuses feeds whose ledger tenant differs or whose source ownership fails.",
+      "remaining": "Run the named ownership/tenant-isolation tests at verification stage."
+    },
+    {
+      "commit": "2964d64f7d8b",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "release_manifest.py and assemble_s10_release_manifest.py exist; release_manifest.py checks target.is_symlink() and allowed_output.is_symlink(). Later commit 66ef76 adds junction coverage and is separately listed.",
+      "remaining": "Verify junction and race behavior in named tests; no claim of tested filesystem safety."
+    },
+    {
+      "commit": "2f606c2f2c77",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Current build_spec_bundle.py defines TC003’s bounded negative deployment-identity contract, pins its expected fields/source hashes (94-150), validates the correlated evidence/receipt (542-598), and wires the record into the bundle (1099-1112).",
+      "remaining": "This is bounded evidence packaging only; it does not establish actual deployment or product acceptance."
+    },
+    {
+      "commit": "31afbc5c1ea2",
+      "disposition": "PORTED",
+      "paths_present": "13/13",
+      "evidence": "Current change/__init__.py and src/erp_mcp_s16/__init__.py expose explicit __all__ lists; change/types.py has frozen slot dataclasses at 213,234,253,284 and proposal.py at 46,135,152,162. The source declarations match the export/slot hardening purpose of this commit.",
+      "remaining": "Source-level disposition only; no runtime/import checks were run."
+    },
+    {
+      "commit": "3225af765887",
+      "disposition": "PORTED",
+      "paths_present": "20/20",
+      "evidence": "Current scripts/real1c/run_lane.py documents the frozen catalogue/reference-manifest/COM preflight, post-run fingerprint equality and pre-write secret sweep (module docstring lines 6-9); it imports the per-test detail builder at line 33 and keeps public/private report paths separate. These are present lane safeguards, not product acceptance.",
+      "remaining": "Do not treat historical test evidence or source presence as present-day live 1C acceptance; tests were not run."
+    },
+    {
+      "commit": "3410869017a8",
+      "disposition": "PORTED",
+      "paths_present": "7/7",
+      "evidence": "Current backend_budget.py caps per-backend/global waiters (72,74,217-218); onec_composition.py validates the scope resolver and timeout boundary (59-115,142-178); current capture_loop.py/resnapshot.py enforce scope-epoch checks and resnapshot refusal. The S3 implementation predicates are represented in candidate source.",
+      "remaining": "No S3 tests or runtime verification were performed."
+    },
+    {
+      "commit": "37157e41b0d9",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "Current capture_loop.py checks live scope epoch before capture and before submitting connector work (173,254-275), tracks inflight futures (122-141,273-279), and capture_runtime.py catches cancellation and drains owned/inflight work (129,148).",
+      "remaining": "Concurrency and cancellation are not runtime-qualified; tests not run."
+    },
+    {
+      "commit": "3742eb7aa1fe",
+      "disposition": "PORTED",
+      "paths_present": "8/8",
+      "evidence": "Current run_lane.py imports details_report.py at line 33 and checks malformed month-close account codes at lines 196-200, recording MALFORMED CODE without querying. The detailed report path retains sanitized per-test output construction.",
+      "remaining": "Historical report/test evidence remains tied to its original HEAD; tests not run."
+    },
+    {
+      "commit": "3cfd9bac2889",
+      "disposition": "PORTED",
+      "paths_present": "3/3",
+      "evidence": "Current promotion.py:234-239 retains exact AttestationView/UUID/string preflight, drift.py:106 retains candidate-hash behavior, and scheduler.py:501 now persists constant WORK_EXCEPTION without exception class names. The scheduler redaction fix is in candidate commit 1fbbb7c.",
+      "remaining": "Source predicates are present; named security/reliability tests remain NOT_RUN."
+    },
+    {
+      "commit": "3f318c9bf35f",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Canonical 027 was restored to pinned main bytes; db/phase2/030_private_writer_consolidation.sql carries lifecycle_epoch permit/barrier checks, preserving the existing migration numbering.",
+      "remaining": "Test the cumulative migration in the disposable DB harness; not executed."
+    },
+    {
+      "commit": "3f6f2e60c62b",
+      "disposition": "PORTED",
+      "paths_present": "14/14",
+      "evidence": "Current affected Phase 2 modules use datetime.UTC and collections.abc imports plus modernized bytes encode calls consistent with this import/API modernization; no behavioral delta is involved.",
+      "remaining": "No runtime/import checks run; target interpreter compatibility is not claimed."
+    },
+    {
+      "commit": "41cf0f3c8893",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Candidate package-lock.json pins undici 8.12.3 at lines 11,15-16; scripts/audit_node_runtime.mjs:39 checks 8.12.3. The source fix is present in candidate commit 1fbbb7c.",
+      "remaining": "Runtime audit/check remains NOT_RUN."
+    },
+    {
+      "commit": "427d2440591f",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Current build_spec_bundle.py defines the R2-US-002 bounded acceptance schema and pinned evidence/receipt paths (154-205), validates schema and artifact references (about 700-770), and carries bounded status separately from canonical product status (about 950-980).",
+      "remaining": "Bounded status does not imply product acceptance or deployment."
+    },
+    {
+      "commit": "490cfb744f83",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Current build_spec_bundle.py defines TC001 bounded fields and verifies source evidence path/hash (26-44,226-277); the bundle writer serializes the decision YAML as UTF-8 text (1102-1104). This is evidence packaging only.",
+      "remaining": "Do not infer current TC001 product acceptance from historical adjudication; no checks run."
+    },
+    {
+      "commit": "490d7638ea6e",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "release_manifest.py exists and implements explicit candidate-status parsing; the module is also the source of the S10 manifest assembler.",
+      "remaining": "Verify ambiguous-status negative cases in named tests."
+    },
+    {
+      "commit": "4b59d3de4e6d",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "proposal.py and synthetic_data.py are present with the S12 lane contract; proposal context now requires TEST and production caller derives lane from the principal registry.",
+      "remaining": "Restore/adapt the missing historical S12 tests and verify no default TEST lane leaks into runtime."
+    },
+    {
+      "commit": "53fa0515c0ea",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "proposal.py is present; its parser has the frozen proposal scope gates and rejects non-allowed operations before draft creation.",
+      "remaining": "Verify exact S12 scope rules against the contract tests."
+    },
+    {
+      "commit": "572a9cda2877",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "posted_receipts.py enforces the fixed authority value in RetrievalResult and ReceiptsAssessment __post_init__ methods.",
+      "remaining": "Run receipt-authority regression tests."
+    },
+    {
+      "commit": "588ddd1f1bd0",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "2/2",
+      "evidence": "capacity_interference.py and capacity_model.py exist with stricter percentile sample and numeric-threshold validation in the candidate source.",
+      "remaining": "Compare bounded S9 acceptance semantics and numerical behavior to the exact patch; named tests pending."
+    },
+    {
+      "commit": "5935a6831bb6",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "db/phase2/030_private_writer_consolidation.sql defines add_role_scope and includes deterministic scope-lock ordering before unique-key arbitration.",
+      "remaining": "Verify concurrency/conflict behavior in the disposable migration tests."
+    },
+    {
+      "commit": "5aaa5ae16957",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "20/20",
+      "evidence": "All real1c lane modules listed for this branch snapshot exist in the candidate.",
+      "remaining": "Compare this snapshot’s branch-specific changes with 3225af and subsequent fixes; do not treat path presence as acceptance."
+    },
+    {
+      "commit": "5d3e97ba5fcf",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "checkpoint.py and lifecycle.py contain historical-key and latestness preflight interfaces; candidate coordinator remains diagnostic-only with fail-closed NOT_READY paths.",
+      "remaining": "Run named S13 lifecycle tests; no production provider proof is claimed."
+    },
+    {
+      "commit": "66ef76c37209",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "release_manifest.py checks symlinked target and allowed output paths; actual junction handling is included in the current manifest code’s path validation.",
+      "remaining": "Verify Windows junction and TOCTOU cases in named tests."
+    },
+    {
+      "commit": "6f57fa2293b6",
+      "disposition": "SUPERSEDED",
+      "paths_present": "0/1",
+      "evidence": "The historical scripts/render_full_program_status.py is absent. Current project policy routes whole-program reporting through tools/report.py and generated live reports.",
+      "remaining": "Preserve historical report artifacts; ensure the new global report contains the required accepted data and provenance."
+    },
+    {
+      "commit": "72a65b6fd0ca",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "checkpoint.py/lifecycle.py bind latestness evidence to a fresh challenge and reject mismatched provider/checkpoint/revision metadata before suffix evaluation.",
+      "remaining": "Named latestness replay/rollback tests pending; synthetic authority is not real provider proof."
+    },
+    {
+      "commit": "79cf9f61eefa",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "checkpoint.py defines separate latestness evidence/authority interfaces; lifecycle coordinator validates authority and fails closed on absent/malformed evidence.",
+      "remaining": "Run focused preflight tests; provider qualification remains separate."
+    },
+    {
+      "commit": "7d9bbc00006b",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "1/1",
+      "evidence": "scripts/remote/run-mcp-stack.ps1 exists and is being reconciled by the tunnel worker against exact managed process/tunnel identity.",
+      "remaining": "Review the worker diff and named PowerShell tests; no task or tunnel was started."
+    },
+    {
+      "commit": "80dd8a271e87",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "1/2",
+      "evidence": "server.py exists; scripts/render_full_program_status.py is absent and the current renderer is tools/report.py.",
+      "remaining": "Compare server lint/source change; old report renderer is replaced by the current report tool."
+    },
+    {
+      "commit": "88818b603a86",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "Canonical 027 is restored from pinned main; 030_private_writer_consolidation.sql carries the later terminal replay and epoch-fence functions without rewriting 027.",
+      "remaining": "Verify terminal replay with the disposable PostgreSQL acceptance tests."
+    },
+    {
+      "commit": "9b61e73a690d",
+      "disposition": "PORTED",
+      "paths_present": "2/2",
+      "evidence": "change/killswitch.py and change/__init__.py expose the bounded evaluation and required recovery-sweep semantics restored from the S12 source.",
+      "remaining": "Run focused S12 kill-switch and recovery tests."
+    },
+    {
+      "commit": "9e3ed8e55991",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "3/3",
+      "evidence": "auth.py uses settings.oauth_audience_list and settings.py parses additional audiences. This audit did not find CHATGPT_TUNNEL_RESOURCE in scripts/e2e/envctl.py, so client/audience provisioning may be incomplete.",
+      "remaining": "Check tunnel resource configuration and refresh-token flow against test-lane environment; no OAuth login was attempted."
+    },
+    {
+      "commit": "ac97a979f814",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "1/1",
+      "evidence": "adapters/odata-sidecar/Dockerfile exists in the candidate.",
+      "remaining": "Compare the pinned sidecar runtime digest to the historical refresh and verify the audit script binding."
+    },
+    {
+      "commit": "aca610e22acd",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "20/20",
+      "evidence": "All listed real1c lane modules are present in the candidate tree.",
+      "remaining": "Compare this branch’s snapshot with 3225af and later fixes; exact branch-specific changes not independently qualified."
+    },
+    {
+      "commit": "aed0948fb1da",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "1/1",
+      "evidence": "scheduler.py exists and current changes include bounded/redacted worker results.",
+      "remaining": "Compare the historical exception-redaction behavior and outputs to current scheduler contract; reliability tests pending."
+    },
+    {
+      "commit": "b6557547075d",
+      "disposition": "PORTED",
+      "paths_present": "1/2",
+      "evidence": "sql_ledger.py retains operator_status/list_inflight specs; candidate migration 038 defines the scoped projections and grants. The historical 030 migration path was renumbered.",
+      "remaining": "Verify migration dependencies and role-isolation acceptance."
+    },
+    {
+      "commit": "b885f03ffd75",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "1/1",
+      "evidence": "scripts/phase2/build_spec_bundle.py exists.",
+      "remaining": "Verify TC002 evidence immutability and bundle reference in the current ledger."
+    },
+    {
+      "commit": "beaca9608632",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "reconciliation.py emits Difference(..., 'ROW_MISSING', ...) and returns ComparisonState.INCONCLUSIVE with reason ROW_MISSING for absent 521.1 rows.",
+      "remaining": "Run named R2-US-030 regression tests."
+    },
+    {
+      "commit": "d5b3dcd3cdc9",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "12/12",
+      "evidence": "All 12 listed source modules exist in the candidate; import sorting and cleanup are not behaviorally accepted by presence alone.",
+      "remaining": "Compare import-only diff and ensure no required legacy export was removed."
+    },
+    {
+      "commit": "debf62f5decc",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "4/4",
+      "evidence": "documentation.py, native_checks.py, run_lane.py and sanitize.py exist; current sanitizer exposes redact_business_values and the report runner retains public/private output separation code.",
+      "remaining": "Review exact redaction sweep and private owner-file handling; run the named sanitizer tests."
+    },
+    {
+      "commit": "ea4defaaccbf",
+      "disposition": "PORTED",
+      "paths_present": "7/7",
+      "evidence": "The candidate now has TEST_LANE_UNRECONCILED implementation/fixture paths restored by the assigned worker; current Semantic Profiles code must retain test-environment and production hard-deny, pinned SHA, L1/native-NOT-RUN label, DB-profile precedence, and the five declared concepts.",
+      "remaining": "Inspect worker diff and verify those guards with focused tests; do not count L1 evidence as native acceptance."
+    },
+    {
+      "commit": "f28b8d378452",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "11/11",
+      "evidence": "All listed real1c files exist in the candidate; later source contains typed lane/error and redaction surfaces, but this audit did not check each reviewer fix against its exact predicate.",
+      "remaining": "Finish per-finding diff review and run named REAL-1C tests."
+    },
+    {
+      "commit": "f59db79ac9be",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "sql_ledger.py contains budget_snapshot and malformed-result validation; current db/phase2/029_scoped_operator_reads.sql defines/grants the budget_snapshot function (operator confirms lines 51, 79, 83, 86). The source feature is retained under existing migration 029.",
+      "remaining": "Verify malformed-result and DB role behavior with named tests; migration not executed."
+    },
+    {
+      "commit": "f5fc733f0a1c",
+      "disposition": "NEEDS_REVIEW",
+      "paths_present": "7/7",
+      "evidence": "All S3 source paths are present; capture_loop.py, scheduler.py, and related runtime files have current worker changes.",
+      "remaining": "Diff-review backend budget, drift, OData composition/discovery and resnapshot behavior; named tests pending."
+    },
+    {
+      "commit": "f79d34eacc80",
+      "disposition": "PORTED",
+      "paths_present": "1/1",
+      "evidence": "change/transitions.py is present with restored CT10 evidence/result/receipt persistence and compare-and-swap bindings.",
+      "remaining": "Run focused S12 crash-window tests and review the persistence contract."
+    }
+  ],
+  "non_acceptance_notice": "A PORTED or PRESENT source disposition means the feature is represented in current candidate source or a successor file; it does not mean tests, database migrations, runtime, production, sprint acceptance, or GPT-PM approval passed. Historical documentation and test-only evidence remain scoped to their original heads.",
+  "tests_and_checks": "NOT_RUN by this audit; no test/check/build/migration command was run."
+}

@@ -8,13 +8,25 @@ from __future__ import annotations
 
 import asyncio
 import math
+import secrets
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Protocol
 from uuid import UUID
 
 from ._common import Scope
-from .checkpoint import CheckpointRecord, CheckpointSink, SignatureVerifier
+from .checkpoint import (
+    CheckpointKeyAuthorization,
+    CheckpointKeyAuthorizationAuthority,
+    CheckpointKeyAuthorizationBasis,
+    CheckpointLatestnessAuthority,
+    CheckpointLatestnessEvidence,
+    CheckpointRecord,
+    CheckpointSink,
+    SignatureVerifier,
+    checkpoint_identity,
+)
 
 
 class LifecycleReason(StrEnum):
@@ -26,12 +38,18 @@ class LifecycleReason(StrEnum):
     CHECKPOINT_MISSING = "CHECKPOINT_MISSING"
     CHECKPOINT_SCOPE_MISMATCH = "CHECKPOINT_SCOPE_MISMATCH"
     CHECKPOINT_INVALID = "CHECKPOINT_INVALID"
+    CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE = "CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE"
+    CHECKPOINT_KEY_AUTHORIZATION_DENIED = "CHECKPOINT_KEY_AUTHORIZATION_DENIED"
+    CHECKPOINT_KEY_AUTHORIZATION_INVALID = "CHECKPOINT_KEY_AUTHORIZATION_INVALID"
+    CHECKPOINT_LATESTNESS_UNAVAILABLE = "CHECKPOINT_LATESTNESS_UNAVAILABLE"
+    CHECKPOINT_LATESTNESS_INVALID = "CHECKPOINT_LATESTNESS_INVALID"
     CHECKPOINT_NOT_ANCESTOR = "CHECKPOINT_NOT_ANCESTOR"
     CHECKPOINT_SUFFIX_UNAVAILABLE = "CHECKPOINT_SUFFIX_UNAVAILABLE"
     CHECKPOINT_SUFFIX_INVALID = "CHECKPOINT_SUFFIX_INVALID"
     CHECKPOINT_SUFFIX_REQUIRES_CHECKPOINT = "CHECKPOINT_SUFFIX_REQUIRES_CHECKPOINT"
     CHECKPOINT_SUFFIX_UNSUPPORTED = "CHECKPOINT_SUFFIX_UNSUPPORTED"
     SHARED_FENCE_UNAVAILABLE = "SHARED_FENCE_UNAVAILABLE"
+    BASE_PREFLIGHT_DEADLINE_EXCEEDED = "BASE_PREFLIGHT_DEADLINE_EXCEEDED"
 
 
 class LifecycleStatus(StrEnum):
@@ -58,6 +76,74 @@ class LifecycleResult:
     suffix_head_seq: int | None = None
 
 
+@dataclass(frozen=True)
+class BaseRecoverySnapshot:
+    """Exact bounded begin-recovery response used only to bind diagnostic preflight results."""
+
+    base_fingerprint: str
+    epoch: int
+    manifest_digest: str
+    scopes: tuple[Scope, ...]
+
+    def __post_init__(self) -> None:
+        if (type(self.base_fingerprint) is not str or not self.base_fingerprint
+                or self.base_fingerprint != self.base_fingerprint.strip()
+                or type(self.epoch) is not int or self.epoch < 1
+                or not _is_hash(self.manifest_digest)
+                or type(self.scopes) is not tuple or not 1 <= len(self.scopes) <= 64
+                or any(type(scope) is not Scope for scope in self.scopes)):
+            raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
+        identities = tuple((scope.tenant_id, scope.company_id) for scope in self.scopes)
+        if (any(not tenant or not company for tenant, company in identities)
+                or identities != tuple(sorted(set(identities)))):
+            raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
+
+    @classmethod
+    def from_begin_result(cls, base_fingerprint: str, result: Any) -> BaseRecoverySnapshot:
+        """Parse the exact SQL result shape; reject partial or reordered manifests before I/O."""
+        expected = {"base_fingerprint", "state", "epoch", "manifest_digest", "scope_count",
+                    "scope_manifest"}
+        if (type(result) is not dict or set(result) != expected
+                or result.get("base_fingerprint") != base_fingerprint
+                or result.get("state") != "RECOVERING"):
+            raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
+        raw_manifest = result.get("scope_manifest")
+        if (type(result.get("scope_count")) is not int
+                or type(raw_manifest) is not list
+                or result["scope_count"] != len(raw_manifest)):
+            raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
+        scopes: list[Scope] = []
+        for item in raw_manifest:
+            if (type(item) is not dict or set(item) != {"tenant_id", "company_id"}
+                    or type(item["tenant_id"]) is not str or not item["tenant_id"]
+                    or type(item["company_id"]) is not str or not item["company_id"]):
+                raise ValueError("BASE_RECOVERY_SNAPSHOT_INVALID")
+            scopes.append(Scope(item["tenant_id"], item["company_id"]))
+        return cls(base_fingerprint, result.get("epoch"), result.get("manifest_digest"),
+                   tuple(scopes))
+
+
+@dataclass(frozen=True)
+class BaseRecoveryPreflightResult:
+    """Per-scope diagnostics bound to one begin snapshot; never an admission/readiness result."""
+
+    snapshot: BaseRecoverySnapshot
+    scope_results: tuple[LifecycleResult, ...]
+
+    def __post_init__(self) -> None:
+        if (type(self.snapshot) is not BaseRecoverySnapshot
+                or type(self.scope_results) is not tuple
+                or len(self.scope_results) != len(self.snapshot.scopes)):
+            raise ValueError("BASE_RECOVERY_PREFLIGHT_INVALID")
+        for scope, result in zip(self.snapshot.scopes, self.scope_results, strict=True):
+            if (type(result) is not LifecycleResult or result.scope != scope
+                    or result.status is not LifecycleStatus.NOT_READY):
+                raise ValueError("BASE_RECOVERY_PREFLIGHT_INVALID")
+
+
+_BASE_RECOVERY_PREFLIGHT_CONCURRENCY = 4
+
+
 _REQUIRED_CHECKPOINT_EVENTS = frozenset({
     "APPROVED", "APPLYING", "COMPLETE_SUCCESS", "COMPLETE_PRE_WRITE_REFUSAL", "OPERATOR_RESOLVE",
 })
@@ -66,6 +152,80 @@ _REQUIRED_CHECKPOINT_EVENTS = frozenset({
 def _is_hash(value: Any) -> bool:
     return (type(value) is str and len(value) == 64
             and all(ch in "0123456789abcdef" for ch in value))
+
+
+def _valid_key_authorization(scope: Scope, record: CheckpointRecord,
+                             evidence: Any, *, verified_public_key_digest: str,
+                             challenge_nonce: str) -> bool:
+    """Check strict response shape and binding after the trusted port verifies its history."""
+    if type(evidence) is not CheckpointKeyAuthorization:
+        return False
+    if (type(evidence.tenant_id) is not str or evidence.tenant_id != scope.tenant_id
+            or type(evidence.company_id) is not str or evidence.company_id != scope.company_id
+            or type(evidence.key_id) is not str or evidence.key_id != record.key_id
+            or not _is_hash(evidence.public_key_digest)
+            or evidence.public_key_digest != verified_public_key_digest
+            or not _is_hash(evidence.checkpoint_digest)
+            or not _is_hash(evidence.challenge_nonce)
+            or evidence.challenge_nonce != challenge_nonce
+            or type(evidence.authority_id) is not str or not evidence.authority_id
+            or len(evidence.authority_id) > 128
+            or type(evidence.authority_revision) is not int
+            or evidence.authority_revision < 1
+            or type(evidence.authority_event_id) is not str or not evidence.authority_event_id
+            or len(evidence.authority_event_id) > 128
+            or type(evidence.policy_version) is not str or not evidence.policy_version
+            or len(evidence.policy_version) > 128
+            or type(evidence.basis) is not CheckpointKeyAuthorizationBasis):
+        return False
+    try:
+        if evidence.checkpoint_digest != checkpoint_identity(record):
+            return False
+    except Exception:
+        return False
+
+    if evidence.basis is CheckpointKeyAuthorizationBasis.ROUTINE_RETIREMENT_RECEIPT:
+        accepted_at = evidence.accepted_at
+        try:
+            return (type(evidence.receipt_id) is str and bool(evidence.receipt_id)
+                    and len(evidence.receipt_id) <= 256
+                    and type(accepted_at) is datetime
+                    and accepted_at.tzinfo is not None and accepted_at.utcoffset() is not None)
+        except Exception:
+            # A provider-controlled tzinfo may raise even on a datetime instance.
+            return False
+    if evidence.basis is CheckpointKeyAuthorizationBasis.ACTIVE:
+        return evidence.receipt_id is None and evidence.accepted_at is None
+    return False
+
+
+def _valid_latestness_evidence(scope: Scope, record: CheckpointRecord,
+                               evidence: Any, *, challenge_nonce: str) -> bool:
+    """Check strict receipt shape and exact record/challenge binding after authority verification."""
+    if type(evidence) is not CheckpointLatestnessEvidence:
+        return False
+    if (type(evidence.tenant_id) is not str or evidence.tenant_id != scope.tenant_id
+            or type(evidence.company_id) is not str or evidence.company_id != scope.company_id
+            or not _is_hash(evidence.checkpoint_digest)
+            or type(evidence.challenge_nonce) is not str
+            or evidence.challenge_nonce != challenge_nonce
+            or type(evidence.provider_id) is not str or not evidence.provider_id
+            or len(evidence.provider_id) > 128
+            or type(record.sink_id) is not str or evidence.provider_id != record.sink_id
+            or type(evidence.provider_revision) is not int or evidence.provider_revision < 1
+            or type(evidence.authority_id) is not str or not evidence.authority_id
+            or len(evidence.authority_id) > 128
+            or type(evidence.authority_revision) is not int or evidence.authority_revision < 1
+            or type(evidence.authority_event_id) is not str or not evidence.authority_event_id
+            or len(evidence.authority_event_id) > 128
+            or type(evidence.policy_version) is not str or not evidence.policy_version
+            or len(evidence.policy_version) > 128
+            or not _is_hash(evidence.proof_digest)):
+        return False
+    try:
+        return evidence.checkpoint_digest == checkpoint_identity(record)
+    except Exception:
+        return False
 
 
 def _classify_checkpoint_suffix(scope: Scope, record: CheckpointRecord,
@@ -166,16 +326,28 @@ class LifecycleCoordinator:
     """
 
     def __init__(self, ledger: LifecycleLedger, sink: CheckpointSink,
-                 verifier: SignatureVerifier, *, dependency_timeout_seconds: float = 5.0):
+                 verifier: SignatureVerifier, *,
+                 key_authority: CheckpointKeyAuthorizationAuthority | None = None,
+                 latestness_authority: CheckpointLatestnessAuthority | None = None,
+                 dependency_timeout_seconds: float = 5.0,
+                 base_preflight_timeout_seconds: float = 30.0):
         if (isinstance(dependency_timeout_seconds, bool)
                 or not isinstance(dependency_timeout_seconds, (int, float))
                 or not math.isfinite(dependency_timeout_seconds)
                 or dependency_timeout_seconds <= 0):
             raise ValueError("dependency_timeout_seconds must be a finite positive number")
+        if (isinstance(base_preflight_timeout_seconds, bool)
+                or not isinstance(base_preflight_timeout_seconds, (int, float))
+                or not math.isfinite(base_preflight_timeout_seconds)
+                or base_preflight_timeout_seconds <= 0):
+            raise ValueError("base_preflight_timeout_seconds must be a finite positive number")
         self._ledger = ledger
         self._sink = sink
         self._verifier = verifier
+        self._key_authority = key_authority
+        self._latestness_authority = latestness_authority
         self._dependency_timeout_seconds = float(dependency_timeout_seconds)
+        self._base_preflight_timeout_seconds = float(base_preflight_timeout_seconds)
 
     async def preflight(self, scope: Scope) -> LifecycleResult:
         """Return diagnostic state while keeping effectful admission disabled."""
@@ -250,6 +422,74 @@ class LifecycleCoordinator:
                                    chain_count=chain_count if isinstance(chain_count, int) else None)
 
         try:
+            verified_public_key_digest = self._verifier.public_key_digest(record.key_id)
+        except Exception:
+            verified_public_key_digest = None
+        if not _is_hash(verified_public_key_digest):
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_INVALID,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+
+        if self._latestness_authority is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        try:
+            challenge_nonce = secrets.token_hex(32)
+            latestness = await asyncio.wait_for(
+                self._latestness_authority.attest_latest(scope, record, challenge_nonce),
+                timeout=self._dependency_timeout_seconds,
+            )
+        except Exception:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if latestness is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if not _valid_latestness_evidence(
+                scope, record, latestness, challenge_nonce=challenge_nonce):
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_LATESTNESS_INVALID,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+
+        if self._key_authority is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        try:
+            key_authorization_nonce = secrets.token_hex(32)
+            key_authorization = await asyncio.wait_for(
+                self._key_authority.authorize_checkpoint(scope, record, key_authorization_nonce),
+                timeout=self._dependency_timeout_seconds,
+            )
+        except Exception:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_KEY_AUTHORITY_UNAVAILABLE,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if key_authorization is None:
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_DENIED,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+        if not _valid_key_authorization(
+                scope, record, key_authorization,
+                verified_public_key_digest=verified_public_key_digest,
+                challenge_nonce=key_authorization_nonce):
+            return LifecycleResult(scope, LifecycleStatus.NOT_READY,
+                                   LifecycleReason.CHECKPOINT_KEY_AUTHORIZATION_INVALID,
+                                   checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
+                                   chain_count=chain_count)
+
+        try:
             suffix = await asyncio.wait_for(
                 self._ledger.lifecycle_checkpoint_suffix(scope, record.seq, record.head_hash),
                 timeout=self._dependency_timeout_seconds,
@@ -268,10 +508,71 @@ class LifecycleCoordinator:
                                    chain_count=chain_count, suffix_event_count=suffix_count,
                                    suffix_head_seq=suffix_head)
 
-        # This remains diagnostic only: no complete cross-process mutation/dispatch fence,
-        # recovery-to-READY contract, or operational provider is available in this slice.
+        # Valid diagnostic evidence cannot authorize recovery or a physical writer.
         return LifecycleResult(scope, LifecycleStatus.NOT_READY,
                                LifecycleReason.SHARED_FENCE_UNAVAILABLE,
                                checkpoint_seq=record.seq, checkpoint_hash=record.head_hash,
                                chain_count=chain_count, suffix_event_count=suffix_count,
                                suffix_head_seq=suffix_head)
+
+    async def preflight_base_recovery(
+            self, base_fingerprint: str, begin_result: Any,
+    ) -> BaseRecoveryPreflightResult:
+        """Inspect every scope from one exact begin result without mutating recovery state.
+
+        Results stay tied to the returned epoch and manifest digest, but are diagnostics only:
+        any later completion must reload the base row and revalidate its epoch and digest. The
+        aggregate deadline is cooperative; adapters must enforce transport deadlines and promptly
+        propagate cancellation for cleanup to remain bounded.
+        """
+        snapshot = BaseRecoverySnapshot.from_begin_result(base_fingerprint, begin_result)
+        semaphore = asyncio.Semaphore(_BASE_RECOVERY_PREFLIGHT_CONCURRENCY)
+
+        async def inspect(scope: Scope) -> LifecycleResult:
+            async with semaphore:
+                result = await self.preflight(scope)
+            if (type(result) is not LifecycleResult or result.scope != scope
+                    or result.status is not LifecycleStatus.NOT_READY):
+                raise ValueError("BASE_RECOVERY_PREFLIGHT_INVALID")
+            return result
+
+        tasks = [asyncio.create_task(inspect(scope)) for scope in snapshot.scopes]
+        try:
+            done, pending = await asyncio.wait(
+                tasks, timeout=self._base_preflight_timeout_seconds,
+            )
+        except asyncio.CancelledError:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        results: list[LifecycleResult] = []
+        try:
+            for scope, task in zip(snapshot.scopes, tasks, strict=True):
+                if task in done:
+                    results.append(task.result())
+                else:
+                    results.append(LifecycleResult(
+                        scope, LifecycleStatus.NOT_READY,
+                        LifecycleReason.BASE_PREFLIGHT_DEADLINE_EXCEEDED,
+                    ))
+        except BaseException:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        for task in pending:
+            task.cancel()
+        try:
+            await asyncio.gather(*pending, return_exceptions=True)
+        except asyncio.CancelledError:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+        return BaseRecoveryPreflightResult(snapshot, tuple(results))

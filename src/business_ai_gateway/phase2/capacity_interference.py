@@ -41,7 +41,7 @@ from decimal import ROUND_HALF_EVEN, Context, Decimal
 from enum import StrEnum
 from typing import Final
 
-from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget
+from .backend_budget import BackendCapacityError, BackendId, PhysicalBackendBudget, WorkClass
 from .capacity_model import MAX_LATENCY_US, ConfiguredLimit, MeasurementRef, PercentileValue
 from .comparison_snapshot import canonical_digest
 from .ops_types import (
@@ -205,13 +205,6 @@ def make_policy(*, min_background_slots: object, tenant_share_slots: object, ids
         return ops_refusal(OpsReason.INPUT_INVALID, ids)
     except Exception:  # noqa: BLE001
         return ops_refusal(OpsReason.INTERNAL_REFUSED, ids)
-
-
-class WorkClass(StrEnum):
-    INTERACTIVE = "INTERACTIVE"
-    BACKGROUND = "BACKGROUND"
-    CAPTURE = "CAPTURE"
-    WRITER = "WRITER"
 
 
 @dataclass(frozen=True, slots=True)
@@ -435,7 +428,9 @@ class TenantSubShare:
             return 0
 
     @contextmanager
-    def reserve(self, *, tenant_id: object, backend_id: object) -> Iterator[None]:
+    def reserve(self, *, tenant_id: object, backend_id: object,
+                work_class: WorkClass = WorkClass.WRITER,
+                waiter_id: object = None) -> Iterator[None]:
         try:
             if type(backend_id) is not BackendId or not is_identity_text(tenant_id):
                 raise SubShareDenied(OpsReason.INPUT_INVALID)
@@ -449,10 +444,13 @@ class TenantSubShare:
         try:
             with ExitStack() as stack:
                 try:
-                    stack.enter_context(self._budget.reserve(trusted_backend_id=backend_id))
+                    stack.enter_context(self._budget.reserve(
+                        trusted_backend_id=backend_id, work_class=work_class,
+                        waiter_id=waiter_id))
                 except BackendCapacityError as exc:
-                    code = (OpsReason.BACKEND_BUDGET_EXCEEDED if str(exc) == "BACKEND_CAPACITY_EXCEEDED"
-                            else OpsReason.INPUT_INVALID)
+                    code = (OpsReason.BACKEND_BUDGET_EXCEEDED if str(exc) in {
+                        "BACKEND_CAPACITY_EXCEEDED", "BACKEND_WAIT_QUEUE_FULL"
+                    } else OpsReason.INPUT_INVALID)
                     raise SubShareDenied(code) from None
                 yield
         finally:

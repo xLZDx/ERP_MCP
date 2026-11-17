@@ -211,6 +211,8 @@ Assertions:
 16. The preview page response carries `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 17. Every state-changing POST checks `Origin`/`Referer` against the approval origin; missing or foreign values are refused, in addition to the CSRF token.
 18. Nonce, CSRF token and session id never appear in logs, tool responses or audit records (audit carries digests, per spec section 4 item 5).
+19. Approval form receive is bounded by bytes and ASGI message count; an empty-chunk flood, malformed event or non-boolean `more_body` is refused
+    before `submit_decision` is called.
 Open: whether the page is server-rendered HTML only or includes scripts (affects CSP); a11y requirements (Q3, Q4).
 
 ### Epic E16-3 MCP tools (V2-S16-03: propose, status, apply, verify, rollback_propose; no approve; safe errors)
@@ -256,6 +258,15 @@ Assertions:
 11. Apply-time kill switch: a kill switch turned on after approval and before apply refuses the apply (`KILL_SWITCH_ACTIVE`) with zero apply-port
     calls; the other apply-time re-validations (5.2) are asserted through the `apply` tool: changed base fingerprint, principal epoch change,
     revoked approver, base X approval applied to base Y, and parallel apply calls claiming once.
+12. Aggregate MCP argument bounds: nested arguments exceeding the 64 KiB traversal budget, invalid UTF-8 strings, non-finite floats, excessive
+    depth/node count, or forbidden identity/effect keys are rejected with a safe schema error before any service method is called.
+13. Apply-time requester revalidation refuses malformed principal-registry results (wrong record type, non-boolean revocation state, empty or
+    mismatched person identity, invalid/stale epoch, or non-boolean dependency-current result) before claim or apply-port execution.
+14. The explicit `register_tool` adapter publishes exactly the five tool names and their complete JSON Schemas from the immutable manifest;
+    transport context is passed separately and absent from `inputSchema`. Signature-derived adapters that cannot preserve the exact schema or reject
+    undeclared arguments are refused before partial registration. Full binding to the gateway's high-level MCPServer is not established by this task;
+    it requires a separate low-level integration design that preserves authenticated context. The focused adapter contract passed 15 tests on
+    2026-11-15; this is synthetic adapter evidence, not gateway/runtime acceptance.
 Open: output shape and field names of each tool (design step); whether `status` and `verify` are read-only for annotation purposes (Q2).
 
 ### Epic E16-4 Private-network exposure (V2-S16-04: private-network-only writes, proxy/redirect/SSRF check)
@@ -275,6 +286,8 @@ Assertions:
    (tool surface) on every request. Network origin alone never authenticates (FACT: the `private_ingress.py` loopback check is an address check;
    it is not sufficient as authentication). Test: a request from a loopback origin with a rewritten `Host`, no proxy headers and no credential is
    refused; the same request with a valid credential but a foreign Origin/Referer on an approval POST is refused.
+8. A `CHAT_WRITE` principal with missing/empty identity fields, invalid epoch/MFA types, a non-TEST lane, or malformed/non-TEST scope is refused
+   before the downstream MCP tool app is called.
 Open: whether `status`/`verify` may be exposed on the public tunnel (Q2); default private network definition (loopback only vs RFC 1918 ranges, Q7).
 
 ### Epic E16-5 Recorded tool-call replay (V2-S16-05: ChatGPT and Claude transcripts replayed; real runs NOT_RUN)
@@ -306,14 +319,35 @@ Status of every row at the time of this plan: NOT_WRITTEN / NOT_RUN. "Fake" = in
 | Req | Scenario (plain meaning) | Stories | Assertion | Data source |
 |---|---|---|---|---|
 | I3, I4 | E39 approval page attacks: direct API calls, CSRF, stale page, concurrent proposal replacement, session revocation, stored XSS in a preview field, unauthorized preview retrieval, nonce replay | 01, 02 | each invalid approval fails; authorization state unchanged | fakes; XSS fixture |
+| I3, I4 | Valid approval decision POST returns the bound success response after service persistence | 01 | the canonical ticket UUID is available on POST as well as GET; success response is emitted only for a matching `ApprovalDecision` | fake ASGI receive/service |
+| I4 | Service returns an unknown/malformed refusal code while a custom error renderer is configured | 03 | renderer receives only a registered `ErrorCode`; unknown values become `AUDIT_UNAVAILABLE`; response contains no raw service value | service fake and capturing renderer |
 | I4 | E39 CT12 extras: framing denial, cookie flags, re-authentication, second confirmation for post/large amounts | 01 | headers/flags present; extra confirmation enforced | fakes |
 | I4 | E29 author session calls an approval tool; spoofed "approved" chat text; direct approval-service call with the author's token | 01, 03 | no approve tool; service refuses direct call; chat text changes nothing | fakes |
 | I1, I4 | E5 self-approval (also via second account of same person); read token attempts a write | 02, 03 | refused with safe code; zero apply-port calls | fakes |
 | I3 | E4 approver rejects, approval expired, digest changed after approval, stale-version direct call | 01, 03 | zero apply calls; approver rejection ends in lifecycle `REJECTED` (a lifecycle outcome, not an error code); refusal codes `APPROVAL_EXPIRED`, `DIGEST_MISMATCH`, `STALE_VERSION` (all verified in `change/errors.py`) | fakes; conformance to S12 REJECT/APPROVE (5.4) |
 | I4 | Decision core independence: permissive store | 01, 02, 03 | core refuses self-approval, replay, digest/version/expiry mismatch, wrong token class even when the store allows all | permissive-store fake (5.1) |
 | I3, I4, I6 | Apply-time re-validation and claim-once: fingerprint, epoch, approver liveness, base X vs Y, parallel apply, kill switch | 03 | each refused with zero apply calls; exactly one claim under parallel calls | fakes, thread harness (5.2) |
+| I3, I4, I6 | Decision/apply-time requester registry returns malformed principal/lane/role/revocation/person/epoch/dependency state | 03 | safe refusal before decision persistence, claim, or apply; zero apply-port calls | malformed principal-registry fake |
+| I3, I4, I6 | Target/principal registry returns malformed `allowed`, independence, or epoch-dependency result; claim store returns a malformed claim token/error | 02, 03 | exact typed positive values required; refuse before approval consumption or apply-port call; release a claim if refusal occurs before `BEGIN_APPLY` | malformed registry/store fakes |
+| I3, I4, I6 | Change store read raises or returns a malformed/mismatched receipt before claim, during repeat handling, after `claim_once`, or after `BEGIN_APPLY` persistence | 03 | fixed refusal and never call the apply port; release a known claim only before `BEGIN_APPLY`; after `BEGIN_APPLY`, retain the claim and durable in-progress anchor for recovery | failure-injecting store fake |
+| I3, I4, I6 | Approval, snapshot, or requester expiry is observed after durable `BEGIN_APPLY` | 03 | return `APPROVAL_EXPIRED`, retain the consumed claim and `APPLYING` anchor for recovery, and do not issue the apply call or attempt the S12 `EXPIRE` transition (which is only valid before execution starts) | clock-advancing store fake and zero-call apply-port assertion |
+| I3, I4, I6 | Apply port returns an exact `ApplyReceipt` class with a mismatched change ID or malformed status, correlation ID, or document reference | 03 | return fixed `APPLY_UNKNOWN`; do not persist or expose the malformed result because the call may already have crossed the apply boundary | malformed apply-port fake |
+| I3, I4, I6 | Apply-result persistence is a no-op, raises, or reads back a mismatched `DomainReceipt` after the apply port may have executed | 03 | return fixed `APPLY_UNKNOWN`; do not report success or establish a verification anchor, and never retry the apply port | failure-injecting apply-store fake |
+| I3, I4, CT12 | Approval authenticator returns malformed approver identity/role/epoch/scope, or POST returns a malformed/unbound `ApprovalDecision` | 01 | refuse malformed sessions before service dispatch; show success only for an exact, self-consistent decision bound to ticket, requested action, approver, session, scope, digest shapes, and live expiry | malformed authenticator/service fakes |
+| I3, I4 | Status store read raises, returns a non-receipt, or receipt validation raises/returns a malformed refusal code | 03 | fixed `AUDIT_UNAVAILABLE`; never serialize or disclose the malformed stored value | failure-injecting status store fake |
+| I3, I4, I6 | Expire/verify store read raises or returns a non-receipt; expiration read-back fails after save | 03 | fixed `AUDIT_UNAVAILABLE`; absent record remains `REF_OUT_OF_SCOPE`; no malformed receipt is returned and a saved expiration transition is not rolled back | failure-injecting store fake |
+| I3, I4, I6 | Expiration or pre-`BEGIN_APPLY` release read-back returns a different receipt with a matching lifecycle record | 03 | fixed `AUDIT_UNAVAILABLE`; preserve original receipt identity and do not report the transition as successful | mismatched read-back store fake |
+| I3, I4 | Direct verify call carries a non-UUID change ID or non-string document reference | 03 | fixed `SCHEMA_INVALID` before any store read or verifier call | malformed verify request fake |
 | I12, I14 | Private listener positive authentication; loopback origin with rewritten Host and no credential | 04 | refused; Origin/Referer check on approval POSTs | fakes |
+| I12, I14 | Private ingress receives malformed or oversized decimal `Content-Length` text | 04 | malformed values receive a fixed refusal; oversized values receive 413 before downstream dispatch and without unbounded integer parsing | fake ASGI scope/receive and downstream-call counter |
+| I12, I14 | Private ingress origin explicitly configures port `0` | 04 | reject configuration; do not treat the invalid explicit port as the default HTTPS port | config-construction case |
+| I12, I14 | Private ingress receives a non-dict ASGI scope object | 04 | fixed schema refusal before reading scope fields, authentication, or downstream dispatch | malformed ASGI scope fixture |
 | I4 | No nonce, CSRF token or session id in responses/logs; no-store and no-referrer on the preview page | 01, 02 | scans and header assertions pass | captured outputs |
+| I4 | Approval form ASGI framing: empty-message flood, malformed event, invalid `more_body`, byte overflow including one oversized chunk | 01 | bounded safe refusal before the oversized chunk is appended; zero `submit_decision` calls | fake ASGI receive/service |
+| I4 | Approval form carries a malformed or out-of-bounds `decision_ref` or a non-canonical CSRF token | 01 | fixed schema refusal before `submit_decision`; zero approval-service calls | malformed form/service-call counter |
+| I4 | malformed ASGI scope headers container (for example `headers=None`) or non-byte header entries | 01 | fixed schema refusal; no exception escapes and no approval service call occurs | malformed ASGI scope fixture |
+| I4 | ASGI app receives a non-dict scope object | 01 | fixed schema refusal before reading scope fields or calling the authenticator/service | malformed ASGI scope fixture |
+| I3, I4 | Approval service returns an oversized/control-bearing or invalid-Unicode confirmation phrase, or display metadata contains an unpaired surrogate | 01 | invalid confirmation phrase is refused; unsafe display metadata becomes a fixed placeholder; no HTML encoding crash or approval decision submission | malformed `DecisionPage` service fake |
 | plan S16 | verify pass-through incl. POST/UNPOST `UNSUPPORTED_SHAPE`; rollback_propose per prior operation | 03 | status unchanged; CREATE_DRAFT rollback `ROLLBACK_REFUSED`; POST rollback = UNPOST proposal | S15 verifier (real code, fake reader); fakes |
 | fidelity | fakes versus real S12 transitions APPROVE, REJECT, CLAIM | 01, 03 | same state or refusal code | real S12 model, fakes (5.4) |
 | I6 | E14 post with only the draft approval; draft edit after post approval; expired grant; approval replay | 03, 01 | refused; document stays unposted in the fake | fakes |
@@ -324,9 +358,13 @@ Status of every row at the time of this plan: NOT_WRITTEN / NOT_RUN. "Fake" = in
 | I6, I11 | E1 approval-path legs (draft approval, separate post approval) | 01, 03, 05 | full journey over fakes; real post NOT_RUN | fakes |
 | I3, I7, I11 | E2 contract update | - | DEFERRED (section 7) | none |
 | map S16 row | tools/list plus direct-call assertion | 03 | exactly five tools; unlisted name refused | fakes |
+| plan S16 | aggregate argument validation: oversized nested values, escape-heavy strings, invalid Unicode, non-finite numbers and forbidden keys | 03 | bounded representation before rendering; safe schema error; zero service calls | fakes |
 | map S16 row | full approval journey and spoofed-chat-text negative case | 01, 03, 05 | journey passes; spoofed text no effect | fakes, transcripts |
 | plan S16 | tool annotations "not read-only" | 03 | annotations present on the list | fakes |
 | plan S16 | safe errors from the single code registry | 03 | every refusal is an `ErrorCode`; no internals leaked | fault injection on ports |
+| plan S16 | propose/status/apply service returns malformed public result fields | 03 | serializer rejects malformed types, unbounded/control text, invalid digest/version/expiry; fixed `AUDIT_UNAVAILABLE` and no malformed value in the tool response | malformed service-result fakes |
+| plan S16 | receipt/target validators throw or return an unregistered refusal during approval/apply, including after durable `BEGIN_APPLY` | 01, 03 | fixed registered refusal; after `BEGIN_APPLY`, retain the claim/anchor and make zero apply-port calls | fault-injected validator ports |
+| plan S16 | approval store read-back is missing, malformed, identity-mismatched, or differs in decision/S12 transition after nonce consumption | 01, 03 | return `AUDIT_UNAVAILABLE`; do not report success or update process-local anchors; leave durable state for reconciliation | fault-injected decision store |
 | plan S16 | recorded replay for ChatGPT and Claude shapes | 05 | replay matches expected; provenance labelled; real run NOT_RUN | transcript fixtures |
 | plan S16 | private network, proxy/redirect/SSRF | 04 | each bypass case refused | fakes, RouteProbePort |
 | plan S16 | kill switch honored by tools | 03 | propose/apply refused when active | fake switch reading |

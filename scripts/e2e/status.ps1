@@ -37,7 +37,7 @@ foreach ($name in 'postgres', 'redis') {
     if ($ok) { $row.version = $entry.server_version }
     if ($ok -and $name -eq 'postgres') {
         $row.schema_version = $entry.schema_version
-        if ($entry.schema_version -ne 14) { $row.healthy = $false }
+        if ($entry.schema_version -ne 16) { $row.healthy = $false }
     }
     $components[$name] = $row
 }
@@ -45,6 +45,8 @@ $checks = [ordered]@{
     fake1c = ($base + $script:Ports.fake1c + '/odata/standard.odata/$metadata')
     sidecar = ($base + $script:Ports.sidecar + '/__ft__/requests')
     idp = ($base + $script:Ports.idp + '/healthz')
+    capability_acceptor = ($base + $script:Ports.capability_acceptor + '/healthz')
+    capability_observer = ($base + $script:Ports.capability_observer + '/healthz')
     gateway = ($base + $script:Ports.gateway + '/readyz')
 }
 if ($script:Real1c) { $checks.Remove('fake1c'); $checks.Remove('sidecar') }

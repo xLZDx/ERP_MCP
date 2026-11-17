@@ -126,7 +126,9 @@ def test_zero_scope_epoch_allowed():
 
 @pytest.mark.parametrize("mode", ["STREAMING", "snapshot_only", "CDC", "", None, 3])
 def test_unknown_capture_mode_rejected(mode):
-    assert "capture_mode:UNKNOWN_VALUE" in reasons_of(parse_request, req_map(capture_mode=mode))
+    expected = ("capture_mode:SOURCE_CAPABILITIES_REQUIRED"
+                if mode in {"STREAMING", "CDC"} else "capture_mode:UNKNOWN_VALUE")
+    assert expected in reasons_of(parse_request, req_map(capture_mode=mode))
 
 
 def test_dataclass_rejects_non_enum_capture_mode_directly():

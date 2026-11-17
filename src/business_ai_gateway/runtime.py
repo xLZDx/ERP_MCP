@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from redis.asyncio import Redis
 
@@ -12,16 +13,26 @@ from .adapters.onec.sidecar_client import ODataSidecarClient
 from .analytics_balance import ComBinding, load_com_bindings
 from .audit import Audit
 from .business_policy import CapabilityPolicy
+from .capability_client import CapabilityObserverClient
 from .company_scope import CompanyScopeResolver
 from .db import Database
 from .evidence_index import ApprovedEvidenceProvider
 from .evidence_store import PrivateEvidenceStore
-from .fixture_profiles import ProvisionalProfiles, SyntheticFixtureProfiles
+from .fixture_profiles import (
+    ProvisionalProfiles,
+    SyntheticFixtureProfiles,
+    UnreconciledTestLaneProfiles,
+)
 from .observability import OperationalMetrics
 from .rate_limit import RateLimiter
 from .registry import Registry
 from .secrets import build_secret_provider
 from .settings import Settings
+
+if TYPE_CHECKING:
+    from .phase2.capture_loop import CaptureLoop
+    from .phase2.capture_runtime import CaptureRuntime
+    from .phase2.workbench_types import ViewerScope
 
 
 class Runtime:
@@ -33,6 +44,18 @@ class Runtime:
             Database(settings.admin_control_database_url)
             if settings.admin_control_database_url
             else None
+        )
+        self.capability_observer = CapabilityObserverClient(
+            base_url=settings.capability_observer_url,
+            token=(
+                settings.capability_observer_token.get_secret_value()
+                if settings.capability_observer_token
+                else None
+            ),
+            production=settings.environment == "production",
+            timeout_seconds=settings.http_timeout_seconds,
+            max_response_bytes=settings.max_response_bytes,
+            transport=None,
         )
         self.redis = Redis.from_url(settings.redis_url, decode_responses=True)
         self.synthetic_profiles = (
@@ -53,6 +76,15 @@ class Runtime:
             if settings.provisional_profiles_file
             else None
         )
+        self.test_lane_profiles = (
+            UnreconciledTestLaneProfiles(
+                settings.test_lane_profiles_file,
+                settings.test_lane_profiles_sha256,
+                environment=settings.environment,
+            )
+            if settings.test_lane_profiles_file
+            else None
+        )
         self.registry = Registry(
             self.db,
             production=settings.environment == "production",
@@ -60,6 +92,8 @@ class Runtime:
             synthetic_profiles=self.synthetic_profiles,
             machine_reconciled_sources=settings.machine_reconciled_source_items,
             provisional_profiles=self.provisional_profiles,
+            test_lane_profiles=self.test_lane_profiles,
+            test_lane_sources=settings.test_lane_unreconciled_source_items,
         )
         self.secrets = build_secret_provider(settings)
         self.audit = Audit(
@@ -112,6 +146,23 @@ class Runtime:
         self._lock = asyncio.Lock()
         self._com_client = None
         self._com_lock = asyncio.Lock()
+        self._phase2_capture_runtime: CaptureRuntime | None = None
+
+    def bind_dev_test_capture(self, *, scope: ViewerScope, source_id: str,
+                              capture_loop: CaptureLoop) -> CaptureRuntime:
+        """Explicitly bind a validated dev/test capture supervisor, never a public MCP tool."""
+        if self.settings.environment not in {"development", "test"}:
+            raise ValueError("CAPTURE_RUNTIME_ENVIRONMENT_REFUSED")
+        if self._phase2_capture_runtime is not None:
+            raise RuntimeError("CAPTURE_RUNTIME_ALREADY_BOUND")
+        # Keep the optional composition out of production construction/imports.
+        from .phase2.capture_runtime import CaptureRuntime
+
+        self._phase2_capture_runtime = CaptureRuntime(
+            environment=self.settings.environment, scope=scope,
+            source_id=source_id, capture_loop=capture_loop,
+        )
+        return self._phase2_capture_runtime
 
     def com_bindings(self) -> tuple[ComBinding, ...]:
         """Operator-pinned COM bindings; absent settings mean no COM route (never an import error)."""
@@ -165,9 +216,16 @@ class Runtime:
     async def ready(self) -> bool:
         await self.start()
         admin_ready = self.admin_db is None or await self.admin_db.ping()
-        return await self.db.ping() and admin_ready and bool(await self.redis.ping())
+        capability_ready = (
+            self.settings.environment != "production"
+            and self.settings.capability_observer_url is None
+        ) or await self.capability_observer.ready()
+        return await self.db.ping() and admin_ready and capability_ready and bool(await self.redis.ping())
 
     async def close(self):
+        if self._phase2_capture_runtime is not None:
+            await self._phase2_capture_runtime.close()
+            self._phase2_capture_runtime = None
         await self.onec_client.close()
         if self._com_client is not None and hasattr(self._com_client, "close"):
             await self._com_client.close()
@@ -176,5 +234,6 @@ class Runtime:
         await self.redis.aclose()
         if self.admin_db is not None:
             await self.admin_db.close()
+        await self.capability_observer.close()
         await self.db.close()
         self._started = False

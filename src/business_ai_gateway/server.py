@@ -53,8 +53,8 @@ from .duplicate_counterparties import (
     MAX_ROWS as MAX_DUPLICATE_ROWS,
 )
 from .external_evidence import EvidenceRejected
-from .fixture_profiles import SYNTHETIC_PROFILE_KIND, profile_provenance
-from .principal import current_principal
+from .fixture_profiles import SYNTHETIC_PROFILE_KIND, TEST_LANE_PROFILE_KIND, profile_provenance
+from .principal import current_access_token, current_principal
 from .runtime import Runtime
 from .semantic import (
     ACCOUNT_TURNOVERS_CONCEPT,
@@ -114,14 +114,53 @@ CHATGPT_SERVER_INSTRUCTIONS = (
     "report the refusal instead of guessing business data."
 )
 
+BASELINE_R1_TOOL_NAMES = frozenset({
+    "system_status",
+    "sources_list",
+    "source_health",
+    "rsv_metadata",
+    "companies_list",
+    "onec_capabilities",
+    "onec_metadata_summary",
+    "onec_find_entities",
+    "accounting_balance_and_turnovers",
+    "inventory_balance",
+    "inventory_movements",
+    "accounting_posting_rows",
+    "cash_movements",
+    "bank_balance",
+    "receivable_balance",
+    "payable_balance",
+    "sales_documents",
+    "purchase_documents",
+    "onec_read",
+})
+
+R2_ADDITIVE_TOOL_NAMES = frozenset({
+    "external_evidence_manifest",
+    "accounting_balance_by_analytics",
+    "counterparty_find",
+    "receivable_aging",
+    "payable_aging",
+    "counterparty_duplicate_candidates",
+    "onec_find_entities_with_property_types",
+    "accounting_balance_and_turnovers_by_account",
+    "purchase_documents_filtered",
+})
+R2_ADDITIVE_TOOL_NAMES = R2_ADDITIVE_TOOL_NAMES | {"onec_metadata_schema_detail"}
+_PREAUTH_METADATA_RATE_LIMIT_SOURCE = "__metadata_detail_scope__"
+
 BUSINESS_CAPABILITY_BY_TOOL = {
     "source_health": "source.status.read",
     "rsv_metadata": "metadata.read",
     "companies_list": "company.list",
     "onec_capabilities": "metadata.read",
     "onec_metadata_summary": "metadata.read",
+    "onec_metadata_schema_detail": "metadata.read",
     "onec_find_entities": "metadata.read",
+    "onec_find_entities_with_property_types": "metadata.read",
     "accounting_balance_and_turnovers": "accounting.read",
+    "accounting_balance_and_turnovers_by_account": "accounting.read",
     "accounting_balance_by_analytics": "accounting.read",
     "inventory_balance": "inventory.read",
     "inventory_movements": "inventory.read",
@@ -136,6 +175,7 @@ BUSINESS_CAPABILITY_BY_TOOL = {
     "counterparty_find": "accounting.read",
     "sales_documents": "sales.read",
     "purchase_documents": "purchases.read",
+    "purchase_documents_filtered": "purchases.read",
     # Arbitrary EntitySet/filter OData reads are deliberately isolated from
     # semantic accounting capabilities and have no seeded business-role grant.
     "onec_read": "onec.raw.read",
@@ -191,7 +231,22 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise PermissionError("required scope missing")
         return principal
 
-    async def resolve_source(principal, source_id, tool, started, query=None, company_id=None):
+    async def refresh_capabilities(source_id: str):
+        outcome = await runtime.capability_observer.refresh(
+            source_id=source_id,
+            access_token=current_access_token(),
+        )
+        capabilities, drift = await runtime.registry.get_capabilities(
+            source_id,
+            request_id=outcome["request_id"],
+            observation_id=outcome["observation_id"],
+        )
+        if drift["drift_status"] != outcome["status"]:
+            raise RuntimeError("CAPABILITY_OBSERVATION_STATE_MISMATCH")
+        return capabilities, drift
+
+    async def resolve_source(principal, source_id, tool, started, query=None, company_id=None,
+                             *, require_business_capability=False):
         try:
             if company_id is None:
                 source = await runtime.registry.require_source(principal, source_id)
@@ -212,7 +267,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
         capability = BUSINESS_CAPABILITY_BY_TOOL.get(tool)
-        if settings.business_capability_enforcement_enabled:
+        if settings.business_capability_enforcement_enabled or require_business_capability:
             if capability is None:
                 raise PermissionError("business capability is not mapped for this operation")
             try:
@@ -562,8 +617,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             {"refresh": refresh},
         )
         try:
-            capabilities = await runtime.onec.capabilities(source, refresh=refresh)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             result = capabilities.as_dict()
             result.update(drift)
             await runtime.audit.write(
@@ -629,12 +683,57 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             raise
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def onec_find_entities(
-        source_id: str,
-        contains: str = "",
-        limit: int = 50,
-        include_property_types: bool = False,
-    ) -> list[dict[str, Any]]:
+    async def onec_metadata_schema_detail(source_id: str, company_id: str, refresh: bool = False,
+                                           include_information_register_schemas: bool = False,
+                                           include_period_schema_candidates: bool = True) -> dict[str, Any]:
+        """Read bounded metadata schemas only; this supplies no business rows or period open/closed proof."""
+        started = time.monotonic()
+        principal = await ctx()
+        query = {"refresh": refresh,
+                 "include_information_register_schemas": include_information_register_schemas,
+                 "include_period_schema_candidates": include_period_schema_candidates}
+        try:
+            await runtime.rate_limit.check(subject=principal.subject,
+                                           source_id=_PREAUTH_METADATA_RATE_LIMIT_SOURCE,
+                                           tool="onec_metadata_schema_detail")
+            parsed_company = uuid.UUID(company_id)
+        except Exception as exc:
+            await runtime.audit.write(principal=principal, tool="onec_metadata_schema_detail",
+                                      source_id=source_id, outcome="denied", started_at=started,
+                                      query=query, detail_code=type(exc).__name__)
+            raise
+        # Complete the tool-specific grant before the shared resolver records
+        # ACCESS_AUTHORIZED. The fixed rate-limit bucket above precedes this refusal.
+        if source_id not in settings.metadata_detail_source_items:
+            await runtime.audit.write(principal=principal, tool="onec_metadata_schema_detail",
+                                      source_id=source_id, company_id=parsed_company, outcome="denied",
+                                      started_at=started, query=query,
+                                      detail_code="METADATA_DETAIL_SOURCE_NOT_ALLOWLISTED")
+            raise PermissionError("METADATA_DETAIL_SOURCE_NOT_ALLOWLISTED")
+        source = await resolve_source(principal, source_id, "onec_metadata_schema_detail", started,
+                                      query, company_id=parsed_company,
+                                      require_business_capability=True)
+        try:
+            if refresh:
+                await runtime.onec.metadata(source, refresh=True)
+            result = await runtime.onec.summary(source,
+                include_information_register_schemas=include_information_register_schemas,
+                include_period_schema_candidates=include_period_schema_candidates)
+            result = {**result, "evidence_kind": "METADATA_ONLY"}
+            if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > settings.max_response_bytes:
+                raise ValueError("metadata detail exceeds the configured response limit")
+            await runtime.audit.write(principal=principal, tool="onec_metadata_schema_detail",
+                                      source_id=source_id, company_id=parsed_company, outcome="success",
+                                      started_at=started, query=query)
+            return result
+        except Exception as exc:
+            await runtime.audit.write(principal=principal, tool="onec_metadata_schema_detail",
+                                      source_id=source_id, company_id=parsed_company, outcome="error",
+                                      started_at=started, query=query, detail_code=type(exc).__name__)
+            raise
+
+    async def read_entity_catalog(source_id: str, contains: str, limit: int, *,
+                                  tool_name: str, include_property_types: bool) -> list[dict[str, Any]]:
         """Search allowed EntitySets; optionally include their OData property types."""
         started = time.monotonic()
         principal = await ctx()
@@ -643,7 +742,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             "limit": limit,
             "include_property_types": include_property_types,
         }
-        source = await resolve_source(principal, source_id, "onec_find_entities", started, query)
+        source = await resolve_source(principal, source_id, tool_name, started, query)
         try:
             result = await runtime.onec.find(
                 source, contains, limit,
@@ -651,7 +750,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="onec_find_entities",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -662,7 +761,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="onec_find_entities",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="error",
                 started_at=started,
@@ -671,14 +770,22 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             raise
 
+
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def accounting_balance_and_turnovers(
-        source_id: str,
-        company_id: str,
-        start_period: str,
-        end_period: str,
-        account_code: str | None = None,
-    ) -> dict[str, Any]:
+    async def onec_find_entities(source_id: str, contains: str = "", limit: int = 50) -> list[dict[str, Any]]:
+        """Search allowed EntitySets using the preserved R1 contract."""
+        return await read_entity_catalog(source_id, contains, limit,
+                                         tool_name="onec_find_entities", include_property_types=False)
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def onec_find_entities_with_property_types(source_id: str, contains: str = "", limit: int = 50) -> list[dict[str, Any]]:
+        """Search allowed EntitySets and include their declared OData property types."""
+        return await read_entity_catalog(source_id, contains, limit,
+                                         tool_name="onec_find_entities_with_property_types", include_property_types=True)
+
+    async def read_account_turnovers(source_id: str, company_id: str, start_period: str,
+                                     end_period: str, *, tool_name: str,
+                                     account_code: str | None) -> dict[str, Any]:
         """Read company-filtered account opening/turnover/closing figures via its validated profile.
 
         ``start_period`` and ``end_period`` are ISO-8601 timestamps WITH a timezone offset, for example
@@ -695,7 +802,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except ValueError as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="denied",
                 started_at=started,
@@ -713,7 +820,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         source = await resolve_source(
             principal,
             source_id,
-            "accounting_balance_and_turnovers",
+            tool_name,
             started,
             query,
             company_id=parsed_company_id,
@@ -723,8 +830,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_account_turnovers_mapping(
                 source_id, parsed_company_id
@@ -757,7 +863,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             )
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome="success",
                 started_at=started,
@@ -786,7 +892,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         except Exception as exc:
             await runtime.audit.write(
                 principal=principal,
-                tool="accounting_balance_and_turnovers",
+                tool=tool_name,
                 source_id=source_id,
                 outcome=(
                     "denied"
@@ -809,6 +915,19 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 detail_code=getattr(exc, "code", type(exc).__name__),
             )
             raise
+
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_balance_and_turnovers(source_id: str, company_id: str, start_period: str, end_period: str) -> dict[str, Any]:
+        """Read company-scoped opening, turnover and closing figures for an explicit timezone-aware period."""
+        return await read_account_turnovers(source_id, company_id, start_period, end_period,
+                                           tool_name="accounting_balance_and_turnovers", account_code=None)
+
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def accounting_balance_and_turnovers_by_account(source_id: str, company_id: str, start_period: str, end_period: str, account_code: str) -> dict[str, Any]:
+        """Read company-scoped turnovers for one account allowed by the validated semantic profile."""
+        return await read_account_turnovers(source_id, company_id, start_period, end_period,
+                                           tool_name="accounting_balance_and_turnovers_by_account", account_code=account_code)
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def accounting_balance_by_analytics(
@@ -847,8 +966,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, ANALYTICS_BALANCE_CONCEPT
@@ -1124,8 +1242,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         capabilities = None
         try:
             await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, COUNTERPARTY_LOOKUP_CONCEPT
@@ -1207,8 +1324,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_BALANCE_CONCEPT
@@ -1330,8 +1446,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, INVENTORY_MOVEMENTS_CONCEPT
@@ -1486,8 +1601,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, ACCOUNTING_POSTING_ROWS_CONCEPT
@@ -1631,8 +1745,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         capabilities = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, CASH_MOVEMENTS_CONCEPT
@@ -1741,8 +1854,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, BANK_BALANCE_CONCEPT
@@ -1847,8 +1959,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -1975,8 +2086,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         profile = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2012,7 +2122,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
                 as_of=as_of_date, row_limit=row_limit,
                 metadata_fingerprint=capabilities.metadata_fingerprint,
                 profile_fingerprint=profile["profile_fingerprint"],
-                synthetic=profile.get("profile_kind") == SYNTHETIC_PROFILE_KIND,
+                synthetic=profile.get("profile_kind") in {SYNTHETIC_PROFILE_KIND, TEST_LANE_PROFILE_KIND},
                 source_truncated=source_truncated,
             )
             conclusive = payload["status"] in {"PASS", "FINDING"}
@@ -2113,8 +2223,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         profile = None
         try:
             company = await runtime.registry.require_company(principal, source_id, parsed_company_id)
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2279,8 +2388,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
             company = await runtime.registry.require_company(
                 principal, source_id, parsed_company_id
             )
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             profile = await runtime.registry.require_semantic_mapping(
                 source_id, parsed_company_id, concept
@@ -2378,29 +2486,18 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         )
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
-    async def purchase_documents(
-        source_id: str,
-        company_id: str,
-        top: int = 50,
-        skip: int = 0,
-        counterparty_ref: str | None = None,
-        posted_only: bool = False,
-    ) -> dict[str, Any]:
-        """List company-scoped purchase documents using a validated semantic mapping.
+    async def purchase_documents(source_id: str, company_id: str, top: int = 50, skip: int = 0) -> dict[str, Any]:
+        """List company-scoped purchase documents through the preserved R1 contract."""
+        return await read_company_documents(source_id, company_id, concept="purchases",
+                                            tool_name="purchase_documents", top=top, skip=skip)
 
-        ``counterparty_ref`` (a GUID, e.g. from counterparty_find) narrows the list to one supplier and
-        ``posted_only`` keeps only posted documents; ``amount_totals`` carries exact per-currency sums.
-        """
-        return await read_company_documents(
-            source_id,
-            company_id,
-            concept="purchases",
-            tool_name="purchase_documents",
-            top=top,
-            skip=skip,
-            counterparty_ref=counterparty_ref,
-            posted_only=posted_only,
-        )
+    @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
+    async def purchase_documents_filtered(source_id: str, company_id: str, top: int = 50, skip: int = 0,
+                                          counterparty_ref: str | None = None, posted_only: bool = False) -> dict[str, Any]:
+        """Read company-scoped purchase documents with optional supplier and posted-document filters."""
+        return await read_company_documents(source_id, company_id, concept="purchases",
+                                            tool_name="purchase_documents_filtered", top=top, skip=skip,
+                                            counterparty_ref=counterparty_ref, posted_only=posted_only)
 
     @mcp.tool(annotations=CHATGPT_READ_ONLY_ANNOTATIONS)
     async def onec_read(
@@ -2433,8 +2530,7 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         }
         source = await resolve_source(principal, source_id, "onec_read", started, query)
         try:
-            capabilities = await runtime.onec.capabilities(source)
-            drift = await runtime.registry.save_capabilities(capabilities)
+            capabilities, drift = await refresh_capabilities(source.id)
             require_acknowledged_metadata(drift)
             result = await runtime.onec.read(
                 source,
@@ -2488,8 +2584,10 @@ def build_mcp(settings: Settings, runtime: Runtime) -> MCPServer:
         strict_model.model_config["extra"] = "forbid"
         strict_model.model_rebuild(force=True)
         strict_tool.parameters["additionalProperties"] = False
-    for required_tool in ("accounting_balance_by_analytics", "counterparty_find"):
-        if mcp._tool_manager.get_tool(required_tool) is None:
-            raise RuntimeError(f"{required_tool} tool is not registered")
+    registered = {tool.name for tool in mcp._tool_manager.list_tools()}
+    expected = BASELINE_R1_TOOL_NAMES | R2_ADDITIVE_TOOL_NAMES
+    if registered != expected:
+        raise RuntimeError(f"MCP tool compatibility inventory changed; missing={sorted(expected - registered)}, unexpected={sorted(registered - expected)}")
+    mcp.configure_structured_error_tools(R2_ADDITIVE_TOOL_NAMES)
 
     return mcp

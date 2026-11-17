@@ -24,6 +24,7 @@ class Source:
     platform_version_hint: str | None = None
     fallback_kind: str | None = None
     fallback_base_url: str | None = None
+    row_version: int | None = None
 
     def validate_runtime(
         self, *, production: bool, allowed_source_hosts: tuple[str, ...] = ()
@@ -57,10 +58,13 @@ class Source:
             if production and fallback.scheme != "https":
                 raise ValueError("production 1C fallback must use HTTPS")
 
-    def entity_allowed(self, entity: str) -> bool:
-        if self.entity_deny_patterns and any(
+    def entity_denied(self, entity: str) -> bool:
+        return bool(self.entity_deny_patterns) and any(
             fnmatch(entity, pattern) for pattern in self.entity_deny_patterns
-        ):
+        )
+
+    def entity_allowed(self, entity: str) -> bool:
+        if self.entity_denied(entity):
             return False
         if not self.entity_allow_patterns:
             return True
@@ -74,6 +78,8 @@ class MetadataEntity:
     properties: tuple[str, ...]
     navigation_properties: tuple[str, ...] = ()
     property_types: tuple[tuple[str, str | None], ...] = ()
+    property_labels: tuple[tuple[str, str], ...] = ()
+    property_descriptions: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +111,7 @@ def source_from_record(row: Any) -> Source:
         platform_version_hint=row["platform_version_hint"],
         fallback_kind=row["fallback_kind"],
         fallback_base_url=row["fallback_base_url"],
+        row_version=row.get("row_version"),
     )
 
 
