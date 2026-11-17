@@ -2217,4 +2217,8 @@ The first S5 executor run at dcbc263 reached the missing-initial-selector case a
 Code and Python reviewers independently confirmed that a completed attempt was recorded only in its original executor, while the process resource lease was released. Keep a synthetic authority-side atomic claim for the exact issued permit, attempt ID and intake request ID. An already claimed attempt can only recover its scoped receipt; a changed or unresolved claim cannot dispatch. Model separate executor instances in the named regression. This does not establish cross-process or native authority durability.
 
 The Python reviewer also identified unguarded clock and permit timezone conversion. Normalize those values through a fixed fail-closed helper so malformed authority data returns refusal without dispatch.
+
+### 2026-11-18 - Close S5 after bounded capture acceptance
+
+PR #61 merged exact GPT-PM-approved head 52ef731adf81d2e0266378f0929264af0eb9d98a into main as f0d082e751cc87a772f4b0477f42943e8b169774 (request da9afc1b-383f-468a-b33b-3bf86a2b8326, reply a4d9b070-f98b-59d0-9c40-9b09c1d8dd80). Record S5 as 6/6 bounded after offline baseline intake and synthetic capture are accepted. Track actual native export, durable authority and product qualification in the existing backlog. The first push attempt exposed four stale native ledger states; the supported plan sync restored documented historical verification, retained the existing approvals and events, and backed up the previous ledger.
 </pre></main></body></html>
