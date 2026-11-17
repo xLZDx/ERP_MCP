@@ -23,6 +23,7 @@ one was revoked or expired). An unexpected error BEFORE the write call fails clo
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import re
 from collections.abc import Callable
@@ -36,8 +37,9 @@ from ._identity import clean_identity
 from .ports import AcceptanceView, HeadAttestationPort, PortError, Scope, evidence_digest
 
 __all__ = [
-    "AttestationReader", "AttestationView", "Evidence", "Outcome", "PromotionResult",
-    "PromotionService", "normalize_identity",
+    "AttestationReader", "AttestationView", "Evidence", "EvidenceContent",
+    "EvidenceContentReader", "Outcome", "PromotionResult", "PromotionService",
+    "normalize_identity",
 ]
 
 
@@ -88,6 +90,38 @@ class AttestationView:
     revoked_at: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class EvidenceContent:
+    """Trusted immutable artifact binding plus the bytes read for this verification.
+
+    The reader is an authority boundary: it must derive the expected digest and artifact version
+    from trusted metadata, never from request-supplied values. This value alone does not establish
+    durable pinning, revocation locking, or company authorization outside the supplied company ID.
+    """
+    scope: Scope
+    company_id: str
+    attestation_id: UUID
+    revision_id: UUID
+    evidence_ref: str
+    artifact_version: str
+    content_digest: str
+    content: bytes
+
+
+@runtime_checkable
+class EvidenceContentReader(Protocol):
+    """Offline trusted resolver for immutable bytes and their independently stored binding.
+
+    Implementations must authorize the exact tenant/source/company tuple, resolve the request's
+    reference only as a lookup key, and return the trusted artifact version/digest with bytes.
+    This protocol does not itself make an implementation trustworthy or durable.
+    """
+
+    async def read_attested_content(self, scope: Scope, company_id: str, attestation_id: UUID,
+                                   revision_id: UUID, evidence_ref: str
+                                   ) -> EvidenceContent | None: ...
+
+
 @runtime_checkable
 class AttestationReader(Protocol):
     """Read side the port contract does not expose (a SQL view / fake accessor implements it)."""
@@ -131,6 +165,7 @@ _ROLLED_BACK_CODES = frozenset({
 })
 
 
+_MAX_VERIFIED_CONTENT_BYTES = 5_000_000  # ArtifactVault default bound.
 _SQL_STATE_CODE = re.compile(r"^SQL_[0-9A-Z]{5}$")
 # SQL states this module handles: serialization/deadlock (rolled back) and the connection class
 # (08xxx, 57P01 admin shutdown, 53300 too many connections: indeterminate at the write call).
@@ -158,11 +193,32 @@ def _is_digest(value: object) -> bool:
 
 
 class PromotionService:
+    """Guarded promotion with a legacy path and an optional offline byte verifier.
+
+    The offline verifier is a one-shot pre-write check. It does not provide a durable eligibility
+    record, shared revocation lock, or full acceptance fingerprint; in particular it does not
+    establish TC047 concurrency/replay guarantees. Keep historical no-verifier behavior explicit
+    and nonqualified rather than treating it as verified-content promotion.
+    """
     def __init__(self, port: HeadAttestationPort, reader: AttestationReader,
-                 clock: Callable[[], datetime]):
+                 clock: Callable[[], datetime], *,
+                 content_reader: EvidenceContentReader | None = None,
+                 company_id: str | None = None):
         self._port = port
         self._reader = reader
         self._clock = clock
+        self._content_reader = content_reader
+        self._company_id = company_id
+
+    @property
+    def content_verifier_configured(self) -> bool:
+        """Whether an offline verifier and explicit company scope were configured.
+
+        The historical in-memory path remains available for compatibility, but is not qualified
+        for immutable-content verification and must not be represented as such.
+        """
+        return self._content_reader is not None and type(self._company_id) is str and bool(
+            self._company_id.strip())
 
     # ------------------------------------------------------------------ public API
     async def promote(self, scope: Scope, model_key: str, candidate: UUID, expected_version: int,
@@ -205,6 +261,11 @@ class PromotionService:
             return PromotionResult(Outcome.REJECTED_INPUT, code="INVALID_ARGUMENT")
         if approver_id == requester_id:
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_IS_REQUESTER")
+        if ((self._content_reader is None and self._company_id is not None)
+                or (self._content_reader is not None
+                    and (type(self._company_id) is not str or not self._company_id.strip()))):
+            return PromotionResult(Outcome.REJECTED_EVIDENCE,
+                                   code="CONTENT_VERIFIER_CONFIG_INCOMPLETE")
         if (not isinstance(evidence, Evidence) or not _is_digest(evidence.revision_digest)
                 or not isinstance(evidence.evidence_ref, str) or not evidence.evidence_ref.strip()):
             return PromotionResult(Outcome.REJECTED_EVIDENCE, code="EVIDENCE_REQUIRED")
@@ -217,6 +278,11 @@ class PromotionService:
             accepted = ()  # no read right: the normal guards below still fail closed / reject
         recorded = next((a for a in accepted if a.acceptance_id == acceptance_id), None)
         if recorded is not None:
+            if self._content_reader is not None:
+                # Historical AcceptanceView has no durable content fingerprint, operation-bound
+                # artifact version, or company binding. Do not claim exact replay in this mode.
+                return PromotionResult(Outcome.REJECTED_ACCEPTANCE_ID,
+                                       code="REPLAY_FINGERPRINT_UNAVAILABLE")
             if (recorded.model_key == model_key and recorded.from_version == expected_version
                     and recorded.accepted_revision == candidate
                     and recorded.approver_subject == approver
@@ -255,6 +321,43 @@ class PromotionService:
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
         if approver_id in (observer_id, proposer_id):
             return PromotionResult(Outcome.REJECTED_SELF_APPROVAL, code="APPROVER_NOT_INDEPENDENT")
+        if self._content_reader is not None:
+            company_id = self._company_id
+            if type(company_id) is not str or not company_id.strip():
+                return PromotionResult(Outcome.REJECTED_EVIDENCE, code="COMPANY_SCOPE_REQUIRED")
+            try:
+                material = await self._content_reader.read_attested_content(
+                    scope, company_id, att.attestation_id, candidate, evidence.evidence_ref)
+            except Exception:  # noqa: BLE001 - unavailable evidence must fail before the write
+                return PromotionResult(Outcome.REJECTED_EVIDENCE,
+                                       code="EVIDENCE_CONTENT_UNAVAILABLE")
+            if material is None:
+                return PromotionResult(Outcome.REJECTED_EVIDENCE,
+                                       code="EVIDENCE_CONTENT_NOT_FOUND")
+            if (type(material) is not EvidenceContent
+                    or type(material.scope) is not Scope
+                    or material.scope != scope
+                    or type(material.company_id) is not str
+                    or material.company_id != company_id
+                    or type(material.attestation_id) is not UUID
+                    or material.attestation_id != att.attestation_id
+                    or type(material.revision_id) is not UUID
+                    or material.revision_id != candidate
+                    or type(material.evidence_ref) is not str
+                    or material.evidence_ref != evidence.evidence_ref
+                    or type(material.artifact_version) is not str
+                    or not material.artifact_version.strip()
+                    or type(material.content) is not bytes
+                    or not material.content
+                    or len(material.content) > _MAX_VERIFIED_CONTENT_BYTES
+                    or type(material.content_digest) is not str
+                    or not _is_digest(material.content_digest)):
+                return PromotionResult(Outcome.REJECTED_EVIDENCE,
+                                       code="EVIDENCE_CONTENT_BINDING_MISMATCH")
+            actual_digest = hashlib.sha256(material.content).hexdigest()
+            if not hmac.compare_digest(actual_digest, material.content_digest):
+                return PromotionResult(Outcome.REJECTED_EVIDENCE,
+                                       code="EVIDENCE_CONTENT_DIGEST_MISMATCH")
         head = await self._port.get_head(approver, scope, model_key)
         if head is None or head.version != expected_version:
             return PromotionResult(Outcome.REJECTED_CAS, code="STALE_ACCEPTED_HEAD")

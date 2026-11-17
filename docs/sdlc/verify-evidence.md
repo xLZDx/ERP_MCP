@@ -854,3 +854,45 @@ The assigned functional-test-reviewer was asked to check for `Invoke-Pester` and
 The assigned functional-test-reviewer ran only `tests/phase2/register_lane_task.Tests.ps1` using Windows PowerShell 5.1.26100.9818 and Pester 3.4.0 at HEAD `240070b029ac020e895e9f84eb4bd02dd36b2e03`. Exit code 0: 7 passed, 0 failed, 0 skipped, 0 pending, 0 inconclusive in 4.22 seconds. The test invokes an in-memory isolated copy of the installer body after removing only `#Requires -RunAsAdministrator` and the in-script admin guard; a separate assertion verifies both guard requirements. Every ScheduledTasks cmdlet is mocked. No real task, service, Docker lane, credential, or 1C data was touched. Current test SHA-256: `58C3508F2F0C9BCC49CCBB8D51182CD6EBD0961963C2F12258C819319399903C`.
 
 The routed code-reviewer and silent-failure-hunter reviews are both accepted with zero remaining findings. The initial review's recurrence concern was resolved by the operator-authored instruction to remove five-minute periodic checks after the already evidenced bounded Redis restart; the current installer correctly preserves only the one-minute logon trigger. The native ledger now records FIN-S3.2 verification and review against task head `240070b`; its task state is `done`. The project-plan overlay intentionally remains `IN_REVIEW` pending the final FIN sprint review. This does not establish a live scheduler run on the current installer or change release/production status.
+
+## 2026-11-18 - S4 promotion request fingerprint verification
+
+The assigned functional-test-reviewer ran the named fingerprint module at source and test HEAD `54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4` with scratch-worktree `src` as PYTHONPATH and the existing project Python environment:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_fingerprint.py
+```
+
+Result: 36 passed in 0.46s. This supersedes the earlier 35 passed / 1 failed result at `676302d` for the corrected negative UUID case only. Covers independent byte/digest vectors, field binding and malformed inputs. No durable transaction, real provider or production behavior is established by this module.
+
+## 2026-11-18 - First S4 disposable transaction run
+
+At HEAD 54a5c83b98c92ac7dd2aaf83b6ed05560e4515a4, the assigned e2e-runner reported seven setup errors in 54.82 seconds. No scenario body ran. The test fixture attempted to insert an existing living_reader scope for A/s4/c1 already created by seed_basic(), and PostgreSQL rejected it with role_scope_uniq. The invocation-owned cluster context exited without a cleanup exception. This result supplies no transaction acceptance evidence.
+
+## 2026-11-18 - S4 disposable rerun stopped at the ingest fixture
+
+The e2e-runner ran the named PostgreSQL module with --maxfail=1 on 5a24093. One scenario began and raised UndefinedFunctionError in seed_eligible before promotion, because the test passed twelve arguments to living.ingest_observation rather than using the shared ten-argument statement. Result: 1 failed in 9.86s. The owned disposable cluster exited without a cleanup exception. No promotion result was observed.
+
+## 2026-11-18 - S4 disposable scenarios reached the transaction
+
+The assigned e2e-runner reported six passed and one failed in 52.17s on fb8539d with --maxfail=1. The rollback scenario raised AmbiguousColumnError because its historical lookup named to_version without a table alias, colliding with the PL/pgSQL output variable. The owned container context exited without a cleanup exception. This is product-fixture SQL evidence for the six successful scenarios; rollback remains open pending the rerun.
+
+## 2026-11-18 - S4 focused disposable transaction acceptance run
+
+The assigned e2e-runner ran the named PostgreSQL module at HEAD `40d4547f602cdbc4d2759046444bcc000d93a567`, using only an invocation-owned loopback cluster. The configured PostgreSQL DSN was excluded. The run used ERP_PHASE2_ENABLE_G1_CLUSTER_TESTS=1, ERP_PHASE2_REQUIRE_PG=1 and scratch source/root imports:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --maxfail=1 --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_transaction_e2e.py
+```
+
+Result: 7 passed in 62.17s (0:01:02). All seven scenarios executed. The owned-cluster context exited without a cleanup exception; the harness checks ownership labels before removing the exact invocation-owned containers. Coverage: concurrent CAS, legacy fencing and historical isolation, atomic rollback between event and fingerprint insertion, read-back after a discarded response, revoke-before-write, wrong company and role refusal, and rollback to the accepted target. This is synthetic transactional evidence only. The discarded response represents a client-side loss after commit, not a live network partition. Real provider, production and 1C are NOT_RUN.
+
+## 2026-11-18 - S4 configured evidence-content verification
+
+The assigned functional-test-reviewer ran the named service-content module on HEAD `03f31ad81e3b69a3966437b2212f8c16ecd5ba98` with scratch root and source imports:
+
+```powershell
+& 'D:/Repo/ERP_MCP/.venv/Scripts/python.exe' -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_s4_promotion_content.py
+```
+
+Result: 14 passed in 0.64s. Valid scoped bytes reach one write; malformed, inaccessible, missing, or mismatched content, incomplete configuration, and replay without a durable fingerprint prevent a new write. The test double is synthetic and does not qualify a provider. Git reported no change to the fingerprint module/test after 54a5c83 or to the disposable SQL, shared database harness and E2E test after 40d4547 through 03f31ad. These results remain separate commands and do not imply one combined run or production readiness.

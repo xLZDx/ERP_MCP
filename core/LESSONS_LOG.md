@@ -624,3 +624,37 @@ A claim may be released only while failure is still before durable `BEGIN_APPLY`
 - 2026-11-17 SUCCESS: the exact-head push/merge guard, private input preservation and live-ledger restoration kept main clean without rewriting history or resetting task state. Rule: publish only reviewed refs, then clean verified merged copies and preserve all unique alternatives.
 
 - 2026-11-17 SHORTCOMING: MCP review approval and the older CLI final-receipt guard were separate authorities, so a valid exact-head approval still hit an unfinished-loop refusal. Rule: inspect the supported finalization route, retain genuine input/reply correlation and never forge receipts or disable the guard.
+
+- 2026-11-17 SUCCESS: FIN closed within the reviewed evidence scope with FIN-S1.2 deferred. Layer: sprint closeout review. Rule: label historical and mocked tests and keep deferred requirements open in the ledger.
+
+- 2026-11-17 SHORTCOMING: the rebaseline restored S0 criterion evidence and the second story disposition but left the first story at its pre-adjudication status. Layer: project-plan reconciliation. Rule: search retained refs for whole-story dispositions and verify retained evidence hashes before scheduling already accepted work.
+
+- 2026-11-17 SHORTCOMING: historical S1 acceptance was reconciled into the project overlay while the local sprint remained open. Layer: ledger reconciliation. Rule: compare documented sprint closure to native sprint state, preserve historical reviews, and do not mark current execution as passed when the approved blobs or environment differ.
+
+- 2026-11-17 SUCCESS: reconciled consecutive S2 and S3 historical sprint dispositions from all ten recorded task decisions. Layer: plan and ledger consistency. Rule: synchronize consecutive fully accepted historical sprints and stop status promotion at the first unresolved criterion.
+
+- 2026-11-17 SHORTCOMING: the first S4 promotion design described verification and replay without defining where external revocation and full request equality are enforced. Layer: architecture review. Rule: specify the transaction linearization point and durable replay fingerprint before implementing a write boundary.
+
+- 2026-11-17 SUCCESS: bounded offline promotion verifies content bytes before new writes and keeps the historical reference-only path explicitly unqualified. Layer: integration design. Rule: carry trusted company scope separately and require a durable full fingerprint before claiming replay-safe promotion.
+
+- 2026-11-17 SHORTCOMING: the first durable promotion draft did not name every legacy entry point or lock eligibility registration. Layer: architecture review. Rule: specify how legacy clients and concurrent registration share the same lock before enabling a stronger transaction boundary.
+
+- 2026-11-18 SUCCESS: isolated the S4 request encoder from authority and storage and recorded independent SHA-256 examples before integration. Layer: implementation contract. Rule: freeze framing examples at the byte level and reject field representations that cannot be shared with PostgreSQL.
+
+- 2026-11-18 SHORTCOMING: the first SQL fixture replaced a hardened function without retaining its explicit execution mode, and a proposed row trigger would have inverted the lock order. Layer: integration source review. Rule: compare every replaced function with the prior grants, ownership, execution mode and search path, and keep authorization checks on the same lock path.
+
+- 2026-11-18 SHORTCOMING: an early S4 recovery draft used current eligibility state before considering an already committed result. Layer: transaction source review. Rule: authorize recovery separately, identify the immutable committed request, and retain commit evidence across later revocation without allowing a new write.
+
+- 2026-11-18 SUCCESS: the fingerprint tests take expected bytes and digests from independent contract examples. Layer: acceptance test authoring. Rule: do not derive expected canonical bytes from the implementation being tested.
+
+- 2026-11-18 FAILURE: the fingerprint negative test used a valid lowercase UUID and failed despite correct encoder behavior. Layer: acceptance test authoring. Rule: verify every negative example independently against the framing specification before assigning its expected code.
+
+- 2026-11-18 FAILURE: the S4 PostgreSQL test setup inserted a role_scope row already seeded by the shared harness. Layer: E2E fixture authoring. Rule: inspect the shared seed inventory and add only the extra grants required by the scenario.
+
+- 2026-11-18 FAILURE: the S4 test copied an obsolete observation function call instead of using the shared harness statement. Layer: fixture setup. Rule: reuse existing SQL statements inside the required scope transaction and inspect all remaining function signatures before retrying.
+
+- 2026-11-18 FAILURE: the PL/pgSQL rollback lookup used an unqualified name shared by a history column and a RETURNS TABLE output variable. Layer: source review and E2E. Rule: qualify query columns in procedural functions wherever they can overlap with input or result variable names.
+
+- 2026-11-18 SUCCESS: the S4 transaction scenarios isolate the actual PostgreSQL commit and recovery behavior from 1C and runtime provider integration. Layer: disposable E2E. Rule: preserve the precise source head and label-scope cleanup evidence with the named result.
+
+- 2026-11-18 FAILURE: the initial S4 recovery SQL disclosed the existence of a historical acceptance before establishing exact company authorization. Layer: routed database and failure-path review. Rule: treat status and existence as scoped data and make unbound history indistinguishable from an unknown request.

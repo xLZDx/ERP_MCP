@@ -26,3 +26,9 @@ One routed review pass at the same HEAD selected code-reviewer, silent-failure-h
 - FIN-S1.2 stays blocked externally: the registered read-only source has no discovered authenticated period-close operation with qualified source/company/base/version/freshness semantics. A human provider/API owner is not assigned.
 - FIN-S3.2 stays blocked on an interactive Windows elevation step. The `RunAs` launch reported `The operation was canceled by the user`; checks found neither the temporary service nor its protected test root, so no service test ran. The approved runner is `D:\tmp\run_erp_s13_mutex_test_admin_bootstrap.ps1` in visible Windows PowerShell 5.1.
 - This closeout does not establish a persistent S16 store, production service, production binding, or 1C write.
+
+## Follow-up after main consolidation
+
+The FIN-S3.2 elevation failure above is historical. The November 17 reconciliation in `PROJECT_PLAN.md` records the subsequent focused run and accepted routed review for FIN-S3.2. The project plan still lists the task as `IN_REVIEW` pending final FIN review.
+
+Git ancestry confirms that the S16 implementation checkpoints `d7630f0` and `71cd251`, the S16 evidence records `c6266fc` and `8e42a1b`, and all thirteen commit references listed in the plan for FIN-S3.1 through FIN-S3.3 are included in consolidation candidate `561256d`. Use this coverage when assembling the FIN review package. The consolidation approval applies to its engineering integration scope. FIN-S3.3 still needs a recorded FIN disposition, with FIN-S1.2 deferred to the final project verification.

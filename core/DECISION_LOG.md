@@ -2100,3 +2100,76 @@ Restore the missed R2US002 whole-story status from its original YAML, evidence81
 ## 2026-11-17 — Conclude the legacy review receipt without disabling protection
 
 The closeout at9c786f3 received exact-head APPROVE under request9f2c68d5-891d-4c5a-b165-6c0bdfcf024c, recorded by the official ledger. A separate older PreToolUse push gate still required review.js final=True and refused the push because its latest CLI receipt was round1. Do not disable or edit that guard and do not hand-write a receipt. Inspection found the supported CLI --final path; recovery-only requires an identical reviewInputHash and cannot consume the differently formatted MCP request. Conclude through a real code-only fix round over PY-01 and its regression, with the full candidate's earlier approval and unchanged source/test tree identities explicit. Do not send project documentation, rerun the full review, launch ERP MCP or request another operator GO. Final receipt/approval identifiers remain in the live ledger and PM Bridge log, avoiding self-referential source hashes.
+
+
+## 2026-11-17 — Close FIN within the approved evidence scope
+
+GPT-PM request 3b7f1905-5e0e-463b-920f-ee003ab035c0, correlated reply 4a7170e2-db3b-5a9c-b1f6-9bd1dfeb59a6, approved FIN-S3.3 and bounded FIN closure at 3f7fe83a94793bd97f0e3f5476d1e361668096a9. Zero blocker or major findings; two minor evidence limits remain: the 1,048-test run used a dirty tree, and the seven installer tests used mocked ScheduledTasks. Earlier consolidation review was engineering integration evidence only. FIN-S1.2 remains deferred to final project verification and retains its external block. Release 2 remains NO_GO, G8 not passed, writer UNQUALIFIED, production authorization NONE, and S16 synthetic/private only. No new tests, live scheduler execution or 1C write evidence was produced.
+
+## 2026-11-17 - Normalize the FIN closeout lesson
+
+The post-commit lesson importer flagged the heading-based FIN closeout entry as unparsed. Convert it to the existing dated bullet format. The recorded approval and FIN task states are unchanged.
+
+## 2026-11-17 - Restore the bounded S0 sprint outcome
+
+After FIN, the program order and live ledger selected R2-US-001. The earlier plan row predated the story disposition preserved in c624b70 and the S0 closeout at 3b2bd0a. Restore the existing R2-US-001 approval (request 36f90e3f-3df7-46fe-81a8-753d19208f49, reply 0d55d766-e857-5c2c-9bba-4222a215a850) and retain R2-US-002 approval (request 9550946b-a01e-4148-86c0-79db24d9e591). The TC001, TC002, TC003 and R2-US-002 evidence bytes match the recorded digests, as do the available correlated receipts. The historical heads are distinct from the current candidate; consolidation published their evidence, not the old PR merge. S0 closes with two bounded task acceptances; canonical TC001-TC006 remain NOT_RUN. No fresh execution, native test receipt, provider attestation, deployment acceptance or new code is credited.
+
+## 2026-11-17 - Reconcile the historical S1 sprint closure
+
+The plan and detailed task ledger already accept all four S1 stories in bounded scope (requests 3a35f7ee, 69ec1ee8, a6d63e49, c5cf6d30 and f23c36e1). Close the native S1 sprint to match those records without synthesizing a new task verification or review. Historical commits e35497f, 72d90a8, 9cbfbf2 and b23604c are not ancestors of current main. Current connector SDK code differs from the reviewed checkpoint in a docstring; migration 037 preserves both historical company-scope SQL function definitions from 029. The revocation scenarios remain represented in the port contract tests. For US006, four of six selected blobs are identical and the adapter and error-handling blobs have later changes. Historical approval scope, product NOT_RUN, and current runtime qualification remain separate. No fresh tests or migration execution.
+
+## 2026-11-17 - Reconcile the historical S2 and S3 sprint closures
+
+Close S2 (four bounded task acceptances) and then S3 (six) to match PROJECT_PLAN.md and the detailed task ledger. S2 decisions are 31f75d53, 28a091ba, 7fb244c0 and 1c1cc8d2; retain the historical rejection of a8b5b4d and the single-host and cursor/outbox-only bounds. S3 decisions are a28bc82a, 1249ee50, 9f017070, c4473847, a1b4b704 and 7cf68f7a; the plan identifies the historical PR #43 merge at 9e211b5. This reconciliation preserves native task verification and review fields. Neither product execution nor G1 is promoted. S4 remains open at R2-US-016: SQL promote_head and the PromotionService contract exist; current source search found service construction in tests only. Bounded R2-US-028 acceptance leaves real identity and promotion wiring unverified and does not satisfy the R2-US-016 authenticity finding.
+
+## 2026-11-17 - Define S4 promotion evidence and replay boundaries
+
+R2-US-016 is in progress. Historical adc5ec7 included an Admin API, PostgreSQL adapter, and focused tests, but its revision/reference digest did not independently authenticate the artifact bytes. Retain it as a reference. The architect found two major design gaps: revocation ordering across the commit boundary and incomplete replay identity. The revised S4 design specifies shared-lock eligibility revocation, immutable artifact pinning, and a canonical durable request fingerprint. Keep the first implementation slice offline and review the revised contract before changing source. No tests or migrations executed.
+
+## 2026-11-17 - Accept the S4 offline evidence design for implementation
+
+GPT-PM design request 68f7b4a3-8a29-439e-ba16-3a579d844395, correlated reply 2aa8aa8a-e465-5f88-b1db-e26949932f69, approved the bounded offline first slice at 2b46bdd9f14630a5225c0b693c3fdd99bc725b13. The architect independently confirmed that the revised contract addresses both major findings. The decision did not accept TC046-TC048 or any code, durable provider, migration, production operation or release. The implementation branch stays offline.
+
+## 2026-11-17 - Specify the durable S4 promotion transaction
+
+The offline implementation at 7e3b2b5 is retained. The durable design keeps the historical acceptance key, adds a companion fingerprint, defines a versioned length-framed encoding, and serializes eligibility, enrolment, head update, and authoritative read-back via the source row. Architecture review identified a legacy-call bypass and a registration race; the revised design places both paths under the same transaction lock and records role and row-level security rules. No code or migration was executed. This is a design candidate, not broadening the prior GPT-PM approval.
+
+## 2026-11-17 - Approve bounded S4 fingerprint and disposable SQL implementation
+
+GPT-PM request c4b15625-134f-4dff-b026-5a128602162d, correlated reply 92606631-a8e0-5ce3-b5f0-40375fb03bd5, approved pure framing and the synthetic transaction implementation at cb29e43fca1038cffd819c0c6e337f0fe18445e4. The attached record retains the independent reference digests. The SQL fixture belongs outside db/phase2 because the migration command enumerates SQL files in the selected directory. No approval for production schema application, real provider qualification, release, or TC046-TC048 acceptance.
+
+## 2026-11-18 - Preserve the disposable S4 SQL foundation
+
+The manually selected testbed SQL adds model modes, scoped eligibility and append-only-event fingerprint companions. It fences the legacy promotion entry before replay under the source lock for enrolled or paused models. Source comparison preserved SECURITY DEFINER and its fixed search_path, bound eligibility revocation to the verifier company scope, and retained the existing direct-write restrictions rather than adding a trigger with inverted lock order. No verifier grants, new atomic promotion or recovery entry point, schema application, or runtime qualification are present. The fixture is outside the ordinary migration directory.
+
+## 2026-11-18 - Implement the synthetic S4 promotion transaction
+
+Keep both SQL fixtures outside the normal migration directory and restrict them to an explicitly opted-in s4_disposable_* database. The new transaction source joins synthetic actor bindings, an immutable owner-registered request, verification eligibility and the target revision before its scoped compare-and-swap. The same transaction inserts the event and v1 fingerprint. Authorized recovery checks the result after the source lock at READ COMMITTED and refuses conflicting or historical use without disclosing receipt detail. This is source-only until the named disposable tests are run.
+
+## 2026-11-18 - Pin the S4 fingerprint acceptance cases
+
+The named offline test module fixes two independently derived v1 digests and their byte-level frames, checks that each field changes the digest, and rejects noncanonical identifiers, NUL, invalid UTF-8, oversized fields, invalid operations and BIGINT boundaries. Execution is deferred to the designated test owner on the committed test source.
+
+## 2026-11-18 - Pin the S4 disposable acceptance inputs
+
+The first named fingerprint run at 676302d reported 35 passed and one false negative: a lowercase canonical UUID had been labelled invalid. Use the uppercase form for that negative case. Add the focused disposable PostgreSQL scenarios for concurrency, commit recovery, scope, revocation, legacy fencing and rollback. The fixture never reads the configured PostgreSQL DSN and uses invocation-owned loopback resources.
+
+## 2026-11-18 - Correct S4 synthetic scenario setup
+
+The corrected offline fingerprint run passed all 36 cases at 54a5c83. The PostgreSQL run on the same head did not reach a scenario because fixture setup repeated an existing role grant. Keep the original result, correct only fixture setup, and rerun the named disposable scenarios against the revised committed inputs. PostgreSQL holds the ERP_MCP model acceptance state and its atomic journal; the 1C copies are relevant to connector checks and were not used by this transaction fixture.
+
+## 2026-11-18 - Reuse the established S4 observation seed statement
+
+The target run at 5a24093 cleared the duplicate scope setup and exposed a signature mismatch in the test-only observation call. Use the established shared ingest statement inside the existing company-scoped role transaction. PostgreSQL is the transactional authority for the ERP_MCP accepted model head and related records, not just a diagnostic log. No 1C copy participates in this transaction.
+
+## 2026-11-18 - Disambiguate the S4 rollback history lookup
+
+The disposable PostgreSQL run reached all seven scenario bodies. Six passed; rollback exposed an ambiguous reference to to_version in its historical target lookup. Qualify the accepted-event columns with their table alias. Retain failure evidence and rerun the named module on a committed correction.
+
+## 2026-11-18 - Preserve S4 disposable acceptance and content test inputs
+
+All seven disposable PostgreSQL scenarios passed at 40d4547; the invocation-owned cleanup completed without exception. Add the focused service-level content test so the byte-verification path is exercised directly, independently of SQL fixture registration. Run the named content module as the next verification step.
+
+## 2026-11-18 - Keep unbound promotion history private
+
+Two routed reviewers confirmed that the synthetic SQL classified old acceptance events before proving their company. Legacy events lack durable company provenance; the current source company does not establish historical ownership. Both new SQL entry points now give the same generic refusal as an unknown unregistered request. NO_COMMIT requires a registered, currently authorized company request. The modern receipt path checks request authorization before recovery details and binds the fingerprint to the referenced eligibility record. The correction is fixture-only.
