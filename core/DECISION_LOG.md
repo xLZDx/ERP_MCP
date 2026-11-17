@@ -1866,3 +1866,38 @@ and no observable process cwd in the target. Process cwd could not be read for
 198 protected/inaccessible processes; no such process was identified as using
 the target. Git removal completed successfully. Main/master were retained.
 The integration plan remains prepared; no code integration candidate was merged.
+
+
+## 2026-11-17 — Preserve audit snapshot semantics and continue subsystem review
+
+Commit 4318857 preserves the first rebaseline package. Independent artifact
+acceptance confirmed task preservation, S5/S11 corrections, partial implementation
+labels and ref coverage; two minor prose issues (old inventory counts and removed
+scratch-worktree wording) were corrected. The source-ledger hash refers to the
+captured ledger snapshot, not all future audit task-commit bookkeeping. Continued
+static reviews cover phase2 logic, S15/S16 and adapters/testbed; no exhaustive
+source-line acceptance or main-integration completion is claimed.
+
+
+## 2026-11-17 — Correct narrative sides of Git divergence
+
+Direct commands established origin/main...240070b = 9 left/main-only and
+87 right/working-only; origin/main..240070b count=87 and inverse count=9.
+BRANCH_INVENTORY main_only=9/branch_only=87 was correct, but earlier narrative
+inverted ahead/behind. Corrected prose and I-02 batch size; preserve earlier log
+entry as an explicitly superseded mistake. Fresh gh pr list confirms PR41 base
+is main (head900a3d0), not the autonomous branch. No source or ancestry changed.
+
+
+## 2026-11-17 — Complete remaining subsystem static slices
+
+Recorded S15/S16, adapter/testbed and phase2 scheduler/capture/ledger review
+results. S15/S16 pure logic exists but operational reader/store qualification
+remains separate. Sidecar semantic-refusal circuit counting and exporter partial
+output/retry behavior are concrete minor findings. Rejected a proposed new
+S1_S4_TRACEABILITY drift finding: its existing 2026-11-05 addendum already
+supersedes old rows. Exact Git blob comparison against bounded b8cb958 matches
+structural_hash only; six current dirty scheduler/capture-related files differ,
+so historical acceptance is preserved without extending it to new bytes.
+Prepared integration review manifest covers 393 local paths; no product fix or
+new test/runtime qualification occurred in the audit.

@@ -6,7 +6,7 @@ Evidence date: 2026-11-17. All counts below were observed by the Git explorer.
 |---|---|
 | Remote main | `7c1f69cf51b16d3849772fdb1e32015b17cb1aa7` (fetched and ls-remote agree) |
 | Local main | `4dfceeddb071a63e7d8f815e7c276555de6d2375`: 0 ahead, 113 behind remote main |
-| Active checkout | `240070b029ac020e895e9f84eb4bd02dd36b2e03`: 9 ahead, 87 behind remote main |
+| Active checkout | `240070b029ac020e895e9f84eb4bd02dd36b2e03`: 87 ahead, 9 behind remote main |
 | Local branches | 63: 9 ancestor tips of origin/main, 54 non-ancestor tips |
 | Remote refs | 40 |
 | Worktrees | 47 |
@@ -22,7 +22,7 @@ different remote branch and must not be confused with origin/main divergence.
 | 58 | `9bd6d3840437a811db4f3f8ad7e12619e102c57b` | `codex/v2-s12-01-20261108` | Preserve; stacked on S12 |
 | 54 | `2629aa2a20f6e40641a5ece7de42a1587a2748a1` | main | Reconcile S12 against current main |
 | 42 | `3b2bd0acb5a061f798c288b7671c9639f89e1269` | autonomous branch | Preserve S0 compatibility delta |
-| 41 | `900a3d060c648b9a809a6b7094adb430fb60f0bd` | autonomous branch | Inspect actual GitHub base/head refs before integration; local tip differs |
+| 41 | `900a3d060c648b9a809a6b7094adb430fb60f0bd` | main | Inspect actual GitHub base/head refs before integration; local tip differs |
 
 PR facts were read via authenticated gh. None is assumed approved for the
 current integration. `origin/pr-57` is not an open PR; state still needs checking.
@@ -32,7 +32,7 @@ current integration. `origin/pr-57` is not an open PR; state still needs checkin
 1. Preserve dirty root changes and all refs externally (completed by coordinator).
 2. Create an integration scratch checkout from fetched origin/main; do not merge
    into the dirty working checkout or overwrite stale local main.
-3. Reconcile the autonomous branch's nine unique commits and the 79 changed
+3. Reconcile the autonomous branch's 87 unique commits and the 79 changed
    tracked paths, plus selected untracked implementation files. Group changes by
    requirement and compare patch equivalence before choosing cherry-pick or merge.
 4. Reconcile S0 compatibility and S12 PRs, then S13 stacked PR. Preserve accepted
@@ -83,7 +83,7 @@ After preservation and ancestry verification, git fetch origin main:main
 fast-forwarded local main from 4dfceed to 7c1f69c. Both local main and origin/main
 now resolve to 7c1f69cf51b16d3849772fdb1e32015b17cb1aa7. Historical inventory
 rows retain the before-state intentionally. The prepared integration worktree
-remains clean; the dirty root branch was not switched or merged.
+was clean before its subsequently recorded removal; the dirty root branch was not switched or merged.
 
 S6/S8 PR merge commits 98b7405,5672c9c,e2ebf0e are present on the remote
 integration branch but not origin/main. Their historical merge reports are true

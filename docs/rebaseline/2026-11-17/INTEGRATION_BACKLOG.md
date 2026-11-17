@@ -8,7 +8,7 @@ Origin/main baseline: 7c1f69cf51b16d3849772fdb1e32015b17cb1aa7.
 | Batch | Scope | Exit evidence |
 |---|---|---|
 | I-01 | Preserve all dirty root and linked-worktree changes | External immutable backup/manifests; every changed file assigned an integration disposition |
-| I-02 | Reconcile current autonomous branch and S0 compatibility | Nine root-only commits and dirty deltas compared against current main; conflicts reviewed |
+| I-02 | Reconcile current autonomous branch and S0 compatibility | 87 root-only commits and dirty deltas compared against current main; conflicts reviewed |
 | I-03 | S12 then stacked S13 PR54/58 | Dependency order and exact tree defined; source/test/contract conflicts resolved |
 | I-04 | S14 private writer / S15 / S16 candidate work | Source-to-story coverage, package separation A-01, updated design and bounded qualification evidence |
 | I-05 | Residual historical branches | Each unique patch assigned integrate/retain/archive, with no unique work lost |
@@ -71,3 +71,13 @@ origin/main; record bounded-timeout/pool-pressure behavior as an inherited risk,
 not a newly introduced dirty-diff defect. No product fix was made in this audit.
 
 No integration merge or deletion has been performed by this rebaseline pass.
+
+
+## Additional adapter/testbed and S15/S16 follow-ups
+
+- AT-01: capability-semantic 422 refusals must not increment the sidecar upstream circuit counter; verify valid reads remain available after repeated unsupported-capability requests.
+- AT-02: exporter must stage/validate before publishing its final output; interruption/retry must not leave an unretryable final destination. Preserve existing outputs.
+- S15: implement and qualify concrete authenticated reader/full-population ports; pure logic and historical synthetic passes already exist and must not be rewritten as absent.
+- S16: implement/qualify durable atomic ChangeStore and cross-process restart/replay guarantees; bounded process-local fake-backed acceptance remains preserved.
+
+Details and inspected paths: ADAPTERS_TESTBED_AUDIT.md and S15_S16_AUDIT.md.

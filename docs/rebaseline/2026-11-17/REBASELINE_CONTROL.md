@@ -29,7 +29,7 @@ These backups may contain private project material and remain outside Git.
 They do not capture every ignored file, dependency cache or external runtime.
 Existing worktrees are not disposable merely because their age exceeds a day.
 
-`FILE_INVENTORY.json` records hashes/paths for 1,961 source, test, SQL,
+`FILE_INVENTORY.json` records hashes/paths for 2,104 source, test, SQL,
 documentation and report files and 104 refs, including exclusions. The inventory
 is evidence coverage, not a claim that every line has received human review.
 
@@ -78,10 +78,21 @@ their original revision and environment limits.
 
 The first independent review found two MAJOR coverage gaps: source blobs were
 not enumerated per ref and patch comparison excluded remote-only branches.
-Both tools were extended and rerun. CODE_VERSIONS.json now enumerates 1,637
-code/config/test path/blob versions; DOCUMENT_VERSIONS.json has 1,573 document
-versions across 105 refs (including the newly prepared integration branch).
-Patch comparison covers all 104 local/remote branch refs. Comparison failures
+Both tools were extended and rerun. CODE_VERSIONS.json now enumerates 2,768
+code/config/test path/blob versions; DOCUMENT_VERSIONS.json has 1,846 document
+versions across 104 refs (the empty prepared integration branch was subsequently removed).
+Patch comparison covers all 103 current local/remote branch refs. Comparison failures
 are unavailable/null, never zero unique patches. Full semantic SQL and Python
 gateway reviews are still running; RB-01 remains open until their findings are
 recorded. No claim of full line-by-line source acceptance is made.
+
+
+## Snapshot semantics after local audit commit
+
+The baseline package was committed locally as 4318857. ledger.rebaseline.json
+and TASK_EVIDENCE.ledger_sha256 describe the source-ledger snapshot at generation;
+the active .harness/ledger.json subsequently records audit commits and task-state
+bookkeeping. A later active-ledger hash change does not rewrite that historical
+snapshot or invalidate its captured source evidence. Before any final status
+promotion, generate a new explicitly dated snapshot rather than claim an old
+snapshot is permanently byte-identical to the live ledger.
